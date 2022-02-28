@@ -107,21 +107,16 @@ Array::Array(const Array& rhs)
 /*                API                */
 /* ********************************* */
 
-void Array::set_array_schema_latest(ArraySchema* array_schema) {
+void Array::set_array_schema_latest(
+    const shared_ptr<ArraySchema>& array_schema) {
   array_schema_latest_ = array_schema;
 }
 
-void Array::set_array_schemas_all(
-    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>& all_schemas) {
-  array_schemas_all_ = all_schemas;
-
-  for (auto& md : fragment_metadata_) {
-    md->set_array_schema(array_schemas_all_[md->array_schema_name()].get());
-    md->set_rtree_domain(array_schemas_all_[md->array_schema_name()]->domain());
-  }
+const ArraySchema& Array::array_schema_latest() const {
+  return *(array_schema_latest_.get());
 }
 
-ArraySchema* Array::array_schema_latest() const {
+shared_ptr<const ArraySchema> Array::array_schema_latest_ptr() const {
   return array_schema_latest_;
 }
 
@@ -175,8 +170,10 @@ Status Array::open_without_fragments(
     if (rest_client == nullptr)
       return LOG_STATUS(Status_ArrayError(
           "Cannot open array; remote array with no REST client."));
-    RETURN_NOT_OK(rest_client->get_array_schema_from_rest(
-        array_uri_, &array_schema_latest_));
+    auto&& [st, array_schema_latest] =
+        rest_client->get_array_schema_from_rest(array_uri_);
+    RETURN_NOT_OK(st);
+    array_schema_latest_ = array_schema_latest.value();
   } else {
     try {
       array_dir_ = ArrayDirectory(
@@ -310,8 +307,10 @@ Status Array::open(
     if (rest_client == nullptr)
       return LOG_STATUS(Status_ArrayError(
           "Cannot open array; remote array with no REST client."));
-    RETURN_NOT_OK(rest_client->get_array_schema_from_rest(
-        array_uri_, &array_schema_latest_));
+    auto&& [st, array_schema_latest] =
+        rest_client->get_array_schema_from_rest(array_uri_);
+    RETURN_NOT_OK(st);
+    array_schema_latest_ = array_schema_latest.value();
   } else if (query_type == QueryType::READ) {
     try {
       array_dir_ = ArrayDirectory(
@@ -324,11 +323,11 @@ Status Array::open(
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
 
-    auto&& [st, array_schema, array_schemas, fragment_metadata] =
+    auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
         storage_manager_->array_open_for_reads(this);
     RETURN_NOT_OK(st);
     // Set schemas
-    array_schema_latest_ = array_schema.value();
+    array_schema_latest_ = array_schema_latest.value();
     array_schemas_all_ = array_schemas.value();
     fragment_metadata_ = fragment_metadata.value();
   } else {
@@ -343,11 +342,11 @@ Status Array::open(
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
 
-    auto&& [st, array_schema, array_schemas] =
+    auto&& [st, array_schema_latest, array_schemas] =
         storage_manager_->array_open_for_writes(this);
     RETURN_NOT_OK(st);
     // Set schemas
-    array_schema_latest_ = array_schema.value();
+    array_schema_latest_ = array_schema_latest.value();
     array_schemas_all_ = array_schemas.value();
 
     metadata_.reset(timestamp_end_opened_at_);
@@ -389,10 +388,9 @@ Status Array::close() {
     }
 
     // Storage manager does not own the array schema for remote arrays.
-    tdb_delete(array_schema_latest_);
-    array_schema_latest_ = nullptr;
+    array_schema_latest_.reset();
   } else {
-    array_schema_latest_ = nullptr;
+    array_schema_latest_.reset();
     if (query_type_ == QueryType::READ) {
       RETURN_NOT_OK(storage_manager_->array_close_for_reads(this));
     } else {
@@ -419,19 +417,19 @@ bool Array::is_remote() const {
   return remote_;
 }
 
-std::vector<tdb_shared_ptr<FragmentMetadata>> Array::fragment_metadata() const {
+std::vector<shared_ptr<FragmentMetadata>> Array::fragment_metadata() const {
   return fragment_metadata_;
 }
 
-Status Array::get_array_schema(ArraySchema** array_schema) const {
+tuple<Status, optional<shared_ptr<ArraySchema>>> Array::get_array_schema()
+    const {
   // Error if the array is not open
   if (!is_open_)
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get array schema; Array is not open"));
+    return {LOG_STATUS(Status_ArrayError(
+                "Cannot get array schema; Array is not open")),
+            nullopt};
 
-  *array_schema = array_schema_latest_;
-
-  return Status::Ok();
+  return {Status::Ok(), array_schema_latest_};
 }
 
 Status Array::get_query_type(QueryType* query_type) const {
@@ -614,11 +612,11 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
-  auto&& [st, array_schema, array_schemas, fragment_metadata] =
+  auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
       storage_manager_->array_reopen(this);
   RETURN_NOT_OK(st);
 
-  array_schema_latest_ = array_schema.value();
+  array_schema_latest_ = array_schema_latest.value();
   array_schemas_all_ = array_schemas.value();
   fragment_metadata_ = fragment_metadata.value();
 
@@ -911,7 +909,7 @@ Status Array::compute_max_buffer_sizes(
       return LOG_STATUS(Status_ArrayError(
           "Cannot get max buffer sizes; remote array with no REST client."));
     return rest_client->get_array_max_buffer_sizes(
-        array_uri_, array_schema_latest_, subarray, buffer_sizes);
+        array_uri_, *(array_schema_latest_.get()), subarray, buffer_sizes);
   }
 
   // Return if there are no metadata

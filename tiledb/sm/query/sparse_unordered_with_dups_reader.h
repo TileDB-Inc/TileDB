@@ -192,7 +192,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const unsigned f,
       const uint64_t t,
       const uint64_t last_t,
-      const ArraySchema* const array_schema);
+      const ArraySchema& array_schema);
 
   /**
    * Create the result tiles.

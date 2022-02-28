@@ -168,7 +168,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      optional<ArraySchema*>,
+      optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
       optional<std::vector<shared_ptr<FragmentMetadata>>>>
   load_array_schemas_and_fragment_metadata(
@@ -195,7 +195,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      optional<ArraySchema*>,
+      optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
       optional<std::vector<shared_ptr<FragmentMetadata>>>>
   array_open_for_reads(Array* array);
@@ -212,7 +212,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      optional<ArraySchema*>,
+      optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
   array_open_for_reads_without_fragments(Array* array);
 
@@ -227,7 +227,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      optional<ArraySchema*>,
+      optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
   array_open_for_writes(Array* array);
 
@@ -257,7 +257,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      optional<ArraySchema*>,
+      optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
       optional<std::vector<shared_ptr<FragmentMetadata>>>>
   array_reopen(Array* array);
@@ -356,7 +356,7 @@ class StorageManager {
    */
   Status array_create(
       const URI& array_uri,
-      ArraySchema* array_schema,
+      const shared_ptr<ArraySchema>& array_schema,
       const EncryptionKey& encryption_key);
 
   /**
@@ -619,15 +619,11 @@ class StorageManager {
    * Loads the schema of a schema uri from persistent storage into memory.
    *
    * @param array_schema_uri The URI path of the array schema.
-   * @param array_uri The URI path of the array.
    * @param encryption_key The encryption key to use.
-   * @param array_schema The array schema to be retrieved.
-   * @return Status
+   * @return Status, the loaded array schema
    */
-  Status load_array_schema_from_uri(
-      const URI& array_schema_uri,
-      const EncryptionKey& encryption_key,
-      ArraySchema** array_schema);
+  tuple<Status, optional<shared_ptr<ArraySchema>>> load_array_schema_from_uri(
+      const URI& array_schema_uri, const EncryptionKey& encryption_key);
 
   /**
    * Loads the latest schema of an array from persistent storage into memory.
@@ -635,13 +631,10 @@ class StorageManager {
    * @param array_dir The ArrayDirectory object used to retrieve the
    *     various URIs in the array directory.
    * @param encryption_key The encryption key to use.
-   * @param array_schema The array schema to be retrieved.
-   * @return Status
+   * @return Status, a new ArraySchema
    */
-  Status load_array_schema_latest(
-      const ArrayDirectory& array_dir,
-      const EncryptionKey& encryption_key,
-      ArraySchema** array_schema);
+  tuple<Status, optional<shared_ptr<ArraySchema>>> load_array_schema_latest(
+      const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
 
   /**
    * It loads and returns the latest schema and all the array schemas
@@ -657,7 +650,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      optional<ArraySchema*>,
+      optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
   load_array_schemas(
       const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
@@ -857,7 +850,8 @@ class StorageManager {
    * @return Status
    */
   Status store_array_schema(
-      ArraySchema* array_schema, const EncryptionKey& encryption_key);
+      const shared_ptr<ArraySchema>& array_schema,
+      const EncryptionKey& encryption_key);
 
   /**
    * Stores the array metadata into persistent storage.
@@ -1061,7 +1055,7 @@ class StorageManager {
   tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
   load_fragment_metadata(
       MemoryTracker* memory_tracker,
-      ArraySchema* array_schema_latest,
+      const shared_ptr<const ArraySchema>& array_schema,
       const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
           array_schemas_all,
       const EncryptionKey& encryption_key,

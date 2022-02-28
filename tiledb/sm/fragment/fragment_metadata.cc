@@ -64,10 +64,13 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
+FragmentMetadata::FragmentMetadata() {
+}
+
 FragmentMetadata::FragmentMetadata(
     StorageManager* storage_manager,
     MemoryTracker* memory_tracker,
-    const ArraySchema* array_schema,
+    const shared_ptr<const ArraySchema>& array_schema,
     const URI& fragment_uri,
     const std::pair<uint64_t, uint64_t>& timestamp_range,
     bool dense)
@@ -332,7 +335,8 @@ void FragmentMetadata::set_tile_null_count(
   tile_null_counts_[idx][tid] = null_count;
 }
 
-void FragmentMetadata::set_array_schema(ArraySchema* array_schema) {
+void FragmentMetadata::set_array_schema(
+    const shared_ptr<const ArraySchema>& array_schema) {
   array_schema_ = array_schema;
 
   // Rebuild index mapping
@@ -673,8 +677,7 @@ Status FragmentMetadata::load(
     const EncryptionKey& encryption_key,
     Buffer* f_buff,
     uint64_t offset,
-    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
-        array_schemas) {
+    std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
   auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   // Load the metadata file size when we are not reading from consolidated
@@ -3044,7 +3047,7 @@ Status FragmentMetadata::load_array_schema_name(ConstBuffer* buff) {
 
 Status FragmentMetadata::load_v1_v2(
     const EncryptionKey& encryption_key,
-    const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+    const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
         array_schemas) {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
@@ -3067,7 +3070,7 @@ Status FragmentMetadata::load_v1_v2(
   array_schema_name_ = tiledb::sm::constants::array_schema_filename;
   auto schema = array_schemas.find(array_schema_name_);
   if (schema != array_schemas.end()) {
-    set_array_schema(schema->second.get());
+    set_array_schema(schema->second);
   } else {
     return Status_FragmentMetadataError(
         "Could not find schema" + array_schema_name_ +
@@ -3096,8 +3099,7 @@ Status FragmentMetadata::load_v3_or_higher(
     const EncryptionKey& encryption_key,
     Buffer* f_buff,
     uint64_t offset,
-    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
-        array_schemas) {
+    std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
   RETURN_NOT_OK(load_footer(encryption_key, f_buff, offset, array_schemas));
   return Status::Ok();
 }
@@ -3106,8 +3108,7 @@ Status FragmentMetadata::load_footer(
     const EncryptionKey& encryption_key,
     Buffer* f_buff,
     uint64_t offset,
-    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
-        array_schemas) {
+    std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
   (void)encryption_key;  // Not used for now, perhaps in the future
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -3115,7 +3116,7 @@ Status FragmentMetadata::load_footer(
     return Status::Ok();
 
   Buffer buff;
-  tdb_shared_ptr<ConstBuffer> cbuff = nullptr;
+  shared_ptr<ConstBuffer> cbuff = nullptr;
   if (f_buff == nullptr) {
     has_consolidated_footer_ = false;
     RETURN_NOT_OK(read_file_footer(&buff, &footer_offset_, &footer_size_));
@@ -3133,7 +3134,7 @@ Status FragmentMetadata::load_footer(
     RETURN_NOT_OK(load_array_schema_name(cbuff.get()));
     auto schema = array_schemas.find(array_schema_name_);
     if (schema != array_schemas.end()) {
-      set_array_schema(schema->second.get());
+      set_array_schema(schema->second);
     } else {
       return Status_FragmentMetadataError(
           "Could not find schema" + array_schema_name_ +
@@ -3146,7 +3147,7 @@ Status FragmentMetadata::load_footer(
     array_schema_name_ = tiledb::sm::constants::array_schema_filename;
     auto schema = array_schemas.find(array_schema_name_);
     if (schema != array_schemas.end()) {
-      set_array_schema(schema->second.get());
+      set_array_schema(schema->second);
     } else {
       return Status_FragmentMetadataError(
           "Could not find schema" + array_schema_name_ +
@@ -3899,7 +3900,7 @@ void FragmentMetadata::clean_up() {
   storage_manager_->vfs()->remove_file(fragment_metadata_uri);
 }
 
-const ArraySchema* FragmentMetadata::array_schema() const {
+const shared_ptr<const ArraySchema>& FragmentMetadata::array_schema() const {
   return array_schema_;
 }
 

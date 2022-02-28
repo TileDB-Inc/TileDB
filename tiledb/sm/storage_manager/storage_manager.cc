@@ -136,7 +136,7 @@ Status StorageManager::array_close_for_writes(Array* array) {
 
 tuple<
     Status,
-    optional<ArraySchema*>,
+    optional<shared_ptr<ArraySchema>>,
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
     optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::load_array_schemas_and_fragment_metadata(
@@ -180,7 +180,7 @@ StorageManager::load_array_schemas_and_fragment_metadata(
 
 tuple<
     Status,
-    optional<ArraySchema*>,
+    optional<shared_ptr<ArraySchema>>,
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
     optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::array_open_for_reads(Array* array) {
@@ -202,7 +202,7 @@ StorageManager::array_open_for_reads(Array* array) {
 
 tuple<
     Status,
-    optional<ArraySchema*>,
+    optional<shared_ptr<ArraySchema>>,
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManager::array_open_for_reads_without_fragments(Array* array) {
   auto timer_se =
@@ -222,7 +222,7 @@ StorageManager::array_open_for_reads_without_fragments(Array* array) {
 
 tuple<
     Status,
-    optional<ArraySchema*>,
+    optional<shared_ptr<ArraySchema>>,
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManager::array_open_for_writes(Array* array) {
   // Checks
@@ -276,7 +276,7 @@ StorageManager::array_load_fragments(
   std::unordered_map<std::string, uint64_t> offsets;
   auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(
       array->memory_tracker(),
-      array->array_schema_latest(),
+      array->array_schema_latest_ptr(),
       array->array_schemas_all(),
       *array->encryption_key(),
       fragments_to_load,
@@ -289,7 +289,7 @@ StorageManager::array_load_fragments(
 
 tuple<
     Status,
-    optional<ArraySchema*>,
+    optional<shared_ptr<ArraySchema>>,
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
     optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::array_reopen(Array* array) {
@@ -603,7 +603,7 @@ Status StorageManager::array_metadata_consolidate(
 
 Status StorageManager::array_create(
     const URI& array_uri,
-    ArraySchema* array_schema,
+    const shared_ptr<ArraySchema>& array_schema,
     const EncryptionKey& encryption_key) {
   // Check array schema
   if (array_schema == nullptr) {
@@ -725,27 +725,21 @@ Status StorageManager::array_evolve_schema(
         std::string("Cannot evolve array; Array '") + array_uri.c_str() +
         "' not exists"));
 
-  ArraySchema* array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(
-      load_array_schema_latest(array_dir, encryption_key, &array_schema));
+  auto&& [st1, array_schema] =
+      load_array_schema_latest(array_dir, encryption_key);
+  RETURN_NOT_OK(st1);
 
   // Evolve schema
-  ArraySchema* array_schema_evolved = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(
-      schema_evolution->evolve_schema(array_schema, &array_schema_evolved));
+  auto&& [st2, array_schema_evolved] =
+      schema_evolution->evolve_schema(array_schema.value());
+  RETURN_NOT_OK(st2);
 
-  Status st = store_array_schema(array_schema_evolved, encryption_key);
+  Status st = store_array_schema(array_schema_evolved.value(), encryption_key);
   if (!st.ok()) {
-    tdb_delete(array_schema_evolved);
     logger_->status(st);
     return logger_->status(Status_StorageManagerError(
         "Cannot evolve schema;  Not able to store evolved array schema."));
   }
-
-  tdb_delete(array_schema);
-  array_schema = nullptr;
-  tdb_delete(array_schema_evolved);
-  array_schema_evolved = nullptr;
 
   return Status::Ok();
 }
@@ -776,8 +770,8 @@ Status StorageManager::array_upgrade_version(
   std::string encryption_type_from_cfg =
       config_.get("sm.encryption_type", &found);
   assert(found);
-  auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
-  RETURN_NOT_OK(st);
+  auto [st1, etc] = encryption_type_enum(encryption_type_from_cfg);
+  RETURN_NOT_OK(st1);
   EncryptionType encryption_type_cfg = etc.value();
 
   EncryptionKey encryption_key_cfg;
@@ -801,42 +795,42 @@ Status StorageManager::array_upgrade_version(
         key_length));
   }
 
-  ArraySchema* array_schema_ptr = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(load_array_schema_latest(
-      array_dir, encryption_key_cfg, &array_schema_ptr));
-  tdb_unique_ptr<ArraySchema> array_schema(array_schema_ptr);
+  auto&& [st2, array_schema] =
+      load_array_schema_latest(array_dir, encryption_key_cfg);
+  RETURN_NOT_OK(st2);
 
-  if (array_schema->version() < constants::format_version) {
-    RETURN_NOT_OK_ELSE(array_schema->generate_uri(), logger_->status(st));
-
-    array_schema->set_version(constants::format_version);
+  if (array_schema.value()->version() < constants::format_version) {
+    auto st = array_schema.value()->generate_uri();
+    RETURN_NOT_OK_ELSE(st, logger_->status(st));
+    array_schema.value()->set_version(constants::format_version);
 
     // Create array schema directory if necessary
     URI array_schema_dir_uri =
         array_uri.join_path(constants::array_schema_dir_name);
-    RETURN_NOT_OK_ELSE(
-        vfs_->create_dir(array_schema_dir_uri), logger_->status(st));
+    st = vfs_->create_dir(array_schema_dir_uri);
+    RETURN_NOT_OK_ELSE(st, logger_->status(st));
 
-    RETURN_NOT_OK_ELSE(
-        store_array_schema(array_schema.get(), encryption_key_cfg),
-        logger_->status(st));
+    // Store array schema
+    st = store_array_schema(array_schema.value(), encryption_key_cfg);
+    RETURN_NOT_OK_ELSE(st, logger_->status(st));
 
     // Create commit directory if necessary
     URI array_commit_uri =
         array_uri.join_path(constants::array_commit_dir_name);
-    RETURN_NOT_OK_ELSE(vfs_->create_dir(array_commit_uri), logger_->status(st));
+    st = vfs_->create_dir(array_commit_uri);
+    RETURN_NOT_OK_ELSE(st, logger_->status(st));
 
     // Create fragments directory if necessary
     URI array_fragments_uri =
         array_uri.join_path(constants::array_fragments_dir_name);
-    RETURN_NOT_OK_ELSE(
-        vfs_->create_dir(array_fragments_uri), logger_->status(st));
+    st = vfs_->create_dir(array_fragments_uri);
+    RETURN_NOT_OK_ELSE(st, logger_->status(st));
 
     // Create fragment metadata directory if necessary
     URI array_fragment_metadata_uri =
         array_uri.join_path(constants::array_fragment_meta_dir_name);
-    RETURN_NOT_OK_ELSE(
-        vfs_->create_dir(array_fragment_metadata_uri), logger_->status(st));
+    st = vfs_->create_dir(array_fragment_metadata_uri);
+    RETURN_NOT_OK_ELSE(st, logger_->status(st));
   }
 
   return Status::Ok();
@@ -878,12 +872,12 @@ Status StorageManager::array_get_non_empty_domain(
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Array object is null"));
 
-  if (!array->array_schema_latest()->domain()->all_dims_same_type())
+  if (!array->array_schema_latest().domain()->all_dims_same_type())
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Function non-applicable to arrays with "
         "heterogenous dimensions"));
 
-  if (!array->array_schema_latest()->domain()->all_dims_fixed())
+  if (!array->array_schema_latest().domain()->all_dims_fixed())
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Function non-applicable to arrays with "
         "variable-sized dimensions"));
@@ -893,8 +887,8 @@ Status StorageManager::array_get_non_empty_domain(
   if (*is_empty)
     return Status::Ok();
 
-  auto array_schema = array->array_schema_latest();
-  auto dim_num = array_schema->dim_num();
+  const auto& array_schema = array->array_schema_latest();
+  auto dim_num = array_schema.dim_num();
   auto domain_c = (unsigned char*)domain;
   uint64_t offset = 0;
   for (unsigned d = 0; d < dim_num; ++d) {
@@ -908,11 +902,11 @@ Status StorageManager::array_get_non_empty_domain(
 Status StorageManager::array_get_non_empty_domain_from_index(
     Array* array, unsigned idx, void* domain, bool* is_empty) {
   // For easy reference
-  auto array_schema = array->array_schema_latest();
-  auto array_domain = array_schema->domain();
+  const auto& array_schema = array->array_schema_latest();
+  auto array_domain = array_schema.domain();
 
   // Sanity checks
-  if (idx >= array_schema->dim_num())
+  if (idx >= array_schema.dim_num())
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Invalid dimension index"));
   if (array_domain->dimension(idx)->var_size()) {
@@ -941,11 +935,11 @@ Status StorageManager::array_get_non_empty_domain_from_name(
   NDRange dom;
   RETURN_NOT_OK(array_get_non_empty_domain(array, &dom, is_empty));
 
-  auto array_schema = array->array_schema_latest();
-  auto array_domain = array_schema->domain();
-  auto dim_num = array_schema->dim_num();
+  const auto& array_schema = array->array_schema_latest();
+  auto array_domain = array_schema.domain();
+  auto dim_num = array_schema.dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim_name = array_schema->dimension(d)->name();
+    auto dim_name = array_schema.dimension(d)->name();
     if (name == dim_name) {
       // Sanity check
       if (array_domain->dimension(d)->var_size()) {
@@ -972,11 +966,11 @@ Status StorageManager::array_get_non_empty_domain_var_size_from_index(
     uint64_t* end_size,
     bool* is_empty) {
   // For easy reference
-  auto array_schema = array->array_schema_latest();
-  auto array_domain = array_schema->domain();
+  const auto& array_schema = array->array_schema_latest();
+  auto array_domain = array_schema.domain();
 
   // Sanity checks
-  if (idx >= array_schema->dim_num())
+  if (idx >= array_schema.dim_num())
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Invalid dimension index"));
   if (!array_domain->dimension(idx)->var_size()) {
@@ -1014,11 +1008,11 @@ Status StorageManager::array_get_non_empty_domain_var_size_from_name(
   NDRange dom;
   RETURN_NOT_OK(array_get_non_empty_domain(array, &dom, is_empty));
 
-  auto array_schema = array->array_schema_latest();
-  auto array_domain = array_schema->domain();
-  auto dim_num = array_schema->dim_num();
+  const auto& array_schema = array->array_schema_latest();
+  auto array_domain = array_schema.domain();
+  auto dim_num = array_schema.dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim_name = array_schema->dimension(d)->name();
+    auto dim_name = array_schema.dimension(d)->name();
     if (name == dim_name) {
       // Sanity check
       if (!array_domain->dimension(d)->var_size()) {
@@ -1047,11 +1041,11 @@ Status StorageManager::array_get_non_empty_domain_var_size_from_name(
 Status StorageManager::array_get_non_empty_domain_var_from_index(
     Array* array, unsigned idx, void* start, void* end, bool* is_empty) {
   // For easy reference
-  auto array_schema = array->array_schema_latest();
-  auto array_domain = array_schema->domain();
+  const auto& array_schema = array->array_schema_latest();
+  auto array_domain = array_schema.domain();
 
   // Sanity checks
-  if (idx >= array_schema->dim_num())
+  if (idx >= array_schema.dim_num())
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Invalid dimension index"));
   if (!array_domain->dimension(idx)->var_size()) {
@@ -1083,11 +1077,11 @@ Status StorageManager::array_get_non_empty_domain_var_from_name(
   NDRange dom;
   RETURN_NOT_OK(array_get_non_empty_domain(array, &dom, is_empty));
 
-  auto array_schema = array->array_schema_latest();
-  auto array_domain = array_schema->domain();
-  auto dim_num = array_schema->dim_num();
+  const auto& array_schema = array->array_schema_latest();
+  auto array_domain = array_schema.domain();
+  auto dim_num = array_schema.dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim_name = array_schema->dimension(d)->name();
+    auto dim_name = array_schema.dimension(d)->name();
     if (name == dim_name) {
       // Sanity check
       if (!array_domain->dimension(d)->var_size()) {
@@ -1358,11 +1352,10 @@ Status StorageManager::is_group(const URI& uri, bool* is_group) const {
   return Status::Ok();
 }
 
-Status StorageManager::load_array_schema_from_uri(
-    const URI& schema_uri,
-    const EncryptionKey& encryption_key,
-    ArraySchema** array_schema) {
-  auto timer_se = stats_->start_timer("read_load_array_schema_from_uri");
+tuple<Status, optional<shared_ptr<ArraySchema>>>
+StorageManager::load_array_schema_from_uri(
+    const URI& schema_uri, const EncryptionKey& encryption_key) {
+  auto timer_se = stats_->start_timer("sm_load_array_schema_from_uri");
 
   GenericTileIO tile_io(this, schema_uri);
   Tile* tile = nullptr;
@@ -1377,13 +1370,13 @@ Status StorageManager::load_array_schema_from_uri(
         config_.get("sm.encryption_type", &found);
     assert(found);
     auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
-    RETURN_NOT_OK(st);
+    RETURN_NOT_OK_TUPLE(st, nullopt);
     EncryptionType encryption_type_cfg = etc.value();
 
     EncryptionKey encryption_key_cfg;
     if (encryption_key_from_cfg.empty()) {
-      RETURN_NOT_OK(
-          encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
+      RETURN_NOT_OK_TUPLE(
+          encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0), nullopt);
     } else {
       uint32_t key_length = 0;
       if (EncryptionKey::is_valid_key_length(
@@ -1396,70 +1389,72 @@ Status StorageManager::load_array_schema_from_uri(
           key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
         }
       }
-      RETURN_NOT_OK(encryption_key_cfg.set_key(
-          encryption_type_cfg,
-          (const void*)encryption_key_from_cfg.c_str(),
-          key_length));
+      RETURN_NOT_OK_TUPLE(
+          encryption_key_cfg.set_key(
+              encryption_type_cfg,
+              (const void*)encryption_key_from_cfg.c_str(),
+              key_length),
+          nullopt);
     }
-    RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key_cfg, config_));
+    RETURN_NOT_OK_TUPLE(
+        tile_io.read_generic(&tile, 0, encryption_key_cfg, config_), nullopt);
   } else {
-    RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
+    RETURN_NOT_OK_TUPLE(
+        tile_io.read_generic(&tile, 0, encryption_key, config_), nullopt);
   }
 
   Buffer buff;
   buff.realloc(tile->size());
   buff.set_size(tile->size());
-  RETURN_NOT_OK_ELSE(tile->read(buff.data(), 0, buff.size()), tdb_delete(tile));
+  auto st = tile->read(buff.data(), 0, buff.size());
   tdb_delete(tile);
+  RETURN_NOT_OK_TUPLE(st, nullopt);
 
   stats_->add_counter("read_array_schema_size", buff.size());
 
   // Deserialize
   ConstBuffer cbuff(&buff);
-  *array_schema = tdb_new(ArraySchema);
-  Status st = (*array_schema)->deserialize(&cbuff);
-  if (!st.ok()) {
-    tdb_delete(*array_schema);
-    *array_schema = nullptr;
-    return st;
-  }
-  (*array_schema)->set_uri(schema_uri);
-  return st;
+  auto array_schema = tdb::make_shared<ArraySchema>(HERE());
+  RETURN_NOT_OK_TUPLE(array_schema->deserialize(&cbuff), nullopt);
+  array_schema->set_uri(schema_uri);
+
+  return {Status::Ok(), array_schema};
 }
 
-Status StorageManager::load_array_schema_latest(
-    const ArrayDirectory& array_dir,
-    const EncryptionKey& encryption_key,
-    ArraySchema** array_schema) {
-  auto timer_se = stats_->start_timer("sm_load_array_schema");
+tuple<Status, optional<shared_ptr<ArraySchema>>>
+StorageManager::load_array_schema_latest(
+    const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
+  auto timer_se = stats_->start_timer("sm_load_array_schema_latest");
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return logger_->status(Status_StorageManagerError(
-        "Cannot load array schema; Invalid array URI"));
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot load array schema; Invalid array URI")),
+            nullopt};
 
+  // Load schema from URI
   const URI& schema_uri = array_dir.latest_array_schema_uri();
+  auto&& [st, array_schema] =
+      load_array_schema_from_uri(schema_uri, encryption_key);
+  RETURN_NOT_OK_TUPLE(st, nullopt);
 
-  RETURN_NOT_OK(
-      load_array_schema_from_uri(schema_uri, encryption_key, array_schema));
-  (*array_schema)->set_array_uri(array_uri);
-  return Status::Ok();
+  array_schema.value().get()->set_array_uri(array_uri);
+
+  return {Status::Ok(), array_schema};
 }
 
 tuple<
     Status,
-    optional<ArraySchema*>,
+    optional<shared_ptr<ArraySchema>>,
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManager::load_array_schemas(
     const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
-  auto array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK_TUPLE(
-      load_array_schema_latest(array_dir, encryption_key, &array_schema),
-      nullopt,
-      nullopt);
+  auto&& [st1, array_schema] =
+      load_array_schema_latest(array_dir, encryption_key);
+  RETURN_NOT_OK_TUPLE(st1, nullopt, nullopt);
 
-  auto&& [st, schemas] = load_all_array_schemas(array_dir, encryption_key);
-  RETURN_NOT_OK_TUPLE(st, nullopt, nullopt);
+  auto&& [st2, schemas] = load_all_array_schemas(array_dir, encryption_key);
+  RETURN_NOT_OK_TUPLE(st2, nullopt, nullopt);
 
   return {Status::Ok(), array_schema, schemas};
 }
@@ -1484,24 +1479,24 @@ StorageManager::load_all_array_schemas(
             nullopt};
   }
 
-  std::vector<ArraySchema*> schema_vector;
+  std::vector<shared_ptr<ArraySchema>> schema_vector;
   auto schema_num = schema_uris.size();
   schema_vector.resize(schema_num);
 
   auto status =
       parallel_for(compute_tp_, 0, schema_num, [&](size_t schema_ith) {
         auto& schema_uri = schema_uris[schema_ith];
-        auto array_schema = (ArraySchema*)nullptr;
-        RETURN_NOT_OK(load_array_schema_from_uri(
-            schema_uri, encryption_key, &array_schema));
-        schema_vector[schema_ith] = array_schema;
+        auto&& [st, array_schema] =
+            load_array_schema_from_uri(schema_uri, encryption_key);
+        RETURN_NOT_OK(st);
+        schema_vector[schema_ith] = array_schema.value();
         return Status::Ok();
       });
   RETURN_NOT_OK_TUPLE(status, nullopt);
 
   std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas;
-  for (const auto& array_schema : schema_vector) {
-    array_schemas[array_schema->name()] = shared_ptr<ArraySchema>(array_schema);
+  for (const auto& schema : schema_vector) {
+    array_schemas[schema->name()] = schema;
   }
 
   return {Status::Ok(), array_schemas};
@@ -1812,7 +1807,8 @@ Status StorageManager::set_tag(
 }
 
 Status StorageManager::store_array_schema(
-    ArraySchema* array_schema, const EncryptionKey& encryption_key) {
+    const shared_ptr<ArraySchema>& array_schema,
+    const EncryptionKey& encryption_key) {
   const URI schema_uri = array_schema->uri();
 
   // Serialize
@@ -1976,7 +1972,7 @@ shared_ptr<Logger> StorageManager::logger() const {
 tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::load_fragment_metadata(
     MemoryTracker* memory_tracker,
-    ArraySchema* array_schema_latest,
+    const shared_ptr<const ArraySchema>& array_schema_latest,
     const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
         array_schemas_all,
     const EncryptionKey& encryption_key,

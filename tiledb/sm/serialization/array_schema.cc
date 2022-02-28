@@ -432,30 +432,25 @@ Status domain_from_capnp(
 }
 
 Status array_schema_to_capnp(
-    ArraySchema* array_schema,
+    const ArraySchema& array_schema,
     capnp::ArraySchema::Builder* array_schema_builder,
     const bool client_side) {
-  if (array_schema == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing array schema; array schema is null."));
-
   // Only set the URI if client side
   if (client_side)
-    array_schema_builder->setUri(array_schema->array_uri().to_string());
+    array_schema_builder->setUri(array_schema.array_uri().to_string());
 
-  array_schema_builder->setName(array_schema->name());
+  array_schema_builder->setName(array_schema.name());
   auto v = kj::heapArray<int32_t>(1);
-  v[0] = array_schema->version();
+  v[0] = array_schema.version();
   array_schema_builder->setVersion(v);
-  array_schema_builder->setArrayType(
-      array_type_str(array_schema->array_type()));
-  array_schema_builder->setTileOrder(layout_str(array_schema->tile_order()));
-  array_schema_builder->setCellOrder(layout_str(array_schema->cell_order()));
-  array_schema_builder->setCapacity(array_schema->capacity());
-  array_schema_builder->setAllowsDuplicates(array_schema->allows_dups());
+  array_schema_builder->setArrayType(array_type_str(array_schema.array_type()));
+  array_schema_builder->setTileOrder(layout_str(array_schema.tile_order()));
+  array_schema_builder->setCellOrder(layout_str(array_schema.cell_order()));
+  array_schema_builder->setCapacity(array_schema.capacity());
+  array_schema_builder->setAllowsDuplicates(array_schema.allows_dups());
 
   // Set coordinate filters
-  const FilterPipeline& coords_filters = array_schema->coords_filters();
+  const FilterPipeline& coords_filters = array_schema.coords_filters();
   capnp::FilterPipeline::Builder coords_filters_builder =
       array_schema_builder->initCoordsFilterPipeline();
   RETURN_NOT_OK(
@@ -463,15 +458,14 @@ Status array_schema_to_capnp(
 
   // Set offset filters
   const FilterPipeline& offsets_filters =
-      array_schema->cell_var_offsets_filters();
+      array_schema.cell_var_offsets_filters();
   capnp::FilterPipeline::Builder offsets_filters_builder =
       array_schema_builder->initOffsetFilterPipeline();
   RETURN_NOT_OK(
       filter_pipeline_to_capnp(&offsets_filters, &offsets_filters_builder));
 
   // Set validity filters
-  const FilterPipeline& validity_filters =
-      array_schema->cell_validity_filters();
+  const FilterPipeline& validity_filters = array_schema.cell_validity_filters();
   capnp::FilterPipeline::Builder validity_filters_builder =
       array_schema_builder->initValidityFilterPipeline();
   RETURN_NOT_OK(
@@ -479,20 +473,20 @@ Status array_schema_to_capnp(
 
   // Domain
   auto domain_builder = array_schema_builder->initDomain();
-  RETURN_NOT_OK(domain_to_capnp(array_schema->domain(), &domain_builder));
+  RETURN_NOT_OK(domain_to_capnp(array_schema.domain(), &domain_builder));
 
   // Attributes
-  const unsigned num_attrs = array_schema->attribute_num();
+  const unsigned num_attrs = array_schema.attribute_num();
   auto attributes_buidler = array_schema_builder->initAttributes(num_attrs);
   for (size_t i = 0; i < num_attrs; i++) {
     auto attribute_builder = attributes_buidler[i];
     RETURN_NOT_OK(
-        attribute_to_capnp(array_schema->attribute(i), &attribute_builder));
+        attribute_to_capnp(array_schema.attribute(i), &attribute_builder));
   }
 
   // Set timestamp range
   auto timestamp_builder = array_schema_builder->initTimestampRange(2);
-  const auto& timestamp_range = array_schema->timestamp_range();
+  const auto& timestamp_range = array_schema.timestamp_range();
   timestamp_builder.set(0, timestamp_range.first);
   timestamp_builder.set(1, timestamp_range.second);
 
@@ -582,7 +576,7 @@ Status array_schema_from_capnp(
 }
 
 Status array_schema_serialize(
-    ArraySchema* array_schema,
+    const ArraySchema& array_schema,
     SerializationType serialize_type,
     Buffer* serialized_buffer,
     const bool client_side) {
@@ -635,10 +629,10 @@ Status array_schema_serialize(
   return Status::Ok();
 }
 
-Status array_schema_deserialize(
-    ArraySchema** array_schema,
-    SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
+    SerializationType serialize_type, const Buffer& serialized_buffer) {
+  shared_ptr<ArraySchema> array_schema;
+
   try {
     tdb_unique_ptr<ArraySchema> decoded_array_schema = nullptr;
 
@@ -653,8 +647,9 @@ Status array_schema_deserialize(
             array_schema_builder);
         capnp::ArraySchema::Reader array_schema_reader =
             array_schema_builder.asReader();
-        RETURN_NOT_OK(array_schema_from_capnp(
-            array_schema_reader, &decoded_array_schema));
+        RETURN_NOT_OK_TUPLE(
+            array_schema_from_capnp(array_schema_reader, &decoded_array_schema),
+            nullopt);
         break;
       }
       case SerializationType::CAPNP: {
@@ -665,33 +660,40 @@ Status array_schema_deserialize(
             serialized_buffer.size() / sizeof(::capnp::word)));
         capnp::ArraySchema::Reader array_schema_reader =
             reader.getRoot<capnp::ArraySchema>();
-        RETURN_NOT_OK(array_schema_from_capnp(
-            array_schema_reader, &decoded_array_schema));
+        RETURN_NOT_OK_TUPLE(
+            array_schema_from_capnp(array_schema_reader, &decoded_array_schema),
+            nullopt);
         break;
       }
       default: {
-        return LOG_STATUS(Status_SerializationError(
-            "Error deserializing array schema; Unknown serialization type "
-            "passed"));
+        return {
+            LOG_STATUS(Status_SerializationError(
+                "Error deserializing array schema; Unknown serialization type "
+                "passed")),
+            nullopt};
       }
     }
 
     if (decoded_array_schema == nullptr)
-      return LOG_STATUS(Status_SerializationError(
-          "Error serializing array schema; deserialized schema is null"));
+      return {
+          LOG_STATUS(Status_SerializationError(
+              "Error serializing array schema; deserialized schema is null")),
+          nullopt};
 
-    *array_schema = decoded_array_schema.release();
+    array_schema = std::move(decoded_array_schema);
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status_SerializationError(
-        "Error deserializing array schema; kj::Exception: " +
-        std::string(e.getDescription().cStr())));
+    return {LOG_STATUS(Status_SerializationError(
+                "Error deserializing array schema; kj::Exception: " +
+                std::string(e.getDescription().cStr()))),
+            nullopt};
   } catch (std::exception& e) {
-    return LOG_STATUS(Status_SerializationError(
-        "Error deserializing array schema; exception " +
-        std::string(e.what())));
+    return {LOG_STATUS(Status_SerializationError(
+                "Error deserializing array schema; exception " +
+                std::string(e.what()))),
+            nullopt};
   }
 
-  return Status::Ok();
+  return {Status::Ok(), array_schema};
 }
 
 Status nonempty_domain_serialize(
@@ -842,10 +844,7 @@ Status nonempty_domain_serialize(
     return LOG_STATUS(Status_SerializationError(
         "Error serializing nonempty domain; nonempty domain is null."));
 
-  const auto* schema = array->array_schema_latest();
-  if (schema == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing nonempty domain; array schema is null."));
+  const auto& schema = array->array_schema_latest();
 
   try {
     // Serialize
@@ -913,10 +912,7 @@ Status nonempty_domain_deserialize(
     return LOG_STATUS(Status_SerializationError(
         "Error deserializing nonempty domain; nonempty domain is null."));
 
-  const auto* schema = array->array_schema_latest();
-  if (schema == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error deserializing nonempty domain; array schema is null."));
+  const auto& schema = array->array_schema_latest();
 
   try {
     switch (serialize_type) {
@@ -936,9 +932,7 @@ Status nonempty_domain_deserialize(
           RETURN_NOT_OK(utils::deserialize_subarray(
               reader.getNonEmptyDomain(), schema, &subarray));
           std::memcpy(
-              nonempty_domain,
-              subarray,
-              2 * schema->dimension(0)->coord_size());
+              nonempty_domain, subarray, 2 * schema.dimension(0)->coord_size());
           tdb_free(subarray);
         }
 
@@ -959,9 +953,7 @@ Status nonempty_domain_deserialize(
           RETURN_NOT_OK(utils::deserialize_subarray(
               reader.getNonEmptyDomain(), schema, &subarray));
           std::memcpy(
-              nonempty_domain,
-              subarray,
-              2 * schema->dimension(0)->coord_size());
+              nonempty_domain, subarray, 2 * schema.dimension(0)->coord_size());
           tdb_free(subarray);
         }
 
@@ -988,11 +980,6 @@ Status nonempty_domain_deserialize(
 
 Status nonempty_domain_serialize(
     Array* array, SerializationType serialize_type, Buffer* serialized_buffer) {
-  const auto* schema = array->array_schema_latest();
-  if (schema == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing nonempty domain; array schema is null."));
-
   try {
     // Serialize
     ::capnp::MallocMessageBuilder message;
@@ -1099,10 +1086,7 @@ Status max_buffer_sizes_serialize(
     const void* subarray,
     SerializationType serialize_type,
     Buffer* serialized_buffer) {
-  const auto* schema = array->array_schema_latest();
-  if (schema == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing max buffer sizes; array schema is null."));
+  const auto& schema = array->array_schema_latest();
 
   try {
     // Serialize
@@ -1110,7 +1094,7 @@ Status max_buffer_sizes_serialize(
     auto builder = message.initRoot<capnp::MaxBufferSizes>();
 
     // Get all attribute names including coords
-    const auto& attrs = schema->attributes();
+    const auto& attrs = schema.attributes();
     std::set<std::string> attr_names;
     attr_names.insert(constants::coords);
     for (const auto& a : attrs)
@@ -1123,7 +1107,7 @@ Status max_buffer_sizes_serialize(
     size_t i = 0;
     for (const auto& attr_name : attr_names) {
       bool var_size =
-          attr_name != constants::coords && schema->var_size(attr_name);
+          attr_name != constants::coords && schema.var_size(attr_name);
       auto max_buffer_size_builder = max_buffer_sizes_builder[i++];
       max_buffer_size_builder.setAttribute(attr_name);
 
@@ -1187,15 +1171,11 @@ Status max_buffer_sizes_serialize(
 }
 
 Status max_buffer_sizes_deserialize(
-    const ArraySchema* schema,
+    const ArraySchema& schema,
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
-  if (schema == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error deserializing max buffer sizes; array schema is null."));
-
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -1216,7 +1196,7 @@ Status max_buffer_sizes_deserialize(
           uint64_t offset_size = max_buffer_size_reader.getOffsetBytes();
           uint64_t data_size = max_buffer_size_reader.getDataBytes();
 
-          if (attribute == constants::coords || !schema->var_size(attribute)) {
+          if (attribute == constants::coords || !schema.var_size(attribute)) {
             (*buffer_sizes)[attribute] = std::make_pair(data_size, 0);
           } else {
             (*buffer_sizes)[attribute] = std::make_pair(offset_size, data_size);
@@ -1242,7 +1222,7 @@ Status max_buffer_sizes_deserialize(
           uint64_t offset_size = max_buffer_size_reader.getOffsetBytes();
           uint64_t data_size = max_buffer_size_reader.getDataBytes();
 
-          if (attribute == constants::coords || !schema->var_size(attribute)) {
+          if (attribute == constants::coords || !schema.var_size(attribute)) {
             (*buffer_sizes)[attribute] = std::make_pair(data_size, 0);
           } else {
             (*buffer_sizes)[attribute] = std::make_pair(offset_size, data_size);
@@ -1273,15 +1253,16 @@ Status max_buffer_sizes_deserialize(
 #else
 
 Status array_schema_serialize(
-    ArraySchema*, SerializationType, Buffer*, const bool) {
+    const ArraySchema&, SerializationType, Buffer*, const bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
-Status array_schema_deserialize(
-    ArraySchema**, SerializationType, const Buffer&) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
+tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
+    SerializationType, const Buffer&) {
+  return {LOG_STATUS(Status_SerializationError(
+              "Cannot serialize; serialization not enabled.")),
+          nullopt};
 }
 
 Status nonempty_domain_serialize(Array*, SerializationType, Buffer*) {
@@ -1313,7 +1294,7 @@ Status max_buffer_sizes_serialize(
 }
 
 Status max_buffer_sizes_deserialize(
-    const ArraySchema*,
+    const ArraySchema&,
     const Buffer&,
     SerializationType,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {

@@ -62,10 +62,8 @@ class FragmentMetadata {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /**
-   * Default contructor
-   */
-  FragmentMetadata() = default;
+  /** Constructor. */
+  FragmentMetadata();
 
   /**
    * Constructor.
@@ -83,7 +81,7 @@ class FragmentMetadata {
   FragmentMetadata(
       StorageManager* storage_manager,
       MemoryTracker* memory_tracker,
-      const ArraySchema* array_schema,
+      const shared_ptr<const ArraySchema>& array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
       bool dense = true);
@@ -252,8 +250,7 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       Buffer* f_buff,
       uint64_t offset,
-      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
-          array_schemas);
+      std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
   /** Stores all the metadata to storage. */
   Status store(const EncryptionKey& encryption_key);
@@ -468,7 +465,7 @@ class FragmentMetadata {
    * @param array_schema The schema pointer.
    * @return void
    */
-  void set_array_schema(ArraySchema* array_schema);
+  void set_array_schema(const shared_ptr<const ArraySchema>& array_schema);
 
   /** Returns the tile index base value. */
   uint64_t tile_index_base() const;
@@ -724,7 +721,7 @@ class FragmentMetadata {
    *
    * @return
    */
-  const ArraySchema* array_schema() const;
+  const shared_ptr<const ArraySchema>& array_schema() const;
 
  private:
   /* ********************************* */
@@ -775,7 +772,7 @@ class FragmentMetadata {
   MemoryTracker* memory_tracker_;
 
   /** The array schema */
-  const ArraySchema* array_schema_;
+  shared_ptr<const ArraySchema> array_schema_;
 
   /** The array schema name */
   std::string array_schema_name_;
@@ -1224,7 +1221,7 @@ class FragmentMetadata {
   /** Loads the basic metadata from storage (version 2 or before). */
   Status load_v1_v2(
       const EncryptionKey& encryption_key,
-      const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+      const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
           array_schemas);
 
   /**
@@ -1235,8 +1232,7 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       Buffer* f_buff,
       uint64_t offset,
-      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
-          array_schemas);
+      std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
   /**
    * Loads the footer of the metadata file, which contains
@@ -1248,8 +1244,7 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       Buffer* f_buff,
       uint64_t offset,
-      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
-          array_schemas);
+      std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
   /** Writes the sizes of each attribute file to the buffer. */
   Status write_file_sizes(Buffer* buff) const;

@@ -55,6 +55,7 @@ StrategyBase::StrategyBase(
     : stats_(stats)
     , logger_(logger)
     , array_(array)
+    , array_schema_(array->array_schema_latest())
     , config_(config)
     , buffers_(buffers)
     , layout_(layout)
@@ -63,9 +64,6 @@ StrategyBase::StrategyBase(
     , offsets_format_mode_(Config::SM_OFFSETS_FORMAT_MODE)
     , offsets_extra_element_(false)
     , offsets_bitsize_(constants::cell_var_offset_size * 8) {
-  if (array != nullptr) {
-    array_schema_ = array->array_schema_latest();
-  }
 }
 
 stats::Stats* StrategyBase::stats() const {
@@ -79,15 +77,15 @@ stats::Stats* StrategyBase::stats() const {
 void StrategyBase::get_dim_attr_stats() const {
   for (const auto& it : buffers_) {
     const auto& name = it.first;
-    auto var_size = array_schema_->var_size(name);
-    if (array_schema_->is_attr(name)) {
+    auto var_size = array_schema_.var_size(name);
+    if (array_schema_.is_attr(name)) {
       stats_->add_counter("attr_num", 1);
       if (var_size) {
         stats_->add_counter("attr_var_num", 1);
       } else {
         stats_->add_counter("attr_fixed_num", 1);
       }
-      if (array_schema_->is_nullable(name)) {
+      if (array_schema_.is_nullable(name)) {
         stats_->add_counter("attr_nullable_num", 1);
       }
     } else {
