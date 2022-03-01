@@ -82,7 +82,7 @@ StorageManager::StorageManager(
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
     stats::Stats* const parent_stats,
-    tdb_shared_ptr<Logger> logger)
+    shared_ptr<Logger> logger)
     : stats_(parent_stats->create_child("StorageManager"))
     , logger_(logger)
     , cancellation_in_progress_(false)
@@ -137,8 +137,8 @@ Status StorageManager::array_close_for_writes(Array* array) {
 tuple<
     Status,
     optional<ArraySchema*>,
-    optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
-    optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+    optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::load_array_schemas_and_fragment_metadata(
     const ArrayDirectory& array_dir,
     MemoryTracker* memory_tracker,
@@ -181,8 +181,8 @@ StorageManager::load_array_schemas_and_fragment_metadata(
 tuple<
     Status,
     optional<ArraySchema*>,
-    optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
-    optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+    optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::array_open_for_reads(Array* array) {
   auto timer_se = stats_->start_timer("array_open_for_reads");
   auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
@@ -203,7 +203,7 @@ StorageManager::array_open_for_reads(Array* array) {
 tuple<
     Status,
     optional<ArraySchema*>,
-    optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManager::array_open_for_reads_without_fragments(Array* array) {
   auto timer_se =
       stats_->start_timer("sm_array_open_for_reads_without_fragments");
@@ -223,7 +223,7 @@ StorageManager::array_open_for_reads_without_fragments(Array* array) {
 tuple<
     Status,
     optional<ArraySchema*>,
-    optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManager::array_open_for_writes(Array* array) {
   // Checks
   if (!vfs_->supports_uri_scheme(array->array_uri()))
@@ -258,7 +258,7 @@ StorageManager::array_open_for_writes(Array* array) {
   return {Status::Ok(), array_schema_latest, array_schemas_all};
 }
 
-tuple<Status, optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::array_load_fragments(
     Array* array, const std::vector<TimestampedURI>& fragments_to_load) {
   auto timer_se = stats_->start_timer("array_load_fragments");
@@ -290,8 +290,8 @@ StorageManager::array_load_fragments(
 tuple<
     Status,
     optional<ArraySchema*>,
-    optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
-    optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+    optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::array_reopen(Array* array) {
   auto timer_se = stats_->start_timer("read_array_open");
 
@@ -1449,7 +1449,7 @@ Status StorageManager::load_array_schema_latest(
 tuple<
     Status,
     optional<ArraySchema*>,
-    optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManager::load_array_schemas(
     const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
   auto array_schema = (ArraySchema*)nullptr;
@@ -1466,7 +1466,7 @@ StorageManager::load_array_schemas(
 
 tuple<
     Status,
-    optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManager::load_all_array_schemas(
     const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
   auto timer_se = stats_->start_timer("sm_load_all_array_schemas");
@@ -1499,10 +1499,9 @@ StorageManager::load_all_array_schemas(
       });
   RETURN_NOT_OK_TUPLE(status, nullopt);
 
-  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>> array_schemas;
+  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas;
   for (const auto& array_schema : schema_vector) {
-    array_schemas[array_schema->name()] =
-        tdb_shared_ptr<ArraySchema>(array_schema);
+    array_schemas[array_schema->name()] = shared_ptr<ArraySchema>(array_schema);
   }
 
   return {Status::Ok(), array_schemas};
@@ -1522,7 +1521,7 @@ Status StorageManager::load_array_metadata(
   const auto& array_metadata_to_load = array_dir.array_meta_uris();
 
   auto metadata_num = array_metadata_to_load.size();
-  std::vector<tdb_shared_ptr<Buffer>> metadata_buffs;
+  std::vector<shared_ptr<Buffer>> metadata_buffs;
   metadata_buffs.resize(metadata_num);
   auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
@@ -1966,7 +1965,7 @@ stats::Stats* StorageManager::stats() {
   return stats_;
 }
 
-tdb_shared_ptr<Logger> StorageManager::logger() const {
+shared_ptr<Logger> StorageManager::logger() const {
   return logger_;
 }
 
@@ -1974,11 +1973,11 @@ tdb_shared_ptr<Logger> StorageManager::logger() const {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-tuple<Status, optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::load_fragment_metadata(
     MemoryTracker* memory_tracker,
     ArraySchema* array_schema_latest,
-    const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+    const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
         array_schemas_all,
     const EncryptionKey& encryption_key,
     const std::vector<TimestampedURI>& fragments_to_load,
@@ -1988,7 +1987,7 @@ StorageManager::load_fragment_metadata(
 
   // Load the metadata for each fragment
   auto fragment_num = fragments_to_load.size();
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata;
+  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata;
   fragment_metadata.resize(fragment_num);
   auto status = parallel_for(compute_tp_, 0, fragment_num, [&](size_t f) {
     const auto& sf = fragments_to_load[f];
@@ -2003,7 +2002,7 @@ StorageManager::load_fragment_metadata(
     // Note that the fragment metadata version is >= the array schema
     // version. Therefore, the check below is defensive and will always
     // ensure backwards compatibility.
-    tdb_shared_ptr<FragmentMetadata> metadata;
+    shared_ptr<FragmentMetadata> metadata;
     if (f_version == 1) {  // This is equivalent to format version <=2
       bool sparse;
       RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));

@@ -106,10 +106,10 @@ class Context {
   mutable ThreadPool io_tp_;
 
   /** The class stats. */
-  tdb_shared_ptr<stats::Stats> stats_;
+  shared_ptr<stats::Stats> stats_;
 
   /** The class logger. */
-  tdb_shared_ptr<Logger> logger_;
+  shared_ptr<Logger> logger_;
 
   inline static std::atomic<uint64_t> logger_id_ = 0;
 

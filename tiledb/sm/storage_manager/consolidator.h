@@ -174,7 +174,7 @@ class Consolidator {
   stats::Stats* stats_;
 
   /** The class logger. */
-  tdb_shared_ptr<Logger> logger_;
+  shared_ptr<Logger> logger_;
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
