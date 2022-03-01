@@ -621,7 +621,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   auto dim_num = domain()->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim = dimension(d);
-    dim_map_[dim->name()] = dim;
+    dim_map_[dim->name()] = tdb::make_shared<const Dimension>(HERE(), dim);
   }
 
   // Initialize the rest of the object members
@@ -736,7 +736,7 @@ Status ArraySchema::set_domain(shared_ptr<Domain> domain) {
   auto dim_num = domain_->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim = dimension(d);
-    dim_map_[dim->name()] = dim;
+    dim_map_[dim->name()] = tdb::make_shared<const Dimension>(HERE(), dim);
   }
 
   return Status::Ok();
