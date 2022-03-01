@@ -112,8 +112,8 @@ Layout Domain::tile_order() const {
   return tile_order_;
 }
 
-Status Domain::add_dimension(const Dimension* dim) {
-  dimensions_.emplace_back(tdb_new(Dimension, dim));
+Status Domain::add_dimension(shared_ptr<Dimension> dim) {
+  dimensions_.emplace_back(dim);
   ++dim_num_;
 
   return Status::Ok();
@@ -269,7 +269,7 @@ int Domain::cell_order_cmp(
   if (cell_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim = dimension(d);
-      auto res = cell_order_cmp_func_[d](dim, coord_buffs[d], a, b);
+      auto res = cell_order_cmp_func_[d](dim.get(), coord_buffs[d], a, b);
 
       if (res == 1 || res == -1)
         return res;
@@ -278,7 +278,7 @@ int Domain::cell_order_cmp(
   } else {  // COL_MAJOR
     for (unsigned d = dim_num_ - 1;; --d) {
       auto dim = dimension(d);
-      auto res = cell_order_cmp_func_[d](dim, coord_buffs[d], a, b);
+      auto res = cell_order_cmp_func_[d](dim.get(), coord_buffs[d], a, b);
 
       if (res == 1 || res == -1)
         return res;
@@ -338,17 +338,17 @@ NDRange Domain::domain() const {
   return ret;
 }
 
-const Dimension* Domain::dimension(unsigned int i) const {
+shared_ptr<const Dimension> Domain::dimension(unsigned int i) const {
   if (i > dim_num_)
     return nullptr;
-  return dimensions_[i].get();
+  return dimensions_[i];
 }
 
-const Dimension* Domain::dimension(const std::string& name) const {
+shared_ptr<const Dimension> Domain::dimension(const std::string& name) const {
   for (unsigned int i = 0; i < dim_num_; i++) {
     const auto& dim = dimensions_[i];
     if (dim->name() == name) {
-      return dim.get();
+      return dim;
     }
   }
   return nullptr;
@@ -721,7 +721,7 @@ int Domain::tile_order_cmp(
       auto coord_size = dim->coord_size();
       auto ca = &(((unsigned char*)coord_buffs[d]->buffer_)[a * coord_size]);
       auto cb = &(((unsigned char*)coord_buffs[d]->buffer_)[b * coord_size]);
-      auto res = tile_order_cmp_func_[d](dim, ca, cb);
+      auto res = tile_order_cmp_func_[d](dim.get(), ca, cb);
 
       if (res == 1 || res == -1)
         return res;
@@ -736,7 +736,7 @@ int Domain::tile_order_cmp(
         auto coord_size = dim->coord_size();
         auto ca = &(((unsigned char*)coord_buffs[d]->buffer_)[a * coord_size]);
         auto cb = &(((unsigned char*)coord_buffs[d]->buffer_)[b * coord_size]);
-        auto res = tile_order_cmp_func_[d](dim, ca, cb);
+        auto res = tile_order_cmp_func_[d](dim.get(), ca, cb);
 
         if (res == 1 || res == -1)
           return res;
@@ -754,7 +754,7 @@ int Domain::tile_order_cmp(
 int Domain::tile_order_cmp(
     unsigned dim_idx, const void* coord_a, const void* coord_b) const {
   auto dim = dimension(dim_idx);
-  return tile_order_cmp_func_[dim_idx](dim, coord_a, coord_b);
+  return tile_order_cmp_func_[dim_idx](dim.get(), coord_a, coord_b);
 }
 
 /* ****************************** */

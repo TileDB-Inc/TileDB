@@ -93,7 +93,7 @@ Domain create_domain(
     Dimension dim(dim_names[d], dim_types[d]);
     dim.set_domain(dim_domains[d]);
     dim.set_tile_extent(dim_tile_extents[d]);
-    domain.add_dimension(&dim);
+    domain.add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim));
   }
   domain.init(Layout::ROW_MAJOR, Layout::ROW_MAJOR);
 

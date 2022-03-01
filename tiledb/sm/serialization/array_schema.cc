@@ -408,7 +408,7 @@ Status domain_to_capnp(
   auto dimensions_builder = domainBuilder->initDimensions(ndims);
   for (unsigned i = 0; i < ndims; i++) {
     auto dim_builder = dimensions_builder[i];
-    RETURN_NOT_OK(dimension_to_capnp(domain->dimension(i), &dim_builder));
+    RETURN_NOT_OK(dimension_to_capnp(domain->dimension(i).get(), &dim_builder));
   }
 
   return Status::Ok();
@@ -425,7 +425,7 @@ Status domain_from_capnp(
   for (auto dimension : dimensions) {
     tdb_unique_ptr<Dimension> dim;
     RETURN_NOT_OK(dimension_from_capnp(dimension, &dim));
-    RETURN_NOT_OK((*domain)->add_dimension(dim.get()));
+    RETURN_NOT_OK((*domain)->add_dimension(move(dim)));
   }
 
   return Status::Ok();

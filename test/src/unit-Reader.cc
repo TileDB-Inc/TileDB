@@ -189,8 +189,12 @@ TEST_CASE_METHOD(
   d2.set_domain(&domain_vec[2]);
   d2.set_tile_extent(&tile_extents_vec[1]);
   Domain dom;
-  CHECK(dom.add_dimension(&d1).ok());
-  CHECK(dom.add_dimension(&d2).ok());
+  CHECK(dom.add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &d1))
+            .ok());
+  CHECK(dom.add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &d2))
+            .ok());
+  ArraySchema schema;
+  CHECK(schema.set_domain(&dom).ok());
 
   auto schema = tdb::make_shared<ArraySchema>(HERE());
   CHECK(schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &dom)).ok());
