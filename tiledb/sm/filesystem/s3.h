@@ -581,8 +581,7 @@ class S3 {
   mutable shared_ptr<Aws::S3::S3Client> client_;
 
   /** The AWS credetial provider. */
-  mutable shared_ptr<Aws::Auth::AWSCredentialsProvider>
-      credentials_provider_;
+  mutable shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider_;
 
   /**
    * Mutex protecting client initialization. This is mutable so that nominally

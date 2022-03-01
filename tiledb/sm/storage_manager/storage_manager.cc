@@ -1485,8 +1485,7 @@ StorageManager::load_all_array_schemas(
 
   std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas;
   for (const auto& array_schema : schema_vector) {
-    array_schemas[array_schema->name()] =
-        shared_ptr<ArraySchema>(array_schema);
+    array_schemas[array_schema->name()] = shared_ptr<ArraySchema>(array_schema);
   }
 
   return {Status::Ok(), array_schemas};
