@@ -58,7 +58,6 @@ struct CSparseUnorderedWithDupsFx {
   std::string temp_dir_;
   std::string array_name_;
   const char* ARRAY_NAME = "test_sparse_unordered_with_dups";
-  tiledb_array_t* array_ = nullptr;
   std::string total_budget_;
   std::string ratio_tile_ranges_;
   std::string ratio_array_data_;
@@ -107,7 +106,6 @@ CSparseUnorderedWithDupsFx::CSparseUnorderedWithDupsFx() {
 }
 
 CSparseUnorderedWithDupsFx::~CSparseUnorderedWithDupsFx() {
-  tiledb_array_free(&array_);
   remove_dir(temp_dir_, ctx_, vfs_);
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
@@ -417,11 +415,13 @@ struct CSparseUnorderedWithDupsVarDataFx {
   std::string temp_dir_;
   std::string array_name_;
   const char* ARRAY_NAME = "test_sparse_unordered_with_dups_var_data";
-  tiledb_array_t* array_ = nullptr;
 
   void create_default_array_2d();
   void write_2d_fragment();
   void read_and_check_data(bool set_subarray);
+
+  tuple<tiledb_array_t*, std::vector<tdb_shared_ptr<FragmentMetadata>>>
+  open_default_array_1d_with_fragments();
 
   CSparseUnorderedWithDupsVarDataFx();
   ~CSparseUnorderedWithDupsVarDataFx();
@@ -448,7 +448,6 @@ CSparseUnorderedWithDupsVarDataFx::CSparseUnorderedWithDupsVarDataFx() {
 }
 
 CSparseUnorderedWithDupsVarDataFx::~CSparseUnorderedWithDupsVarDataFx() {
-  tiledb_array_free(&array_);
   remove_dir(temp_dir_, ctx_, vfs_);
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
@@ -597,6 +596,49 @@ void CSparseUnorderedWithDupsVarDataFx::read_and_check_data(bool set_subarray) {
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+}
+
+tuple<tiledb_array_t*, std::vector<tdb_shared_ptr<FragmentMetadata>>>
+CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments() {
+  int64_t domain[] = {1, 10};
+  int64_t tile_extent = 5;
+  // Create array
+  create_array(
+      ctx_,
+      array_name_,
+      TILEDB_SPARSE,
+      {"d"},
+      {TILEDB_INT64},
+      {domain},
+      {&tile_extent},
+      {"a"},
+      {TILEDB_STRING_ASCII},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      5);
+
+  // Open array for writing.
+  tiledb_array_t* array;
+  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
+  tdb_shared_ptr<FragmentMetadata> fragment =
+      tdb::make_shared<FragmentMetadata>(
+          HERE(),
+          nullptr,
+          nullptr,
+          array->array_->array_schema_latest(),
+          URI(),
+          std::make_pair<uint64_t, uint64_t>(0, 0),
+          true);
+  fragments.emplace_back(std::move(fragment));
+
+  return {array, std::move(fragments)};
 }
 
 /* ********************************* */
@@ -1254,34 +1296,17 @@ TEST_CASE_METHOD(
   read_and_check_data(use_subarray);
 }
 
-/** Make a tile that will return num_cells when cell_num() is called. */
-ResultTileWithBitmap<uint64_t> make_tile(uint64_t num_cells) {
-  Domain domain;
-  Dimension dim("d", Datatype::UINT8);
-  uint8_t bounds[2] = {1, 10};
-  Range range(bounds, 2 * sizeof(uint8_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(domain.add_dimension(&dim).ok());
-
-  ArraySchema array_schema;
-  REQUIRE(array_schema.set_domain(&domain).ok());
-  ResultTileWithBitmap<uint64_t> result_tile(0, 0, array_schema);
-  result_tile.init_coord_tile("a", 0);
-  auto tuple = result_tile.tile_tuple("a");
-  REQUIRE(std::get<0>(*tuple)
-              .init_unfiltered(0, Datatype::UINT8, num_cells, 1, 1, true)
-              .ok());
-
-  return result_tile;
-}
-
-TEST_CASE(
+TEST_CASE_METHOD(
+    CSparseUnorderedWithDupsVarDataFx,
     "Sparse unordered with dups reader: test compute_var_size_offsets",
     "[sparse-unordered-with-dups][compute_var_size_offsets]") {
+  auto&& [array, fragments] = open_default_array_1d_with_fragments();
+
   // Make a vector of tiles.
-  auto tile = make_tile(5);
+  ResultTileWithBitmap<uint64_t> result_tile(
+      0, 0, array->array_->array_schema_latest());
   std::vector<ResultTileWithBitmap<uint64_t>> rt;
-  rt.push_back(std::move(tile));
+  rt.push_back(std::move(result_tile));
 
   SECTION("- No bitmap") {
   }
@@ -1301,7 +1326,7 @@ TEST_CASE(
   uint64_t offset = 0;
   for (uint64_t i = 0; i < rt.size(); i++) {
     cell_offsets[i] = offset;
-    offset += rt[i].cell_num();
+    offset += 5;
   }
   cell_offsets[rt.size()] = offset;
 
@@ -1321,6 +1346,7 @@ TEST_CASE(
       SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
           uint64_t>(
           &tiledb::test::g_helper_stats,
+          fragments,
           result_tiles,
           0,
           cell_offsets,
@@ -1331,16 +1357,24 @@ TEST_CASE(
   CHECK(cell_offsets[1] == 3);
   CHECK(result_tiles_size == 1);
   CHECK(var_buffer_size == 6);
+
+  // Clean up.
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_array_free(&array);
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    CSparseUnorderedWithDupsVarDataFx,
     "Sparse unordered with dups reader: test compute_var_size_offsets count "
     "bitmap",
     "[sparse-unordered-with-dups][compute_var_size_offsets][count-bitmap]") {
+  auto&& [array, fragments] = open_default_array_1d_with_fragments();
+
   // Make a vector of tiles.
-  auto tile = make_tile(5);
+  ResultTileWithBitmap<uint64_t> result_tile(
+      0, 0, array->array_->array_schema_latest());
   std::vector<ResultTileWithBitmap<uint64_t>> rt;
-  rt.push_back(std::move(tile));
+  rt.push_back(std::move(result_tile));
   rt[0].bitmap_.resize(5);
   rt[0].bitmap_ = {0, 1, 2, 0, 2};
 
@@ -1355,7 +1389,7 @@ TEST_CASE(
   uint64_t offset = 0;
   for (uint64_t i = 0; i < rt.size(); i++) {
     cell_offsets[i] = offset;
-    offset += rt[i].cell_num();
+    offset += 5;
   }
   cell_offsets[rt.size()] = offset;
 
@@ -1374,6 +1408,7 @@ TEST_CASE(
       SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
           uint64_t>(
           &tiledb::test::g_helper_stats,
+          fragments,
           result_tiles,
           0,
           cell_offsets,
@@ -1384,16 +1419,24 @@ TEST_CASE(
   CHECK(cell_offsets[1] == 3);
   CHECK(result_tiles_size == 1);
   CHECK(var_buffer_size == 6);
+
+  // Clean up.
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_array_free(&array);
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    CSparseUnorderedWithDupsVarDataFx,
     "Sparse unordered with dups reader: test compute_var_size_offsets "
     "continuation",
     "[sparse-unordered-with-dups][compute_var_size_offsets][continuation]") {
+  auto&& [array, fragments] = open_default_array_1d_with_fragments();
+
   // Make a vector of tiles.
-  auto tile = make_tile(5);
+  ResultTileWithBitmap<uint64_t> result_tile(
+      0, 0, array->array_->array_schema_latest());
   std::vector<ResultTileWithBitmap<uint64_t>> rt;
-  rt.push_back(std::move(tile));
+  rt.push_back(std::move(result_tile));
 
   SECTION("- No bitmap") {
   }
@@ -1413,7 +1456,7 @@ TEST_CASE(
   uint64_t offset = 0;
   for (uint64_t i = 0; i < rt.size(); i++) {
     cell_offsets[i] = offset;
-    offset += rt[i].cell_num() - 2;
+    offset += 3;
   }
   cell_offsets[rt.size()] = offset;
 
@@ -1432,6 +1475,7 @@ TEST_CASE(
       SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
           uint64_t>(
           &tiledb::test::g_helper_stats,
+          fragments,
           result_tiles,
           2,
           cell_offsets,
@@ -1442,6 +1486,10 @@ TEST_CASE(
   CHECK(cell_offsets[1] == 2);
   CHECK(result_tiles_size == 1);
   CHECK(var_buffer_size == 4);
+
+  // Clean up.
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_array_free(&array);
 }
 
 TEST_CASE_METHOD(

@@ -91,6 +91,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * user buffer.
    *
    * @param stats Stats.
+   * @param fragment_metadata Fragment metadata.
    * @param result_tiles Result tiles to process, might be truncated.
    * @param first_tile_min_pos Cell progress of the first tile.
    * @param cell_offsets Cell offset per result tile.
@@ -101,6 +102,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   template <class OffType>
   static tuple<bool, uint64_t, uint64_t> compute_var_size_offsets(
       stats::Stats* stats,
+      const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_metadata,
       const std::vector<ResultTile*>& result_tiles,
       const uint64_t first_tile_min_pos,
       std::vector<uint64_t>& cell_offsets,
