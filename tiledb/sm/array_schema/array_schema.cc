@@ -298,8 +298,8 @@ bool ArraySchema::dense() const {
   return array_type_ == ArrayType::DENSE;
 }
 
-const Dimension* ArraySchema::dimension(unsigned int i) const {
-  return domain_->dimension(i);
+shared_ptr<const Dimension> ArraySchema::dimension(unsigned int i) const {
+  return tdb::make_shared<const Dimension>(HERE(), domain_->dimension(i));
 }
 
 shared_ptr<const Dimension> ArraySchema::dimension(

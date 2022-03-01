@@ -164,7 +164,7 @@ class ArraySchema {
   bool dense() const;
 
   /** Returns the i-th dimension. */
-  const Dimension* dimension(unsigned int i) const;
+  shared_ptr<const Dimension> dimension(unsigned int i) const;
 
   /**
    * Returns a constant pointer to the selected dimension (nullptr if it
