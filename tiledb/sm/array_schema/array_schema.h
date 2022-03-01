@@ -170,7 +170,7 @@ class ArraySchema {
    * Returns a constant pointer to the selected dimension (nullptr if it
    * does not exist).
    */
-  const Dimension* dimension(const std::string& name) const;
+  shared_ptr<const Dimension> dimension(const std::string& name) const;
 
   /** Returns the dimension names. */
   std::vector<std::string> dim_names() const;
@@ -392,7 +392,7 @@ class ArraySchema {
   FilterPipeline coords_filters_;
 
   /** It maps each dimension name to the corresponding dimension object. */
-  std::unordered_map<std::string, const Dimension*> dim_map_;
+  std::unordered_map<std::string, shared_ptr<const Dimension>> dim_map_;
 
   /** The array domain. */
   shared_ptr<Domain> domain_;

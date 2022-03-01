@@ -302,7 +302,8 @@ const Dimension* ArraySchema::dimension(unsigned int i) const {
   return domain_->dimension(i);
 }
 
-const Dimension* ArraySchema::dimension(const std::string& name) const {
+shared_ptr<const Dimension> ArraySchema::dimension(
+    const std::string& name) const {
   auto it = dim_map_.find(name);
   return it == dim_map_.end() ? nullptr : it->second;
 }
@@ -620,7 +621,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   auto dim_num = domain()->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim = dimension(d);
-    dim_map_[dim->name()] = dim;
+    dim_map_[dim->name()] = tdb::make_shared<const Dimension>(HERE(), dim);
   }
 
   // Initialize the rest of the object members
@@ -735,7 +736,7 @@ Status ArraySchema::set_domain(shared_ptr<Domain> domain) {
   auto dim_num = domain_->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim = dimension(d);
-    dim_map_[dim->name()] = dim;
+    dim_map_[dim->name()] = tdb::make_shared<const Dimension>(HERE(), dim);
   }
 
   return Status::Ok();
