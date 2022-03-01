@@ -306,7 +306,6 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param num_range_threads Total number of range threads.
    * @param offset_div Divisor used to convert offsets into element mode.
    * @param var_buffer_size Size of the var data buffer.
-   * @param result_tiles_size Size of result tiles to process.
    * @param result_tiles Result tiles to process.
    * @param cell_offsets Cell offset per result tile.
    * @param query_buffer Query buffer to operate on.
@@ -319,7 +318,6 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const uint64_t num_range_threads,
       const OffType offset_div,
       const uint64_t var_buffer_size,
-      const uint64_t result_tiles_size,
       const std::vector<ResultTile*>& result_tiles,
       const std::vector<uint64_t>& cell_offsets,
       QueryBuffer& query_buffer,

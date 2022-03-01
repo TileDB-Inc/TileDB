@@ -740,7 +740,6 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_var_data_tiles(
     const uint64_t num_range_threads,
     const OffType offset_div,
     const uint64_t var_buffer_size,
-    const uint64_t result_tiles_size,
     const std::vector<ResultTile*>& result_tiles,
     const std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer,
@@ -755,7 +754,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_var_data_tiles(
   auto status = parallel_for_2d(
       storage_manager_->compute_tp(),
       0,
-      result_tiles_size,
+      result_tiles.size(),
       0,
       num_range_threads,
       [&](uint64_t i, uint64_t range_thread_idx) {
@@ -1210,7 +1209,8 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
 
   // Switch offsets buffer from cell size to offsets.
   auto offsets_buff = (OffType*)query_buffer.buffer_;
-  for (uint64_t c = 0; c < cell_offsets[new_result_tiles_size]; c++) {
+  for (uint64_t c = cell_offsets[0]; c < cell_offsets[new_result_tiles_size];
+       c++) {
     auto tmp = offsets_buff[c];
     offsets_buff[c] = new_var_buffer_size;
     new_var_buffer_size += tmp;
@@ -1233,6 +1233,7 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
           result_tiles[new_result_tiles_size];
 
       auto last_tile_num_cells = last_tile->cell_num();
+
       new_result_tiles_size++;
       cell_offsets[new_result_tiles_size] =
           new_result_tiles_size > 0 ? cell_offsets[new_result_tiles_size - 1] :
@@ -1351,9 +1352,6 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
             query_buffer));
       }
 
-      // Here we cannot resize result_tiles until clear_tiles is called so save
-      // the new size into a temp variable.
-      uint64_t result_tiles_size = result_tiles.size();
       auto var_buffer_size = 0;
 
       if (var_sized) {
@@ -1374,18 +1372,26 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         }
         buffers_full_ |= buffers_full;
 
+        // Clear tiles from memory and adjust result_tiles.
+        for (const auto& idx : *index_to_copy) {
+          const auto& name = names[idx];
+          if (condition_.field_names().count(name) == 0 &&
+              (!subarray_.is_set() || !is_dim)) {
+            clear_tiles(name, result_tiles, new_result_tiles_size);
+          }
+        }
+        result_tiles.resize(new_result_tiles_size);
+
         // Now copy the var size data.
         RETURN_NOT_OK(copy_var_data_tiles(
             num_range_threads,
             offset_div,
             new_var_buffer_size,
-            new_result_tiles_size,
             result_tiles,
             cell_offsets,
             query_buffer,
             var_data));
 
-        result_tiles_size = new_result_tiles_size;
         var_buffer_size = new_var_buffer_size;
       }
 
@@ -1406,10 +1412,10 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         *query_buffer.validity_vector_.buffer_size() = total_cells;
 
       // Clear tiles from memory.
-      if (!subarray_.is_set() || !is_dim) {
+      if (condition_.field_names().count(name) == 0 &&
+          (!subarray_.is_set() || !is_dim)) {
         clear_tiles(name, result_tiles);
       }
-      result_tiles.resize(result_tiles_size);
     }
   }
 

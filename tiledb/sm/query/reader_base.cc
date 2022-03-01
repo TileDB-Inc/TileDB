@@ -143,9 +143,11 @@ void ReaderBase::compute_result_space_tiles(
 
 void ReaderBase::clear_tiles(
     const std::string& name,
-    const std::vector<ResultTile*>& result_tiles) const {
-  for (auto& result_tile : result_tiles)
-    result_tile->erase_tile(name);
+    const std::vector<ResultTile*>& result_tiles,
+    const uint64_t min_result_tile) const {
+  for (uint64_t i = min_result_tile; i < result_tiles.size(); i++) {
+    result_tiles[i]->erase_tile(name);
+  }
 }
 
 void ReaderBase::reset_buffer_sizes() {
