@@ -223,7 +223,8 @@ class Metadata {
   /**
    * Set the uuid to be used to creating a new fragment name.
    */
-  void set(const std::string& array_fragment_uuid, uint64_t timestamp_end_counter);
+  void set(
+      const std::string& array_fragment_uuid, uint64_t timestamp_end_counter);
 
   /** Returns an iterator to the beginning of the metadata. */
   iterator begin() const;

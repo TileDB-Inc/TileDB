@@ -32,7 +32,6 @@
 
 #include <iomanip>
 
-#include "tiledb/sm/query/writer_base.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -52,6 +51,7 @@
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
+#include "tiledb/sm/query/writer_base.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
@@ -943,10 +943,10 @@ Status WriterBase::new_fragment_name(
   array_->adjust_timestamp_end_counters();
   array_->metadata()->set(uuid, array_->timestamp_end_counter());
   std::stringstream ss;
-  ss << "/__" << timestamp << "_" << timestamp << "-" // "." used in utils get_timestamp_range()
+  ss << "/__" << timestamp << "_" << timestamp
+     << "-"  // "." used in utils get_timestamp_range()
      << std::hex << std::setw(8) << std::setfill('0')
-     << array_->timestamp_end_counter() << std::dec
-     << "_" << uuid << "_"
+     << array_->timestamp_end_counter() << std::dec << "_" << uuid << "_"
      << format_version;
 
   *frag_uri = ss.str();

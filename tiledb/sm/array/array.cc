@@ -79,7 +79,7 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , remote_(array_uri.is_tiledb())
     , metadata_loaded_(false)
     , non_empty_domain_computed_(false)
-    , timestamp_end_counter_(0) {};
+    , timestamp_end_counter_(0){};
 
 Array::Array(const Array& rhs)
     : array_schema_latest_(rhs.array_schema_latest_)

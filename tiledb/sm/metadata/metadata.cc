@@ -37,8 +37,8 @@
 #include "tiledb/sm/misc/time.h"
 #include "tiledb/sm/misc/uuid.h"
 
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 
 using namespace tiledb::common;
@@ -95,10 +95,9 @@ Status Metadata::generate_uri(const URI& array_uri) {
   }
 
   std::stringstream ss;
-  ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second
-     << "-" << std::hex << std::setw(8) << std::setfill('0') << timestamp_end_counter_ 
-     << "_" << std::dec
-     << uuid;
+  ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "-"
+     << std::hex << std::setw(8) << std::setfill('0') << timestamp_end_counter_
+     << "_" << std::dec << uuid;
   uri_ = array_uri.join_path(constants::array_metadata_dir_name)
              .join_path(ss.str());
 
@@ -336,7 +335,8 @@ void Metadata::reset(uint64_t timestamp) {
   timestamp_range_ = std::make_pair(timestamp, timestamp);
 }
 
-void Metadata::set(const std::string& array_uuid, uint64_t timestamp_end_counter) {
+void Metadata::set(
+    const std::string& array_uuid, uint64_t timestamp_end_counter) {
   array_uuid_ = array_uuid;
   timestamp_end_counter_ = timestamp_end_counter;
 }
