@@ -107,7 +107,7 @@ class StrategyBase {
   tdb_shared_ptr<Logger> logger_;
 
   /** The array. */
-  const Array* array_;
+  Array* array_;
 
   /** The array schema. */
   const ArraySchema* array_schema_;

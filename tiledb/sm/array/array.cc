@@ -78,8 +78,8 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , config_(storage_manager_->config())
     , remote_(array_uri.is_tiledb())
     , metadata_loaded_(false)
-    , non_empty_domain_computed_(false) {
-}
+    , non_empty_domain_computed_(false)
+    , timestamp_end_counter_(0) {};
 
 Array::Array(const Array& rhs)
     : array_schema_latest_(rhs.array_schema_latest_)
@@ -100,12 +100,22 @@ Array::Array(const Array& rhs)
     , metadata_(rhs.metadata_)
     , metadata_loaded_(rhs.metadata_loaded_)
     , non_empty_domain_computed_(rhs.non_empty_domain_computed_)
-    , non_empty_domain_(rhs.non_empty_domain_) {
+    , non_empty_domain_(rhs.non_empty_domain_)
+    , timestamp_end_counter_(rhs.timestamp_end_counter_) {
 }
 
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+
+Status Array::adjust_timestamp_end_counters() {
+  timestamp_end_counter_++;
+  return Status::Ok();
+}
+
+uint64_t Array::timestamp_end_counter() {
+  return timestamp_end_counter_;
+}
 
 void Array::set_array_schema_latest(ArraySchema* array_schema) {
   array_schema_latest_ = array_schema;

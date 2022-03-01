@@ -38,6 +38,7 @@
 #include "tiledb/sm/misc/uuid.h"
 
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 
 using namespace tiledb::common;
@@ -87,10 +88,16 @@ Status Metadata::get_uri(const URI& array_uri, URI* meta_uri) {
 
 Status Metadata::generate_uri(const URI& array_uri) {
   std::string uuid;
-  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+  if (array_uuid_.empty()) {
+    RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+  } else {
+    uuid = array_uuid_;
+  }
 
   std::stringstream ss;
-  ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
+  ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second
+     << "-" << std::hex << std::setw(8) << std::setfill('0') << timestamp_end_counter_ 
+     << "_" << std::dec
      << uuid;
   uri_ = array_uri.join_path(constants::array_metadata_dir_name)
              .join_path(ss.str());
@@ -302,6 +309,7 @@ Status Metadata::set_loaded_metadata_uris(
     return Status::Ok();
 
   loaded_metadata_uris_.clear();
+  loaded_metadata_uris_.reserve(loaded_metadata_uris.size());
   for (const auto& uri : loaded_metadata_uris)
     loaded_metadata_uris_.push_back(uri.uri_);
 
@@ -326,6 +334,11 @@ void Metadata::reset(uint64_t timestamp) {
   clear();
   timestamp = (timestamp != 0) ? timestamp : utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(timestamp, timestamp);
+}
+
+void Metadata::set(const std::string& array_uuid, uint64_t timestamp_end_counter) {
+  array_uuid_ = array_uuid;
+  timestamp_end_counter_ = timestamp_end_counter;
 }
 
 Metadata::iterator Metadata::begin() const {

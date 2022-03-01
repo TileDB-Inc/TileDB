@@ -368,6 +368,11 @@ class Array {
   /** Returns the memory tracker. */
   MemoryTracker* memory_tracker();
 
+  /** Adjust artificial timestamp_end_ resolution increase counters */
+  Status adjust_timestamp_end_counters();
+
+  uint64_t timestamp_end_counter();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -471,6 +476,8 @@ class Array {
 
   /** Memory tracker for the array. */
   MemoryTracker memory_tracker_;
+  /** newest artificial timestamp resolution increase counter */
+  uint32_t timestamp_end_counter_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
