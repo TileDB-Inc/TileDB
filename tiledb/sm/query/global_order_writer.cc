@@ -658,6 +658,9 @@ Status GlobalOrderWriter::init_global_write_state() {
 
     // Initialize cells written
     global_write_state_->cells_written_[name] = 0;
+
+    // Initialize last var offsets
+    global_write_state_->last_var_offsets_[name] = 0;
   }
 
   return Status::Ok();
