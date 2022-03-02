@@ -25,6 +25,7 @@ jobs:
       - name: Install Doxygen (linux only)
         run: |
           set -e pipefail
+          sudo apt-get update
           # Install doxygen *before* running cmake
           sudo apt-get install -y  doxygen
         shell: bash
