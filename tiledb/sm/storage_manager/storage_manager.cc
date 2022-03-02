@@ -1449,14 +1449,18 @@ tuple<
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManager::load_array_schemas(
     const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
-  auto&& [st1, array_schema] =
-      load_array_schema_latest(array_dir, encryption_key);
-  RETURN_NOT_OK_TUPLE(st1, nullopt, nullopt);
+  // Load all array schemas
+  auto&& [st, array_schemas] =
+      load_all_array_schemas(array_dir, encryption_key);
+  RETURN_NOT_OK_TUPLE(st, nullopt, nullopt);
 
-  auto&& [st2, schemas] = load_all_array_schemas(array_dir, encryption_key);
-  RETURN_NOT_OK_TUPLE(st2, nullopt, nullopt);
+  // Locate the latest array schema
+  const auto& array_schema_latest_name =
+      array_dir.latest_array_schema_uri().last_path_part();
+  auto it = array_schemas->find(array_schema_latest_name);
+  assert(it != array_schemas->end());
 
-  return {Status::Ok(), array_schema, schemas};
+  return {Status::Ok(), it->second, array_schemas};
 }
 
 tuple<

@@ -370,7 +370,6 @@ Status Array::close() {
   non_empty_domain_computed_ = false;
   clear_last_max_buffer_sizes();
   fragment_metadata_.clear();
-  array_schemas_all_.clear();
 
   if (remote_) {
     // Update array metadata for write queries if metadata was written by the
@@ -398,6 +397,7 @@ Status Array::close() {
     }
   }
 
+  array_schemas_all_.clear();
   metadata_.clear();
   metadata_loaded_ = false;
   is_open_ = false;
