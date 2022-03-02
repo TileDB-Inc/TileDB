@@ -191,8 +191,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-ValidityVector.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
-#  src/unit.cc
-#  src/vfs_helpers.cc
   )
 
 if (TILEDB_CPP_API)
@@ -247,45 +245,15 @@ if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
 endif()
 
-#set(DO_REAL_OBJECT_LIB 1)
-#if(NOT ${DO_REAL_OBJECT_LIB})
-#  message(STATUS "FAKE object lib")
-#  #just something to satisfy other definitions not being disabled...
-#  add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
-#  #  TILEDB_CORE_OBJECTS_ILIB
-#  #  "src/vfs_helpers.h"
-#  #  "src/helpers.h"
-#  #  "src/helpers.cc"
-#  #  "src/unit.cc" # looking for something that doesn't have the inclusion issue....
-#    "src/dlhjunk.cc"
-#  )
-#else()
-  message(STATUS "REAL object lib")
-  add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
-  #  TILEDB_CORE_OBJECTS_ILIB
-    $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
-    ${TILEDB_TEST_SUPPORT_SOURCES}
-  )
+add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
+  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+  ${TILEDB_TEST_SUPPORT_SOURCES}
+)
 
-  #target_include_directories(
-  #  tiledb_test_support_lib
-  #  TILEDB_CORE_OBJECTS_ILIB
-  #)
-  if(0)
-    target_compile_definitions(tiledb_test_support_lib
-      PRIVATE
-        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_COMPILE_DEFINITIONS>
-        //$<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
-    )
-  endif()
-  if(1)
-    target_include_directories(tiledb_test_support_lib
-      PRIVATE
-        #$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_INCLUDE_DIRECTORIES>
-        $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
-    )
-  endif()
-#endif()
+target_include_directories(tiledb_test_support_lib
+  PRIVATE
+    $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
+)
 
 # unit test executable
 add_executable(
@@ -295,10 +263,7 @@ add_executable(
   "src/unit.cc"
 )
 
-#if( ${DO_REAL_OBJECT_LIB})
-  add_dependencies(tiledb_unit tiledb_test_support_lib)
-#endif()
-
+add_dependencies(tiledb_unit tiledb_test_support_lib)
 
 # We want tests to continue as normal even as the API is changing,
 # so don't warn for deprecations, since they'll be escalated to errors.
