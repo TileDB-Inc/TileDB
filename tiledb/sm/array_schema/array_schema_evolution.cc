@@ -105,6 +105,9 @@ ArraySchemaEvolution::evolve_schema(
     RETURN_NOT_OK_TUPLE(
         schema.get()->set_timestamp_range(timestamp_range_), nullopt);
     RETURN_NOT_OK_TUPLE(schema->generate_uri(timestamp_range_), nullopt);
+  } else {
+    // Generate new schema URI
+    RETURN_NOT_OK_TUPLE(schema->generate_uri(), nullopt);
   }
 
   return {Status::Ok(), schema};
