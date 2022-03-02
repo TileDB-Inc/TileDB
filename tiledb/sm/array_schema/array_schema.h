@@ -78,7 +78,7 @@ class ArraySchema {
    *
    * @param array_schema The array schema to copy.
    */
-  explicit ArraySchema(const ArraySchema* array_schema);
+  explicit ArraySchema(const ArraySchema& array_schema);
 
   /** Destructor. */
   ~ArraySchema();
@@ -332,7 +332,7 @@ class ArraySchema {
   Status get_uri(URI* uri);
 
   /** Returns the schema name. If it is not set, will build it. */
-  std::string name();
+  const std::string& name() const;
 
   /** Returns the schema name. If it is not set, will returns error status. */
   Status get_name(std::string* name) const;

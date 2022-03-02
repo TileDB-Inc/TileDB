@@ -98,9 +98,6 @@ Status DenseReader::init() {
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status_DenseReaderError(
         "Cannot initialize dense reader; Storage manager not set"));
-  if (array_schema_ == nullptr)
-    return LOG_STATUS(Status_DenseReaderError(
-        "Cannot initialize dense reader; Array schema not set"));
   if (buffers_.empty())
     return LOG_STATUS(Status_DenseReaderError(
         "Cannot initialize dense reader; Buffers not set"));
@@ -189,7 +186,7 @@ void DenseReader::reset() {
 
 template <class OffType>
 Status DenseReader::dense_read() {
-  auto type = array_schema_->domain()->dimension(0)->type();
+  auto type = array_schema_.domain()->dimension(0)->type();
   switch (type) {
     case Datatype::INT8:
       return dense_read<int8_t, OffType>();
@@ -264,7 +261,7 @@ Status DenseReader::dense_read() {
   const auto& tile_coords = subarray.tile_coords();
   std::vector<Subarray> tile_subarrays(tile_coords.size());
   const auto& layout =
-      layout_ == Layout::GLOBAL_ORDER ? array_schema_->cell_order() : layout_;
+      layout_ == Layout::GLOBAL_ORDER ? array_schema_.cell_order() : layout_;
   auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
@@ -311,7 +308,7 @@ Status DenseReader::dense_read() {
   for (const auto& it : buffers_) {
     const auto& name = it.first;
 
-    if (name == constants::coords || array_schema_->is_dim(name)) {
+    if (name == constants::coords || array_schema_.is_dim(name)) {
       continue;
     }
 
@@ -319,7 +316,7 @@ Status DenseReader::dense_read() {
       names.emplace_back(name);
     }
 
-    if (array_schema_->var_size(name)) {
+    if (array_schema_.var_size(name)) {
       var_names.emplace_back(name);
     } else {
       fixed_names.emplace_back(name);
@@ -441,8 +438,8 @@ Status DenseReader::init_read_state() {
     auto buffer_size = a.second.buffer_size_;
     auto buffer_var_size = a.second.buffer_var_size_;
     auto buffer_validity_size = a.second.validity_vector_.buffer_size();
-    if (!array_schema_->var_size(attr_name)) {
-      if (!array_schema_->is_nullable(attr_name)) {
+    if (!array_schema_.var_size(attr_name)) {
+      if (!array_schema_.is_nullable(attr_name)) {
         RETURN_NOT_OK(read_state_.partitioner_.set_result_budget(
             attr_name.c_str(), *buffer_size));
       } else {
@@ -450,7 +447,7 @@ Status DenseReader::init_read_state() {
             attr_name.c_str(), *buffer_size, *buffer_validity_size));
       }
     } else {
-      if (!array_schema_->is_nullable(attr_name)) {
+      if (!array_schema_.is_nullable(attr_name)) {
         RETURN_NOT_OK(read_state_.partitioner_.set_result_budget(
             attr_name.c_str(), *buffer_size, *buffer_var_size));
       } else {
@@ -484,10 +481,10 @@ DenseReader::apply_query_condition(
     // For easy reference.
     const auto& tile_coords = subarray.tile_coords();
     const auto cell_num = subarray.cell_num();
-    const auto dim_num = array_schema_->dim_num();
-    auto stride = array_schema_->domain()->stride<DimType>(layout_);
-    const auto domain = array_schema_->domain();
-    const auto cell_order = array_schema_->cell_order();
+    const auto dim_num = array_schema_.dim_num();
+    auto stride = array_schema_.domain()->stride<DimType>(layout_);
+    const auto domain = array_schema_.domain();
+    const auto cell_order = array_schema_.cell_order();
     const auto global_order = layout_ == Layout::GLOBAL_ORDER;
 
     if (stride == UINT64_MAX) {
@@ -545,7 +542,9 @@ DenseReader::apply_query_condition(
                   cell_slab.length_);
               if (overlaps) {
                 RETURN_NOT_OK(condition_.apply_dense(
-                    fragment_metadata_[frag_domains[i].first]->array_schema(),
+                    *(fragment_metadata_[frag_domains[i].first]
+                          ->array_schema()
+                          .get()),
                     it->second.result_tile(frag_domains[i].first),
                     start,
                     end - start + 1,
@@ -578,7 +577,7 @@ uint64_t DenseReader::fix_offsets_buffer(
     const uint64_t cell_num,
     std::vector<void*>& var_data) {
   // For easy reference.
-  const auto& fill_value = array_schema_->attribute(name)->fill_value();
+  const auto& fill_value = array_schema_.attribute(name)->fill_value();
   const auto fill_value_size = (OffType)fill_value.size();
   auto offsets_buffer = (OffType*)buffers_[name].buffer_;
 
@@ -656,8 +655,8 @@ Status DenseReader::read_attributes(
       dst_off_bufs.push_back((uint8_t*)buffers_[name].buffer_);
       dst_var_bufs.push_back((uint8_t*)buffers_[name].buffer_var_);
       dst_val_bufs.push_back(buffers_[name].validity_vector_.buffer());
-      attributes.push_back(array_schema_->attribute(name));
-      data_type_sizes.push_back(datatype_size(array_schema_->type(name)));
+      attributes.push_back(array_schema_.attribute(name));
+      data_type_sizes.push_back(datatype_size(array_schema_.type(name)));
     }
 
     // Process offsets in parallel.
@@ -690,14 +689,14 @@ Status DenseReader::read_attributes(
     status = parallel_for(
         storage_manager_->compute_tp(), 0, var_names.size(), [&](uint64_t n) {
           const auto& name = var_names[n];
-          const bool nullable = array_schema_->is_nullable(name);
+          const bool nullable = array_schema_.is_nullable(name);
           var_buffer_sizes[n] = fix_offsets_buffer<OffType>(
               name, nullable, cell_num, var_data[n]);
 
           // Make sure the user var buffer is big enough.
           uint64_t required_var_size = var_buffer_sizes[n];
           if (elements_mode_)
-            required_var_size *= datatype_size(array_schema_->type(name));
+            required_var_size *= datatype_size(array_schema_.type(name));
 
           // Exit early in case of overflow.
           if (read_state_.overflowed_ ||
@@ -739,7 +738,7 @@ Status DenseReader::read_attributes(
   if (!fixed_names.empty()) {
     // Make sure the user fixed buffers are big enough.
     for (auto& name : fixed_names) {
-      const auto required_size = cell_num * array_schema_->cell_size(name);
+      const auto required_size = cell_num * array_schema_.cell_size(name);
       if (required_size > *buffers_[name].buffer_size_) {
         read_state_.overflowed_ = true;
         return Status::Ok();
@@ -759,8 +758,8 @@ Status DenseReader::read_attributes(
     for (auto& name : fixed_names) {
       dst_bufs.push_back((uint8_t*)buffers_[name].buffer_);
       dst_val_bufs.push_back(buffers_[name].validity_vector_.buffer());
-      attributes.push_back(array_schema_->attribute(name));
-      cell_sizes.push_back(array_schema_->cell_size(name));
+      attributes.push_back(array_schema_.attribute(name));
+      cell_sizes.push_back(array_schema_.cell_size(name));
     }
 
     // Process values in parallel.
@@ -791,12 +790,12 @@ Status DenseReader::read_attributes(
 
     // Set the output size for the fixed buffer.
     for (auto& name : fixed_names) {
-      const auto required_size = cell_num * array_schema_->cell_size(name);
+      const auto required_size = cell_num * array_schema_.cell_size(name);
 
       // Set the output size for the fixed buffer.
       *buffers_[name].buffer_size_ = required_size;
 
-      if (array_schema_->is_nullable(name))
+      if (array_schema_.is_nullable(name))
         *buffers_[name].validity_vector_.buffer_size() = cell_num;
     }
   }
@@ -915,10 +914,10 @@ Status DenseReader::copy_fixed_tiles(
     const std::vector<uint64_t>& range_offsets,
     const std::vector<uint8_t>& qc_result) {
   // For easy reference
-  const auto dim_num = array_schema_->dim_num();
-  const auto domain = array_schema_->domain();
-  const auto cell_order = array_schema_->cell_order();
-  auto stride = array_schema_->domain()->stride<DimType>(layout_);
+  const auto dim_num = array_schema_.dim_num();
+  const auto domain = array_schema_.domain();
+  const auto cell_order = array_schema_.cell_order();
+  auto stride = array_schema_.domain()->stride<DimType>(layout_);
   const auto& frag_domains = result_space_tile.frag_domains();
 
   if (stride == UINT64_MAX) {
@@ -1117,11 +1116,11 @@ Status DenseReader::copy_offset_tiles(
     const std::vector<uint64_t>& range_offsets,
     const std::vector<uint8_t>& qc_result) {
   // For easy reference
-  const auto domain = array_schema_->domain();
-  const auto dim_num = array_schema_->dim_num();
-  const auto cell_order = array_schema_->cell_order();
-  const auto cell_num_per_tile = array_schema_->domain()->cell_num_per_tile();
-  auto stride = array_schema_->domain()->stride<DimType>(layout_);
+  const auto domain = array_schema_.domain();
+  const auto dim_num = array_schema_.dim_num();
+  const auto cell_order = array_schema_.cell_order();
+  const auto cell_num_per_tile = array_schema_.domain()->cell_num_per_tile();
+  auto stride = array_schema_.domain()->stride<DimType>(layout_);
   const auto& frag_domains = result_space_tile.frag_domains();
 
   if (stride == UINT64_MAX) {
@@ -1305,7 +1304,7 @@ Status DenseReader::copy_var_tiles(
     bool last_tile,
     std::vector<uint64_t>& var_buffer_sizes) {
   // For easy reference
-  auto dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_.dim_num();
 
   // Initialise for global order, will be adjusted later for row/col major.
   uint64_t cell_offset = global_cell_offset;
@@ -1365,7 +1364,7 @@ Status DenseReader::add_extra_offset() {
   // Add extra offset element for all var size offset buffers.
   for (const auto& it : buffers_) {
     const auto& name = it.first;
-    if (!array_schema_->var_size(name))
+    if (!array_schema_.var_size(name))
       continue;
 
     auto buffer = static_cast<unsigned char*>(it.second.buffer_);
@@ -1375,8 +1374,8 @@ Status DenseReader::add_extra_offset() {
           it.second.buffer_var_size_,
           offsets_bytesize());
     } else if (offsets_format_mode_ == "elements") {
-      auto elements = *it.second.buffer_var_size_ /
-                      datatype_size(array_schema_->type(name));
+      auto elements =
+          *it.second.buffer_var_size_ / datatype_size(array_schema_.type(name));
       memcpy(buffer + *it.second.buffer_size_, &elements, offsets_bytesize());
     } else {
       return LOG_STATUS(Status_ReaderError(

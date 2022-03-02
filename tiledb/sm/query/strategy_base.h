@@ -110,7 +110,7 @@ class StrategyBase {
   const Array* array_;
 
   /** The array schema. */
-  const ArraySchema* array_schema_;
+  const ArraySchema& array_schema_;
 
   /** The config for query-level parameters only. */
   Config& config_;

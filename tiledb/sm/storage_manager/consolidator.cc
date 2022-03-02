@@ -213,7 +213,7 @@ Status Consolidator::consolidate_fragments(
       encryption_type,
       encryption_key,
       key_length,
-      array_for_reads.array_schema_latest()->dense());
+      array_for_reads.array_schema_latest().dense());
   if (!st.ok()) {
     array_for_reads.close();
     array_for_writes.close();
@@ -325,7 +325,7 @@ Status Consolidator::consolidate(
   }
 
   // Get schema
-  auto array_schema = array_for_reads.array_schema_latest();
+  const auto& array_schema = array_for_reads.array_schema_latest();
 
   // Prepare buffers
   std::vector<ByteVec> buffers;
@@ -430,7 +430,7 @@ Status Consolidator::consolidate_fragment_meta(
   URI uri;
   auto first = meta.front()->fragment_uri();
   auto last = meta.back()->fragment_uri();
-  auto write_version = array.array_schema_latest()->write_version();
+  auto write_version = array.array_schema_latest().write_version();
   auto&& [st, name] = compute_new_fragment_name(first, last, write_version);
   RETURN_NOT_OK(st);
 
@@ -544,22 +544,22 @@ Status Consolidator::copy_array(
 }
 
 Status Consolidator::create_buffers(
-    const ArraySchema* array_schema,
+    const ArraySchema& array_schema,
     std::vector<ByteVec>* buffers,
     std::vector<uint64_t>* buffer_sizes) {
   auto timer_se = stats_->start_timer("consolidate_create_buffers");
 
   // For easy reference
-  auto attribute_num = array_schema->attribute_num();
-  auto domain = array_schema->domain();
-  auto dim_num = array_schema->dim_num();
-  auto sparse = !array_schema->dense();
+  auto attribute_num = array_schema.attribute_num();
+  auto domain = array_schema.domain();
+  auto dim_num = array_schema.dim_num();
+  auto sparse = !array_schema.dense();
 
   // Calculate number of buffers
   size_t buffer_num = 0;
   for (unsigned i = 0; i < attribute_num; ++i) {
-    buffer_num += (array_schema->attributes()[i]->var_size()) ? 2 : 1;
-    buffer_num += (array_schema->attributes()[i]->nullable()) ? 1 : 0;
+    buffer_num += (array_schema.attributes()[i]->var_size()) ? 2 : 1;
+    buffer_num += (array_schema.attributes()[i]->nullable()) ? 1 : 0;
   }
   if (sparse) {
     for (unsigned i = 0; i < dim_num; ++i)
@@ -599,14 +599,14 @@ Status Consolidator::create_queries(
 
   // Refactored reader optimizes for no subarray.
   if (!config_.use_refactored_reader_ ||
-      array_for_reads->array_schema_latest()->dense())
+      array_for_reads->array_schema_latest().dense())
     RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
   auto first = (*query_r)->first_fragment_uri();
   auto last = (*query_r)->last_fragment_uri();
 
-  auto write_version = array_for_reads->array_schema_latest()->write_version();
+  auto write_version = array_for_reads->array_schema_latest().write_version();
   auto&& [st, name] = compute_new_fragment_name(first, last, write_version);
   RETURN_NOT_OK(st);
   auto frag_uri =
@@ -618,23 +618,23 @@ Status Consolidator::create_queries(
       tdb_new(Query, storage_manager_, array_for_writes, *new_fragment_uri);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->disable_check_global_order());
-  if (array_for_reads->array_schema_latest()->dense())
+  if (array_for_reads->array_schema_latest().dense())
     RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
 
   return Status::Ok();
 }
 
 Status Consolidator::compute_next_to_consolidate(
-    const ArraySchema* array_schema,
+    const ArraySchema& array_schema,
     const FragmentInfo& fragment_info,
     std::vector<TimestampedURI>* to_consolidate,
     NDRange* union_non_empty_domains) const {
   auto timer_se = stats_->start_timer("consolidate_compute_next");
 
   // Preparation
-  auto sparse = !array_schema->dense();
+  auto sparse = !array_schema.dense();
   const auto& fragments = fragment_info.single_fragment_info_vec();
-  auto domain = array_schema->domain();
+  auto domain = array_schema.domain();
   to_consolidate->clear();
   auto min = config_.min_frags_;
   min = (uint32_t)((min > fragments.size()) ? fragments.size() : min);
@@ -768,10 +768,10 @@ Status Consolidator::set_query_buffers(
     Query* query,
     std::vector<ByteVec>* buffers,
     std::vector<uint64_t>* buffer_sizes) const {
-  auto array_schema = query->array_schema();
-  auto dim_num = array_schema->dim_num();
-  auto dense = array_schema->dense();
-  auto attributes = array_schema->attributes();
+  const auto& array_schema = query->array_schema();
+  auto dim_num = array_schema.dim_num();
+  auto dense = array_schema.dense();
+  auto attributes = array_schema.attributes();
   unsigned bid = 0;
   for (const auto& attr : attributes) {
     if (!attr->var_size()) {
@@ -814,7 +814,7 @@ Status Consolidator::set_query_buffers(
   }
   if (!dense) {
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = array_schema->dimension(d);
+      auto dim = array_schema.dimension(d);
       auto dim_name = dim->name();
       if (!dim->var_size()) {
         RETURN_NOT_OK(query->set_data_buffer(

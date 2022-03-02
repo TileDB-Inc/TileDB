@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_profiler.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -2236,11 +2237,10 @@ int32_t tiledb_array_schema_alloc(
   }
 
   // Create a new ArraySchema object
-  (*array_schema)->array_schema_ = new (std::nothrow)
-      tiledb::sm::ArraySchema(static_cast<tiledb::sm::ArrayType>(array_type));
+  (*array_schema)->array_schema_ =
+      tiledb::common::make_shared<tiledb::sm::ArraySchema>(
+          HERE(), static_cast<tiledb::sm::ArrayType>(array_type));
   if ((*array_schema)->array_schema_ == nullptr) {
-    delete *array_schema;
-    *array_schema = nullptr;
     auto st = Status_Error("Failed to allocate TileDB array schema object");
     LOG_STATUS(st);
     save_error(ctx, st);
@@ -2253,7 +2253,6 @@ int32_t tiledb_array_schema_alloc(
 
 void tiledb_array_schema_free(tiledb_array_schema_t** array_schema) {
   if (array_schema != nullptr && *array_schema != nullptr) {
-    delete (*array_schema)->array_schema_;
     delete *array_schema;
     *array_schema = nullptr;
   }
@@ -2478,13 +2477,15 @@ int32_t tiledb_array_schema_load(
       return TILEDB_ERR;
     }
 
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            rest_client->get_array_schema_from_rest(
-                uri, &(*array_schema)->array_schema_))) {
+    auto&& [st, array_schema_rest] =
+        rest_client->get_array_schema_from_rest(uri);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
       delete *array_schema;
       return TILEDB_ERR;
     }
+    (*array_schema)->array_schema_ = array_schema_rest.value();
   } else {
     // Create key
     tiledb::sm::EncryptionKey key;
@@ -2514,13 +2515,15 @@ int32_t tiledb_array_schema_load(
     }
 
     // Load latest array schema
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            storage_manager->load_array_schema_latest(
-                array_dir, key, &((*array_schema)->array_schema_)))) {
+    auto&& [st, array_schema_latest] =
+        storage_manager->load_array_schema_latest(array_dir, key);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
       delete *array_schema;
       return TILEDB_ERR;
     }
+    (*array_schema)->array_schema_ = array_schema_latest.value();
   }
   return TILEDB_OK;
 }
@@ -2568,14 +2571,16 @@ int32_t tiledb_array_schema_load_with_key(
       return TILEDB_ERR;
     }
 
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            rest_client->get_array_schema_from_rest(
-                uri, &(*array_schema)->array_schema_))) {
+    auto&& [st, array_schema_rest] =
+        rest_client->get_array_schema_from_rest(uri);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
       delete *array_schema;
       *array_schema = nullptr;
       return TILEDB_ERR;
     }
+    (*array_schema)->array_schema_ = array_schema_rest.value();
   } else {
     // Create key
     tiledb::sm::EncryptionKey key;
@@ -2608,14 +2613,16 @@ int32_t tiledb_array_schema_load_with_key(
     }
 
     // Load latest array schema
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            storage_manager->load_array_schema_latest(
-                array_dir, key, &((*array_schema)->array_schema_)))) {
+    auto&& [st, array_schema_latest] =
+        storage_manager->load_array_schema_latest(array_dir, key);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
       delete *array_schema;
       *array_schema = nullptr;
       return TILEDB_ERR;
     }
+    (*array_schema)->array_schema_ = array_schema_latest.value();
   }
   return TILEDB_OK;
 }
@@ -4767,15 +4774,15 @@ int32_t tiledb_array_get_schema(
   }
 
   // Get schema
-  auto schema = (tiledb::sm::ArraySchema*)nullptr;
-  if (SAVE_ERROR_CATCH(ctx, array->array_->get_array_schema(&schema))) {
+  auto&& [st, array_schema_get] = array->array_->get_array_schema();
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
     delete *array_schema;
     *array_schema = nullptr;
     return TILEDB_ERR;
   }
-
-  (*array_schema)->array_schema_ =
-      new (std::nothrow) tiledb::sm::ArraySchema(schema);
+  (*array_schema)->array_schema_ = array_schema_get.value();
 
   return TILEDB_OK;
 }
@@ -4830,7 +4837,7 @@ int32_t tiledb_array_create(
     if (SAVE_ERROR_CATCH(
             ctx,
             rest_client->post_array_schema_to_rest(
-                uri, array_schema->array_schema_)))
+                uri, *(array_schema->array_schema_.get()))))
       return TILEDB_ERR;
   } else {
     // Create key
@@ -4898,7 +4905,7 @@ int32_t tiledb_array_create_with_key(
     if (SAVE_ERROR_CATCH(
             ctx,
             rest_client->post_array_schema_to_rest(
-                uri, array_schema->array_schema_)))
+                uri, *(array_schema->array_schema_.get()))))
       return TILEDB_ERR;
   } else {
     // Create key
@@ -6288,7 +6295,7 @@ int32_t tiledb_serialize_array_schema(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_schema_serialize(
-              array_schema->array_schema_,
+              *(array_schema->array_schema_.get()),
               (tiledb::sm::SerializationType)serialize_type,
               (*buffer)->buffer_,
               client_side))) {
@@ -6322,16 +6329,17 @@ int32_t tiledb_deserialize_array_schema(
     return TILEDB_OOM;
   }
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::serialization::array_schema_deserialize(
-              &((*array_schema)->array_schema_),
-              (tiledb::sm::SerializationType)serialize_type,
-              *buffer->buffer_))) {
+  auto&& [st, array_schema_des] =
+      tiledb::sm::serialization::array_schema_deserialize(
+          (tiledb::sm::SerializationType)serialize_type, *buffer->buffer_);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
     delete *array_schema;
     *array_schema = nullptr;
     return TILEDB_ERR;
   }
+  (*array_schema)->array_schema_ = array_schema_des.value();
 
   return TILEDB_OK;
 }
@@ -7411,14 +7419,16 @@ int32_t tiledb_fragment_info_get_array_schema(
     return TILEDB_OOM;
   }
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          fragment_info->fragment_info_->get_array_schema(
-              fid, &(*array_schema)->array_schema_))) {
+  auto&& [st, array_schema_get] =
+      fragment_info->fragment_info_->get_array_schema(fid);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
     delete *array_schema;
     *array_schema = nullptr;
     return TILEDB_ERR;
   }
+  (*array_schema)->array_schema_ = array_schema_get.value();
 
   return TILEDB_OK;
 }

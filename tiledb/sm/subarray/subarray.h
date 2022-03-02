@@ -461,7 +461,7 @@ class Subarray {
    * @return Status
    */
   Status compute_relevant_fragment_est_result_sizes(
-      const ArraySchema* array_schema,
+      const ArraySchema& array_schema,
       bool all_dims_same_type,
       bool all_dims_fixed,
       const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_meta,

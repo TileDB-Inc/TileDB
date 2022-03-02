@@ -164,8 +164,8 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Put metadata in an array opened for reads - error
-  Context ctx;
-  Array array(ctx, std::string(array_name_), TILEDB_READ);
+  tiledb::Context ctx;
+  tiledb::Array array(ctx, std::string(array_name_), TILEDB_READ);
   int v = 5;
   CHECK_THROWS(array.put_metadata("key", TILEDB_INT32, 1, &v));
   array.close();
@@ -191,8 +191,8 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Open array in write mode
-  Context ctx;
-  Array array(ctx, std::string(array_name_), TILEDB_WRITE);
+  tiledb::Context ctx;
+  tiledb::Array array(ctx, std::string(array_name_), TILEDB_WRITE);
 
   // Write items
   int32_t v = 5;
@@ -275,8 +275,8 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Open array in write mode
-  Context ctx;
-  Array array(ctx, std::string(array_name_), TILEDB_WRITE);
+  tiledb::Context ctx;
+  tiledb::Array array(ctx, std::string(array_name_), TILEDB_WRITE);
 
   // Write UTF-8 (≥ holds 3 bytes)
   int32_t v = 5;
@@ -315,8 +315,8 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Create and open array in write mode
-  Context ctx;
-  Array array(ctx, std::string(array_name_), TILEDB_WRITE, 1);
+  tiledb::Context ctx;
+  tiledb::Array array(ctx, std::string(array_name_), TILEDB_WRITE, 1);
 
   // Write items
   int32_t v = 5;
@@ -375,8 +375,8 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Create and open array in write mode
-  Context ctx;
-  Array array(ctx, array_name_, TILEDB_WRITE);
+  tiledb::Context ctx;
+  tiledb::Array array(ctx, array_name_, TILEDB_WRITE);
 
   // Write items
   int32_t v = 5;
@@ -434,9 +434,9 @@ TEST_CASE_METHOD(
   array.close();
 
   // Consolidate
-  Config consolidation_cfg;
+  tiledb::Config consolidation_cfg;
   consolidation_cfg["sm.consolidation.mode"] = "array_meta";
-  Array::consolidate(ctx, array_name_, &consolidation_cfg);
+  tiledb::Array::consolidate(ctx, array_name_, &consolidation_cfg);
 
   // Open the array in read mode
   array.open(TILEDB_READ);
@@ -458,7 +458,7 @@ TEST_CASE_METHOD(
   array.close();
 
   // Consolidate again
-  Array::consolidate(ctx, array_name_, &consolidation_cfg);
+  tiledb::Array::consolidate(ctx, array_name_, &consolidation_cfg);
 
   // Open the array in read mode
   array.open(TILEDB_READ);
@@ -486,8 +486,8 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Create and open array in write mode
-  Context ctx;
-  Array array(ctx, array_name_, TILEDB_WRITE);
+  tiledb::Context ctx;
+  tiledb::Array array(ctx, array_name_, TILEDB_WRITE);
 
   // Write items
   int32_t v = 5;
@@ -533,8 +533,8 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Open array in write mode
-  Context ctx;
-  Array array(ctx, array_name_, TILEDB_WRITE);
+  tiledb::Context ctx;
+  tiledb::Array array(ctx, array_name_, TILEDB_WRITE);
 
   // Write items
   int32_t v = 5;
@@ -597,8 +597,8 @@ TEST_CASE_METHOD(
       encryption_type_str((tiledb::sm::EncryptionType)enc_type_);
   cfg["sm.encryption_type"] = enc_type_str.c_str();
   cfg["sm.encryption_key"] = key_;
-  Context ctx(cfg);
-  Array array(ctx, array_name_, TILEDB_WRITE);
+  tiledb::Context ctx(cfg);
+  tiledb::Array array(ctx, array_name_, TILEDB_WRITE);
 
   // Write items
   int32_t v = 5;
@@ -656,15 +656,15 @@ TEST_CASE_METHOD(
   array.close();
 
   // Consolidate without key - error
-  Config consolidate_without_key;
-  Context ctx_without_key(consolidate_without_key);
-  CHECK_THROWS(Array::consolidate(
+  tiledb::Config consolidate_without_key;
+  tiledb::Context ctx_without_key(consolidate_without_key);
+  CHECK_THROWS(tiledb::Array::consolidate(
       ctx_without_key, array_name_, &consolidate_without_key));
 
   // Consolidate with key - ok
-  Config consolidation_cfg;
+  tiledb::Config consolidation_cfg;
   consolidation_cfg["sm.consolidation.mode"] = "array_meta";
-  Array::consolidate(ctx, array_name_, &consolidation_cfg);
+  tiledb::Array::consolidate(ctx, array_name_, &consolidation_cfg);
 
   // Open the array in read mode
   array.open(TILEDB_READ);
@@ -686,7 +686,7 @@ TEST_CASE_METHOD(
   array.close();
 
   // Consolidate again
-  Array::consolidate_metadata(ctx, array_name_, &consolidation_cfg);
+  tiledb::Array::consolidate_metadata(ctx, array_name_, &consolidation_cfg);
 
   // Open the array in read mode
   array.open(TILEDB_READ);

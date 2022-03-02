@@ -58,7 +58,7 @@ class ResultTileWithBitmap : public ResultTile {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
   ResultTileWithBitmap(
-      unsigned frag_idx, uint64_t tile_idx, const ArraySchema* array_schema)
+      unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
       : ResultTile(frag_idx, tile_idx, array_schema)
       , bitmap_result_num_(std::numeric_limits<uint64_t>::max())
       , coords_loaded_(false) {

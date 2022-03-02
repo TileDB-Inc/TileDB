@@ -56,15 +56,16 @@ struct CPPFixedTileMetadataFx {
 
   void create_array(
       tiledb_layout_t layout, bool nullable, uint64_t cell_val_num) {
-    Domain domain(ctx_);
-    auto d = Dimension::create<uint32_t>(ctx_, "d", {{0, 999}}, tile_extent_);
+    tiledb::Domain domain(ctx_);
+    auto d = tiledb::Dimension::create<uint32_t>(
+        ctx_, "d", {{0, 999}}, tile_extent_);
     domain.add_dimension(d);
 
-    auto a = Attribute::create<TestType>(ctx_, "a");
+    auto a = tiledb::Attribute::create<TestType>(ctx_, "a");
     a.set_nullable(nullable);
     a.set_cell_val_num(cell_val_num);
 
-    ArraySchema schema(
+    tiledb::ArraySchema schema(
         ctx_, layout == TILEDB_ROW_MAJOR ? TILEDB_DENSE : TILEDB_SPARSE);
     schema.set_domain(domain);
     schema.add_attribute(a);
@@ -73,7 +74,7 @@ struct CPPFixedTileMetadataFx {
       schema.set_capacity(tile_extent_);
     }
 
-    Array::create(ARRAY_NAME, schema);
+    tiledb::Array::create(ARRAY_NAME, schema);
   }
 
   void write_fragment(
@@ -412,8 +413,8 @@ struct CPPFixedTileMetadataFx {
   const uint64_t tile_extent_ = 100;
   const uint64_t num_cells_ = 1000;
   const uint64_t num_tiles_ = num_cells_ / tile_extent_;
-  Context ctx_;
-  VFS vfs_;
+  tiledb::Context ctx_;
+  tiledb::VFS vfs_;
 };
 
 typedef tuple<
@@ -476,15 +477,16 @@ struct CPPVarTileMetadataFx {
   }
 
   void create_array(tiledb_layout_t layout, bool nullable) {
-    Domain domain(ctx_);
-    auto d = Dimension::create<uint32_t>(ctx_, "d", {{0, 999}}, tile_extent_);
+    tiledb::Domain domain(ctx_);
+    auto d = tiledb::Dimension::create<uint32_t>(
+        ctx_, "d", {{0, 999}}, tile_extent_);
     domain.add_dimension(d);
 
-    auto a = Attribute::create<std::string>(ctx_, "a");
+    auto a = tiledb::Attribute::create<std::string>(ctx_, "a");
     a.set_nullable(nullable);
     a.set_cell_val_num(TILEDB_VAR_NUM);
 
-    ArraySchema schema(
+    tiledb::ArraySchema schema(
         ctx_, layout == TILEDB_ROW_MAJOR ? TILEDB_DENSE : TILEDB_SPARSE);
     schema.set_domain(domain);
     schema.add_attribute(a);
@@ -493,7 +495,7 @@ struct CPPVarTileMetadataFx {
       schema.set_capacity(tile_extent_);
     }
 
-    Array::create(ARRAY_NAME, schema);
+    tiledb::Array::create(ARRAY_NAME, schema);
   }
 
   void write_fragment(
@@ -740,8 +742,8 @@ struct CPPVarTileMetadataFx {
   const uint64_t tile_extent_ = 10;
   const uint64_t num_cells_ = 1000;
   const uint64_t num_tiles_ = num_cells_ / tile_extent_;
-  Context ctx_;
-  VFS vfs_;
+  tiledb::Context ctx_;
+  tiledb::VFS vfs_;
 };
 
 TEST_CASE_METHOD(
