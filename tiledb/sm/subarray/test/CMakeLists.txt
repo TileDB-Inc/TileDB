@@ -1,5 +1,3 @@
-find_package(Catch_EP REQUIRED)
-
 add_executable(unit_range_subset EXCLUDE_FROM_ALL)
 target_link_libraries(unit_range_subset
     PRIVATE range_subset

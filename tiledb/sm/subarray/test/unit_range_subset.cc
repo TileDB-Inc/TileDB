@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines unit tests for the RangeSetAndSuperset classes.
+ * This file defines unit tests for the RangeMultiSubset classes.
  */
 
 #include <catch.hpp>
@@ -40,10 +40,10 @@ using namespace tiledb::common;
 using namespace tiledb::sm;
 
 // TODO: Generalize for all types
-TEST_CASE("CreateDefaultRangeSetAndSuperset") {
+TEST_CASE("CreateDefaultRangeMultiSubset") {
   uint64_t bounds[2] = {0, 10};
   Range range{bounds, 2 * sizeof(uint64_t)};
-  RangeSetAndSuperset range_subset{Datatype::UINT64, range, true, false};
+  RangeMultiSubset range_subset{Datatype::UINT64, range, true, false};
   CHECK(range_subset.num_ranges() == 1);
   Range default_range = range_subset[0];
   CHECK(!default_range.empty());
@@ -54,18 +54,18 @@ TEST_CASE("CreateDefaultRangeSetAndSuperset") {
 }
 
 // TODO: Generalize for all coalescing types
-TEST_CASE("RangeSetAndSuperset::RangeSetAndSuperset") {
+TEST_CASE("RangeMultiSubset::RangeMultiSubset") {
   uint64_t bounds[2] = {0, 10};
   Range range{bounds, 2 * sizeof(uint64_t)};
-  RangeSetAndSuperset range_subset{Datatype::UINT64, range, false, true};
+  RangeMultiSubset range_subset{Datatype::UINT64, range, false, true};
   CHECK(range_subset.num_ranges() == 0);
   SECTION("Add 2 Overlapping Ranges") {
     uint64_t data1[2] = {1, 3};
     uint64_t data2[2] = {4, 5};
     Range r1{data1, 2 * sizeof(uint64_t)};
     Range r2{data2, 2 * sizeof(uint64_t)};
-    range_subset.add_range_unrestricted(r1);
-    range_subset.add_range_unrestricted(r2);
+    range_subset.add_subset(r1);
+    range_subset.add_subset(r2);
     CHECK(range_subset.num_ranges() == 1);
     auto combined_range = range_subset[0];
     const uint64_t* start = (uint64_t*)combined_range.start();
@@ -76,36 +76,36 @@ TEST_CASE("RangeSetAndSuperset::RangeSetAndSuperset") {
 }
 
 // TODO: Generalize for all non-coalescing types
-TEST_CASE("RangeSetAndSuperset::add_range - coalesce float") {
+TEST_CASE("RangeMultiSubset::add_range - coalesce float") {
   float bounds[2] = {-1.0, 1.0};
   Range range{bounds, 2 * sizeof(float)};
-  RangeSetAndSuperset range_subset{Datatype::FLOAT32, range, false, true};
+  RangeMultiSubset range_subset{Datatype::FLOAT32, range, false, true};
   CHECK(range_subset.num_ranges() == 0);
   SECTION("Add 2 Overlapping Ranges") {
     float data1[2] = {-0.5, 0.5};
     float data2[2] = {0.5, 0.75};
     Range r1{data1, 2 * sizeof(float)};
     Range r2{data2, 2 * sizeof(float)};
-    range_subset.add_range_unrestricted(r1);
-    range_subset.add_range_unrestricted(r2);
+    range_subset.add_subset(r1);
+    range_subset.add_subset(r2);
     CHECK(range_subset.num_ranges() == 2);
   }
 }
 
 // TODO: Generatize for all numeric sortable types.
 TEST_CASE(
-    "RangeSetAndSuperset: Test numeric sort", "[range-manager][threadpool]") {
+    "RangeMultiSubset: Test numeric sort", "[range-manager][threadpool]") {
   uint64_t bounds[2] = {0, 10};
   Range range{bounds, 2 * sizeof(uint64_t)};
-  RangeSetAndSuperset range_subset{Datatype::UINT64, range, false, true};
+  RangeMultiSubset range_subset{Datatype::UINT64, range, false, true};
   SECTION("Sort 2 reverse ordered ranges") {
     // Add ranges.
     uint64_t data1[2] = {4, 5};
     uint64_t data2[2] = {1, 2};
     Range r1{data1, 2 * sizeof(uint64_t)};
     Range r2{data2, 2 * sizeof(uint64_t)};
-    range_subset.add_range_unrestricted(r1);
-    range_subset.add_range_unrestricted(r2);
+    range_subset.add_subset(r1);
+    range_subset.add_subset(r2);
     CHECK(range_subset.num_ranges() == 2);
     // Create ThreadPool.
     ThreadPool pool;
@@ -130,9 +130,9 @@ TEST_CASE(
   }
 }
 
-TEST_CASE("RangeSetAndSuperset::sort - STRING_ASCII") {
+TEST_CASE("RangeMultiSubset::sort - STRING_ASCII") {
   Range range{};
-  RangeSetAndSuperset range_subset{Datatype::STRING_ASCII, range, false, false};
+  RangeMultiSubset range_subset{Datatype::STRING_ASCII, range, false, false};
   SECTION("Sort 2 reverse ordered non-overlapping ranges") {
     // Set ranges.
     const std::string d1{"cat"};
@@ -141,10 +141,10 @@ TEST_CASE("RangeSetAndSuperset::sort - STRING_ASCII") {
     const std::string d4{"bird"};
     Range r1{};
     r1.set_str_range(d1, d2);
-    range_subset.add_range_unrestricted(r1);
+    range_subset.add_subset(r1);
     Range r2{};
     r2.set_str_range(d3, d4);
-    range_subset.add_range_unrestricted(r2);
+    range_subset.add_subset(r2);
     CHECK(range_subset.num_ranges() == 2);
     // Create ThreadPool.
     ThreadPool pool;

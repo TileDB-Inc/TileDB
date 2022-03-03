@@ -170,12 +170,22 @@ Status Subarray::add_range(
                              "to global order query"));
   }
 
-  // Restrict the range to the dimension domain and add.
-  auto dim = array_->array_schema_latest().dimension(dim_idx);
-  if (!read_range_oob_error)
-    RETURN_NOT_OK(dim->adjust_range_oob(&range));
-  RETURN_NOT_OK(dim->check_range(range));
-  range_subset_[dim_idx].add_range_unrestricted(range);
+  // Restrict the range to the dimension domain.
+  if (!read_range_oob_error) {
+    auto warn_status = range_subset_[dim_idx].intersect_with_superset(range);
+    if (!warn_status.ok())
+      LOG_WARN(
+          "Need to adjust range before adding to dimension '" +
+          array_->array_schema_latest().dimension(dim_idx)->name() + "'; " +
+          warn_status.message());
+  }
+  // Add range to the dimension.
+  auto status = range_subset_[dim_idx].add_subset(range);
+  if (!status.ok())
+    return logger_->status(Status_SubarrayError(
+        "Cannot add range to dimension '" +
+        array_->array_schema_latest().dimension(dim_idx)->name() + "'; " +
+        status.message()));
 
   // Update is default.
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
@@ -188,7 +198,7 @@ Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
   tile_overlap_.clear();
 
   // Add the range
-  range_subset_[dim_idx].add_range_unrestricted(range);
+  range_subset_[dim_idx].add_subset_unrestricted(range);
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
   return Status::Ok();
 }
@@ -823,7 +833,7 @@ bool Subarray::is_unary(uint64_t range_idx) const {
 void Subarray::set_is_default(uint32_t dim_index, bool is_default) {
   if (is_default) {
     auto dim = array_->array_schema_latest().dimension(dim_index);
-    range_subset_.at(dim_index) = RangeSetAndSuperset(
+    range_subset_.at(dim_index) = RangeMultiSubset(
         dim->type(), dim->domain(), is_default, coalesce_ranges_);
   }
   is_default_[dim_index] = is_default;
@@ -1522,12 +1532,12 @@ Status Subarray::set_ranges_for_dim(
     uint32_t dim_idx, const std::vector<Range>& ranges) {
   auto dim = array_->array_schema_latest().dimension(dim_idx);
   range_subset_[dim_idx] =
-      RangeSetAndSuperset(dim->type(), dim->domain(), false, coalesce_ranges_);
+      RangeMultiSubset(dim->type(), dim->domain(), false, coalesce_ranges_);
   is_default_[dim_idx] = false;
   // Add each range individually so that contiguous
   // ranges may be coalesced.
   for (const auto& range : ranges)
-    range_subset_[dim_idx].add_range_unrestricted(range);
+    range_subset_[dim_idx].add_subset_unrestricted(range);
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
   return Status::Ok();
 }
@@ -1853,8 +1863,8 @@ void Subarray::add_default_ranges() {
   range_subset_.clear();
   for (unsigned dim_index = 0; dim_index < dim_num; ++dim_index) {
     auto dim = domain->dimension(dim_index);
-    range_subset_.push_back(RangeSetAndSuperset(
-        dim->type(), dim->domain(), true, coalesce_ranges_));
+    range_subset_.push_back(
+        RangeMultiSubset(dim->type(), dim->domain(), true, coalesce_ranges_));
   }
   is_default_.resize(dim_num, true);
 }

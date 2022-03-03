@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines the class RangeSetAndSuperset.
+ * This file defines the class RangeMultiSubset.
  */
 
 #include "tiledb/sm/subarray/range_subset.h"
@@ -39,39 +39,39 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 template <typename T>
-tdb_shared_ptr<detail::RangeSetAndSupersetInternals>
-create_range_subset_internals(bool coalesce_ranges) {
+tdb_shared_ptr<detail::RangeMultiSubsetImpl> create_range_subset_internals(
+    const Range& superset, bool coalesce_ranges) {
   if (coalesce_ranges) {
-    return make_shared<detail::RangeSetAndSupersetInternalsImpl<T, true>>(
-        HERE());
+    return make_shared<detail::TypedRangeMultiSubsetImpl<T, true>>(
+        HERE(), superset);
   }
-  return make_shared<detail::RangeSetAndSupersetInternalsImpl<T, false>>(
-      HERE());
+  return make_shared<detail::TypedRangeMultiSubsetImpl<T, false>>(
+      HERE(), superset);
 };
 
-tdb_shared_ptr<detail::RangeSetAndSupersetInternals> range_subset_internals(
-    Datatype datatype, bool coalesce_ranges) {
+tdb_shared_ptr<detail::RangeMultiSubsetImpl> range_subset_internals(
+    Datatype datatype, const Range& superset, bool coalesce_ranges) {
   switch (datatype) {
     case Datatype::INT8:
-      return create_range_subset_internals<int8_t>(coalesce_ranges);
+      return create_range_subset_internals<int8_t>(superset, coalesce_ranges);
     case Datatype::UINT8:
-      return create_range_subset_internals<uint8_t>(coalesce_ranges);
+      return create_range_subset_internals<uint8_t>(superset, coalesce_ranges);
     case Datatype::INT16:
-      return create_range_subset_internals<int16_t>(coalesce_ranges);
+      return create_range_subset_internals<int16_t>(superset, coalesce_ranges);
     case Datatype::UINT16:
-      return create_range_subset_internals<uint16_t>(coalesce_ranges);
+      return create_range_subset_internals<uint16_t>(superset, coalesce_ranges);
     case Datatype::INT32:
-      return create_range_subset_internals<int32_t>(coalesce_ranges);
+      return create_range_subset_internals<int32_t>(superset, coalesce_ranges);
     case Datatype::UINT32:
-      return create_range_subset_internals<uint32_t>(coalesce_ranges);
+      return create_range_subset_internals<uint32_t>(superset, coalesce_ranges);
     case Datatype::INT64:
-      return create_range_subset_internals<int64_t>(coalesce_ranges);
+      return create_range_subset_internals<int64_t>(superset, coalesce_ranges);
     case Datatype::UINT64:
-      return create_range_subset_internals<uint64_t>(coalesce_ranges);
+      return create_range_subset_internals<uint64_t>(superset, coalesce_ranges);
     case Datatype::FLOAT32:
-      return create_range_subset_internals<float>(coalesce_ranges);
+      return create_range_subset_internals<float>(superset, coalesce_ranges);
     case Datatype::FLOAT64:
-      return create_range_subset_internals<double>(coalesce_ranges);
+      return create_range_subset_internals<double>(superset, coalesce_ranges);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -94,37 +94,44 @@ tdb_shared_ptr<detail::RangeSetAndSupersetInternals> range_subset_internals(
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
-      return create_range_subset_internals<int64_t>(coalesce_ranges);
+      return create_range_subset_internals<int64_t>(superset, coalesce_ranges);
     case Datatype::STRING_ASCII:
-      return create_range_subset_internals<std::string>(coalesce_ranges);
+      // Set STRING_ASCII to use implementation where the superset is the
+      // full typeset.
+      return make_shared<detail::TypedRangeMultisetImpl<std::string, false>>(
+          HERE());
     default:
       LOG_ERROR("Unexpected dimension datatype " + datatype_str(datatype));
       return nullptr;
   }
 }
 
-RangeSetAndSuperset::RangeSetAndSuperset(
+RangeMultiSubset::RangeMultiSubset(
     Datatype datatype,
     const Range& superset,
     bool implicitly_initialize,
     bool coalesce_ranges)
-    : impl_(range_subset_internals(datatype, coalesce_ranges))
-    , superset_(superset)
+    : impl_(range_subset_internals(datatype, superset, coalesce_ranges))
     , is_implicitly_initialized_(implicitly_initialize) {
   if (implicitly_initialize)
     ranges_.emplace_back(superset);
 }
 
-Status RangeSetAndSuperset::sort_ranges(ThreadPool* const compute_tp) {
-  return impl_->sort_ranges(compute_tp, ranges_);
+Status RangeMultiSubset::add_subset(const Range& range) {
+  RETURN_NOT_OK(impl_->check_is_valid_subset(range));
+  return add_subset_unrestricted(range);
 }
 
-Status RangeSetAndSuperset::add_range_unrestricted(const Range& range) {
+Status RangeMultiSubset::add_subset_unrestricted(const Range& range) {
   if (is_implicitly_initialized_) {
     ranges_.clear();
     is_implicitly_initialized_ = false;
   }
   return impl_->add_range(ranges_, range);
+}
+
+Status RangeMultiSubset::sort_ranges(ThreadPool* const compute_tp) {
+  return impl_->sort_ranges(compute_tp, ranges_);
 }
 
 }  // namespace tiledb::sm

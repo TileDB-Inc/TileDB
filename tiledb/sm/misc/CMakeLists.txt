@@ -64,6 +64,7 @@ target_sources(compile_math PRIVATE test/compile_math_main.cc)
 # `misc_types` object library
 #
 add_library(misc_types OBJECT types.cc)
+target_link_libraries(misc_types PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 #
 # Test-compile of object library ensures link-completeness
 #
@@ -118,3 +119,8 @@ endif()
 add_executable(compile_uuid EXCLUDE_FROM_ALL)
 target_link_libraries(compile_uuid PRIVATE uuid)
 target_sources(compile_uuid PRIVATE test/compile_uuid_main.cc)
+
+
+if (TILEDB_TESTS)
+    add_subdirectory(test)
+endif()

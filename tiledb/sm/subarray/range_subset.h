@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines the class RangeSetAndSuperset.
+ * This file defines the class RangeMultiSubset.
  */
 
 #ifndef TILEDB_RANGE_SUBSET_H
@@ -38,6 +38,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/types.h"
 
+#include <cmath>
 #include <optional>
 #include <type_traits>
 #include <vector>
@@ -142,14 +143,14 @@ struct SortStrategy<std::string, std::string> {
   };
 };
 
-class RangeSetAndSupersetInternals {
+class RangeMultiSubsetImpl {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Destructor. */
-  virtual ~RangeSetAndSupersetInternals() = default;
+  virtual ~RangeMultiSubsetImpl() = default;
 
   /**
    * Adds a range to the range manager without performing any checkes. If a
@@ -157,9 +158,30 @@ class RangeSetAndSupersetInternals {
    *
    * @param ranges The current ranges in the subarray (remove after
    refactor).
-   * @param new_range The range to add.
+   * @param range The range to add.
    */
-  virtual Status add_range(std::vector<Range>& ranges, const Range& range) = 0;
+  virtual Status add_range(
+      std::vector<Range>& ranges, const Range& range) const = 0;
+
+  /**
+   * Checks the range is a valid subset of the superset.
+   *
+   * @param range The range to verify is a subset.
+   * @return Status that returns error if range is not a valid subset.
+   */
+  virtual Status check_is_valid_subset(const Range& range) const = 0;
+
+  /**
+   * Updates a range to be a subset of another range.
+   *
+   * This method will return an ok status if the Range is not mutated and an
+   * error status if the intersection changes the bounds of the range.
+   *
+   * @param intersector The Range to take an intersetction with.
+   * @param range The Range to replace with the intersection.
+   * @return Status that returns an error if range is mutated.
+   */
+  virtual Status intersect(Range& range) const = 0;
 
   /**
    * Sorts the ranges in the range manager.
@@ -167,19 +189,62 @@ class RangeSetAndSupersetInternals {
    * @param compute_tp The compute thread pool.
    */
   virtual Status sort_ranges(
-      ThreadPool* const compute_tp, std::vector<Range>& ranges) = 0;
+      ThreadPool* const compute_tp, std::vector<Range>& ranges) const = 0;
 };
 
 template <typename T, bool CoalesceAdds>
-class RangeSetAndSupersetInternalsImpl : public RangeSetAndSupersetInternals {
+class TypedRangeMultiSubsetImpl : public RangeMultiSubsetImpl {
  public:
+  TypedRangeMultiSubsetImpl() = delete;
+  TypedRangeMultiSubsetImpl(const Range& superset)
+      : superset_(superset){};
+
   Status add_range(
-      std::vector<Range>& ranges, const Range& new_range) override {
+      std::vector<Range>& ranges, const Range& new_range) const override {
     return AddStrategy<T, CoalesceAdds>::add_range(ranges, new_range);
   };
 
+  Status check_is_valid_subset(const Range& range) const override {
+    RETURN_NOT_OK(RangeOperations<T>::check_is_valid_range(range));
+    RETURN_NOT_OK(superset_.check_is_subset(range));
+    return Status::Ok();
+  };
+
+  Status intersect(Range& range) const override {
+    return superset_.intersect(range);
+  };
+
   Status sort_ranges(
-      ThreadPool* const compute_tp, std::vector<Range>& ranges) override {
+      ThreadPool* const compute_tp, std::vector<Range>& ranges) const override {
+    return SortStrategy<T>::sort(compute_tp, ranges);
+  };
+
+ private:
+  RangeSuperset<T> superset_;
+};
+
+/**
+ * Implementation for the RangeMultiSubset when the superset is the full
+ * typeset. This skips subset checks.
+ */
+template <typename T, bool CoalesceAdds>
+class TypedRangeMultisetImpl : public RangeMultiSubsetImpl {
+ public:
+  Status add_range(
+      std::vector<Range>& ranges, const Range& new_range) const override {
+    return AddStrategy<T, CoalesceAdds>::add_range(ranges, new_range);
+  };
+
+  Status check_is_valid_subset(const Range& range) const override {
+    return RangeOperations<T>::check_is_valid_range(range);
+  };
+
+  Status intersect(Range&) const override {
+    return Status::Ok();
+  };
+
+  Status sort_ranges(
+      ThreadPool* const compute_tp, std::vector<Range>& ranges) const override {
     return SortStrategy<T>::sort(compute_tp, ranges);
   };
 };
@@ -187,7 +252,7 @@ class RangeSetAndSupersetInternalsImpl : public RangeSetAndSupersetInternals {
 }  // namespace detail
 
 /**
- * A RangeSetAndSuperset object is a collection of possibly overlapping or
+ * A RangeMultiSubset object is a collection of possibly overlapping or
  * duplicate Ranges that are assumed to be subsets of a given superset with a
  * defined TileDB datatype.
  *
@@ -195,25 +260,15 @@ class RangeSetAndSupersetInternalsImpl : public RangeSetAndSupersetInternals {
  * superset will be added to the Ranges in the set until any additional ranages
  * are added.
  *
- * Current state of the RangeSetAndSuperset:
- *
- *  * The only way to add Ranges is with an "unrestricted" method that does not
- *  check the range is in fact a subset of the superset.
- *
- * Planned updates:
- *
- *  * When adding a new range, this will verify that Range is a subset of the
- *  RangeSetAndSuperset by using ``is_subset`` and ``intersection`` methods.
- *
  */
-class RangeSetAndSuperset {
+class RangeMultiSubset {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Default constructor. */
-  RangeSetAndSuperset() = default;
+  RangeMultiSubset() = default;
 
   /** General constructor
    *
@@ -223,14 +278,14 @@ class RangeSetAndSuperset {
    * @param coalesce_ranges If ``true``, when adding a new range, attempt to
    * combine with the first left-adjacent range found.
    **/
-  RangeSetAndSuperset(
+  RangeMultiSubset(
       Datatype datatype,
       const Range& superset,
       bool implicitly_initialize,
       bool coalesce_ranges);
 
   /** Destructor. */
-  ~RangeSetAndSuperset() = default;
+  ~RangeMultiSubset() = default;
 
   /**
    * Access specified element.
@@ -242,18 +297,41 @@ class RangeSetAndSuperset {
   };
 
   /**
-   * Adds a range to the range manager without performing any checkes.
+   * Adds a range that is subset.
+   *
+   * Checks the range is a valid range, and that it is infact a subset.
+   *
+   * @param range The range to add.
+   */
+  Status add_subset(const Range& range);
+
+  /**
+   * Adds a range that is a subset without performing any checkes.
    *
    * If the ranges are currently implicitly initialized, then they will be
    * cleared before the new range is added.
    *
    * @param range The range to add.
    */
-  Status add_range_unrestricted(const Range& range);
+  Status add_subset_unrestricted(const Range& range);
 
   /** Returns a const reference to the stored ranges. */
   inline const std::vector<Range>& ranges() const {
     return ranges_;
+  };
+
+  /**
+   * Replaces the range with its intersection with the superset.
+   *
+   * This method will return an ok status if the Range is not mutated and an
+   * error status if the intersection changes the bounds of the range.
+   *
+   * @param intersector The Range to take an intersetction with.
+   * @param range The Range to replace with the intersection.
+   * @return Status that returns error if range is mutated.
+   */
+  inline Status intersect_with_superset(Range& range) const {
+    return impl_->intersect(range);
   };
 
   /**
@@ -271,18 +349,13 @@ class RangeSetAndSuperset {
   /**
    * Returns ``false`` if the subset contains a range other than the default
    * range.
-   *
-   * IMPORTANT: This method is different from the `is_set` method of the
-   * Subarray. The Subarray class only checks if any ranges are not default
-   * whereas this method considers the RangeSetAndSuperset to be unset if it is
-   * cleared.
    **/
   inline bool is_explicitly_initialized() const {
     return !is_implicitly_initialized_ && !ranges_.empty();
   };
 
   /**
-   * Returns ``true`` if there is exactly one ranage with one element in the
+   * Returns ``true`` if there is exactly one range with one element in the
    * subset.
    */
   inline bool has_single_element() const {
@@ -302,9 +375,8 @@ class RangeSetAndSuperset {
   Status sort_ranges(ThreadPool* const compute_tp);
 
  private:
-  tdb_shared_ptr<detail::RangeSetAndSupersetInternals> impl_ = nullptr;
-  /** Maximum possible range. */
-  Range superset_ = Range();
+  /** Internal implementation. */
+  tdb_shared_ptr<detail::RangeMultiSubsetImpl> impl_ = nullptr;
 
   /**
    * If ``true``, the range contains the full domain for the dimension (the

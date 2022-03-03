@@ -1048,10 +1048,10 @@ class Subarray {
   Layout cell_order_;
 
   /**
-   * Stores a vector of RangeSetAndSuperset objects, one per dimension, for
+   * Stores a vector of RangeMultiSubset objects, one per dimension, for
    * handling operations on ranges.
    */
-  std::vector<RangeSetAndSuperset> range_subset_;
+  std::vector<RangeMultiSubset> range_subset_;
 
   /**
    * Flag storing if each dimension is a default value or not.

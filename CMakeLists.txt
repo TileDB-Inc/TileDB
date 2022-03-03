@@ -253,6 +253,9 @@ endif()
 
 # Enable testing
 enable_testing()
+if (TILEDB_TESTS)
+  find_package(Catch_EP REQUIRED)
+endif()
 
 # Build the TileDB library
 add_subdirectory(tiledb)
@@ -271,6 +274,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_array_schema unit_filter unit_filter_pipeline unit_metadata)
   add_dependencies(tests unit_compressors)
   add_dependencies(tests unit_range_subset)
+  add_dependencies(tests unit_misc_types)
 endif()
 
 # Build tools

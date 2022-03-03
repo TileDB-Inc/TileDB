@@ -34,13 +34,16 @@
 #define TILEDB_TYPES_H
 
 #include <cassert>
+#include <cmath>
 #include <cstring>
+#include <sstream>
 #include <string>
 #include <vector>
 #include "tiledb/common/logger_public.h"
 
-namespace tiledb {
-namespace sm {
+using namespace tiledb::common;
+
+namespace tiledb::sm {
 
 /* ********************************* */
 /*          TYPE DEFINITIONS         */
@@ -377,7 +380,154 @@ struct ChunkData {
   std::vector<DiskLayout> filtered_chunks_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+/**
+ * Typed range operations.
+ */
+template <typename T, typename Enable = T>
+struct RangeOperations {
+  /**
+   * Performs correctness checks for a valid range. If any validity checks fail
+   * an error status is returned.
+   *
+   * @param range The range to check. Must be a non-empty range with data of the
+   * appropriate type.
+   * @return Status of the checks.
+   */
+  static Status check_is_valid_range(const Range& range);
+};
+
+template <typename T>
+struct RangeOperations<
+    T,
+    typename std::enable_if<std::is_integral<T>::value, T>::type> {
+  static Status check_is_valid_range(const Range& range) {
+    auto r = (const T*)range.data();
+    // Check range bounds
+    if (r[0] > r[1]) {
+      std::stringstream ss;
+      ss << "Lower range bound " << r[0]
+         << " cannot be larger than the higher bound " << r[1];
+      return Status_Error(ss.str());
+    }
+    // Return okay.
+    return Status::Ok();
+  };
+};
+
+template <typename T>
+struct RangeOperations<
+    T,
+    typename std::enable_if<std::is_floating_point<T>::value, T>::type> {
+  static Status check_is_valid_range(const Range& range) {
+    auto r = (const T*)range.data();
+    // Check for NaN
+    if (std::isnan(r[0]) || std::isnan(r[1])) {
+      return Status_Error("Range contains NaN");
+    }
+    // Check range bounds
+    if (r[0] > r[1]) {
+      std::stringstream ss;
+      ss << "Lower range bound " << r[0]
+         << " cannot be larger than the higher bound " << r[1];
+      return Status_Error(ss.str());
+    }
+    // Return okay
+    return Status::Ok();
+  };
+};
+
+template <>
+struct RangeOperations<std::string, std::string> {
+  static Status check_is_valid_range(const Range&) {
+    return Status::Ok();
+  };
+};
+
+/**
+ * Typed range operations for sets.
+ *
+ */
+template <typename T, typename Enable = T>
+class RangeSuperset {
+  RangeSuperset() = delete;
+
+  /**
+   * Constructor for range superset.
+   *
+   * @param The superset to use for comparisons. Must be a valid non-empty range
+   * with data of type T.
+   */
+  RangeSuperset(Range& superset);
+
+  /**
+   * Replaces a range with its intersection with the superset.
+   *
+   * This method will return an ok status if the Range is not mutated and an
+   * error status if the intersection changes the bounds of the range.
+   *
+   * @param range The Range to replace with the intersection. Must be a valid
+   * non-empty range with data of type T.
+   * @return Status that returns error if range is mutated.
+   */
+  Status intersect(Range& range) const;
+
+  /**
+   * Performs checks to verify a range is a subset of the superset.
+   *
+   * @param range The range that is the assumed subset. Must be a valid
+   * non-empty range with data of type T.
+   * @return Status of the checks.
+   */
+  Status check_is_subset(const Range& range);
+};
+
+template <typename T>
+class RangeSuperset<
+    T,
+    typename std::enable_if<std::is_arithmetic<T>::value, T>::type> {
+ public:
+  RangeSuperset() = delete;
+  RangeSuperset(const Range& superset)
+      : superset_(superset){};
+  ~RangeSuperset() = default;
+
+  Status intersect(Range& range) const {
+    auto bounds = (const T*)superset_.data();
+    auto r = (T*)range.data();
+    // Check out-of-bounds
+    if (r[0] < bounds[0] || r[1] > bounds[1]) {
+      std::stringstream ss;
+      ss << "Range [" << r[0] << ", " << r[1] << "] is out of bounds ["
+         << bounds[0] << ", " << bounds[1] << "]";
+      if (r[0] < bounds[0]) {
+        ss << ". Adjusting range lower bound to be " << bounds[0];
+        r[0] = bounds[0];
+      }
+      if (r[1] > bounds[1]) {
+        ss << ". Adjusting range upper bound to be " << bounds[1];
+        r[1] = bounds[1];
+      }
+      return Status_Error(ss.str());
+    }
+    return Status::Ok();
+  };
+
+  Status check_is_subset(const Range& range) const {
+    auto domain = (const T*)superset_.data();
+    auto r = (const T*)range.data();
+    if (r[0] < domain[0] || r[1] > domain[1]) {
+      std::stringstream ss;
+      ss << "Range [" << r[0] << ", " << r[1] << "] is out of domain bounds ["
+         << domain[0] << ", " << domain[1] << "]";
+      return Status_Error(ss.str());
+    }
+    return Status::Ok();
+  };
+
+ private:
+  Range superset_;
+};
+
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_TYPES_H
