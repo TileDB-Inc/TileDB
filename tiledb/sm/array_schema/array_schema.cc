@@ -89,6 +89,9 @@ ArraySchema::ArraySchema(ArrayType array_type)
   cell_validity_filters_.add_filter(CompressionFilter(
       constants::cell_validity_compression,
       constants::cell_validity_compression_level));
+
+  // Generate URI and name for ArraySchema
+  generate_uri();
 }
 
 ArraySchema::ArraySchema(const ArraySchema& array_schema) {
@@ -113,8 +116,6 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema) {
   for (auto attr : array_schema.attributes_)
     add_attribute(attr, false);
 
-  // This has to be the last thing set because add_attribute sets the name
-  // TODO: This behavior needs to be changed
   name_ = array_schema.name_;
 }
 
@@ -512,7 +513,6 @@ Status ArraySchema::add_attribute(
   attributes_.emplace_back(attr);
   attribute_map_[attr->name()] = attr.get();
 
-  RETURN_NOT_OK(generate_uri());
   return Status::Ok();
 }
 
@@ -539,7 +539,7 @@ Status ArraySchema::drop_attribute(const std::string& attr_name) {
       it = attributes_.erase(it);
     }
   }
-  RETURN_NOT_OK(generate_uri());
+
   return Status::Ok();
 }
 
@@ -758,13 +758,9 @@ uint64_t ArraySchema::timestamp_start() const {
   return timestamp_range_.first;
 }
 
-URI ArraySchema::uri() {
+const URI& ArraySchema::uri() const {
   std::lock_guard<std::mutex> lock(mtx_);
-  if (uri_.is_invalid()) {
-    generate_uri();
-  }
-  URI result = uri_;
-  return result;
+  return uri_;
 }
 
 void ArraySchema::set_uri(const URI& uri) {
@@ -774,7 +770,7 @@ void ArraySchema::set_uri(const URI& uri) {
   utils::parse::get_timestamp_range(uri_, &timestamp_range_);
 }
 
-Status ArraySchema::get_uri(URI* uri) {
+Status ArraySchema::get_uri(URI* uri) const {
   if (uri_.is_invalid()) {
     return LOG_STATUS(
         Status_ArraySchemaError("Error in ArraySchema; invalid URI"));
