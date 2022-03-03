@@ -2800,7 +2800,7 @@ Status Subarray::compute_relevant_fragments_for_dim(
     const std::vector<uint64_t>& end_coords,
     std::vector<uint8_t>* const frag_bytemap) const {
   const auto meta = array_->fragment_metadata();
-  auto dim = array_->array_schema_latest()->dimension(dim_idx);
+  auto dim = array_->array_schema_latest().dimension(dim_idx);
 
   return parallel_for(compute_tp, 0, fragment_num, [&](const uint64_t f) {
     // We're done when we have already determined fragment `f` to
@@ -2953,8 +2953,8 @@ stats::Stats* Subarray::stats() const {
 template <typename T>
 tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
     const uint64_t dim_idx) {
-  const auto& ranges = ranges_[dim_idx];
-  auto dim = array_->array_schema_latest()->dimension(dim_idx);
+  const auto& ranges = range_subset_[dim_idx].ranges();
+  auto dim = array_->array_schema_latest().dimension(dim_idx);
 
   if (ranges.size() > 1) {
     for (uint64_t r = 0; r < ranges.size() - 1; r++) {
