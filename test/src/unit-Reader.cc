@@ -193,8 +193,6 @@ TEST_CASE_METHOD(
             .ok());
   CHECK(dom.add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &d2))
             .ok());
-  ArraySchema schema;
-  CHECK(schema.set_domain(&dom).ok());
 
   auto schema = tdb::make_shared<ArraySchema>(HERE());
   CHECK(schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &dom)).ok());
