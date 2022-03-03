@@ -39,8 +39,8 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/single_fragment_info.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/time.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -90,6 +90,9 @@ Status Consolidator::consolidate(
         array_name, encryption_type, encryption_key, key_length);
   else if (config_.mode_ == "array_meta")
     return consolidate_array_meta(
+        array_name, encryption_type, encryption_key, key_length);
+  else if (config_.mode_ == "commits")
+    return consolidate_commits(
         array_name, encryption_type, encryption_key, key_length);
 
   return logger_->status(Status_ConsolidatorError(
@@ -175,6 +178,63 @@ Status Consolidator::consolidate_array_meta(
   RETURN_NOT_OK(
       storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
+
+  return Status::Ok();
+}
+
+Status Consolidator::consolidate_commits(
+    const char* array_name,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
+  auto timer_se = stats_->start_timer("consolidate_commits");
+
+  // Open array for writing
+  auto array_uri = URI(array_name);
+  Array array_for_writes(array_uri, storage_manager_);
+  RETURN_NOT_OK(array_for_writes.open(
+      QueryType::WRITE, encryption_type, encryption_key, key_length));
+
+  // Ensure write version is at least 12.
+  auto write_version = array_for_writes.array_schema_latest().write_version();
+  RETURN_NOT_OK(array_for_writes.close());
+  if (write_version < 12) {
+    return logger_->status(Status_ConsolidatorError(
+        "Array version should be at least 12 to consolidate commits."));
+  }
+
+  // Get the array uri to consolidate from the array directory.
+  ArrayDirectory array_dir;
+  try {
+    array_dir = ArrayDirectory(
+        storage_manager_->vfs(),
+        storage_manager_->compute_tp(),
+        URI(array_name),
+        0,
+        utils::time::timestamp_now_ms(),
+        ArrayDirectoryMode::COMMITS);
+  } catch (const std::logic_error& le) {
+    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+  }
+
+  // Get the file name.
+  auto& to_consolidate = array_dir.commits_uris_to_consolidate();
+  auto&& [st1, name] = array_dir.compute_new_fragment_name(
+      to_consolidate.front(), to_consolidate.back(), write_version);
+  RETURN_NOT_OK(st1);
+
+  // Write consolidated file
+  std::stringstream ss;
+  for (const auto& uri : to_consolidate)
+    ss << uri.to_string() << "\n";
+
+  auto data = ss.str();
+  URI consolidated_commits_uri =
+      array_dir.get_commits_dir(write_version)
+          .join_path(name.value() + constants::meta_file_suffix);
+  RETURN_NOT_OK(storage_manager_->vfs()->write(
+      consolidated_commits_uri, data.c_str(), data.size()));
+  RETURN_NOT_OK(storage_manager_->vfs()->close_file(consolidated_commits_uri));
 
   return Status::Ok();
 }
@@ -428,13 +488,14 @@ Status Consolidator::consolidate_fragment_meta(
 
   // Compute new URI
   URI uri;
+  auto& array_dir = array.array_directory();
   auto first = meta.front()->fragment_uri();
   auto last = meta.back()->fragment_uri();
   auto write_version = array.array_schema_latest().write_version();
-  auto&& [st, name] = compute_new_fragment_name(first, last, write_version);
+  auto&& [st, name] =
+      array_dir.compute_new_fragment_name(first, last, write_version);
   RETURN_NOT_OK(st);
 
-  auto& array_dir = array.array_directory();
   auto frag_md_uri = array_dir.get_fragment_metadata_dir(write_version);
   RETURN_NOT_OK(storage_manager_->vfs()->create_dir(frag_md_uri));
   uri =
@@ -607,7 +668,9 @@ Status Consolidator::create_queries(
   auto last = (*query_r)->last_fragment_uri();
 
   auto write_version = array_for_reads->array_schema_latest().write_version();
-  auto&& [st, name] = compute_new_fragment_name(first, last, write_version);
+  auto&& [st, name] =
+      array_for_reads->array_directory().compute_new_fragment_name(
+          first, last, write_version);
   RETURN_NOT_OK(st);
   auto frag_uri =
       array_for_reads->array_directory().get_fragments_dir(write_version);
@@ -739,29 +802,6 @@ Status Consolidator::compute_next_to_consolidate(
   }
 
   return Status::Ok();
-}
-
-tuple<Status, optional<std::string>> Consolidator::compute_new_fragment_name(
-    const URI& first, const URI& last, uint32_t format_version) const {
-  // Get uuid
-  std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);
-
-  // For creating the new fragment URI
-
-  // Get timestamp ranges
-  std::pair<uint64_t, uint64_t> t_first, t_last;
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(first, &t_first), nullopt);
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(last, &t_last), nullopt);
-
-  // Create new URI
-  std::stringstream ss;
-  ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
-     << format_version;
-
-  return {Status::Ok(), ss.str()};
 }
 
 Status Consolidator::set_query_buffers(

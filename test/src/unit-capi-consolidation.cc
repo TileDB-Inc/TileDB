@@ -53,7 +53,11 @@ struct ConsolidationFx {
   const char* DENSE_VECTOR_FRAG_META_DIR =
       "test_consolidate_dense_vector/__fragment_meta";
   const char* DENSE_ARRAY_NAME = "test_consolidate_dense_array";
+  const char* DENSE_ARRAY_COMMITS_DIR =
+      "test_consolidate_dense_array/__commits";
   const char* SPARSE_ARRAY_NAME = "test_consolidate_sparse_array";
+  const char* SPARSE_ARRAY_COMMITS_DIR =
+      "test_consolidate_sparse_array/__commits";
   const char* SPARSE_HETEROGENEOUS_ARRAY_NAME =
       "test_consolidate_sparse_heterogeneous_array";
   const char* SPARSE_STRING_ARRAY_NAME = "test_consolidate_sparse_string_array";
@@ -122,10 +126,17 @@ struct ConsolidationFx {
       const std::string& mode = "fragments",
       uint64_t start = 0,
       uint64_t end = UINT64_MAX);
-  void consolidate_sparse();
+  void consolidate_sparse(
+      const std::string& mode = "fragments",
+      uint64_t start = 0,
+      uint64_t end = UINT64_MAX);
   void consolidate_sparse_heterogeneous();
   void consolidate_sparse_string();
   void vacuum_dense(
+      const std::string& mode = "fragments",
+      uint64_t start = 0,
+      uint64_t end = UINT64_MAX);
+  void vacuum_sparse(
       const std::string& mode = "fragments",
       uint64_t start = 0,
       uint64_t end = UINT64_MAX);
@@ -136,6 +147,9 @@ struct ConsolidationFx {
   void remove_sparse_string_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
+  void check_commits_dir_dense(int num_meta, int num_wrt, int num_ignore);
+  void check_commits_dir_sparse(int num_meta, int num_wrt, int num_ignore);
+  void check_ok_num(int num_ok);
   void get_array_meta_files_dense(std::vector<std::string>& files);
   void get_array_meta_vac_files_dense(std::vector<std::string>& files);
   void get_vac_files_dense(std::vector<std::string>& files);
@@ -149,6 +163,9 @@ struct ConsolidationFx {
 
   static int get_dir_num(const char* path, void* data);
   static int get_meta_num(const char* path, void* data);
+  static int get_wrt_num(const char* path, void* data);
+  static int get_ignore_num(const char* path, void* data);
+  static int get_ok_num(const char* path, void* data);
   static int get_array_meta_files_callback(const char* path, void* data);
   static int get_array_meta_vac_files_callback(const char* path, void* data);
   static int get_vac_files_callback(const char* path, void* data);
@@ -3878,14 +3895,29 @@ void ConsolidationFx::consolidate_dense(
   tiledb_config_free(&cfg);
 }
 
-void ConsolidationFx::consolidate_sparse() {
+void ConsolidationFx::consolidate_sparse(
+    const std::string& mode, uint64_t start, uint64_t end) {
   int rc;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.consolidation.mode", mode.c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg,
+      "sm.consolidation.timestamp_start",
+      std::to_string(start).c_str(),
+      &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.consolidation.timestamp_end", std::to_string(end).c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
   if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
-    tiledb_config_t* cfg;
-    tiledb_error_t* err = nullptr;
-    rc = tiledb_config_alloc(&cfg, &err);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(err == nullptr);
     std::string encryption_type_string =
         encryption_type_str((tiledb::sm::EncryptionType)encryption_type_);
     rc = tiledb_config_set(
@@ -3894,12 +3926,10 @@ void ConsolidationFx::consolidate_sparse() {
     rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    rc = tiledb_array_consolidate(ctx_, SPARSE_ARRAY_NAME, cfg);
-    tiledb_config_free(&cfg);
-  } else {
-    rc = tiledb_array_consolidate(ctx_, SPARSE_ARRAY_NAME, nullptr);
   }
+  rc = tiledb_array_consolidate(ctx_, SPARSE_ARRAY_NAME, cfg);
   REQUIRE(rc == TILEDB_OK);
+  tiledb_config_free(&cfg);
 }
 
 void ConsolidationFx::consolidate_sparse_heterogeneous() {
@@ -3976,6 +4006,31 @@ void ConsolidationFx::vacuum_dense(
   tiledb_config_free(&cfg);
 }
 
+void ConsolidationFx::vacuum_sparse(
+    const std::string& mode, uint64_t start, uint64_t end) {
+  int rc;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.vacuum.mode", mode.c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.vacuum.timestamp_start", std::to_string(start).c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.vacuum.timestamp_end", std::to_string(end).c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_array_vacuum(ctx_, SPARSE_ARRAY_NAME, cfg);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_config_free(&cfg);
+}
+
 void ConsolidationFx::remove_array(const std::string& array_name) {
   if (!is_array(array_name))
     return;
@@ -4007,6 +4062,68 @@ bool ConsolidationFx::is_array(const std::string& array_name) {
   tiledb_object_t type = TILEDB_INVALID;
   REQUIRE(tiledb_object_type(ctx_, array_name.c_str(), &type) == TILEDB_OK);
   return type == TILEDB_ARRAY;
+}
+
+void ConsolidationFx::check_commits_dir_dense(
+    int num_meta, int num_wrt, int num_ignore) {
+  int32_t rc;
+  get_num_struct data;
+
+  // Check number of consolidated metadata files
+  data = {ctx_, vfs_, 0};
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_ARRAY_COMMITS_DIR, &get_meta_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == num_meta);
+
+  // Check number of wrt files
+  data = {ctx_, vfs_, 0};
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_ARRAY_COMMITS_DIR, &get_wrt_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == num_wrt);
+
+  // Check number of ignore files
+  data = {ctx_, vfs_, 0};
+  rc = tiledb_vfs_ls(
+      ctx_, vfs_, DENSE_ARRAY_COMMITS_DIR, &get_ignore_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == num_ignore);
+}
+
+void ConsolidationFx::check_commits_dir_sparse(
+    int num_meta, int num_wrt, int num_ignore) {
+  int32_t rc;
+  get_num_struct data;
+
+  // Check number of consolidated metadata files
+  data = {ctx_, vfs_, 0};
+  rc =
+      tiledb_vfs_ls(ctx_, vfs_, SPARSE_ARRAY_COMMITS_DIR, &get_meta_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == num_meta);
+
+  // Check number of wrt files
+  data = {ctx_, vfs_, 0};
+  rc = tiledb_vfs_ls(ctx_, vfs_, SPARSE_ARRAY_COMMITS_DIR, &get_wrt_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == num_wrt);
+
+  // Check number of ignore files
+  data = {ctx_, vfs_, 0};
+  rc = tiledb_vfs_ls(
+      ctx_, vfs_, SPARSE_ARRAY_COMMITS_DIR, &get_ignore_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == num_ignore);
+}
+
+void ConsolidationFx::check_ok_num(int num_ok) {
+  int32_t rc;
+  get_num_struct data;
+
+  // Check number of ok files
+  data = {ctx_, vfs_, 0};
+  rc = tiledb_vfs_ls(ctx_, vfs_, SPARSE_ARRAY_NAME, &get_ok_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == num_ok);
 }
 
 TEST_CASE_METHOD(
@@ -4095,6 +4212,33 @@ int ConsolidationFx::get_meta_num(const char* path, void* data) {
   auto data_struct = (ConsolidationFx::get_num_struct*)data;
   if (tiledb::sm::utils::parse::ends_with(
           path, tiledb::sm::constants::meta_file_suffix))
+    ++data_struct->num;
+
+  return 1;
+}
+
+int ConsolidationFx::get_wrt_num(const char* path, void* data) {
+  auto data_struct = (ConsolidationFx::get_num_struct*)data;
+  if (tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::write_file_suffix))
+    ++data_struct->num;
+
+  return 1;
+}
+
+int ConsolidationFx::get_ignore_num(const char* path, void* data) {
+  auto data_struct = (ConsolidationFx::get_num_struct*)data;
+  if (tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::ignore_file_suffix))
+    ++data_struct->num;
+
+  return 1;
+}
+
+int ConsolidationFx::get_ok_num(const char* path, void* data) {
+  auto data_struct = (ConsolidationFx::get_num_struct*)data;
+  if (tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::ok_file_suffix))
     ++data_struct->num;
 
   return 1;
@@ -5866,3 +6010,336 @@ TEST_CASE_METHOD(
   // Clean up
   remove_dense_array();
 }
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidation, dense, commits",
+    "[capi][consolidation][dense][commits]") {
+  remove_dense_array();
+  create_dense_array();
+
+  SECTION("- write full, subarray") {
+    // Consolidation works.
+    write_dense_full();
+    write_dense_subarray();
+    consolidate_dense("commits");
+    read_dense_full_subarray();
+    check_commits_dir_dense(1, 2, 0);
+
+    // Vacuum works.
+    vacuum_dense("commits");
+    read_dense_full_subarray();
+    check_commits_dir_dense(1, 0, 0);
+
+    // Second consolidation works.
+    consolidate_dense("commits");
+    read_dense_full_subarray();
+    check_commits_dir_dense(2, 0, 0);
+
+    // Second vacuum works.
+    vacuum_dense("commits");
+    read_dense_full_subarray();
+    check_commits_dir_dense(1, 0, 0);
+
+    // After fragment consolidation and vacuuming, array is still valid.
+    consolidate_dense();
+    vacuum_dense();
+    read_dense_full_subarray();
+    check_commits_dir_dense(1, 1, 1);
+
+    // Consolidation to get rid of ignore file.
+    consolidate_dense("commits");
+    read_dense_full_subarray();
+    check_commits_dir_dense(2, 1, 1);
+
+    // Second vacuum works.
+    vacuum_dense("commits");
+    read_dense_full_subarray();
+    check_commits_dir_dense(1, 0, 0);
+  }
+
+  SECTION("- write subarray, full") {
+    // Consolidation works.
+    write_dense_subarray();
+    write_dense_full();
+    consolidate_dense("commits");
+    read_dense_subarray_full();
+
+    // Vacuum works.
+    vacuum_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(1, 0, 0);
+
+    // Second consolidation works.
+    consolidate_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(2, 0, 0);
+
+    // Second vacuum works.
+    vacuum_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(1, 0, 0);
+
+    // After fragment consolidation and vacuuming, array is still valid.
+    consolidate_dense();
+    vacuum_dense();
+    read_dense_subarray_full();
+    check_commits_dir_dense(1, 1, 1);
+
+    // Consolidation to get rid of ignore file.
+    consolidate_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(2, 1, 1);
+
+    // Second vacuum works.
+    vacuum_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(1, 0, 0);
+  }
+
+  SECTION("- write (encrypted) subarray, full") {
+    remove_dense_array();
+    encryption_type_ = TILEDB_AES_256_GCM;
+    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    create_dense_array();
+
+    // Consolidation works.
+    write_dense_subarray();
+    write_dense_full();
+    consolidate_dense("commits");
+    read_dense_subarray_full();
+
+    // Vacuum works.
+    vacuum_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(1, 0, 0);
+
+    // Second consolidation works.
+    consolidate_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(2, 0, 0);
+
+    // Second vacuum works.
+    vacuum_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(1, 0, 0);
+
+    // After fragment consolidation and vacuuming, array is still valid.
+    consolidate_dense();
+    vacuum_dense();
+    read_dense_subarray_full();
+    check_commits_dir_dense(1, 1, 1);
+
+    // Consolidation to get rid of ignore file.
+    consolidate_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(2, 1, 1);
+
+    // Second vacuum works.
+    vacuum_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(1, 0, 0);
+  }
+
+  remove_dense_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidation, sparse, commits",
+    "[capi][consolidation][sparse][commits]") {
+  remove_sparse_array();
+  create_sparse_array();
+
+  SECTION("- write full, unordered") {
+    // Consolidation works.
+    write_sparse_full();
+    write_sparse_unordered();
+    consolidate_sparse("commits");
+    read_sparse_full_unordered();
+    check_commits_dir_sparse(1, 2, 0);
+
+    // Vacuum works.
+    vacuum_sparse("commits");
+    read_sparse_full_unordered();
+    check_commits_dir_sparse(1, 0, 0);
+
+    // Second consolidation works.
+    consolidate_sparse("commits");
+    read_sparse_full_unordered();
+    check_commits_dir_sparse(2, 0, 0);
+
+    // Second vacuum works.
+    vacuum_sparse("commits");
+    read_sparse_full_unordered();
+    check_commits_dir_sparse(1, 0, 0);
+
+    // After fragment consolidation and vacuuming, array is still valid.
+    consolidate_sparse();
+    vacuum_sparse();
+    read_sparse_full_unordered();
+    check_commits_dir_sparse(1, 1, 1);
+
+    // Consolidation to get rid of ignore file.
+    consolidate_sparse("commits");
+    read_sparse_full_unordered();
+    check_commits_dir_sparse(2, 1, 1);
+
+    // Second vacuum works.
+    vacuum_sparse("commits");
+    read_sparse_full_unordered();
+    check_commits_dir_sparse(1, 0, 0);
+  }
+
+  SECTION("- write unordered, full") {
+    // Consolidation works.
+    write_sparse_unordered();
+    write_sparse_full();
+    consolidate_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 2, 0);
+
+    // Vacuum works.
+    vacuum_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 0, 0);
+
+    // Second consolidation works.
+    consolidate_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(2, 0, 0);
+
+    // Second vacuum works.
+    vacuum_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 0, 0);
+
+    // After fragment consolidation and vacuuming, array is still valid.
+    consolidate_sparse();
+    vacuum_sparse();
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 1, 1);
+
+    // Consolidation to get rid of ignore file.
+    consolidate_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(2, 1, 1);
+
+    // Second vacuum works.
+    vacuum_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 0, 0);
+  }
+
+  SECTION("- write (encrypted) unordered, full") {
+    remove_sparse_array();
+    encryption_type_ = TILEDB_AES_256_GCM;
+    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    create_sparse_array();
+
+    // Consolidation works.
+    write_sparse_unordered();
+    write_sparse_full();
+    consolidate_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 2, 0);
+
+    // Vacuum works.
+    vacuum_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 0, 0);
+
+    // Second consolidation works.
+    consolidate_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(2, 0, 0);
+
+    // Second vacuum works.
+    vacuum_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 0, 0);
+
+    // After fragment consolidation and vacuuming, array is still valid.
+    consolidate_sparse();
+    vacuum_sparse();
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 1, 1);
+
+    // Consolidation to get rid of ignore file.
+    consolidate_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(2, 1, 1);
+
+    // Second vacuum works.
+    vacuum_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 0, 0);
+  }
+
+  remove_sparse_array();
+}
+
+#ifndef _WIN32
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidation, sparse, commits, mixed versions",
+    "[capi][consolidation][commits][mixed-versions]") {
+  remove_sparse_array();
+
+  // Get the v11 sparse array.
+  std::string v11_arrays_dir =
+      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/sparse_array_v11";
+  REQUIRE(
+      tiledb_vfs_copy_dir(
+          ctx_, vfs_, v11_arrays_dir.c_str(), SPARSE_ARRAY_NAME) == TILEDB_OK);
+
+  // Write v11 fragment.
+  write_sparse_full();
+
+  // Upgrade to latest version.
+  REQUIRE(
+      tiledb_array_upgrade_version(ctx_, SPARSE_ARRAY_NAME, nullptr) ==
+      TILEDB_OK);
+
+  // Consolidation works.
+  write_sparse_unordered();
+  consolidate_sparse("commits");
+  read_sparse_full_unordered();
+  check_commits_dir_sparse(1, 1, 0);
+  check_ok_num(1);
+
+  // Vacuum works.
+  vacuum_sparse("commits");
+  read_sparse_full_unordered();
+  check_commits_dir_sparse(1, 0, 0);
+  check_ok_num(0);
+
+  // Second consolidation works.
+  consolidate_sparse("commits");
+  read_sparse_full_unordered();
+  check_commits_dir_sparse(2, 0, 0);
+
+  // Second vacuum works.
+  vacuum_sparse("commits");
+  read_sparse_full_unordered();
+  check_commits_dir_sparse(1, 0, 0);
+
+  // After fragment consolidation and vacuuming, array is still valid.
+  consolidate_sparse();
+  vacuum_sparse();
+  read_sparse_full_unordered();
+  check_commits_dir_sparse(1, 1, 1);
+
+  // Consolidation to get rid of ignore file.
+  consolidate_sparse("commits");
+  read_sparse_full_unordered();
+  check_commits_dir_sparse(2, 1, 1);
+
+  // Second vacuum works.
+  vacuum_sparse("commits");
+  read_sparse_full_unordered();
+  check_commits_dir_sparse(1, 0, 0);
+
+  remove_sparse_array();
+}
+#endif

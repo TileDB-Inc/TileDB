@@ -326,6 +326,14 @@ class StorageManager {
       const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**
+   * Cleans up consolidated commit files.
+   *
+   * @param array_name The name of the array to be consolidated.
+   * @return Status
+   */
+  Status array_vacuum_commits(const char* array_name);
+
+  /**
    * Consolidates the metadata of an array into a single file.
    *
    * @param array_name The name of the array whose metadata will be

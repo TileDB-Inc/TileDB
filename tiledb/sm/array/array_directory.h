@@ -45,6 +45,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+enum class ArrayDirectoryMode {
+  DEFAULT,
+  SCHEMA_ONLY,
+  COMMITS,
+  VACUUM_FRAGMENTS
+};
+
 /**
  * Manages the various URIs inside an array directory, considering
  * various versions of the on-disk TileDB format.
@@ -72,8 +79,7 @@ class ArrayDirectory {
    *     were created within timestamp range
    *    [`timestamp_start`, `timestamp_end`] will be considered when
    *     fetching URIs.
-   * @param only_schema If `true`, only the array schema URIs
-   *     will be loaded.
+   * @param mode The mode to load the array directory in.
    */
   ArrayDirectory(
       VFS* vfs,
@@ -81,7 +87,7 @@ class ArrayDirectory {
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
-      bool only_schemas = false);
+      ArrayDirectoryMode mode = ArrayDirectoryMode::DEFAULT);
 
   /** Destructor. */
   ~ArrayDirectory() = default;
@@ -105,11 +111,26 @@ class ArrayDirectory {
   /** Returns the URIs of the array metadata vacuum files to vacuum. */
   const std::vector<URI>& array_meta_vac_uris_to_vacuum() const;
 
+  /** Returns the URIs of the commit files to consolidate. */
+  const std::vector<URI>& commits_uris_to_consolidate() const;
+
+  /** Returns the URIs of the commit files to vacuum. */
+  const std::vector<URI>& commits_uris_to_vacuum() const;
+
+  /** Returns the URIs of the consolidated commit files to vacuum. */
+  const std::vector<URI>& consolidated_commits_uris_to_vacuum() const;
+
   /** Returns the filtered array metadata URIs. */
   const std::vector<TimestampedURI>& array_meta_uris() const;
 
   /** Returns the fragment URIs to vacuum. */
   const std::vector<URI>& fragment_uris_to_vacuum() const;
+
+  /** Returns the commit URIs to vacuum during fragment vacuuming. */
+  const std::vector<URI>& fragment_commit_uris_to_vacuum() const;
+
+  /** Returns the commit URIs to ignore for fragment vacuuming. */
+  const std::vector<URI>& fragment_commit_uris_to_ignore() const;
 
   /** Returns the vacuum file URIs to vacuum for fragments. */
   const std::vector<URI>& fragment_vac_uris_to_vacuum() const;
@@ -137,6 +158,13 @@ class ArrayDirectory {
 
   /** Returns the URI for a vacuum file. */
   tuple<Status, optional<URI>> get_vaccum_uri(const URI& fragment_uri) const;
+
+  /**
+   * The new fragment name is computed
+   * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
+   */
+  tuple<Status, optional<std::string>> compute_new_fragment_name(
+      const URI& first, const URI& last, uint32_t format_version) const;
 
   /** Returns `true` if `load` has been run. */
   bool loaded() const;
@@ -167,6 +195,15 @@ class ArrayDirectory {
   /** The URIs of the array metadata vac files to vacuum. */
   std::vector<URI> array_meta_vac_uris_to_vacuum_;
 
+  /** The URIs of the commits files to consolidate. */
+  std::vector<URI> commits_uris_to_consolidate_;
+
+  /** The URIs of the commits files to vacuum. */
+  std::vector<URI> commits_uris_to_vacuum_;
+
+  /** The URIs of the consolidated commits files to vacuum. */
+  std::vector<URI> consolidated_commits_uris_to_vacuum_;
+
   /**
    * The filtered array metadata URIs, after removing the ones that
    * need to be vacuum and those that do not fall inside range
@@ -176,6 +213,12 @@ class ArrayDirectory {
 
   /** The fragment URIs to vacuum. */
   std::vector<URI> fragment_uris_to_vacuum_;
+
+  /** The commit URIs to vacuum. */
+  std::vector<URI> fragment_commit_uris_to_vacuum_;
+
+  /** The commit URIs to ignore after fragment vacuum. */
+  std::vector<URI> fragment_commit_uris_to_ignore_;
 
   /** The URIs of the fragment vac files to vacuum. */
   std::vector<URI> fragment_vac_uris_to_vacuum_;
@@ -211,8 +254,8 @@ class ArrayDirectory {
    */
   uint64_t timestamp_end_;
 
-  /** If `ture`, only the array schemas will be loaded. */
-  bool only_schemas_;
+  /** Mode for the array directory. */
+  ArrayDirectoryMode mode_;
 
   /** True if `load` has been run. */
   bool loaded_;
@@ -225,18 +268,37 @@ class ArrayDirectory {
   Status load();
 
   /**
+   * List the root directory uris for v1 to v11.
+   *
+   * @return Status, vector of URIs.
+   */
+  tuple<Status, optional<std::vector<URI>>> list_root_dir_uris();
+
+  /**
    * Loads the root directory uris for v1 to v11.
    *
    * @return Status, vector of fragment URIs, latest fragment metadata.
    */
-  tuple<Status, optional<std::vector<URI>>, optional<URI>> load_root_dir_uris();
+  tuple<Status, optional<std::vector<URI>>, optional<URI>> load_root_dir_uris(
+      const std::vector<URI>& root_dir_uris,
+      const std::unordered_set<std::string>& consolidated_uris_set);
+
+  /**
+   * List the commits directory uris for v12 or higher.
+   *
+   * @return Status, vector of commit URIs.
+   */
+  tuple<Status, optional<std::vector<URI>>> list_commits_dir_uris();
 
   /**
    * Loads the commit directory uris for v12 or higher.
    *
    * @return Status, vector of fragment URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> load_commit_dir_uris();
+  tuple<Status, optional<std::vector<URI>>> load_commits_dir_uris(
+      const std::vector<URI>& commits_dir_uris,
+      const std::vector<URI>& consolidated_uris,
+      const std::unordered_set<std::string>& consolidated_uris_set);
 
   /**
    * Loads the fragment metadata directory uris for v12 or higher.
@@ -244,6 +306,26 @@ class ArrayDirectory {
    * @return Status, latest fragment metadata.
    */
   tuple<Status, optional<URI>> load_fragment_metadata_dir_uris();
+
+  /**
+   * Loads the commits URIs to consolidate.
+   */
+  void load_commits_uris_to_consolidate(
+      const std::vector<URI>& array_dir_uris,
+      const std::vector<URI>& commits_dir_uris,
+      const std::vector<URI>& consolidated_uris,
+      const std::unordered_set<std::string>& consolidated_uris_set);
+
+  /**
+   * Loads the consolidated commit URI from the commit directory.
+   *
+   * @return Status, consolidated uris, set of all consolidated uris.
+   */
+  tuple<
+      Status,
+      optional<std::vector<URI>>,
+      optional<std::unordered_set<std::string>>>
+  load_consolidated_commit_uris(const std::vector<URI>& commits_dir_uris);
 
   /** Loads the array metadata URIs. */
   Status load_array_meta_uris();
@@ -256,7 +338,8 @@ class ArrayDirectory {
    * versions 1 to 11.
    */
   tuple<Status, optional<std::vector<URI>>> compute_fragment_uris_v1_v11(
-      const std::vector<URI>& array_dir_uris);
+      const std::vector<URI>& array_dir_uris,
+      const std::unordered_set<std::string>& consolidated_uris_set) const;
 
   /**
    * Computes the latest fragment meta URI from the input array directory.
@@ -272,7 +355,7 @@ class ArrayDirectory {
    *     the vac file URIs to vacuum.
    */
   tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
-  compute_uris_to_vacuum(const std::vector<URI>& uris);
+  compute_uris_to_vacuum(const std::vector<URI>& uris) const;
 
   /**
    * Computes the filtered URIs based on the input, which fall
@@ -283,7 +366,7 @@ class ArrayDirectory {
    * @return Status, vector of filtered timestamped URIs.
    */
   tuple<Status, optional<std::vector<TimestampedURI>>> compute_filtered_uris(
-      const std::vector<URI>& uris, const std::vector<URI>& to_ignore);
+      const std::vector<URI>& uris, const std::vector<URI>& to_ignore) const;
 
   /**
    * Computes and sets the final vector of array schema URIs, and the
@@ -308,12 +391,16 @@ class ArrayDirectory {
    *
    * @param uri The URI to be checked.
    * @param ok_uris For checking URI existence of versions >= 5.
+   * @param consolidated_uris_set For checking URI existence of versions >= 5.
    * @param is_fragment Set to `1` if the URI is a fragment and `0`
    *     otherwise.
    * @return Status
    */
   Status is_fragment(
-      const URI& uri, const std::set<URI>& ok_uris, int32_t* is_fragment) const;
+      const URI& uri,
+      const std::unordered_set<std::string>& ok_uris,
+      const std::unordered_set<std::string>& consolidated_uris_set,
+      int32_t* is_fragment) const;
 };
 
 }  // namespace sm
