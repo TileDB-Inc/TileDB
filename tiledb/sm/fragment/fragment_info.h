@@ -331,13 +331,7 @@ class FragmentInfo {
 
   /**
    * All the array schemas relevant to the loaded fragment metadata
-   * keyed by their file name. These schemas are also stored inside
-   * fragment metadata objects in `fragment_metadata_`, but as pointers,
-   * not shared pointers. Therefore, we need to store the shared pointers
-   * in a separate place here.
-   *
-   * TODO: when we transition to using a shared pointer for ArraySchema
-   * objects everywhere, we will not need to store this here.
+   * keyed by their file name.
    */
   std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
 

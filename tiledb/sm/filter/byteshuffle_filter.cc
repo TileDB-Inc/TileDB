@@ -62,6 +62,7 @@ Status ByteshuffleFilter::run_forward(
     const Tile& tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
+    const std::vector<uint64_t>& /* input_offsets */,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   // Output size does not change with this filter.

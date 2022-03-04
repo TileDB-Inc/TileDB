@@ -93,6 +93,8 @@ class Filter {
    *
    * @param input_metadata Buffer with metadata for `input`
    * @param input Buffer with data to be filtered.
+   * @param input_offsets Buffer with the offsets (if any) of the data to be
+   * filtered.
    * @param output_metadata Buffer with metadata for filtered data
    * @param output Buffer with filtered data (unused by in-place filters).
    * @return
@@ -101,6 +103,7 @@ class Filter {
       const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
+      const std::vector<uint64_t>& input_offsets,
       FilterBuffer* output_metadata,
       FilterBuffer* output) const = 0;
 

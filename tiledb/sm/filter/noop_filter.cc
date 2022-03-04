@@ -59,6 +59,7 @@ Status NoopFilter::run_forward(
     const Tile&,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
+    const std::vector<uint64_t>& /* input_offsets */,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   RETURN_NOT_OK(output->append_view(input));

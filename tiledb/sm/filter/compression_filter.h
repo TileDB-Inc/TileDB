@@ -109,6 +109,7 @@ class CompressionFilter : public Filter {
       const Tile& tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
+      const std::vector<uint64_t>& input_offsets,
       FilterBuffer* output_metadata,
       FilterBuffer* output) const override;
 
@@ -177,6 +178,31 @@ class CompressionFilter : public Filter {
       Buffer* output,
       FilterBuffer* input_metadata) const;
 
+  /** Calculate the size of the output metadata to allocate */
+  size_t calculate_output_metadata_size(
+      const Tile& tile,
+      const std::vector<ConstBuffer>& data_parts,
+      const std::vector<ConstBuffer>& metadata_parts) const;
+
+  /**
+   * Helper function to compress a buffer of variable-sized strings for certain
+   * algorithms where this is a special case
+   */
+  Status compress_var_string_coords(
+      const FilterBuffer& input,
+      const std::vector<uint64_t>& input_offsets,
+      FilterBuffer& output,
+      FilterBuffer& output_metadata) const;
+
+  /**
+   * Helper function to decompress a buffer of variable-sized strings for
+   * certain algorithms where this is a special case
+   */
+  Status decompress_var_string_coords(
+      FilterBuffer& input,
+      FilterBuffer& input_metadata,
+      FilterBuffer& output) const;
+
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;
 
@@ -197,6 +223,10 @@ class CompressionFilter : public Filter {
 
   /** Initializes the decompression resource pool */
   void init_decompression_resource_pool(uint64_t size) override;
+
+  /** Creates a vector of views of the input strings */
+  static std::vector<std::string_view> create_input_view(
+      const FilterBuffer& input, const std::vector<uint64_t>& input_offsets);
 };
 
 }  // namespace sm

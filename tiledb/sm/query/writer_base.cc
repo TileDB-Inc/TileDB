@@ -760,7 +760,9 @@ Status WriterBase::filter_tile(
 
   // Check if chunk or tile level filtering/unfiltering is appropriate
   bool use_chunking = filters.use_tile_chunking(
-      array_schema_.is_dim(name), array_schema_.var_size(name), tile->type());
+      array_schema_.is_dim(name),
+      array_schema_.var_size(name),
+      array_schema_.type(name));
 
   assert(!tile->filtered());
   RETURN_NOT_OK(filters.run_forward(

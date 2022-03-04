@@ -206,7 +206,8 @@ const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
 
 const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
   auto coords_size = std::get<0>(coords_tile_).cell_size();
-  auto coord_size = coords_size / std::get<0>(coords_tile_).dim_num();
+  auto coord_size =
+      coords_size / std::get<0>(coords_tile_).zipped_coords_dim_num();
   const uint64_t offset = pos * coords_size + dim_idx * coord_size;
   void* const ret =
       static_cast<char*>(std::get<0>(coords_tile_).data()) + offset;
@@ -244,7 +245,7 @@ uint64_t ResultTile::coord_size(unsigned dim_idx) const {
   // Handle zipped coordinate tiles
   if (!std::get<0>(coords_tile_).empty())
     return std::get<0>(coords_tile_).cell_size() /
-           std::get<0>(coords_tile_).dim_num();
+           std::get<0>(coords_tile_).zipped_coords_dim_num();
 
   // Handle separate coordinate tiles
   assert(dim_idx < coord_tiles_.size());

@@ -62,6 +62,7 @@ Status BitshuffleFilter::run_forward(
     const Tile& tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
+    const std::vector<uint64_t>& /* input_offsets */,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   auto tile_type = tile.type();

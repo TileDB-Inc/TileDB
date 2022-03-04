@@ -438,7 +438,14 @@ class ArraySchema {
    * Returns error if double delta compression is used in the zipped
    * coordinate filters and is inherited by a dimension.
    */
-  Status check_double_delta_compressor() const;
+  Status check_double_delta_compressor(
+      const FilterPipeline& coords_filters) const;
+
+  /**
+   * Returns error if RLE is used for string dimensions but it is not the only
+   * filter in the filter list.
+   */
+  Status check_rle_compressor(const FilterPipeline& coords_filters) const;
 
   /** Clears all members. Use with caution! */
   void clear();

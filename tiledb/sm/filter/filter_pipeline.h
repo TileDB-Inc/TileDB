@@ -137,12 +137,12 @@ class FilterPipeline {
   }
 
   /**
-   * Checks if a certain filter exists in the filter pipeline
+   * Checks if a certain filter type exists in the filter pipeline
    *
-   * @param filter The filter to search for
+   * @param filter_type The filter type to search for
    * @return True if found, false otherwise
    */
-  bool has_filter(const Filter& filter) const;
+  bool has_filter(const FilterType& filter_type) const;
 
   /**
    * Returns a pointer to the filter in the pipeline at the given index.

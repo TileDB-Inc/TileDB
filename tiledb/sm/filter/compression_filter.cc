@@ -196,10 +196,42 @@ Status CompressionFilter::get_option_impl(
   }
 }
 
+std::vector<std::string_view> CompressionFilter::create_input_view(
+    const FilterBuffer& input, const std::vector<uint64_t>& input_offsets) {
+  auto input_buf = static_cast<const char*>(input.buffers()[0].data());
+  std::vector<std::string_view> input_view(input_offsets.size() - 1);
+
+  for (size_t i = 0; i < input_offsets.size() - 1; i++) {
+    input_view[i] = std::string_view(
+        input_buf + input_offsets[i], input_offsets[i + 1] - input_offsets[i]);
+  }
+  return input_view;
+}
+
+size_t CompressionFilter::calculate_output_metadata_size(
+    const Tile& tile,
+    const std::vector<ConstBuffer>& data_parts,
+    const std::vector<ConstBuffer>& metadata_parts) const {
+  auto total_num_parts = data_parts.size() + metadata_parts.size();
+  auto metadata_size =
+      2 * sizeof(uint32_t) + total_num_parts * 2 * sizeof(uint32_t);
+
+  if (compressor_ == Compressor::RLE) {
+    if (datatype_is_string(tile.type())) {
+      // Add two extra metadata bytes that store run length datasize and
+      // string length datasize
+      metadata_size += 2 * sizeof(uint8_t);
+    }
+  }
+
+  return metadata_size;
+}
+
 Status CompressionFilter::run_forward(
     const Tile& tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
+    const std::vector<uint64_t>& input_offsets,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   // Easy case: no compression
@@ -213,12 +245,27 @@ Status CompressionFilter::run_forward(
     return LOG_STATUS(
         Status_FilterError("Input is too large to be compressed."));
 
-  // Compute the upper bound on the size of the output.
   std::vector<ConstBuffer> data_parts = input->buffers(),
                            metadata_parts = input_metadata->buffers();
-  auto num_data_parts = (uint32_t)data_parts.size(),
-       num_metadata_parts = (uint32_t)metadata_parts.size(),
-       total_num_parts = num_data_parts + num_metadata_parts;
+
+  // Allocate output metadata
+  auto metadata_size =
+      calculate_output_metadata_size(tile, data_parts, metadata_parts);
+  uint32_t num_metadata_parts = metadata_parts.size();
+  uint32_t num_data_parts = data_parts.size();
+  RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
+  RETURN_NOT_OK(output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
+  RETURN_NOT_OK(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
+
+  if (compressor_ == Compressor::RLE && datatype_is_string(tile.type()) &&
+      !input_offsets.empty()) {
+    // String RLE is only allowed on first/single filter
+    assert(num_data_parts == 1);
+    return compress_var_string_coords(
+        *input, input_offsets, *output, *output_metadata);
+  }
+
+  // Allocate output data
   uint64_t output_size_ub = 0;
   for (const auto& part : metadata_parts)
     output_size_ub += part.size() + overhead(tile, part.size());
@@ -230,13 +277,6 @@ Status CompressionFilter::run_forward(
   Buffer* buffer_ptr = output->buffer_ptr(0);
   assert(buffer_ptr != nullptr);
   buffer_ptr->reset_offset();
-
-  // Allocate a buffer for this filter's metadata and write the number of parts.
-  auto metadata_size =
-      2 * sizeof(uint32_t) + total_num_parts * 2 * sizeof(uint32_t);
-  RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
-  RETURN_NOT_OK(output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
-  RETURN_NOT_OK(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
 
   // Compress all parts.
   for (auto& part : metadata_parts)
@@ -275,6 +315,12 @@ Status CompressionFilter::run_reverse(
   RETURN_NOT_OK(output_metadata->prepend_buffer(0));
   Buffer* metadata_buffer = output_metadata->buffer_ptr(0);
   assert(metadata_buffer != nullptr);
+
+  if (compressor_ == Compressor::RLE && datatype_is_string(tile.type())) {
+    // String RLE is only allowed on first/single filter
+    assert(num_data_parts == 1);
+    return decompress_var_string_coords(*input, *input_metadata, *output);
+  }
 
   for (uint32_t i = 0; i < num_metadata_parts; i++)
     RETURN_NOT_OK(
@@ -394,6 +440,124 @@ Status CompressionFilter::decompress_part(
   input->advance_offset(compressed_size);
 
   return st;
+}
+
+Status CompressionFilter::compress_var_string_coords(
+    const FilterBuffer& input,
+    const std::vector<uint64_t>& input_offsets,
+    FilterBuffer& output,
+    FilterBuffer& output_metadata) const {
+  if (input.num_buffers() != 1) {
+    return LOG_STATUS(
+        Status_FilterError("Var-sized string input has to be in single "
+                           "buffer format to be compressed with RLE"));
+  }
+
+  // Construct string view of input
+  auto input_view = create_input_view(input, input_offsets);
+
+  // Estimate and allocate output size
+  /*
+   * TBD: another option instead of traversing the whole input to get the
+   * parameters to be used for estimating the output size + the datasizes
+   * of run length and string length would be to :
+   * - create an overhead function like the rest of compressors and estimate for
+   * the worst case: output_size = input.size() + input.size() *
+   * (sizeof(run_length_datatype) + sizeof(string_length_datatype))
+   * - estimate run length datasize by picking the one that would fit
+   * input->size(), assuming identical single character strings as the worst
+   * case.
+   * - estimate string length by picking the one that would fit input->size(),
+   * assuming a single string as the worst case.
+   * Such an option would be
+   * potentially more wasteful in terms of storage, but more performant.
+   */
+  uint64_t output_size_ub = 0;
+  uint8_t rle_len_bytesize = 0, string_len_bytesize = 0;
+  auto [max_rle_len, max_string_size, num_of_runs, output_strings_size] =
+      RLE::calculate_compression_params(input_view);
+  // TODO: calculate smallest datatypes to fit max_string_size and
+  // max_rle_len -> hardcode for now
+  rle_len_bytesize = 4;
+  string_len_bytesize = 2;
+  output_size_ub = num_of_runs * (rle_len_bytesize + string_len_bytesize) +
+                   output_strings_size;
+
+  // Allocate output data buffer
+  RETURN_NOT_OK(output.prepend_buffer(output_size_ub));
+  Buffer* data_buffer = output.buffer_ptr(0);
+  assert(data_buffer != nullptr);
+  data_buffer->reset_offset();
+  auto output_view = span<std::byte>(
+      reinterpret_cast<std::byte*>(data_buffer->data()), output_size_ub);
+
+  switch (compressor_) {
+    case Compressor::RLE: {
+      // TODO : same as above, hardcode for now
+      RLE::compress<uint32_t, uint16_t>(input_view, output_view);
+      break;
+    }
+    default:
+      break;
+  }
+
+  data_buffer->set_size(output_size_ub);
+
+  // Note: assumes single buffer (holds when RLE is the first/only filter)
+  auto input_size = input.buffers()[0].size();
+  RETURN_NOT_OK(output_metadata.write(&input_size, sizeof(uint32_t)));
+  RETURN_NOT_OK(output_metadata.write(&output_size_ub, sizeof(uint32_t)));
+  // TBD : we could pack those bytesizes in 1 byte instead, do we want that?
+  RETURN_NOT_OK(output_metadata.write(&rle_len_bytesize, sizeof(uint8_t)));
+  RETURN_NOT_OK(output_metadata.write(&string_len_bytesize, sizeof(uint8_t)));
+
+  return Status::Ok();
+}
+
+Status CompressionFilter::decompress_var_string_coords(
+    FilterBuffer& input,
+    FilterBuffer& input_metadata,
+    FilterBuffer& output) const {
+  if (input.num_buffers() != 1) {
+    return LOG_STATUS(
+        Status_FilterError("Var-sized string input has to be in single "
+                           "buffer format to get decompressed with RLE"));
+  }
+
+  // Read the part metadata
+  uint32_t compressed_size, uncompressed_size;
+  RETURN_NOT_OK(input_metadata.read(&uncompressed_size, sizeof(uint32_t)));
+  RETURN_NOT_OK(input_metadata.read(&compressed_size, sizeof(uint32_t)));
+
+  uint8_t rle_len_bytesize, string_len_bytesize;
+  RETURN_NOT_OK(input_metadata.read(&rle_len_bytesize, sizeof(uint8_t)));
+  RETURN_NOT_OK(input_metadata.read(&string_len_bytesize, sizeof(uint8_t)));
+
+  // Get views of input and output
+  auto input_buffer = input.buffers()[0];
+  auto input_view = span<const std::byte>(
+      reinterpret_cast<const std::byte*>(input_buffer.data()), compressed_size);
+  Buffer* output_buffer = output.buffer_ptr(0);
+  auto output_view = span<std::byte>(
+      reinterpret_cast<std::byte*>(output_buffer->data()), uncompressed_size);
+
+  switch (compressor_) {
+    case Compressor::RLE: {
+      // TODO: Use input metadata to calculate the datatypes used to write rle
+      // lenghts and string sizes, hardcode for now
+      RLE::decompress<uint32_t, uint16_t>(input_view, output_view);
+      break;
+    }
+    default:
+      break;
+  }
+
+  if (output_buffer->owns_data())
+    output_buffer->advance_size(uncompressed_size);
+  output_buffer->advance_offset(uncompressed_size);
+  input.advance_offset(compressed_size);
+
+  return Status::Ok();
 }
 
 uint64_t CompressionFilter::overhead(const Tile& tile, uint64_t nbytes) const {

@@ -161,16 +161,19 @@ Status FilterPipeline::filter_chunks_forward(
     FilteredBuffer& output,
     ThreadPool* const compute_tp) const {
   bool var_sizes = chunk_offsets.size() > 0;
-  uint64_t nchunks =
-      var_sizes ? chunk_offsets.size() : tile.size() / chunk_size;
-  uint64_t last_buffer_size = var_sizes ?
-                                  tile.size() - chunk_offsets[nchunks - 1] :
-                                  tile.size() % chunk_size;
-  if (!var_sizes) {
-    if (last_buffer_size != 0) {
-      nchunks++;
-    } else {
-      last_buffer_size = chunk_size;
+  uint64_t last_buffer_size = chunk_size;
+  uint64_t nchunks = 1;
+  // if chunking will be used
+  if (tile.size() != chunk_size) {
+    nchunks = var_sizes ? chunk_offsets.size() : tile.size() / chunk_size;
+    last_buffer_size = var_sizes ? tile.size() - chunk_offsets[nchunks - 1] :
+                                   tile.size() % chunk_size;
+    if (!var_sizes) {
+      if (last_buffer_size != 0) {
+        nchunks++;
+      } else {
+        last_buffer_size = chunk_size;
+      }
     }
   }
 
@@ -212,7 +215,12 @@ Status FilterPipeline::filter_chunks_forward(
       f->init_compression_resource_pool(compute_tp->concurrency_level());
 
       RETURN_NOT_OK(f->run_forward(
-          tile, &input_metadata, &input_data, &output_metadata, &output_data));
+          tile,
+          &input_metadata,
+          &input_data,
+          chunk_offsets,
+          &output_metadata,
+          &output_data));
 
       input_data.set_read_only(false);
       input_data.swap(output_data);
@@ -433,7 +441,10 @@ Status FilterPipeline::run_forward(
   uint32_t chunk_size = 0;
   if (use_chunking) {
     RETURN_NOT_OK(Tile::compute_chunk_size(
-        tile->size(), tile->dim_num(), tile->cell_size(), &chunk_size));
+        tile->size(),
+        tile->zipped_coords_dim_num(),
+        tile->cell_size(),
+        &chunk_size));
   } else {
     chunk_size = tile->size();
   }
@@ -669,9 +680,9 @@ void FilterPipeline::dump(FILE* out) const {
   }
 }
 
-bool FilterPipeline::has_filter(const Filter& filter) const {
+bool FilterPipeline::has_filter(const FilterType& filter_type) const {
   for (auto& f : filters_) {
-    if (f->type() == filter.type())
+    if (f->type() == filter_type)
       return true;
   }
   return false;
@@ -710,7 +721,7 @@ Status FilterPipeline::append_encryption_filter(
 bool FilterPipeline::use_tile_chunking(
     bool is_dim, bool is_var, Datatype type) const {
   if (is_dim && is_var && datatype_is_string(type)) {
-    if (has_filter(CompressionFilter(Compressor::RLE, 0))) {
+    if (has_filter(FilterType::FILTER_RLE)) {
       return false;
     }
   }

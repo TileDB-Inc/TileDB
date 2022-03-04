@@ -143,7 +143,8 @@ class RLE {
    * Memory is allocated and owned by the caller
    */
   template <class T, class P>
-  static void decompress(const span<std::byte> input, span<std::byte> output) {
+  static void decompress(
+      const span<const std::byte> input, span<std::byte> output) {
     if (input.empty() || output.empty())
       return;
 
@@ -181,8 +182,6 @@ class RLE {
    * Compress numbers in contiguous memory to RLE format
    *
    * @tparam T Type of integer in input
-   * @tparam P Type of integer to store run legths, must fit max num of
-   * repetitions in input
    * @param input Input in form of a memory contiguous sequence of numbers
    * @param output RLE-encoded as a series of [run length|value] items. Memory
    * is allocated and owned by the caller
@@ -217,8 +216,6 @@ class RLE {
    * Decompress numbers in contiguous memory encoded in RLE format
    *
    * @tparam T Type of integer in input
-   * @tparam P Type of integer to store run legths, must be the same used for
-   * encoding
    * @param input Input in [run length|value] RLE format to decompress
    * @param output Decoded output as a series of values in contiguous memory.
    * Memory is allocated and owned by the caller

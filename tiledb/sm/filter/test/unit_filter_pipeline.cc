@@ -29,6 +29,7 @@
  */
 
 #include <catch.hpp>
+
 #include "../bit_width_reduction_filter.h"
 #include "../bitshuffle_filter.h"
 #include "../byteshuffle_filter.h"
@@ -133,14 +134,14 @@ TEST_CASE(
   fp.add_filter(CompressionFilter(Compressor::LZ4, 1));
 
   // Check that filters are searched correctly
-  CHECK(fp.has_filter(CompressionFilter(Compressor::RLE, 0)));
-  CHECK(fp.has_filter(BitWidthReductionFilter()));
-  CHECK_FALSE(fp.has_filter(CompressionFilter(Compressor::GZIP, 0)));
-  CHECK_FALSE(fp.has_filter(BitshuffleFilter()));
+  CHECK(fp.has_filter(FilterType::FILTER_RLE));
+  CHECK(fp.has_filter(FilterType::FILTER_BIT_WIDTH_REDUCTION));
+  CHECK_FALSE(fp.has_filter(FilterType::FILTER_GZIP));
+  CHECK_FALSE(fp.has_filter(FilterType::FILTER_BITSHUFFLE));
 
   // Check no error when pipeline empty
   FilterPipeline fp2;
-  CHECK_FALSE(fp2.has_filter(CompressionFilter(Compressor::RLE, 0)));
+  CHECK_FALSE(fp2.has_filter(FilterType::FILTER_RLE));
 }
 
 TEST_CASE(

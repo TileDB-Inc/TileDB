@@ -1430,6 +1430,14 @@ Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
                                 "dimension with a real datatype"));
   }
 
+  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline->size() > 1) {
+    if (pipeline->has_filter(FilterType::FILTER_RLE)) {
+      return LOG_STATUS(Status_DimensionError(
+          "RLE filter cannot be combined with other filters when applied to "
+          "variable length string dimensions"));
+    }
+  }
+
   filters_ = *pipeline;
 
   return Status::Ok();
