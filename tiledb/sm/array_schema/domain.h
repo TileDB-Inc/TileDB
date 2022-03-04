@@ -502,7 +502,6 @@ class Domain {
    * coordinate is larger.
    *
    * @param dim The dimension to check the coordinates on.
-   * @param buff The buffer that stores all coordinates.
    * @param a The position of the first coordinate in the buffer to check.
    * @param b The position of the second coordinate in the buffer to check.
    * @return One of the following:
@@ -517,7 +516,7 @@ class Domain {
   /**
    * Checks the tile order of the input coordinates on the given dimension.
    *
-   * @param The dimension to compare on.
+   * @param dim The dimension to compare on.
    * @param coord_a The first coordinate.
    * @param coord_b The second coordinate.
    * @return One of the following:

@@ -33,6 +33,7 @@
 #ifndef TILEDB_DYNAMIC_ARRAY_H
 #define TILEDB_DYNAMIC_ARRAY_H
 
+#include <stdexcept>
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/tag.h"
 
@@ -85,10 +86,9 @@ class DynamicArray {
    * `data_` is an allocated pointer to hold a sequence of `T` whose length is
    * equal to `size`. It's allocated with the class template argument `Alloc`.
    *
-   * There's no invariant that data_ not be null. There are two cases,
-   * however, when it might be null. The first is during move construction,
-   * when it's assigned null to achieve transfer semantics. The second is when
-   * a container is constructed with zero size (presumably as a placeholder).
+   * There's no invariant that `data_` not be null. There is only one case,
+   * however, when it might be null, which is during move construction, when
+   * it's assigned null to achieve transfer semantics.
    */
   T* data_;
 
@@ -140,7 +140,10 @@ class DynamicArray {
   DynamicArray(SizeT n, const Alloc& a)
       : a_(a)
       , size_(n)
-      , data_(n > 0 ? a_.allocate(size_) : nullptr) {
+      , data_(
+            n > 0 ? a_.allocate(size_) :
+                    throw std::logic_error(
+                        "zero-length dynamic array not permitted")) {
   }
 
   /**
@@ -193,11 +196,16 @@ class DynamicArray {
   /**
    * Default construction is prohibited.
    *
-   * The size of the container is fixed at construction time. Without the
-   * user specifying what the size is, default construction makes no sense.
+   * The size of the container is fixed at construction time. The only sensible
+   * length for a default object is zero, which would mean a forever-empty
+   * container.
    *
-   * To get an object of size 0, simply construct one. An allocator is still
-   * required, even though it won't be called.r
+   * Default construction would also complicate and enlarge the class. There's
+   * no requirement that the allocator be default-constructible, and it needs to
+   * store a copy of its allocator for use in the destructor. Default
+   * construction would mean storing an optional allocator or equivalent.
+   *
+   * The design decision is that it's not worth having default construction.
    */
   DynamicArray() = delete;
 

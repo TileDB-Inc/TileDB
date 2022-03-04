@@ -44,6 +44,7 @@
 #include <cassert>
 #include <iostream>
 #include <limits>
+#include <stdexcept>
 
 using namespace tiledb::common;
 
@@ -231,7 +232,7 @@ int Domain::cell_order_cmp(
 
   if (cell_order_cmp_func_2_[dim_idx] == nullptr) {
     assert(cell_order_cmp_func_2_[dim_idx] != nullptr);
-    return 0;  // WORKAROUND: Mask the defect by returning instead of throwing
+    throw std::logic_error("comparison function not initialized");
   }
   return cell_order_cmp_func_2_[dim_idx](a.content(), b.content());
 }
