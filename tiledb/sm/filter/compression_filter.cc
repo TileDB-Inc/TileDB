@@ -251,8 +251,8 @@ Status CompressionFilter::run_forward(
   // Allocate output metadata
   auto metadata_size =
       calculate_output_metadata_size(tile, data_parts, metadata_parts);
-  uint32_t num_metadata_parts = metadata_parts.size();
-  uint32_t num_data_parts = data_parts.size();
+  auto num_metadata_parts = static_cast<uint32_t>(metadata_parts.size());
+  auto num_data_parts = static_cast<uint32_t>(data_parts.size());
   RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
   RETURN_NOT_OK(output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
   RETURN_NOT_OK(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
