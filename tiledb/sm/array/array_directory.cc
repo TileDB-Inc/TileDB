@@ -475,7 +475,8 @@ ArrayDirectory::load_consolidated_commit_uris(
   std::vector<std::pair<URI, std::string>> meta_files;
   for (uint64_t i = 0; i < commits_dir_uris.size(); i++) {
     auto& uri = commits_dir_uris[i];
-    if (stdx::string::ends_with(uri.to_string(), constants::meta_file_suffix)) {
+    if (stdx::string::ends_with(
+            uri.to_string(), constants::commits_file_suffix)) {
       uint64_t size = 0;
       RETURN_NOT_OK_TUPLE(vfs_->file_size(uri, &size), nullopt, nullopt);
       meta_files.emplace_back(uri, std::string());
@@ -487,7 +488,7 @@ ArrayDirectory::load_consolidated_commit_uris(
       std::stringstream ss(names);
       for (std::string uri_str; std::getline(ss, uri_str);) {
         if (ignore_set.count(uri_str) == 0) {
-          uris_set.emplace(uri_str);
+          uris_set.emplace(uri_.to_string() + uri_str);
         }
       }
     }
@@ -507,13 +508,13 @@ ArrayDirectory::load_consolidated_commit_uris(
       std::stringstream ss(meta_file.second);
       uint64_t count = 0;
       for (std::string uri_str; std::getline(ss, uri_str);) {
-        count += uris_set.count(uri_str);
+        count += uris_set.count(uri_.to_string() + uri_str);
       }
 
       if (count == uris_set.size()) {
         for (auto& uri : commits_dir_uris) {
           if (stdx::string::ends_with(
-                  uri.to_string(), constants::meta_file_suffix)) {
+                  uri.to_string(), constants::commits_file_suffix)) {
             if (uri != meta_file.first) {
               consolidated_commits_uris_to_vacuum_.emplace_back(uri);
             }

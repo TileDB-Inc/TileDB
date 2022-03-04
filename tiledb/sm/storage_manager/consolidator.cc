@@ -223,15 +223,17 @@ Status Consolidator::consolidate_commits(
       to_consolidate.front(), to_consolidate.back(), write_version);
   RETURN_NOT_OK(st1);
 
-  // Write consolidated file
+  // Write consolidated file, URIs are relative to the array URI.
   std::stringstream ss;
-  for (const auto& uri : to_consolidate)
-    ss << uri.to_string() << "\n";
+  auto base_uri_size = array_dir.uri().to_string().size();
+  for (const auto& uri : to_consolidate) {
+    ss << uri.to_string().substr(base_uri_size) << "\n";
+  }
 
   auto data = ss.str();
   URI consolidated_commits_uri =
       array_dir.get_commits_dir(write_version)
-          .join_path(name.value() + constants::meta_file_suffix);
+          .join_path(name.value() + constants::commits_file_suffix);
   RETURN_NOT_OK(storage_manager_->vfs()->write(
       consolidated_commits_uri, data.c_str(), data.size()));
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(consolidated_commits_uri));

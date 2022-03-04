@@ -16,7 +16,7 @@ In the file name:
 * `uuid` is a unique identifier
 * `v` is the format version
 
-The ignore file is a simple text file where each line contains a URI string:
+The ignore file is a simple text file where each line contains a URI string. The URI is the relative URI based on the top level array URI.
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |

@@ -188,6 +188,9 @@ extern const std::string write_file_suffix;
 /** Suffix for the special metadata files used in TileDB. */
 extern const std::string meta_file_suffix;
 
+/** Suffix for the special commits files used in TileDB. */
+extern const std::string commits_file_suffix;
+
 /** Suffix for the special ignore files used in TileDB. */
 extern const std::string ignore_file_suffix;
 

@@ -455,9 +455,12 @@ Status StorageManager::array_vacuum_fragments(
         constants::format_version);
     RETURN_NOT_OK(st1);
 
+    // Write URIs, relative to the array URI.
     std::stringstream ss;
-    for (const auto& uri : commit_uris_to_ignore)
-      ss << uri.to_string() << "\n";
+    auto base_uri_size = array_dir.uri().to_string().size();
+    for (const auto& uri : commit_uris_to_ignore) {
+      ss << uri.to_string().substr(base_uri_size) << "\n";
+    }
 
     auto data = ss.str();
     URI ignore_file_uri =

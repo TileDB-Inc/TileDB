@@ -1,6 +1,6 @@
 # Consolidated Commits File
 
-A consolidated commits file has name `<timestamped_name>.meta` and is located here:
+A consolidated commits file has name `<timestamped_name>.commits` and is located here:
 
 ```
 my_array                              # array folder
@@ -15,7 +15,7 @@ my_array                              # array folder
 * `uuid` is a unique identifier
 * `v` is the format version
 
-There may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits URIs delimited by a new line character.
+There may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits URIs delimited by a new line character. The URI is the relative URI based on the top level array URI.
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |

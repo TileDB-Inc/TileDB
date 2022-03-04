@@ -147,8 +147,8 @@ struct ConsolidationFx {
   void remove_sparse_string_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
-  void check_commits_dir_dense(int num_meta, int num_wrt, int num_ignore);
-  void check_commits_dir_sparse(int num_meta, int num_wrt, int num_ignore);
+  void check_commits_dir_dense(int num_commits, int num_wrt, int num_ignore);
+  void check_commits_dir_sparse(int num_commits, int num_wrt, int num_ignore);
   void check_ok_num(int num_ok);
   void get_array_meta_files_dense(std::vector<std::string>& files);
   void get_array_meta_vac_files_dense(std::vector<std::string>& files);
@@ -163,6 +163,7 @@ struct ConsolidationFx {
 
   static int get_dir_num(const char* path, void* data);
   static int get_meta_num(const char* path, void* data);
+  static int get_commits_num(const char* path, void* data);
   static int get_wrt_num(const char* path, void* data);
   static int get_ignore_num(const char* path, void* data);
   static int get_ok_num(const char* path, void* data);
@@ -4065,15 +4066,16 @@ bool ConsolidationFx::is_array(const std::string& array_name) {
 }
 
 void ConsolidationFx::check_commits_dir_dense(
-    int num_meta, int num_wrt, int num_ignore) {
+    int num_commits, int num_wrt, int num_ignore) {
   int32_t rc;
   get_num_struct data;
 
-  // Check number of consolidated metadata files
+  // Check number of consolidated commits files
   data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_ARRAY_COMMITS_DIR, &get_meta_num, &data);
+  rc = tiledb_vfs_ls(
+      ctx_, vfs_, DENSE_ARRAY_COMMITS_DIR, &get_commits_num, &data);
   CHECK(rc == TILEDB_OK);
-  CHECK(data.num == num_meta);
+  CHECK(data.num == num_commits);
 
   // Check number of wrt files
   data = {ctx_, vfs_, 0};
@@ -4090,16 +4092,16 @@ void ConsolidationFx::check_commits_dir_dense(
 }
 
 void ConsolidationFx::check_commits_dir_sparse(
-    int num_meta, int num_wrt, int num_ignore) {
+    int num_commits, int num_wrt, int num_ignore) {
   int32_t rc;
   get_num_struct data;
 
-  // Check number of consolidated metadata files
+  // Check number of consolidated commits files
   data = {ctx_, vfs_, 0};
-  rc =
-      tiledb_vfs_ls(ctx_, vfs_, SPARSE_ARRAY_COMMITS_DIR, &get_meta_num, &data);
+  rc = tiledb_vfs_ls(
+      ctx_, vfs_, SPARSE_ARRAY_COMMITS_DIR, &get_commits_num, &data);
   CHECK(rc == TILEDB_OK);
-  CHECK(data.num == num_meta);
+  CHECK(data.num == num_commits);
 
   // Check number of wrt files
   data = {ctx_, vfs_, 0};
@@ -4212,6 +4214,15 @@ int ConsolidationFx::get_meta_num(const char* path, void* data) {
   auto data_struct = (ConsolidationFx::get_num_struct*)data;
   if (tiledb::sm::utils::parse::ends_with(
           path, tiledb::sm::constants::meta_file_suffix))
+    ++data_struct->num;
+
+  return 1;
+}
+
+int ConsolidationFx::get_commits_num(const char* path, void* data) {
+  auto data_struct = (ConsolidationFx::get_num_struct*)data;
+  if (tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::commits_file_suffix))
     ++data_struct->num;
 
   return 1;
