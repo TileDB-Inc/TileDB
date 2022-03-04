@@ -1,3 +1,9 @@
+# TileDB v2.7.1 Release Notes
+
+## Bug fixes
+
+* Sparse unordered w/ dups reader: fixing memory management for tiles. [#2924](https://github.com/TileDB-Inc/TileDB/pull/2924)
+
 # TileDB v2.7.0 Release Notes
 
 ## Disk Format
