@@ -55,8 +55,9 @@ FilterPipeline::FilterPipeline()
     : max_chunk_size_(constants::max_tile_chunk_size) {
 }
 
-FilterPipeline::FilterPipeline(std::vector<Filter*> filters) {
-  max_chunk_size_ = constants::max_tile_chunk_size;
+FilterPipeline::FilterPipeline(
+    std::vector<Filter*> filters, uint32_t max_chunk_size)
+    : max_chunk_size_(max_chunk_size) {
   for (const auto* filter : filters) {
     add_filter(*filter);
   }

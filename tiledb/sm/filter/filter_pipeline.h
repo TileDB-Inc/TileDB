@@ -66,7 +66,7 @@ class FilterPipeline {
   /** Constructor. Initializes an empty pipeline. */
   FilterPipeline();
 
-  FilterPipeline(std::vector<Filter*> filters);
+  FilterPipeline(std::vector<Filter*> filters, uint32_t max_chunk_size);
 
   /** Destructor. */
   ~FilterPipeline() = default;

@@ -181,7 +181,9 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
     filter_list.push_back(filter);
   }
 
-  return {Status::Ok(), make_shared<FilterPipeline>(HERE(), filter_list)};
+  return {Status::Ok(),
+          make_shared<FilterPipeline>(
+              HERE(), filter_list, constants::max_tile_chunk_size)};
 }
 
 Status attribute_to_capnp(
