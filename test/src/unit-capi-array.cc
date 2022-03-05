@@ -51,7 +51,7 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <chrono>
 #include <climits>

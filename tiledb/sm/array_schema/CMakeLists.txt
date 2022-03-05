@@ -70,9 +70,26 @@ add_executable(compile_domain EXCLUDE_FROM_ALL)
 target_link_libraries(compile_domain PRIVATE domain)
 target_sources(compile_domain PRIVATE test/compile_domain_main.cc)
 
+#
+# `array_schema` object library
+#
+add_library(array_schema OBJECT array_schema.cc)
+target_link_libraries(array_schema PUBLIC attribute $<TARGET_OBJECTS:attribute>)
+target_link_libraries(array_schema PUBLIC domain $<TARGET_OBJECTS:domain>)
+target_link_libraries(array_schema PUBLIC time $<TARGET_OBJECTS:time>)
+target_link_libraries(array_schema PUBLIC uri_format $<TARGET_OBJECTS:uri_format>)
+target_link_libraries(array_schema PUBLIC uuid $<TARGET_OBJECTS:uuid>)
+target_link_libraries(array_schema PUBLIC vfs $<TARGET_OBJECTS:vfs>)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_array_schema EXCLUDE_FROM_ALL)
+target_link_libraries(compile_array_schema PRIVATE array_schema)
+target_sources(compile_array_schema PRIVATE test/compile_array_schema_main.cc)
+
 if (TILEDB_TESTS)
     add_executable(unit_array_schema EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_array_schema PRIVATE attribute domain)
+    target_link_libraries(unit_array_schema PRIVATE array_schema)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_array_schema PUBLIC Catch2::Catch2)
 

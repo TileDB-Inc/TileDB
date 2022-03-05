@@ -230,6 +230,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/generic_tile_io.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile_metadata_generator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/writer_tile.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/parse_uri.cc
 )
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
 
@@ -301,6 +302,7 @@ set_source_files_properties(
   ${TileDB_blosc_SOURCES}
   PROPERTIES COMPILE_OPTIONS "${TileDB_blosc_COMPILE_OPTIONS}")
 
+add_subdirectory(storage_format)
 
 ############################################################
 # Build core objects as a reusable object library
