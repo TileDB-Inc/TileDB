@@ -66,6 +66,8 @@ class FilterPipeline {
   /** Constructor. Initializes an empty pipeline. */
   FilterPipeline();
 
+  FilterPipeline(std::vector<Filter*> filters);
+
   /** Destructor. */
   ~FilterPipeline() = default;
 

@@ -117,35 +117,46 @@ Status filter_pipeline_to_capnp(
   return Status::Ok();
 }
 
-Status filter_pipeline_from_capnp(
-    const capnp::FilterPipeline::Reader& filter_pipeline_reader,
-    tdb_unique_ptr<FilterPipeline>* filter_pipeline) {
-  filter_pipeline->reset(tdb_new(FilterPipeline));
+tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
+    const capnp::FilterPipeline::Reader& filter_pipeline_reader) {
   if (!filter_pipeline_reader.hasFilters())
-    return Status::Ok();
+    return {Status::Ok(), make_shared<FilterPipeline>(HERE())};
 
+  std::vector<Filter*> filter_list;
   auto filter_list_reader = filter_pipeline_reader.getFilters();
   for (auto filter_reader : filter_list_reader) {
     FilterType type = FilterType::FILTER_NONE;
-    RETURN_NOT_OK(filter_type_enum(filter_reader.getType().cStr(), &type));
-    tdb_unique_ptr<Filter> filter(FilterCreate::make(type));
+    Status st_fte = filter_type_enum(filter_reader.getType().cStr(), &type);
+    if (!st_fte.ok()) {
+      return {st_fte, nullopt};
+    }
+
+    Filter* filter(FilterCreate::make(type));
     if (filter == nullptr)
-      return LOG_STATUS(Status_SerializationError(
-          "Error deserializing filter pipeline; failed to create filter."));
+      return {
+          LOG_STATUS(Status_SerializationError(
+              "Error deserializing filter pipeline; failed to create filter.")),
+          nullopt};
 
     switch (filter->type()) {
       case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
         auto data = filter_reader.getData();
         uint32_t window = data.getUint32();
-        RETURN_NOT_OK(
-            filter->set_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &window));
+        Status st_fso =
+            filter->set_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &window);
+        if (!st_fso.ok()) {
+          return {st_fso, nullopt};
+        }
         break;
       }
       case FilterType::FILTER_POSITIVE_DELTA: {
         auto data = filter_reader.getData();
         uint32_t window = data.getUint32();
-        RETURN_NOT_OK(filter->set_option(
-            FilterOption::POSITIVE_DELTA_MAX_WINDOW, &window));
+        Status st_fso = filter->set_option(
+            FilterOption::POSITIVE_DELTA_MAX_WINDOW, &window);
+        if (!st_fso.ok()) {
+          return {st_fso, nullopt};
+        }
         break;
       }
       case FilterType::FILTER_GZIP:
@@ -156,18 +167,21 @@ Status filter_pipeline_from_capnp(
       case FilterType::FILTER_DOUBLE_DELTA: {
         auto data = filter_reader.getData();
         int32_t level = data.getInt32();
-        RETURN_NOT_OK(
-            filter->set_option(FilterOption::COMPRESSION_LEVEL, &level));
+        Status st_fso =
+            filter->set_option(FilterOption::COMPRESSION_LEVEL, &level);
+        if (!st_fso.ok()) {
+          return {st_fso, nullopt};
+        }
         break;
       }
       default:
         break;
     }
 
-    RETURN_NOT_OK((*filter_pipeline)->add_filter(*filter));
+    filter_list.push_back(filter);
   }
 
-  return Status::Ok();
+  return {Status::Ok(), make_shared<FilterPipeline>(HERE(), filter_list)};
 }
 
 Status attribute_to_capnp(
@@ -242,9 +256,12 @@ Status attribute_from_capnp(
   // Set filter pipelines.
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
-    tdb_unique_ptr<FilterPipeline> filters;
-    RETURN_NOT_OK(filter_pipeline_from_capnp(filter_pipeline_reader, &filters));
-    RETURN_NOT_OK((*attribute)->set_filter_pipeline(filters.get()));
+    auto&& [st_fp, filters]{filter_pipeline_from_capnp(filter_pipeline_reader)};
+    if (!st_fp.ok()) {
+      return st_fp;
+    }
+
+    RETURN_NOT_OK((*attribute)->set_filter_pipeline(filters.value().get()));
   }
 
   // Set nullable.
@@ -305,9 +322,11 @@ Status dimension_from_capnp(
 
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
-    tdb_unique_ptr<FilterPipeline> filters;
-    RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
-    RETURN_NOT_OK((*dimension)->set_filter_pipeline(filters.get()));
+    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    if (!st_fp.ok()) {
+      return st_fp;
+    }
+    RETURN_NOT_OK((*dimension)->set_filter_pipeline(filters.value().get()));
   }
 
   if (!dimension_reader.getNullTileExtent()) {
@@ -526,27 +545,36 @@ Status array_schema_from_capnp(
   // Set coords filter pipelines
   if (schema_reader.hasCoordsFilterPipeline()) {
     auto reader = schema_reader.getCoordsFilterPipeline();
-    tdb_unique_ptr<FilterPipeline> filters;
-    RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
-    RETURN_NOT_OK((*array_schema)->set_coords_filter_pipeline(filters.get()));
+    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    if (!st_fp.ok()) {
+      return st_fp;
+    }
+    RETURN_NOT_OK(
+        (*array_schema)->set_coords_filter_pipeline(filters.value().get()));
   }
 
   // Set offsets filter pipelines
   if (schema_reader.hasOffsetFilterPipeline()) {
     auto reader = schema_reader.getOffsetFilterPipeline();
-    tdb_unique_ptr<FilterPipeline> filters;
-    RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
+    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    if (!st_fp.ok()) {
+      return st_fp;
+    }
     RETURN_NOT_OK(
-        (*array_schema)->set_cell_var_offsets_filter_pipeline(filters.get()));
+        (*array_schema)
+            ->set_cell_var_offsets_filter_pipeline(filters.value().get()));
   }
 
   // Set validity filter pipelines
   if (schema_reader.hasValidityFilterPipeline()) {
     auto reader = schema_reader.getValidityFilterPipeline();
-    tdb_unique_ptr<FilterPipeline> filters;
-    RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
+    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    if (!st_fp.ok()) {
+      return st_fp;
+    }
     RETURN_NOT_OK(
-        (*array_schema)->set_cell_validity_filter_pipeline(filters.get()));
+        (*array_schema)
+            ->set_cell_validity_filter_pipeline(filters.value().get()));
   }
 
   // Set attributes
