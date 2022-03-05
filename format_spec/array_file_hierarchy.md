@@ -30,6 +30,6 @@ Inside the array folder, you can find the following:
 * Inside of a fragments folder, any number of [fragment folders](./fragment.md) `<timestamped_name>`.
 * Inside of a commit folder, an empty file `<timestamped_name>.wrt` associated with every fragment folder `<timestamped_name>`, where `<timestamped_name>` is common for the folder and the WRT file. This is used to indicate that fragment `<timestamped_name>` has been *committed* (i.e., its write process finished successfully) and it is ready for use by TileDB. If the WRT file does not exist, the corresponding fragment folder is ignored by TileDB during the reads.
 * Inside the same commit folder, any number of [consolidated commits files](./consolidated_commits_file.md) of the form `<timestamped_name>.meta`.
-* Inside the same commit folder, any number of [ignore files](./ignore_file.md) of the form `<timestamped_name>.ignore`.
+* Inside the same commit folder, any number of [ignore files](./ignore_file.md) of the form `<timestamped_name>.ign`.
 * Inside of a fragment metadata folder, any number of [consolidated fragment metadata files](./consolidated_fragment_metadata_file.md) of the form `<timestamped_name>.meta`.
 * [Array metadata](./array_metadata.md) folder `__meta`.

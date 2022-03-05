@@ -1,12 +1,12 @@
 # Ignore File
 
-A ignore file has name `__t1_t2_uuid_v.ignore` and is located in the array commit folder:
+A ignore file has name `__t1_t2_uuid_v.ign` and is located in the array commit folder:
 
 ```
 my_array                           # array folder
    |_ ....
    |_ __commits                    # array commit folder
-         |___t1_t2_uuid_v.ignore   # ignore file
+         |___t1_t2_uuid_v.ign      # ignore file
 ```
 
 or in the array metadata folder:

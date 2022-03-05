@@ -1,6 +1,6 @@
 # Consolidated Commits File
 
-A consolidated commits file has name `<timestamped_name>.commits` and is located here:
+A consolidated commits file has name `<timestamped_name>.con` and is located here:
 
 ```
 my_array                              # array folder
