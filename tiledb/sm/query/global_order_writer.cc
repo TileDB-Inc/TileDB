@@ -483,6 +483,10 @@ Status GlobalOrderWriter::finalize_global_write_state() {
     }
   }
 
+  // Compute fragment min/max/sum/null count
+  RETURN_NOT_OK_ELSE(
+      meta->compute_fragment_min_max_sum_null_count(), clean_up(uri));
+
   // Flush fragment metadata to storage
   RETURN_NOT_OK_ELSE(meta->store(array_->get_encryption_key()), clean_up(uri));
 
