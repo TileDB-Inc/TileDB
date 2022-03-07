@@ -248,6 +248,7 @@ TEST_CASE_METHOD(
 
   std::string array_name = temp_dir + "blob_array_test_create";
   std::string output_path = localfs_temp_dir_ + "out";
+  std::string output_pathB = localfs_temp_dir_ + "outB";
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
     encryption_key_ = nullptr;
@@ -400,6 +401,10 @@ TEST_CASE_METHOD(
     CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
     CHECK(is_array2_open == 0);
     CHECK(
+        tiledb_array_as_file_export(ctx_, array, output_pathB.c_str()) ==
+        TILEDB_OK);
+    cmp_files_check(infiles[n_infiles - 1], output_pathB);
+    CHECK(
         tiledb_array_as_file_export(ctx_, array2, output_path.c_str()) ==
         TILEDB_OK);
     cmp_files_check(infiles[n_infiles - 1], output_path);
@@ -461,7 +466,7 @@ TEST_CASE_METHOD(
     CHECK(is_array2_open == 0);
 
     // stores intermixed with exports
-    for (auto i = n_infiles - 1; i >= 0; ++i) {
+    for (auto i = n_infiles - 1; i >= 0; --i) {
       CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
       CHECK(is_array_open == 0);
       CHECK(
