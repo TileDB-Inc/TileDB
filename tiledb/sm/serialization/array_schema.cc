@@ -126,10 +126,8 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
   auto filter_list_reader = filter_pipeline_reader.getFilters();
   for (auto filter_reader : filter_list_reader) {
     FilterType type = FilterType::FILTER_NONE;
-    Status st_fte = filter_type_enum(filter_reader.getType().cStr(), &type);
-    if (!st_fte.ok()) {
-      return {st_fte, nullopt};
-    }
+    RETURN_NOT_OK_TUPLE(
+        filter_type_enum(filter_reader.getType().cStr(), &type), nullopt);
 
     Filter* filter(FilterCreate::make(type));
     if (filter == nullptr)
@@ -142,21 +140,18 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
       case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
         auto data = filter_reader.getData();
         uint32_t window = data.getUint32();
-        Status st_fso =
-            filter->set_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &window);
-        if (!st_fso.ok()) {
-          return {st_fso, nullopt};
-        }
+        RETURN_NOT_OK_TUPLE(
+            filter->set_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &window),
+            nullopt);
         break;
       }
       case FilterType::FILTER_POSITIVE_DELTA: {
         auto data = filter_reader.getData();
         uint32_t window = data.getUint32();
-        Status st_fso = filter->set_option(
-            FilterOption::POSITIVE_DELTA_MAX_WINDOW, &window);
-        if (!st_fso.ok()) {
-          return {st_fso, nullopt};
-        }
+        RETURN_NOT_OK_TUPLE(
+            filter->set_option(
+                FilterOption::POSITIVE_DELTA_MAX_WINDOW, &window),
+            nullopt);
         break;
       }
       case FilterType::FILTER_GZIP:
@@ -167,11 +162,9 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
       case FilterType::FILTER_DOUBLE_DELTA: {
         auto data = filter_reader.getData();
         int32_t level = data.getInt32();
-        Status st_fso =
-            filter->set_option(FilterOption::COMPRESSION_LEVEL, &level);
-        if (!st_fso.ok()) {
-          return {st_fso, nullopt};
-        }
+        RETURN_NOT_OK_TUPLE(
+            filter->set_option(FilterOption::COMPRESSION_LEVEL, &level),
+            nullopt);
         break;
       }
       default:
@@ -259,10 +252,7 @@ Status attribute_from_capnp(
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(filter_pipeline_reader)};
-    if (!st_fp.ok()) {
-      return st_fp;
-    }
-
+    RETURN_NOT_OK(st_fp);
     RETURN_NOT_OK((*attribute)->set_filter_pipeline(filters.value().get()));
   }
 
@@ -325,9 +315,7 @@ Status dimension_from_capnp(
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
-    if (!st_fp.ok()) {
-      return st_fp;
-    }
+    RETURN_NOT_OK(st_fp);
     RETURN_NOT_OK((*dimension)->set_filter_pipeline(filters.value().get()));
   }
 
@@ -548,9 +536,7 @@ Status array_schema_from_capnp(
   if (schema_reader.hasCoordsFilterPipeline()) {
     auto reader = schema_reader.getCoordsFilterPipeline();
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
-    if (!st_fp.ok()) {
-      return st_fp;
-    }
+    RETURN_NOT_OK(st_fp);
     RETURN_NOT_OK(
         (*array_schema)->set_coords_filter_pipeline(filters.value().get()));
   }
@@ -559,9 +545,7 @@ Status array_schema_from_capnp(
   if (schema_reader.hasOffsetFilterPipeline()) {
     auto reader = schema_reader.getOffsetFilterPipeline();
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
-    if (!st_fp.ok()) {
-      return st_fp;
-    }
+    RETURN_NOT_OK(st_fp);
     RETURN_NOT_OK(
         (*array_schema)
             ->set_cell_var_offsets_filter_pipeline(filters.value().get()));
@@ -571,9 +555,7 @@ Status array_schema_from_capnp(
   if (schema_reader.hasValidityFilterPipeline()) {
     auto reader = schema_reader.getValidityFilterPipeline();
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
-    if (!st_fp.ok()) {
-      return st_fp;
-    }
+    RETURN_NOT_OK(st_fp);
     RETURN_NOT_OK(
         (*array_schema)
             ->set_cell_validity_filter_pipeline(filters.value().get()));
