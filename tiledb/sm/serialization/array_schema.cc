@@ -307,18 +307,33 @@ Status dimension_to_capnp(
 }
 
 Status dimension_from_capnp(
-    const capnp::Dimension::Reader& dimension_reader,
-    tdb_unique_ptr<Dimension>* dimension) {
+    const capnp::Dimension::Reader& dimension_reader) {
+
+/*
+   * @param name The name of the dimension.
+   * @param type The type of the dimension.
+   * @param cell_val_num The cell value number of the dimension.
+   * @param domain The range of the dimension range.
+   * @param filter_pipeline The filters of the dimension.
+   * @param tile_extent The tile extent of the dimension.
+*/
+
+  dimension_reader.getName();
+
   Datatype dim_type = Datatype::ANY;
   RETURN_NOT_OK(datatype_enum(dimension_reader.getType().cStr(), &dim_type));
-  dimension->reset(tdb_new(Dimension, dimension_reader.getName(), dim_type));
+
+  // cell val num
+  uint32_t cell_val_num = (datatype_is_string(dim_type)) ? constants::var_num : 1;
 
   if (dimension_reader.hasDomain()) {
     auto domain_reader = dimension_reader.getDomain();
     Buffer domain_buffer;
     RETURN_NOT_OK(
         utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer));
-    RETURN_NOT_OK((*dimension)->set_domain_unsafe(domain_buffer.data()));
+    // domain_buffer.data() is pointer, size = datatype_size(dim_type) * 2
+  } else {
+    // default construct ??????? 
   }
 
   if (dimension_reader.hasFilterPipeline()) {
