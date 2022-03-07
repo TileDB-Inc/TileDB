@@ -364,7 +364,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
 #endif
   };
 
-  #if 0
+#if 0
   //basic operations that will succeed to allow dev diag stepping thru,
   //but winds up leaving array populated which causes later tests
   //to fail as they expect the array to be empty.
@@ -376,7 +376,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   basic_export_to_uri(true);
 
   REQUIRE(blob_array->close().ok() == true);
-  #endif
+#endif
 
   basic_to_array(false);
   basic_export(false);
@@ -389,8 +389,8 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
 
   basic_to_array(false);
 
-// array open in READ mode, but EMPTY
-// And, array is empty since any array writes above (should have) failed.
+  // array open in READ mode, but EMPTY
+  // And, array is empty since any array writes above (should have) failed.
   basic_export(false);
 
   REQUIRE(blob_array->close().ok() == true);
@@ -486,11 +486,12 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   tiledb::sm::Datatype value_type;
   uint32_t value_size;
   const void* ptr_value;
-  CHECK(
-      wb_ba.get_file_ext(&value_type, &value_size, &ptr_value).ok() == false);
+  CHECK(wb_ba.get_file_ext(&value_type, &value_size, &ptr_value).ok() == false);
   CHECK(
       wb_ba.get_mime_type(&value_type, &value_size, &ptr_value).ok() == false);
-  CHECK(wb_ba.get_mime_encoding(&value_type, &value_size, &ptr_value).ok() == false);
+  CHECK(
+      wb_ba.get_mime_encoding(&value_type, &value_size, &ptr_value).ok() ==
+      false);
   open_wbba_for_write();
   CHECK(wb_ba.get_file_ext(&value_type, &value_size, &ptr_value).ok() == false);
   CHECK(
@@ -500,8 +501,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
       false);
   open_wbba_for_read();
   CHECK(wb_ba.get_file_ext(&value_type, &value_size, &ptr_value).ok() == true);
-  CHECK(
-      wb_ba.get_mime_type(&value_type, &value_size, &ptr_value).ok() == true);
+  CHECK(wb_ba.get_mime_type(&value_type, &value_size, &ptr_value).ok() == true);
   CHECK(
       wb_ba.get_mime_encoding(&value_type, &value_size, &ptr_value).ok() ==
       true);

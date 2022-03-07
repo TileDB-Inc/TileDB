@@ -127,7 +127,6 @@ class BlobArray : public tiledb::sm::Array {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
  private:
-
   std::shared_ptr<BlobArraySchema> blob_array_schema_sp_;
 
   BlobArraySchema& blob_array_schema_;

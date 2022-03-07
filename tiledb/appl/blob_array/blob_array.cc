@@ -69,8 +69,8 @@ BlobArray::BlobArray(const URI& array_uri, StorageManager* storage_manager)
   // (stored size in metadata does not match 'contents' attribute
   // data being retrieved from fragment)...
   // at least I think that's what's happening...
-//  timestamp_end_ = utils::time::timestamp_now_ms();
-//  timestamp_end_opened_at_ = timestamp_end_;
+  //  timestamp_end_ = utils::time::timestamp_now_ms();
+  //  timestamp_end_opened_at_ = timestamp_end_;
 }
 
 BlobArray::BlobArray(const BlobArray& rhs)
@@ -295,8 +295,8 @@ Status BlobArray::export_to_vfs_fh(
 
     // Set subarray
     RETURN_NOT_OK(query.set_subarray(&subarray));
-//    uint32_t delay_ms = 100;
-//    uint32_t retry_cnt = 1;
+    //    uint32_t delay_ms = 100;
+    //    uint32_t retry_cnt = 1;
     do {
       RETURN_NOT_OK(query.submit());
 
