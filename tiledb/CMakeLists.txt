@@ -53,6 +53,7 @@ find_package(Threads REQUIRED)
 
 add_subdirectory(common)
 add_subdirectory(sm)
+add_subdirectory(appl) # unit testing appl/blob_array -depends- on tiledb
 
 ############################################################
 # Source files

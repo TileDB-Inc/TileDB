@@ -69,8 +69,8 @@ BlobArray::BlobArray(const URI& array_uri, StorageManager* storage_manager)
   // (stored size in metadata does not match 'contents' attribute
   // data being retrieved from fragment)...
   // at least I think that's what's happening...
-  timestamp_end_ = utils::time::timestamp_now_ms();
-  timestamp_end_opened_at_ = timestamp_end_;
+//  timestamp_end_ = utils::time::timestamp_now_ms();
+//  timestamp_end_opened_at_ = timestamp_end_;
 }
 
 BlobArray::BlobArray(const BlobArray& rhs)

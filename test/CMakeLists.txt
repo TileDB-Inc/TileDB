@@ -32,7 +32,6 @@ find_package(Catch_EP REQUIRED)
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
 option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST server)" OFF)
 
-
 # Arrow integration test config and dependencies
 # Override from environment if not set in cache
 if (NOT DEFINED $CACHE{TILEDB_ARROW_TESTS})
@@ -144,6 +143,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
   src/unit-capi-string_dims.cc
+  src/unit-capi-tiledb_file.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
@@ -385,17 +385,3 @@ add_custom_target(
   DEPENDS tiledb_unit
 )
 
-include(CMakePrintHelpers)
-cmake_print_properties(
-  TARGETS tiledb_unit
-  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
-  )
-cmake_print_properties(
-  TARGETS tiledb_test_support_lib
-  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
-  )
-cmake_print_properties(
-  TARGETS Catch2::Catch2
-  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
-  )
-  
