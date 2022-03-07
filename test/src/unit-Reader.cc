@@ -192,7 +192,8 @@ TEST_CASE_METHOD(
   CHECK(dom.add_dimension(&d2).ok());
 
   auto schema = tdb::make_shared<ArraySchema>(HERE());
-  CHECK(schema->set_domain(&dom).ok());
+  CHECK(schema->set_domain(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom))
+            .ok());
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < frag_tile_domains.size() + 1; i++) {

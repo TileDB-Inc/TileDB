@@ -312,7 +312,7 @@ class FragmentMetadata {
    * @param domain The domain to be set.
    * @return Status
    */
-  void set_rtree_domain(const Domain* domain);
+  void set_rtree_domain(shared_ptr<const Domain> domain);
 
   /**
    * Sets the tile "index base" which is added to the tile index in the set_*()

@@ -596,7 +596,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   }
 
   // Load domain
-  domain_ = tdb_new(Domain);
+  domain_ = tdb::make_shared<Domain>(HERE());
   RETURN_NOT_OK(domain_->deserialize(buff, version_));
 
   // Load attributes
@@ -628,8 +628,8 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-const Domain* ArraySchema::domain() const {
-  return domain_;
+shared_ptr<const Domain> ArraySchema::domain() const {
+  return std::const_pointer_cast<const Domain>(domain_);
 }
 
 Status ArraySchema::init() {
@@ -692,7 +692,7 @@ Status ArraySchema::set_cell_validity_filter_pipeline(
   return Status::Ok();
 }
 
-Status ArraySchema::set_domain(Domain* domain) {
+Status ArraySchema::set_domain(shared_ptr<Domain> domain) {
   if (domain == nullptr)
     return LOG_STATUS(
         Status_ArraySchemaError("Cannot set domain; Input domain is nullptr"));
@@ -722,8 +722,7 @@ Status ArraySchema::set_domain(Domain* domain) {
   }
 
   // Set domain
-  tdb_delete(domain_);
-  domain_ = tdb_new(Domain, domain);
+  domain_ = domain;
 
   // Create dimension map
   dim_map_.clear();
@@ -864,7 +863,6 @@ void ArraySchema::clear() {
   tile_order_ = Layout::ROW_MAJOR;
   attributes_.clear();
 
-  tdb_delete(domain_);
   domain_ = nullptr;
   timestamp_range_ = std::make_pair(0, 0);
 }
