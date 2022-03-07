@@ -306,36 +306,29 @@ Status dimension_to_capnp(
   return Status::Ok();
 }
 
-Status dimension_from_capnp(
+tuple<Status, optional<shared_ptr<Dimension>>> dimension_from_capnp(
     const capnp::Dimension::Reader& dimension_reader) {
-
-/*
-   * @param name The name of the dimension.
-   * @param type The type of the dimension.
-   * @param cell_val_num The cell value number of the dimension.
-   * @param domain The range of the dimension range.
-   * @param filter_pipeline The filters of the dimension.
-   * @param tile_extent The tile extent of the dimension.
-*/
-
-  dimension_reader.getName();
-
+  // datatype
   Datatype dim_type = Datatype::ANY;
-  RETURN_NOT_OK(datatype_enum(dimension_reader.getType().cStr(), &dim_type));
+  RETURN_NOT_OK_TUPLE(
+      datatype_enum(dimension_reader.getType().cStr(), &dim_type), nullopt);
+  auto coord_size = datatype_size(dim_type);
 
   // cell val num
-  uint32_t cell_val_num = (datatype_is_string(dim_type)) ? constants::var_num : 1;
+  uint32_t cell_val_num =
+      (datatype_is_string(dim_type)) ? constants::var_num : 1;
 
+  Range domain;
   if (dimension_reader.hasDomain()) {
     auto domain_reader = dimension_reader.getDomain();
     Buffer domain_buffer;
-    RETURN_NOT_OK(
-        utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer));
-    // domain_buffer.data() is pointer, size = datatype_size(dim_type) * 2
-  } else {
-    // default construct ??????? 
+    RETURN_NOT_OK_TUPLE(
+        utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer),
+        nullopt);
+    domain = Range(domain_buffer.data(), coord_size * 2);
   }
 
+  tdb_unique_ptr<FilterPipeline> filters;
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
@@ -343,37 +336,38 @@ Status dimension_from_capnp(
     RETURN_NOT_OK((*dimension)->set_filter_pipeline(filters.value().get()));
   }
 
+  ByteVecValue tile_extent;
   if (!dimension_reader.getNullTileExtent()) {
     auto tile_extent_reader = dimension_reader.getTileExtent();
     switch (dim_type) {
       case Datatype::INT8: {
         auto val = tile_extent_reader.getInt8();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
+        tile_extent = Dimension::create_tile_extent(&val, coord_size);
         break;
       }
       case Datatype::UINT8: {
         auto val = tile_extent_reader.getUint8();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
+        tile_extent = Dimension::create_tile_extent(&val, coord_size);
         break;
       }
       case Datatype::INT16: {
         auto val = tile_extent_reader.getInt16();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
+        tile_extent = Dimension::create_tile_extent(&val, coord_size);
         break;
       }
       case Datatype::UINT16: {
         auto val = tile_extent_reader.getUint16();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
+        tile_extent = Dimension::create_tile_extent(&val, coord_size);
         break;
       }
       case Datatype::INT32: {
         auto val = tile_extent_reader.getInt32();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
+        tile_extent = Dimension::create_tile_extent(&val, coord_size);
         break;
       }
       case Datatype::UINT32: {
         auto val = tile_extent_reader.getUint32();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
+        tile_extent = Dimension::create_tile_extent(&val, coord_size);
         break;
       }
       case Datatype::DATETIME_YEAR:
@@ -400,31 +394,40 @@ Status dimension_from_capnp(
       case Datatype::TIME_AS:
       case Datatype::INT64: {
         auto val = tile_extent_reader.getInt64();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
+        tile_extent = Dimension::create_tile_extent(&val, coord_size);
         break;
       }
       case Datatype::UINT64: {
         auto val = tile_extent_reader.getUint64();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
+        tile_extent = Dimension::create_tile_extent(&val, coord_size);
         break;
       }
       case Datatype::FLOAT32: {
         auto val = tile_extent_reader.getFloat32();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
+        tile_extent = Dimension::create_tile_extent(&val, coord_size);
         break;
       }
       case Datatype::FLOAT64: {
         auto val = tile_extent_reader.getFloat64();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
+        tile_extent = Dimension::create_tile_extent(&val, coord_size);
         break;
       }
       default:
-        return LOG_STATUS(Status_SerializationError(
-            "Error deserializing dimension; unknown datatype."));
+        return {LOG_STATUS(Status_SerializationError(
+                    "Error deserializing dimension; unknown datatype.")),
+                nullopt};
     }
   }
 
-  return Status::Ok();
+  return {Status::Ok(),
+          tiledb::common::make_shared<Dimension>(
+              HERE(),
+              dimension_reader.getName(),
+              dim_type,
+              cell_val_num,
+              domain,
+              *(filters.get()),
+              tile_extent)};
 }
 
 Status domain_to_capnp(
@@ -458,7 +461,7 @@ Status domain_from_capnp(
   for (auto dimension : dimensions) {
     tdb_unique_ptr<Dimension> dim;
     RETURN_NOT_OK(dimension_from_capnp(dimension, &dim));
-    RETURN_NOT_OK((*domain)->add_dimension(move(dim)));
+    RETURN_NOT_OK((*domain)->add_dimension(dim.get()));
   }
 
   return Status::Ok();
