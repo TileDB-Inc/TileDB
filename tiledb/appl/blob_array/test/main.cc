@@ -41,8 +41,8 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/storage_manager/context.h"
 //#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -116,6 +116,7 @@ BlobArrayFx::BlobArrayFx() {
   posix.create_dir(localfs_temp_dir_);
 #endif
 
+  remove_temp_dir(localfs_temp_dir_);  // remove any pre-existing instance
   create_dir(localfs_temp_dir_, ctx_, vfs_);
 }
 
@@ -128,7 +129,6 @@ BlobArrayFx::~BlobArrayFx() {
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
   tiledb_config_free(&config_);
-
 }
 
 #if 01
@@ -136,11 +136,9 @@ void BlobArrayFx::create_temp_dir(const std::string& path) const {
   remove_temp_dir(path);
 //  REQUIRE(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 #ifdef _WIN32
-  //localfs_temp_dir_ = tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
   tiledb::sm::Win win_fs;
   win_fs.create_dir(path);
 #else
-  //localfs_temp_dir_ = tiledb::sm::Posix::current_dir() + "/tiledb_test/";
   tiledb::sm::Posix posix_fs;
   posix.create_dir(path);
 #endif
@@ -169,18 +167,9 @@ std::string BlobArrayFx::random_name(const std::string& prefix) {
 }
 
 TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
-  //tiledb::sm::Context ctx(*ctx_->ctx_);
-  //tiledb::sm::Config cfg(*config_->config_);
-  // tiledb::common::ThreadPool comp_tp;
-  // tiledb::common::ThreadPool io_tp;
-  // tiledb::sm::stats::Stats stats("unit_blob_array");
   tdb_shared_ptr<Logger> logger;
   std::string logger_name("unit_blob_arry");
-  // logger = tiledb::common::make_shared<Logger>(logger_name);
   logger = std::make_shared<Logger>(logger_name);
-  // logger = tiledb::common::make_shared<Logger>("unit_blob_arry", , true);
-  // tiledb::sm::StorageManager stg_mgr(ctx.compute_tp(), ctx.io_tp(),
-  // ctx.stats(), logger);
 
   // Encryption parameters
   tiledb::sm::EncryptionType encryption_type =
@@ -188,16 +177,19 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   const char* encryption_key = nullptr;
 
   bool repeating = true;
-
+#if 01
   SECTION("- without encryption") {
     encryption_type = tiledb::sm::EncryptionType::NO_ENCRYPTION;
     encryption_key = "";
   }
+#endif
+#if 01
   SECTION("- with encryption") {
     encryption_type = tiledb::sm::EncryptionType::AES_256_GCM;
     encryption_key = "0123456789abcdeF0123456789abcdeF";
   }
-  #if 01
+#endif
+#if 01
   tiledb_config_t* cfg = nullptr;
   tiledb_error_t* err = nullptr;
   if (encryption_type != tiledb::sm::EncryptionType::NO_ENCRYPTION) {
@@ -217,7 +209,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
     tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
         key_len);
   }
-  #endif
+#endif
 
   tiledb::appl::BlobArraySchema* blob_array_schema;
   tiledb::appl::BlobArray* blob_array;
@@ -232,28 +224,38 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
 
   remove_temp_dir(test_array_name);
 
-//  REQUIRE(blob_array->create(config_->config_).ok() == true);
+  //  REQUIRE(blob_array->create(config_->config_).ok() == true);
   auto config = cfg ? cfg->config_ : config_->config_;
   REQUIRE(blob_array->create(config).ok() == true);
   REQUIRE(blob_array->is_open() == false);
 
-  auto open_res = blob_array->open(
-      tiledb::sm::QueryType::WRITE,
-      encryption_type, //tiledb::sm::EncryptionType::NO_ENCRYPTION,
-      encryption_key, //"",
-      static_cast<uint32_t>(strlen(encryption_key)));  // inherited from parent
-  REQUIRE(open_res.ok() == true);
-  REQUIRE(blob_array->is_open() == true);
+  auto open_for_write = [&]() -> void {
+    if (blob_array->is_open())
+      REQUIRE(blob_array->close().ok() == true);
+    auto open_res = blob_array->open(
+        tiledb::sm::QueryType::WRITE,
+        encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
+        encryption_key,   //"",
+        static_cast<uint32_t>(
+            strlen(encryption_key)));  // inherited from parent
+    REQUIRE(blob_array->is_open() == true);
+  };
+  auto open_for_read = [&]() -> void {
+    if (blob_array->is_open())
+      REQUIRE(blob_array->close().ok() == true);
+    auto open_res = blob_array->open(
+        tiledb::sm::QueryType::READ,
+        encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
+        encryption_key,   //"",
+        static_cast<uint32_t>(
+            strlen(encryption_key)));  // inherited from parent
+    REQUIRE(blob_array->is_open() == true);
+  };
+  open_for_write();
   REQUIRE(blob_array->close().ok() == true);
   REQUIRE(blob_array->is_open() == false);
 
-  open_res = blob_array->open(
-      tiledb::sm::QueryType::READ,
-      encryption_type, //tiledb::sm::EncryptionType::NO_ENCRYPTION,
-      encryption_key, //"",
-      static_cast<uint32_t>(strlen(encryption_key)));  // inherited from parent
-  REQUIRE(open_res.ok() == true);
-  REQUIRE(blob_array->is_open() == true);
+  open_for_read();
   REQUIRE(blob_array->close().ok() == true);
   REQUIRE(blob_array->is_open() == false);
 
@@ -267,157 +269,180 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   const std::string csv_path = files_dir + "/" + "quickstart_dense.csv";
   tiledb::sm::URI inp_uri(csv_path);
   std::vector<int> bufdata{1, 2, 3};
-  //std::string output_path = localfs_temp_dir_ + "outfile.dat";
+  // std::string output_path = localfs_temp_dir_ + "outfile.dat";
   std::string output_path1 = localfs_temp_dir_ + "outfile1.dat";
   std::string output_path2 = localfs_temp_dir_ + "outfile2.dat";
-  //tiledb::sm::URI out_uri(output_path);
+  // tiledb::sm::URI out_uri(output_path);
   tiledb::sm::URI out1_uri(output_path1);
   tiledb::sm::URI out2_uri(output_path2);
 
-  auto basic_to_array = [&](bool expected_result = false) {
+  // TBD: REMOVE: NOTE:
+  // setting timeswtamp has no effect since blob_array itself
+  // sets an initial end_timestamp which is then apparently
+  // propogated across all further opens of same array object.
+  auto basic_uri_to_array = [&](bool expected_result = false) {
     CHECK(
-        //blob_array->to_array_from_uri(inp_uri, config_->config_).ok() == expected_result);
+        // blob_array->to_array_from_uri(inp_uri, config_->config_).ok() ==
+        // expected_result);
         blob_array->to_array_from_uri(inp_uri, config).ok() == expected_result);
+  };
+  auto basic_buf_to_array = [&](bool expected_result = false) {
+    static uint64_t tstamp1, tstamp2;
     CHECK(
         blob_array
             ->to_array_from_buffer(
                 bufdata.data(),
                 bufdata.size() * sizeof(bufdata[0]),
-                //config_->config_)
+                // config_->config_)
                 config)
             .ok() == expected_result);
   };
-  basic_to_array(false);
 
+  auto basic_to_array = [&](bool expected_result = false) {
+    basic_uri_to_array(expected_result);
+    //    blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
+    basic_buf_to_array(expected_result);
+    //    blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
+  };
+
+  auto basic_export_vfs_fh = [&](bool expected_result = false) -> void {
+    try {
+      tiledb::sm::VFS vfs;
+      // Initialize VFS object
+      auto storage_manager_ = ctx_->ctx_->storage_manager();
+      auto stats = storage_manager_->stats();
+      auto compute_tp = storage_manager_->compute_tp();
+      auto io_tp = storage_manager_->io_tp();
+      const tiledb::sm::Config* vfs_config = nullptr;
+      auto ctx_config = storage_manager_->config();
+      REQUIRE(vfs.init(stats, compute_tp, io_tp, &ctx_config, vfs_config).ok());
+
+      tiledb::sm::VFSFileHandle vfsfh(
+          out2_uri, &vfs, tiledb::sm::VFSMode::VFS_WRITE);
+      REQUIRE(vfsfh.is_open());
+
+      // CHECK(
+      //    blob_array->export_to_vfs_fh(&vfsfh, nullptr).ok() ==
+      //    expected_result);
+      stat = blob_array->export_to_vfs_fh(&vfsfh, nullptr);
+      CHECK(stat.ok() == expected_result);
+
+      CHECK(vfsfh.close().ok());
+      CHECK(vfs.terminate().ok());
+    } catch (const std::exception& e) {
+      CHECK(!"exception surrounding export_to_vfs_fh() attempt");
+    }
+  };
+  auto basic_export_to_uri = [&](bool expected_result) -> void {
+    stat = blob_array->export_to_uri(out1_uri, config);
+    CHECK(stat.ok() == expected_result);
+  };
   auto basic_export = [&](bool expected_result) -> void {
-    //CHECK(blob_array->export_to_uri(out_uri, config_->config_).ok() == expected_result);
-    #if 0
+  // CHECK(blob_array->export_to_uri(out_uri, config_->config_).ok() ==
+  // expected_result);
+#if 0
     std::cout << "b4 export_to_uri" << std::endl;
     //CHECK(
     //    blob_array->export_to_uri(out_uri, config).ok() ==
     //    expected_result);
-    stat = blob_array->export_to_uri(out1_uri, config);
-    CHECK(stat.ok( == expected_result));
+    // stat = blob_array->export_to_uri(out1_uri, config);
+    // CHECK(stat.ok( == expected_result));
+    basic_export_to_uri(expected_result);
     std::cout << "aftr export_to_uri" << std::endl;
 #endif
-    auto try_export_vfs_fh = [&](bool expected_result = false) -> void {
-      try {
-        tiledb::sm::VFS vfs;
-        // Initialize VFS object
-        auto storage_manager_ = ctx_->ctx_->storage_manager();
-        auto stats = storage_manager_->stats();
-        auto compute_tp = storage_manager_->compute_tp();
-        auto io_tp = storage_manager_->io_tp();
-        const tiledb::sm::Config* vfs_config = nullptr;
-        auto ctx_config = storage_manager_->config();
-        REQUIRE(
-            vfs.init(stats, compute_tp, io_tp, &ctx_config, vfs_config).ok());
-
-        tiledb::sm::VFSFileHandle vfsfh(
-            out2_uri, &vfs, tiledb::sm::VFSMode::VFS_WRITE);
-        REQUIRE(vfsfh.is_open());
-
-        //CHECK(
-        //    blob_array->export_to_vfs_fh(&vfsfh, nullptr).ok() ==
-        //    expected_result);
-        stat = blob_array->export_to_vfs_fh(&vfsfh, nullptr);
-        CHECK(stat.ok() == expected_result);
-
-        CHECK(vfsfh.close().ok());
-        CHECK(vfs.terminate().ok());
-      } catch (const std::exception& e) {
-        CHECK(!"exception surrounding export_to_vfs_fh() attempt");
-      }
-    };
     std::cout << "b4 try_export_vfs_fh" << std::endl;
-    try_export_vfs_fh(expected_result);
+    basic_export_vfs_fh(expected_result);
     std::cout << "aftr try_export_vfs_fh" << std::endl;
 #if 01
     std::cout << "b4 export_to_uri" << std::endl;
-    //CHECK(blob_array->export_to_uri(out_uri, config).ok() == expected_result);
-    stat = blob_array->export_to_uri(out1_uri, config);
-    CHECK(stat.ok() == expected_result);
+    // CHECK(blob_array->export_to_uri(out_uri, config).ok() ==
+    // expected_result);
+    // stat = blob_array->export_to_uri(out1_uri, config);
+    // CHECK(stat.ok() == expected_result);
+    basic_export_to_uri(expected_result);
     std::cout << "aftr export_to_uri" << std::endl;
 #endif
   };
+
+  #if 0
+  //basic operations that will succeed to allow dev diag stepping thru,
+  //but winds up leaving array populated which causes later tests
+  //to fail as they expect the array to be empty.
+  open_for_write();
+  basic_uri_to_array(true);
+  open_for_read();
+  // REQUIRE(blob_array->close().ok() == true);
+  // REQUIRE(blob_array->is_open() == true);
+  basic_export_to_uri(true);
+
+  REQUIRE(blob_array->close().ok() == true);
+  #endif
+
+  basic_to_array(false);
   basic_export(false);
 
-  open_res = blob_array->open(
-      tiledb::sm::QueryType::READ,
-      encryption_type, //tiledb::sm::EncryptionType::NO_ENCRYPTION,
-      encryption_key, //"",
-      static_cast<uint32_t>(strlen(encryption_key)));  // inherited from parent
-  REQUIRE(open_res.ok() == true);
+  open_for_read();
 
-  // array open in READ mode, 
+  // array open in READ mode,
   // but array is EMPTY as the write's
   // prior (to_array_... calls) were done with invalid closed state.
 
-  #if 1
   basic_to_array(false);
-  #else
-  //CHECK(blob_array->to_array_from_uri(inp_uri, config_->config_).ok() == false);
-  CHECK(blob_array->to_array_from_uri(inp_uri, config).ok() == false);
-  CHECK(
-      blob_array
-             ->to_array_from_buffer(
-                 bufdata.data(),
-                 bufdata.size() * sizeof(bufdata[0]),
-                 //config_->config_)
-                 config)
-          .ok() == false);
-  #endif
 
-  // array open in READ mode, but EMPTY
-  // And, array is empty since any array writes above (should have) failed.
-  #if 1
+// array open in READ mode, but EMPTY
+// And, array is empty since any array writes above (should have) failed.
   basic_export(false);
-  #else
-  //CHECK(blob_array->export_to_uri(out_uri, config_->config_).ok() == false);
-  CHECK(blob_array->export_to_uri(out_uri, config).ok() == false);
-
-  //...->export_to_uri() invokes ... blob_array->export_to_vfs_fh();
-
-  try_export_vfs_fh(false);
-  #endif
 
   REQUIRE(blob_array->close().ok() == true);
 
-  open_res = blob_array->open(
-      tiledb::sm::QueryType::WRITE,
-      encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
-      encryption_key,   //"",
-      static_cast<uint32_t>(strlen(encryption_key)));  // inherited from parent
-  REQUIRE(open_res.ok() == true);
-  REQUIRE(blob_array->is_open() == true);
-  //REQUIRE(blob_array->close().ok() == true);
-  //REQUIRE(blob_array->is_open() == false);
+  open_for_write();
 
-  //since empty, nothing to export
+  // since empty, nothing to export
   basic_export(false);
 
-  // array open WRITE but empty
+#if 0 
+  //'extra' diagnostic section added to see what might happen if the two writes had 
+  // file closed in between them... failures do still seem to potentially occur (on
+  // the subsequent reads) tho maybe not quite as often as when both are written 
+  // within same open as done further below...
+  // 
+  //(already) opened for write ...
+  basic_uri_to_array(true); //quickstart_dense.csv 115 bytes
+
+  open_for_read();
+  stat = blob_array->export_to_uri(out1_uri, config);
+  CHECK(stat.ok() == true);
+
+  open_for_write();
+  basic_buf_to_array(true); //buf 3 ints, 12 bytes
+
+
+  open_for_read();
+  stat = blob_array->export_to_uri(out2_uri, config);
+  CHECK(stat.ok() == true);
+
+  // leave open state as we found, open WRITE, ALTHO NOT EMPTY
+  open_for_write();
+
+#endif
+
+  // array open WRITE but empty (unless #ifdef code above active)
   basic_to_array(true);
 
   REQUIRE(blob_array->close().ok() == true);
 
-  open_res = blob_array->open(
-      tiledb::sm::QueryType::READ,
-      encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
-      encryption_key,   //"",
-      static_cast<uint32_t>(strlen(encryption_key)));  // inherited from parent
-  REQUIRE(open_res.ok() == true);
-  REQUIRE(blob_array->is_open() == true);
+  open_for_read();
 
   // array open for read, has something in it
-  basic_to_array(false); // open read, unable to add
+  basic_to_array(false);  // open read, unable to add
 
   {
     std::string encryption_type_string =
         encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
-    std::cout << "b4 export, encryption_type " << encryption_type_string << std::endl;
+    std::cout << "b4 export, encryption_type " << encryption_type_string
+              << std::endl;
   }
-  basic_export(true); // open for read and non-empty, should succeed
+  basic_export(true);  // open for read and non-empty, should succeed
   if (encryption_type == tiledb::sm::EncryptionType::AES_256_GCM) {
     // cycle giving oppty to debug...
     repeating = false;
@@ -426,12 +451,62 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
     } while (repeating);
   }
 
+  REQUIRE(blob_array->close().ok() == true);
+
   // blob_array->libmagic_get_mime();
   // blob_array->libmagic_get_mime_encoding();
   // blob_array->store_mime_type();
   // blob_array->store_mime_encoding();
   tiledb::appl::WhiteboxBlobArray wb_ba(*blob_array);
-  // wb_ba->
+  auto open_wbba_for_write = [&]() -> void {
+    if (wb_ba.is_open())
+      REQUIRE(wb_ba.close().ok() == true);
+    //    blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
+    auto open_res = wb_ba.open(
+        tiledb::sm::QueryType::WRITE,
+        encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
+        encryption_key,   //"",
+        static_cast<uint32_t>(
+            strlen(encryption_key)));  // inherited from parent
+    REQUIRE(wb_ba.is_open() == true);
+  };
+  auto open_wbba_for_read = [&]() -> void {
+    if (wb_ba.is_open())
+      REQUIRE(wb_ba.close().ok() == true);
+    //    blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
+    auto open_res = wb_ba.open(
+        tiledb::sm::QueryType::READ,
+        encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
+        encryption_key,   //"",
+        static_cast<uint32_t>(
+            strlen(encryption_key)));  // inherited from parent
+    REQUIRE(wb_ba.is_open() == true);
+  };
+
+  tiledb::sm::Datatype value_type;
+  uint32_t value_size;
+  const void* ptr_value;
+  CHECK(
+      wb_ba.get_file_ext(&value_type, &value_size, &ptr_value).ok() == false);
+  CHECK(
+      wb_ba.get_mime_type(&value_type, &value_size, &ptr_value).ok() == false);
+  CHECK(wb_ba.get_mime_encoding(&value_type, &value_size, &ptr_value).ok() == false);
+  open_wbba_for_write();
+  CHECK(wb_ba.get_file_ext(&value_type, &value_size, &ptr_value).ok() == false);
+  CHECK(
+      wb_ba.get_mime_type(&value_type, &value_size, &ptr_value).ok() == false);
+  CHECK(
+      wb_ba.get_mime_encoding(&value_type, &value_size, &ptr_value).ok() ==
+      false);
+  open_wbba_for_read();
+  CHECK(wb_ba.get_file_ext(&value_type, &value_size, &ptr_value).ok() == true);
+  CHECK(
+      wb_ba.get_mime_type(&value_type, &value_size, &ptr_value).ok() == true);
+  CHECK(
+      wb_ba.get_mime_encoding(&value_type, &value_size, &ptr_value).ok() ==
+      true);
+
+  REQUIRE(blob_array->close().ok() == true);
 
   delete blob_array;
   if (cfg) {
