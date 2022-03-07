@@ -37,8 +37,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/metadata/metadata.h"
@@ -77,11 +79,22 @@ class Array {
   /*                API                */
   /* ********************************* */
 
+  /** Returns the array directory object. */
+  const ArrayDirectory& array_directory() const;
+
+  /** Sets the latest array schema.
+   * @param array_schema The array schema to set.
+   */
+  void set_array_schema_latest(const shared_ptr<ArraySchema>& array_schema);
+
   /** Returns the latest array schema. */
-  ArraySchema* array_schema_latest() const;
+  const ArraySchema& array_schema_latest() const;
+
+  /** Returns the latest array schema as a shared pointer. */
+  shared_ptr<const ArraySchema> array_schema_latest_ptr() const;
 
   /** Returns array schemas map. */
-  inline const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+  inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
   array_schemas_all() const {
     return array_schemas_all_;
   }
@@ -167,7 +180,7 @@ class Array {
    * Returns the fragment metadata of the array. If the array is not open,
    * an empty vector is returned.
    */
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata() const;
+  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata() const;
 
   /**
    * Returns `true` if the array is empty at the time it is opened.
@@ -182,7 +195,7 @@ class Array {
   bool is_remote() const;
 
   /** Retrieves the array schema. Errors if the array is not open. */
-  Status get_array_schema(ArraySchema** array_schema) const;
+  tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema() const;
 
   /** Retrieves the query type. Errors if the array is not open. */
   Status get_query_type(QueryType* qyery_type) const;
@@ -343,7 +356,7 @@ class Array {
    *  If the non_empty_domain has not been computed or loaded
    *  it will be loaded first
    * */
-  std::tuple<Status, std::optional<const NDRange>> non_empty_domain();
+  tuple<Status, optional<const NDRange>> non_empty_domain();
 
   /** Returns the non-empty domain of the opened array. */
   void set_non_empty_domain(const NDRange& non_empty_domain);
@@ -357,16 +370,18 @@ class Array {
   /* ********************************* */
 
   /** The latest array schema. */
-  ArraySchema* array_schema_latest_;
+  shared_ptr<ArraySchema> array_schema_latest_;
 
   /**
    * A map of all array_schemas_all
    */
-  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
-      array_schemas_all_;
+  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
 
   /** The array URI. */
   URI array_uri_;
+
+  /** The array directory object for listing URIs. */
+  ArrayDirectory array_dir_;
 
   /** This is a backwards compatible URI from serialization
    *  In TileDB 2.5 we removed sending the URI but 2.4 and older were
@@ -383,10 +398,10 @@ class Array {
    * bytes should be stored. Whenever a key is needed, a pointer to this
    * memory region should be passed instead of a copy of the bytes.
    */
-  tdb_shared_ptr<EncryptionKey> encryption_key_;
+  shared_ptr<EncryptionKey> encryption_key_;
 
   /** The metadata of the fragments the array was opened with. */
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata_;
+  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
 
   /** `True` if the array has been opened. */
   std::atomic<bool> is_open_;

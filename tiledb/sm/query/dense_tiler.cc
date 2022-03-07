@@ -38,7 +38,7 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/tile/tile.h"
+#include "tiledb/sm/tile/writer_tile.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
@@ -69,7 +69,7 @@ DenseTiler<T>::DenseTiler(
   assert(subarray != nullptr);
   assert(buffers != nullptr);
   for (const auto& buff : *buffers) {
-    assert(array_schema_->is_attr(buff.first));
+    assert(array_schema_.is_attr(buff.first));
     (void)buff;
   }
 
@@ -95,13 +95,13 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
 
   // For easy reference
   CopyPlan ret;
-  auto dim_num = (int32_t)array_schema_->dim_num();
-  auto domain = array_schema_->domain();
+  auto dim_num = (int32_t)array_schema_.dim_num();
+  auto domain = array_schema_.domain();
   auto subarray = subarray_->ndrange(0);  // Guaranteed to be unary
   std::vector<std::array<T, 2>> sub(dim_num);
   for (int32_t d = 0; d < dim_num; ++d)
     sub[d] = {*(const T*)subarray[d].start(), *(const T*)subarray[d].end()};
-  auto tile_layout = array_schema_->cell_order();
+  auto tile_layout = array_schema_.cell_order();
   auto sub_layout = subarray_->layout();
 
   // Copy tile and subarray strides
@@ -188,26 +188,26 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
 
 template <class T>
 Status DenseTiler<T>::get_tile(
-    uint64_t id, const std::string& name, Tile* tile) {
+    uint64_t id, const std::string& name, WriterTile* tile) {
   auto timer_se = stats_->start_timer("get_tile");
 
   // Checks
   if (id >= tile_num_)
     return LOG_STATUS(
         Status_DenseTilerError("Cannot get tile; Invalid tile id"));
-  if (!array_schema_->is_attr(name))
+  if (!array_schema_.is_attr(name))
     return LOG_STATUS(Status_DenseTilerError(
         std::string("Cannot get tile; '") + name + "' is not an attribute"));
-  if (array_schema_->var_size(name))
+  if (array_schema_.var_size(name))
     return LOG_STATUS(Status_DenseTilerError(
         std::string("Cannot get tile; '") + name +
         "' is not a fixed-sized attribute"));
 
   // For easy reference
-  auto domain = array_schema_->domain();
-  auto type = array_schema_->type(name);
+  auto domain = array_schema_.domain();
+  auto type = array_schema_.type(name);
   auto cell_num_per_tile = domain->cell_num_per_tile();
-  auto cell_size = array_schema_->cell_size(name);
+  auto cell_size = array_schema_.cell_size(name);
   auto tile_size = cell_num_per_tile * cell_size;
   auto buff = (uint8_t*)buffers_->find(name)->second.buffer_;
   assert(buff != nullptr);
@@ -215,7 +215,6 @@ Status DenseTiler<T>::get_tile(
   // Initialize tile
   RETURN_NOT_OK(tile->init_unfiltered(
       constants::format_version, type, tile_size, cell_size, 0, true));
-  tile->reset_offset();
 
   // Copy tile from buffer
   RETURN_NOT_OK(copy_tile(id, cell_size, buff, tile));
@@ -225,22 +224,22 @@ Status DenseTiler<T>::get_tile(
 
 template <class T>
 Status DenseTiler<T>::get_tile_null(
-    uint64_t id, const std::string& name, Tile* tile) const {
+    uint64_t id, const std::string& name, WriterTile* tile) const {
   // Checks
   if (id >= tile_num_)
     return LOG_STATUS(
         Status_DenseTilerError("Cannot get tile; Invalid tile id"));
-  if (!array_schema_->is_attr(name))
+  if (!array_schema_.is_attr(name))
     return LOG_STATUS(Status_DenseTilerError(
         std::string("Cannot get tile; '") + name + "' is not an attribute"));
-  if (!array_schema_->is_nullable(name))
+  if (!array_schema_.is_nullable(name))
     return LOG_STATUS(Status_DenseTilerError(
         std::string("Cannot get tile; '") + name +
         "' is not a nullable attribute"));
 
   // For easy reference
-  auto domain = array_schema_->domain();
-  auto type = array_schema_->type(name);
+  auto domain = array_schema_.domain();
+  auto type = array_schema_.type(name);
   auto cell_num_per_tile = domain->cell_num_per_tile();
   auto cell_size = constants::cell_validity_size;
   auto tile_size = cell_num_per_tile * cell_size;
@@ -250,8 +249,6 @@ Status DenseTiler<T>::get_tile_null(
   // Initialize tile
   RETURN_NOT_OK(tile->init_unfiltered(
       constants::format_version, type, tile_size, cell_size, 0, true));
-  tile->reset_offset();
-  assert(tile->size() == tile_size);
 
   // Copy tile from buffer
   return copy_tile(id, cell_size, buff, tile);
@@ -261,23 +258,23 @@ template <class T>
 Status DenseTiler<T>::get_tile_var(
     uint64_t id,
     const std::string& name,
-    Tile* tile_off,
-    Tile* tile_val) const {
+    WriterTile* tile_off,
+    WriterTile* tile_val) const {
   // Checks
   if (id >= tile_num_)
     return LOG_STATUS(
         Status_DenseTilerError("Cannot get tile; Invalid tile id"));
-  if (!array_schema_->is_attr(name))
+  if (!array_schema_.is_attr(name))
     return LOG_STATUS(Status_DenseTilerError(
         std::string("Cannot get tile; '") + name + "' is not an attribute"));
-  if (!array_schema_->var_size(name))
+  if (!array_schema_.var_size(name))
     return LOG_STATUS(Status_DenseTilerError(
         std::string("Cannot get tile; '") + name +
         "' is not a var-sized attribute"));
 
   // For easy reference
-  auto domain = array_schema_->domain();
-  auto type = array_schema_->type(name);
+  auto domain = array_schema_.domain();
+  auto type = array_schema_.type(name);
   auto cell_num_in_tile = domain->cell_num_per_tile();
   auto tile_off_size = constants::cell_var_offset_size * cell_num_in_tile;
   auto buff_it = buffers_->find(name);
@@ -290,7 +287,7 @@ Status DenseTiler<T>::get_tile_var(
   std::vector<uint8_t> fill_var(sizeof(uint64_t), 0);
 
   // Initialize position tile
-  Tile tile_pos;
+  WriterTile tile_pos;
   RETURN_NOT_OK(tile_pos.init_unfiltered(
       constants::format_version,
       constants::cell_var_offset_type,
@@ -301,10 +298,9 @@ Status DenseTiler<T>::get_tile_var(
   // Fill entire tile with MAX_UINT64
   std::vector<uint64_t> to_write(
       cell_num_in_tile, std::numeric_limits<uint64_t>::max());
-  tile_pos.write(to_write.data(), tile_off_size);
+  RETURN_NOT_OK(tile_pos.write(to_write.data(), 0, tile_off_size));
   to_write.clear();
   to_write.shrink_to_fit();
-  tile_pos.reset_offset();
 
   // Get position tile
   auto cell_num_in_buff =  // TODO: fix
@@ -331,15 +327,16 @@ Status DenseTiler<T>::get_tile_var(
       0));
 
   // Copy real offsets and values to the corresponding tiles
-  void* tile_pos_buff_tmp = tile_pos.buffer()->data();
+  void* tile_pos_buff_tmp = tile_pos.data();
   auto tile_pos_buff = (uint64_t*)tile_pos_buff_tmp;
-  uint64_t offset = 0, val_offset, val_size, pos;
+  uint64_t tile_off_offset = 0, offset = 0, val_offset, val_size, pos;
   auto mul = (offsets_format_mode_ == "bytes") ? 1 : cell_size;
   for (uint64_t i = 0; i < cell_num_in_tile; ++i) {
     pos = tile_pos_buff[i];
-    tile_off->write(&offset, sizeof(offset));
+    RETURN_NOT_OK(tile_off->write(&offset, tile_off_offset, sizeof(offset)));
+    tile_off_offset += sizeof(offset);
     if (pos == std::numeric_limits<uint64_t>::max()) {  // Empty
-      tile_val->write(&fill_var[0], cell_size);
+      RETURN_NOT_OK(tile_val->write_var(&fill_var[0], offset, cell_size));
       offset += cell_size;
     } else {  // Non-empty
       val_offset = ((offsets_bytesize_ == 8) ?
@@ -353,14 +350,13 @@ Status DenseTiler<T>::get_tile_var(
                           mul -
                       val_offset) :
                      buff_var_size - val_offset;
-      tile_val->write(&buff_var[val_offset], val_size);
+      RETURN_NOT_OK(
+          tile_val->write_var(&buff_var[val_offset], offset, val_size));
       offset += val_size;
     }
   }
 
-  // Reset tile offsets
-  tile_off->reset_offset();
-  tile_val->reset_offset();
+  tile_val->final_size(offset);
 
   return Status::Ok();
 }
@@ -397,8 +393,8 @@ const std::vector<uint64_t>& DenseTiler<T>::first_sub_tile_coords() const {
 template <class T>
 void DenseTiler<T>::calculate_first_sub_tile_coords() {
   // For easy reference
-  auto dim_num = array_schema_->dim_num();
-  auto domain = array_schema_->domain();
+  auto dim_num = array_schema_.dim_num();
+  auto domain = array_schema_.domain();
   auto subarray = subarray_->ndrange(0);
 
   // Calculate the coordinates of the first tile in the entire
@@ -417,10 +413,10 @@ void DenseTiler<T>::calculate_first_sub_tile_coords() {
 template <class T>
 void DenseTiler<T>::calculate_subarray_tile_coord_strides() {
   // For easy reference
-  auto dim_num = (int32_t)array_schema_->dim_num();
-  auto domain = array_schema_->domain();
+  auto dim_num = (int32_t)array_schema_.dim_num();
+  auto domain = array_schema_.domain();
   auto subarray = subarray_->ndrange(0);
-  auto layout = array_schema_->tile_order();
+  auto layout = array_schema_.tile_order();
 
   // Compute offsets
   sub_tile_coord_strides_.reserve(dim_num);
@@ -448,9 +444,9 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
   // For easy reference
   auto sub_layout = subarray_->layout();
   assert(sub_layout == Layout::ROW_MAJOR || sub_layout == Layout::COL_MAJOR);
-  auto tile_layout = array_schema_->cell_order();
-  auto dim_num = (int32_t)array_schema_->dim_num();
-  auto domain = array_schema_->domain();
+  auto tile_layout = array_schema_.cell_order();
+  auto dim_num = (int32_t)array_schema_.dim_num();
+  auto domain = array_schema_.domain();
   auto subarray = subarray_->ndrange(0);
 
   // Compute tile strides
@@ -504,14 +500,14 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
 
 template <class T>
 void DenseTiler<T>::calculate_tile_num() {
-  tile_num_ = array_schema_->domain()->tile_num(subarray_->ndrange(0));
+  tile_num_ = array_schema_.domain()->tile_num(subarray_->ndrange(0));
 }
 
 template <class T>
 std::vector<uint64_t> DenseTiler<T>::tile_coords_in_sub(uint64_t id) const {
   // For easy reference
-  auto dim_num = (int32_t)array_schema_->dim_num();
-  auto layout = array_schema_->tile_order();
+  auto dim_num = (int32_t)array_schema_.dim_num();
+  auto layout = array_schema_.tile_order();
   std::vector<uint64_t> ret;
   auto tmp_idx = id;
 
@@ -534,8 +530,8 @@ std::vector<uint64_t> DenseTiler<T>::tile_coords_in_sub(uint64_t id) const {
 template <class T>
 std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
   // For easy reference
-  auto dim_num = array_schema_->dim_num();
-  auto domain = array_schema_->domain();
+  auto dim_num = array_schema_.dim_num();
+  auto domain = array_schema_.domain();
 
   // Get tile coordinates in the subarray tile domain
   auto tile_coords_in_sub = this->tile_coords_in_sub(id);
@@ -561,7 +557,7 @@ std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
 
 template <class T>
 Status DenseTiler<T>::copy_tile(
-    uint64_t id, uint64_t cell_size, uint8_t* buff, Tile* tile) const {
+    uint64_t id, uint64_t cell_size, uint8_t* buff, WriterTile* tile) const {
   // Calculate copy plan
   const CopyPlan copy_plan = this->copy_plan(id);
 
@@ -622,9 +618,6 @@ Status DenseTiler<T>::copy_tile(
       sub_offsets[i] = sub_offsets[i - 1];
     }
   }
-
-  // Reset the tile offset to the beginning of the tile
-  tile->reset_offset();
 
   return Status::Ok();
 }

@@ -33,6 +33,7 @@
 // clang-format off
 #ifdef TILEDB_SERIALIZATION
 #include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/serialization/tiledb-rest.h"
@@ -113,32 +114,37 @@ Status RestClient::set_header(
   return Status::Ok();
 }
 
-Status RestClient::get_array_schema_from_rest(
-    const URI& uri, ArraySchema** array_schema) {
+tuple<Status, optional<shared_ptr<ArraySchema>>>
+RestClient::get_array_schema_from_rest(const URI& uri) {
   // Init curl and form the URL
   Curl curlc;
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  RETURN_NOT_OK_TUPLE(uri.get_rest_components(&array_ns, &array_uri), nullopt);
   const std::string cache_key = array_ns + ":" + array_uri;
-  RETURN_NOT_OK(
-      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  RETURN_NOT_OK_TUPLE(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),
+      nullopt);
   const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
                           "/" + curlc.url_escape(array_uri);
 
   // Get the data
   Buffer returned_data;
-  RETURN_NOT_OK(curlc.get_data(
-      stats_, url, serialization_type_, &returned_data, cache_key));
+  RETURN_NOT_OK_TUPLE(
+      curlc.get_data(
+          stats_, url, serialization_type_, &returned_data, cache_key),
+      nullopt);
   if (returned_data.data() == nullptr || returned_data.size() == 0)
-    return LOG_STATUS(Status_RestError(
-        "Error getting array schema from REST; server returned no data."));
+    return {
+        LOG_STATUS(Status_RestError(
+            "Error getting array schema from REST; server returned no data.")),
+        nullopt};
 
   return serialization::array_schema_deserialize(
-      array_schema, serialization_type_, returned_data);
+      serialization_type_, returned_data);
 }
 
 Status RestClient::post_array_schema_to_rest(
-    const URI& uri, ArraySchema* array_schema) {
+    const URI& uri, const ArraySchema& array_schema) {
   Buffer buff;
   RETURN_NOT_OK(serialization::array_schema_serialize(
       array_schema, serialization_type_, &buff, false));
@@ -229,7 +235,7 @@ Status RestClient::get_array_non_empty_domain(
 
 Status RestClient::get_array_max_buffer_sizes(
     const URI& uri,
-    const ArraySchema* schema,
+    const ArraySchema& schema,
     const void* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
@@ -425,7 +431,7 @@ size_t RestClient::query_post_call_back(
     void* const contents,
     const size_t content_nbytes,
     bool* const skip_retries,
-    tdb_shared_ptr<Buffer> scratch,
+    shared_ptr<Buffer> scratch,
     Query* query,
     serialization::CopyState* copy_state) {
   // All return statements in this function must pass through this wrapper.
@@ -627,11 +633,11 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
 }
 
 Status RestClient::subarray_to_str(
-    const ArraySchema* schema,
+    const ArraySchema& schema,
     const void* subarray,
     std::string* subarray_str) {
-  const auto coords_type = schema->dimension(0)->type();
-  const auto dim_num = schema->dim_num();
+  const auto coords_type = schema.dimension(0)->type();
+  const auto dim_num = schema.dim_num();
   const auto subarray_nelts = 2 * dim_num;
 
   if (subarray == nullptr) {
@@ -835,12 +841,14 @@ Status RestClient::set_header(const std::string&, const std::string&) {
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::get_array_schema_from_rest(const URI&, ArraySchema**) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+tuple<Status, optional<shared_ptr<ArraySchema>>>
+RestClient::get_array_schema_from_rest(const URI&) {
+  return {LOG_STATUS(Status_RestError(
+              "Cannot use rest client; serialization not enabled.")),
+          nullopt};
 }
 
-Status RestClient::post_array_schema_to_rest(const URI&, ArraySchema*) {
+Status RestClient::post_array_schema_to_rest(const URI&, const ArraySchema&) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
@@ -857,7 +865,7 @@ Status RestClient::get_array_non_empty_domain(Array*, uint64_t, uint64_t) {
 
 Status RestClient::get_array_max_buffer_sizes(
     const URI&,
-    const ArraySchema*,
+    const ArraySchema&,
     const void*,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
   return LOG_STATUS(

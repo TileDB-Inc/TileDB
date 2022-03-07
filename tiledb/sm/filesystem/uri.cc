@@ -102,6 +102,10 @@ URI URI::remove_trailing_slash() const {
   return URI(uri_);
 }
 
+bool URI::empty() const {
+  return uri_.empty();
+}
+
 const char* URI::c_str() const {
   return uri_.c_str();
 }
@@ -160,11 +164,13 @@ bool URI::is_azure() const {
 }
 
 bool URI::is_gcs(const std::string& path) {
-  return utils::parse::starts_with(path, "gcs://");
+  return utils::parse::starts_with(path, "gcs://") ||
+         utils::parse::starts_with(path, "gs://");
 }
 
 bool URI::is_gcs() const {
-  return utils::parse::starts_with(uri_, "gcs://");
+  return utils::parse::starts_with(uri_, "gcs://") ||
+         utils::parse::starts_with(uri_, "gs://");
 }
 
 bool URI::is_memfs(const std::string& path) {
@@ -235,19 +241,6 @@ URI URI::join_path(const std::string& path) const {
 
 std::string URI::last_path_part() const {
   return uri_.substr(uri_.find_last_of('/') + 1);
-}
-
-URI URI::parent() const {
-  if (uri_.empty())
-    return URI();
-
-  auto uri = uri_;
-  if (uri.back() == '/')
-    uri.pop_back();
-  uint64_t pos = uri.find_last_of('/');
-  if (pos == std::string::npos)
-    return URI();
-  return URI(uri_.substr(0, pos));
 }
 
 std::string URI::to_path(const std::string& uri) {

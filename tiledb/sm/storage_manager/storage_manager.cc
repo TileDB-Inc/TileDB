@@ -42,6 +42,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/cache/buffer_lru_cache.h"
@@ -81,7 +82,7 @@ StorageManager::StorageManager(
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
     stats::Stats* const parent_stats,
-    tdb_shared_ptr<Logger> logger)
+    shared_ptr<Logger> logger)
     : stats_(parent_stats->create_child("StorageManager"))
     , logger_(logger)
     , cancellation_in_progress_(false)
@@ -133,50 +134,33 @@ Status StorageManager::array_close_for_writes(Array* array) {
   return Status::Ok();
 }
 
-std::tuple<
+tuple<
     Status,
-    std::optional<ArraySchema*>,
-    std::optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
-    std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+    optional<shared_ptr<ArraySchema>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+    optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::load_array_schemas_and_fragment_metadata(
-    const URI& array_uri,
+    const ArrayDirectory& array_dir,
     MemoryTracker* memory_tracker,
-    const EncryptionKey& enc_key,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end) {
+    const EncryptionKey& enc_key) {
   auto timer_se =
-      stats_->start_timer("get_array_schemas_and_fragment_metadata");
+      stats_->start_timer("sm_load_array_schemas_and_fragment_metadata");
 
-  // Get the fragment URIs
-  std::vector<URI> fragment_uris;
-  URI meta_uri;
-  RETURN_NOT_OK_TUPLE(
-      get_fragment_uris(array_uri, &fragment_uris, &meta_uri),
-      std::nullopt,
-      std::nullopt,
-      std::nullopt);
-
-  // Determine which fragments to load
-  std::vector<TimestampedURI> fragments_to_load;
-  RETURN_NOT_OK_TUPLE(
-      get_sorted_uris(
-          fragment_uris, &fragments_to_load, timestamp_start, timestamp_end),
-      std::nullopt,
-      std::nullopt,
-      std::nullopt);
+  const auto& meta_uri = array_dir.latest_fragment_meta_uri();
+  const auto& fragments_to_load = array_dir.fragment_uris();
 
   // Get the consolidated fragment metadata
   Buffer f_buff;
   std::unordered_map<std::string, uint64_t> offsets;
   RETURN_NOT_OK_TUPLE(
       load_consolidated_fragment_meta(meta_uri, enc_key, &f_buff, &offsets),
-      std::nullopt,
-      std::nullopt,
-      std::nullopt);
+      nullopt,
+      nullopt,
+      nullopt);
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
-      load_array_schemas(array_uri, enc_key);
+      load_array_schemas(array_dir, enc_key);
   RETURN_NOT_OK_TUPLE(st_schemas, std::nullopt, std::nullopt, std::nullopt);
 
   // Load the fragment metadata
@@ -188,28 +172,25 @@ StorageManager::load_array_schemas_and_fragment_metadata(
       fragments_to_load,
       &f_buff,
       offsets);
-  RETURN_NOT_OK_TUPLE(
-      st_fragment_meta, std::nullopt, std::nullopt, std::nullopt);
+  RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt, nullopt, nullopt);
 
   return {
       Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
 }
 
-std::tuple<
+tuple<
     Status,
-    std::optional<ArraySchema*>,
-    std::optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
-    std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+    optional<shared_ptr<ArraySchema>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+    optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::array_open_for_reads(Array* array) {
   auto timer_se = stats_->start_timer("array_open_for_reads");
   auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
       load_array_schemas_and_fragment_metadata(
-          array->array_uri(),
+          array->array_directory(),
           array->memory_tracker(),
-          *array->encryption_key(),
-          array->timestamp_start(),
-          array->timestamp_end_opened_at());
-  RETURN_NOT_OK_TUPLE(st, std::nullopt, std::nullopt, std::nullopt);
+          *array->encryption_key());
+  RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
 
   // Mark the array as open
   std::lock_guard<std::mutex> lock{open_arrays_mtx_};
@@ -219,17 +200,18 @@ StorageManager::array_open_for_reads(Array* array) {
       Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
 }
 
-std::tuple<
+tuple<
     Status,
-    std::optional<ArraySchema*>,
-    std::optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+    optional<shared_ptr<ArraySchema>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManager::array_open_for_reads_without_fragments(Array* array) {
-  auto timer_se = stats_->start_timer("array_open_for_reads_without_fragments");
+  auto timer_se =
+      stats_->start_timer("sm_array_open_for_reads_without_fragments");
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
-      load_array_schemas(array->array_uri(), *array->encryption_key());
-  RETURN_NOT_OK_TUPLE(st_schemas, std::nullopt, std::nullopt);
+      load_array_schemas(array->array_directory(), *array->encryption_key());
+  RETURN_NOT_OK_TUPLE(st_schemas, nullopt, nullopt);
 
   // Mark the array as now open
   std::lock_guard<std::mutex> lock{open_arrays_mtx_};
@@ -238,22 +220,22 @@ StorageManager::array_open_for_reads_without_fragments(Array* array) {
   return {Status::Ok(), array_schema_latest, array_schemas_all};
 }
 
-std::tuple<
+tuple<
     Status,
-    std::optional<ArraySchema*>,
-    std::optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+    optional<shared_ptr<ArraySchema>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManager::array_open_for_writes(Array* array) {
   // Checks
   if (!vfs_->supports_uri_scheme(array->array_uri()))
     return {logger_->status(Status_StorageManagerError(
                 "Cannot open array; URI scheme unsupported.")),
-            std::nullopt,
-            std::nullopt};
+            nullopt,
+            nullopt};
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
-      load_array_schemas(array->array_uri(), *array->encryption_key());
-  RETURN_NOT_OK_TUPLE(st_schemas, std::nullopt, std::nullopt);
+      load_array_schemas(array->array_directory(), *array->encryption_key());
+  RETURN_NOT_OK_TUPLE(st_schemas, nullopt, nullopt);
 
   // This library should not be able to write to newer-versioned arrays
   // (but it is ok to write to older arrays)
@@ -265,8 +247,8 @@ StorageManager::array_open_for_writes(Array* array) {
     err << ") is newer than library format version (";
     err << constants::format_version << ")";
     return {logger_->status(Status_StorageManagerError(err.str())),
-            std::nullopt,
-            std::nullopt};
+            nullopt,
+            nullopt};
   }
 
   // Mark the array as open
@@ -276,7 +258,7 @@ StorageManager::array_open_for_writes(Array* array) {
   return {Status::Ok(), array_schema_latest, array_schemas_all};
 }
 
-std::tuple<Status, std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::array_load_fragments(
     Array* array, const std::vector<TimestampedURI>& fragments_to_load) {
   auto timer_se = stats_->start_timer("array_load_fragments");
@@ -287,29 +269,29 @@ StorageManager::array_load_fragments(
     return {logger_->status(Status_StorageManagerError(
                 std::string("Cannot load array fragments from ") +
                 array->array_uri().to_string() + "; Array not open")),
-            std::nullopt};
+            nullopt};
   }
 
   // Load the fragment metadata
   std::unordered_map<std::string, uint64_t> offsets;
   auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(
       array->memory_tracker(),
-      array->array_schema_latest(),
+      array->array_schema_latest_ptr(),
       array->array_schemas_all(),
       *array->encryption_key(),
       fragments_to_load,
       nullptr,
       offsets);
-  RETURN_NOT_OK_TUPLE(st_fragment_meta, std::nullopt);
+  RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt);
 
   return {Status::Ok(), fragment_metadata};
 }
 
-std::tuple<
+tuple<
     Status,
-    std::optional<ArraySchema*>,
-    std::optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>,
-    std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+    optional<shared_ptr<ArraySchema>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+    optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::array_reopen(Array* array) {
   auto timer_se = stats_->start_timer("read_array_open");
 
@@ -319,9 +301,9 @@ StorageManager::array_reopen(Array* array) {
     return {logger_->status(Status_StorageManagerError(
                 std::string("Cannot reopen array ") +
                 array->array_uri().to_string() + "; Array not open")),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+            nullopt,
+            nullopt,
+            nullopt};
   }
 
   return array_open_for_reads(array);
@@ -441,39 +423,45 @@ Status StorageManager::array_vacuum_fragments(
     return logger_->status(Status_StorageManagerError(
         "Cannot vacuum fragments; Array name cannot be null"));
 
-  // Get all URIs in the array directory
-  URI array_uri(array_name);
-  std::vector<URI> uris;
-  RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
+  // Get the fragment URIs and vacuum file URIs to be vacuum
+  ArrayDirectory array_dir;
+  try {
+    array_dir = ArrayDirectory(
+        vfs_, compute_tp_, URI(array_name), timestamp_start, timestamp_end);
+  } catch (const std::logic_error& le) {
+    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+  }
 
-  // Get URIs to be vacuumed
-  std::vector<URI> to_vacuum, vac_uris;
-  RETURN_NOT_OK(get_uris_to_vacuum(
-      uris, timestamp_start, timestamp_end, &to_vacuum, &vac_uris));
+  const auto& fragment_uris_to_vacuum = array_dir.fragment_uris_to_vacuum();
+  const auto& vac_uris_to_vacuum = array_dir.fragment_vac_uris_to_vacuum();
 
-  // Delete the ok files
-  auto status =
-      parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
-        auto uri = URI(to_vacuum[i].to_string() + constants::ok_file_suffix);
-        RETURN_NOT_OK(vfs_->remove_file(uri));
+  // Delete the commit files
+  auto status = parallel_for(
+      compute_tp_, 0, fragment_uris_to_vacuum.size(), [&, this](size_t i) {
+        auto&& [st, commit_uri] =
+            array_dir.get_commit_uri(fragment_uris_to_vacuum[i]);
+        RETURN_NOT_OK(st);
+        RETURN_NOT_OK(vfs_->remove_file(commit_uri.value()));
 
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
 
   // Delete fragment directories
-  status = parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
-    RETURN_NOT_OK(vfs_->remove_dir(to_vacuum[i]));
+  status = parallel_for(
+      compute_tp_, 0, fragment_uris_to_vacuum.size(), [&, this](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_dir(fragment_uris_to_vacuum[i]));
 
-    return Status::Ok();
-  });
+        return Status::Ok();
+      });
   RETURN_NOT_OK(status);
 
   // Delete vacuum files
-  status = parallel_for(compute_tp_, 0, vac_uris.size(), [&, this](size_t i) {
-    RETURN_NOT_OK(vfs_->remove_file(vac_uris[i]));
-    return Status::Ok();
-  });
+  status = parallel_for(
+      compute_tp_, 0, vac_uris_to_vacuum.size(), [&, this](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(vac_uris_to_vacuum[i]));
+        return Status::Ok();
+      });
   RETURN_NOT_OK(status);
 
   return Status::Ok();
@@ -486,22 +474,22 @@ Status StorageManager::array_vacuum_fragment_meta(const char* array_name) {
 
   // Get the consolidated fragment metadata URIs to be deleted
   // (all except the last one)
-  URI array_uri(array_name);
-  std::vector<URI> uris, to_vacuum;
-  URI last;
-  RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
-  RETURN_NOT_OK(get_consolidated_fragment_meta_uri(uris, &last));
-  to_vacuum.reserve(uris.size());
-  for (const auto& uri : uris) {
-    if (utils::parse::ends_with(uri.to_string(), constants::meta_file_suffix) &&
-        uri != last)
-      to_vacuum.emplace_back(uri);
+  ArrayDirectory array_dir;
+  try {
+    array_dir =
+        ArrayDirectory(vfs_, compute_tp_, URI(array_name), 0, UINT64_MAX);
+  } catch (const std::logic_error& le) {
+    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
+  const auto& last = array_dir.latest_fragment_meta_uri();
+  const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
+
   // Vacuum after exclusively locking the array
-  auto status =
-      parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(to_vacuum[i]));
+  auto status = parallel_for(
+      compute_tp_, 0, fragment_meta_uris.size(), [&, this](size_t i) {
+        if (fragment_meta_uris[i] != last)
+          RETURN_NOT_OK(vfs_->remove_file(fragment_meta_uris[i]));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
@@ -515,31 +503,33 @@ Status StorageManager::array_vacuum_array_meta(
     return logger_->status(Status_StorageManagerError(
         "Cannot vacuum array metadata; Array name cannot be null"));
 
-  // Get all URIs in the array directory
-  URI array_uri(array_name);
-  auto meta_uri = array_uri.join_path(constants::array_metadata_folder_name);
-  std::vector<URI> uris;
-  RETURN_NOT_OK(vfs_->ls(meta_uri.add_trailing_slash(), &uris));
+  // Get the array metadata URIs and vacuum file URIs to be vacuum
+  ArrayDirectory array_dir;
+  try {
+    array_dir = ArrayDirectory(
+        vfs_, compute_tp_, URI(array_name), timestamp_start, timestamp_end);
+  } catch (const std::logic_error& le) {
+    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+  }
 
-  // Get URIs to be vacuumed
-  std::vector<URI> to_vacuum, vac_uris;
-  RETURN_NOT_OK(get_uris_to_vacuum(
-      uris, timestamp_start, timestamp_end, &to_vacuum, &vac_uris));
+  const auto& array_meta_uris_to_vacuum = array_dir.array_meta_uris_to_vacuum();
+  const auto& vac_uris_to_vacuum = array_dir.array_meta_vac_uris_to_vacuum();
 
   // Delete the array metadata files
-  auto status =
-      parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(to_vacuum[i]));
+  auto status = parallel_for(
+      compute_tp_, 0, array_meta_uris_to_vacuum.size(), [&, this](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(array_meta_uris_to_vacuum[i]));
 
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
 
   // Delete vacuum files
-  status = parallel_for(compute_tp_, 0, vac_uris.size(), [&, this](size_t i) {
-    RETURN_NOT_OK(vfs_->remove_file(vac_uris[i]));
-    return Status::Ok();
-  });
+  status = parallel_for(
+      compute_tp_, 0, vac_uris_to_vacuum.size(), [&, this](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(vac_uris_to_vacuum[i]));
+        return Status::Ok();
+      });
   RETURN_NOT_OK(status);
 
   return Status::Ok();
@@ -613,7 +603,7 @@ Status StorageManager::array_metadata_consolidate(
 
 Status StorageManager::array_create(
     const URI& array_uri,
-    ArraySchema* array_schema,
+    const shared_ptr<ArraySchema>& array_schema,
     const EncryptionKey& encryption_key) {
   // Check array schema
   if (array_schema == nullptr) {
@@ -638,17 +628,31 @@ Status StorageManager::array_create(
   RETURN_NOT_OK(vfs_->create_dir(array_uri));
 
   // Create array schema directory
-  URI array_schema_folder_uri =
-      array_uri.join_path(constants::array_schema_folder_name);
-  RETURN_NOT_OK(vfs_->create_dir(array_schema_folder_uri));
+  URI array_schema_dir_uri =
+      array_uri.join_path(constants::array_schema_dir_name);
+  RETURN_NOT_OK(vfs_->create_dir(array_schema_dir_uri));
+
+  // Create commit directory
+  URI array_commit_uri = array_uri.join_path(constants::array_commit_dir_name);
+  RETURN_NOT_OK(vfs_->create_dir(array_commit_uri));
+
+  // Create fragments directory
+  URI array_fragments_uri =
+      array_uri.join_path(constants::array_fragments_dir_name);
+  RETURN_NOT_OK(vfs_->create_dir(array_fragments_uri));
 
   // Create array metadata directory
   URI array_metadata_uri =
-      array_uri.join_path(constants::array_metadata_folder_name);
+      array_uri.join_path(constants::array_metadata_dir_name);
   RETURN_NOT_OK(vfs_->create_dir(array_metadata_uri));
-  Status st;
+
+  // Create fragment metadata directory
+  URI array_fragment_metadata_uri =
+      array_uri.join_path(constants::array_fragment_meta_dir_name);
+  RETURN_NOT_OK(vfs_->create_dir(array_fragment_metadata_uri));
 
   // Get encryption key from config
+  Status st;
   if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
     bool found = false;
     std::string encryption_key_from_cfg =
@@ -697,9 +701,11 @@ Status StorageManager::array_create(
 }
 
 Status StorageManager::array_evolve_schema(
-    const URI& array_uri,
+    const ArrayDirectory& array_dir,
     ArraySchemaEvolution* schema_evolution,
     const EncryptionKey& encryption_key) {
+  const URI& array_uri = array_dir.uri();
+
   // Check array schema
   if (schema_evolution == nullptr) {
     return logger_->status(Status_StorageManagerError(
@@ -719,33 +725,29 @@ Status StorageManager::array_evolve_schema(
         std::string("Cannot evolve array; Array '") + array_uri.c_str() +
         "' not exists"));
 
-  ArraySchema* array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(
-      load_array_schema_latest(array_uri, encryption_key, &array_schema));
+  auto&& [st1, array_schema] =
+      load_array_schema_latest(array_dir, encryption_key);
+  RETURN_NOT_OK(st1);
 
   // Evolve schema
-  ArraySchema* array_schema_evolved = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(
-      schema_evolution->evolve_schema(array_schema, &array_schema_evolved));
+  auto&& [st2, array_schema_evolved] =
+      schema_evolution->evolve_schema(array_schema.value());
+  RETURN_NOT_OK(st2);
 
-  Status st = store_array_schema(array_schema_evolved, encryption_key);
+  Status st = store_array_schema(array_schema_evolved.value(), encryption_key);
   if (!st.ok()) {
-    tdb_delete(array_schema_evolved);
     logger_->status(st);
     return logger_->status(Status_StorageManagerError(
         "Cannot evolve schema;  Not able to store evolved array schema."));
   }
 
-  tdb_delete(array_schema);
-  array_schema = nullptr;
-  tdb_delete(array_schema_evolved);
-  array_schema_evolved = nullptr;
-
   return Status::Ok();
 }
 
 Status StorageManager::array_upgrade_version(
-    const URI& array_uri, const Config* config) {
+    const ArrayDirectory& array_dir, const Config* config) {
+  const URI& array_uri = array_dir.uri();
+
   // Check if array exists
   bool exists = false;
   RETURN_NOT_OK(is_array(array_uri, &exists));
@@ -768,8 +770,8 @@ Status StorageManager::array_upgrade_version(
   std::string encryption_type_from_cfg =
       config_.get("sm.encryption_type", &found);
   assert(found);
-  auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
-  RETURN_NOT_OK(st);
+  auto [st1, etc] = encryption_type_enum(encryption_type_from_cfg);
+  RETURN_NOT_OK(st1);
   EncryptionType encryption_type_cfg = etc.value();
 
   EncryptionKey encryption_key_cfg;
@@ -793,42 +795,43 @@ Status StorageManager::array_upgrade_version(
         key_length));
   }
 
-  ArraySchema* array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(
-      load_array_schema_latest(array_uri, encryption_key_cfg, &array_schema));
+  auto&& [st2, array_schema] =
+      load_array_schema_latest(array_dir, encryption_key_cfg);
+  RETURN_NOT_OK(st2);
 
-  if (array_schema->version() < constants::format_version) {
-    Status st = array_schema->generate_uri();
-    if (!st.ok()) {
-      logger_->status(st);
-      // Clean up
-      tdb_delete(array_schema);
-      return st;
-    }
-    array_schema->set_version(constants::format_version);
+  if (array_schema.value()->version() < constants::format_version) {
+    auto st = array_schema.value()->generate_uri();
+    RETURN_NOT_OK_ELSE(st, logger_->status(st));
+    array_schema.value()->set_version(constants::format_version);
 
     // Create array schema directory if necessary
-    URI array_schema_folder_uri =
-        array_uri.join_path(constants::array_schema_folder_name);
-    st = vfs_->create_dir(array_schema_folder_uri);
-    if (!st.ok()) {
-      logger_->status(st);
-      // Clean up
-      tdb_delete(array_schema);
-      return st;
-    }
+    URI array_schema_dir_uri =
+        array_uri.join_path(constants::array_schema_dir_name);
+    st = vfs_->create_dir(array_schema_dir_uri);
+    RETURN_NOT_OK_ELSE(st, logger_->status(st));
 
-    st = store_array_schema(array_schema, encryption_key_cfg);
-    if (!st.ok()) {
-      logger_->status(st);
-      // Clean up
-      tdb_delete(array_schema);
-      return st;
-    }
+    // Store array schema
+    st = store_array_schema(array_schema.value(), encryption_key_cfg);
+    RETURN_NOT_OK_ELSE(st, logger_->status(st));
+
+    // Create commit directory if necessary
+    URI array_commit_uri =
+        array_uri.join_path(constants::array_commit_dir_name);
+    st = vfs_->create_dir(array_commit_uri);
+    RETURN_NOT_OK_ELSE(st, logger_->status(st));
+
+    // Create fragments directory if necessary
+    URI array_fragments_uri =
+        array_uri.join_path(constants::array_fragments_dir_name);
+    st = vfs_->create_dir(array_fragments_uri);
+    RETURN_NOT_OK_ELSE(st, logger_->status(st));
+
+    // Create fragment metadata directory if necessary
+    URI array_fragment_metadata_uri =
+        array_uri.join_path(constants::array_fragment_meta_dir_name);
+    st = vfs_->create_dir(array_fragment_metadata_uri);
+    RETURN_NOT_OK_ELSE(st, logger_->status(st));
   }
-
-  // Clean up
-  tdb_delete(array_schema);
 
   return Status::Ok();
 }
@@ -869,12 +872,12 @@ Status StorageManager::array_get_non_empty_domain(
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Array object is null"));
 
-  if (!array->array_schema_latest()->domain()->all_dims_same_type())
+  if (!array->array_schema_latest().domain()->all_dims_same_type())
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Function non-applicable to arrays with "
         "heterogenous dimensions"));
 
-  if (!array->array_schema_latest()->domain()->all_dims_fixed())
+  if (!array->array_schema_latest().domain()->all_dims_fixed())
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Function non-applicable to arrays with "
         "variable-sized dimensions"));
@@ -884,8 +887,8 @@ Status StorageManager::array_get_non_empty_domain(
   if (*is_empty)
     return Status::Ok();
 
-  auto array_schema = array->array_schema_latest();
-  auto dim_num = array_schema->dim_num();
+  const auto& array_schema = array->array_schema_latest();
+  auto dim_num = array_schema.dim_num();
   auto domain_c = (unsigned char*)domain;
   uint64_t offset = 0;
   for (unsigned d = 0; d < dim_num; ++d) {
@@ -899,11 +902,11 @@ Status StorageManager::array_get_non_empty_domain(
 Status StorageManager::array_get_non_empty_domain_from_index(
     Array* array, unsigned idx, void* domain, bool* is_empty) {
   // For easy reference
-  auto array_schema = array->array_schema_latest();
-  auto array_domain = array_schema->domain();
+  const auto& array_schema = array->array_schema_latest();
+  auto array_domain = array_schema.domain();
 
   // Sanity checks
-  if (idx >= array_schema->dim_num())
+  if (idx >= array_schema.dim_num())
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Invalid dimension index"));
   if (array_domain->dimension(idx)->var_size()) {
@@ -932,11 +935,11 @@ Status StorageManager::array_get_non_empty_domain_from_name(
   NDRange dom;
   RETURN_NOT_OK(array_get_non_empty_domain(array, &dom, is_empty));
 
-  auto array_schema = array->array_schema_latest();
-  auto array_domain = array_schema->domain();
-  auto dim_num = array_schema->dim_num();
+  const auto& array_schema = array->array_schema_latest();
+  auto array_domain = array_schema.domain();
+  auto dim_num = array_schema.dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim_name = array_schema->dimension(d)->name();
+    auto dim_name = array_schema.dimension(d)->name();
     if (name == dim_name) {
       // Sanity check
       if (array_domain->dimension(d)->var_size()) {
@@ -963,11 +966,11 @@ Status StorageManager::array_get_non_empty_domain_var_size_from_index(
     uint64_t* end_size,
     bool* is_empty) {
   // For easy reference
-  auto array_schema = array->array_schema_latest();
-  auto array_domain = array_schema->domain();
+  const auto& array_schema = array->array_schema_latest();
+  auto array_domain = array_schema.domain();
 
   // Sanity checks
-  if (idx >= array_schema->dim_num())
+  if (idx >= array_schema.dim_num())
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Invalid dimension index"));
   if (!array_domain->dimension(idx)->var_size()) {
@@ -1005,11 +1008,11 @@ Status StorageManager::array_get_non_empty_domain_var_size_from_name(
   NDRange dom;
   RETURN_NOT_OK(array_get_non_empty_domain(array, &dom, is_empty));
 
-  auto array_schema = array->array_schema_latest();
-  auto array_domain = array_schema->domain();
-  auto dim_num = array_schema->dim_num();
+  const auto& array_schema = array->array_schema_latest();
+  auto array_domain = array_schema.domain();
+  auto dim_num = array_schema.dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim_name = array_schema->dimension(d)->name();
+    auto dim_name = array_schema.dimension(d)->name();
     if (name == dim_name) {
       // Sanity check
       if (!array_domain->dimension(d)->var_size()) {
@@ -1038,11 +1041,11 @@ Status StorageManager::array_get_non_empty_domain_var_size_from_name(
 Status StorageManager::array_get_non_empty_domain_var_from_index(
     Array* array, unsigned idx, void* start, void* end, bool* is_empty) {
   // For easy reference
-  auto array_schema = array->array_schema_latest();
-  auto array_domain = array_schema->domain();
+  const auto& array_schema = array->array_schema_latest();
+  auto array_domain = array_schema.domain();
 
   // Sanity checks
-  if (idx >= array_schema->dim_num())
+  if (idx >= array_schema.dim_num())
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Invalid dimension index"));
   if (!array_domain->dimension(idx)->var_size()) {
@@ -1074,11 +1077,11 @@ Status StorageManager::array_get_non_empty_domain_var_from_name(
   NDRange dom;
   RETURN_NOT_OK(array_get_non_empty_domain(array, &dom, is_empty));
 
-  auto array_schema = array->array_schema_latest();
-  auto array_domain = array_schema->domain();
-  auto dim_num = array_schema->dim_num();
+  const auto& array_schema = array->array_schema_latest();
+  auto array_domain = array_schema.domain();
+  auto dim_num = array_schema.dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim_name = array_schema->dimension(d)->name();
+    auto dim_name = array_schema.dimension(d)->name();
     if (name == dim_name) {
       // Sanity check
       if (!array_domain->dimension(d)->var_size()) {
@@ -1102,17 +1105,16 @@ Status StorageManager::array_get_non_empty_domain_var_from_name(
 }
 
 Status StorageManager::array_get_encryption(
-    const std::string& array_uri, EncryptionType* encryption_type) {
-  URI uri(array_uri);
+    const ArrayDirectory& array_dir, EncryptionType* encryption_type) {
+  const URI& uri = array_dir.uri();
 
   if (uri.is_invalid())
     return logger_->status(Status_StorageManagerError(
         "Cannot get array encryption; Invalid array URI"));
 
-  URI schema_uri;
-  RETURN_NOT_OK(get_latest_array_schema_uri(uri, &schema_uri));
+  const URI& schema_uri = array_dir.latest_array_schema_uri();
 
-  // Read tile header.
+  // Read tile header
   GenericTileIO::GenericTileHeader header;
   RETURN_NOT_OK(
       GenericTileIO::read_generic_tile_header(this, schema_uri, 0, &header));
@@ -1237,132 +1239,6 @@ Status StorageManager::object_move(
   return vfs_->move_dir(old_uri, new_uri);
 }
 
-Status StorageManager::get_fragment_uris(
-    const URI& array_uri,
-    std::vector<URI>* fragment_uris,
-    URI* meta_uri) const {
-  auto timer_se = stats_->start_timer("read_get_fragment_uris");
-  // Get all uris in the array directory
-  std::vector<URI> uris;
-  RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
-
-  // Get the fragments that have special "ok" URIs, which indicate
-  // that fragments are "committed" for versions >= 5
-  std::set<URI> ok_uris;
-  for (size_t i = 0; i < uris.size(); ++i) {
-    if (utils::parse::ends_with(
-            uris[i].to_string(), constants::ok_file_suffix)) {
-      auto name = uris[i].to_string();
-      name = name.substr(0, name.size() - constants::ok_file_suffix.size());
-      ok_uris.emplace(URI(name));
-    }
-  }
-
-  // Get only the committed fragment uris
-  std::vector<int> is_fragment(uris.size(), 0);
-  auto status = parallel_for(compute_tp_, 0, uris.size(), [&](size_t i) {
-    if (utils::parse::starts_with(uris[i].last_path_part(), "."))
-      return Status::Ok();
-    RETURN_NOT_OK(this->is_fragment(uris[i], ok_uris, &is_fragment[i]));
-    return Status::Ok();
-  });
-  RETURN_NOT_OK(status);
-
-  for (size_t i = 0; i < uris.size(); ++i) {
-    if (is_fragment[i])
-      fragment_uris->emplace_back(uris[i]);
-    else if (this->is_vacuum_file(uris[i]))
-      fragment_uris->emplace_back(uris[i]);
-  }
-
-  // Get the latest consolidated fragment metadata URI
-  RETURN_NOT_OK(get_consolidated_fragment_meta_uri(uris, meta_uri));
-
-  return Status::Ok();
-}
-
-Status StorageManager::get_uris_to_vacuum(
-    const std::vector<URI>& uris,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end,
-    std::vector<URI>* to_vacuum,
-    std::vector<URI>* vac_uris,
-    bool allow_partial) const {
-  // Get vacuum URIs
-  std::vector<URI> vac_files;
-  std::unordered_set<std::string> non_vac_uris_set;
-  std::unordered_map<std::string, size_t> uris_map;
-  for (size_t i = 0; i < uris.size(); ++i) {
-    std::pair<uint64_t, uint64_t> timestamp_range;
-    RETURN_NOT_OK(utils::parse::get_timestamp_range(uris[i], &timestamp_range));
-
-    if (this->is_vacuum_file(uris[i])) {
-      if (allow_partial) {
-        if (timestamp_range.first <= timestamp_end &&
-            timestamp_range.second >= timestamp_start)
-          vac_files.emplace_back(uris[i]);
-      } else {
-        if (timestamp_range.first >= timestamp_start &&
-            timestamp_range.second <= timestamp_end)
-          vac_files.emplace_back(uris[i]);
-      }
-    } else {
-      if (timestamp_range.first < timestamp_start ||
-          timestamp_range.second > timestamp_end) {
-        non_vac_uris_set.emplace(uris[i].to_string());
-      } else {
-        uris_map[uris[i].to_string()] = i;
-      }
-    }
-  }
-
-  // Compute fragment URIs to vacuum as a bitmap vector
-  // Also determine which vac files to vacuum
-  std::vector<int32_t> to_vacuum_vec(uris.size(), 0);
-  std::vector<int32_t> to_vacuum_vac_files_vec(vac_files.size(), 0);
-  auto status =
-      parallel_for(compute_tp_, 0, vac_files.size(), [&, this](size_t i) {
-        uint64_t size = 0;
-        RETURN_NOT_OK(vfs_->file_size(vac_files[i], &size));
-        std::string names;
-        names.resize(size);
-        RETURN_NOT_OK(vfs_->read(vac_files[i], 0, &names[0], size));
-        std::stringstream ss(names);
-        bool vacuum_vac_file = true;
-        for (std::string uri_str; std::getline(ss, uri_str);) {
-          auto it = uris_map.find(uri_str);
-          if (it != uris_map.end())
-            to_vacuum_vec[it->second] = 1;
-
-          if (vacuum_vac_file &&
-              non_vac_uris_set.find(uri_str) != non_vac_uris_set.end()) {
-            vacuum_vac_file = false;
-          }
-        }
-
-        to_vacuum_vac_files_vec[i] = vacuum_vac_file;
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  // Compute the URIs to vacuum
-  to_vacuum->clear();
-  for (size_t i = 0; i < uris.size(); ++i) {
-    if (to_vacuum_vec[i] == 1)
-      to_vacuum->emplace_back(uris[i]);
-  }
-
-  // Compute the vac URIs to vacuum
-  vac_uris->clear();
-  for (size_t i = 0; i < vac_files.size(); ++i) {
-    if (to_vacuum_vac_files_vec[i] == 1)
-      vac_uris->emplace_back(vac_files[i]);
-  }
-
-  return Status::Ok();
-}
-
 const std::unordered_map<std::string, std::string>& StorageManager::tags()
     const {
   return tags_;
@@ -1453,7 +1329,7 @@ Status StorageManager::is_array(const URI& uri, bool* is_array) const {
   bool is_dir = false;
   // Since is_dir could return NOT Ok status, we will not use RETURN_NOT_OK here
   Status st =
-      vfs_->is_dir(uri.join_path(constants::array_schema_folder_name), &is_dir);
+      vfs_->is_dir(uri.join_path(constants::array_schema_dir_name), &is_dir);
   if (st.ok() && is_dir) {
     *is_array = true;
     return Status::Ok();
@@ -1470,115 +1346,16 @@ Status StorageManager::is_file(const URI& uri, bool* is_file) const {
   return Status::Ok();
 }
 
-Status StorageManager::is_fragment(
-    const URI& uri, const std::set<URI>& ok_uris, int* is_fragment) const {
-  // If the URI name has a suffix, then it is not a fragment
-  auto name = uri.remove_trailing_slash().last_path_part();
-  if (name.find_first_of('.') != std::string::npos) {
-    *is_fragment = 0;
-    return Status::Ok();
-  }
-
-  // Check set membership in ok_uris
-  if (ok_uris.find(uri) != ok_uris.end()) {
-    *is_fragment = 1;
-    return Status::Ok();
-  }
-
-  // If the format version is >= 5, then the above suffices to check if
-  // the URI is indeed a fragment
-  uint32_t version;
-  RETURN_NOT_OK(utils::parse::get_fragment_version(name, &version));
-  if (version != UINT32_MAX && version >= 5) {
-    *is_fragment = false;
-    return Status::Ok();
-  }
-
-  // Versions < 5
-  bool is_file;
-  RETURN_NOT_OK(vfs_->is_file(
-      uri.join_path(constants::fragment_metadata_filename), &is_file));
-  *is_fragment = (int)is_file;
-  return Status::Ok();
-}
-
 Status StorageManager::is_group(const URI& uri, bool* is_group) const {
   RETURN_NOT_OK(
       vfs_->is_file(uri.join_path(constants::group_filename), is_group));
   return Status::Ok();
 }
 
-bool StorageManager::is_vacuum_file(const URI& uri) const {
-  // If the URI name has a suffix, then it is not a fragment
-  if (utils::parse::ends_with(uri.to_string(), constants::vacuum_file_suffix))
-    return true;
-
-  return false;
-}
-
-Status StorageManager::get_array_schema_uris(
-    const URI& array_uri, std::vector<URI>* schema_uris) const {
-  auto timer_se = stats_->start_timer("read_get_array_schema_uris");
-
-  schema_uris->clear();
-  URI old_schema_uri = array_uri.join_path(constants::array_schema_filename);
-  bool has_file = false;
-  RETURN_NOT_OK(vfs_->is_file(old_schema_uri, &has_file));
-  if (has_file) {
-    schema_uris->push_back(old_schema_uri);
-  }
-
-  URI schema_folder_uri =
-      array_uri.join_path(constants::array_schema_folder_name);
-  // Check if schema_folder_uri exists. For some file systems, such as win, ls
-  // will return error if the folder does not exist.
-  bool has_dir = false;
-  RETURN_NOT_OK(vfs_->is_dir(schema_folder_uri, &has_dir));
-  if (has_dir) {
-    std::vector<URI> array_schema_uris;
-    RETURN_NOT_OK(vfs_->ls(schema_folder_uri, &array_schema_uris));
-    if (array_schema_uris.size() > 0) {
-      schema_uris->reserve(schema_uris->size() + array_schema_uris.size());
-      std::copy(
-          array_schema_uris.begin(),
-          array_schema_uris.end(),
-          std::back_inserter(*schema_uris));
-    }
-  }
-
-  // Check if schema_uris is empty
-  if (schema_uris->empty()) {
-    return logger_->status(Status_StorageManagerError(
-        "Can not get the array schemas; No array schemas found."));
-  }
-
-  return Status::Ok();
-}
-
-Status StorageManager::get_latest_array_schema_uri(
-    const URI& array_uri, URI* uri) const {
-  auto timer_se = stats_->start_timer("read_get_latest_array_schema_uri");
-
-  std::vector<URI> schema_uris;
-  RETURN_NOT_OK(get_array_schema_uris(array_uri, &schema_uris));
-  if (schema_uris.size() == 0) {
-    return logger_->status(Status_StorageManagerError(
-        "Can not get the latest array schema; No array schemas found."));
-  }
-  *uri = schema_uris.back();
-  if (uri->is_invalid()) {
-    return logger_->status(
-        Status_StorageManagerError("Could not find array schema URI"));
-  }
-
-  return Status::Ok();
-}
-
-Status StorageManager::load_array_schema_from_uri(
-    const URI& schema_uri,
-    const EncryptionKey& encryption_key,
-    ArraySchema** array_schema) {
-  auto timer_se = stats_->start_timer("read_load_array_schema_from_uri");
+tuple<Status, optional<shared_ptr<ArraySchema>>>
+StorageManager::load_array_schema_from_uri(
+    const URI& schema_uri, const EncryptionKey& encryption_key) {
+  auto timer_se = stats_->start_timer("sm_load_array_schema_from_uri");
 
   GenericTileIO tile_io(this, schema_uri);
   Tile* tile = nullptr;
@@ -1593,13 +1370,13 @@ Status StorageManager::load_array_schema_from_uri(
         config_.get("sm.encryption_type", &found);
     assert(found);
     auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
-    RETURN_NOT_OK(st);
+    RETURN_NOT_OK_TUPLE(st, nullopt);
     EncryptionType encryption_type_cfg = etc.value();
 
     EncryptionKey encryption_key_cfg;
     if (encryption_key_from_cfg.empty()) {
-      RETURN_NOT_OK(
-          encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
+      RETURN_NOT_OK_TUPLE(
+          encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0), nullopt);
     } else {
       uint32_t key_length = 0;
       if (EncryptionKey::is_valid_key_length(
@@ -1612,158 +1389,149 @@ Status StorageManager::load_array_schema_from_uri(
           key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
         }
       }
-      RETURN_NOT_OK(encryption_key_cfg.set_key(
-          encryption_type_cfg,
-          (const void*)encryption_key_from_cfg.c_str(),
-          key_length));
+      RETURN_NOT_OK_TUPLE(
+          encryption_key_cfg.set_key(
+              encryption_type_cfg,
+              (const void*)encryption_key_from_cfg.c_str(),
+              key_length),
+          nullopt);
     }
-    RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key_cfg, config_));
+    RETURN_NOT_OK_TUPLE(
+        tile_io.read_generic(&tile, 0, encryption_key_cfg, config_), nullopt);
   } else {
-    RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
+    RETURN_NOT_OK_TUPLE(
+        tile_io.read_generic(&tile, 0, encryption_key, config_), nullopt);
   }
 
-  auto buffer = tile->buffer();
   Buffer buff;
-  buff.realloc(buffer->size());
-  buff.set_size(buffer->size());
-  RETURN_NOT_OK_ELSE(buffer->read(buff.data(), buff.size()), tdb_delete(tile));
+  buff.realloc(tile->size());
+  buff.set_size(tile->size());
+  auto st = tile->read(buff.data(), 0, buff.size());
   tdb_delete(tile);
+  RETURN_NOT_OK_TUPLE(st, nullopt);
 
   stats_->add_counter("read_array_schema_size", buff.size());
 
   // Deserialize
   ConstBuffer cbuff(&buff);
-  *array_schema = tdb_new(ArraySchema);
-  Status st = (*array_schema)->deserialize(&cbuff);
-  if (!st.ok()) {
-    tdb_delete(*array_schema);
-    *array_schema = nullptr;
-    return st;
-  }
-  (*array_schema)->set_uri(schema_uri);
-  return st;
+  auto array_schema = tdb::make_shared<ArraySchema>(HERE());
+  RETURN_NOT_OK_TUPLE(array_schema->deserialize(&cbuff), nullopt);
+  array_schema->set_uri(schema_uri);
+
+  return {Status::Ok(), array_schema};
 }
 
-Status StorageManager::load_array_schema_latest(
-    const URI& array_uri,
-    const EncryptionKey& encryption_key,
-    ArraySchema** array_schema) {
-  auto timer_se = stats_->start_timer("read_load_array_schema");
+tuple<Status, optional<shared_ptr<ArraySchema>>>
+StorageManager::load_array_schema_latest(
+    const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
+  auto timer_se = stats_->start_timer("sm_load_array_schema_latest");
 
+  const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return logger_->status(Status_StorageManagerError(
-        "Cannot load array schema; Invalid array URI"));
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot load array schema; Invalid array URI")),
+            nullopt};
 
-  URI schema_uri;
-  RETURN_NOT_OK(get_latest_array_schema_uri(array_uri, &schema_uri));
+  // Load schema from URI
+  const URI& schema_uri = array_dir.latest_array_schema_uri();
+  auto&& [st, array_schema] =
+      load_array_schema_from_uri(schema_uri, encryption_key);
+  RETURN_NOT_OK_TUPLE(st, nullopt);
 
-  RETURN_NOT_OK(
-      load_array_schema_from_uri(schema_uri, encryption_key, array_schema));
-  (*array_schema)->set_array_uri(array_uri);
-  return Status::Ok();
+  array_schema.value().get()->set_array_uri(array_uri);
+
+  return {Status::Ok(), array_schema};
 }
 
-std::tuple<
+tuple<
     Status,
-    std::optional<ArraySchema*>,
-    std::optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+    optional<shared_ptr<ArraySchema>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManager::load_array_schemas(
-    const URI& array_uri, const EncryptionKey& encryption_key) {
-  auto array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK_TUPLE(
-      load_array_schema_latest(array_uri, encryption_key, &array_schema),
-      std::nullopt,
-      std::nullopt);
+    const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
+  // Load all array schemas
+  auto&& [st, array_schemas] =
+      load_all_array_schemas(array_dir, encryption_key);
+  RETURN_NOT_OK_TUPLE(st, nullopt, nullopt);
 
-  auto&& [st, schemas] = load_all_array_schemas(array_uri, encryption_key);
-  RETURN_NOT_OK_TUPLE(st, std::nullopt, std::nullopt);
+  // Locate the latest array schema
+  const auto& array_schema_latest_name =
+      array_dir.latest_array_schema_uri().last_path_part();
+  auto it = array_schemas->find(array_schema_latest_name);
+  assert(it != array_schemas->end());
 
-  return {Status::Ok(), array_schema, schemas};
+  return {Status::Ok(), it->second, array_schemas};
 }
 
-std::tuple<
+tuple<
     Status,
-    std::optional<std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>>>
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManager::load_all_array_schemas(
-    const URI& array_uri, const EncryptionKey& encryption_key) {
-  auto timer_se = stats_->start_timer("read_load_all_array_schemas");
+    const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
+  auto timer_se = stats_->start_timer("sm_load_all_array_schemas");
 
+  const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
     return {logger_->status(Status_StorageManagerError(
                 "Cannot load all array schemas; Invalid array URI")),
-            std::nullopt};
+            nullopt};
 
-  std::vector<URI> schema_uris;
-  RETURN_NOT_OK_TUPLE(
-      get_array_schema_uris(array_uri, &schema_uris), std::nullopt);
+  const std::vector<URI>& schema_uris = array_dir.array_schema_uris();
   if (schema_uris.empty()) {
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Can not get the array schema vector; No array schemas found.")),
-        std::nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot get the array schema vector; No array schemas found.")),
+            nullopt};
   }
 
-  std::vector<ArraySchema*> schema_vector;
+  std::vector<shared_ptr<ArraySchema>> schema_vector;
   auto schema_num = schema_uris.size();
   schema_vector.resize(schema_num);
 
   auto status =
       parallel_for(compute_tp_, 0, schema_num, [&](size_t schema_ith) {
         auto& schema_uri = schema_uris[schema_ith];
-        auto array_schema = (ArraySchema*)nullptr;
-        RETURN_NOT_OK(load_array_schema_from_uri(
-            schema_uri, encryption_key, &array_schema));
-        schema_vector[schema_ith] = array_schema;
+        auto&& [st, array_schema] =
+            load_array_schema_from_uri(schema_uri, encryption_key);
+        RETURN_NOT_OK(st);
+        schema_vector[schema_ith] = array_schema.value();
         return Status::Ok();
       });
-  RETURN_NOT_OK_TUPLE(status, std::nullopt);
+  RETURN_NOT_OK_TUPLE(status, nullopt);
 
-  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>> array_schemas;
-  for (const auto& array_schema : schema_vector) {
-    array_schemas[array_schema->name()] =
-        tdb_shared_ptr<ArraySchema>(array_schema);
+  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas;
+  for (const auto& schema : schema_vector) {
+    array_schemas[schema->name()] = schema;
   }
 
   return {Status::Ok(), array_schemas};
 }
 
 Status StorageManager::load_array_metadata(
-    const URI& array_uri,
+    const ArrayDirectory& array_dir,
     const EncryptionKey& encryption_key,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end,
     Metadata* metadata) {
-  auto timer_se = stats_->start_timer("read_load_array_meta");
+  auto timer_se = stats_->start_timer("sm_load_array_metadata");
 
   // Special case
   if (metadata == nullptr)
     return Status::Ok();
 
   // Determine which array metadata to load
-  std::vector<TimestampedURI> array_metadata_to_load;
-  std::vector<URI> array_metadata_uris;
-  RETURN_NOT_OK(get_array_metadata_uris(array_uri, &array_metadata_uris));
-  RETURN_NOT_OK(get_sorted_uris(
-      array_metadata_uris,
-      &array_metadata_to_load,
-      timestamp_start,
-      timestamp_end));
+  const auto& array_metadata_to_load = array_dir.array_meta_uris();
 
   auto metadata_num = array_metadata_to_load.size();
-  std::vector<tdb_shared_ptr<Buffer>> metadata_buffs;
+  std::vector<shared_ptr<Buffer>> metadata_buffs;
   metadata_buffs.resize(metadata_num);
   auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
     GenericTileIO tile_io(this, uri);
     auto tile = (Tile*)nullptr;
     RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
-    auto buffer = tile->buffer();
     auto metadata_buff = tdb::make_shared<Buffer>(HERE());
-    RETURN_NOT_OK(metadata_buff->realloc(buffer->size()));
-    metadata_buff->set_size(buffer->size());
-    buffer->reset_offset();
+    RETURN_NOT_OK(metadata_buff->realloc(tile->size()));
+    metadata_buff->set_size(tile->size());
     RETURN_NOT_OK_ELSE(
-        buffer->read(metadata_buff->data(), metadata_buff->size()),
+        tile->read(metadata_buff->data(), 0, metadata_buff->size()),
         tdb_delete(tile));
     tdb_delete(tile);
 
@@ -1809,7 +1577,7 @@ Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
 
   bool exists = false;
   RETURN_NOT_OK(vfs_->is_dir(
-      dir_uri.join_path(constants::array_schema_folder_name), &exists));
+      dir_uri.join_path(constants::array_schema_dir_name), &exists));
   if (exists) {
     *type = ObjectType::ARRAY;
     return Status::Ok();
@@ -2004,14 +1772,13 @@ Status StorageManager::query_submit_async(Query* query) {
 Status StorageManager::read_from_cache(
     const URI& uri,
     uint64_t offset,
-    Buffer* buffer,
+    FilteredBuffer& buffer,
     uint64_t nbytes,
     bool* in_cache) const {
   std::stringstream key;
   key << uri.to_string() << "+" << offset;
+  buffer.expand(nbytes);
   RETURN_NOT_OK(tile_cache_->read(key.str(), buffer, 0, nbytes, in_cache));
-  buffer->set_size(nbytes);
-  buffer->reset_offset();
 
   return Status::Ok();
 }
@@ -2044,7 +1811,8 @@ Status StorageManager::set_tag(
 }
 
 Status StorageManager::store_array_schema(
-    ArraySchema* array_schema, const EncryptionKey& encryption_key) {
+    const shared_ptr<ArraySchema>& array_schema,
+    const EncryptionKey& encryption_key) {
   const URI schema_uri = array_schema->uri();
 
   // Serialize
@@ -2062,19 +1830,20 @@ Status StorageManager::store_array_schema(
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
   bool schema_dir_exists = false;
-  URI array_schema_folder_uri =
-      array_schema->array_uri().join_path(constants::array_schema_folder_name);
-  RETURN_NOT_OK(is_dir(array_schema_folder_uri, &schema_dir_exists));
+  URI array_schema_dir_uri =
+      array_schema->array_uri().join_path(constants::array_schema_dir_name);
+  RETURN_NOT_OK(is_dir(array_schema_dir_uri, &schema_dir_exists));
   if (!schema_dir_exists)
-    RETURN_NOT_OK(create_dir(array_schema_folder_uri));
+    RETURN_NOT_OK(create_dir(array_schema_dir_uri));
 
   // Write to file
   Tile tile(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      &buff,
-      false);
+      buff.data(),
+      buff.size());
+  buff.disown_data();
 
   GenericTileIO tile_io(this, schema_uri);
   uint64_t nbytes;
@@ -2082,8 +1851,6 @@ Status StorageManager::store_array_schema(
   (void)nbytes;
   if (st.ok())
     st = close_file(schema_uri);
-
-  buff.clear();
 
   return st;
 }
@@ -2116,8 +1883,9 @@ Status StorageManager::store_array_metadata(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      &metadata_buff,
-      false);
+      metadata_buff.data(),
+      metadata_buff.size());
+  metadata_buff.disown_data();
 
   GenericTileIO tile_io(this, array_metadata_uri);
   uint64_t nbytes;
@@ -2163,13 +1931,12 @@ Status StorageManager::init_rest_client() {
 }
 
 Status StorageManager::write_to_cache(
-    const URI& uri, uint64_t offset, Buffer* buffer) const {
+    const URI& uri, uint64_t offset, const FilteredBuffer& buffer) const {
   // Do not write metadata or array schema to cache
   std::string filename = uri.last_path_part();
   std::string uri_str = uri.to_string();
   if (filename == constants::fragment_metadata_filename ||
-      (uri_str.find(constants::array_schema_folder_name) !=
-       std::string::npos) ||
+      (uri_str.find(constants::array_schema_dir_name) != std::string::npos) ||
       filename == constants::array_schema_filename) {
     return Status::Ok();
   }
@@ -2179,8 +1946,7 @@ Status StorageManager::write_to_cache(
   key << uri.to_string() << "+" << offset;
 
   // Insert to cache
-  Buffer cached_buffer;
-  RETURN_NOT_OK(cached_buffer.write(buffer->data(), buffer->size()));
+  FilteredBuffer cached_buffer(buffer);
   RETURN_NOT_OK(
       tile_cache_->insert(key.str(), std::move(cached_buffer), false));
 
@@ -2199,7 +1965,7 @@ stats::Stats* StorageManager::stats() {
   return stats_;
 }
 
-tdb_shared_ptr<Logger> StorageManager::logger() const {
+shared_ptr<Logger> StorageManager::logger() const {
   return logger_;
 }
 
@@ -2207,38 +1973,11 @@ tdb_shared_ptr<Logger> StorageManager::logger() const {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-Status StorageManager::get_array_metadata_uris(
-    const URI& array_uri, std::vector<URI>* array_metadata_uris) const {
-  // Get all uris in the array metadata directory
-  URI metadata_dir = array_uri.join_path(constants::array_metadata_folder_name);
-  std::vector<URI> uris;
-
-  bool is_dir;
-  RETURN_NOT_OK(vfs_->is_dir(metadata_dir, &is_dir));
-  if (!is_dir)
-    return Status::Ok();
-
-  RETURN_NOT_OK(vfs_->ls(metadata_dir.add_trailing_slash(), &uris));
-
-  // Get only the metadata uris
-  for (auto& uri : uris) {
-    auto uri_last_path = uri.last_path_part();
-    if (utils::parse::starts_with(uri_last_path, "."))
-      continue;
-
-    if (utils::parse::starts_with(uri_last_path, "__") &&
-        !utils::parse::ends_with(uri_last_path, constants::vacuum_file_suffix))
-      array_metadata_uris->push_back(uri);
-  }
-
-  return Status::Ok();
-}
-
-std::tuple<Status, std::optional<std::vector<tdb_shared_ptr<FragmentMetadata>>>>
+tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManager::load_fragment_metadata(
     MemoryTracker* memory_tracker,
-    ArraySchema* array_schema_latest,
-    const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+    const shared_ptr<const ArraySchema>& array_schema_latest,
+    const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
         array_schemas_all,
     const EncryptionKey& encryption_key,
     const std::vector<TimestampedURI>& fragments_to_load,
@@ -2248,7 +1987,7 @@ StorageManager::load_fragment_metadata(
 
   // Load the metadata for each fragment
   auto fragment_num = fragments_to_load.size();
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata;
+  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata;
   fragment_metadata.resize(fragment_num);
   auto status = parallel_for(compute_tp_, 0, fragment_num, [&](size_t f) {
     const auto& sf = fragments_to_load[f];
@@ -2263,7 +2002,7 @@ StorageManager::load_fragment_metadata(
     // Note that the fragment metadata version is >= the array schema
     // version. Therefore, the check below is defensive and will always
     // ensure backwards compatibility.
-    tdb_shared_ptr<FragmentMetadata> metadata;
+    shared_ptr<FragmentMetadata> metadata;
     if (f_version == 1) {  // This is equivalent to format version <=2
       bool sparse;
       RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
@@ -2308,7 +2047,7 @@ StorageManager::load_fragment_metadata(
     fragment_metadata[f] = metadata;
     return Status::Ok();
   });
-  RETURN_NOT_OK_TUPLE(status, std::nullopt);
+  RETURN_NOT_OK_TUPLE(status, nullopt);
 
   return {Status::Ok(), fragment_metadata};
 }
@@ -2328,12 +2067,10 @@ Status StorageManager::load_consolidated_fragment_meta(
   Tile* tile = nullptr;
   RETURN_NOT_OK(tile_io.read_generic(&tile, 0, enc_key, config_));
 
-  auto buffer = tile->buffer();
-  f_buff->realloc(buffer->size());
-  f_buff->set_size(buffer->size());
-  buffer->reset_offset();
+  f_buff->realloc(tile->size());
+  f_buff->set_size(tile->size());
   RETURN_NOT_OK_ELSE(
-      buffer->read(f_buff->data(), f_buff->size()), tdb_delete(tile));
+      tile->read(f_buff->data(), 0, f_buff->size()), tdb_delete(tile));
   tdb_delete(tile);
 
   stats_->add_counter("consolidated_frag_meta_size", f_buff->size());
@@ -2351,67 +2088,6 @@ Status StorageManager::load_consolidated_fragment_meta(
     f_buff->read(&offset, sizeof(uint64_t));
     (*offsets)[name] = offset;
   }
-
-  return Status::Ok();
-}
-
-Status StorageManager::get_consolidated_fragment_meta_uri(
-    const std::vector<URI>& uris, URI* meta_uri) const {
-  uint64_t t_latest = 0;
-  std::pair<uint64_t, uint64_t> timestamp_range;
-  for (const auto& uri : uris) {
-    if (utils::parse::ends_with(uri.to_string(), constants::meta_file_suffix)) {
-      RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
-      if (timestamp_range.second > t_latest) {
-        t_latest = timestamp_range.second;
-        *meta_uri = uri;
-      }
-    }
-  }
-
-  return Status::Ok();
-}
-
-Status StorageManager::get_sorted_uris(
-    const std::vector<URI>& uris,
-    std::vector<TimestampedURI>* sorted_uris,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end) const {
-  // Do nothing if there are not enough URIs
-  if (uris.empty())
-    return Status::Ok();
-
-  // Get the URIs that must be ignored
-  std::vector<URI> vac_uris, to_ignore;
-  RETURN_NOT_OK(get_uris_to_vacuum(
-      uris, timestamp_start, timestamp_end, &to_ignore, &vac_uris, false));
-  std::set<URI> to_ignore_set;
-  for (const auto& uri : to_ignore)
-    to_ignore_set.emplace(uri);
-
-  // Filter based on vacuumed URIs and timestamp
-  for (auto& uri : uris) {
-    // Ignore vacuumed URIs
-    if (to_ignore_set.find(uri) != to_ignore_set.end())
-      continue;
-
-    // Also ignore any vac uris
-    if (this->is_vacuum_file(uri))
-      continue;
-
-    // Add only URIs whose first timestamp is greater than or equal to the
-    // timestamp_start and whose second timestamp is smaller than or equal to
-    // the timestamp_end
-    std::pair<uint64_t, uint64_t> timestamp_range;
-    RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
-    auto t1 = timestamp_range.first;
-    auto t2 = timestamp_range.second;
-    if (t1 >= timestamp_start && t2 <= timestamp_end)
-      sorted_uris->emplace_back(uri, timestamp_range);
-  }
-
-  // Sort the names based on the timestamps
-  std::sort(sorted_uris->begin(), sorted_uris->end());
 
   return Status::Ok();
 }

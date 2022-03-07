@@ -68,7 +68,7 @@ class ResultTile {
    * tile is the var-sized values tile. If the attribute is nullable, the third
    * tile contains the validity vector.
    */
-  typedef std::tuple<Tile, Tile, Tile> TileTuple;
+  typedef tuple<Tile, Tile, Tile> TileTuple;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -81,26 +81,25 @@ class ResultTile {
    * Constructor. The number of dimensions `dim_num` is used to allocate
    * the separate coordinate tiles.
    */
-  ResultTile(unsigned frag_idx, uint64_t tile_idx, const ArraySchema* schema);
+  ResultTile(unsigned frag_idx, uint64_t tile_idx, const ArraySchema& schema);
+
+  DISABLE_COPY_AND_COPY_ASSIGN(ResultTile);
 
   /** Default destructor. */
   ~ResultTile() = default;
 
-  /** Default copy constructor. */
-  ResultTile(const ResultTile&) = default;
+  /** Move constructor. */
+  ResultTile(ResultTile&& tile);
 
-  /** Default move constructor. */
-  ResultTile(ResultTile&&) = default;
+  /** Move-assign operator. */
+  ResultTile& operator=(ResultTile&& tile);
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(ResultTile& tile);
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /** Default copy-assign operator. */
-  ResultTile& operator=(const ResultTile&) = default;
-
-  /** Default move-assign operator. */
-  ResultTile& operator=(ResultTile&&) = default;
 
   /** Equality operator (mainly for debugging purposes). */
   bool operator==(const ResultTile& rt) const;
@@ -340,7 +339,7 @@ class ResultTile {
   uint64_t tile_idx_ = UINT64_MAX;
 
   /** Attribute names to tiles based on attribute ordering from array schema. */
-  std::vector<std::pair<std::string, std::optional<TileTuple>>> attr_tiles_;
+  std::vector<std::pair<std::string, optional<TileTuple>>> attr_tiles_;
 
   /** The zipped coordinates tile. */
   TileTuple coords_tile_;

@@ -33,6 +33,7 @@
 #ifndef TILEDB_STRATEGY_BASE_H
 #define TILEDB_STRATEGY_BASE_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -109,7 +110,7 @@ class StrategyBase {
   const Array* array_;
 
   /** The array schema. */
-  const ArraySchema* array_schema_;
+  const ArraySchema& array_schema_;
 
   /** The config for query-level parameters only. */
   Config& config_;

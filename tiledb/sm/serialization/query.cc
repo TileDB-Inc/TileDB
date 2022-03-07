@@ -36,10 +36,13 @@
 #include <capnp/compat/json.h>
 #include <capnp/message.h>
 #include <capnp/serialize.h>
+#include "tiledb/sm/serialization/array.h"
+#include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
 #endif
 // clang-format on
 
+#include "tiledb/sm/query/query.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -53,12 +56,11 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/query.h"
-#include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/dense_reader.h"
+#include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/sparse_global_order_reader.h"
 #include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
-#include "tiledb/sm/query/writer.h"
+#include "tiledb/sm/query/writer_base.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -128,38 +130,8 @@ Status stats_from_capnp(
   return Status::Ok();
 }
 
-Status array_to_capnp(
-    const Array& array, capnp::Array::Builder* array_builder) {
-  // The serialized URI is set if it exists
-  // this is used for backwards compatibility with pre TileDB 2.5 clients that
-  // want to serialized a query object TileDB >= 2.5 no longer needs to send the
-  // array URI
-  if (!array.array_uri_serialized().to_string().empty()) {
-    array_builder->setUri(array.array_uri_serialized());
-  }
-  array_builder->setStartTimestamp(array.timestamp_start());
-  array_builder->setEndTimestamp(array.timestamp_end());
-
-  return Status::Ok();
-}
-
-Status array_from_capnp(
-    const capnp::Array::Reader& array_reader, Array* array) {
-  // The serialized URI is set if it exists
-  // this is used for backwards compatibility with pre TileDB 2.5 clients that
-  // want to serialized a query object TileDB >= 2.5 no longer needs to receive
-  // the array URI
-  if (array_reader.hasUri()) {
-    RETURN_NOT_OK(array->set_uri_serialized(array_reader.getUri().cStr()));
-  }
-  RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
-  RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
-
-  return Status::Ok();
-}
-
 Status subarray_to_capnp(
-    const ArraySchema* schema,
+    const ArraySchema& schema,
     const Subarray* subarray,
     capnp::Subarray::Builder* builder) {
   builder->setLayout(layout_str(subarray->layout()));
@@ -167,7 +139,7 @@ Status subarray_to_capnp(
   const uint32_t dim_num = subarray->dim_num();
   auto ranges_builder = builder->initRanges(dim_num);
   for (uint32_t i = 0; i < dim_num; i++) {
-    const auto datatype = schema->dimension(i)->type();
+    const auto datatype = schema.dimension(i)->type();
     auto range_builder = ranges_builder[i];
     const auto& ranges = subarray->ranges_for_dim(i);
     range_builder.setType(datatype_str(datatype));
@@ -272,7 +244,7 @@ Status subarray_from_capnp(
 }
 
 Status subarray_partitioner_to_capnp(
-    const ArraySchema* schema,
+    const ArraySchema& schema,
     const SubarrayPartitioner& partitioner,
     capnp::SubarrayPartitioner::Builder* builder) {
   // Subarray
@@ -289,7 +261,7 @@ Status subarray_partitioner_to_capnp(
       const std::string& name = pair.first;
       auto budget_builder = mem_budgets_builder[idx];
       budget_builder.setAttribute(name);
-      auto var_size = schema->var_size(name);
+      auto var_size = schema.var_size(name);
 
       if (name == constants::coords || !var_size) {
         budget_builder.setOffsetBytes(0);
@@ -395,14 +367,14 @@ Status subarray_partitioner_from_capnp(
 
   // Per-attr mem budgets
   if (reader.hasBudget()) {
-    const ArraySchema* schema = array->array_schema_latest();
+    const auto& schema = array->array_schema_latest();
     auto mem_budgets_reader = reader.getBudget();
     auto num_attrs = mem_budgets_reader.size();
     for (size_t i = 0; i < num_attrs; i++) {
       auto mem_budget_reader = mem_budgets_reader[i];
       std::string attr_name = mem_budget_reader.getAttribute();
-      auto var_size = schema->var_size(attr_name);
-      auto nullable = schema->is_nullable(attr_name);
+      auto var_size = schema.var_size(attr_name);
+      auto nullable = schema.is_nullable(attr_name);
 
       if (attr_name == constants::coords || !var_size) {
         if (nullable) {
@@ -497,7 +469,7 @@ Status subarray_partitioner_from_capnp(
 }
 
 Status read_state_to_capnp(
-    const ArraySchema* schema,
+    const ArraySchema& schema,
     const Reader& reader,
     capnp::QueryReader::Builder* builder) {
   auto read_state = reader.read_state();
@@ -534,7 +506,7 @@ Status index_read_state_to_capnp(
 }
 
 Status dense_read_state_to_capnp(
-    const ArraySchema* schema,
+    const ArraySchema& schema,
     const DenseReader& reader,
     capnp::QueryReader::Builder* builder) {
   auto read_state = reader.read_state();
@@ -583,7 +555,7 @@ Status read_state_from_capnp(
 }
 
 Status index_read_state_from_capnp(
-    const ArraySchema* schema,
+    const ArraySchema& schema,
     const capnp::ReadStateIndex::Reader& read_state_reader,
     SparseIndexReaderBase* reader) {
   auto read_state = reader->read_state();
@@ -677,7 +649,7 @@ Status reader_to_capnp(
     const Query& query,
     const Reader& reader,
     capnp::QueryReader::Builder* reader_builder) {
-  auto array_schema = query.array_schema();
+  const auto& array_schema = query.array_schema();
 
   // Subarray layout
   const auto& layout = layout_str(query.layout());
@@ -711,7 +683,7 @@ Status index_reader_to_capnp(
     const Query& query,
     const SparseIndexReaderBase& reader,
     capnp::ReaderIndex::Builder* reader_builder) {
-  auto array_schema = query.array_schema();
+  const auto& array_schema = query.array_schema();
 
   // Subarray layout
   const auto& layout = layout_str(query.layout());
@@ -745,7 +717,7 @@ Status dense_reader_to_capnp(
     const Query& query,
     const DenseReader& reader,
     capnp::QueryReader::Builder* reader_builder) {
-  auto array_schema = query.array_schema();
+  const auto& array_schema = query.array_schema();
 
   // Subarray layout
   const auto& layout = layout_str(query.layout());
@@ -859,7 +831,7 @@ Status reader_from_capnp(
 }
 
 Status index_reader_from_capnp(
-    const ArraySchema* schema,
+    const ArraySchema& schema,
     const capnp::ReaderIndex::Reader& reader_reader,
     Query* query,
     SparseIndexReaderBase* reader) {
@@ -901,7 +873,7 @@ Status index_reader_from_capnp(
 }
 
 Status dense_reader_from_capnp(
-    const ArraySchema* schema,
+    const ArraySchema& schema,
     const capnp::QueryReader::Reader& reader_reader,
     Query* query,
     DenseReader* reader,
@@ -945,15 +917,15 @@ Status dense_reader_from_capnp(
 
 Status writer_to_capnp(
     const Query& query,
-    Writer& writer,
+    WriterBase& writer,
     capnp::Writer::Builder* writer_builder) {
   writer_builder->setCheckCoordDups(writer.get_check_coord_dups());
   writer_builder->setCheckCoordOOB(writer.get_check_coord_oob());
   writer_builder->setDedupCoords(writer.get_dedup_coords());
 
-  const auto* array_schema = query.array_schema();
+  const auto& array_schema = query.array_schema();
 
-  if (array_schema->dense()) {
+  if (array_schema.dense()) {
     std::vector<uint8_t> subarray_flat;
     RETURN_NOT_OK(query.subarray()->to_byte_vec(&subarray_flat));
     auto subarray_builder = writer_builder->initSubarray();
@@ -980,7 +952,7 @@ Status writer_to_capnp(
 }
 
 Status writer_from_capnp(
-    const capnp::Writer::Reader& writer_reader, Writer* writer) {
+    const capnp::Writer::Reader& writer_reader, WriterBase* writer) {
   writer->set_check_coord_dups(writer_reader.getCheckCoordDups());
   writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
   writer->set_dedup_coords(writer_reader.getDedupCoords());
@@ -997,7 +969,10 @@ Status writer_from_capnp(
   return Status::Ok();
 }
 
-Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
+Status query_to_capnp(
+    Query& query,
+    capnp::Query::Builder* query_builder,
+    const bool client_side) {
   // For easy reference
   auto layout = query.layout();
   auto type = query.type();
@@ -1012,12 +987,8 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; array is null."));
 
-  const auto* schema = query.array_schema();
-  if (schema == nullptr)
-    return LOG_STATUS(
-        Status_SerializationError("Cannot serialize; array schema is null."));
-
-  const auto* domain = schema->domain();
+  const auto& schema = query.array_schema();
+  const auto* domain = schema.domain();
   if (domain == nullptr)
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; array domain is null."));
@@ -1030,7 +1001,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
   // Serialize array
   if (query.array() != nullptr) {
     auto builder = query_builder->initArray();
-    RETURN_NOT_OK(array_to_capnp(*array, &builder));
+    RETURN_NOT_OK(array_to_capnp(array, &builder, client_side));
   }
 
   // Serialize attribute buffer metadata
@@ -1091,8 +1062,8 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
     for (auto& frag_md : array->fragment_metadata())
       all_dense &= frag_md->dense();
     if (query.use_refactored_sparse_unordered_with_dups_reader() &&
-        !schema->dense() && layout == Layout::UNORDERED &&
-        schema->allows_dups()) {
+        !schema.dense() && layout == Layout::UNORDERED &&
+        schema.allows_dups()) {
       auto builder = query_builder->initReaderIndex();
 
       auto&& [st, non_overlapping_ranges]{query.non_overlapping_ranges()};
@@ -1117,7 +1088,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
         RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
       }
     } else if (
-        query.use_refactored_sparse_global_order_reader() && !schema->dense() &&
+        query.use_refactored_sparse_global_order_reader() && !schema.dense() &&
         (layout == Layout::GLOBAL_ORDER ||
          (layout == Layout::UNORDERED && query.subarray()->range_num() <= 1))) {
       auto builder = query_builder->initReaderIndex();
@@ -1129,7 +1100,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
       query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
       RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
     } else if (
-        query.use_refactored_dense_reader() && all_dense && schema->dense()) {
+        query.use_refactored_dense_reader() && all_dense && schema.dense()) {
       auto builder = query_builder->initDenseReader();
       auto reader = (DenseReader*)query.strategy();
 
@@ -1150,7 +1121,7 @@ Status query_to_capnp(Query& query, capnp::Query::Builder* query_builder) {
     }
   } else {
     auto builder = query_builder->initWriter();
-    auto writer = (Writer*)query.strategy();
+    auto writer = (WriterBase*)query.strategy();
 
     query_builder->setVarOffsetsMode(writer->offsets_mode());
     query_builder->setVarOffsetsAddExtraElement(
@@ -1186,12 +1157,8 @@ Status query_from_capnp(
   auto type = query->type();
   auto array = query->array();
 
-  const auto* schema = query->array_schema();
-  if (schema == nullptr)
-    return LOG_STATUS(
-        Status_SerializationError("Cannot deserialize; array schema is null."));
-
-  const auto* domain = schema->domain();
+  const auto& schema = query->array_schema();
+  const auto* domain = schema.domain();
   if (domain == nullptr)
     return LOG_STATUS(
         Status_SerializationError("Cannot deserialize; array domain is null."));
@@ -1261,8 +1228,8 @@ Status query_from_capnp(
     uint64_t* existing_offset_buffer_size_ptr = nullptr;
     uint64_t* existing_validity_buffer_size_ptr = nullptr;
 
-    auto var_size = schema->var_size(name);
-    auto nullable = schema->is_nullable(name);
+    auto var_size = schema.var_size(name);
+    auto nullable = schema.is_nullable(name);
     if (type == QueryType::READ && context == SerializationContext::SERVER) {
       const QueryBuffer& query_buffer = query->buffer(name);
       // We use the query_buffer directly in order to get the original buffer
@@ -1656,7 +1623,7 @@ Status query_from_capnp(
   // on the reader or writer directly Now we set it on the query class after the
   // heterogeneous coordinate changes
   if (type == QueryType::READ) {
-    if (query_reader.hasReaderIndex() && !schema->dense() &&
+    if (query_reader.hasReaderIndex() && !schema.dense() &&
         layout == Layout::GLOBAL_ORDER) {
       // Strategy needs to be cleared here to create the correct reader.
       query->clear_strategy();
@@ -1683,8 +1650,8 @@ Status query_from_capnp(
       RETURN_NOT_OK(
           index_reader_from_capnp(schema, reader_reader, query, reader));
     } else if (
-        query_reader.hasReaderIndex() && !schema->dense() &&
-        layout == Layout::UNORDERED && schema->allows_dups()) {
+        query_reader.hasReaderIndex() && !schema.dense() &&
+        layout == Layout::UNORDERED && schema.allows_dups()) {
       // Strategy needs to be cleared here to create the correct reader.
       query->clear_strategy();
       RETURN_NOT_OK(query->set_layout_unsafe(layout));
@@ -1782,7 +1749,7 @@ Status query_from_capnp(
     }
   } else {
     auto writer_reader = query_reader.getWriter();
-    auto writer = (Writer*)query->strategy();
+    auto writer = (WriterBase*)query->strategy();
 
     if (query_reader.hasVarOffsetsMode()) {
       RETURN_NOT_OK(writer->set_offsets_mode(query_reader.getVarOffsetsMode()));
@@ -1800,7 +1767,7 @@ Status query_from_capnp(
 
     // For sparse writes we want to explicitly set subarray to nullptr.
     const bool sparse_write =
-        !schema->dense() || query->layout() == Layout::UNORDERED;
+        !schema.dense() || query->layout() == Layout::UNORDERED;
     if (!sparse_write) {
       if (writer_reader.hasSubarray()) {
         auto subarray_reader = writer_reader.getSubarray();
@@ -1849,15 +1816,10 @@ Status query_serialize(
     return LOG_STATUS(Status_SerializationError(
         "Cannot serialize query; json format not supported."));
 
-  const auto* array_schema = query->array_schema();
-  if (array_schema == nullptr || query->array() == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot serialize; array or array schema is null."));
-
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Query::Builder query_builder = message.initRoot<capnp::Query>();
-    RETURN_NOT_OK(query_to_capnp(*query, &query_builder));
+    RETURN_NOT_OK(query_to_capnp(*query, &query_builder, clientside));
 
     // Determine whether we should be serializing the buffer data.
     const bool serialize_buffers =
@@ -2060,7 +2022,8 @@ Status query_deserialize(
         query,
         compute_tp);
     if (!st2.ok()) {
-      LOG_FATAL(st2.message());
+      LOG_ERROR(st2.message());
+      return st2;
     }
   }
 

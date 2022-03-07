@@ -75,7 +75,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
           condition)
     , initial_data_loaded_(false)
     , memory_budget_(0)
-    , array_memory_tracker_(nullptr)
+    , array_memory_tracker_(array->memory_tracker())
     , memory_used_for_coords_total_(0)
     , memory_used_qc_tiles_total_(0)
     , memory_used_result_tile_ranges_(0)
@@ -106,9 +106,6 @@ Status SparseIndexReaderBase::init() {
     return logger_->status(Status_ReaderError(
         "Cannot initialize sparse global order reader; Storage manager not "
         "set"));
-  if (array_schema_ == nullptr)
-    return logger_->status(Status_ReaderError(
-        "Cannot initialize sparse global order reader; Array schema not set"));
   if (buffers_.empty())
     return logger_->status(Status_ReaderError(
         "Cannot initialize sparse global order reader; Buffers not set"));
@@ -148,18 +145,18 @@ uint64_t SparseIndexReaderBase::cells_copied(
     const std::vector<std::string>& names) {
   auto& last_name = names.back();
   auto buffer_size = *buffers_[last_name].buffer_size_;
-  if (array_schema_->var_size(last_name)) {
+  if (array_schema_.var_size(last_name)) {
     if (buffer_size == 0)
       return 0;
     else
       return buffer_size / (offsets_bitsize_ / 8) - offsets_extra_element_;
   } else {
-    return buffer_size / array_schema_->cell_size(last_name);
+    return buffer_size / array_schema_.cell_size(last_name);
   }
 }
 
 template <class BitmapType>
-std::tuple<Status, std::optional<std::pair<uint64_t, uint64_t>>>
+tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size(
     bool include_coords, unsigned dim_num, unsigned f, uint64_t t) {
   uint64_t tiles_size = 0;
@@ -172,7 +169,7 @@ SparseIndexReaderBase::get_coord_tiles_size(
       if (is_dim_var_size_[d]) {
         auto&& [st, temp] =
             fragment_metadata_[f]->tile_var_size(dim_names_[d], t);
-        RETURN_NOT_OK_TUPLE(st, std::nullopt);
+        RETURN_NOT_OK_TUPLE(st, nullopt);
         tiles_size += *temp;
       }
     }
@@ -191,7 +188,7 @@ SparseIndexReaderBase::get_coord_tiles_size(
     for (auto& name : qc_loaded_names_) {
       // Calculate memory consumption for this tile.
       auto&& [st, tile_size] = get_attribute_tile_size(name, f, t);
-      RETURN_NOT_OK_TUPLE(st, std::nullopt);
+      RETURN_NOT_OK_TUPLE(st, nullopt);
       tiles_size_qc += *tile_size;
     }
   }
@@ -219,8 +216,6 @@ Status SparseIndexReaderBase::load_initial_data() {
   auto fragment_num = fragment_metadata_.size();
 
   // Make sure there is enough space for tiles data.
-  read_state_.frag_tile_idx_.clear();
-  all_tiles_loaded_.clear();
   read_state_.frag_tile_idx_.resize(fragment_num);
   all_tiles_loaded_.resize(fragment_num);
 
@@ -236,7 +231,9 @@ Status SparseIndexReaderBase::load_initial_data() {
     // This is ok as it is a soft limit and will be taken into consideration
     // later.
     RETURN_NOT_OK(subarray_.precompute_all_ranges_tile_overlap(
-        storage_manager_->compute_tp(), &result_tile_ranges_));
+        storage_manager_->compute_tp(),
+        read_state_.frag_tile_idx_,
+        &result_tile_ranges_));
 
     for (auto frag_result_tile_ranges : result_tile_ranges_) {
       memory_used_result_tile_ranges_ += frag_result_tile_ranges.size() *
@@ -260,13 +257,13 @@ Status SparseIndexReaderBase::load_initial_data() {
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
-  const auto dim_num = array_schema_->dim_num();
+  const auto dim_num = array_schema_.dim_num();
   dim_names_.reserve(dim_num);
   is_dim_var_size_.reserve(dim_num);
   std::vector<std::string> var_size_to_load;
   for (unsigned d = 0; d < dim_num; ++d) {
-    dim_names_.emplace_back(array_schema_->dimension(d)->name());
-    is_dim_var_size_.emplace_back(array_schema_->var_size(dim_names_[d]));
+    dim_names_.emplace_back(array_schema_.dimension(d)->name());
+    is_dim_var_size_.emplace_back(array_schema_.var_size(dim_names_[d]));
     if (is_dim_var_size_[d])
       var_size_to_load.emplace_back(dim_names_[d]);
   }
@@ -276,12 +273,12 @@ Status SparseIndexReaderBase::load_initial_data() {
   std::vector<std::string> attr_tile_offsets_to_load;
   for (auto& it : buffers_) {
     const auto& name = it.first;
-    if (array_schema_->is_dim(name))
+    if (array_schema_.is_dim(name))
       continue;
 
     attr_tile_offsets_to_load.emplace_back(name);
 
-    if (array_schema_->var_size(name))
+    if (array_schema_.var_size(name))
       var_size_to_load.emplace_back(name);
   }
 
@@ -355,9 +352,9 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
   auto timer_se = stats_->start_timer("compute_tile_bitmaps");
 
   // For easy reference.
-  const auto domain = array_schema_->domain();
-  const auto dim_num = array_schema_->dim_num();
-  const auto cell_order = array_schema_->cell_order();
+  const auto domain = array_schema_.domain();
+  const auto dim_num = array_schema_.dim_num();
+  const auto cell_order = array_schema_.cell_order();
 
   // No subarray set, return.
   if (!subarray_.is_set()) {
@@ -560,7 +557,7 @@ Status SparseIndexReaderBase::apply_query_condition(
 
           // Compute the result of the query condition for this tile.
           RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
-              fragment_metadata_[rt->frag_idx()]->array_schema(),
+              *(fragment_metadata_[rt->frag_idx()]->array_schema().get()),
               *rt,
               rt->bitmap_,
               &rt->bitmap_result_num_));
@@ -574,7 +571,7 @@ Status SparseIndexReaderBase::apply_query_condition(
   return Status::Ok();
 }
 
-std::tuple<Status, std::optional<std::vector<uint64_t>>>
+tuple<Status, optional<std::vector<uint64_t>>>
 SparseIndexReaderBase::read_and_unfilter_attributes(
     const uint64_t memory_budget,
     const std::vector<std::string>& names,
@@ -605,10 +602,10 @@ SparseIndexReaderBase::read_and_unfilter_attributes(
 
   // Read and unfilter tiles.
   RETURN_NOT_OK_TUPLE(
-      read_attribute_tiles(names_to_read, result_tiles, true), std::nullopt);
+      read_attribute_tiles(names_to_read, result_tiles, true), nullopt);
 
   for (auto& name : names_to_read)
-    RETURN_NOT_OK_TUPLE(unfilter_tiles(name, result_tiles, true), std::nullopt);
+    RETURN_NOT_OK_TUPLE(unfilter_tiles(name, result_tiles, true), nullopt);
 
   return {Status::Ok(), std::move(index_to_copy)};
 }
@@ -620,7 +617,7 @@ Status SparseIndexReaderBase::resize_output_buffers(uint64_t cells_copied) {
     const auto size = *it.second.buffer_size_;
     uint64_t num_cells = 0;
 
-    if (array_schema_->var_size(name)) {
+    if (array_schema_.var_size(name)) {
       // Get the current number of cells from the offsets buffer.
       num_cells = size / constants::cell_var_offset_size;
 
@@ -639,19 +636,19 @@ Status SparseIndexReaderBase::resize_output_buffers(uint64_t cells_copied) {
         // loaded, use it.
         if (offsets_bitsize_ == 64) {
           uint64_t offset_div =
-              elements_mode_ ? datatype_size(array_schema_->type(name)) : 1;
+              elements_mode_ ? datatype_size(array_schema_.type(name)) : 1;
           *it.second.buffer_var_size_ =
               ((uint64_t*)it.second.buffer_)[cells_copied] * offset_div;
         } else {
           uint32_t offset_div =
-              elements_mode_ ? datatype_size(array_schema_->type(name)) : 1;
+              elements_mode_ ? datatype_size(array_schema_.type(name)) : 1;
           *it.second.buffer_var_size_ =
               ((uint32_t*)it.second.buffer_)[cells_copied] * offset_div;
         }
       }
     } else {
       // Always adjust the size for fixed size attributes.
-      auto cell_size = array_schema_->cell_size(name);
+      auto cell_size = array_schema_.cell_size(name);
       *(it.second.buffer_size_) = cells_copied * cell_size;
     }
 
@@ -669,7 +666,7 @@ Status SparseIndexReaderBase::resize_output_buffers(uint64_t cells_copied) {
 Status SparseIndexReaderBase::add_extra_offset() {
   for (const auto& it : buffers_) {
     const auto& name = it.first;
-    if (!array_schema_->var_size(name))
+    if (!array_schema_.var_size(name))
       continue;
 
     auto buffer = static_cast<unsigned char*>(it.second.buffer_);
@@ -679,8 +676,8 @@ Status SparseIndexReaderBase::add_extra_offset() {
           it.second.buffer_var_size_,
           offsets_bytesize());
     } else if (offsets_format_mode_ == "elements") {
-      auto elements = *it.second.buffer_var_size_ /
-                      datatype_size(array_schema_->type(name));
+      auto elements =
+          *it.second.buffer_var_size_ / datatype_size(array_schema_.type(name));
       memcpy(
           buffer + *it.second.buffer_size_ - offsets_bytesize(),
           &elements,
@@ -703,10 +700,10 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
 }
 
 // Explicit template instantiations
-template std::tuple<Status, std::optional<std::pair<uint64_t, uint64_t>>>
+template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size<uint64_t>(
     bool, unsigned, unsigned, uint64_t);
-template std::tuple<Status, std::optional<std::pair<uint64_t, uint64_t>>>
+template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size<uint8_t>(
     bool, unsigned, unsigned, uint64_t);
 template Status SparseIndexReaderBase::apply_query_condition<uint64_t>(

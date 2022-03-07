@@ -32,6 +32,8 @@
  */
 
 #include "catch.hpp"
+#include "test/src/helpers.h"
+#include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
 
@@ -41,6 +43,7 @@
 #include <thread>
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 namespace {
 
@@ -150,9 +153,8 @@ void set_buffer_wrapper(
     uint64_t* const offsets,
     void* const values,
     uint8_t* const validity,
-    std::unordered_map<
-        std::string,
-        std::tuple<uint64_t*, void*, uint8_t*>>* const buffers) {
+    std::unordered_map<std::string, tuple<uint64_t*, void*, uint8_t*>>* const
+        buffers) {
   if (var_sized) {
     if (!nullable) {
       query->set_data_buffer(attribute_name, static_cast<T*>(values), 1);
@@ -262,7 +264,7 @@ TEST_CASE(
 
       auto query = new Query(encrypted ? ctx_cfg : ctx, *array);
 
-      std::unordered_map<std::string, std::tuple<uint64_t*, void*, uint8_t*>>
+      std::unordered_map<std::string, tuple<uint64_t*, void*, uint8_t*>>
           buffers;
       for (auto attr : array->schema().attributes()) {
         std::string attribute_name = attr.first;
@@ -567,7 +569,7 @@ TEST_CASE(
 
       // Check the results to make sure all values are set to 1
       for (auto buff : buffers) {
-        std::tuple<uint64_t*, void*, uint8_t*> buffer = buff.second;
+        tuple<uint64_t*, void*, uint8_t*> buffer = buff.second;
         if (std::get<0>(buffer) != nullptr) {
           REQUIRE(std::get<0>(buffer)[0] == 0);
         }
@@ -694,7 +696,6 @@ TEST_CASE(
         .set_data_buffer("a", a_write)
         .set_coordinates(coords_write);
     query_w.submit();
-    fragment_uri = query_w.fragment_uri(0);
     old_array.close();
 
     // Read
@@ -713,8 +714,8 @@ TEST_CASE(
 
     // Remove created fragment and ok file
     VFS vfs(ctx);
-    vfs.remove_dir(fragment_uri);
-    vfs.remove_file(fragment_uri + ".ok");
+    vfs.remove_dir(get_fragment_dir(old_array_name));
+    vfs.remove_dir(get_commit_dir(old_array_name));
 
     REQUIRE(a_read[0] == 100);
     for (int i = 1; i < 4; i++) {
@@ -756,7 +757,7 @@ TEST_CASE(
 
       auto query = new Query(encrypted ? ctx_cfg : ctx, *array);
 
-      std::unordered_map<std::string, std::tuple<uint64_t*, void*, uint8_t*>>
+      std::unordered_map<std::string, tuple<uint64_t*, void*, uint8_t*>>
           buffers;
       for (auto attr : array->schema().attributes()) {
         std::string attribute_name = attr.first;
@@ -1095,7 +1096,7 @@ TEST_CASE(
 
       // Check the results to make sure all values are set to 1
       for (auto buff : buffers) {
-        std::tuple<uint64_t*, void*, uint8_t*> buffer = buff.second;
+        tuple<uint64_t*, void*, uint8_t*> buffer = buff.second;
         if (std::get<0>(buffer) != nullptr) {
           REQUIRE(std::get<0>(buffer)[0] == 0);
         }
@@ -1306,7 +1307,7 @@ TEST_CASE(
   schema_folder = array_read2.uri() + "/__schema";
 
   VFS vfs(ctx);
-  vfs.remove_dir(fragment_uri);
-  vfs.remove_file(fragment_uri + ".ok");
+  vfs.remove_dir(get_fragment_dir(array_read2.uri()));
+  vfs.remove_dir(get_commit_dir(array_read2.uri()));
   vfs.remove_dir(schema_folder);
 }

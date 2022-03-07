@@ -132,9 +132,9 @@ void InfoCommand::print_tile_sizes() const {
   EncryptionKey enc_key;
 
   // Compute and report mean persisted tile sizes over all attributes.
-  const auto* schema = array.array_schema_latest();
+  const auto& schema = array.array_schema_latest();
   auto fragment_metadata = array.fragment_metadata();
-  auto attributes = schema->attributes();
+  auto attributes = schema.attributes();
   uint64_t total_persisted_size = 0, total_in_memory_size = 0;
 
   // Helper function for processing each attribute.
@@ -180,11 +180,11 @@ void InfoCommand::print_tile_sizes() const {
   std::cout << "Tile stats (per attribute):" << std::endl;
 
   // Dump info about coords for sparse arrays.
-  if (!schema->dense())
+  if (!schema.dense())
     process_attr(constants::coords, false);
 
   // Dump info about the rest of the attributes
-  for (const auto* attr : attributes)
+  for (const auto& attr : attributes)
     process_attr(attr->name(), attr->var_size());
 
   std::cout << "Sum of attribute persisted size: " << total_persisted_size
@@ -208,7 +208,7 @@ void InfoCommand::print_schema_info() const {
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
-  array.array_schema_latest()->dump(stdout);
+  array.array_schema_latest().dump(stdout);
 
   // Close the array.
   THROW_NOT_OK(array.close());
@@ -226,8 +226,8 @@ void InfoCommand::write_svg_mbrs() const {
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
-  const auto* schema = array.array_schema_latest();
-  auto dim_num = schema->dim_num();
+  const auto& schema = array.array_schema_latest();
+  auto dim_num = schema.dim_num();
   if (dim_num < 2) {
     THROW_NOT_OK(array.close());
     throw std::runtime_error("SVG MBRs only supported for >1D arrays.");
@@ -242,7 +242,7 @@ void InfoCommand::write_svg_mbrs() const {
   for (const auto& f : fragment_metadata) {
     const auto& mbrs = f->mbrs();
     for (const auto& mbr : mbrs) {
-      auto tup = get_mbr(mbr, schema->domain());
+      auto tup = get_mbr(mbr, schema.domain());
       min_x = std::min(min_x, std::get<0>(tup));
       min_y = std::min(min_y, std::get<1>(tup));
       max_x = std::max(max_x, std::get<0>(tup) + std::get<2>(tup));
@@ -303,15 +303,15 @@ void InfoCommand::write_text_mbrs() const {
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
   auto encryption_key = array.encryption_key();
-  const auto* schema = array.array_schema_latest();
-  auto dim_num = schema->dim_num();
+  const auto& schema = array.array_schema_latest();
+  auto dim_num = schema.dim_num();
   auto fragment_metadata = array.fragment_metadata();
   std::stringstream text;
   for (const auto& f : fragment_metadata) {
     f->load_rtree(*encryption_key);
     const auto& mbrs = f->mbrs();
     for (const auto& mbr : mbrs) {
-      auto str_mbr = mbr_to_string(mbr, schema->domain());
+      auto str_mbr = mbr_to_string(mbr, schema.domain());
       for (unsigned i = 0; i < dim_num; i++) {
         text << str_mbr[2 * i + 0] << "," << str_mbr[2 * i + 1];
         if (i < dim_num - 1)

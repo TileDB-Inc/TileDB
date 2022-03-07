@@ -33,6 +33,7 @@
 #ifndef TILEDB_FRAGMENT_INFO_H
 #define TILEDB_FRAGMENT_INFO_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/crypto/encryption_key.h"
@@ -220,7 +221,8 @@ class FragmentInfo {
   Status get_version(uint32_t fid, uint32_t* version) const;
 
   /** Retrieves the array schema of the fragment with the given index. */
-  Status get_array_schema(uint32_t fid, ArraySchema** array_schema);
+  tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema(
+      uint32_t fid);
 
   /** Retrieves the array schema name of the fragment with the given index. */
   Status get_array_schema_name(uint32_t fid, const char** schema_name);
@@ -337,8 +339,7 @@ class FragmentInfo {
    * TODO: when we transition to using a shared pointer for ArraySchema
    * objects everywhere, we will not need to store this here.
    */
-  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
-      array_schemas_all_;
+  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
 
   /** Information about fragments in the array. */
   std::vector<SingleFragmentInfo> single_fragment_info_vec_;
@@ -382,7 +383,7 @@ class FragmentInfo {
    *     will be loaded into the returned `SingleFragmentInfo` object.
    * @return Status, a `SingleFragmentInfo` object
    */
-  std::tuple<Status, std::optional<SingleFragmentInfo>> load(
+  tuple<Status, optional<SingleFragmentInfo>> load(
       const URI& fragment_uri) const;
 
   /**

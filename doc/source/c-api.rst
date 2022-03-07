@@ -152,6 +152,8 @@ Context
     :project: TileDB-C
 .. doxygenfunction:: tiledb_ctx_free
     :project: TileDB-C
+.. doxygenfunction:: tiledb_ctx_get_stats
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_ctx_get_config
     :project: TileDB-C
 .. doxygenfunction:: tiledb_ctx_get_last_error
@@ -338,6 +340,10 @@ Attribute
 .. doxygenfunction:: tiledb_attribute_set_fill_value
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_get_fill_value
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_attribute_set_fill_value_nullable
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_attribute_get_fill_value_nullable
     :project: TileDB-C
 
 Domain

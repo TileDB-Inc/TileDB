@@ -136,7 +136,8 @@ unsigned RTree::fanout() const {
   return fanout_;
 }
 
-TileOverlap RTree::get_tile_overlap(const NDRange& range) const {
+TileOverlap RTree::get_tile_overlap(
+    const NDRange& range, std::vector<bool>& is_default) const {
   TileOverlap overlap;
 
   // Empty tree
@@ -156,7 +157,7 @@ TileOverlap RTree::get_tile_overlap(const NDRange& range) const {
     const auto& mbr = levels_[entry.level_][entry.mbr_idx_];
 
     // Get overlap ratio
-    auto ratio = domain_->overlap_ratio(range, mbr);
+    auto ratio = domain_->overlap_ratio(range, is_default, mbr);
 
     // If there is overlap
     if (ratio != 0.0) {
@@ -291,6 +292,11 @@ Status RTree::serialize(Buffer* buff) const {
   return Status::Ok();
 }
 
+Status RTree::set_domain(const Domain* domain) {
+  domain_ = domain;
+  return Status::Ok();
+}
+
 Status RTree::set_leaf(uint64_t leaf_id, const NDRange& mbr) {
   if (levels_.size() != 1)
     return LOG_STATUS(Status_RTreeError(
@@ -411,12 +417,13 @@ Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
   for (unsigned l = 0; l < level_num; ++l) {
     RETURN_NOT_OK(cbuff->read(&mbr_num, sizeof(uint64_t)));
     levels_[l].resize(mbr_num);
+
     for (uint64_t m = 0; m < mbr_num; ++m) {
       levels_[l][m].resize(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
-        auto dim = domain_->dimension(d);
+        auto dim = domain->dimension(d);
         if (!dim->var_size()) {  // Fixed-sized
-          auto r_size = 2 * domain->dimension(d)->coord_size();
+          auto r_size = 2 * dim->coord_size();
           levels_[l][m][d].set_range(cbuff->cur_data(), r_size);
           cbuff->advance_offset(r_size);
         } else {  // Var-sized

@@ -323,7 +323,8 @@ TILEDB_EXPORT int32_t tiledb_array_schema_create_default_blob_array(
 
   // Create a new ArraySchema object
   (*array_schema)->array_schema_ =
-      new (std::nothrow) tiledb::appl::BlobArraySchema();
+      tiledb::common::make_shared<tiledb::appl::BlobArraySchema>(
+          HERE(), tiledb::appl::BlobArraySchema());
   if ((*array_schema)->array_schema_ == nullptr) {
     delete *array_schema;
     *array_schema = nullptr;

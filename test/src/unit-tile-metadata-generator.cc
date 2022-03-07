@@ -72,7 +72,7 @@ TEMPLATE_LIST_TEST_CASE(
   ArraySchema schema;
   Attribute a("a", (Datatype)type.tiledb_type);
   a.set_cell_val_num(cell_val_num);
-  schema.add_attribute(&a);
+  schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &a));
 
   // Generate random, sorted strings for the string ascii type.
   std::vector<std::string> string_ascii;
@@ -94,14 +94,14 @@ TEMPLATE_LIST_TEST_CASE(
       cell_val_num * sizeof(T),
       0,
       true);
-  auto tile_buff = (T*)tile.buffer()->data();
+  auto tile_buff = (T*)tile.data();
 
   // Initialize a new nullable tile.
   Tile tile_nullable;
   uint8_t* nullable_buff = nullptr;
   if (nullable) {
     tile_nullable.init_unfiltered(0, Datatype::UINT8, num_cells, 1, 0, true);
-    nullable_buff = (uint8_t*)tile_nullable.buffer()->data();
+    nullable_buff = (uint8_t*)tile_nullable.data();
   }
 
   // Compute correct values as the tile is filled with data.
@@ -238,14 +238,14 @@ TEMPLATE_LIST_TEST_CASE(
   // Generate the array schema.
   ArraySchema schema;
   Attribute a("a", (Datatype)type.tiledb_type);
-  schema.add_attribute(&a);
+  schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &a));
 
   // Initialize a new tile.
   uint64_t num_cells = 4;
   Tile tile;
   tile.init_unfiltered(
       0, (Datatype)type.tiledb_type, num_cells * sizeof(T), sizeof(T), 0, true);
-  auto tile_buff = (T*)tile.buffer()->data();
+  auto tile_buff = (T*)tile.data();
 
   // Once an overflow happens, the computation should abort, try to add a few
   // min values after the overflow to confirm.
@@ -279,7 +279,7 @@ TEMPLATE_LIST_TEST_CASE(
         sizeof(T),
         0,
         true);
-    auto tile_buff = (T*)tile.buffer()->data();
+    auto tile_buff = (T*)tile.data();
 
     // Once an overflow happens, the computation should abort, try to add a few
     // max values after the overflow to confirm.
@@ -320,7 +320,7 @@ TEST_CASE(
   ArraySchema schema;
   Attribute a("a", Datatype::STRING_ASCII);
   a.set_cell_val_num(constants::var_num);
-  schema.add_attribute(&a);
+  schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &a));
 
   // Generate random, sorted strings for the string ascii type.
   std::vector<std::string> strings;
@@ -349,20 +349,20 @@ TEST_CASE(
       sizeof(uint64_t),
       0,
       true);
-  auto offsets_tile_buff = (uint64_t*)offsets_tile.buffer()->data();
+  auto offsets_tile_buff = (uint64_t*)offsets_tile.data();
 
   // Initialize var tile.
   Tile var_tile;
   var_tile.init_unfiltered(
       0, Datatype::CHAR, var_size, constants::var_num, 0, true);
-  auto var_tile_buff = (char*)var_tile.buffer()->data();
+  auto var_tile_buff = (char*)var_tile.data();
 
   // Initialize a new nullable tile.
   Tile tile_nullable;
   uint8_t* nullable_buff = nullptr;
   if (nullable) {
     tile_nullable.init_unfiltered(0, Datatype::UINT8, num_cells, 1, 0, true);
-    nullable_buff = (uint8_t*)tile_nullable.buffer()->data();
+    nullable_buff = (uint8_t*)tile_nullable.data();
   }
 
   // Compute correct values as the tile is filled with data.
@@ -433,21 +433,21 @@ TEST_CASE(
   ArraySchema schema;
   Attribute a("a", Datatype::CHAR);
   a.set_cell_val_num(constants::var_num);
-  schema.add_attribute(&a);
+  schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &a));
 
   // Store '123' and '12'
   // Initialize offsets tile.
   Tile offsets_tile;
   offsets_tile.init_unfiltered(
       0, Datatype::UINT64, 2 * sizeof(uint64_t), sizeof(uint64_t), 0, true);
-  auto offsets_tile_buff = (uint64_t*)offsets_tile.buffer()->data();
+  auto offsets_tile_buff = (uint64_t*)offsets_tile.data();
   offsets_tile_buff[0] = 0;
   offsets_tile_buff[1] = 3;
 
   // Initialize var tile.
   Tile var_tile;
   var_tile.init_unfiltered(0, Datatype::CHAR, 5, constants::var_num, 0, true);
-  auto var_tile_buff = (char*)var_tile.buffer()->data();
+  auto var_tile_buff = (char*)var_tile.data();
   var_tile_buff[0] = '1';
   var_tile_buff[1] = '2';
   var_tile_buff[2] = '3';

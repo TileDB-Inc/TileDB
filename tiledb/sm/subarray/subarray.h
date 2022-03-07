@@ -35,6 +35,7 @@
 
 #include <atomic>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -43,6 +44,7 @@
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/subarray/range_subset.h"
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
 
 #include <cmath>
@@ -427,10 +429,12 @@ class Subarray {
    * Precomputes the tile overlap with all subarray ranges for all fragments.
    *
    * @param compute_tp The compute thread pool.
+   * @param frag_tile_idx The current tile index, per fragment.
    * @param result_tile_ranges The resulting tile ranges.
    */
   Status precompute_all_ranges_tile_overlap(
       ThreadPool* const compute_tp,
+      std::vector<std::pair<uint64_t, uint64_t>>& frag_tile_idx,
       std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
           result_tile_ranges);
 
@@ -458,7 +462,7 @@ class Subarray {
    * @return Status
    */
   Status compute_relevant_fragment_est_result_sizes(
-      const ArraySchema* array_schema,
+      const ArraySchema& array_schema,
       bool all_dims_same_type,
       bool all_dims_fixed,
       const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_meta,
@@ -944,7 +948,7 @@ class Subarray {
   Status sort_ranges(ThreadPool* const compute_tp);
 
   /** Returns if all ranges for this subarray are non overlapping. */
-  std::tuple<Status, std::optional<bool>> non_overlapping_ranges(
+  tuple<Status, optional<bool>> non_overlapping_ranges(
       ThreadPool* const compute_tp);
 
  private:
@@ -1043,12 +1047,16 @@ class Subarray {
    */
   Layout cell_order_;
 
-  /** Stores a vector of 1D ranges per dimension. */
-  std::vector<std::vector<Range>> ranges_;
+  /**
+   * Stores a vector of RangeSetAndSuperset objects, one per dimension, for
+   * handling operations on ranges.
+   */
+  std::vector<RangeSetAndSuperset> range_subset_;
 
   /**
-   * One value per dimension indicating whether the (single) range set in
-   * `ranges_` is the default range.
+   * Flag storing if each dimension is a default value or not.
+   *
+   * TODO: Remove this variable and store `is_default` directly with NDRange.
    */
   std::vector<bool> is_default_;
 
@@ -1077,16 +1085,6 @@ class Subarray {
    * ``True`` if ranges should attempt to be coalesced as they are added.
    */
   bool coalesce_ranges_;
-
-  /**
-   * Each element on the vector contains a template-bound variant of
-   * `add_or_coalesce_range()` for the respective dimension's data
-   * type. Dimensions with data types that we do not attempt to
-   * coalesce (e.g. floats and var-sized data types), this will be
-   * bound to `add_range_without_coalesce` as an optimization.
-   */
-  std::vector<std::function<void(Subarray*, uint32_t, const Range&)>>
-      add_or_coalesce_range_func_;
 
   /**
    * The tile coordinates that the subarray overlaps with. Note that
@@ -1252,30 +1250,6 @@ class Subarray {
       const std::vector<std::string>& names, ThreadPool* compute_tp) const;
 
   /**
-   * Constructs `add_or_coalesce_range_func_` for all dimensions
-   * in `array_->array_schema_latest()`.
-   */
-  void set_add_or_coalesce_range_func();
-
-  /**
-   * Appends `range` onto `ranges_[dim_idx]` without attempting to
-   * coalesce `range` with any existing ranges.
-   */
-  void add_range_without_coalesce(uint32_t dim_idx, const Range& range);
-
-  /**
-   * Coalesces `range` with the last element on `ranges_[dim_idx]`
-   * if they are contiguous. Otherwise, `range` will be appended to
-   * `ranges_[dim_idx]`.
-   *
-   * @tparam T The range data type.
-   * @param dim_idx The dimension index into `ranges_`.
-   * @param range The range to add or coalesce.
-   */
-  template <class T>
-  void add_or_coalesce_range(uint32_t dim_idx, const Range& range);
-
-  /**
    * Sort ranges for a particular dimension
    *
    * @tparam T dimension type
@@ -1304,7 +1278,7 @@ class Subarray {
    * @return true if the ranges are non overlapping, false otherwise.
    */
   template <typename T>
-  std::tuple<Status, std::optional<bool>> non_overlapping_ranges_for_dim(
+  tuple<Status, optional<bool>> non_overlapping_ranges_for_dim(
       const uint64_t dim_idx);
 
   /**
@@ -1313,7 +1287,7 @@ class Subarray {
    * @param dim_idx dimension index.
    * @return true if the ranges are non overlapping, false otherwise.
    */
-  std::tuple<Status, std::optional<bool>> non_overlapping_ranges_for_dim(
+  tuple<Status, optional<bool>> non_overlapping_ranges_for_dim(
       const uint64_t dim_idx);
 };
 

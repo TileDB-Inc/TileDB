@@ -108,11 +108,15 @@ TEST_CASE_METHOD(
   std::unordered_map<std::string, tiledb::sm::QueryBuffer> buffers;
   Subarray subarray;
   QueryCondition condition;
+  ThreadPool tp_cpu, tp_io;
+  StorageManager storage_manager(
+      &tp_cpu, &tp_io, &g_helper_stats, g_helper_logger());
+  Array array(URI("my_array"), &storage_manager);
   Reader reader(
       &g_helper_stats,
       g_helper_logger(),
       nullptr,
-      nullptr,
+      &array,
       config,
       buffers,
       subarray,
@@ -186,8 +190,9 @@ TEST_CASE_METHOD(
   Domain dom;
   CHECK(dom.add_dimension(&d1).ok());
   CHECK(dom.add_dimension(&d2).ok());
-  ArraySchema schema;
-  CHECK(schema.set_domain(&dom).ok());
+
+  auto schema = tdb::make_shared<ArraySchema>(HERE());
+  CHECK(schema->set_domain(&dom).ok());
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < frag_tile_domains.size() + 1; i++) {
@@ -196,7 +201,7 @@ TEST_CASE_METHOD(
             HERE(),
             nullptr,
             nullptr,
-            &schema,
+            schema,
             URI(),
             std::make_pair<uint64_t, uint64_t>(0, 0),
             true);
@@ -214,15 +219,15 @@ TEST_CASE_METHOD(
   CHECK(result_space_tiles.size() == 6);
 
   // Result tiles for fragment #1
-  ResultTile result_tile_1_0_1(1, 0, &schema);
-  ResultTile result_tile_1_2_1(1, 2, &schema);
+  ResultTile result_tile_1_0_1(1, 0, *(schema.get()));
+  ResultTile result_tile_1_2_1(1, 2, *(schema.get()));
 
   // Result tiles for fragment #2
-  ResultTile result_tile_1_0_2(2, 0, &schema);
+  ResultTile result_tile_1_0_2(2, 0, *(schema.get()));
 
   // Result tiles for fragment #3
-  ResultTile result_tile_2_0_3(3, 0, &schema);
-  ResultTile result_tile_3_0_3(3, 2, &schema);
+  ResultTile result_tile_2_0_3(3, 0, *(schema.get()));
+  ResultTile result_tile_3_0_3(3, 2, *(schema.get()));
 
   // Initialize result_space_tiles
   ResultSpaceTile<int32_t> rst_1_0;
@@ -248,15 +253,11 @@ TEST_CASE_METHOD(
   ResultSpaceTile<int32_t> rst_3_2;
   rst_3_2.set_start_coords({7, 11});
 
-  // Prepare correct space tiles map
-  std::map<const int32_t*, ResultSpaceTile<int32_t>> c_result_space_tiles;
-  c_result_space_tiles[(const int32_t*)&(tile_coords[0][0])] = rst_1_0;
-  c_result_space_tiles[(const int32_t*)&(tile_coords[1][0])] = rst_1_2;
-  c_result_space_tiles[(const int32_t*)&(tile_coords[2][0])] = rst_2_0;
-  c_result_space_tiles[(const int32_t*)&(tile_coords[3][0])] = rst_2_2;
-  c_result_space_tiles[(const int32_t*)&(tile_coords[4][0])] = rst_3_0;
-  c_result_space_tiles[(const int32_t*)&(tile_coords[5][0])] = rst_3_2;
-
   // Check correctness
-  CHECK(result_space_tiles == c_result_space_tiles);
+  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[0][0])] == rst_1_0);
+  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[1][0])] == rst_1_2);
+  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[2][0])] == rst_2_0);
+  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[3][0])] == rst_2_2);
+  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[4][0])] == rst_3_0);
+  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[5][0])] == rst_3_2);
 }

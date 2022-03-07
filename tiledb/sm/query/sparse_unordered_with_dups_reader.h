@@ -91,6 +91,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * user buffer.
    *
    * @param stats Stats.
+   * @param fragment_metadata Fragment metadata.
    * @param result_tiles Result tiles to process, might be truncated.
    * @param first_tile_min_pos Cell progress of the first tile.
    * @param cell_offsets Cell offset per result tile.
@@ -99,8 +100,9 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @return buffers_full, new_var_buffer_size, new_result_tiles_size.
    */
   template <class OffType>
-  static std::tuple<bool, uint64_t, uint64_t> compute_var_size_offsets(
+  static tuple<bool, uint64_t, uint64_t> compute_var_size_offsets(
       stats::Stats* stats,
+      const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_metadata,
       const std::vector<ResultTile*>& result_tiles,
       const uint64_t first_tile_min_pos,
       std::vector<uint64_t>& cell_offsets,
@@ -185,14 +187,14 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    *
    * @return buffers_full, new_var_buffer_size, new_result_tiles_size.
    */
-  std::tuple<Status, std::optional<bool>> add_result_tile(
+  tuple<Status, optional<bool>> add_result_tile(
       const unsigned dim_num,
       const uint64_t memory_budget_qc_tiles,
       const uint64_t memory_budget_coords_tiles,
       const unsigned f,
       const uint64_t t,
       const uint64_t last_t,
-      const ArraySchema* const array_schema);
+      const ArraySchema& array_schema);
 
   /**
    * Create the result tiles.
@@ -213,8 +215,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    *
    * @return min_pos, max_pos, dest_cell_offset, skip_copy.
    */
-  std::tuple<bool, uint64_t, uint64_t, uint64_t>
-  compute_parallelization_parameters(
+  tuple<bool, uint64_t, uint64_t, uint64_t> compute_parallelization_parameters(
       const uint64_t range_thread_idx,
       const uint64_t num_range_threads,
       const uint64_t min_pos_tile,
@@ -307,7 +308,6 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param num_range_threads Total number of range threads.
    * @param offset_div Divisor used to convert offsets into element mode.
    * @param var_buffer_size Size of the var data buffer.
-   * @param result_tiles_size Size of result tiles to process.
    * @param result_tiles Result tiles to process.
    * @param cell_offsets Cell offset per result tile.
    * @param query_buffer Query buffer to operate on.
@@ -320,7 +320,6 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const uint64_t num_range_threads,
       const OffType offset_div,
       const uint64_t var_buffer_size,
-      const uint64_t result_tiles_size,
       const std::vector<ResultTile*>& result_tiles,
       const std::vector<uint64_t>& cell_offsets,
       QueryBuffer& query_buffer,
@@ -404,8 +403,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    *
    * @return Status, total_mem_usage_per_attr.
    */
-  std::tuple<Status, std::optional<std::vector<uint64_t>>>
-  respect_copy_memory_budget(
+  tuple<Status, optional<std::vector<uint64_t>>> respect_copy_memory_budget(
       const std::vector<std::string>& names,
       const uint64_t memory_budget,
       std::vector<ResultTile*>& result_tiles);

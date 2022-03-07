@@ -3,10 +3,11 @@
 A consolidated fragment metadata file has name `<timestamped_name>.meta` and is located here:
 
 ```
-my_array                        # array folder
+my_array                              # array folder
    |_ ....
-   |_ <timestamped_name>.meta   # consolidated fragment metadata file
-   |_ ...
+   |_ __fragment_meta                 # array fragment metadata folder
+         |_ <timestamped_name>.meta   # consolidated fragment metadata file
+         |_ ...
 ```
 
 `<timestamped_name>` has format `__t1_t2_uuid_v`, where:

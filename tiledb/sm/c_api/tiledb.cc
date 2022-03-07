@@ -31,14 +31,17 @@
  * This file defines the C API of TileDB.
  */
 
-#include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb.h"
+#include "api_exception_safety.h"
+#include "tiledb_experimental.h"
+#include "tiledb_serialization.h"
+#include "tiledb_struct_def.h"
+
+#include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_profiler.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/c_api/tiledb_experimental.h"
-#include "tiledb/sm/c_api/tiledb_serialization.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
@@ -62,6 +65,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/config.h"
@@ -76,6 +80,24 @@
 #include <sstream>
 
 using namespace tiledb::common;
+
+/* ****************************** */
+/*  IMPLEMENTATION FUNCTIONS      */
+/* ****************************** */
+/*
+ * The `detail` namespace block contains all the implementations of the C API
+ * functions defined below. The C API functions themselves are outside the
+ * `detail` namespace and each wraps its implementation function with a standard
+ * wrapper. See `api_exception_safety.h` for the definition of the wrapper
+ * function `api_entry`.
+ *
+ * Each C API function requires an implementation function defined in this block
+ * and a corresponding wrapped C API function below. The convention reuses
+ * `function_name` in two namespaces. We have a `detail::function_name`
+ * definition for the unwrapped function and a `function_name` definition for
+ * the wrapped function.
+ */
+namespace tiledb::common::detail {
 
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
@@ -293,6 +315,159 @@ int32_t tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode) {
   *vfs_mode = (tiledb_vfs_mode_t)val;
   return TILEDB_OK;
 }
+
+}  // namespace tiledb::common::detail
+
+/* ****************************** */
+/*  C API FUNCTIONS               */
+/* ****************************** */
+/*
+ * C API function forward their arguments to an implementation function of the
+ * same name defined in the `detail` namespace above. See
+ * `api_exception_safety.h` for the definition of `api_entry`.
+ *
+ * Note: `std::forward` is not used here because it's not necessary. The C API
+ * uses C linkage, and none of the types used in the signatures of the C API
+ * function change with `std::forward`.
+ */
+
+/* ****************************** */
+/*       ENUMS TO/FROM STR        */
+/* ****************************** */
+int32_t tiledb_query_type_to_str(
+    tiledb_query_type_t query_type, const char** str) {
+  return api_entry<detail::tiledb_query_type_to_str>(query_type, str);
+}
+
+int32_t tiledb_query_type_from_str(
+    const char* str, tiledb_query_type_t* query_type) {
+  return api_entry<detail::tiledb_query_type_from_str>(str, query_type);
+}
+
+int32_t tiledb_object_type_to_str(
+    tiledb_object_t object_type, const char** str) {
+  return api_entry<detail::tiledb_object_type_to_str>(object_type, str);
+}
+
+int32_t tiledb_object_type_from_str(
+    const char* str, tiledb_object_t* object_type) {
+  return api_entry<detail::tiledb_object_type_from_str>(str, object_type);
+}
+
+int32_t tiledb_filesystem_to_str(
+    tiledb_filesystem_t filesystem, const char** str) {
+  return api_entry<detail::tiledb_filesystem_to_str>(filesystem, str);
+}
+
+int32_t tiledb_filesystem_from_str(
+    const char* str, tiledb_filesystem_t* filesystem) {
+  return api_entry<detail::tiledb_filesystem_from_str>(str, filesystem);
+}
+
+int32_t tiledb_datatype_to_str(tiledb_datatype_t datatype, const char** str) {
+  return api_entry<detail::tiledb_datatype_to_str>(datatype, str);
+}
+
+int32_t tiledb_datatype_from_str(const char* str, tiledb_datatype_t* datatype) {
+  return api_entry<detail::tiledb_datatype_from_str>(str, datatype);
+}
+
+int32_t tiledb_array_type_to_str(
+    tiledb_array_type_t array_type, const char** str) {
+  return api_entry<detail::tiledb_array_type_to_str>(array_type, str);
+}
+
+int32_t tiledb_array_type_from_str(
+    const char* str, tiledb_array_type_t* array_type) {
+  return api_entry<detail::tiledb_array_type_from_str>(str, array_type);
+}
+
+int32_t tiledb_layout_to_str(tiledb_layout_t layout, const char** str) {
+  return api_entry<detail::tiledb_layout_to_str>(layout, str);
+}
+
+int32_t tiledb_layout_from_str(const char* str, tiledb_layout_t* layout) {
+  return api_entry<detail::tiledb_layout_from_str>(str, layout);
+}
+
+int32_t tiledb_filter_type_to_str(
+    tiledb_filter_type_t filter_type, const char** str) {
+  return api_entry<detail::tiledb_filter_type_to_str>(filter_type, str);
+}
+
+int32_t tiledb_filter_type_from_str(
+    const char* str, tiledb_filter_type_t* filter_type) {
+  return api_entry<detail::tiledb_filter_type_from_str>(str, filter_type);
+}
+
+int32_t tiledb_filter_option_to_str(
+    tiledb_filter_option_t filter_option, const char** str) {
+  return api_entry<detail::tiledb_filter_option_to_str>(filter_option, str);
+}
+
+int32_t tiledb_filter_option_from_str(
+    const char* str, tiledb_filter_option_t* filter_option) {
+  return api_entry<detail::tiledb_filter_option_from_str>(str, filter_option);
+}
+
+int32_t tiledb_encryption_type_to_str(
+    tiledb_encryption_type_t encryption_type, const char** str) {
+  return api_entry<detail::tiledb_encryption_type_to_str>(encryption_type, str);
+}
+
+int32_t tiledb_encryption_type_from_str(
+    const char* str, tiledb_encryption_type_t* encryption_type) {
+  return api_entry<detail::tiledb_encryption_type_from_str>(
+      str, encryption_type);
+}
+
+int32_t tiledb_query_status_to_str(
+    tiledb_query_status_t query_status, const char** str) {
+  return api_entry<detail::tiledb_query_status_to_str>(query_status, str);
+}
+
+int32_t tiledb_query_status_from_str(
+    const char* str, tiledb_query_status_t* query_status) {
+  return api_entry<detail::tiledb_query_status_from_str>(str, query_status);
+}
+
+int32_t tiledb_serialization_type_to_str(
+    tiledb_serialization_type_t serialization_type, const char** str) {
+  return api_entry<detail::tiledb_serialization_type_to_str>(
+      serialization_type, str);
+}
+
+int32_t tiledb_serialization_type_from_str(
+    const char* str, tiledb_serialization_type_t* serialization_type) {
+  return api_entry<detail::tiledb_serialization_type_from_str>(
+      str, serialization_type);
+}
+
+int32_t tiledb_walk_order_to_str(
+    tiledb_walk_order_t walk_order, const char** str) {
+  return api_entry<detail::tiledb_walk_order_to_str>(walk_order, str);
+}
+
+int32_t tiledb_walk_order_from_str(
+    const char* str, tiledb_walk_order_t* walk_order) {
+  return api_entry<detail::tiledb_walk_order_from_str>(str, walk_order);
+}
+
+int32_t tiledb_vfs_mode_to_str(tiledb_vfs_mode_t vfs_mode, const char** str) {
+  return api_entry<detail::tiledb_vfs_mode_to_str>(vfs_mode, str);
+}
+
+int32_t tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode) {
+  return api_entry<detail::tiledb_vfs_mode_from_str>(str, vfs_mode);
+}
+
+/* ****************************** */
+/*  C API FUNCTIONS, NOT WRAPPED  */
+/* ****************************** */
+/*
+ * The C API functions below have not yet been converted to implementation-and-
+ * wrapper form.
+ */
 
 /* ****************************** */
 /*            CONSTANTS           */
@@ -1203,6 +1378,61 @@ int32_t tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx) try {
   auto st = Status_Error(
       std::string("Internal TileDB uncaught exception; ") + e.what());
   LOG_STATUS(st);
+  return TILEDB_ERR;
+}
+
+int32_t tiledb_ctx_alloc_with_error(
+    tiledb_config_t* config, tiledb_ctx_t** ctx, tiledb_error_t** error) try {
+  if (config != nullptr && config->config_ == nullptr)
+    return TILEDB_ERR;
+
+  // Create a context object
+  *ctx = new (std::nothrow) tiledb_ctx_t;
+  if (*ctx == nullptr)
+    return TILEDB_OOM;
+
+  // Create a context object
+  (*ctx)->ctx_ = new (std::nothrow) tiledb::sm::Context();
+  if ((*ctx)->ctx_ == nullptr) {
+    delete (*ctx);
+    (*ctx) = nullptr;
+    return TILEDB_OOM;
+  }
+
+  // Initialize the context
+  auto conf =
+      (config == nullptr) ? (tiledb::sm::Config*)nullptr : config->config_;
+  auto st = (*ctx)->ctx_->init(conf);
+
+  if (!st.ok()) {
+    delete (*ctx)->ctx_;
+    delete (*ctx);
+    (*ctx) = nullptr;
+    LOG_STATUS(st);
+    create_error(error, st);
+    return TILEDB_ERR;
+  }
+
+  // Success
+  return TILEDB_OK;
+} catch (const std::bad_alloc& e) {
+  delete (*ctx)->ctx_;
+  delete (*ctx);
+  (*ctx) = nullptr;
+  auto st = Status_Error(
+      std::string("Internal TileDB uncaught std::bad_alloc exception; ") +
+      e.what());
+  LOG_STATUS(st);
+  create_error(error, st);
+  return TILEDB_OOM;
+} catch (const std::exception& e) {
+  delete (*ctx)->ctx_;
+  delete (*ctx);
+  (*ctx) = nullptr;
+  auto st = Status_Error(
+      std::string("Internal TileDB uncaught exception; ") + e.what());
+  LOG_STATUS(st);
+  create_error(error, st);
   return TILEDB_ERR;
 }
 
@@ -2180,11 +2410,10 @@ int32_t tiledb_array_schema_alloc(
   }
 
   // Create a new ArraySchema object
-  (*array_schema)->array_schema_ = new (std::nothrow)
-      tiledb::sm::ArraySchema(static_cast<tiledb::sm::ArrayType>(array_type));
+  (*array_schema)->array_schema_ =
+      tiledb::common::make_shared<tiledb::sm::ArraySchema>(
+          HERE(), static_cast<tiledb::sm::ArrayType>(array_type));
   if ((*array_schema)->array_schema_ == nullptr) {
-    delete *array_schema;
-    *array_schema = nullptr;
     auto st = Status_Error("Failed to allocate TileDB array schema object");
     LOG_STATUS(st);
     save_error(ctx, st);
@@ -2197,7 +2426,6 @@ int32_t tiledb_array_schema_alloc(
 
 void tiledb_array_schema_free(tiledb_array_schema_t** array_schema) {
   if (array_schema != nullptr && *array_schema != nullptr) {
-    delete (*array_schema)->array_schema_;
     delete *array_schema;
     *array_schema = nullptr;
   }
@@ -2211,8 +2439,14 @@ int32_t tiledb_array_schema_add_attribute(
       sanity_check(ctx, array_schema) == TILEDB_ERR ||
       sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
+  /** Note: The call to make_shared creates a copy of the attribute and
+   * the user-visible handle to the attr no longer refers to the same object
+   * that's in the array_schema.
+   **/
   if (SAVE_ERROR_CATCH(
-          ctx, array_schema->array_schema_->add_attribute(attr->attr_)))
+          ctx,
+          array_schema->array_schema_->add_attribute(
+              tdb::make_shared<tiledb::sm::Attribute>(HERE(), attr->attr_))))
     return TILEDB_ERR;
   return TILEDB_OK;
 }
@@ -2416,13 +2650,15 @@ int32_t tiledb_array_schema_load(
       return TILEDB_ERR;
     }
 
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            rest_client->get_array_schema_from_rest(
-                uri, &(*array_schema)->array_schema_))) {
+    auto&& [st, array_schema_rest] =
+        rest_client->get_array_schema_from_rest(uri);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
       delete *array_schema;
       return TILEDB_ERR;
     }
+    (*array_schema)->array_schema_ = array_schema_rest.value();
   } else {
     // Create key
     tiledb::sm::EncryptionKey key;
@@ -2434,16 +2670,33 @@ int32_t tiledb_array_schema_load(
                 0)))
       return TILEDB_ERR;
 
-    // Load array schema
+    // For easy reference
     auto storage_manager = ctx->ctx_->storage_manager();
+    auto vfs = storage_manager->vfs();
+    auto tp = storage_manager->compute_tp();
 
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            storage_manager->load_array_schema_latest(
-                uri, key, &((*array_schema)->array_schema_)))) {
+    // Load URIs from the array directory
+    tiledb::sm::ArrayDirectory array_dir;
+    try {
+      array_dir = tiledb::sm::ArrayDirectory(vfs, tp, uri, 0, UINT64_MAX, true);
+    } catch (const std::logic_error& le) {
+      auto st = Status_ArrayDirectoryError(le.what());
+      LOG_STATUS(st);
+      save_error(ctx, st);
       delete *array_schema;
       return TILEDB_ERR;
     }
+
+    // Load latest array schema
+    auto&& [st, array_schema_latest] =
+        storage_manager->load_array_schema_latest(array_dir, key);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      delete *array_schema;
+      return TILEDB_ERR;
+    }
+    (*array_schema)->array_schema_ = array_schema_latest.value();
   }
   return TILEDB_OK;
 }
@@ -2491,14 +2744,16 @@ int32_t tiledb_array_schema_load_with_key(
       return TILEDB_ERR;
     }
 
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            rest_client->get_array_schema_from_rest(
-                uri, &(*array_schema)->array_schema_))) {
+    auto&& [st, array_schema_rest] =
+        rest_client->get_array_schema_from_rest(uri);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
       delete *array_schema;
       *array_schema = nullptr;
       return TILEDB_ERR;
     }
+    (*array_schema)->array_schema_ = array_schema_rest.value();
   } else {
     // Create key
     tiledb::sm::EncryptionKey key;
@@ -2513,17 +2768,34 @@ int32_t tiledb_array_schema_load_with_key(
       return TILEDB_ERR;
     }
 
-    // Load array schema
+    // For easy reference
     auto storage_manager = ctx->ctx_->storage_manager();
+    auto vfs = storage_manager->vfs();
+    auto tp = storage_manager->compute_tp();
 
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            storage_manager->load_array_schema_latest(
-                uri, key, &((*array_schema)->array_schema_)))) {
+    // Load URIs from the array directory
+    tiledb::sm::ArrayDirectory array_dir;
+    try {
+      array_dir = tiledb::sm::ArrayDirectory(vfs, tp, uri, 0, UINT64_MAX, true);
+    } catch (const std::logic_error& le) {
+      auto st = Status_ArrayDirectoryError(le.what());
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      delete *array_schema;
+      return TILEDB_ERR;
+    }
+
+    // Load latest array schema
+    auto&& [st, array_schema_latest] =
+        storage_manager->load_array_schema_latest(array_dir, key);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
       delete *array_schema;
       *array_schema = nullptr;
       return TILEDB_ERR;
     }
+    (*array_schema)->array_schema_ = array_schema_latest.value();
   }
   return TILEDB_OK;
 }
@@ -4675,15 +4947,15 @@ int32_t tiledb_array_get_schema(
   }
 
   // Get schema
-  auto schema = (tiledb::sm::ArraySchema*)nullptr;
-  if (SAVE_ERROR_CATCH(ctx, array->array_->get_array_schema(&schema))) {
+  auto&& [st, array_schema_get] = array->array_->get_array_schema();
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
     delete *array_schema;
     *array_schema = nullptr;
     return TILEDB_ERR;
   }
-
-  (*array_schema)->array_schema_ =
-      new (std::nothrow) tiledb::sm::ArraySchema(schema);
+  (*array_schema)->array_schema_ = array_schema_get.value();
 
   return TILEDB_OK;
 }
@@ -4738,7 +5010,7 @@ int32_t tiledb_array_create(
     if (SAVE_ERROR_CATCH(
             ctx,
             rest_client->post_array_schema_to_rest(
-                uri, array_schema->array_schema_)))
+                uri, *(array_schema->array_schema_.get()))))
       return TILEDB_ERR;
   } else {
     // Create key
@@ -4806,7 +5078,7 @@ int32_t tiledb_array_create_with_key(
     if (SAVE_ERROR_CATCH(
             ctx,
             rest_client->post_array_schema_to_rest(
-                uri, array_schema->array_schema_)))
+                uri, *(array_schema->array_schema_.get()))))
       return TILEDB_ERR;
   } else {
     // Create key
@@ -5069,10 +5341,28 @@ int32_t tiledb_array_encryption_type(
       encryption_type == nullptr)
     return TILEDB_ERR;
 
+  // For easy reference
+  auto storage_manager = ctx->ctx_->storage_manager();
+  auto vfs = storage_manager->vfs();
+  auto tp = storage_manager->compute_tp();
+  auto uri = tiledb::sm::URI(array_uri);
+
+  // Load URIs from the array directory
+  tiledb::sm::ArrayDirectory array_dir;
+  try {
+    array_dir = tiledb::sm::ArrayDirectory(vfs, tp, uri, 0, UINT64_MAX, true);
+  } catch (const std::logic_error& le) {
+    auto st = Status_ArrayDirectoryError(le.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Get encryption type
   tiledb::sm::EncryptionType enc;
   if (SAVE_ERROR_CATCH(
           ctx,
-          ctx->ctx_->storage_manager()->array_get_encryption(array_uri, &enc)))
+          ctx->ctx_->storage_manager()->array_get_encryption(array_dir, &enc)))
     return TILEDB_ERR;
 
   *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
@@ -5269,10 +5559,27 @@ int32_t tiledb_array_evolve(
               0)))
     return TILEDB_ERR;
 
+  // For easy reference
+  auto storage_manager = ctx->ctx_->storage_manager();
+  auto vfs = storage_manager->vfs();
+  auto tp = storage_manager->compute_tp();
+
+  // Load URIs from the array directory
+  tiledb::sm::ArrayDirectory array_dir;
+  try {
+    array_dir = tiledb::sm::ArrayDirectory(vfs, tp, uri, 0, UINT64_MAX, true);
+  } catch (const std::logic_error& le) {
+    auto st = Status_ArrayDirectoryError(le.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Evolve schema
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->ctx_->storage_manager()->array_evolve_schema(
-              uri, array_schema_evolution->array_schema_evolution_, key)))
+              array_dir, array_schema_evolution->array_schema_evolution_, key)))
     return TILEDB_ERR;
 
   // Success
@@ -5294,10 +5601,27 @@ int32_t tiledb_array_upgrade_version(
     return TILEDB_ERR;
   }
 
+  // For easy reference
+  auto storage_manager = ctx->ctx_->storage_manager();
+  auto vfs = storage_manager->vfs();
+  auto tp = storage_manager->compute_tp();
+
+  // Load URIs from the array directory
+  tiledb::sm::ArrayDirectory array_dir;
+  try {
+    array_dir = tiledb::sm::ArrayDirectory(vfs, tp, uri, 0, UINT64_MAX, true);
+  } catch (const std::logic_error& le) {
+    auto st = Status_ArrayDirectoryError(le.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Upgrade version
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->ctx_->storage_manager()->array_upgrade_version(
-              uri,
+              array_dir,
               (config == nullptr) ? &ctx->ctx_->storage_manager()->config() :
                                     config->config_)))
     return TILEDB_ERR;
@@ -6034,6 +6358,97 @@ int32_t tiledb_heap_profiler_enable(
 /*          Serialization         */
 /* ****************************** */
 
+int32_t tiledb_serialize_array(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create buffer
+  if (tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::array_serialize(
+              array->array_,
+              (tiledb::sm::SerializationType)serialize_type,
+              (*buffer)->buffer_,
+              client_side))) {
+    tiledb_buffer_free(buffer);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_array(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_array_t** array) {
+  // Currently unused:
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create array struct
+  *array = new (std::nothrow) tiledb_array_t;
+  if (*array == nullptr) {
+    auto st = Status_Error("Failed to allocate TileDB array object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Check array URI
+  auto uri = tiledb::sm::URI("deserialized_array");
+  if (uri.is_invalid()) {
+    auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
+    delete *array;
+    *array = nullptr;
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Allocate an array object
+  (*array)->array_ =
+      new (std::nothrow) tiledb::sm::Array(uri, ctx->ctx_->storage_manager());
+  if ((*array)->array_ == nullptr) {
+    delete *array;
+    *array = nullptr;
+    auto st = Status_Error(
+        "Failed to create TileDB array object; Memory allocation "
+        "error");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::array_deserialize(
+              (*array)->array_,
+              (tiledb::sm::SerializationType)serialize_type,
+              *buffer->buffer_))) {
+    delete *array;
+    *array = nullptr;
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_serialize_array_schema(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
@@ -6053,7 +6468,7 @@ int32_t tiledb_serialize_array_schema(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_schema_serialize(
-              array_schema->array_schema_,
+              *(array_schema->array_schema_.get()),
               (tiledb::sm::SerializationType)serialize_type,
               (*buffer)->buffer_,
               client_side))) {
@@ -6087,16 +6502,17 @@ int32_t tiledb_deserialize_array_schema(
     return TILEDB_OOM;
   }
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::serialization::array_schema_deserialize(
-              &((*array_schema)->array_schema_),
-              (tiledb::sm::SerializationType)serialize_type,
-              *buffer->buffer_))) {
+  auto&& [st, array_schema_des] =
+      tiledb::sm::serialization::array_schema_deserialize(
+          (tiledb::sm::SerializationType)serialize_type, *buffer->buffer_);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
     delete *array_schema;
     *array_schema = nullptr;
     return TILEDB_ERR;
   }
+  (*array_schema)->array_schema_ = array_schema_des.value();
 
   return TILEDB_OK;
 }
@@ -7176,14 +7592,16 @@ int32_t tiledb_fragment_info_get_array_schema(
     return TILEDB_OOM;
   }
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          fragment_info->fragment_info_->get_array_schema(
-              fid, &(*array_schema)->array_schema_))) {
+  auto&& [st, array_schema_get] =
+      fragment_info->fragment_info_->get_array_schema(fid);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
     delete *array_schema;
     *array_schema = nullptr;
     return TILEDB_ERR;
   }
+  (*array_schema)->array_schema_ = array_schema_get.value();
 
   return TILEDB_OK;
 }

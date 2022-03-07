@@ -35,6 +35,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/cache/lru_cache.h"
+#include "tiledb/sm/tile/filtered_buffer.h"
 
 #include <list>
 #include <map>
@@ -48,14 +49,14 @@ namespace sm {
 class Buffer;
 
 /**
- * Provides a least-recently used cache for `Buffer` objects
+ * Provides a least-recently used cache for `FilteredBuffer` objects
  * mapped by a `std::string` key. The maximum capacity of the
  * cache is defined as a total allocated byte size among all
- * `Buffer` objects.
+ * `FilteredBuffer` objects.
  *
  * This class is thread-safe.
  */
-class BufferLRUCache : public LRUCache<std::string, Buffer> {
+class BufferLRUCache : public LRUCache<std::string, FilteredBuffer> {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -85,7 +86,8 @@ class BufferLRUCache : public LRUCache<std::string, Buffer> {
    *     overwritten. Otherwise, the new object will be deleted.
    * @return Status
    */
-  Status insert(const std::string& key, Buffer&& buffer, bool overwrite = true);
+  Status insert(
+      const std::string& key, FilteredBuffer&& buffer, bool overwrite = true);
 
   /**
    * Reads a portion of the object labeled by `key`.
@@ -100,7 +102,7 @@ class BufferLRUCache : public LRUCache<std::string, Buffer> {
    */
   Status read(
       const std::string& key,
-      Buffer* buffer,
+      FilteredBuffer& buffer,
       uint64_t offset,
       uint64_t nbytes,
       bool* success);

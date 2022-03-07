@@ -1281,6 +1281,7 @@ TEST_CASE(
   CHECK_THROWS(array_r.non_empty_domain_var("foo"));
 
   // Read
+  bool empty_results = false;
   std::string s1("a", 1);
   std::string s2("ee", 2);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1316,6 +1317,7 @@ TEST_CASE(
     std::array<std::string, 2> range = query_r.range(0, 0);
     CHECK(range[0] == s1);
     CHECK(range[1] == "");
+    empty_results = true;
   }
 
   SECTION("Empty ranges") {
@@ -1327,6 +1329,7 @@ TEST_CASE(
     std::array<std::string, 2> range = query_r.range(0, 0);
     CHECK(range[0] == "");
     CHECK(range[1] == "");
+    empty_results = true;
   }
 
   std::string data;
@@ -1335,8 +1338,17 @@ TEST_CASE(
   query_r.set_data_buffer("d", data);
   query_r.set_offsets_buffer("d", offsets);
   query_r.submit();
-  CHECK(data == "aabbccdddd");
-  std::vector<uint64_t> c_offsets = {0, 2, 4, 6};
+  if (empty_results) {
+    auto data_str = data.c_str();
+    for (uint64_t i = 0; i < 10; i++) {
+      CHECK(data_str[i] == 0);
+    }
+  } else {
+    CHECK(data == "aabbccdddd");
+  }
+  std::vector<uint64_t> c_offsets(4, 0);
+  if (!empty_results)
+    c_offsets = {0, 2, 4, 6};
   CHECK(offsets == c_offsets);
   auto ret = query.result_buffer_elements();
   REQUIRE(ret.size() == 2);

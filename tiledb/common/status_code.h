@@ -95,6 +95,7 @@ enum class StatusCode : char {
   FragmentInfoError,
   DenseTilerError,
   QueryConditionError,
+  ArrayDirectoryError,
   BlobArrayError
 };
 

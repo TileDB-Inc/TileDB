@@ -107,6 +107,8 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   CHECK(rtree0.domain() == nullptr);
   CHECK(rtree0.fanout() == 0);
 
+  std::vector<bool> is_default(2, false);
+
   // 1D
   int32_t dim_dom[] = {1, 1000};
   int32_t dim_extent = 10;
@@ -142,25 +144,25 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   int32_t r1_right[] = {7, 11};
   int32_t r1_no_right[] = {11, 15};
   range1[0].set_range(r1_no_left, 2 * sizeof(int32_t));
-  double ratio1 = dom1.overlap_ratio(range1, mbr1);
+  double ratio1 = dom1.overlap_ratio(range1, is_default, mbr1);
   CHECK(ratio1 == 0.0);
   range1[0].set_range(r1_left, 2 * sizeof(int32_t));
-  ratio1 = dom1.overlap_ratio(range1, mbr1);
+  ratio1 = dom1.overlap_ratio(range1, is_default, mbr1);
   CHECK(ratio1 == 3.0 / 6);
   range1[0].set_range(r1_exact, 2 * sizeof(int32_t));
-  ratio1 = dom1.overlap_ratio(range1, mbr1);
+  ratio1 = dom1.overlap_ratio(range1, is_default, mbr1);
   CHECK(ratio1 == 1.0);
   range1[0].set_range(r1_full, 2 * sizeof(int32_t));
-  ratio1 = dom1.overlap_ratio(range1, mbr1);
+  ratio1 = dom1.overlap_ratio(range1, is_default, mbr1);
   CHECK(ratio1 == 1.0);
   range1[0].set_range(r1_contained, 2 * sizeof(int32_t));
-  ratio1 = dom1.overlap_ratio(range1, mbr1);
+  ratio1 = dom1.overlap_ratio(range1, is_default, mbr1);
   CHECK(ratio1 == 2.0 / 6);
   range1[0].set_range(r1_right, 2 * sizeof(int32_t));
-  ratio1 = dom1.overlap_ratio(range1, mbr1);
+  ratio1 = dom1.overlap_ratio(range1, is_default, mbr1);
   CHECK(ratio1 == 4.0 / 6);
   range1[0].set_range(r1_no_right, 2 * sizeof(int32_t));
-  ratio1 = dom1.overlap_ratio(range1, mbr1);
+  ratio1 = dom1.overlap_ratio(range1, is_default, mbr1);
   CHECK(ratio1 == 0.0);
 
   // 2D
@@ -193,15 +195,15 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   int64_t r2_partial[] = {7, 11, 4, 5};
   range2[0].set_range(&r2_no[0], 2 * sizeof(int64_t));
   range2[1].set_range(&r2_no[2], 2 * sizeof(int64_t));
-  double ratio2 = dom2.overlap_ratio(range2, mbr2);
+  double ratio2 = dom2.overlap_ratio(range2, is_default, mbr2);
   CHECK(ratio2 == 0.0);
   range2[0].set_range(&r2_full[0], 2 * sizeof(int64_t));
   range2[1].set_range(&r2_full[2], 2 * sizeof(int64_t));
-  ratio2 = dom2.overlap_ratio(range2, mbr2);
+  ratio2 = dom2.overlap_ratio(range2, is_default, mbr2);
   CHECK(ratio2 == 1.0);
   range2[0].set_range(&r2_partial[0], 2 * sizeof(int64_t));
   range2[1].set_range(&r2_partial[2], 2 * sizeof(int64_t));
-  ratio2 = dom2.overlap_ratio(range2, mbr2);
+  ratio2 = dom2.overlap_ratio(range2, is_default, mbr2);
   CHECK(ratio2 == (4.0 / 6) * (2.0 / 8));
 
   // Float datatype
@@ -226,27 +228,28 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   float rf_right[] = {7.0, 11.0};
   float rf_no_right[] = {11.0, 15.0};
   rangef[0].set_range(rf_no_left, 2 * sizeof(float));
-  double ratiof = dom2f.overlap_ratio(rangef, mbrf);
+  double ratiof = dom2f.overlap_ratio(rangef, is_default, mbrf);
   CHECK(ratiof == 0.0);
   rangef[0].set_range(rf_left, 2 * sizeof(float));
-  ratiof = dom2f.overlap_ratio(rangef, mbrf);
+  ratiof = dom2f.overlap_ratio(rangef, is_default, mbrf);
   CHECK(ratiof == 2.0 / 5);
   rangef[0].set_range(rf_exact, 2 * sizeof(float));
-  ratiof = dom2f.overlap_ratio(rangef, mbrf);
+  ratiof = dom2f.overlap_ratio(rangef, is_default, mbrf);
   CHECK(ratiof == 1.0);
   rangef[0].set_range(rf_full, 2 * sizeof(float));
-  ratiof = dom2f.overlap_ratio(rangef, mbrf);
+  ratiof = dom2f.overlap_ratio(rangef, is_default, mbrf);
   CHECK(ratiof == 1.0);
   rangef[0].set_range(rf_right, 2 * sizeof(float));
-  ratiof = dom2f.overlap_ratio(rangef, mbrf);
+  ratiof = dom2f.overlap_ratio(rangef, is_default, mbrf);
   CHECK(ratiof == 3.0 / 5);
   rangef[0].set_range(rf_no_right, 2 * sizeof(float));
-  ratiof = dom2f.overlap_ratio(rangef, mbrf);
+  ratiof = dom2f.overlap_ratio(rangef, is_default, mbrf);
   CHECK(ratiof == 0.0);
 }
 
 TEST_CASE("RTree: Test 1D R-tree, height 2", "[rtree][1d][2h]") {
   // Build tree
+  std::vector<bool> is_default(1, false);
   int32_t dim_dom[] = {1, 1000};
   int32_t dim_extent = 10;
   Domain dom1 =
@@ -270,17 +273,17 @@ TEST_CASE("RTree: Test 1D R-tree, height 2", "[rtree][1d][2h]") {
   int32_t r_full[] = {0, 22};
   int32_t r_partial[] = {6, 21};
   range[0].set_range(r_no, 2 * sizeof(int32_t));
-  auto overlap = rtree.get_tile_overlap(range);
+  auto overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.empty());
   range[0].set_range(r_full, 2 * sizeof(int32_t));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 0);
   CHECK(overlap.tile_ranges_[0].second == 2);
   range[0].set_range(r_partial, 2 * sizeof(int32_t));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tile_ranges_.empty());
   CHECK(overlap.tiles_.size() == 2);
   CHECK(overlap.tiles_[0].first == 1);
@@ -291,6 +294,7 @@ TEST_CASE("RTree: Test 1D R-tree, height 2", "[rtree][1d][2h]") {
 
 TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][1d][3h]") {
   // Build tree
+  std::vector<bool> is_default(1, false);
   int32_t dim_dom[] = {1, 1000};
   int32_t dim_extent = 10;
   std::vector<NDRange> mbrs = create_mbrs<int32_t, 1>(
@@ -318,17 +322,17 @@ TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][1d][3h]") {
   int32_t r_only_ranges[] = {30, 69};
   int32_t r_tiles_and_ranges[] = {1, 32};
   range[0].set_range(r_no, 2 * sizeof(int32_t));
-  auto overlap = rtree.get_tile_overlap(range);
+  auto overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.empty());
   range[0].set_range(r_full, 2 * sizeof(int32_t));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 0);
   CHECK(overlap.tile_ranges_[0].second == 7);
   range[0].set_range(r_only_tiles, 2 * sizeof(int32_t));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tile_ranges_.empty());
   CHECK(overlap.tiles_.size() == 2);
   CHECK(overlap.tiles_[0].first == 1);
@@ -336,7 +340,7 @@ TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][1d][3h]") {
   CHECK(overlap.tiles_[1].first == 2);
   CHECK(overlap.tiles_[1].second == 1.0 / 3);
   range[0].set_range(r_only_ranges, 2 * sizeof(int32_t));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.size() == 2);
   CHECK(overlap.tile_ranges_[0].first == 3);
@@ -344,7 +348,7 @@ TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][1d][3h]") {
   CHECK(overlap.tile_ranges_[1].first == 6);
   CHECK(overlap.tile_ranges_[1].second == 7);
   range[0].set_range(r_tiles_and_ranges, 2 * sizeof(int32_t));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 0);
   CHECK(overlap.tile_ranges_[0].second == 2);
@@ -355,6 +359,7 @@ TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][1d][3h]") {
 
 TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
   // Build tree
+  std::vector<bool> is_default(2, false);
   int32_t dim_dom[] = {1, 1000};
   int32_t dim_extent = 10;
   Domain dom2 = create_domain(
@@ -383,19 +388,19 @@ TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
   int32_t r_partial[] = {5, 12, 8, 12};
   range[0].set_range(&r_no[0], 2 * sizeof(int32_t));
   range[1].set_range(&r_no[2], 2 * sizeof(int32_t));
-  auto overlap = rtree.get_tile_overlap(range);
+  auto overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.empty());
   range[0].set_range(&r_full[0], 2 * sizeof(int32_t));
   range[1].set_range(&r_full[2], 2 * sizeof(int32_t));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 0);
   CHECK(overlap.tile_ranges_[0].second == 2);
   range[0].set_range(&r_partial[0], 2 * sizeof(int32_t));
   range[1].set_range(&r_partial[2], 2 * sizeof(int32_t));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tile_ranges_.empty());
   CHECK(overlap.tiles_.size() == 2);
   CHECK(overlap.tiles_[0].first == 1);
@@ -406,6 +411,7 @@ TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
 
 TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
   // Build tree
+  std::vector<bool> is_default(2, false);
   int32_t dim_dom[] = {1, 1000};
   int32_t dim_extent = 10;
   Domain dom2 = create_domain(
@@ -438,19 +444,19 @@ TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
   int32_t r_tiles_and_ranges[] = {19, 50, 25, 50};
   range[0].set_range(&r_no[0], 2 * sizeof(int32_t));
   range[1].set_range(&r_no[2], 2 * sizeof(int32_t));
-  auto overlap = rtree.get_tile_overlap(range);
+  auto overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.empty());
   range[0].set_range(&r_full[0], 2 * sizeof(int32_t));
   range[1].set_range(&r_full[2], 2 * sizeof(int32_t));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 0);
   CHECK(overlap.tile_ranges_[0].second == 8);
   range[0].set_range(&r_only_tiles[0], 2 * sizeof(int32_t));
   range[1].set_range(&r_only_tiles[2], 2 * sizeof(int32_t));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tile_ranges_.empty());
   CHECK(overlap.tiles_.size() == 2);
   CHECK(overlap.tiles_[0].first == 2);
@@ -459,7 +465,7 @@ TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
   CHECK(overlap.tiles_[1].second == (4.0 / 5) * (2.0 / 3));
   range[0].set_range(&r_only_ranges[0], 2 * sizeof(int32_t));
   range[1].set_range(&r_only_ranges[2], 2 * sizeof(int32_t));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.size() == 2);
   CHECK(overlap.tile_ranges_[0].first == 3);
@@ -468,7 +474,7 @@ TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
   CHECK(overlap.tile_ranges_[1].second == 8);
   range[0].set_range(&r_tiles_and_ranges[0], 2 * sizeof(int32_t));
   range[1].set_range(&r_tiles_and_ranges[2], 2 * sizeof(int32_t));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 6);
   CHECK(overlap.tile_ranges_[0].second == 8);
@@ -481,6 +487,7 @@ TEST_CASE(
     "RTree: Test R-Tree, heterogeneous (uint8, int32), basic functions",
     "[rtree][basic][heter]") {
   // Create RTree with dimensions uint8, int32
+  std::vector<bool> is_default(2, false);
   uint8_t uint8_dom[] = {0, 10};
   int32_t int32_dom[] = {5, 10};
   uint8_t uint8_extent = 2;
@@ -507,7 +514,7 @@ TEST_CASE(
   int32_t int32_r_no[] = {1, 10};
   range_no[0].set_range(uint8_r_no, sizeof(uint8_r_no));
   range_no[1].set_range(int32_r_no, sizeof(int32_r_no));
-  double ratio = dom.overlap_ratio(range_no, mbrs[0]);
+  double ratio = dom.overlap_ratio(range_no, is_default, mbrs[0]);
   CHECK(ratio == 0.0);
 
   // Check full domain overlap
@@ -516,9 +523,9 @@ TEST_CASE(
   int32_t int32_r_full[] = {1, 10};
   range_full[0].set_range(uint8_r_full, sizeof(uint8_r_full));
   range_full[1].set_range(int32_r_full, sizeof(int32_r_full));
-  ratio = dom.overlap_ratio(range_full, mbrs[0]);
+  ratio = dom.overlap_ratio(range_full, is_default, mbrs[0]);
   CHECK(ratio == 1.0);
-  ratio = dom.overlap_ratio(range_full, mbrs[1]);
+  ratio = dom.overlap_ratio(range_full, is_default, mbrs[1]);
   CHECK(ratio == 1.0);
 
   // Check partial domain overlap
@@ -527,7 +534,7 @@ TEST_CASE(
   int32_t int32_r_part[] = {5, 5};
   range_part[0].set_range(uint8_r_part, sizeof(uint8_r_part));
   range_part[1].set_range(int32_r_part, sizeof(int32_r_part));
-  ratio = dom.overlap_ratio(range_part, mbrs[0]);
+  ratio = dom.overlap_ratio(range_part, is_default, mbrs[0]);
   CHECK(ratio == 0.25);
 }
 
@@ -535,6 +542,7 @@ TEST_CASE(
     "RTree: Test R-Tree, heterogeneous (uint64, float32), basic functions",
     "[rtree][basic][heter]") {
   // Create RTree with dimensions uint64, float32
+  std::vector<bool> is_default(2, false);
   uint64_t uint64_dom[] = {0, 10};
   float float_dom[] = {0.1f, 0.9f};
   uint64_t uint64_extent = 2;
@@ -561,7 +569,7 @@ TEST_CASE(
   float float_r_no[] = {.1f, .9f};
   range_no[0].set_range(uint64_r_no, sizeof(uint64_r_no));
   range_no[1].set_range(float_r_no, sizeof(float_r_no));
-  double ratio = dom.overlap_ratio(range_no, mbrs[0]);
+  double ratio = dom.overlap_ratio(range_no, is_default, mbrs[0]);
   CHECK(ratio == 0.0);
 
   // Check full domain overlap
@@ -570,9 +578,9 @@ TEST_CASE(
   float float_r_full[] = {.1f, 1.0f};
   range_full[0].set_range(uint64_r_full, sizeof(uint64_r_full));
   range_full[1].set_range(float_r_full, sizeof(float_r_full));
-  ratio = dom.overlap_ratio(range_full, mbrs[0]);
+  ratio = dom.overlap_ratio(range_full, is_default, mbrs[0]);
   CHECK(ratio == 1.0);
-  ratio = dom.overlap_ratio(range_full, mbrs[1]);
+  ratio = dom.overlap_ratio(range_full, is_default, mbrs[1]);
   CHECK(ratio == 1.0);
 
   // Check partial domain overlap
@@ -581,7 +589,7 @@ TEST_CASE(
   float float_r_part[] = {.5f, .55f};
   range_part[0].set_range(uint64_r_part, sizeof(uint64_r_part));
   range_part[1].set_range(float_r_part, sizeof(float_r_part));
-  ratio = dom.overlap_ratio(range_part, mbrs[0]);
+  ratio = dom.overlap_ratio(range_part, is_default, mbrs[0]);
   CHECK(ratio == 0.25);
 }
 
@@ -589,6 +597,7 @@ TEST_CASE(
     "RTree: Test 2D R-tree, height 2, heterogeneous (uint8, int32)",
     "[rtree][2d][2h][heter]") {
   // Create RTree with dimensions uint8, int32
+  std::vector<bool> is_default(2, false);
   uint8_t uint8_dom[] = {0, 200};
   int32_t int32_dom[] = {5, 100};
   uint8_t uint8_extent = 2;
@@ -621,7 +630,7 @@ TEST_CASE(
   int32_t int32_r_no[] = {1, 10};
   range_no[0].set_range(uint8_r_no, sizeof(uint8_r_no));
   range_no[1].set_range(int32_r_no, sizeof(int32_r_no));
-  auto overlap = rtree.get_tile_overlap(range_no);
+  auto overlap = rtree.get_tile_overlap(range_no, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.empty());
 
@@ -631,7 +640,7 @@ TEST_CASE(
   int32_t int32_r_full[] = {1, 100};
   range_full[0].set_range(uint8_r_full, sizeof(uint8_r_full));
   range_full[1].set_range(int32_r_full, sizeof(int32_r_full));
-  overlap = rtree.get_tile_overlap(range_full);
+  overlap = rtree.get_tile_overlap(range_full, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 0);
@@ -643,7 +652,7 @@ TEST_CASE(
   int32_t int32_r_part[] = {7, 20};
   range_part[0].set_range(uint8_r_part, sizeof(uint8_r_part));
   range_part[1].set_range(int32_r_part, sizeof(int32_r_part));
-  overlap = rtree.get_tile_overlap(range_part);
+  overlap = rtree.get_tile_overlap(range_part, is_default);
   CHECK(overlap.tile_ranges_.empty());
   CHECK(overlap.tiles_.size() == 2);
   CHECK(overlap.tiles_[0].first == 1);
@@ -656,6 +665,7 @@ TEST_CASE(
     "RTree: Test 2D R-tree, height 3, heterogeneous (uint8, int32)",
     "[rtree][2d][2h][heter]") {
   // Create RTree with dimensions uint8, int32
+  std::vector<bool> is_default(2, false);
   uint8_t uint8_dom[] = {0, 200};
   int32_t int32_dom[] = {5, 100};
   uint8_t uint8_extent = 2;
@@ -690,7 +700,7 @@ TEST_CASE(
   int32_t int32_r_no[] = {1, 10};
   range_no[0].set_range(uint8_r_no, sizeof(uint8_r_no));
   range_no[1].set_range(int32_r_no, sizeof(int32_r_no));
-  auto overlap = rtree.get_tile_overlap(range_no);
+  auto overlap = rtree.get_tile_overlap(range_no, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.empty());
 
@@ -700,7 +710,7 @@ TEST_CASE(
   int32_t int32_r_full[] = {1, 100};
   range_full[0].set_range(uint8_r_full, sizeof(uint8_r_full));
   range_full[1].set_range(int32_r_full, sizeof(int32_r_full));
-  overlap = rtree.get_tile_overlap(range_full);
+  overlap = rtree.get_tile_overlap(range_full, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 0);
@@ -712,7 +722,7 @@ TEST_CASE(
   int32_t int32_r_part[] = {7, 20};
   range_part[0].set_range(uint8_r_part, sizeof(uint8_r_part));
   range_part[1].set_range(int32_r_part, sizeof(int32_r_part));
-  overlap = rtree.get_tile_overlap(range_part);
+  overlap = rtree.get_tile_overlap(range_part, is_default);
   CHECK(overlap.tile_ranges_.empty());
   CHECK(overlap.tiles_.size() == 2);
   CHECK(overlap.tiles_[0].first == 1);
@@ -726,7 +736,7 @@ TEST_CASE(
   int32_t int32_r_ranges[] = {11, 40};
   range_ranges[0].set_range(uint8_r_ranges, sizeof(uint8_r_ranges));
   range_ranges[1].set_range(int32_r_ranges, sizeof(int32_r_ranges));
-  overlap = rtree.get_tile_overlap(range_ranges);
+  overlap = rtree.get_tile_overlap(range_ranges, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 2);
@@ -738,7 +748,7 @@ TEST_CASE(
   int32_t int32_r_mixed[] = {8, 40};
   range_mixed[0].set_range(uint8_r_mixed, sizeof(uint8_r_mixed));
   range_mixed[1].set_range(int32_r_mixed, sizeof(int32_r_mixed));
-  overlap = rtree.get_tile_overlap(range_mixed);
+  overlap = rtree.get_tile_overlap(range_mixed, is_default);
   CHECK(overlap.tiles_.size() == 1);
   CHECK(overlap.tiles_[0].first == 1);
   CHECK(overlap.tiles_[0].second == (2.0 / 3) * (2.0 / 3));
@@ -800,6 +810,7 @@ TEST_CASE(
     "RTree: Test 1D R-tree, string dims, height 2",
     "[rtree][1d][string-dims][2h]") {
   // Build tree
+  std::vector<bool> is_default(1, false);
   Domain dom1 =
       create_domain({"d"}, {Datatype::STRING_ASCII}, {nullptr}, {nullptr});
   std::vector<NDRange> mbrs =
@@ -823,7 +834,7 @@ TEST_CASE(
   std::string r_no_end = "dd";
   range[0].set_range_var(
       r_no_start.data(), r_no_start.size(), r_no_end.data(), r_no_end.size());
-  auto overlap = rtree.get_tile_overlap(range);
+  auto overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.empty());
 
@@ -835,7 +846,7 @@ TEST_CASE(
       r_full_start.size(),
       r_full_end.data(),
       r_full_end.size());
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 0);
@@ -849,7 +860,7 @@ TEST_CASE(
       r_partial_start.size(),
       r_partial_end.data(),
       r_partial_end.size());
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tile_ranges_.empty());
   CHECK(overlap.tiles_.size() == 2);
   CHECK(overlap.tiles_[0].first == 0);
@@ -865,7 +876,7 @@ TEST_CASE(
       r_partial_start.size(),
       r_partial_end.data(),
       r_partial_end.size());
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tile_ranges_.empty());
   CHECK(overlap.tiles_.size() == 1);
   CHECK(overlap.tiles_[0].first == 1);
@@ -876,6 +887,7 @@ TEST_CASE(
     "RTree: Test 1D R-tree, string dims, height 3",
     "[rtree][1d][string-dims][3h]") {
   // Build tree
+  std::vector<bool> is_default(1, false);
   Domain dom1 =
       create_domain({"d"}, {Datatype::STRING_ASCII}, {nullptr}, {nullptr});
   std::vector<NDRange> mbrs = create_str_mbrs<1>({"aa",
@@ -910,7 +922,7 @@ TEST_CASE(
   std::string r_no_end = "dd";
   range[0].set_range_var(
       r_no_start.data(), r_no_start.size(), r_no_end.data(), r_no_end.size());
-  auto overlap = rtree.get_tile_overlap(range);
+  auto overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.empty());
 
@@ -922,7 +934,7 @@ TEST_CASE(
       r_full_start.size(),
       r_full_end.data(),
       r_full_end.size());
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 0);
@@ -936,7 +948,7 @@ TEST_CASE(
       r_partial_start.size(),
       r_partial_end.data(),
       r_partial_end.size());
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tile_ranges_.empty());
   CHECK(overlap.tiles_.size() == 2);
   CHECK(overlap.tiles_[0].first == 0);
@@ -952,7 +964,7 @@ TEST_CASE(
       r_partial_start.size(),
       r_partial_end.data(),
       r_partial_end.size());
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 3);
   CHECK(overlap.tile_ranges_[0].second == 5);
@@ -965,6 +977,7 @@ TEST_CASE(
     "RTree: Test 2D R-tree, string dims, height 2",
     "[rtree][2d][string-dims][2h]") {
   // Build tree
+  std::vector<bool> is_default(2, false);
   Domain dom = create_domain(
       {"d1", "d2"},
       {Datatype::STRING_ASCII, Datatype::STRING_ASCII},
@@ -1003,7 +1016,7 @@ TEST_CASE(
       r_no_start.data(), r_no_start.size(), r_no_end.data(), r_no_end.size());
   range[1].set_range_var(
       r_no_start.data(), r_no_start.size(), r_no_end.data(), r_no_end.size());
-  auto overlap = rtree.get_tile_overlap(range);
+  auto overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.empty());
 
@@ -1022,7 +1035,7 @@ TEST_CASE(
       r_full_start_2.size(),
       r_full_end_2.data(),
       r_full_end_2.size());
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 0);
@@ -1043,7 +1056,7 @@ TEST_CASE(
       r_partial_start_2.size(),
       r_partial_end_2.data(),
       r_partial_end_2.size());
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tile_ranges_.empty());
   CHECK(overlap.tiles_.size() == 1);
   CHECK(overlap.tiles_[0].first == 1);
@@ -1064,7 +1077,7 @@ TEST_CASE(
       r_partial_start_2.size(),
       r_partial_end_2.data(),
       r_partial_end_2.size());
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tile_ranges_.empty());
   CHECK(overlap.tiles_.size() == 2);
   CHECK(overlap.tiles_[0].first == 0);
@@ -1077,6 +1090,7 @@ TEST_CASE(
     "RTree: Test 2D R-tree (string, int), height 2",
     "[rtree][2d][string-dims][heter][2h]") {
   // Build tree
+  std::vector<bool> is_default(2, false);
   int32_t dom_int32[] = {1, 20};
   int32_t tile_extent = 5;
   Domain dom = create_domain(
@@ -1107,7 +1121,7 @@ TEST_CASE(
       r_no_start.data(), r_no_start.size(), r_no_end.data(), r_no_end.size());
   int32_t r_no[] = {1, 20};
   range[1].set_range(r_no, sizeof(r_no));
-  auto overlap = rtree.get_tile_overlap(range);
+  auto overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.empty());
 
@@ -1121,7 +1135,7 @@ TEST_CASE(
       r_full_end_1.size());
   int32_t r_full[] = {1, 20};
   range[1].set_range(r_full, sizeof(r_full));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tiles_.empty());
   CHECK(overlap.tile_ranges_.size() == 1);
   CHECK(overlap.tile_ranges_[0].first == 0);
@@ -1137,7 +1151,7 @@ TEST_CASE(
       r_partial_end_1.size());
   int32_t r_partial[] = {11, 12};
   range[1].set_range(r_partial, sizeof(r_partial));
-  overlap = rtree.get_tile_overlap(range);
+  overlap = rtree.get_tile_overlap(range, is_default);
   CHECK(overlap.tile_ranges_.empty());
   CHECK(overlap.tiles_.size() == 1);
   CHECK(overlap.tiles_[0].first == 2);

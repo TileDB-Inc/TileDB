@@ -39,10 +39,13 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/sm/enums/compressor.h"
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/tile/filtered_buffer.h"
 
 using namespace tiledb::common;
 
@@ -125,6 +128,14 @@ class FilterPipeline {
   }
 
   /**
+   * Checks if a certain filter exists in the filter pipeline
+   *
+   * @param filter The filter to search for
+   * @return True if found, false otherwise
+   */
+  bool has_filter(const Filter& filter) const;
+
+  /**
    * Returns a pointer to the filter in the pipeline at the given index.
    *
    * @param index Index of filter
@@ -174,13 +185,16 @@ class FilterPipeline {
    * @param tile Tile to filter.
    * @param offsets_tile Offets tile for tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
+   * @param chunking True if the tile should be cut into chunks before
+   * filtering, false if not.
    * @return Status
    */
   Status run_forward(
       stats::Stats* writer_stats,
       Tile* tile,
       Tile* offsets_tile,
-      ThreadPool* compute_tp) const;
+      ThreadPool* compute_tp,
+      bool chunking = true) const;
 
   /**
    * Runs the pipeline in reverse on the given filtered tile. This is used
@@ -276,6 +290,18 @@ class FilterPipeline {
   static Status append_encryption_filter(
       FilterPipeline* pipeline, const EncryptionKey& encryption_key);
 
+  /**
+   * Checks if an attribute/dimension needs to be filtered in chunks or as a
+   * whole
+   *
+   * @param is_dim True if checking for dimension, false if attribute
+   * @param is_var True if checking for a var-sized attribute/dimension, false
+   * if not
+   * @param type Datatype of the input attribute/dimension
+   * @return True if chunking needs to be used, false if not
+   */
+  bool use_tile_chunking(bool is_dim, bool is_var, const Datatype type) const;
+
  private:
   /** A pair of FilterBuffers. */
   typedef std::pair<FilterBuffer, FilterBuffer> FilterBufferPair;
@@ -298,10 +324,15 @@ class FilterPipeline {
    * @param chunk_size Target chunk size.
    * @param tile Var tile.
    * @param offsets_tile Offsets tile.
+   * @param chunking True if the tile is filtered in chunks
    * @return Status, chunk offsets vector.
    */
-  std::tuple<Status, std::optional<std::vector<uint64_t>>> get_var_chunk_sizes(
-      uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const;
+
+  tuple<Status, std::optional<std::vector<uint64_t>>> get_var_chunk_sizes(
+      uint32_t chunk_size,
+      Tile* const tile,
+      Tile* const offsets_tile,
+      bool chunking) const;
 
   /**
    * Run the given buffer forward through the pipeline.
@@ -317,10 +348,9 @@ class FilterPipeline {
    */
   Status filter_chunks_forward(
       const Tile& tile,
-      const Buffer& input,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,
-      Buffer* const output,
+      FilteredBuffer& output,
       ThreadPool* const compute_tp) const;
 
   /**
@@ -335,9 +365,8 @@ class FilterPipeline {
    * @return Status
    */
   Status filter_chunks_reverse(
-      const Tile& tile,
-      const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
-      Buffer* const output,
+      Tile& tile,
+      const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
       ThreadPool* const compute_tp,
       const Config& config) const;
 

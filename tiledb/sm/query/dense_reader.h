@@ -144,7 +144,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
 
   /** Apply the query condition. */
   template <class DimType, class OffType>
-  std::tuple<Status, std::optional<std::vector<uint8_t>>> apply_query_condition(
+  tuple<Status, optional<std::vector<uint8_t>>> apply_query_condition(
       Subarray& subarray,
       std::vector<Subarray>& tile_subarrays,
       std::vector<uint64_t>& tile_offsets,
@@ -185,7 +185,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * start and end of the overlap.
    */
   template <class DimType>
-  std::tuple<bool, uint64_t, uint64_t> cell_slab_overlaps_range(
+  tuple<bool, uint64_t, uint64_t> cell_slab_overlaps_range(
       const unsigned dim_num,
       const NDRange& ndrange,
       const DimType* const coords,

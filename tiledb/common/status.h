@@ -56,8 +56,8 @@
 #include <optional>
 #include <string>
 #include <tuple>
-using std::tuple, std::optional, std::nullopt;
 
+#include "common-std.h"
 #include "status_code.h"
 #include "tiledb/common/heap_memory.h"
 
@@ -413,6 +413,11 @@ inline Status Status_DenseTilerError(const std::string& msg) {
  * message **/
 inline Status Status_QueryConditionError(const std::string& msg) {
   return Status(StatusCode::QueryConditionError, msg);
+}
+/** Return a Status_ArrayDirectoryError error class Status with a given
+ * message **/
+inline Status Status_ArrayDirectoryError(const std::string& msg) {
+  return Status(StatusCode::ArrayDirectoryError, msg);
 }
 /** Return a BlobArrayError error class Status with a given message **/
 inline Status Status_BlobArrayError(const std::string& msg) {

@@ -206,15 +206,7 @@ int StringDimsFx::get_dir_num(const char* path, void* data) {
   int is_dir;
   int rc = tiledb_vfs_is_dir(ctx, vfs, path, &is_dir);
   CHECK(rc == TILEDB_OK);
-  auto meta_dir =
-      std::string("/") + tiledb::sm::constants::array_metadata_folder_name;
-  auto schema_dir =
-      std::string("/") + tiledb::sm::constants::array_schema_folder_name;
-  if (!tiledb::sm::utils::parse::ends_with(path, meta_dir) &&
-      !tiledb::sm::utils::parse::ends_with(path, schema_dir)) {
-    // Ignoring the meta folder and the schema folder
-    data_struct->num += is_dir;
-  }
+  data_struct->num += is_dir;
 
   return 1;
 }
@@ -1897,7 +1889,8 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct dirs = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, array_name.c_str(), &get_dir_num, &dirs);
+  auto frag_dir = get_fragment_dir(array_name);
+  rc = tiledb_vfs_ls(ctx_, vfs_, frag_dir.c_str(), &get_dir_num, &dirs);
   CHECK(rc == TILEDB_OK);
   CHECK(dirs.num == 2);
 
@@ -1908,7 +1901,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   dirs = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, array_name.c_str(), &get_dir_num, &dirs);
+  rc = tiledb_vfs_ls(ctx_, vfs_, frag_dir.c_str(), &get_dir_num, &dirs);
   CHECK(rc == TILEDB_OK);
   CHECK(dirs.num == 1);
 

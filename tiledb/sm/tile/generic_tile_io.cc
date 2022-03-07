@@ -64,6 +64,7 @@ Status GenericTileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
     const Config& config) {
+  tdb_unique_ptr<Tile> ret(tdb_new(Tile));
   GenericTileHeader header;
   RETURN_NOT_OK(
       read_generic_tile_header(storage_manager_, uri_, file_offset, &header));
@@ -81,39 +82,28 @@ Status GenericTileIO::read_generic(
   const auto tile_data_offset =
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
 
-  assert(tile);
-  *tile = tdb_new(Tile);
-  RETURN_NOT_OK_ELSE(
-      (*tile)->init_filtered(
-          header.version_number,
-          (Datatype)header.datatype,
-          header.cell_size,
-          0),
-      tdb_delete(*tile));
+  RETURN_NOT_OK(ret->init_filtered(
+      header.version_number, (Datatype)header.datatype, header.cell_size, 0));
 
   // Read the tile.
-  RETURN_NOT_OK_ELSE(
-      (*tile)->filtered_buffer()->realloc(header.persisted_size),
-      tdb_delete(*tile));
-  RETURN_NOT_OK_ELSE(
-      storage_manager_->read(
-          uri_,
-          file_offset + tile_data_offset,
-          (*tile)->filtered_buffer(),
-          header.persisted_size),
-      tdb_delete(*tile));
+  ret->filtered_buffer().expand(header.persisted_size);
+  RETURN_NOT_OK(ret->alloc_data(header.tile_size));
+  RETURN_NOT_OK(storage_manager_->read(
+      uri_,
+      file_offset + tile_data_offset,
+      ret->filtered_buffer().data(),
+      header.persisted_size));
 
   // Unfilter
-  assert((*tile)->filtered());
-  RETURN_NOT_OK_ELSE(
-      header.filters.run_reverse(
-          storage_manager_->stats(),
-          *tile,
-          storage_manager_->compute_tp(),
-          config),
-      tdb_delete(*tile));
-  assert(!(*tile)->filtered());
+  assert(ret->filtered());
+  RETURN_NOT_OK(header.filters.run_reverse(
+      storage_manager_->stats(),
+      ret.get(),
+      storage_manager_->compute_tp(),
+      config));
+  assert(!ret->filtered());
 
+  *tile = ret.release();
   return Status::Ok();
 }
 
@@ -153,9 +143,6 @@ Status GenericTileIO::read_generic_tile_header(
 
 Status GenericTileIO::write_generic(
     Tile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes) {
-  // Reset the tile and buffer offset
-  tile->reset_offset();
-
   // Create a header
   GenericTileHeader header;
   RETURN_NOT_OK(init_generic_tile_header(tile, &header, encryption_key));
@@ -167,11 +154,13 @@ Status GenericTileIO::write_generic(
       tile,
       nullptr,
       storage_manager_->compute_tp()));
-  header.persisted_size = tile->filtered_buffer()->size();
+  header.persisted_size = tile->filtered_buffer().size();
   assert(tile->filtered());
 
   RETURN_NOT_OK(write_generic_tile_header(&header));
-  RETURN_NOT_OK(storage_manager_->write(uri_, tile->filtered_buffer()));
+
+  RETURN_NOT_OK(storage_manager_->write(
+      uri_, tile->filtered_buffer().data(), tile->filtered_buffer().size()));
 
   *nbytes = GenericTileIO::GenericTileHeader::BASE_SIZE +
             header.filter_pipeline_size + header.persisted_size;

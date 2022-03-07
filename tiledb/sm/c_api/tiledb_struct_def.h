@@ -89,7 +89,7 @@ struct tiledb_attribute_t {
 };
 
 struct tiledb_array_schema_t {
-  tiledb::sm::ArraySchema* array_schema_ = nullptr;
+  shared_ptr<tiledb::sm::ArraySchema> array_schema_;
 };
 
 struct tiledb_array_schema_evolution_t {

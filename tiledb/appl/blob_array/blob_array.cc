@@ -55,7 +55,10 @@ namespace appl {
 
 BlobArray::BlobArray(const URI& array_uri, StorageManager* storage_manager)
     : Array(array_uri, storage_manager)
-    , blob_array_schema_() {
+    //, blob_array_schema_() {
+    , blob_array_schema_sp_(
+          std::make_shared<BlobArraySchema>(new (std::nothrow) BlobArraySchema))
+    , blob_array_schema_(*(blob_array_schema_sp_.get())) {
   // We want to default these incase the user doesn't set it.
   // This is required for writes to the query and the metadata get the same
   // timestamp
@@ -72,7 +75,9 @@ BlobArray::BlobArray(const URI& array_uri, StorageManager* storage_manager)
 
 BlobArray::BlobArray(const BlobArray& rhs)
     : Array(rhs)
-    , blob_array_schema_(&rhs.blob_array_schema_) {
+    //, blob_array_schema_(&rhs.blob_array_schema_) {
+    , blob_array_schema_sp_(rhs.blob_array_schema_sp_)
+    , blob_array_schema_(*(rhs.blob_array_schema_sp_.get())) {
 }
 
 /* ********************************* */
@@ -84,7 +89,7 @@ Status BlobArray::create([[maybe_unused]] const Config* config) {
     auto cfg = config ? config : &config_;
     auto encryption_key = get_encryption_key_from_config(*cfg);
     RETURN_NOT_OK(storage_manager_->array_create(
-        array_uri_, &blob_array_schema_, *encryption_key));
+        array_uri_, blob_array_schema_sp_, *encryption_key));
 
   } catch (const std::exception& e) {
     return Status_BlobArrayError(e.what());
@@ -290,8 +295,8 @@ Status BlobArray::export_to_vfs_fh(
 
     // Set subarray
     RETURN_NOT_OK(query.set_subarray(&subarray));
-    uint32_t delay_ms = 100;
-    uint32_t retry_cnt = 1;
+//    uint32_t delay_ms = 100;
+//    uint32_t retry_cnt = 1;
     do {
       RETURN_NOT_OK(query.submit());
 
@@ -308,7 +313,7 @@ Status BlobArray::export_to_vfs_fh(
           // LOG_STATUS(msg.str());
           LOG_STATUS(Status_BlobArrayError(msg.str()));
 #if _WIN32
-#if 01
+#if 0
           if (qstat == QueryStatus::INCOMPLETE) {
             __debugbreak();
             std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));

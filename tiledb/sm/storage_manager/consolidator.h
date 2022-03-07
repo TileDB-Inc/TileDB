@@ -174,7 +174,7 @@ class Consolidator {
   stats::Stats* stats_;
 
   /** The class logger. */
-  tdb_shared_ptr<Logger> logger_;
+  shared_ptr<Logger> logger_;
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
@@ -305,7 +305,7 @@ class Consolidator {
    * @return Status
    */
   Status create_buffers(
-      const ArraySchema* array_schema,
+      const ArraySchema& array_schema,
       std::vector<ByteVec>* buffers,
       std::vector<uint64_t>* buffer_sizes);
 
@@ -345,20 +345,17 @@ class Consolidator {
    * @return Status
    */
   Status compute_next_to_consolidate(
-      const ArraySchema* array_schema,
+      const ArraySchema& array_schema,
       const FragmentInfo& fragment_info,
       std::vector<TimestampedURI>* to_consolidate,
       NDRange* union_non_empty_domains) const;
 
   /**
-   * The new fragment URI is computed
+   * The new fragment name is computed
    * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
    */
-  Status compute_new_fragment_uri(
-      const URI& first,
-      const URI& last,
-      uint32_t format_version,
-      URI* new_uri) const;
+  tuple<Status, optional<std::string>> compute_new_fragment_name(
+      const URI& first, const URI& last, uint32_t format_version) const;
 
   /** Checks and sets the input configuration parameters. */
   Status set_config(const Config* config);
@@ -381,7 +378,7 @@ class Consolidator {
   /** Writes the vacuum file that contains the URIs of the consolidated
    * fragments. */
   Status write_vacuum_file(
-      const URI& new_uri,
+      const URI& vac_uri,
       const std::vector<TimestampedURI>& to_consolidate) const;
 };
 

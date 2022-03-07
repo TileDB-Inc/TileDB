@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines a test `main()`
+ * This file tests the Dimension class
  */
 
 #include <catch.hpp>

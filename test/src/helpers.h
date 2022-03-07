@@ -681,6 +681,16 @@ int32_t num_fragments(const std::string& array_name);
  */
 std::string random_string(const uint64_t l);
 
+/**
+ * Gets the fragments directory from the array directory.
+ */
+std::string get_fragment_dir(std::string array_dir);
+
+/**
+ * Gets the commit directory from the array directory.
+ */
+std::string get_commit_dir(std::string array_dir);
+
 }  // End of namespace test
 
 }  // End of namespace tiledb

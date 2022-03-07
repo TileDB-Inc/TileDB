@@ -118,6 +118,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-attributes.cc
   src/unit-capi-buffer.cc
   src/unit-capi-config.cc
+  src/unit-capi-context.cc
   src/unit-capi-consolidation.cc
   src/unit-capi-dense_array.cc
   src/unit-capi-dense_array_2.cc
@@ -144,7 +145,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
   src/unit-capi-string_dims.cc
-  src/unit-capi-tiledb_file.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
@@ -160,6 +160,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-filter-buffer.cc 
   src/unit-filter-pipeline.cc
   src/unit-gcs.cc
+  src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
   src/unit-hilbert.cc
   src/unit-lru_cache.cc
@@ -184,13 +185,12 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-Tile.cc
   src/unit-TileDomain.cc
   src/unit-uri.cc
+  src/unit-ArrayDirectory.cc
   src/unit-utils.cc
   src/unit-uuid.cc
   src/unit-ValidityVector.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
-#  src/unit.cc
-#  src/vfs_helpers.cc
   )
 
 if (TILEDB_CPP_API)
@@ -245,71 +245,25 @@ if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
 endif()
 
-set(DO_REAL_OBJECT_LIB 1)
-if(NOT ${DO_REAL_OBJECT_LIB})
-  message(STATUS "FAKE object lib")
-  #just something to satisfy other definitions not being disabled...
-  add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
-  #  TILEDB_CORE_OBJECTS_ILIB
-  #  "src/vfs_helpers.h"
-  #  "src/helpers.h"
-  #  "src/helpers.cc"
-  #  "src/unit.cc" # looking for something that doesn't have the inclusion issue....
-    "src/dlhjunk.cc"
-  )
-else()
-  message(STATUS "REAL object lib")
-  add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
-  #  TILEDB_CORE_OBJECTS_ILIB
-    $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
-    ${TILEDB_TEST_SUPPORT_SOURCES}
-  )
+add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
+  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+  ${TILEDB_TEST_SUPPORT_SOURCES}
+)
 
-  #target_include_directories(
-  #  tiledb_test_support_lib
-  #  TILEDB_CORE_OBJECTS_ILIB
-  #)
-  if(0)
-    target_compile_definitions(tiledb_test_support_lib
-      PRIVATE
-        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_COMPILE_DEFINITIONS>
-        //$<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
-    )
-  endif()
-  if(1)
-    target_include_directories(tiledb_test_support_lib
-      PRIVATE
-        #$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_INCLUDE_DIRECTORIES>
-        $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
-    )
-  endif()
-endif()
+target_include_directories(tiledb_test_support_lib
+  PRIVATE
+    $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
+)
 
-# And then comes the point when realization occurs that there is nothing 
-# in 'main' to cause the various units to be pulled in from the library...
-# if(NOT ${DO_REAL_OBJECT_LIB})
-  # unit test executable
-  add_executable(
-    tiledb_unit EXCLUDE_FROM_ALL
-    $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
-    ${TILEDB_UNIT_TEST_SOURCES}
-#    ${TILEDB_TEST_SUPPORT_SOURCES}
-    "src/unit.cc"
-  )
-#else()
-## unit test executable
-#  add_executable(
-#    tiledb_unit EXCLUDE_FROM_ALL
-#  #  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
-#  #  ${TILEDB_UNIT_TEST_SOURCES}
-#    "src/unit.cc"
-#  )
-#endif()
+# unit test executable
+add_executable(
+  tiledb_unit EXCLUDE_FROM_ALL
+  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+  ${TILEDB_UNIT_TEST_SOURCES}
+  "src/unit.cc"
+)
 
-if( ${DO_REAL_OBJECT_LIB})
-  add_dependencies(tiledb_unit tiledb_test_support_lib)
-endif()
-
+add_dependencies(tiledb_unit tiledb_test_support_lib)
 
 # We want tests to continue as normal even as the API is changing,
 # so don't warn for deprecations, since they'll be escalated to errors.
@@ -327,8 +281,6 @@ target_include_directories(
   tiledb_test_support_lib BEFORE PRIVATE
     ${TILEDB_CORE_INCLUDE_DIR}
     ${TILEDB_EXPORT_HEADER_DIR}
-#    Catch2::Catch2
-#    TILEDB_CORE_OBJECTS_ILIB
 )
 
 target_link_libraries(tiledb_unit

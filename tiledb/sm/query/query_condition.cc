@@ -92,12 +92,12 @@ Status QueryCondition::init(
   return Status::Ok();
 }
 
-Status QueryCondition::check(const ArraySchema* const array_schema) const {
+Status QueryCondition::check(const ArraySchema& array_schema) const {
   for (const auto& clause : clauses_) {
     const std::string field_name = clause.field_name_;
     const uint64_t condition_value_size = clause.condition_value_data_.size();
 
-    const Attribute* const attribute = array_schema->attribute(field_name);
+    const auto attribute = array_schema.attribute(field_name);
     if (!attribute) {
       return Status_QueryConditionError(
           "Clause field name is not an attribute " + field_name);
@@ -455,7 +455,7 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
 
       if (nullable) {
         const auto& tile_validity = std::get<2>(*tile_tuple);
-        buffer_validity = static_cast<uint8_t*>(tile_validity.buffer()->data());
+        buffer_validity = static_cast<uint8_t*>(tile_validity.data());
       }
 
       // Start the pending result cell slab at the start position
@@ -465,12 +465,12 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
 
       if (var_size) {
         const auto& tile = std::get<1>(*tile_tuple);
-        const char* buffer = static_cast<char*>(tile.buffer()->data());
+        const char* buffer = static_cast<char*>(tile.data());
         const uint64_t buffer_size = tile.size();
 
         const auto& tile_offsets = std::get<0>(*tile_tuple);
         const uint64_t* buffer_offsets =
-            static_cast<uint64_t*>(tile_offsets.buffer()->data());
+            static_cast<uint64_t*>(tile_offsets.data());
         const uint64_t buffer_offsets_el =
             tile_offsets.size() / constants::cell_var_offset_size;
 
@@ -505,7 +505,7 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
         }
       } else {
         const auto& tile = std::get<0>(*tile_tuple);
-        const char* buffer = static_cast<char*>(tile.buffer()->data());
+        const char* buffer = static_cast<char*>(tile.data());
         const uint64_t cell_size = tile.cell_size();
         uint64_t buffer_offset = start * cell_size;
         const uint64_t buffer_offset_inc = stride * cell_size;
@@ -544,7 +544,7 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
 }
 
 template <typename T>
-std::tuple<Status, std::optional<std::vector<ResultCellSlab>>>
+tuple<Status, optional<std::vector<ResultCellSlab>>>
 QueryCondition::apply_clause(
     const Clause& clause,
     const uint64_t stride,
@@ -582,24 +582,23 @@ QueryCondition::apply_clause(
       return {Status_QueryConditionError(
                   "Cannot perform query comparison; Unknown query "
                   "condition operator"),
-              std::nullopt};
+              nullopt};
   }
 
   return {Status::Ok(), std::move(ret)};
 }
 
-std::tuple<Status, std::optional<std::vector<ResultCellSlab>>>
+tuple<Status, optional<std::vector<ResultCellSlab>>>
 QueryCondition::apply_clause(
     const QueryCondition::Clause& clause,
-    const ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
-  const Attribute* const attribute =
-      array_schema->attribute(clause.field_name_);
+  const auto attribute = array_schema.attribute(clause.field_name_);
   if (!attribute) {
     return {
         Status_QueryConditionError("Unknown attribute " + clause.field_name_),
-        std::nullopt};
+        nullopt};
   }
 
   const ByteVecValue fill_value = attribute->fill_value();
@@ -673,14 +672,14 @@ QueryCondition::apply_clause(
                   "Cannot perform query comparison; Unsupported query "
                   "conditional type on " +
                   clause.field_name_),
-              std::nullopt};
+              nullopt};
   }
 
-  return {Status::Ok(), std::nullopt};
+  return {Status::Ok(), nullopt};
 }
 
 Status QueryCondition::apply(
-    const ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     std::vector<ResultCellSlab>& result_cell_slabs,
     const uint64_t stride) const {
   if (clauses_.empty()) {
@@ -719,12 +718,12 @@ void QueryCondition::apply_clause_dense(
   if (var_size) {
     // Get var data buffer and tile offsets buffer.
     const auto& tile = std::get<1>(*tile_tuple);
-    const char* buffer = static_cast<char*>(tile.buffer()->data());
+    const char* buffer = static_cast<char*>(tile.data());
     const uint64_t buffer_size = tile.size();
 
     const auto& tile_offsets = std::get<0>(*tile_tuple);
     const uint64_t* buffer_offsets =
-        static_cast<uint64_t*>(tile_offsets.buffer()->data()) + src_cell;
+        static_cast<uint64_t*>(tile_offsets.data()) + src_cell;
     const uint64_t buffer_offsets_el =
         tile_offsets.size() / constants::cell_var_offset_size;
 
@@ -758,7 +757,7 @@ void QueryCondition::apply_clause_dense(
   } else {
     // Get the fixed size data buffers.
     const auto& tile = std::get<0>(*tile_tuple);
-    const char* buffer = static_cast<char*>(tile.buffer()->data());
+    const char* buffer = static_cast<char*>(tile.data());
     const uint64_t cell_size = tile.cell_size();
     uint64_t buffer_offset = (start + src_cell) * cell_size;
     const uint64_t buffer_offset_inc = stride * cell_size;
@@ -870,15 +869,14 @@ Status QueryCondition::apply_clause_dense(
 
 Status QueryCondition::apply_clause_dense(
     const QueryCondition::Clause& clause,
-    const ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t length,
     const uint64_t src_cell,
     const uint64_t stride,
     uint8_t* result_buffer) const {
-  const Attribute* const attribute =
-      array_schema->attribute(clause.field_name_);
+  const auto attribute = array_schema.attribute(clause.field_name_);
   if (!attribute) {
     return Status_QueryConditionError(
         "Unknown attribute " + clause.field_name_);
@@ -892,7 +890,7 @@ Status QueryCondition::apply_clause_dense(
     const auto tile_tuple = result_tile->tile_tuple(clause.field_name_);
     const auto& tile_validity = std::get<2>(*tile_tuple);
     const auto buffer_validity =
-        static_cast<uint8_t*>(tile_validity.buffer()->data()) + src_cell;
+        static_cast<uint8_t*>(tile_validity.data()) + src_cell;
     ;
 
     // Null values can only be specified for equality operators.
@@ -1087,7 +1085,7 @@ Status QueryCondition::apply_clause_dense(
 }
 
 Status QueryCondition::apply_dense(
-    const ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t length,
@@ -1266,12 +1264,12 @@ void QueryCondition::apply_clause_sparse(
   if (var_size) {
     // Get var data buffer and tile offsets buffer.
     const auto& tile = std::get<1>(*tile_tuple);
-    const char* buffer = static_cast<char*>(tile.buffer()->data());
+    const char* buffer = static_cast<char*>(tile.data());
     const uint64_t buffer_size = tile.size();
 
     const auto& tile_offsets = std::get<0>(*tile_tuple);
     const uint64_t* buffer_offsets =
-        static_cast<uint64_t*>(tile_offsets.buffer()->data());
+        static_cast<uint64_t*>(tile_offsets.data());
     const uint64_t buffer_offsets_el =
         tile_offsets.size() / constants::cell_var_offset_size;
 
@@ -1303,7 +1301,7 @@ void QueryCondition::apply_clause_sparse(
   } else {
     // Get the fixed size data buffers.
     const auto& tile = std::get<0>(*tile_tuple);
-    const char* buffer = static_cast<char*>(tile.buffer()->data());
+    const char* buffer = static_cast<char*>(tile.data());
     const uint64_t cell_size = tile.cell_size();
     const uint64_t buffer_el = tile.size() / cell_size;
 
@@ -1369,11 +1367,10 @@ Status QueryCondition::apply_clause_sparse(
 template <typename BitmapType>
 Status QueryCondition::apply_clause_sparse(
     const QueryCondition::Clause& clause,
-    const ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap) const {
-  const Attribute* const attribute =
-      array_schema->attribute(clause.field_name_);
+  const auto attribute = array_schema.attribute(clause.field_name_);
   if (!attribute) {
     return Status_QueryConditionError(
         "Unknown attribute " + clause.field_name_);
@@ -1387,8 +1384,7 @@ Status QueryCondition::apply_clause_sparse(
   if (nullable) {
     const auto tile_tuple = result_tile.tile_tuple(clause.field_name_);
     const auto& tile_validity = std::get<2>(*tile_tuple);
-    const auto buffer_validity =
-        static_cast<uint8_t*>(tile_validity.buffer()->data());
+    const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
 
     // Null values can only be specified for equality operators.
     if (clause.condition_value_ == nullptr) {
@@ -1485,7 +1481,7 @@ Status QueryCondition::apply_clause_sparse(
 
 template <typename BitmapType>
 Status QueryCondition::apply_sparse(
-    const ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap,
     uint64_t* cell_count) {
@@ -1521,8 +1517,14 @@ std::vector<QueryConditionCombinationOp> QueryCondition::combination_ops()
 
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(
-    const ArraySchema* const, ResultTile&, std::vector<uint8_t>&, uint64_t*);
+    const ArraySchema& array_schema,
+    ResultTile&,
+    std::vector<uint8_t>&,
+    uint64_t*);
 template Status QueryCondition::apply_sparse<uint64_t>(
-    const ArraySchema* const, ResultTile&, std::vector<uint64_t>&, uint64_t*);
+    const ArraySchema& array_schema,
+    ResultTile&,
+    std::vector<uint64_t>&,
+    uint64_t*);
 }  // namespace sm
 }  // namespace tiledb
