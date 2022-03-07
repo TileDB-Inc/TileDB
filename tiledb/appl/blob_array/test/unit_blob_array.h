@@ -52,6 +52,18 @@ class WhiteboxBlobArray : public BlobArray {
       : BlobArray(src) {
   }
 
+  Status get_file_ext(
+      // const char* key,
+      Datatype* value_type,
+      uint32_t* value_size,
+      const void** value) /* const */ {
+    return this->Base::get_metadata(
+        constants::blob_array_metadata_ext_key.c_str(),
+        // key,     // constants::blob_array_metadata_mime_type_key.c_str(),
+        value_type,  //&datatype, //Datatype::STRING_ASCII,
+        value_size,  //&mime_size,
+        value);      //&mime);
+  }
   Status get_mime_type(
       // const char* key,
       Datatype* value_type,
