@@ -346,7 +346,7 @@ class Query {
   Array* array();
 
   /** Returns the array schema. */
-  const ArraySchema* array_schema() const;
+  const ArraySchema& array_schema() const;
 
   /** Returns the names of the buffers set by the user for the query. */
   std::vector<std::string> buffer_names() const;
@@ -869,7 +869,7 @@ class Query {
   stats::Stats* stats() const;
 
   /** Returns the scratch space used for REST requests. */
-  tdb_shared_ptr<Buffer> rest_scratch() const;
+  shared_ptr<Buffer> rest_scratch() const;
 
   /** Use the refactored dense reader or not. */
   bool use_refactored_dense_reader();
@@ -892,7 +892,7 @@ class Query {
   Array* array_;
 
   /** The array schema. */
-  ArraySchema* array_schema_;
+  shared_ptr<const ArraySchema> array_schema_;
 
   /** The config for query-level parameters only. */
   Config config_;
@@ -925,7 +925,7 @@ class Query {
   stats::Stats* stats_;
 
   /** The class logger. */
-  tdb_shared_ptr<Logger> logger_;
+  shared_ptr<Logger> logger_;
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
@@ -947,7 +947,7 @@ class Query {
   QueryCondition condition_;
 
   /** The fragment metadata that this query will focus on. */
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata_;
+  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
 
   /** The current serialization state. */
   SerializationState serialization_state_;
@@ -983,7 +983,7 @@ class Query {
   URI fragment_uri_;
 
   /* Scratch space used for REST requests. */
-  tdb_shared_ptr<Buffer> rest_scratch_;
+  shared_ptr<Buffer> rest_scratch_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

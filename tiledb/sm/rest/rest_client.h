@@ -65,13 +65,13 @@ class RestClient {
   Status set_header(const std::string& name, const std::string& value);
 
   /**
-   * Get a data encoded array schema from rest server
+   * Get a data encoded array schema from rest server.
    *
    * @param uri of array being loaded
-   * @param array_schema array schema to send to server
-   * @return Status Ok() on success Error() on failures
+   * @return Status and new ArraySchema shared pointer.
    */
-  Status get_array_schema_from_rest(const URI& uri, ArraySchema** array_schema);
+  tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema_from_rest(
+      const URI& uri);
 
   /**
    * Post a data array schema to rest server
@@ -80,7 +80,8 @@ class RestClient {
    * @param array_schema array schema to load into
    * @return Status Ok() on success Error() on failures
    */
-  Status post_array_schema_to_rest(const URI& uri, ArraySchema* array_schema);
+  Status post_array_schema_to_rest(
+      const URI& uri, const ArraySchema& array_schema);
 
   /**
    * Deregisters an array at the given URI from the REST server.
@@ -112,7 +113,7 @@ class RestClient {
    */
   Status get_array_max_buffer_sizes(
       const URI& uri,
-      const ArraySchema* schema,
+      const ArraySchema& schema,
       const void* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes);
@@ -275,7 +276,7 @@ class RestClient {
       void* constcontents,
       const size_t content_nbytes,
       bool* constskip_retries,
-      tdb_shared_ptr<Buffer> scratch,
+      shared_ptr<Buffer> scratch,
       Query* query,
       serialization::CopyState* copy_state);
 
@@ -290,7 +291,7 @@ class RestClient {
    * @return Status
    */
   static Status subarray_to_str(
-      const ArraySchema* schema,
+      const ArraySchema& schema,
       const void* subarray,
       std::string* subarray_str);
 

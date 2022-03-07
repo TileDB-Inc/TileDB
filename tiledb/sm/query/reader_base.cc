@@ -129,7 +129,9 @@ void ReaderBase::compute_result_space_tiles(
       result_space_tile.append_frag_domain(frag_idx, frag_domain);
       auto tile_idx = frag_tile_domains[f].tile_pos(coords);
       ResultTile result_tile(
-          frag_idx, tile_idx, fragment_metadata[frag_idx]->array_schema());
+          frag_idx,
+          tile_idx,
+          *(fragment_metadata[frag_idx]->array_schema()).get());
       result_space_tile.set_result_tile(frag_idx, result_tile);
     }
   }
@@ -141,9 +143,11 @@ void ReaderBase::compute_result_space_tiles(
 
 void ReaderBase::clear_tiles(
     const std::string& name,
-    const std::vector<ResultTile*>& result_tiles) const {
-  for (auto& result_tile : result_tiles)
-    result_tile->erase_tile(name);
+    const std::vector<ResultTile*>& result_tiles,
+    const uint64_t min_result_tile) const {
+  for (uint64_t i = min_result_tile; i < result_tiles.size(); i++) {
+    result_tiles[i]->erase_tile(name);
+  }
 }
 
 void ReaderBase::reset_buffer_sizes() {
@@ -183,11 +187,11 @@ Status ReaderBase::check_validity_buffer_sizes() const {
   // a validity value for each cell.
   for (const auto& it : buffers_) {
     const std::string& name = it.first;
-    if (array_schema_->is_nullable(name)) {
+    if (array_schema_.is_nullable(name)) {
       const uint64_t buffer_size = *it.second.buffer_size_;
 
       uint64_t min_cell_num = 0;
-      if (array_schema_->var_size(name)) {
+      if (array_schema_.var_size(name)) {
         min_cell_num = buffer_size / constants::cell_var_offset_size;
 
         // If the offsets buffer contains an extra element to mark
@@ -196,7 +200,7 @@ Status ReaderBase::check_validity_buffer_sizes() const {
         if (offsets_extra_element_)
           min_cell_num = std::min<uint64_t>(0, min_cell_num - 1);
       } else {
-        min_cell_num = buffer_size / array_schema_->cell_size(name);
+        min_cell_num = buffer_size / array_schema_.cell_size(name);
       }
 
       const uint64_t buffer_validity_size =
@@ -241,7 +245,7 @@ Status ReaderBase::load_tile_offsets(
         // Filter the 'names' for format-specific names.
         std::vector<std::string> filtered_names;
         filtered_names.reserve(names.size());
-        auto schema = fragment->array_schema();
+        const auto& schema = fragment->array_schema();
         for (const auto& name : names) {
           // Applicable for zipped coordinates only to versions < 5
           if (name == constants::coords && format_version >= 5)
@@ -289,7 +293,7 @@ Status ReaderBase::load_tile_var_sizes(
         auto frag_idx = all_frag ? i : relevant_fragments->at(i);
         auto& fragment = fragment_metadata_[frag_idx];
 
-        auto schema = fragment->array_schema();
+        const auto& schema = fragment->array_schema();
         for (const auto& name : names) {
           // Not a member of array schema, this field was added in array schema
           // evolution, ignore for this fragment's tile var sizes.
@@ -314,10 +318,10 @@ Status ReaderBase::load_tile_var_sizes(
 Status ReaderBase::init_tile(
     uint32_t format_version, const std::string& name, Tile* tile) const {
   // For easy reference
-  auto cell_size = array_schema_->cell_size(name);
-  auto type = array_schema_->type(name);
+  auto cell_size = array_schema_.cell_size(name);
+  auto type = array_schema_.type(name);
   auto is_coords = (name == constants::coords);
-  auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;
+  auto dim_num = (is_coords) ? array_schema_.dim_num() : 0;
 
   // Initialize
   RETURN_NOT_OK(tile->init_filtered(format_version, type, cell_size, dim_num));
@@ -331,7 +335,7 @@ Status ReaderBase::init_tile(
     Tile* tile,
     Tile* tile_var) const {
   // For easy reference
-  auto type = array_schema_->type(name);
+  auto type = array_schema_.type(name);
 
   // Initialize
   RETURN_NOT_OK(tile->init_filtered(
@@ -350,10 +354,10 @@ Status ReaderBase::init_tile_nullable(
     Tile* tile,
     Tile* tile_validity) const {
   // For easy reference
-  auto cell_size = array_schema_->cell_size(name);
-  auto type = array_schema_->type(name);
+  auto cell_size = array_schema_.cell_size(name);
+  auto type = array_schema_.type(name);
   auto is_coords = (name == constants::coords);
-  auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;
+  auto dim_num = (is_coords) ? array_schema_.dim_num() : 0;
 
   // Initialize
   RETURN_NOT_OK(tile->init_filtered(format_version, type, cell_size, dim_num));
@@ -373,7 +377,7 @@ Status ReaderBase::init_tile_nullable(
     Tile* tile_var,
     Tile* tile_validity) const {
   // For easy reference
-  auto type = array_schema_->type(name);
+  auto type = array_schema_.type(name);
 
   // Initialize
   RETURN_NOT_OK(tile->init_filtered(
@@ -437,25 +441,26 @@ Status ReaderBase::read_tiles(
         continue;
 
       // Applicable to separate coordinates only to versions >= 5
-      const bool is_dim = fragment->array_schema()->is_dim(name);
+      const auto& array_schema = fragment->array_schema();
+      const bool is_dim = array_schema->is_dim(name);
       if (is_dim && format_version < 5)
         continue;
 
       // If the fragment doesn't have the attribute, this is a schema
       // evolution field and will be treated with fill-in value instead of
       // reading from disk
-      if (!fragment->array_schema()->is_field(name))
+      if (!array_schema->is_field(name))
         continue;
 
-      const bool var_size = fragment->array_schema()->var_size(name);
-      const bool nullable = fragment->array_schema()->is_nullable(name);
+      const bool var_size = array_schema->var_size(name);
+      const bool nullable = array_schema->is_nullable(name);
 
       // Initialize the tile(s)
       ResultTile::TileTuple* tile_tuple = nullptr;
       if (is_dim) {
-        const uint64_t dim_num = fragment->array_schema()->dim_num();
+        const uint64_t dim_num = array_schema->dim_num();
         for (uint64_t d = 0; d < dim_num; ++d) {
-          if (fragment->array_schema()->dimension(d)->name() == name) {
+          if (array_schema->dimension(d)->name() == name) {
             tile->init_coord_tile(name, d);
             break;
           }
@@ -697,7 +702,7 @@ ReaderBase::load_tile_chunk_data(
   // Applicable for separate coordinates only to version >= 5
   if (name != constants::coords ||
       (name == constants::coords && format_version < 5) ||
-      (array_schema_->is_dim(name) && format_version >= 5)) {
+      (array_schema_.is_dim(name) && format_version >= 5)) {
     auto tile_tuple = tile->tile_tuple(name);
 
     // Skip non-existent attributes/dimensions (e.g. coords in the
@@ -755,7 +760,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
   // Applicable for separate coordinates only to version >= 5
   if (name != constants::coords ||
       (name == constants::coords && format_version < 5) ||
-      (array_schema_->is_dim(name) && format_version >= 5)) {
+      (array_schema_.is_dim(name) && format_version >= 5)) {
     auto tile_tuple = tile->tile_tuple(name);
 
     // Skip non-existent attributes/dimensions (e.g. coords in the
@@ -815,7 +820,7 @@ Status ReaderBase::zip_tile_coordinates(
     const std::string& name, Tile* tile) const {
   if (tile->stores_coords()) {
     bool using_compression =
-        array_schema_->filters(name).get_filter<CompressionFilter>() != nullptr;
+        array_schema_.filters(name).get_filter<CompressionFilter>() != nullptr;
     auto version = tile->format_version();
     if (version > 1 || using_compression) {
       RETURN_NOT_OK(tile->zip_coordinates());
@@ -838,7 +843,7 @@ Status ReaderBase::post_process_unfiltered_tile(
   // Applicable for separate coordinates only to version >= 5
   if (name != constants::coords ||
       (name == constants::coords && format_version < 5) ||
-      (array_schema_->is_dim(name) && format_version >= 5)) {
+      (array_schema_.is_dim(name) && format_version >= 5)) {
     auto tile_tuple = tile->tile_tuple(name);
 
     // Skip non-existent attributes/dimensions (e.g. coords in the
@@ -885,8 +890,8 @@ Status ReaderBase::unfilter_tiles_chunk_range(
     num_range_threads = 1 + ((num_threads - 1) / num_tiles);
   }
 
-  const auto var_size = array_schema_->var_size(name);
-  const auto nullable = array_schema_->is_nullable(name);
+  const auto var_size = array_schema_.var_size(name);
+  const auto nullable = array_schema_.is_nullable(name);
 
   // Vectors with all the necessary chunk data for unfiltering
   std::vector<ChunkData> tiles_chunk_data(num_tiles);
@@ -971,7 +976,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
     const ChunkData& tile_chunk_data) const {
   assert(tile);
 
-  FilterPipeline filters = array_schema_->filters(name);
+  FilterPipeline filters = array_schema_.filters(name);
 
   // Append an encryption unfilter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
@@ -1005,8 +1010,8 @@ Status ReaderBase::unfilter_tile_chunk_range(
   assert(tile);
   assert(tile_var);
 
-  FilterPipeline offset_filters = array_schema_->cell_var_offsets_filters();
-  FilterPipeline filters = array_schema_->filters(name);
+  FilterPipeline offset_filters = array_schema_.cell_var_offsets_filters();
+  FilterPipeline filters = array_schema_.filters(name);
   auto concurrency_level = storage_manager_->compute_tp()->concurrency_level();
 
   // Append an encryption unfilter when necessary.
@@ -1059,8 +1064,8 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
   assert(tile);
   assert(tile_validity);
 
-  FilterPipeline filters = array_schema_->filters(name);
-  FilterPipeline validity_filters = array_schema_->cell_validity_filters();
+  FilterPipeline filters = array_schema_.filters(name);
+  FilterPipeline validity_filters = array_schema_.cell_validity_filters();
   auto concurrency_level = storage_manager_->compute_tp()->concurrency_level();
 
   // Append an encryption unfilter when necessary.
@@ -1113,9 +1118,9 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
   assert(tile_var);
   assert(tile_validity);
 
-  FilterPipeline offset_filters = array_schema_->cell_var_offsets_filters();
-  FilterPipeline filters = array_schema_->filters(name);
-  FilterPipeline validity_filters = array_schema_->cell_validity_filters();
+  FilterPipeline offset_filters = array_schema_.cell_var_offsets_filters();
+  FilterPipeline filters = array_schema_.filters(name);
+  FilterPipeline validity_filters = array_schema_.cell_validity_filters();
   auto concurrency_level = storage_manager_->compute_tp()->concurrency_level();
 
   // Append an encryption unfilter when necessary.
@@ -1171,9 +1176,8 @@ Status ReaderBase::unfilter_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles,
     const bool disable_cache) const {
-  const auto stat_type = (array_schema_->is_attr(name)) ?
-                             "unfilter_attr_tiles" :
-                             "unfilter_coord_tiles";
+  const auto stat_type = (array_schema_.is_attr(name)) ? "unfilter_attr_tiles" :
+                                                         "unfilter_coord_tiles";
   const auto timer_se = stats_->start_timer(stat_type);
   // The per tile cache is only used in readers where unfiltering
   // was done in parallel on tiles. The new readers parallelize both on
@@ -1182,8 +1186,8 @@ Status ReaderBase::unfilter_tiles(
     return unfilter_tiles_chunk_range(name, result_tiles);
   }
 
-  auto var_size = array_schema_->var_size(name);
-  auto nullable = array_schema_->is_nullable(name);
+  auto var_size = array_schema_.var_size(name);
+  auto nullable = array_schema_.is_nullable(name);
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
 
   auto status = parallel_for(
@@ -1197,7 +1201,7 @@ Status ReaderBase::unfilter_tiles(
         // Applicable for separate coordinates only to version >= 5
         if (name != constants::coords ||
             (name == constants::coords && format_version < 5) ||
-            (array_schema_->is_dim(name) && format_version >= 5)) {
+            (array_schema_.is_dim(name) && format_version >= 5)) {
           auto tile_tuple = tile->tile_tuple(name);
 
           // Skip non-existent attributes/dimensions (e.g. coords in the
@@ -1285,7 +1289,7 @@ Status ReaderBase::unfilter_tiles(
 }
 
 Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile) const {
-  FilterPipeline filters = array_schema_->filters(name);
+  FilterPipeline filters = array_schema_.filters(name);
 
   // Append an encryption unfilter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
@@ -1303,8 +1307,8 @@ Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile) const {
 
 Status ReaderBase::unfilter_tile(
     const std::string& name, Tile* tile, Tile* tile_var) const {
-  FilterPipeline offset_filters = array_schema_->cell_var_offsets_filters();
-  FilterPipeline filters = array_schema_->filters(name);
+  FilterPipeline offset_filters = array_schema_.cell_var_offsets_filters();
+  FilterPipeline filters = array_schema_.filters(name);
 
   // Append an encryption unfilter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
@@ -1323,8 +1327,8 @@ Status ReaderBase::unfilter_tile(
 
 Status ReaderBase::unfilter_tile_nullable(
     const std::string& name, Tile* tile, Tile* tile_validity) const {
-  FilterPipeline filters = array_schema_->filters(name);
-  FilterPipeline validity_filters = array_schema_->cell_validity_filters();
+  FilterPipeline filters = array_schema_.filters(name);
+  FilterPipeline validity_filters = array_schema_.cell_validity_filters();
 
   // Append an encryption unfilter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
@@ -1354,9 +1358,9 @@ Status ReaderBase::unfilter_tile_nullable(
     Tile* tile,
     Tile* tile_var,
     Tile* tile_validity) const {
-  FilterPipeline offset_filters = array_schema_->cell_var_offsets_filters();
-  FilterPipeline filters = array_schema_->filters(name);
-  FilterPipeline validity_filters = array_schema_->cell_validity_filters();
+  FilterPipeline offset_filters = array_schema_.cell_var_offsets_filters();
+  FilterPipeline filters = array_schema_.filters(name);
+  FilterPipeline validity_filters = array_schema_.cell_validity_filters();
 
   // Append an encryption unfilter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
@@ -1393,13 +1397,13 @@ tuple<Status, optional<uint64_t>> ReaderBase::get_attribute_tile_size(
   uint64_t tile_size = 0;
   tile_size += fragment_metadata_[f]->tile_size(name, t);
 
-  if (array_schema_->var_size(name)) {
+  if (array_schema_.var_size(name)) {
     auto&& [st, temp] = fragment_metadata_[f]->tile_var_size(name, t);
     RETURN_NOT_OK_TUPLE(st, nullopt);
     tile_size += *temp;
   }
 
-  if (array_schema_->is_nullable(name)) {
+  if (array_schema_.is_nullable(name)) {
     tile_size +=
         fragment_metadata_[f]->cell_num(t) * constants::cell_validity_size;
   }
@@ -1413,9 +1417,9 @@ void ReaderBase::compute_result_space_tiles(
     const Subarray& partitioner_subarray,
     std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) const {
   // For easy reference
-  auto domain = array_schema_->domain()->domain();
-  auto tile_extents = array_schema_->domain()->tile_extents();
-  auto tile_order = array_schema_->tile_order();
+  auto domain = array_schema_.domain()->domain();
+  auto tile_extents = array_schema_.domain()->tile_extents();
+  auto tile_order = array_schema_.tile_order();
 
   // Compute fragment tile domains
   std::vector<TileDomain<T>> frag_tile_domains;
@@ -1465,7 +1469,7 @@ void ReaderBase::compute_result_space_tiles(
 
 bool ReaderBase::has_coords() const {
   for (const auto& it : buffers_) {
-    if (it.first == constants::coords || array_schema_->is_dim(it.first))
+    if (it.first == constants::coords || array_schema_.is_dim(it.first))
       return true;
   }
 
@@ -1492,13 +1496,13 @@ tuple<Status, optional<bool>> ReaderBase::fill_dense_coords(
   std::vector<unsigned> dim_idx;
   std::vector<QueryBuffer*> buffers;
   auto coords_it = buffers_.find(constants::coords);
-  auto dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_.dim_num();
   if (coords_it != buffers_.end()) {
     buffers.emplace_back(&(coords_it->second));
     dim_idx.emplace_back(dim_num);
   } else {
     for (unsigned d = 0; d < dim_num; ++d) {
-      const auto& dim = array_schema_->dimension(d);
+      const auto& dim = array_schema_.dimension(d);
       auto it = buffers_.find(dim->name());
       if (it != buffers_.end()) {
         buffers.emplace_back(&(it->second));
@@ -1536,7 +1540,7 @@ tuple<Status, optional<bool>> ReaderBase::fill_dense_coords_global(
     const std::vector<QueryBuffer*>& buffers,
     std::vector<uint64_t>& offsets) {
   auto tile_coords = subarray.tile_coords();
-  auto cell_order = array_schema_->cell_order();
+  auto cell_order = array_schema_.cell_order();
 
   bool overflowed = false;
   for (const auto& tc : tile_coords) {
@@ -1556,8 +1560,8 @@ tuple<Status, optional<bool>> ReaderBase::fill_dense_coords_row_col(
     const std::vector<unsigned>& dim_idx,
     const std::vector<QueryBuffer*>& buffers,
     std::vector<uint64_t>& offsets) {
-  auto cell_order = array_schema_->cell_order();
-  auto dim_num = array_schema_->dim_num();
+  auto cell_order = array_schema_.cell_order();
+  auto dim_num = array_schema_.dim_num();
 
   // Iterate over all coordinates, retrieved in cell slabs
   CellSlabIter<T> iter(&subarray);
@@ -1569,7 +1573,7 @@ tuple<Status, optional<bool>> ReaderBase::fill_dense_coords_row_col(
     // Check for overflow
     for (size_t i = 0; i < buffers.size(); ++i) {
       auto idx = (dim_idx[i] == dim_num) ? 0 : dim_idx[i];
-      auto dim = array_schema_->domain()->dimension(idx);
+      auto dim = array_schema_.domain()->dimension(idx);
       auto coord_size = dim->coord_size();
       coord_size = (dim_idx[i] == dim_num) ? coord_size * dim_num : coord_size;
       auto buff_size = *(buffers[i]->buffer_size_);
@@ -1602,7 +1606,7 @@ void ReaderBase::fill_dense_coords_row_slab(
     const std::vector<QueryBuffer*>& buffers,
     std::vector<uint64_t>& offsets) const {
   // For easy reference
-  auto dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_.dim_num();
 
   // Special zipped coordinates
   if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {
@@ -1652,7 +1656,7 @@ void ReaderBase::fill_dense_coords_col_slab(
     const std::vector<QueryBuffer*>& buffers,
     std::vector<uint64_t>& offsets) const {
   // For easy reference
-  auto dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_.dim_num();
 
   // Special zipped coordinates
   if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {

@@ -174,7 +174,7 @@ class Consolidator {
   stats::Stats* stats_;
 
   /** The class logger. */
-  tdb_shared_ptr<Logger> logger_;
+  shared_ptr<Logger> logger_;
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
@@ -305,7 +305,7 @@ class Consolidator {
    * @return Status
    */
   Status create_buffers(
-      const ArraySchema* array_schema,
+      const ArraySchema& array_schema,
       std::vector<ByteVec>* buffers,
       std::vector<uint64_t>* buffer_sizes);
 
@@ -345,7 +345,7 @@ class Consolidator {
    * @return Status
    */
   Status compute_next_to_consolidate(
-      const ArraySchema* array_schema,
+      const ArraySchema& array_schema,
       const FragmentInfo& fragment_info,
       std::vector<TimestampedURI>* to_consolidate,
       NDRange* union_non_empty_domains) const;

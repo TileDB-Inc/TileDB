@@ -417,12 +417,13 @@ Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
   for (unsigned l = 0; l < level_num; ++l) {
     RETURN_NOT_OK(cbuff->read(&mbr_num, sizeof(uint64_t)));
     levels_[l].resize(mbr_num);
+
     for (uint64_t m = 0; m < mbr_num; ++m) {
       levels_[l][m].resize(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
-        auto dim = domain_->dimension(d);
+        auto dim = domain->dimension(d);
         if (!dim->var_size()) {  // Fixed-sized
-          auto r_size = 2 * domain->dimension(d)->coord_size();
+          auto r_size = 2 * dim->coord_size();
           levels_[l][m][d].set_range(cbuff->cur_data(), r_size);
           cbuff->advance_offset(r_size);
         } else {  // Var-sized

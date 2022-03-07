@@ -47,7 +47,20 @@ namespace tiledb {
 namespace test {
 
 // Command line arguments.
-extern std::string g_vfs;
+std::string g_vfs;
+
+int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs) {
+  if (!vfs.empty()) {
+    if (std::find(vfs_fs.begin(), vfs_fs.end(), vfs) == vfs_fs.end()) {
+      std::cerr << "Unknown --vfs argument: \"" << vfs << "\"";
+      return 1;
+    }
+
+    tiledb::test::g_vfs = std::move(vfs);
+  }
+
+  return 0;
+}
 
 bool use_refactored_dense_reader() {
   const char* value = nullptr;

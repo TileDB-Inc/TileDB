@@ -5194,7 +5194,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
-      config, "sm.consolidation.step_size_ratio", "0.82", &error);
+      config, "sm.consolidation.step_size_ratio", "0.85", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 

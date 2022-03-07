@@ -81,7 +81,7 @@ class ResultTile {
    * Constructor. The number of dimensions `dim_num` is used to allocate
    * the separate coordinate tiles.
    */
-  ResultTile(unsigned frag_idx, uint64_t tile_idx, const ArraySchema* schema);
+  ResultTile(unsigned frag_idx, uint64_t tile_idx, const ArraySchema& schema);
 
   DISABLE_COPY_AND_COPY_ASSIGN(ResultTile);
 
