@@ -31,7 +31,6 @@
  */
 
 #include "commands/info_command.h"
-#include "misc/common.h"
 
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"

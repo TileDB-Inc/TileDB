@@ -105,7 +105,6 @@ set(TILEDB_TEST_SUPPORT_SOURCES
   
 set(TILEDB_UNIT_TEST_SOURCES
   src/helpers.h
-  src/helpers.cc
   src/helpers-dimension.h
   src/unit-azure.cc
   src/unit-backwards_compat.cc
@@ -246,7 +245,6 @@ if (TILEDB_VERBOSE)
 endif()
 
 add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
-  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
   ${TILEDB_TEST_SUPPORT_SOURCES}
 )
 

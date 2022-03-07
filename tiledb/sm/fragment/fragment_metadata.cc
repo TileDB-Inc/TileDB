@@ -236,7 +236,6 @@ void FragmentMetadata::set_tile_min_var(
                   tile_min_var_buffer_[idx].size() - offset[0];
 
   // Copy var data
-  // memcpy(&tile_min_var_buffer_[idx][offset[0]], min, size);
   memcpy(tile_min_var_buffer_[idx].data() + offset[0], min, size);
 }
 
@@ -279,7 +278,6 @@ void FragmentMetadata::set_tile_max_var(
                   tile_max_var_buffer_[idx].size() - offset[0];
 
   // Copy var data
-  // memcpy(&tile_max_var_buffer_[idx][offset[0]], max, size);
   memcpy(tile_max_var_buffer_[idx].data() + offset[0], max, size);
 }
 
@@ -1565,13 +1563,10 @@ FragmentMetadata::get_tile_min(const std::string& name, uint64_t tile_idx) {
     auto size = tile_idx == tile_num - 1 ?
                     tile_min_var_buffer_[idx].size() - min_offset :
                     offsets[tile_idx + 1] - min_offset;
-    // void* min = &tile_min_var_buffer_[idx][min_offset];
     void* min = tile_min_var_buffer_[idx].data() + min_offset;
     return {Status::Ok(), min, size};
   } else {
     auto size = array_schema_->cell_size(name);
-    // TBD: this may have failed because some earlier changes were missing in
-    // 'range'...? void* min = &tile_min_buffer_[idx][tile_idx * size];
     void* min = tile_min_buffer_[idx].data() + (tile_idx * size);
     return {Status::Ok(), min, size};
   }
@@ -3013,7 +3008,6 @@ Status FragmentMetadata::load_tile_min_values(unsigned idx, ConstBuffer* buff) {
     }
 
     tile_min_var_buffer_[idx].resize(var_buffer_size);
-    // st = buff->read(&tile_min_var_buffer_[idx][0], var_buffer_size);
     st = buff->read(tile_min_var_buffer_[idx].data() + 0, var_buffer_size);
     if (!st.ok()) {
       return LOG_STATUS(Status_FragmentMetadataError(
@@ -3073,11 +3067,7 @@ Status FragmentMetadata::load_tile_max_values(unsigned idx, ConstBuffer* buff) {
           "Cannot load fragment metadata; Reading tile max buffer failed"));
     }
 
-    // TBD: 'buffer_size' was checked to get in this branch, should
-    // 'var_buffer_size' be similarly checked to possibly avoid this section
-    // too?
     tile_max_var_buffer_[idx].resize(var_buffer_size);
-    // st = buff->read(&tile_max_var_buffer_[idx][0], var_buffer_size);
     st = buff->read(tile_max_var_buffer_[idx].data() + 0, var_buffer_size);
     if (!st.ok()) {
       return LOG_STATUS(Status_FragmentMetadataError(
