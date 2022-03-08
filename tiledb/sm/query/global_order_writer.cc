@@ -239,7 +239,7 @@ Status GlobalOrderWriter::check_global_order() const {
     return check_global_order_hilbert();
 
   // Check if all coordinates fall in the domain in parallel
-  const Domain& domain{*array_schema_domain()};
+  const Domain& domain{*array_schema_.domain()};
   DomainBuffersView domain_buffs{array_schema_, buffers_};
   auto status = parallel_for(
       storage_manager_->compute_tp(),
@@ -270,7 +270,7 @@ Status GlobalOrderWriter::check_global_order() const {
 
 Status GlobalOrderWriter::check_global_order_hilbert() const {
   // Compute hilbert values
-  DomainBuffersView domain_buffs{*array_schema_, buffers_};
+  DomainBuffersView domain_buffs{array_schema_, buffers_};
   std::vector<uint64_t> hilbert_values(coords_info_.coords_num_);
   RETURN_NOT_OK(calculate_hilbert_values(domain_buffs, hilbert_values));
 

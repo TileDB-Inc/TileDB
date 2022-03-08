@@ -583,9 +583,9 @@ Status UnorderedWriter::sort_coords(std::vector<uint64_t>& cell_pos) const {
     cell_pos[i] = i;
 
   // Sort the coordinates in global order
-  auto cell_order = array_schema_->cell_order();
-  const Domain& domain = *array_schema_->domain();
-  DomainBuffersView domain_buffs{*array_schema_, buffers_};
+  auto cell_order = array_schema_.cell_order();
+  const Domain& domain = *array_schema_.domain();
+  DomainBuffersView domain_buffs{array_schema_, buffers_};
   if (cell_order != Layout::HILBERT) {  // Row- or col-major
     parallel_sort(
         storage_manager_->compute_tp(),
