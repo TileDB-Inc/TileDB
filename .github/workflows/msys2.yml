@@ -33,7 +33,18 @@ jobs:
           install: mingw-w64-${{ matrix.toolchain }}-toolchain make patch
           update: true
       - name: Building TileDB
-        run: cd .github/workflows/mingw-w64-tiledb && makepkg-mingw --noconfirm --syncdeps
+        run: | # cd .github/workflows/mingw-w64-tiledb && makepkg-mingw --noconfirm --syncdeps
+          cd .github/workflows/mingw-w64-tiledb
+
+          echo 'mount...'
+          mount
+          if [[ $(find / -name '*regex*') ]] ; then
+            find / -name '*regex*'
+          else
+            echo 'unable to find *regex*'
+          fi
+          
+          makepkg-mingw --noconfirm --syncdeps
         env:
           PKGEXT: ".pkg.tar.xz"
         shell: msys2 {0}
