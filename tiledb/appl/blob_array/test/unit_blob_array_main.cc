@@ -79,6 +79,7 @@ struct BlobArrayFx {
 
   // Vector of supported filesystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  //const std::vector<tdb_unique_ptr<SupportedFs>> fs_vec_;
 
   // Encryption parameters
   // tiledb_encryption_type_t encryption_type_ = TILEDB_NO_ENCRYPTION;
@@ -169,7 +170,7 @@ std::string BlobArrayFx::random_name(const std::string& prefix) {
 TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   tdb_shared_ptr<Logger> logger;
   std::string logger_name("unit_blob_arry");
-  logger = std::make_shared<Logger>(logger_name);
+  logger = tdb::make_shared<Logger>(HERE(), logger_name);
 
   // Encryption parameters
   tiledb::sm::EncryptionType encryption_type =
@@ -211,7 +212,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   }
 #endif
 
-  tiledb::appl::BlobArraySchema* blob_array_schema;
   tiledb::appl::BlobArray* blob_array;
   std::string test_array_name = localfs_temp_dir_ + "/" + "test_blob_array";
 
@@ -287,7 +287,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
         blob_array->to_array_from_uri(inp_uri, config).ok() == expected_result);
   };
   auto basic_buf_to_array = [&](bool expected_result = false) {
-    static uint64_t tstamp1, tstamp2;
     CHECK(
         blob_array
             ->to_array_from_buffer(

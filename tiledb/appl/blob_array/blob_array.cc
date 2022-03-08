@@ -32,6 +32,7 @@
 
 #include "tiledb/appl/blob_array/blob_array.h"
 #include <magic.h>
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_status.h"
@@ -57,7 +58,7 @@ BlobArray::BlobArray(const URI& array_uri, StorageManager* storage_manager)
     : Array(array_uri, storage_manager)
     //, blob_array_schema_() {
     , blob_array_schema_sp_(
-          std::make_shared<BlobArraySchema>(new (std::nothrow) BlobArraySchema))
+          tdb::make_shared<BlobArraySchema>(HERE()))
     , blob_array_schema_(*(blob_array_schema_sp_.get())) {
   // We want to default these incase the user doesn't set it.
   // This is required for writes to the query and the metadata get the same
