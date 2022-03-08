@@ -114,7 +114,7 @@ BlobArrayFx::BlobArrayFx() {
 #else
   localfs_temp_dir_ = tiledb::sm::Posix::current_dir() + "/tiledb_test/";
   tiledb::sm::Posix posix_fs;
-  posix.create_dir(localfs_temp_dir_);
+  posix_fs.create_dir(localfs_temp_dir_);
 #endif
 
   remove_temp_dir(localfs_temp_dir_);  // remove any pre-existing instance
