@@ -36,6 +36,7 @@
 
 #include <unordered_map>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
@@ -77,7 +78,7 @@ class ArraySchema {
    *
    * @param array_schema The array schema to copy.
    */
-  explicit ArraySchema(const ArraySchema* array_schema);
+  explicit ArraySchema(const ArraySchema& array_schema);
 
   /** Destructor. */
   ~ArraySchema();
@@ -114,7 +115,7 @@ class ArraySchema {
   unsigned int attribute_num() const;
 
   /** Returns the attributes. */
-  const std::vector<Attribute*>& attributes() const;
+  const std::vector<shared_ptr<const Attribute>>& attributes() const;
 
   /** Returns the capacity. */
   uint64_t capacity() const;
@@ -239,7 +240,8 @@ class ArraySchema {
    *     they are doing in this case).
    * @return Status
    */
-  Status add_attribute(const Attribute* attr, bool check_special = true);
+  Status add_attribute(
+      shared_ptr<const Attribute> attr, bool check_special = true);
 
   /**
    * Drops an attribute.
@@ -321,16 +323,16 @@ class ArraySchema {
   uint64_t timestamp_start() const;
 
   /** Returns the array schema uri. */
-  URI uri();
+  const URI& uri() const;
 
   /** Set schema URI, along with parsing out timestamp ranges and name. */
   void set_uri(const URI& uri);
 
   /** Get schema URI with return status. */
-  Status get_uri(URI* uri);
+  Status get_uri(URI* uri) const;
 
   /** Returns the schema name. If it is not set, will build it. */
-  std::string name();
+  const std::string& name() const;
 
   /** Returns the schema name. If it is not set, will returns error status. */
   Status get_name(std::string* name) const;
@@ -361,11 +363,13 @@ class ArraySchema {
   /** The array type. */
   ArrayType array_type_;
 
-  /** It maps each attribute name to the corresponding attribute object. */
-  std::unordered_map<std::string, Attribute*> attribute_map_;
+  /** It maps each attribute name to the corresponding attribute object.
+   * Lifespan is maintained by the shared_ptr in attributes_. */
+  std::unordered_map<std::string, const Attribute*> attribute_map_;
 
-  /** The array attributes. */
-  std::vector<Attribute*> attributes_;
+  /** The array attributes.
+   * Maintains lifespan for elements in both attributes_ and attribute_map_. */
+  std::vector<shared_ptr<const Attribute>> attributes_;
   /**
    * The tile capacity for the case of sparse fragments.
    */

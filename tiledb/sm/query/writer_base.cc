@@ -37,7 +37,9 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -133,7 +135,7 @@ void WriterBase::set_dedup_coords(bool b) {
 Status WriterBase::check_var_attr_offsets() const {
   for (const auto& it : buffers_) {
     const auto& attr = it.first;
-    if (!array_schema_->var_size(attr)) {
+    if (!array_schema_.var_size(attr)) {
       continue;
     }
 
@@ -187,16 +189,13 @@ Status WriterBase::init() {
   if (storage_manager_ == nullptr)
     return logger_->status(
         Status_WriterError("Cannot initialize query; Storage manager not set"));
-  if (array_schema_ == nullptr)
-    return logger_->status(
-        Status_WriterError("Cannot initialize writer; Array schema not set"));
   if (buffers_.empty())
     return logger_->status(
         Status_WriterError("Cannot initialize writer; Buffers not set"));
-  if (array_schema_->dense() &&
+  if (array_schema_.dense() &&
       (layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR)) {
     for (const auto& b : buffers_) {
-      if (array_schema_->is_dim(b.first)) {
+      if (array_schema_.is_dim(b.first)) {
         return logger_->status(Status_WriterError(
             "Cannot initialize writer; Sparse coordinates "
             "for dense arrays cannot be provided "
@@ -273,7 +272,7 @@ Status WriterBase::add_written_fragment_info(const URI& uri) {
 Status WriterBase::calculate_hilbert_values(
     const DomainBuffersView& domain_buffers,
     std::vector<uint64_t>& hilbert_values) const {
-  auto dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_.dim_num();
   Hilbert h(dim_num);
   auto bits = h.bits();
   auto max_bucket_val = ((uint64_t)1 << bits) - 1;
@@ -287,7 +286,7 @@ Status WriterBase::calculate_hilbert_values(
       [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_->dimension(d);
+          auto dim = array_schema_.dimension(d);
           coords[d] = hilbert_order::map_to_uint64(
               *dim, domain_buffers.buffer_at(d), c, bits, max_bucket_val);
         }
@@ -303,25 +302,25 @@ Status WriterBase::calculate_hilbert_values(
 
 Status WriterBase::check_buffer_sizes() const {
   // This is applicable only to dense arrays and ordered layout
-  if (!array_schema_->dense() ||
+  if (!array_schema_.dense() ||
       (layout_ != Layout::ROW_MAJOR && layout_ != Layout::COL_MAJOR))
     return Status::Ok();
 
-  auto cell_num = array_schema_->domain()->cell_num(subarray_.ndrange(0));
+  auto cell_num = array_schema_.domain()->cell_num(subarray_.ndrange(0));
   uint64_t expected_cell_num = 0;
   for (const auto& it : buffers_) {
     const auto& attr = it.first;
-    const bool is_var = array_schema_->var_size(attr);
+    const bool is_var = array_schema_.var_size(attr);
     const uint64_t buffer_size =
         is_var ? get_offset_buffer_size(*it.second.buffer_size_) :
                  *it.second.buffer_size_;
     if (is_var) {
       expected_cell_num = buffer_size / constants::cell_var_offset_size;
     } else {
-      expected_cell_num = buffer_size / array_schema_->cell_size(attr);
+      expected_cell_num = buffer_size / array_schema_.cell_size(attr);
     }
 
-    if (array_schema_->is_nullable(attr)) {
+    if (array_schema_.is_nullable(attr)) {
       const uint64_t buffer_validity_size =
           *it.second.validity_vector_.buffer_size();
       const uint64_t expected_validity_num =
@@ -361,17 +360,17 @@ Status WriterBase::check_coord_oob() const {
     return Status::Ok();
 
   // Exit if all dimensions are strings
-  if (array_schema_->domain()->all_dims_string())
+  if (array_schema_.domain()->all_dims_string())
     return Status::Ok();
 
   // Prepare auxiliary vectors for better performance
-  auto dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_.dim_num();
   std::vector<unsigned char*> buffs(dim_num);
   std::vector<uint64_t> coord_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_->dimension(d)->name();
+    const auto& dim_name = array_schema_.dimension(d)->name();
     buffs[d] = (unsigned char*)buffers_.find(dim_name)->second.buffer_;
-    coord_sizes[d] = array_schema_->cell_size(dim_name);
+    coord_sizes[d] = array_schema_.cell_size(dim_name);
   }
 
   // Check if all coordinates fall in the domain in parallel
@@ -382,7 +381,7 @@ Status WriterBase::check_coord_oob() const {
       0,
       dim_num,
       [&](uint64_t c, unsigned d) {
-        auto dim = array_schema_->dimension(d);
+        auto dim = array_schema_.dimension(d);
         if (datatype_is_string(dim->type()))
           return Status::Ok();
         return dim->oob(buffs[d] + c * coord_sizes[d]);
@@ -395,11 +394,7 @@ Status WriterBase::check_coord_oob() const {
 }
 
 Status WriterBase::check_subarray() const {
-  if (array_schema_ == nullptr)
-    return logger_->status(
-        Status_WriterError("Cannot check subarray; Array schema not set"));
-
-  if (array_schema_->dense()) {
+  if (array_schema_.dense()) {
     if (subarray_.range_num() != 1)
       return LOG_STATUS(
           Status_WriterError("Multi-range dense writes "
@@ -429,7 +424,7 @@ std::vector<std::string> WriterBase::buffer_names() const {
   // Add to the buffer names the attributes, as well as the dimensions only if
   // coords_buffer_ has not been set
   for (const auto& it : buffers_) {
-    if (!array_schema_->is_dim(it.first) || (!coords_info_.coords_buffer_))
+    if (!array_schema_.is_dim(it.first) || (!coords_info_.coords_buffer_))
       ret.push_back(it.first);
   }
 
@@ -452,13 +447,13 @@ Status WriterBase::close_files(tdb_shared_ptr<FragmentMetadata> meta) const {
     RETURN_NOT_OK(status);
 
     file_uris.emplace_back(*uri);
-    if (array_schema_->var_size(name)) {
+    if (array_schema_.var_size(name)) {
       auto&& [status, var_uri] = meta->var_uri(name);
       RETURN_NOT_OK(status);
 
       file_uris.emplace_back(*var_uri);
     }
-    if (array_schema_->is_nullable(name)) {
+    if (array_schema_.is_nullable(name)) {
       auto&& [status, validity_uri] = meta->validity_uri(name);
       RETURN_NOT_OK(status);
 
@@ -494,10 +489,10 @@ Status WriterBase::compute_coords_metadata(
   // Compute number of tiles. Assumes all attributes and
   // and dimensions have the same number of tiles
   auto it = tiles.begin();
-  const uint64_t t = 1 + (array_schema_->var_size(it->first) ? 1 : 0) +
-                     (array_schema_->is_nullable(it->first) ? 1 : 0);
+  const uint64_t t = 1 + (array_schema_.var_size(it->first) ? 1 : 0) +
+                     (array_schema_.is_nullable(it->first) ? 1 : 0);
   auto tile_num = it->second.size() / t;
-  auto dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_.dim_num();
 
   // Compute MBRs
   auto status = parallel_for(
@@ -505,7 +500,7 @@ Status WriterBase::compute_coords_metadata(
         NDRange mbr(dim_num);
         std::vector<const void*> data(dim_num);
         for (unsigned d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_->dimension(d);
+          auto dim = array_schema_.dimension(d);
           const auto& dim_name = dim->name();
           auto tiles_it = tiles.find(dim_name);
           assert(tiles_it != tiles.end());
@@ -523,7 +518,7 @@ Status WriterBase::compute_coords_metadata(
   RETURN_NOT_OK(status);
 
   // Set last tile cell number
-  auto dim_0 = array_schema_->dimension(0);
+  auto dim_0 = array_schema_.dimension(0);
   const auto& dim_tiles = tiles.find(dim_0->name())->second;
   const auto& last_tile_pos =
       (!dim_0->var_size()) ? dim_tiles.size() - 1 : dim_tiles.size() - 2;
@@ -545,12 +540,12 @@ Status WriterBase::compute_tiles_metadata(
       std::advance(buff_it, i);
       const auto& attr = buff_it->first;
       auto& attr_tiles = tiles[attr];
-      const auto type = array_schema_->type(attr);
-      const auto is_dim = array_schema_->is_dim(attr);
-      const auto var_size = array_schema_->var_size(attr);
-      const auto nullable = array_schema_->is_nullable(attr);
-      const auto cell_size = array_schema_->cell_size(attr);
-      const auto cell_val_num = array_schema_->cell_val_num(attr);
+      const auto type = array_schema_.type(attr);
+      const auto is_dim = array_schema_.is_dim(attr);
+      const auto var_size = array_schema_.var_size(attr);
+      const auto nullable = array_schema_.is_nullable(attr);
+      const auto cell_size = array_schema_.cell_size(attr);
+      const auto cell_val_num = array_schema_.cell_val_num(attr);
       const uint64_t tile_num_mult = 1 + var_size + nullable;
       TileMetadataGenerator md_generator(
           type, is_dim, var_size, cell_size, cell_val_num);
@@ -570,12 +565,12 @@ Status WriterBase::compute_tiles_metadata(
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
       auto& attr_tiles = tiles[attr];
-      const auto type = array_schema_->type(attr);
-      const auto is_dim = array_schema_->is_dim(attr);
-      const auto var_size = array_schema_->var_size(attr);
-      const auto nullable = array_schema_->is_nullable(attr);
-      const auto cell_size = array_schema_->cell_size(attr);
-      const auto cell_val_num = array_schema_->cell_val_num(attr);
+      const auto type = array_schema_.type(attr);
+      const auto is_dim = array_schema_.is_dim(attr);
+      const auto var_size = array_schema_.var_size(attr);
+      const auto nullable = array_schema_.is_nullable(attr);
+      const auto cell_size = array_schema_.cell_size(attr);
+      const auto cell_val_num = array_schema_.cell_val_num(attr);
       const uint64_t tile_num_mult = 1 + var_size + nullable;
       auto st = parallel_for(compute_tp, 0, tile_num, [&](uint64_t t) {
         TileMetadataGenerator md_generator(
@@ -598,11 +593,11 @@ Status WriterBase::compute_tiles_metadata(
 
 std::string WriterBase::coords_to_str(uint64_t i) const {
   std::stringstream ss;
-  auto dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_.dim_num();
 
   ss << "(";
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = array_schema_->dimension(d);
+    auto dim = array_schema_.dimension(d);
     const auto& dim_name = dim->name();
     ss << buffers_.find(dim_name)->second.dimension_datum_at(*dim, i);
     if (d < dim_num - 1)
@@ -621,18 +616,24 @@ Status WriterBase::create_fragment(
     uri = fragment_uri_;
   } else {
     std::string new_fragment_str;
-    RETURN_NOT_OK(new_fragment_name(
-        timestamp,
-        array_->array_schema_latest()->write_version(),
-        &new_fragment_str));
-    uri = array_schema_->array_uri().join_path(new_fragment_str);
+    auto write_version = array_->array_schema_latest().write_version();
+    RETURN_NOT_OK(
+        new_fragment_name(timestamp, write_version, &new_fragment_str));
+
+    auto& array_dir = array_->array_directory();
+    auto frag_uri = array_dir.get_fragments_dir(write_version);
+    RETURN_NOT_OK(storage_manager_->vfs()->create_dir(frag_uri));
+    auto commit_uri = array_dir.get_commits_dir(write_version);
+    RETURN_NOT_OK(storage_manager_->vfs()->create_dir(commit_uri));
+
+    uri = frag_uri.join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
   frag_meta = tdb::make_shared<FragmentMetadata>(
       HERE(),
       storage_manager_,
       nullptr,
-      array_schema_,
+      array_->array_schema_latest_ptr(),
       uri,
       timestamp_range,
       dense);
@@ -663,8 +664,8 @@ Status WriterBase::filter_tiles(
 
 Status WriterBase::filter_tiles(
     const std::string& name, std::vector<WriterTile>* tiles) {
-  const bool var_size = array_schema_->var_size(name);
-  const bool nullable = array_schema_->is_nullable(name);
+  const bool var_size = array_schema_.var_size(name);
+  const bool nullable = array_schema_.is_nullable(name);
   const size_t tile_step = 1 + nullable + var_size;
 
   // Filter all tiles
@@ -746,20 +747,28 @@ Status WriterBase::filter_tile(
   FilterPipeline filters;
   if (offsets) {
     assert(!nullable);
-    filters = array_schema_->cell_var_offsets_filters();
+    filters = array_schema_.cell_var_offsets_filters();
   } else if (nullable) {
-    filters = array_schema_->cell_validity_filters();
+    filters = array_schema_.cell_validity_filters();
   } else {
-    filters = array_schema_->filters(name);
+    filters = array_schema_.filters(name);
   }
 
   // Append an encryption filter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
 
+  // Check if chunk or tile level filtering/unfiltering is appropriate
+  bool use_chunking = filters.use_tile_chunking(
+      array_schema_.is_dim(name), array_schema_.var_size(name), tile->type());
+
   assert(!tile->filtered());
   RETURN_NOT_OK(filters.run_forward(
-      stats_, tile, offsets_tile, storage_manager_->compute_tp()));
+      stats_,
+      tile,
+      offsets_tile,
+      storage_manager_->compute_tp(),
+      use_chunking));
   assert(tile->filtered());
 
   tile->set_pre_filtered_size(orig_size);
@@ -769,33 +778,33 @@ Status WriterBase::filter_tile(
 
 bool WriterBase::has_min_max_metadata(
     const std::string& name, const bool var_size) {
-  const auto type = array_schema_->type(name);
-  const auto is_dim = array_schema_->is_dim(name);
-  const auto cell_val_num = array_schema_->cell_val_num(name);
+  const auto type = array_schema_.type(name);
+  const auto is_dim = array_schema_.is_dim(name);
+  const auto cell_val_num = array_schema_.cell_val_num(name);
   return TileMetadataGenerator::has_min_max_metadata(
       type, is_dim, var_size, cell_val_num);
 }
 
 bool WriterBase::has_sum_metadata(
     const std::string& name, const bool var_size) {
-  const auto type = array_schema_->type(name);
-  const auto cell_val_num = array_schema_->cell_val_num(name);
+  const auto type = array_schema_.type(name);
+  const auto cell_val_num = array_schema_.cell_val_num(name);
   return TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num);
 }
 
 Status WriterBase::init_tile(const std::string& name, WriterTile* tile) const {
   // For easy reference
-  auto cell_size = array_schema_->cell_size(name);
-  auto type = array_schema_->type(name);
-  auto domain = array_schema_->domain();
-  auto capacity = array_schema_->capacity();
+  auto cell_size = array_schema_.cell_size(name);
+  auto type = array_schema_.type(name);
+  auto domain = array_schema_.domain();
+  auto capacity = array_schema_.capacity();
   auto cell_num_per_tile =
       coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
   auto tile_size = cell_num_per_tile * cell_size;
 
   // Initialize
   RETURN_NOT_OK(tile->init_unfiltered(
-      array_schema_->write_version(), type, tile_size, cell_size, 0));
+      array_schema_.write_version(), type, tile_size, cell_size, 0));
 
   return Status::Ok();
 }
@@ -803,22 +812,22 @@ Status WriterBase::init_tile(const std::string& name, WriterTile* tile) const {
 Status WriterBase::init_tile(
     const std::string& name, WriterTile* tile, WriterTile* tile_var) const {
   // For easy reference
-  auto type = array_schema_->type(name);
-  auto domain = array_schema_->domain();
-  auto capacity = array_schema_->capacity();
+  auto type = array_schema_.type(name);
+  auto domain = array_schema_.domain();
+  auto capacity = array_schema_.capacity();
   auto cell_num_per_tile =
       coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
   auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
 
   // Initialize
   RETURN_NOT_OK(tile->init_unfiltered(
-      array_schema_->write_version(),
+      array_schema_.write_version(),
       constants::cell_var_offset_type,
       tile_size,
       constants::cell_var_offset_size,
       0));
   RETURN_NOT_OK(tile_var->init_unfiltered(
-      array_schema_->write_version(), type, tile_size, datatype_size(type), 0));
+      array_schema_.write_version(), type, tile_size, datatype_size(type), 0));
   return Status::Ok();
 }
 
@@ -827,22 +836,22 @@ Status WriterBase::init_tile_nullable(
     WriterTile* tile,
     WriterTile* tile_validity) const {
   // For easy reference
-  auto cell_size = array_schema_->cell_size(name);
-  auto type = array_schema_->type(name);
-  auto domain = array_schema_->domain();
-  auto capacity = array_schema_->capacity();
+  auto cell_size = array_schema_.cell_size(name);
+  auto type = array_schema_.type(name);
+  auto domain = array_schema_.domain();
+  auto capacity = array_schema_.capacity();
   auto cell_num_per_tile =
       coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
 
   // Initialize
   RETURN_NOT_OK(tile->init_unfiltered(
-      array_schema_->write_version(),
+      array_schema_.write_version(),
       type,
       cell_num_per_tile * cell_size,
       cell_size,
       0));
   RETURN_NOT_OK(tile_validity->init_unfiltered(
-      array_schema_->write_version(),
+      array_schema_.write_version(),
       constants::cell_validity_type,
       cell_num_per_tile * constants::cell_validity_size,
       constants::cell_validity_size,
@@ -857,24 +866,24 @@ Status WriterBase::init_tile_nullable(
     WriterTile* tile_var,
     WriterTile* tile_validity) const {
   // For easy reference
-  auto type = array_schema_->type(name);
-  auto domain = array_schema_->domain();
-  auto capacity = array_schema_->capacity();
+  auto type = array_schema_.type(name);
+  auto domain = array_schema_.domain();
+  auto capacity = array_schema_.capacity();
   auto cell_num_per_tile =
       coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
   auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
 
   // Initialize
   RETURN_NOT_OK(tile->init_unfiltered(
-      array_schema_->write_version(),
+      array_schema_.write_version(),
       constants::cell_var_offset_type,
       tile_size,
       constants::cell_var_offset_size,
       0));
   RETURN_NOT_OK(tile_var->init_unfiltered(
-      array_schema_->write_version(), type, tile_size, datatype_size(type), 0));
+      array_schema_.write_version(), type, tile_size, datatype_size(type), 0));
   RETURN_NOT_OK(tile_validity->init_unfiltered(
-      array_schema_->write_version(),
+      array_schema_.write_version(),
       constants::cell_validity_type,
       cell_num_per_tile * constants::cell_validity_size,
       constants::cell_validity_size,
@@ -888,8 +897,8 @@ Status WriterBase::init_tiles(
     uint64_t tile_num,
     std::vector<WriterTile>* tiles) const {
   // Initialize tiles
-  const bool var_size = array_schema_->var_size(name);
-  const bool nullable = array_schema_->is_nullable(name);
+  const bool var_size = array_schema_.var_size(name);
+  const bool nullable = array_schema_.is_nullable(name);
   const size_t t =
       1 + static_cast<size_t>(var_size) + static_cast<size_t>(nullable);
   const size_t tiles_len = t * tile_num;
@@ -931,23 +940,22 @@ Status WriterBase::new_fragment_name(
 }
 
 void WriterBase::optimize_layout_for_1D() {
-  if (array_schema_->dim_num() == 1 && layout_ != Layout::GLOBAL_ORDER &&
+  if (array_schema_.dim_num() == 1 && layout_ != Layout::GLOBAL_ORDER &&
       layout_ != Layout::UNORDERED)
-    layout_ = array_schema_->cell_order();
+    layout_ = array_schema_.cell_order();
 }
 
 Status WriterBase::check_extra_element() {
   for (const auto& it : buffers_) {
     const auto& attr = it.first;
-    if (!array_schema_->var_size(attr) || array_schema_->is_dim(attr))
+    if (!array_schema_.var_size(attr) || array_schema_.is_dim(attr))
       continue;
 
     const void* buffer_off = it.second.buffer_;
     uint64_t* buffer_off_size = it.second.buffer_size_;
     const auto num_offsets = *buffer_off_size / constants::cell_var_offset_size;
     const uint64_t* buffer_val_size = it.second.buffer_var_size_;
-    const uint64_t attr_datatype_size =
-        datatype_size(array_schema_->type(attr));
+    const uint64_t attr_datatype_size = datatype_size(array_schema_.type(attr));
     const uint64_t max_offset = offsets_format_mode_ == "bytes" ?
                                     *buffer_val_size :
                                     *buffer_val_size / attr_datatype_size;
@@ -973,8 +981,8 @@ Status WriterBase::split_coords_buffer() {
     return Status::Ok();
 
   // For easy reference
-  auto dim_num = array_schema_->dim_num();
-  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+  auto dim_num = array_schema_.dim_num();
+  auto coord_size = array_schema_.domain()->dimension(0)->coord_size();
   auto coords_size = dim_num * coord_size;
   coords_info_.coords_num_ = *coords_info_.coords_buffer_size_ / coords_size;
 
@@ -982,7 +990,7 @@ Status WriterBase::split_coords_buffer() {
 
   // New coord buffer allocations
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = array_schema_->dimension(d);
+    auto dim = array_schema_.dimension(d);
     const auto& dim_name = dim->name();
     auto coord_buffer_size = coords_info_.coords_num_ * dim->coord_size();
     auto it = coord_buffer_sizes_.emplace(dim_name, coord_buffer_size);
@@ -999,8 +1007,8 @@ Status WriterBase::split_coords_buffer() {
   // Split coordinates
   auto coord = (unsigned char*)nullptr;
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto coord_size = array_schema_->dimension(d)->coord_size();
-    const auto& dim_name = array_schema_->dimension(d)->name();
+    auto coord_size = array_schema_.dimension(d)->coord_size();
+    const auto& dim_name = array_schema_.dimension(d)->name();
     auto buff = (unsigned char*)(buffers_[dim_name].buffer_);
     for (uint64_t c = 0; c < coords_info_.coords_num_; ++c) {
       coord = &(((unsigned char*)coords_info_
@@ -1027,12 +1035,12 @@ Status WriterBase::write_all_tiles(
       RETURN_CANCEL_OR_ERROR(write_tiles(attr, frag_meta, 0, &tiles));
 
       // Fix var size attributes metadata.
-      const auto var_size = array_schema_->var_size(attr);
+      const auto var_size = array_schema_.var_size(attr);
       if (has_min_max_metadata(attr, var_size) &&
-          array_schema_->var_size(attr)) {
+          array_schema_.var_size(attr)) {
         frag_meta->convert_tile_min_max_var_sizes_to_offsets(attr);
 
-        const auto nullable = array_schema_->is_nullable(attr);
+        const auto nullable = array_schema_.is_nullable(attr);
         const uint64_t tile_num_mult = 1 + var_size + nullable;
         for (uint64_t i = 0; i < tiles.size(); i += tile_num_mult) {
           auto tile_idx = i / tile_num_mult;
@@ -1065,8 +1073,8 @@ Status WriterBase::write_tiles(
     return Status::Ok();
 
   // For easy reference
-  const bool var_size = array_schema_->var_size(name);
-  const bool nullable = array_schema_->is_nullable(name);
+  const bool var_size = array_schema_.var_size(name);
+  const bool nullable = array_schema_.is_nullable(name);
   auto&& [status, uri] = frag_meta->uri(name);
   RETURN_NOT_OK(status);
 

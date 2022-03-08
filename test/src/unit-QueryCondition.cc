@@ -53,7 +53,7 @@ TEST_CASE(
 
   ArraySchema array_schema;
   std::vector<ResultCellSlab> result_cell_slabs;
-  REQUIRE(query_condition.apply(&array_schema, result_cell_slabs, 1).ok());
+  REQUIRE(query_condition.apply(array_schema, result_cell_slabs, 1).ok());
 }
 
 TEST_CASE("QueryCondition: Test init", "[QueryCondition][value_constructor]") {
@@ -186,7 +186,7 @@ void test_apply_cells(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile,
     void* values);
 
@@ -198,7 +198,7 @@ void test_apply_cells<char*>(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile,
     void* values) {
   const char* const cmp_value = "ae";
@@ -209,7 +209,7 @@ void test_apply_cells<char*>(
   // Run Check
   REQUIRE(query_condition.check(array_schema).ok());
 
-  bool nullable = array_schema->attribute(field_name)->nullable();
+  bool nullable = array_schema.attribute(field_name)->nullable();
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -302,7 +302,7 @@ void test_apply_cells<char*>(
   // Fetch the fill value.
   const void* fill_value;
   uint64_t fill_value_size;
-  array_schema->attribute(field_name)
+  array_schema.attribute(field_name)
       ->get_fill_value(&fill_value, &fill_value_size);
   REQUIRE(fill_value_size == 2 * sizeof(char));
 
@@ -374,7 +374,7 @@ void test_apply_cells(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile,
     void* values) {
   const T cmp_value = 5;
@@ -438,7 +438,7 @@ void test_apply_cells(
   // Fetch the fill value.
   const void* fill_value;
   uint64_t fill_value_size;
-  array_schema->attribute(field_name)
+  array_schema.attribute(field_name)
       ->get_fill_value(&fill_value, &fill_value_size);
   REQUIRE(fill_value_size == sizeof(T));
 
@@ -508,7 +508,7 @@ template <typename T>
 void test_apply_operators(
     const std::string& field_name,
     const uint64_t cells,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile,
     void* values) {
   test_apply_cells<T>(
@@ -570,7 +570,7 @@ void test_apply_tile(
     const std::string& field_name,
     uint64_t cells,
     Datatype type,
-    ArraySchema* array_schema,
+    const ArraySchema& array_schema,
     ResultTile* result_tile);
 
 /**
@@ -581,12 +581,12 @@ void test_apply_tile<char*>(
     const std::string& field_name,
     const uint64_t cells,
     const Datatype type,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
 
-  bool var_size = array_schema->attribute(field_name)->var_size();
-  bool nullable = array_schema->attribute(field_name)->nullable();
+  bool var_size = array_schema.attribute(field_name)->var_size();
+  bool nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
       var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
 
@@ -658,7 +658,7 @@ void test_apply_tile(
     const std::string& field_name,
     const uint64_t cells,
     const Datatype type,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
   Tile* const tile = &std::get<0>(*tile_tuple);
@@ -711,7 +711,8 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
     REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
   }
 
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -721,10 +722,10 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &array_schema);
+  ResultTile result_tile(0, 0, array_schema);
   result_tile.init_attr_tile(field_name);
 
-  test_apply_tile<char*>(field_name, cells, type, &array_schema, &result_tile);
+  test_apply_tile<char*>(field_name, cells, type, array_schema, &result_tile);
 }
 
 /**
@@ -743,7 +744,8 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   Attribute attr(field_name, type);
   REQUIRE(attr.set_cell_val_num(1).ok());
   REQUIRE(attr.set_fill_value(&fill_value, sizeof(T)).ok());
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -753,10 +755,10 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &array_schema);
+  ResultTile result_tile(0, 0, array_schema);
   result_tile.init_attr_tile(field_name);
 
-  test_apply_tile<T>(field_name, cells, type, &array_schema, &result_tile);
+  test_apply_tile<T>(field_name, cells, type, array_schema, &result_tile);
 }
 
 TEST_CASE("QueryCondition: Test apply", "[QueryCondition][apply]") {
@@ -798,7 +800,8 @@ TEST_CASE(
   // Initialize the array schema.
   ArraySchema array_schema;
   Attribute attr(field_name, type);
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -808,7 +811,7 @@ TEST_CASE(
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &array_schema);
+  ResultTile result_tile(0, 0, array_schema);
   result_tile.init_attr_tile(field_name);
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &std::get<0>(*tile_tuple);
@@ -838,7 +841,7 @@ TEST_CASE(
                   QueryConditionOp::GT)
               .ok());
   // Run Check
-  REQUIRE(query_condition_1.check(&array_schema).ok());
+  REQUIRE(query_condition_1.check(array_schema).ok());
   uint64_t cmp_value_2 = 6;
   QueryCondition query_condition_2;
   REQUIRE(query_condition_2
@@ -849,7 +852,7 @@ TEST_CASE(
                   QueryConditionOp::LE)
               .ok());
   // Run Check
-  REQUIRE(query_condition_2.check(&array_schema).ok());
+  REQUIRE(query_condition_2.check(array_schema).ok());
   QueryCondition query_condition_3;
   REQUIRE(query_condition_1
               .combine(
@@ -862,7 +865,7 @@ TEST_CASE(
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
 
-  REQUIRE(query_condition_3.apply(&array_schema, result_cell_slabs, 1).ok());
+  REQUIRE(query_condition_3.apply(array_schema, result_cell_slabs, 1).ok());
 
   // Check that the cell slab now contains cell indexes 4, 5, and 6.
   REQUIRE(result_cell_slabs.size() == 1);
@@ -897,7 +900,8 @@ TEST_CASE(
     REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
   }
 
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -907,7 +911,7 @@ TEST_CASE(
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &array_schema);
+  ResultTile result_tile(0, 0, array_schema);
   result_tile.init_attr_tile(field_name);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
@@ -989,7 +993,7 @@ TEST_CASE(
   REQUIRE(query_condition.init(std::string(field_name), cmp_value, 0, op).ok());
 
   // Run Check
-  REQUIRE(query_condition.check(&array_schema).ok());
+  REQUIRE(query_condition.check(array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -1027,7 +1031,7 @@ TEST_CASE(
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(query_condition.apply(&array_schema, result_cell_slabs, 1).ok());
+  REQUIRE(query_condition.apply(array_schema, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1057,7 +1061,7 @@ void test_apply_cells_dense(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile,
     void* values);
 
@@ -1069,7 +1073,7 @@ void test_apply_cells_dense<char*>(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile,
     void* values) {
   const char* const cmp_value = "ae";
@@ -1080,7 +1084,7 @@ void test_apply_cells_dense<char*>(
   // Run Check
   REQUIRE(query_condition.check(array_schema).ok());
 
-  bool nullable = array_schema->attribute(field_name)->nullable();
+  bool nullable = array_schema.attribute(field_name)->nullable();
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -1182,7 +1186,7 @@ void test_apply_cells_dense(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile,
     void* values) {
   const T cmp_value = 5;
@@ -1256,7 +1260,7 @@ template <typename T>
 void test_apply_operators_dense(
     const std::string& field_name,
     const uint64_t cells,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile,
     void* values) {
   test_apply_cells_dense<T>(
@@ -1318,7 +1322,7 @@ void test_apply_tile_dense(
     const std::string& field_name,
     uint64_t cells,
     Datatype type,
-    ArraySchema* array_schema,
+    const ArraySchema& array_schema,
     ResultTile* result_tile);
 
 /**
@@ -1329,12 +1333,12 @@ void test_apply_tile_dense<char*>(
     const std::string& field_name,
     const uint64_t cells,
     const Datatype type,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
 
-  bool var_size = array_schema->attribute(field_name)->var_size();
-  bool nullable = array_schema->attribute(field_name)->nullable();
+  bool var_size = array_schema.attribute(field_name)->var_size();
+  bool nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
       var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
 
@@ -1406,7 +1410,7 @@ void test_apply_tile_dense(
     const std::string& field_name,
     const uint64_t cells,
     const Datatype type,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
   Tile* const tile = &std::get<0>(*tile_tuple);
@@ -1461,7 +1465,8 @@ void test_apply_dense<char*>(
     REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
   }
 
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -1471,11 +1476,11 @@ void test_apply_dense<char*>(
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &array_schema);
+  ResultTile result_tile(0, 0, array_schema);
   result_tile.init_attr_tile(field_name);
 
   test_apply_tile_dense<char*>(
-      field_name, cells, type, &array_schema, &result_tile);
+      field_name, cells, type, array_schema, &result_tile);
 }
 
 /**
@@ -1494,7 +1499,8 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   Attribute attr(field_name, type);
   REQUIRE(attr.set_cell_val_num(1).ok());
   REQUIRE(attr.set_fill_value(&fill_value, sizeof(T)).ok());
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -1504,11 +1510,10 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &array_schema);
+  ResultTile result_tile(0, 0, array_schema);
   result_tile.init_attr_tile(field_name);
 
-  test_apply_tile_dense<T>(
-      field_name, cells, type, &array_schema, &result_tile);
+  test_apply_tile_dense<T>(field_name, cells, type, array_schema, &result_tile);
 }
 
 TEST_CASE(
@@ -1552,7 +1557,8 @@ TEST_CASE(
   // Initialize the array schema.
   ArraySchema array_schema;
   Attribute attr(field_name, type);
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -1562,7 +1568,7 @@ TEST_CASE(
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &array_schema);
+  ResultTile result_tile(0, 0, array_schema);
   result_tile.init_attr_tile(field_name);
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &std::get<0>(*tile_tuple);
@@ -1592,7 +1598,7 @@ TEST_CASE(
                   QueryConditionOp::GT)
               .ok());
   // Run Check
-  REQUIRE(query_condition_1.check(&array_schema).ok());
+  REQUIRE(query_condition_1.check(array_schema).ok());
   uint64_t cmp_value_2 = 6;
   QueryCondition query_condition_2;
   REQUIRE(query_condition_2
@@ -1603,7 +1609,7 @@ TEST_CASE(
                   QueryConditionOp::LE)
               .ok());
   // Run Check
-  REQUIRE(query_condition_2.check(&array_schema).ok());
+  REQUIRE(query_condition_2.check(array_schema).ok());
   QueryCondition query_condition_3;
   REQUIRE(query_condition_1
               .combine(
@@ -1614,11 +1620,10 @@ TEST_CASE(
 
   // Apply the query condition.
   std::vector<uint8_t> result_bitmap(cells, 1);
-  REQUIRE(
-      query_condition_3
-          .apply_dense(
-              &array_schema, &result_tile, 0, 10, 0, 1, result_bitmap.data())
-          .ok());
+  REQUIRE(query_condition_3
+              .apply_dense(
+                  array_schema, &result_tile, 0, 10, 0, 1, result_bitmap.data())
+              .ok());
 
   // Check that the cell slab now contains cell indexes 4, 5, and 6.
   for (uint64_t cell_idx = 0; cell_idx < cells; ++cell_idx) {
@@ -1654,7 +1659,8 @@ TEST_CASE(
     REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
   }
 
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -1664,7 +1670,7 @@ TEST_CASE(
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &array_schema);
+  ResultTile result_tile(0, 0, array_schema);
   result_tile.init_attr_tile(field_name);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
@@ -1746,7 +1752,7 @@ TEST_CASE(
   REQUIRE(query_condition.init(std::string(field_name), cmp_value, 0, op).ok());
 
   // Run Check
-  REQUIRE(query_condition.check(&array_schema).ok());
+  REQUIRE(query_condition.check(array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -1782,11 +1788,10 @@ TEST_CASE(
 
   // Apply the query condition.
   std::vector<uint8_t> result_bitmap(cells, 1);
-  REQUIRE(
-      query_condition
-          .apply_dense(
-              &array_schema, &result_tile, 0, 10, 0, 1, result_bitmap.data())
-          .ok());
+  REQUIRE(query_condition
+              .apply_dense(
+                  array_schema, &result_tile, 0, 10, 0, 1, result_bitmap.data())
+              .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1814,7 +1819,7 @@ void test_apply_cells_sparse(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile,
     void* values);
 
@@ -1826,7 +1831,7 @@ void test_apply_cells_sparse<char*>(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile,
     void* values) {
   const char* const cmp_value = "ae";
@@ -1837,7 +1842,7 @@ void test_apply_cells_sparse<char*>(
   // Run Check
   REQUIRE(query_condition.check(array_schema).ok());
 
-  bool nullable = array_schema->attribute(field_name)->nullable();
+  bool nullable = array_schema.attribute(field_name)->nullable();
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -1940,7 +1945,7 @@ void test_apply_cells_sparse(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile,
     void* values) {
   const T cmp_value = 5;
@@ -2016,7 +2021,7 @@ template <typename T>
 void test_apply_operators_sparse(
     const std::string& field_name,
     const uint64_t cells,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile,
     void* values) {
   test_apply_cells_sparse<T>(
@@ -2078,7 +2083,7 @@ void test_apply_tile_sparse(
     const std::string& field_name,
     uint64_t cells,
     Datatype type,
-    ArraySchema* array_schema,
+    const ArraySchema& array_schema,
     ResultTile* result_tile);
 
 /**
@@ -2089,12 +2094,12 @@ void test_apply_tile_sparse<char*>(
     const std::string& field_name,
     const uint64_t cells,
     const Datatype type,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
 
-  bool var_size = array_schema->attribute(field_name)->var_size();
-  bool nullable = array_schema->attribute(field_name)->nullable();
+  bool var_size = array_schema.attribute(field_name)->var_size();
+  bool nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
       var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
 
@@ -2166,7 +2171,7 @@ void test_apply_tile_sparse(
     const std::string& field_name,
     const uint64_t cells,
     const Datatype type,
-    ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
   Tile* const tile = &std::get<0>(*tile_tuple);
@@ -2221,7 +2226,8 @@ void test_apply_sparse<char*>(
     REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
   }
 
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -2231,11 +2237,11 @@ void test_apply_sparse<char*>(
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &array_schema);
+  ResultTile result_tile(0, 0, array_schema);
   result_tile.init_attr_tile(field_name);
 
   test_apply_tile_sparse<char*>(
-      field_name, cells, type, &array_schema, &result_tile);
+      field_name, cells, type, array_schema, &result_tile);
 }
 
 /**
@@ -2254,7 +2260,8 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   Attribute attr(field_name, type);
   REQUIRE(attr.set_cell_val_num(1).ok());
   REQUIRE(attr.set_fill_value(&fill_value, sizeof(T)).ok());
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -2264,11 +2271,11 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &array_schema);
+  ResultTile result_tile(0, 0, array_schema);
   result_tile.init_attr_tile(field_name);
 
   test_apply_tile_sparse<T>(
-      field_name, cells, type, &array_schema, &result_tile);
+      field_name, cells, type, array_schema, &result_tile);
 }
 
 TEST_CASE(
@@ -2312,7 +2319,8 @@ TEST_CASE(
   // Initialize the array schema.
   ArraySchema array_schema;
   Attribute attr(field_name, type);
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -2322,7 +2330,7 @@ TEST_CASE(
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &array_schema);
+  ResultTile result_tile(0, 0, array_schema);
   result_tile.init_attr_tile(field_name);
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &std::get<0>(*tile_tuple);
@@ -2352,7 +2360,7 @@ TEST_CASE(
                   QueryConditionOp::GT)
               .ok());
   // Run Check
-  REQUIRE(query_condition_1.check(&array_schema).ok());
+  REQUIRE(query_condition_1.check(array_schema).ok());
   uint64_t cmp_value_2 = 6;
   QueryCondition query_condition_2;
   REQUIRE(query_condition_2
@@ -2363,7 +2371,7 @@ TEST_CASE(
                   QueryConditionOp::LE)
               .ok());
   // Run Check
-  REQUIRE(query_condition_2.check(&array_schema).ok());
+  REQUIRE(query_condition_2.check(array_schema).ok());
   QueryCondition query_condition_3;
   REQUIRE(query_condition_1
               .combine(
@@ -2377,7 +2385,7 @@ TEST_CASE(
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition_3
               .apply_sparse<uint8_t>(
-                  &array_schema, result_tile, result_bitmap, &cell_count)
+                  array_schema, result_tile, result_bitmap, &cell_count)
               .ok());
 
   // Check that the cell slab now contains cell indexes 4, 5, and 6.
@@ -2415,7 +2423,8 @@ TEST_CASE(
     REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
   }
 
-  REQUIRE(array_schema.add_attribute(&attr).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
   Domain domain;
   Dimension dim("dim1", Datatype::UINT32);
   uint32_t bounds[2] = {1, cells};
@@ -2425,7 +2434,7 @@ TEST_CASE(
   REQUIRE(array_schema.set_domain(&domain).ok());
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, &array_schema);
+  ResultTile result_tile(0, 0, array_schema);
   result_tile.init_attr_tile(field_name);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
@@ -2507,7 +2516,7 @@ TEST_CASE(
   REQUIRE(query_condition.init(std::string(field_name), cmp_value, 0, op).ok());
 
   // Run Check
-  REQUIRE(query_condition.check(&array_schema).ok());
+  REQUIRE(query_condition.check(array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -2546,7 +2555,7 @@ TEST_CASE(
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
               .apply_sparse<uint8_t>(
-                  &array_schema, result_tile, result_bitmap, &cell_count)
+                  array_schema, result_tile, result_bitmap, &cell_count)
               .ok());
 
   // Verify the result bitmap contain the expected cells.

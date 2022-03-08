@@ -135,7 +135,7 @@ Status UnorderedWriter::check_coord_dups(
   auto timer_se = stats_->start_timer("check_coord_dups");
 
   // Check if applicable
-  if (array_schema_->allows_dups() || !check_coord_dups_ || dedup_coords_)
+  if (array_schema_.allows_dups() || !check_coord_dups_ || dedup_coords_)
     return Status::Ok();
 
   if (!coords_info_.has_coords_) {
@@ -148,15 +148,15 @@ Status UnorderedWriter::check_coord_dups(
     return Status::Ok();
 
   // Prepare auxiliary vectors for better performance
-  auto dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_.dim_num();
   std::vector<const unsigned char*> buffs(dim_num);
   std::vector<uint64_t> coord_sizes(dim_num);
   std::vector<const unsigned char*> buffs_var(dim_num);
   std::vector<uint64_t*> buffs_var_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_->dimension(d)->name();
+    const auto& dim_name = array_schema_.dimension(d)->name();
     buffs[d] = (const unsigned char*)buffers_.find(dim_name)->second.buffer_;
-    coord_sizes[d] = array_schema_->cell_size(dim_name);
+    coord_sizes[d] = array_schema_.cell_size(dim_name);
     buffs_var[d] =
         (const unsigned char*)buffers_.find(dim_name)->second.buffer_var_;
     buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
@@ -170,7 +170,7 @@ Status UnorderedWriter::check_coord_dups(
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_->dimension(d);
+          auto dim = array_schema_.dimension(d);
           if (!dim->var_size()) {  // Fixed-sized dimensions
             if (memcmp(
                     buffs[d] + cell_pos[i] * coord_sizes[d],
@@ -246,15 +246,15 @@ Status UnorderedWriter::compute_coord_dups(
     return Status::Ok();
 
   // Prepare auxiliary vectors for better performance
-  auto dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_.dim_num();
   std::vector<const unsigned char*> buffs(dim_num);
   std::vector<uint64_t> coord_sizes(dim_num);
   std::vector<const unsigned char*> buffs_var(dim_num);
   std::vector<uint64_t*> buffs_var_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_->dimension(d)->name();
+    const auto& dim_name = array_schema_.dimension(d)->name();
     buffs[d] = (const unsigned char*)buffers_.find(dim_name)->second.buffer_;
-    coord_sizes[d] = array_schema_->cell_size(dim_name);
+    coord_sizes[d] = array_schema_.cell_size(dim_name);
     buffs_var[d] =
         (const unsigned char*)buffers_.find(dim_name)->second.buffer_var_;
     buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
@@ -269,7 +269,7 @@ Status UnorderedWriter::compute_coord_dups(
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_->dimension(d);
+          auto dim = array_schema_.dimension(d);
           if (!dim->var_size()) {  // Fixed-sized dimensions
             if (memcmp(
                     buffs[d] + cell_pos[i] * coord_sizes[d],
@@ -357,7 +357,7 @@ Status UnorderedWriter::prepare_tiles(
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
     std::vector<WriterTile>* tiles) const {
-  return array_schema_->var_size(name) ?
+  return array_schema_.var_size(name) ?
              prepare_tiles_var(name, cell_pos, coord_dups, tiles) :
              prepare_tiles_fixed(name, cell_pos, coord_dups, tiles);
 }
@@ -372,16 +372,16 @@ Status UnorderedWriter::prepare_tiles_fixed(
     return Status::Ok();
 
   // For easy reference
-  auto nullable = array_schema_->is_nullable(name);
+  auto nullable = array_schema_.is_nullable(name);
   auto buffer = (unsigned char*)buffers_.find(name)->second.buffer_;
   auto buffer_validity =
       (unsigned char*)buffers_.find(name)->second.validity_vector_.buffer();
-  auto cell_size = array_schema_->cell_size(name);
+  auto cell_size = array_schema_.cell_size(name);
   auto cell_num = (uint64_t)cell_pos.size();
-  auto capacity = array_schema_->capacity();
+  auto capacity = array_schema_.capacity();
   auto dups_num = coord_dups.size();
   auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
-  auto domain = array_schema_->domain();
+  auto domain = array_schema_.domain();
   auto cell_num_per_tile =
       coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
 
@@ -455,17 +455,17 @@ Status UnorderedWriter::prepare_tiles_var(
     std::vector<WriterTile>* tiles) const {
   // For easy reference
   auto it = buffers_.find(name);
-  auto nullable = array_schema_->is_nullable(name);
+  auto nullable = array_schema_.is_nullable(name);
   auto buffer = it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
   auto buffer_validity = (uint8_t*)it->second.validity_vector_.buffer();
   auto buffer_var_size = it->second.buffer_var_size_;
   auto cell_num = (uint64_t)cell_pos.size();
-  auto capacity = array_schema_->capacity();
+  auto capacity = array_schema_.capacity();
   auto dups_num = coord_dups.size();
   auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
-  auto attr_datatype_size = datatype_size(array_schema_->type(name));
-  auto domain = array_schema_->domain();
+  auto attr_datatype_size = datatype_size(array_schema_.type(name));
+  auto domain = array_schema_.domain();
   auto cell_num_per_tile =
       coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
 
@@ -608,7 +608,7 @@ Status UnorderedWriter::sort_coords(std::vector<uint64_t>& cell_pos) const {
 Status UnorderedWriter::unordered_write() {
   // Applicable only to unordered write on sparse arrays
   assert(layout_ == Layout::UNORDERED);
-  assert(!array_schema_->dense());
+  assert(!array_schema_.dense());
 
   // Sort coordinates first
   std::vector<uint64_t> cell_pos;
@@ -642,8 +642,8 @@ Status UnorderedWriter::unordered_write() {
   // Set the number of tiles in the metadata
   auto it = tiles.begin();
   const uint64_t tile_num_divisor =
-      1 + (array_schema_->var_size(it->first) ? 1 : 0) +
-      (array_schema_->is_nullable(it->first) ? 1 : 0);
+      1 + (array_schema_.var_size(it->first) ? 1 : 0) +
+      (array_schema_.is_nullable(it->first) ? 1 : 0);
   auto tile_num = it->second.size() / tile_num_divisor;
   frag_meta->set_num_tiles(tile_num);
 
@@ -665,6 +665,10 @@ Status UnorderedWriter::unordered_write() {
   RETURN_CANCEL_OR_ERROR_ELSE(
       write_all_tiles(frag_meta, &tiles), clean_up(uri));
 
+  // Compute fragment min/max/sum/null count
+  RETURN_NOT_OK_ELSE(
+      frag_meta->compute_fragment_min_max_sum_null_count(), clean_up(uri));
+
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
       frag_meta->store(array_->get_encryption_key()), clean_up(uri));
@@ -673,9 +677,10 @@ Status UnorderedWriter::unordered_write() {
   RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));
 
   // The following will make the fragment visible
-  auto ok_uri =
-      URI(uri.remove_trailing_slash().to_string() + constants::ok_file_suffix);
-  RETURN_NOT_OK_ELSE(storage_manager_->vfs()->touch(ok_uri), clean_up(uri));
+  auto&& [st, commit_uri] = array_->array_directory().get_commit_uri(uri);
+  RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->vfs()->touch(commit_uri.value()), clean_up(uri));
 
   return Status::Ok();
 }

@@ -1550,7 +1550,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   domain.add_dimension(&dim);
   tiledb::sm::ArraySchema schema;
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
-  schema.add_attribute(&attr);
+  schema.add_attribute(tdb::make_shared<tiledb::sm::Attribute>(HERE(), &attr));
   schema.set_domain(&domain);
   schema.init();
 
@@ -1710,7 +1710,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   domain.add_dimension(&dim);
   tiledb::sm::ArraySchema schema;
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
-  schema.add_attribute(&attr);
+  schema.add_attribute(tdb::make_shared<tiledb::sm::Attribute>(HERE(), &attr));
   schema.set_domain(&domain);
   schema.init();
 

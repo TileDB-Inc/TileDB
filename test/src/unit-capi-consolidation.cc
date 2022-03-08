@@ -48,11 +48,19 @@ using namespace tiledb::test;
 struct ConsolidationFx {
   // Constants
   const char* DENSE_VECTOR_NAME = "test_consolidate_dense_vector";
+  const char* DENSE_VECTOR_FRAG_DIR =
+      "test_consolidate_dense_vector/__fragments";
+  const char* DENSE_VECTOR_FRAG_META_DIR =
+      "test_consolidate_dense_vector/__fragment_meta";
   const char* DENSE_ARRAY_NAME = "test_consolidate_dense_array";
   const char* SPARSE_ARRAY_NAME = "test_consolidate_sparse_array";
   const char* SPARSE_HETEROGENEOUS_ARRAY_NAME =
       "test_consolidate_sparse_heterogeneous_array";
   const char* SPARSE_STRING_ARRAY_NAME = "test_consolidate_sparse_string_array";
+  const char* SPARSE_STRING_ARRAY_FRAG_DIR =
+      "test_consolidate_sparse_string_array/__fragments";
+  const char* SPARSE_STRING_ARRAY_FRAG_META_DIR =
+      "test_consolidate_sparse_string_array/__fragment_meta";
 
   // TileDB context
   tiledb_ctx_t* ctx_;
@@ -144,7 +152,6 @@ struct ConsolidationFx {
   static int get_array_meta_files_callback(const char* path, void* data);
   static int get_array_meta_vac_files_callback(const char* path, void* data);
   static int get_vac_files_callback(const char* path, void* data);
-  static int get_fragment_timestamps(const char* path, void* data);
 };
 
 ConsolidationFx::ConsolidationFx() {
@@ -4079,15 +4086,7 @@ int ConsolidationFx::get_dir_num(const char* path, void* data) {
   int is_dir;
   int rc = tiledb_vfs_is_dir(ctx, vfs, path, &is_dir);
   CHECK(rc == TILEDB_OK);
-  auto meta_dir =
-      std::string("/") + tiledb::sm::constants::array_metadata_dir_name;
-  auto schema_dir =
-      std::string("/") + tiledb::sm::constants::array_schema_dir_name;
-  if (!tiledb::sm::utils::parse::ends_with(path, meta_dir) &&
-      !tiledb::sm::utils::parse::ends_with(path, schema_dir)) {
-    // Ignoring the meta directory and the schema directory
-    data_struct->num += is_dir;
-  }
+  data_struct->num += is_dir;
 
   return 1;
 }
@@ -4126,20 +4125,6 @@ int ConsolidationFx::get_vac_files_callback(const char* path, void* data) {
   if (tiledb::sm::utils::parse::ends_with(
           path, tiledb::sm::constants::vacuum_file_suffix))
     vec->emplace_back(path);
-
-  return 1;
-}
-
-int ConsolidationFx::get_fragment_timestamps(const char* path, void* data) {
-  auto data_vec = (std::vector<uint64_t>*)data;
-  std::pair<uint64_t, uint64_t> timestamp_range;
-  if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::ok_file_suffix)) {
-    auto uri = tiledb::sm::URI(path);
-    if (tiledb::sm::utils::parse::get_timestamp_range(uri, &timestamp_range)
-            .ok())
-      data_vec->push_back(timestamp_range.first);
-  }
 
   return 1;
 }
@@ -4297,7 +4282,7 @@ TEST_CASE_METHOD(
 
   // Check that there are 4 fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 4);
 
@@ -4350,7 +4335,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 3);
 
@@ -4403,7 +4388,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 2);
 
@@ -4456,7 +4441,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 4);
 
@@ -4509,7 +4494,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 3);
 
@@ -4562,7 +4547,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 2);
 
@@ -4615,7 +4600,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 1);
 
@@ -4668,7 +4653,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 2);
 
@@ -4721,7 +4706,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 1);
 
@@ -4777,7 +4762,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 3);
 
@@ -4838,7 +4823,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 3);
 
@@ -4893,7 +4878,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 2);
 
@@ -4955,7 +4940,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 2);
 
@@ -5008,7 +4993,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 4);
 
@@ -5063,7 +5048,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 2);
 
@@ -5119,7 +5104,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 1);
 
@@ -5171,7 +5156,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 2);
 
@@ -5209,7 +5194,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
-      config, "sm.consolidation.step_size_ratio", "0.82", &error);
+      config, "sm.consolidation.step_size_ratio", "0.85", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -5226,7 +5211,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 3);
 
@@ -5294,7 +5279,7 @@ TEST_CASE_METHOD(
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
 
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == ((should_consolidate) ? 3 : 2));
 
@@ -5307,7 +5292,7 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   data.num = 0;
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == ((should_consolidate) ? 1 : 2));
 
@@ -5329,13 +5314,14 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 5);
 
   // Check number of consolidated metadata files
   data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_meta_num, &data);
+  rc = tiledb_vfs_ls(
+      ctx_, vfs_, DENSE_VECTOR_FRAG_META_DIR, &get_meta_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 0);
 
@@ -5421,13 +5407,14 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 4);
 
   // Check number of consolidated metadata files
   data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_meta_num, &data);
+  rc = tiledb_vfs_ls(
+      ctx_, vfs_, DENSE_VECTOR_FRAG_META_DIR, &get_meta_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 1);
 
@@ -5441,7 +5428,7 @@ TEST_CASE_METHOD(
 
   // Check
   data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 8);
 
@@ -5460,7 +5447,8 @@ TEST_CASE_METHOD(
 
   // Check number of consolidated metadata files
   data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_meta_num, &data);
+  rc = tiledb_vfs_ls(
+      ctx_, vfs_, DENSE_VECTOR_FRAG_META_DIR, &get_meta_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 2);
 
@@ -5471,7 +5459,7 @@ TEST_CASE_METHOD(
 
   // Check
   data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 8);
   read_dense_vector(1);
@@ -5499,7 +5487,8 @@ TEST_CASE_METHOD(
 
   // Check number of consolidated metadata files
   data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_meta_num, &data);
+  rc = tiledb_vfs_ls(
+      ctx_, vfs_, DENSE_VECTOR_FRAG_META_DIR, &get_meta_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 1);
 
@@ -5622,14 +5611,15 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx_, vfs_, SPARSE_STRING_ARRAY_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(
+      ctx_, vfs_, SPARSE_STRING_ARRAY_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 2);
 
   // Check number of consolidated metadata files
   data = {ctx_, vfs_, 0};
-  rc =
-      tiledb_vfs_ls(ctx_, vfs_, SPARSE_STRING_ARRAY_NAME, &get_meta_num, &data);
+  rc = tiledb_vfs_ls(
+      ctx_, vfs_, SPARSE_STRING_ARRAY_FRAG_META_DIR, &get_meta_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 1);
 
@@ -5645,8 +5635,8 @@ TEST_CASE_METHOD(
 
   // Check number of consolidated metadata files
   data = {ctx_, vfs_, 0};
-  rc =
-      tiledb_vfs_ls(ctx_, vfs_, SPARSE_STRING_ARRAY_NAME, &get_meta_num, &data);
+  rc = tiledb_vfs_ls(
+      ctx_, vfs_, SPARSE_STRING_ARRAY_FRAG_META_DIR, &get_meta_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 1);
 
@@ -5689,13 +5679,15 @@ TEST_CASE_METHOD(
 
   // Check number of fragments
   get_num_struct data = {ctx, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx, vfs_, SPARSE_STRING_ARRAY_NAME, &get_dir_num, &data);
+  rc = tiledb_vfs_ls(
+      ctx, vfs_, SPARSE_STRING_ARRAY_FRAG_DIR, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 2);
 
   // Check number of consolidated metadata files
   data = {ctx, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx, vfs_, SPARSE_STRING_ARRAY_NAME, &get_meta_num, &data);
+  rc = tiledb_vfs_ls(
+      ctx, vfs_, SPARSE_STRING_ARRAY_FRAG_META_DIR, &get_meta_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 1);
 
@@ -5716,7 +5708,8 @@ TEST_CASE_METHOD(
 
   // Check number of consolidated metadata files
   data = {ctx, vfs_, 0};
-  rc = tiledb_vfs_ls(ctx, vfs_, SPARSE_STRING_ARRAY_NAME, &get_meta_num, &data);
+  rc = tiledb_vfs_ls(
+      ctx, vfs_, SPARSE_STRING_ARRAY_FRAG_META_DIR, &get_meta_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 1);
 

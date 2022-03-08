@@ -134,7 +134,7 @@ Status array_to_capnp(
   array_builder->setStartTimestamp(array->timestamp_start());
   array_builder->setEndTimestamp(array->timestamp_end());
 
-  ArraySchema* array_schema_latest = array->array_schema_latest();
+  const auto& array_schema_latest = array->array_schema_latest();
   auto array_schema_latest_builder = array_builder->initArraySchemaLatest();
   RETURN_NOT_OK(array_schema_to_capnp(
       array_schema_latest, &array_schema_latest_builder, client_side));
@@ -149,7 +149,7 @@ Status array_to_capnp(
     entry.setKey(schema.first);
     auto schema_builder = entry.initValue();
     RETURN_NOT_OK(array_schema_to_capnp(
-        schema.second.get(), &schema_builder, client_side));
+        *(schema.second.get()), &schema_builder, client_side));
   }
 
   auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
@@ -188,7 +188,6 @@ Status array_from_capnp(
         all_schemas[array_schema_build.getKey()] = std::move(schema);
       }
     }
-    array->set_array_schemas_all(all_schemas);
   }
 
   if (array_reader.hasArraySchemaLatest()) {
@@ -197,7 +196,7 @@ Status array_from_capnp(
     RETURN_NOT_OK(array_schema_from_capnp(
         array_schema_latest_reader, &array_schema_latest));
     array_schema_latest->set_array_uri(array->array_uri());
-    array->set_array_schema_latest(array_schema_latest.release());
+    array->set_array_schema_latest(std::move(array_schema_latest));
   }
 
   if (array_reader.hasNonEmptyDomain()) {

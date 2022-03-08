@@ -86,20 +86,16 @@ class Array {
   /** Sets the latest array schema.
    * @param array_schema The array schema to set.
    */
-  void set_array_schema_latest(ArraySchema* array_schema);
-
-  /** Sets all array schemas.
-   * @param all_schemas The array schemas to set.
-   */
-  void set_array_schemas_all(
-      std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
-          all_schemas);
+  void set_array_schema_latest(const shared_ptr<ArraySchema>& array_schema);
 
   /** Returns the latest array schema. */
-  ArraySchema* array_schema_latest() const;
+  const ArraySchema& array_schema_latest() const;
+
+  /** Returns the latest array schema as a shared pointer. */
+  shared_ptr<const ArraySchema> array_schema_latest_ptr() const;
 
   /** Returns array schemas map. */
-  inline const std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>&
+  inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
   array_schemas_all() const {
     return array_schemas_all_;
   }
@@ -185,7 +181,7 @@ class Array {
    * Returns the fragment metadata of the array. If the array is not open,
    * an empty vector is returned.
    */
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata() const;
+  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata() const;
 
   /**
    * Returns `true` if the array is empty at the time it is opened.
@@ -200,7 +196,7 @@ class Array {
   bool is_remote() const;
 
   /** Retrieves the array schema. Errors if the array is not open. */
-  Status get_array_schema(ArraySchema** array_schema) const;
+  tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema() const;
 
   /** Retrieves the query type. Errors if the array is not open. */
   Status get_query_type(QueryType* qyery_type) const;
@@ -375,13 +371,12 @@ class Array {
   /* ********************************* */
 
   /** The latest array schema. */
-  ArraySchema* array_schema_latest_;
+  shared_ptr<ArraySchema> array_schema_latest_;
 
   /**
    * A map of all array_schemas_all
    */
-  std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>>
-      array_schemas_all_;
+  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
 
   /** The array URI. */
   URI array_uri_;
@@ -404,10 +399,10 @@ class Array {
    * bytes should be stored. Whenever a key is needed, a pointer to this
    * memory region should be passed instead of a copy of the bytes.
    */
-  tdb_shared_ptr<EncryptionKey> encryption_key_;
+  shared_ptr<EncryptionKey> encryption_key_;
 
   /** The metadata of the fragments the array was opened with. */
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata_;
+  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
 
   /** `True` if the array has been opened. */
   std::atomic<bool> is_open_;

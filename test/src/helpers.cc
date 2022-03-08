@@ -47,7 +47,20 @@ namespace tiledb {
 namespace test {
 
 // Command line arguments.
-extern std::string g_vfs;
+std::string g_vfs;
+
+int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs) {
+  if (!vfs.empty()) {
+    if (std::find(vfs_fs.begin(), vfs_fs.end(), vfs) == vfs_fs.end()) {
+      std::cerr << "Unknown --vfs argument: \"" << vfs << "\"";
+      return 1;
+    }
+
+    tiledb::test::g_vfs = std::move(vfs);
+  }
+
+  return 0;
+}
 
 bool use_refactored_dense_reader() {
   const char* value = nullptr;
@@ -1221,19 +1234,9 @@ int32_t num_fragments(const std::string& array_name) {
   VFS vfs(ctx);
 
   // Get all URIs in the array directory
-  auto uris = vfs.ls(array_name);
-
-  // Exclude '__meta' directory and any file with a suffix
-  int ret = 0;
-  for (const auto& uri : uris) {
-    auto name = tiledb::sm::URI(uri).remove_trailing_slash().last_path_part();
-    if (name != tiledb::sm::constants::array_metadata_dir_name &&
-        name != tiledb::sm::constants::array_schema_dir_name &&
-        name.find_first_of('.') == std::string::npos)
-      ++ret;
-  }
-
-  return ret;
+  auto uris = vfs.ls(
+      array_name + "/" + tiledb::sm::constants::array_fragments_dir_name);
+  return static_cast<uint32_t>(uris.size());
 }
 
 std::string random_string(const uint64_t l) {
@@ -1249,6 +1252,14 @@ std::string random_string(const uint64_t l) {
   }
 
   return s;
+}
+
+std::string get_fragment_dir(std::string array_dir) {
+  return array_dir + "/" + tiledb::sm::constants::array_fragments_dir_name;
+}
+
+std::string get_commit_dir(std::string array_dir) {
+  return array_dir + "/" + tiledb::sm::constants::array_commit_dir_name;
 }
 
 template void check_subarray<int8_t>(

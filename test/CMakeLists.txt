@@ -96,7 +96,14 @@ set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_api")
 
 # Gather the test source files
-set(TILEDB_TEST_SOURCES
+set(TILEDB_TEST_SUPPORT_SOURCES
+  src/helpers.h
+  src/helpers.cc
+  src/helpers-dimension.h
+  src/vfs_helpers.cc
+  )
+  
+set(TILEDB_UNIT_TEST_SOURCES
   src/helpers.h
   src/helpers.cc
   src/helpers-dimension.h
@@ -184,11 +191,10 @@ set(TILEDB_TEST_SOURCES
   src/unit-ValidityVector.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
-  src/unit.cc
-  src/vfs_helpers.cc)
+  )
 
 if (TILEDB_CPP_API)
-  list(APPEND TILEDB_TEST_SOURCES
+  list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-cppapi-array.cc
     src/unit-cppapi-checksum.cc
     src/unit-cppapi-config.cc
@@ -215,7 +221,7 @@ if (TILEDB_CPP_API)
 endif()
 
 if (TILEDB_SERIALIZATION)
-  list(APPEND TILEDB_TEST_SOURCES
+  list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-capi-serialized_queries.cc
     src/unit-capi-serialized_queries_using_subarray.cc
     src/unit-curl.cc
@@ -223,13 +229,13 @@ if (TILEDB_SERIALIZATION)
 endif()
 
 if (TILEDB_TESTS_ENABLE_REST)
-  list(APPEND TILEDB_TEST_SOURCES
+  list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-capi-rest-dense_array.cc
   )
 endif()
 
 if (TILEDB_ARROW_TESTS)
-  list(APPEND TILEDB_TEST_SOURCES
+  list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-arrow.cc
     ${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
   )
@@ -239,17 +245,31 @@ if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
 endif()
 
+add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
+  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+  ${TILEDB_TEST_SUPPORT_SOURCES}
+)
+
+target_include_directories(tiledb_test_support_lib
+  PRIVATE
+    $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
+)
+
 # unit test executable
 add_executable(
   tiledb_unit EXCLUDE_FROM_ALL
   $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
-  ${TILEDB_TEST_SOURCES}
+  ${TILEDB_UNIT_TEST_SOURCES}
+  "src/unit.cc"
 )
+
+add_dependencies(tiledb_unit tiledb_test_support_lib)
 
 # We want tests to continue as normal even as the API is changing,
 # so don't warn for deprecations, since they'll be escalated to errors.
 if (NOT MSVC)
   target_compile_options(tiledb_unit PRIVATE -Wno-deprecated-declarations)
+  target_compile_options(tiledb_test_support_lib PRIVATE -Wno-deprecated-declarations)
 endif()
 
 target_include_directories(
@@ -257,8 +277,20 @@ target_include_directories(
     ${TILEDB_CORE_INCLUDE_DIR}
     ${TILEDB_EXPORT_HEADER_DIR}
 )
+target_include_directories(
+  tiledb_test_support_lib BEFORE PRIVATE
+    ${TILEDB_CORE_INCLUDE_DIR}
+    ${TILEDB_EXPORT_HEADER_DIR}
+)
 
 target_link_libraries(tiledb_unit
+  PUBLIC
+    TILEDB_CORE_OBJECTS_ILIB
+    Catch2::Catch2
+    tiledb_test_support_lib
+)
+
+target_link_libraries(tiledb_test_support_lib
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
     Catch2::Catch2
@@ -277,27 +309,36 @@ if (TILEDB_HDFS)
   target_include_directories(tiledb_unit PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
     )
+  target_compile_definitions(tiledb_test_support_lib PRIVATE -DHAVE_HDFS)
+  target_include_directories(tiledb_test_support_lib PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
+    )
 endif()
 
 if (TILEDB_S3)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_S3)
+  target_compile_definitions(tiledb_test_support_lib PRIVATE -DHAVE_S3)
 endif()
 
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
+  target_compile_definitions(tiledb_test_support_lib PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
 endif()
 
 if (TILEDB_AZURE)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_AZURE)
+  target_compile_definitions(tiledb_test_support_lib PRIVATE -DHAVE_AZURE)
 endif()
 
 if (TILEDB_GCS)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_GCS)
+  target_compile_definitions(tiledb_test_support_lib PRIVATE -DHAVE_GCS)
 endif()
 
 if (TILEDB_SERIALIZATION)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_SERIALIZATION)
+  target_compile_definitions(tiledb_test_support_lib PRIVATE -DTILEDB_SERIALIZATION)
 endif()
 
 if (TILEDB_ARROW_TESTS)
@@ -310,8 +351,13 @@ endif()
 # This is necessary only because we are linking directly to the core objects.
 # Other users (e.g. the examples) do not need this flag.
 target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
+target_compile_definitions(tiledb_test_support_lib PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
 
 target_compile_definitions(tiledb_unit PRIVATE
+  -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"
+)
+
+target_compile_definitions(tiledb_test_support_lib PRIVATE
   -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"
 )
 
@@ -340,3 +386,18 @@ add_custom_target(
   check COMMAND ${CMAKE_CTEST_COMMAND} -V -C ${CMAKE_BUILD_TYPE}
   DEPENDS tiledb_unit
 )
+
+include(CMakePrintHelpers)
+cmake_print_properties(
+  TARGETS tiledb_unit
+  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
+  )
+cmake_print_properties(
+  TARGETS tiledb_test_support_lib
+  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
+  )
+cmake_print_properties(
+  TARGETS Catch2::Catch2
+  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
+  )
+  

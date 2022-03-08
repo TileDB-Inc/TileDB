@@ -72,7 +72,7 @@ TEMPLATE_LIST_TEST_CASE(
   ArraySchema schema;
   Attribute a("a", (Datatype)type.tiledb_type);
   a.set_cell_val_num(cell_val_num);
-  schema.add_attribute(&a);
+  schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &a));
 
   // Generate random, sorted strings for the string ascii type.
   std::vector<std::string> string_ascii;
@@ -238,7 +238,7 @@ TEMPLATE_LIST_TEST_CASE(
   // Generate the array schema.
   ArraySchema schema;
   Attribute a("a", (Datatype)type.tiledb_type);
-  schema.add_attribute(&a);
+  schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &a));
 
   // Initialize a new tile.
   uint64_t num_cells = 4;
@@ -320,7 +320,7 @@ TEST_CASE(
   ArraySchema schema;
   Attribute a("a", Datatype::STRING_ASCII);
   a.set_cell_val_num(constants::var_num);
-  schema.add_attribute(&a);
+  schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &a));
 
   // Generate random, sorted strings for the string ascii type.
   std::vector<std::string> strings;
@@ -433,7 +433,7 @@ TEST_CASE(
   ArraySchema schema;
   Attribute a("a", Datatype::CHAR);
   a.set_cell_val_num(constants::var_num);
-  schema.add_attribute(&a);
+  schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &a));
 
   // Store '123' and '12'
   // Initialize offsets tile.

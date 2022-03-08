@@ -77,6 +77,15 @@ const std::string array_schema_dir_name = "__schema";
 /** The array metadata directory name. */
 const std::string array_metadata_dir_name = "__meta";
 
+/** The array fragment metadata directory name. */
+const std::string array_fragment_meta_dir_name = "__fragment_meta";
+
+/** The array fragments directory name. */
+const std::string array_fragments_dir_name = "__fragments";
+
+/** The array commit directory name. */
+const std::string array_commit_dir_name = "__commits";
+
 /** The fragment metadata file name. */
 const std::string fragment_metadata_filename = "__fragment_metadata.tdb";
 
@@ -187,6 +196,9 @@ const std::string vacuum_file_suffix = ".vac";
 
 /** Suffix for the special ok files used in TileDB. */
 const std::string ok_file_suffix = ".ok";
+
+/** Suffix for the special write files used in TileDB. */
+const std::string write_file_suffix = ".wrt";
 
 /** Suffix for the special metadata files used in TileDB. */
 const std::string meta_file_suffix = ".meta";
@@ -528,7 +540,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization format version number. */
-const uint32_t format_version = 11;
+const uint32_t format_version = 12;
 
 /** The lowest version supported for back compat writes. */
 const uint32_t back_compat_writes_min_format_version = 7;

@@ -62,6 +62,12 @@ Query
     :project: TileDB-C++
     :members:
 
+QueryCondition
+--------------
+.. doxygenclass:: tiledb::QueryCondition
+    :project: TileDB-C++
+    :members:
+
 Subarray
 --------
 .. doxygenclass:: tiledb::Subarray

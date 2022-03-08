@@ -1,5 +1,5 @@
 /**
- * @file   reduce_type_width_filter.h
+ * @file   bit_width_reduction_filter.h
  *
  * @section LICENSE
  *

@@ -51,15 +51,14 @@ namespace sm {
 /* ****************************** */
 
 ResultTile::ResultTile(
-    unsigned frag_idx, uint64_t tile_idx, const ArraySchema* array_schema)
+    unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
     : frag_idx_(frag_idx)
     , tile_idx_(tile_idx) {
-  assert(array_schema != nullptr);
-  domain_ = array_schema->domain();
+  domain_ = array_schema.domain();
   coord_tiles_.resize(domain_->dim_num());
-  attr_tiles_.resize(array_schema->attribute_num());
-  for (uint64_t i = 0; i < array_schema->attribute_num(); i++) {
-    const Attribute* attribute = array_schema->attribute(i);
+  attr_tiles_.resize(array_schema.attribute_num());
+  for (uint64_t i = 0; i < array_schema.attribute_num(); i++) {
+    auto attribute = array_schema.attribute(i);
     attr_tiles_[i] = std::make_pair(attribute->name(), nullopt);
   }
   set_compute_results_func();

@@ -214,7 +214,7 @@ const std::string& Attribute::name() const {
 // fill_value (uint8_t[])
 // nullable (bool)
 // fill_value_validity (uint8_t)
-Status Attribute::serialize(Buffer* buff, const uint32_t version) {
+const Status Attribute::serialize(Buffer* buff, const uint32_t version) const {
   // Write attribute name
   auto attribute_name_size = (uint32_t)name_.size();
   RETURN_NOT_OK(buff->write(&attribute_name_size, sizeof(uint32_t)));

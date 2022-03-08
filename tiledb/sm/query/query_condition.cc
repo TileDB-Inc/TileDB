@@ -92,12 +92,12 @@ Status QueryCondition::init(
   return Status::Ok();
 }
 
-Status QueryCondition::check(const ArraySchema* const array_schema) const {
+Status QueryCondition::check(const ArraySchema& array_schema) const {
   for (const auto& clause : clauses_) {
     const std::string field_name = clause.field_name_;
     const uint64_t condition_value_size = clause.condition_value_data_.size();
 
-    const Attribute* const attribute = array_schema->attribute(field_name);
+    const auto attribute = array_schema.attribute(field_name);
     if (!attribute) {
       return Status_QueryConditionError(
           "Clause field name is not an attribute " + field_name);
@@ -591,11 +591,10 @@ QueryCondition::apply_clause(
 tuple<Status, optional<std::vector<ResultCellSlab>>>
 QueryCondition::apply_clause(
     const QueryCondition::Clause& clause,
-    const ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
-  const Attribute* const attribute =
-      array_schema->attribute(clause.field_name_);
+  const auto attribute = array_schema.attribute(clause.field_name_);
   if (!attribute) {
     return {
         Status_QueryConditionError("Unknown attribute " + clause.field_name_),
@@ -680,7 +679,7 @@ QueryCondition::apply_clause(
 }
 
 Status QueryCondition::apply(
-    const ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     std::vector<ResultCellSlab>& result_cell_slabs,
     const uint64_t stride) const {
   if (clauses_.empty()) {
@@ -870,15 +869,14 @@ Status QueryCondition::apply_clause_dense(
 
 Status QueryCondition::apply_clause_dense(
     const QueryCondition::Clause& clause,
-    const ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t length,
     const uint64_t src_cell,
     const uint64_t stride,
     uint8_t* result_buffer) const {
-  const Attribute* const attribute =
-      array_schema->attribute(clause.field_name_);
+  const auto attribute = array_schema.attribute(clause.field_name_);
   if (!attribute) {
     return Status_QueryConditionError(
         "Unknown attribute " + clause.field_name_);
@@ -1087,7 +1085,7 @@ Status QueryCondition::apply_clause_dense(
 }
 
 Status QueryCondition::apply_dense(
-    const ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t length,
@@ -1369,11 +1367,10 @@ Status QueryCondition::apply_clause_sparse(
 template <typename BitmapType>
 Status QueryCondition::apply_clause_sparse(
     const QueryCondition::Clause& clause,
-    const ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap) const {
-  const Attribute* const attribute =
-      array_schema->attribute(clause.field_name_);
+  const auto attribute = array_schema.attribute(clause.field_name_);
   if (!attribute) {
     return Status_QueryConditionError(
         "Unknown attribute " + clause.field_name_);
@@ -1484,7 +1481,7 @@ Status QueryCondition::apply_clause_sparse(
 
 template <typename BitmapType>
 Status QueryCondition::apply_sparse(
-    const ArraySchema* const array_schema,
+    const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap,
     uint64_t* cell_count) {
@@ -1520,8 +1517,14 @@ std::vector<QueryConditionCombinationOp> QueryCondition::combination_ops()
 
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(
-    const ArraySchema* const, ResultTile&, std::vector<uint8_t>&, uint64_t*);
+    const ArraySchema& array_schema,
+    ResultTile&,
+    std::vector<uint8_t>&,
+    uint64_t*);
 template Status QueryCondition::apply_sparse<uint64_t>(
-    const ArraySchema* const, ResultTile&, std::vector<uint64_t>&, uint64_t*);
+    const ArraySchema& array_schema,
+    ResultTile&,
+    std::vector<uint64_t>&,
+    uint64_t*);
 }  // namespace sm
 }  // namespace tiledb

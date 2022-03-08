@@ -10,23 +10,10 @@ namespace tiledb {
 namespace test {
 
 // Command line arguments.
-std::string g_vfs;
+int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs);
 
 }  // namespace test
 }  // namespace tiledb
-
-int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs) {
-  if (!vfs.empty()) {
-    if (std::find(vfs_fs.begin(), vfs_fs.end(), vfs) == vfs_fs.end()) {
-      std::cerr << "Unknown --vfs argument: \"" << vfs << "\"";
-      return 1;
-    }
-
-    tiledb::test::g_vfs = std::move(vfs);
-  }
-
-  return 0;
-}
 
 int main(const int argc, char** const argv) {
   Catch::Session session;
@@ -57,7 +44,7 @@ int main(const int argc, char** const argv) {
     return rc;
 
   // Validate and store the VFS command line argument.
-  rc = store_g_vfs(std::move(vfs), std::move(vfs_fs));
+  rc = tiledb::test::store_g_vfs(std::move(vfs), std::move(vfs_fs));
   if (rc != 0)
     return rc;
 

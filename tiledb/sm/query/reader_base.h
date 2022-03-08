@@ -171,11 +171,13 @@ class ReaderBase : public StrategyBase {
    *
    * @param name The attribute/dimension name.
    * @param result_tiles The result tiles to delete from.
+   * @param min_result_tile The minimum index to start clearing tiles at.
    * @return void
    */
   void clear_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles,
+      const uint64_t min_result_tile = 0) const;
 
   /**
    * Resets the buffer sizes to the original buffer sizes. This is because

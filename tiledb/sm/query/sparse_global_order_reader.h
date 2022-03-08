@@ -177,7 +177,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const uint64_t memory_budget_qc_tiles,
       const unsigned f,
       const uint64_t t,
-      const ArraySchema* const array_schema);
+      const ArraySchema& array_schema);
 
   /**
    * Create the result tiles.

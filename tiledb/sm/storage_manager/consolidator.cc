@@ -213,7 +213,7 @@ Status Consolidator::consolidate_fragments(
       encryption_type,
       encryption_key,
       key_length,
-      array_for_reads.array_schema_latest()->dense());
+      array_for_reads.array_schema_latest().dense());
   if (!st.ok()) {
     array_for_reads.close();
     array_for_writes.close();
@@ -325,7 +325,7 @@ Status Consolidator::consolidate(
   }
 
   // Get schema
-  auto array_schema = array_for_reads.array_schema_latest();
+  const auto& array_schema = array_for_reads.array_schema_latest();
 
   // Prepare buffers
   std::vector<ByteVec> buffers;
@@ -346,6 +346,15 @@ Status Consolidator::consolidate(
     tdb_delete(query_r);
     tdb_delete(query_w);
     return st;
+  }
+
+  // Get the vacuum URI
+  auto&& [st_vac_uri, vac_uri] =
+      array_for_reads.array_directory().get_vaccum_uri(*new_fragment_uri);
+  if (!st_vac_uri.ok()) {
+    tdb_delete(query_r);
+    tdb_delete(query_w);
+    return st_vac_uri;
   }
 
   // Read from one array and write to the other
@@ -370,7 +379,7 @@ Status Consolidator::consolidate(
   }
 
   // Write vacuum file
-  st = write_vacuum_file(*new_fragment_uri, to_consolidate);
+  st = write_vacuum_file(vac_uri.value(), to_consolidate);
   if (!st.ok()) {
     tdb_delete(query_r);
     tdb_delete(query_w);
@@ -403,7 +412,7 @@ Status Consolidator::consolidate_fragment_meta(
   // Include only fragments with footers / separate basic metadata
   Buffer buff;
   const auto& tmp_meta = array.fragment_metadata();
-  std::vector<tdb_shared_ptr<FragmentMetadata>> meta;
+  std::vector<shared_ptr<FragmentMetadata>> meta;
   for (auto m : tmp_meta) {
     if (m->format_version() > 2)
       meta.emplace_back(m);
@@ -421,9 +430,15 @@ Status Consolidator::consolidate_fragment_meta(
   URI uri;
   auto first = meta.front()->fragment_uri();
   auto last = meta.back()->fragment_uri();
-  RETURN_NOT_OK(compute_new_fragment_uri(
-      first, last, array.array_schema_latest()->write_version(), &uri));
-  uri = URI(uri.to_string() + constants::meta_file_suffix);
+  auto write_version = array.array_schema_latest().write_version();
+  auto&& [st, name] = compute_new_fragment_name(first, last, write_version);
+  RETURN_NOT_OK(st);
+
+  auto& array_dir = array.array_directory();
+  auto frag_md_uri = array_dir.get_fragment_metadata_dir(write_version);
+  RETURN_NOT_OK(storage_manager_->vfs()->create_dir(frag_md_uri));
+  uri =
+      URI(frag_md_uri.to_string() + name.value() + constants::meta_file_suffix);
 
   // Get the consolidated fragment metadata version
   auto meta_name = uri.remove_trailing_slash().last_path_part();
@@ -487,6 +502,7 @@ Status Consolidator::consolidate_fragment_meta(
       buff.data(),
       buff.size());
   buff.disown_data();
+
   GenericTileIO tile_io(storage_manager_, uri);
   uint64_t nbytes = 0;
   RETURN_NOT_OK_ELSE(
@@ -528,22 +544,22 @@ Status Consolidator::copy_array(
 }
 
 Status Consolidator::create_buffers(
-    const ArraySchema* array_schema,
+    const ArraySchema& array_schema,
     std::vector<ByteVec>* buffers,
     std::vector<uint64_t>* buffer_sizes) {
   auto timer_se = stats_->start_timer("consolidate_create_buffers");
 
   // For easy reference
-  auto attribute_num = array_schema->attribute_num();
-  auto domain = array_schema->domain();
-  auto dim_num = array_schema->dim_num();
-  auto sparse = !array_schema->dense();
+  auto attribute_num = array_schema.attribute_num();
+  auto domain = array_schema.domain();
+  auto dim_num = array_schema.dim_num();
+  auto sparse = !array_schema.dense();
 
   // Calculate number of buffers
   size_t buffer_num = 0;
   for (unsigned i = 0; i < attribute_num; ++i) {
-    buffer_num += (array_schema->attributes()[i]->var_size()) ? 2 : 1;
-    buffer_num += (array_schema->attributes()[i]->nullable()) ? 1 : 0;
+    buffer_num += (array_schema.attributes()[i]->var_size()) ? 2 : 1;
+    buffer_num += (array_schema.attributes()[i]->nullable()) ? 1 : 0;
   }
   if (sparse) {
     for (unsigned i = 0; i < dim_num; ++i)
@@ -583,41 +599,42 @@ Status Consolidator::create_queries(
 
   // Refactored reader optimizes for no subarray.
   if (!config_.use_refactored_reader_ ||
-      array_for_reads->array_schema_latest()->dense())
+      array_for_reads->array_schema_latest().dense())
     RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
   auto first = (*query_r)->first_fragment_uri();
   auto last = (*query_r)->last_fragment_uri();
 
-  RETURN_NOT_OK(compute_new_fragment_uri(
-      first,
-      last,
-      array_for_reads->array_schema_latest()->write_version(),
-      new_fragment_uri));
+  auto write_version = array_for_reads->array_schema_latest().write_version();
+  auto&& [st, name] = compute_new_fragment_name(first, last, write_version);
+  RETURN_NOT_OK(st);
+  auto frag_uri =
+      array_for_reads->array_directory().get_fragments_dir(write_version);
+  *new_fragment_uri = frag_uri.join_path(name.value());
 
   // Create write query
   *query_w =
       tdb_new(Query, storage_manager_, array_for_writes, *new_fragment_uri);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->disable_check_global_order());
-  if (array_for_reads->array_schema_latest()->dense())
+  if (array_for_reads->array_schema_latest().dense())
     RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
 
   return Status::Ok();
 }
 
 Status Consolidator::compute_next_to_consolidate(
-    const ArraySchema* array_schema,
+    const ArraySchema& array_schema,
     const FragmentInfo& fragment_info,
     std::vector<TimestampedURI>* to_consolidate,
     NDRange* union_non_empty_domains) const {
   auto timer_se = stats_->start_timer("consolidate_compute_next");
 
   // Preparation
-  auto sparse = !array_schema->dense();
+  auto sparse = !array_schema.dense();
   const auto& fragments = fragment_info.single_fragment_info_vec();
-  auto domain = array_schema->domain();
+  auto domain = array_schema.domain();
   to_consolidate->clear();
   auto min = config_.min_frags_;
   min = (uint32_t)((min > fragments.size()) ? fragments.size() : min);
@@ -724,40 +741,37 @@ Status Consolidator::compute_next_to_consolidate(
   return Status::Ok();
 }
 
-Status Consolidator::compute_new_fragment_uri(
-    const URI& first,
-    const URI& last,
-    uint32_t format_version,
-    URI* new_uri) const {
+tuple<Status, optional<std::string>> Consolidator::compute_new_fragment_name(
+    const URI& first, const URI& last, uint32_t format_version) const {
   // Get uuid
   std::string uuid;
-  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);
 
   // For creating the new fragment URI
 
   // Get timestamp ranges
   std::pair<uint64_t, uint64_t> t_first, t_last;
-  RETURN_NOT_OK(utils::parse::get_timestamp_range(first, &t_first));
-  RETURN_NOT_OK(utils::parse::get_timestamp_range(last, &t_last));
+  RETURN_NOT_OK_TUPLE(
+      utils::parse::get_timestamp_range(first, &t_first), nullopt);
+  RETURN_NOT_OK_TUPLE(
+      utils::parse::get_timestamp_range(last, &t_last), nullopt);
 
   // Create new URI
   std::stringstream ss;
-  ss << first.parent().to_string() << "/__" << t_first.first << "_"
-     << t_last.second << "_" << uuid << "_" << format_version;
+  ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
+     << format_version;
 
-  *new_uri = URI(ss.str());
-
-  return Status::Ok();
+  return {Status::Ok(), ss.str()};
 }
 
 Status Consolidator::set_query_buffers(
     Query* query,
     std::vector<ByteVec>* buffers,
     std::vector<uint64_t>* buffer_sizes) const {
-  auto array_schema = query->array_schema();
-  auto dim_num = array_schema->dim_num();
-  auto dense = array_schema->dense();
-  auto attributes = array_schema->attributes();
+  const auto& array_schema = query->array_schema();
+  auto dim_num = array_schema.dim_num();
+  auto dense = array_schema.dense();
+  auto attributes = array_schema.attributes();
   unsigned bid = 0;
   for (const auto& attr : attributes) {
     if (!attr->var_size()) {
@@ -800,7 +814,7 @@ Status Consolidator::set_query_buffers(
   }
   if (!dense) {
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = array_schema->dimension(d);
+      auto dim = array_schema.dimension(d);
       auto dim_name = dim->name();
       if (!dim->var_size()) {
         RETURN_NOT_OK(query->set_data_buffer(
@@ -885,10 +899,8 @@ Status Consolidator::set_config(const Config* config) {
 }
 
 Status Consolidator::write_vacuum_file(
-    const URI& new_uri,
+    const URI& vac_uri,
     const std::vector<TimestampedURI>& to_consolidate) const {
-  URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
-
   std::stringstream ss;
   for (const auto& timestampedURI : to_consolidate)
     ss << timestampedURI.uri_.to_string() << "\n";
