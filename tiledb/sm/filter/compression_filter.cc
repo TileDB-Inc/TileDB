@@ -196,18 +196,6 @@ Status CompressionFilter::get_option_impl(
   }
 }
 
-std::vector<std::string_view> CompressionFilter::create_input_view(
-    const FilterBuffer& input, const std::vector<uint64_t>& input_offsets) {
-  auto input_buf = static_cast<const char*>(input.buffers()[0].data());
-  std::vector<std::string_view> input_view(input_offsets.size() - 1);
-
-  for (size_t i = 0; i < input_offsets.size() - 1; i++) {
-    input_view[i] = std::string_view(
-        input_buf + input_offsets[i], input_offsets[i + 1] - input_offsets[i]);
-  }
-  return input_view;
-}
-
 size_t CompressionFilter::calculate_output_metadata_size(
     const Tile& tile,
     const std::vector<ConstBuffer>& data_parts,
@@ -229,9 +217,9 @@ size_t CompressionFilter::calculate_output_metadata_size(
 
 Status CompressionFilter::run_forward(
     const Tile& tile,
+    Tile* const offsets_tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
-    const std::vector<uint64_t>& input_offsets,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   // Easy case: no compression
@@ -258,11 +246,11 @@ Status CompressionFilter::run_forward(
   RETURN_NOT_OK(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
 
   if (compressor_ == Compressor::RLE && datatype_is_string(tile.type()) &&
-      !input_offsets.empty()) {
+      offsets_tile) {
     // String RLE is only allowed on first/single filter
     assert(num_data_parts == 1);
     return compress_var_string_coords(
-        *input, input_offsets, *output, *output_metadata);
+        *input, offsets_tile, *output, *output_metadata);
   }
 
   // Allocate output data
@@ -442,9 +430,29 @@ Status CompressionFilter::decompress_part(
   return st;
 }
 
+std::vector<std::string_view> CompressionFilter::create_input_view(
+    const FilterBuffer& input, Tile* const offsets_tile) {
+  auto input_buf = static_cast<const char*>(input.buffers()[0].data());
+  auto offsets_data = static_cast<uint64_t*>(offsets_tile->data());
+  auto offsets_size = offsets_tile->size() / constants::cell_var_offset_size;
+  std::vector<std::string_view> input_view(offsets_size);
+
+  size_t i = 0;
+  for (i = 0; i < offsets_size - 1; i++) {
+    input_view[i] = std::string_view(
+        input_buf + offsets_data[i], offsets_data[i + 1] - offsets_data[i]);
+  }
+
+  // special case for the last string
+  input_view[i] = std::string_view(
+      input_buf + offsets_data[i], input.size() - offsets_data[i]);
+
+  return input_view;
+}
+
 Status CompressionFilter::compress_var_string_coords(
     const FilterBuffer& input,
-    const std::vector<uint64_t>& input_offsets,
+    Tile* const offsets_tile,
     FilterBuffer& output,
     FilterBuffer& output_metadata) const {
   if (input.num_buffers() != 1) {
@@ -454,7 +462,7 @@ Status CompressionFilter::compress_var_string_coords(
   }
 
   // Construct string view of input
-  auto input_view = create_input_view(input, input_offsets);
+  auto input_view = create_input_view(input, offsets_tile);
 
   // Estimate and allocate output size
   /*

@@ -79,9 +79,9 @@ class Add1InPlace : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
-      const std::vector<uint64_t>& /* input_offsets */,
       FilterBuffer* output_metadata,
       FilterBuffer* output) const override {
     auto input_size = input->size();
@@ -149,9 +149,9 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
-      const std::vector<uint64_t>& /* input_offsets */,
       FilterBuffer* output_metadata,
       FilterBuffer* output) const override {
     auto input_size = input->size();
@@ -241,9 +241,9 @@ class AddNInPlace : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
-      const std::vector<uint64_t>& /* input_offsets */,
       FilterBuffer* output_metadata,
       FilterBuffer* output) const override {
     auto input_size = input->size();
@@ -323,9 +323,9 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
-      const std::vector<uint64_t>& /* input_offsets */,
       FilterBuffer* output_metadata,
       FilterBuffer* output) const override {
     auto input_size = input->size();
@@ -413,9 +413,9 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
-      const std::vector<uint64_t>& /* input_offsets */,
       FilterBuffer* output_metadata,
       FilterBuffer* output) const override {
     auto input_size = static_cast<uint32_t>(input->size()),

@@ -333,20 +333,18 @@ class FilterPipeline {
    * @param chunk_size Target chunk size.
    * @param tile Var tile.
    * @param offsets_tile Offsets tile.
-   * @param chunking True if the tile is filtered in chunks
    * @return Status, chunk offsets vector.
    */
-
   tuple<Status, optional<std::vector<uint64_t>>> get_var_chunk_sizes(
       uint32_t chunk_size,
       Tile* const tile,
-      Tile* const offsets_tile,
-      bool chunking) const;
+      Tile* const offsets_tile) const;
 
   /**
    * Run the given buffer forward through the pipeline.
    *
-   * @param tile Current tile on which the filter pipeline is being run
+   * @param tile Current tile on which the filter pipeline is being run.
+   * @param offsets_tile Current offsets tile for var sized attributes.
    * @param input buffer to process.
    * @param chunk_size chunk size.
    * @param chunk_offsets chunk offsets computed for var sized attributes.
@@ -357,6 +355,7 @@ class FilterPipeline {
    */
   Status filter_chunks_forward(
       const Tile& tile,
+      Tile* const offsets_tile,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,
       FilteredBuffer& output,

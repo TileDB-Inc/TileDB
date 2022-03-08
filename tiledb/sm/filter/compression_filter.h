@@ -107,9 +107,9 @@ class CompressionFilter : public Filter {
    */
   Status run_forward(
       const Tile& tile,
+      Tile* const tile_offsets,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
-      const std::vector<uint64_t>& input_offsets,
       FilterBuffer* output_metadata,
       FilterBuffer* output) const override;
 
@@ -190,7 +190,7 @@ class CompressionFilter : public Filter {
    */
   Status compress_var_string_coords(
       const FilterBuffer& input,
-      const std::vector<uint64_t>& input_offsets,
+      Tile* const offsets_tile,
       FilterBuffer& output,
       FilterBuffer& output_metadata) const;
 
@@ -226,7 +226,7 @@ class CompressionFilter : public Filter {
 
   /** Creates a vector of views of the input strings */
   static std::vector<std::string_view> create_input_view(
-      const FilterBuffer& input, const std::vector<uint64_t>& input_offsets);
+      const FilterBuffer& input, Tile* const offsets_tile);
 };
 
 }  // namespace sm

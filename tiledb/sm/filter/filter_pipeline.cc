@@ -97,10 +97,7 @@ void FilterPipeline::clear() {
 
 tuple<Status, optional<std::vector<uint64_t>>>
 FilterPipeline::get_var_chunk_sizes(
-    uint32_t chunk_size,
-    Tile* const tile,
-    Tile* const offsets_tile,
-    bool chunking) const {
+    uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const {
   std::vector<uint64_t> chunk_offsets;
   if (offsets_tile != nullptr) {
     uint64_t num_offsets =
@@ -117,7 +114,7 @@ FilterPipeline::get_var_chunk_sizes(
 
       // Time for a new chunk?
       auto new_size = current_size + cell_size;
-      if (new_size > chunk_size || !chunking) {
+      if (new_size > chunk_size) {
         // Do we add this cell to this chunk?
         if (current_size <= min_size || new_size <= max_size) {
           if (new_size > std::numeric_limits<uint32_t>::max()) {
@@ -156,6 +153,7 @@ FilterPipeline::get_var_chunk_sizes(
 
 Status FilterPipeline::filter_chunks_forward(
     const Tile& tile,
+    Tile* const offsets_tile,
     uint32_t chunk_size,
     std::vector<uint64_t>& chunk_offsets,
     FilteredBuffer& output,
@@ -216,9 +214,9 @@ Status FilterPipeline::filter_chunks_forward(
 
       RETURN_NOT_OK(f->run_forward(
           tile,
+          offsets_tile,
           &input_metadata,
           &input_data,
-          chunk_offsets,
           &output_metadata,
           &output_data));
 
@@ -451,7 +449,7 @@ Status FilterPipeline::run_forward(
 
   // Get the chunk sizes for var size attributes.
   auto&& [st, chunk_offsets] =
-      get_var_chunk_sizes(chunk_size, tile, offsets_tile, use_chunking);
+      get_var_chunk_sizes(chunk_size, tile, offsets_tile);
   RETURN_NOT_OK_ELSE(st, tile->filtered_buffer().clear());
 
   // Run the filters over all the chunks and store the result in
@@ -459,6 +457,7 @@ Status FilterPipeline::run_forward(
   RETURN_NOT_OK_ELSE(
       filter_chunks_forward(
           *tile,
+          offsets_tile,
           chunk_size,
           *chunk_offsets,
           tile->filtered_buffer(),

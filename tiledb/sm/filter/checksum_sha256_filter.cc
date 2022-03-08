@@ -62,9 +62,9 @@ void ChecksumSHA256Filter::dump(FILE* out) const {
 
 Status ChecksumSHA256Filter::run_forward(
     const Tile&,
+    Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
-    const std::vector<uint64_t>& /* input_offsets */,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   // Set output buffer to input buffer

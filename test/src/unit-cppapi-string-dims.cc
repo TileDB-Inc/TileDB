@@ -1452,15 +1452,16 @@ TEST_CASE(
 
   // Create data buffer to use
   std::stringstream repetitions;
-  size_t repetition_num = 100000;
+  size_t repetition_num = 100;
   for (size_t i = 0; i < repetition_num; i++)
-    repetitions << "GC";
-  std::string data = "AT" + std::string(repetitions.str()) + "TG";
+    repetitions << "GLSD987JHY";
+  std::string data =
+      "ATSD987JIO" + std::string(repetitions.str()) + "TGSD987JPO";
   // Create the corresponding offsets buffer
   std::vector<uint64_t> data_elem_offsets(repetition_num + 2);
-  int start = -2;
+  int start = -10;
   std::generate(data_elem_offsets.begin(), data_elem_offsets.end(), [&] {
-    return start += 2;
+    return start += 10;
   });
 
   {
@@ -1505,7 +1506,8 @@ TEST_CASE(
 
     auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    query.add_range("dim1", std::string("AT"), std::string("TG"));
+    query.add_range(
+        "dim1", std::string("ATSD987JIO"), std::string("TGSD987JPO"));
     query.set_data_buffer("dim1", (char*)data_back.data(), data_back.size());
     query.set_offsets_buffer("dim1", offsets_back.data(), offsets_back.size());
 

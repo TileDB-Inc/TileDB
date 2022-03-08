@@ -79,9 +79,9 @@ class ByteshuffleFilter : public Filter {
    */
   Status run_forward(
       const Tile& tile,
+      Tile* const tile_offsets,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
-      const std::vector<uint64_t>& input_offsets,
       FilterBuffer* output_metadata,
       FilterBuffer* output) const override;
 

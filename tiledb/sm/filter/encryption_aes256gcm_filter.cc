@@ -72,9 +72,9 @@ void EncryptionAES256GCMFilter::dump(FILE* out) const {
 
 Status EncryptionAES256GCMFilter::run_forward(
     const Tile&,
+    Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
-    const std::vector<uint64_t>& /* input_offsets */,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   if (key_bytes_ == nullptr)
