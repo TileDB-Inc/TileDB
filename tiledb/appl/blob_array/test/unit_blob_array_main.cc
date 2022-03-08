@@ -54,6 +54,7 @@
 
 #include "tiledb/sm/global_state/unit_test_config.h"
 
+#define TILEDB_NO_API_DEPRECATION_WARNINGS 1
 #include "test/src/vfs_helpers.h"
 
 using namespace tiledb::common;

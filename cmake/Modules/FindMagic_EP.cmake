@@ -65,7 +65,7 @@ if (NOT libmagic_FOUND)
   find_library(libmagic_LIBRARIES
     magic
     PATHS ${LIBMAGIC_PATHS}
-    PATH_SUFFIXES lib
+    PATH_SUFFIXES lib a
     ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 
