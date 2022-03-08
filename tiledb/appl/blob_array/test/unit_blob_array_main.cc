@@ -31,6 +31,7 @@
  * independent compilation away from any larger test suite.
  */
 
+#define TILEDB_NO_API_DEPRECATION_WARNINGS 1
 #define CATCH_CONFIG_MAIN
 #include "unit_blob_array.h"  // covers blob_array_schema as well
 
@@ -53,7 +54,6 @@
 
 #include "tiledb/sm/global_state/unit_test_config.h"
 
-#define TILEDB_NO_API_DEPRECATION_WARNINGS 1
 #include "test/src/vfs_helpers.h"
 
 using namespace tiledb::common;
