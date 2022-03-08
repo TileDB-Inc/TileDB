@@ -57,8 +57,7 @@ namespace appl {
 BlobArray::BlobArray(const URI& array_uri, StorageManager* storage_manager)
     : Array(array_uri, storage_manager)
     //, blob_array_schema_() {
-    , blob_array_schema_sp_(
-          tdb::make_shared<BlobArraySchema>(HERE()))
+    , blob_array_schema_sp_(tdb::make_shared<BlobArraySchema>(HERE()))
     , blob_array_schema_(*(blob_array_schema_sp_.get())) {
   // We want to default these incase the user doesn't set it.
   // This is required for writes to the query and the metadata get the same

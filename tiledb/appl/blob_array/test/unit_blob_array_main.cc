@@ -79,7 +79,6 @@ struct BlobArrayFx {
 
   // Vector of supported filesystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
-  //const std::vector<tdb_unique_ptr<SupportedFs>> fs_vec_;
 
   // Encryption parameters
   // tiledb_encryption_type_t encryption_type_ = TILEDB_NO_ENCRYPTION;
