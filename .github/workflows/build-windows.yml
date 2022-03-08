@@ -213,11 +213,11 @@ jobs:
           # CMake exits with non-0 status if there are any warnings during the build, so
           cmake --build $env:BUILD_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
 
+          cmd /c "dir $env:BUILD_BUILDDIRECTORY"
+          cmd /c "dir $env:BUILD_BUILDDIRECTORY\magic.mgc /s"
           if( ($env:MAGIC + "X") -eq "X") {
-            if(Test-Path ".\externals\install\bin\magic.mgc") {
-              $curDir = Get-Location
-              write-host "curdir is $CurDir"
-              $pathToMagic = $curDir.tostring() + "/externals/install/bin/magic.mgc"
+            if(Test-Path "$env:BUILD_BUILDDIRECTORY/externals/install/bin/magic.mgc") {
+              $pathToMagic = $env:BUILD_BUILDDIRECTORY + "/externals/install/bin/magic.mgc"
               write-host "magic.mgc @ $pathToMagic"
               $env:MAGIC = $pathToMagic
             }
