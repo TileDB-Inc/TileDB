@@ -25,7 +25,11 @@ jobs:
         run: |
           cd ${GITHUB_WORKSPACE}/.github/workflows/mingw-w64-tiledb
           pacman -Sy
-          find / -name '*regex*'
+          if [[ $(find / -name '*regex*') ]] ; then
+            find / -name '*regex*'
+          else
+            echo 'unable to find *regex*'
+          fi
           makepkg-mingw --noconfirm --syncdeps
         env:
           TILEDB_HOME: ${{ github.workspace }}
