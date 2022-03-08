@@ -141,7 +141,7 @@ void BlobArrayFx::create_temp_dir(const std::string& path) const {
   win_fs.create_dir(path);
 #else
   tiledb::sm::Posix posix_fs;
-  posix.create_dir(path);
+  posix_fs.create_dir(path);
 #endif
 }
 
