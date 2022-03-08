@@ -1,3 +1,10 @@
+# TileDB v2.6.4 Release Notes
+
+## Bug fixes
+
+* Sparse unordered w/ dups reader: all empty string attribute fix. [#2874](https://github.com/TileDB-Inc/TileDB/pull/2874)
+* Update Location of Zlib Download URL [#2945](https://github.com/TileDB-Inc/TileDB/pull/2945)
+
 # TileDB v2.6.3 Release Notes
 
 ## Bug fixes
