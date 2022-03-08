@@ -197,6 +197,17 @@ jobs:
             git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.5.0 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
           }
 
+          if( ($env:MAGIC + "X") -eq "X") {
+            if(Test-Path ".\externals\install\bin\magic.mgc") {
+              $curDir = Get-Location
+              write-host "curdir is $CurDir"
+              $pathToMagic = $curDir.tostring() + "/externals/install/bin/magic.mgc"
+              write-host "magic.mgc @ $pathToMagic"
+              $env:MAGIC = $pathToMagic
+            }
+          }
+          write-host "magic env var is $env:MAGIC"
+
           if ($env:TILEDB_S3 -eq "ON") {
             $env:MINIO_ACCESS_KEY = "minio"
             $env:MINIO_SECRET_KEY = "miniosecretkey"
