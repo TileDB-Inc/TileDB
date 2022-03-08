@@ -35,6 +35,7 @@
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/path_win.h"
 #include "tiledb/sm/filesystem/vfs.h"
@@ -245,7 +246,8 @@ TEST_CASE_METHOD(
     FileFx,
     "C API: Test blob_array save and export from uri",
     "[capi][tiledb_array_file][basic]") {
-  std::string temp_dir = fs_vec_[0]->temp_dir();
+  std::string remote_temp_dir = fs_vec_[0]->temp_dir();
+  std::string temp_dir = localfs_temp_dir_;
 
   std::cout << "C API: Test blob_array save and export from uri" << std::endl;
 
@@ -253,7 +255,7 @@ TEST_CASE_METHOD(
   std::cout << "localfs_temp_dir_" << localfs_temp_dir_ << std::endl;
 
   std::string base_array_name = "blob_array_test_create";
-  std::string array_name = temp_dir + base_array_name;
+  std::string array_name = remote_temp_dir + base_array_name;
   std::string output_path = localfs_temp_dir_ + "out";
   std::string output_pathB = localfs_temp_dir_ + "outB";
   SECTION("- without encryption") {
@@ -338,6 +340,7 @@ TEST_CASE_METHOD(
   REQUIRE(exported_file_size == original_file_size);
 
   auto show_dir = [&](std::string path) {
+#if 0
     std::stringstream ls_cmd;
 #ifdef _WIN32
     ls_cmd << "dir " << path;
@@ -348,6 +351,17 @@ TEST_CASE_METHOD(
     if (system(ls_cmd.str().c_str()))  // (void) wasn't working to 'ignore
                                        // unused reuslt'
       do_nothing();
+#else
+    std::vector<tiledb::sm::URI> filelist;
+    tiledb::sm::URI uri_path(path);
+    vfs_->vfs_->ls(uri_path, &filelist);
+    std::cout << "path " << path << ", nitems " << filelist.size() << std::endl;
+    for (auto afile : filelist) {
+      uint64_t fsize = 0;
+      vfs_->vfs_->file_size(afile, &fsize);
+      std::cout << afile.to_path() << " " << fsize << std::endl;
+    }
+#endif
   };
   auto show_dirs = [&]() -> void {
     show_dir(temp_dir);
@@ -386,6 +400,7 @@ TEST_CASE_METHOD(
     CHECK(result);
 
     if (!result) {
+      std::cout << "cmp " << file1 << "," << file2 << "different." << std::endl;
       show_dirs();
     }
     return result;
