@@ -271,7 +271,11 @@ Status BlobArray::export_to_vfs_fh(
       return Status::Ok();
     }
     uint64_t buffer_size = *ptr_file_size;
+
+    // VVVVVVVVVVVVVVV
+    // TBD: REMOVEME:
     std::cout << "***buffer_size returned " << buffer_size << std::endl;
+    // ^^^^^^^^^^^^^^^
     Buffer data;
     data.realloc(buffer_size);
 

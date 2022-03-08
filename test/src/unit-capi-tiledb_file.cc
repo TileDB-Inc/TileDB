@@ -136,7 +136,8 @@ TEST_CASE_METHOD(
     "[capi][tiledb_array_file][basic]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
-  std::string array_name = temp_dir + "blob_array_test_create";
+  std::string base_array_name = "blob_array_test_create";
+  std::string array_name = temp_dir + base_array_name;
 
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
@@ -181,7 +182,6 @@ TEST_CASE_METHOD(
     tiledb_config_free(&cfg);
   }
   remove_temp_dir(array_name);
-  // tiledb_file_free(&file);
 }
 
 TEST_CASE_METHOD(
@@ -190,7 +190,8 @@ TEST_CASE_METHOD(
     "[capi][tiledb_array_file][basic]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
-  std::string array_name = temp_dir + "blob_array_test_create";
+  std::string base_array_name = "blob_array_test_create";
+  std::string array_name = temp_dir + base_array_name;
 
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
@@ -246,7 +247,13 @@ TEST_CASE_METHOD(
     "[capi][tiledb_array_file][basic]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
-  std::string array_name = temp_dir + "blob_array_test_create";
+  std::cout << "C API: Test blob_array save and export from uri" << std::endl;
+
+  std::cout << "temp_dir " << temp_dir << std::endl;
+  std::cout << "localfs_temp_dir_" << localfs_temp_dir_ << std::endl;
+
+  std::string base_array_name = "blob_array_test_create";
+  std::string array_name = temp_dir + base_array_name;
   std::string output_path = localfs_temp_dir_ + "out";
   std::string output_pathB = localfs_temp_dir_ + "outB";
   SECTION("- without encryption") {
@@ -330,25 +337,58 @@ TEST_CASE_METHOD(
 
   REQUIRE(exported_file_size == original_file_size);
 
+  auto show_dir = [&](std::string path) {
+    std::stringstream ls_cmd;
+#ifdef _WIN32
+    ls_cmd << "dir " << path;
+#else
+    ls_cmd << "ls -l " << path;
+#endif
+    auto do_nothing = []() { return; };
+    if (system(ls_cmd.str().c_str()))  // (void) wasn't working to 'ignore
+                                       // unused reuslt'
+      do_nothing();
+  };
+  auto show_dirs = [&]() -> void {
+    show_dir(temp_dir);
+    show_dir(localfs_temp_dir_);
+    show_dir(array_name);
+#if _WIN32
+    auto separator = "\\";
+#else
+    auto separator = "/";
+#endif
+    std::cout << "...__fragments..." << std::endl;
+    show_dir(array_name + separator + "__fragments");
+    std::cout << "...__meta..." << std::endl;
+    show_dir(array_name + separator + "__meta");
+  };
   // compare actual contents for equality
   auto cmp_files_check = [&](const std::string& file1,
-                             const std::string& file2) {
-    std::stringstream cmpfilescmd;
+                             const std::string& file2) -> bool {
+    std::stringstream cmp_files_cmd;
 #ifdef _WIN32
     // 'FC' does not like forward slashes
-    cmpfilescmd << "FC "
-                << tiledb::sm::path_win::slashes_to_backslashes(
-                       // tiledb::sm::path_win::path_from_uri(csv_path))
-                       tiledb::sm::path_win::path_from_uri(file1))
-                << " "
-                << tiledb::sm::path_win::slashes_to_backslashes(
-                       tiledb::sm::path_win::path_from_uri(file2))
-                << " > nul";
+    cmp_files_cmd << "FC "
+                  << tiledb::sm::path_win::slashes_to_backslashes(
+                         // tiledb::sm::path_win::path_from_uri(csv_path))
+                         tiledb::sm::path_win::path_from_uri(file1))
+                  << " "
+                  << tiledb::sm::path_win::slashes_to_backslashes(
+                         tiledb::sm::path_win::path_from_uri(file2))
+                  << " > nul";
 #else
     // tiledb::sm::VFS::abs_path(output_path) << " > nul";
-    cmpfilescmd << "diff " << file1 << " " << file2 << " > nul";
+    cmp_files_cmd << "diff " << file1 << " " << file2 << " > nul";
 #endif
-    CHECK(!system(cmpfilescmd.str().c_str()));
+    // auto result = !system(cmpfilescmd.str().c_str());
+    auto result = system(cmp_files_cmd.str().c_str()) == 0;
+    CHECK(result);
+
+    if (!result) {
+      show_dirs();
+    }
+    return result;
   };
   cmp_files_check(csv_path, output_path);
 
@@ -398,6 +438,7 @@ TEST_CASE_METHOD(
       CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
       CHECK(is_array_open == 0);
     }
+    show_dirs();
     CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
     CHECK(is_array2_open == 0);
     CHECK(
@@ -431,6 +472,7 @@ TEST_CASE_METHOD(
       CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
       CHECK(is_array2_open == 0);
     }
+    show_dirs();
 
     // compare all exports above to original source files
     for (auto i = 0; i < n_outfiles; ++i) {
@@ -453,6 +495,7 @@ TEST_CASE_METHOD(
       CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
       CHECK(is_array_open == 0);
     }
+    show_dirs();
     CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
     CHECK(is_array2_open == 0);
     CHECK(
@@ -482,6 +525,7 @@ TEST_CASE_METHOD(
       CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
       CHECK(is_array2_open == 0);
     }
+    show_dirs();
 
     // compare all exports above to original source files
     // (direction irrelevant for this)
@@ -493,6 +537,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_array_free(&array2);
 
-  remove_temp_dir(array_name);
-  remove_temp_dir(output_path);
+  // TBD: REINSTATE ME!
+  //  remove_temp_dir(array_name);
+  //  remove_temp_dir(output_path);
 }
