@@ -29,6 +29,7 @@ jobs:
           fetch-depth: 1
       - name: Building TileDB with Rtools40
         run: |
+          set -x
           cd ${GITHUB_WORKSPACE}/.github/workflows/mingw-w64-tiledb
           pacman -Sy
           echo 'pacman -Q...'
