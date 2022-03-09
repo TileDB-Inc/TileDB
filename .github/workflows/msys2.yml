@@ -42,7 +42,12 @@ jobs:
           echo 'pacman -Ss regex...'
           pacman -Ss regex
           echo 'pacman -Fx regex...'
-          pacman -Fx regex
+          if [[ $(pacman -Fx regex) ]]; then
+            pacman -Fx regex
+            echo 'success? pacman -Fx regex'
+          else
+            echo 'failed, pacman -Fx regex'
+          fi
           echo 'mount...'
           mount
           echo 'find *regex*'
