@@ -30,17 +30,18 @@ jobs:
       - name: Building TileDB with Rtools40
         run: |
           cd ${GITHUB_WORKSPACE}/.github/workflows/mingw-w64-tiledb
+          pacman -Sy
           echo 'pacman -Q...'
           pacman -Q
           echo 'pacman -Qe...'
           pacman -Qe
           echo 'pacman -Ss regex...'
           pacman -Ss regex
-          pacman -Sy
           echo 'mount...'
           mount
+          echo 'find *regex*'
           if [[ $(find / -name '*regex*') ]] ; then
-            find / -name '*regex*'
+            echo 'found *regex*'
           else
             echo 'unable to find *regex*'
           fi

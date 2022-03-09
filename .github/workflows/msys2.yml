@@ -41,6 +41,14 @@ jobs:
           pacman -Qe
           echo 'pacman -Ss regex...'
           pacman -Ss regex
+          echo 'mount...'
+          mount
+          echo 'find *regex*'
+          if [[ $(find / -name '*regex*') ]] ; then
+            echo ' found *regex*'
+          else
+            echo 'unable to find *regex*'
+          fi
           makepkg-mingw --noconfirm --syncdeps
         env:
           PKGEXT: ".pkg.tar.xz"
