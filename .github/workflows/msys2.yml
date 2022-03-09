@@ -34,6 +34,7 @@ jobs:
           update: true
       - name: Building TileDB
         run: | # cd .github/workflows/mingw-w64-tiledb && makepkg-mingw --noconfirm --syncdeps
+          set -x
           cd .github/workflows/mingw-w64-tiledb
           echo 'pacman -Q...'
           pacman -Q
