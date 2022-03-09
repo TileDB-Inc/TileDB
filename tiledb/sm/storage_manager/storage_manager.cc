@@ -1401,19 +1401,27 @@ void StorageManager::increment_in_progress() {
 }
 
 Status StorageManager::is_array(const URI& uri, bool* is_array) const {
-  // Check if the schema directory exists or not
-  bool is_dir = false;
-  // Since is_dir could return NOT Ok status, we will not use RETURN_NOT_OK here
-  Status st =
-      vfs_->is_dir(uri.join_path(constants::array_schema_dir_name), &is_dir);
-  if (st.ok() && is_dir) {
-    *is_array = true;
-    return Status::Ok();
-  }
+  // Handle remote array
+  if (uri.is_tiledb()) {
+    auto&& [st, exists] = rest_client_->check_array_exists_from_rest(uri);
+    RETURN_NOT_OK(st);
+    *is_array = *exists;
+  } else {
+    // Check if the schema directory exists or not
+    bool is_dir = false;
+    // Since is_dir could return NOT Ok status, we will not use RETURN_NOT_OK
+    // here
+    Status st =
+        vfs_->is_dir(uri.join_path(constants::array_schema_dir_name), &is_dir);
+    if (st.ok() && is_dir) {
+      *is_array = true;
+      return Status::Ok();
+    }
 
-  // If there is no schema directory, we check schema file
-  RETURN_NOT_OK(
-      vfs_->is_file(uri.join_path(constants::array_schema_filename), is_array));
+    // If there is no schema directory, we check schema file
+    RETURN_NOT_OK(vfs_->is_file(
+        uri.join_path(constants::array_schema_filename), is_array));
+  }
   return Status::Ok();
 }
 
@@ -1423,8 +1431,15 @@ Status StorageManager::is_file(const URI& uri, bool* is_file) const {
 }
 
 Status StorageManager::is_group(const URI& uri, bool* is_group) const {
-  RETURN_NOT_OK(
-      vfs_->is_file(uri.join_path(constants::group_filename), is_group));
+  // Handle remote array
+  if (uri.is_tiledb()) {
+    auto&& [st, exists] = rest_client_->check_group_exists_from_rest(uri);
+    RETURN_NOT_OK(st);
+    *is_group = *exists;
+  } else {
+    RETURN_NOT_OK(
+        vfs_->is_file(uri.join_path(constants::group_filename), is_group));
+  }
   return Status::Ok();
 }
 
@@ -1641,6 +1656,22 @@ Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
     auto uri_str = uri.to_string();
     dir_uri =
         URI(utils::parse::ends_with(uri_str, "/") ? uri_str : (uri_str + "/"));
+  } else if (uri.is_tiledb()) {
+    bool exists = false;
+    RETURN_NOT_OK(is_array(uri, &exists));
+    if (exists) {
+      *type = ObjectType::ARRAY;
+      return Status::Ok();
+    }
+
+    RETURN_NOT_OK(is_group(uri, &exists));
+    if (exists) {
+      *type = ObjectType::GROUP;
+      return Status::Ok();
+    }
+
+    *type = ObjectType::INVALID;
+    return Status::Ok();
   } else {
     // For non public cloud backends, listing a non-directory is an error.
     bool is_dir = false;
