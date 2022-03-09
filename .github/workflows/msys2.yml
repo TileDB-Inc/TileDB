@@ -41,10 +41,13 @@ jobs:
           pacman -Qe
           echo 'pacman -Ss regex...'
           pacman -Ss regex
+          echo 'pacman -Fx regex...'
+          pacman -Fx regex
           echo 'mount...'
           mount
           echo 'find *regex*'
           if [[ $(find / -name '*regex*') ]] ; then
+            find / -name '*regex*'
             echo ' found *regex*'
           else
             echo 'unable to find *regex*'
