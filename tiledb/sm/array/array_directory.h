@@ -45,11 +45,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+/** Mode for the ArrayDirectory class. */
 enum class ArrayDirectoryMode {
-  DEFAULT,
-  SCHEMA_ONLY,
-  COMMITS,
-  VACUUM_FRAGMENTS
+  READ,             // Read mode.
+  SCHEMA_ONLY,      // Used when we only load schemas.
+  COMMITS,          // Used for opening the array directory for commits
+                    // consolidation or vacuuming.
+  VACUUM_FRAGMENTS  // Used when opening the array for fragment vacuuming.
 };
 
 /**
@@ -87,7 +89,7 @@ class ArrayDirectory {
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
-      ArrayDirectoryMode mode = ArrayDirectoryMode::DEFAULT);
+      ArrayDirectoryMode mode = ArrayDirectoryMode::READ);
 
   /** Destructor. */
   ~ArrayDirectory() = default;
@@ -112,10 +114,10 @@ class ArrayDirectory {
   const std::vector<URI>& array_meta_vac_uris_to_vacuum() const;
 
   /** Returns the URIs of the commit files to consolidate. */
-  const std::vector<URI>& commits_uris_to_consolidate() const;
+  const std::vector<URI>& commit_uris_to_consolidate() const;
 
   /** Returns the URIs of the commit files to vacuum. */
-  const std::vector<URI>& commits_uris_to_vacuum() const;
+  const std::vector<URI>& commit_uris_to_vacuum() const;
 
   /** Returns the URIs of the consolidated commit files to vacuum. */
   const std::vector<URI>& consolidated_commits_uris_to_vacuum() const;
@@ -130,7 +132,7 @@ class ArrayDirectory {
   const std::vector<URI>& fragment_commit_uris_to_vacuum() const;
 
   /** Returns the commit URIs to ignore for fragment vacuuming. */
-  const std::vector<URI>& fragment_commit_uris_to_ignore() const;
+  const std::vector<URI>& commit_uris_to_ignore() const;
 
   /** Returns the vacuum file URIs to vacuum for fragments. */
   const std::vector<URI>& fragment_vac_uris_to_vacuum() const;
@@ -196,10 +198,10 @@ class ArrayDirectory {
   std::vector<URI> array_meta_vac_uris_to_vacuum_;
 
   /** The URIs of the commits files to consolidate. */
-  std::vector<URI> commits_uris_to_consolidate_;
+  std::vector<URI> commit_uris_to_consolidate_;
 
   /** The URIs of the commits files to vacuum. */
-  std::vector<URI> commits_uris_to_vacuum_;
+  std::vector<URI> commit_uris_to_vacuum_;
 
   /** The URIs of the consolidated commits files to vacuum. */
   std::vector<URI> consolidated_commits_uris_to_vacuum_;
@@ -214,11 +216,8 @@ class ArrayDirectory {
   /** The fragment URIs to vacuum. */
   std::vector<URI> fragment_uris_to_vacuum_;
 
-  /** The commit URIs to vacuum. */
-  std::vector<URI> fragment_commit_uris_to_vacuum_;
-
   /** The commit URIs to ignore after fragment vacuum. */
-  std::vector<URI> fragment_commit_uris_to_ignore_;
+  std::vector<URI> commit_uris_to_ignore_;
 
   /** The URIs of the fragment vac files to vacuum. */
   std::vector<URI> fragment_vac_uris_to_vacuum_;
@@ -279,7 +278,8 @@ class ArrayDirectory {
    *
    * @return Status, vector of fragment URIs, latest fragment metadata.
    */
-  tuple<Status, optional<std::vector<URI>>, optional<URI>> load_root_dir_uris(
+  tuple<Status, optional<std::vector<URI>>, optional<URI>>
+  load_root_dir_uris_v1_v11(
       const std::vector<URI>& root_dir_uris,
       const std::unordered_set<std::string>& consolidated_uris_set);
 
@@ -295,7 +295,7 @@ class ArrayDirectory {
    *
    * @return Status, vector of fragment URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> load_commits_dir_uris(
+  tuple<Status, optional<std::vector<URI>>> load_commits_dir_uris_v12_or_higher(
       const std::vector<URI>& commits_dir_uris,
       const std::vector<URI>& consolidated_uris,
       const std::unordered_set<std::string>& consolidated_uris_set);
@@ -305,7 +305,7 @@ class ArrayDirectory {
    *
    * @return Status, latest fragment metadata.
    */
-  tuple<Status, optional<URI>> load_fragment_metadata_dir_uris();
+  tuple<Status, optional<URI>> load_fragment_metadata_dir_uris_v12_or_higher();
 
   /**
    * Loads the commits URIs to consolidate.
@@ -317,7 +317,8 @@ class ArrayDirectory {
       const std::unordered_set<std::string>& consolidated_uris_set);
 
   /**
-   * Loads the consolidated commit URI from the commit directory.
+   * Loads the consolidated commit URI from the commit directory and the files
+   * to vacuum for the commits directory.
    *
    * @return Status, consolidated uris, set of all consolidated uris.
    */
@@ -398,7 +399,7 @@ class ArrayDirectory {
    */
   Status is_fragment(
       const URI& uri,
-      const std::unordered_set<std::string>& ok_uris,
+      const std::unordered_set<std::string>& ok_uris_set,
       const std::unordered_set<std::string>& consolidated_uris_set,
       int32_t* is_fragment) const;
 };

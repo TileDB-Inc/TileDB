@@ -218,7 +218,7 @@ Status Consolidator::consolidate_commits(
   }
 
   // Get the file name.
-  auto& to_consolidate = array_dir.commits_uris_to_consolidate();
+  auto& to_consolidate = array_dir.commit_uris_to_consolidate();
   auto&& [st1, name] = array_dir.compute_new_fragment_name(
       to_consolidate.front(), to_consolidate.back(), write_version);
   RETURN_NOT_OK(st1);
@@ -233,7 +233,7 @@ Status Consolidator::consolidate_commits(
   auto data = ss.str();
   URI consolidated_commits_uri =
       array_dir.get_commits_dir(write_version)
-          .join_path(name.value() + constants::commits_file_suffix);
+          .join_path(name.value() + constants::con_commits_file_suffix);
   RETURN_NOT_OK(storage_manager_->vfs()->write(
       consolidated_commits_uri, data.c_str(), data.size()));
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(consolidated_commits_uri));

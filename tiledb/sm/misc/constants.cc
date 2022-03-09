@@ -204,7 +204,7 @@ const std::string write_file_suffix = ".wrt";
 const std::string meta_file_suffix = ".meta";
 
 /** Suffix for the special commits files used in TileDB. */
-const std::string commits_file_suffix = ".con";
+const std::string con_commits_file_suffix = ".con";
 
 /** Suffix for the special ignore files used in TileDB. */
 const std::string ignore_file_suffix = ".ign";

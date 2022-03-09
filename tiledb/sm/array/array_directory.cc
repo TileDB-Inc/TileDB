@@ -91,12 +91,12 @@ const std::vector<URI>& ArrayDirectory::array_meta_vac_uris_to_vacuum() const {
   return array_meta_vac_uris_to_vacuum_;
 }
 
-const std::vector<URI>& ArrayDirectory::commits_uris_to_consolidate() const {
-  return commits_uris_to_consolidate_;
+const std::vector<URI>& ArrayDirectory::commit_uris_to_consolidate() const {
+  return commit_uris_to_consolidate_;
 }
 
-const std::vector<URI>& ArrayDirectory::commits_uris_to_vacuum() const {
-  return commits_uris_to_vacuum_;
+const std::vector<URI>& ArrayDirectory::commit_uris_to_vacuum() const {
+  return commit_uris_to_vacuum_;
 }
 
 const std::vector<URI>& ArrayDirectory::consolidated_commits_uris_to_vacuum()
@@ -116,6 +116,8 @@ Status ArrayDirectory::load() {
   std::vector<URI> commits_dir_uris;
   URI latest_fragment_meta_uri_v12_or_higher;
 
+  // Lists all directories in parallel. Skipping for schema only.
+  // Some processing is also done here for things that don't depend on others.
   if (mode_ != ArrayDirectoryMode::SCHEMA_ONLY) {
     // List (in parallel) the root directory URIs
     tasks.emplace_back(tp_->execute([&]() {
@@ -137,11 +139,13 @@ Status ArrayDirectory::load() {
       return Status::Ok();
     }));
 
+    // For commits mode, no need to load fragment/array metadata as they
+    // are not used for commits consolidation/vacuuming.
     if (mode_ != ArrayDirectoryMode::COMMITS) {
       // Load (in parallel) the fragment metadata directory URIs
       tasks.emplace_back(tp_->execute([&]() {
         auto&& [st, latest_fragment_meta_uri] =
-            load_fragment_metadata_dir_uris();
+            load_fragment_metadata_dir_uris_v12_or_higher();
         RETURN_NOT_OK(st);
         latest_fragment_meta_uri_v12_or_higher =
             std::move(latest_fragment_meta_uri.value());
@@ -155,6 +159,8 @@ Status ArrayDirectory::load() {
     }
   }
 
+  // No need to load array schemas for commits mode as they are not used for
+  // commits consolidation/vacuuming.
   if (mode_ != ArrayDirectoryMode::COMMITS) {
     // Load (in parallel) the array schema URIs
     tasks.emplace_back(
@@ -164,12 +170,16 @@ Status ArrayDirectory::load() {
   // Wait for all tasks to complete
   RETURN_NOT_OK(tp_->wait_all(tasks));
 
+  // Process the rest of the data that has dependencies between each other
+  // sequentially. Again skipping for schema only.
   if (mode_ != ArrayDirectoryMode::SCHEMA_ONLY) {
     // Load consolidated commit URIs.
     auto&& [st1, consolidated_commit_uris, consolidated_commit_uris_set] =
         load_consolidated_commit_uris(commits_dir_uris);
     RETURN_NOT_OK(st1);
 
+    // For consolidation/vacuuming of commits file, we only need to load
+    // the files to be consolidated/vacuumed.
     if (mode_ == ArrayDirectoryMode::COMMITS) {
       load_commits_uris_to_consolidate(
           root_dir_uris,
@@ -179,15 +189,16 @@ Status ArrayDirectory::load() {
     } else {
       // Process root dir.
       auto&& [st2, fragment_uris_v1_v11, latest_fragment_meta_uri_v1_v11] =
-          load_root_dir_uris(
+          load_root_dir_uris_v1_v11(
               root_dir_uris, consolidated_commit_uris_set.value());
       RETURN_NOT_OK(st2);
 
       // Process commit dir.
-      auto&& [st3, fragment_uris_v12_or_higher] = load_commits_dir_uris(
-          commits_dir_uris,
-          consolidated_commit_uris.value(),
-          consolidated_commit_uris_set.value());
+      auto&& [st3, fragment_uris_v12_or_higher] =
+          load_commits_dir_uris_v12_or_higher(
+              commits_dir_uris,
+              consolidated_commit_uris.value(),
+              consolidated_commit_uris_set.value());
       RETURN_NOT_OK(st3);
 
       // Append the two fragment URI vectors together
@@ -203,7 +214,8 @@ Status ArrayDirectory::load() {
       RETURN_NOT_OK(st4);
       fragment_uris_to_vacuum_ = std::move(fragment_uris_to_vacuum.value());
 
-      // Compute commit URIs to vacuum, if necessary
+      // Compute commit URIs to vacuum, which only need to be done for fragment
+      // vacuuming mode.
       if (mode_ == ArrayDirectoryMode::VACUUM_FRAGMENTS) {
         for (auto& uri : fragment_uris_to_vacuum_) {
           auto&& [st, commit_uri] = get_commit_uri(uri);
@@ -211,9 +223,9 @@ Status ArrayDirectory::load() {
 
           if (consolidated_commit_uris_set.value().count(
                   commit_uri.value().c_str()) == 0) {
-            fragment_commit_uris_to_vacuum_.emplace_back(commit_uri.value());
+            commit_uris_to_vacuum_.emplace_back(commit_uri.value());
           } else {
-            fragment_commit_uris_to_ignore_.emplace_back(commit_uri.value());
+            commit_uris_to_ignore_.emplace_back(commit_uri.value());
           }
         }
       }
@@ -246,12 +258,8 @@ const std::vector<URI>& ArrayDirectory::fragment_uris_to_vacuum() const {
   return fragment_uris_to_vacuum_;
 }
 
-const std::vector<URI>& ArrayDirectory::fragment_commit_uris_to_vacuum() const {
-  return fragment_commit_uris_to_vacuum_;
-}
-
-const std::vector<URI>& ArrayDirectory::fragment_commit_uris_to_ignore() const {
-  return fragment_commit_uris_to_ignore_;
+const std::vector<URI>& ArrayDirectory::commit_uris_to_ignore() const {
+  return commit_uris_to_ignore_;
 }
 
 const std::vector<URI>& ArrayDirectory::fragment_vac_uris_to_vacuum() const {
@@ -370,7 +378,7 @@ tuple<Status, optional<std::vector<URI>>> ArrayDirectory::list_root_dir_uris() {
 }
 
 tuple<Status, optional<std::vector<URI>>, optional<URI>>
-ArrayDirectory::load_root_dir_uris(
+ArrayDirectory::load_root_dir_uris_v1_v11(
     const std::vector<URI>& root_dir_uris,
     const std::unordered_set<std::string>& consolidated_uris_set) {
   // Compute the fragment URIs
@@ -395,7 +403,8 @@ ArrayDirectory::list_commits_dir_uris() {
   return {Status::Ok(), commits_dir_uris};
 }
 
-tuple<Status, optional<std::vector<URI>>> ArrayDirectory::load_commits_dir_uris(
+tuple<Status, optional<std::vector<URI>>>
+ArrayDirectory::load_commits_dir_uris_v12_or_higher(
     const std::vector<URI>& commits_dir_uris,
     const std::vector<URI>& consolidated_uris,
     const std::unordered_set<std::string>& consolidated_uris_set) {
@@ -431,7 +440,8 @@ tuple<Status, optional<std::vector<URI>>> ArrayDirectory::load_commits_dir_uris(
   return {Status::Ok(), fragment_uris};
 }
 
-tuple<Status, optional<URI>> ArrayDirectory::load_fragment_metadata_dir_uris() {
+tuple<Status, optional<URI>>
+ArrayDirectory::load_fragment_metadata_dir_uris_v12_or_higher() {
   // List the commit folder array directory URIs
   auto fragment_metadata_uri =
       uri_.join_path(constants::array_fragment_meta_dir_name);
@@ -476,7 +486,7 @@ ArrayDirectory::load_consolidated_commit_uris(
   for (uint64_t i = 0; i < commits_dir_uris.size(); i++) {
     auto& uri = commits_dir_uris[i];
     if (stdx::string::ends_with(
-            uri.to_string(), constants::commits_file_suffix)) {
+            uri.to_string(), constants::con_commits_file_suffix)) {
       uint64_t size = 0;
       RETURN_NOT_OK_TUPLE(vfs_->file_size(uri, &size), nullopt, nullopt);
       meta_files.emplace_back(uri, std::string());
@@ -514,7 +524,7 @@ ArrayDirectory::load_consolidated_commit_uris(
       if (count == uris_set.size()) {
         for (auto& uri : commits_dir_uris) {
           if (stdx::string::ends_with(
-                  uri.to_string(), constants::commits_file_suffix)) {
+                  uri.to_string(), constants::con_commits_file_suffix)) {
             if (uri != meta_file.first) {
               consolidated_commits_uris_to_vacuum_.emplace_back(uri);
             }
@@ -586,18 +596,18 @@ void ArrayDirectory::load_commits_uris_to_consolidate(
   // Save the commit files to vacuum.
   for (auto& uri : consolidated_uris) {
     if (uris_set.count(uri.c_str()) != 0) {
-      commits_uris_to_vacuum_.emplace_back(uri);
+      commit_uris_to_vacuum_.emplace_back(uri);
     }
   }
 
   // Start the list with values in the meta files.
-  commits_uris_to_consolidate_ = consolidated_uris;
+  commit_uris_to_consolidate_ = consolidated_uris;
 
   // Add the ok file URIs not already in the list.
   for (auto& uri : array_dir_uris) {
     if (stdx::string::ends_with(uri.to_string(), constants::ok_file_suffix)) {
       if (consolidated_uris_set.count(uri.c_str()) == 0) {
-        commits_uris_to_consolidate_.emplace_back(uri);
+        commit_uris_to_consolidate_.emplace_back(uri);
       }
     }
   }
@@ -607,7 +617,7 @@ void ArrayDirectory::load_commits_uris_to_consolidate(
     if (stdx::string::ends_with(
             uri.to_string(), constants::write_file_suffix)) {
       if (consolidated_uris_set.count(uri.c_str()) == 0) {
-        commits_uris_to_consolidate_.emplace_back(uri);
+        commit_uris_to_consolidate_.emplace_back(uri);
       }
     }
   }
@@ -833,7 +843,7 @@ bool ArrayDirectory::is_vacuum_file(const URI& uri) const {
 
 Status ArrayDirectory::is_fragment(
     const URI& uri,
-    const std::unordered_set<std::string>& ok_uris,
+    const std::unordered_set<std::string>& ok_uris_set,
     const std::unordered_set<std::string>& consolidated_uris_set,
     int* is_fragment) const {
   // If the URI name has a suffix, then it is not a fragment
@@ -844,7 +854,7 @@ Status ArrayDirectory::is_fragment(
   }
 
   // Check set membership in ok_uris
-  if (ok_uris.count(uri.c_str()) != 0) {
+  if (ok_uris_set.count(uri.c_str()) != 0) {
     *is_fragment = 1;
     return Status::Ok();
   }

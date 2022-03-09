@@ -441,10 +441,8 @@ Status StorageManager::array_vacuum_fragments(
   }
 
   const auto& fragment_uris_to_vacuum = array_dir.fragment_uris_to_vacuum();
-  const auto& commit_uris_to_vacuum =
-      array_dir.fragment_commit_uris_to_vacuum();
-  const auto& commit_uris_to_ignore =
-      array_dir.fragment_commit_uris_to_ignore();
+  const auto& commit_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
+  const auto& commit_uris_to_ignore = array_dir.commit_uris_to_ignore();
   const auto& vac_uris_to_vacuum = array_dir.fragment_vac_uris_to_vacuum();
 
   if (commit_uris_to_ignore.size() > 0) {
@@ -586,7 +584,7 @@ Status StorageManager::array_vacuum_commits(const char* array_name) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
-  const auto& commits_uris_to_vacuum = array_dir.commits_uris_to_vacuum();
+  const auto& commits_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
   const auto& consolidated_commits_uris_to_vacuum =
       array_dir.consolidated_commits_uris_to_vacuum();
 

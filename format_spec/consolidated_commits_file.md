@@ -6,7 +6,7 @@ A consolidated commits file has name `<timestamped_name>.con` and is located her
 my_array                              # array folder
    |_ ....
    |_ __commits                       # array commits folder
-         |_ <timestamped_name>.meta   # consolidated commits file
+         |_ <timestamped_name>.con    # consolidated commits file
          |_ ...
 ```
 

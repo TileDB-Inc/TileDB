@@ -4222,7 +4222,7 @@ int ConsolidationFx::get_meta_num(const char* path, void* data) {
 int ConsolidationFx::get_commits_num(const char* path, void* data) {
   auto data_struct = (ConsolidationFx::get_num_struct*)data;
   if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::commits_file_suffix))
+          path, tiledb::sm::constants::con_commits_file_suffix))
     ++data_struct->num;
 
   return 1;
