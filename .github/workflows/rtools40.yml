@@ -32,6 +32,7 @@ jobs:
           set -x
           cd ${GITHUB_WORKSPACE}/.github/workflows/mingw-w64-tiledb
           pacman -Sy
+          pacman -Fy
           echo 'pacman -Q...'
           pacman -Q
           echo 'pacman -Qe...'
@@ -49,7 +50,7 @@ jobs:
           mount
           echo 'find *regex*'
           if [[ $(find / -name '*regex*') ]] ; then
-            find / -name '*regex*'
+            find / -name '*regex*' || true
             echo 'found *regex*'
           else
             echo 'unable to find *regex*'
