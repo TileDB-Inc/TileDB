@@ -38,6 +38,7 @@ build() {
     -DTILEDB_STATIC=ON \
     -DTILEDB_S3=ON \
     -DCOMPILER_SUPPORTS_AVX2=OFF \
+    -DTILEDB_FORCE_ALL_DEPS=ON \
     ..
   make VERBOSE=1
   make VERBOSE=1 -C tiledb
