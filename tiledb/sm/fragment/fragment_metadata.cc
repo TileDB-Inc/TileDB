@@ -421,7 +421,11 @@ Status FragmentMetadata::compute_fragment_min_max_sum_null_count() {
               compute_fragment_min_max_sum<int64_t>(name);
               break;
             case Datatype::STRING_ASCII:
+            case Datatype::CHAR:
               compute_fragment_min_max_sum<char>(name);
+              break;
+            case Datatype::BLOB:
+              compute_fragment_min_max_sum<std::byte>(name);
               break;
             default:
               break;
