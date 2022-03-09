@@ -29,6 +29,14 @@ build() {
   export CXXFLAGS="-mfpmath=sse -msse2"
   fi
 
+  echo 'find *regex*'
+  if [[ $(find / -name '*regex*') ]] ; then
+    find / -name '*regex*' || true
+    echo 'found *regex*'
+  else
+    echo 'unable to find *regex*'
+  fi
+  
   export MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX="
   ${MINGW_PREFIX}/bin/cmake.exe \
     --trace \
