@@ -35,8 +35,10 @@ jobs:
       - name: Building TileDB
         run: | # cd .github/workflows/mingw-w64-tiledb && makepkg-mingw --noconfirm --syncdeps
           cd .github/workflows/mingw-w64-tiledb
-          echo 'pacman -ii...'
-          pacman -ii
+          echo 'pacman -Q...'
+          pacman -Q
+          echo 'pacman -Ss regex...'
+          pacman -Ss regex
           makepkg-mingw --noconfirm --syncdeps
         env:
           PKGEXT: ".pkg.tar.xz"

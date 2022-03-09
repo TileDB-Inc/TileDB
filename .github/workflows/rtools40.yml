@@ -30,8 +30,8 @@ jobs:
       - name: Building TileDB with Rtools40
         run: |
           cd ${GITHUB_WORKSPACE}/.github/workflows/mingw-w64-tiledb
-          echo 'pacman -ii...'
-          pacman -ii
+          echo 'pacman -Q...'
+          pacman -Q
           echo 'pacman -Ss regex...'
           pacman -Ss regex
           pacman -Sy
