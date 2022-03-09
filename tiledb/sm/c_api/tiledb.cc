@@ -2678,7 +2678,13 @@ int32_t tiledb_array_schema_load(
     // Load URIs from the array directory
     tiledb::sm::ArrayDirectory array_dir;
     try {
-      array_dir = tiledb::sm::ArrayDirectory(vfs, tp, uri, 0, UINT64_MAX, true);
+      array_dir = tiledb::sm::ArrayDirectory(
+          vfs,
+          tp,
+          uri,
+          0,
+          UINT64_MAX,
+          tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       auto st = Status_ArrayDirectoryError(le.what());
       LOG_STATUS(st);
@@ -2776,7 +2782,13 @@ int32_t tiledb_array_schema_load_with_key(
     // Load URIs from the array directory
     tiledb::sm::ArrayDirectory array_dir;
     try {
-      array_dir = tiledb::sm::ArrayDirectory(vfs, tp, uri, 0, UINT64_MAX, true);
+      array_dir = tiledb::sm::ArrayDirectory(
+          vfs,
+          tp,
+          uri,
+          0,
+          UINT64_MAX,
+          tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       auto st = Status_ArrayDirectoryError(le.what());
       LOG_STATUS(st);
@@ -5350,7 +5362,13 @@ int32_t tiledb_array_encryption_type(
   // Load URIs from the array directory
   tiledb::sm::ArrayDirectory array_dir;
   try {
-    array_dir = tiledb::sm::ArrayDirectory(vfs, tp, uri, 0, UINT64_MAX, true);
+    array_dir = tiledb::sm::ArrayDirectory(
+        vfs,
+        tp,
+        uri,
+        0,
+        UINT64_MAX,
+        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     auto st = Status_ArrayDirectoryError(le.what());
     LOG_STATUS(st);
@@ -5567,7 +5585,13 @@ int32_t tiledb_array_evolve(
   // Load URIs from the array directory
   tiledb::sm::ArrayDirectory array_dir;
   try {
-    array_dir = tiledb::sm::ArrayDirectory(vfs, tp, uri, 0, UINT64_MAX, true);
+    array_dir = tiledb::sm::ArrayDirectory(
+        vfs,
+        tp,
+        uri,
+        0,
+        UINT64_MAX,
+        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     auto st = Status_ArrayDirectoryError(le.what());
     LOG_STATUS(st);
@@ -5609,7 +5633,13 @@ int32_t tiledb_array_upgrade_version(
   // Load URIs from the array directory
   tiledb::sm::ArrayDirectory array_dir;
   try {
-    array_dir = tiledb::sm::ArrayDirectory(vfs, tp, uri, 0, UINT64_MAX, true);
+    array_dir = tiledb::sm::ArrayDirectory(
+        vfs,
+        tp,
+        uri,
+        0,
+        UINT64_MAX,
+        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     auto st = Status_ArrayDirectoryError(le.what());
     LOG_STATUS(st);

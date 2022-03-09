@@ -55,6 +55,7 @@
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/query.h"
@@ -410,6 +411,8 @@ Status StorageManager::array_vacuum(
   else if (std::string(mode) == "array_meta")
     RETURN_NOT_OK(
         array_vacuum_array_meta(array_name, timestamp_start, timestamp_end));
+  else if (std::string(mode) == "commits")
+    RETURN_NOT_OK(array_vacuum_commits(array_name));
   else
     return logger_->status(
         Status_StorageManagerError("Cannot vacuum array; Invalid vacuum mode"));
@@ -427,21 +430,48 @@ Status StorageManager::array_vacuum_fragments(
   ArrayDirectory array_dir;
   try {
     array_dir = ArrayDirectory(
-        vfs_, compute_tp_, URI(array_name), timestamp_start, timestamp_end);
+        vfs_,
+        compute_tp_,
+        URI(array_name),
+        timestamp_start,
+        timestamp_end,
+        ArrayDirectoryMode::VACUUM_FRAGMENTS);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
   const auto& fragment_uris_to_vacuum = array_dir.fragment_uris_to_vacuum();
+  const auto& commit_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
+  const auto& commit_uris_to_ignore = array_dir.commit_uris_to_ignore();
   const auto& vac_uris_to_vacuum = array_dir.fragment_vac_uris_to_vacuum();
+
+  if (commit_uris_to_ignore.size() > 0) {
+    // Write an ignore file to ensure consolidated WRT files still work
+    auto&& [st1, name] = array_dir.compute_new_fragment_name(
+        commit_uris_to_ignore.front(),
+        commit_uris_to_ignore.back(),
+        constants::format_version);
+    RETURN_NOT_OK(st1);
+
+    // Write URIs, relative to the array URI.
+    std::stringstream ss;
+    auto base_uri_size = array_dir.uri().to_string().size();
+    for (const auto& uri : commit_uris_to_ignore) {
+      ss << uri.to_string().substr(base_uri_size) << "\n";
+    }
+
+    auto data = ss.str();
+    URI ignore_file_uri =
+        array_dir.get_commits_dir(constants::format_version)
+            .join_path(name.value() + constants::ignore_file_suffix);
+    RETURN_NOT_OK(vfs_->write(ignore_file_uri, data.c_str(), data.size()));
+    RETURN_NOT_OK(vfs_->close_file(ignore_file_uri));
+  }
 
   // Delete the commit files
   auto status = parallel_for(
-      compute_tp_, 0, fragment_uris_to_vacuum.size(), [&, this](size_t i) {
-        auto&& [st, commit_uri] =
-            array_dir.get_commit_uri(fragment_uris_to_vacuum[i]);
-        RETURN_NOT_OK(st);
-        RETURN_NOT_OK(vfs_->remove_file(commit_uri.value()));
+      compute_tp_, 0, commit_uris_to_vacuum.size(), [&, this](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(commit_uris_to_vacuum[i]));
 
         return Status::Ok();
       });
@@ -528,6 +558,53 @@ Status StorageManager::array_vacuum_array_meta(
   status = parallel_for(
       compute_tp_, 0, vac_uris_to_vacuum.size(), [&, this](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(vac_uris_to_vacuum[i]));
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(status);
+
+  return Status::Ok();
+}
+
+Status StorageManager::array_vacuum_commits(const char* array_name) {
+  if (array_name == nullptr)
+    return logger_->status(Status_StorageManagerError(
+        "Cannot vacuum array metadata; Array name cannot be null"));
+
+  // Get the array metadata URIs and vacuum file URIs to be vacuum
+  ArrayDirectory array_dir;
+  try {
+    array_dir = ArrayDirectory(
+        vfs_,
+        compute_tp_,
+        URI(array_name),
+        0,
+        utils::time::timestamp_now_ms(),
+        ArrayDirectoryMode::COMMITS);
+  } catch (const std::logic_error& le) {
+    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+  }
+
+  const auto& commits_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
+  const auto& consolidated_commits_uris_to_vacuum =
+      array_dir.consolidated_commits_uris_to_vacuum();
+
+  // Delete the commits files
+  auto status = parallel_for(
+      compute_tp_, 0, commits_uris_to_vacuum.size(), [&, this](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(commits_uris_to_vacuum[i]));
+
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(status);
+
+  // Delete vacuum files
+  status = parallel_for(
+      compute_tp_,
+      0,
+      consolidated_commits_uris_to_vacuum.size(),
+      [&, this](size_t i) {
+        RETURN_NOT_OK(
+            vfs_->remove_file(consolidated_commits_uris_to_vacuum[i]));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
@@ -633,7 +710,7 @@ Status StorageManager::array_create(
   RETURN_NOT_OK(vfs_->create_dir(array_schema_dir_uri));
 
   // Create commit directory
-  URI array_commit_uri = array_uri.join_path(constants::array_commit_dir_name);
+  URI array_commit_uri = array_uri.join_path(constants::array_commits_dir_name);
   RETURN_NOT_OK(vfs_->create_dir(array_commit_uri));
 
   // Create fragments directory
@@ -816,9 +893,8 @@ Status StorageManager::array_upgrade_version(
 
     // Create commit directory if necessary
     URI array_commit_uri =
-        array_uri.join_path(constants::array_commit_dir_name);
-    st = vfs_->create_dir(array_commit_uri);
-    RETURN_NOT_OK_ELSE(st, logger_->status(st));
+        array_uri.join_path(constants::array_commits_dir_name);
+    RETURN_NOT_OK_ELSE(vfs_->create_dir(array_commit_uri), logger_->status(st));
 
     // Create fragments directory if necessary
     URI array_fragments_uri =
