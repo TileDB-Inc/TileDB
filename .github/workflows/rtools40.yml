@@ -32,6 +32,8 @@ jobs:
           cd ${GITHUB_WORKSPACE}/.github/workflows/mingw-w64-tiledb
           echo 'pacman -Q...'
           pacman -Q
+          echo 'pacman -Qe...'
+          pacman -Qe
           echo 'pacman -Ss regex...'
           pacman -Ss regex
           pacman -Sy
