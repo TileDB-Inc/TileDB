@@ -508,7 +508,11 @@ void TileMetadataGenerator::process_tile(
         process_tile<int64_t>(tile, tile_validity);
         break;
       case Datatype::STRING_ASCII:
+      case Datatype::CHAR:
         process_tile<char>(tile, tile_validity);
+        break;
+      case Datatype::BLOB:
+        process_tile<std::byte>(tile, tile_validity);
         break;
       default:
         break;
