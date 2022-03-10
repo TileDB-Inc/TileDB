@@ -145,6 +145,65 @@ if (libmagic_FOUND AND NOT TARGET libmagic)
   )
 endif()
 
+#########################
+# from https://stackoverflow.com/a/56738858
+## https://stackoverflow.com/questions/32183975/how-to-print-all-the-properties-of-a-target-in-cmake/56738858#56738858
+## https://stackoverflow.com/a/56738858/3743145
+
+## Get all properties that cmake supports
+#execute_process(COMMAND cmake --help-property-list OUTPUT_VARIABLE CMAKE_PROPERTY_LIST)
+execute_process(COMMAND "${CMAKE_COMMAND}" --help-property-list OUTPUT_VARIABLE CMAKE_PROPERTY_LIST)
+## Convert command output into a CMake list
+STRING(REGEX REPLACE ";" "\\\\;" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
+STRING(REGEX REPLACE "\n" ";" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
+
+list(REMOVE_DUPLICATES CMAKE_PROPERTY_LIST)
+
+function(print_target_properties tgt)
+    if(NOT TARGET ${tgt})
+      message("There is no target named '${tgt}'")
+      return()
+    endif()
+
+    foreach (prop ${CMAKE_PROPERTY_LIST})
+        string(REPLACE "<CONFIG>" "${CMAKE_BUILD_TYPE}" prop ${prop})
+        get_target_property(propval ${tgt} ${prop})
+        if (propval)
+            message ("${tgt} ${prop} = ${propval}")
+        endif()
+    endforeach(prop)
+endfunction(print_target_properties)
+#########################
+
+if(MSYS)
+  message(STATUS "dlh MSYS from findmagic_ep.cmake")
+  # on our msys build, a .dll is found, links ok.
+  # on our rtools40 build, a static libmagic.a is found, but it requires a 
+  # corresponding static regex.a to satisfy regcomp/regexec/regerror/something-else
+  find_package(libregex )
+  message(STATUS "libregex_FOUND ${libregex_FOUND}")
+  if(libregex_FOUND)
+    if(TARGET libregex)
+      print_target_properties( libregex )
+    else()
+      message(STATUS "libregex NOT a target :(")
+    endif()
+  endif()
+  
+  if(libregex_FOUND)
+    if(TARGET tiledb)
+      # target_link_libraries(tiledb public libregex_LIBRARIES)
+      # target_link_libraries(libmagic public libregex_LIBRARIES)
+      add_library(tiledb libregex)
+    endif()
+    if(TARGET tiledbstatic)
+      add_library(tiledbstatic libregex)
+    endif()
+  endif()
+else()
+  message(STATUS "dlh MSYS NOT from findmagic_ep.cmake")
+endif()
+
 # If we built a static EP, install it if required.
 if (TILEDB_LIBMAGIC_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
   install_target_libs(libmagic)
