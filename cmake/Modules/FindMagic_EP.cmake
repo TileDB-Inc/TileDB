@@ -219,7 +219,7 @@ if(MSYS)
 
   if(libregex_FOUND)
     if(TARGET TILEDB_CORE_OBJECTS_ILIB)
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB libregex_LIBRARIES)
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE libregex_LIBRARIES)
     endif()
     if(TARGET libregex)
       print_target_properties( libregex )
