@@ -530,7 +530,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Zstd::Zstd
     libmagic
 )
-if(MSYS)
+if(MSYS AND TILEDB_STATIC)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       libregex
