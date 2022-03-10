@@ -860,27 +860,21 @@ Status ArraySchema::check_double_delta_compressor(
   return Status::Ok();
 }
 
-/* TBD: We currently check only for var-length string dimensions
- * 1) We don't check for fixed strings (is this a case?)
- * 2) we don't check for string attributes, for which we should either:
- *   a) disallow setting RLE with error message
- *   b) allow it with the same conditions as string dimensions
- *
- * */
 Status ArraySchema::check_rle_compressor(const FilterPipeline& filters) const {
   // There is no error if only 1 filter is used for RLE
   if (filters.size() <= 1 || !filters.has_filter(FilterType::FILTER_RLE)) {
     return Status::Ok();
   }
 
-  // Error if there are also other filters set for a dimension together with RLE
+  // Error if there are also other filters set for a string dimension together
+  // with RLE
   auto dim_num = domain_->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim = domain_->dimension(d);
     const auto& dim_filters = dim->filters();
     // if it's a var-length string dimension and there is no specific filter
     // list already set for that dimension (then coords_filters_ will be used)
-    if (datatype_is_string(dim->type()) && dim->var_size() &&
+    if (dim->type() == Datatype::STRING_ASCII && dim->var_size() &&
         dim_filters.empty()) {
       return LOG_STATUS(Status_ArraySchemaError(
           "RLE filter cannot be combined with other filters when applied to "

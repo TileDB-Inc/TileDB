@@ -36,6 +36,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/compressors/zstd_compressor.h"
 #include "tiledb/sm/filter/filter.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/resource_pool.h"
 
 using namespace tiledb::common;
@@ -82,16 +83,24 @@ class CompressionFilter : public Filter {
    *
    * @param compressor Compressor to use
    * @param level Compression level to use
+   * @param version Format version
    */
-  CompressionFilter(Compressor compressor, int level);
+  CompressionFilter(
+      Compressor compressor,
+      int level,
+      const uint32_t version = constants::format_version);
 
   /**
    * Constructor.
    *
    * @param compressor Compressor to use
    * @param level Compression level to use
+   * @param version Format version
    */
-  CompressionFilter(FilterType compressor, int level);
+  CompressionFilter(
+      FilterType compressor,
+      int level,
+      const uint32_t version = constants::format_version);
 
   /** Return the compressor used by this filter instance. */
   Compressor compressor() const;
@@ -136,6 +145,9 @@ class CompressionFilter : public Filter {
 
   /** The compression level. */
   int level_;
+
+  /** The format version. */
+  int version_;
 
   /** The default filter compression level. */
   static constexpr int default_level_ = -30000;

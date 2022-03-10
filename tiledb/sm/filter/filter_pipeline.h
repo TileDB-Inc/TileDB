@@ -303,13 +303,12 @@ class FilterPipeline {
    * Checks if an attribute/dimension needs to be filtered in chunks or as a
    * whole
    *
-   * @param is_dim True if checking for dimension, false if attribute
    * @param is_var True if checking for a var-sized attribute/dimension, false
    * if not
    * @param type Datatype of the input attribute/dimension
    * @return True if chunking needs to be used, false if not
    */
-  bool use_tile_chunking(bool is_dim, bool is_var, const Datatype type) const;
+  bool use_tile_chunking(bool is_var, const Datatype type) const;
 
  private:
   /** A pair of FilterBuffers. */

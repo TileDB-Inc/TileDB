@@ -717,9 +717,8 @@ Status FilterPipeline::append_encryption_filter(
   }
 }
 
-bool FilterPipeline::use_tile_chunking(
-    bool is_dim, bool is_var, Datatype type) const {
-  if (is_dim && is_var && datatype_is_string(type)) {
+bool FilterPipeline::use_tile_chunking(bool is_var, Datatype type) const {
+  if (is_var && type == Datatype::STRING_ASCII) {
     if (has_filter(FilterType::FILTER_RLE)) {
       return false;
     }

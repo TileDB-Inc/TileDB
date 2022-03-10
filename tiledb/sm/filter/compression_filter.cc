@@ -53,18 +53,22 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-CompressionFilter::CompressionFilter(FilterType compressor, int level)
+CompressionFilter::CompressionFilter(
+    FilterType compressor, int level, const uint32_t version)
     : Filter(compressor)
     , compressor_(filter_to_compressor(compressor))
     , level_(level)
+    , version_(version)
     , zstd_compress_ctx_pool_(nullptr)
     , zstd_decompress_ctx_pool_(nullptr) {
 }
 
-CompressionFilter::CompressionFilter(Compressor compressor, int level)
+CompressionFilter::CompressionFilter(
+    Compressor compressor, int level, const uint32_t version)
     : Filter(compressor_to_filter(compressor))
     , compressor_(compressor)
     , level_(level)
+    , version_(version)
     , zstd_compress_ctx_pool_(nullptr)
     , zstd_decompress_ctx_pool_(nullptr) {
 }
@@ -112,7 +116,7 @@ void CompressionFilter::dump(FILE* out) const {
 }
 
 CompressionFilter* CompressionFilter::clone_impl() const {
-  return tdb_new(CompressionFilter, compressor_, level_);
+  return tdb_new(CompressionFilter, compressor_, level_, version_);
 }
 
 void CompressionFilter::set_compressor(Compressor compressor) {
@@ -245,9 +249,9 @@ Status CompressionFilter::run_forward(
   RETURN_NOT_OK(output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
   RETURN_NOT_OK(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
 
-  if (compressor_ == Compressor::RLE && datatype_is_string(tile.type()) &&
+  if (compressor_ == Compressor::RLE && tile.type() == Datatype::STRING_ASCII &&
       offsets_tile) {
-    // String RLE is only allowed on first/single filter
+    // String RLE is supported but only allowed on single filter
     assert(num_data_parts == 1);
     return compress_var_string_coords(
         *input, offsets_tile, *output, *output_metadata);
@@ -304,7 +308,8 @@ Status CompressionFilter::run_reverse(
   Buffer* metadata_buffer = output_metadata->buffer_ptr(0);
   assert(metadata_buffer != nullptr);
 
-  if (compressor_ == Compressor::RLE && datatype_is_string(tile.type())) {
+  if (compressor_ == Compressor::RLE && tile.type() == Datatype::STRING_ASCII &&
+      version_ >= 12) {
     // String RLE is only allowed on first/single filter
     assert(num_data_parts == 1);
     return decompress_var_string_coords(*input, *input_metadata, *output);
