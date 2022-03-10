@@ -537,6 +537,7 @@ if(MSYS AND TILEDB_STATIC)
       "${libregex_LIBRARIES}"
       "${libsystre_LIBRARIES}"
       "${libtre_LIBRARIES}"
+      "${libintl_LIBRARIES}"
   )
 endif()
 
