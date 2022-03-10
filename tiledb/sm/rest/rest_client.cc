@@ -115,6 +115,80 @@ Status RestClient::set_header(
   return Status::Ok();
 }
 
+tuple<Status, std::optional<bool>> RestClient::check_array_exists_from_rest(
+    const URI& uri) {
+  // Init curl and form the URL
+  Curl curlc;
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK_TUPLE(uri.get_rest_components(&array_ns, &array_uri), nullopt);
+  const std::string cache_key = array_ns + ":" + array_uri;
+  RETURN_NOT_OK_TUPLE(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),
+      nullopt);
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri);
+
+  // Make the request, the return data is ignored
+  Buffer returned_data;
+  auto curl_st = curlc.get_data(
+      stats_, url, serialization_type_, &returned_data, cache_key);
+
+  auto&& [status_st, http_status_code] = curlc.last_http_status_code();
+  RETURN_NOT_OK_TUPLE(status_st, std::nullopt);
+  // First check for 404's which indicate does not exist
+  if (http_status_code == 404) {
+    return {Status::Ok(), false};
+  }
+
+  // Next handle any errors. This is second because a 404 produces a status
+  RETURN_NOT_OK_TUPLE(curl_st, std::nullopt);
+
+  // 200 http responses yield the array exists and user has permissions
+  if (http_status_code == 200) {
+    return {Status::Ok(), true};
+  }
+
+  // Default fall back, indicate it does not exist
+  return {Status::Ok(), false};
+}
+
+tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
+    const URI& uri) {
+  // Init curl and form the URL
+  Curl curlc;
+  std::string group_ns, group_uri;
+  RETURN_NOT_OK_TUPLE(uri.get_rest_components(&group_ns, &group_uri), nullopt);
+  const std::string cache_key = group_ns + ":" + group_uri;
+  RETURN_NOT_OK_TUPLE(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),
+      nullopt);
+  const std::string url = redirect_uri(cache_key) + "/v1/groups/" + group_ns +
+                          "/" + curlc.url_escape(group_uri);
+
+  // Make the request, the returned data is ignored for now.
+  Buffer returned_data;
+  auto curl_st = curlc.get_data(
+      stats_, url, serialization_type_, &returned_data, cache_key);
+
+  auto&& [status_st, http_status_code] = curlc.last_http_status_code();
+  RETURN_NOT_OK_TUPLE(status_st, std::nullopt);
+  // First check for 404's which indicate does not exist
+  if (http_status_code == 404) {
+    return {Status::Ok(), false};
+  }
+
+  // Next handle any errors. This is second because a 404 produces a status
+  RETURN_NOT_OK_TUPLE(curl_st, std::nullopt);
+
+  // 200 http responses yield the group exists and user has permissions
+  if (http_status_code == 200) {
+    return {Status::Ok(), true};
+  }
+
+  // Default fall back, indicate it does not exist
+  return {Status::Ok(), false};
+}
+
 tuple<Status, optional<shared_ptr<ArraySchema>>>
 RestClient::get_array_schema_from_rest(const URI& uri) {
   // Init curl and form the URL
@@ -904,6 +978,20 @@ Status RestClient::post_array_schema_evolution_to_rest(
     const URI&, ArraySchemaEvolution*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+tuple<Status, std::optional<bool>> RestClient::check_array_exists_from_rest(
+    const URI&) {
+  return {LOG_STATUS(Status_RestError(
+              "Cannot use rest client; serialization not enabled.")),
+          std::nullopt};
+}
+
+tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
+    const URI&) {
+  return {LOG_STATUS(Status_RestError(
+              "Cannot use rest client; serialization not enabled.")),
+          std::nullopt};
 }
 
 #endif  // TILEDB_SERIALIZATION
