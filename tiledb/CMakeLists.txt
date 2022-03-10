@@ -808,7 +808,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
   append_dep_lib(libmagic)
-#  append_dep_lib(std::filesystem)
+  append_dep_lib(libregex) # (maybe) needed for rtools40
 endif()
 
 ############################################################
