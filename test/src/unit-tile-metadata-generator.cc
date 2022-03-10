@@ -40,6 +40,8 @@
 using namespace tiledb::sm;
 
 typedef tuple<
+    std::byte,
+    unsigned char,  // Used for TILEDB_CHAR.
     char,
     uint8_t,
     uint16_t,
@@ -58,7 +60,13 @@ TEMPLATE_LIST_TEST_CASE(
     FixedTypesUnderTest) {
   std::default_random_engine random_engine;
   typedef TestType T;
-  auto type = tiledb::impl::type_to_tiledb<T>();
+
+  auto tiledb_type = Datatype::CHAR;
+  if constexpr (!std::is_same<T, unsigned char>::value) {
+    auto type = tiledb::impl::type_to_tiledb<T>();
+    tiledb_type = static_cast<Datatype>(type.tiledb_type);
+  }
+
   std::string test =
       GENERATE("non nullable", "nullable", "all null", "empty tile");
 
@@ -70,7 +78,7 @@ TEMPLATE_LIST_TEST_CASE(
 
   // Generate the array schema.
   ArraySchema schema;
-  Attribute a("a", (Datatype)type.tiledb_type);
+  Attribute a("a", tiledb_type);
   a.set_cell_val_num(cell_val_num);
   schema.add_attribute(&a);
 
@@ -89,7 +97,7 @@ TEMPLATE_LIST_TEST_CASE(
   Tile tile;
   tile.init_unfiltered(
       0,
-      (Datatype)type.tiledb_type,
+      tiledb_type,
       num_cells * cell_val_num * sizeof(T),
       cell_val_num * sizeof(T),
       0,
@@ -116,7 +124,10 @@ TEMPLATE_LIST_TEST_CASE(
     // Generate a random value depending on the data type.
     T val;
     uint8_t validity_val = all_null ? 0 : (nullable ? rand() % 2 : 1);
-    if constexpr (std::is_integral_v<T>) {
+
+    if constexpr (std::is_same<T, std::byte>::value) {
+      val = std::byte(0);
+    } else if constexpr (std::is_integral_v<T>) {
       if constexpr (std::is_signed_v<TestType>) {
         if constexpr (std::is_same<TestType, int64_t>::value) {
           std::uniform_int_distribution<int64_t> dist(
@@ -183,11 +194,7 @@ TEMPLATE_LIST_TEST_CASE(
 
   // Call the tile metadata generator.
   TileMetadataGenerator md_generator(
-      static_cast<Datatype>(type.tiledb_type),
-      false,
-      false,
-      cell_val_num * sizeof(T),
-      cell_val_num);
+      tiledb_type, false, false, cell_val_num * sizeof(T), cell_val_num);
   md_generator.process_tile(
       &tile, nullptr, nullable ? &tile_nullable : nullptr);
 
@@ -213,16 +220,33 @@ TEMPLATE_LIST_TEST_CASE(
               (const char*)max, string_ascii[idx_max].c_str(), cell_val_num));
     }
   } else {
-    CHECK(*(T*)min == correct_min);
-    CHECK(*(T*)max == correct_max);
+    if constexpr (std::is_same<T, std::byte>::value) {
+      CHECK(min == nullptr);
+      CHECK(max == nullptr);
+    } else if constexpr (std::is_same<T, unsigned char>::value) {
+      if (all_null || empty_tile) {
+        CHECK(min == nullptr);
+        CHECK(max == nullptr);
+      } else {
+        CHECK(*(T*)min == correct_min);
+        CHECK(*(T*)max == correct_max);
+      }
+    } else {
+      CHECK(*(T*)min == correct_min);
+      CHECK(*(T*)max == correct_max);
+    }
   }
   CHECK(min_size == sizeof(T) * cell_val_num);
   CHECK(max_size == sizeof(T) * cell_val_num);
 
-  if constexpr (std::is_integral_v<T>) {
-    CHECK(*(int64_t*)sum->data() == correct_sum_int);
-  } else {
-    CHECK(*(double*)sum->data() == correct_sum_double);
+  if constexpr (
+      !std::is_same<T, unsigned char>::value &&
+      !std::is_same<T, std::byte>::value) {
+    if constexpr (std::is_integral_v<T>) {
+      CHECK(*(int64_t*)sum->data() == correct_sum_int);
+    } else {
+      CHECK(*(double*)sum->data() == correct_sum_double);
+    }
   }
   CHECK(nc == correct_null_count);
 }
