@@ -470,21 +470,6 @@ Status CompressionFilter::compress_var_string_coords(
   auto input_view = create_input_view(input, offsets_tile);
 
   // Estimate and allocate output size
-  /*
-   * TBD: another option instead of traversing the whole input to get the
-   * parameters to be used for estimating the output size + the datasizes
-   * of run length and string length would be to :
-   * - create an overhead function like the rest of compressors and estimate for
-   * the worst case: output_size = input.size() + input.size() *
-   * (sizeof(run_length_datatype) + sizeof(string_length_datatype))
-   * - estimate run length datasize by picking the one that would fit
-   * input->size(), assuming identical single character strings as the worst
-   * case.
-   * - estimate string length by picking the one that would fit input->size(),
-   * assuming a single string as the worst case.
-   * Such an option would be
-   * potentially more wasteful in terms of storage, but more performant.
-   */
   uint64_t output_size_ub = 0;
   uint8_t rle_len_bytesize = 0, string_len_bytesize = 0;
   auto [max_rle_len, max_string_size, num_of_runs, output_strings_size] =
@@ -520,7 +505,6 @@ Status CompressionFilter::compress_var_string_coords(
   auto input_size = input.buffers()[0].size();
   RETURN_NOT_OK(output_metadata.write(&input_size, sizeof(uint32_t)));
   RETURN_NOT_OK(output_metadata.write(&output_size_ub, sizeof(uint32_t)));
-  // TBD : we could pack those bytesizes in 1 byte instead, do we want that?
   RETURN_NOT_OK(output_metadata.write(&rle_len_bytesize, sizeof(uint8_t)));
   RETURN_NOT_OK(output_metadata.write(&string_len_bytesize, sizeof(uint8_t)));
 

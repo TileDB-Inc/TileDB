@@ -158,31 +158,17 @@ TEST_CASE(
   fp_without_rle.add_filter(CompressionFilter(Compressor::ZSTD, 2));
   fp_without_rle.add_filter(BitWidthReductionFilter());
 
-  bool is_dimension = true;
   bool is_var_sized = true;
 
-  // Do not chunk the Tile for filtering if RLE is used for var-sized string
-  // dimensions
-  CHECK_FALSE(fp_with_rle.use_tile_chunking(
-      is_dimension, is_var_sized, Datatype::STRING_ASCII));
+  // Do not chunk the Tile for filtering if RLE is used for var-sized strings
+  CHECK_FALSE(
+      fp_with_rle.use_tile_chunking(is_var_sized, Datatype::STRING_ASCII));
 
   // Chunk in any other case
-  CHECK(fp_without_rle.use_tile_chunking(
-      is_dimension, is_var_sized, Datatype::STRING_ASCII));
-  CHECK(fp_with_rle.use_tile_chunking(
-      !is_dimension, is_var_sized, Datatype::STRING_ASCII));
-  CHECK(fp_with_rle.use_tile_chunking(
-      is_dimension, !is_var_sized, Datatype::STRING_ASCII));
-  CHECK(fp_with_rle.use_tile_chunking(
-      !is_dimension, !is_var_sized, Datatype::STRING_ASCII));
-  CHECK(fp_with_rle.use_tile_chunking(
-      is_dimension, is_var_sized, Datatype::TIME_MS));
-  CHECK(fp_with_rle.use_tile_chunking(
-      is_dimension, is_var_sized, Datatype::DATETIME_AS));
-  CHECK(fp_with_rle.use_tile_chunking(
-      is_dimension, is_var_sized, Datatype::BLOB));
-  CHECK(fp_with_rle.use_tile_chunking(
-      is_dimension, is_var_sized, Datatype::INT32));
-  CHECK(fp_with_rle.use_tile_chunking(
-      is_dimension, is_var_sized, Datatype::FLOAT64));
+  CHECK(fp_with_rle.use_tile_chunking(!is_var_sized, Datatype::STRING_ASCII));
+  CHECK(fp_with_rle.use_tile_chunking(is_var_sized, Datatype::TIME_MS));
+  CHECK(fp_with_rle.use_tile_chunking(is_var_sized, Datatype::DATETIME_AS));
+  CHECK(fp_with_rle.use_tile_chunking(is_var_sized, Datatype::BLOB));
+  CHECK(fp_with_rle.use_tile_chunking(is_var_sized, Datatype::INT32));
+  CHECK(fp_with_rle.use_tile_chunking(is_var_sized, Datatype::FLOAT64));
 }

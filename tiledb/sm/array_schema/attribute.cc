@@ -282,8 +282,16 @@ Status Attribute::set_filter_pipeline(const FilterPipeline* pipeline) {
     if (datatype_is_real(type_) &&
         pipeline->get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
       return LOG_STATUS(
-          Status_AttributeError("Cannot set DOUBLE DELTA filter to a "
-                                "dimension with a real datatype"));
+          Status_AttributeError("Cannot set DOUBLE DELTA filter to an "
+                                "attribute with a real datatype"));
+  }
+
+  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline->size() > 1) {
+    if (pipeline->has_filter(FilterType::FILTER_RLE)) {
+      return LOG_STATUS(Status_AttributeError(
+          "RLE filter cannot be combined with other filters when applied to "
+          "variable length string attributes"));
+    }
   }
 
   filters_ = *pipeline;
