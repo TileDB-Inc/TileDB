@@ -535,6 +535,7 @@ if(MSYS AND TILEDB_STATIC)
       INTERFACE
       # libregex_LIBRARIES
       "${libregex_LIBRARIES}"
+      "${libsystre_LIBRARIES}"
   )
 endif()
 

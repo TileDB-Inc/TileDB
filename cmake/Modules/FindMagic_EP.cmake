@@ -243,6 +243,72 @@ if(MSYS)
 #      add_library(tiledbstatic libregex)
 #    endif()
   endif()
+
+  # need which additional, libsystre or tre-git ?
+  set(LIBSYSTRE_PATHS ${TILEDB_EP_INSTALL_PREFIX})
+  find_package(libsystre )
+  message(STATUS "libsystre_FOUND ${libsystre_FOUND}")
+  if (NOT libsystre_FOUND)
+    find_path(libsystre_INCLUDE_DIR
+      NAMES tre_reg.h #purely a guess, no idea... TBD: correct item to find?
+      PATHS ${LIBSYSTRE_PATHS}
+      PATH_SUFFIXES include
+      ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
+
+    if (NOT libsystre_INCLUDE_DIR)
+      message(STATUS "dlh did NOT find tre_reg.h!")
+      #find_path(libregex_INCLUDE_DIR
+      #  NAMES file/file.h
+      #  PATHS ${LIBREGEX_PATHS}
+      #  PATH_SUFFIXES include
+      #  ${TILEDB_DEPS_NO_DEFAULT_PATH}
+      #)
+    endif()
+
+    # Link statically if installed with the EP.
+    find_library(libsystre_LIBRARIES
+      systre
+      PATHS ${LIBSYSTRE_PATHS}
+      PATH_SUFFIXES lib a
+      ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
+
+    include(FindPackageHandleStandardArgs)
+    FIND_PACKAGE_HANDLE_STANDARD_ARGS(libsystre
+      REQUIRED_VARS libsystre_LIBRARIES libsystre_INCLUDE_DIR
+    )
+  
+    message(STATUS "second libsystre_FOUND ${libsystre_FOUND}, _LIBRARIES ${libsystre_LIBRARIES}, _INCLUDE_DIR ${libsystre_INCLUDE_DIR}")
+  endif()
+
+#  if(libregex_FOUND)
+#    # will be added in tiledb/CMakeLists.txt if (MSYS)...
+#    if(TARGET TILEDB_CORE_OBJECTS_ILIB)
+#      #target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${libregex_LIBRARIES})
+#      #target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE libregex)
+#      #target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE regex)
+#    endif()
+#    if(TARGET libregex)
+#      print_target_properties( libregex )
+#    else()
+#      message(STATUS "libregex NOT a target :(")
+#    endif()
+#  endif()
+  
+  if(libsystre_FOUND)
+    # will be added to TILEDB_CORE_OBJECTS_ILIB in tiledb/CMakeLists.txt if (MSYS)...
+    message(STATUS "libsystre FOUND!")
+#    if(TARGET tiledb)
+#      # target_link_libraries(tiledb public libregex_LIBRARIES)
+#      # target_link_libraries(libmagic public libregex_LIBRARIES)
+#      add_library(tiledb libregex)
+#    endif()
+#    if(TARGET tiledbstatic)
+#      add_library(tiledbstatic libregex)
+#    endif()
+  endif()
+
 else()
   message(STATUS "dlh MSYS NOT from findmagic_ep.cmake")
 endif()
