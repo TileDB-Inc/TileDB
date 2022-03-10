@@ -150,6 +150,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/azure.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/gcs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/mem_filesystem.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/filestat.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/hdfs_filesystem.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/path_win.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix.cc

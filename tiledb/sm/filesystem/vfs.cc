@@ -31,6 +31,7 @@
  */
 
 #include "vfs.h"
+#include "filestat.h"
 #include "path_win.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -871,6 +872,10 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
     uris->emplace_back(path);
   }
   return Status::Ok();
+}
+
+std::vector<FileStat> VFS::ls_with_sizes(const URI& parent) const {
+  return {FileStat(parent, 0)};
 }
 
 Status VFS::move_file(const URI& old_uri, const URI& new_uri) {

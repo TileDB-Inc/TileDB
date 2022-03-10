@@ -78,6 +78,7 @@ namespace tiledb {
 namespace sm {
 
 class Tile;
+class FileStat;
 
 enum class Filesystem : uint8_t;
 enum class VFSMode : uint8_t;
@@ -277,6 +278,14 @@ class VFS {
    * @return Status
    */
   Status ls(const URI& parent, std::vector<URI>* uris) const;
+
+  /**
+   * Retrieves all the entries contained in the parent.
+   *
+   * @param parent The target directory to list.
+   * @return All entries that are contained in the parent
+   */
+  std::vector<FileStat> ls_with_sizes(const URI& parent) const;
 
   /**
    * Renames a file.
