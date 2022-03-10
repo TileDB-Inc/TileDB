@@ -534,7 +534,7 @@ if(MSYS AND TILEDB_STATIC)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
       INTERFACE
       # libregex_LIBRARIES
-      ${libregex_LIBRARIES}
+      "${libregex_LIBRARIES}"
   )
 endif()
 
