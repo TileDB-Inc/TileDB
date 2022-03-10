@@ -182,6 +182,39 @@ if(MSYS)
   # corresponding static regex.a to satisfy regcomp/regexec/regerror/something-else
   find_package(libregex )
   message(STATUS "libregex_FOUND ${libregex_FOUND}")
+  if (NOT libmagic_FOUND)
+    find_path(libmagic_INCLUDE_DIR
+      NAMES magic.h
+      PATHS ${LIBMAGIC_PATHS}
+      PATH_SUFFIXES include
+      ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
+
+    if (NOT libmagic_INCLUDE_DIR)
+      find_path(libmagic_INCLUDE_DIR
+        NAMES file/file.h
+        PATHS ${LIBMAGIC_PATHS}
+        PATH_SUFFIXES include
+        ${TILEDB_DEPS_NO_DEFAULT_PATH}
+      )
+    endif()
+
+    # Link statically if installed with the EP.
+    find_library(libmagic_LIBRARIES
+      magic
+      PATHS ${LIBMAGIC_PATHS}
+      PATH_SUFFIXES lib a
+      ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
+
+    include(FindPackageHandleStandardArgs)
+    FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
+      REQUIRED_VARS libmagic_LIBRARIES libmagic_INCLUDE_DIR
+    )
+  
+    message(STATUS "second libregex_FOUND ${libregex_FOUND}")
+  endif()
+
   if(libregex_FOUND)
     if(TARGET libregex)
       print_target_properties( libregex )
