@@ -536,6 +536,7 @@ if(MSYS AND TILEDB_STATIC)
       # libregex_LIBRARIES
       "${libregex_LIBRARIES}"
       "${libsystre_LIBRARIES}"
+      "${libtre-git_LIBRARIES}"
   )
 endif()
 

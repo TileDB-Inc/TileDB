@@ -11,8 +11,8 @@ jobs:
       matrix:
         include: [
           { msystem: MINGW64, toolchain: x86_64 },
-          { msystem: MINGW32, toolchain: i686 },
-          { msystem: ucrt64, toolchain: "ucrt-x86_64" }
+          #~ { msystem: MINGW32, toolchain: i686 },
+          #~ { msystem: ucrt64, toolchain: "ucrt-x86_64" }
         ]
       fail-fast: false
     env:
