@@ -214,14 +214,14 @@ if(MSYS)
       REQUIRED_VARS libregex_LIBRARIES libregex_INCLUDE_DIR
     )
   
-    message(STATUS "second libregex_FOUND ${libregex_FOUND}")
+    message(STATUS "second libregex_FOUND ${libregex_FOUND}, _LIBRARIES ${libregex_LIBRARIES}, _INCLUDE_DIR ${libregex_INCLUDE_DIR}")
   endif()
 
   if(libregex_FOUND)
     if(TARGET TILEDB_CORE_OBJECTS_ILIB)
-      #target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${libregex_LIBRARIES})
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${libregex_LIBRARIES})
       #target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE libregex)
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE regex)
+      #target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE regex)
     endif()
     if(TARGET libregex)
       print_target_properties( libregex )
