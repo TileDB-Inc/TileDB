@@ -333,7 +333,7 @@ if(MSYS)
 
     # Link statically if installed with the EP.
     find_library(libtre_LIBRARIES
-      systre
+      libtre # systre
       PATHS ${LIBTREGIT_PATHS}
       PATH_SUFFIXES lib a
       ${TILEDB_DEPS_NO_DEFAULT_PATH}
