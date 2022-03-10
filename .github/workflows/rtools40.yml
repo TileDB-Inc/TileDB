@@ -30,7 +30,6 @@ jobs:
       - name: Building TileDB with Rtools40
         run: |
           set -x
-          cmake --version
           cd ${GITHUB_WORKSPACE}/.github/workflows/mingw-w64-tiledb
           pacman -Sy
           pacman -Fy

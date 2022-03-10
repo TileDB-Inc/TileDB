@@ -21,6 +21,8 @@ options=("staticlibs" "strip")
 source_dir="$TILEDB_HOME"
 
 build() {
+  ${MINGW_PREFIX}/bin/cmake.exe --version
+
   [[ -d ${source_dir}/build-${MINGW_CHOST} ]] && rm -rf ${source_dir}/build-${MINGW_CHOST}
   mkdir -p ${source_dir}/build-${MINGW_CHOST} && cd ${source_dir}/build-${MINGW_CHOST}
 
