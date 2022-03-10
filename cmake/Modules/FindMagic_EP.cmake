@@ -176,40 +176,42 @@ endfunction(print_target_properties)
 #########################
 
 if(MSYS)
+  set(LIBREGEX_PATHS ${TILEDB_EP_INSTALL_PREFIX})
   message(STATUS "dlh MSYS from findmagic_ep.cmake")
   # on our msys build, a .dll is found, links ok.
   # on our rtools40 build, a static libmagic.a is found, but it requires a 
   # corresponding static regex.a to satisfy regcomp/regexec/regerror/something-else
   find_package(libregex )
   message(STATUS "libregex_FOUND ${libregex_FOUND}")
-  if (NOT libmagic_FOUND)
-    find_path(libmagic_INCLUDE_DIR
-      NAMES magic.h
-      PATHS ${LIBMAGIC_PATHS}
+  if (NOT libregex_FOUND)
+    find_path(libregex_INCLUDE_DIR
+      NAMES regex.h
+      PATHS ${LIBREGEX_PATHS}
       PATH_SUFFIXES include
       ${TILEDB_DEPS_NO_DEFAULT_PATH}
     )
 
-    if (NOT libmagic_INCLUDE_DIR)
-      find_path(libmagic_INCLUDE_DIR
-        NAMES file/file.h
-        PATHS ${LIBMAGIC_PATHS}
-        PATH_SUFFIXES include
-        ${TILEDB_DEPS_NO_DEFAULT_PATH}
-      )
+    if (NOT libregex_INCLUDE_DIR)
+      message(STATUS "dlh did NOT find regex.h!")
+      #find_path(libregex_INCLUDE_DIR
+      #  NAMES file/file.h
+      #  PATHS ${LIBREGEX_PATHS}
+      #  PATH_SUFFIXES include
+      #  ${TILEDB_DEPS_NO_DEFAULT_PATH}
+      #)
     endif()
 
     # Link statically if installed with the EP.
-    find_library(libmagic_LIBRARIES
-      magic
-      PATHS ${LIBMAGIC_PATHS}
+    find_library(libregex_LIBRARIES
+      regex
+      PATHS ${LIBREGEX_PATHS}
       PATH_SUFFIXES lib a
       ${TILEDB_DEPS_NO_DEFAULT_PATH}
     )
 
     include(FindPackageHandleStandardArgs)
-    FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
-      REQUIRED_VARS libmagic_LIBRARIES libmagic_INCLUDE_DIR
+    FIND_PACKAGE_HANDLE_STANDARD_ARGS(libregex
+      REQUIRED_VARS libregex_LIBRARIES libregex_INCLUDE_DIR
     )
   
     message(STATUS "second libregex_FOUND ${libregex_FOUND}")
