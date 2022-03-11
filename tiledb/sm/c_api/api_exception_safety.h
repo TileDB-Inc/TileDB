@@ -156,6 +156,6 @@ struct CAPIEntryPointVoid<f> : CAPIEntryPointBase {
 };
 
 template <auto f>
-constexpr auto api_entry_void = CAPIEntryPoint<f>::function;
+constexpr auto api_entry_void = CAPIEntryPointVoid<f>::function;
 
 #endif  // TILEDB_API_EXCEPTION_SAFETY_H
