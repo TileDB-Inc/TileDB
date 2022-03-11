@@ -66,7 +66,7 @@ struct CAPIEntryPoint;
 /**
  * Specialization of `CAPIEntryPoint` for ??? return type
  */
-template <class R, class... Args, R (*f)(Args...)>
+template <class... Args, class R, R (*f)(Args...)>
 struct CAPIEntryPoint<f> : CAPIEntryPointBase {
   static R function(Args... args) {
     try {
