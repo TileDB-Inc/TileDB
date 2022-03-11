@@ -530,6 +530,8 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Zstd::Zstd
     libmagic
 )
+
+if(0)
 if(MSYS AND TILEDB_STATIC)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
       INTERFACE
@@ -539,6 +541,7 @@ if(MSYS AND TILEDB_STATIC)
       "${libtre_LIBRARIES}"
       "${libintl_LIBRARIES}"
   )
+endif()
 endif()
 
 # GCC <9 need to link against libc++fs for c++17 filesystem library

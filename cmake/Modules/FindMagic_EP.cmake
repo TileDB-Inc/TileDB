@@ -37,7 +37,8 @@ include(TileDBCommon)
 set(LIBMAGIC_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
 # Try the builtin find module unless built w/ EP superbuild
-if ((NOT TILEDB_FORCE_ALL_DEPS) AND (NOT TILEDB_LIBMAGIC_EP_BUILT))
+if ((NOT TILEDB_FORCE_ALL_DEPS) AND (NOT TILEDB_LIBMAGIC_EP_BUILT) 
+  AND (NOT MSYS)) # RTOOLS problematic, build 'ours' which is self-contained
   find_package(libmagic ${TILEDB_DEPS_NO_DEFAULT_PATH} QUIET)
 elseif(TILEDB_LIBMAGIC_EP_BUILT)
   find_package(libmagic PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
@@ -145,6 +146,7 @@ if (libmagic_FOUND AND NOT TARGET libmagic)
   )
 endif()
 
+if(0)
 #########################
 # from https://stackoverflow.com/a/56738858
 ## https://stackoverflow.com/questions/32183975/how-to-print-all-the-properties-of-a-target-in-cmake/56738858#56738858
@@ -360,6 +362,7 @@ if(MSYS)
   endif()
 else()
   message(STATUS "dlh MSYS NOT from findmagic_ep.cmake")
+endif()
 endif()
 
 # If we built a static EP, install it if required.
