@@ -570,14 +570,30 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&capacity_, sizeof(uint64_t)));
 
   // Load coords filters
-  RETURN_NOT_OK(coords_filters_.deserialize(buff));
+  auto&& [st_coords_filters, coords_filters]{FilterPipeline::deserialize(buff)};
+  if (!st_coords_filters.ok()) {
+    return Status_ArraySchemaError("Cannot deserialize coords filters");
+  }
+  coords_filters_ = coords_filters.value();
 
   // Load offsets filters
-  RETURN_NOT_OK(cell_var_offsets_filters_.deserialize(buff));
+  auto&& [st_cell_var_filters, cell_var_filters]{
+      FilterPipeline::deserialize(buff)};
+  if (!st_coords_filters.ok()) {
+    return Status_ArraySchemaError("Cannot deserialize cell var filters");
+  }
+  cell_var_offsets_filters_ = cell_var_filters.value();
 
   // Load validity filters
-  if (version_ >= 7)
-    RETURN_NOT_OK(cell_validity_filters_.deserialize(buff));
+  if (version_ >= 7) {
+    auto&& [st_cell_validity_filters, cell_validity_filters]{
+        FilterPipeline::deserialize(buff)};
+    if (!st_cell_validity_filters.ok()) {
+      return Status_ArraySchemaError(
+          "Cannot deserialize cell validity filters");
+    }
+    cell_validity_filters_ = cell_validity_filters.value();
+  }
 
   // Load domain
   domain_ = tdb_new(Domain);
