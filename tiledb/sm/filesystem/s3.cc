@@ -32,6 +32,7 @@
 
 #ifdef HAVE_S3
 
+#include "filestat.h"
 #include "tiledb/common/common.h"
 
 #include <aws/core/utils/logging/AWSLogging.h>
@@ -688,9 +689,7 @@ Status S3::ls(
 }
 
 tuple<Status, optional<std::vector<FileStat>>> S3::ls_with_sizes(
-    const URI& prefix,
-    const std::string& delimiter = "/",
-    int max_paths = -1) const {
+    const URI& prefix, const std::string& delimiter, int max_paths) const {
   auto st = init_client();
   if (!st.ok()) {
     return {st, nullopt};
@@ -700,14 +699,15 @@ tuple<Status, optional<std::vector<FileStat>>> S3::ls_with_sizes(
 
   auto prefix_str = prefix_dir.to_string();
   if (!prefix_dir.is_s3()) {
-    return LOG_STATUS(
+    auto st = LOG_STATUS(
         Status_S3Error(std::string("URI is not an S3 URI: " + prefix_str)));
+    return {st, nullopt};
   }
 
   Aws::Http::URI aws_uri = prefix_str.c_str();
   auto aws_prefix = remove_front_slash(aws_uri.GetPath().c_str());
   std::string aws_auth = aws_uri.GetAuthority().c_str();
-  Aws::S3::Model::ListObjectsV2Request list_objects_request;
+  Aws::S3::Model::ListObjectsRequest list_objects_request;
   list_objects_request.SetBucket(aws_uri.GetAuthority());
   list_objects_request.SetPrefix(aws_prefix.c_str());
   list_objects_request.SetDelimiter(delimiter.c_str());
@@ -721,8 +721,8 @@ tuple<Status, optional<std::vector<FileStat>>> S3::ls_with_sizes(
     // Not requesting more items than needed
     if (max_paths != -1)
       list_objects_request.SetMaxKeys(
-          max_paths - static_cast<int>(entries->size()));
-    auto list_objects_outcome = client_->ListObjectsV2(list_objects_request);
+          max_paths - static_cast<int>(entries.size()));
+    auto list_objects_outcome = client_->ListObjects(list_objects_request);
 
     if (!list_objects_outcome.IsSuccess()) {
       auto st = LOG_STATUS(Status_S3Error(
@@ -766,7 +766,7 @@ tuple<Status, optional<std::vector<FileStat>>> S3::ls_with_sizes(
     }
   }
 
-  return Status::Ok();
+  return {Status::Ok(), entries};
 }
 
 Status S3::move_object(const URI& old_uri, const URI& new_uri) {

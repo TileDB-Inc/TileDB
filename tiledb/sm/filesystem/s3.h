@@ -82,6 +82,8 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class FileStat;
+
 /**
  * This class implements the various S3 filesystem functions. It also
  * maintains buffer caches for writing into the various attribute files.
