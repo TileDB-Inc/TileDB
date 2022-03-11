@@ -217,6 +217,20 @@ class S3 {
       int max_paths = -1) const;
 
   /**
+   *
+   * Lists files and file information one level deep under a given path.
+   *
+   * @param prefix The parent path to list sub-paths.
+   * @param delimiter The uri is truncated to the first delimiter
+   * @param max_paths The maximum number of paths to be retrieved
+   * @return A list of FileStat objects
+   */
+  tuple<Status, optional<std::vector<FileStat>>> ls_with_sizes(
+      const URI& prefix,
+      const std::string& delimiter = "/",
+      int max_paths = -1) const;
+
+  /**
    * Renames an object.
    *
    * @param old_uri The URI of the old path.

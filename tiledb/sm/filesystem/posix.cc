@@ -33,6 +33,7 @@
 #ifndef _WIN32
 
 #include "tiledb/sm/filesystem/posix.h"
+#include "filestat.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/common/thread_pool.h"
@@ -282,23 +283,48 @@ bool Posix::is_file(const std::string& path) const {
 
 Status Posix::ls(
     const std::string& path, std::vector<std::string>* paths) const {
+  auto&& [st, entries] = ls_with_sizes(URI(path));
+
+  RETURN_NOT_OK(st);
+
+  for (auto& fs : *entries) {
+    paths->emplace_back(fs.path().to_path());
+  }
+
+  return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<FileStat>>> Posix::ls_with_sizes(
+    const URI& uri) const {
+  std::string path = uri.to_path();
   struct dirent* next_path = nullptr;
   DIR* dir = opendir(path.c_str());
   if (dir == nullptr) {
-    return Status::Ok();
+    return {Status::Ok(), nullopt};
   }
+
+  std::vector<FileStat> entries;
+
   while ((next_path = readdir(dir)) != nullptr) {
     if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
       continue;
     std::string abspath = path + "/" + next_path->d_name;
-    paths->emplace_back(abspath);
+
+    uint64_t size;
+    auto st = file_size(abspath, &size);
+    if (!st.ok()) {
+      return {st, nullopt};
+    }
+
+    entries.emplace_back(URI(abspath), size);
   }
   // close parent directory
   if (closedir(dir) != 0) {
-    return LOG_STATUS(Status_IOError(
+    auto st = LOG_STATUS(Status_IOError(
         std::string("Cannot close parent directory; ") + strerror(errno)));
+    return {st, nullopt};
   }
-  return Status::Ok();
+  return {Status::Ok(), entries};
 }
 
 Status Posix::move_path(

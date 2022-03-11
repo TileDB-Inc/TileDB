@@ -874,8 +874,57 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   return Status::Ok();
 }
 
-std::vector<FileStat> VFS::ls_with_sizes(const URI& parent) const {
-  return {FileStat(parent, 0)};
+tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
+    const URI& parent) const {
+  if (!init_) {
+    auto st = LOG_STATUS(Status_VFSError("Cannot list; VFS not initialized"));
+    return {st, std::nullopt};
+  }
+
+  // Noop if `parent` is not a directory, do not error out.
+  // For S3, GCS and Azure, `ls` on a non-directory will just
+  // return an empty `uris` vector.
+  if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure())) {
+    bool flag = false;
+    auto st = is_dir(parent, &flag);
+    if (!st.ok()) {
+      return {st, std::nullopt};
+    }
+
+    if (!flag)
+      return {Status::Ok(), {}};
+  }
+
+  optional<std::vector<FileStat>> entries;
+  if (parent.is_file()) {
+#ifdef _WIN32
+    auto st = win_.ls(parent.to_path(), &entries);
+#else
+    Status st;
+    std::tie(st, entries) = posix_.ls_with_sizes(parent);
+    if (!st.ok()) {
+      return {st, nullopt};
+    }
+#endif
+  } else if (parent.is_s3()) {
+#ifdef HAVE_S3
+    Status st;
+    std::tie(st, entries) = s3_.ls_with_sizes(parent);
+#else
+    auto st =
+        LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+#endif
+    if (!st.ok()) {
+      return {st, std::nullopt};
+    }
+  } else {
+    auto st = LOG_STATUS(
+        Status_VFSError("Unsupported URI scheme: " + parent.to_string()));
+    return {st, std::nullopt};
+  }
+  parallel_sort(compute_tp_, entries->begin(), entries->end());
+
+  return {Status::Ok(), entries};
 }
 
 Status VFS::move_file(const URI& old_uri, const URI& new_uri) {

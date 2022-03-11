@@ -41,10 +41,15 @@ namespace sm {
 
 FileStat::FileStat()
     : path_()
-    , size_(0) {
+    , size_(nullopt) {
 }
 
-FileStat::FileStat(const URI& path, const uint64_t size)
+FileStat::FileStat(const URI& path)
+    : path_(path)
+    , size_(nullopt) {
+}
+
+FileStat::FileStat(const URI& path, optional<uint64_t> size)
     : path_(path)
     , size_(size) {
 }
@@ -59,8 +64,24 @@ URI FileStat::path() const {
   return path_;
 }
 
-uint64_t FileStat::size() const {
+optional<uint64_t> FileStat::size() const {
   return size_;
+}
+
+bool FileStat::operator==(const FileStat& entry) const {
+  return path_ == entry.path_;
+}
+
+bool FileStat::operator!=(const FileStat& entry) const {
+  return !operator==(entry);
+}
+
+bool FileStat::operator<(const FileStat& entry) const {
+  return path_ < entry.path_;
+}
+
+bool FileStat::operator>(const FileStat& entry) const {
+  return path_ > entry.path_;
 }
 
 }  // namespace sm

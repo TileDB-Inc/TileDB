@@ -55,9 +55,16 @@ class FileStat {
    * Constructor.
    *
    * @param path URI that identifies a filesystem entry.
+   */
+  explicit FileStat(const URI& path);
+
+  /**
+   * Constructor.
+   *
+   * @param path URI that identifies a filesystem entry.
    * @param size The size in bytes stored for this entry.
    */
-  explicit FileStat(const URI& path, const uint64_t size);
+  explicit FileStat(const URI& path, optional<uint64_t> size);
 
   /** Destructor. */
   ~FileStat();
@@ -70,7 +77,19 @@ class FileStat {
   URI path() const;
 
   /** @return The size in bytes of the filesystem entry. */
-  uint64_t size() const;
+  optional<uint64_t> size() const;
+
+  /** For comparing entries alphanumerically. */
+  bool operator==(const FileStat& uri) const;
+
+  /** For comparing entries  alphanumerically. */
+  bool operator!=(const FileStat& uri) const;
+
+  /** For comparing entries  alphanumerically. */
+  bool operator<(const FileStat& uri) const;
+
+  /** For comparing entries  alphanumerically. */
+  bool operator>(const FileStat& uri) const;
 
  private:
   /* ********************************* */
@@ -81,7 +100,7 @@ class FileStat {
   URI path_;
 
   /** The size of a filesystem entry in bytes */
-  uint64_t size_;
+  optional<uint64_t> size_;
 };
 
 }  // namespace sm

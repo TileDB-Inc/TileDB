@@ -677,6 +677,24 @@ Status S3::ls(
     const std::string& delimiter,
     int max_paths) const {
   RETURN_NOT_OK(init_client());
+  auto&& [st, entries] = ls_with_sizes(prefix, delimiter, max_paths);
+  RETURN_NOT_OK(st);
+
+  for (auto& fs : *entries) {
+    paths->emplace_back(fs.path().to_path());
+  }
+
+  return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<FileStat>>> S3::ls_with_sizes(
+    const URI& prefix,
+    const std::string& delimiter = "/",
+    int max_paths = -1) const {
+  auto st = init_client();
+  if (!st.ok()) {
+    return {st, nullopt};
+  }
 
   const auto prefix_dir = prefix.add_trailing_slash();
 
@@ -689,42 +707,48 @@ Status S3::ls(
   Aws::Http::URI aws_uri = prefix_str.c_str();
   auto aws_prefix = remove_front_slash(aws_uri.GetPath().c_str());
   std::string aws_auth = aws_uri.GetAuthority().c_str();
-  Aws::S3::Model::ListObjectsRequest list_objects_request;
+  Aws::S3::Model::ListObjectsV2Request list_objects_request;
   list_objects_request.SetBucket(aws_uri.GetAuthority());
   list_objects_request.SetPrefix(aws_prefix.c_str());
   list_objects_request.SetDelimiter(delimiter.c_str());
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     list_objects_request.SetRequestPayer(request_payer_);
 
+  std::vector<FileStat> entries;
+
   bool is_done = false;
   while (!is_done) {
     // Not requesting more items than needed
     if (max_paths != -1)
       list_objects_request.SetMaxKeys(
-          max_paths - static_cast<int>(paths->size()));
-    auto list_objects_outcome = client_->ListObjects(list_objects_request);
+          max_paths - static_cast<int>(entries->size()));
+    auto list_objects_outcome = client_->ListObjectsV2(list_objects_request);
 
-    if (!list_objects_outcome.IsSuccess())
-      return LOG_STATUS(Status_S3Error(
+    if (!list_objects_outcome.IsSuccess()) {
+      auto st = LOG_STATUS(Status_S3Error(
           std::string("Error while listing with prefix '") + prefix_str +
           "' and delimiter '" + delimiter + "'" +
           outcome_error_message(list_objects_outcome)));
+      return {st, nullopt};
+    }
 
     for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
       std::string file(object.GetKey().c_str());
-      paths->push_back("s3://" + aws_auth + add_front_slash(file));
+      uint64_t size = object.GetSize();
+      entries.emplace_back(
+          URI("s3://" + aws_auth + add_front_slash(file)), size);
     }
 
     for (const auto& object :
          list_objects_outcome.GetResult().GetCommonPrefixes()) {
       std::string file(object.GetPrefix().c_str());
-      paths->push_back(
-          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)));
+      entries.emplace_back(URI(
+          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file))));
     }
 
     is_done =
         !list_objects_outcome.GetResult().GetIsTruncated() ||
-        (max_paths != -1 && paths->size() >= static_cast<size_t>(max_paths));
+        (max_paths != -1 && entries.size() >= static_cast<size_t>(max_paths));
     if (!is_done) {
       // The documentation states that "GetNextMarker" will be non-empty only
       // when the delimiter in the request is non-empty. When the delimiter is

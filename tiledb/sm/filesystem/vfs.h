@@ -285,7 +285,8 @@ class VFS {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  std::vector<FileStat> ls_with_sizes(const URI& parent) const;
+  tuple<Status, optional<std::vector<FileStat>>> ls_with_sizes(
+      const URI& parent) const;
 
   /**
    * Renames a file.
