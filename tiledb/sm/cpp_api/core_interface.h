@@ -60,7 +60,7 @@ TILEDB_EXPORT int tiledb_query_submit_async_func(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     void* callback_func,
-    void* callback_data = nullptr);
+    void* callback_data = nullptr) noexcept;
 /** @endcond */
 
 inline size_t type_size(tiledb_datatype_t type) {

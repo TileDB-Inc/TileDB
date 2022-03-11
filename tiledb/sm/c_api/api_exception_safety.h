@@ -44,13 +44,19 @@ struct CAPIEntryPointBase {
     auto cst = tiledb::common::Status_Error(
         std::string("Internal TileDB uncaught std::bad_alloc exception; ") +
         e.what());
-    LOG_STATUS(cst);
+    (void)LOG_STATUS(cst);
   }
 
   static void action(const std::exception& e) {
     auto cst = tiledb::common::Status_Error(
         std::string("Internal TileDB uncaught exception; ") + e.what());
-    LOG_STATUS(cst);
+    (void)LOG_STATUS(cst);
+  }
+
+  static void action() {
+    auto cst = tiledb::common::Status_Error(
+        std::string("Internal TileDB uncaught unknown exception!"));
+    (void)LOG_STATUS(cst);
   }
 };
 
@@ -71,6 +77,9 @@ struct CAPIEntryPoint<f> : CAPIEntryPointBase {
     } catch (const std::exception& e) {
       action(e);
       return TILEDB_ERR;
+    } catch (...) {
+      action();
+      return TILEDB_ERR;
     }
   }
 };
@@ -89,6 +98,9 @@ struct CAPIEntryPoint<f> : CAPIEntryPointBase {
     } catch (const std::exception& e) {
       action(e);
       return false;
+    } catch (...) {
+      action();
+      return false;
     }
   }
 };
@@ -105,6 +117,8 @@ struct CAPIEntryPoint<f> : CAPIEntryPointBase {
       action(e);
     } catch (const std::exception& e) {
       action(e);
+    } catch (...) {
+      action();
     }
   }
 };
