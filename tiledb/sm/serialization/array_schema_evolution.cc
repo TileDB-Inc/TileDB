@@ -125,9 +125,9 @@ Status array_schema_evolution_from_capnp(
   // Set attributes to add
   auto attributes_to_add_reader = evolution_reader.getAttributesToAdd();
   for (auto attr_reader : attributes_to_add_reader) {
-    tdb_unique_ptr<Attribute> attribute;
-    RETURN_NOT_OK(attribute_from_capnp(attr_reader, &attribute));
-    const Attribute* attr_to_add = attribute.get();
+    auto&& [st_attr, attr]{attribute_from_capnp(attr_reader)};
+    RETURN_NOT_OK(st_attr);
+    const Attribute* attr_to_add = attr.value().get();
     RETURN_NOT_OK((*array_schema_evolution)->add_attribute(attr_to_add));
   }
 
