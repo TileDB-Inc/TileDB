@@ -1639,7 +1639,12 @@ Status StorageManager::load_array_metadata(
   stats_->add_counter("read_array_meta_size", meta_size);
 
   // Deserialize metadata buffers
-  metadata->deserialize(metadata_buffs);
+  auto&& [st_metadata, deserialized_metadata]{
+      Metadata::deserialize(metadata_buffs)};
+  if (!st_metadata.ok()) {
+    return st_metadata;
+  }
+  *metadata = *(deserialized_metadata.value());
 
   // Sets the loaded metadata URIs
   metadata->set_loaded_metadata_uris(array_metadata_to_load);

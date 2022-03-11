@@ -29,7 +29,7 @@ include(common NO_POLICY_SCOPE)
 #
 # `vfs` object library
 #
-add_library(vfs OBJECT vfs.cc mem_filesystem.cc path_win.cc win.cc uri.cc)
+add_library(vfs OBJECT vfs.cc mem_filesystem.cc path_win.cc posix.cc win.cc uri.cc)
 target_link_libraries(vfs PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(vfs PUBLIC buffer $<TARGET_OBJECTS:buffer>)
 target_link_libraries(vfs PUBLIC cancelable_tasks $<TARGET_OBJECTS:cancelable_tasks>)
