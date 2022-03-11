@@ -86,9 +86,8 @@ Status attribute_to_capnp(
  * @param attribute attribute to deserialize into
  * @return Status
  */
-Status attribute_from_capnp(
-    const capnp::Attribute::Reader& attribute_reader,
-    tdb_unique_ptr<Attribute>* attribute);
+tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
+    const capnp::Attribute::Reader& attribute_reader);
 
 };  // namespace serialization
 };  // namespace sm
