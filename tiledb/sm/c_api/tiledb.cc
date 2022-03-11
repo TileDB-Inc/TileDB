@@ -7658,7 +7658,7 @@ int32_t tiledb_error_message(
 }
 
 void tiledb_error_free(tiledb_error_t** err) noexcept {
-  return api_entry<detail::tiledb_error_free>(err);
+  return api_entry_void<detail::tiledb_error_free>(err);
 }
 
 /* ********************************* */
@@ -7671,7 +7671,7 @@ int32_t tiledb_buffer_alloc(
 }
 
 void tiledb_buffer_free(tiledb_buffer_t** buffer) noexcept {
-  return api_entry<detail::tiledb_buffer_free>(buffer);
+  return api_entry_void<detail::tiledb_buffer_free>(buffer);
 }
 
 int32_t tiledb_buffer_set_type(
@@ -7711,7 +7711,7 @@ int32_t tiledb_buffer_list_alloc(
 }
 
 void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list) noexcept {
-  return api_entry<detail::tiledb_buffer_list_free>(buffer_list);
+  return api_entry_void<detail::tiledb_buffer_list_free>(buffer_list);
 }
 
 int32_t tiledb_buffer_list_get_num_buffers(
@@ -7757,7 +7757,7 @@ int32_t tiledb_config_alloc(
 }
 
 void tiledb_config_free(tiledb_config_t** config) noexcept {
-  return api_entry<detail::tiledb_config_free>(config);
+  return api_entry_void<detail::tiledb_config_free>(config);
 }
 
 int32_t tiledb_config_set(
@@ -7826,7 +7826,7 @@ int32_t tiledb_config_iter_reset(
 }
 
 void tiledb_config_iter_free(tiledb_config_iter_t** config_iter) noexcept {
-  return api_entry<detail::tiledb_config_iter_free>(config_iter);
+  return api_entry_void<detail::tiledb_config_iter_free>(config_iter);
 }
 
 int32_t tiledb_config_iter_here(
@@ -7922,7 +7922,7 @@ int32_t tiledb_ctx_alloc_with_error(
 }
 
 void tiledb_ctx_free(tiledb_ctx_t** ctx) noexcept {
-  return api_entry<detail::tiledb_ctx_free>(ctx);
+  return api_entry_void<detail::tiledb_ctx_free>(ctx);
 }
 
 int32_t tiledb_ctx_get_stats(tiledb_ctx_t* ctx, char** stats_json) noexcept {
@@ -7973,7 +7973,7 @@ int32_t tiledb_filter_alloc(
 }
 
 void tiledb_filter_free(tiledb_filter_t** filter) noexcept {
-  return api_entry<detail::tiledb_filter_free>(filter);
+  return api_entry_void<detail::tiledb_filter_free>(filter);
 }
 
 int32_t tiledb_filter_get_type(
@@ -8011,7 +8011,7 @@ int32_t tiledb_filter_list_alloc(
 }
 
 void tiledb_filter_list_free(tiledb_filter_list_t** filter_list) noexcept {
-  return api_entry<detail::tiledb_filter_list_free>(filter_list);
+  return api_entry_void<detail::tiledb_filter_list_free>(filter_list);
 }
 
 int32_t tiledb_filter_list_add_filter(
@@ -8068,7 +8068,7 @@ int32_t tiledb_attribute_alloc(
 }
 
 void tiledb_attribute_free(tiledb_attribute_t** attr) noexcept {
-  return api_entry<detail::tiledb_attribute_free>(attr);
+  return api_entry_void<detail::tiledb_attribute_free>(attr);
 }
 
 int32_t tiledb_attribute_set_nullable(
@@ -8188,7 +8188,7 @@ int32_t tiledb_domain_alloc(
 }
 
 void tiledb_domain_free(tiledb_domain_t** domain) noexcept {
-  return api_entry<detail::tiledb_domain_free>(domain);
+  return api_entry_void<detail::tiledb_domain_free>(domain);
 }
 
 int32_t tiledb_domain_get_type(
@@ -8231,7 +8231,7 @@ int32_t tiledb_dimension_alloc(
 }
 
 void tiledb_dimension_free(tiledb_dimension_t** dim) noexcept {
-  return api_entry<detail::tiledb_dimension_free>(dim);
+  return api_entry_void<detail::tiledb_dimension_free>(dim);
 }
 
 int32_t tiledb_dimension_set_filter_list(
@@ -8340,7 +8340,7 @@ int32_t tiledb_array_schema_alloc(
 }
 
 void tiledb_array_schema_free(tiledb_array_schema_t** array_schema) noexcept {
-  return api_entry<detail::tiledb_array_schema_free>(array_schema);
+  return api_entry_void<detail::tiledb_array_schema_free>(array_schema);
 }
 
 int32_t tiledb_array_schema_add_attribute(
@@ -8588,7 +8588,7 @@ int32_t tiledb_array_schema_evolution_alloc(
 
 void tiledb_array_schema_evolution_free(
     tiledb_array_schema_evolution_t** array_schema_evolution) noexcept {
-  return api_entry<detail::tiledb_array_schema_evolution_free>(
+  return api_entry_void<detail::tiledb_array_schema_evolution_free>(
       array_schema_evolution);
 }
 
@@ -8877,7 +8877,7 @@ int32_t tiledb_query_finalize(
 }
 
 void tiledb_query_free(tiledb_query_t** query) noexcept {
-  return api_entry<detail::tiledb_query_free>(query);
+  return api_entry_void<detail::tiledb_query_free>(query);
 }
 
 int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) noexcept {
@@ -9155,7 +9155,7 @@ int32_t tiledb_subarray_set_config(
 }
 
 void tiledb_subarray_free(tiledb_subarray_t** subarray) noexcept {
-  return api_entry<detail::tiledb_subarray_free>(subarray);
+  return api_entry_void<detail::tiledb_subarray_free>(subarray);
 }
 
 int32_t tiledb_subarray_set_coalesce_ranges(
@@ -9326,7 +9326,7 @@ int32_t tiledb_query_condition_alloc(
 }
 
 void tiledb_query_condition_free(tiledb_query_condition_t** cond) noexcept {
-  return api_entry<detail::tiledb_query_condition_free>(cond);
+  return api_entry_void<detail::tiledb_query_condition_free>(cond);
 }
 
 int32_t tiledb_query_condition_init(
@@ -9472,7 +9472,7 @@ int32_t tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) noexcept {
 }
 
 void tiledb_array_free(tiledb_array_t** array) noexcept {
-  return api_entry<detail::tiledb_array_free>(array);
+  return api_entry_void<detail::tiledb_array_free>(array);
 }
 
 int32_t tiledb_array_get_schema(
@@ -9761,7 +9761,7 @@ int32_t tiledb_vfs_alloc(
 }
 
 void tiledb_vfs_free(tiledb_vfs_t** vfs) noexcept {
-  return api_entry<detail::tiledb_vfs_free>(vfs);
+  return api_entry_void<detail::tiledb_vfs_free>(vfs);
 }
 
 int32_t tiledb_vfs_get_config(
@@ -9923,7 +9923,7 @@ int32_t tiledb_vfs_ls(
 }
 
 void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) noexcept {
-  return api_entry<detail::tiledb_vfs_fh_free>(fh);
+  return api_entry_void<detail::tiledb_vfs_fh_free>(fh);
 }
 
 int32_t tiledb_vfs_fh_is_closed(
@@ -10249,7 +10249,7 @@ int32_t tiledb_fragment_info_alloc(
 
 void tiledb_fragment_info_free(
     tiledb_fragment_info_t** fragment_info) noexcept {
-  return api_entry<detail::tiledb_fragment_info_free>(fragment_info);
+  return api_entry_void<detail::tiledb_fragment_info_free>(fragment_info);
 }
 
 int32_t tiledb_fragment_info_set_config(
