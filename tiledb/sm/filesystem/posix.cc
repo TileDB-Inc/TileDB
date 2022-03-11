@@ -356,7 +356,7 @@ Status Posix::copy_dir(
 
   while (!path_queue.empty()) {
     std::string file_name_abs = path_queue.front();
-    std::string file_name = file_name_abs.substr(old_path.length() + 1);
+    std::string file_name = file_name_abs.substr(old_path.length());
     path_queue.pop();
 
     if (is_dir(file_name_abs)) {
