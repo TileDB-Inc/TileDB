@@ -55,6 +55,12 @@ FilterPipeline::FilterPipeline()
     : max_chunk_size_(constants::max_tile_chunk_size) {
 }
 
+FilterPipeline::FilterPipeline(
+    uint32_t max_chunk_size, const std::vector<shared_ptr<Filter>>& filters)
+    : filters_(filters)
+    , max_chunk_size_(max_chunk_size) {
+}
+
 FilterPipeline::FilterPipeline(const FilterPipeline& other) {
   for (auto& filter : other.filters_) {
     add_filter(*filter);
@@ -80,7 +86,7 @@ FilterPipeline& FilterPipeline::operator=(FilterPipeline&& other) {
 }
 
 Status FilterPipeline::add_filter(const Filter& filter) {
-  tdb_unique_ptr<Filter> copy(filter.clone());
+  shared_ptr<Filter> copy(filter.clone());
   filters_.push_back(std::move(copy));
   return Status::Ok();
 }
@@ -630,21 +636,27 @@ Status FilterPipeline::serialize(Buffer* buff) const {
   return Status::Ok();
 }
 
-Status FilterPipeline::deserialize(ConstBuffer* buff) {
-  // Remove any old filters.
-  clear();
+tuple<Status, optional<FilterPipeline>> FilterPipeline::deserialize(
+    ConstBuffer* buff) {
+  Status st;
+  uint32_t max_chunk_size;
+  std::vector<shared_ptr<Filter>> filters;
 
-  RETURN_NOT_OK(buff->read(&max_chunk_size_, sizeof(uint32_t)));
+  RETURN_NOT_OK_TUPLE(buff->read(&max_chunk_size, sizeof(uint32_t)), nullopt);
+
   uint32_t num_filters;
-  RETURN_NOT_OK(buff->read(&num_filters, sizeof(uint32_t)));
+  RETURN_NOT_OK_TUPLE(buff->read(&num_filters, sizeof(uint32_t)), nullopt);
 
   for (uint32_t i = 0; i < num_filters; i++) {
     auto&& [st_filter, filter]{FilterCreate::deserialize(buff)};
-    RETURN_NOT_OK(st_filter);
-    RETURN_NOT_OK(add_filter(*filter.value()));
+    if (!st_filter.ok()) {
+      return {st_filter, nullopt};
+    }
+    filters.push_back(std::move(filter.value()));
   }
 
-  return Status::Ok();
+  return {Status::Ok(),
+          optional<FilterPipeline>(std::in_place, max_chunk_size, filters)};
 }
 
 void FilterPipeline::dump(FILE* out) const {

@@ -37,6 +37,7 @@
 #include <utility>
 #include <vector>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/enums/compressor.h"
@@ -65,6 +66,14 @@ class FilterPipeline {
  public:
   /** Constructor. Initializes an empty pipeline. */
   FilterPipeline();
+
+  /** Constructor.
+   *
+   * @param max_chunk_size.
+   * @param filters The vector of filters.
+   */
+  FilterPipeline(
+      uint32_t max_chunk_size, const std::vector<shared_ptr<Filter>>& filters);
 
   /** Destructor. */
   ~FilterPipeline() = default;
@@ -96,9 +105,9 @@ class FilterPipeline {
    * Populates the filter pipeline from the data in the input binary buffer.
    *
    * @param buff The buffer to deserialize from.
-   * @return Status
+   * @return Status and FilterPipeline
    */
-  Status deserialize(ConstBuffer* buff);
+  static tuple<Status, optional<FilterPipeline>> deserialize(ConstBuffer* buff);
 
   /**
    * Dumps the filter pipeline details in ASCII format in the selected
@@ -307,7 +316,7 @@ class FilterPipeline {
   typedef std::pair<FilterBuffer, FilterBuffer> FilterBufferPair;
 
   /** The ordered list of filters comprising the pipeline. */
-  std::vector<tdb_unique_ptr<Filter>> filters_;
+  std::vector<shared_ptr<Filter>> filters_;
 
   /** The max chunk size allowed within tiles. */
   uint32_t max_chunk_size_;
@@ -328,7 +337,7 @@ class FilterPipeline {
    * @return Status, chunk offsets vector.
    */
 
-  tuple<Status, std::optional<std::vector<uint64_t>>> get_var_chunk_sizes(
+  tuple<Status, optional<std::vector<uint64_t>>> get_var_chunk_sizes(
       uint32_t chunk_size,
       Tile* const tile,
       Tile* const offsets_tile,
