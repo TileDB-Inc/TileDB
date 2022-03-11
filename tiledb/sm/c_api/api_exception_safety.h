@@ -126,4 +126,36 @@ struct CAPIEntryPoint<f> : CAPIEntryPointBase {
 template <auto f>
 constexpr auto api_entry = CAPIEntryPoint<f>::function;
 
+/**
+ * A version of `CAPIEntryPoint` for `void` return functions.
+ *
+ * Certain compilers (GCC 11.2 on certain platforms) were failing on CI using
+ * the above specializations, claiming an ambiguity between the generic-return
+ * and void-return ones. In order to move forward, we use a different template
+ * name to avoid the ambiguity.
+ */
+template <auto f>
+struct CAPIEntryPointVoid;
+
+/**
+ * Specialization of `CAPIEntryPoint` for void return type
+ */
+template <class... Args, void (*f)(Args...)>
+struct CAPIEntryPointVoid<f> : CAPIEntryPointBase {
+  static void function(Args... args) {
+    try {
+      f(args...);
+    } catch (const std::bad_alloc& e) {
+      action(e);
+    } catch (const std::exception& e) {
+      action(e);
+    } catch (...) {
+      action();
+    }
+  }
+};
+
+template <auto f>
+constexpr auto api_entry_void = CAPIEntryPoint<f>::function;
+
 #endif  // TILEDB_API_EXCEPTION_SAFETY_H
