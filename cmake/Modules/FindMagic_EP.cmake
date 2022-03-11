@@ -45,7 +45,7 @@ elseif(TILEDB_LIBMAGIC_EP_BUILT)
 endif()
 
 # Next try finding the superbuild external project
-if (NOT libmagic_FOUND)
+if ((NOT libmagic_FOUND) AND (NOT MSYS))
   find_path(libmagic_INCLUDE_DIR
     NAMES magic.h
     PATHS ${LIBMAGIC_PATHS}
