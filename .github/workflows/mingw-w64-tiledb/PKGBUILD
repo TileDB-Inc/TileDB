@@ -12,16 +12,7 @@ depends=("${MINGW_PACKAGE_PREFIX}-lz4"
          "${MINGW_PACKAGE_PREFIX}-bzip2"
          "${MINGW_PACKAGE_PREFIX}-zlib"
          "${MINGW_PACKAGE_PREFIX}-zstd"
-#         "${MINGW_PACKAGE_PREFIX}-file"
-#         "${MINGW_PACKAGE_PREFIX}-libtre-git"
          )
-#         "${MINGW_PACKAGE_PREFIX}-libtre-devel-git"
-#         "${MINGW_PACKAGE_PREFIX}-libtre-dev-git"
-#         "${MINGW_PACKAGE_PREFIX}-libsystre"
-#         "libintl"
-#could not resolve all dependencies, hmm...
-#         "${MINGW_PACKAGE_PREFIX}-libintl"
-
 makedepends=("${MINGW_PACKAGE_PREFIX}-cmake"
              "${MINGW_PACKAGE_PREFIX}-gcc"
              "${MINGW_PACKAGE_PREFIX}-curl")
@@ -39,22 +30,6 @@ build() {
   export CXXFLAGS="-mfpmath=sse -msse2"
   fi
 
-  echo 'find *regex*'
-  if [[ $(find / -name '*regex*') ]] ; then
-    find / -name '*regex*' || true
-    echo 'found *regex*'
-  else
-    echo 'unable to find *regex*'
-  fi
-  
-  echo 'find *libtre*'
-  if [[ $(find / -name '*libtre*') ]] ; then
-    find / -name '*libtre*' || true
-    echo 'found *libtre*'
-  else
-    echo 'unable to find *libtre*'
-  fi
-  
   export MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX="
   ${MINGW_PREFIX}/bin/cmake.exe \
     --trace \

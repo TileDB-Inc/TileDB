@@ -11,8 +11,8 @@ jobs:
       matrix:
         include: [
           { msystem: MINGW64, toolchain: x86_64 },
-          #~ { msystem: MINGW32, toolchain: i686 },
-          #~ { msystem: ucrt64, toolchain: "ucrt-x86_64" }
+          { msystem: MINGW32, toolchain: i686 },
+          { msystem: ucrt64, toolchain: "ucrt-x86_64" }
         ]
       fail-fast: false
     env:
@@ -31,30 +31,6 @@ jobs:
         run: |
           set -x
           cd ${GITHUB_WORKSPACE}/.github/workflows/mingw-w64-tiledb
-          pacman -Sy
-          pacman -Fy
-          echo 'pacman -Q...'
-          pacman -Q
-          echo 'pacman -Qe...'
-          pacman -Qe
-          echo 'pacman -Ss regex...'
-          pacman -Ss regex
-          echo 'pacman -Fx regex...'
-          if [[ $(pacman -Fx regex) ]]; then
-            pacman -Fx regex
-            echo 'success? pacman -Fx regex'
-          else
-            echo 'failed, pacman -Fx regex'
-          fi
-          echo 'mount...'
-          mount
-          echo 'find *regex*'
-          if [[ $(find / -name '*regex*') ]] ; then
-            find / -name '*regex*' || true
-            echo 'found *regex*'
-          else
-            echo 'unable to find *regex*'
-          fi
           makepkg-mingw --noconfirm --syncdeps
         env:
           TILEDB_HOME: ${{ github.workspace }}
