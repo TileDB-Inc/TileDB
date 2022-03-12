@@ -145,6 +145,10 @@ if (libmagic_FOUND AND NOT TARGET libmagic)
   )
 endif()
 
+if (MSYS)
+  target_link_libraries(libmagic  INTERFACE -lregex -ltre -lgettextpo -lgettextlib -lintl -liconv)
+endif()
+
 # If we built a static EP, install it if required.
 if (TILEDB_LIBMAGIC_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
   install_target_libs(libmagic)
