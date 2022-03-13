@@ -70,6 +70,7 @@ endif()
 ############################################################
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Options")
 
 set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/inputs")
 
@@ -113,6 +114,7 @@ option(TILEDB_AZURE "Enables Azure Storage support using azure-storage-cpp" OFF)
 option(TILEDB_GCS "Enables GCS Storage support using google-cloud-cpp" OFF)
 option(TILEDB_HDFS "Enables HDFS support using the official Hadoop JNI bindings" OFF)
 option(TILEDB_WERROR "Enables the -Werror flag during compilation." ON)
+option(TILEDB_ASSERTIONS "Build with assertions enabled (default off for release, on for debug build)." OFF)
 option(TILEDB_CPP_API "Enables building of the TileDB C++ API." ON)
 option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets the EP install dir." OFF)
 option(TILEDB_STATS "Enables internal TileDB statistics gathering." ON)
@@ -140,6 +142,12 @@ if (WIN32 AND NOT TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK)
     endif()
   endif()
 endif()
+
+# enable assertions by default for debug builds
+if (CMAKE_BUILD_TYPE EQUAL "Debug")
+  set(TILEDB_ASSERTIONS TRUE)
+endif()
+include(TileDBAssertions)
 
 ############################################################
 # Superbuild setup
@@ -224,7 +232,7 @@ else()
   if (CMAKE_BUILD_TYPE MATCHES "Debug")
     add_compile_options(-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3)
   elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(-DNDEBUG -O3)
+    add_compile_options(-O3)
   elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
     add_compile_options(-DNDEBUG -O3 -g3 -ggdb3 -gdwarf-3)
   elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")

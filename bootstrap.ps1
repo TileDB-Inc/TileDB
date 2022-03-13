@@ -23,6 +23,10 @@ Optionally specify the CMake generator string, e.g. "Visual Studio 15
 .PARAMETER EnableDebug
 Enable Debug build.
 
+.PARAMETER EnableAssert
+Enable Assertions in compiled code (always on for debug build;
+default off in release).
+
 .PARAMETER EnableReleaseSymbols
 Enable symbols with Release build.
 
@@ -75,6 +79,7 @@ Param(
     [string]$Prefix,
     [string]$Dependency,
     [string]$CMakeGenerator,
+    [switch]$EnableAssert,
     [switch]$EnableDebug,
     [switch]$EnableReleaseSymbols,
     [switch]$EnableCoverage,
@@ -109,11 +114,18 @@ $DefaultPrefix = Join-Path $SourceDirectory "dist"
 # Choose the default dependency install prefix.
 $DefaultDependency = $DefaultPrefix
 
+# Set assertion mode
+# No-op for a debug build.
+$AssertionMode = "OFF"
+if ($EnableAssert.IsPresent) {
+  $AssertionMode = "ON"
+}
+
 # Set TileDB build type
 $BuildType = "Release"
 if ($EnableDebug.IsPresent) {
     $BuildType = "Debug"
-} 
+}
 if ($EnableReleaseSymbols.IsPresent) {
     $BuildType = "RelWithDebInfo"
 }
@@ -213,7 +225,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_TOOLS=$TileDBTools $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_TOOLS=$TileDBTools $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"
