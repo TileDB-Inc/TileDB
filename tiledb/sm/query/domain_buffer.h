@@ -121,7 +121,7 @@ class DomainBuffersView {
   [[nodiscard]] inline per_dimension_type at(size_t k) const {
     return qb_.at(k);
   }
-  
+
   /**
    * Initializer (Initializer) policy class for DynamicArray for values drawn
    * from a list of QueryBuffer (QB) pointers.
