@@ -400,3 +400,6 @@ cmake_print_properties(
   TARGETS Catch2::Catch2
   PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
   )
+
+# CI tests
+add_subdirectory(ci)
