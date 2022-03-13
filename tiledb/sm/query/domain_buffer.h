@@ -109,10 +109,19 @@ class DomainBuffersView {
    *
    * @param k Dimension index within the domain
    */
-  [[nodiscard]] inline per_dimension_type buffer_at(size_t k) const {
-    return qb_.at(k);
+  [[nodiscard]] inline per_dimension_type operator[](size_t k) const {
+    return qb_[k];
   }
 
+  /**
+   * Accessor to an individual element of the container.
+   *
+   * @param k Dimension index within the domain
+   */
+  [[nodiscard]] inline per_dimension_type at(size_t k) const {
+    return qb_.at(k);
+  }
+  
   /**
    * Initializer (Initializer) policy class for DynamicArray for values drawn
    * from a list of QueryBuffer (QB) pointers.

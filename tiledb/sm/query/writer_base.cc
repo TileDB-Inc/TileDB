@@ -288,7 +288,7 @@ Status WriterBase::calculate_hilbert_values(
         for (uint32_t d = 0; d < dim_num; ++d) {
           auto dim = array_schema_.dimension(d);
           coords[d] = hilbert_order::map_to_uint64(
-              *dim, domain_buffers.buffer_at(d), c, bits, max_bucket_val);
+              *dim, domain_buffers[d], c, bits, max_bucket_val);
         }
         hilbert_values[c] = h.coords_to_hilbert(&coords[0]);
 
