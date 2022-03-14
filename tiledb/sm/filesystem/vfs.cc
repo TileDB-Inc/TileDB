@@ -881,6 +881,15 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
     return {st, std::nullopt};
   }
 
+  // TODO:
+  // unit-cppapi-vfs.cc, unit-s3, unit-gs, unit-dfs-filesystem, unit-azure,
+  // unit-gcs
+  // TODO: note about refactor, intruducing abstract class for filesystem
+  // implementation, ::ls can easily be move upwards and not be duplicated in
+  // each implementation
+  // TODO: note about introducing a RETURN_NOT_OK-like macro for pairs of
+  // status,optional
+
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
   // return an empty `uris` vector.
@@ -913,6 +922,17 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
 #else
     auto st =
         LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+#endif
+    if (!st.ok()) {
+      return {st, std::nullopt};
+    }
+  } else if (parent.is_azure()) {
+#ifdef HAVE_AZURE
+    Status st;
+    std::tie(st, entries) = azure_.ls_with_sizes(parent);
+#else
+    auto st =
+        LOG_STATUS(Status_VFSError("TileDB was built without Azure support"));
 #endif
     if (!st.ok()) {
       return {st, std::nullopt};
