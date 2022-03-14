@@ -889,6 +889,8 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
   // each implementation
   // TODO: note about introducing a RETURN_NOT_OK-like macro for pairs of
   // status,optional
+  // TODO: note about init_client being called multiple times with no check to
+  // exit early
 
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just

@@ -40,6 +40,7 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "filestat.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/unique_rwlock.h"
 #include "tiledb/sm/filesystem/gcs.h"
@@ -388,17 +389,40 @@ Status GCS::ls(
   RETURN_NOT_OK(init_client());
   assert(paths);
 
+  auto&& [st, entries] = ls_with_sizes(uri, delimiter, max_paths);
+  RETURN_NOT_OK(st);
+
+  for (auto& fs : *entries) {
+    paths->emplace_back(fs.path().to_path());
+  }
+
+  return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<FileStat>>> GCS::ls_with_sizes(
+    const URI& uri, const std::string& delimiter, int max_paths) const {
+  assert(paths);
+  auto st = init_client();
+  if (!st.ok()) {
+    return {st, nullopt};
+  }
+
   const URI uri_dir = uri.add_trailing_slash();
 
   if (!uri_dir.is_gcs()) {
-    return LOG_STATUS(Status_GCSError(
+    auto st = LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri_dir.to_string())));
+    return {st, nullopt};
   }
 
   std::string bucket_name;
   std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri_dir, &bucket_name, &object_path));
+  st = parse_gcs_uri(uri_dir, &bucket_name, &object_path);
+  if (!st.ok()) {
+    return {st, nullopt};
+  }
 
+  std::vector<FileStat> entries;
   google::cloud::storage::Prefix prefix_option(object_path);
   google::cloud::storage::Delimiter delimiter_option(delimiter);
 
@@ -409,12 +433,13 @@ Status GCS::ls(
     if (!object_metadata.ok()) {
       const google::cloud::Status status = object_metadata.status();
 
-      return LOG_STATUS(Status_GCSError(std::string(
+      auto st = LOG_STATUS(Status_GCSError(std::string(
           "List objects failed on: " + uri.to_string() + " (" +
           status.message() + ")")));
+      return {st, nullopt};
     }
 
-    if (paths->size() >= static_cast<size_t>(max_paths)) {
+    if (entries.size() >= static_cast<size_t>(max_paths)) {
       break;
     }
 
@@ -423,20 +448,20 @@ Status GCS::ls(
 
     if (absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
             results)) {
-      paths->emplace_back(
-          gcs_prefix + bucket_name + "/" +
-          remove_front_slash(remove_trailing_slash(
-              absl::get<google::cloud::storage::ObjectMetadata>(results)
-                  .name())));
+      obj = absl::get<google::cloud::storage::ObjectMetadata>(results);
+      entries.emplace_back(
+          URI(gcs_prefix + bucket_name + "/" +
+              remove_front_slash(remove_trailing_slash(obj.name()))),
+          obj.size());
     } else if (absl::holds_alternative<std::string>(results)) {
-      paths->emplace_back(
-          gcs_prefix + bucket_name + "/" +
-          remove_front_slash(
-              remove_trailing_slash(absl::get<std::string>(results))));
+      entries.emplace_back(
+          URI(gcs_prefix + bucket_name + "/" +
+              remove_front_slash(
+                  remove_trailing_slash(absl::get<std::string>(results)))));
     }
   }
 
-  return Status::Ok();
+  return {Status::Ok(), entries};
 }
 
 Status GCS::move_object(const URI& old_uri, const URI& new_uri) {
