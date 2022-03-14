@@ -39,71 +39,111 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
-// TODO: Generalize for all types
-TEST_CASE("CreateDefaultRangeMultiSubset") {
-  uint64_t bounds[2] = {0, 10};
-  Range range{bounds, 2 * sizeof(uint64_t)};
-  RangeMultiSubset range_subset{Datatype::UINT64, range, true, false};
+TEMPLATE_TEST_CASE_SIG(
+    "Create RangeMultiSubset with implicitly defined range",
+    "[range_multi_subset]",
+    ((typename T, Datatype D), T, D),
+    (int8_t, Datatype::INT8),
+    (uint8_t, Datatype::UINT8),
+    (int16_t, Datatype::INT16),
+    (uint16_t, Datatype::UINT16),
+    (int32_t, Datatype::INT32),
+    (uint32_t, Datatype::UINT32),
+    (int64_t, Datatype::INT64),
+    (uint64_t, Datatype::UINT64),
+    (int64_t, Datatype::DATETIME_YEAR),
+    (float, Datatype::FLOAT32),
+    (double, Datatype::FLOAT64)) {
+  T bounds[2] = {0, 10};
+  Range range{bounds, 2 * sizeof(T)};
+  RangeMultiSubset range_subset{D, range, true, false};
   CHECK(range_subset.num_ranges() == 1);
   Range default_range = range_subset[0];
   CHECK(!default_range.empty());
-  const uint64_t* start = (uint64_t*)default_range.start();
-  const uint64_t* end = (uint64_t*)default_range.end();
-  CHECK(*start == 0);
-  CHECK(*end == 10);
+  auto start = (const T*)default_range.start();
+  auto end = (const T*)default_range.end();
+  CHECK(*start == bounds[0]);
+  REQUIRE(*end == bounds[1]);
 }
 
-// TODO: Generalize for all coalescing types
-TEST_CASE("RangeMultiSubset::RangeMultiSubset") {
-  uint64_t bounds[2] = {0, 10};
-  Range range{bounds, 2 * sizeof(uint64_t)};
-  RangeMultiSubset range_subset{Datatype::UINT64, range, false, true};
+TEMPLATE_TEST_CASE_SIG(
+    "RangeMultiSubset::add_range for coalescing types",
+    "[range_multi_subset]",
+    ((typename T, Datatype D), T, D),
+    (int8_t, Datatype::INT8),
+    (uint8_t, Datatype::UINT8),
+    (int16_t, Datatype::INT16),
+    (uint16_t, Datatype::UINT16),
+    (int32_t, Datatype::INT32),
+    (uint32_t, Datatype::UINT32),
+    (int64_t, Datatype::INT64),
+    (uint64_t, Datatype::UINT64),
+    (int64_t, Datatype::DATETIME_YEAR)) {
+  T bounds[2] = {0, 10};
+  Range range{bounds, 2 * sizeof(T)};
+  RangeMultiSubset range_subset{D, range, false, true};
   CHECK(range_subset.num_ranges() == 0);
   SECTION("Add 2 Overlapping Ranges") {
-    uint64_t data1[2] = {1, 3};
-    uint64_t data2[2] = {4, 5};
-    Range r1{data1, 2 * sizeof(uint64_t)};
-    Range r2{data2, 2 * sizeof(uint64_t)};
+    T data1[2] = {1, 3};
+    T data2[2] = {4, 5};
+    Range r1{data1, 2 * sizeof(T)};
+    Range r2{data2, 2 * sizeof(T)};
     range_subset.add_subset(r1);
     range_subset.add_subset(r2);
     CHECK(range_subset.num_ranges() == 1);
     auto combined_range = range_subset[0];
-    const uint64_t* start = (uint64_t*)combined_range.start();
-    const uint64_t* end = (uint64_t*)combined_range.end();
-    CHECK(*start == 1);
-    CHECK(*end == 5);
+    auto start = (const T*)combined_range.start();
+    auto end = (const T*)combined_range.end();
+    CHECK(*start == data1[0]);
+    REQUIRE(*end == data2[1]);
   }
 }
 
-// TODO: Generalize for all non-coalescing types
-TEST_CASE("RangeMultiSubset::add_range - coalesce float") {
-  float bounds[2] = {-1.0, 1.0};
-  Range range{bounds, 2 * sizeof(float)};
-  RangeMultiSubset range_subset{Datatype::FLOAT32, range, false, true};
-  CHECK(range_subset.num_ranges() == 0);
+TEMPLATE_TEST_CASE_SIG(
+    "RangeMultiSubset::add_range for non-coalescing floating-point types",
+    "[range_multi_subset]",
+    ((typename T, Datatype D), T, D),
+    (float, Datatype::FLOAT32),
+    (double, Datatype::FLOAT64)) {
+  T bounds[2] = {-1.0, 1.0};
+  Range range{bounds, 2 * sizeof(T)};
+  RangeMultiSubset range_subset{D, range, false, true};
+  REQUIRE(range_subset.num_ranges() == 0);
   SECTION("Add 2 Overlapping Ranges") {
-    float data1[2] = {-0.5, 0.5};
-    float data2[2] = {0.5, 0.75};
-    Range r1{data1, 2 * sizeof(float)};
-    Range r2{data2, 2 * sizeof(float)};
+    T data1[2] = {-0.5, 0.5};
+    T data2[2] = {0.5, 0.75};
+    Range r1{data1, 2 * sizeof(T)};
+    Range r2{data2, 2 * sizeof(T)};
     range_subset.add_subset(r1);
     range_subset.add_subset(r2);
-    CHECK(range_subset.num_ranges() == 2);
+    REQUIRE(range_subset.num_ranges() == 2);
   }
 }
 
-// TODO: Generatize for all numeric sortable types.
-TEST_CASE(
-    "RangeMultiSubset: Test numeric sort", "[range-manager][threadpool]") {
-  uint64_t bounds[2] = {0, 10};
-  Range range{bounds, 2 * sizeof(uint64_t)};
-  RangeMultiSubset range_subset{Datatype::UINT64, range, false, true};
+TEMPLATE_TEST_CASE_SIG(
+    "Test RangeMultiSubset numeric sort",
+    "[range_multi_subset][threadpool]",
+    ((typename T, Datatype D), T, D),
+    (int8_t, Datatype::INT8),
+    (uint8_t, Datatype::UINT8),
+    (int16_t, Datatype::INT16),
+    (uint16_t, Datatype::UINT16),
+    (int32_t, Datatype::INT32),
+    (uint32_t, Datatype::UINT32),
+    (int64_t, Datatype::INT64),
+    (uint64_t, Datatype::UINT64),
+    (int64_t, Datatype::DATETIME_YEAR),
+    (float, Datatype::FLOAT32),
+    (double, Datatype::FLOAT64)) {
+  T bounds[2] = {0, 10};
+  Range range{bounds, 2 * sizeof(T)};
+  RangeMultiSubset range_subset{D, range, false, true};
   SECTION("Sort 2 reverse ordered ranges") {
     // Add ranges.
-    uint64_t data1[2] = {4, 5};
-    uint64_t data2[2] = {1, 2};
-    Range r1{data1, 2 * sizeof(uint64_t)};
-    Range r2{data2, 2 * sizeof(uint64_t)};
+    T data1[2] = {4, 5};
+    T data2[2] = {1, 2};
+    Range r1{data1, 2 * sizeof(T)};
+    Range r2{data2, 2 * sizeof(T)};
     range_subset.add_subset(r1);
     range_subset.add_subset(r2);
     CHECK(range_subset.num_ranges() == 2);
@@ -117,16 +157,16 @@ TEST_CASE(
     CHECK(range_subset.num_ranges() == 2);
     // Check the first range.
     auto result_range = range_subset[0];
-    const uint64_t* start = (uint64_t*)result_range.start();
-    const uint64_t* end = (uint64_t*)result_range.end();
-    CHECK(*start == 1);
-    CHECK(*end == 2);
+    auto start = (const T*)result_range.start();
+    auto end = (const T*)result_range.end();
+    CHECK(*start == data2[0]);
+    REQUIRE(*end == data2[1]);
     // Check the second range.
     result_range = range_subset[1];
-    start = (uint64_t*)result_range.start();
-    end = (uint64_t*)result_range.end();
-    CHECK(*start == 4);
-    CHECK(*end == 5);
+    start = (const T*)result_range.start();
+    end = (const T*)result_range.end();
+    CHECK(*start == data1[0]);
+    REQUIRE(*end == data1[1]);
   }
 }
 
