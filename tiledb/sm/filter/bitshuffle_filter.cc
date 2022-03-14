@@ -165,6 +165,7 @@ Status BitshuffleFilter::shuffle_part(
 
 Status BitshuffleFilter::run_reverse(
     const Tile& tile,
+    Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

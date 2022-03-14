@@ -316,6 +316,7 @@ Status FilterPipeline::filter_chunks_forward(
 
 Status FilterPipeline::filter_chunks_reverse(
     Tile& tile,
+    Tile* const offsets_tile,
     const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
     ThreadPool* const compute_tp,
     const Config& config) const {
@@ -391,6 +392,7 @@ Status FilterPipeline::filter_chunks_reverse(
 
       RETURN_NOT_OK(f->run_reverse(
           tile,
+          offsets_tile,
           &input_metadata,
           &input_data,
           &output_metadata,
@@ -529,6 +531,7 @@ Status FilterPipeline::run_reverse_chunk_range(
 
       RETURN_NOT_OK(f->run_reverse(
           *tile,
+          nullptr,
           &input_metadata,
           &input_data,
           &output_metadata,
@@ -552,16 +555,19 @@ Status FilterPipeline::run_reverse_chunk_range(
 Status FilterPipeline::run_reverse(
     stats::Stats* const reader_stats,
     Tile* const tile,
+    Tile* const offsets_tile,
     ThreadPool* const compute_tp,
     const Config& config) const {
   assert(tile->filtered());
 
-  return run_reverse_internal(reader_stats, tile, compute_tp, config);
+  return run_reverse_internal(
+      reader_stats, tile, offsets_tile, compute_tp, config);
 }
 
 Status FilterPipeline::run_reverse_internal(
     stats::Stats* const reader_stats,
-    Tile* tile,
+    Tile* const tile,
+    Tile* const offsets_tile,
     ThreadPool* const compute_tp,
     const Config& config) const {
   auto filtered_buffer_data = tile->filtered_buffer().data();
@@ -594,16 +600,23 @@ Status FilterPipeline::run_reverse_internal(
 
   reader_stats->add_counter("read_unfiltered_byte_num", total_orig_size);
 
-  const Status st =
-      filter_chunks_reverse(*tile, filtered_chunks, compute_tp, config);
+  const Status st = filter_chunks_reverse(
+      *tile, offsets_tile, filtered_chunks, compute_tp, config);
   if (!st.ok()) {
     tile->clear_data();
+    if (offsets_tile) {
+      offsets_tile->clear_data();
+    }
     return st;
   }
 
   // Clear the filtered buffer now that we have reverse-filtered it into
   // 'tile->buffer()'.
   tile->filtered_buffer().clear();
+  // If unfiltering also included offsets, clear their filtered buffer too
+  if (offsets_tile) {
+    offsets_tile->filtered_buffer().clear();
+  }
 
   // Zip the coords.
   if (tile->stores_coords()) {
@@ -715,6 +728,16 @@ Status FilterPipeline::append_encryption_filter(
       return LOG_STATUS(Status_FilterError(
           "Error appending encryption filter; unknown type."));
   }
+}
+
+bool FilterPipeline::skip_offsets_filtering(Datatype type) const {
+  if (type == Datatype::STRING_ASCII) {
+    if (has_filter(FilterType::FILTER_RLE)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 bool FilterPipeline::use_tile_chunking(bool is_var, Datatype type) const {

@@ -764,7 +764,7 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
 
 TEST_CASE(
     "C API: Test fragment info, load from array with string dimension",
-    "[capi][fragment_info][load][string-dim][mbr]") {
+    "[capi][fragment_info][load][string-dims][mbr]") {
   // Create TileDB context
   tiledb_ctx_t* ctx = nullptr;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
@@ -1509,7 +1509,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C API: Test fragment info, dump with string dimension",
-    "[capi][fragment_info][dump][string-dim]") {
+    "[capi][fragment_info][dump][string-dims]") {
   // Create TileDB context
   tiledb_ctx_t* ctx = nullptr;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);

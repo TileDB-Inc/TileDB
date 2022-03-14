@@ -123,7 +123,7 @@ void write_array_1(
 
 TEST_CASE(
     "C++ API: Test infinite string splits",
-    "[cppapi][string-dim][infinite-split]") {
+    "[cppapi][string-dims][infinite-split]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -199,7 +199,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test default string dimensions",
-    "[cppapi][string-dim][default]") {
+    "[cppapi][string-dims][default]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
 
@@ -429,7 +429,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test default string dimensions with partitioning",
-    "[cppapi][string-dim][default][partitioning]") {
+    "[cppapi][string-dims][default][partitioning]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
 
@@ -699,7 +699,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test default string dimensions with partitioning - with SECTIONs",
-    "[cppapi][string-dim][default][partitioning]") {
+    "[cppapi][string-dims][default][partitioning]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
 
@@ -943,7 +943,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test default string dimensions with partitioning - dupsallowed, "
     "varying bufcnt",
-    "[cppapi][string-dim][default][partitioning]") {
+    "[cppapi][string-dims][default][partitioning]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
 
@@ -1196,7 +1196,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test default string dimensions with partitioning - dupsallowed - "
     "withsections",
-    "[cppapi][string-dim][default][partitioning]") {
+    "[cppapi][string-dims][default][partitioning]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
 
@@ -1447,12 +1447,12 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test filtering of string dimensions",
-    "[cppapi][string-dim][rle-strings][sparse]") {
+    "[cppapi][string-dims][rle-strings][sparse]") {
   std::string array_name = "test_rle_string_dim";
 
   // Create data buffer to use
   std::stringstream repetitions;
-  size_t repetition_num = 100;
+  size_t repetition_num = 1000000;
   for (size_t i = 0; i < repetition_num; i++)
     repetitions << "GLSD987JHY";
   std::string data =
@@ -1526,7 +1526,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test adding RLE filter of string dimensions",
-    "[cppapi][string-dim][rle-strings][sparse]") {
+    "[cppapi][string-dims][rle-strings][sparse]") {
   std::string array_name = "test_rle_string_dim";
 
   Context ctx;

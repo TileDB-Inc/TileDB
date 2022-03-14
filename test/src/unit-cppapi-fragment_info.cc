@@ -401,7 +401,7 @@ TEST_CASE("C++ API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
 
 TEST_CASE(
     "C++ API: Test fragment info, load from array with string dimension",
-    "[cppapi][fragment_info][load][string-dim][mbr]") {
+    "[cppapi][fragment_info][load][string-dims][mbr]") {
   // Create TileDB context
   Context ctx;
   Config cfg;

@@ -394,7 +394,10 @@ TEST_CASE(
       "A";
   const auto exp_decomp_size = strlen(unc);
   std::vector<std::byte> decompressed(exp_decomp_size);
-  tiledb::sm::RLE::decompress<uint8_t, uint8_t>(compressed, decompressed);
+  auto num_strings = 8;
+  std::vector<uint64_t> decompressed_offsets(num_strings);
+  tiledb::sm::RLE::decompress<uint8_t, uint8_t>(
+      compressed, decompressed, decompressed_offsets);
 
   // In decompressed array there are only chars, so compare using memcpy
   CHECK(
@@ -402,6 +405,11 @@ TEST_CASE(
           unc,
           reinterpret_cast<const char*>(decompressed.data()),
           decompressed.size()) == 0);
+
+  std::vector<uint64_t> expected_offsets{0, 8, 16, 24, 32, 40, 44};
+  for (uint32_t i = 0; i < expected_offsets.size(); i++) {
+    CHECK(expected_offsets[i] == decompressed_offsets[i]);
+  }
 }
 
 typedef tuple<uint16_t, uint32_t, uint64_t> FixedTypesUnderTest;
@@ -445,13 +453,25 @@ TEMPLATE_LIST_TEST_CASE(
   const char* unc = strout.data();
   const auto exp_decomp_size = strlen(unc);
   std::vector<std::byte> decompressed(exp_decomp_size);
-  tiledb::sm::RLE::decompress<T, T>(compressed, decompressed);
+  std::vector<uint64_t> decompressed_offsets(num_strings);
+  tiledb::sm::RLE::decompress<T, T>(
+      compressed, decompressed, decompressed_offsets);
 
   CHECK(
       memcmp(
           unc,
           reinterpret_cast<const char*>(decompressed.data()),
           decompressed.size()) == 0);
+
+  std::vector<uint64_t> expected_offsets(num_strings);
+  auto len = string_rand.size();
+  int start = -1 * len;
+  std::generate(expected_offsets.begin(), expected_offsets.end(), [&] {
+    return start += len;
+  });
+  for (uint32_t i = 0; i < expected_offsets.size(); i++) {
+    CHECK(expected_offsets[i] == decompressed_offsets[i]);
+  }
 }
 
 TEST_CASE(
@@ -503,7 +523,10 @@ TEST_CASE(
       "HG5";
   const auto exp_decomp_size = strlen(unc);
   std::vector<std::byte> decompressed(exp_decomp_size);
-  tiledb::sm::RLE::decompress<uint8_t, uint8_t>(compressed, decompressed);
+  auto num_strings = 7;
+  std::vector<uint64_t> decompressed_offsets(num_strings);
+  tiledb::sm::RLE::decompress<uint8_t, uint8_t>(
+      compressed, decompressed, decompressed_offsets);
 
   // In decompressed array there are only chars, so compare using memcpy
   CHECK(
@@ -511,6 +534,11 @@ TEST_CASE(
           unc,
           reinterpret_cast<const char*>(decompressed.data()),
           decompressed.size()) == 0);
+
+  std::vector<uint64_t> expected_offsets{0, 8, 11, 13, 14, 17, 21};
+  for (uint32_t i = 0; i < expected_offsets.size(); i++) {
+    CHECK(expected_offsets[i] == decompressed_offsets[i]);
+  }
 }
 
 typedef tuple<uint8_t, uint16_t, uint32_t, uint64_t> UnsignedIntegerTypes;

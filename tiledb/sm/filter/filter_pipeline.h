@@ -239,14 +239,18 @@ class FilterPipeline {
    * The length of tile_data will be the sum of all chunkI_orig_len for I in 0
    * to N.
    *
-   * @param tile Tile to filter
+   * @param reader_stats Reader stats
+   * @param tile Tile to unfilter
+   * @param offsets_tile Offsets tile to unfilter, null if it will be unfilered
+   * separately
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
    * @return Status
    */
   Status run_reverse(
       stats::Stats* reader_stats,
-      Tile* tile,
+      Tile* const tile,
+      Tile* const offsets_tile,
       ThreadPool* compute_tp,
       const Config& config) const;
 
@@ -300,6 +304,15 @@ class FilterPipeline {
    */
   static Status append_encryption_filter(
       FilterPipeline* pipeline, const EncryptionKey& encryption_key);
+
+  /**
+   * Checks if an attribute/dimension needs to be filtered in chunks or as a
+   * whole
+   *
+   * @param type Datatype of the input attribute/dimension
+   * @return True if we can skip offsets filtering
+   */
+  bool skip_offsets_filtering(const Datatype type) const;
 
   /**
    * Checks if an attribute/dimension needs to be filtered in chunks or as a
@@ -364,6 +377,8 @@ class FilterPipeline {
    * Run the given list of chunks in reverse through the pipeline.
    *
    * @param tile Current tile on which the filter pipeline is being run
+   * @param offsets_tile Current offsets tile for var sized
+   * attributes/dimensions.
    * @param input Filtered chunk buffers to reverse.
    * @param output Chunked buffer where output of the last stage
    *    will be written.
@@ -373,6 +388,7 @@ class FilterPipeline {
    */
   Status filter_chunks_reverse(
       Tile& tile,
+      Tile* const offsets_tile,
       const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
       ThreadPool* const compute_tp,
       const Config& config) const;
@@ -381,13 +397,15 @@ class FilterPipeline {
    * The internal work routine for `run_reverse`.
    *
    * @param tile Tile to filter
+   * @param offsets_tile Offsets tile for var sized tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
    * @return Status
    */
   Status run_reverse_internal(
       stats::Stats* reader_stats,
-      Tile* tile,
+      Tile* const tile,
+      Tile* const offsets_tile,
       ThreadPool* compute_tp,
       const Config& config) const;
 };
