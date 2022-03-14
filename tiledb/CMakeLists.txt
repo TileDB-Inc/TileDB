@@ -499,6 +499,7 @@ if (SANITIZER)
   )
 endif()
 
+
 # Coverage linker flags
 if (CMAKE_BUILD_TYPE MATCHES "Coverage")
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB

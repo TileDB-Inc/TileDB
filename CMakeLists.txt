@@ -124,6 +124,7 @@ option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
 option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit tests" OFF)
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
+option(TILEDB_LEGACY_THREAD_POOL "Use legacy thread pool" OFF)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
@@ -240,12 +241,22 @@ endif()
 # Definitions for all targets
 add_definitions(-D_FILE_OFFSET_BITS=64)
 
+# Legacy thread pool
+if (TILEDB_LEGACY_THREAD_POOL)
+    message(STATUS "The TileDB library is compiled with LEGACY thread pool (${TILEDB_LEGACY_THREAD_POOL}).")
+    add_definitions(-DLEGACY_THREAD_POOL)
+else()
+    message(STATUS "The TileDB library is compiled with NEW thread pool (${TILEDB_LEGACY_THREAD_POOL}).")
+endif()
+
+
 # AVX2 flag
 include(CheckAVX2Support)
 CheckAVX2Support()
 if (COMPILER_SUPPORTS_AVX2)
   add_compile_options(${COMPILER_AVX2_FLAG})
 endif()
+
 
 ############################################################
 # Enable testing and add subdirectories
