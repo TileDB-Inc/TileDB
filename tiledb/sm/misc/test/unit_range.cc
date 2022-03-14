@@ -66,74 +66,73 @@ void test_full_typeset_is_valid() {
   REQUIRE(status.ok());
 }
 
-TEST_CASE(
-    "RangeOperations: Test is_valid_range for numeric datatypes", "[range]") {
+TEMPLATE_TEST_CASE(
+    "RangeOperations: Test is_valid_range for unsigned int types",
+    "[range]",
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t) {
   SECTION("Test single point is valid") {
-    test_valid_range<int8_t>(1, 1);
-    test_valid_range<uint8_t>(1, 1);
-    test_valid_range<int16_t>(1, 1);
-    test_valid_range<uint16_t>(1, 1);
-    test_valid_range<int32_t>(1, 1);
-    test_valid_range<uint32_t>(1, 1);
-    test_valid_range<int64_t>(1, 1);
-    test_valid_range<uint64_t>(1, 1);
-    test_valid_range<float>(1.0, 1.0);
-    test_valid_range<double>(1.0, 1.0);
+    test_valid_range<TestType>(1, 1);
   }
   SECTION("Test standard range is valid") {
-    test_valid_range<int8_t>(-1, 10);
-    test_valid_range<uint8_t>(1, 10);
-    test_valid_range<int16_t>(-1, 10);
-    test_valid_range<uint16_t>(1, 10);
-    test_valid_range<int32_t>(-1, 10);
-    test_valid_range<uint32_t>(1, 10);
-    test_valid_range<int64_t>(-1, 10);
-    test_valid_range<uint64_t>(1, 10);
-    test_valid_range<float>(-10.0, 10.0);
-    test_valid_range<double>(-10.0, 10.0);
+    test_valid_range<TestType>(1, 10);
   }
   SECTION("Test full typeset is valid") {
-    test_full_typeset_is_valid<int8_t>();
-    test_full_typeset_is_valid<uint8_t>();
-    test_full_typeset_is_valid<int16_t>();
-    test_full_typeset_is_valid<uint16_t>();
-    test_full_typeset_is_valid<int32_t>();
-    test_full_typeset_is_valid<uint32_t>();
-    test_full_typeset_is_valid<int64_t>();
-    test_full_typeset_is_valid<uint64_t>();
-    test_full_typeset_is_valid<float>();
-    test_full_typeset_is_valid<double>();
+    test_full_typeset_is_valid<TestType>();
   }
   SECTION("Test lower bound larger than upper bound is invalid") {
-    test_invalid_range<int8_t>(1, -1);
-    test_invalid_range<uint8_t>(10, 1);
-    test_invalid_range<int16_t>(1, -1);
-    test_invalid_range<uint16_t>(10, 1);
-    test_invalid_range<int32_t>(1, -1);
-    test_invalid_range<uint32_t>(10, 1);
-    test_invalid_range<int64_t>(1, -1);
-    test_invalid_range<uint64_t>(10, 1);
-    test_invalid_range<float>(1.0, -1.0);
-    test_invalid_range<double>(1.0, -1.0);
+    test_invalid_range<TestType>(10, 1);
+  }
+}
+
+TEMPLATE_TEST_CASE(
+    "RangeOperations: Test is_valid_range for signed int types",
+    "[range]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t) {
+  SECTION("Test single point is valid") {
+    test_valid_range<TestType>(-1, -1);
+  }
+  SECTION("Test standard range is valid") {
+    test_valid_range<TestType>(-1, 10);
+  }
+  SECTION("Test full typeset is valid") {
+    test_full_typeset_is_valid<TestType>();
+  }
+  SECTION("Test lower bound larger than upper bound is invalid") {
+    test_invalid_range<TestType>(1, -1);
+  }
+}
+
+TEMPLATE_TEST_CASE(
+    "RangeOperations: Test is_valid_range for floating-point types",
+    "[range]",
+    float,
+    double) {
+  SECTION("Test single point is valid") {
+    test_valid_range<TestType>(1.0, 1.0);
+  }
+  SECTION("Test standard range is valid") {
+    test_valid_range<TestType>(-10.0, 10.0);
+  }
+  SECTION("Test full typeset is valid") {
+    test_full_typeset_is_valid<TestType>();
+  }
+  SECTION("Test lower bound larger than upper bound is invalid") {
+    test_invalid_range<TestType>(1.0, -1.0);
   }
   SECTION("Test infinite values are valid") {
-    test_valid_range<float>(
-        -std::numeric_limits<float>::infinity(),
-        std::numeric_limits<float>::infinity());
-    test_valid_range<float>(0.0, std::numeric_limits<float>::infinity());
-    test_valid_range<float>(-std::numeric_limits<float>::infinity(), 0.0);
-    test_valid_range<double>(
-        -std::numeric_limits<double>::infinity(),
-        std::numeric_limits<double>::infinity());
-    test_valid_range<double>(0.0, std::numeric_limits<double>::infinity());
-    test_valid_range<double>(-std::numeric_limits<double>::infinity(), 0.0);
+    test_valid_range<TestType>(
+        -std::numeric_limits<TestType>::infinity(),
+        std::numeric_limits<TestType>::infinity());
+    test_valid_range<TestType>(0.0, std::numeric_limits<TestType>::infinity());
+    test_valid_range<TestType>(-std::numeric_limits<TestType>::infinity(), 0.0);
   }
   SECTION("Test NaN values are invalid") {
-    test_invalid_range<float>(
-        std::numeric_limits<float>::quiet_NaN(),
-        std::numeric_limits<float>::quiet_NaN());
-    test_invalid_range<float>(0.0, std::numeric_limits<float>::quiet_NaN());
-    test_invalid_range<float>(std::numeric_limits<float>::quiet_NaN(), 0.0);
     test_invalid_range<double>(
         std::numeric_limits<double>::quiet_NaN(),
         std::numeric_limits<double>::quiet_NaN());
@@ -194,75 +193,107 @@ void test_bad_subset(const T* domain_data, const T* range_data) {
   }
 }
 
-template <typename T>
-void test_signed_integer_superset() {
-  std::string section_name{"Test RangeSuperset for "};
-  SECTION(section_name + typeid(T).name()) {
-    T domain[2]{-2, 2};
-    T subset[2]{-1, 1};
-    T bad_lower[2]{-4, 0};
-    T bad_upper[2]{0, 8};
-    T superset[2]{-8, 8};
-    T fullset[2]{std::numeric_limits<T>::min(), std::numeric_limits<T>::max()};
-    test_good_subset<T>(domain, domain);
-    test_good_subset<T>(domain, subset);
-    test_bad_subset<T>(domain, bad_lower);
-    test_bad_subset<T>(domain, bad_upper);
-    test_bad_subset<T>(domain, superset);
-    test_bad_subset<T>(domain, fullset);
+TEMPLATE_TEST_CASE(
+    "RangeSuperset: Test intersect, check_is_subset for unsigned int types",
+    "[range]",
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t) {
+  TestType domain[2]{1, 4};
+  SECTION("Test full domain is a valid subset") {
+    test_good_subset<TestType>(domain, domain);
+  }
+  SECTION("Test simple proper subset is a valid subset") {
+    TestType subset[2]{2, 3};
+    test_good_subset<TestType>(domain, subset);
+  }
+  SECTION("Test a non-valid subset with lower bound less than superset") {
+    TestType bad_lower[2]{0, 3};
+    test_bad_subset<TestType>(domain, bad_lower);
+  }
+  SECTION("Test a non-valid subset with upper bound more than superset") {
+    TestType bad_upper[2]{2, 8};
+    test_bad_subset<TestType>(domain, bad_upper);
+  }
+  SECTION("Test a non-valid subset that is a proper superset") {
+    TestType superset[2]{0, 6};
+    test_bad_subset<TestType>(domain, superset);
+  }
+  SECTION("Test a non-valid subset that is actually the full typeset") {
+    TestType fullset[2]{std::numeric_limits<TestType>::min(),
+                        std::numeric_limits<TestType>::max()};
+    test_bad_subset<TestType>(domain, fullset);
   }
 }
 
-template <typename T>
-void test_unsigned_integer_superset() {
-  std::string section_name{"Test RangeSuperset for "};
-  SECTION(section_name + typeid(T).name()) {
-    T domain[2]{1, 4};
-    T subset[2]{2, 3};
-    T bad_lower[2]{0, 3};
-    T bad_upper[2]{2, 8};
-    T superset[2]{0, 6};
-    T fullset[2]{std::numeric_limits<T>::min(), std::numeric_limits<T>::max()};
-    test_good_subset<T>(domain, domain);
-    test_good_subset<T>(domain, subset);
-    test_bad_subset<T>(domain, bad_lower);
-    test_bad_subset<T>(domain, bad_upper);
-    test_bad_subset<T>(domain, superset);
-    test_bad_subset<T>(domain, fullset);
+TEMPLATE_TEST_CASE(
+    "RangeSuperset: Test intersect, check_is_subset for signed int types",
+    "[range]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t) {
+  TestType domain[2]{-2, 2};
+  SECTION("Test full domain is a valid subset") {
+    test_good_subset<TestType>(domain, domain);
+  }
+  SECTION("Test simple proper subset is a valid subset") {
+    TestType subset[2]{-1, 1};
+    test_good_subset<TestType>(domain, subset);
+  }
+  SECTION("Test a non-valid subset with lower bound less than superset") {
+    TestType bad_lower[2]{-4, 0};
+    test_bad_subset<TestType>(domain, bad_lower);
+  }
+  SECTION("Test a non-valid subset with upper bound more than superset") {
+    TestType bad_upper[2]{0, 8};
+    test_bad_subset<TestType>(domain, bad_upper);
+  }
+  SECTION("Test a non-valid subset that is a proper superset") {
+    TestType superset[2]{-8, 8};
+    test_bad_subset<TestType>(domain, superset);
+  }
+  SECTION("Test a non-valid subset that is actually the full typeset") {
+    TestType fullset[2]{std::numeric_limits<TestType>::min(),
+                        std::numeric_limits<TestType>::max()};
+    test_bad_subset<TestType>(domain, fullset);
   }
 }
 
-template <typename T>
-void test_floating_point_superset() {
-  std::string section_name{"Test RangeSuperset for "};
-  SECTION(section_name + typeid(T).name()) {
-    T domain[2]{-10.5, 3.33};
-    T subset[2]{-2.5, 2.5};
-    T bad_lower[2]{-20.5, 0.0};
-    T bad_upper[2]{0.0, 20.5};
-    T superset[2]{-20.0, 20.0};
-    T fullset[2]{std::numeric_limits<T>::min(), std::numeric_limits<T>::max()};
-    T infinite[2]{-std::numeric_limits<T>::infinity(),
-                  std::numeric_limits<T>::infinity()};
-    test_good_subset<T>(domain, domain);
-    test_good_subset<T>(domain, subset);
-    test_bad_subset<T>(domain, bad_lower);
-    test_bad_subset<T>(domain, bad_upper);
-    test_bad_subset<T>(domain, superset);
-    test_bad_subset<T>(domain, fullset);
-    test_bad_subset<T>(domain, infinite);
+TEMPLATE_TEST_CASE(
+    "RangeSuperset: Test intersect, check_is_subset for floating-point types",
+    "[range]",
+    float,
+    double) {
+  TestType domain[2]{-10.5, 3.33};
+  SECTION("Test full domain is a valid subset") {
+    test_good_subset<TestType>(domain, domain);
   }
-}
-
-TEST_CASE("RangeSuperset: Test intersect,check_is_subset", "[range]") {
-  test_unsigned_integer_superset<uint8_t>();
-  test_unsigned_integer_superset<uint16_t>();
-  test_unsigned_integer_superset<uint32_t>();
-  test_unsigned_integer_superset<uint64_t>();
-  test_signed_integer_superset<int8_t>();
-  test_signed_integer_superset<int16_t>();
-  test_signed_integer_superset<int32_t>();
-  test_signed_integer_superset<int64_t>();
-  test_floating_point_superset<float>();
-  test_floating_point_superset<double>();
+  SECTION("Test simple proper subset is a valid subset") {
+    TestType subset[2]{-2.5, 2.5};
+    test_good_subset<TestType>(domain, subset);
+  }
+  SECTION("Test a non-valid subset with lower bound less than superset") {
+    TestType bad_lower[2]{-20.5, 0.0};
+    test_bad_subset<TestType>(domain, bad_lower);
+  }
+  SECTION("Test a non-valid subset with upper bound more than superset") {
+    TestType bad_upper[2]{0.0, 20.5};
+    test_bad_subset<TestType>(domain, bad_upper);
+  }
+  SECTION("Test a non-valid subset that is a proper superset") {
+    TestType superset[2]{-20.0, 20.0};
+    test_bad_subset<TestType>(domain, superset);
+  }
+  SECTION("Test a non-valid subset that is actually the full typeset") {
+    TestType fullset[2]{std::numeric_limits<TestType>::min(),
+                        std::numeric_limits<TestType>::max()};
+    test_bad_subset<TestType>(domain, fullset);
+  }
+  SECTION("Test a non-valid subset that is actually infinite") {
+    TestType infinite[2]{-std::numeric_limits<TestType>::infinity(),
+                         std::numeric_limits<TestType>::infinity()};
+    test_bad_subset<TestType>(domain, infinite);
+  }
 }
