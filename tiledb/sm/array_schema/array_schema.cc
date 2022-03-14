@@ -596,7 +596,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   }
 
   // Load domain
-  domain_ = tdb::make_shared<Domain>(HERE());
+  domain_ = make_shared<Domain>(HERE());
   RETURN_NOT_OK(domain_->deserialize(buff, version_));
 
   // Load attributes

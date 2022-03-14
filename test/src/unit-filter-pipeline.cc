@@ -32,6 +32,7 @@
  */
 
 #include "test/src/helpers.h"
+#include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
@@ -1551,7 +1552,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   tiledb::sm::ArraySchema schema;
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
   schema.add_attribute(tdb::make_shared<tiledb::sm::Attribute>(HERE(), &attr));
-  schema.set_domain(tdb::make_shared<tiledb::sm::Domain>(HERE(), &domain));
+  schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain));
   schema.init();
 
   FilterPipeline pipeline;
@@ -1711,7 +1712,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   tiledb::sm::ArraySchema schema;
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
   schema.add_attribute(tdb::make_shared<tiledb::sm::Attribute>(HERE(), &attr));
-  schema.set_domain(tdb::make_shared<tiledb::sm::Domain>(HERE(), &domain));
+  schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain));
   schema.init();
 
   FilterPipeline pipeline;

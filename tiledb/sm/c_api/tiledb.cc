@@ -2490,7 +2490,7 @@ int32_t tiledb_array_schema_set_domain(
   if (SAVE_ERROR_CATCH(
           ctx,
           array_schema->array_schema_->set_domain(
-              tdb::make_shared<tiledb::sm::Domain>(HERE(), domain->domain_))))
+              make_shared<tiledb::sm::Domain>(HERE(), domain->domain_))))
     return TILEDB_ERR;
   return TILEDB_OK;
 }

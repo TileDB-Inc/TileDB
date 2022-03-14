@@ -30,6 +30,7 @@
  * Tests the `RTree` class.
  */
 
+#include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
@@ -115,7 +116,7 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   Domain dom1 =
       create_domain({"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent});
   std::vector<NDRange> mbrs_1d = create_mbrs<int32_t, 1>({1, 3, 5, 10, 20, 22});
-  RTree rtree1(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom1), 3);
+  RTree rtree1(make_shared<tiledb::sm::Domain>(HERE(), &dom1), 3);
   CHECK(!rtree1.set_leaf(0, mbrs_1d[0]).ok());
   rtree1.set_leaf_num(mbrs_1d.size());
   for (size_t m = 0; m < mbrs_1d.size(); ++m)
@@ -175,7 +176,7 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
       {&dim_extent_2, &dim_extent_2});
   std::vector<NDRange> mbrs_2d =
       create_mbrs<int64_t, 2>({1, 3, 5, 10, 20, 22, 24, 25, 11, 15, 30, 31});
-  RTree rtree2(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom2), 5);
+  RTree rtree2(make_shared<tiledb::sm::Domain>(HERE(), &dom2), 5);
   rtree2.set_leaves(mbrs_2d);
   rtree2.build_tree();
   CHECK(rtree2.height() == 2);
@@ -213,7 +214,7 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
       create_mbrs<float, 1>({1.0f, 3.0f, 5.0f, 10.0f, 20.0f, 22.0f});
   Domain dom2f =
       create_domain({"d"}, {Datatype::FLOAT32}, {dim_dom_f}, {&dim_extent_f});
-  RTree rtreef(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom2f), 5);
+  RTree rtreef(make_shared<tiledb::sm::Domain>(HERE(), &dom2f), 5);
   rtreef.set_leaves(mbrs_f);
   rtreef.build_tree();
 
@@ -255,7 +256,7 @@ TEST_CASE("RTree: Test 1D R-tree, height 2", "[rtree][1d][2h]") {
   Domain dom1 =
       create_domain({"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent});
   std::vector<NDRange> mbrs = create_mbrs<int32_t, 1>({1, 3, 5, 10, 20, 22});
-  RTree rtree(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom1), 3);
+  RTree rtree(make_shared<tiledb::sm::Domain>(HERE(), &dom1), 3);
   rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
@@ -301,7 +302,7 @@ TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][1d][3h]") {
       {1, 3, 5, 10, 20, 22, 30, 35, 36, 38, 40, 49, 50, 51, 65, 69});
   Domain dom1 =
       create_domain({"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent});
-  RTree rtree(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom1), 3);
+  RTree rtree(make_shared<tiledb::sm::Domain>(HERE(), &dom1), 3);
   rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 3);
@@ -369,7 +370,7 @@ TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
       {&dim_extent, &dim_extent});
   std::vector<NDRange> mbrs =
       create_mbrs<int32_t, 2>({1, 3, 2, 4, 5, 7, 6, 9, 10, 12, 10, 15});
-  RTree rtree(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom2), 3);
+  RTree rtree(make_shared<tiledb::sm::Domain>(HERE(), &dom2), 3);
   rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
@@ -422,7 +423,7 @@ TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
   std::vector<NDRange> mbrs = create_mbrs<int32_t, 2>(
       {1,  3,  2,  4,  5,  7,  6,  9,  10, 12, 10, 15, 11, 15, 20, 22, 16, 16,
        23, 23, 19, 20, 24, 26, 25, 28, 30, 32, 30, 35, 35, 37, 40, 42, 40, 42});
-  RTree rtree(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom2), 3);
+  RTree rtree(make_shared<tiledb::sm::Domain>(HERE(), &dom2), 3);
   rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 3);
@@ -499,7 +500,7 @@ TEST_CASE(
       {&uint8_extent, &int32_extent});
   std::vector<NDRange> mbrs =
       create_mbrs<uint8_t, int32_t>({0, 1, 3, 5}, {5, 6, 7, 9});
-  RTree rtree(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom), 5);
+  RTree rtree(make_shared<tiledb::sm::Domain>(HERE(), &dom), 5);
   rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
@@ -554,7 +555,7 @@ TEST_CASE(
       {&uint64_extent, &float_extent});
   std::vector<NDRange> mbrs =
       create_mbrs<uint64_t, float>({0, 1, 3, 5}, {.5f, .6f, .7f, .9f});
-  RTree rtree(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom), 5);
+  RTree rtree(make_shared<tiledb::sm::Domain>(HERE(), &dom), 5);
   rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
@@ -609,7 +610,7 @@ TEST_CASE(
       {&uint8_extent, &int32_extent});
   std::vector<NDRange> mbrs =
       create_mbrs<uint8_t, int32_t>({0, 1, 3, 5, 11, 20}, {5, 6, 7, 9, 11, 30});
-  RTree rtree(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom), 3);
+  RTree rtree(make_shared<tiledb::sm::Domain>(HERE(), &dom), 3);
   rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
@@ -677,7 +678,7 @@ TEST_CASE(
       {&uint8_extent, &int32_extent});
   std::vector<NDRange> mbrs = create_mbrs<uint8_t, int32_t>(
       {0, 1, 3, 5, 11, 20, 21, 26}, {5, 6, 7, 9, 11, 30, 31, 40});
-  RTree rtree(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom), 2);
+  RTree rtree(make_shared<tiledb::sm::Domain>(HERE(), &dom), 2);
   rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 3);
@@ -816,7 +817,7 @@ TEST_CASE(
   std::vector<NDRange> mbrs =
       create_str_mbrs<1>({"aa", "b", "eee", "g", "gggg", "ii"});
 
-  RTree rtree(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom1), 3);
+  RTree rtree(make_shared<tiledb::sm::Domain>(HERE(), &dom1), 3);
   rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
@@ -903,7 +904,7 @@ TEST_CASE(
                                                   "oo",
                                                   "oop"});
 
-  RTree rtree(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom1), 3);
+  RTree rtree(make_shared<tiledb::sm::Domain>(HERE(), &dom1), 3);
   rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 3);
@@ -996,7 +997,7 @@ TEST_CASE(
                                                   "oo",
                                                   "qqq"});
 
-  RTree rtree(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom), 3);
+  RTree rtree(make_shared<tiledb::sm::Domain>(HERE(), &dom), 3);
   rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
@@ -1101,7 +1102,7 @@ TEST_CASE(
   std::vector<NDRange> mbrs = create_str_int32_mbrs(
       {"aa", "b", "eee", "g", "gggg", "ii"}, {1, 5, 7, 8, 10, 14});
 
-  RTree rtree(tdb::make_shared<tiledb::sm::Domain>(HERE(), &dom), 3);
+  RTree rtree(make_shared<tiledb::sm::Domain>(HERE(), &dom), 3);
   rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
