@@ -677,7 +677,6 @@ Status S3::ls(
     std::vector<std::string>* paths,
     const std::string& delimiter,
     int max_paths) const {
-  RETURN_NOT_OK(init_client());
   auto&& [st, entries] = ls_with_sizes(prefix, delimiter, max_paths);
   RETURN_NOT_OK(st);
 

@@ -386,9 +386,6 @@ Status GCS::ls(
     std::vector<std::string>* paths,
     const std::string& delimiter,
     const int max_paths) const {
-  RETURN_NOT_OK(init_client());
-  assert(paths);
-
   auto&& [st, entries] = ls_with_sizes(uri, delimiter, max_paths);
   RETURN_NOT_OK(st);
 
@@ -454,6 +451,8 @@ tuple<Status, optional<std::vector<FileStat>>> GCS::ls_with_sizes(
               remove_front_slash(remove_trailing_slash(obj.name()))),
           obj.size());
     } else if (absl::holds_alternative<std::string>(results)) {
+      // "Directories" are returned as strings here so we can't return
+      // any metadata for them.
       entries.emplace_back(
           URI(gcs_prefix + bucket_name + "/" +
               remove_front_slash(
