@@ -50,6 +50,7 @@ namespace sm {
 
 class Config;
 class URI;
+class FileStat;
 
 namespace hdfs {
 
@@ -182,6 +183,16 @@ class HDFS {
    * @return Status
    */
   Status ls(const URI& uri, std::vector<std::string>* paths);
+
+  /**
+   *
+   * Lists objects and object information that start with `uri`.
+   *
+   * @param uri The parent path to list sub-paths.
+   * @return A list of FileStat objects
+   */
+  tuple<Status, optional<std::vector<FileStat>>> ls_with_sizes(
+      const URI& uri) const;
 
   /**
    * Returns the size of the input file with a given URI in bytes.
