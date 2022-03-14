@@ -742,6 +742,8 @@ tuple<Status, optional<std::vector<FileStat>>> S3::ls_with_sizes(
     for (const auto& object :
          list_objects_outcome.GetResult().GetCommonPrefixes()) {
       std::string file(object.GetPrefix().c_str());
+      // For "directories" it doesn't seem possible to get a shallow size in
+      // S3, so the size of such an entry will be nullopt in S3.
       entries.emplace_back(URI(
           "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file))));
     }

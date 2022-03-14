@@ -220,7 +220,7 @@ class S3 {
 
   /**
    *
-   * Lists files and file information one level deep under a given path.
+   * Lists objects and object information that start with `prefix`.
    *
    * @param prefix The parent path to list sub-paths.
    * @param delimiter The uri is truncated to the first delimiter
