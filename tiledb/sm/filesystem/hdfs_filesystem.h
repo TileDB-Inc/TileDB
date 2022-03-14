@@ -191,8 +191,7 @@ class HDFS {
    * @param uri The parent path to list sub-paths.
    * @return A list of FileStat objects
    */
-  tuple<Status, optional<std::vector<FileStat>>> ls_with_sizes(
-      const URI& uri) const;
+  tuple<Status, optional<std::vector<FileStat>>> ls_with_sizes(const URI& uri);
 
   /**
    * Returns the size of the input file with a given URI in bytes.

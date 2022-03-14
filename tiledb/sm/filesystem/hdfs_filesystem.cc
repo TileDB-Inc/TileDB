@@ -523,7 +523,7 @@ Status HDFS::sync(const URI& uri) {
 }
 
 Status HDFS::ls(const URI& uri, std::vector<std::string>* paths) {
-  auto&& [st, entries] = ls_with_sizes(prefix, delimiter, max_paths);
+  auto&& [st, entries] = ls_with_sizes(uri);
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
@@ -533,10 +533,14 @@ Status HDFS::ls(const URI& uri, std::vector<std::string>* paths) {
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<FileStat>>> ls_with_sizes(
-    const URI& uri) const {
+tuple<Status, optional<std::vector<FileStat>>> HDFS::ls_with_sizes(
+    const URI& uri) {
   hdfsFS fs = nullptr;
-  RETURN_NOT_OK(connect(&fs));
+  auto st = connect(&fs);
+  if (!st.ok()) {
+    return {st, nullopt};
+  }
+
   int numEntries = 0;
   hdfsFileInfo* fileList =
       libhdfs_->hdfsListDirectory(fs, uri.to_path().c_str(), &numEntries);
