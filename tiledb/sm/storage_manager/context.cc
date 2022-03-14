@@ -48,8 +48,8 @@ namespace sm {
 Context::Context()
     : last_error_(Status::Ok())
     , storage_manager_(nullptr)
-    , stats_(tdb::make_shared<stats::Stats>(HERE(), "Context"))
-    , logger_(tdb::make_shared<Logger>(
+    , stats_(make_shared<stats::Stats>(HERE(), "Context"))
+    , logger_(make_shared<Logger>(
           HERE(), "Context: " + std::to_string(++logger_id_))) {
 }
 

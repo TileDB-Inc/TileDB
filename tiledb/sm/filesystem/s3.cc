@@ -1082,8 +1082,7 @@ Status S3::init_client() const {
   client_config_ = tdb_unique_ptr<Aws::Client::ClientConfiguration>(
       tdb_new(Aws::Client::ClientConfiguration));
 
-  s3_tp_executor_ =
-      tdb::make_shared<S3ThreadPoolExecutor>(HERE(), vfs_thread_pool_);
+  s3_tp_executor_ = make_shared<S3ThreadPoolExecutor>(HERE(), vfs_thread_pool_);
 
   client_config_->executor = s3_tp_executor_;
 
@@ -1219,7 +1218,7 @@ Status S3::init_client() const {
       Aws::String session_token(
           !aws_session_token.empty() ? aws_session_token.c_str() : "");
       credentials_provider_ =
-          tdb::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
+          make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
               HERE(), access_key_id, secret_access_key, session_token);
       break;
     }
@@ -1236,7 +1235,7 @@ Status S3::init_client() const {
       Aws::String session_name(
           !aws_session_name.empty() ? aws_session_name.c_str() : "");
       credentials_provider_ =
-          tdb::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
+          make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
               HERE(),
               role_arn,
               session_name,
@@ -1261,13 +1260,13 @@ Status S3::init_client() const {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
 
     if (credentials_provider_ == nullptr) {
-      client_ = tdb::make_shared<Aws::S3::S3Client>(
+      client_ = make_shared<Aws::S3::S3Client>(
           HERE(),
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
           use_virtual_addressing_);
     } else {
-      client_ = tdb::make_shared<Aws::S3::S3Client>(
+      client_ = make_shared<Aws::S3::S3Client>(
           HERE(),
           credentials_provider_,
           *client_config_,

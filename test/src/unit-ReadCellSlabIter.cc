@@ -32,6 +32,7 @@
 
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
+#include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/read_cell_slab_iter.h"
@@ -242,15 +243,14 @@ TEST_CASE_METHOD(
   auto& dom{array_->array_->array_schema_latest().domain()};
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
-  tdb_shared_ptr<FragmentMetadata> fragment =
-      tdb::make_shared<FragmentMetadata>(
-          HERE(),
-          nullptr,
-          nullptr,
-          array_->array_->array_schema_latest_ptr(),
-          URI(),
-          std::make_pair<uint64_t, uint64_t>(0, 0),
-          true);
+  tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+      HERE(),
+      nullptr,
+      nullptr,
+      array_->array_->array_schema_latest_ptr(),
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
   fragments.emplace_back(std::move(fragment));
 
   create_result_space_tiles(
@@ -316,15 +316,14 @@ TEST_CASE_METHOD(
   auto& dom{array_->array_->array_schema_latest().domain()};
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
-  tdb_shared_ptr<FragmentMetadata> fragment =
-      tdb::make_shared<FragmentMetadata>(
-          HERE(),
-          nullptr,
-          nullptr,
-          array_->array_->array_schema_latest_ptr(),
-          URI(),
-          std::make_pair<uint64_t, uint64_t>(0, 0),
-          true);
+  tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+      HERE(),
+      nullptr,
+      nullptr,
+      array_->array_->array_schema_latest_ptr(),
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
   fragments.emplace_back(std::move(fragment));
 
   create_result_space_tiles(
@@ -394,15 +393,14 @@ TEST_CASE_METHOD(
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < 2; i++) {
-    tdb_shared_ptr<FragmentMetadata> fragment =
-        tdb::make_shared<FragmentMetadata>(
-            HERE(),
-            nullptr,
-            nullptr,
-            array_->array_->array_schema_latest_ptr(),
-            URI(),
-            std::make_pair<uint64_t, uint64_t>(0, 0),
-            true);
+    tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+        HERE(),
+        nullptr,
+        nullptr,
+        array_->array_->array_schema_latest_ptr(),
+        URI(),
+        std::make_pair<uint64_t, uint64_t>(0, 0),
+        true);
     fragments.emplace_back(std::move(fragment));
   }
 
@@ -477,15 +475,14 @@ TEST_CASE_METHOD(
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < 2; i++) {
-    tdb_shared_ptr<FragmentMetadata> fragment =
-        tdb::make_shared<FragmentMetadata>(
-            HERE(),
-            nullptr,
-            nullptr,
-            array_->array_->array_schema_latest_ptr(),
-            URI(),
-            std::make_pair<uint64_t, uint64_t>(0, 0),
-            true);
+    tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+        HERE(),
+        nullptr,
+        nullptr,
+        array_->array_->array_schema_latest_ptr(),
+        URI(),
+        std::make_pair<uint64_t, uint64_t>(0, 0),
+        true);
     fragments.emplace_back(std::move(fragment));
   }
 
@@ -694,15 +691,14 @@ TEST_CASE_METHOD(
   auto& dom{array_->array_->array_schema_latest().domain()};
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
-  tdb_shared_ptr<FragmentMetadata> fragment =
-      tdb::make_shared<FragmentMetadata>(
-          HERE(),
-          nullptr,
-          nullptr,
-          array_->array_->array_schema_latest_ptr(),
-          URI(),
-          std::make_pair<uint64_t, uint64_t>(0, 0),
-          true);
+  tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+      HERE(),
+      nullptr,
+      nullptr,
+      array_->array_->array_schema_latest_ptr(),
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
   fragments.emplace_back(std::move(fragment));
 
   create_result_space_tiles(
@@ -880,15 +876,14 @@ TEST_CASE_METHOD(
   auto& dom{array_->array_->array_schema_latest().domain()};
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
-  tdb_shared_ptr<FragmentMetadata> fragment =
-      tdb::make_shared<FragmentMetadata>(
-          HERE(),
-          nullptr,
-          nullptr,
-          array_->array_->array_schema_latest_ptr(),
-          URI(),
-          std::make_pair<uint64_t, uint64_t>(0, 0),
-          true);
+  tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+      HERE(),
+      nullptr,
+      nullptr,
+      array_->array_->array_schema_latest_ptr(),
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
   fragments.emplace_back(std::move(fragment));
 
   create_result_space_tiles(
@@ -1079,15 +1074,14 @@ TEST_CASE_METHOD(
   auto& dom{array_->array_->array_schema_latest().domain()};
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
-  tdb_shared_ptr<FragmentMetadata> fragment =
-      tdb::make_shared<FragmentMetadata>(
-          HERE(),
-          nullptr,
-          nullptr,
-          array_->array_->array_schema_latest_ptr(),
-          URI(),
-          std::make_pair<uint64_t, uint64_t>(0, 0),
-          true);
+  tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+      HERE(),
+      nullptr,
+      nullptr,
+      array_->array_->array_schema_latest_ptr(),
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
   fragments.emplace_back(std::move(fragment));
 
   create_result_space_tiles(
@@ -1325,15 +1319,14 @@ TEST_CASE_METHOD(
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < 2; i++) {
-    tdb_shared_ptr<FragmentMetadata> fragment =
-        tdb::make_shared<FragmentMetadata>(
-            HERE(),
-            nullptr,
-            nullptr,
-            array_->array_->array_schema_latest_ptr(),
-            URI(),
-            std::make_pair<uint64_t, uint64_t>(0, 0),
-            true);
+    tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+        HERE(),
+        nullptr,
+        nullptr,
+        array_->array_->array_schema_latest_ptr(),
+        URI(),
+        std::make_pair<uint64_t, uint64_t>(0, 0),
+        true);
     fragments.emplace_back(std::move(fragment));
   }
 

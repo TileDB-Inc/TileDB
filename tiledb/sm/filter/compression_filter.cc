@@ -616,7 +616,7 @@ void CompressionFilter::init_compression_resource_pool(uint64_t size) {
   std::lock_guard g(zstd_compress_ctx_pool_mtx_);
   if (zstd_compress_ctx_pool_ == nullptr) {
     zstd_compress_ctx_pool_ =
-        tdb::make_shared<BlockingResourcePool<ZStd::ZSTD_Compress_Context>>(
+        make_shared<BlockingResourcePool<ZStd::ZSTD_Compress_Context>>(
             HERE(), size);
   }
 }
@@ -625,7 +625,7 @@ void CompressionFilter::init_decompression_resource_pool(uint64_t size) {
   std::lock_guard g(zstd_decompress_ctx_pool_mtx_);
   if (zstd_decompress_ctx_pool_ == nullptr) {
     zstd_decompress_ctx_pool_ =
-        tdb::make_shared<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>(
+        make_shared<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>(
             HERE(), size);
   }
 }

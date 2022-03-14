@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/fragment/fragment_info.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array/array_directory.h"
@@ -1011,7 +1012,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   }
 
   // Get fragment non-empty domain
-  auto meta = tdb::make_shared<FragmentMetadata>(
+  auto meta = make_shared<FragmentMetadata>(
       HERE(),
       storage_manager_,
       nullptr,

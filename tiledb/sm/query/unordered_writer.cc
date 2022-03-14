@@ -623,7 +623,7 @@ Status UnorderedWriter::unordered_write() {
     RETURN_CANCEL_OR_ERROR(compute_coord_dups(cell_pos, &coord_dups));
 
   // Create new fragment
-  auto frag_meta = tdb::make_shared<FragmentMetadata>(HERE());
+  auto frag_meta = make_shared<FragmentMetadata>(HERE());
   RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 

@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -82,7 +83,7 @@ ArraySchemaEvolution::evolve_schema(
             nullopt};
   }
 
-  auto schema = tdb::make_shared<ArraySchema>(HERE(), *(orig_schema.get()));
+  auto schema = make_shared<ArraySchema>(HERE(), *(orig_schema.get()));
 
   // Add attributes.
   for (auto& attr : attributes_to_add_map_) {

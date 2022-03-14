@@ -37,6 +37,7 @@
 #include "tiledb_serialization.h"
 #include "tiledb_struct_def.h"
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_profiler.h"
 #include "tiledb/common/logger.h"
@@ -2211,7 +2212,7 @@ int32_t tiledb_array_schema_add_attribute(
   if (SAVE_ERROR_CATCH(
           ctx,
           array_schema->array_schema_->add_attribute(
-              tdb::make_shared<tiledb::sm::Attribute>(HERE(), attr->attr_))))
+              make_shared<tiledb::sm::Attribute>(HERE(), attr->attr_))))
     return TILEDB_ERR;
   return TILEDB_OK;
 }

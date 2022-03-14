@@ -138,17 +138,17 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
 
   // Initialize a credential object
   std::shared_ptr<azure::storage_lite::storage_credential> credential =
-      tdb::make_shared<azure::storage_lite::shared_key_credential>(
+      make_shared<azure::storage_lite::shared_key_credential>(
           HERE(), account_name, account_key);
 
   // Use the SAS token, if provided.
   if (!sas_token.empty()) {
     // clang-format off
-    credential = tdb::make_shared<azure::storage_lite::shared_access_signature_credential>(HERE(), sas_token);
+    credential = make_shared<azure::storage_lite::shared_access_signature_credential>(HERE(), sas_token);
     // clang-format on
   }
 
-  auto account = tdb::make_shared<azure::storage_lite::storage_account>(
+  auto account = make_shared<azure::storage_lite::storage_account>(
       HERE(), account_name, credential, use_https, blob_endpoint);
 
   // Construct the Azure SDK blob client with a concurrency level
@@ -163,19 +163,19 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   // Linux.
   const std::string cert_file =
       global_state::GlobalState::GetGlobalState().cert_file();
-  client_ = tdb::make_shared<azure::storage_lite::blob_client>(
+  client_ = make_shared<azure::storage_lite::blob_client>(
       HERE(), account, thread_pool_->concurrency_level(), cert_file);
 #else
-  client_ = tdb::make_shared<azure::storage_lite::blob_client>(
-      HERE(), account, static_cast<int>(thread_pool_->concurrency_level()));
+  client_ = make_shared<azure::storage_lite::blob_client>(
+      HERE(), account, thread_pool_->concurrency_level());
 #endif
 
   // The Azure SDK does not provide a way to configure the retry
   // policy or construct a client with our own retry policy. This
   // re-assigns the context with our own retry policy.
   *client_->context() = azure::storage_lite::executor_context(
-      tdb::make_shared<azure::storage_lite::tinyxml2_parser>(HERE()),
-      tdb::make_shared<AzureRetryPolicy>(HERE()));
+      make_shared<azure::storage_lite::tinyxml2_parser>(HERE()),
+      make_shared<AzureRetryPolicy>(HERE()));
 
   return Status::Ok();
 }

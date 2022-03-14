@@ -196,20 +196,19 @@ TEST_CASE_METHOD(
   CHECK(dom.add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &d2))
             .ok());
 
-  auto schema = tdb::make_shared<ArraySchema>(HERE());
+  auto schema = make_shared<ArraySchema>(HERE());
   CHECK(schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &dom)).ok());
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < frag_tile_domains.size() + 1; i++) {
-    tdb_shared_ptr<FragmentMetadata> fragment =
-        tdb::make_shared<FragmentMetadata>(
-            HERE(),
-            nullptr,
-            nullptr,
-            schema,
-            URI(),
-            std::make_pair<uint64_t, uint64_t>(0, 0),
-            true);
+    tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+        HERE(),
+        nullptr,
+        nullptr,
+        schema,
+        URI(),
+        std::make_pair<uint64_t, uint64_t>(0, 0),
+        true);
     fragments.emplace_back(std::move(fragment));
   }
 

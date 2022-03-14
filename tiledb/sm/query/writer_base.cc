@@ -629,7 +629,7 @@ Status WriterBase::create_fragment(
     uri = frag_uri.join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
-  frag_meta = tdb::make_shared<FragmentMetadata>(
+  frag_meta = make_shared<FragmentMetadata>(
       HERE(),
       storage_manager_,
       nullptr,
