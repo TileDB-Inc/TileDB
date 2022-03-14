@@ -661,3 +661,71 @@ TEST_CASE(
     vfs.remove_dir(array_uri);
   }
 }
+
+TEST_CASE(
+    "C++ API: SchemaEvolution, Reopen fragment after delete",
+    "[cppapi][reopen-frag]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string array_name = "cppapi_open_array_at";
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create array
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<uint64_t>(ctx, "d1", {{1, 3}}, 2));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<uint64_t>(ctx, "a1"));
+  Array::create(array_name, schema);
+
+  // Create first fragment
+  Array array_w_at_1(ctx, array_name, TILEDB_WRITE);
+  array_w_at_1.close();
+  array_w_at_1.set_open_timestamp_start(1);
+  array_w_at_1.open(TILEDB_WRITE);
+
+  Query query1(ctx, array_w_at_1);
+  std::vector<uint64_t> a_values = {1, 2, 3};
+  std::vector<uint64_t> d_values = {1, 2, 3};
+  query1.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a1", a_values)
+      .set_data_buffer("d1", d_values);
+  query1.submit();
+  array_w_at_1.close();
+
+  FragmentInfo fragment_info(ctx, array_name);
+  fragment_info.load();
+  CHECK(fragment_info.fragment_num() == 1);
+
+  // Evolve array and add second attribute
+  ArraySchemaEvolution evolution = ArraySchemaEvolution(ctx);
+  auto a2 = Attribute::create<uint64_t>(ctx, "a2");
+  evolution.add_attribute(a2);
+  evolution.array_evolve(array_name);
+
+  // Create second fragment
+  Array array_w_at_2(ctx, array_name, TILEDB_WRITE);
+  array_w_at_2.close();
+  array_w_at_2.set_open_timestamp_start(2);
+  array_w_at_2.open(TILEDB_WRITE);
+
+  Query query2(ctx, array_w_at_2);
+  query2.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a1", a_values)
+      .set_data_buffer("a2", a_values)
+      .set_data_buffer("d1", d_values);
+  query2.submit();
+  array_w_at_2.close();
+  fragment_info.load();
+  CHECK(fragment_info.fragment_num() == 2);
+
+  // Delete second fragment
+  std::string uri = fragment_info.fragment_uri(1);
+  vfs.remove_dir(uri.c_str());
+
+  // Get fragment info
+  FragmentInfo fragment_info_new(ctx, array_name);
+  fragment_info_new.load();
+}
