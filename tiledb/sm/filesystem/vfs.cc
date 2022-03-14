@@ -939,6 +939,28 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
     if (!st.ok()) {
       return {st, std::nullopt};
     }
+  } else if (parent.is_gcs()) {
+#ifdef HAVE_GCS
+    Status st;
+    std::tie(st, entries) = gcs_.ls_with_sizes(parent);
+#else
+    auto st =
+        LOG_STATUS(Status_VFSError("TileDB was built without GCS support"));
+#endif
+    if (!st.ok()) {
+      return {st, std::nullopt};
+    }
+  } else if (parent.is_hdfs()) {
+#ifdef HAVE_HDFS
+    Status st;
+    std::tie(st, entries) = hdfs_.ls_with_sizes(parent);
+#else
+    auto st =
+        LOG_STATUS(Status_VFSError("TileDB was built without HDFS support"));
+#endif
+    if (!st.ok()) {
+      return {st, std::nullopt};
+    }
   } else {
     auto st = LOG_STATUS(
         Status_VFSError("Unsupported URI scheme: " + parent.to_string()));
