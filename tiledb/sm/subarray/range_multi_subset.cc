@@ -1,5 +1,5 @@
 /**
- * @file   range_subset.cc
+ * @file   range_multi_subset.cc
  *
  * @section LICENSE
  *
@@ -30,7 +30,7 @@
  * This file defines the class RangeMultiSubset.
  */
 
-#include "tiledb/sm/subarray/range_subset.h"
+#include "tiledb/sm/subarray/range_multi_subset.h"
 
 #include <iostream>
 

@@ -44,7 +44,7 @@
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
-#include "tiledb/sm/subarray/range_subset.h"
+#include "tiledb/sm/subarray/range_multi_subset.h"
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
 
 #include <cmath>

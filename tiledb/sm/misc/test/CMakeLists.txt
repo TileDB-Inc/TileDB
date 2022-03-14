@@ -23,15 +23,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+find_package(Catch_EP REQUIRED)
 
-add_executable(unit_misc_types EXCLUDE_FROM_ALL)
-target_link_libraries(unit_misc_types
+add_executable(unit_range EXCLUDE_FROM_ALL)
+target_link_libraries(unit_range
     PRIVATE misc_types
     PUBLIC Catch2::Catch2
 )
-target_sources(unit_misc_types PUBLIC main.cc unit_misc_types.cc)
+target_sources(unit_range PUBLIC main.cc unit_range.cc)
 add_test(
-    NAME "unit_misc_types"
-    COMMAND $<TARGET_FILE:unit_misc_types>
+    NAME "unit_range"
+    COMMAND $<TARGET_FILE:unit_range>
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )

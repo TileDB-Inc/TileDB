@@ -1,5 +1,5 @@
 /**
- * @file compile_range_subset_main.cc
+ * @file compile_range_multi_subset_main.cc
  *
  * @section license
  *
@@ -26,9 +26,9 @@
  * the software.
  */
 
-#include "../range_subset.h"
+#include "../range_multi_subset.h"
 
 int main() {
-  (void)sizeof(tiledb::sm::RangeSubsetBase);
+  (void)sizeof(tiledb::sm::RangeMultiSubset);
   return 0;
 }

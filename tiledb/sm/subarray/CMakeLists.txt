@@ -27,20 +27,20 @@
 include(common NO_POLICY_SCOPE)
 
 #
-# `range_subset` object library
+# `range_multi_subset` object library
 #
-add_library(range_subset OBJECT range_subset.cc)
-target_link_libraries(range_subset PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(range_subset PUBLIC misc_types $<TARGET_OBJECTS:misc_types>)
-target_link_libraries(range_subset PUBLIC constants $<TARGET_OBJECTS:constants>)
-target_link_libraries(range_subset PUBLIC thread_pool $<TARGET_OBJECTS:thread_pool>)
+add_library(range_multi_subset OBJECT range_multi_subset.cc)
+target_link_libraries(range_multi_subset PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(range_multi_subset PUBLIC misc_types $<TARGET_OBJECTS:misc_types>)
+target_link_libraries(range_multi_subset PUBLIC constants $<TARGET_OBJECTS:constants>)
+target_link_libraries(range_multi_subset PUBLIC thread_pool $<TARGET_OBJECTS:thread_pool>)
 
 #
 # Test-compile of object library ensures link-completeness
 #
-add_executable(compile_range_subset EXCLUDE_FROM_ALL)
-target_link_libraries(compile_range_subset PRIVATE range_subset)
-target_sources(compile_range_subset PRIVATE test/compile_range_subset_main.cc)
+add_executable(compile_range_multi_subset EXCLUDE_FROM_ALL)
+target_link_libraries(compile_range_multi_subset PRIVATE range_multi_subset)
+target_sources(compile_range_multi_subset PRIVATE test/compile_range_multi_subset_main.cc)
 
 if (TILEDB_TESTS)
     add_subdirectory(test)

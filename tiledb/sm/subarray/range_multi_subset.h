@@ -1,5 +1,5 @@
 /**
- * @file   range_subset.h
+ * @file   range_multi_subset.h
  *
  * @section LICENSE
  *
@@ -30,8 +30,8 @@
  * This file defines the class RangeMultiSubset.
  */
 
-#ifndef TILEDB_RANGE_SUBSET_H
-#define TILEDB_RANGE_SUBSET_H
+#ifndef TILEDB_RANGE_MULTI_SUBSET_H
+#define TILEDB_RANGE_MULTI_SUBSET_H
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -177,7 +177,7 @@ class RangeMultiSubsetImpl {
    * This method will return an ok status if the Range is not mutated and an
    * error status if the intersection changes the bounds of the range.
    *
-   * @param intersector The Range to take an intersetction with.
+   * @param intersector The Range to take an intersection with.
    * @param range The Range to replace with the intersection.
    * @return Status that returns an error if range is mutated.
    */

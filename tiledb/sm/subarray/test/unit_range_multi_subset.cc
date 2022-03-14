@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/subarray/unit_range_subset.cc
+ * @file tiledb/sm/subarray/unit_range_multi_subset.cc
  *
  * @section LICENSE
  *
@@ -31,7 +31,7 @@
  */
 
 #include <catch.hpp>
-#include "../range_subset.h"
+#include "../range_multi_subset.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/types.h"
 

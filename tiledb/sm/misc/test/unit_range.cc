@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/subarray/unit_misc_types.cc
+ * @file tiledb/sm/misc/test/unit_range.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file defines unit tests for the RangeMultiSubset classes.
+ * This file defines unit tests for the Range class and helper functions that
+ * operator on Ranges.
  */
 
 #include <catch.hpp>
