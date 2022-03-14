@@ -448,7 +448,7 @@ tuple<Status, optional<std::vector<FileStat>>> GCS::ls_with_sizes(
 
     if (absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
             results)) {
-      obj = absl::get<google::cloud::storage::ObjectMetadata>(results);
+      auto obj = absl::get<google::cloud::storage::ObjectMetadata>(results);
       entries.emplace_back(
           URI(gcs_prefix + bucket_name + "/" +
               remove_front_slash(remove_trailing_slash(obj.name()))),
