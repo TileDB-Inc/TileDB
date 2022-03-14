@@ -443,6 +443,11 @@ inline Status Status_QueryConditionError(const std::string& msg) {
 inline Status Status_ArrayDirectoryError(const std::string& msg) {
   return {"[TileDB::ArrayDirectory] Error", msg};
 }
+/** Return a Status_TaskError error class Status with a given
+ * message **/
+inline Status Status_TaskError(const std::string& msg) {
+  return {"[TileDB::Task] Error", msg};
+}
 }  // namespace common
 }  // namespace tiledb
 

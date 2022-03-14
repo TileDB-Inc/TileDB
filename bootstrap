@@ -58,6 +58,7 @@ Configuration:
     --enable-tools                  enables TileDB CLI tools (experimental)
     --enable-ccache                 enables use of ccache (if present)
     --enable-arrow-tests            enables the compilation of the arrow adapter unit tests
+    --enable-legacy-thread-pool     enables the legacy thread pool
     --enable=arg1,arg2...           same as "--enable-arg1 --enable-arg2 ..."
 
 
@@ -125,6 +126,7 @@ while test $# != 0; do
     --enable-tools) tiledb_tools="ON";;
     --enable-ccache) tiledb_ccache="ON";;
     --enable-arrow-tests) tiledb_arrow_tests="ON";;
+    --enable-legacy-thread-pool) tiledb_legacy_thread_pool="ON";;
     --enable=*) s=`arg "$1"`
                 enable_multiple="$s";;
     --help) usage ;;
@@ -203,6 +205,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_TESTS=${tiledb_tests} \
     -DTILEDB_CCACHE=${tiledb_ccache} \
     -DTILEDB_ARROW_TESTS=${tiledb_arrow_tests} \
+    -DTILEDB_LEGACY_THREAD_POOL=${tiledb_legacy_thread_pool} \
     -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
     -DSANITIZER="${sanitizer}" \
     ${tiledb_disable_avx2} \
