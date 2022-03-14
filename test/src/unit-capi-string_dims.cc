@@ -2423,3 +2423,248 @@ TEST_CASE_METHOD(
 
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
+
+TEST_CASE_METHOD(
+    StringDimsFx,
+    "C API: Test multiple var size global writes 1",
+    "[capi][sparse][var-size][multiple-global-writes-1]") {
+  SECTION("- No serialization") {
+    serialize_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_ = true;
+  }
+  SupportedFsLocal local_fs;
+  std::string array_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+
+  create_array(
+      ctx_,
+      array_name,
+      TILEDB_SPARSE,
+      {"d"},
+      {TILEDB_STRING_ASCII},
+      {nullptr},
+      {nullptr},
+      {"a"},
+      {TILEDB_INT32},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      3,
+      false,
+      false);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Create and submit query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Write "a, 1"
+  char d_data[] = "abcd";
+  uint64_t d_data_size = 1;
+  uint64_t d_off[] = {0, 1, 2, 3};
+  uint64_t d_off_size = sizeof(uint64_t);
+  int32_t a_data[] = {1, 2, 3, 4};
+  uint64_t a_size = sizeof(int32_t);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", d_data, &d_data_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "d", d_off, &d_off_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a_data, &a_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Write "b, 2"
+  d_data[0] = 'b';
+  a_data[0] = 2;
+  rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // Open array
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Read [a, ee]
+  std::vector<uint64_t> r_d_off(10);
+  std::string r_d_val;
+  r_d_val.resize(20);
+  std::vector<int32_t> r_a(10);
+  tiledb_query_status_t status;
+  read_array_1d(
+      ctx_,
+      array,
+      TILEDB_GLOBAL_ORDER,
+      "a",
+      "e",
+      &r_d_off,
+      &r_d_val,
+      &r_a,
+      &status);
+  CHECK(status == TILEDB_COMPLETED);
+  CHECK(r_d_val == "ab");
+  std::vector<uint64_t> c_d_off = {0, 1};
+  CHECK(r_d_off == c_d_off);
+  std::vector<int32_t> c_a = {1, 2};
+  CHECK(r_a == c_a);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+}
+
+TEST_CASE_METHOD(
+    StringDimsFx,
+    "C API: Test multiple var size global writes 2",
+    "[capi][sparse][var-size][multiple-global-writes-2]") {
+  SECTION("- No serialization") {
+    serialize_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_ = true;
+  }
+  SupportedFsLocal local_fs;
+  std::string array_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+
+  create_array(
+      ctx_,
+      array_name,
+      TILEDB_SPARSE,
+      {"d"},
+      {TILEDB_STRING_ASCII},
+      {nullptr},
+      {nullptr},
+      {"a"},
+      {TILEDB_INT32},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      3,
+      false,
+      false);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Create and submit query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Write "a, 1"
+  char d_data[] = "abcd";
+  uint64_t d_data_size = 1;
+  uint64_t d_off[] = {0, 1, 2, 3};
+  uint64_t d_off_size = sizeof(uint64_t);
+  int32_t a_data[] = {1, 2, 3, 4};
+  uint64_t a_size = sizeof(int32_t);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", d_data, &d_data_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "d", d_off, &d_off_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a_data, &a_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Write "b, 2"
+  d_data[0] = 'b';
+  a_data[0] = 2;
+  rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Write c, 3; d, 4 and e, 5.
+  d_data[0] = 'c';
+  d_data[1] = 'd';
+  d_data[2] = 'e';
+  d_data_size = 3;
+  d_off_size = 3 * sizeof(uint64_t);
+  a_data[0] = 3;
+  a_data[1] = 4;
+  a_data[2] = 5;
+  a_size = 3 * sizeof(int32_t);
+  rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // Open array
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Read [a, ee]
+  std::vector<uint64_t> r_d_off(10);
+  std::string r_d_val;
+  r_d_val.resize(20);
+  std::vector<int32_t> r_a(10);
+  tiledb_query_status_t status;
+  read_array_1d(
+      ctx_,
+      array,
+      TILEDB_GLOBAL_ORDER,
+      "a",
+      "e",
+      &r_d_off,
+      &r_d_val,
+      &r_a,
+      &status);
+  CHECK(status == TILEDB_COMPLETED);
+  CHECK(r_d_val == "abcde");
+  std::vector<uint64_t> c_d_off = {0, 1, 2, 3, 4};
+  CHECK(r_d_off == c_d_off);
+  std::vector<int32_t> c_a = {1, 2, 3, 4, 5};
+  CHECK(r_a == c_a);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+}
