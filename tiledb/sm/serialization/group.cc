@@ -47,7 +47,6 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/group/group_member_v1.h"
-#include "tiledb/sm/group/group_v1.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/group.h"
 
@@ -111,7 +110,8 @@ Status group_to_capnp(
   if (!group_members.empty()) {
     auto group_members_builder =
         group_builder->initMembers(group_members.size());
-    uint64_t i = 0;
+    decltype(group_members_builder.size()) i{0};
+    //    uint64_t i = 0;
     for (const auto& it : group_members) {
       auto group_member_builder = group_members_builder[i];
       RETURN_NOT_OK(group_member_to_capnp(it.second, &group_member_builder));
@@ -124,7 +124,7 @@ Status group_to_capnp(
   if (!group_members_to_add.empty()) {
     auto group_members_to_add_builder =
         group_builder->initMembersToAdd(group_members_to_add.size());
-    uint64_t i = 0;
+    decltype(group_members_to_add_builder.size()) i{0};
     for (const auto& it : group_members_to_add) {
       auto group_member_to_add_builder = group_members_to_add_builder[i];
       RETURN_NOT_OK(
@@ -138,7 +138,7 @@ Status group_to_capnp(
   if (!group_members_to_remove.empty()) {
     auto group_members_to_remove_builder =
         group_builder->initMembersToRemove(group_members_to_remove.size());
-    uint64_t i = 0;
+    decltype(group_members_to_remove_builder.size()) i{0};
     for (const auto& it : group_members_to_remove) {
       group_members_to_remove_builder.set(i, it.c_str());
       // Increment index
