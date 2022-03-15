@@ -399,7 +399,7 @@ Status MemFilesystem::ls(
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
-    paths->emplace_back(fs.path().to_path());
+    paths->emplace_back(fs.path().to_string());
   }
 
   return Status::Ok();

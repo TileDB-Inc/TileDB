@@ -265,7 +265,7 @@ bool Win::is_file(const std::string& path) const {
 }
 
 Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
-  auto&& [st, entries] = ls_with_sizes(path);
+  auto&& [st, entries] = ls_with_sizes(URI(path));
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
@@ -276,7 +276,8 @@ Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
 }
 
 tuple<Status, optional<std::vector<FileStat>>> Win::ls_with_sizes(
-    const URI& path) const {
+    const URI& uri) const {
+  auto path = uri.to_path();
   bool ends_with_slash = path.length() > 0 && path[path.length() - 1] == '\\';
   const std::string glob = path + (ends_with_slash ? "*" : "\\*");
   WIN32_FIND_DATA find_data;

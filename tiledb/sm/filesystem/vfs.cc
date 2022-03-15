@@ -812,65 +812,13 @@ Status VFS::terminate() {
 }
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
-  if (!init_)
-    return LOG_STATUS(Status_VFSError("Cannot list; VFS not initialized"));
+  auto&& [st, entries] = ls_with_sizes(parent);
+  RETURN_NOT_OK(st);
 
-  // Noop if `parent` is not a directory, do not error out.
-  // For S3, GCS and Azure, `ls` on a non-directory will just
-  // return an empty `uris` vector.
-  if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure())) {
-    bool flag = false;
-    RETURN_NOT_OK(is_dir(parent, &flag));
-    if (!flag)
-      return Status::Ok();
+  for (auto& fs : *entries) {
+    uris->emplace_back(fs.path().to_string());
   }
 
-  std::vector<std::string> paths;
-  if (parent.is_file()) {
-#ifdef _WIN32
-    RETURN_NOT_OK(win_.ls(parent.to_path(), &paths));
-#else
-    RETURN_NOT_OK(posix_.ls(parent.to_path(), &paths));
-#endif
-  } else if (parent.is_hdfs()) {
-#ifdef HAVE_HDFS
-    RETURN_NOT_OK(hdfs_->ls(parent, &paths));
-#else
-    return LOG_STATUS(Status_VFSError("TileDB was built without HDFS support"));
-#endif
-  } else if (parent.is_s3()) {
-#ifdef HAVE_S3
-    RETURN_NOT_OK(s3_.ls(parent, &paths));
-#else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
-#endif
-  } else if (parent.is_azure()) {
-#ifdef HAVE_AZURE
-    RETURN_NOT_OK(azure_.ls(parent, &paths));
-#else
-    return LOG_STATUS(
-        Status_VFSError("TileDB was built without Azure support"));
-#endif
-  } else if (parent.is_gcs()) {
-#ifdef HAVE_GCS
-    RETURN_NOT_OK(gcs_.ls(parent, &paths));
-#else
-    return LOG_STATUS(Status_VFSError("TileDB was built without GCS support"));
-#endif
-  } else if (parent.is_memfs()) {
-    RETURN_NOT_OK(memfs_.ls(parent.to_path(), &paths));
-    // URI class expects paths to be prepended
-    for (std::string& path : paths) {
-      path.insert(0, "mem://");
-    }
-  } else {
-    return LOG_STATUS(
-        Status_VFSError("Unsupported URI scheme: " + parent.to_string()));
-  }
-  parallel_sort(compute_tp_, paths.begin(), paths.end());
-  for (auto& path : paths) {
-    uris->emplace_back(path);
-  }
   return Status::Ok();
 }
 
@@ -880,21 +828,6 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
     auto st = LOG_STATUS(Status_VFSError("Cannot list; VFS not initialized"));
     return {st, std::nullopt};
   }
-
-  // TODO:
-  // unit-cppapi-vfs.cc, unit-s3, unit-gs, unit-dfs-filesystem, unit-azure,
-  // unit-gcs
-  // TODO: note about refactor, intruducing abstract class for filesystem
-  // implementation, ::ls can easily be move upwards and not be duplicated in
-  // each implementation
-  // TODO: note about introducing a RETURN_NOT_OK-like macro for pairs of
-  // status,optional
-  // TODO: note about init_client being called multiple times with no check to
-  // exit early
-  // TODO: note about subdirectories: We don't get the size for those, size in
-  // FileStat for dirs is nullopt
-  // TODO: why do we need to make the requests for s3, gcs, azure is LS ends up
-  // returning an empty resultset?
 
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
@@ -906,22 +839,23 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
       return {st, std::nullopt};
     }
 
-    if (!flag)
-      return {Status::Ok(), {}};
+    if (!flag) {
+      return {Status::Ok(), std::vector<FileStat>()};
+    }
   }
 
   optional<std::vector<FileStat>> entries;
   if (parent.is_file()) {
 #ifdef _WIN32
     Status st;
-    auto st = win_.ls_with_sizes(parent);
+    std::tie(st, entries) = win_.ls_with_sizes(parent);
 #else
     Status st;
     std::tie(st, entries) = posix_.ls_with_sizes(parent);
+#endif
     if (!st.ok()) {
       return {st, nullopt};
     }
-#endif
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
     Status st;
@@ -968,7 +902,8 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
     }
   } else if (parent.is_memfs()) {
     Status st;
-    std::tie(st, entries) = memfs_.ls_with_sizes(parent);
+    std::tie(st, entries) =
+        memfs_.ls_with_sizes(URI("mem://" + parent.to_path()));
     if (!st.ok()) {
       return {st, std::nullopt};
     }
