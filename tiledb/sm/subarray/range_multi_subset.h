@@ -164,9 +164,16 @@ class RangeMultiSubsetImpl {
       std::vector<Range>& ranges, const Range& range) const = 0;
 
   /**
+   * Checks the range is a valid range.
+   *
+   * @param range The range to check.
+   */
+  virtual Status check_is_valid_range(const Range& range) const = 0;
+
+  /**
    * Checks the range is a valid subset of the superset.
    *
-   * @param range The range to verify is a subset.
+   * @param range The range to verify is a subset. Must be a valid range.
    * @return Status that returns error if range is not a valid subset.
    */
   virtual Status check_is_valid_subset(const Range& range) const = 0;
@@ -175,7 +182,8 @@ class RangeMultiSubsetImpl {
    * Updates a range to be a subset of another range.
    *
    * This method will return an ok status if the Range is not mutated and an
-   * error status if the intersection changes the bounds of the range.
+   * error status if the intersection changes the bounds of the range. The range
+   * must be a valid range.
    *
    * @param intersector The Range to take an intersection with.
    * @param range The Range to replace with the intersection.
@@ -204,10 +212,12 @@ class TypedRangeMultiSubsetImpl : public RangeMultiSubsetImpl {
     return AddStrategy<T, CoalesceAdds>::add_range(ranges, new_range);
   };
 
+  Status check_is_valid_range(const Range& range) const override {
+    return RangeOperations<T>::check_is_valid_range(range);
+  };
+
   Status check_is_valid_subset(const Range& range) const override {
-    RETURN_NOT_OK(RangeOperations<T>::check_is_valid_range(range));
-    RETURN_NOT_OK(superset_.check_is_subset(range));
-    return Status::Ok();
+    return superset_.check_is_subset(range);
   };
 
   Status intersect(Range& range) const override {
@@ -235,8 +245,12 @@ class TypedRangeMultisetImpl : public RangeMultiSubsetImpl {
     return AddStrategy<T, CoalesceAdds>::add_range(ranges, new_range);
   };
 
-  Status check_is_valid_subset(const Range& range) const override {
+  Status check_is_valid_range(const Range& range) const override {
     return RangeOperations<T>::check_is_valid_range(range);
+  };
+
+  Status check_is_valid_subset(const Range&) const override {
+    return Status::Ok();
   };
 
   Status intersect(Range&) const override {
@@ -299,9 +313,10 @@ class RangeMultiSubset {
   /**
    * Adds a range that is subset.
    *
-   * Checks the range is a valid range, and that it is infact a subset.
+   * Checks the range is infact a subset. The range must be a valid range as
+   * verified by ``RangeMultiSubset::check_is_valid_range``.
    *
-   * @param range The range to add.
+   * @param range The range to add. Must be a valid range.
    */
   Status add_subset(const Range& range);
 
@@ -315,6 +330,16 @@ class RangeMultiSubset {
    */
   Status add_subset_unrestricted(const Range& range);
 
+  /**
+   * Checks the range is a valid range. Returns an error status if the range is
+   * not valid.
+   *
+   * @param range The range to check.
+   */
+  Status check_is_valid_range(const Range& range) {
+    return impl_->check_is_valid_range(range);
+  };
+
   /** Returns a const reference to the stored ranges. */
   inline const std::vector<Range>& ranges() const {
     return ranges_;
@@ -324,9 +349,10 @@ class RangeMultiSubset {
    * Replaces the range with its intersection with the superset.
    *
    * This method will return an ok status if the Range is not mutated and an
-   * error status if the intersection changes the bounds of the range.
+   * error status if the intersection changes the bounds of the range. The range
+   * provided must be a valid range as defined by
+   * ``RangeMultiSubset::check_is_valid_range``.
    *
-   * @param intersector The Range to take an intersetction with.
    * @param range The Range to replace with the intersection.
    * @return Status that returns error if range is mutated.
    */

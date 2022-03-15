@@ -169,6 +169,13 @@ Status Subarray::add_range(
         Status_SubarrayError("Cannot add more than one range per dimension "
                              "to global order query"));
   }
+  // Check range is valid.
+  auto status = range_subset_[dim_idx].check_is_valid_range(range);
+  if (!status.ok())
+    return logger_->status(Status_SubarrayError(
+        "Cannot add range to dimension '" +
+        array_->array_schema_latest().dimension(dim_idx)->name() + "'; " +
+        status.message()));
 
   // Restrict the range to the dimension domain.
   if (!read_range_oob_error) {
@@ -180,7 +187,7 @@ Status Subarray::add_range(
           warn_status.message());
   }
   // Add range to the dimension.
-  auto status = range_subset_[dim_idx].add_subset(range);
+  status = range_subset_[dim_idx].add_subset(range);
   if (!status.ok())
     return logger_->status(Status_SubarrayError(
         "Cannot add range to dimension '" +
