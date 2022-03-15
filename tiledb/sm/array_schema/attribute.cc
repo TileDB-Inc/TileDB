@@ -131,7 +131,8 @@ tuple<Status, optional<Attribute>> Attribute::deserialize(
   RETURN_NOT_OK_TUPLE(buff->read(&cell_val_num, sizeof(uint32_t)), nullopt);
 
   // Load filter pipeline
-  auto&& [st_filterpipeline, filterpipeline]{FilterPipeline::deserialize(buff)};
+  auto&& [st_filterpipeline, filterpipeline]{
+      FilterPipeline::deserialize(buff, version)};
   if (!st_filterpipeline.ok()) {
     return {st_filterpipeline, nullopt};
   }
@@ -282,8 +283,16 @@ Status Attribute::set_filter_pipeline(const FilterPipeline* pipeline) {
     if (datatype_is_real(type_) &&
         pipeline->get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
       return LOG_STATUS(
-          Status_AttributeError("Cannot set DOUBLE DELTA filter to a "
-                                "dimension with a real datatype"));
+          Status_AttributeError("Cannot set DOUBLE DELTA filter to an "
+                                "attribute with a real datatype"));
+  }
+
+  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline->size() > 1) {
+    if (pipeline->has_filter(FilterType::FILTER_RLE)) {
+      return LOG_STATUS(Status_AttributeError(
+          "RLE filter cannot be combined with other filters when applied to "
+          "variable length string attributes"));
+    }
   }
 
   filters_ = *pipeline;

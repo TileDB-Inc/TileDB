@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -249,7 +249,8 @@ Status ArraySchema::check() const {
     }
   }
 
-  RETURN_NOT_OK(check_double_delta_compressor());
+  RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
+  RETURN_NOT_OK(check_rle_compressor(coords_filters()));
 
   if (!check_attribute_dimension_names())
     return LOG_STATUS(
@@ -570,7 +571,8 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&capacity_, sizeof(uint64_t)));
 
   // Load coords filters
-  auto&& [st_coords_filters, coords_filters]{FilterPipeline::deserialize(buff)};
+  auto&& [st_coords_filters, coords_filters]{
+      FilterPipeline::deserialize(buff, version_)};
   if (!st_coords_filters.ok()) {
     return Status_ArraySchemaError("Cannot deserialize coords filters");
   }
@@ -578,7 +580,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
 
   // Load offsets filters
   auto&& [st_cell_var_filters, cell_var_filters]{
-      FilterPipeline::deserialize(buff)};
+      FilterPipeline::deserialize(buff, version_)};
   if (!st_coords_filters.ok()) {
     return Status_ArraySchemaError("Cannot deserialize cell var filters");
   }
@@ -587,7 +589,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   // Load validity filters
   if (version_ >= 7) {
     auto&& [st_cell_validity_filters, cell_validity_filters]{
-        FilterPipeline::deserialize(buff)};
+        FilterPipeline::deserialize(buff, version_)};
     if (!st_cell_validity_filters.ok()) {
       return Status_ArraySchemaError(
           "Cannot deserialize cell validity filters");
@@ -665,6 +667,10 @@ void ArraySchema::set_capacity(uint64_t capacity) {
 }
 
 Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline* pipeline) {
+  assert(pipeline);
+  RETURN_NOT_OK(check_rle_compressor(*pipeline));
+  RETURN_NOT_OK(check_double_delta_compressor(*pipeline));
+
   coords_filters_ = *pipeline;
   return Status::Ok();
 }
@@ -823,11 +829,12 @@ bool ArraySchema::check_attribute_dimension_names() const {
   return (names.size() == attributes_.size() + dim_num);
 }
 
-Status ArraySchema::check_double_delta_compressor() const {
+Status ArraySchema::check_double_delta_compressor(
+    const FilterPipeline& coords_filters) const {
   // Check if coordinate filters have DOUBLE DELTA as a compressor
   bool has_double_delta = false;
-  for (unsigned i = 0; i < coords_filters_.size(); ++i) {
-    if (coords_filters_.get_filter(i)->type() ==
+  for (unsigned i = 0; i < coords_filters.size(); ++i) {
+    if (coords_filters.get_filter(i)->type() ==
         FilterType::FILTER_DOUBLE_DELTA) {
       has_double_delta = true;
       break;
@@ -849,6 +856,31 @@ Status ArraySchema::check_double_delta_compressor() const {
       return LOG_STATUS(
           Status_ArraySchemaError("Real dimension cannot inherit coordinate "
                                   "filters with DOUBLE DELTA compression"));
+  }
+
+  return Status::Ok();
+}
+
+Status ArraySchema::check_rle_compressor(const FilterPipeline& filters) const {
+  // There is no error if only 1 filter is used for RLE
+  if (filters.size() <= 1 || !filters.has_filter(FilterType::FILTER_RLE)) {
+    return Status::Ok();
+  }
+
+  // Error if there are also other filters set for a string dimension together
+  // with RLE
+  auto dim_num = domain_->dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim = domain_->dimension(d);
+    const auto& dim_filters = dim->filters();
+    // if it's a var-length string dimension and there is no specific filter
+    // list already set for that dimension (then coords_filters_ will be used)
+    if (dim->type() == Datatype::STRING_ASCII && dim->var_size() &&
+        dim_filters.empty()) {
+      return LOG_STATUS(Status_ArraySchemaError(
+          "RLE filter cannot be combined with other filters when applied to "
+          "variable length string dimensions"));
+    }
   }
 
   return Status::Ok();
