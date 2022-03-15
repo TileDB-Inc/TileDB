@@ -105,9 +105,11 @@ class FilterPipeline {
    * Populates the filter pipeline from the data in the input binary buffer.
    *
    * @param buff The buffer to deserialize from.
+   * @param version Array schema version
    * @return Status and FilterPipeline
    */
-  static tuple<Status, optional<FilterPipeline>> deserialize(ConstBuffer* buff);
+  static tuple<Status, optional<FilterPipeline>> deserialize(
+      ConstBuffer* buff, const uint32_t version);
 
   /**
    * Dumps the filter pipeline details in ASCII format in the selected
@@ -335,9 +337,7 @@ class FilterPipeline {
    * @return Status, chunk offsets vector.
    */
   tuple<Status, optional<std::vector<uint64_t>>> get_var_chunk_sizes(
-      uint32_t chunk_size,
-      Tile* const tile,
-      Tile* const offsets_tile) const;
+      uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const;
 
   /**
    * Run the given buffer forward through the pipeline.

@@ -103,7 +103,8 @@ TEST_CASE(
   filters_buffer_offset<int32_t, 34>(p) = compressor_level3;
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_filters, filters]{FilterPipeline::deserialize(&constbuffer)};
+  auto&& [st_filters, filters]{
+      FilterPipeline::deserialize(&constbuffer, constants::format_version)};
   REQUIRE(st_filters.ok());
 
   CHECK(filters.value().max_chunk_size() == max_chunk_size);

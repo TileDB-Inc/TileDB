@@ -647,7 +647,7 @@ Status FilterPipeline::serialize(Buffer* buff) const {
 }
 
 tuple<Status, optional<FilterPipeline>> FilterPipeline::deserialize(
-    ConstBuffer* buff) {
+    ConstBuffer* buff, const uint32_t version) {
   Status st;
   uint32_t max_chunk_size;
   std::vector<shared_ptr<Filter>> filters;
@@ -658,7 +658,7 @@ tuple<Status, optional<FilterPipeline>> FilterPipeline::deserialize(
   RETURN_NOT_OK_TUPLE(buff->read(&num_filters, sizeof(uint32_t)), nullopt);
 
   for (uint32_t i = 0; i < num_filters; i++) {
-    auto&& [st_filter, filter]{FilterCreate::deserialize(buff)};
+    auto&& [st_filter, filter]{FilterCreate::deserialize(buff, version)};
     if (!st_filter.ok()) {
       return {st_filter, nullopt};
     }

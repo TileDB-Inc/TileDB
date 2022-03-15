@@ -67,6 +67,7 @@ class FilterCreate {
    * Deserializes a new Filter instance from the data in the given buffer.
    *
    * @param buff The buffer to deserialize from.
+   * @param version Array schema version
    * @return Status and Filter
    */
   static tuple<Status, optional<std::shared_ptr<Filter>>> deserialize(

@@ -571,7 +571,8 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&capacity_, sizeof(uint64_t)));
 
   // Load coords filters
-  auto&& [st_coords_filters, coords_filters]{FilterPipeline::deserialize(buff)};
+  auto&& [st_coords_filters, coords_filters]{
+      FilterPipeline::deserialize(buff, version_)};
   if (!st_coords_filters.ok()) {
     return Status_ArraySchemaError("Cannot deserialize coords filters");
   }
@@ -579,7 +580,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
 
   // Load offsets filters
   auto&& [st_cell_var_filters, cell_var_filters]{
-      FilterPipeline::deserialize(buff)};
+      FilterPipeline::deserialize(buff, version_)};
   if (!st_coords_filters.ok()) {
     return Status_ArraySchemaError("Cannot deserialize cell var filters");
   }
@@ -588,7 +589,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   // Load validity filters
   if (version_ >= 7) {
     auto&& [st_cell_validity_filters, cell_validity_filters]{
-        FilterPipeline::deserialize(buff)};
+        FilterPipeline::deserialize(buff, version_)};
     if (!st_cell_validity_filters.ok()) {
       return Status_ArraySchemaError(
           "Cannot deserialize cell validity filters");
