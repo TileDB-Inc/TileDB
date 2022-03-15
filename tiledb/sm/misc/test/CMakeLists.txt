@@ -1,6 +1,4 @@
 #
-# tiledb/sm/misc/test/CMakeLists.txt
-#
 # The MIT License
 #
 # Copyright (c) 2022 TileDB, Inc.
@@ -25,14 +23,26 @@
 #
 find_package(Catch_EP REQUIRED)
 
-add_executable(unit_range EXCLUDE_FROM_ALL)
-target_link_libraries(unit_range
+add_executable(unit_range_subset EXCLUDE_FROM_ALL)
+target_link_libraries(unit_range_subset
     PRIVATE misc_types
     PUBLIC Catch2::Catch2
 )
-target_sources(unit_range PUBLIC main.cc unit_range.cc)
+target_sources(unit_range_subset PUBLIC main.cc unit_range_subset.cc)
 add_test(
-    NAME "unit_range"
-    COMMAND $<TARGET_FILE:unit_range>
+    NAME "unit_range_subset"
+    COMMAND $<TARGET_FILE:unit_range_subset>
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_executable(unit_valid_range EXCLUDE_FROM_ALL)
+target_link_libraries(unit_valid_range
+    PRIVATE misc_types
+    PUBLIC Catch2::Catch2
+)
+target_sources(unit_valid_range PUBLIC main.cc unit_valid_range.cc)
+add_test(
+    NAME "unit_valid_range"
+    COMMAND $<TARGET_FILE:unit_valid_range>
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )

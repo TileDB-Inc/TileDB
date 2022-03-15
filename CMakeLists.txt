@@ -271,7 +271,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_array_schema unit_filter unit_filter_pipeline unit_metadata)
   add_dependencies(tests unit_compressors)
   add_dependencies(tests unit_range_multi_subset)
-  add_dependencies(tests unit_range)
+  add_dependencies(tests unit_valid_range unit_range_subset)
 endif()
 
 # Build tools
