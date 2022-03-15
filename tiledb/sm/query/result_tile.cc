@@ -390,7 +390,7 @@ void ResultTile::compute_results_dense(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
-    const std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
     unsigned frag_idx,
     std::vector<uint8_t>* result_bitmap,
     std::vector<uint8_t>* overwritten_bitmap) {
@@ -995,7 +995,7 @@ void ResultTile::compute_results_count_sparse(
 Status ResultTile::compute_results_dense(
     unsigned dim_idx,
     const Range& range,
-    const std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
     unsigned frag_idx,
     std::vector<uint8_t>* result_bitmap,
     std::vector<uint8_t>* overwritten_bitmap) const {

@@ -199,9 +199,9 @@ TEST_CASE_METHOD(
   auto schema = make_shared<ArraySchema>(HERE());
   CHECK(schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &dom)).ok());
 
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
+  std::vector<shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < frag_tile_domains.size() + 1; i++) {
-    tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+    shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
         nullptr,

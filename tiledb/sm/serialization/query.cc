@@ -43,6 +43,7 @@
 // clang-format on
 
 #include "tiledb/sm/query/query.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -77,7 +78,7 @@ namespace serialization {
 
 enum class SerializationContext { CLIENT, SERVER, BACKUP };
 
-tdb_shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
+shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
 
 Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
   // Build counters

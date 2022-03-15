@@ -116,7 +116,7 @@ Status Metadata::generate_uri(const URI& array_uri) {
 }
 
 tuple<Status, optional<shared_ptr<Metadata>>> Metadata::deserialize(
-    const std::vector<tdb_shared_ptr<Buffer>>& metadata_buffs) {
+    const std::vector<shared_ptr<Buffer>>& metadata_buffs) {
   std::map<std::string, MetadataValue> metadata_map;
   if (metadata_buffs.empty())
     return {Status::Ok(), make_shared<Metadata>(HERE())};

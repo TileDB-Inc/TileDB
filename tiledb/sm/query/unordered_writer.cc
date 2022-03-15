@@ -67,7 +67,7 @@ namespace sm {
 
 UnorderedWriter::UnorderedWriter(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,

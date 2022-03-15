@@ -67,7 +67,7 @@ namespace sm {
 
 OrderedWriter::OrderedWriter(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -315,7 +315,7 @@ template <class T>
 Status OrderedWriter::prepare_filter_and_write_tiles(
     const std::string& name,
     std::vector<std::vector<WriterTile>>& tile_batches,
-    tdb_shared_ptr<FragmentMetadata> frag_meta,
+    shared_ptr<FragmentMetadata> frag_meta,
     DenseTiler<T>* dense_tiler,
     uint64_t thread_num) {
   auto timer_se = stats_->start_timer("prepare_filter_and_write_tiles");

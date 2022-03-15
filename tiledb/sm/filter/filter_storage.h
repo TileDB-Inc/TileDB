@@ -37,6 +37,7 @@
 #include <memory>
 #include <unordered_map>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 
@@ -59,7 +60,7 @@ class FilterStorage {
    *
    * @return Buffer from the pool
    */
-  tdb_shared_ptr<Buffer> get_buffer();
+  shared_ptr<Buffer> get_buffer();
 
   /** Return the number of buffers in the internal available list. */
   uint64_t num_available() const;
@@ -81,16 +82,16 @@ class FilterStorage {
 
  private:
   /** List of buffers that are available to be used (may be empty). */
-  std::list<tdb_shared_ptr<Buffer>> available_;
+  std::list<shared_ptr<Buffer>> available_;
 
   /** List of buffers that are currently in use (may be empty). */
-  std::list<tdb_shared_ptr<Buffer>> in_use_;
+  std::list<shared_ptr<Buffer>> in_use_;
 
   /**
    * Mapping of underlying Buffer pointer to linked list node in the in_use_
    * list.
    */
-  std::unordered_map<Buffer*, std::list<tdb_shared_ptr<Buffer>>::iterator>
+  std::unordered_map<Buffer*, std::list<shared_ptr<Buffer>>::iterator>
       in_use_list_map_;
 };
 

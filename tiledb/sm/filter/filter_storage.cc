@@ -39,11 +39,11 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-tdb_shared_ptr<Buffer> FilterStorage::get_buffer() {
+shared_ptr<Buffer> FilterStorage::get_buffer() {
   if (available_.empty())
     available_.emplace_back(tdb_new(Buffer));
 
-  tdb_shared_ptr<Buffer> buf = std::move(available_.front());
+  shared_ptr<Buffer> buf = std::move(available_.front());
   Buffer* buf_ptr = buf.get();
   available_.pop_front();
   in_use_.push_back(std::move(buf));
@@ -74,7 +74,7 @@ Status FilterStorage::reclaim(Buffer* buffer) {
     buffer->reset_size();
 
     auto list_node = it->second;
-    tdb_shared_ptr<Buffer> ptr = std::move(*list_node);
+    shared_ptr<Buffer> ptr = std::move(*list_node);
     in_use_.erase(list_node);
     in_use_list_map_.erase(it);
     available_.push_front(std::move(ptr));

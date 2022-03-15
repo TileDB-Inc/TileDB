@@ -72,7 +72,7 @@ struct ReadCellSlabIterFx {
       const std::vector<std::vector<uint64_t>>& c_result_cell_slabs);
   template <class T>
   void create_result_space_tiles(
-      const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragments,
+      const std::vector<shared_ptr<FragmentMetadata>>& fragments,
       const Domain& dom,
       const NDRange& dom_ndrange,
       Layout layout,
@@ -137,7 +137,7 @@ void ReadCellSlabIterFx::check_iter(
 
 template <class T>
 void ReadCellSlabIterFx::create_result_space_tiles(
-    const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragments,
+    const std::vector<shared_ptr<FragmentMetadata>>& fragments,
     const Domain& dom,
     const NDRange& dom_ndrange,
     Layout layout,
@@ -242,8 +242,8 @@ TEST_CASE_METHOD(
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto& dom{array_->array_->array_schema_latest().domain()};
 
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
-  tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+  std::vector<shared_ptr<FragmentMetadata>> fragments;
+  shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
       nullptr,
@@ -315,8 +315,8 @@ TEST_CASE_METHOD(
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto& dom{array_->array_->array_schema_latest().domain()};
 
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
-  tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+  std::vector<shared_ptr<FragmentMetadata>> fragments;
+  shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
       nullptr,
@@ -391,9 +391,9 @@ TEST_CASE_METHOD(
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto& dom{array_->array_->array_schema_latest().domain()};
 
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
+  std::vector<shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < 2; i++) {
-    tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+    shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
         nullptr,
@@ -473,9 +473,9 @@ TEST_CASE_METHOD(
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto& dom{array_->array_->array_schema_latest().domain()};
 
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
+  std::vector<shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < 2; i++) {
-    tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+    shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
         nullptr,
@@ -690,8 +690,8 @@ TEST_CASE_METHOD(
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto& dom{array_->array_->array_schema_latest().domain()};
 
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
-  tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+  std::vector<shared_ptr<FragmentMetadata>> fragments;
+  shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
       nullptr,
@@ -875,8 +875,8 @@ TEST_CASE_METHOD(
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto& dom{array_->array_->array_schema_latest().domain()};
 
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
-  tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+  std::vector<shared_ptr<FragmentMetadata>> fragments;
+  shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
       nullptr,
@@ -1073,8 +1073,8 @@ TEST_CASE_METHOD(
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto& dom{array_->array_->array_schema_latest().domain()};
 
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
-  tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+  std::vector<shared_ptr<FragmentMetadata>> fragments;
+  shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
       nullptr,
@@ -1317,9 +1317,9 @@ TEST_CASE_METHOD(
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto& dom{array_->array_->array_schema_latest().domain()};
 
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
+  std::vector<shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < 2; i++) {
-    tdb_shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+    shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
         nullptr,
