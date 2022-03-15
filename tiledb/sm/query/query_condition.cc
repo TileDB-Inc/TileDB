@@ -52,12 +52,14 @@ QueryCondition::QueryCondition() {
 
 QueryCondition::QueryCondition(const QueryCondition& rhs)
     : clauses_(rhs.clauses_)
-    , combination_ops_(rhs.combination_ops_) {
+    , combination_ops_(rhs.combination_ops_)
+    , tree_(rhs.tree_) {
 }
 
 QueryCondition::QueryCondition(QueryCondition&& rhs)
     : clauses_(std::move(rhs.clauses_))
-    , combination_ops_(std::move(rhs.combination_ops_)) {
+    , combination_ops_(std::move(rhs.combination_ops_))
+    , tree_(rhs.tree_) {
 }
 
 QueryCondition::~QueryCondition() {
@@ -66,6 +68,7 @@ QueryCondition::~QueryCondition() {
 QueryCondition& QueryCondition::operator=(const QueryCondition& rhs) {
   clauses_ = rhs.clauses_;
   combination_ops_ = rhs.combination_ops_;
+  tree_ = rhs.tree_;
 
   return *this;
 }
@@ -73,6 +76,7 @@ QueryCondition& QueryCondition::operator=(const QueryCondition& rhs) {
 QueryCondition& QueryCondition::operator=(QueryCondition&& rhs) {
   clauses_ = std::move(rhs.clauses_);
   combination_ops_ = std::move(rhs.combination_ops_);
+  tree_ = std::move(rhs.tree_);
 
   return *this;
 }
@@ -86,8 +90,15 @@ Status QueryCondition::init(
     return Status_QueryConditionError("Cannot reinitialize query condition");
   }
 
+  std::string field_name_copy = field_name;
+  std::string field_name_ref = std::move(field_name);
+
   clauses_.emplace_back(
-      std::move(field_name), condition_value, condition_value_size, op);
+      std::move(field_name_ref), condition_value, condition_value_size, op);
+
+  // AST Construction
+  tree_ = make_shared<ASTNodeVal>(
+      HERE(), field_name_copy, condition_value, condition_value_size, op);
 
   return Status::Ok();
 }
@@ -191,6 +202,65 @@ Status QueryCondition::combine(
 
   combined_cond->field_names_.clear();
 
+  // AST Construction
+  std::vector<shared_ptr<ASTNode>> ast_nodes;
+  if (this->tree_->get_tag() == ASTNodeTag::VAL) {
+    if (rhs.tree_->get_tag() == ASTNodeTag::VAL) {
+      ast_nodes.push_back(this->tree_);
+      ast_nodes.push_back(rhs.tree_);
+    } else {
+      // rhs is expression, lhs is value
+      auto rhs_tree_expr = dynamic_cast<ASTNodeExpr*>(rhs.tree_.get());
+      ast_nodes.push_back(this->tree_);
+      ast_nodes.insert(
+          ast_nodes.end(),
+          rhs_tree_expr->nodes_.begin(),
+          rhs_tree_expr->nodes_.end());
+    }
+  } else if (rhs.tree_->get_tag() == ASTNodeTag::VAL) {
+    // lhs is expression, rhs is value
+    auto lhs_tree_expr = dynamic_cast<ASTNodeExpr*>(this->tree_.get());
+    ast_nodes.insert(
+        ast_nodes.end(),
+        lhs_tree_expr->nodes_.begin(),
+        lhs_tree_expr->nodes_.end());
+    ast_nodes.push_back(rhs.tree_);
+  } else {
+    // Both trees are expression trees
+    auto lhs_tree_expr = dynamic_cast<ASTNodeExpr*>(this->tree_.get());
+    auto rhs_tree_expr = dynamic_cast<ASTNodeExpr*>(rhs.tree_.get());
+
+    if (combination_op == lhs_tree_expr->combination_op_ &&
+        lhs_tree_expr->combination_op_ == rhs_tree_expr->combination_op_) {
+      // same op
+      ast_nodes.insert(
+          ast_nodes.end(),
+          lhs_tree_expr->nodes_.begin(),
+          lhs_tree_expr->nodes_.end());
+      ast_nodes.insert(
+          ast_nodes.end(),
+          rhs_tree_expr->nodes_.begin(),
+          rhs_tree_expr->nodes_.end());
+    } else if (combination_op == lhs_tree_expr->combination_op_) {
+      ast_nodes.insert(
+          ast_nodes.end(),
+          lhs_tree_expr->nodes_.begin(),
+          lhs_tree_expr->nodes_.end());
+      ast_nodes.push_back(rhs.tree_);
+    } else if (combination_op == rhs_tree_expr->combination_op_) {
+      ast_nodes.push_back(this->tree_);
+      ast_nodes.insert(
+          ast_nodes.end(),
+          rhs_tree_expr->nodes_.begin(),
+          rhs_tree_expr->nodes_.end());
+    } else {
+      ast_nodes.push_back(this->tree_);
+      ast_nodes.push_back(rhs.tree_);
+    }
+  }
+
+  combined_cond->tree_ =
+      make_shared<ASTNodeExpr>(HERE(), ast_nodes, combination_op);
   return Status::Ok();
 }
 
