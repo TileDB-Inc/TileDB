@@ -12,16 +12,17 @@ depends=("${MINGW_PACKAGE_PREFIX}-lz4"
          "${MINGW_PACKAGE_PREFIX}-bzip2"
          "${MINGW_PACKAGE_PREFIX}-zlib"
          "${MINGW_PACKAGE_PREFIX}-zstd"
+         "${MINGW_PACKAGE_PREFIX}-file"
+         "${MINGW_PACKAGE_PREFIX}-dlfcn"
          )
 makedepends=("${MINGW_PACKAGE_PREFIX}-cmake"
              "${MINGW_PACKAGE_PREFIX}-gcc"
-             "${MINGW_PACKAGE_PREFIX}-curl")
+             "${MINGW_PACKAGE_PREFIX}-curl"
+             )
 options=("staticlibs" "strip")
 source_dir="$TILEDB_HOME"
 
 build() {
-  ${MINGW_PREFIX}/bin/cmake.exe --version
-
   [[ -d ${source_dir}/build-${MINGW_CHOST} ]] && rm -rf ${source_dir}/build-${MINGW_CHOST}
   mkdir -p ${source_dir}/build-${MINGW_CHOST} && cd ${source_dir}/build-${MINGW_CHOST}
 
@@ -30,9 +31,12 @@ build() {
   export CXXFLAGS="-mfpmath=sse -msse2"
   fi
 
+  export MAGIC=${MINGW_PREFIX}/share/misc/magic.mgc
+  export TILEDB_VFS_S3_CONNECT_TIMEOUT_MS=6000
+  export TILEDB_VFS_S3_REQUEST_TIMEOUT_MS=6000
+
   export MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX="
   ${MINGW_PREFIX}/bin/cmake.exe \
-    --trace \
     -G"MSYS Makefiles" \
     -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
     -DBUILD_SHARED_LIBS=OFF \
@@ -40,6 +44,7 @@ build() {
     -DTILEDB_STATIC=ON \
     -DTILEDB_S3=ON \
     -DCOMPILER_SUPPORTS_AVX2=OFF \
+    -DTILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK=ON \
     ..
   make VERBOSE=1
   make VERBOSE=1 -C tiledb
@@ -52,5 +57,8 @@ package() {
 
 check (){
   cd ${source_dir}/build-${MINGW_CHOST}
+  # may want to add
+  #  -DTILEDB_VERBOSE=ON \
+  # to cmake options above if enabling/running 'make check'.
   #make check
 }
