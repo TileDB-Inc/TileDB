@@ -32,6 +32,7 @@
 #ifdef _WIN32
 
 #include "win.h"
+#include "filestat.h"
 #include "path_win.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -264,6 +265,18 @@ bool Win::is_file(const std::string& path) const {
 }
 
 Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
+  auto&& [st, entries] = ls_with_sizes(path);
+  RETURN_NOT_OK(st);
+
+  for (auto& fs : *entries) {
+    paths->emplace_back(fs.path().to_path());
+  }
+
+  return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<FileStat>>> Win::ls_with_sizes(
+    const URI& path) const {
   bool ends_with_slash = path.length() > 0 && path[path.length() - 1] == '\\';
   const std::string glob = path + (ends_with_slash ? "*" : "\\*");
   WIN32_FIND_DATA find_data;
@@ -280,13 +293,23 @@ Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
     goto err;
   }
 
+  std::vector<FileStat> entries;
   while (true) {
     // Skip '.' and '..'
     if (strcmp(find_data.cFileName, ".") != 0 &&
         strcmp(find_data.cFileName, "..") != 0) {
       std::string file_path =
           path + (ends_with_slash ? "" : "\\") + find_data.cFileName;
-      paths->push_back(file_path);
+      if (is_dir(file_path)) {
+        entries.emplace_back(URI(file_path));
+      } else {
+        uint64_t size;
+        auto st = file_size(file_path, &size);
+        if (!st.ok()) {
+          return {st, nullopt};
+        }
+        entries.emplace_back(URI(file_path), size);
+      }
     }
 
     // Next find result.
@@ -303,7 +326,8 @@ err:
     FindClose(find_h);
   }
   std::string errmsg("Failed to list directory \"" + path + "\"");
-  return LOG_STATUS(Status_IOError(errmsg));
+  auto st = LOG_STATUS(Status_IOError(errmsg));
+  return {st, nullopt};
 }
 
 Status Win::move_path(

@@ -49,6 +49,8 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class FileStat;
+
 /** Typedef this here so we don't have to include Windows.h */
 typedef void* HANDLE;
 
@@ -147,6 +149,16 @@ class Win {
    * @return Status
    */
   Status ls(const std::string& path, std::vector<std::string>* paths) const;
+
+  /**
+   *
+   * Lists files and file information under a given path.
+   *
+   * @param path The parent path to list sub-paths.
+   * @return A list of FileStat objects
+   */
+  tuple<Status, optional<std::vector<FileStat>>> ls_with_sizes(
+      const URI& path) const;
 
   /**
    * Move a given filesystem path.

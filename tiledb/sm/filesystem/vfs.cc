@@ -891,6 +891,10 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
   // status,optional
   // TODO: note about init_client being called multiple times with no check to
   // exit early
+  // TODO: note about subdirectories: We don't get the size for those, size in
+  // FileStat for dirs is nullopt
+  // TODO: why do we need to make the requests for s3, gcs, azure is LS ends up
+  // returning an empty resultset?
 
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
@@ -909,7 +913,8 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
   optional<std::vector<FileStat>> entries;
   if (parent.is_file()) {
 #ifdef _WIN32
-    auto st = win_.ls(parent.to_path(), &entries);
+    Status st;
+    auto st = win_.ls_with_sizes(parent);
 #else
     Status st;
     std::tie(st, entries) = posix_.ls_with_sizes(parent);
@@ -953,7 +958,7 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
   } else if (parent.is_hdfs()) {
 #ifdef HAVE_HDFS
     Status st;
-    std::tie(st, entries) = hdfs_.ls_with_sizes(parent);
+    std::tie(st, entries) = hdfs_->ls_with_sizes(parent);
 #else
     auto st =
         LOG_STATUS(Status_VFSError("TileDB was built without HDFS support"));

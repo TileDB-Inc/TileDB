@@ -45,6 +45,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class FileStat;
+class URI;
+
 class MemFilesystem {
  public:
   /* ********************************* */
@@ -120,6 +123,16 @@ class MemFilesystem {
    * @return Status
    */
   Status ls(const std::string& path, std::vector<std::string>* paths) const;
+
+  /**
+   *
+   * Lists files and files information under path
+   *
+   * @param path  The parent path to list sub-paths
+   * @return Status
+   */
+  tuple<Status, optional<std::vector<FileStat>>> ls_with_sizes(
+      const URI& path) const;
 
   /**
    * Move a given filesystem path.
