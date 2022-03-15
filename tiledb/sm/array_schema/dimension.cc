@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -212,7 +212,7 @@ tuple<Status, optional<shared_ptr<Dimension>>> Dimension::deserialize(
 
     // Load filter pipeline
     auto&& [st_filterpipeline, filterpipeline]{
-        FilterPipeline::deserialize(buff)};
+        FilterPipeline::deserialize(buff, version)};
     if (!st_filterpipeline.ok()) {
       return {st_filterpipeline, nullopt};
     }
@@ -1428,6 +1428,14 @@ Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
       return LOG_STATUS(
           Status_DimensionError("Cannot set DOUBLE DELTA filter to a "
                                 "dimension with a real datatype"));
+  }
+
+  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline->size() > 1) {
+    if (pipeline->has_filter(FilterType::FILTER_RLE)) {
+      return LOG_STATUS(Status_DimensionError(
+          "RLE filter cannot be combined with other filters when applied to "
+          "variable length string dimensions"));
+    }
   }
 
   filters_ = *pipeline;

@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2021-2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -185,36 +185,32 @@ target_sources(compile_filter_pipeline PRIVATE test/compile_filter_pipeline_main
 
 
 if (TILEDB_TESTS)
-    add_executable(unit_filter EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_filter PUBLIC filter_pipeline)
+    add_executable(unit_filter_create EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_filter_create PUBLIC all_filters)
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_filter PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_filter_create PUBLIC Catch2::Catch2)
 
-    # Sources for tests
-    target_sources(unit_filter PUBLIC
-            test/main.cc
-            test/unit_filter_create.cc
-            test/unit_filter_pipeline.cc
-            )
-
-    add_test(
-            NAME "unit_filter"
-            COMMAND $<TARGET_FILE:unit_filter>
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-endif()
-
-if (TILEDB_TESTS)
     add_executable(unit_filter_pipeline EXCLUDE_FROM_ALL)
     target_link_libraries(unit_filter_pipeline PUBLIC filter_pipeline)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_filter_pipeline PUBLIC Catch2::Catch2)
 
     # Sources for tests
+    target_sources(unit_filter_create PUBLIC
+            test/main.cc
+            test/unit_filter_create.cc
+            )
+
     target_sources(unit_filter_pipeline PUBLIC
             test/main.cc
             test/unit_filter_pipeline.cc
             )
+
+    add_test(
+            NAME "unit_filter_create"
+            COMMAND $<TARGET_FILE:unit_filter_create>
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 
     add_test(
             NAME "unit_filter_pipeline"

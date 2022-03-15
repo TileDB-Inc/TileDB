@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -62,6 +62,7 @@ void PositiveDeltaFilter::dump(FILE* out) const {
 
 Status PositiveDeltaFilter::run_forward(
     const Tile& tile,
+    Tile* const offsets_tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -81,29 +82,29 @@ Status PositiveDeltaFilter::run_forward(
   switch (tile_type) {
     case Datatype::INT8:
       return run_forward<int8_t>(
-          tile, input_metadata, input, output_metadata, output);
+          tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::BLOB:
     case Datatype::UINT8:
       return run_forward<uint8_t>(
-          tile, input_metadata, input, output_metadata, output);
+          tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::INT16:
       return run_forward<int16_t>(
-          tile, input_metadata, input, output_metadata, output);
+          tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::UINT16:
       return run_forward<uint16_t>(
-          tile, input_metadata, input, output_metadata, output);
+          tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::INT32:
       return run_forward<int>(
-          tile, input_metadata, input, output_metadata, output);
+          tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::UINT32:
       return run_forward<unsigned>(
-          tile, input_metadata, input, output_metadata, output);
+          tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::INT64:
       return run_forward<int64_t>(
-          tile, input_metadata, input, output_metadata, output);
+          tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::UINT64:
       return run_forward<uint64_t>(
-          tile, input_metadata, input, output_metadata, output);
+          tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -127,7 +128,7 @@ Status PositiveDeltaFilter::run_forward(
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
       return run_forward<int64_t>(
-          tile, input_metadata, input, output_metadata, output);
+          tile, offsets_tile, input_metadata, input, output_metadata, output);
     default:
       return LOG_STATUS(
           Status_FilterError("Cannot filter; Unsupported input type"));
@@ -137,6 +138,7 @@ Status PositiveDeltaFilter::run_forward(
 template <typename T>
 Status PositiveDeltaFilter::run_forward(
     const Tile&,
+    Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

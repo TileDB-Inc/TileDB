@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -97,10 +97,7 @@ void FilterPipeline::clear() {
 
 tuple<Status, optional<std::vector<uint64_t>>>
 FilterPipeline::get_var_chunk_sizes(
-    uint32_t chunk_size,
-    Tile* const tile,
-    Tile* const offsets_tile,
-    bool chunking) const {
+    uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const {
   std::vector<uint64_t> chunk_offsets;
   if (offsets_tile != nullptr) {
     uint64_t num_offsets =
@@ -117,7 +114,7 @@ FilterPipeline::get_var_chunk_sizes(
 
       // Time for a new chunk?
       auto new_size = current_size + cell_size;
-      if (new_size > chunk_size || !chunking) {
+      if (new_size > chunk_size) {
         // Do we add this cell to this chunk?
         if (current_size <= min_size || new_size <= max_size) {
           if (new_size > std::numeric_limits<uint32_t>::max()) {
@@ -156,21 +153,25 @@ FilterPipeline::get_var_chunk_sizes(
 
 Status FilterPipeline::filter_chunks_forward(
     const Tile& tile,
+    Tile* const offsets_tile,
     uint32_t chunk_size,
     std::vector<uint64_t>& chunk_offsets,
     FilteredBuffer& output,
     ThreadPool* const compute_tp) const {
   bool var_sizes = chunk_offsets.size() > 0;
-  uint64_t nchunks =
-      var_sizes ? chunk_offsets.size() : tile.size() / chunk_size;
-  uint64_t last_buffer_size = var_sizes ?
-                                  tile.size() - chunk_offsets[nchunks - 1] :
-                                  tile.size() % chunk_size;
-  if (!var_sizes) {
-    if (last_buffer_size != 0) {
-      nchunks++;
-    } else {
-      last_buffer_size = chunk_size;
+  uint64_t last_buffer_size = chunk_size;
+  uint64_t nchunks = 1;
+  // if chunking will be used
+  if (tile.size() != chunk_size) {
+    nchunks = var_sizes ? chunk_offsets.size() : tile.size() / chunk_size;
+    last_buffer_size = var_sizes ? tile.size() - chunk_offsets[nchunks - 1] :
+                                   tile.size() % chunk_size;
+    if (!var_sizes) {
+      if (last_buffer_size != 0) {
+        nchunks++;
+      } else {
+        last_buffer_size = chunk_size;
+      }
     }
   }
 
@@ -212,7 +213,12 @@ Status FilterPipeline::filter_chunks_forward(
       f->init_compression_resource_pool(compute_tp->concurrency_level());
 
       RETURN_NOT_OK(f->run_forward(
-          tile, &input_metadata, &input_data, &output_metadata, &output_data));
+          tile,
+          offsets_tile,
+          &input_metadata,
+          &input_data,
+          &output_metadata,
+          &output_data));
 
       input_data.set_read_only(false);
       input_data.swap(output_data);
@@ -433,14 +439,17 @@ Status FilterPipeline::run_forward(
   uint32_t chunk_size = 0;
   if (use_chunking) {
     RETURN_NOT_OK(Tile::compute_chunk_size(
-        tile->size(), tile->dim_num(), tile->cell_size(), &chunk_size));
+        tile->size(),
+        tile->zipped_coords_dim_num(),
+        tile->cell_size(),
+        &chunk_size));
   } else {
     chunk_size = tile->size();
   }
 
   // Get the chunk sizes for var size attributes.
   auto&& [st, chunk_offsets] =
-      get_var_chunk_sizes(chunk_size, tile, offsets_tile, use_chunking);
+      get_var_chunk_sizes(chunk_size, tile, offsets_tile);
   RETURN_NOT_OK_ELSE(st, tile->filtered_buffer().clear());
 
   // Run the filters over all the chunks and store the result in
@@ -448,6 +457,7 @@ Status FilterPipeline::run_forward(
   RETURN_NOT_OK_ELSE(
       filter_chunks_forward(
           *tile,
+          offsets_tile,
           chunk_size,
           *chunk_offsets,
           tile->filtered_buffer(),
@@ -637,7 +647,7 @@ Status FilterPipeline::serialize(Buffer* buff) const {
 }
 
 tuple<Status, optional<FilterPipeline>> FilterPipeline::deserialize(
-    ConstBuffer* buff) {
+    ConstBuffer* buff, const uint32_t version) {
   Status st;
   uint32_t max_chunk_size;
   std::vector<shared_ptr<Filter>> filters;
@@ -648,7 +658,7 @@ tuple<Status, optional<FilterPipeline>> FilterPipeline::deserialize(
   RETURN_NOT_OK_TUPLE(buff->read(&num_filters, sizeof(uint32_t)), nullopt);
 
   for (uint32_t i = 0; i < num_filters; i++) {
-    auto&& [st_filter, filter]{FilterCreate::deserialize(buff)};
+    auto&& [st_filter, filter]{FilterCreate::deserialize(buff, version)};
     if (!st_filter.ok()) {
       return {st_filter, nullopt};
     }
@@ -669,9 +679,9 @@ void FilterPipeline::dump(FILE* out) const {
   }
 }
 
-bool FilterPipeline::has_filter(const Filter& filter) const {
+bool FilterPipeline::has_filter(const FilterType& filter_type) const {
   for (auto& f : filters_) {
-    if (f->type() == filter.type())
+    if (f->type() == filter_type)
       return true;
   }
   return false;
@@ -707,10 +717,9 @@ Status FilterPipeline::append_encryption_filter(
   }
 }
 
-bool FilterPipeline::use_tile_chunking(
-    bool is_dim, bool is_var, Datatype type) const {
-  if (is_dim && is_var && datatype_is_string(type)) {
-    if (has_filter(CompressionFilter(Compressor::RLE, 0))) {
+bool FilterPipeline::use_tile_chunking(bool is_var, Datatype type) const {
+  if (is_var && type == Datatype::STRING_ASCII) {
+    if (has_filter(FilterType::FILTER_RLE)) {
       return false;
     }
   }
