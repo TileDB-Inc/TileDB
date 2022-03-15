@@ -966,6 +966,12 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
     if (!st.ok()) {
       return {st, std::nullopt};
     }
+  } else if (parent.is_memfs()) {
+    Status st;
+    std::tie(st, entries) = memfs_.ls_with_sizes(parent);
+    if (!st.ok()) {
+      return {st, std::nullopt};
+    }
   } else {
     auto st = LOG_STATUS(
         Status_VFSError("Unsupported URI scheme: " + parent.to_string()));

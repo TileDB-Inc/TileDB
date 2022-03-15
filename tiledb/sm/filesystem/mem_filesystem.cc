@@ -159,7 +159,6 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
   tuple<Status, optional<std::vector<FileStat>>> ls(
       const std::string& full_path) const override {
     assert(!mutex_.try_lock());
-    assert(children);
 
     (void)full_path;
 
@@ -289,12 +288,17 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
     std::vector<FileStat> names;
     names.reserve(children_.size());
     for (const auto& child : children_) {
-      uint64_t size;
-      auto st = child.second->get_size(&size);
-      if (!st.ok()) {
-        return {st, nullopt};
+      std::unique_lock<std::mutex> lock(child.second->mutex_);
+      if (child.second->is_dir()) {
+        names.emplace_back(URI("mem://" + full_path + child.first));
+      } else {
+        uint64_t size;
+        auto st = child.second->get_size(&size);
+        if (!st.ok()) {
+          return {st, nullopt};
+        }
+        names.emplace_back(URI("mem://" + full_path + child.first), size);
       }
-      names.emplace_back(URI(full_path + child.first), size);
     }
 
     std::sort(names.begin(), names.end());
@@ -391,7 +395,7 @@ bool MemFilesystem::is_file(const std::string& path) const {
 Status MemFilesystem::ls(
     const std::string& path, std::vector<std::string>* const paths) const {
   assert(paths);
-  auto&& [st, entries] = ls_with_sizes(URI(path));
+  auto&& [st, entries] = ls_with_sizes(URI("mem://" + path));
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
