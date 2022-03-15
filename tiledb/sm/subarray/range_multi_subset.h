@@ -312,12 +312,22 @@ class RangeMultiSubset {
   /**
    * Adds a range that is subset.
    *
-   * Checks the range is infact a subset. The range must be a valid range as
-   * verified by ``RangeMultiSubset::check_is_valid_range``.
+   * An error status will be returned if the range is determined to be not a
+   * valid range for its type.
    *
-   * @param range The range to add. Must be a valid range.
+   * If the range is out-of-bounds of the RangeMultiSubset superset and
+   * read_range_oob_error is set to false, the range will be mutated to be a
+   * subset. Otherwise, if it is out-of-bounds the range is not added and an
+   * error status is returned.
+   *
+   * @param range The range to add.
+   * @param read_range_oob_error If ``true`` range out-of-bounds leads to an
+   * error status, otherwise, it leads to a warning status.
+   * @return [error_status, warn_oob_status] A pair with the error status and
+   * the range out-of-bound warning status.
    */
-  Status add_subset(const Range& range);
+  tuple<Status, Status> add_subset(
+      Range& range, const bool read_range_oob_error = true);
 
   /**
    * Adds a range that is a subset without performing any checkes.
@@ -329,34 +339,9 @@ class RangeMultiSubset {
    */
   Status add_subset_unrestricted(const Range& range);
 
-  /**
-   * Checks the range is a valid range. Returns an error status if the range is
-   * not valid.
-   *
-   * @param range The range to check.
-   */
-  Status check_is_valid_range(const Range& range) {
-    return impl_->check_is_valid_range(range);
-  };
-
   /** Returns a const reference to the stored ranges. */
   inline const std::vector<Range>& ranges() const {
     return ranges_;
-  };
-
-  /**
-   * Replaces the range with its intersection with the superset.
-   *
-   * This method will return an ok status if the Range is not mutated and an
-   * error status if the intersection changes the bounds of the range. The range
-   * provided must be a valid range as defined by
-   * ``RangeMultiSubset::check_is_valid_range``.
-   *
-   * @param range The Range to replace with the intersection.
-   * @return Status that returns error if range is mutated.
-   */
-  inline Status intersect_with_superset(Range& range) const {
-    return impl_->intersect(range);
   };
 
   /**

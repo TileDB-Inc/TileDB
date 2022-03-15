@@ -117,9 +117,26 @@ RangeMultiSubset::RangeMultiSubset(
     ranges_.emplace_back(superset);
 }
 
-Status RangeMultiSubset::add_subset(const Range& range) {
-  RETURN_NOT_OK(impl_->check_is_valid_subset(range));
-  return add_subset_unrestricted(range);
+tuple<Status, Status> RangeMultiSubset::add_subset(
+    Range& range, const bool read_range_oob_error) {
+  // Set out-of-bounds status to Ok. Only warn if range is modified by
+  // intersect.
+  Status warn_oob_status = Status::Ok();
+  // Check range is a valid range. Abort if it is not.
+  auto error_status = impl_->check_is_valid_range(range);
+  if (!error_status.ok())
+    return {error_status, warn_oob_status};
+  // Check the range is not out of bound. Abort if oob and oob is an error.
+  if (read_range_oob_error) {
+    error_status = impl_->check_is_valid_subset(range);
+    if (!error_status.ok())
+      return {error_status, warn_oob_status};
+  } else {
+    warn_oob_status = impl_->intersect(range);
+  }
+  // Add subset and return error and warning statuses.
+  error_status = add_subset_unrestricted(range);
+  return {error_status, warn_oob_status};
 }
 
 Status RangeMultiSubset::add_subset_unrestricted(const Range& range) {

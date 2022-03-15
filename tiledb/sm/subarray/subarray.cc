@@ -169,30 +169,19 @@ Status Subarray::add_range(
         Status_SubarrayError("Cannot add more than one range per dimension "
                              "to global order query"));
   }
-  // Check range is valid.
-  auto status = range_subset_[dim_idx].check_is_valid_range(range);
-  if (!status.ok())
-    return logger_->status(Status_SubarrayError(
-        "Cannot add range to dimension '" +
-        array_->array_schema_latest().dimension(dim_idx)->name() + "'; " +
-        status.message()));
 
-  // Restrict the range to the dimension domain.
-  if (!read_range_oob_error) {
-    auto warn_status = range_subset_[dim_idx].intersect_with_superset(range);
-    if (!warn_status.ok())
-      LOG_WARN(
-          "Need to adjust range before adding to dimension '" +
-          array_->array_schema_latest().dimension(dim_idx)->name() + "'; " +
-          warn_status.message());
-  }
-  // Add range to the dimension.
-  status = range_subset_[dim_idx].add_subset(range);
-  if (!status.ok())
+  auto&& [error_status, warn_oob_status] =
+      range_subset_[dim_idx].add_subset(range, read_range_oob_error);
+  if (!error_status.ok())
     return logger_->status(Status_SubarrayError(
         "Cannot add range to dimension '" +
         array_->array_schema_latest().dimension(dim_idx)->name() + "'; " +
-        status.message()));
+        error_status.message()));
+  if (!warn_oob_status.ok())
+    LOG_WARN(
+        "Need to adjust range before adding to dimension '" +
+        array_->array_schema_latest().dimension(dim_idx)->name() + "'; " +
+        warn_oob_status.message());
 
   // Update is default.
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
