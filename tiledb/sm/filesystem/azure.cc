@@ -631,10 +631,16 @@ tuple<Status, optional<std::vector<FileStat>>> Azure::ls_with_sizes(
         outcome.response();
 
     for (const auto& blob : response.blobs) {
-      entries.emplace_back(
-          URI("azure://" + container_name + "/" +
-              remove_front_slash(remove_trailing_slash(blob.name))),
-          blob.content_length);
+      if (blob.is_directory) {
+        entries.emplace_back(
+            URI("azure://" + container_name + "/" +
+                remove_front_slash(remove_trailing_slash(blob.name))));
+      } else {
+        entries.emplace_back(
+            URI("azure://" + container_name + "/" +
+                remove_front_slash(remove_trailing_slash(blob.name))),
+            blob.content_length);
+      }
     }
 
     continuation_token = response.next_marker;

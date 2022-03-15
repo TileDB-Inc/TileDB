@@ -310,13 +310,16 @@ tuple<Status, optional<std::vector<FileStat>>> Posix::ls_with_sizes(
       continue;
     std::string abspath = path + "/" + next_path->d_name;
 
-    uint64_t size;
-    auto st = file_size(abspath, &size);
-    if (!st.ok()) {
-      return {st, nullopt};
+    if (next_path->d_type == DT_DIR) {
+      entries.emplace_back(URI(abspath));
+    } else {
+      uint64_t size;
+      auto st = file_size(abspath, &size);
+      if (!st.ok()) {
+        return {st, nullopt};
+      }
+      entries.emplace_back(URI(abspath), size);
     }
-
-    entries.emplace_back(URI(abspath), size);
   }
   // close parent directory
   if (closedir(dir) != 0) {
