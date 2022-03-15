@@ -167,7 +167,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
       HERE(), account, thread_pool_->concurrency_level(), cert_file);
 #else
   client_ = make_shared<azure::storage_lite::blob_client>(
-      HERE(), account, thread_pool_->concurrency_level());
+      HERE(), account, static_cast<int>(thread_pool_->concurrency_level()));
 #endif
 
   // The Azure SDK does not provide a way to configure the retry
