@@ -45,7 +45,7 @@ template <typename T>
 void test_valid_range(T lower, T upper) {
   T data[2]{lower, upper};
   Range range{data, 2 * sizeof(T)};
-  auto status = RangeOperations<T>::check_is_valid_range(range);
+  auto status = check_typed_range_is_valid<T>(range);
   REQUIRE(status.ok());
 }
 
@@ -53,7 +53,7 @@ template <typename T>
 void test_invalid_range(T lower, T upper) {
   T data[2]{lower, upper};
   Range range{data, 2 * sizeof(T)};
-  auto status = RangeOperations<T>::check_is_valid_range(range);
+  auto status = check_typed_range_is_valid<T>(range);
   REQUIRE(!status.ok());
   INFO(status.ok())
 }
@@ -62,7 +62,7 @@ template <typename T>
 void test_full_typeset_is_valid() {
   T fullset[2]{std::numeric_limits<T>::min(), std::numeric_limits<T>::max()};
   Range range{fullset, 2 * sizeof(T)};
-  auto status = RangeOperations<T>::check_is_valid_range(range);
+  auto status = check_typed_range_is_valid<T>(range);
   REQUIRE(status.ok());
 }
 
@@ -147,16 +147,15 @@ TEMPLATE_TEST_CASE(
 
 template <typename T>
 void test_good_subset(const T* domain_data, const T* subset_data) {
-  // Create superset.
+  // Create ranges.
   Range domain{domain_data, 2 * sizeof(T)};
-  RangeSuperset<T> superset{domain};
   Range subset{subset_data, 2 * sizeof(T)};
   Status status = Status::Ok();
   // Verify "is subset" checks pass.
-  status = superset.check_is_subset(subset);
+  status = check_range_is_subset<T>(domain, subset);
   REQUIRE(status.ok());
   // Verify "intersect" returns OK status (no-op).
-  status = superset.intersect(subset);
+  status = intersect_range<T>(domain, subset);
   REQUIRE(status.ok());
   // Verify range is unaltered.
   auto new_range_data = static_cast<const T*>(subset.data());
@@ -166,19 +165,18 @@ void test_good_subset(const T* domain_data, const T* subset_data) {
 
 template <typename T>
 void test_bad_subset(const T* domain_data, const T* range_data) {
-  // Create superset.
+  // Create ranges.
   Range domain{domain_data, 2 * sizeof(T)};
-  RangeSuperset<T> superset{domain};
   Range range{range_data, 2 * sizeof(T)};
   Status status = Status::Ok();
   // Verify "is subset" checks fail.
-  status = superset.check_is_subset(range);
+  status = check_range_is_subset<T>(domain, range);
   REQUIRE(!status.ok());
   // Intersect with superset and verify status fails.
-  status = superset.intersect(range);
+  status = intersect_range<T>(domain, range);
   REQUIRE(!status.ok());
   // Verify "is subset" checks pass after intersection.
-  status = superset.check_is_subset(range);
+  status = check_range_is_subset<T>(domain, range);
   REQUIRE(status.ok());
   auto new_range_data = static_cast<const T*>(range.data());
   if (range_data[0] < domain_data[0]) {

@@ -185,7 +185,6 @@ class RangeMultiSubsetImpl {
    * error status if the intersection changes the bounds of the range. The range
    * must be a valid range.
    *
-   * @param intersector The Range to take an intersection with.
    * @param range The Range to replace with the intersection.
    * @return Status that returns an error if range is mutated.
    */
@@ -213,15 +212,15 @@ class TypedRangeMultiSubsetImpl : public RangeMultiSubsetImpl {
   };
 
   Status check_is_valid_range(const Range& range) const override {
-    return RangeOperations<T>::check_is_valid_range(range);
+    return check_typed_range_is_valid<T>(range);
   };
 
   Status check_is_valid_subset(const Range& range) const override {
-    return superset_.check_is_subset(range);
+    return check_range_is_subset<T>(superset_, range);
   };
 
   Status intersect(Range& range) const override {
-    return superset_.intersect(range);
+    return intersect_range<T>(superset_, range);
   };
 
   Status sort_ranges(
@@ -230,7 +229,7 @@ class TypedRangeMultiSubsetImpl : public RangeMultiSubsetImpl {
   };
 
  private:
-  RangeSuperset<T> superset_;
+  Range superset_;
 };
 
 /**
@@ -246,7 +245,7 @@ class TypedRangeMultisetImpl : public RangeMultiSubsetImpl {
   };
 
   Status check_is_valid_range(const Range& range) const override {
-    return RangeOperations<T>::check_is_valid_range(range);
+    return check_typed_range_is_valid<T>(range);
   };
 
   Status check_is_valid_subset(const Range&) const override {
@@ -267,8 +266,8 @@ class TypedRangeMultisetImpl : public RangeMultiSubsetImpl {
 
 /**
  * A RangeMultiSubset object is a collection of possibly overlapping or
- * duplicate Ranges that are assumed to be subsets of a given superset with a
- * defined TileDB datatype.
+ * duplicate ranges that are subsets of a given superset with a defined TileDB
+ * datatype.
  *
  * If constructed with the ``implicitly_initialize`` flag set to ``true``, the
  * superset will be added to the Ranges in the set until any additional ranages
