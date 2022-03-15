@@ -1358,7 +1358,8 @@ Status ReaderBase::unfilter_tile(
   // Reverse the tile filters.
   // If offsets don't need to be unfiltered separately, it means they
   // will be created on the fly from filtered data
-  if (filters.skip_offsets_filtering(tile_var->type())) {
+  if (filters.skip_offsets_filtering(
+          tile_var->type(), array_schema_.version())) {
     RETURN_NOT_OK(filters.run_reverse(
         stats_, tile_var, tile, storage_manager_->compute_tp(), config_));
   } else {
@@ -1420,7 +1421,7 @@ Status ReaderBase::unfilter_tile_nullable(
   // Reverse the tile filters.
   // If offsets don't need to be unfiltered separately, it means they
   // will be created on the fly from filtered var-length data
-  if (filters.skip_offsets_filtering(tile->type())) {
+  if (filters.skip_offsets_filtering(tile->type(), array_schema_.version())) {
     RETURN_NOT_OK(filters.run_reverse(
         stats_,
         tile_var,

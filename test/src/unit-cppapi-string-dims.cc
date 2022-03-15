@@ -1452,7 +1452,7 @@ TEST_CASE(
 
   // Create data buffer to use
   std::stringstream repetitions;
-  size_t repetition_num = 1000000;
+  size_t repetition_num = 100;
   for (size_t i = 0; i < repetition_num; i++)
     repetitions << "GLSD987JHY";
   std::string data =

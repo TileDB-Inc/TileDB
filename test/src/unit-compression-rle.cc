@@ -465,7 +465,7 @@ TEMPLATE_LIST_TEST_CASE(
 
   std::vector<uint64_t> expected_offsets(num_strings);
   auto len = string_rand.size();
-  int start = -1 * len;
+  auto start = -1 * len;
   std::generate(expected_offsets.begin(), expected_offsets.end(), [&] {
     return start += len;
   });

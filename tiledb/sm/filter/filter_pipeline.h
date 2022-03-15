@@ -310,9 +310,12 @@ class FilterPipeline {
    * whole
    *
    * @param type Datatype of the input attribute/dimension
+   * @param type Array schema version
    * @return True if we can skip offsets filtering
    */
-  bool skip_offsets_filtering(const Datatype type) const;
+  bool skip_offsets_filtering(
+      const Datatype type,
+      const uint32_t version = constants::format_version) const;
 
   /**
    * Checks if an attribute/dimension needs to be filtered in chunks or as a

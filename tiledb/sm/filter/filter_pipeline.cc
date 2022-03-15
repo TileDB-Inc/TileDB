@@ -730,8 +730,9 @@ Status FilterPipeline::append_encryption_filter(
   }
 }
 
-bool FilterPipeline::skip_offsets_filtering(Datatype type) const {
-  if (type == Datatype::STRING_ASCII) {
+bool FilterPipeline::skip_offsets_filtering(
+    Datatype type, const uint32_t version) const {
+  if (version >= 12 && type == Datatype::STRING_ASCII) {
     if (has_filter(FilterType::FILTER_RLE)) {
       return true;
     }
