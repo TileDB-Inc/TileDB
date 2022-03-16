@@ -33,7 +33,7 @@ jobs:
           install: mingw-w64-${{ matrix.toolchain }}-toolchain make patch
           update: true
       - name: Building TileDB
-        run: | # cd .github/workflows/mingw-w64-tiledb && makepkg-mingw --noconfirm --syncdeps
+        run: |
           set -x
           cd .github/workflows/mingw-w64-tiledb
           makepkg-mingw --noconfirm --syncdeps

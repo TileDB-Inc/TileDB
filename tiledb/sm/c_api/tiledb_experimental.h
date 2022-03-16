@@ -49,10 +49,6 @@ extern "C" {
 /** A TileDB array schema. */
 typedef struct tiledb_array_schema_evolution_t tiledb_array_schema_evolution_t;
 
-// TBD: remove me as temporary dependent code no longer needs!
-/** TileDB file type. */
-typedef struct tiledb_file_t tiledb_file_t;
-
 /* ********************************* */
 /*      ARRAY SCHEMA EVOLUTION       */
 /* ********************************* */

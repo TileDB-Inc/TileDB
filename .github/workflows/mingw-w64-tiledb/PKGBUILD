@@ -46,8 +46,8 @@ build() {
     -DCOMPILER_SUPPORTS_AVX2=OFF \
     -DTILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK=ON \
     ..
-  make VERBOSE=1
-  make VERBOSE=1 -C tiledb
+  make
+  make -C tiledb
 }
 
 package() {
@@ -60,5 +60,5 @@ check (){
   # may want to add
   #  -DTILEDB_VERBOSE=ON \
   # to cmake options above if enabling/running 'make check'.
-  #make check
+  make check
 }

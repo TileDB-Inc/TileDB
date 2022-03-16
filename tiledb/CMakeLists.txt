@@ -531,23 +531,10 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     libmagic
 )
 
-if(0)
-if(MSYS AND TILEDB_STATIC)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-      INTERFACE
-      # libregex_LIBRARIES
-      "${libregex_LIBRARIES}"
-      "${libsystre_LIBRARIES}"
-      "${libtre_LIBRARIES}"
-      "${libintl_LIBRARIES}"
-  )
-endif()
-endif()
-
 # GCC <9 need to link against libc++fs for c++17 filesystem library
 find_package(Filesystem REQUIRED COMPONENTS Final Experimental)
 if (NOT WIN32 OR NOT MSVC)
-target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE std::filesystem)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE std::filesystem)
 endif()
 
 if (NOT WIN32)
@@ -821,7 +808,6 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
   append_dep_lib(libmagic)
-  append_dep_lib(libregex) # (maybe) needed for rtools40
 endif()
 
 ############################################################

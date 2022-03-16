@@ -213,16 +213,13 @@ jobs:
           # CMake exits with non-0 status if there are any warnings during the build, so
           cmake --build $env:BUILD_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
 
-          cmd /c "dir $env:BUILD_BUILDDIRECTORY"
-          cmd /c "dir $env:BUILD_BUILDDIRECTORY\magic.mgc /s"
           if( ($env:MAGIC + "X") -eq "X") {
             if(Test-Path "$env:BUILD_BUILDDIRECTORY/externals/install/bin/magic.mgc") {
               $pathToMagic = $env:BUILD_BUILDDIRECTORY + "/externals/install/bin/magic.mgc"
-              write-host "magic.mgc @ $pathToMagic"
+              write-host "magic.mgc found @ $pathToMagic"
               $env:MAGIC = $pathToMagic
             }
           }
-          write-host "magic env var is $env:MAGIC"
 
           if ($env:TILEDB_AZURE -eq "ON") {
             if($env.TILEDB_USE_CUSTOM_NODE_JS) {
