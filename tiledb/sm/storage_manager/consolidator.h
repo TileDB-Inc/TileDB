@@ -33,6 +33,7 @@
 #ifndef TILEDB_CONSOLIDATOR_H
 #define TILEDB_CONSOLIDATOR_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
@@ -238,7 +239,7 @@ class Consolidator {
    *     consolidated based on the above definition.
    */
   bool are_consolidatable(
-      const Domain* domain,
+      shared_ptr<const Domain> domain,
       const FragmentInfo& fragment_info,
       size_t start,
       size_t end,

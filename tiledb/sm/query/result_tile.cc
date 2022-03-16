@@ -126,7 +126,7 @@ uint64_t ResultTile::cell_num() const {
   return 0;
 }
 
-const Domain* ResultTile::domain() const {
+shared_ptr<const Domain> ResultTile::domain() const {
   return domain_;
 }
 

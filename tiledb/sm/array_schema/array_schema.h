@@ -260,7 +260,7 @@ class ArraySchema {
   Status deserialize(ConstBuffer* buff);
 
   /** Returns the array domain. */
-  const Domain* domain() const;
+  shared_ptr<const Domain> domain() const;
 
   /**
    * Initializes the ArraySchema object. It also performs a check to see if
@@ -298,7 +298,7 @@ class ArraySchema {
    * Sets the domain. The function returns an error if the array has been
    * previously set to be a key-value store.
    */
-  Status set_domain(Domain* domain);
+  Status set_domain(shared_ptr<Domain> domain);
 
   /** Sets the tile order. */
   Status set_tile_order(Layout tile_order);
@@ -395,7 +395,7 @@ class ArraySchema {
   std::unordered_map<std::string, const Dimension*> dim_map_;
 
   /** The array domain. */
-  Domain* domain_;
+  shared_ptr<Domain> domain_;
 
   /**
    * The tile order. It can be one of the following:
