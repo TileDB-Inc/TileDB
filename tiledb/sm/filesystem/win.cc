@@ -318,7 +318,7 @@ tuple<Status, optional<std::vector<FileStat>>> Win::ls_with_sizes(
   }
 
   FindClose(find_h);
-  return Status::Ok();
+  return {Status::Ok(), entries};
 
 err:
   if (find_h != INVALID_HANDLE_VALUE) {
