@@ -88,14 +88,6 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
     return TILEDB_ERR;
   }
 
-  #if 0
-  tiledb_array_schema_t* blob_array_schema = nullptr;
-  if (tiledb_array_schema_create_default_blob_array(ctx, &blob_array_schema) ==
-      TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  #endif
-
   if (tiledb_array_alloc(ctx, array_uri, array) == TILEDB_ERR) {
     // expect tiledb_array_alloc() to have logged any necessary error.
     // tiledb_array_schema_free(&blob_array_schema);
