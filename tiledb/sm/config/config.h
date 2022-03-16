@@ -306,6 +306,9 @@ class Config {
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
 
+  /** The default maximum number of bytes in a batched VFS read operation. */
+  static const std::string VFS_MAX_BATCH_SIZE;
+
   /**
    * The default minimum number of bytes between two VFS read batches.
    */
