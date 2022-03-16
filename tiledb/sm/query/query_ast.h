@@ -51,17 +51,8 @@ enum ASTNodeTag : char { NIL, VAL, EXPR };
 /** Represents a simple terminal/predicate **/
 class ASTNode {
  public:
-  virtual ASTNodeTag get_tag() const {
-    return tag_;
-  }
-  virtual std::string to_str() const {
-    return "";
-  }
-  virtual ~ASTNode() {
-  }
-
- private:
-  static const ASTNodeTag tag_{ASTNodeTag::NIL};
+  virtual ASTNodeTag get_tag() = 0;
+  virtual std::string to_str() = 0;
 };
 class ASTNodeVal : public ASTNode {
   /** Value constructor. */
@@ -74,25 +65,22 @@ class ASTNodeVal : public ASTNode {
       : field_name_(field_name)
       , op_(op) {
     condition_value_data_.resize(condition_value_size);
-    condition_value_ = nullptr;
 
     if (condition_value != nullptr) {
-      // Using an empty string litteral for empty string as vector::resize(0)
+      // Using an empty string literal for empty string as vector::resize(0)
       // doesn't guarantee an allocation.
-      condition_value_ =
-          condition_value_size == 0 ? (void*)"" : condition_value_data_.data();
       memcpy(
           condition_value_data_.data(), condition_value, condition_value_size);
     }
+  }
+
+  virtual ~ASTNodeVal() {
   }
 
   /** Copy constructor. */
   ASTNodeVal(const ASTNodeVal& rhs)
       : field_name_(rhs.field_name_)
       , condition_value_data_(rhs.condition_value_data_)
-      , condition_value_(
-            rhs.condition_value_ == nullptr ? nullptr :
-                                              condition_value_data_.data())
       , op_(rhs.op_) {
   }
 
@@ -100,20 +88,16 @@ class ASTNodeVal : public ASTNode {
   ASTNodeVal(ASTNodeVal&& rhs)
       : field_name_(std::move(rhs.field_name_))
       , condition_value_data_(std::move(rhs.condition_value_data_))
-      , condition_value_(
-            rhs.condition_value_ == nullptr ? nullptr :
-                                              condition_value_data_.data())
       , op_(rhs.op_) {
   }
 
   /** Assignment operator. */
   ASTNodeVal& operator=(const ASTNodeVal& rhs) {
-    field_name_ = rhs.field_name_;
-    condition_value_data_ = rhs.condition_value_data_;
-    condition_value_ = rhs.condition_value_ == nullptr ?
-                           nullptr :
-                           condition_value_data_.data();
-    op_ = rhs.op_;
+    if (this != &rhs) {
+      field_name_ = rhs.field_name_;
+      condition_value_data_ = rhs.condition_value_data_;
+      op_ = rhs.op_;
+    }
 
     return *this;
   }
@@ -122,22 +106,19 @@ class ASTNodeVal : public ASTNode {
   ASTNodeVal& operator=(ASTNodeVal&& rhs) {
     field_name_ = std::move(rhs.field_name_);
     condition_value_data_ = std::move(rhs.condition_value_data_);
-    condition_value_ = rhs.condition_value_ == nullptr ?
-                           nullptr :
-                           condition_value_data_.data();
     op_ = rhs.op_;
 
     return *this;
   }
 
-  ASTNodeTag get_tag() const override {
+  ASTNodeTag get_tag() {
     return tag_;
   }
 
-  std::string to_str() const override {
+  std::string to_str() {
     std::string result_str;
     result_str = field_name_ + " " + query_condition_op_str(op_) + " ";
-    result_str += condition_value_data_.to_str();
+    result_str += condition_value_data_.to_hex_str();
     return result_str;
   }
 
@@ -146,9 +127,6 @@ class ASTNodeVal : public ASTNode {
 
   /** The value data. */
   ByteVecValue condition_value_data_;
-
-  /** The value to compare against. */
-  void* condition_value_;
 
   /** The comparison operator. */
   QueryConditionOp op_;
@@ -165,6 +143,9 @@ class ASTNodeExpr : public ASTNode {
       , combination_op_(c_op) {
   }
 
+  virtual ~ASTNodeExpr() {
+  }
+
   /** Copy constructor. */
   ASTNodeExpr(const ASTNodeExpr& rhs)
       : nodes_(rhs.nodes_)
@@ -177,8 +158,10 @@ class ASTNodeExpr : public ASTNode {
 
   /** Assignment operator. */
   ASTNodeExpr& operator=(const ASTNodeExpr& rhs) {
-    nodes_ = rhs.nodes_;
-    combination_op_ = rhs.combination_op_;
+    if (this != &rhs) {
+      nodes_ = rhs.nodes_;
+      combination_op_ = rhs.combination_op_;
+    }
     return *this;
   }
 
@@ -189,11 +172,11 @@ class ASTNodeExpr : public ASTNode {
     return *this;
   }
 
-  ASTNodeTag get_tag() const override {
+  ASTNodeTag get_tag() {
     return tag_;
   }
 
-  std::string to_str() const override {
+  std::string to_str() {
     std::string result_str;
     result_str = "(";
     for (size_t i = 0; i < nodes_.size(); i++) {
