@@ -2488,7 +2488,9 @@ int32_t tiledb_array_schema_set_domain(
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   if (SAVE_ERROR_CATCH(
-          ctx, array_schema->array_schema_->set_domain(domain->domain_)))
+          ctx,
+          array_schema->array_schema_->set_domain(
+              make_shared<tiledb::sm::Domain>(HERE(), domain->domain_))))
     return TILEDB_ERR;
   return TILEDB_OK;
 }
@@ -2962,7 +2964,7 @@ int32_t tiledb_array_schema_get_domain(
 
   // Create a new Domain object
   (*domain)->domain_ = new (std::nothrow)
-      tiledb::sm::Domain(array_schema->array_schema_->domain());
+      tiledb::sm::Domain(array_schema->array_schema_->domain().get());
   if ((*domain)->domain_ == nullptr) {
     delete *domain;
     *domain = nullptr;
