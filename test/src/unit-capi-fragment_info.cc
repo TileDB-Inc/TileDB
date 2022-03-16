@@ -256,6 +256,11 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   CHECK(std::string(uri) == written_frag_uri);
 
+  // Get fragment name
+  const char* name;
+  rc = tiledb_fragment_info_get_fragment_name(ctx, fragment_info, 1, &name);
+  CHECK(rc == TILEDB_OK);
+
   // Get schema name
   const char* schema_name;
   rc = tiledb_fragment_info_get_array_schema_name(
@@ -499,6 +504,11 @@ TEST_CASE(
   rc = tiledb_fragment_info_get_fragment_uri(ctx, fragment_info, 1, &uri);
   CHECK(rc == TILEDB_OK);
   CHECK(std::string(uri) == written_frag_uri);
+
+  // Get fragment name
+  const char* name;
+  rc = tiledb_fragment_info_get_fragment_name(ctx, fragment_info, 1, &name);
+  CHECK(rc == TILEDB_OK);
 
   // Get fragment size
   uint64_t size;
