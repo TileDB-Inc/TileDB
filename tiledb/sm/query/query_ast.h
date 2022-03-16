@@ -33,6 +33,7 @@
 #ifndef TILEDB_QUERY_AST_H
 #define TILEDB_QUERY_AST_H
 
+#include <iostream>
 #include <sstream>
 
 #include "tiledb/common/common.h"
@@ -45,20 +46,22 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-enum ASTNodeTag : char { VAL, EXPR };
+enum ASTNodeTag : char { NIL, VAL, EXPR };
 
 /** Represents a simple terminal/predicate **/
 class ASTNode {
  public:
-  ASTNode(ASTNodeTag tag)
-      : tag_(tag) {
-  }
   virtual ASTNodeTag get_tag() const {
     return tag_;
   }
+  virtual std::string to_str() const {
+    return "";
+  }
   virtual ~ASTNode() {
   }
-  ASTNodeTag tag_;
+
+ private:
+  static const ASTNodeTag tag_{ASTNodeTag::NIL};
 };
 class ASTNodeVal : public ASTNode {
   /** Value constructor. */
@@ -68,8 +71,7 @@ class ASTNodeVal : public ASTNode {
       const void* const condition_value,
       const uint64_t condition_value_size,
       const QueryConditionOp op)
-      : ASTNode(ASTNodeTag::VAL)
-      , field_name_(field_name)
+      : field_name_(field_name)
       , op_(op) {
     condition_value_data_.resize(condition_value_size);
     condition_value_ = nullptr;
@@ -86,8 +88,7 @@ class ASTNodeVal : public ASTNode {
 
   /** Copy constructor. */
   ASTNodeVal(const ASTNodeVal& rhs)
-      : ASTNode(ASTNodeTag::VAL)
-      , field_name_(rhs.field_name_)
+      : field_name_(rhs.field_name_)
       , condition_value_data_(rhs.condition_value_data_)
       , condition_value_(
             rhs.condition_value_ == nullptr ? nullptr :
@@ -97,8 +98,7 @@ class ASTNodeVal : public ASTNode {
 
   /** Move constructor. */
   ASTNodeVal(ASTNodeVal&& rhs)
-      : ASTNode(ASTNodeTag::VAL)
-      , field_name_(std::move(rhs.field_name_))
+      : field_name_(std::move(rhs.field_name_))
       , condition_value_data_(std::move(rhs.condition_value_data_))
       , condition_value_(
             rhs.condition_value_ == nullptr ? nullptr :
@@ -114,7 +114,6 @@ class ASTNodeVal : public ASTNode {
                            nullptr :
                            condition_value_data_.data();
     op_ = rhs.op_;
-    tag_ = ASTNodeTag::VAL;
 
     return *this;
   }
@@ -127,13 +126,19 @@ class ASTNodeVal : public ASTNode {
                            nullptr :
                            condition_value_data_.data();
     op_ = rhs.op_;
-    tag_ = ASTNodeTag::VAL;
 
     return *this;
   }
 
   ASTNodeTag get_tag() const override {
     return tag_;
+  }
+
+  std::string to_str() const override {
+    std::string result_str;
+    result_str = field_name_ + " " + query_condition_op_str(op_) + " ";
+    result_str += condition_value_data_.to_str();
+    return result_str;
   }
 
   /** The attribute name. */
@@ -147,34 +152,33 @@ class ASTNodeVal : public ASTNode {
 
   /** The comparison operator. */
   QueryConditionOp op_;
+
+ private:
+  static const ASTNodeTag tag_{ASTNodeTag::VAL};
 };
 
 class ASTNodeExpr : public ASTNode {
  public:
   ASTNodeExpr(
       std::vector<shared_ptr<ASTNode>> nodes, QueryConditionCombinationOp c_op)
-      : ASTNode(ASTNodeTag::EXPR)
-      , nodes_(nodes)
+      : nodes_(nodes)
       , combination_op_(c_op) {
   }
 
   /** Copy constructor. */
   ASTNodeExpr(const ASTNodeExpr& rhs)
-      : ASTNode(ASTNodeTag::EXPR)
-      , nodes_(rhs.nodes_)
+      : nodes_(rhs.nodes_)
       , combination_op_(rhs.combination_op_){};
 
   /** Move constructor. */
   ASTNodeExpr(ASTNodeExpr&& rhs)
-      : ASTNode(ASTNodeTag::EXPR)
-      , nodes_(std::move(rhs.nodes_))
+      : nodes_(std::move(rhs.nodes_))
       , combination_op_(rhs.combination_op_){};
 
   /** Assignment operator. */
   ASTNodeExpr& operator=(const ASTNodeExpr& rhs) {
     nodes_ = rhs.nodes_;
     combination_op_ = rhs.combination_op_;
-    tag_ = ASTNodeTag::EXPR;
     return *this;
   }
 
@@ -182,7 +186,6 @@ class ASTNodeExpr : public ASTNode {
   ASTNodeExpr& operator=(ASTNodeExpr&& rhs) {
     nodes_ = std::move(rhs.nodes_);
     combination_op_ = rhs.combination_op_;
-    tag_ = ASTNodeTag::EXPR;
     return *this;
   }
 
@@ -190,12 +193,38 @@ class ASTNodeExpr : public ASTNode {
     return tag_;
   }
 
+  std::string to_str() const override {
+    std::string result_str;
+    result_str = "(";
+    for (size_t i = 0; i < nodes_.size(); i++) {
+      auto ptr = nodes_[i].get();
+      if (ptr != nullptr) {
+        if (ptr->get_tag() == ASTNodeTag::VAL) {
+          result_str += dynamic_cast<ASTNodeVal*>(ptr)->to_str();
+        } else {
+          result_str += dynamic_cast<ASTNodeExpr*>(ptr)->to_str();
+        }
+        if (i != nodes_.size() - 1) {
+          result_str += " ";
+          result_str += query_condition_combination_op_str(combination_op_);
+          result_str += " ";
+        }
+      }
+    }
+    result_str += ")";
+    return result_str;
+  }
+
   /** The node list **/
   std::vector<shared_ptr<ASTNode>> nodes_;
 
   /** The combination operation **/
   QueryConditionCombinationOp combination_op_;
+
+ private:
+  static const ASTNodeTag tag_{ASTNodeTag::EXPR};
 };
+
 }  // namespace sm
 }  // namespace tiledb
 

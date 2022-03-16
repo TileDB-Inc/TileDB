@@ -269,6 +269,11 @@ class QueryCondition {
       uint64_t* cell_count);
 
   /**
+   * Returns the string representation of the AST.
+   */
+  std::string ast_to_str();
+
+  /**
    * Sets the clauses. This is internal state to only be used in
    * the serialization path.
    */

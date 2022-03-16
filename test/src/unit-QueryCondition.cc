@@ -173,6 +173,151 @@ TEST_CASE("QueryCondition: Test char", "[QueryCondition][char_value]") {
   REQUIRE(query_condition.field_names().count(field_name) == 1);
 }
 
+TEST_CASE(
+    "QueryCondition: Test AST construction, basic",
+    "[QueryCondition][ast][api]") {
+  std::string field_name = "x";
+  int val = 5;
+  QueryCondition query_condition;
+  REQUIRE(
+      query_condition
+          .init(
+              std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
+          .ok());
+  REQUIRE(query_condition.ast_to_str() == "x LT 05 00 00 00");
+}
+
+TEST_CASE(
+    "Query Condition: Test AST construction, basic combine",
+    "[QueryCondition][ast][api]") {
+  // AND combine
+  {
+    std::string field_name = "x";
+    int val = 5;
+    QueryCondition query_condition;
+    REQUIRE(query_condition
+                .init(
+                    std::string(field_name),
+                    &val,
+                    sizeof(int),
+                    QueryConditionOp::LT)
+                .ok());
+    REQUIRE(query_condition.ast_to_str() == "x LT 05 00 00 00");
+
+    std::string field_name1 = "y";
+    int val1 = 3;
+    QueryCondition query_condition1;
+    REQUIRE(query_condition1
+                .init(
+                    std::string(field_name1),
+                    &val1,
+                    sizeof(int),
+                    QueryConditionOp::GT)
+                .ok());
+    REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
+
+    QueryCondition combined_and;
+    REQUIRE(query_condition
+                .combine(
+                    query_condition1,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and)
+                .ok());
+    REQUIRE(
+        combined_and.ast_to_str() == "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
+  }
+}
+
+TEST_CASE(
+    "Query Condition: Test AST contruction, tree structure with same combining "
+    "operator",
+    "[QueryCondition][ast][api]") {
+  // AND of 2 ands
+  {
+    // First and
+    std::string field_name = "x";
+    int val = 5;
+    QueryCondition query_condition;
+    REQUIRE(query_condition
+                .init(
+                    std::string(field_name),
+                    &val,
+                    sizeof(int),
+                    QueryConditionOp::LT)
+                .ok());
+    REQUIRE(query_condition.ast_to_str() == "x LT 05 00 00 00");
+
+    std::string field_name1 = "y";
+    int val1 = 3;
+    QueryCondition query_condition1;
+    REQUIRE(query_condition1
+                .init(
+                    std::string(field_name1),
+                    &val1,
+                    sizeof(int),
+                    QueryConditionOp::GT)
+                .ok());
+    REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
+
+    QueryCondition combined_and;
+    REQUIRE(query_condition
+                .combine(
+                    query_condition1,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and)
+                .ok());
+    REQUIRE(
+        combined_and.ast_to_str() == "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
+
+    // Second and
+    std::string field_name2 = "a";
+    int val2 = 9;
+    QueryCondition query_condition2;
+    REQUIRE(query_condition2
+                .init(
+                    std::string(field_name2),
+                    &val2,
+                    sizeof(int),
+                    QueryConditionOp::EQ)
+                .ok());
+    REQUIRE(query_condition2.ast_to_str() == "a EQ 09 00 00 00");
+
+    std::string field_name3 = "b";
+    int val3 = 1;
+    QueryCondition query_condition3;
+    REQUIRE(query_condition3
+                .init(
+                    std::string(field_name3),
+                    &val3,
+                    sizeof(int),
+                    QueryConditionOp::NE)
+                .ok());
+    REQUIRE(query_condition3.ast_to_str() == "b NE 01 00 00 00");
+
+    QueryCondition combined_and1;
+    REQUIRE(query_condition2
+                .combine(
+                    query_condition3,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and1)
+                .ok());
+    REQUIRE(
+        combined_and1.ast_to_str() ==
+        "(a EQ 09 00 00 00 AND b NE 01 00 00 00)");
+
+    QueryCondition combined_and2;
+    REQUIRE(
+        combined_and
+            .combine(
+                combined_and1, QueryConditionCombinationOp::AND, &combined_and2)
+            .ok());
+    REQUIRE(
+        combined_and2.ast_to_str() ==
+        "(x LT 05 00 00 00 AND y GT 03 00 00 00 AND a EQ 09 00 00 00 AND b NE "
+        "01 00 00 00)");
+  }
+}
+
 /**
  * Tests a comparison operator on all cells in a tile.
  *

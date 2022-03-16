@@ -104,6 +104,21 @@ class ByteVecValue {
     x_.clear();
   }
 
+  // To string function
+  std::string to_str() const {
+    std::stringstream ss;
+    for (size_t i = 0; i < x_.size(); i++) {
+      if (x_[i] < 16) {
+        ss << "0";
+      }
+      ss << std::hex << +x_[i];
+      if (i != x_.size() - 1) {
+        ss << " ";
+      }
+    }
+    return ss.str();
+  }
+
   /**
    * Returns the value of a variable of type T as if it were located at the
    * beginning of storage.
