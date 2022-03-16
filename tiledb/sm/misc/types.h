@@ -105,7 +105,7 @@ class ByteVecValue {
   }
 
   // To string function
-  std::string to_str() const {
+  std::string to_hex_str() const {
     std::stringstream ss;
     for (size_t i = 0; i < x_.size(); i++) {
       if (x_[i] < 16) {

@@ -66,9 +66,11 @@ QueryCondition::~QueryCondition() {
 }
 
 QueryCondition& QueryCondition::operator=(const QueryCondition& rhs) {
-  clauses_ = rhs.clauses_;
-  combination_ops_ = rhs.combination_ops_;
-  tree_ = rhs.tree_;
+  if (this != &rhs) {
+    clauses_ = rhs.clauses_;
+    combination_ops_ = rhs.combination_ops_;
+    tree_ = rhs.tree_;
+  }
 
   return *this;
 }
@@ -90,15 +92,12 @@ Status QueryCondition::init(
     return Status_QueryConditionError("Cannot reinitialize query condition");
   }
 
-  std::string field_name_copy = field_name;
-  std::string field_name_ref = std::move(field_name);
-
-  clauses_.emplace_back(
-      std::move(field_name_ref), condition_value, condition_value_size, op);
-
   // AST Construction
   tree_ = make_shared<ASTNodeVal>(
-      HERE(), field_name_copy, condition_value, condition_value_size, op);
+      HERE(), field_name, condition_value, condition_value_size, op);
+
+  clauses_.emplace_back(
+      std::move(field_name), condition_value, condition_value_size, op);
 
   return Status::Ok();
 }

@@ -170,6 +170,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-lru_cache.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
+  src/unit-bytevecvalue.cc
   src/unit-query-ast.cc
   src/unit-QueryCondition.cc
   src/unit-ReadCellSlabIter.cc
