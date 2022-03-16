@@ -41,7 +41,7 @@
 #include "tiledb/common/common-std.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
-#include "tiledb/common/thread_pool/thread_pool.h"
+#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/storage_manager/context.h"
