@@ -473,7 +473,7 @@ Status array_schema_to_capnp(
 
   // Domain
   auto domain_builder = array_schema_builder->initDomain();
-  RETURN_NOT_OK(domain_to_capnp(array_schema.domain().get(), &domain_builder));
+  RETURN_NOT_OK(domain_to_capnp(array_schema.domain(), &domain_builder));
 
   // Attributes
   const unsigned num_attrs = array_schema.attribute_num();
@@ -521,8 +521,7 @@ Status array_schema_from_capnp(
   auto domain_reader = schema_reader.getDomain();
   tdb_unique_ptr<Domain> domain;
   RETURN_NOT_OK(domain_from_capnp(domain_reader, &domain));
-  RETURN_NOT_OK(
-      (*array_schema)->set_domain(make_shared<Domain>(HERE(), domain.get())));
+  RETURN_NOT_OK((*array_schema)->set_domain(domain.get()));
 
   // Set coords filter pipelines
   if (schema_reader.hasCoordsFilterPipeline()) {

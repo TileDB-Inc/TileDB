@@ -72,7 +72,7 @@ struct ReadCellSlabIterFx {
   template <class T>
   void create_result_space_tiles(
       const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragments,
-      shared_ptr<const Domain> dom,
+      const Domain* dom,
       const NDRange& dom_ndrange,
       Layout layout,
       const std::vector<NDRange>& domain_slices,
@@ -137,7 +137,7 @@ void ReadCellSlabIterFx::check_iter(
 template <class T>
 void ReadCellSlabIterFx::create_result_space_tiles(
     const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragments,
-    shared_ptr<const Domain> dom,
+    const Domain* dom,
     const NDRange& dom_ndrange,
     Layout layout,
     const std::vector<NDRange>& domain_slices,

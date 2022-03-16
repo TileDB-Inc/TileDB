@@ -94,7 +94,7 @@ Status FragmentInfo::set_config(const Config& config) {
 }
 
 void FragmentInfo::expand_anterior_ndrange(
-    shared_ptr<const Domain> domain, const NDRange& range) {
+    const Domain* domain, const NDRange& range) {
   domain->expand_ndrange(range, &anterior_ndrange_);
 }
 

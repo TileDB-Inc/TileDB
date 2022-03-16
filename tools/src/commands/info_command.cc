@@ -333,7 +333,7 @@ void InfoCommand::write_text_mbrs() const {
 }
 
 std::tuple<double, double, double, double> InfoCommand::get_mbr(
-    const NDRange& mbr, shared_ptr<const Domain> domain) const {
+    const NDRange& mbr, const Domain* domain) const {
   assert(domain->dim_num() == 2);
   double x, y, width, height;
 
@@ -488,7 +488,7 @@ std::tuple<double, double, double, double> InfoCommand::get_mbr(
 
 // Works only for fixed-sized coordinates
 std::vector<std::string> InfoCommand::mbr_to_string(
-    const NDRange& mbr, shared_ptr<const Domain> domain) const {
+    const NDRange& mbr, const Domain* domain) const {
   std::vector<std::string> result;
   const int8_t* r8;
   const uint8_t* ru8;

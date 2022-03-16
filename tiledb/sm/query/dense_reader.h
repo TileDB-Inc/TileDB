@@ -35,7 +35,6 @@
 
 #include <atomic>
 
-#include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -177,7 +176,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   uint64_t get_cell_pos_in_tile(
       const Layout& cell_order,
       const int32_t dim_num,
-      shared_ptr<const Domain> const domain,
+      const Domain* const domain,
       const ResultSpaceTile<DimType>& result_space_tile,
       const DimType* const coords);
 

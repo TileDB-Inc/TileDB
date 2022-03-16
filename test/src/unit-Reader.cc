@@ -32,7 +32,6 @@
 
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
-#include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -193,7 +192,7 @@ TEST_CASE_METHOD(
   CHECK(dom.add_dimension(&d2).ok());
 
   auto schema = tdb::make_shared<ArraySchema>(HERE());
-  CHECK(schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &dom)).ok());
+  CHECK(schema->set_domain(&dom).ok());
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < frag_tile_domains.size() + 1; i++) {

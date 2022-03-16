@@ -58,7 +58,7 @@ RTree::RTree() {
   deserialized_buffer_size_ = 0;
 }
 
-RTree::RTree(shared_ptr<const Domain> domain, unsigned fanout)
+RTree::RTree(const Domain* domain, unsigned fanout)
     : domain_(domain)
     , fanout_(fanout) {
 }
@@ -128,7 +128,7 @@ unsigned RTree::dim_num() const {
   return (domain_ == nullptr) ? 0 : domain_->dim_num();
 }
 
-shared_ptr<const Domain> RTree::domain() const {
+const Domain* RTree::domain() const {
   return domain_;
 }
 
@@ -292,7 +292,7 @@ Status RTree::serialize(Buffer* buff) const {
   return Status::Ok();
 }
 
-Status RTree::set_domain(shared_ptr<const Domain> domain) {
+Status RTree::set_domain(const Domain* domain) {
   domain_ = domain;
   return Status::Ok();
 }
@@ -332,7 +332,7 @@ Status RTree::set_leaf_num(uint64_t num) {
 }
 
 Status RTree::deserialize(
-    ConstBuffer* cbuff, shared_ptr<const Domain> domain, uint32_t version) {
+    ConstBuffer* cbuff, const Domain* domain, uint32_t version) {
   if (version < 5)
     return deserialize_v1_v4(cbuff, domain);
   return deserialize_v5(cbuff, domain);
@@ -366,8 +366,7 @@ RTree RTree::clone() const {
   return clone;
 }
 
-Status RTree::deserialize_v1_v4(
-    ConstBuffer* cbuff, shared_ptr<const Domain> domain) {
+Status RTree::deserialize_v1_v4(ConstBuffer* cbuff, const Domain* domain) {
   // For backwards compatibility, they will be ignored
   unsigned dim_num_i;
   uint8_t type_i;
@@ -401,8 +400,7 @@ Status RTree::deserialize_v1_v4(
   return Status::Ok();
 }
 
-Status RTree::deserialize_v5(
-    ConstBuffer* cbuff, shared_ptr<const Domain> domain) {
+Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
   RETURN_NOT_OK(cbuff->read(&fanout_, sizeof(fanout_)));
   unsigned level_num;
 

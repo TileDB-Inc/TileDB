@@ -52,7 +52,7 @@ namespace sm {
 class RowCmp {
  public:
   /** Constructor. */
-  RowCmp(shared_ptr<const Domain> domain)
+  RowCmp(const Domain* domain)
       : domain_(domain)
       , dim_num_(domain->dim_num()) {
   }
@@ -80,7 +80,7 @@ class RowCmp {
 
  private:
   /** The domain. */
-  shared_ptr<const Domain> domain_;
+  const Domain* domain_;
   /** The number of dimensions. */
   unsigned dim_num_;
 };
@@ -89,7 +89,7 @@ class RowCmp {
 class ColCmp {
  public:
   /** Constructor. */
-  ColCmp(shared_ptr<const Domain> domain)
+  ColCmp(const Domain* domain)
       : domain_(domain)
       , dim_num_(domain->dim_num()) {
   }
@@ -120,7 +120,7 @@ class ColCmp {
 
  private:
   /** The domain. */
-  shared_ptr<const Domain> domain_;
+  const Domain* domain_;
   /** The number of dimensions. */
   unsigned dim_num_;
 };
@@ -130,7 +130,7 @@ class HilbertCmp {
  public:
   /** Constructor. */
   HilbertCmp(
-      shared_ptr<const Domain> domain,
+      const Domain* domain,
       const std::vector<const QueryBuffer*>* buffs,
       const std::vector<uint64_t>* hilbert_values)
       : buffs_(buffs)
@@ -141,15 +141,14 @@ class HilbertCmp {
 
   /** Constructor. */
   HilbertCmp(
-      shared_ptr<const Domain> domain,
-      std::vector<ResultCoords>::iterator iter_begin)
+      const Domain* domain, std::vector<ResultCoords>::iterator iter_begin)
       : domain_(domain)
       , iter_begin_(iter_begin) {
     dim_num_ = domain->dim_num();
   }
 
   /** Constructor. */
-  HilbertCmp(shared_ptr<const Domain> domain)
+  HilbertCmp(const Domain* domain)
       : domain_(domain) {
     dim_num_ = domain->dim_num();
   }
@@ -246,7 +245,7 @@ class HilbertCmp {
    */
   const std::vector<const QueryBuffer*>* buffs_;
   /** The array domain. */
-  shared_ptr<const Domain> domain_;
+  const Domain* domain_;
   /** The number of dimensions. */
   unsigned dim_num_;
   /** Start iterator of result coords vector. */
@@ -266,7 +265,7 @@ class HilbertCmpReverse {
    *
    * @param domain The array domain.
    */
-  HilbertCmpReverse(shared_ptr<const Domain> domain)
+  HilbertCmpReverse(const Domain* domain)
       : cmp_(domain) {
   }
 
@@ -299,7 +298,7 @@ class GlobalCmp {
    * @param buff The buffer containing the actual values, used
    *     in positional comparisons.
    */
-  GlobalCmp(shared_ptr<const Domain> domain)
+  GlobalCmp(const Domain* domain)
       : domain_(domain) {
     dim_num_ = domain->dim_num();
     tile_order_ = domain->tile_order();
@@ -313,9 +312,7 @@ class GlobalCmp {
    * @param domain The array domain.
    * @param buffs The coordinate query buffers, one per dimension.
    */
-  GlobalCmp(
-      shared_ptr<const Domain> domain,
-      const std::vector<const QueryBuffer*>* buffs)
+  GlobalCmp(const Domain* domain, const std::vector<const QueryBuffer*>* buffs)
       : domain_(domain)
       , buffs_(buffs) {
   }
@@ -417,7 +414,7 @@ class GlobalCmp {
 
  private:
   /** The domain. */
-  shared_ptr<const Domain> domain_;
+  const Domain* domain_;
   /** The number of dimensions. */
   unsigned dim_num_;
   /** The tile order. */
@@ -444,7 +441,7 @@ class GlobalCmpReverse {
    * @param buff The buffer containing the actual values, used
    *     in positional comparisons.
    */
-  GlobalCmpReverse(shared_ptr<const Domain> domain)
+  GlobalCmpReverse(const Domain* domain)
       : cmp_(domain) {
   }
 
