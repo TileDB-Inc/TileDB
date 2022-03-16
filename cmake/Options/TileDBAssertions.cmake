@@ -8,7 +8,7 @@ if(TILEDB_ASSERTIONS)
   endif()
   # On non-Debug builds cmake automatically defines NDEBUG, so we
   # explicitly undefine it:
-  if( NOT CMAKE_BUILD_TYPE STREQUAL "DEBUG" )
+  if( NOT CMAKE_BUILD_TYPE STREQUAL "Debug" )
     # NOTE: use `add_compile_options` rather than `add_definitions` since
     # `add_definitions` does not support generator expressions.
     add_compile_options($<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:CXX>>:-UNDEBUG>)
