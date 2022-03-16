@@ -147,17 +147,31 @@ StorageManager::load_array_schemas_and_fragment_metadata(
   auto timer_se =
       stats_->start_timer("sm_load_array_schemas_and_fragment_metadata");
 
-  const auto& meta_uri = array_dir.latest_fragment_meta_uri();
+  const auto& meta_uris = array_dir.fragment_meta_uris();
   const auto& fragments_to_load = array_dir.fragment_uris();
 
-  // Get the consolidated fragment metadata
-  Buffer f_buff;
-  std::unordered_map<std::string, uint64_t> offsets;
-  RETURN_NOT_OK_TUPLE(
-      load_consolidated_fragment_meta(meta_uri, enc_key, &f_buff, &offsets),
-      nullopt,
-      nullopt,
-      nullopt);
+  // Get the consolidated fragment metadatas
+  std::vector<Buffer> f_buffs(meta_uris.size());
+  std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
+      meta_uris.size());
+  auto status = parallel_for(compute_tp_, 0, meta_uris.size(), [&](size_t i) {
+    auto&& [st, offsets] =
+        load_consolidated_fragment_meta(meta_uris[i], enc_key, &f_buffs[i]);
+    offsets_vectors[i] = std::move(offsets.value());
+    return st;
+  });
+  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt, nullopt);
+
+  // Get the unique fragment metadatas into a map.
+  std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
+  for (uint64_t i = 0; i < offsets_vectors.size(); i++) {
+    for (auto& offset : offsets_vectors[i]) {
+      if (offsets.count(offset.first) == 0) {
+        offsets.emplace(
+            offset.first, std::make_pair(&f_buffs[i], offset.second));
+      }
+    }
+  }
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
@@ -171,7 +185,6 @@ StorageManager::load_array_schemas_and_fragment_metadata(
       array_schemas_all.value(),
       enc_key,
       fragments_to_load,
-      &f_buff,
       offsets);
   RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt, nullopt, nullopt);
 
@@ -274,14 +287,13 @@ StorageManager::array_load_fragments(
   }
 
   // Load the fragment metadata
-  std::unordered_map<std::string, uint64_t> offsets;
+  std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
   auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(
       array->memory_tracker(),
       array->array_schema_latest_ptr(),
       array->array_schemas_all(),
       *array->encryption_key(),
       fragments_to_load,
-      nullptr,
       offsets);
   RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt);
 
@@ -512,14 +524,26 @@ Status StorageManager::array_vacuum_fragment_meta(const char* array_name) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
-  const auto& last = array_dir.latest_fragment_meta_uri();
   const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
 
-  // Vacuum after exclusively locking the array
+  // Get the latest timestamp
+  uint64_t t_latest = 0;
+  for (const auto& uri : fragment_meta_uris) {
+    std::pair<uint64_t, uint64_t> timestamp_range;
+    RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
+    if (timestamp_range.second > t_latest) {
+      t_latest = timestamp_range.second;
+    }
+  }
+
+  // Vacuum
   auto status = parallel_for(
       compute_tp_, 0, fragment_meta_uris.size(), [&, this](size_t i) {
-        if (fragment_meta_uris[i] != last)
-          RETURN_NOT_OK(vfs_->remove_file(fragment_meta_uris[i]));
+        auto& uri = fragment_meta_uris[i];
+        std::pair<uint64_t, uint64_t> timestamp_range;
+        RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
+        if (timestamp_range.second != t_latest)
+          RETURN_NOT_OK(vfs_->remove_file(uri));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
@@ -2093,8 +2117,8 @@ StorageManager::load_fragment_metadata(
         array_schemas_all,
     const EncryptionKey& encryption_key,
     const std::vector<TimestampedURI>& fragments_to_load,
-    Buffer* meta_buff,
-    const std::unordered_map<std::string, uint64_t>& offsets) {
+    const std::unordered_map<std::string, std::pair<Buffer*, uint64_t>>&
+        offsets) {
   auto timer_se = stats_->start_timer("load_fragment_metadata");
 
   // Load the metadata for each fragment
@@ -2148,8 +2172,8 @@ StorageManager::load_fragment_metadata(
       it = offsets.find(sf.uri_.to_string());
     }
     if (it != offsets.end()) {
-      f_buff = meta_buff;
-      offset = it->second;
+      f_buff = it->second.first;
+      offset = it->second.second;
     }
 
     // Load fragment metadata
@@ -2164,25 +2188,24 @@ StorageManager::load_fragment_metadata(
   return {Status::Ok(), fragment_metadata};
 }
 
-Status StorageManager::load_consolidated_fragment_meta(
-    const URI& uri,
-    const EncryptionKey& enc_key,
-    Buffer* f_buff,
-    std::unordered_map<std::string, uint64_t>* offsets) {
+tuple<Status, optional<std::vector<std::pair<std::string, uint64_t>>>>
+StorageManager::load_consolidated_fragment_meta(
+    const URI& uri, const EncryptionKey& enc_key, Buffer* f_buff) {
   auto timer_se = stats_->start_timer("read_load_consolidated_frag_meta");
 
   // No consolidated fragment metadata file
   if (uri.to_string().empty())
-    return Status::Ok();
+    return {Status::Ok(), nullopt};
 
   GenericTileIO tile_io(this, uri);
   Tile* tile = nullptr;
-  RETURN_NOT_OK(tile_io.read_generic(&tile, 0, enc_key, config_));
+  RETURN_NOT_OK_TUPLE(
+      tile_io.read_generic(&tile, 0, enc_key, config_), nullopt);
 
   f_buff->realloc(tile->size());
   f_buff->set_size(tile->size());
-  RETURN_NOT_OK_ELSE(
-      tile->read(f_buff->data(), 0, f_buff->size()), tdb_delete(tile));
+  RETURN_NOT_OK_ELSE_TUPLE(
+      tile->read(f_buff->data(), 0, f_buff->size()), tdb_delete(tile), nullopt);
   tdb_delete(tile);
 
   stats_->add_counter("consolidated_frag_meta_size", f_buff->size());
@@ -2193,15 +2216,17 @@ Status StorageManager::load_consolidated_fragment_meta(
 
   uint64_t name_size, offset;
   std::string name;
+  std::vector<std::pair<std::string, uint64_t>> ret;
+  ret.reserve(fragment_num);
   for (uint32_t f = 0; f < fragment_num; ++f) {
     f_buff->read(&name_size, sizeof(uint64_t));
     name.resize(name_size);
     f_buff->read(&name[0], name_size);
     f_buff->read(&offset, sizeof(uint64_t));
-    (*offsets)[name] = offset;
+    ret.emplace_back(name, offset);
   }
 
-  return Status::Ok();
+  return {Status::Ok(), ret};
 }
 
 Status StorageManager::set_default_tags() {

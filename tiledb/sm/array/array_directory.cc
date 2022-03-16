@@ -114,7 +114,7 @@ Status ArrayDirectory::load() {
   std::vector<ThreadPool::Task> tasks;
   std::vector<URI> root_dir_uris;
   std::vector<URI> commits_dir_uris;
-  URI latest_fragment_meta_uri_v12_or_higher;
+  std::vector<URI> fragment_meta_uris_v12_or_higher;
 
   // Lists all directories in parallel. Skipping for schema only.
   // Some processing is also done here for things that don't depend on others.
@@ -144,11 +144,11 @@ Status ArrayDirectory::load() {
     if (mode_ != ArrayDirectoryMode::COMMITS) {
       // Load (in parallel) the fragment metadata directory URIs
       tasks.emplace_back(tp_->execute([&]() {
-        auto&& [st, latest_fragment_meta_uri] =
+        auto&& [st, fragment_meta_uris] =
             load_fragment_metadata_dir_uris_v12_or_higher();
         RETURN_NOT_OK(st);
-        latest_fragment_meta_uri_v12_or_higher =
-            std::move(latest_fragment_meta_uri.value());
+        fragment_meta_uris_v12_or_higher =
+            std::move(fragment_meta_uris.value());
 
         return Status::Ok();
       }));
@@ -188,9 +188,8 @@ Status ArrayDirectory::load() {
           consolidated_commit_uris_set.value());
     } else {
       // Process root dir.
-      auto&& [st2, fragment_uris_v1_v11, latest_fragment_meta_uri_v1_v11] =
-          load_root_dir_uris_v1_v11(
-              root_dir_uris, consolidated_commit_uris_set.value());
+      auto&& [st2, fragment_uris_v1_v11] = load_root_dir_uris_v1_v11(
+          root_dir_uris, consolidated_commit_uris_set.value());
       RETURN_NOT_OK(st2);
 
       // Process commit dir.
@@ -240,11 +239,11 @@ Status ArrayDirectory::load() {
       fragment_uris_ = std::move(fragment_filtered_uris.value());
       fragment_uris.clear();
 
-      // Set the proper fragment metadata latest
-      latest_fragment_meta_uri_ =
-          latest_fragment_meta_uri_v12_or_higher.empty() ?
-              latest_fragment_meta_uri_v1_v11.value() :
-              latest_fragment_meta_uri_v12_or_higher;
+      // Merge the fragment meta URIs.
+      std::copy(
+          fragment_meta_uris_v12_or_higher.begin(),
+          fragment_meta_uris_v12_or_higher.end(),
+          std::back_inserter(fragment_meta_uris_));
     }
   }
 
@@ -272,10 +271,6 @@ const std::vector<TimestampedURI>& ArrayDirectory::fragment_uris() const {
 
 const std::vector<URI>& ArrayDirectory::fragment_meta_uris() const {
   return fragment_meta_uris_;
-}
-
-const URI& ArrayDirectory::latest_fragment_meta_uri() const {
-  return latest_fragment_meta_uri_;
 }
 
 URI ArrayDirectory::get_fragments_dir(uint32_t write_version) const {
@@ -377,20 +372,18 @@ tuple<Status, optional<std::vector<URI>>> ArrayDirectory::list_root_dir_uris() {
   return {Status::Ok(), array_dir_uris};
 }
 
-tuple<Status, optional<std::vector<URI>>, optional<URI>>
+tuple<Status, optional<std::vector<URI>>>
 ArrayDirectory::load_root_dir_uris_v1_v11(
     const std::vector<URI>& root_dir_uris,
     const std::unordered_set<std::string>& consolidated_uris_set) {
   // Compute the fragment URIs
   auto&& [st1, fragment_uris] =
       compute_fragment_uris_v1_v11(root_dir_uris, consolidated_uris_set);
-  RETURN_NOT_OK_TUPLE(st1, nullopt, nullopt);
+  RETURN_NOT_OK_TUPLE(st1, nullopt);
 
-  auto&& [st2, fragment_meta_uri] =
-      compute_latest_fragment_meta_uri(root_dir_uris);
-  RETURN_NOT_OK_TUPLE(st2, nullopt, nullopt);
+  fragment_meta_uris_ = compute_fragment_meta_uris(root_dir_uris);
 
-  return {Status::Ok(), fragment_uris.value(), fragment_meta_uri.value()};
+  return {Status::Ok(), fragment_uris.value()};
 }
 
 tuple<Status, optional<std::vector<URI>>>
@@ -440,20 +433,16 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
   return {Status::Ok(), fragment_uris};
 }
 
-tuple<Status, optional<URI>>
+tuple<Status, optional<std::vector<URI>>>
 ArrayDirectory::load_fragment_metadata_dir_uris_v12_or_higher() {
-  // List the commit folder array directory URIs
+  // List the fragment metadata directory URIs
   auto fragment_metadata_uri =
       uri_.join_path(constants::array_fragment_meta_dir_name);
-  std::vector<URI> fragment_metadata_dir_uris;
-  RETURN_NOT_OK_TUPLE(
-      vfs_->ls(fragment_metadata_uri, &fragment_metadata_dir_uris), nullopt);
 
-  auto&& [st, fragment_meta_uri] =
-      compute_latest_fragment_meta_uri(fragment_metadata_dir_uris);
-  RETURN_NOT_OK_TUPLE(st, nullopt);
+  std::vector<URI> ret;
+  RETURN_NOT_OK_TUPLE(vfs_->ls(fragment_metadata_uri, &ret), nullopt);
 
-  return {Status::Ok(), std::move(fragment_meta_uri.value())};
+  return {Status::Ok(), ret};
 }
 
 tuple<
@@ -664,26 +653,18 @@ ArrayDirectory::compute_fragment_uris_v1_v11(
   return {Status::Ok(), fragment_uris};
 }
 
-tuple<Status, optional<URI>> ArrayDirectory::compute_latest_fragment_meta_uri(
+std::vector<URI> ArrayDirectory::compute_fragment_meta_uris(
     const std::vector<URI>& array_dir_uris) {
-  URI ret;
+  std::vector<URI> ret;
 
   // Get the consolidated fragment metadata URIs
-  uint64_t t_latest = 0;
-  std::pair<uint64_t, uint64_t> timestamp_range;
   for (const auto& uri : array_dir_uris) {
     if (stdx::string::ends_with(uri.to_string(), constants::meta_file_suffix)) {
-      fragment_meta_uris_.emplace_back(uri);
-      RETURN_NOT_OK_TUPLE(
-          utils::parse::get_timestamp_range(uri, &timestamp_range), nullopt);
-      if (timestamp_range.second > t_latest) {
-        t_latest = timestamp_range.second;
-        ret = uri;
-      }
+      ret.emplace_back(uri);
     }
   }
 
-  return {Status::Ok(), ret};
+  return ret;
 }
 
 tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
