@@ -50,6 +50,7 @@ namespace tiledb {
 namespace sm {
 
 class FileStat;
+class URI;
 
 /** Typedef this here so we don't have to include Windows.h */
 typedef void* HANDLE;

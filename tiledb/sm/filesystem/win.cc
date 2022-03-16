@@ -40,6 +40,7 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/utils.h"
+#include "uri.h"
 
 #if !defined(NOMINMAX)
 #define NOMINMAX  // suppress definition of min/max macros in Windows headers
@@ -281,6 +282,7 @@ tuple<Status, optional<std::vector<FileStat>>> Win::ls_with_sizes(
   bool ends_with_slash = path.length() > 0 && path[path.length() - 1] == '\\';
   const std::string glob = path + (ends_with_slash ? "*" : "\\*");
   WIN32_FIND_DATA find_data;
+  std::vector<FileStat> entries;
 
   // Get first file in directory.
   HANDLE find_h = FindFirstFileEx(
@@ -294,7 +296,6 @@ tuple<Status, optional<std::vector<FileStat>>> Win::ls_with_sizes(
     goto err;
   }
 
-  std::vector<FileStat> entries;
   while (true) {
     // Skip '.' and '..'
     if (strcmp(find_data.cFileName, ".") != 0 &&
