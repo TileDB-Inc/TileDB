@@ -850,9 +850,7 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
     Status st;
     std::tie(st, entries) = posix_.ls_with_sizes(parent);
 #endif
-    if (!st.ok()) {
-      return {st, nullopt};
-    }
+    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
     Status st;
@@ -861,9 +859,7 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
     auto st =
         LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
 #endif
-    if (!st.ok()) {
-      return {st, std::nullopt};
-    }
+    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_azure()) {
 #ifdef HAVE_AZURE
     Status st;
@@ -872,9 +868,7 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
     auto st =
         LOG_STATUS(Status_VFSError("TileDB was built without Azure support"));
 #endif
-    if (!st.ok()) {
-      return {st, std::nullopt};
-    }
+    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_gcs()) {
 #ifdef HAVE_GCS
     Status st;
@@ -883,9 +877,7 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
     auto st =
         LOG_STATUS(Status_VFSError("TileDB was built without GCS support"));
 #endif
-    if (!st.ok()) {
-      return {st, std::nullopt};
-    }
+    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_hdfs()) {
 #ifdef HAVE_HDFS
     Status st;
@@ -894,16 +886,12 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
     auto st =
         LOG_STATUS(Status_VFSError("TileDB was built without HDFS support"));
 #endif
-    if (!st.ok()) {
-      return {st, std::nullopt};
-    }
+    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_memfs()) {
     Status st;
     std::tie(st, entries) =
         memfs_.ls_with_sizes(URI("mem://" + parent.to_path()));
-    if (!st.ok()) {
-      return {st, std::nullopt};
-    }
+    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else {
     auto st = LOG_STATUS(
         Status_VFSError("Unsupported URI scheme: " + parent.to_string()));
