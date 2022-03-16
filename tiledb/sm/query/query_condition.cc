@@ -1567,6 +1567,10 @@ Status QueryCondition::apply_sparse(
   return Status::Ok();
 }
 
+std::string QueryCondition::ast_to_str() {
+  return tree_->to_str();
+}
+
 void QueryCondition::set_clauses(std::vector<Clause>&& clauses) {
   clauses_ = std::move(clauses);
 }
