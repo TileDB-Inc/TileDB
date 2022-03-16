@@ -305,10 +305,7 @@ tuple<Status, optional<std::vector<FileStat>>> Win::ls_with_sizes(
         entries.emplace_back(URI(file_path));
       } else {
         uint64_t size;
-        auto st = file_size(file_path, &size);
-        if (!st.ok()) {
-          return {st, nullopt};
-        }
+        RETURN_NOT_OK_TUPLE(file_size(file_path, &size), nullopt);
         entries.emplace_back(URI(file_path), size);
       }
     }

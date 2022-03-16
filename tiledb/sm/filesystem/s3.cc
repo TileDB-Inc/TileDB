@@ -689,10 +689,7 @@ Status S3::ls(
 
 tuple<Status, optional<std::vector<FileStat>>> S3::ls_with_sizes(
     const URI& prefix, const std::string& delimiter, int max_paths) const {
-  auto st = init_client();
-  if (!st.ok()) {
-    return {st, nullopt};
-  }
+  RETURN_NOT_OK_TUPLE(init_client(), nullopt);
 
   const auto prefix_dir = prefix.add_trailing_slash();
 

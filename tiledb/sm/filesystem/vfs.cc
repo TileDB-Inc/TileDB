@@ -834,10 +834,7 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
   // return an empty `uris` vector.
   if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure())) {
     bool flag = false;
-    auto st = is_dir(parent, &flag);
-    if (!st.ok()) {
-      return {st, std::nullopt};
-    }
+    RETURN_NOT_OK_TUPLE(is_dir(parent, &flag), nullopt);
 
     if (!flag) {
       return {Status::Ok(), std::vector<FileStat>()};

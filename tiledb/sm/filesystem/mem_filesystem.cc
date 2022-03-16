@@ -293,10 +293,7 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
         names.emplace_back(URI("mem://" + full_path + child.first));
       } else {
         uint64_t size;
-        auto st = child.second->get_size(&size);
-        if (!st.ok()) {
-          return {st, nullopt};
-        }
+        RETURN_NOT_OK_TUPLE(child.second->get_size(&size), nullopt);
         names.emplace_back(URI("mem://" + full_path + child.first), size);
       }
     }

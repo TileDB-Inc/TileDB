@@ -592,10 +592,8 @@ tuple<Status, optional<std::vector<FileStat>>> Azure::ls_with_sizes(
 
   std::string container_name;
   std::string blob_path;
-  auto st = parse_azure_uri(uri_dir, &container_name, &blob_path);
-  if (!st.ok()) {
-    return {st, nullopt};
-  }
+  RETURN_NOT_OK_TUPLE(
+      parse_azure_uri(uri_dir, &container_name, &blob_path), nullopt);
 
   std::vector<FileStat> entries;
   std::string continuation_token = "";
@@ -611,9 +609,7 @@ tuple<Status, optional<std::vector<FileStat>>> Azure::ls_with_sizes(
     if (!result.valid()) {
       auto st = LOG_STATUS(Status_AzureError(
           std::string("List blobs failed on: " + uri_dir.to_string())));
-      if (!st.ok()) {
-        return {st, nullopt};
-      }
+      return {st, nullopt};
     }
 
     azure::storage_lite::storage_outcome<
@@ -622,9 +618,7 @@ tuple<Status, optional<std::vector<FileStat>>> Azure::ls_with_sizes(
     if (!outcome.success()) {
       auto st = LOG_STATUS(Status_AzureError(
           std::string("List blobs failed on: " + uri_dir.to_string())));
-      if (!st.ok()) {
-        return {st, nullopt};
-      }
+      return {st, nullopt};
     }
 
     azure::storage_lite::list_blobs_segmented_response response =

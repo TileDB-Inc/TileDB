@@ -314,10 +314,7 @@ tuple<Status, optional<std::vector<FileStat>>> Posix::ls_with_sizes(
       entries.emplace_back(URI(abspath));
     } else {
       uint64_t size;
-      auto st = file_size(abspath, &size);
-      if (!st.ok()) {
-        return {st, nullopt};
-      }
+      RETURN_NOT_OK_TUPLE(file_size(abspath, &size), nullopt);
       entries.emplace_back(URI(abspath), size);
     }
   }

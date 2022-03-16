@@ -536,10 +536,7 @@ Status HDFS::ls(const URI& uri, std::vector<std::string>* paths) {
 tuple<Status, optional<std::vector<FileStat>>> HDFS::ls_with_sizes(
     const URI& uri) {
   hdfsFS fs = nullptr;
-  auto st = connect(&fs);
-  if (!st.ok()) {
-    return {st, nullopt};
-  }
+  RETURN_NOT_OK_TUPLE(connect(&fs), nullopt);
 
   int numEntries = 0;
   hdfsFileInfo* fileList =

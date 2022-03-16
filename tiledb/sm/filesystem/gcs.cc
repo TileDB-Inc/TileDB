@@ -399,10 +399,7 @@ Status GCS::ls(
 tuple<Status, optional<std::vector<FileStat>>> GCS::ls_with_sizes(
     const URI& uri, const std::string& delimiter, int max_paths) const {
   assert(paths);
-  auto st = init_client();
-  if (!st.ok()) {
-    return {st, nullopt};
-  }
+  RETURN_NOT_OK_TUPLE(init_client(), nullopt);
 
   const URI uri_dir = uri.add_trailing_slash();
 
@@ -414,10 +411,8 @@ tuple<Status, optional<std::vector<FileStat>>> GCS::ls_with_sizes(
 
   std::string bucket_name;
   std::string object_path;
-  st = parse_gcs_uri(uri_dir, &bucket_name, &object_path);
-  if (!st.ok()) {
-    return {st, nullopt};
-  }
+  RETURN_NOT_OK_TUPLE(
+      parse_gcs_uri(uri_dir, &bucket_name, &object_path), nullopt);
 
   std::vector<FileStat> entries;
   google::cloud::storage::Prefix prefix_option(object_path);
