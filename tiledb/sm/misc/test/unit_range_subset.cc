@@ -178,7 +178,7 @@ TEMPLATE_TEST_CASE(
     test_bad_subset<TestType>(domain, superset);
   }
   SECTION("Test a non-valid subset that is actually the full typeset") {
-    TestType fullset[2]{std::numeric_limits<TestType>::min(),
+    TestType fullset[2]{std::numeric_limits<TestType>::lowest(),
                         std::numeric_limits<TestType>::max()};
     test_bad_subset<TestType>(domain, fullset);
   }

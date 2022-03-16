@@ -391,6 +391,9 @@ template <
     typename T,
     typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
 Status check_typed_range_is_valid(const Range& range) {
+  // Check has data.
+  if (range.empty())
+    return Status_Error("Range is emptry");
   auto r = (const T*)range.data();
   // Check for NaN
   if constexpr (std::is_floating_point_v<T>) {

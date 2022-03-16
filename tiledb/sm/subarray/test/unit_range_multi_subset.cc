@@ -39,6 +39,25 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
+/**
+ * Check the values of a particular range in a RangeMultiSubset object.
+ *
+ * @param index The index of the range.
+ */
+template <typename T>
+void check_subset_range_values(
+    const RangeMultiSubset& subset,
+    const uint64_t index,
+    const T expected_start,
+    const T expected_end) {
+  REQUIRE(index < subset.num_ranges());
+  auto range = subset[index];
+  REQUIRE(!range.empty());
+  auto result_data = static_cast<const T*>(range.data());
+  CHECK(result_data[0] == expected_start);
+  CHECK(result_data[1] == expected_end);
+}
+
 TEMPLATE_TEST_CASE_SIG(
     "Create RangeMultiSubset with implicitly defined range",
     "[range_multi_subset]",
@@ -117,6 +136,174 @@ TEMPLATE_TEST_CASE_SIG(
     range_subset.add_subset(r1);
     range_subset.add_subset(r2);
     REQUIRE(range_subset.num_ranges() == 2);
+  }
+}
+
+TEMPLATE_TEST_CASE_SIG(
+    "RangeMultiSubset::add_range test intersect for unsigned int types",
+    "[range]",
+    ((typename T, Datatype D), T, D),
+    (uint8_t, Datatype::UINT8),
+    (uint16_t, Datatype::UINT16),
+    (uint32_t, Datatype::UINT32),
+    (uint64_t, Datatype::UINT64)) {
+  T domain_data[2]{1, 4};
+  Range domain{domain_data, 2 * sizeof(T)};
+  RangeMultiSubset subset{D, domain, false, true};
+  SECTION("Test adding subset with lower bound less than superset") {
+    T bad_lower[2]{0, 3};
+    Range range{bad_lower, 2 * sizeof(T)};
+    auto&& [error_status, warn_status] = subset.add_subset(range, false);
+    CHECK(error_status.ok());
+    CHECK(!warn_status.ok());
+    REQUIRE(subset.num_ranges() == 1);
+    check_subset_range_values<T>(subset, 0, 1, 3);
+  }
+  SECTION("Test adding a subset with upper bound more than superset") {
+    T bad_upper[2]{2, 8};
+    Range range{bad_upper, 2 * sizeof(T)};
+    auto&& [error_status, warn_status] = subset.add_subset(range, false);
+    CHECK(error_status.ok());
+    CHECK(!warn_status.ok());
+    REQUIRE(subset.num_ranges() == 1);
+    check_subset_range_values<T>(subset, 0, 2, 4);
+  }
+  SECTION("Test adding the full typeset") {
+    T fullset[2]{std::numeric_limits<T>::min(), std::numeric_limits<T>::max()};
+    Range range{fullset, 2 * sizeof(T)};
+    auto&& [error_status, warn_status] = subset.add_subset(range, false);
+    CHECK(error_status.ok());
+    CHECK(!warn_status.ok());
+    REQUIRE(subset.num_ranges() == 1);
+    check_subset_range_values<T>(subset, 0, 1, 4);
+  }
+}
+
+TEMPLATE_TEST_CASE_SIG(
+    "RangeMultiSubset::add_range test intersect for signed int types",
+    "[range]",
+    ((typename T, Datatype D), T, D),
+    (int8_t, Datatype::INT8),
+    (int16_t, Datatype::INT16),
+    (int32_t, Datatype::INT32),
+    (int64_t, Datatype::INT64),
+    (int64_t, Datatype::DATETIME_MONTH)) {
+  T domain_data[2]{-2, 2};
+  Range domain{domain_data, 2 * sizeof(T)};
+  RangeMultiSubset subset{D, domain, false, true};
+  SECTION("Test adding subset with lower bound less than superset") {
+    T bad_lower[2]{-4, 0};
+    Range range{bad_lower, 2 * sizeof(T)};
+    auto&& [error_status, warn_status] = subset.add_subset(range, false);
+    CHECK(error_status.ok());
+    CHECK(!warn_status.ok());
+    REQUIRE(subset.num_ranges() == 1);
+    check_subset_range_values<T>(subset, 0, -2, 0);
+  }
+  SECTION("Test adding a subset with upper bound more than superset") {
+    T bad_upper[2]{0, 8};
+    Range range{bad_upper, 2 * sizeof(T)};
+    auto&& [error_status, warn_status] = subset.add_subset(range, false);
+    CHECK(error_status.ok());
+    CHECK(!warn_status.ok());
+    REQUIRE(subset.num_ranges() == 1);
+    check_subset_range_values<T>(subset, 0, 0, 2);
+  }
+  SECTION("Test adding the full typeset") {
+    T fullset[2]{std::numeric_limits<T>::min(), std::numeric_limits<T>::max()};
+    Range range{fullset, 2 * sizeof(T)};
+    auto&& [error_status, warn_status] = subset.add_subset(range, false);
+    CHECK(error_status.ok());
+    CHECK(!warn_status.ok());
+    REQUIRE(subset.num_ranges() == 1);
+    check_subset_range_values<T>(subset, 0, -2, 2);
+  }
+}
+
+TEMPLATE_TEST_CASE_SIG(
+    "RangeMultiSubset::add_range test intersect for floating-point types",
+    "[range]",
+    ((typename T, Datatype D), T, D),
+    (float, Datatype::FLOAT32),
+    (double, Datatype::FLOAT64)) {
+  T domain_data[2]{-1.5, 4.5};
+  Range domain{domain_data, 2 * sizeof(T)};
+  RangeMultiSubset subset{D, domain, false, true};
+  SECTION("Test adding subset with lower bound less than superset") {
+    T bad_lower[2]{-2.0, 3.0};
+    Range range{bad_lower, 2 * sizeof(T)};
+    auto&& [error_status, warn_status] = subset.add_subset(range, false);
+    CHECK(error_status.ok());
+    CHECK(!warn_status.ok());
+    REQUIRE(subset.num_ranges() == 1);
+    check_subset_range_values<T>(subset, 0, -1.5, 3.0);
+  }
+  SECTION("Test adding a subset with upper bound more than superset") {
+    T bad_upper[2]{2.0, 8.0};
+    Range range{bad_upper, 2 * sizeof(T)};
+    auto&& [error_status, warn_status] = subset.add_subset(range, false);
+    CHECK(error_status.ok());
+    CHECK(!warn_status.ok());
+    REQUIRE(subset.num_ranges() == 1);
+    check_subset_range_values<T>(subset, 0, 2.0, 4.5);
+  }
+  SECTION("Test adding the full typeset") {
+    T fullset[2]{std::numeric_limits<T>::lowest(),
+                 std::numeric_limits<T>::max()};
+    Range range{fullset, 2 * sizeof(T)};
+    auto&& [error_status, warn_status] = subset.add_subset(range, false);
+    CHECK(error_status.ok());
+    CHECK(!warn_status.ok());
+    REQUIRE(subset.num_ranges() == 1);
+    INFO("DATA: " << fullset[0] << ", " << fullset[1]);
+    check_subset_range_values<T>(subset, 0, -1.5, 4.5);
+  }
+  SECTION("Test adding infinite range") {
+    T infinite[2]{-std::numeric_limits<T>::infinity(),
+                  std::numeric_limits<T>::infinity()};
+    Range range{infinite, 2 * sizeof(T)};
+    auto&& [error_status, warn_status] = subset.add_subset(range, false);
+    CHECK(error_status.ok());
+    CHECK(!warn_status.ok());
+    REQUIRE(subset.num_ranges() == 1);
+    check_subset_range_values<T>(subset, 0, -1.5, 4.5);
+  }
+}
+
+TEMPLATE_TEST_CASE_SIG(
+    "RangeMultiSubset::add_range - error status for invalid ranges",
+    "[range_multi_subset]",
+    ((typename T, Datatype D), T, D),
+    (int8_t, Datatype::INT8),
+    (uint8_t, Datatype::UINT8),
+    (int16_t, Datatype::INT16),
+    (uint16_t, Datatype::UINT16),
+    (int32_t, Datatype::INT32),
+    (uint32_t, Datatype::UINT32),
+    (int64_t, Datatype::INT64),
+    (uint64_t, Datatype::UINT64),
+    (int64_t, Datatype::DATETIME_YEAR),
+    (float, Datatype::FLOAT32),
+    (double, Datatype::FLOAT64)) {
+  T bounds[2] = {0, 10};
+  Range range{bounds, 2 * sizeof(T)};
+  RangeMultiSubset subset{D, range, true, false};
+  SECTION("Check error for empty range") {
+    Range range{};
+    auto&& [error_status, warn_status] = subset.add_subset(range, true);
+    REQUIRE(!error_status.ok());
+  }
+  SECTION("Check error for out-of-order range") {
+    T data[2] = {3, 2};
+    Range range{data, 2 * sizeof(T)};
+    auto&& [error_status, warn_status] = subset.add_subset(range, true);
+    REQUIRE(!error_status.ok());
+  }
+  SECTION("Check error for out-of-bounds range") {
+    T data[2] = {0, 11};
+    Range range{data, 2 * sizeof(T)};
+    auto&& [error_status, warn_status] = subset.add_subset(range, true);
+    REQUIRE(!error_status.ok());
   }
 }
 
