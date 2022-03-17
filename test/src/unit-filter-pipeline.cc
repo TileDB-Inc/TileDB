@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -79,6 +79,7 @@ class Add1InPlace : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -148,6 +149,7 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -239,6 +241,7 @@ class AddNInPlace : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -320,6 +323,7 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -409,6 +413,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

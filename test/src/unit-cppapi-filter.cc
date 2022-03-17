@@ -229,3 +229,72 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter]") {
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE("C++ API: Filter strings with RLE", "[cppapi][filter][rle-strings]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+  std::string array_name = "cpp_unit_array";
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create schema with filter lists
+  FilterList a1_filters(ctx);
+  a1_filters.add_filter({ctx, TILEDB_FILTER_RLE});
+
+  auto a1 = Attribute::create<std::string>(ctx, "a1");
+  a1.set_filter_list(a1_filters);
+
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int>(ctx, "d1", {{0, 100}}, 10);
+  auto d2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 10);
+  domain.add_dimensions(d1, d2);
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.add_attributes(a1);
+
+  // Create array
+  Array::create(array_name, schema);
+
+  // Write to array
+  std::vector<std::string> a1_data = {
+      "foo", "foo", "foobar", "bar", "bar", "bar", "bar"};
+  auto a1buf = ungroup_var_buffer(a1_data);
+  std::vector<int> coords = {
+      0, 0, 10, 10, 20, 20, 20, 30, 30, 30, 30, 40, 40, 40};
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array);
+  query.set_data_buffer("a1", a1buf.second)
+      .set_offsets_buffer("a1", a1buf.first)
+      .set_coordinates(coords)
+      .set_layout(TILEDB_UNORDERED);
+  REQUIRE(query.submit() == Query::Status::COMPLETE);
+  array.close();
+
+  // Sanity check reading
+  array.open(TILEDB_READ);
+  std::vector<int> subarray = {0, 40, 0, 40};
+  std::vector<uint64_t> a1_read_off(7);
+  std::string a1_read_data;
+  a1_read_data.resize(24);
+  Query query_r(ctx, array);
+  query_r.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a1", a1_read_data)
+      .set_offsets_buffer("a1", a1_read_off);
+  REQUIRE(query_r.submit() == Query::Status::COMPLETE);
+  array.close();
+  auto ret = query_r.result_buffer_elements();
+  REQUIRE(ret.size() == 1);
+  REQUIRE(ret["a1"].first == 7);
+  REQUIRE(ret["a1"].second == 24);
+  std::vector<uint64_t> exp_offsets = {0, 3, 6, 12, 15, 18, 21};
+  REQUIRE(a1_read_off == exp_offsets);
+  REQUIRE(a1_read_data.substr(0, 24) == "foofoofoobarbarbarbarbar");
+
+  // Clean up
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
