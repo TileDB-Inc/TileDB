@@ -1308,7 +1308,8 @@ void DenseArrayFx::check_cancel_and_retry_writes(const std::string& path) {
                         domain_0_lo + tile_extent_0 - 1,
                         domain_1_lo,
                         domain_1_lo + tile_extent_1 - 1};
-  uint64_t buffer_sizes[] = {tile_extent_0 * tile_extent_1 * sizeof(int)};
+  uint64_t buffer_sizes[] = {
+      static_cast<uint64_t>(tile_extent_0 * tile_extent_1 * sizeof(int))};
   auto buffer = new int[buffer_sizes[0] / sizeof(int)];
 
   // Prepare buffer
