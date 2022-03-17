@@ -65,6 +65,11 @@ BlobArraySchema::BlobArraySchema()
 
   // Set domain
   tdb_delete(domain_);
+
+  // non-functional change trying to 'fix' whatever's wrong...
+  // ... here (and similar)
+  // https://github.com/TileDB-Inc/TileDB/runs/5585960030?check_suite_focus=true
+
   domain_ = tdb_new(Domain, create_domain());
 
   // Set single attribute
