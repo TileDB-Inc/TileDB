@@ -977,6 +977,11 @@ Status StorageManager::array_get_non_empty_domain(
 
 Status StorageManager::array_get_non_empty_domain_from_index(
     Array* array, unsigned idx, void* domain, bool* is_empty) {
+  // Check if array is open - must be open for reads
+  if (!array->is_open())
+    return logger_->status(Status_StorageManagerError(
+        "Cannot get non-empty domain; Array is not open"));
+
   // For easy reference
   const auto& array_schema = array->array_schema_latest();
   auto array_domain = array_schema.domain();
@@ -1007,6 +1012,11 @@ Status StorageManager::array_get_non_empty_domain_from_name(
   if (name == nullptr)
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Invalid dimension name"));
+
+  // Check if array is open - must be open for reads
+  if (!array->is_open())
+    return logger_->status(Status_StorageManagerError(
+        "Cannot get non-empty domain; Array is not open"));
 
   NDRange dom;
   RETURN_NOT_OK(array_get_non_empty_domain(array, &dom, is_empty));
