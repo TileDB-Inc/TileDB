@@ -58,6 +58,12 @@
 /* ********************************* */
 
 #ifdef __cplusplus
+#define TILEDB_NOEXCEPT noexcept
+#else
+#define TILEDB_NOEXCEPT
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -212,8 +218,8 @@ typedef enum {
  * @param str Set to point to a constant string representation of the query type
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_query_type_to_str(tiledb_query_type_t query_type, const char** str);
+TILEDB_EXPORT int32_t tiledb_query_type_to_str(
+    tiledb_query_type_t query_type, const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a query type from the given string.
@@ -222,8 +228,8 @@ tiledb_query_type_to_str(tiledb_query_type_t query_type, const char** str);
  * @param query_type Set to the parsed query type
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_query_type_from_str(const char* str, tiledb_query_type_t* query_type);
+TILEDB_EXPORT int32_t tiledb_query_type_from_str(
+    const char* str, tiledb_query_type_t* query_type) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given object type.
@@ -233,8 +239,8 @@ tiledb_query_type_from_str(const char* str, tiledb_query_type_t* query_type);
  * type
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_object_type_to_str(tiledb_object_t object_type, const char** str);
+TILEDB_EXPORT int32_t tiledb_object_type_to_str(
+    tiledb_object_t object_type, const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a object type from the given string.
@@ -243,8 +249,8 @@ tiledb_object_type_to_str(tiledb_object_t object_type, const char** str);
  * @param object_type Set to the parsed object type
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_object_type_from_str(const char* str, tiledb_object_t* object_type);
+TILEDB_EXPORT int32_t tiledb_object_type_from_str(
+    const char* str, tiledb_object_t* object_type) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given filesystem.
@@ -253,8 +259,8 @@ tiledb_object_type_from_str(const char* str, tiledb_object_t* object_type);
  * @param str Set to point to a constant string representation of the filesystem
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_filesystem_to_str(tiledb_filesystem_t filesystem, const char** str);
+TILEDB_EXPORT int32_t tiledb_filesystem_to_str(
+    tiledb_filesystem_t filesystem, const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a filesystem from the given string.
@@ -263,8 +269,8 @@ tiledb_filesystem_to_str(tiledb_filesystem_t filesystem, const char** str);
  * @param filesystem Set to the parsed filesystem
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_filesystem_from_str(const char* str, tiledb_filesystem_t* filesystem);
+TILEDB_EXPORT int32_t tiledb_filesystem_from_str(
+    const char* str, tiledb_filesystem_t* filesystem) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given datatype.
@@ -273,8 +279,8 @@ tiledb_filesystem_from_str(const char* str, tiledb_filesystem_t* filesystem);
  * @param str Set to point to a constant string representation of the datatype
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_datatype_to_str(tiledb_datatype_t datatype, const char** str);
+TILEDB_EXPORT int32_t tiledb_datatype_to_str(
+    tiledb_datatype_t datatype, const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a datatype from the given string.
@@ -283,8 +289,8 @@ tiledb_datatype_to_str(tiledb_datatype_t datatype, const char** str);
  * @param datatype Set to the parsed datatype
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_datatype_from_str(const char* str, tiledb_datatype_t* datatype);
+TILEDB_EXPORT int32_t tiledb_datatype_from_str(
+    const char* str, tiledb_datatype_t* datatype) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given array type.
@@ -293,8 +299,8 @@ tiledb_datatype_from_str(const char* str, tiledb_datatype_t* datatype);
  * @param str Set to point to a constant string representation of the array type
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_array_type_to_str(tiledb_array_type_t array_type, const char** str);
+TILEDB_EXPORT int32_t tiledb_array_type_to_str(
+    tiledb_array_type_t array_type, const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a array type from the given string.
@@ -303,8 +309,8 @@ tiledb_array_type_to_str(tiledb_array_type_t array_type, const char** str);
  * @param array_type Set to the parsed array type
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_array_type_from_str(const char* str, tiledb_array_type_t* array_type);
+TILEDB_EXPORT int32_t tiledb_array_type_from_str(
+    const char* str, tiledb_array_type_t* array_type) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given layout.
@@ -314,7 +320,7 @@ tiledb_array_type_from_str(const char* str, tiledb_array_type_t* array_type);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t
-tiledb_layout_to_str(tiledb_layout_t layout, const char** str);
+tiledb_layout_to_str(tiledb_layout_t layout, const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a layout from the given string.
@@ -323,8 +329,8 @@ tiledb_layout_to_str(tiledb_layout_t layout, const char** str);
  * @param layout Set to the parsed layout
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_layout_from_str(const char* str, tiledb_layout_t* layout);
+TILEDB_EXPORT int32_t tiledb_layout_from_str(
+    const char* str, tiledb_layout_t* layout) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given filter type.
@@ -334,8 +340,8 @@ tiledb_layout_from_str(const char* str, tiledb_layout_t* layout);
  * type
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_filter_type_to_str(tiledb_filter_type_t filter_type, const char** str);
+TILEDB_EXPORT int32_t tiledb_filter_type_to_str(
+    tiledb_filter_type_t filter_type, const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a filter type from the given string.
@@ -344,8 +350,8 @@ tiledb_filter_type_to_str(tiledb_filter_type_t filter_type, const char** str);
  * @param filter_type Set to the parsed filter type
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_filter_type_from_str(const char* str, tiledb_filter_type_t* filter_type);
+TILEDB_EXPORT int32_t tiledb_filter_type_from_str(
+    const char* str, tiledb_filter_type_t* filter_type) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given filter option.
@@ -356,7 +362,7 @@ tiledb_filter_type_from_str(const char* str, tiledb_filter_type_t* filter_type);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filter_option_to_str(
-    tiledb_filter_option_t filter_option, const char** str);
+    tiledb_filter_option_t filter_option, const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a filter option from the given string.
@@ -366,7 +372,7 @@ TILEDB_EXPORT int32_t tiledb_filter_option_to_str(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filter_option_from_str(
-    const char* str, tiledb_filter_option_t* filter_option);
+    const char* str, tiledb_filter_option_t* filter_option) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given encryption type.
@@ -377,7 +383,7 @@ TILEDB_EXPORT int32_t tiledb_filter_option_from_str(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_encryption_type_to_str(
-    tiledb_encryption_type_t encryption_type, const char** str);
+    tiledb_encryption_type_t encryption_type, const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a encryption type from the given string.
@@ -387,7 +393,7 @@ TILEDB_EXPORT int32_t tiledb_encryption_type_to_str(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_encryption_type_from_str(
-    const char* str, tiledb_encryption_type_t* encryption_type);
+    const char* str, tiledb_encryption_type_t* encryption_type) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given query status.
@@ -398,7 +404,7 @@ TILEDB_EXPORT int32_t tiledb_encryption_type_from_str(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_status_to_str(
-    tiledb_query_status_t query_status, const char** str);
+    tiledb_query_status_t query_status, const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a query status from the given string.
@@ -408,7 +414,7 @@ TILEDB_EXPORT int32_t tiledb_query_status_to_str(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_status_from_str(
-    const char* str, tiledb_query_status_t* query_status);
+    const char* str, tiledb_query_status_t* query_status) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given walk order.
@@ -417,8 +423,8 @@ TILEDB_EXPORT int32_t tiledb_query_status_from_str(
  * @param str Set to point to a constant string representation of the walk order
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_walk_order_to_str(tiledb_walk_order_t walk_order, const char** str);
+TILEDB_EXPORT int32_t tiledb_walk_order_to_str(
+    tiledb_walk_order_t walk_order, const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a walk order from the given string.
@@ -427,8 +433,8 @@ tiledb_walk_order_to_str(tiledb_walk_order_t walk_order, const char** str);
  * @param walk_order Set to the parsed walk order
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_walk_order_from_str(const char* str, tiledb_walk_order_t* walk_order);
+TILEDB_EXPORT int32_t tiledb_walk_order_from_str(
+    const char* str, tiledb_walk_order_t* walk_order) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given VFS mode.
@@ -437,8 +443,8 @@ tiledb_walk_order_from_str(const char* str, tiledb_walk_order_t* walk_order);
  * @param str Set to point to a constant string representation of the VFS mode
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_vfs_mode_to_str(tiledb_vfs_mode_t vfs_mode, const char** str);
+TILEDB_EXPORT int32_t tiledb_vfs_mode_to_str(
+    tiledb_vfs_mode_t vfs_mode, const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a VFS mode from the given string.
@@ -447,8 +453,8 @@ tiledb_vfs_mode_to_str(tiledb_vfs_mode_t vfs_mode, const char** str);
  * @param vfs_mode Set to the parsed VFS mode
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode);
+TILEDB_EXPORT int32_t tiledb_vfs_mode_from_str(
+    const char* str, tiledb_vfs_mode_t* vfs_mode) TILEDB_NOEXCEPT;
 
 /* ****************************** */
 /*            CONSTANTS           */
@@ -475,25 +481,29 @@ tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode);
  * each individual dimension with the `set_buffer` API. Consult the current
  * documentation for more information.
  */
-TILEDB_DEPRECATED_EXPORT const char* tiledb_coords(void);
+TILEDB_DEPRECATED_EXPORT const char* tiledb_coords(void) TILEDB_NOEXCEPT;
 
 /** Returns a special value indicating a variable number of elements. */
-TILEDB_EXPORT uint32_t tiledb_var_num(void);
+TILEDB_EXPORT uint32_t tiledb_var_num(void) TILEDB_NOEXCEPT;
 
 /** Returns the maximum path length on the current platform. */
-TILEDB_EXPORT uint32_t tiledb_max_path(void);
-
-/** Returns the input datatype size. */
-TILEDB_EXPORT uint64_t tiledb_datatype_size(tiledb_datatype_t type);
+TILEDB_EXPORT uint32_t tiledb_max_path(void) TILEDB_NOEXCEPT;
 
 /**
  * Returns the size (in bytes) of an offset (used in variable-sized
  * attributes).
  */
-TILEDB_EXPORT uint64_t tiledb_offset_size(void);
+TILEDB_EXPORT uint64_t tiledb_offset_size(void) TILEDB_NOEXCEPT;
+
+/**
+ * Returns the input datatype size for a given type. Returns zero if the type is
+ * not valid.
+ */
+TILEDB_EXPORT uint64_t tiledb_datatype_size(tiledb_datatype_t type)
+    TILEDB_NOEXCEPT;
 
 /** Returns the current time in milliseconds. */
-TILEDB_EXPORT uint64_t tiledb_timestamp_now_ms(void);
+TILEDB_EXPORT uint64_t tiledb_timestamp_now_ms(void) TILEDB_NOEXCEPT;
 
 /**
  * @name Constants wrapping special functions
@@ -522,7 +532,8 @@ TILEDB_EXPORT uint64_t tiledb_timestamp_now_ms(void);
  *  @param minor Will store the minor version number.
  *  @param rev Will store the revision (patch) number.
  */
-TILEDB_EXPORT void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev);
+TILEDB_EXPORT void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev)
+    TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*           TILEDB TYPES            */
@@ -609,7 +620,7 @@ typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t
-tiledb_error_message(tiledb_error_t* err, const char** errmsg);
+tiledb_error_message(tiledb_error_t* err, const char** errmsg) TILEDB_NOEXCEPT;
 
 /**
  * Frees the resources associated with a TileDB error object.
@@ -627,7 +638,7 @@ tiledb_error_message(tiledb_error_t* err, const char** errmsg);
  *
  * @param err The TileDB error object.
  */
-TILEDB_EXPORT void tiledb_error_free(tiledb_error_t** err);
+TILEDB_EXPORT void tiledb_error_free(tiledb_error_t** err) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*              BUFFER               */
@@ -647,8 +658,8 @@ TILEDB_EXPORT void tiledb_error_free(tiledb_error_t** err);
  * @param buffer The buffer to be created
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_buffer_alloc(tiledb_ctx_t* ctx, tiledb_buffer_t** buffer);
+TILEDB_EXPORT int32_t tiledb_buffer_alloc(
+    tiledb_ctx_t* ctx, tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
  * Destroys a TileDB buffer, freeing associated memory.
@@ -663,7 +674,7 @@ tiledb_buffer_alloc(tiledb_ctx_t* ctx, tiledb_buffer_t** buffer);
  *
  * @param buffer The buffer to be destroyed.
  */
-TILEDB_EXPORT void tiledb_buffer_free(tiledb_buffer_t** buffer);
+TILEDB_EXPORT void tiledb_buffer_free(tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
  * Sets a datatype for the given buffer. The default datatype is `TILEDB_UINT8`.
@@ -682,7 +693,9 @@ TILEDB_EXPORT void tiledb_buffer_free(tiledb_buffer_t** buffer);
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_buffer_set_type(
-    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, tiledb_datatype_t datatype);
+    tiledb_ctx_t* ctx,
+    tiledb_buffer_t* buffer,
+    tiledb_datatype_t datatype) TILEDB_NOEXCEPT;
 
 /**
  * Gets the datatype from the given buffer.
@@ -702,7 +715,7 @@ TILEDB_EXPORT int32_t tiledb_buffer_set_type(
 TILEDB_EXPORT int32_t tiledb_buffer_get_type(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
-    tiledb_datatype_t* datatype);
+    tiledb_datatype_t* datatype) TILEDB_NOEXCEPT;
 
 /**
  * Gets a pointer to the current allocation and the current number of bytes in
@@ -733,7 +746,7 @@ TILEDB_EXPORT int32_t tiledb_buffer_get_data(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     void** data,
-    uint64_t* num_bytes);
+    uint64_t* num_bytes) TILEDB_NOEXCEPT;
 
 /**
  * Sets (wraps) a pre-allocated region of memory with the given buffer object.
@@ -789,8 +802,8 @@ TILEDB_EXPORT int32_t tiledb_buffer_set_data(
  * @param buffer_list The buffer list to be created
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_buffer_list_alloc(tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list);
+TILEDB_EXPORT int32_t tiledb_buffer_list_alloc(
+    tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) TILEDB_NOEXCEPT;
 
 /**
  * Destroys a TileDB buffer list, freeing associated memory.
@@ -805,7 +818,8 @@ tiledb_buffer_list_alloc(tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list);
  *
  * @param buffer_list The buffer list to be destroyed.
  */
-TILEDB_EXPORT void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list);
+TILEDB_EXPORT void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list)
+    TILEDB_NOEXCEPT;
 
 /**
  * Gets the number of buffers in the buffer list.
@@ -828,7 +842,7 @@ TILEDB_EXPORT void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list);
 TILEDB_EXPORT int32_t tiledb_buffer_list_get_num_buffers(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_list_t* buffer_list,
-    uint64_t* num_buffers);
+    uint64_t* num_buffers) TILEDB_NOEXCEPT;
 
 /**
  * Gets the buffer at the given index in the buffer list. The returned buffer
@@ -866,7 +880,7 @@ TILEDB_EXPORT int32_t tiledb_buffer_list_get_buffer(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_list_t* buffer_list,
     uint64_t buffer_idx,
-    tiledb_buffer_t** buffer);
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
  * Gets the total number of bytes in the buffers in the buffer list.
@@ -890,7 +904,7 @@ TILEDB_EXPORT int32_t tiledb_buffer_list_get_buffer(
 TILEDB_EXPORT int32_t tiledb_buffer_list_get_total_size(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_list_t* buffer_list,
-    uint64_t* total_size);
+    uint64_t* total_size) TILEDB_NOEXCEPT;
 
 /**
  * Copies and concatenates all the data in the buffer list into a new buffer.
@@ -913,7 +927,7 @@ TILEDB_EXPORT int32_t tiledb_buffer_list_get_total_size(
 TILEDB_EXPORT int32_t tiledb_buffer_list_flatten(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_list_t* buffer_list,
-    tiledb_buffer_t** buffer);
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*              CONFIG               */
@@ -935,8 +949,8 @@ TILEDB_EXPORT int32_t tiledb_buffer_list_flatten(
  *     no error).
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_config_alloc(tiledb_config_t** config, tiledb_error_t** error);
+TILEDB_EXPORT int32_t tiledb_config_alloc(
+    tiledb_config_t** config, tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Frees a TileDB config.
@@ -952,7 +966,7 @@ tiledb_config_alloc(tiledb_config_t** config, tiledb_error_t** error);
  *
  * @param config The config to be freed.
  */
-TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
+TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
 
 /**
  * Sets a config parameter.
@@ -1414,7 +1428,7 @@ TILEDB_EXPORT int32_t tiledb_config_set(
     tiledb_config_t* config,
     const char* param,
     const char* value,
-    tiledb_error_t** error);
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Gets a config parameter.
@@ -1439,26 +1453,7 @@ TILEDB_EXPORT int32_t tiledb_config_get(
     tiledb_config_t* config,
     const char* param,
     const char** value,
-    tiledb_error_t** error);
-
-/**
- * Loads config parameters from a (local) text file.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_error_t* error = NULL;
- * tiledb_config_load_from_file(config, "tiledb.conf", &error);
- * @endcode
- *
- * @param config The config object.
- * @param filename The name of the file.
- * @param error Error object returned upon error (`NULL` if there is
- *     no error).
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_config_load_from_file(
-    tiledb_config_t* config, const char* filename, tiledb_error_t** error);
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Unsets a config parameter. This will set the config parameter to its
@@ -1478,7 +1473,30 @@ TILEDB_EXPORT int32_t tiledb_config_load_from_file(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_config_unset(
-    tiledb_config_t* config, const char* param, tiledb_error_t** error);
+    tiledb_config_t* config,
+    const char* param,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
+
+/**
+ * Loads config parameters from a (local) text file.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_error_t* error = NULL;
+ * tiledb_config_load_from_file(config, "tiledb.conf", &error);
+ * @endcode
+ *
+ * @param config The config object.
+ * @param filename The name of the file.
+ * @param error Error object returned upon error (`NULL` if there is
+ *     no error).
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_config_load_from_file(
+    tiledb_config_t* config,
+    const char* filename,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Saves the config parameters to a (local) text file.
@@ -1497,7 +1515,9 @@ TILEDB_EXPORT int32_t tiledb_config_unset(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_config_save_to_file(
-    tiledb_config_t* config, const char* filename, tiledb_error_t** error);
+    tiledb_config_t* config,
+    const char* filename,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Compares 2 configurations for equality
@@ -1517,7 +1537,7 @@ TILEDB_EXPORT int32_t tiledb_config_save_to_file(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_config_compare(
-    tiledb_config_t* lhs, tiledb_config_t* rhs, uint8_t* equal);
+    tiledb_config_t* lhs, tiledb_config_t* rhs, uint8_t* equal) TILEDB_NOEXCEPT;
 
 /* ****************************** */
 /*            CONFIG ITER         */
@@ -1563,7 +1583,7 @@ TILEDB_EXPORT int32_t tiledb_config_iter_alloc(
     tiledb_config_t* config,
     const char* prefix,
     tiledb_config_iter_t** config_iter,
-    tiledb_error_t** error);
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Resets the iterator.
@@ -1596,7 +1616,7 @@ TILEDB_EXPORT int32_t tiledb_config_iter_reset(
     tiledb_config_t* config,
     tiledb_config_iter_t* config_iter,
     const char* prefix,
-    tiledb_error_t** error);
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Frees a config iterator.
@@ -1609,7 +1629,8 @@ TILEDB_EXPORT int32_t tiledb_config_iter_reset(
  *
  * @param config_iter The config iterator to be freed.
  */
-TILEDB_EXPORT void tiledb_config_iter_free(tiledb_config_iter_t** config_iter);
+TILEDB_EXPORT void tiledb_config_iter_free(tiledb_config_iter_t** config_iter)
+    TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the config param and value currently pointed by the iterator.
@@ -1634,7 +1655,7 @@ TILEDB_EXPORT int32_t tiledb_config_iter_here(
     tiledb_config_iter_t* config_iter,
     const char** param,
     const char** value,
-    tiledb_error_t** error);
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Moves the iterator to the next param.
@@ -1651,7 +1672,7 @@ TILEDB_EXPORT int32_t tiledb_config_iter_here(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_config_iter_next(
-    tiledb_config_iter_t* config_iter, tiledb_error_t** error);
+    tiledb_config_iter_t* config_iter, tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Checks if the iterator is done.
@@ -1670,7 +1691,9 @@ TILEDB_EXPORT int32_t tiledb_config_iter_next(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_config_iter_done(
-    tiledb_config_iter_t* config_iter, int32_t* done, tiledb_error_t** error);
+    tiledb_config_iter_t* config_iter,
+    int32_t* done,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*              CONTEXT              */
@@ -1701,7 +1724,7 @@ TILEDB_EXPORT int32_t tiledb_config_iter_done(
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t
-tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx);
+tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx) TILEDB_NOEXCEPT;
 
 /**
  * Destroys the TileDB context, freeing all associated memory and resources.
@@ -1716,7 +1739,7 @@ tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx);
  *
  * @param ctx The TileDB context to be freed.
  */
-TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t** ctx);
+TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t** ctx) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the stats from a TileDB context.
@@ -1734,8 +1757,8 @@ TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t** ctx);
  *   of the c-string.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_ctx_get_stats(tiledb_ctx_t* ctx, char** stats_json);
+TILEDB_EXPORT int32_t tiledb_ctx_get_stats(tiledb_ctx_t* ctx, char** stats_json)
+    TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a copy of the config from a TileDB context.
@@ -1755,8 +1778,8 @@ tiledb_ctx_get_stats(tiledb_ctx_t* ctx, char** stats_json);
  * @param config The config to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config);
+TILEDB_EXPORT int32_t tiledb_ctx_get_config(
+    tiledb_ctx_t* ctx, tiledb_config_t** config) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the last TileDB error associated with a TileDB context.
@@ -1773,8 +1796,8 @@ tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config);
  * @param err The last error, or `NULL` if no error has been raised.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_ctx_get_last_error(tiledb_ctx_t* ctx, tiledb_error_t** err);
+TILEDB_EXPORT int32_t tiledb_ctx_get_last_error(
+    tiledb_ctx_t* ctx, tiledb_error_t** err) TILEDB_NOEXCEPT;
 
 /**
  * Checks if a given storage filesystem backend is supported.
@@ -1793,7 +1816,9 @@ tiledb_ctx_get_last_error(tiledb_ctx_t* ctx, tiledb_error_t** err);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_ctx_is_supported_fs(
-    tiledb_ctx_t* ctx, tiledb_filesystem_t fs, int32_t* is_supported);
+    tiledb_ctx_t* ctx,
+    tiledb_filesystem_t fs,
+    int32_t* is_supported) TILEDB_NOEXCEPT;
 
 /**
  * Cancels all background or async tasks associated with the given context.
@@ -1801,7 +1826,8 @@ TILEDB_EXPORT int32_t tiledb_ctx_is_supported_fs(
  * @param ctx The TileDB context.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx);
+TILEDB_EXPORT int32_t tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx)
+    TILEDB_NOEXCEPT;
 
 /**
  * Sets a string key-value "tag" on the given context.
@@ -1817,8 +1843,8 @@ TILEDB_EXPORT int32_t tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx);
  * @param value The tag value.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_ctx_set_tag(tiledb_ctx_t* ctx, const char* key, const char* value);
+TILEDB_EXPORT int32_t tiledb_ctx_set_tag(
+    tiledb_ctx_t* ctx, const char* key, const char* value) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*                GROUP              */
@@ -1838,7 +1864,7 @@ tiledb_ctx_set_tag(tiledb_ctx_t* ctx, const char* key, const char* value);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t
-tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri);
+tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*              FILTER               */
@@ -1860,7 +1886,9 @@ tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri);
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filter_alloc(
-    tiledb_ctx_t* ctx, tiledb_filter_type_t type, tiledb_filter_t** filter);
+    tiledb_ctx_t* ctx,
+    tiledb_filter_type_t type,
+    tiledb_filter_t** filter) TILEDB_NOEXCEPT;
 
 /**
  * Destroys a TileDB filter, freeing associated memory.
@@ -1875,7 +1903,7 @@ TILEDB_EXPORT int32_t tiledb_filter_alloc(
  *
  * @param filter The filter to be destroyed.
  */
-TILEDB_EXPORT void tiledb_filter_free(tiledb_filter_t** filter);
+TILEDB_EXPORT void tiledb_filter_free(tiledb_filter_t** filter) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the type of a filter.
@@ -1896,7 +1924,9 @@ TILEDB_EXPORT void tiledb_filter_free(tiledb_filter_t** filter);
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filter_get_type(
-    tiledb_ctx_t* ctx, tiledb_filter_t* filter, tiledb_filter_type_t* type);
+    tiledb_ctx_t* ctx,
+    tiledb_filter_t* filter,
+    tiledb_filter_type_t* type) TILEDB_NOEXCEPT;
 
 /**
  * Sets an option on a filter. Options are filter dependent; this function
@@ -1922,7 +1952,7 @@ TILEDB_EXPORT int32_t tiledb_filter_set_option(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_option_t option,
-    const void* value);
+    const void* value) TILEDB_NOEXCEPT;
 
 /**
  * Gets an option value from a filter. Options are filter dependent; this
@@ -1953,7 +1983,7 @@ TILEDB_EXPORT int32_t tiledb_filter_get_option(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_option_t option,
-    void* value);
+    void* value) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*            FILTER LIST            */
@@ -1973,8 +2003,8 @@ TILEDB_EXPORT int32_t tiledb_filter_get_option(
  * @param filter_list The TileDB filter list to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_filter_list_alloc(tiledb_ctx_t* ctx, tiledb_filter_list_t** filter_list);
+TILEDB_EXPORT int32_t tiledb_filter_list_alloc(
+    tiledb_ctx_t* ctx, tiledb_filter_list_t** filter_list) TILEDB_NOEXCEPT;
 
 /**
  * Destroys a TileDB filter list, freeing associated memory.
@@ -1989,7 +2019,8 @@ tiledb_filter_list_alloc(tiledb_ctx_t* ctx, tiledb_filter_list_t** filter_list);
  *
  * @param filter_list The filter list to be destroyed.
  */
-TILEDB_EXPORT void tiledb_filter_list_free(tiledb_filter_list_t** filter_list);
+TILEDB_EXPORT void tiledb_filter_list_free(tiledb_filter_list_t** filter_list)
+    TILEDB_NOEXCEPT;
 
 /**
  * Appends a filter to a filter list. Data is processed through each filter in
@@ -2017,7 +2048,7 @@ TILEDB_EXPORT void tiledb_filter_list_free(tiledb_filter_list_t** filter_list);
 TILEDB_EXPORT int32_t tiledb_filter_list_add_filter(
     tiledb_ctx_t* ctx,
     tiledb_filter_list_t* filter_list,
-    tiledb_filter_t* filter);
+    tiledb_filter_t* filter) TILEDB_NOEXCEPT;
 
 /**
  * Sets the maximum tile chunk size for a filter list.
@@ -2037,7 +2068,7 @@ TILEDB_EXPORT int32_t tiledb_filter_list_add_filter(
 TILEDB_EXPORT int32_t tiledb_filter_list_set_max_chunk_size(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
-    uint32_t max_chunk_size);
+    uint32_t max_chunk_size) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the number of filters in a filter list.
@@ -2057,7 +2088,7 @@ TILEDB_EXPORT int32_t tiledb_filter_list_set_max_chunk_size(
 TILEDB_EXPORT int32_t tiledb_filter_list_get_nfilters(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
-    uint32_t* nfilters);
+    uint32_t* nfilters) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a filter object from a filter list by index.
@@ -2082,7 +2113,7 @@ TILEDB_EXPORT int32_t tiledb_filter_list_get_filter_from_index(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t index,
-    tiledb_filter_t** filter);
+    tiledb_filter_t** filter) TILEDB_NOEXCEPT;
 
 /**
  * Gets the maximum tile chunk size for a filter list.
@@ -2102,7 +2133,7 @@ TILEDB_EXPORT int32_t tiledb_filter_list_get_filter_from_index(
 TILEDB_EXPORT int32_t tiledb_filter_list_get_max_chunk_size(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
-    uint32_t* max_chunk_size);
+    uint32_t* max_chunk_size) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*            ATTRIBUTE              */
@@ -2131,7 +2162,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_alloc(
     tiledb_ctx_t* ctx,
     const char* name,
     tiledb_datatype_t type,
-    tiledb_attribute_t** attr);
+    tiledb_attribute_t** attr) TILEDB_NOEXCEPT;
 
 /**
  * Destroys a TileDB attribute, freeing associated memory.
@@ -2146,7 +2177,8 @@ TILEDB_EXPORT int32_t tiledb_attribute_alloc(
  *
  * @param attr The attribute to be destroyed.
  */
-TILEDB_EXPORT void tiledb_attribute_free(tiledb_attribute_t** attr);
+TILEDB_EXPORT void tiledb_attribute_free(tiledb_attribute_t** attr)
+    TILEDB_NOEXCEPT;
 
 /**
  * Sets the nullability of an attribute.
@@ -2163,7 +2195,9 @@ TILEDB_EXPORT void tiledb_attribute_free(tiledb_attribute_t** attr);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_attribute_set_nullable(
-    tiledb_ctx_t* ctx, tiledb_attribute_t* attr, uint8_t nullable);
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    uint8_t nullable) TILEDB_NOEXCEPT;
 
 /**
  * Sets the filter list for an attribute.
@@ -2185,7 +2219,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_set_nullable(
 TILEDB_EXPORT int32_t tiledb_attribute_set_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
-    tiledb_filter_list_t* filter_list);
+    tiledb_filter_list_t* filter_list) TILEDB_NOEXCEPT;
 
 /**
  * Sets the number of values per cell for an attribute. If this is not
@@ -2211,7 +2245,9 @@ TILEDB_EXPORT int32_t tiledb_attribute_set_filter_list(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_attribute_set_cell_val_num(
-    tiledb_ctx_t* ctx, tiledb_attribute_t* attr, uint32_t cell_val_num);
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    uint32_t cell_val_num) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the attribute name.
@@ -2229,7 +2265,9 @@ TILEDB_EXPORT int32_t tiledb_attribute_set_cell_val_num(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_attribute_get_name(
-    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, const char** name);
+    tiledb_ctx_t* ctx,
+    const tiledb_attribute_t* attr,
+    const char** name) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the attribute type.
@@ -2247,7 +2285,9 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_name(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_attribute_get_type(
-    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, tiledb_datatype_t* type);
+    tiledb_ctx_t* ctx,
+    const tiledb_attribute_t* attr,
+    tiledb_datatype_t* type) TILEDB_NOEXCEPT;
 
 /**
  * Sets the nullability of an attribute.
@@ -2266,7 +2306,9 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_type(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_attribute_get_nullable(
-    tiledb_ctx_t* ctx, tiledb_attribute_t* attr, uint8_t* nullable);
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    uint8_t* nullable) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the filter list for an attribute.
@@ -2287,7 +2329,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_nullable(
 TILEDB_EXPORT int32_t tiledb_attribute_get_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
-    tiledb_filter_list_t** filter_list);
+    tiledb_filter_list_t** filter_list) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the number of values per cell for the attribute. For variable-sized
@@ -2306,7 +2348,9 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_filter_list(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_attribute_get_cell_val_num(
-    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, uint32_t* cell_val_num);
+    tiledb_ctx_t* ctx,
+    const tiledb_attribute_t* attr,
+    uint32_t* cell_val_num) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the cell size for this attribute.
@@ -2324,7 +2368,9 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_cell_val_num(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_attribute_get_cell_size(
-    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, uint64_t* cell_size);
+    tiledb_ctx_t* ctx,
+    const tiledb_attribute_t* attr,
+    uint64_t* cell_size) TILEDB_NOEXCEPT;
 
 /**
  * Dumps the contents of an attribute in ASCII form to some output (e.g.,
@@ -2344,7 +2390,9 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_cell_size(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_attribute_dump(
-    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, FILE* out);
+    tiledb_ctx_t* ctx,
+    const tiledb_attribute_t* attr,
+    FILE* out) TILEDB_NOEXCEPT;
 
 /**
  * Sets the default fill value for the input attribute. This value will
@@ -2387,7 +2435,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_set_fill_value(
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
     const void* value,
-    uint64_t size);
+    uint64_t size) TILEDB_NOEXCEPT;
 
 /**
  * Gets the default fill value for the input attribute. This value will
@@ -2422,7 +2470,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_fill_value(
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
     const void** value,
-    uint64_t* size);
+    uint64_t* size) TILEDB_NOEXCEPT;
 
 /**
  * Sets the default fill value for the input, nullable attribute. This value
@@ -2470,7 +2518,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_set_fill_value_nullable(
     tiledb_attribute_t* attr,
     const void* value,
     uint64_t size,
-    uint8_t validity);
+    uint8_t validity) TILEDB_NOEXCEPT;
 
 /**
  * Gets the default fill value for the input, nullable attribute. This value
@@ -2509,7 +2557,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_fill_value_nullable(
     tiledb_attribute_t* attr,
     const void** value,
     uint64_t* size,
-    uint8_t* valid);
+    uint8_t* valid) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*               DOMAIN              */
@@ -2529,8 +2577,8 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_fill_value_nullable(
  * @param domain The TileDB domain to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_domain_alloc(tiledb_ctx_t* ctx, tiledb_domain_t** domain);
+TILEDB_EXPORT int32_t tiledb_domain_alloc(
+    tiledb_ctx_t* ctx, tiledb_domain_t** domain) TILEDB_NOEXCEPT;
 
 /**
  * Destroys a TileDB domain, freeing associated memory.
@@ -2545,7 +2593,7 @@ tiledb_domain_alloc(tiledb_ctx_t* ctx, tiledb_domain_t** domain);
  *
  * @param domain The domain to be destroyed.
  */
-TILEDB_EXPORT void tiledb_domain_free(tiledb_domain_t** domain);
+TILEDB_EXPORT void tiledb_domain_free(tiledb_domain_t** domain) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the domain's type.
@@ -2563,7 +2611,9 @@ TILEDB_EXPORT void tiledb_domain_free(tiledb_domain_t** domain);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_domain_get_type(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, tiledb_datatype_t* type);
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    tiledb_datatype_t* type) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the number of dimensions in a domain.
@@ -2581,7 +2631,9 @@ TILEDB_EXPORT int32_t tiledb_domain_get_type(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_domain_get_ndim(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, uint32_t* ndim);
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    uint32_t* ndim) TILEDB_NOEXCEPT;
 
 /**
  * Adds a dimension to a TileDB domain.
@@ -2603,7 +2655,9 @@ TILEDB_EXPORT int32_t tiledb_domain_get_ndim(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_domain_add_dimension(
-    tiledb_ctx_t* ctx, tiledb_domain_t* domain, tiledb_dimension_t* dim);
+    tiledb_ctx_t* ctx,
+    tiledb_domain_t* domain,
+    tiledb_dimension_t* dim) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a dimension object from a domain by index.
@@ -2627,7 +2681,7 @@ TILEDB_EXPORT int32_t tiledb_domain_get_dimension_from_index(
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
     uint32_t index,
-    tiledb_dimension_t** dim);
+    tiledb_dimension_t** dim) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a dimension object from a domain by name (key).
@@ -2649,7 +2703,7 @@ TILEDB_EXPORT int32_t tiledb_domain_get_dimension_from_name(
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
     const char* name,
-    tiledb_dimension_t** dim);
+    tiledb_dimension_t** dim) TILEDB_NOEXCEPT;
 
 /**
  * Checks whether the domain has a dimension of the given name.
@@ -2672,7 +2726,7 @@ TILEDB_EXPORT int32_t tiledb_domain_has_dimension(
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
     const char* name,
-    int32_t* has_dim);
+    int32_t* has_dim) TILEDB_NOEXCEPT;
 
 /**
  * Dumps the info of a domain in ASCII form to some output (e.g.,
@@ -2691,8 +2745,10 @@ TILEDB_EXPORT int32_t tiledb_domain_has_dimension(
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_domain_dump(tiledb_ctx_t* ctx, const tiledb_domain_t* domain, FILE* out);
+TILEDB_EXPORT int32_t tiledb_domain_dump(
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    FILE* out) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*             DIMENSION             */
@@ -2725,7 +2781,7 @@ TILEDB_EXPORT int32_t tiledb_dimension_alloc(
     tiledb_datatype_t type,
     const void* dim_domain,
     const void* tile_extent,
-    tiledb_dimension_t** dim);
+    tiledb_dimension_t** dim) TILEDB_NOEXCEPT;
 
 /**
  * Destroys a TileDB dimension, freeing associated memory.
@@ -2738,7 +2794,8 @@ TILEDB_EXPORT int32_t tiledb_dimension_alloc(
  *
  * @param dim The dimension to be destroyed.
  */
-TILEDB_EXPORT void tiledb_dimension_free(tiledb_dimension_t** dim);
+TILEDB_EXPORT void tiledb_dimension_free(tiledb_dimension_t** dim)
+    TILEDB_NOEXCEPT;
 
 /**
  * Sets the filter list for a dimension.
@@ -2760,7 +2817,7 @@ TILEDB_EXPORT void tiledb_dimension_free(tiledb_dimension_t** dim);
 TILEDB_EXPORT int32_t tiledb_dimension_set_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_dimension_t* dim,
-    tiledb_filter_list_t* filter_list);
+    tiledb_filter_list_t* filter_list) TILEDB_NOEXCEPT;
 
 /**
  * Sets the number of values per cell for a dimension. If this is not
@@ -2786,7 +2843,9 @@ TILEDB_EXPORT int32_t tiledb_dimension_set_filter_list(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_dimension_set_cell_val_num(
-    tiledb_ctx_t* ctx, tiledb_dimension_t* dim, uint32_t cell_val_num);
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_t* dim,
+    uint32_t cell_val_num) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the filter list for a dimension.
@@ -2807,7 +2866,7 @@ TILEDB_EXPORT int32_t tiledb_dimension_set_cell_val_num(
 TILEDB_EXPORT int32_t tiledb_dimension_get_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_dimension_t* dim,
-    tiledb_filter_list_t** filter_list);
+    tiledb_filter_list_t** filter_list) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the number of values per cell for a dimension. For variable-sized
@@ -2826,7 +2885,9 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_filter_list(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_dimension_get_cell_val_num(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, uint32_t* cell_val_num);
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dim,
+    uint32_t* cell_val_num) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the dimension name.
@@ -2844,7 +2905,9 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_cell_val_num(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_dimension_get_name(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const char** name);
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dim,
+    const char** name) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the dimension type.
@@ -2862,7 +2925,9 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_name(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_dimension_get_type(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, tiledb_datatype_t* type);
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dim,
+    tiledb_datatype_t* type) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the domain of the dimension.
@@ -2882,7 +2947,9 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_type(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_dimension_get_domain(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const void** domain);
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dim,
+    const void** domain) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the tile extent of the dimension.
@@ -2900,7 +2967,9 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_domain(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_dimension_get_tile_extent(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const void** tile_extent);
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dim,
+    const void** tile_extent) TILEDB_NOEXCEPT;
 
 /**
  * Dumps the contents of a dimension in ASCII form to some output (e.g.,
@@ -2920,7 +2989,9 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_tile_extent(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_dimension_dump(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, FILE* out);
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dim,
+    FILE* out) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*            ARRAY SCHEMA           */
@@ -2944,7 +3015,7 @@ TILEDB_EXPORT int32_t tiledb_dimension_dump(
 TILEDB_EXPORT int32_t tiledb_array_schema_alloc(
     tiledb_ctx_t* ctx,
     tiledb_array_type_t array_type,
-    tiledb_array_schema_t** array_schema);
+    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 /**
  * Destroys an array schema, freeing associated memory.
@@ -2958,7 +3029,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_alloc(
  * @param array_schema The array schema to be destroyed.
  */
 TILEDB_EXPORT void tiledb_array_schema_free(
-    tiledb_array_schema_t** array_schema);
+    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 /**
  * Adds an attribute to an array schema.
@@ -2979,7 +3050,7 @@ TILEDB_EXPORT void tiledb_array_schema_free(
 TILEDB_EXPORT int32_t tiledb_array_schema_add_attribute(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_attribute_t* attr);
+    tiledb_attribute_t* attr) TILEDB_NOEXCEPT;
 
 /**
  * Sets whether the array can allow coordinate duplicates or not.
@@ -2999,7 +3070,9 @@ TILEDB_EXPORT int32_t tiledb_array_schema_add_attribute(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_set_allows_dups(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, int allows_dups);
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    int allows_dups) TILEDB_NOEXCEPT;
 
 /**
  * Gets whether the array can allow coordinate duplicates or not.
@@ -3018,7 +3091,9 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_allows_dups(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_get_allows_dups(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, int* allows_dups);
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    int* allows_dups) TILEDB_NOEXCEPT;
 
 /**
  * Returns the array schema version.
@@ -3036,7 +3111,9 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_allows_dups(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_get_version(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, uint32_t* version);
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    uint32_t* version) TILEDB_NOEXCEPT;
 
 /**
  * Sets a domain for the array schema.
@@ -3058,7 +3135,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_version(
 TILEDB_EXPORT int32_t tiledb_array_schema_set_domain(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_domain_t* domain);
+    tiledb_domain_t* domain) TILEDB_NOEXCEPT;
 
 /**
  * Sets the tile capacity.
@@ -3078,7 +3155,9 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_domain(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_set_capacity(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, uint64_t capacity);
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    uint64_t capacity) TILEDB_NOEXCEPT;
 
 /**
  * Sets the cell order.
@@ -3097,7 +3176,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_capacity(
 TILEDB_EXPORT int32_t tiledb_array_schema_set_cell_order(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_layout_t cell_order);
+    tiledb_layout_t cell_order) TILEDB_NOEXCEPT;
 
 /**
  * Sets the tile order.
@@ -3116,7 +3195,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_cell_order(
 TILEDB_EXPORT int32_t tiledb_array_schema_set_tile_order(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_layout_t tile_order);
+    tiledb_layout_t tile_order) TILEDB_NOEXCEPT;
 
 /**
  * Sets the filter list to use for the coordinates.
@@ -3138,7 +3217,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_tile_order(
 TILEDB_EXPORT int32_t tiledb_array_schema_set_coords_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t* filter_list);
+    tiledb_filter_list_t* filter_list) TILEDB_NOEXCEPT;
 
 /**
  * Sets the filter list to use for the offsets of variable-sized attribute
@@ -3161,7 +3240,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_coords_filter_list(
 TILEDB_EXPORT int32_t tiledb_array_schema_set_offsets_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t* filter_list);
+    tiledb_filter_list_t* filter_list) TILEDB_NOEXCEPT;
 
 /**
  * Sets the filter list to use for the validity array of nullable attribute
@@ -3184,7 +3263,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_offsets_filter_list(
 TILEDB_EXPORT int32_t tiledb_array_schema_set_validity_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t* filter_list);
+    tiledb_filter_list_t* filter_list) TILEDB_NOEXCEPT;
 
 /**
  * Checks the correctness of the array schema.
@@ -3201,7 +3280,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_validity_filter_list(
  *     error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_check(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema);
+    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the schema of an array from the disk, creating an array schema
@@ -3223,7 +3302,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_check(
 TILEDB_EXPORT int32_t tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    tiledb_array_schema_t** array_schema);
+    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the schema of an encrypted array from the disk, creating an array
@@ -3255,7 +3334,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_schema_load_with_key(
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
     uint32_t key_length,
-    tiledb_array_schema_t** array_schema);
+    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the array type.
@@ -3278,7 +3357,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_schema_load_with_key(
 TILEDB_EXPORT int32_t tiledb_array_schema_get_array_type(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    tiledb_array_type_t* array_type);
+    tiledb_array_type_t* array_type) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the capacity.
@@ -3298,7 +3377,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_array_type(
 TILEDB_EXPORT int32_t tiledb_array_schema_get_capacity(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    uint64_t* capacity);
+    uint64_t* capacity) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the cell order.
@@ -3318,7 +3397,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_capacity(
 TILEDB_EXPORT int32_t tiledb_array_schema_get_cell_order(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    tiledb_layout_t* cell_order);
+    tiledb_layout_t* cell_order) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the filter list used for the coordinates.
@@ -3339,7 +3418,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_cell_order(
 TILEDB_EXPORT int32_t tiledb_array_schema_get_coords_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t** filter_list);
+    tiledb_filter_list_t** filter_list) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the filter list used for the offsets.
@@ -3360,7 +3439,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_coords_filter_list(
 TILEDB_EXPORT int32_t tiledb_array_schema_get_offsets_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t** filter_list);
+    tiledb_filter_list_t** filter_list) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the filter list used for validity maps.
@@ -3381,7 +3460,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_offsets_filter_list(
 TILEDB_EXPORT int32_t tiledb_array_schema_get_validity_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t** filter_list);
+    tiledb_filter_list_t** filter_list) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the array domain.
@@ -3402,7 +3481,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_validity_filter_list(
 TILEDB_EXPORT int32_t tiledb_array_schema_get_domain(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    tiledb_domain_t** domain);
+    tiledb_domain_t** domain) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the tile order.
@@ -3422,7 +3501,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_domain(
 TILEDB_EXPORT int32_t tiledb_array_schema_get_tile_order(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    tiledb_layout_t* tile_order);
+    tiledb_layout_t* tile_order) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the number of array attributes.
@@ -3442,7 +3521,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_tile_order(
 TILEDB_EXPORT int32_t tiledb_array_schema_get_attribute_num(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    uint32_t* attribute_num);
+    uint32_t* attribute_num) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves an attribute given its index.
@@ -3470,7 +3549,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_attribute_from_index(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     uint32_t index,
-    tiledb_attribute_t** attr);
+    tiledb_attribute_t** attr) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves an attribute given its name (key).
@@ -3496,7 +3575,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_attribute_from_name(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     const char* name,
-    tiledb_attribute_t** attr);
+    tiledb_attribute_t** attr) TILEDB_NOEXCEPT;
 
 /**
  * Checks whether the array schema has an attribute of the given name.
@@ -3519,7 +3598,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_attribute(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     const char* name,
-    int32_t* has_attr);
+    int32_t* has_attr) TILEDB_NOEXCEPT;
 
 /**
  * Dumps the array schema in ASCII format in the selected output.
@@ -3538,7 +3617,9 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_attribute(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_dump(
-    tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out);
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    FILE* out) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*               QUERY               */
@@ -3570,7 +3651,7 @@ TILEDB_EXPORT int32_t tiledb_query_alloc(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_query_type_t query_type,
-    tiledb_query_t** query);
+    tiledb_query_t** query) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the stats from a Query.
@@ -3590,7 +3671,9 @@ TILEDB_EXPORT int32_t tiledb_query_alloc(
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_stats(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, char** stats_json);
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    char** stats_json) TILEDB_NOEXCEPT;
 
 /**
  * Set the query config
@@ -3613,7 +3696,9 @@ TILEDB_EXPORT int32_t tiledb_query_get_stats(
  * - `sm.dedup_coords`
  */
 TILEDB_EXPORT int32_t tiledb_query_set_config(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t* config);
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the config from a Query.
@@ -3632,7 +3717,9 @@ TILEDB_EXPORT int32_t tiledb_query_set_config(
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_config(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t** config);
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_config_t** config) TILEDB_NOEXCEPT;
 /**
  * Indicates that the query will write or read a subarray, and provides
  * the appropriate information.
@@ -3671,7 +3758,9 @@ TILEDB_EXPORT int32_t tiledb_query_get_config(
  *     the subarray has been set, the subarray will simply be ignored.
  */
 TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_subarray(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const void* subarray) TILEDB_NOEXCEPT;
 
 /**
  * Indicates that the query will write or read a subarray, and provides
@@ -3717,7 +3806,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_subarray(
 TILEDB_EXPORT int32_t tiledb_query_set_subarray_t(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const tiledb_subarray_t* subarray);
+    const tiledb_subarray_t* subarray) TILEDB_NOEXCEPT;
 
 /**
  * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
@@ -3749,7 +3838,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_buffer(
     tiledb_query_t* query,
     const char* name,
     void* buffer,
-    uint64_t* buffer_size);
+    uint64_t* buffer_size) TILEDB_NOEXCEPT;
 
 /**
  * Sets the buffer for a var-sized attribute/dimension to a query, which will
@@ -3794,7 +3883,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_buffer_var(
     uint64_t* buffer_off,
     uint64_t* buffer_off_size,
     void* buffer_val,
-    uint64_t* buffer_val_size);
+    uint64_t* buffer_val_size) TILEDB_NOEXCEPT;
 
 /**
  * Sets the buffer for a fixed-sized, nullable attribute to a query, which will
@@ -3839,7 +3928,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_buffer_nullable(
     void* buffer,
     uint64_t* buffer_size,
     uint8_t* buffer_validity_bytemap,
-    uint64_t* buffer_validity_bytemap_size);
+    uint64_t* buffer_validity_bytemap_size) TILEDB_NOEXCEPT;
 
 /**
  * Sets the buffer for a var-sized, nullable attribute to a query, which will
@@ -3896,7 +3985,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_buffer_var_nullable(
     void* buffer_val,
     uint64_t* buffer_val_size,
     uint8_t* buffer_validity_bytemap,
-    uint64_t* buffer_validity_bytemap_size);
+    uint64_t* buffer_validity_bytemap_size) TILEDB_NOEXCEPT;
 
 /**
  * Sets the buffer for an attribute/dimension to a query, which will
@@ -3928,7 +4017,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_data_buffer(
     tiledb_query_t* query,
     const char* name,
     void* buffer,
-    uint64_t* buffer_size);
+    uint64_t* buffer_size) TILEDB_NOEXCEPT;
 
 /**
  * Sets the starting offsets of each cell value in the data buffer.
@@ -3959,7 +4048,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_offsets_buffer(
     tiledb_query_t* query,
     const char* name,
     uint64_t* buffer,
-    uint64_t* buffer_size);
+    uint64_t* buffer_size) TILEDB_NOEXCEPT;
 
 /**
  * Sets the validity byte map that has exactly one value for each value in the
@@ -3991,7 +4080,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_validity_buffer(
     tiledb_query_t* query,
     const char* name,
     uint8_t* buffer,
-    uint64_t* buffer_size);
+    uint64_t* buffer_size) TILEDB_NOEXCEPT;
 
 /**
  * Gets the buffer of a fixed-sized attribute/dimension from a query. If the
@@ -4020,7 +4109,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_buffer(
     tiledb_query_t* query,
     const char* name,
     void** buffer,
-    uint64_t** buffer_size);
+    uint64_t** buffer_size) TILEDB_NOEXCEPT;
 
 /**
  * Gets the values and offsets buffers for a var-sized attribute/dimension
@@ -4058,7 +4147,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_buffer_var(
     uint64_t** buffer_off,
     uint64_t** buffer_off_size,
     void** buffer_val,
-    uint64_t** buffer_val_size);
+    uint64_t** buffer_val_size) TILEDB_NOEXCEPT;
 
 /**
  * Gets the buffer of a fixed-sized, nullable attribute from a query. If the
@@ -4097,7 +4186,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_buffer_nullable(
     void** buffer,
     uint64_t** buffer_size,
     uint8_t** buffer_validity_bytemap,
-    uint64_t** buffer_validity_bytemap_size);
+    uint64_t** buffer_validity_bytemap_size) TILEDB_NOEXCEPT;
 
 /**
  * Gets the values and offsets buffers for a var-sized, nullable attribute
@@ -4144,7 +4233,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_buffer_var_nullable(
     void** buffer_val,
     uint64_t** buffer_val_size,
     uint8_t** buffer_validity_bytemap,
-    uint64_t** buffer_validity_bytemap_size);
+    uint64_t** buffer_validity_bytemap_size) TILEDB_NOEXCEPT;
 
 /**
  * Gets the buffer of a fixed-sized attribute/dimension from a query. If the
@@ -4173,7 +4262,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_data_buffer(
     tiledb_query_t* query,
     const char* name,
     void** buffer,
-    uint64_t** buffer_size);
+    uint64_t** buffer_size) TILEDB_NOEXCEPT;
 
 /**
  * Gets the starting offsets of each cell value in the data buffer.
@@ -4201,7 +4290,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_offsets_buffer(
     tiledb_query_t* query,
     const char* name,
     uint64_t** buffer,
-    uint64_t** buffer_size);
+    uint64_t** buffer_size) TILEDB_NOEXCEPT;
 
 /**
  * Gets the validity byte map that has exactly one value for each value in the
@@ -4230,7 +4319,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_validity_buffer(
     tiledb_query_t* query,
     const char* name,
     uint8_t** buffer,
-    uint64_t** buffer_size);
+    uint64_t** buffer_size) TILEDB_NOEXCEPT;
 
 /**
  * Sets the layout of the cells to be written or read.
@@ -4263,7 +4352,9 @@ TILEDB_EXPORT int32_t tiledb_query_get_validity_buffer(
  * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_set_layout(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout);
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_layout_t layout) TILEDB_NOEXCEPT;
 
 /**
  * Sets the query condition to be applied on a read.
@@ -4286,7 +4377,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_layout(
 TILEDB_EXPORT int32_t tiledb_query_set_condition(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const tiledb_query_condition_t* cond);
+    const tiledb_query_condition_t* cond) TILEDB_NOEXCEPT;
 
 /**
  * Flushes all internal state of a query object and finalizes the query.
@@ -4306,7 +4397,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_condition(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t
-tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query);
+tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) TILEDB_NOEXCEPT;
 
 /**
  * Frees a TileDB query object.
@@ -4319,7 +4410,7 @@ tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query);
  *
  * @param query The query object to be deleted.
  */
-TILEDB_EXPORT void tiledb_query_free(tiledb_query_t** query);
+TILEDB_EXPORT void tiledb_query_free(tiledb_query_t** query) TILEDB_NOEXCEPT;
 
 /**
  * Submits a TileDB query.
@@ -4350,7 +4441,7 @@ TILEDB_EXPORT void tiledb_query_free(tiledb_query_t** query);
  *    with `tiledb_query_set_buffer`, and resubmit the query.
  */
 TILEDB_EXPORT int32_t
-tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
+tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) TILEDB_NOEXCEPT;
 
 /**
  * Submits a TileDB query in asynchronous mode.
@@ -4396,7 +4487,7 @@ TILEDB_EXPORT int32_t tiledb_query_submit_async(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     void (*callback)(void*),
-    void* callback_data);
+    void* callback_data) TILEDB_NOEXCEPT;
 
 /**
  * Checks if the query has returned any results. Applicable only to
@@ -4416,7 +4507,9 @@ TILEDB_EXPORT int32_t tiledb_query_submit_async(
  * @return `TILEDB_OK` upon success, and `TILEDB_ERR` upon error.
  */
 TILEDB_EXPORT int32_t tiledb_query_has_results(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, int32_t* has_results);
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    int32_t* has_results) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the status of a query.
@@ -4434,7 +4527,9 @@ TILEDB_EXPORT int32_t tiledb_query_has_results(
  * @return `TILEDB_OK` upon success, and `TILEDB_ERR` upon error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_status(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status);
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_query_status_t* status) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the query type.
@@ -4452,7 +4547,9 @@ TILEDB_EXPORT int32_t tiledb_query_get_status(
  * @return `TILEDB_OK` upon success, and `TILEDB_ERR` upon error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_type(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_type_t* query_type);
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_query_type_t* query_type) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the query layout.
@@ -4470,7 +4567,9 @@ TILEDB_EXPORT int32_t tiledb_query_get_type(
  * @return `TILEDB_OK` upon success, and `TILEDB_ERR` upon error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_layout(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t* query_layout);
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_layout_t* query_layout) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the query array.
@@ -4488,7 +4587,9 @@ TILEDB_EXPORT int32_t tiledb_query_get_layout(
  * @return `TILEDB_OK` upon success, and `TILEDB_ERR` upon error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_array(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_array_t** array);
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_array_t** array) TILEDB_NOEXCEPT;
 /**
  * Adds a 1D range along a subarray dimension index, which is in the form
  * (start, end, stride). The datatype of the range components
@@ -4521,7 +4622,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_range(
     uint32_t dim_idx,
     const void* start,
     const void* end,
-    const void* stride);
+    const void* stride) TILEDB_NOEXCEPT;
 
 /**
  * Adds a 1D range along a subarray dimension name, which is in the form
@@ -4554,7 +4655,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_range_by_name(
     const char* dim_name,
     const void* start,
     const void* end,
-    const void* stride);
+    const void* stride) TILEDB_NOEXCEPT;
 
 /**
  * Adds a 1D variable-sized range along a subarray dimension index, which is in
@@ -4585,7 +4686,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_range_var(
     const void* start,
     uint64_t start_size,
     const void* end,
-    uint64_t end_size);
+    uint64_t end_size) TILEDB_NOEXCEPT;
 
 /**
  * Adds a 1D variable-sized range along a subarray dimension name, which is in
@@ -4616,7 +4717,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_range_var_by_name(
     const void* start,
     uint64_t start_size,
     const void* end,
-    uint64_t end_size);
+    uint64_t end_size) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the number of ranges of the query subarray along a given dimension
@@ -4639,7 +4740,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_num(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     uint32_t dim_idx,
-    uint64_t* range_num);
+    uint64_t* range_num) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the number of ranges of the query subarray along a given dimension
@@ -4662,7 +4763,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_num_from_name(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* dim_name,
-    uint64_t* range_num);
+    uint64_t* range_num) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a specific range of the query subarray along a given dimension
@@ -4694,7 +4795,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range(
     uint64_t range_idx,
     const void** start,
     const void** end,
-    const void** stride);
+    const void** stride) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a specific range of the query subarray along a given dimension
@@ -4726,7 +4827,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_from_name(
     uint64_t range_idx,
     const void** start,
     const void** end,
-    const void** stride);
+    const void** stride) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a range's start and end size for a given variable-length
@@ -4755,7 +4856,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_var_size(
     uint32_t dim_idx,
     uint64_t range_idx,
     uint64_t* start_size,
-    uint64_t* end_size);
+    uint64_t* end_size) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a range's start and end size for a given variable-length
@@ -4784,7 +4885,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_var_size_from_name(
     const char* dim_name,
     uint64_t range_idx,
     uint64_t* start_size,
-    uint64_t* end_size);
+    uint64_t* end_size) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a specific range of the query subarray along a given
@@ -4813,7 +4914,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_var(
     uint32_t dim_idx,
     uint64_t range_idx,
     void* start,
-    void* end);
+    void* end) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a specific range of the query subarray along a given
@@ -4842,7 +4943,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_var_from_name(
     const char* dim_name,
     uint64_t range_idx,
     void* start,
-    void* end);
+    void* end) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the estimated result size for a fixed-sized attribute/dimension.
@@ -4868,7 +4969,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* name,
-    uint64_t* size);
+    uint64_t* size) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the estimated result size for a var-sized attribute/dimension.
@@ -4897,7 +4998,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_var(
     const tiledb_query_t* query,
     const char* name,
     uint64_t* size_off,
-    uint64_t* size_val);
+    uint64_t* size_val) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the estimated result size for a fixed-sized, nullable attribute.
@@ -4928,7 +5029,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_nullable(
     const tiledb_query_t* query,
     const char* name,
     uint64_t* size_val,
-    uint64_t* size_validity);
+    uint64_t* size_validity) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the estimated result size for a var-sized, nullable attribute.
@@ -4956,7 +5057,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_var_nullable(
     const char* name,
     uint64_t* size_off,
     uint64_t* size_val,
-    uint64_t* size_validity);
+    uint64_t* size_validity) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the number of written fragments. Applicable only to WRITE
@@ -4975,7 +5076,9 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_var_nullable(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_fragment_num(
-    tiledb_ctx_t* ctx, const tiledb_query_t* query, uint32_t* num);
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    uint32_t* num) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the URI of the written fragment with the input index. Applicable
@@ -5003,7 +5106,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_uri(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     uint64_t idx,
-    const char** uri);
+    const char** uri) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the timestamp range of the written fragment with the input index.
@@ -5031,7 +5134,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
     const tiledb_query_t* query,
     uint64_t idx,
     uint64_t* t1,
-    uint64_t* t2);
+    uint64_t* t2) TILEDB_NOEXCEPT;
 
 /**
  * Return a TileDB subarray object from the given query.
@@ -5052,7 +5155,7 @@ TILEDB_EXPORT
 int32_t tiledb_query_get_subarray_t(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
-    tiledb_subarray_t** subarray);
+    tiledb_subarray_t** subarray) TILEDB_NOEXCEPT;
 
 /* ****************************** */
 /*          QUERY CONDITION       */
@@ -5073,7 +5176,7 @@ int32_t tiledb_query_get_subarray_t(
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_condition_alloc(
-    tiledb_ctx_t* ctx, tiledb_query_condition_t** cond);
+    tiledb_ctx_t* ctx, tiledb_query_condition_t** cond) TILEDB_NOEXCEPT;
 
 /**
  * Frees a TileDB query condition object.
@@ -5092,7 +5195,8 @@ TILEDB_EXPORT int32_t tiledb_query_condition_alloc(
  *
  * @param cond The query condition object to be freed.
  */
-TILEDB_EXPORT void tiledb_query_condition_free(tiledb_query_condition_t** cond);
+TILEDB_EXPORT void tiledb_query_condition_free(tiledb_query_condition_t** cond)
+    TILEDB_NOEXCEPT;
 
 /**
  * Initializes a TileDB query condition object.
@@ -5122,7 +5226,7 @@ TILEDB_EXPORT int32_t tiledb_query_condition_init(
     const char* attribute_name,
     const void* condition_value,
     uint64_t condition_value_size,
-    tiledb_query_condition_op_t op);
+    tiledb_query_condition_op_t op) TILEDB_NOEXCEPT;
 
 /**
  * Combines two query condition objects into a newly allocated
@@ -5178,7 +5282,7 @@ TILEDB_EXPORT int32_t tiledb_query_condition_combine(
     const tiledb_query_condition_t* left_cond,
     const tiledb_query_condition_t* right_cond,
     tiledb_query_condition_combination_op_t combination_op,
-    tiledb_query_condition_t** combined_cond);
+    tiledb_query_condition_t** combined_cond) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*             SUBARRAY              */
@@ -5204,7 +5308,7 @@ TILEDB_EXPORT int32_t tiledb_query_condition_combine(
 TILEDB_EXPORT int32_t tiledb_subarray_alloc(
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
-    tiledb_subarray_t** subarray);
+    tiledb_subarray_t** subarray) TILEDB_NOEXCEPT;
 
 /**
  * Set the subarray config.
@@ -5215,7 +5319,9 @@ TILEDB_EXPORT int32_t tiledb_subarray_alloc(
  * - `sm.read_range_oob`
  */
 TILEDB_EXPORT int32_t tiledb_subarray_set_config(
-    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_config_t* config);
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /**
  * Frees a TileDB subarray object.
@@ -5232,7 +5338,8 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_config(
  *
  * @param subarray The subarray object to be freed.
  */
-TILEDB_EXPORT void tiledb_subarray_free(tiledb_subarray_t** subarray);
+TILEDB_EXPORT void tiledb_subarray_free(tiledb_subarray_t** subarray)
+    TILEDB_NOEXCEPT;
 
 /**
  * Set coalesce_ranges property on a TileDB subarray object.
@@ -5259,7 +5366,9 @@ TILEDB_EXPORT void tiledb_subarray_free(tiledb_subarray_t** subarray);
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_set_coalesce_ranges(
-    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, int coalesce_ranges);
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    int coalesce_ranges) TILEDB_NOEXCEPT;
 
 /**
  * Populates a subarray with specific indicies.
@@ -5287,7 +5396,9 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_coalesce_ranges(
  */
 TILEDB_EXPORT
 int32_t tiledb_subarray_set_subarray(
-    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray_s, const void* subarray_v);
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray_s,
+    const void* subarray_v) TILEDB_NOEXCEPT;
 
 /**
  * Adds a 1D range along a subarray dimension index, which is in the form
@@ -5320,7 +5431,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range(
     uint32_t dim_idx,
     const void* start,
     const void* end,
-    const void* stride);
+    const void* stride) TILEDB_NOEXCEPT;
 
 /**
  * Adds a 1D range along a subarray dimension name, which is in the form
@@ -5354,7 +5465,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range_by_name(
     const char* dim_name,
     const void* start,
     const void* end,
-    const void* stride);
+    const void* stride) TILEDB_NOEXCEPT;
 
 /**
  * Adds a 1D variable-sized range along a subarray dimension index, which is in
@@ -5385,7 +5496,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range_var(
     const void* start,
     uint64_t start_size,
     const void* end,
-    uint64_t end_size);
+    uint64_t end_size) TILEDB_NOEXCEPT;
 
 /**
  * Adds a 1D variable-sized range along a subarray dimension name, which is in
@@ -5417,7 +5528,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range_var_by_name(
     const void* start,
     uint64_t start_size,
     const void* end,
-    uint64_t end_size);
+    uint64_t end_size) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the number of ranges of the query subarray along a given dimension
@@ -5441,7 +5552,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_num(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     uint32_t dim_idx,
-    uint64_t* range_num);
+    uint64_t* range_num) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the number of ranges of the subarray along a given dimension
@@ -5464,7 +5575,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_num_from_name(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
-    uint64_t* range_num);
+    uint64_t* range_num) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a specific range of the subarray along a given dimension
@@ -5496,7 +5607,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range(
     uint64_t range_idx,
     const void** start,
     const void** end,
-    const void** stride);
+    const void** stride) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a specific range of the subarray along a given dimension
@@ -5528,7 +5639,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_from_name(
     uint64_t range_idx,
     const void** start,
     const void** end,
-    const void** stride);
+    const void** stride) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a range's start and end size for a given variable-length
@@ -5557,7 +5668,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_size(
     uint32_t dim_idx,
     uint64_t range_idx,
     uint64_t* start_size,
-    uint64_t* end_size);
+    uint64_t* end_size) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a range's start and end size for a given variable-length
@@ -5586,7 +5697,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_size_from_name(
     const char* dim_name,
     uint64_t range_idx,
     uint64_t* start_size,
-    uint64_t* end_size);
+    uint64_t* end_size) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a specific range of the subarray along a given
@@ -5615,7 +5726,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_var(
     uint32_t dim_idx,
     uint64_t range_idx,
     void* start,
-    void* end);
+    void* end) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a specific range of the subarray along a given
@@ -5644,7 +5755,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_from_name(
     const char* dim_name,
     uint64_t range_idx,
     void* start,
-    void* end);
+    void* end) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*               ARRAY               */
@@ -5666,7 +5777,9 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_from_name(
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_alloc(
-    tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array);
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_array_t** array) TILEDB_NOEXCEPT;
 
 /**
  * Sets the starting timestamp to use when opening (and reopening) the array.
@@ -5687,7 +5800,9 @@ TILEDB_EXPORT int32_t tiledb_array_alloc(
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_start(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_start);
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint64_t timestamp_start) TILEDB_NOEXCEPT;
 
 /**
  * Sets the ending timestamp to use when opening (and reopening) the array.
@@ -5711,7 +5826,9 @@ TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_start(
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_end(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end);
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint64_t timestamp_end) TILEDB_NOEXCEPT;
 
 /**
  * Gets the starting timestamp used when opening (and reopening) the array.
@@ -5736,7 +5853,9 @@ TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_end(
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_start(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_start);
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint64_t* timestamp_start) TILEDB_NOEXCEPT;
 
 /**
  * Gets the ending timestamp used when opening (and reopening) the array.
@@ -5763,7 +5882,9 @@ TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_start(
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_end);
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint64_t* timestamp_end) TILEDB_NOEXCEPT;
 
 /**
  * Opens a TileDB array. The array is opened using a query type as input.
@@ -5795,7 +5916,9 @@ TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
  *       the array object before opening the array.
  */
 TILEDB_EXPORT int32_t tiledb_array_open(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type);
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_query_type_t query_type) TILEDB_NOEXCEPT;
 
 /**
  * Similar to `tiledb_array_open`, but this function takes as input a
@@ -5834,7 +5957,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_open_at(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_query_type_t query_type,
-    uint64_t timestamp);
+    uint64_t timestamp) TILEDB_NOEXCEPT;
 
 /**
  * Opens an encrypted array using the given encryption key. This function has
@@ -5870,7 +5993,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_open_with_key(
     tiledb_query_type_t query_type,
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
-    uint32_t key_length);
+    uint32_t key_length) TILEDB_NOEXCEPT;
 
 /**
  * Similar to `tiledb_array_open_with_key`, but this function takes as
@@ -5915,7 +6038,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_open_at_with_key(
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
     uint32_t key_length,
-    uint64_t timestamp);
+    uint64_t timestamp) TILEDB_NOEXCEPT;
 
 /**
  * Checks if the array is open.
@@ -5926,7 +6049,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_open_at_with_key(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_is_open(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, int32_t* is_open);
+    tiledb_ctx_t* ctx, tiledb_array_t* array, int32_t* is_open) TILEDB_NOEXCEPT;
 
 /**
  * Reopens a TileDB array (the array must be already open). This is useful
@@ -5958,7 +6081,7 @@ TILEDB_EXPORT int32_t tiledb_array_is_open(
  *      object should be reset for the array before reopening.
  */
 TILEDB_EXPORT int32_t
-tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
+tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) TILEDB_NOEXCEPT;
 
 /**
  * Reopens a TileDB array (the array must be already open) at a specific
@@ -5986,7 +6109,9 @@ tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
  *      object should be reset for the array before reopening.
  */
 TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_reopen_at(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp);
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint64_t timestamp) TILEDB_NOEXCEPT;
 
 /**
  * The start/end timestamps for opening an array
@@ -6015,7 +6140,9 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_reopen_at(
  * @note The array does not need to be open to use this function.
  */
 TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_get_timestamp(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp);
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint64_t* timestamp) TILEDB_NOEXCEPT;
 
 /**
  * Sets the array config.
@@ -6041,7 +6168,9 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_get_timestamp(
  * @note The config should be set before opening an array.
  */
 TILEDB_EXPORT int32_t tiledb_array_set_config(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_config_t* config);
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /**
  * Gets the array config.
@@ -6060,7 +6189,9 @@ TILEDB_EXPORT int32_t tiledb_array_set_config(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_get_config(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_config_t** config);
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_config_t** config) TILEDB_NOEXCEPT;
 
 /**
  * Closes a TileDB array.
@@ -6082,7 +6213,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_config(
  *     no effect.
  */
 TILEDB_EXPORT int32_t
-tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array);
+tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) TILEDB_NOEXCEPT;
 
 /**
  * Frees a TileDB array object.
@@ -6099,7 +6230,7 @@ tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array);
  *
  * @param array The array object to be freed.
  */
-TILEDB_EXPORT void tiledb_array_free(tiledb_array_t** array);
+TILEDB_EXPORT void tiledb_array_free(tiledb_array_t** array) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the schema of an array.
@@ -6121,7 +6252,7 @@ TILEDB_EXPORT void tiledb_array_free(tiledb_array_t** array);
 TILEDB_EXPORT int32_t tiledb_array_get_schema(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    tiledb_array_schema_t** array_schema);
+    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the query type with which the array was opened.
@@ -6142,7 +6273,9 @@ TILEDB_EXPORT int32_t tiledb_array_get_schema(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_get_query_type(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t* query_type);
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_query_type_t* query_type) TILEDB_NOEXCEPT;
 
 /**
  * Creates a new TileDB array given an input schema.
@@ -6161,7 +6294,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_query_type(
 TILEDB_EXPORT int32_t tiledb_array_create(
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    const tiledb_array_schema_t* array_schema);
+    const tiledb_array_schema_t* array_schema) TILEDB_NOEXCEPT;
 
 /**
  * Creates a new encrypted TileDB array given an input schema.
@@ -6191,7 +6324,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_create_with_key(
     const tiledb_array_schema_t* array_schema,
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
-    uint32_t key_length);
+    uint32_t key_length) TILEDB_NOEXCEPT;
 
 /**
  * Depending on the consoliation mode in the config, consolidates either the
@@ -6219,7 +6352,9 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_create_with_key(
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
 TILEDB_EXPORT int32_t tiledb_array_consolidate(
-    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /**
  * Depending on the consoliation mode in the config, consolidates either the
@@ -6256,7 +6391,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_with_key(
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
     uint32_t key_length,
-    tiledb_config_t* config);
+    tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /**
  * Cleans up the array, such as consolidated fragments and array metadata.
@@ -6276,7 +6411,9 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_with_key(
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
 TILEDB_EXPORT int32_t tiledb_array_vacuum(
-    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the non-empty domain from an array. This is the union of the
@@ -6301,7 +6438,8 @@ TILEDB_EXPORT int32_t tiledb_array_vacuum(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, void* domain, int32_t* is_empty);
+    tiledb_ctx_t* ctx, tiledb_array_t* array, void* domain, int32_t* is_empty)
+    TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the non-empty domain from an array for a given dimension index.
@@ -6334,7 +6472,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_from_index(
     tiledb_array_t* array,
     uint32_t idx,
     void* domain,
-    int32_t* is_empty);
+    int32_t* is_empty) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the non-empty domain from an array for a given dimension name.
@@ -6366,7 +6504,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_from_name(
     tiledb_array_t* array,
     const char* name,
     void* domain,
-    int32_t* is_empty);
+    int32_t* is_empty) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the non-empty domain range sizes from an array for a given
@@ -6403,7 +6541,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_var_size_from_index(
     uint32_t idx,
     uint64_t* start_size,
     uint64_t* end_size,
-    int32_t* is_empty);
+    int32_t* is_empty) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the non-empty domain range sizes from an array for a given
@@ -6439,7 +6577,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_var_size_from_name(
     const char* name,
     uint64_t* start_size,
     uint64_t* end_size,
-    int32_t* is_empty);
+    int32_t* is_empty) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the non-empty domain from an array for a given
@@ -6482,7 +6620,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_var_from_index(
     uint32_t idx,
     void* start,
     void* end,
-    int32_t* is_empty);
+    int32_t* is_empty) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the non-empty domain from an array for a given
@@ -6525,7 +6663,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_var_from_name(
     const char* name,
     void* start,
     void* end,
-    int32_t* is_empty);
+    int32_t* is_empty) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the URI the array was opened with. It outputs an error
@@ -6537,7 +6675,9 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_var_from_name(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_get_uri(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char** array_uri);
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char** array_uri) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the encryption type the array at the given URI was created with.
@@ -6550,7 +6690,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_uri(
 TILEDB_EXPORT int32_t tiledb_array_encryption_type(
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    tiledb_encryption_type_t* encryption_type);
+    tiledb_encryption_type_t* encryption_type) TILEDB_NOEXCEPT;
 
 /**
  * It puts a metadata key-value item to an open array. The array must
@@ -6575,7 +6715,7 @@ TILEDB_EXPORT int32_t tiledb_array_put_metadata(
     const char* key,
     tiledb_datatype_t value_type,
     uint32_t value_num,
-    const void* value);
+    const void* value) TILEDB_NOEXCEPT;
 
 /**
  * It deletes a metadata key-value item from an open array. The array must
@@ -6592,7 +6732,7 @@ TILEDB_EXPORT int32_t tiledb_array_put_metadata(
  *     (i.e., the function will not error out).
  */
 TILEDB_EXPORT int32_t tiledb_array_delete_metadata(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* key);
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* key) TILEDB_NOEXCEPT;
 
 /**
  * It gets a metadata key-value item from an open array. The array must
@@ -6618,7 +6758,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_metadata(
     const char* key,
     tiledb_datatype_t* value_type,
     uint32_t* value_num,
-    const void** value);
+    const void** value) TILEDB_NOEXCEPT;
 
 /**
  * It gets then number of metadata items in an open array. The array must
@@ -6630,7 +6770,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_metadata(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_get_metadata_num(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* num);
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* num) TILEDB_NOEXCEPT;
 
 /**
  * It gets a metadata item from an open array using an index.
@@ -6657,7 +6797,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_metadata_from_index(
     uint32_t* key_len,
     tiledb_datatype_t* value_type,
     uint32_t* value_num,
-    const void** value);
+    const void** value) TILEDB_NOEXCEPT;
 
 /**
  * Checks whether a key exists in metadata from an open array. The array must
@@ -6677,7 +6817,7 @@ TILEDB_EXPORT int32_t tiledb_array_has_metadata_key(
     tiledb_array_t* array,
     const char* key,
     tiledb_datatype_t* value_type,
-    int32_t* has_key);
+    int32_t* has_key) TILEDB_NOEXCEPT;
 
 /**
  * Consolidates the array metadata into a single array metadata file.
@@ -6700,7 +6840,9 @@ TILEDB_EXPORT int32_t tiledb_array_has_metadata_key(
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
 TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata(
-    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /**
  * Consolidates the array metadata of an encrypted array into a single file.
@@ -6733,7 +6875,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata_with_key(
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
     uint32_t key_length,
-    tiledb_config_t* config);
+    tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */
@@ -6754,8 +6896,8 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata_with_key(
  * @param type The type to be retrieved.
  * @return `TILEDB_OK` on success, `TILEDB_ERR` on error.
  */
-TILEDB_EXPORT int32_t
-tiledb_object_type(tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type);
+TILEDB_EXPORT int32_t tiledb_object_type(
+    tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type) TILEDB_NOEXCEPT;
 
 /**
  * Deletes a TileDB resource (group, array, key-value).
@@ -6770,7 +6912,8 @@ tiledb_object_type(tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type);
  * @param path The URI path to the tiledb resource.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_object_remove(tiledb_ctx_t* ctx, const char* path);
+TILEDB_EXPORT int32_t tiledb_object_remove(tiledb_ctx_t* ctx, const char* path)
+    TILEDB_NOEXCEPT;
 
 /**
  * Moves a TileDB resource (group, array, key-value).
@@ -6787,7 +6930,9 @@ TILEDB_EXPORT int32_t tiledb_object_remove(tiledb_ctx_t* ctx, const char* path);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_object_move(
-    tiledb_ctx_t* ctx, const char* old_path, const char* new_path);
+    tiledb_ctx_t* ctx,
+    const char* old_path,
+    const char* new_path) TILEDB_NOEXCEPT;
 
 /**
  * Walks (iterates) over the TileDB objects contained in *path*. The traversal
@@ -6821,7 +6966,7 @@ TILEDB_EXPORT int32_t tiledb_object_walk(
     const char* path,
     tiledb_walk_order_t order,
     int32_t (*callback)(const char*, tiledb_object_t, void*),
-    void* data);
+    void* data) TILEDB_NOEXCEPT;
 
 /**
  * Similar to `tiledb_walk`, but now the function visits only the children of
@@ -6848,7 +6993,7 @@ TILEDB_EXPORT int32_t tiledb_object_ls(
     tiledb_ctx_t* ctx,
     const char* path,
     int32_t (*callback)(const char*, tiledb_object_t, void*),
-    void* data);
+    void* data) TILEDB_NOEXCEPT;
 
 /* ****************************** */
 /*        VIRTUAL FILESYSTEM      */
@@ -6870,7 +7015,9 @@ TILEDB_EXPORT int32_t tiledb_object_ls(
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_vfs_alloc(
-    tiledb_ctx_t* ctx, tiledb_config_t* config, tiledb_vfs_t** vfs);
+    tiledb_ctx_t* ctx,
+    tiledb_config_t* config,
+    tiledb_vfs_t** vfs) TILEDB_NOEXCEPT;
 
 /**
  * Frees a virtual filesystem object.
@@ -6883,7 +7030,7 @@ TILEDB_EXPORT int32_t tiledb_vfs_alloc(
  *
  * @param vfs The virtual filesystem object to be freed.
  */
-TILEDB_EXPORT void tiledb_vfs_free(tiledb_vfs_t** vfs);
+TILEDB_EXPORT void tiledb_vfs_free(tiledb_vfs_t** vfs) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the config from a VFS context.
@@ -6902,7 +7049,9 @@ TILEDB_EXPORT void tiledb_vfs_free(tiledb_vfs_t** vfs);
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_vfs_get_config(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_config_t** config);
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    tiledb_config_t** config) TILEDB_NOEXCEPT;
 
 /**
  * Creates an object-store bucket.
@@ -6918,8 +7067,8 @@ TILEDB_EXPORT int32_t tiledb_vfs_get_config(
  * @param uri The URI of the bucket to be created.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_vfs_create_bucket(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+TILEDB_EXPORT int32_t tiledb_vfs_create_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) TILEDB_NOEXCEPT;
 
 /**
  * Deletes an object-store bucket.
@@ -6935,8 +7084,8 @@ tiledb_vfs_create_bucket(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
  * @param uri The URI of the bucket to be deleted.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_vfs_remove_bucket(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+TILEDB_EXPORT int32_t tiledb_vfs_remove_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) TILEDB_NOEXCEPT;
 
 /**
  * Deletes the contents of an object-store bucket.
@@ -6952,8 +7101,8 @@ tiledb_vfs_remove_bucket(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
  * @param uri The URI of the bucket to be emptied.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_vfs_empty_bucket(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+TILEDB_EXPORT int32_t tiledb_vfs_empty_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) TILEDB_NOEXCEPT;
 
 /**
  * Checks if an object-store bucket is empty.
@@ -6973,7 +7122,8 @@ tiledb_vfs_empty_bucket(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_vfs_is_empty_bucket(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_empty);
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_empty)
+    TILEDB_NOEXCEPT;
 
 /**
  * Checks if an object-store bucket exists.
@@ -6993,7 +7143,8 @@ TILEDB_EXPORT int32_t tiledb_vfs_is_empty_bucket(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int32_t tiledb_vfs_is_bucket(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_bucket);
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_bucket)
+    TILEDB_NOEXCEPT;
 
 /**
  * Creates a directory.
@@ -7013,8 +7164,8 @@ TILEDB_EXPORT int32_t tiledb_vfs_is_bucket(
  * @param uri The URI of the directory to be created.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_vfs_create_dir(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+TILEDB_EXPORT int32_t tiledb_vfs_create_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) TILEDB_NOEXCEPT;
 
 /**
  * Checks if a directory exists.
@@ -7038,7 +7189,8 @@ tiledb_vfs_create_dir(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
  *     only if it does not exist), and `false` othewise.
  */
 TILEDB_EXPORT int32_t tiledb_vfs_is_dir(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_dir);
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_dir)
+    TILEDB_NOEXCEPT;
 
 /**
  * Removes a directory (recursively).
@@ -7054,8 +7206,8 @@ TILEDB_EXPORT int32_t tiledb_vfs_is_dir(
  * @param uri The uri of the directory to be removed
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_vfs_remove_dir(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+TILEDB_EXPORT int32_t tiledb_vfs_remove_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) TILEDB_NOEXCEPT;
 
 /**
  * Checks if a file exists.
@@ -7074,7 +7226,8 @@ tiledb_vfs_remove_dir(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_vfs_is_file(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_file);
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_file)
+    TILEDB_NOEXCEPT;
 
 /**
  * Deletes a file.
@@ -7090,8 +7243,8 @@ TILEDB_EXPORT int32_t tiledb_vfs_is_file(
  * @param uri The URI of the file.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_vfs_remove_file(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+TILEDB_EXPORT int32_t tiledb_vfs_remove_file(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the size of a directory. This function is **recursive**, i.e.,
@@ -7111,7 +7264,8 @@ tiledb_vfs_remove_file(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_vfs_dir_size(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size);
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size)
+    TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the size of a file.
@@ -7130,7 +7284,8 @@ TILEDB_EXPORT int32_t tiledb_vfs_dir_size(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_vfs_file_size(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size);
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size)
+    TILEDB_NOEXCEPT;
 
 /**
  * Renames a file. If the destination file exists, it will be overwritten.
@@ -7152,7 +7307,7 @@ TILEDB_EXPORT int32_t tiledb_vfs_move_file(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
-    const char* new_uri);
+    const char* new_uri) TILEDB_NOEXCEPT;
 
 /**
  * Renames a directory.
@@ -7173,7 +7328,7 @@ TILEDB_EXPORT int32_t tiledb_vfs_move_dir(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
-    const char* new_uri);
+    const char* new_uri) TILEDB_NOEXCEPT;
 
 /**
  * Copies a file. If the destination file exists, it will be overwritten.
@@ -7195,7 +7350,7 @@ TILEDB_EXPORT int32_t tiledb_vfs_copy_file(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
-    const char* new_uri);
+    const char* new_uri) TILEDB_NOEXCEPT;
 
 /**
  * Copies a directory. If the destination directory exists, it will be
@@ -7218,7 +7373,7 @@ TILEDB_EXPORT int32_t tiledb_vfs_copy_dir(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
-    const char* new_uri);
+    const char* new_uri) TILEDB_NOEXCEPT;
 
 /**
  * Prepares a file for reading/writing.
@@ -7260,7 +7415,7 @@ TILEDB_EXPORT int32_t tiledb_vfs_open(
     tiledb_vfs_t* vfs,
     const char* uri,
     tiledb_vfs_mode_t mode,
-    tiledb_vfs_fh_t** fh);
+    tiledb_vfs_fh_t** fh) TILEDB_NOEXCEPT;
 
 /**
  * Closes a file. This is flushes the buffered data into the file
@@ -7278,7 +7433,8 @@ TILEDB_EXPORT int32_t tiledb_vfs_open(
  * @param fh The file handle.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh);
+TILEDB_EXPORT int32_t tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh)
+    TILEDB_NOEXCEPT;
 
 /**
  * Reads from a file.
@@ -7302,7 +7458,7 @@ TILEDB_EXPORT int32_t tiledb_vfs_read(
     tiledb_vfs_fh_t* fh,
     uint64_t offset,
     void* buffer,
-    uint64_t nbytes);
+    uint64_t nbytes) TILEDB_NOEXCEPT;
 
 /**
  * Writes the contents of a buffer into a file. Note that this
@@ -7323,10 +7479,8 @@ TILEDB_EXPORT int32_t tiledb_vfs_read(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_vfs_write(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_fh_t* fh,
-    const void* buffer,
-    uint64_t nbytes);
+    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, const void* buffer, uint64_t nbytes)
+    TILEDB_NOEXCEPT;
 
 /**
  * Syncs (flushes) a file.
@@ -7343,7 +7497,8 @@ TILEDB_EXPORT int32_t tiledb_vfs_write(
  *
  * @note This has no effect for S3.
  */
-TILEDB_EXPORT int32_t tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh);
+TILEDB_EXPORT int32_t tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh)
+    TILEDB_NOEXCEPT;
 
 /**
  * The function visits only the children of `path` (i.e., it does not
@@ -7373,7 +7528,7 @@ TILEDB_EXPORT int32_t tiledb_vfs_ls(
     tiledb_vfs_t* vfs,
     const char* path,
     int32_t (*callback)(const char*, void*),
-    void* data);
+    void* data) TILEDB_NOEXCEPT;
 
 /**
  * Frees a file handle.
@@ -7386,7 +7541,7 @@ TILEDB_EXPORT int32_t tiledb_vfs_ls(
  *
  * @param fh The URI file handle.
  */
-TILEDB_EXPORT void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh);
+TILEDB_EXPORT void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) TILEDB_NOEXCEPT;
 
 /**
  * Checks if a file handle is closed.
@@ -7404,7 +7559,7 @@ TILEDB_EXPORT void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_vfs_fh_is_closed(
-    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int32_t* is_closed);
+    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int32_t* is_closed) TILEDB_NOEXCEPT;
 
 /**
  * Touches a file, i.e., creates a new empty file.
@@ -7420,8 +7575,8 @@ TILEDB_EXPORT int32_t tiledb_vfs_fh_is_closed(
  * @param uri The URI of the file to be created.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
-tiledb_vfs_touch(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+TILEDB_EXPORT int32_t tiledb_vfs_touch(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) TILEDB_NOEXCEPT;
 
 /* ****************************** */
 /*              URI               */
@@ -7451,7 +7606,8 @@ tiledb_vfs_touch(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
  * terminating null character.
  */
 TILEDB_EXPORT int32_t tiledb_uri_to_path(
-    tiledb_ctx_t* ctx, const char* uri, char* path_out, uint32_t* path_length);
+    tiledb_ctx_t* ctx, const char* uri, char* path_out, uint32_t* path_length)
+    TILEDB_NOEXCEPT;
 
 /* ****************************** */
 /*             Stats              */
@@ -7462,21 +7618,21 @@ TILEDB_EXPORT int32_t tiledb_uri_to_path(
  *
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_stats_enable(void);
+TILEDB_EXPORT int32_t tiledb_stats_enable(void) TILEDB_NOEXCEPT;
 
 /**
  * Disable internal statistics gathering.
  *
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_stats_disable(void);
+TILEDB_EXPORT int32_t tiledb_stats_disable(void) TILEDB_NOEXCEPT;
 
 /**
  * Reset all internal statistics counters to 0.
  *
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_stats_reset(void);
+TILEDB_EXPORT int32_t tiledb_stats_reset(void) TILEDB_NOEXCEPT;
 
 /**
  * Dump all internal statistics counters to some output (e.g.,
@@ -7485,7 +7641,7 @@ TILEDB_EXPORT int32_t tiledb_stats_reset(void);
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_stats_dump(FILE* out);
+TILEDB_EXPORT int32_t tiledb_stats_dump(FILE* out) TILEDB_NOEXCEPT;
 
 /**
  * Dump all internal statistics counters to an output string. The caller is
@@ -7503,7 +7659,7 @@ TILEDB_EXPORT int32_t tiledb_stats_dump(FILE* out);
  * @param out Will be set to point to an allocated string containing the stats.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_stats_dump_str(char** out);
+TILEDB_EXPORT int32_t tiledb_stats_dump_str(char** out) TILEDB_NOEXCEPT;
 
 /**
  * Dump all raw internal statistics counters to some output (e.g.,
@@ -7512,7 +7668,7 @@ TILEDB_EXPORT int32_t tiledb_stats_dump_str(char** out);
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_stats_raw_dump(FILE* out);
+TILEDB_EXPORT int32_t tiledb_stats_raw_dump(FILE* out) TILEDB_NOEXCEPT;
 
 /**
  * Dump all raw internal statistics counters to a JSON-formatted output string.
@@ -7530,7 +7686,7 @@ TILEDB_EXPORT int32_t tiledb_stats_raw_dump(FILE* out);
  * @param out Will be set to point to an allocated string containing the stats.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_stats_raw_dump_str(char** out);
+TILEDB_EXPORT int32_t tiledb_stats_raw_dump_str(char** out) TILEDB_NOEXCEPT;
 
 /**
  *
@@ -7539,7 +7695,7 @@ TILEDB_EXPORT int32_t tiledb_stats_raw_dump_str(char** out);
  * @param out Pointer to a previously allocated stats string.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_stats_free_str(char** out);
+TILEDB_EXPORT int32_t tiledb_stats_free_str(char** out) TILEDB_NOEXCEPT;
 
 /* ****************************** */
 /*          Heap Profiler         */
@@ -7567,7 +7723,7 @@ TILEDB_EXPORT int32_t tiledb_heap_profiler_enable(
     const char* file_name_prefix,
     uint64_t dump_interval_ms,
     uint64_t dump_interval_bytes,
-    uint64_t dump_threshold_bytes);
+    uint64_t dump_threshold_bytes) TILEDB_NOEXCEPT;
 
 /* ****************************** */
 /*          FRAGMENT INFO         */
@@ -7592,7 +7748,7 @@ TILEDB_EXPORT int32_t tiledb_heap_profiler_enable(
 TILEDB_EXPORT int32_t tiledb_fragment_info_alloc(
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    tiledb_fragment_info_t** fragment_info);
+    tiledb_fragment_info_t** fragment_info) TILEDB_NOEXCEPT;
 
 /**
  * Frees a fragment info object.
@@ -7606,7 +7762,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_alloc(
  * @param fragment_info The fragment info object to be freed.
  */
 TILEDB_EXPORT void tiledb_fragment_info_free(
-    tiledb_fragment_info_t** fragment_info);
+    tiledb_fragment_info_t** fragment_info) TILEDB_NOEXCEPT;
 
 /**
  * Set the fragment info config. Useful for passing timestamp ranges and
@@ -7630,7 +7786,7 @@ TILEDB_EXPORT void tiledb_fragment_info_free(
 TILEDB_EXPORT int32_t tiledb_fragment_info_set_config(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
-    tiledb_config_t* config);
+    tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /**
  * Loads the fragment info.
@@ -7646,7 +7802,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_set_config(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_fragment_info_load(
-    tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info);
+    tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) TILEDB_NOEXCEPT;
 
 /**
  * Loads the fragment info from an encrypted array.
@@ -7670,7 +7826,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_fragment_info_load_with_key(
     tiledb_fragment_info_t* fragment_info,
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
-    uint32_t key_length);
+    uint32_t key_length) TILEDB_NOEXCEPT;
 
 /**
  * Gets the number of fragments.
@@ -7690,7 +7846,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_fragment_info_load_with_key(
 TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
-    uint32_t* fragment_num);
+    uint32_t* fragment_num) TILEDB_NOEXCEPT;
 
 /**
  * Gets a fragment URI.
@@ -7712,7 +7868,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_uri(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    const char** uri);
+    const char** uri) TILEDB_NOEXCEPT;
 
 /**
  * Gets the fragment size in bytes.
@@ -7734,7 +7890,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_size(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    uint64_t* size);
+    uint64_t* size) TILEDB_NOEXCEPT;
 
 /**
  * Checks if a fragment is dense.
@@ -7756,7 +7912,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_dense(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    int32_t* dense);
+    int32_t* dense) TILEDB_NOEXCEPT;
 
 /**
  * Checks if a fragment is sparse.
@@ -7778,7 +7934,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_sparse(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    int32_t* sparse);
+    int32_t* sparse) TILEDB_NOEXCEPT;
 
 /**
  * Gets the timestamp range of a fragment.
@@ -7803,7 +7959,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_timestamp_range(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint64_t* start,
-    uint64_t* end);
+    uint64_t* end) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the non-empty domain from a given fragment for a given
@@ -7830,7 +7986,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_from_index(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint32_t did,
-    void* domain);
+    void* domain) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the non-empty domain from a given fragment for a given
@@ -7856,7 +8012,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_from_name(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     const char* dim_name,
-    void* domain);
+    void* domain) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the non-empty domain range sizes from a fragment for a given
@@ -7888,7 +8044,7 @@ tiledb_fragment_info_get_non_empty_domain_var_size_from_index(
     uint32_t fid,
     uint32_t did,
     uint64_t* start_size,
-    uint64_t* end_size);
+    uint64_t* end_size) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the non-empty domain range sizes from a fragment for a given
@@ -7919,7 +8075,7 @@ tiledb_fragment_info_get_non_empty_domain_var_size_from_name(
     uint32_t fid,
     const char* dim_name,
     uint64_t* start_size,
-    uint64_t* end_size);
+    uint64_t* end_size) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the non-empty domain from a fragment for a given
@@ -7956,7 +8112,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_var_from_index(
     uint32_t fid,
     uint32_t did,
     void* start,
-    void* end);
+    void* end) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the non-empty domain from a fragment for a given dimension name.
@@ -7992,7 +8148,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_var_from_name(
     uint32_t fid,
     const char* dim_name,
     void* start,
-    void* end);
+    void* end) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the number of MBRs from the fragment.
@@ -8018,7 +8174,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    uint64_t* mbr_num);
+    uint64_t* mbr_num) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the MBR from a given fragment for a given dimension index.
@@ -8045,7 +8201,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_from_index(
     uint32_t fid,
     uint32_t mid,
     uint32_t did,
-    void* mbr);
+    void* mbr) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the MBR from a given fragment for a given dimension name.
@@ -8071,7 +8227,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_from_name(
     uint32_t fid,
     uint32_t mid,
     const char* dim_name,
-    void* mbr);
+    void* mbr) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the MBR sizes from a fragment for a given dimension index.
@@ -8104,7 +8260,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_size_from_index(
     uint32_t mid,
     uint32_t did,
     uint64_t* start_size,
-    uint64_t* end_size);
+    uint64_t* end_size) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the MBR range sizes from a fragment for a given dimension name.
@@ -8136,7 +8292,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_size_from_name(
     uint32_t mid,
     const char* dim_name,
     uint64_t* start_size,
-    uint64_t* end_size);
+    uint64_t* end_size) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the MBR from a fragment for a given dimension index.
@@ -8175,7 +8331,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_from_index(
     uint32_t mid,
     uint32_t did,
     void* start,
-    void* end);
+    void* end) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the MBR from a fragment for a given dimension name.
@@ -8213,7 +8369,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_from_name(
     uint32_t mid,
     const char* dim_name,
     void* start,
-    void* end);
+    void* end) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the number of cells written to the fragment by the user.
@@ -8244,7 +8400,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_cell_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    uint64_t* cell_num);
+    uint64_t* cell_num) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the format version of a fragment.
@@ -8266,7 +8422,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_version(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    uint32_t* version);
+    uint32_t* version) TILEDB_NOEXCEPT;
 
 /**
  * Checks if a fragment has consolidated metadata.
@@ -8288,7 +8444,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_has_consolidated_metadata(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    int32_t* has);
+    int32_t* has) TILEDB_NOEXCEPT;
 
 /**
  * Gets the number of fragments with unconsolidated metadata.
@@ -8309,7 +8465,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_has_consolidated_metadata(
 TILEDB_EXPORT int32_t tiledb_fragment_info_get_unconsolidated_metadata_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
-    uint32_t* unconsolidated);
+    uint32_t* unconsolidated) TILEDB_NOEXCEPT;
 
 /**
  * Gets the number of fragments to vacuum.
@@ -8329,7 +8485,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_unconsolidated_metadata_num(
 TILEDB_EXPORT int32_t tiledb_fragment_info_get_to_vacuum_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
-    uint32_t* to_vacuum_num);
+    uint32_t* to_vacuum_num) TILEDB_NOEXCEPT;
 
 /**
  * Gets the URI of the fragment to vacuum with the given index.
@@ -8351,7 +8507,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_to_vacuum_uri(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    const char** uri);
+    const char** uri) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the array schema name a fragment.
@@ -8373,7 +8529,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_array_schema(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    tiledb_array_schema_t** array_schema);
+    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 /**
  * Get the fragment info schema name.
@@ -8394,7 +8550,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_array_schema_name(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    const char** schema_name);
+    const char** schema_name) TILEDB_NOEXCEPT;
 
 /**
  * Dumps the fragment info in ASCII format in the selected output.
@@ -8413,7 +8569,9 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_array_schema_name(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_fragment_info_dump(
-    tiledb_ctx_t* ctx, const tiledb_fragment_info_t* fragment_info, FILE* out);
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    FILE* out) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }
