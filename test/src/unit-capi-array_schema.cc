@@ -1186,7 +1186,7 @@ TEST_CASE_METHOD(
   tiledb_dimension_t* r_d1;
   rc = tiledb_domain_get_dimension_from_index(ctx_, r_domain, 0, &r_d1);
   REQUIRE(rc == TILEDB_OK);
-  const void* extent = NULL;
+  const void* extent = nullptr;
   rc = tiledb_dimension_get_tile_extent(ctx_, r_d1, &extent);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(extent != nullptr);

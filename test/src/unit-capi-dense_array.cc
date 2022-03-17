@@ -1245,7 +1245,7 @@ void DenseArrayFx::check_simultaneous_writes(const std::string& path) {
                           domain_0_lo + tile_extent_0 - 1,
                           domain_1_lo,
                           domain_1_lo + tile_extent_1 - 1}});
-    buffer_sizes.push_back({{tile_extent_0 * tile_extent_1 * sizeof(int)}});
+    buffer_sizes.push_back({{static_cast<uint64_t>(tile_extent_0) * static_cast<uint64_t>(tile_extent_1) * sizeof(int)}});
     buffers.push_back(new int[buffer_sizes.back()[0] / sizeof(int)]);
   }
 
