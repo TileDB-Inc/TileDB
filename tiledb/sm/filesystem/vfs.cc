@@ -31,7 +31,6 @@
  */
 
 #include "vfs.h"
-#include "filestat.h"
 #include "path_win.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -50,6 +49,7 @@
 #include <unordered_map>
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb {
 namespace sm {
@@ -816,13 +816,13 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
-    uris->emplace_back(fs.path().to_string());
+    uris->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
+tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
     const URI& parent) const {
   if (!init_) {
     auto st = LOG_STATUS(Status_VFSError("Cannot list; VFS not initialized"));
@@ -837,11 +837,11 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
     RETURN_NOT_OK_TUPLE(is_dir(parent, &flag), nullopt);
 
     if (!flag) {
-      return {Status::Ok(), std::vector<FileStat>()};
+      return {Status::Ok(), std::vector<directory_entry>()};
     }
   }
 
-  optional<std::vector<FileStat>> entries;
+  optional<std::vector<directory_entry>> entries;
   if (parent.is_file()) {
 #ifdef _WIN32
     Status st;
@@ -897,7 +897,13 @@ tuple<Status, optional<std::vector<FileStat>>> VFS::ls_with_sizes(
         Status_VFSError("Unsupported URI scheme: " + parent.to_string()));
     return {st, std::nullopt};
   }
-  parallel_sort(compute_tp_, entries->begin(), entries->end());
+  parallel_sort(
+      compute_tp_,
+      entries->begin(),
+      entries->end(),
+      [](const directory_entry& l, const directory_entry& r) {
+        return l.path().native() < r.path().native();
+      });
 
   return {Status::Ok(), entries};
 }

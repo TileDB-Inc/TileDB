@@ -47,9 +47,13 @@
 using namespace tiledb::common;
 
 namespace tiledb {
+
+namespace common::filesystem {
+class directory_entry;
+}
+
 namespace sm {
 
-class FileStat;
 class URI;
 
 /** Typedef this here so we don't have to include Windows.h */
@@ -156,10 +160,10 @@ class Win {
    * Lists files and file information under a given path.
    *
    * @param path The parent path to list sub-paths.
-   * @return A list of FileStat objects
+   * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<FileStat>>> ls_with_sizes(
-      const URI& path) const;
+  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  ls_with_sizes(const URI& path) const;
 
   /**
    * Move a given filesystem path.

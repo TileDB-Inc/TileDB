@@ -32,8 +32,8 @@
 
 #ifdef HAVE_S3
 
-#include "filestat.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/directory_entry.h"
 
 #include <aws/core/utils/logging/AWSLogging.h>
 #include <aws/core/utils/logging/DefaultLogSystem.h>
@@ -63,6 +63,8 @@
 
 #include "tiledb/sm/filesystem/s3.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+
+using tiledb::common::filesystem::directory_entry;
 
 namespace {
 
@@ -681,13 +683,13 @@ Status S3::ls(
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
-    paths->emplace_back(fs.path().to_path());
+    paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<FileStat>>> S3::ls_with_sizes(
+tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
     const URI& prefix, const std::string& delimiter, int max_paths) const {
   RETURN_NOT_OK_TUPLE(init_client(), nullopt);
 
@@ -710,7 +712,7 @@ tuple<Status, optional<std::vector<FileStat>>> S3::ls_with_sizes(
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     list_objects_request.SetRequestPayer(request_payer_);
 
-  std::vector<FileStat> entries;
+  std::vector<directory_entry> entries;
 
   bool is_done = false;
   while (!is_done) {
@@ -731,8 +733,7 @@ tuple<Status, optional<std::vector<FileStat>>> S3::ls_with_sizes(
     for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
       std::string file(object.GetKey().c_str());
       uint64_t size = object.GetSize();
-      entries.emplace_back(
-          URI("s3://" + aws_auth + add_front_slash(file)), size);
+      entries.emplace_back("s3://" + aws_auth + add_front_slash(file), size);
     }
 
     for (const auto& object :
@@ -740,8 +741,8 @@ tuple<Status, optional<std::vector<FileStat>>> S3::ls_with_sizes(
       std::string file(object.GetPrefix().c_str());
       // For "directories" it doesn't seem possible to get a shallow size in
       // S3, so the size of such an entry will be nullopt in S3.
-      entries.emplace_back(URI(
-          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file))));
+      entries.emplace_back(
+          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)), 0);
     }
 
     is_done =

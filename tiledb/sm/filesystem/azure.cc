@@ -38,8 +38,8 @@
 
 #include <future>
 
-#include "filestat.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/directory_entry.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/global_state/global_state.h"
@@ -52,6 +52,7 @@
 #include <put_block_list_request_base.h>
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb {
 namespace sm {
@@ -572,13 +573,13 @@ Status Azure::ls(
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
-    paths->emplace_back(fs.path().to_path());
+    paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<FileStat>>> Azure::ls_with_sizes(
+tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
     const URI& uri, const std::string& delimiter, int max_paths) const {
   assert(client_);
 
@@ -595,7 +596,7 @@ tuple<Status, optional<std::vector<FileStat>>> Azure::ls_with_sizes(
   RETURN_NOT_OK_TUPLE(
       parse_azure_uri(uri_dir, &container_name, &blob_path), nullopt);
 
-  std::vector<FileStat> entries;
+  std::vector<directory_entry> entries;
   std::string continuation_token = "";
   do {
     std::future<azure::storage_lite::storage_outcome<
@@ -627,12 +628,13 @@ tuple<Status, optional<std::vector<FileStat>>> Azure::ls_with_sizes(
     for (const auto& blob : response.blobs) {
       if (blob.is_directory) {
         entries.emplace_back(
-            URI("azure://" + container_name + "/" +
-                remove_front_slash(remove_trailing_slash(blob.name))));
+            "azure://" + container_name + "/" +
+                remove_front_slash(remove_trailing_slash(blob.name)),
+            0);
       } else {
         entries.emplace_back(
-            URI("azure://" + container_name + "/" +
-                remove_front_slash(remove_trailing_slash(blob.name))),
+            "azure://" + container_name + "/" +
+                remove_front_slash(remove_trailing_slash(blob.name)),
             blob.content_length);
       }
     }

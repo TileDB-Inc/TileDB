@@ -80,9 +80,12 @@
 using namespace tiledb::common;
 
 namespace tiledb {
-namespace sm {
 
-class FileStat;
+namespace common::filesystem {
+class directory_entry;
+}
+
+namespace sm {
 
 /**
  * This class implements the various S3 filesystem functions. It also
@@ -225,9 +228,10 @@ class S3 {
    * @param prefix The parent path to list sub-paths.
    * @param delimiter The uri is truncated to the first delimiter
    * @param max_paths The maximum number of paths to be retrieved
-   * @return A list of FileStat objects
+   * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<FileStat>>> ls_with_sizes(
+  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  ls_with_sizes(
       const URI& prefix,
       const std::string& delimiter = "/",
       int max_paths = -1) const;

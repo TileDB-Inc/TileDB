@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/directory_entry.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -78,7 +79,6 @@ namespace tiledb {
 namespace sm {
 
 class Tile;
-class FileStat;
 
 enum class Filesystem : uint8_t;
 enum class VFSMode : uint8_t;
@@ -285,8 +285,8 @@ class VFS {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  tuple<Status, optional<std::vector<FileStat>>> ls_with_sizes(
-      const URI& parent) const;
+  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  ls_with_sizes(const URI& parent) const;
 
   /**
    * Renames a file.

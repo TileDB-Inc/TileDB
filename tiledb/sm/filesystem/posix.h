@@ -49,10 +49,14 @@
 using namespace tiledb::common;
 
 namespace tiledb {
+
+namespace common::filesystem {
+class directory_entry;
+}
+
 namespace sm {
 
 class URI;
-class FileStat;
 
 /**
  * This class implements the POSIX filesystem functions.
@@ -163,10 +167,10 @@ class Posix {
    * Lists files and file information one level deep under a given path.
    *
    * @param uri The parent path to list sub-paths.
-   * @return A list of FileStat objects
+   * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<FileStat>>> ls_with_sizes(
-      const URI& uri) const;
+  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  ls_with_sizes(const URI& uri) const;
 
   /**
    * Move a given filesystem path.

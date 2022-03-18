@@ -35,7 +35,7 @@
 #include <sstream>
 #include <unordered_set>
 
-#include "filestat.h"
+#include "tiledb/common/directory_entry.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"
@@ -43,6 +43,7 @@
 #include "uri.h"
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb {
 namespace sm {
@@ -83,7 +84,7 @@ class MemFilesystem::FSNode {
   virtual bool is_dir() const = 0;
 
   /** Lists the contents of a node */
-  virtual tuple<Status, optional<std::vector<FileStat>>> ls(
+  virtual tuple<Status, optional<std::vector<directory_entry>>> ls(
       const std::string& full_path) const = 0;
 
   /** Indicates if a given node is a child of this node */
@@ -156,7 +157,7 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
   }
 
   /** Returns the full path to this file */
-  tuple<Status, optional<std::vector<FileStat>>> ls(
+  tuple<Status, optional<std::vector<directory_entry>>> ls(
       const std::string& full_path) const override {
     assert(!mutex_.try_lock());
 
@@ -281,24 +282,22 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
     return true;
   }
 
-  tuple<Status, optional<std::vector<FileStat>>> ls(
+  tuple<Status, optional<std::vector<directory_entry>>> ls(
       const std::string& full_path) const override {
     assert(!mutex_.try_lock());
 
-    std::vector<FileStat> names;
+    std::vector<directory_entry> names;
     names.reserve(children_.size());
     for (const auto& child : children_) {
       std::unique_lock<std::mutex> lock(child.second->mutex_);
       if (child.second->is_dir()) {
-        names.emplace_back(URI("mem://" + full_path + child.first));
+        names.emplace_back("mem://" + full_path + child.first, 0);
       } else {
         uint64_t size;
         RETURN_NOT_OK_TUPLE(child.second->get_size(&size), nullopt);
-        names.emplace_back(URI("mem://" + full_path + child.first), size);
+        names.emplace_back("mem://" + full_path + child.first, size);
       }
     }
-
-    std::sort(names.begin(), names.end());
 
     return {Status::Ok(), names};
   }
@@ -396,14 +395,14 @@ Status MemFilesystem::ls(
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
-    paths->emplace_back(fs.path().to_string());
+    paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<FileStat>>> MemFilesystem::ls_with_sizes(
-    const URI& path) const {
+tuple<Status, optional<std::vector<directory_entry>>>
+MemFilesystem::ls_with_sizes(const URI& path) const {
   auto abspath = path.to_path();
   std::vector<std::string> tokens = tokenize(abspath);
 

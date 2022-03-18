@@ -46,11 +46,15 @@
 using namespace tiledb::common;
 
 namespace tiledb {
+
+namespace common::filesystem {
+class directory_entry;
+}
+
 namespace sm {
 
 class Config;
 class URI;
-class FileStat;
 
 namespace hdfs {
 
@@ -189,9 +193,10 @@ class HDFS {
    * Lists objects and object information that start with `uri`.
    *
    * @param uri The parent path to list sub-paths.
-   * @return A list of FileStat objects
+   * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<FileStat>>> ls_with_sizes(const URI& uri);
+  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  ls_with_sizes(const URI& uri);
 
   /**
    * Returns the size of the input file with a given URI in bytes.

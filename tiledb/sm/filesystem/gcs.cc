@@ -40,7 +40,7 @@
 #include <sstream>
 #include <unordered_set>
 
-#include "filestat.h"
+#include "tiledb/common/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/unique_rwlock.h"
 #include "tiledb/sm/filesystem/gcs.h"
@@ -49,6 +49,7 @@
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb {
 namespace sm {
@@ -390,13 +391,13 @@ Status GCS::ls(
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
-    paths->emplace_back(fs.path().to_path());
+    paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<FileStat>>> GCS::ls_with_sizes(
+tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
     const URI& uri, const std::string& delimiter, int max_paths) const {
   assert(paths);
   RETURN_NOT_OK_TUPLE(init_client(), nullopt);
@@ -414,7 +415,7 @@ tuple<Status, optional<std::vector<FileStat>>> GCS::ls_with_sizes(
   RETURN_NOT_OK_TUPLE(
       parse_gcs_uri(uri_dir, &bucket_name, &object_path), nullopt);
 
-  std::vector<FileStat> entries;
+  std::vector<directory_entry> entries;
   google::cloud::storage::Prefix prefix_option(object_path);
   google::cloud::storage::Delimiter delimiter_option(delimiter);
 
@@ -442,16 +443,17 @@ tuple<Status, optional<std::vector<FileStat>>> GCS::ls_with_sizes(
             results)) {
       auto obj = absl::get<google::cloud::storage::ObjectMetadata>(results);
       entries.emplace_back(
-          URI(gcs_prefix + bucket_name + "/" +
-              remove_front_slash(remove_trailing_slash(obj.name()))),
+          gcs_prefix + bucket_name + "/" +
+              remove_front_slash(remove_trailing_slash(obj.name())),
           obj.size());
     } else if (absl::holds_alternative<std::string>(results)) {
       // "Directories" are returned as strings here so we can't return
       // any metadata for them.
       entries.emplace_back(
-          URI(gcs_prefix + bucket_name + "/" +
+          gcs_prefix + bucket_name + "/" +
               remove_front_slash(
-                  remove_trailing_slash(absl::get<std::string>(results)))));
+                  remove_trailing_slash(absl::get<std::string>(results))),
+          0);
     }
   }
 

@@ -1,5 +1,5 @@
 /**
- * @file   filestat.cc
+ * @file   directory_entry.cc
  *
  * @section LICENSE
  *
@@ -27,62 +27,40 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class FileStat.
+ * This file implements class directory_entry.
  */
 
-#include "tiledb/sm/filesystem/filestat.h"
+#include "directory_entry.h"
+#include "path.h"
 
 namespace tiledb {
-namespace sm {
-
+namespace common {
+namespace filesystem {
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-FileStat::FileStat()
-    : path_()
-    , size_(nullopt) {
-}
-
-FileStat::FileStat(const URI& path)
-    : path_(path)
-    , size_(nullopt) {
-}
-
-FileStat::FileStat(const URI& path, optional<uint64_t> size)
-    : path_(path)
+directory_entry::directory_entry(const std::string& p, uint64_t size)
+    : path_(p)
     , size_(size) {
 }
-
-FileStat::~FileStat() = default;
 
 /* ********************************* */
 /*                API                */
 /* ********************************* */
 
-URI FileStat::path() const {
+void directory_entry::assign(const class path& path) {
+  path_ = path;
+}
+
+const class path& directory_entry::path() const {
   return path_;
 }
 
-optional<uint64_t> FileStat::size() const {
+uint64_t directory_entry::file_size() const {
   return size_;
 }
 
-bool FileStat::operator==(const FileStat& entry) const {
-  return path_ == entry.path_;
-}
-
-bool FileStat::operator!=(const FileStat& entry) const {
-  return !operator==(entry);
-}
-
-bool FileStat::operator<(const FileStat& entry) const {
-  return path_ < entry.path_;
-}
-
-bool FileStat::operator>(const FileStat& entry) const {
-  return path_ > entry.path_;
-}
-
-}  // namespace sm
+}  // namespace filesystem
+}  // namespace common
 }  // namespace tiledb

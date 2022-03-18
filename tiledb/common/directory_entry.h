@@ -1,5 +1,5 @@
 /**
- * @file   filestat.h
+ * @file   directory_entry.h
  *
  * @section LICENSE
  *
@@ -27,69 +27,86 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class FileStat.
+ * This file implements class directory_entry.
  */
 
-#ifndef TILEDB_FILESTAT_H
-#define TILEDB_FILESTAT_H
+#ifndef TILEDB_DIRECTORY_ENTRY_H
+#define TILEDB_DIRECTORY_ENTRY_H
 
-#include "tiledb/common/common.h"
-#include "tiledb/common/status.h"
-#include "tiledb/sm/filesystem/uri.h"
+#include "path.h"
 
-#include <string>
+#include <cstdint>
 
 namespace tiledb {
-namespace sm {
+namespace common {
+namespace filesystem {
 
-class FileStat {
+class directory_entry {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Constructor. */
-  FileStat();
+  directory_entry() = default;
 
   /**
-   * Constructor.
+   * Copy constructor defaulted
    *
-   * @param path URI that identifies a filesystem entry.
+   * @param dentry directory_entry to copy from
    */
-  explicit FileStat(const URI& path);
+  directory_entry(const directory_entry& dentry) = default;
 
   /**
-   * Constructor.
+   * Move constructor defaulted
    *
-   * @param path URI that identifies a filesystem entry.
-   * @param size The size in bytes stored for this entry.
+   * @param dentry directory_entry to move from
    */
-  explicit FileStat(const URI& path, optional<uint64_t> size);
+  directory_entry(directory_entry&& dentry) = default;
+
+  /**
+   * Constructor
+   *
+   * @param p The path of the entry
+   * @param size The size of the filesystem entry
+   */
+  directory_entry(const std::string& p, uint64_t size);
 
   /** Destructor. */
-  ~FileStat();
+  ~directory_entry() = default;
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
-  /** @return The URI identifying the filesystem entry. */
-  URI path() const;
+  /**
+   * Copy assignment operator
+   *
+   * @param dentry directory_entry to move from
+   */
+  directory_entry& operator=(const directory_entry& dentry) = default;
 
-  /** @return The size in bytes of the filesystem entry. */
-  optional<uint64_t> size() const;
+  /**
+   * Move assignment operator
+   *
+   * @param dentry directory_entry to move from
+   */
+  directory_entry& operator=(directory_entry&& dentry) = default;
 
-  /** For comparing entries alphanumerically. */
-  bool operator==(const FileStat& uri) const;
+  /**
+   * Assigns new content to the entry.
+   */
+  void assign(const class path& p);
 
-  /** For comparing entries  alphanumerically. */
-  bool operator!=(const FileStat& uri) const;
+  /**
+   * @return The full path the directory_entry refers to
+   */
+  const class path& path() const;
 
-  /** For comparing entries  alphanumerically. */
-  bool operator<(const FileStat& uri) const;
-
-  /** For comparing entries  alphanumerically. */
-  bool operator>(const FileStat& uri) const;
+  /**
+   * @return The size of the file to which the directory entry refers
+   */
+  uint64_t file_size() const;
 
  private:
   /* ********************************* */
@@ -97,13 +114,14 @@ class FileStat {
   /* ********************************* */
 
   /** The URI of the filesystem entry */
-  URI path_;
+  class path path_;
 
-  /** The size of a filesystem entry in bytes */
-  optional<uint64_t> size_;
+  /** The size of a filesystem entry */
+  uint64_t size_;
 };
 
-}  // namespace sm
+}  // namespace filesystem
+}  // namespace common
 }  // namespace tiledb
 
-#endif  // TILEDB_FILESTAT_H
+#endif  // TILEDB_DIRECTORY_ENTRY_H

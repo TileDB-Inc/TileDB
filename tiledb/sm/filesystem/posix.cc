@@ -33,13 +33,14 @@
 #ifndef _WIN32
 
 #include "tiledb/sm/filesystem/posix.h"
-#include "filestat.h"
+#include "tiledb/common/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/utils.h"
+#include "uri.h"
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -54,6 +55,7 @@
 #include <sstream>
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb {
 namespace sm {
@@ -288,13 +290,13 @@ Status Posix::ls(
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
-    paths->emplace_back(fs.path().to_path());
+    paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<FileStat>>> Posix::ls_with_sizes(
+tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
     const URI& uri) const {
   std::string path = uri.to_path();
   struct dirent* next_path = nullptr;
@@ -303,19 +305,23 @@ tuple<Status, optional<std::vector<FileStat>>> Posix::ls_with_sizes(
     return {Status::Ok(), nullopt};
   }
 
-  std::vector<FileStat> entries;
+  std::vector<directory_entry> entries;
 
   while ((next_path = readdir(dir)) != nullptr) {
     if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
       continue;
     std::string abspath = path + "/" + next_path->d_name;
 
+    // Getting the file size here incurs an additional system call
+    // via file_size() and ls() calls will feel this too.
+    // If this penalty becomes noticeable, we should just duplicate
+    // thi implementation in ls() and don't get the size
     if (next_path->d_type == DT_DIR) {
-      entries.emplace_back(URI(abspath));
+      entries.emplace_back(abspath, 0);
     } else {
       uint64_t size;
       RETURN_NOT_OK_TUPLE(file_size(abspath, &size), nullopt);
-      entries.emplace_back(URI(abspath), size);
+      entries.emplace_back(abspath, size);
     }
   }
   // close parent directory

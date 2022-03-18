@@ -32,8 +32,8 @@
 #ifdef _WIN32
 
 #include "win.h"
-#include "filestat.h"
 #include "path_win.h"
+#include "tiledb/common/directory_entry.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
@@ -55,6 +55,7 @@
 #include <sstream>
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb {
 namespace sm {
@@ -270,19 +271,19 @@ Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
-    paths->emplace_back(fs.path().to_path());
+    paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<FileStat>>> Win::ls_with_sizes(
+tuple<Status, optional<std::vector<directory_entry>>> Win::ls_with_sizes(
     const URI& uri) const {
   auto path = uri.to_path();
   bool ends_with_slash = path.length() > 0 && path[path.length() - 1] == '\\';
   const std::string glob = path + (ends_with_slash ? "*" : "\\*");
   WIN32_FIND_DATA find_data;
-  std::vector<FileStat> entries;
+  std::vector<directory_entry> entries;
 
   // Get first file in directory.
   HANDLE find_h = FindFirstFileEx(
@@ -303,11 +304,11 @@ tuple<Status, optional<std::vector<FileStat>>> Win::ls_with_sizes(
       std::string file_path =
           path + (ends_with_slash ? "" : "\\") + find_data.cFileName;
       if (is_dir(file_path)) {
-        entries.emplace_back(URI(file_path));
+        entries.emplace_back(file_path, 0);
       } else {
         uint64_t size;
         RETURN_NOT_OK_TUPLE(file_size(file_path, &size), nullopt);
-        entries.emplace_back(URI(file_path), size);
+        entries.emplace_back(file_path, size);
       }
     }
 

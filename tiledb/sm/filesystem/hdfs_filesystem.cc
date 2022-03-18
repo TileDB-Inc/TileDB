@@ -41,7 +41,7 @@
 #ifdef HAVE_HDFS
 
 #include "hdfs_filesystem.h"
-#include "filestat.h"
+#include "tiledb/common/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/config/config.h"
@@ -58,6 +58,7 @@
 #include <sstream>
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb {
 namespace sm {
@@ -527,13 +528,13 @@ Status HDFS::ls(const URI& uri, std::vector<std::string>* paths) {
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
-    paths->emplace_back(fs.path().to_path());
+    paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<FileStat>>> HDFS::ls_with_sizes(
+tuple<Status, optional<std::vector<directory_entry>>> HDFS::ls_with_sizes(
     const URI& uri) {
   hdfsFS fs = nullptr;
   RETURN_NOT_OK_TUPLE(connect(&fs), nullopt);
@@ -549,17 +550,16 @@ tuple<Status, optional<std::vector<FileStat>>> HDFS::ls_with_sizes(
     }
   }
 
-  std::vector<FileStat> entries;
+  std::vector<directory_entry> entries;
   for (int i = 0; i < numEntries; ++i) {
     auto path = std::string(fileList[i].mName);
     if (!utils::parse::starts_with(path, "hdfs://")) {
       path = std::string("hdfs://") + path;
     }
-    // For directories Filestat size is nullopt
     if (fileList[i].mKind == kObjectKindDirectory) {
-      entries.emplace_back(URI(path));
+      entries.emplace_back(path, 0);
     } else {
-      entries.emplace_back(URI(path), fileList[i].mSize);
+      entries.emplace_back(path, fileList[i].mSize);
     }
   }
   libhdfs_->hdfsFreeFileInfo(fileList, numEntries);
