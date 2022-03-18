@@ -9,11 +9,12 @@ Where possible we should use up to C++17. Some external packages, such as PDAL a
 limited in what they can use. Where we control the environment we should strive
 for C++17 usage.
 
-## [Functions](Functions.md)
+## Functions
 
+* See [Functions.md](Functions.md)
 * [Inputs on the right. Outputs on the left.](Functions.md#inputs-on-the-right-outputs-on-the-left)
 
-## [Memory Handling](Memory.md)
+## Memory Handling
 
-See [Memory.md](Memory.md)
+* See [Memory.md](Memory.md)
 
