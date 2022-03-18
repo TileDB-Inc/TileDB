@@ -38,7 +38,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/query_condition_op.h"
-#include "tiledb/sm/query/query_ast.h"
+#include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/sm/query/result_cell_slab.h"
 #include "tiledb/sm/query/result_tile.h"
 
