@@ -1126,7 +1126,7 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   return Status::Ok();
 }
 
-void FragmentMetadata::set_rtree_domain(const Domain* domain) {
+void FragmentMetadata::set_rtree_domain(shared_ptr<const Domain> domain) {
   rtree_.set_domain(domain);
 }
 

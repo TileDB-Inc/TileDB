@@ -114,7 +114,7 @@ class BlobArraySchema : public tiledb::sm::ArraySchema {
    * @param tile_extent
    * @return Domain
    */
-  static Domain create_domain(const uint64_t tile_extent = default_extent);
+  static shared_ptr<Domain> create_domain(const uint64_t tile_extent = default_extent);
 
   /**
    * Create attribute to store file data

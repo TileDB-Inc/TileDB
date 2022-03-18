@@ -64,13 +64,8 @@ BlobArraySchema::BlobArraySchema()
   tile_order_ = Layout::ROW_MAJOR;
 
   // Set domain
-  tdb_delete(domain_);
-
-  // non-functional change trying to 'fix' whatever's wrong...
-  // ... here (and similar)
-  // https://github.com/TileDB-Inc/TileDB/runs/5585960030?check_suite_focus=true
-
-  domain_ = tdb_new(Domain, create_domain());
+  domain_ = nullptr;
+  domain_ = create_domain();
 
   // Set single attribute
   FilterPipeline attribute_filters;
@@ -113,9 +108,9 @@ BlobArraySchema::~BlobArraySchema() {
 
 void BlobArraySchema::set_schema_based_on_file_details(
     const uint64_t file_size, const bool file_compressed) {
-  Domain domain =
+  auto domain =
       create_domain(compute_tile_extent_based_on_file_size(file_size));
-  set_domain(&domain);
+  set_domain(domain);
 
   // Set single attribute
   FilterPipeline attribute_filters;
@@ -136,9 +131,9 @@ void BlobArraySchema::set_schema_based_on_file_details(
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-Domain BlobArraySchema::create_domain(uint64_t tile_extent) {
+shared_ptr<Domain> BlobArraySchema::create_domain(uint64_t tile_extent) {
   // Create domain
-  Domain domain;
+  auto domain = make_shared<Domain>(HERE());
   // Set dimension
   Dimension dimension(constants::blob_array_dimension_name, Datatype::UINT64);
   // Set domain
@@ -151,7 +146,7 @@ Domain BlobArraySchema::create_domain(uint64_t tile_extent) {
   FilterPipeline fp;
   fp.add_filter(BitWidthReductionFilter());
   dimension.set_filter_pipeline(&fp);
-  domain.add_dimension(&dimension);
+  domain->add_dimension(&dimension);
   return domain;
 }
 

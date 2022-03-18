@@ -143,9 +143,6 @@ class ArrayDirectory {
   /** Returns the URIs of the consolidated fragment metadata files. */
   const std::vector<URI>& fragment_meta_uris() const;
 
-  /** Returns the latest consolidated fragment metadata URI. */
-  const URI& latest_fragment_meta_uri() const;
-
   /** Returns the URI to store fragments. */
   URI get_fragments_dir(uint32_t write_version) const;
 
@@ -233,11 +230,6 @@ class ArrayDirectory {
   std::vector<URI> fragment_meta_uris_;
 
   /**
-   * The latest fragment metadata URI.
-   */
-  URI latest_fragment_meta_uri_;
-
-  /**
    * Only array fragments, metadata, etc. that
    * were created within timestamp range
    *    [`timestamp_start`, `timestamp_end`] will be considered when
@@ -276,10 +268,9 @@ class ArrayDirectory {
   /**
    * Loads the root directory uris for v1 to v11.
    *
-   * @return Status, vector of fragment URIs, latest fragment metadata.
+   * @return Status, vector of fragment URIs.
    */
-  tuple<Status, optional<std::vector<URI>>, optional<URI>>
-  load_root_dir_uris_v1_v11(
+  tuple<Status, optional<std::vector<URI>>> load_root_dir_uris_v1_v11(
       const std::vector<URI>& root_dir_uris,
       const std::unordered_set<std::string>& consolidated_uris_set);
 
@@ -303,9 +294,10 @@ class ArrayDirectory {
   /**
    * Loads the fragment metadata directory uris for v12 or higher.
    *
-   * @return Status, latest fragment metadata.
+   * @return Status, fragment metadata URIs.
    */
-  tuple<Status, optional<URI>> load_fragment_metadata_dir_uris_v12_or_higher();
+  tuple<Status, optional<std::vector<URI>>>
+  load_fragment_metadata_dir_uris_v12_or_higher();
 
   /**
    * Loads the commits URIs to consolidate.
@@ -343,9 +335,9 @@ class ArrayDirectory {
       const std::unordered_set<std::string>& consolidated_uris_set) const;
 
   /**
-   * Computes the latest fragment meta URI from the input array directory.
+   * Computes the fragment meta URIs from the input array directory.
    */
-  tuple<Status, optional<URI>> compute_latest_fragment_meta_uri(
+  std::vector<URI> compute_fragment_meta_uris(
       const std::vector<URI>& array_dir_uris);
 
   /**

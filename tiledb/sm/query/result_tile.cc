@@ -126,7 +126,7 @@ uint64_t ResultTile::cell_num() const {
   return 0;
 }
 
-const Domain* ResultTile::domain() const {
+shared_ptr<const Domain> ResultTile::domain() const {
   return domain_;
 }
 
@@ -852,7 +852,7 @@ void ResultTile::compute_results_count_sparse_string(
   const uint64_t zeroed_size = coords_num < 256 ? coords_num : 256;
   for (uint64_t i = min_cell; i < min_cell + coords_num; i += zeroed_size) {
     const uint64_t partition_size =
-        (i < cell_num - zeroed_size) ? zeroed_size : cell_num - i;
+        (i < max_cell - zeroed_size) ? zeroed_size : max_cell - i;
 
     // Check if all `r_bitmap` values are zero between `i` and
     // `partition_size`. To do so, first make sure the first byte is 0, then

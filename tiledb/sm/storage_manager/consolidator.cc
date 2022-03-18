@@ -344,7 +344,7 @@ Status Consolidator::consolidate_fragments(
 }
 
 bool Consolidator::are_consolidatable(
-    const Domain* domain,
+    shared_ptr<const Domain> domain,
     const FragmentInfo& fragment_info,
     size_t start,
     size_t end,

@@ -13,7 +13,7 @@
 ## New features
 
 * Publish Subarray access/functionality for use outside of core. [#2214](https://github.com/TileDB-Inc/TileDB/pull/2214)
-* Add TILEDB_BYTE datatype [#2721](https://github.com/TileDB-Inc/TileDB/pull/2721)
+* Add TILEDB_BLOB datatype [#2721](https://github.com/TileDB-Inc/TileDB/pull/2721)
 * Expose array schema libtiledb version information [#2863](https://github.com/TileDB-Inc/TileDB/pull/2863)
 
 ## Improvements
@@ -71,7 +71,7 @@
 
 ## Deprecations
 
-* Deprecate `TILEDB_CHAR` in favor of users using `TILEDB_BYTE` or `TILEDB_STRING_ASCII` for attribute datatypes. [#2742](https://github.com/TileDB-Inc/TileDB/pull/2742) [#2797](https://github.com/TileDB-Inc/TileDB/pull/2797)
+* Deprecate `TILEDB_CHAR` in favor of users using `TILEDB_BLOB` or `TILEDB_STRING_ASCII` for attribute datatypes. [#2742](https://github.com/TileDB-Inc/TileDB/pull/2742) [#2797](https://github.com/TileDB-Inc/TileDB/pull/2797)
 * Deprecate `TILEDB_ANY` datatype [#2807](https://github.com/TileDB-Inc/TileDB/pull/2807)
 * Deprecate `TILEDB_STRING_USC2` and `TILEDB_STRING_USC4` datatypes. [#2812](https://github.com/TileDB-Inc/TileDB/pull/2812)
 * Drop support for Visual Studio 2017 compiler [#2847](https://github.com/TileDB-Inc/TileDB/pull/2847)
@@ -96,7 +96,7 @@
 ### C API
 
 * Add `tiledb_array_schema_evolution_set_timestamp_range` to avoid race conditions based on schema timestamp [#2776](https://github.com/TileDB-Inc/TileDB/pull/2776)
-* Deprecate `TILEDB_CHAR` in favor of users using `TILEDB_BYTE` or `TILEDB_STRING_ASCII` for attribute datatypes. [#2742](https://github.com/TileDB-Inc/TileDB/pull/2742) [#2797](https://github.com/TileDB-Inc/TileDB/pull/2797)
+* Deprecate `TILEDB_CHAR` in favor of users using `TILEDB_BLOB` or `TILEDB_STRING_ASCII` for attribute datatypes. [#2742](https://github.com/TileDB-Inc/TileDB/pull/2742) [#2797](https://github.com/TileDB-Inc/TileDB/pull/2797)
 * Add {set,get}_validity_filter_list [#2798](https://github.com/TileDB-Inc/TileDB/pull/2798)
 * Deprecate `TILEDB_ANY` datatype [#2807](https://github.com/TileDB-Inc/TileDB/pull/2807)
 * Deprecate `TILEDB_STRING_USC2` and `TILEDB_STRING_USC4` datatypes. [#2812](https://github.com/TileDB-Inc/TileDB/pull/2812)
@@ -106,7 +106,7 @@
 ### C++ API
 
 * Add `ArraySchemaEvolution::set_timestamp_range` to avoid race conditions based on schema timestamp [#2776](https://github.com/TileDB-Inc/TileDB/pull/2776)
-* Deprecate `TILEDB_CHAR` in favor of users using `TILEDB_BYTE` or `TILEDB_STRING_ASCII` for attribute datatypes. [#2742](https://github.com/TileDB-Inc/TileDB/pull/2742) [#2797](https://github.com/TileDB-Inc/TileDB/pull/2797)
+* Deprecate `TILEDB_CHAR` in favor of users using `TILEDB_BLOB` or `TILEDB_STRING_ASCII` for attribute datatypes. [#2742](https://github.com/TileDB-Inc/TileDB/pull/2742) [#2797](https://github.com/TileDB-Inc/TileDB/pull/2797)
 * Add validity_filter_list set/get and missing get tests [#2798](https://github.com/TileDB-Inc/TileDB/pull/2798)
 * Deprecate `TILEDB_ANY` datatype [#2807](https://github.com/TileDB-Inc/TileDB/pull/2807)
 * Deprecate `TILEDB_STRING_USC2` and `TILEDB_STRING_USC4` datatypes. [#2812](https://github.com/TileDB-Inc/TileDB/pull/2812)

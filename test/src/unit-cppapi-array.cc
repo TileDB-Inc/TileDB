@@ -347,7 +347,16 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     query.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK(query.submit() == tiledb::Query::Status::COMPLETE);
     REQUIRE_NOTHROW(query.finalize());
+
+    // Check non-empty domain while array open in write mode
+    CHECK_THROWS(array.non_empty_domain<int>(1));
+    CHECK_THROWS(array.non_empty_domain<int>("d1"));
+
     array.close();
+
+    // Check non-empty domain before open from read
+    CHECK_THROWS(array.non_empty_domain<int>(1));
+    CHECK_THROWS(array.non_empty_domain<int>("d1"));
 
     array.open(TILEDB_READ);
 

@@ -33,6 +33,7 @@
 #ifndef TILEDB_READ_CELL_SLAB_ITER_H
 #define TILEDB_READ_CELL_SLAB_ITER_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/result_cell_slab.h"
@@ -127,7 +128,7 @@ class ReadCellSlabIter {
   /* ********************************* */
 
   /** The array domain. */
-  const Domain* domain_;
+  shared_ptr<const Domain> domain_;
 
   /** The subarray layout. */
   Layout layout_;

@@ -101,7 +101,7 @@ set(TILEDB_TEST_SUPPORT_SOURCES
   src/helpers-dimension.h
   src/vfs_helpers.cc
   )
-  
+
 set(TILEDB_UNIT_TEST_SOURCES
   src/helpers.h
   src/helpers-dimension.h
@@ -156,7 +156,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-dimension.cc
   src/unit-duplicates.cc
   src/unit-empty-var-length.cc
-  src/unit-filter-buffer.cc 
+  src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
   src/unit-gcs.cc
   src/unit-gs.cc
@@ -384,3 +384,19 @@ add_custom_target(
   DEPENDS tiledb_unit
 )
 
+include(CMakePrintHelpers)
+cmake_print_properties(
+  TARGETS tiledb_unit
+  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
+  )
+cmake_print_properties(
+  TARGETS tiledb_test_support_lib
+  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
+  )
+cmake_print_properties(
+  TARGETS Catch2::Catch2
+  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
+  )
+
+# CI tests
+add_subdirectory(ci)
