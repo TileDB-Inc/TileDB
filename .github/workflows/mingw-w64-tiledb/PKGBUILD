@@ -31,10 +31,6 @@ build() {
   export CXXFLAGS="-mfpmath=sse -msse2"
   fi
 
-  export MAGIC=${MINGW_PREFIX}/share/misc/magic.mgc
-  export TILEDB_VFS_S3_CONNECT_TIMEOUT_MS=6000
-  export TILEDB_VFS_S3_REQUEST_TIMEOUT_MS=6000
-
   export MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX="
   ${MINGW_PREFIX}/bin/cmake.exe \
     -G"MSYS Makefiles" \
@@ -60,5 +56,18 @@ check (){
   # may want to add
   #  -DTILEDB_VERBOSE=ON \
   # to cmake options above if enabling/running 'make check'.
-  make check
+  # install(/run) minio if invoking 'check' later since building with TILEDB_S3=ON
+  export MAGIC=${MINGW_PREFIX}/share/misc/magic.mgc
+  export TILEDB_VFS_S3_CONNECT_TIMEOUT_MS=6000
+  export TILEDB_VFS_S3_REQUEST_TIMEOUT_MS=6000
+  export MINIO_ACCESS_KEY=minio
+  export MINIO_SECRET_KEY=miniosecretkey
+  export AWS_ACCESS_KEY_ID=minio
+  export AWS_SECRET_ACCESS_KEY=miniosecretkey
+
+  # echo "inside check(), before trying to start minio"
+  # powershell ${TILEDB_HOME}/scripts/install-minio.ps1
+  # sleep 10
+  # echo "inside check(), before calling 'make check'"
+  # make check
 }
