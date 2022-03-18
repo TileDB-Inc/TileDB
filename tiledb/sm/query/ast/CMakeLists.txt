@@ -1,9 +1,10 @@
 #
-# tiledb/sm/query/CMakeLists.txt
+# tiledb/sm/compressors/CMakeLists.txt
+#
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2021-2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,23 +24,27 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-
 include(common NO_POLICY_SCOPE)
 
-add_subdirectory(ast)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_ast EXCLUDE_FROM_ALL)
+target_sources(compile_ast PRIVATE
+        test/compile_ast_main.cc)
 
-# Skeleton for future use
-if (FALSE AND TILEDB_TESTS)
-    add_executable(unit_query_writer EXCLUDE_FROM_ALL)
+if (TILEDB_TESTS)
+    add_executable(unit_ast EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_ast PRIVATE compressors)
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_query_writer PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_ast PUBLIC Catch2::Catch2)
 
     # Sources for tests
-    target_sources(unit_query_writer PUBLIC test/unit_query_writer_main.cc)
+    target_sources(unit_ast PUBLIC test/main.cc test/unit-query-ast.cc)
 
     add_test(
-        NAME "unit_query_writer"
-        COMMAND $<TARGET_FILE:unit_query_writer>
+        NAME "query_ast"
+        COMMAND $<TARGET_FILE:unit_ast>
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
