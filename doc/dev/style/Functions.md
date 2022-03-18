@@ -140,6 +140,6 @@ TEST_CASE("bar")
 
 ## References
 
-* https://en.cppreference.com/w/cpp/utility/tuple
-* https://en.cppreference.com/w/cpp/utility/optional
-* https://en.cppreference.com/w/cpp/language/structured_binding
+* [https://en.cppreference.com/w/cpp/utility/tuple](https://en.cppreference.com/w/cpp/utility/tuple)
+* [https://en.cppreference.com/w/cpp/utility/optional](https://en.cppreference.com/w/cpp/utility/optional)
+* [https://en.cppreference.com/w/cpp/language/structured_binding](https://en.cppreference.com/w/cpp/language/structured_binding)
