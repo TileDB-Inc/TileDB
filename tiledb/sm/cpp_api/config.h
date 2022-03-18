@@ -448,6 +448,9 @@ class Config {
    *    (except parallel S3 writes, which are controlled by
    *    `vfs.s3.multipart_part_size`.) <br>
    *    **Default**: 10MB
+   * - `vfs.max_batch_size` <br>
+   *    The maximum number of bytes in a VFS read operation<br>
+   *    **Default**: UINT64_MAX
    * - `vfs.min_batch_size` <br>
    *    The minimum number of bytes in a VFS read operation<br>
    *    **Default**: 20MB
