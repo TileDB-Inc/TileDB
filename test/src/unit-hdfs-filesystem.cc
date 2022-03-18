@@ -122,6 +122,38 @@ TEST_CASE("Test HDFS filesystem", "[hdfs]") {
   CHECK(st.ok());
   CHECK(paths.size() > 0);
 
+  // ls_with_sizes
+  // Dir structure:
+  // ...../subdir
+  // ...../subdir/file
+  // ...../subdir/subsubdir
+
+  std::string subdir = "hdfs:///tiledb_test/subdir";
+  std::string file = "hdfs:///tiledb_test/subdir/file";
+  std::string subsubdir = "hdfs:///tiledb_test/subdir/subsubdir";
+
+  CHECK(hdfs.create_dir(URI(subdir)).ok());
+  CHECK(hdfs.create_dir(URI(subsubdir)).ok());
+  CHECK(hdfs.touch(URI(file)).ok());
+
+  std::string s = "abcdef";
+  CHECK(hdfs.write(URI(file), s.data(), s.size()).ok());
+
+  auto&& [status, rv] = hdfs.ls_with_sizes(URI(subdir));
+  auto children = *rv;
+  REQUIRE(status.ok());
+
+  REQUIRE(children.size() == 2);
+  CHECK(children[0].path().native() == file);
+  CHECK(
+      children[1].path().native() == subsubdir.substr(0, subsubdir.size() - 1));
+
+  CHECK(children[0].file_size() == s.size());
+  // Directories don't get a size
+  CHECK(children[1].file_size() == 0);
+  // Cleanup
+  CHECK(hdfs.remove_dir(subdir).ok());
+
   uint64_t nbytes = 0;
   st = hdfs.file_size(URI("hdfs:///tiledb_test/tiledb_test_file"), &nbytes);
   CHECK(st.ok());
