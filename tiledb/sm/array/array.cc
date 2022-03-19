@@ -336,6 +336,7 @@ Status Array::close() {
     tdb_delete(array_schema_latest_);
     array_schema_latest_ = nullptr;
   } else {
+    tdb_delete(array_schema_latest_);
     array_schema_latest_ = nullptr;
     if (query_type_ == QueryType::READ) {
       RETURN_NOT_OK(storage_manager_->array_close_for_reads(this));
