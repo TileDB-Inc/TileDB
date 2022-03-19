@@ -828,7 +828,8 @@ Status FragmentInfo::load(
       storage_manager_->load_array_schemas_and_fragment_metadata(
           array_uri_, nullptr, enc_key_, timestamp_start, timestamp_end_);
   RETURN_NOT_OK(st_schemas);
-  (void)array_schema_latest;  // Not needed here
+  if (array_schema_latest)
+    delete array_schema_latest.value();  // Not needed here
   array_schemas_all_ = std::move(array_schemas_all.value());
   auto fragment_num = (uint32_t)fragment_metadata.value().size();
   const auto& fragment_metadata_v = fragment_metadata.value();
