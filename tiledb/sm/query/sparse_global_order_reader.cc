@@ -802,7 +802,7 @@ SparseGlobalOrderReader::compute_parallelization_parameters(
     const uint64_t cell_offset) {
   // Prevent processing past the end of the cells in case there are more
   // threads than cells.
-  if (range_thread_idx > length - 1) {
+  if (length == 0 || range_thread_idx > length - 1) {
     return {0, 0, 0, true};
   }
 
