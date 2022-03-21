@@ -33,9 +33,9 @@
 
 #include <sstream>
 
+#include "api_exception_safety.h"
 #include "tiledb/appl/blob_array/blob_array.h"
 #include "tiledb/appl/blob_array/blob_array_schema.h"
-#include "api_exception_safety.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -195,7 +195,7 @@ else {
 // schema;
 
 return TILEDB_OK;
-}
+}  // namespace tiledb::common::detail
 
 TILEDB_EXPORT int32_t tiledb_array_as_file_import(
     tiledb_ctx_t* ctx, tiledb_array_t* array, const char* input_uri_filename) {
@@ -343,13 +343,15 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
     tiledb_array_t** array,
     const char* array_uri,
     tiledb_config_t* config) noexcept {
-  return api_entry<detail::tiledb_array_as_file_obtain>(ctx, array, array_uri, config);
+  return api_entry<detail::tiledb_array_as_file_obtain>(
+      ctx, array, array_uri, config);
 }
 TILEDB_EXPORT int32_t tiledb_array_as_file_import(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* input_uri_filename) noexcept {
-  return api_entry<detail::tiledb_array_as_file_import>(ctx, array, input_uri_filename);
+  return api_entry<detail::tiledb_array_as_file_import>(
+      ctx, array, input_uri_filename);
 }
 TILEDB_EXPORT int32_t tiledb_array_as_file_export(
     tiledb_ctx_t* ctx,
