@@ -369,7 +369,7 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
     tiledb_ctx_t* ctx,
     tiledb_array_t** array,
     const char* array_uri,
-    tiledb_config_t* config);
+    tiledb_config_t* config) noexcept;
 
 /**
  * Import a file into the array from the given file uri.
@@ -394,7 +394,9 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_as_file_import(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* input_uri_filename);
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* input_uri_filename) noexcept;
 /**
  * Export a file from the array to the given file uri.
  *
@@ -418,7 +420,9 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_import(
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_as_file_export(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* output_uri_filename);
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* output_uri_filename) noexcept;
 
 /**
  * Create a schema as used to create array used by
@@ -439,7 +443,7 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_export(
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_create_default_blob_array(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t** array_schema);
+    tiledb_ctx_t* ctx, tiledb_array_schema_t** array_schema) noexcept;
 
 #ifdef __cplusplus
 }
