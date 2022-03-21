@@ -118,7 +118,7 @@ The tile offsets is a [generic tile](./generic_tile.md) with the following inter
 | … | … | … |
 | Tile offset N | `uint64_t` | Offset N |
 
-### Tile Validites
+### Tile Validities
 
 The tile validities is a [generic tile](./generic_tile.md) with the following internal format:
 
