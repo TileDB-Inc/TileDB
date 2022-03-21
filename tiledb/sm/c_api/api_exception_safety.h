@@ -44,13 +44,19 @@ struct CAPIEntryPointBase {
     auto cst = tiledb::common::Status_Error(
         std::string("Internal TileDB uncaught std::bad_alloc exception; ") +
         e.what());
-    LOG_STATUS(cst);
+    (void)LOG_STATUS(cst);
   }
 
   static void action(const std::exception& e) {
     auto cst = tiledb::common::Status_Error(
         std::string("Internal TileDB uncaught exception; ") + e.what());
-    LOG_STATUS(cst);
+    (void)LOG_STATUS(cst);
+  }
+
+  static void action() {
+    auto cst = tiledb::common::Status_Error(
+        std::string("Internal TileDB uncaught unknown exception!"));
+    (void)LOG_STATUS(cst);
   }
 };
 
@@ -60,7 +66,7 @@ struct CAPIEntryPoint;
 /**
  * Specialization of `CAPIEntryPoint` for ??? return type
  */
-template <class R, class... Args, R (*f)(Args...)>
+template <class... Args, class R, R (*f)(Args...)>
 struct CAPIEntryPoint<f> : CAPIEntryPointBase {
   static R function(Args... args) {
     try {
@@ -70,6 +76,9 @@ struct CAPIEntryPoint<f> : CAPIEntryPointBase {
       return TILEDB_OOM;
     } catch (const std::exception& e) {
       action(e);
+      return TILEDB_ERR;
+    } catch (...) {
+      action();
       return TILEDB_ERR;
     }
   }
@@ -89,6 +98,9 @@ struct CAPIEntryPoint<f> : CAPIEntryPointBase {
     } catch (const std::exception& e) {
       action(e);
       return false;
+    } catch (...) {
+      action();
+      return false;
     }
   }
 };
@@ -105,11 +117,45 @@ struct CAPIEntryPoint<f> : CAPIEntryPointBase {
       action(e);
     } catch (const std::exception& e) {
       action(e);
+    } catch (...) {
+      action();
     }
   }
 };
 
 template <auto f>
 constexpr auto api_entry = CAPIEntryPoint<f>::function;
+
+/**
+ * A version of `CAPIEntryPoint` for `void` return functions.
+ *
+ * Certain compilers (GCC 11.2 on certain platforms) were failing on CI using
+ * the above specializations, claiming an ambiguity between the generic-return
+ * and void-return ones. In order to move forward, we use a different template
+ * name to avoid the ambiguity.
+ */
+template <auto f>
+struct CAPIEntryPointVoid;
+
+/**
+ * Specialization of `CAPIEntryPoint` for void return type
+ */
+template <class... Args, void (*f)(Args...)>
+struct CAPIEntryPointVoid<f> : CAPIEntryPointBase {
+  static void function(Args... args) {
+    try {
+      f(args...);
+    } catch (const std::bad_alloc& e) {
+      action(e);
+    } catch (const std::exception& e) {
+      action(e);
+    } catch (...) {
+      action();
+    }
+  }
+};
+
+template <auto f>
+constexpr auto api_entry_void = CAPIEntryPointVoid<f>::function;
 
 #endif  // TILEDB_API_EXCEPTION_SAFETY_H

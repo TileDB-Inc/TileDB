@@ -42,15 +42,18 @@ target_link_libraries(thread_pool PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 #
 add_executable(compile_thread_pool EXCLUDE_FROM_ALL)
 target_link_libraries(compile_thread_pool PRIVATE thread_pool)
-target_sources(compile_thread_pool PRIVATE
-    test/compile_thread_pool_main.cc $<TARGET_OBJECTS:thread_pool>
-)
+target_sources(compile_thread_pool PRIVATE test/compile_thread_pool_main.cc)
+
 
 if (TILEDB_TESTS)
     add_executable(unit_thread_pool EXCLUDE_FROM_ALL)
     target_link_libraries(unit_thread_pool PUBLIC thread_pool)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_thread_pool PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_thread_pool PUBLIC $<TARGET_OBJECTS:cancelable_tasks>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_thread_pool PUBLIC ${DEPENDENT_SOURCES})
 
     # Sources for tests
     target_sources(unit_thread_pool PUBLIC
@@ -60,7 +63,7 @@ if (TILEDB_TESTS)
 
     add_test(
             NAME "unit_thread_pool"
-            COMMAND $<TARGET_FILE:unit_thread_pool>
+            COMMAND $<TARGET_FILE:unit_thread_pool> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()

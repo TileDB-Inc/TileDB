@@ -38,6 +38,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
@@ -120,7 +121,7 @@ class ResultTile {
   const TileTuple& coord_tile(unsigned dim_idx) const;
 
   /** Returns the stored domain. */
-  const Domain* domain() const;
+  shared_ptr<const Domain> domain() const;
 
   /** Erases the tile for the input attribute/dimension. */
   void erase_tile(const std::string& name);
@@ -330,7 +331,7 @@ class ResultTile {
   /* ********************************* */
 
   /** The array domain. */
-  const Domain* domain_;
+  shared_ptr<const Domain> domain_;
 
   /** The id of the fragment this tile belongs to. */
   unsigned frag_idx_ = UINT32_MAX;

@@ -107,6 +107,7 @@ struct Sum<T, double> {
 template <typename T>
 struct metadata_generator_type_data;
 
+METADATA_GENERATOR_TYPE_DATA(std::byte, int64_t);
 METADATA_GENERATOR_TYPE_DATA(char, int64_t);
 METADATA_GENERATOR_TYPE_DATA(int8_t, int64_t);
 METADATA_GENERATOR_TYPE_DATA(uint8_t, uint64_t);

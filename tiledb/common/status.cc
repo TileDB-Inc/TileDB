@@ -5,7 +5,7 @@
  *
  * The BSD License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *            Copyright (c) 2011 The LevelDB Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,42 +50,33 @@
 
 namespace tiledb::common {
 
-/**
- * General constructor for arbitrary status
- */
-Status::Status(StatusCode code, const std::string_view& msg) {
-  assert(code != StatusCode::Ok);
-  size_t msg_size = msg.size();
-  // assert(msg_size < std::numeric_limits<uint32_t>::max());
-  auto size = static_cast<uint32_t>(msg_size);
-  auto result = tdb_new_array(char, size + 7);
-  memcpy(result, &size, sizeof(size));
-  result[4] = static_cast<char>(code);
-  int16_t reserved = 0;
-  memcpy(result + 5, &reserved, sizeof(reserved));
-  memcpy(result + 7, msg.data(), msg_size);
-  state_ = result;
+Status::Status(
+    const std::string_view& vicinity, const std::string_view& message) {
+  auto msg_size = message.size();
+  // Initialize `state_` first so member pointers are available.
+  state_ = tdb_new_array(char, allocation_size(msg_size));
+  origin_() = vicinity;
+  message_size_() = static_cast<message_size_type>(msg_size);
+  memcpy(message_text_ptr_(), message.data(), msg_size);
 }
 
-const char* Status::copy_state(const char* state) {
-  uint32_t size;
-  memcpy(&size, state, sizeof(size));
-  auto result = tdb_new_array(char, size + 7);
-  memcpy(result, state, size + 7);
-  return result;
+void Status::copy_state(const Status& st) {
+  if (st.state_ == nullptr) {
+    state_ = nullptr;
+    return;
+  }
+  auto state_size = allocation_size(st.message_size_());
+  state_ = tdb_new_array(char, state_size);
+  memcpy(const_cast<char*>(state_), st.state_, state_size);
 }
 
 std::string Status::to_string() const {
-  auto sc =
-      (state_ == nullptr) ? StatusCode::Ok : static_cast<StatusCode>(state_[4]);
-  std::string result = common::to_string(sc);
   if (state_ == nullptr) {
-    return result;
+    return Ok_text_;
   }
+  std::string result{origin_()};
   result.append(": ");
-  uint32_t size;
-  memcpy(&size, state_, sizeof(size));
-  result.append(static_cast<const char*>(state_ + 7), size);
+  result.append(message_text_ptr_(), message_size_());
   return result;
 }
 

@@ -244,6 +244,7 @@ class Config {
    *     - "fragments": only the fragments will be consolidated
    *     - "fragment_meta": only the fragment metadata will be consolidated
    *     - "array_meta": only the array metadata will be consolidated
+   *     - "commits": only the commit files will be consolidated
 
    */
   static const std::string SM_CONSOLIDATION_MODE;
@@ -263,6 +264,7 @@ class Config {
    *     - "fragments": only the fragments will be vacuumed
    *     - "fragment_meta": only the fragment metadata will be vacuumed
    *     - "array_meta": only the array metadata will be vacuumed
+   *     - "commits": only the commit files will be vacuumed
    */
   static const std::string SM_VACUUM_MODE;
 
@@ -303,6 +305,9 @@ class Config {
 
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
+
+  /** The default maximum number of bytes in a batched VFS read operation. */
+  static const std::string VFS_MAX_BATCH_SIZE;
 
   /**
    * The default minimum number of bytes between two VFS read batches.
