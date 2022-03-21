@@ -182,11 +182,7 @@ class ASTNodeExpr : public ASTNode {
     for (size_t i = 0; i < nodes_.size(); i++) {
       auto ptr = nodes_[i].get();
       if (ptr != nullptr) {
-        if (ptr->get_tag() == ASTNodeTag::VAL) {
-          result_str += dynamic_cast<ASTNodeVal*>(ptr)->to_str();
-        } else {
-          result_str += dynamic_cast<ASTNodeExpr*>(ptr)->to_str();
-        }
+        result_str += ptr->to_str();
         if (i != nodes_.size() - 1) {
           result_str += " ";
           result_str += query_condition_combination_op_str(combination_op_);
