@@ -13,6 +13,8 @@ my_array                                    # array folder
          |      |_ a0.tdb                   # fixed-sized attribute 
          |      |_ a1.tdb                   # var-sized attribute (offsets) 
          |      |_ a1_var.tdb               # var-sized attribute (values)
+         |      |_ a2.tdb                   # fixed-sized nullable attribute
+         |      |_ a2_validity.tdb          # fixed-sized nullable attribute (validities)
          |      |_ ...      
          |      |_ d0.tdb                   # fixed-sized dimension 
          |      |_ d1.tdb                   # var-sized dimension (offsets) 
@@ -103,6 +105,17 @@ The tile offsets is a [generic tile](./generic_tile.md) with the following inter
 | Tile offset 1 | `uint64_t` | Offset 1 |
 | … | … | … |
 | Tile offset N | `uint64_t` | Offset N |
+
+### Tile Validites
+
+The tile validities is a [generic tile](./generic_tile.md) with the following internal format:
+
+| **Field** | **Type** | **Description** |
+| :--- | :--- | :--- |
+| Num tile validities | `uint64_t` | Number of tile validites |
+| Tile validity 1 | `uint8_t` | Validity 1 |
+| … | … | … |
+| Tile validity N | `uint8_t` | Validity N |
 
 ### Tile Sizes
 
