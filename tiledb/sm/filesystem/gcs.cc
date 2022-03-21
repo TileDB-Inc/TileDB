@@ -387,6 +387,7 @@ Status GCS::ls(
     std::vector<std::string>* paths,
     const std::string& delimiter,
     const int max_paths) const {
+  assert(paths);
   auto&& [st, entries] = ls_with_sizes(uri, delimiter, max_paths);
   RETURN_NOT_OK(st);
 
@@ -399,7 +400,6 @@ Status GCS::ls(
 
 tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
     const URI& uri, const std::string& delimiter, int max_paths) const {
-  assert(paths);
   RETURN_NOT_OK_TUPLE(init_client(), nullopt);
 
   const URI uri_dir = uri.add_trailing_slash();

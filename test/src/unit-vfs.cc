@@ -34,6 +34,9 @@
 #include <catch.hpp>
 #include "test/src/helpers.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#ifdef _WIN32
+#include "tiledb/sm/filesystem/path_win.h"
+#endif
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
@@ -556,13 +559,13 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   // Check results
   REQUIRE(children.size() == 2);
 
-  CHECK(children[0].path().native() == URI(file).to_path());
-  CHECK(children[1].path().native() == URI(subdir).to_path());
+  REQUIRE(children[0].path().native() == URI(file).to_path());
+  REQUIRE(children[1].path().native() == URI(subdir).to_path());
 
-  CHECK(children[0].file_size() == 6);
+  REQUIRE(children[0].file_size() == 6);
 
   // Directories don't get a size
-  CHECK(children[1].file_size() == 0);
+  REQUIRE(children[1].file_size() == 0);
 
   // Clean up
   vfs.remove_dir(URI(path));

@@ -33,6 +33,7 @@
 #ifdef HAVE_GCS
 
 #include "catch.hpp"
+#include "tiledb/common/directory_entry.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/gcs.h"
@@ -203,13 +204,13 @@ TEST_CASE_METHOD(GCSFx, "Test GCS filesystem, file management", "[gcs]") {
   // ls_with_sizes
   std::string s = "abcdef";
   CHECK(gcs_.write(URI(file3), s.data(), s.size()).ok());
-  REQUIRE(gcs_.flush_object(URI(largefile)).ok());
+  REQUIRE(gcs_.flush_object(URI(file3)).ok());
 
   auto&& [status, rv] = gcs_.ls_with_sizes(URI(dir));
   auto children = *rv;
   REQUIRE(status.ok());
 
-  REQUIRE(children.size() == 3);
+  REQUIRE(children.size() == 2);
   CHECK(children[0].path().native() == file3);
   CHECK(children[1].path().native() == subdir.substr(0, subdir.size() - 1));
 

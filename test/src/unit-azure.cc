@@ -33,6 +33,7 @@
 #ifdef HAVE_AZURE
 
 #include "catch.hpp"
+#include "tiledb/common/directory_entry.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/azure.h"

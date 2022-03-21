@@ -33,6 +33,7 @@
 #ifdef HAVE_HDFS
 
 #include "catch.hpp"
+#include "tiledb/common/directory_entry.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
 #include "tiledb/sm/filesystem/uri.h"
@@ -152,7 +153,7 @@ TEST_CASE("Test HDFS filesystem", "[hdfs]") {
   // Directories don't get a size
   CHECK(children[1].file_size() == 0);
   // Cleanup
-  CHECK(hdfs.remove_dir(subdir).ok());
+  CHECK(hdfs.remove_dir(URI(subdir)).ok());
 
   uint64_t nbytes = 0;
   st = hdfs.file_size(URI("hdfs:///tiledb_test/tiledb_test_file"), &nbytes);
