@@ -58,7 +58,7 @@ RTree::RTree() {
   deserialized_buffer_size_ = 0;
 }
 
-RTree::RTree(const Domain* domain, unsigned fanout)
+RTree::RTree(shared_ptr<const Domain> domain, unsigned fanout)
     : domain_(domain)
     , fanout_(fanout) {
 }
@@ -128,7 +128,7 @@ unsigned RTree::dim_num() const {
   return (domain_ == nullptr) ? 0 : domain_->dim_num();
 }
 
-const Domain* RTree::domain() const {
+shared_ptr<const Domain> RTree::domain() const {
   return domain_;
 }
 
@@ -292,7 +292,7 @@ Status RTree::serialize(Buffer* buff) const {
   return Status::Ok();
 }
 
-Status RTree::set_domain(const Domain* domain) {
+Status RTree::set_domain(shared_ptr<const Domain> domain) {
   domain_ = domain;
   return Status::Ok();
 }
@@ -332,7 +332,7 @@ Status RTree::set_leaf_num(uint64_t num) {
 }
 
 Status RTree::deserialize(
-    ConstBuffer* cbuff, const Domain* domain, uint32_t version) {
+    ConstBuffer* cbuff, shared_ptr<const Domain> domain, uint32_t version) {
   if (version < 5)
     return deserialize_v1_v4(cbuff, domain);
   return deserialize_v5(cbuff, domain);
@@ -366,7 +366,8 @@ RTree RTree::clone() const {
   return clone;
 }
 
-Status RTree::deserialize_v1_v4(ConstBuffer* cbuff, const Domain* domain) {
+Status RTree::deserialize_v1_v4(
+    ConstBuffer* cbuff, shared_ptr<const Domain> domain) {
   // For backwards compatibility, they will be ignored
   unsigned dim_num_i;
   uint8_t type_i;
@@ -400,7 +401,8 @@ Status RTree::deserialize_v1_v4(ConstBuffer* cbuff, const Domain* domain) {
   return Status::Ok();
 }
 
-Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
+Status RTree::deserialize_v5(
+    ConstBuffer* cbuff, shared_ptr<const Domain> domain) {
   RETURN_NOT_OK(cbuff->read(&fanout_, sizeof(fanout_)));
   unsigned level_num;
 
@@ -417,12 +419,13 @@ Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
   for (unsigned l = 0; l < level_num; ++l) {
     RETURN_NOT_OK(cbuff->read(&mbr_num, sizeof(uint64_t)));
     levels_[l].resize(mbr_num);
+
     for (uint64_t m = 0; m < mbr_num; ++m) {
       levels_[l][m].resize(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
-        auto dim = domain_->dimension(d);
+        auto dim = domain->dimension(d);
         if (!dim->var_size()) {  // Fixed-sized
-          auto r_size = 2 * domain->dimension(d)->coord_size();
+          auto r_size = 2 * dim->coord_size();
           levels_[l][m][d].set_range(cbuff->cur_data(), r_size);
           cbuff->advance_offset(r_size);
         } else {  // Var-sized

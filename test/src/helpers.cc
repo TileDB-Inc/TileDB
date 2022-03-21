@@ -47,7 +47,20 @@ namespace tiledb {
 namespace test {
 
 // Command line arguments.
-extern std::string g_vfs;
+std::string g_vfs;
+
+int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs) {
+  if (!vfs.empty()) {
+    if (std::find(vfs_fs.begin(), vfs_fs.end(), vfs) == vfs_fs.end()) {
+      std::cerr << "Unknown --vfs argument: \"" << vfs << "\"";
+      return 1;
+    }
+
+    tiledb::test::g_vfs = std::move(vfs);
+  }
+
+  return 0;
+}
 
 bool use_refactored_dense_reader() {
   const char* value = nullptr;
@@ -1246,7 +1259,7 @@ std::string get_fragment_dir(std::string array_dir) {
 }
 
 std::string get_commit_dir(std::string array_dir) {
-  return array_dir + "/" + tiledb::sm::constants::array_commit_dir_name;
+  return array_dir + "/" + tiledb::sm::constants::array_commits_dir_name;
 }
 
 template void check_subarray<int8_t>(

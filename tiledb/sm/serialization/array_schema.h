@@ -65,7 +65,7 @@ namespace serialization {
  * @return Status
  */
 Status array_schema_to_capnp(
-    ArraySchema* array_schema,
+    const ArraySchema& array_schema,
     capnp::ArraySchema::Builder* array_schema_builder,
     const bool client_side);
 
@@ -92,15 +92,13 @@ Status array_schema_from_capnp(
  * @return
  */
 Status array_schema_serialize(
-    ArraySchema* array_schema,
+    const ArraySchema& array_schema,
     SerializationType serialize_type,
     Buffer* serialized_buffer,
     const bool client_side);
 
-Status array_schema_deserialize(
-    ArraySchema** array_schema,
-    SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
+    SerializationType serialize_type, const Buffer& serialized_buffer);
 
 Status nonempty_domain_serialize(
     const Array* array,
@@ -131,7 +129,7 @@ Status max_buffer_sizes_serialize(
     Buffer* serialized_buffer);
 
 Status max_buffer_sizes_deserialize(
-    const ArraySchema* schema,
+    const ArraySchema& schema,
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*

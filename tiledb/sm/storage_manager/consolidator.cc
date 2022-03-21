@@ -39,8 +39,8 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/single_fragment_info.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/time.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -90,6 +90,9 @@ Status Consolidator::consolidate(
         array_name, encryption_type, encryption_key, key_length);
   else if (config_.mode_ == "array_meta")
     return consolidate_array_meta(
+        array_name, encryption_type, encryption_key, key_length);
+  else if (config_.mode_ == "commits")
+    return consolidate_commits(
         array_name, encryption_type, encryption_key, key_length);
 
   return logger_->status(Status_ConsolidatorError(
@@ -179,6 +182,65 @@ Status Consolidator::consolidate_array_meta(
   return Status::Ok();
 }
 
+Status Consolidator::consolidate_commits(
+    const char* array_name,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
+  auto timer_se = stats_->start_timer("consolidate_commits");
+
+  // Open array for writing
+  auto array_uri = URI(array_name);
+  Array array_for_writes(array_uri, storage_manager_);
+  RETURN_NOT_OK(array_for_writes.open(
+      QueryType::WRITE, encryption_type, encryption_key, key_length));
+
+  // Ensure write version is at least 12.
+  auto write_version = array_for_writes.array_schema_latest().write_version();
+  RETURN_NOT_OK(array_for_writes.close());
+  if (write_version < 12) {
+    return logger_->status(Status_ConsolidatorError(
+        "Array version should be at least 12 to consolidate commits."));
+  }
+
+  // Get the array uri to consolidate from the array directory.
+  ArrayDirectory array_dir;
+  try {
+    array_dir = ArrayDirectory(
+        storage_manager_->vfs(),
+        storage_manager_->compute_tp(),
+        URI(array_name),
+        0,
+        utils::time::timestamp_now_ms(),
+        ArrayDirectoryMode::COMMITS);
+  } catch (const std::logic_error& le) {
+    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+  }
+
+  // Get the file name.
+  auto& to_consolidate = array_dir.commit_uris_to_consolidate();
+  auto&& [st1, name] = array_dir.compute_new_fragment_name(
+      to_consolidate.front(), to_consolidate.back(), write_version);
+  RETURN_NOT_OK(st1);
+
+  // Write consolidated file, URIs are relative to the array URI.
+  std::stringstream ss;
+  auto base_uri_size = array_dir.uri().to_string().size();
+  for (const auto& uri : to_consolidate) {
+    ss << uri.to_string().substr(base_uri_size) << "\n";
+  }
+
+  auto data = ss.str();
+  URI consolidated_commits_uri =
+      array_dir.get_commits_dir(write_version)
+          .join_path(name.value() + constants::con_commits_file_suffix);
+  RETURN_NOT_OK(storage_manager_->vfs()->write(
+      consolidated_commits_uri, data.c_str(), data.size()));
+  RETURN_NOT_OK(storage_manager_->vfs()->close_file(consolidated_commits_uri));
+
+  return Status::Ok();
+}
+
 /* ****************************** */
 /*        PRIVATE METHODS         */
 /* ****************************** */
@@ -213,7 +275,7 @@ Status Consolidator::consolidate_fragments(
       encryption_type,
       encryption_key,
       key_length,
-      array_for_reads.array_schema_latest()->dense());
+      array_for_reads.array_schema_latest().dense());
   if (!st.ok()) {
     array_for_reads.close();
     array_for_writes.close();
@@ -282,7 +344,7 @@ Status Consolidator::consolidate_fragments(
 }
 
 bool Consolidator::are_consolidatable(
-    const Domain* domain,
+    shared_ptr<const Domain> domain,
     const FragmentInfo& fragment_info,
     size_t start,
     size_t end,
@@ -325,7 +387,7 @@ Status Consolidator::consolidate(
   }
 
   // Get schema
-  auto array_schema = array_for_reads.array_schema_latest();
+  const auto& array_schema = array_for_reads.array_schema_latest();
 
   // Prepare buffers
   std::vector<ByteVec> buffers;
@@ -428,13 +490,14 @@ Status Consolidator::consolidate_fragment_meta(
 
   // Compute new URI
   URI uri;
+  auto& array_dir = array.array_directory();
   auto first = meta.front()->fragment_uri();
   auto last = meta.back()->fragment_uri();
-  auto write_version = array.array_schema_latest()->write_version();
-  auto&& [st, name] = compute_new_fragment_name(first, last, write_version);
+  auto write_version = array.array_schema_latest().write_version();
+  auto&& [st, name] =
+      array_dir.compute_new_fragment_name(first, last, write_version);
   RETURN_NOT_OK(st);
 
-  auto& array_dir = array.array_directory();
   auto frag_md_uri = array_dir.get_fragment_metadata_dir(write_version);
   RETURN_NOT_OK(storage_manager_->vfs()->create_dir(frag_md_uri));
   uri =
@@ -544,22 +607,22 @@ Status Consolidator::copy_array(
 }
 
 Status Consolidator::create_buffers(
-    const ArraySchema* array_schema,
+    const ArraySchema& array_schema,
     std::vector<ByteVec>* buffers,
     std::vector<uint64_t>* buffer_sizes) {
   auto timer_se = stats_->start_timer("consolidate_create_buffers");
 
   // For easy reference
-  auto attribute_num = array_schema->attribute_num();
-  auto domain = array_schema->domain();
-  auto dim_num = array_schema->dim_num();
-  auto sparse = !array_schema->dense();
+  auto attribute_num = array_schema.attribute_num();
+  auto domain = array_schema.domain();
+  auto dim_num = array_schema.dim_num();
+  auto sparse = !array_schema.dense();
 
   // Calculate number of buffers
   size_t buffer_num = 0;
   for (unsigned i = 0; i < attribute_num; ++i) {
-    buffer_num += (array_schema->attributes()[i]->var_size()) ? 2 : 1;
-    buffer_num += (array_schema->attributes()[i]->nullable()) ? 1 : 0;
+    buffer_num += (array_schema.attributes()[i]->var_size()) ? 2 : 1;
+    buffer_num += (array_schema.attributes()[i]->nullable()) ? 1 : 0;
   }
   if (sparse) {
     for (unsigned i = 0; i < dim_num; ++i)
@@ -599,15 +662,17 @@ Status Consolidator::create_queries(
 
   // Refactored reader optimizes for no subarray.
   if (!config_.use_refactored_reader_ ||
-      array_for_reads->array_schema_latest()->dense())
+      array_for_reads->array_schema_latest().dense())
     RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
   auto first = (*query_r)->first_fragment_uri();
   auto last = (*query_r)->last_fragment_uri();
 
-  auto write_version = array_for_reads->array_schema_latest()->write_version();
-  auto&& [st, name] = compute_new_fragment_name(first, last, write_version);
+  auto write_version = array_for_reads->array_schema_latest().write_version();
+  auto&& [st, name] =
+      array_for_reads->array_directory().compute_new_fragment_name(
+          first, last, write_version);
   RETURN_NOT_OK(st);
   auto frag_uri =
       array_for_reads->array_directory().get_fragments_dir(write_version);
@@ -618,23 +683,23 @@ Status Consolidator::create_queries(
       tdb_new(Query, storage_manager_, array_for_writes, *new_fragment_uri);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->disable_check_global_order());
-  if (array_for_reads->array_schema_latest()->dense())
+  if (array_for_reads->array_schema_latest().dense())
     RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
 
   return Status::Ok();
 }
 
 Status Consolidator::compute_next_to_consolidate(
-    const ArraySchema* array_schema,
+    const ArraySchema& array_schema,
     const FragmentInfo& fragment_info,
     std::vector<TimestampedURI>* to_consolidate,
     NDRange* union_non_empty_domains) const {
   auto timer_se = stats_->start_timer("consolidate_compute_next");
 
   // Preparation
-  auto sparse = !array_schema->dense();
+  auto sparse = !array_schema.dense();
   const auto& fragments = fragment_info.single_fragment_info_vec();
-  auto domain = array_schema->domain();
+  auto domain = array_schema.domain();
   to_consolidate->clear();
   auto min = config_.min_frags_;
   min = (uint32_t)((min > fragments.size()) ? fragments.size() : min);
@@ -741,37 +806,14 @@ Status Consolidator::compute_next_to_consolidate(
   return Status::Ok();
 }
 
-tuple<Status, optional<std::string>> Consolidator::compute_new_fragment_name(
-    const URI& first, const URI& last, uint32_t format_version) const {
-  // Get uuid
-  std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);
-
-  // For creating the new fragment URI
-
-  // Get timestamp ranges
-  std::pair<uint64_t, uint64_t> t_first, t_last;
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(first, &t_first), nullopt);
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(last, &t_last), nullopt);
-
-  // Create new URI
-  std::stringstream ss;
-  ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
-     << format_version;
-
-  return {Status::Ok(), ss.str()};
-}
-
 Status Consolidator::set_query_buffers(
     Query* query,
     std::vector<ByteVec>* buffers,
     std::vector<uint64_t>* buffer_sizes) const {
-  auto array_schema = query->array_schema();
-  auto dim_num = array_schema->dim_num();
-  auto dense = array_schema->dense();
-  auto attributes = array_schema->attributes();
+  const auto& array_schema = query->array_schema();
+  auto dim_num = array_schema.dim_num();
+  auto dense = array_schema.dense();
+  auto attributes = array_schema.attributes();
   unsigned bid = 0;
   for (const auto& attr : attributes) {
     if (!attr->var_size()) {
@@ -814,7 +856,7 @@ Status Consolidator::set_query_buffers(
   }
   if (!dense) {
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = array_schema->dimension(d);
+      auto dim = array_schema.dimension(d);
       auto dim_name = dim->name();
       if (!dim->var_size()) {
         RETURN_NOT_OK(query->set_data_buffer(

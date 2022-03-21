@@ -133,9 +133,9 @@ void OrderedWriter::reset() {
 Status OrderedWriter::ordered_write() {
   // Applicable only to ordered write on dense arrays
   assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
-  assert(array_schema_->dense());
+  assert(array_schema_.dense());
 
-  auto type = array_schema_->domain()->dimension(0)->type();
+  auto type = array_schema_.domain()->dimension(0)->type();
   switch (type) {
     case Datatype::INT8:
       return ordered_write<int8_t>();
@@ -242,12 +242,12 @@ Status OrderedWriter::ordered_write() {
       auto buff_it = buffers_.begin();
       std::advance(buff_it, i);
       const auto& attr = buff_it->first;
-      const auto var_size = array_schema_->var_size(attr);
+      const auto var_size = array_schema_.var_size(attr);
       if (has_min_max_metadata(attr, var_size) &&
-          array_schema_->var_size(attr)) {
+          array_schema_.var_size(attr)) {
         auto& attr_tile_batches = tiles[attr];
         const uint64_t tile_num_mult =
-            1 + (var_size ? 1 : 0) + (array_schema_->is_nullable(attr) ? 1 : 0);
+            1 + (var_size ? 1 : 0) + (array_schema_.is_nullable(attr) ? 1 : 0);
         frag_meta->convert_tile_min_max_var_sizes_to_offsets(attr);
         for (auto& batch : attr_tile_batches) {
           for (uint64_t i = 0; i < batch.size(); i += tile_num_mult) {
@@ -264,9 +264,9 @@ Status OrderedWriter::ordered_write() {
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
       auto& attr_tile_batches = tiles[attr];
-      const auto var_size = array_schema_->var_size(attr);
+      const auto var_size = array_schema_.var_size(attr);
       if (has_min_max_metadata(attr, var_size) &&
-          array_schema_->var_size(attr)) {
+          array_schema_.var_size(attr)) {
         frag_meta->convert_tile_min_max_var_sizes_to_offsets(attr);
         auto st = parallel_for(
             compute_tp, 0, attr_tile_batches.size(), [&](uint64_t b) {
@@ -274,7 +274,7 @@ Status OrderedWriter::ordered_write() {
               auto& batch = tiles[attr][b];
               const uint64_t tile_num_mult =
                   1 + (var_size ? 1 : 0) +
-                  (array_schema_->is_nullable(attr) ? 1 : 0);
+                  (array_schema_.is_nullable(attr) ? 1 : 0);
               for (uint64_t i = 0; i < batch.size(); i += tile_num_mult) {
                 auto idx = b * thread_num + i / tile_num_mult;
                 frag_meta->set_tile_min_var(attr, idx, batch[i].min());
@@ -286,6 +286,11 @@ Status OrderedWriter::ordered_write() {
       }
     }
   }
+
+  // Compute fragment min/max/sum/null count
+  RETURN_NOT_OK_ELSE(
+      frag_meta->compute_fragment_min_max_sum_null_count(),
+      storage_manager_->vfs()->remove_dir(uri));
 
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
@@ -316,12 +321,12 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   auto timer_se = stats_->start_timer("prepare_filter_and_write_tiles");
 
   // For easy reference
-  const auto type = array_schema_->type(name);
-  const auto is_dim = array_schema_->is_dim(name);
-  const bool var = array_schema_->var_size(name);
-  const auto cell_size = array_schema_->cell_size(name);
-  const auto cell_val_num = array_schema_->cell_val_num(name);
-  const bool nullable = array_schema_->is_nullable(name);
+  const auto type = array_schema_.type(name);
+  const auto is_dim = array_schema_.is_dim(name);
+  const bool var = array_schema_.var_size(name);
+  const auto cell_size = array_schema_.cell_size(name);
+  const auto cell_val_num = array_schema_.cell_val_num(name);
+  const bool nullable = array_schema_.is_nullable(name);
 
   // Initialization
   auto tile_num = dense_tiler->tile_num();

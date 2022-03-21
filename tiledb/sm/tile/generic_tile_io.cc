@@ -136,7 +136,12 @@ Status GenericTileIO::read_generic_tile_header(
       header_buff.get(),
       header->filter_pipeline_size));
   ConstBuffer cbuf(header_buff->data(), header_buff->size());
-  RETURN_NOT_OK(header->filters.deserialize(&cbuf));
+  auto&& [st_filterpipeline, filterpipeline]{
+      FilterPipeline::deserialize(&cbuf, header->version_number)};
+  if (!st_filterpipeline.ok()) {
+    return st_filterpipeline;
+  }
+  header->filters = filterpipeline.value();
 
   return Status::Ok();
 }

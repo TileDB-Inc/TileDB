@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -89,33 +89,34 @@ ArraySchema::ArraySchema(ArrayType array_type)
   cell_validity_filters_.add_filter(CompressionFilter(
       constants::cell_validity_compression,
       constants::cell_validity_compression_level));
+
+  // Generate URI and name for ArraySchema
+  generate_uri();
 }
 
-ArraySchema::ArraySchema(const ArraySchema* array_schema) {
-  allows_dups_ = array_schema->allows_dups_;
-  array_uri_ = array_schema->array_uri_;
-  uri_ = array_schema->uri_;
-  array_type_ = array_schema->array_type_;
+ArraySchema::ArraySchema(const ArraySchema& array_schema) {
+  allows_dups_ = array_schema.allows_dups_;
+  array_uri_ = array_schema.array_uri_;
+  uri_ = array_schema.uri_;
+  array_type_ = array_schema.array_type_;
   domain_ = nullptr;
-  timestamp_range_ = array_schema->timestamp_range_;
+  timestamp_range_ = array_schema.timestamp_range_;
 
-  capacity_ = array_schema->capacity_;
-  cell_order_ = array_schema->cell_order_;
-  cell_var_offsets_filters_ = array_schema->cell_var_offsets_filters_;
-  cell_validity_filters_ = array_schema->cell_validity_filters_;
-  coords_filters_ = array_schema->coords_filters_;
-  tile_order_ = array_schema->tile_order_;
-  version_ = array_schema->version_;
+  capacity_ = array_schema.capacity_;
+  cell_order_ = array_schema.cell_order_;
+  cell_var_offsets_filters_ = array_schema.cell_var_offsets_filters_;
+  cell_validity_filters_ = array_schema.cell_validity_filters_;
+  coords_filters_ = array_schema.coords_filters_;
+  tile_order_ = array_schema.tile_order_;
+  version_ = array_schema.version_;
 
-  set_domain(array_schema->domain_);
+  set_domain(array_schema.domain_);
 
   attribute_map_.clear();
-  for (auto attr : array_schema->attributes_)
+  for (auto attr : array_schema.attributes_)
     add_attribute(attr, false);
 
-  // This has to be the last thing set because add_attribute sets the name
-  // TODO: This behavior needs to be changed
-  name_ = array_schema->name_;
+  name_ = array_schema.name_;
 }
 
 ArraySchema::~ArraySchema() {
@@ -248,7 +249,8 @@ Status ArraySchema::check() const {
     }
   }
 
-  RETURN_NOT_OK(check_double_delta_compressor());
+  RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
+  RETURN_NOT_OK(check_rle_compressor(coords_filters()));
 
   if (!check_attribute_dimension_names())
     return LOG_STATUS(
@@ -512,7 +514,6 @@ Status ArraySchema::add_attribute(
   attributes_.emplace_back(attr);
   attribute_map_[attr->name()] = attr.get();
 
-  RETURN_NOT_OK(generate_uri());
   return Status::Ok();
 }
 
@@ -539,7 +540,7 @@ Status ArraySchema::drop_attribute(const std::string& attr_name) {
       it = attributes_.erase(it);
     }
   }
-  RETURN_NOT_OK(generate_uri());
+
   return Status::Ok();
 }
 
@@ -570,17 +571,34 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&capacity_, sizeof(uint64_t)));
 
   // Load coords filters
-  RETURN_NOT_OK(coords_filters_.deserialize(buff));
+  auto&& [st_coords_filters, coords_filters]{
+      FilterPipeline::deserialize(buff, version_)};
+  if (!st_coords_filters.ok()) {
+    return Status_ArraySchemaError("Cannot deserialize coords filters");
+  }
+  coords_filters_ = coords_filters.value();
 
   // Load offsets filters
-  RETURN_NOT_OK(cell_var_offsets_filters_.deserialize(buff));
+  auto&& [st_cell_var_filters, cell_var_filters]{
+      FilterPipeline::deserialize(buff, version_)};
+  if (!st_coords_filters.ok()) {
+    return Status_ArraySchemaError("Cannot deserialize cell var filters");
+  }
+  cell_var_offsets_filters_ = cell_var_filters.value();
 
   // Load validity filters
-  if (version_ >= 7)
-    RETURN_NOT_OK(cell_validity_filters_.deserialize(buff));
+  if (version_ >= 7) {
+    auto&& [st_cell_validity_filters, cell_validity_filters]{
+        FilterPipeline::deserialize(buff, version_)};
+    if (!st_cell_validity_filters.ok()) {
+      return Status_ArraySchemaError(
+          "Cannot deserialize cell validity filters");
+    }
+    cell_validity_filters_ = cell_validity_filters.value();
+  }
 
   // Load domain
-  domain_ = tdb_new(Domain);
+  domain_ = make_shared<Domain>(HERE());
   RETURN_NOT_OK(domain_->deserialize(buff, version_));
 
   // Load attributes
@@ -612,8 +630,8 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-const Domain* ArraySchema::domain() const {
-  return domain_;
+shared_ptr<const Domain> ArraySchema::domain() const {
+  return std::const_pointer_cast<const Domain>(domain_);
 }
 
 Status ArraySchema::init() {
@@ -649,6 +667,10 @@ void ArraySchema::set_capacity(uint64_t capacity) {
 }
 
 Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline* pipeline) {
+  assert(pipeline);
+  RETURN_NOT_OK(check_rle_compressor(*pipeline));
+  RETURN_NOT_OK(check_double_delta_compressor(*pipeline));
+
   coords_filters_ = *pipeline;
   return Status::Ok();
 }
@@ -676,7 +698,7 @@ Status ArraySchema::set_cell_validity_filter_pipeline(
   return Status::Ok();
 }
 
-Status ArraySchema::set_domain(Domain* domain) {
+Status ArraySchema::set_domain(shared_ptr<Domain> domain) {
   if (domain == nullptr)
     return LOG_STATUS(
         Status_ArraySchemaError("Cannot set domain; Input domain is nullptr"));
@@ -706,8 +728,7 @@ Status ArraySchema::set_domain(Domain* domain) {
   }
 
   // Set domain
-  tdb_delete(domain_);
-  domain_ = tdb_new(Domain, domain);
+  domain_ = domain;
 
   // Create dimension map
   dim_map_.clear();
@@ -758,13 +779,9 @@ uint64_t ArraySchema::timestamp_start() const {
   return timestamp_range_.first;
 }
 
-URI ArraySchema::uri() {
+const URI& ArraySchema::uri() const {
   std::lock_guard<std::mutex> lock(mtx_);
-  if (uri_.is_invalid()) {
-    generate_uri();
-  }
-  URI result = uri_;
-  return result;
+  return uri_;
 }
 
 void ArraySchema::set_uri(const URI& uri) {
@@ -774,7 +791,7 @@ void ArraySchema::set_uri(const URI& uri) {
   utils::parse::get_timestamp_range(uri_, &timestamp_range_);
 }
 
-Status ArraySchema::get_uri(URI* uri) {
+Status ArraySchema::get_uri(URI* uri) const {
   if (uri_.is_invalid()) {
     return LOG_STATUS(
         Status_ArraySchemaError("Error in ArraySchema; invalid URI"));
@@ -783,11 +800,8 @@ Status ArraySchema::get_uri(URI* uri) {
   return Status::Ok();
 }
 
-std::string ArraySchema::name() {
+const std::string& ArraySchema::name() const {
   std::lock_guard<std::mutex> lock(mtx_);
-  if (name_.empty()) {
-    generate_uri();
-  }
   return name_;
 }
 
@@ -814,11 +828,12 @@ bool ArraySchema::check_attribute_dimension_names() const {
   return (names.size() == attributes_.size() + dim_num);
 }
 
-Status ArraySchema::check_double_delta_compressor() const {
+Status ArraySchema::check_double_delta_compressor(
+    const FilterPipeline& coords_filters) const {
   // Check if coordinate filters have DOUBLE DELTA as a compressor
   bool has_double_delta = false;
-  for (unsigned i = 0; i < coords_filters_.size(); ++i) {
-    if (coords_filters_.get_filter(i)->type() ==
+  for (unsigned i = 0; i < coords_filters.size(); ++i) {
+    if (coords_filters.get_filter(i)->type() ==
         FilterType::FILTER_DOUBLE_DELTA) {
       has_double_delta = true;
       break;
@@ -845,6 +860,31 @@ Status ArraySchema::check_double_delta_compressor() const {
   return Status::Ok();
 }
 
+Status ArraySchema::check_rle_compressor(const FilterPipeline& filters) const {
+  // There is no error if only 1 filter is used for RLE
+  if (filters.size() <= 1 || !filters.has_filter(FilterType::FILTER_RLE)) {
+    return Status::Ok();
+  }
+
+  // Error if there are also other filters set for a string dimension together
+  // with RLE
+  auto dim_num = domain_->dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim = domain_->dimension(d);
+    const auto& dim_filters = dim->filters();
+    // if it's a var-length string dimension and there is no specific filter
+    // list already set for that dimension (then coords_filters_ will be used)
+    if (dim->type() == Datatype::STRING_ASCII && dim->var_size() &&
+        dim_filters.empty()) {
+      return LOG_STATUS(Status_ArraySchemaError(
+          "RLE filter cannot be combined with other filters when applied to "
+          "variable length string dimensions"));
+    }
+  }
+
+  return Status::Ok();
+}
+
 void ArraySchema::clear() {
   array_uri_ = URI();
   uri_ = URI();
@@ -855,7 +895,6 @@ void ArraySchema::clear() {
   tile_order_ = Layout::ROW_MAJOR;
   attributes_.clear();
 
-  tdb_delete(domain_);
   domain_ = nullptr;
   timestamp_range_ = std::make_pair(0, 0);
 }

@@ -70,6 +70,7 @@ endif()
 ############################################################
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Options")
 
 set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/inputs")
 
@@ -113,6 +114,7 @@ option(TILEDB_AZURE "Enables Azure Storage support using azure-storage-cpp" OFF)
 option(TILEDB_GCS "Enables GCS Storage support using google-cloud-cpp" OFF)
 option(TILEDB_HDFS "Enables HDFS support using the official Hadoop JNI bindings" OFF)
 option(TILEDB_WERROR "Enables the -Werror flag during compilation." ON)
+option(TILEDB_ASSERTIONS "Build with assertions enabled (default off for release, on for debug build)." OFF)
 option(TILEDB_CPP_API "Enables building of the TileDB C++ API." ON)
 option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets the EP install dir." OFF)
 option(TILEDB_STATS "Enables internal TileDB statistics gathering." ON)
@@ -124,10 +126,11 @@ option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
 option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit tests" OFF)
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
+option(TILEDB_LEGACY_THREAD_POOL "Use legacy thread pool" OFF)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
-# early WIN32 audit of path length for aws sdk build where 
+# early WIN32 audit of path length for aws sdk build where
 # insufficient available path length causes sdk build failure.
 if (WIN32 AND NOT TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK)
   if (TILEDB_SUPERBUILD)
@@ -140,6 +143,12 @@ if (WIN32 AND NOT TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK)
     endif()
   endif()
 endif()
+
+# enable assertions by default for debug builds
+if (CMAKE_BUILD_TYPE EQUAL "Debug")
+  set(TILEDB_ASSERTIONS TRUE)
+endif()
+include(TileDBAssertions)
 
 ############################################################
 # Superbuild setup
@@ -224,7 +233,7 @@ else()
   if (CMAKE_BUILD_TYPE MATCHES "Debug")
     add_compile_options(-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3)
   elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(-DNDEBUG -O3)
+    add_compile_options(-O3)
   elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
     add_compile_options(-DNDEBUG -O3 -g3 -ggdb3 -gdwarf-3)
   elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")
@@ -240,12 +249,22 @@ endif()
 # Definitions for all targets
 add_definitions(-D_FILE_OFFSET_BITS=64)
 
+# Legacy thread pool
+if (TILEDB_LEGACY_THREAD_POOL)
+    message(STATUS "The TileDB library is compiled with LEGACY thread pool (${TILEDB_LEGACY_THREAD_POOL}).")
+    add_definitions(-DLEGACY_THREAD_POOL)
+else()
+    message(STATUS "The TileDB library is compiled with NEW thread pool (${TILEDB_LEGACY_THREAD_POOL}).")
+endif()
+
+
 # AVX2 flag
 include(CheckAVX2Support)
 CheckAVX2Support()
 if (COMPILER_SUPPORTS_AVX2)
   add_compile_options(${COMPILER_AVX2_FLAG})
 endif()
+
 
 ############################################################
 # Enable testing and add subdirectories
@@ -268,8 +287,9 @@ if (TILEDB_TESTS)
   add_custom_target(tests)
   add_dependencies(tests tiledb_unit)
   add_dependencies(tests unit_interval unit_datum unit_dynamic_memory unit_thread_pool)
-  add_dependencies(tests unit_filter unit_array_schema)
+  add_dependencies(tests unit_array_schema unit_filter_create unit_filter_pipeline unit_metadata)
   add_dependencies(tests unit_compressors)
+  add_dependencies(tests unit_range_subset)
 endif()
 
 # Build tools

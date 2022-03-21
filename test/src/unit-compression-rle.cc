@@ -538,7 +538,6 @@ TEMPLATE_LIST_TEST_CASE(
                                  127};
 
   // Compress the input array
-  // TBD: how to caclulate exp_size, maybe an overhead function?
   const auto num_of_unique_runs = 6;
   const auto exp_size = num_of_unique_runs * 2;
   std::vector<T> compressed(exp_size);

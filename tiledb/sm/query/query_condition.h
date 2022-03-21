@@ -189,7 +189,7 @@ class QueryCondition {
    * @param array_schema The current array schena.
    * @return Status
    */
-  Status check(const ArraySchema* array_schema) const;
+  Status check(const ArraySchema& array_schema) const;
 
   /**
    * Combines this instance with the right-hand-side instance by
@@ -226,7 +226,7 @@ class QueryCondition {
    * @return Status
    */
   Status apply(
-      const ArraySchema* array_schema,
+      const ArraySchema& array_schema,
       std::vector<ResultCellSlab>& result_cell_slabs,
       uint64_t stride) const;
 
@@ -243,7 +243,7 @@ class QueryCondition {
    * @return Status
    */
   Status apply_dense(
-      const ArraySchema* const array_schema,
+      const ArraySchema& array_schema,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t length,
@@ -262,7 +262,7 @@ class QueryCondition {
    */
   template <typename BitmapType>
   Status apply_sparse(
-      const ArraySchema* const array_schema,
+      const ArraySchema& array_schema,
       ResultTile& result_tile,
       std::vector<BitmapType>& result_bitmap,
       uint64_t* cell_count);
@@ -390,7 +390,7 @@ class QueryCondition {
    */
   tuple<Status, optional<std::vector<ResultCellSlab>>> apply_clause(
       const QueryCondition::Clause& clause,
-      const ArraySchema* const array_schema,
+      const ArraySchema& array_schema,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
@@ -458,7 +458,7 @@ class QueryCondition {
    */
   Status apply_clause_dense(
       const QueryCondition::Clause& clause,
-      const ArraySchema* const array_schema,
+      const ArraySchema& array_schema,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t length,
@@ -511,7 +511,7 @@ class QueryCondition {
   template <typename BitmapType>
   Status apply_clause_sparse(
       const QueryCondition::Clause& clause,
-      const ArraySchema* const array_schema,
+      const ArraySchema& array_schema,
       ResultTile& result_tile,
       std::vector<BitmapType>& result_bitmap) const;
 };

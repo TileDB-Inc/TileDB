@@ -168,7 +168,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      optional<ArraySchema*>,
+      optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
       optional<std::vector<shared_ptr<FragmentMetadata>>>>
   load_array_schemas_and_fragment_metadata(
@@ -195,7 +195,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      optional<ArraySchema*>,
+      optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
       optional<std::vector<shared_ptr<FragmentMetadata>>>>
   array_open_for_reads(Array* array);
@@ -212,7 +212,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      optional<ArraySchema*>,
+      optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
   array_open_for_reads_without_fragments(Array* array);
 
@@ -227,7 +227,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      optional<ArraySchema*>,
+      optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
   array_open_for_writes(Array* array);
 
@@ -257,7 +257,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      optional<ArraySchema*>,
+      optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
       optional<std::vector<shared_ptr<FragmentMetadata>>>>
   array_reopen(Array* array);
@@ -326,6 +326,14 @@ class StorageManager {
       const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**
+   * Cleans up consolidated commit files.
+   *
+   * @param array_name The name of the array to be consolidated.
+   * @return Status
+   */
+  Status array_vacuum_commits(const char* array_name);
+
+  /**
    * Consolidates the metadata of an array into a single file.
    *
    * @param array_name The name of the array whose metadata will be
@@ -356,7 +364,7 @@ class StorageManager {
    */
   Status array_create(
       const URI& array_uri,
-      ArraySchema* array_schema,
+      const shared_ptr<ArraySchema>& array_schema,
       const EncryptionKey& encryption_key);
 
   /**
@@ -619,15 +627,11 @@ class StorageManager {
    * Loads the schema of a schema uri from persistent storage into memory.
    *
    * @param array_schema_uri The URI path of the array schema.
-   * @param array_uri The URI path of the array.
    * @param encryption_key The encryption key to use.
-   * @param array_schema The array schema to be retrieved.
-   * @return Status
+   * @return Status, the loaded array schema
    */
-  Status load_array_schema_from_uri(
-      const URI& array_schema_uri,
-      const EncryptionKey& encryption_key,
-      ArraySchema** array_schema);
+  tuple<Status, optional<shared_ptr<ArraySchema>>> load_array_schema_from_uri(
+      const URI& array_schema_uri, const EncryptionKey& encryption_key);
 
   /**
    * Loads the latest schema of an array from persistent storage into memory.
@@ -635,13 +639,10 @@ class StorageManager {
    * @param array_dir The ArrayDirectory object used to retrieve the
    *     various URIs in the array directory.
    * @param encryption_key The encryption key to use.
-   * @param array_schema The array schema to be retrieved.
-   * @return Status
+   * @return Status, a new ArraySchema
    */
-  Status load_array_schema_latest(
-      const ArrayDirectory& array_dir,
-      const EncryptionKey& encryption_key,
-      ArraySchema** array_schema);
+  tuple<Status, optional<shared_ptr<ArraySchema>>> load_array_schema_latest(
+      const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
 
   /**
    * It loads and returns the latest schema and all the array schemas
@@ -657,7 +658,7 @@ class StorageManager {
    */
   tuple<
       Status,
-      optional<ArraySchema*>,
+      optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
   load_array_schemas(
       const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
@@ -857,7 +858,8 @@ class StorageManager {
    * @return Status
    */
   Status store_array_schema(
-      ArraySchema* array_schema, const EncryptionKey& encryption_key);
+      const shared_ptr<ArraySchema>& array_schema,
+      const EncryptionKey& encryption_key);
 
   /**
    * Stores the array metadata into persistent storage.
@@ -1048,8 +1050,6 @@ class StorageManager {
    *     schema filename.
    * @param encryption_key The encryption key to use.
    * @param fragments_to_load The fragments whose metadata to load.
-   * @param meta_buff A buffer that may contain the consolidated fragment
-   *     metadata.
    * @param offsets A map from a fragment name to an offset in `meta_buff`
    *     where the basic fragment metadata can be found. If the offset
    *     cannot be found, then the metadata of that fragment will be loaded from
@@ -1061,13 +1061,13 @@ class StorageManager {
   tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
   load_fragment_metadata(
       MemoryTracker* memory_tracker,
-      ArraySchema* array_schema_latest,
+      const shared_ptr<const ArraySchema>& array_schema,
       const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
           array_schemas_all,
       const EncryptionKey& encryption_key,
       const std::vector<TimestampedURI>& fragments_to_load,
-      Buffer* meta_buff,
-      const std::unordered_map<std::string, uint64_t>& offsets);
+      const std::unordered_map<std::string, std::pair<Buffer*, uint64_t>>&
+          offsets);
 
   /**
    * Loads the latest consolidated fragment metadata from storage.
@@ -1075,15 +1075,12 @@ class StorageManager {
    * @param uri The URI of the consolidated fragment metadata.
    * @param enc_key The encryption key that may be needed to access the file.
    * @param f_buff The buffer to hold the consolidated fragment metadata.
-   * @param offsets A map from the fragment name to the offset in `f_buff` where
-   *     the basic fragment metadata starts.
-   * @return Status
+   * @return Status, vector from the fragment name to the offset in `f_buff`
+   *     where the basic fragment metadata starts.
    */
-  Status load_consolidated_fragment_meta(
-      const URI& uri,
-      const EncryptionKey& enc_key,
-      Buffer* f_buff,
-      std::unordered_map<std::string, uint64_t>* offsets);
+  tuple<Status, optional<std::vector<std::pair<std::string, uint64_t>>>>
+  load_consolidated_fragment_meta(
+      const URI& uri, const EncryptionKey& enc_key, Buffer* f_buff);
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();

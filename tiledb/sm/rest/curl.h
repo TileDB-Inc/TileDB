@@ -236,6 +236,13 @@ class Curl {
       Buffer* returned_data,
       const std::string& res_ns_uri);
 
+  /**
+   * Get HTTP status code of last request
+   *
+   * @return tuple of status and last_request
+   */
+  tuple<Status, optional<long>> last_http_status_code();
+
  private:
   /** TileDB config parameters. */
   const Config* config_;

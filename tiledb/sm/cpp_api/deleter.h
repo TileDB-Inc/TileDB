@@ -61,7 +61,6 @@ class Deleter {
   /* ********************************* */
 
   Deleter() = default;
-  Deleter(const Deleter&) = default;
 
   /* ********************************* */
   /*              DELETERS             */

@@ -49,6 +49,18 @@ The fragment metadata file has the following on-disk format:
 | Variable tile sizes for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized variable tile sizes for attribute/dimension 1 |
 | … | … | … |
 | Variable tile sizes for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized variable tile sizes for attribute/dimension N |
+| Tile mins for attribute/dimension 1 | [Tile mins/maxs](#tile-mins-maxs) | The serialized mins for attribute/dimension 1 |
+| … | … | … |
+| Variable mins for attribute/dimension N | [Tile mins/maxs](#tile-mins-maxs) | The serialized mins for attribute/dimension N |
+| Tile maxs for attribute/dimension 1 | [Tile mins/maxs](#tile-mins-maxs) | The serialized maxs for attribute/dimension 1 |
+| … | … | … |
+| Variable maxs for attribute/dimension N | [Tile mins/maxs](#tile-mins-maxs) | The serialized maxs for attribute/dimension N |
+| Tile sums for attribute/dimension 1 | [Tile sums](#tile-sums) | The serialized sums for attribute/dimension 1 |
+| … | … | … |
+| Variable sums for attribute/dimension N | [Tile sums](#tile-sums) | The serialized sums for attribute/dimension N |
+| Tile null counts for attribute/dimension 1 | [Tile null count](#tile-null-count) | The serialized null counts for attribute/dimension 1 |
+| … | … | … |
+| Variable maxs for attribute/dimension N | [[Tile null count](#tile-null-count) | The serialized null counts for attribute/dimension N |
 | Metadata footer | [Footer](#footer) | Basic metadata gathered in the footer |
 
 ### R-Tree
@@ -128,6 +140,57 @@ The tile sizes is a [generic tile](./generic_tile.md) with the following interna
 | … | … | … |
 | Tile size N | `uint64_t` | Size N |
 
+### Tile Mins Maxs
+
+The tile mins maxs is a [generic tile](./generic_tile.md) with the following internal format:
+
+| **Field** | **Type** | **Description** |
+| :--- | :--- | :--- |
+| Num values | `uint64_t` | Number of values |
+| Value 1 | `type` | Value 1 or Offset 1 |
+| … | … | … |
+| Value N | `type` | Value N or Offset N |
+| Var buffer size | `uint64_t` | Var buffer size |
+| Var buffer | `uint8_t` | Var buffer |
+
+### Tile Sums
+
+The tile sums is a [generic tile](./generic_tile.md) with the following internal format:
+
+| **Field** | **Type** | **Description** |
+| :--- | :--- | :--- |
+| Num values | `uint64_t` | Number of values |
+| Value 1 | `uint64_t` | Sum 1 |
+| … | … | … |
+| Value N | `uint64_t` | Sum N |
+
+The tile null count is a [generic tile](./generic_tile.md) with the following internal format:
+
+| **Field** | **Type** | **Description** |
+| :--- | :--- | :--- |
+| Num values | `uint64_t` | Number of values |
+| Value 1 | `uint64_t` | Count 1 |
+| … | … | … |
+| Value N | `uint64_t` | Count N |
+
+The fragment min max sum null count is a [generic tile](./generic_tile.md) with the following internal format:
+
+| **Field** | **Type** | **Description** |
+| :--- | :--- | :--- |
+| Min size | `uint64_t` | Size of the min value for attribute/dimension 1 |
+| Min value | `uint8_t` | Buffer for min value for attribute/dimension 1 |
+| Max size | `uint64_t` | Size of the max value for attribute/dimension 1 |
+| Max value | `uint8_t` | Buffer for max value for attribute/dimension 1 |
+| Sum | `uint64_t` | Sum value for attribute/dimension 1 |
+| Null count | `uint64_t` | Null count value for attribute/dimension 1 |
+| … | … | … |
+| Min size | `uint64_t` | Size of the min value for attribute/dimension N |
+| Min value | `uint8_t` | Buffer for min value for attribute/dimension N |
+| Max size | `uint64_t` | Size of the max value for attribute/dimension N |
+| Max value | `uint8_t` | Buffer for max value for attribute/dimension N |
+| Sum | `uint64_t` | Sum value for attribute/dimension N |
+| Null count | `uint64_t` | Null count value for attribute/dimension N |
+
 ### Footer
 
 The footer is a simple blob \(i.e., _not a generic tile_\) with the following internal format:
@@ -168,6 +231,7 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Tile null counts offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile null counts for attribute/dimension 1. |
 | … | … | … |
 | Tile null counts offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile null counts for attribute/dimension N |
+| Fragment min max sum null count offset | `uint64_t` | The offset to the generic tile storing the fragment min max sum null count data. |
 | Array schema name size | `uint64_t` | The total number of characters of the array schema name. |
 | Array schema name character 1 | `char` | The first character of the array schema name. |
 | … | … | … |

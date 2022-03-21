@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,6 +32,7 @@
  */
 
 #include "test/src/helpers.h"
+#include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
@@ -79,6 +80,7 @@ class Add1InPlace : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -148,6 +150,7 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -239,6 +242,7 @@ class AddNInPlace : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -320,6 +324,7 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -409,6 +414,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -1551,7 +1557,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   tiledb::sm::ArraySchema schema;
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
   schema.add_attribute(tdb::make_shared<tiledb::sm::Attribute>(HERE(), &attr));
-  schema.set_domain(&domain);
+  schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain));
   schema.init();
 
   FilterPipeline pipeline;
@@ -1711,7 +1717,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   tiledb::sm::ArraySchema schema;
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
   schema.add_attribute(tdb::make_shared<tiledb::sm::Attribute>(HERE(), &attr));
-  schema.set_domain(&domain);
+  schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain));
   schema.init();
 
   FilterPipeline pipeline;

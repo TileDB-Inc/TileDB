@@ -33,6 +33,7 @@
 #ifndef TILEDB_CONSOLIDATOR_H
 #define TILEDB_CONSOLIDATOR_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
@@ -92,6 +93,7 @@ class Consolidator {
      *     - "fragments": only the fragments will be consoidated
      *     - "fragment_meta": only the fragment metadata will be consolidated
      *     - "array_meta": only the array metadata will be consolidated
+     *     - "commits": only the commit files will be consolidated
      */
     std::string mode_;
     /** Start time for consolidation. */
@@ -159,6 +161,22 @@ class Consolidator {
       const void* encryption_key,
       uint32_t key_length);
 
+  /**
+   * Consolidates only the commits of the input array.
+   *
+   * @param array_name URI of array whose metadata to consolidate.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @return Status
+   */
+  Status consolidate_commits(
+      const char* array_name,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length);
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
@@ -221,7 +239,7 @@ class Consolidator {
    *     consolidated based on the above definition.
    */
   bool are_consolidatable(
-      const Domain* domain,
+      shared_ptr<const Domain> domain,
       const FragmentInfo& fragment_info,
       size_t start,
       size_t end,
@@ -305,7 +323,7 @@ class Consolidator {
    * @return Status
    */
   Status create_buffers(
-      const ArraySchema* array_schema,
+      const ArraySchema& array_schema,
       std::vector<ByteVec>* buffers,
       std::vector<uint64_t>* buffer_sizes);
 
@@ -345,17 +363,10 @@ class Consolidator {
    * @return Status
    */
   Status compute_next_to_consolidate(
-      const ArraySchema* array_schema,
+      const ArraySchema& array_schema,
       const FragmentInfo& fragment_info,
       std::vector<TimestampedURI>* to_consolidate,
       NDRange* union_non_empty_domains) const;
-
-  /**
-   * The new fragment name is computed
-   * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
-   */
-  tuple<Status, optional<std::string>> compute_new_fragment_name(
-      const URI& first, const URI& last, uint32_t format_version) const;
 
   /** Checks and sets the input configuration parameters. */
   Status set_config(const Config* config);

@@ -86,9 +86,8 @@ Status attribute_to_capnp(
  * @param attribute attribute to deserialize into
  * @return Status
  */
-Status attribute_from_capnp(
-    const capnp::Attribute::Reader& attribute_reader,
-    tdb_unique_ptr<Attribute>* attribute);
+tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
+    const capnp::Attribute::Reader& attribute_reader);
 
 };  // namespace serialization
 };  // namespace sm
@@ -405,7 +404,7 @@ Status serialize_non_empty_domain(CapnpT& builder, tiledb::sm::Array* array) {
     const auto& nonEmptyDomain = nonEmptyDomain_opt.value();
     if (!nonEmptyDomain.empty()) {
       auto nonEmptyDomainListBuilder =
-          builder.initNonEmptyDomains(array->array_schema_latest()->dim_num());
+          builder.initNonEmptyDomains(array->array_schema_latest().dim_num());
 
       for (uint64_t dimIdx = 0; dimIdx < nonEmptyDomain.size(); ++dimIdx) {
         const auto& dimNonEmptyDomain = nonEmptyDomain[dimIdx];
@@ -487,16 +486,16 @@ Status deserialize_non_empty_domain(CapnpT& reader, tiledb::sm::Array* array) {
 template <typename CapnpT>
 Status serialize_subarray(
     CapnpT& builder,
-    const tiledb::sm::ArraySchema* array_schema,
+    const tiledb::sm::ArraySchema& array_schema,
     const void* subarray) {
   // Check coords type
-  auto dim_num = array_schema->dim_num();
+  auto dim_num = array_schema.dim_num();
   uint64_t subarray_size = 0;
-  Datatype first_dimension_datatype = array_schema->dimension(0)->type();
+  Datatype first_dimension_datatype = array_schema.dimension(0)->type();
   // If all the dimensions are the same datatype, then we will store the
   // subarray in a type array for <=1.7 compatibility
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dimension = array_schema->dimension(d);
+    auto dimension = array_schema.dimension(d);
     const auto coords_type = dimension->type();
 
     if (coords_type != first_dimension_datatype) {
@@ -534,14 +533,14 @@ Status serialize_subarray(
 template <typename CapnpT>
 Status deserialize_subarray(
     const CapnpT& reader,
-    const tiledb::sm::ArraySchema* array_schema,
+    const tiledb::sm::ArraySchema& array_schema,
     void** subarray) {
   // Check coords type
-  auto dim_num = array_schema->dim_num();
+  auto dim_num = array_schema.dim_num();
   uint64_t subarray_size = 0;
-  Datatype first_dimension_datatype = array_schema->dimension(0)->type();
+  Datatype first_dimension_datatype = array_schema.dimension(0)->type();
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dimension = array_schema->dimension(d);
+    auto dimension = array_schema.dimension(d);
     const auto coords_type = dimension->type();
 
     if (coords_type != first_dimension_datatype) {

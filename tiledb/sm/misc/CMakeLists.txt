@@ -26,7 +26,7 @@
 include(common NO_POLICY_SCOPE)
 
 #
-# `constants` object library
+# `cancelable_tasks` object library
 #
 add_library(cancelable_tasks OBJECT cancelable_tasks.cc)
 target_link_libraries(cancelable_tasks PUBLIC baseline $<TARGET_OBJECTS:baseline>)

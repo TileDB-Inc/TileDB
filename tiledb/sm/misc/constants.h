@@ -75,7 +75,7 @@ extern const std::string array_fragment_meta_dir_name;
 extern const std::string array_fragments_dir_name;
 
 /** The array commit directory name. */
-extern const std::string array_commit_dir_name;
+extern const std::string array_commits_dir_name;
 
 /** The default tile capacity. */
 extern const uint64_t capacity;
@@ -187,6 +187,12 @@ extern const std::string write_file_suffix;
 
 /** Suffix for the special metadata files used in TileDB. */
 extern const std::string meta_file_suffix;
+
+/** Suffix for the special consolidated commits files used in TileDB. */
+extern const std::string con_commits_file_suffix;
+
+/** Suffix for the special ignore files used in TileDB. */
+extern const std::string ignore_file_suffix;
 
 /** The fragment metadata file name. */
 extern const std::string fragment_metadata_filename;

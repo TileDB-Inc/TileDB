@@ -79,8 +79,8 @@ class ArraySchemaEvolution {
   /*               API                 */
   /* ********************************* */
 
-  Status evolve_schema(
-      const ArraySchema* orig_schema, ArraySchema** new_schema);
+  tuple<Status, optional<shared_ptr<ArraySchema>>> evolve_schema(
+      const shared_ptr<const ArraySchema>& orig_schema);
 
   /**
    * Adds an attribute, copying the input.

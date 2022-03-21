@@ -137,13 +137,10 @@ Status Reader::init() {
   if (storage_manager_ == nullptr)
     return logger_->status(Status_ReaderError(
         "Cannot initialize reader; Storage manager not set"));
-  if (array_schema_ == nullptr)
-    return logger_->status(
-        Status_ReaderError("Cannot initialize reader; Array metadata not set"));
   if (buffers_.empty())
     return logger_->status(
         Status_ReaderError("Cannot initialize reader; Buffers not set"));
-  if (array_schema_->dense() && !subarray_.is_set())
+  if (array_schema_.dense() && !subarray_.is_set())
     return logger_->status(Status_ReaderError(
         "Cannot initialize reader; Dense reads must have a subarray set"));
 
@@ -189,7 +186,7 @@ Status Reader::dowork() {
 
   auto timer_se = stats_->start_timer("read");
 
-  auto dense_mode = array_schema_->dense();
+  auto dense_mode = array_schema_.dense();
 
   // Get next partition
   if (!read_state_.unsplittable_)
@@ -335,11 +332,11 @@ Status Reader::compute_range_result_coords(
     uint64_t range_idx,
     std::vector<ResultCoords>& result_coords) {
   auto coords_num = tile->cell_num();
-  auto dim_num = array_schema_->dim_num();
-  auto cell_order = array_schema_->cell_order();
+  auto dim_num = array_schema_.dim_num();
+  auto cell_order = array_schema_.cell_order();
   auto range_coords = subarray.get_range_coords(range_idx);
 
-  if (array_schema_->dense()) {
+  if (array_schema_.dense()) {
     std::vector<uint8_t> result_bitmap(coords_num, 1);
     std::vector<uint8_t> overwritten_bitmap(coords_num, 0);
 
@@ -399,8 +396,8 @@ Status Reader::compute_range_result_coords(
 
   auto range_num = subarray.range_num();
   range_result_coords.resize(range_num);
-  auto cell_order = array_schema_->cell_order();
-  auto allows_dups = array_schema_->allows_dups();
+  auto cell_order = array_schema_.cell_order();
+  auto allows_dups = array_schema_.allows_dups();
 
   // To de-dupe the ranges, we may need to sort them. If the
   // read layout is UNORDERED, we will sort by the cell layout.
@@ -555,9 +552,9 @@ Status Reader::compute_subarray_coords(
   // - there is a single fragment and one dimension
   // - there are multiple fragments and a single range and dups are not allowed
   //   (therefore, the coords in that range have already been sorted)
-  auto dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_.dim_num();
   bool must_sort = true;
-  auto allows_dups = array_schema_->allows_dups();
+  auto allows_dups = array_schema_.allows_dups();
   auto single_range = (range_result_coords.size() == 1);
   if (layout_ == Layout::GLOBAL_ORDER || dim_num == 1) {
     must_sort = !belong_to_single_fragment(
@@ -613,7 +610,7 @@ Status Reader::compute_sparse_result_tiles(
           // Add tile only if it does not already exist
           if (result_tile_map->find(pair) == result_tile_map->end()) {
             result_tiles.emplace_back(
-                f, t, fragment_metadata_[f]->array_schema());
+                f, t, *(fragment_metadata_[f]->array_schema()).get());
             (*result_tile_map)[pair] = result_tiles.size() - 1;
           }
           // Always check range for multiple fragments
@@ -632,7 +629,7 @@ Status Reader::compute_sparse_result_tiles(
         // Add tile only if it does not already exist
         if (result_tile_map->find(pair) == result_tile_map->end()) {
           result_tiles.emplace_back(
-              f, t, fragment_metadata_[f]->array_schema());
+              f, t, *(fragment_metadata_[f]->array_schema()).get());
           (*result_tile_map)[pair] = result_tiles.size() - 1;
         }
         // Always check range for multiple fragments
@@ -671,10 +668,10 @@ Status Reader::copy_coordinates(
     const auto& name = it.first;
     if (read_state_.overflowed_)
       break;
-    if (!(name == constants::coords || array_schema_->is_dim(name)))
+    if (!(name == constants::coords || array_schema_.is_dim(name)))
       continue;
 
-    if (array_schema_->var_size(name))
+    if (array_schema_.var_size(name))
       var_names.emplace_back(name);
     else
       fixed_names.emplace_back(name);
@@ -734,7 +731,7 @@ Status Reader::copy_attribute_values(
       break;
     }
 
-    if (name == constants::coords || array_schema_->is_dim(name)) {
+    if (name == constants::coords || array_schema_.is_dim(name)) {
       continue;
     }
 
@@ -762,8 +759,8 @@ Status Reader::copy_fixed_cells(
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     std::vector<size_t>* fixed_cs_partitions) {
-  auto stat_type = (array_schema_->is_attr(name)) ? "copy_fixed_attr_values" :
-                                                    "copy_fixed_coords";
+  auto stat_type = (array_schema_.is_attr(name)) ? "copy_fixed_attr_values" :
+                                                   "copy_fixed_coords";
   auto timer_se = stats_->start_timer(stat_type);
 
   if (result_cell_slabs.empty()) {
@@ -773,7 +770,7 @@ Status Reader::copy_fixed_cells(
 
   auto it = buffers_.find(name);
   auto buffer_size = it->second.buffer_size_;
-  auto cell_size = array_schema_->cell_size(name);
+  auto cell_size = array_schema_.cell_size(name);
 
   // Precompute the cell range destination offsets in the buffer.
   uint64_t buffer_offset = 0;
@@ -813,7 +810,7 @@ Status Reader::copy_fixed_cells(
 
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = buffer_offset;
-  if (array_schema_->is_nullable(name)) {
+  if (array_schema_.is_nullable(name)) {
     *(buffers_[name].validity_vector_.buffer_size()) =
         (buffer_offset / cell_size) * constants::cell_validity_size;
   }
@@ -828,7 +825,7 @@ void Reader::compute_fixed_cs_partitions(
     return;
   }
 
-  const int num_copy_threads =
+  const auto num_copy_threads =
       storage_manager_->compute_tp()->concurrency_level();
 
   // Calculate the partition sizes.
@@ -865,17 +862,16 @@ Status Reader::copy_partitioned_fixed_cells(
   assert(name);
 
   // For easy reference.
-  auto nullable = array_schema_->is_nullable(*name);
+  auto nullable = array_schema_.is_nullable(*name);
   auto it = buffers_.find(*name);
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
-  auto cell_size = array_schema_->cell_size(*name);
+  auto cell_size = array_schema_.cell_size(*name);
   ByteVecValue fill_value;
   uint8_t fill_value_validity = 0;
-  if (array_schema_->is_attr(*name)) {
-    fill_value = array_schema_->attribute(*name)->fill_value();
-    fill_value_validity =
-        array_schema_->attribute(*name)->fill_value_validity();
+  if (array_schema_.is_attr(*name)) {
+    fill_value = array_schema_.attribute(*name)->fill_value();
+    fill_value_validity = array_schema_.attribute(*name)->fill_value_validity();
   }
   uint64_t fill_value_size = (uint64_t)fill_value.size();
 
@@ -899,7 +895,7 @@ Status Reader::copy_partitioned_fixed_cells(
     // evolution. In that case we want to set the field to fill values for this
     // for this tile.
     const bool split_buffer_for_zipped_coords =
-        array_schema_->is_dim(*name) && cs.tile_->stores_zipped_coords();
+        array_schema_.is_dim(*name) && cs.tile_->stores_zipped_coords();
     if ((cs.tile_ == nullptr || cs.tile_->tile_tuple(*name) == nullptr) &&
         !split_buffer_for_zipped_coords) {  // Empty range or attributed added
                                             // in schema evolution
@@ -949,8 +945,8 @@ Status Reader::copy_var_cells(
     std::vector<ResultCellSlab>& result_cell_slabs,
     std::vector<std::pair<size_t, size_t>>* var_cs_partitions,
     size_t total_cs_length) {
-  auto stat_type = (array_schema_->is_attr(name)) ? "copy_var_attr_values" :
-                                                    "copy_var_coords";
+  auto stat_type = (array_schema_.is_attr(name)) ? "copy_var_attr_values" :
+                                                   "copy_var_coords";
   auto timer_se = stats_->start_timer(stat_type);
 
   if (result_cell_slabs.empty()) {
@@ -997,7 +993,7 @@ Status Reader::copy_var_cells(
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = total_offset_size;
   *(buffers_[name].buffer_var_size_) = total_var_size;
-  if (array_schema_->is_nullable(name))
+  if (array_schema_.is_nullable(name))
     *(buffers_[name].validity_vector_.buffer_size()) = total_validity_size;
 
   return Status::Ok();
@@ -1011,7 +1007,7 @@ void Reader::compute_var_cs_partitions(
     return;
   }
 
-  const int num_copy_threads =
+  const auto num_copy_threads =
       storage_manager_->compute_tp()->concurrency_level();
 
   // Calculate the partition range.
@@ -1065,12 +1061,12 @@ Status Reader::compute_var_cell_destinations(
     uint64_t* total_var_size,
     uint64_t* total_validity_size) {
   // For easy reference
-  auto nullable = array_schema_->is_nullable(name);
+  auto nullable = array_schema_.is_nullable(name);
   auto num_cs = result_cell_slabs.size();
   auto offset_size = offsets_bytesize();
   ByteVecValue fill_value;
-  if (array_schema_->is_attr(name))
-    fill_value = array_schema_->attribute(name)->fill_value();
+  if (array_schema_.is_attr(name))
+    fill_value = array_schema_.attribute(name)->fill_value();
   auto fill_value_size = (uint64_t)fill_value.size();
 
   auto it = buffers_.find(name);
@@ -1167,20 +1163,19 @@ Status Reader::copy_partitioned_var_cells(
   assert(name);
 
   auto it = buffers_.find(*name);
-  auto nullable = array_schema_->is_nullable(*name);
+  auto nullable = array_schema_.is_nullable(*name);
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
   auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
   auto offset_size = offsets_bytesize();
   ByteVecValue fill_value;
   uint8_t fill_value_validity = 0;
-  if (array_schema_->is_attr(*name)) {
-    fill_value = array_schema_->attribute(*name)->fill_value();
-    fill_value_validity =
-        array_schema_->attribute(*name)->fill_value_validity();
+  if (array_schema_.is_attr(*name)) {
+    fill_value = array_schema_.attribute(*name)->fill_value();
+    fill_value_validity = array_schema_.attribute(*name)->fill_value_validity();
   }
   auto fill_value_size = (uint64_t)fill_value.size();
-  auto attr_datatype_size = datatype_size(array_schema_->type(*name));
+  auto attr_datatype_size = datatype_size(array_schema_.type(*name));
 
   // Fetch the starting array offset into both `offset_offsets_per_cs`
   // and `var_offsets_per_cs`.
@@ -1282,7 +1277,7 @@ Status Reader::process_tiles(
     const ProcessTileFlags flags = name_pair.second;
     if (flags & ProcessTileFlag::READ) {
       read_names.push_back(name);
-      if (array_schema_->var_size(name))
+      if (array_schema_.var_size(name))
         var_size_read_names.emplace_back(name);
     } else if (flags & ProcessTileFlag::COPY) {
       copy_names.push_back(name);
@@ -1318,7 +1313,7 @@ Status Reader::process_tiles(
   // Handle attribute/dimensions that need to be copied but do
   // not need to be read.
   for (const auto& copy_name : copy_names) {
-    if (!array_schema_->var_size(copy_name))
+    if (!array_schema_.var_size(copy_name))
       RETURN_CANCEL_OR_ERROR(copy_fixed_cells(
           copy_name, stride, result_cell_slabs, &fixed_cs_partitions));
     else
@@ -1360,7 +1355,7 @@ Status Reader::process_tiles(
       RETURN_CANCEL_OR_ERROR(unfilter_tiles(inner_name, result_tiles, false));
 
       if (flags & ProcessTileFlag::COPY) {
-        if (!array_schema_->var_size(inner_name)) {
+        if (!array_schema_.var_size(inner_name)) {
           RETURN_CANCEL_OR_ERROR(copy_fixed_cells(
               inner_name, stride, result_cell_slabs, &fixed_cs_partitions));
         } else {
@@ -1465,7 +1460,7 @@ Status Reader::compute_result_cell_slabs_global(
     std::vector<ResultTile*>& result_tiles,
     std::vector<ResultCellSlab>& result_cell_slabs) const {
   const auto& tile_coords = subarray.tile_coords();
-  auto cell_order = array_schema_->cell_order();
+  auto cell_order = array_schema_.cell_order();
   std::vector<Subarray> tile_subarrays;
   tile_subarrays.reserve(tile_coords.size());
   uint64_t result_coords_pos = 0;
@@ -1521,14 +1516,14 @@ Status Reader::compute_result_coords(
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
-  const auto dim_num = array_schema_->dim_num();
+  const auto dim_num = array_schema_.dim_num();
   std::vector<std::string> dim_names;
   std::vector<std::string> var_size_dim_names;
   dim_names.reserve(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& name = array_schema_->dimension(d)->name();
+    const auto& name = array_schema_.dimension(d)->name();
     dim_names.emplace_back(name);
-    if (array_schema_->var_size(name))
+    if (array_schema_.var_size(name))
       var_size_dim_names.emplace_back(name);
   }
   RETURN_CANCEL_OR_ERROR(
@@ -1588,7 +1583,7 @@ Status Reader::dedup_result_coords(
 }
 
 Status Reader::dense_read() {
-  auto type = array_schema_->domain()->dimension(0)->type();
+  auto type = array_schema_.domain()->dimension(0)->type();
   switch (type) {
     case Datatype::INT8:
       return dense_read<int8_t>();
@@ -1666,7 +1661,7 @@ Status Reader::dense_read() {
       result_tiles,
       result_cell_slabs));
 
-  auto stride = array_schema_->domain()->stride<T>(subarray.layout());
+  auto stride = array_schema_.domain()->stride<T>(subarray.layout());
   RETURN_NOT_OK(apply_query_condition(
       result_cell_slabs,
       result_tiles,
@@ -1707,7 +1702,7 @@ Status Reader::get_all_result_coords(
 
 bool Reader::has_separate_coords() const {
   for (const auto& it : buffers_) {
-    if (array_schema_->is_dim(it.first))
+    if (array_schema_.is_dim(it.first))
       return true;
   }
 
@@ -1778,8 +1773,8 @@ Status Reader::init_read_state() {
     auto buffer_size = a.second.buffer_size_;
     auto buffer_var_size = a.second.buffer_var_size_;
     auto buffer_validity_size = a.second.validity_vector_.buffer_size();
-    if (!array_schema_->var_size(attr_name)) {
-      if (!array_schema_->is_nullable(attr_name)) {
+    if (!array_schema_.var_size(attr_name)) {
+      if (!array_schema_.is_nullable(attr_name)) {
         RETURN_NOT_OK(read_state_.partitioner_.set_result_budget(
             attr_name.c_str(), *buffer_size));
       } else {
@@ -1787,7 +1782,7 @@ Status Reader::init_read_state() {
             attr_name.c_str(), *buffer_size, *buffer_validity_size));
       }
     } else {
-      if (!array_schema_->is_nullable(attr_name)) {
+      if (!array_schema_.is_nullable(attr_name)) {
         RETURN_NOT_OK(read_state_.partitioner_.set_result_budget(
             attr_name.c_str(), *buffer_size, *buffer_var_size));
       } else {
@@ -1813,7 +1808,7 @@ Status Reader::sort_result_coords(
     size_t coords_num,
     Layout layout) const {
   auto timer_se = stats_->start_timer("sort_result_coords");
-  auto domain = array_schema_->domain();
+  auto domain = array_schema_.domain();
 
   if (layout == Layout::ROW_MAJOR) {
     parallel_sort(
@@ -1822,7 +1817,7 @@ Status Reader::sort_result_coords(
     parallel_sort(
         storage_manager_->compute_tp(), iter_begin, iter_end, ColCmp(domain));
   } else if (layout == Layout::GLOBAL_ORDER) {
-    if (array_schema_->cell_order() == Layout::HILBERT) {
+    if (array_schema_.cell_order() == Layout::HILBERT) {
       std::vector<std::pair<uint64_t, uint64_t>> hilbert_values(coords_num);
       RETURN_NOT_OK(calculate_hilbert_values(iter_begin, &hilbert_values));
       parallel_sort(
@@ -1881,7 +1876,7 @@ Status Reader::sparse_read() {
 Status Reader::add_extra_offset() {
   for (const auto& it : buffers_) {
     const auto& name = it.first;
-    if (!array_schema_->var_size(name))
+    if (!array_schema_.var_size(name))
       continue;
 
     // Do not apply offset for empty results because we will
@@ -1899,8 +1894,8 @@ Status Reader::add_extra_offset() {
           it.second.buffer_var_size_,
           offsets_bytesize());
     } else if (offsets_format_mode_ == "elements") {
-      auto elements = *it.second.buffer_var_size_ /
-                      datatype_size(array_schema_->type(name));
+      auto elements =
+          *it.second.buffer_var_size_ / datatype_size(array_schema_.type(name));
       memcpy(
           buffer + *it.second.buffer_size_ - offsets_bytesize(),
           &elements,
@@ -1919,7 +1914,7 @@ bool Reader::sparse_tile_overwritten(
   const auto& mbr = fragment_metadata_[frag_idx]->mbr(tile_idx);
   assert(!mbr.empty());
   auto fragment_num = (unsigned)fragment_metadata_.size();
-  auto domain = array_schema_->domain();
+  auto domain = array_schema_.domain();
 
   for (unsigned f = frag_idx + 1; f < fragment_num; ++f) {
     if (fragment_metadata_[f]->dense() &&
@@ -1932,9 +1927,9 @@ bool Reader::sparse_tile_overwritten(
 
 void Reader::erase_coord_tiles(std::vector<ResultTile>& result_tiles) const {
   for (auto& tile : result_tiles) {
-    auto dim_num = array_schema_->dim_num();
+    auto dim_num = array_schema_.dim_num();
     for (unsigned d = 0; d < dim_num; ++d)
-      tile.erase_tile(array_schema_->dimension(d)->name());
+      tile.erase_tile(array_schema_.dimension(d)->name());
     tile.erase_tile(constants::coords);
   }
 }
@@ -1956,7 +1951,7 @@ void Reader::get_result_tile_stats(
     if (!fragment_metadata_[rt->frag_idx()]->dense())
       cell_num += rt->cell_num();
     else
-      cell_num += array_schema_->domain()->cell_num_per_tile();
+      cell_num += array_schema_.domain()->cell_num_per_tile();
   }
   stats_->add_counter("cell_num", cell_num);
 }
@@ -1965,7 +1960,7 @@ Status Reader::calculate_hilbert_values(
     std::vector<ResultCoords>::iterator iter_begin,
     std::vector<std::pair<uint64_t, uint64_t>>* hilbert_values) const {
   auto timer_se = stats_->start_timer("calculate_hilbert_values");
-  auto dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_.dim_num();
   Hilbert h(dim_num);
   auto bits = h.bits();
   auto max_bucket_val = ((uint64_t)1 << bits) - 1;
@@ -1976,7 +1971,7 @@ Status Reader::calculate_hilbert_values(
       storage_manager_->compute_tp(), 0, coords_num, [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_->dimension(d);
+          auto dim = array_schema_.dimension(d);
           coords[d] = hilbert_order::map_to_uint64(
               *dim, *(iter_begin + c), d, bits, max_bucket_val);
         }

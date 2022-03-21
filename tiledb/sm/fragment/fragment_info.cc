@@ -94,7 +94,7 @@ Status FragmentInfo::set_config(const Config& config) {
 }
 
 void FragmentInfo::expand_anterior_ndrange(
-    const Domain* domain, const NDRange& range) {
+    shared_ptr<const Domain> domain, const NDRange& range) {
   domain->expand_ndrange(range, &anterior_ndrange_);
 }
 
@@ -273,7 +273,7 @@ Status FragmentInfo::get_non_empty_domain(
         "Cannot get non-empty domain; Dimension name argument cannot be null"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  auto array_schema = meta->array_schema();
+  const auto& array_schema = meta->array_schema();
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
@@ -344,7 +344,7 @@ Status FragmentInfo::get_non_empty_domain_var_size(
                                  "Dimension name argument cannot be null"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  auto array_schema = meta->array_schema();
+  const auto& array_schema = meta->array_schema();
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
@@ -411,7 +411,7 @@ Status FragmentInfo::get_non_empty_domain_var(
                                  "name argument cannot be null"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  auto array_schema = meta->array_schema();
+  const auto& array_schema = meta->array_schema();
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
@@ -503,7 +503,7 @@ Status FragmentInfo::get_mbr(
         "Cannot get non-empty domain; Dimension name argument cannot be null"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  auto array_schema = meta->array_schema();
+  const auto& array_schema = meta->array_schema();
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
@@ -587,7 +587,7 @@ Status FragmentInfo::get_mbr_var_size(
                                  "Dimension name argument cannot be null"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  auto array_schema = meta->array_schema();
+  const auto& array_schema = meta->array_schema();
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
@@ -667,7 +667,7 @@ Status FragmentInfo::get_mbr_var(
                                  "name argument cannot be null"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  auto array_schema = meta->array_schema();
+  const auto& array_schema = meta->array_schema();
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
@@ -702,15 +702,12 @@ Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
   return Status::Ok();
 }
 
-Status FragmentInfo::get_array_schema(
-    uint32_t fid, ArraySchema** array_schema) {
-  if (array_schema == nullptr)
-    return LOG_STATUS(Status_FragmentInfoError(
-        "Cannot get array schema; schema argument cannot be null"));
-
+tuple<Status, optional<shared_ptr<ArraySchema>>> FragmentInfo::get_array_schema(
+    uint32_t fid) {
   if (fid >= fragment_num())
-    return LOG_STATUS(Status_FragmentInfoError(
-        "Cannot get array schema; Invalid fragment index"));
+    return {LOG_STATUS(Status_FragmentInfoError(
+                "Cannot get array schema; Invalid fragment index")),
+            nullopt};
   URI schema_uri;
   uint32_t version = single_fragment_info_vec_[fid].format_version();
   if (version >= 10) {
@@ -722,10 +719,8 @@ Status FragmentInfo::get_array_schema(
   }
 
   EncryptionKey encryption_key;
-  RETURN_NOT_OK(storage_manager_->load_array_schema_from_uri(
-      schema_uri, encryption_key, array_schema));
-
-  return Status::Ok();
+  return storage_manager_->load_array_schema_from_uri(
+      schema_uri, encryption_key);
 }
 
 Status FragmentInfo::get_array_schema_name(
@@ -873,7 +868,7 @@ Status FragmentInfo::load(
   // Create the vector that will store the SingleFragmentInfo objects
   for (uint64_t fid = 0; fid < fragment_num; fid++) {
     const auto meta = fragment_metadata_v[fid];
-    auto array_schema = meta->array_schema();
+    const auto& array_schema = meta->array_schema();
     const auto& non_empty_domain = meta->non_empty_domain();
 
     if (meta->timestamp_range().first < timestamp_start_) {
@@ -970,7 +965,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
     const URI& new_fragment_uri) const {
   SingleFragmentInfo ret;
   auto vfs = storage_manager_->vfs();
-  auto array_schema_latest =
+  const auto& array_schema_latest =
       single_fragment_info_vec_.back().meta()->array_schema();
 
   // Get timestamp range

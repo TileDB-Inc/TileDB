@@ -72,7 +72,7 @@ struct ReadCellSlabIterFx {
   template <class T>
   void create_result_space_tiles(
       const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragments,
-      const Domain* dom,
+      shared_ptr<const Domain> dom,
       const NDRange& dom_ndrange,
       Layout layout,
       const std::vector<NDRange>& domain_slices,
@@ -137,7 +137,7 @@ void ReadCellSlabIterFx::check_iter(
 template <class T>
 void ReadCellSlabIterFx::create_result_space_tiles(
     const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragments,
-    const Domain* dom,
+    shared_ptr<const Domain> dom,
     const NDRange& dom_ndrange,
     Layout layout,
     const std::vector<NDRange>& domain_slices,
@@ -239,7 +239,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema_latest()->domain();
+  auto dom = array_->array_->array_schema_latest().domain();
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   tdb_shared_ptr<FragmentMetadata> fragment =
@@ -247,7 +247,7 @@ TEST_CASE_METHOD(
           HERE(),
           nullptr,
           nullptr,
-          array_->array_->array_schema_latest(),
+          array_->array_->array_schema_latest_ptr(),
           URI(),
           std::make_pair<uint64_t, uint64_t>(0, 0),
           true);
@@ -313,7 +313,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema_latest()->domain();
+  auto dom = array_->array_->array_schema_latest().domain();
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   tdb_shared_ptr<FragmentMetadata> fragment =
@@ -321,7 +321,7 @@ TEST_CASE_METHOD(
           HERE(),
           nullptr,
           nullptr,
-          array_->array_->array_schema_latest(),
+          array_->array_->array_schema_latest_ptr(),
           URI(),
           std::make_pair<uint64_t, uint64_t>(0, 0),
           true);
@@ -390,7 +390,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds1, ds2};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema_latest()->domain();
+  auto dom = array_->array_->array_schema_latest().domain();
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < 2; i++) {
@@ -399,7 +399,7 @@ TEST_CASE_METHOD(
             HERE(),
             nullptr,
             nullptr,
-            array_->array_->array_schema_latest(),
+            array_->array_->array_schema_latest_ptr(),
             URI(),
             std::make_pair<uint64_t, uint64_t>(0, 0),
             true);
@@ -473,7 +473,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema_latest()->domain();
+  auto dom = array_->array_->array_schema_latest().domain();
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < 2; i++) {
@@ -482,7 +482,7 @@ TEST_CASE_METHOD(
             HERE(),
             nullptr,
             nullptr,
-            array_->array_->array_schema_latest(),
+            array_->array_->array_schema_latest_ptr(),
             URI(),
             std::make_pair<uint64_t, uint64_t>(0, 0),
             true);
@@ -691,7 +691,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema_latest()->domain();
+  auto dom = array_->array_->array_schema_latest().domain();
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   tdb_shared_ptr<FragmentMetadata> fragment =
@@ -699,7 +699,7 @@ TEST_CASE_METHOD(
           HERE(),
           nullptr,
           nullptr,
-          array_->array_->array_schema_latest(),
+          array_->array_->array_schema_latest_ptr(),
           URI(),
           std::make_pair<uint64_t, uint64_t>(0, 0),
           true);
@@ -877,7 +877,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema_latest()->domain();
+  auto dom = array_->array_->array_schema_latest().domain();
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   tdb_shared_ptr<FragmentMetadata> fragment =
@@ -885,7 +885,7 @@ TEST_CASE_METHOD(
           HERE(),
           nullptr,
           nullptr,
-          array_->array_->array_schema_latest(),
+          array_->array_->array_schema_latest_ptr(),
           URI(),
           std::make_pair<uint64_t, uint64_t>(0, 0),
           true);
@@ -1076,7 +1076,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema_latest()->domain();
+  auto dom = array_->array_->array_schema_latest().domain();
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   tdb_shared_ptr<FragmentMetadata> fragment =
@@ -1084,7 +1084,7 @@ TEST_CASE_METHOD(
           HERE(),
           nullptr,
           nullptr,
-          array_->array_->array_schema_latest(),
+          array_->array_->array_schema_latest_ptr(),
           URI(),
           std::make_pair<uint64_t, uint64_t>(0, 0),
           true);
@@ -1321,7 +1321,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds1, ds2};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto dom = array_->array_->array_schema_latest()->domain();
+  auto dom = array_->array_->array_schema_latest().domain();
 
   std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < 2; i++) {
@@ -1330,7 +1330,7 @@ TEST_CASE_METHOD(
             HERE(),
             nullptr,
             nullptr,
-            array_->array_->array_schema_latest(),
+            array_->array_->array_schema_latest_ptr(),
             URI(),
             std::make_pair<uint64_t, uint64_t>(0, 0),
             true);

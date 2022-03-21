@@ -587,6 +587,22 @@ Status Curl::should_retry(bool* retry) const {
   return Status::Ok();
 }
 
+tuple<Status, optional<long>> Curl::last_http_status_code() {
+  CURL* curl = curl_.get();
+  if (curl == nullptr)
+    return {
+        Status_RestError("Error checking curl error; curl instance is null."),
+        std::nullopt};
+
+  long http_code = 0;
+  if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) != CURLE_OK)
+    return {
+        Status_RestError("Error checking curl error; could not get HTTP code."),
+        std::nullopt};
+
+  return {Status::Ok(), http_code};
+}
+
 Status Curl::check_curl_errors(
     CURLcode curl_code,
     const std::string& operation,
@@ -619,7 +635,7 @@ Status Curl::check_curl_errors(
       }
     }
 
-    return LOG_STATUS(Status_RestError(msg.str()));
+    return Status_RestError(msg.str());
   }
 
   return Status::Ok();
