@@ -581,7 +581,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
 
   // Load domain
   domain_ = tdb_new(Domain);
-  RETURN_NOT_OK(domain_->deserialize(buff, version_));
+  RETURN_NOT_OK_ELSE(domain_->deserialize(buff, version_), tdb_delete(domain_));
 
   // Load attributes
   uint32_t attribute_num;
@@ -605,7 +605,15 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   }
 
   // Initialize the rest of the object members
-  RETURN_NOT_OK(init());
+  auto st = init();
+  if (!st.ok()) {
+    for (auto& attr : attributes_) {
+      tdb_delete(attr);
+    }
+    attributes_.clear();
+    attribute_map_.clear();
+    return st;
+  }
 
   // Success
   return Status::Ok();
