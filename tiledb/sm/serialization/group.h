@@ -55,7 +55,7 @@ namespace serialization {
  * @param serialize_type format to serialize into Cap'n Proto or JSON
  * @param serialized_buffer buffer to store serialized bytes in
  * serialize the array URI
- * @return
+ * @return Status
  */
 Status group_serialize(
     const Group* group,
@@ -71,6 +71,33 @@ Status group_serialize(
  * @return Status
  */
 Status group_deserialize(
+    Group* group,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer);
+
+/**
+ * Serialize a group's update state via Cap'n Prto
+ *
+ * @param Group group object to serialize
+ * @param serialize_type format to serialize into Cap'n Proto or JSON
+ * @param serialized_buffer buffer to store serialized bytes in
+ * serialize the array URI
+ * @return Status
+ */
+Status group_update_serialize(
+    const Group* group,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
+
+/**
+ * Deserialize a group's update state via Cap'n proto
+ *
+ * @param group to deserialize into
+ * @param serialize_type format the data is serialized in Cap'n Proto of JSON
+ * @param serialized_buffer buffer to read serialized bytes from
+ * @return Status
+ */
+Status group_update_deserialize(
     Group* group,
     SerializationType serialize_type,
     const Buffer& serialized_buffer);

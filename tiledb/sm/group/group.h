@@ -194,7 +194,8 @@ class Group {
   Status mark_member_for_addition(
       const tdb_shared_ptr<GroupMember>& group_member);
 
-  Status mark_member_for_addition(const URI& group_member_uri);
+  Status mark_member_for_addition(
+      const URI& group_member_uri, const bool& relative);
 
   /**
    * Remove a member from a group, this will be flushed to disk on close
@@ -303,6 +304,28 @@ class Group {
    * @return
    */
   Status member_by_index(uint64_t index, const char** uri, ObjectType* type);
+
+  /** Returns `true` if the group is open. */
+  bool is_open() const;
+
+  /** Returns `true` if the group is remote */
+  bool is_remote() const;
+
+  /** Retrieves the query type. Errors if the group is not open. */
+  Status get_query_type(QueryType* query_type) const;
+
+  /**
+   * Dump a string representation of a group
+   *
+   * @param indent_size
+   * @param num_indents
+   * @return string representation
+   */
+  std::string dump(
+      const uint64_t indent_size,
+      const uint64_t num_indents,
+      bool recursive = false,
+      bool print_self = true) const;
 
  protected:
   /* ********************************* */

@@ -42,7 +42,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/c_api/helpers.h"
+#include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"

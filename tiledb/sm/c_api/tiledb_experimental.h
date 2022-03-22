@@ -379,7 +379,7 @@ TILEDB_EXPORT int32_t tiledb_group_alloc(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
  * @note If the same group object is opened again without being closed,
- *     an error will be thrown.
+ *     an error will be set and TILEDB_ERR returned.
  * @note The config should be set before opening an group.
  * @note If the group is to be opened at a specfic time interval, the
  *      `timestamp{start, end}` values should be set to a config that's set to
@@ -613,10 +613,14 @@ TILEDB_EXPORT int32_t tiledb_group_has_metadata_key(
  * @param ctx The TileDB context.
  * @param group An group opened in WRITE mode.
  * @param uri URI of member to add
+ * @param relative is the URI relative to the group
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_add_member(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* uri);
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* uri,
+    const uint8_t relative);
 
 /**
  * Remove a member from a group
@@ -694,6 +698,63 @@ TILEDB_EXPORT int32_t tiledb_group_get_member_by_index(
     uint64_t index,
     const char** uri,
     tiledb_object_t* type);
+
+/**
+ * Checks if the group is open.
+ *
+ * @param ctx The TileDB context.
+ * @param group The group to be checked.
+ * @param is_open `1` if the group is open and `0` otherwise.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_is_open(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, int32_t* is_open);
+
+/**
+ * Retrieves the URI the group was opened with. It outputs an error
+ * if the group is not open.
+ *
+ * @param ctx The TileDB context.
+ * @param group The input group.
+ * @param group_uri The group URI to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_get_uri(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, const char** group_uri);
+
+/**
+ * Retrieves the query type with which the group was opened.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_group_t* group;
+ * tiledb_group_alloc(ctx, "s3://tiledb_groups/my_group", &group);
+ * tiledb_group_open(ctx, group, TILEDB_READ);
+ * tiledb_query_type_t query_type;
+ * tiledb_group_get_type(ctx, group, &query_type);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param group The group.
+ * @param query_type The query type to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_get_query_type(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, tiledb_query_type_t* query_type);
+
+/**
+ * Dump a string representation of a group
+ *
+ * @param ctx The TileDB context.
+ * @param group The group.
+ * @param dump_ascii The output string. The caller takes ownership
+ *   of the c-string.
+ * @param recursive should we recurse into sub-groups
+ * @return  `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_dump_str(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, char** dump_ascii, int recursive);
 
 #ifdef __cplusplus
 }

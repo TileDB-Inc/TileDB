@@ -1,6 +1,6 @@
 # Group
 
-A group consists of [metadata](./metadata.md) anda file containing group members
+A group consists of [metadata](./metadata.md) and a file containing group members
 
 ```
 my_group                       # Group folder
@@ -28,6 +28,7 @@ The group member is the content inside a [group](./group.md)
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Version | `uint32_t` | Format version number of the group member |
+| Object type | `uint8_t` | Object type of the member |
+| Relative | `uint8_t` | Is the URI relative to the group |
 | URI length | `uint32_t` | Number of characters in uri |
 | URI | `char[]` | URI character array |
-| Object type | `uint8_t` | Object type of the member |

@@ -1,5 +1,5 @@
 /**
- * @file   helpers.h
+ * @file   api_argument_validator.h
  *
  * @section LICENSE
  *
@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file declares helper functions used in the c-api implementation
+ * This file declares argument validator functions used in the c-api
+ * implementation
  */
 
 #ifndef TILEDB_CAPI_HELPERS_H

@@ -48,7 +48,7 @@ namespace sm {
 
 class GroupMemberV1 : public GroupMember {
  public:
-  GroupMemberV1(const URI& uri, const ObjectType& type);
+  GroupMemberV1(const URI& uri, const ObjectType& type, const bool& relative);
 
   ~GroupMemberV1() override = default;
 

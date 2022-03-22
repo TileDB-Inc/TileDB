@@ -2341,7 +2341,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_cell_size(
  * @param ctx The TileDB context.
  * @param attr The attribute.
  * @param out The output.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error./
  */
 TILEDB_EXPORT int32_t tiledb_attribute_dump(
     tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, FILE* out);
@@ -2349,7 +2349,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_dump(
 /**
  * Sets the default fill value for the input attribute. This value will
  * be used for the input attribute whenever querying (1) an empty cell in
- * a dense group, or (2) a non-empty cell (in either dense or sparse array)
+ * a dense array, or (2) a non-empty cell (in either dense or sparse array)
  * when values on the input attribute are missing (e.g., if the user writes
  * a subset of the attributes in a write operation).
  *

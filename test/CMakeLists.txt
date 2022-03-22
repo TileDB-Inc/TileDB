@@ -207,6 +207,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-fragment_info.cc
+    src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-nullable.cc

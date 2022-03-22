@@ -628,6 +628,9 @@ struct GroupMember {
 
   type @1 :Text;
   # type of Member, group or array
+
+  relative @2 :Bool;
+  # is member URI relative to group
 }
 
 struct Group {
@@ -636,10 +639,12 @@ struct Group {
 
   metadata  @1 :ArrayMetadata;
   # metadata attached to group
+}
 
-  membersToRemove @2 :List(Text);
+struct GroupUpdate {
+  membersToRemove @0 :List(Text);
   # members to remove
 
-  membersToAdd @3 :List(GroupMember);
+  membersToAdd @1 :List(GroupMember);
   # members to add
 }

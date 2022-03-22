@@ -72,6 +72,8 @@ Status group_member_to_capnp(
 
   group_member_builder->setUri(group_member->uri().to_string());
 
+  group_member_builder->setRelative(group_member->relative());
+
   return Status::Ok();
 }
 
@@ -94,8 +96,9 @@ group_member_from_capnp(capnp::GroupMember::Reader* group_member_reader) {
       object_type_enum(group_member_reader->getType().cStr(), &type),
       std::nullopt);
   const char* uri = group_member_reader->getUri().cStr();
+  const bool relative = group_member_reader->getRelative();
   tdb_shared_ptr<GroupMember> group_member =
-      tdb::make_shared<GroupMemberV1>(HERE(), URI(uri), type);
+      tdb::make_shared<GroupMemberV1>(HERE(), URI(uri), type, relative);
 
   return {Status::Ok(), group_member};
 }
@@ -111,7 +114,6 @@ Status group_to_capnp(
     auto group_members_builder =
         group_builder->initMembers(group_members.size());
     decltype(group_members_builder.size()) i{0};
-    //    uint64_t i = 0;
     for (const auto& it : group_members) {
       auto group_member_builder = group_members_builder[i];
       RETURN_NOT_OK(group_member_to_capnp(it.second, &group_member_builder));
@@ -120,31 +122,31 @@ Status group_to_capnp(
     }
   }
 
-  const auto& group_members_to_add = group->members_to_add();
-  if (!group_members_to_add.empty()) {
-    auto group_members_to_add_builder =
-        group_builder->initMembersToAdd(group_members_to_add.size());
-    decltype(group_members_to_add_builder.size()) i{0};
-    for (const auto& it : group_members_to_add) {
-      auto group_member_to_add_builder = group_members_to_add_builder[i];
-      RETURN_NOT_OK(
-          group_member_to_capnp(it.second, &group_member_to_add_builder));
-      // Increment index
-      ++i;
-    }
-  }
+  /*  const auto& group_members_to_add = group->members_to_add();
+    if (!group_members_to_add.empty()) {
+      auto group_members_to_add_builder =
+          group_builder->initMembersToAdd(group_members_to_add.size());
+      decltype(group_members_to_add_builder.size()) i{0};
+      for (const auto& it : group_members_to_add) {
+        auto group_member_to_add_builder = group_members_to_add_builder[i];
+        RETURN_NOT_OK(
+            group_member_to_capnp(it.second, &group_member_to_add_builder));
+        // Increment index
+        ++i;
+      }
+    }*/
 
-  const auto& group_members_to_remove = group->members_to_remove();
-  if (!group_members_to_remove.empty()) {
-    auto group_members_to_remove_builder =
-        group_builder->initMembersToRemove(group_members_to_remove.size());
-    decltype(group_members_to_remove_builder.size()) i{0};
-    for (const auto& it : group_members_to_remove) {
-      group_members_to_remove_builder.set(i, it.c_str());
-      // Increment index
-      ++i;
-    }
-  }
+  /*  const auto& group_members_to_remove = group->members_to_remove();
+    if (!group_members_to_remove.empty()) {
+      auto group_members_to_remove_builder =
+          group_builder->initMembersToRemove(group_members_to_remove.size());
+      decltype(group_members_to_remove_builder.size()) i{0};
+      for (const auto& it : group_members_to_remove) {
+        group_members_to_remove_builder.set(i, it.c_str());
+        // Increment index
+        ++i;
+      }
+    }*/
 
   return Status::Ok();
 }
@@ -159,6 +161,62 @@ Status group_from_capnp(
     }
   }
 
+  /*  if (group_reader.hasMembersToAdd()) {
+      for (auto member_to_add : group_reader.getMembersToAdd()) {
+        auto&& [st, group_member] = group_member_from_capnp(&member_to_add);
+        RETURN_NOT_OK(st);
+        group->add_member(group_member.value());
+      }
+    }
+
+    if (group_reader.hasMembersToRemove()) {
+      for (auto uri : group_reader.getMembersToRemove()) {
+        group->mark_member_for_removal(uri.cStr());
+      }
+    }*/
+
+  return Status::Ok();
+}
+
+Status group_update_to_capnp(
+    const Group* group, capnp::GroupUpdate::Builder* group_update_builder) {
+  if (group == nullptr) {
+    return LOG_STATUS(
+        Status_SerializationError("Error serializing group; group is null."));
+  }
+
+  const auto& group_members_to_add = group->members_to_add();
+  if (!group_members_to_add.empty()) {
+    auto group_members_to_add_builder =
+        group_update_builder->initMembersToAdd(group_members_to_add.size());
+    decltype(group_members_to_add_builder.size()) i{0};
+    for (const auto& it : group_members_to_add) {
+      auto group_member_to_add_builder = group_members_to_add_builder[i];
+      RETURN_NOT_OK(
+          group_member_to_capnp(it.second, &group_member_to_add_builder));
+      // Increment index
+      ++i;
+    }
+  }
+
+  const auto& group_members_to_remove = group->members_to_remove();
+  if (!group_members_to_remove.empty()) {
+    auto group_members_to_remove_builder =
+        group_update_builder->initMembersToRemove(
+            group_members_to_remove.size());
+    decltype(group_members_to_remove_builder.size()) i{0};
+    for (const auto& it : group_members_to_remove) {
+      group_members_to_remove_builder.set(i, it.c_str());
+      // Increment index
+      ++i;
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status group_update_from_capnp(
+    const capnp::GroupUpdate::Reader& group_reader, Group* group) {
   if (group_reader.hasMembersToAdd()) {
     for (auto member_to_add : group_reader.getMembersToAdd()) {
       auto&& [st, group_member] = group_member_from_capnp(&member_to_add);
@@ -274,6 +332,106 @@ Status group_deserialize(
   return Status::Ok();
 }
 
+Status group_update_serialize(
+    const Group* group,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    capnp::GroupUpdate::Builder groupUpdateBuilder =
+        message.initRoot<capnp::GroupUpdate>();
+    RETURN_NOT_OK(group_update_to_capnp(group, &groupUpdateBuilder));
+
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(groupUpdateBuilder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
+        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
+        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status_SerializationError(
+            "Error serializing group; Unknown serialization type "
+            "passed"));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing group; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing group; exception " + std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
+Status group_update_deserialize(
+    Group* group,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer) {
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        capnp::GroupUpdate::Builder group_update_builder =
+            message_builder.initRoot<capnp::GroupUpdate>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            group_update_builder);
+        capnp::GroupUpdate::Reader group_reader =
+            group_update_builder.asReader();
+        RETURN_NOT_OK(group_update_from_capnp(group_reader, group));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
+        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
+        capnp::Group::Reader group_reader = reader.getRoot<capnp::Group>();
+        RETURN_NOT_OK(group_from_capnp(group_reader, group));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status_SerializationError(
+            "Error deserializing group; Unknown serialization type "
+            "passed"));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error deserializing group; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error deserializing group; exception " + std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
 #else
 
 Status group_serialize(const Group*, SerializationType, Buffer*) {
@@ -282,6 +440,16 @@ Status group_serialize(const Group*, SerializationType, Buffer*) {
 }
 
 Status group_deserialize(Group*, SerializationType, const Buffer&) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot deserialize; serialization not enabled."));
+}
+
+Status group_update_serialize(const Group*, SerializationType, Buffer*) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot serialize; serialization not enabled."));
+}
+
+Status group_update_deserialize(Group*, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

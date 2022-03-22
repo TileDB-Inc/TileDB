@@ -1,5 +1,5 @@
 /**
- * @file   helpers.h
+ * @file   api_argument_validator.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file implements helper functions used in the c-api implementation
+ * This file implements argument validator functions used in the c-api
+ * implementation
  */
 
-#include "tiledb/sm/c_api/helpers.h"
+#include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 

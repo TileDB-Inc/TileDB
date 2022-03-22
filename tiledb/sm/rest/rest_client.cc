@@ -994,10 +994,22 @@ Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
       curlc.url_escape(group_uri) +
       "/embedded?type=" + query_type_str(group->query_type());
 
-  // Put the data
+  // Get the data
   Buffer returned_data;
-  return curlc.post_data(
-      stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
+  RETURN_NOT_OK(curlc.post_data(
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
+
+  if (returned_data.data() == nullptr || returned_data.size() == 0)
+    return LOG_STATUS(Status_RestError(
+        "Error getting group from REST; server returned no data."));
+
+  return serialization::group_deserialize(
+      group, serialization_type_, returned_data);
 }
 
 Status RestClient::post_group_to_rest(const URI& uri, Group* group) {
@@ -1007,7 +1019,7 @@ Status RestClient::post_group_to_rest(const URI& uri, Group* group) {
 
   Buffer buff;
   RETURN_NOT_OK(
-      serialization::group_serialize(group, serialization_type_, &buff));
+      serialization::group_update_serialize(group, serialization_type_, &buff));
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));

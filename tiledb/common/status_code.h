@@ -29,6 +29,7 @@
 #define TILEDB_STATUS_CODE_H
 
 #include <string>
+#include <string_view>
 
 namespace tiledb::common {
 

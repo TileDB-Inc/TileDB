@@ -38,9 +38,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 GroupMember::GroupMember(
-    const URI& uri, const ObjectType& type, uint32_t version)
+    const URI& uri,
+    const ObjectType& type,
+    const bool& relative,
+    uint32_t version)
     : uri_(uri)
     , type_(type)
+    , relative_(relative)
     , version_(version) {
 }
 
@@ -50,6 +54,10 @@ const URI& GroupMember::uri() const {
 
 ObjectType GroupMember::type() const {
   return type_;
+}
+
+const bool& GroupMember::relative() const {
+  return relative_;
 }
 
 Status GroupMember::serialize(Buffer*) {
@@ -67,6 +75,12 @@ GroupMember::deserialize(ConstBuffer* buff) {
   return {Status_GroupError(
               "Unsupported group member version " + std::to_string(version)),
           std::nullopt};
+}
+
+std::ostream& operator<<(std::ostream& os, const GroupMember& group_member) {
+  os << group_member.uri().last_path_part() << " "
+     << object_type_str(group_member.type());
+  return os;
 }
 
 }  // namespace sm

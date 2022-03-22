@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,7 +31,7 @@
  * This file defines the C API of TileDB for groups.
  **/
 
-#include "tiledb/sm/c_api/helpers.h"
+#include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
@@ -94,7 +94,6 @@ int32_t tiledb_group_alloc(
   }
 
   // Allocate a group object
-  // TODO: rework
   (*group)->group_ = tdb_unique_ptr<tiledb::sm::Group>(
       tdb_new(tiledb::sm::GroupV1, uri, ctx->ctx_->storage_manager()));
   if ((*group)->group_ == nullptr) {
@@ -354,13 +353,18 @@ int32_t tiledb_deserialize_group(
 }
 
 int32_t tiledb_group_add_member(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* uri) {
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* uri,
+    const uint8_t relative) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-          ctx, group->group_->mark_member_for_addition(tiledb::sm::URI(uri))))
+          ctx,
+          group->group_->mark_member_for_addition(
+              tiledb::sm::URI(uri, !relative), relative)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -406,5 +410,67 @@ int32_t tiledb_group_get_member_by_index(
     return TILEDB_ERR;
 
   *type = static_cast<tiledb_object_t>(object_type);
+  return TILEDB_OK;
+}
+
+int32_t tiledb_group_get_uri(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, const char** group_uri) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *group_uri = group->group_->group_uri().c_str();
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_group_get_query_type(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, tiledb_query_type_t* query_type) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, group) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Get query_type
+  tiledb::sm::QueryType type;
+  if (SAVE_ERROR_CATCH(ctx, group->group_->get_query_type(&type)))
+    return TILEDB_ERR;
+
+  *query_type = static_cast<tiledb_query_type_t>(type);
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_group_is_open(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, int32_t* is_open) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *is_open = (int32_t)group->group_->is_open();
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_group_dump_str(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    char** dump_ascii,
+    const int recursive) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (dump_ascii == nullptr)
+    return TILEDB_ERR;
+
+  const std::string str = group->group_->dump(2, 0, recursive);
+
+  *dump_ascii = static_cast<char*>(std::malloc(str.size() + 1));
+  if (*dump_ascii == nullptr)
+    return TILEDB_ERR;
+
+  std::memcpy(*dump_ascii, str.data(), str.size());
+  (*dump_ascii)[str.size()] = '\0';
+
   return TILEDB_OK;
 }

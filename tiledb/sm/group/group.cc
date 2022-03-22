@@ -239,6 +239,25 @@ Status Group::close() {
   return Status::Ok();
 }
 
+bool Group::is_open() const {
+  return is_open_;
+}
+
+bool Group::is_remote() const {
+  return remote_;
+}
+
+Status Group::get_query_type(QueryType* query_type) const {
+  // Error if the group is not open
+  if (!is_open_)
+    return LOG_STATUS(
+        Status_GroupError("Cannot get query_type; Group is not open"));
+
+  *query_type = query_type_;
+
+  return Status::Ok();
+}
+
 Status Group::delete_metadata(const char* key) {
   // Check if group is open
   if (!is_open_)
@@ -452,7 +471,8 @@ Status Group::mark_member_for_addition(
   return Status::Ok();
 }
 
-Status Group::mark_member_for_addition(const URI& group_member_uri) {
+Status Group::mark_member_for_addition(
+    const URI& group_member_uri, const bool& relative) {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
@@ -464,17 +484,24 @@ Status Group::mark_member_for_addition(const URI& group_member_uri) {
     return Status_GroupError(
         "Cannot get member; Group was not opened in read mode");
   }
+
   const std::string& uri = group_member_uri.to_string();
   if (members_to_remove_.find(uri) != members_to_remove_.end()) {
     return Status_GroupError(
         "Cannot add group member " + uri + ", member already set for removal.");
   }
 
+  URI absolute_group_member_uri = group_member_uri;
+  if (relative) {
+    absolute_group_member_uri =
+        group_uri_.join_path(group_member_uri.to_string());
+  }
   ObjectType type = ObjectType::INVALID;
-  RETURN_NOT_OK(storage_manager_->object_type(group_member_uri, &type));
+  RETURN_NOT_OK(
+      storage_manager_->object_type(absolute_group_member_uri, &type));
 
   auto group_member =
-      tdb::make_shared<GroupMemberV1>(HERE(), group_member_uri, type);
+      tdb::make_shared<GroupMemberV1>(HERE(), group_member_uri, type, relative);
 
   members_to_add_.emplace(uri, group_member);
 
@@ -611,10 +638,45 @@ Status Group::member_by_index(
 
   auto member = members_vec_[index];
 
-  *uri = member->uri().c_str();
+  if (member->relative()) {
+    std::string tmp =
+        group_uri_.join_path(member->uri().to_string()).to_string();
+    *uri = (char*)std::malloc(tmp.size() * sizeof(char));
+    memcpy((void*)*uri, tmp.data(), tmp.size());
+  } else {
+    *uri = member->uri().c_str();
+  }
   *type = member->type();
 
   return Status::Ok();
+}
+
+std::string Group::dump(
+    const uint64_t indent_size,
+    const uint64_t num_indents,
+    bool recursive,
+    bool print_self) const {
+  // Build the indentation literal and the leading indentation literal.
+  const std::string indent(indent_size, '-');
+  const std::string l_indent(indent_size * num_indents, '-');
+
+  std::stringstream ss;
+  if (print_self) {
+    ss << l_indent << group_uri_.last_path_part() << " "
+       << object_type_str(ObjectType::GROUP) << std::endl;
+  }
+
+  for (const auto& it : members_vec_) {
+    ss << "|" << indent << l_indent << " " << *it << std::endl;
+    if (it->type() == ObjectType::GROUP && recursive) {
+      GroupV1 group_rec(it->uri(), storage_manager_);
+      group_rec.open(QueryType::READ);
+      ss << group_rec.dump(indent_size, num_indents + 2, recursive, false);
+      group_rec.close();
+    }
+  }
+
+  return ss.str();
 }
 
 /* ********************************* */
@@ -642,6 +704,7 @@ Status Group::load_metadata() {
     RETURN_NOT_OK(rest_client->get_group_metadata_from_rest(
         group_uri_, timestamp_start_, timestamp_end_, this));
   } else {
+    assert(group_dir_->loaded());
     RETURN_NOT_OK(storage_manager_->load_group_metadata(
         group_dir_, *encryption_key_, &metadata_));
   }
@@ -655,6 +718,14 @@ Status Group::apply_pending_changes() {
   // Remove members first
   for (const auto& uri : members_to_remove_) {
     members_.erase(uri);
+    // Check to remove relative URIs
+    if (uri.find(group_uri_.add_trailing_slash().to_string()) !=
+        std::string::npos) {
+      // Get the substring relative path
+      auto relative_uri = uri.substr(
+          group_uri_.add_trailing_slash().to_string().size(), uri.size());
+      members_.erase(relative_uri);
+    }
   }
 
   for (const auto& it : members_to_add_) {

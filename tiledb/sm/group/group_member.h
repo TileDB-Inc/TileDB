@@ -47,7 +47,11 @@ namespace sm {
 
 class GroupMember {
  public:
-  GroupMember(const URI& uri, const ObjectType& type, uint32_t version);
+  GroupMember(
+      const URI& uri,
+      const ObjectType& type,
+      const bool& relative,
+      uint32_t version);
 
   /** Destructor. */
   virtual ~GroupMember() = default;
@@ -57,6 +61,9 @@ class GroupMember {
 
   /** Return object type. */
   ObjectType type() const;
+
+  /** Return if object is relative. */
+  const bool& relative() const;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -76,6 +83,9 @@ class GroupMember {
   static std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
   deserialize(ConstBuffer* buff);
 
+  friend std::ostream& operator<<(
+      std::ostream& os, const GroupMember& group_member);
+
  protected:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -85,6 +95,9 @@ class GroupMember {
 
   /** The group member type. */
   ObjectType type_;
+
+  /** Is the URI relative to the group. */
+  bool relative_;
 
   /* Format version. */
   const uint32_t version_;

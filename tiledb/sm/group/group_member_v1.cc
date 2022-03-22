@@ -37,8 +37,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-GroupMemberV1::GroupMemberV1(const URI& uri, const ObjectType& type)
-    : GroupMember(uri, type, GroupMemberV1::format_version_){};
+GroupMemberV1::GroupMemberV1(
+    const URI& uri, const ObjectType& type, const bool& relative)
+    : GroupMember(uri, type, relative, GroupMemberV1::format_version_){};
 
 // ===== FORMAT =====
 // format_version (uint32_t)
@@ -48,19 +49,29 @@ GroupMemberV1::GroupMemberV1(const URI& uri, const ObjectType& type)
 Status GroupMemberV1::serialize(Buffer* buff) {
   RETURN_NOT_OK(buff->write(
       &GroupMemberV1::format_version_, sizeof(GroupMemberV1::format_version_)));
+
+  // Write type
+  RETURN_NOT_OK(buff->write(&type_, sizeof(type_)));
+
+  // Write relative
+  RETURN_NOT_OK(buff->write(&relative_, sizeof(relative_)));
+
   // Write uri
   uint64_t uri_size = uri_.to_string().size();
   RETURN_NOT_OK(buff->write(&uri_size, sizeof(uri_size)));
   RETURN_NOT_OK(buff->write(uri_.c_str(), uri_size));
-
-  // Write type
-  RETURN_NOT_OK(buff->write(&type_, sizeof(type_)));
 
   return Status::Ok();
 }
 
 std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
 GroupMemberV1::deserialize(ConstBuffer* buff) {
+  ObjectType type = ObjectType::INVALID;
+  RETURN_NOT_OK_TUPLE(buff->read(&type, sizeof(type)), std::nullopt);
+
+  bool relative;
+  RETURN_NOT_OK_TUPLE(buff->read(&relative, sizeof(relative)), std::nullopt);
+
   uint64_t uri_size = 0;
   RETURN_NOT_OK_TUPLE(buff->read(&uri_size, sizeof(uri_size)), std::nullopt);
 
@@ -68,11 +79,8 @@ GroupMemberV1::deserialize(ConstBuffer* buff) {
   uri_string.resize(uri_size);
   RETURN_NOT_OK_TUPLE(buff->read(&uri_string[0], uri_size), std::nullopt);
 
-  ObjectType type = ObjectType::INVALID;
-  RETURN_NOT_OK_TUPLE(buff->read(&type, sizeof(type)), std::nullopt);
-
-  tdb_shared_ptr<GroupMemberV1> group_member =
-      tdb::make_shared<GroupMemberV1>(HERE(), URI(uri_string), type);
+  tdb_shared_ptr<GroupMemberV1> group_member = tdb::make_shared<GroupMemberV1>(
+      HERE(), URI(uri_string, !relative), type, relative);
   return {Status::Ok(), group_member};
 }
 

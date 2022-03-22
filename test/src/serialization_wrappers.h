@@ -41,9 +41,10 @@
  *
  * @param ctx tiledb context
  * @param path path to create the array at
- * @param array_schema array schema
- * @param serialize_array_schema serialization type to use
- * @return
+ * @param array_schema array schema to create
+ * @param serialize_array_schema should the creation of the schema be
+ * round-tripped through serialization or not
+ * @return status
  */
 int tiledb_array_create_serialization_wrapper(
     tiledb_ctx_t* ctx,
