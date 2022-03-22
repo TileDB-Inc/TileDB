@@ -474,13 +474,11 @@ Status CompressionFilter::compress_var_string_coords(
   auto input_view = create_input_view(input, offsets_tile);
 
   // Estimate and allocate output size
-  uint8_t rle_len_bytesize = 0, string_len_bytesize = 0;
-  auto [max_rle_len, max_string_size, num_of_runs, output_strings_size] =
-      RLE::calculate_compression_params(input_view);
-  // TODO: calculate smallest datatypes to fit max_string_size and
-  // max_rle_len -> hardcode for now
-  rle_len_bytesize = 4;
-  string_len_bytesize = 2;
+  auto
+      [rle_len_bytesize,
+       string_len_bytesize,
+       num_of_runs,
+       output_strings_size] = RLE::calculate_compression_params(input_view);
   uint64_t output_size_ub =
       num_of_runs * (rle_len_bytesize + string_len_bytesize) +
       output_strings_size;
@@ -494,15 +492,9 @@ Status CompressionFilter::compress_var_string_coords(
   auto output_view = span<std::byte>(
       reinterpret_cast<std::byte*>(data_buffer->data()), output_size_ub);
 
-  switch (compressor_) {
-    case Compressor::RLE: {
-      // TODO : same as above, hardcode for now
-      RLE::compress<uint32_t, uint16_t>(input_view, output_view);
-      break;
-    }
-    default:
-      break;
-  }
+  Status st = RLE::compress(
+      input_view, rle_len_bytesize, string_len_bytesize, output_view);
+  RETURN_NOT_OK(st);
 
   data_buffer->set_size(output_size_ub);
 
@@ -552,10 +544,12 @@ Status CompressionFilter::decompress_var_string_coords(
 
   switch (compressor_) {
     case Compressor::RLE: {
-      // TODO: Use input metadata to calculate the datatypes used to write rle
-      // lenghts and string sizes, hardcode for now
-      RLE::decompress<uint32_t, uint16_t>(
-          input_view, output_view, offsets_view);
+      RLE::decompress(
+          input_view,
+          rle_len_bytesize,
+          string_len_bytesize,
+          output_view,
+          offsets_view);
       break;
     }
     default:
