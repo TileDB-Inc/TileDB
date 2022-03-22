@@ -211,8 +211,8 @@ size_t CompressionFilter::calculate_output_metadata_size(
   if (compressor_ == Compressor::RLE) {
     if (datatype_is_string(tile.type())) {
       // Add two extra metadata bytes that store run length datasize and
-      // string length datasize
-      metadata_size += 2 * sizeof(uint8_t);
+      // string length datasize, and output offsets size
+      metadata_size += 2 * sizeof(uint8_t) + sizeof(uint32_t);
     }
   }
 
@@ -281,6 +281,7 @@ Status CompressionFilter::run_forward(
 
 Status CompressionFilter::run_reverse(
     const Tile& tile,
+    Tile* const offsets_tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -309,10 +310,11 @@ Status CompressionFilter::run_reverse(
   assert(metadata_buffer != nullptr);
 
   if (compressor_ == Compressor::RLE && tile.type() == Datatype::STRING_ASCII &&
-      version_ >= 12) {
+      version_ >= 12 && offsets_tile) {
     // String RLE is only allowed on first/single filter
     assert(num_data_parts == 1);
-    return decompress_var_string_coords(*input, *input_metadata, *output);
+    return decompress_var_string_coords(
+        *input, *input_metadata, offsets_tile, *output);
   }
 
   for (uint32_t i = 0; i < num_metadata_parts; i++)
@@ -460,6 +462,8 @@ Status CompressionFilter::compress_var_string_coords(
     Tile* const offsets_tile,
     FilterBuffer& output,
     FilterBuffer& output_metadata) const {
+  assert(offsets_tile);
+
   if (input.num_buffers() != 1) {
     return LOG_STATUS(
         Status_FilterError("Var-sized string input has to be in single "
@@ -470,7 +474,6 @@ Status CompressionFilter::compress_var_string_coords(
   auto input_view = create_input_view(input, offsets_tile);
 
   // Estimate and allocate output size
-  uint64_t output_size_ub = 0;
   uint8_t rle_len_bytesize = 0, string_len_bytesize = 0;
   auto [max_rle_len, max_string_size, num_of_runs, output_strings_size] =
       RLE::calculate_compression_params(input_view);
@@ -478,8 +481,10 @@ Status CompressionFilter::compress_var_string_coords(
   // max_rle_len -> hardcode for now
   rle_len_bytesize = 4;
   string_len_bytesize = 2;
-  output_size_ub = num_of_runs * (rle_len_bytesize + string_len_bytesize) +
-                   output_strings_size;
+  uint64_t output_size_ub =
+      num_of_runs * (rle_len_bytesize + string_len_bytesize) +
+      output_strings_size;
+  uint32_t input_offsets_size = offsets_tile->size();
 
   // Allocate output data buffer
   RETURN_NOT_OK(output.prepend_buffer(output_size_ub));
@@ -505,6 +510,7 @@ Status CompressionFilter::compress_var_string_coords(
   auto input_size = input.buffers()[0].size();
   RETURN_NOT_OK(output_metadata.write(&input_size, sizeof(uint32_t)));
   RETURN_NOT_OK(output_metadata.write(&output_size_ub, sizeof(uint32_t)));
+  RETURN_NOT_OK(output_metadata.write(&input_offsets_size, sizeof(uint32_t)));
   RETURN_NOT_OK(output_metadata.write(&rle_len_bytesize, sizeof(uint8_t)));
   RETURN_NOT_OK(output_metadata.write(&string_len_bytesize, sizeof(uint8_t)));
 
@@ -514,6 +520,7 @@ Status CompressionFilter::compress_var_string_coords(
 Status CompressionFilter::decompress_var_string_coords(
     FilterBuffer& input,
     FilterBuffer& input_metadata,
+    Tile* offsets_tile,
     FilterBuffer& output) const {
   if (input.num_buffers() != 1) {
     return LOG_STATUS(
@@ -522,9 +529,11 @@ Status CompressionFilter::decompress_var_string_coords(
   }
 
   // Read the part metadata
-  uint32_t compressed_size, uncompressed_size;
+  uint32_t compressed_size, uncompressed_size, uncompressed_offsets_size;
   RETURN_NOT_OK(input_metadata.read(&uncompressed_size, sizeof(uint32_t)));
   RETURN_NOT_OK(input_metadata.read(&compressed_size, sizeof(uint32_t)));
+  RETURN_NOT_OK(
+      input_metadata.read(&uncompressed_offsets_size, sizeof(uint32_t)));
 
   uint8_t rle_len_bytesize, string_len_bytesize;
   RETURN_NOT_OK(input_metadata.read(&rle_len_bytesize, sizeof(uint8_t)));
@@ -537,12 +546,16 @@ Status CompressionFilter::decompress_var_string_coords(
   Buffer* output_buffer = output.buffer_ptr(0);
   auto output_view = span<std::byte>(
       reinterpret_cast<std::byte*>(output_buffer->data()), uncompressed_size);
+  auto offsets_view = span<uint64_t>(
+      reinterpret_cast<std::uint64_t*>(offsets_tile->data()),
+      uncompressed_offsets_size);
 
   switch (compressor_) {
     case Compressor::RLE: {
       // TODO: Use input metadata to calculate the datatypes used to write rle
       // lenghts and string sizes, hardcode for now
-      RLE::decompress<uint32_t, uint16_t>(input_view, output_view);
+      RLE::decompress<uint32_t, uint16_t>(
+          input_view, output_view, offsets_view);
       break;
     }
     default:

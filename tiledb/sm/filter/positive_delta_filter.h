@@ -104,6 +104,7 @@ class PositiveDeltaFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
+      Tile* const tile_offsets,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -152,6 +153,7 @@ class PositiveDeltaFilter : public Filter {
   template <typename T>
   Status run_reverse(
       const Tile& tile,
+      Tile* const tile_offsets,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

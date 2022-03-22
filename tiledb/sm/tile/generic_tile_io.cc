@@ -99,6 +99,7 @@ Status GenericTileIO::read_generic(
   RETURN_NOT_OK(header.filters.run_reverse(
       storage_manager_->stats(),
       ret.get(),
+      nullptr,
       storage_manager_->compute_tp(),
       config));
   assert(!ret->filtered());

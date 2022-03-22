@@ -141,6 +141,7 @@ Status EncryptionAES256GCMFilter::encrypt_part(
 
 Status EncryptionAES256GCMFilter::run_reverse(
     const Tile&,
+    Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
