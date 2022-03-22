@@ -414,7 +414,7 @@ Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
     for (uint64_t m = 0; m < mbr_num; ++m) {
       levels_[l][m].resize(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
-        auto dim = domain_->dimension(d);
+        auto dim = domain->dimension(d);
         if (!dim->var_size()) {  // Fixed-sized
           auto r_size = 2 * domain->dimension(d)->coord_size();
           levels_[l][m][d].set_range(cbuff->cur_data(), r_size);
