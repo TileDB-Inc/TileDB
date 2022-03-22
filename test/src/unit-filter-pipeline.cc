@@ -103,6 +103,7 @@ class Add1InPlace : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -184,6 +185,7 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -264,6 +266,7 @@ class AddNInPlace : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -354,6 +357,7 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -468,6 +472,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
+      Tile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -584,7 +589,8 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
   }
 
   CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
   CHECK(tile.filtered_buffer().size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
@@ -708,7 +714,8 @@ TEST_CASE(
   }
 
   CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
   CHECK(tile.filtered_buffer().size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
@@ -781,7 +788,9 @@ TEST_CASE(
     }
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -828,7 +837,9 @@ TEST_CASE(
     }
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -956,7 +967,9 @@ TEST_CASE(
     }
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -1008,7 +1021,9 @@ TEST_CASE(
     }
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -1084,7 +1099,9 @@ TEST_CASE(
     }
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -1131,7 +1148,9 @@ TEST_CASE(
     }
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -1259,7 +1278,9 @@ TEST_CASE(
     }
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -1311,7 +1332,9 @@ TEST_CASE(
     }
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -1387,7 +1410,8 @@ TEST_CASE(
 
   // Set up test data
   CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
   CHECK(tile.filtered_buffer().size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
@@ -1515,7 +1539,8 @@ TEST_CASE(
   }
 
   CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
   CHECK(tile.filtered_buffer().size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
@@ -1576,7 +1601,9 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     CHECK(tile.filtered_buffer().size() < nelts * sizeof(uint64_t));
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
 
     // Check all elements original values.
@@ -1599,7 +1626,9 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     CHECK(tile.filtered_buffer().size() < nelts * sizeof(uint64_t));
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
 
     // Check all elements original values.
@@ -1624,7 +1653,9 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     CHECK(tile.filtered_buffer().size() < nelts * sizeof(uint64_t));
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
 
     // Check all elements original values.
@@ -1739,7 +1770,9 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
         9);  // Number of chunks
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
 
     // Check all elements original values.
@@ -1765,7 +1798,9 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
         9);  // Number of chunks
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
 
     // Check all elements original values.
@@ -1793,7 +1828,9 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
         9);  // Number of chunks
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
 
     // Check all elements original values.
@@ -1877,7 +1914,9 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
     }
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -1942,7 +1981,9 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
     }
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -2079,7 +2120,9 @@ TEST_CASE(
     }
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -2145,7 +2188,9 @@ TEST_CASE(
     }
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -2225,7 +2270,8 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
   }
 
   CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
   CHECK(tile.filtered_buffer().size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
@@ -2360,7 +2406,8 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
   }
 
   CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
   CHECK(tile.filtered_buffer().size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
@@ -2453,7 +2500,8 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
   }
 
   CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
   CHECK(tile.filtered_buffer().size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
@@ -2550,7 +2598,9 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t n = 0; n < nelts; n++) {
       uint64_t elt = 0;
@@ -2595,8 +2645,9 @@ TEST_CASE(
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
   CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-  CHECK(
-      md5_pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+  CHECK(md5_pipeline
+            .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
   CHECK(tile.filtered_buffer().size() == 0);
   for (uint64_t n = 0; n < nelts; n++) {
     uint64_t elt = 0;
@@ -2613,7 +2664,8 @@ TEST_CASE(
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
   CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-  CHECK(sha_256_pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config)
+  CHECK(sha_256_pipeline
+            .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
   CHECK(tile.filtered_buffer().size() == 0);
   for (uint64_t n = 0; n < nelts; n++) {
@@ -2683,7 +2735,9 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     CHECK(compressed_size < nelts * sizeof(uint64_t));
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -2704,8 +2758,9 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
       CHECK(tile.size() == 0);
       CHECK(tile.filtered_buffer().size() != 0);
       CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-      CHECK(
-          pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+      CHECK(pipeline
+                .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+                .ok());
       CHECK(tile.filtered_buffer().size() == 0);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
@@ -2741,7 +2796,9 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -2780,7 +2837,9 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
     CHECK(tile.alloc_data(nelts * sizeof(uint32_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       int32_t elt = 0;
@@ -2809,7 +2868,9 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -2953,7 +3014,9 @@ TEST_CASE(
     CHECK(compressed_size < nelts * sizeof(uint64_t));
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -2976,8 +3039,9 @@ TEST_CASE(
       CHECK(tile.size() == 0);
       CHECK(tile.filtered_buffer().size() != 0);
       CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-      CHECK(
-          pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+      CHECK(pipeline
+                .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+                .ok());
       CHECK(tile.filtered_buffer().size() == 0);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
@@ -3014,7 +3078,9 @@ TEST_CASE(
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -3078,7 +3144,9 @@ TEST_CASE(
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
     CHECK(tile.alloc_data(nelts * sizeof(uint32_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       int32_t elt = 0;
@@ -3108,7 +3176,9 @@ TEST_CASE(
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -3180,7 +3250,9 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
                             nelts * sizeof(uint64_t));
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -3201,8 +3273,9 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
       CHECK(tile.size() == 0);
       CHECK(tile.filtered_buffer().size() != 0);
       CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-      CHECK(
-          pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+      CHECK(pipeline
+                .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+                .ok());
       CHECK(tile.filtered_buffer().size() == 0);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
@@ -3358,7 +3431,9 @@ TEST_CASE(
         pipeline_metadata_size + total_md_size + nelts * sizeof(uint64_t));
 
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -3381,8 +3456,9 @@ TEST_CASE(
       CHECK(tile.size() == 0);
       CHECK(tile.filtered_buffer().size() != 0);
       CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-      CHECK(
-          pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+      CHECK(pipeline
+                .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+                .ok());
       CHECK(tile.filtered_buffer().size() == 0);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
@@ -3440,7 +3516,9 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -3471,8 +3549,9 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
     CHECK(tile2.size() == 0);
     CHECK(tile2.filtered_buffer().size() != 0);
     CHECK(tile2.alloc_data(nelts2 * sizeof(uint32_t)).ok());
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile2, &tp, config).ok());
+    CHECK(pipeline
+              .run_reverse(&test::g_helper_stats, &tile2, nullptr, &tp, config)
+              .ok());
     CHECK(tile2.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
@@ -3565,7 +3644,9 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -3598,8 +3679,9 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
     CHECK(tile2.size() == 0);
     CHECK(tile2.filtered_buffer().size() != 0);
     CHECK(tile2.alloc_data(nelts2 * sizeof(uint32_t)).ok());
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile2, &tp, config).ok());
+    CHECK(pipeline
+              .run_reverse(&test::g_helper_stats, &tile2, nullptr, &tp, config)
+              .ok());
     CHECK(tile2.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
@@ -3644,7 +3726,9 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -3675,8 +3759,9 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
     CHECK(tile2.size() == 0);
     CHECK(tile2.filtered_buffer().size() != 0);
     CHECK(tile2.alloc_data(nelts2 * sizeof(uint32_t)).ok());
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile2, &tp, config).ok());
+    CHECK(pipeline
+              .run_reverse(&test::g_helper_stats, &tile2, nullptr, &tp, config)
+              .ok());
     CHECK(tile2.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
@@ -3769,7 +3854,9 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -3802,8 +3889,9 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
     CHECK(tile2.size() == 0);
     CHECK(tile2.filtered_buffer().size() != 0);
     CHECK(tile2.alloc_data(nelts2 * sizeof(uint32_t)).ok());
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile2, &tp, config).ok());
+    CHECK(pipeline
+              .run_reverse(&test::g_helper_stats, &tile2, nullptr, &tp, config)
+              .ok());
     CHECK(tile2.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
@@ -3860,7 +3948,9 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
@@ -3874,8 +3964,9 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     key[0]++;
     CHECK(filter->set_key(key).ok());
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(
-        !pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(!pipeline
+               .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+               .ok());
 
     // Fix key and check success. Note: this test depends on the implementation
     // leaving the tile data unmodified when the decryption fails, which is not
@@ -3883,7 +3974,9 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     key[0]--;
     CHECK(filter->set_key(key).ok());
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, &tp, config).ok());
+    CHECK(
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
     CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;

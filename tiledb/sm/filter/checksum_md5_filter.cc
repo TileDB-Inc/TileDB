@@ -97,6 +97,7 @@ Status ChecksumMD5Filter::run_forward(
 
 Status ChecksumMD5Filter::run_reverse(
     const Tile&,
+    Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
