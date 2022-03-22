@@ -754,6 +754,19 @@ Status WriterBase::filter_tile(
     filters = array_schema_.filters(name);
   }
 
+  // If those offsets belong to a var-sized string dimension/attribute then
+  // don't filter the offsets as the information will be included in, and can be
+  // reconstructed from, the filtered data tile.
+  if (offsets && array_schema_.filters(name).skip_offsets_filtering(
+                     array_schema_.type(name))) {
+    tile->filtered_buffer().expand(sizeof(uint64_t));
+    uint64_t nchunks = 0;
+    memcpy(tile->filtered_buffer().data(), &nchunks, sizeof(uint64_t));
+    tile->clear_data();
+    tile->set_pre_filtered_size(orig_size);
+    return Status::Ok();
+  }
+
   // Append an encryption filter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));

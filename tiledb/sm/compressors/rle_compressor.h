@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/endian.h"
 
 #include <limits>
@@ -144,8 +145,10 @@ class RLE {
    */
   template <class T, class P>
   static void decompress(
-      const span<const std::byte> input, span<std::byte> output) {
-    if (input.empty() || output.empty())
+      const span<const std::byte> input,
+      span<std::byte> output,
+      span<uint64_t> output_offsets) {
+    if (input.empty() || output.empty() || output_offsets.empty())
       return;
 
     const uint64_t run_size = sizeof(T);
@@ -154,6 +157,7 @@ class RLE {
     T run_length = 0;
     P string_length = 0;
     uint64_t out_offset = 0;
+    size_t offset_index = 0;
     // Iterate input to read [run length|string size|string] items
     uint64_t in_index = 0;
     while (in_index < input.size()) {
@@ -163,6 +167,7 @@ class RLE {
       in_index += str_len_size;
       for (uint64_t j = 0; j < run_length; j++) {
         memcpy(&output[out_offset], &input[in_index], string_length);
+        output_offsets[offset_index++] = out_offset;
         out_offset += string_length;
       }
       in_index += string_length;
