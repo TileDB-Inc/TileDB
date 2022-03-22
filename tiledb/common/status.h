@@ -5,7 +5,7 @@
  *
  * The BSD License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *            Copyright (c) 2011 The LevelDB Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -58,7 +58,6 @@
 #include <tuple>
 
 #include "common-std.h"
-#include "status_code.h"
 #include "tiledb/common/heap_memory.h"
 
 namespace tiledb {
@@ -99,6 +98,73 @@ namespace common {
   } while (false)
 
 class Status {
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /**
+   * OK status has a NULL state_.  Otherwise, state_ is a new[] array
+   * of the following form:
+   *    state_[0..sizeof(string_view)-1] == origin
+   *    state_[sizeof(string_view)..sizeof(string_view)+3] == size of message
+   *    state_[sizeof(string_view)+4..]  == message
+   */
+  const char* state_;
+
+  static constexpr ptrdiff_t origin_offset_ = 0;
+  using origin_type = std::string_view;
+  static constexpr ptrdiff_t message_size_offset_ =
+      origin_offset_ + sizeof(origin_type);
+  using message_size_type = uint32_t;
+  static constexpr ptrdiff_t message_text_offset_ =
+      message_size_offset_ + sizeof(message_size_type);
+  static constexpr char Ok_text_[3]{"Ok"};
+
+  /* ********************************* */
+  /*           PRIVATE METHODS         */
+  /* ********************************* */
+
+  [[nodiscard]] inline const origin_type& origin_() const {
+    return *reinterpret_cast<const origin_type*>(state_ + origin_offset_);
+  }
+
+  [[nodiscard]] inline origin_type& origin_() {
+    return *reinterpret_cast<origin_type*>(
+        const_cast<char*>(state_) + origin_offset_);
+  }
+
+  [[nodiscard]] inline message_size_type message_size_() const {
+    return *reinterpret_cast<const message_size_type*>(
+        state_ + message_size_offset_);
+  }
+
+  [[nodiscard]] inline message_size_type& message_size_() {
+    return *reinterpret_cast<message_size_type*>(
+        const_cast<char*>(state_) + message_size_offset_);
+  }
+
+  [[nodiscard]] inline const char* message_text_ptr_() const {
+    return state_ + message_text_offset_;
+  }
+
+  [[nodiscard]] inline char* message_text_ptr_() {
+    return const_cast<char*>(state_) + message_text_offset_;
+  }
+
+  /** Clones and returns the input state (allocates memory). */
+  void copy_state(const Status& st);
+
+  /**
+   * The number of bytes allocated for the `state_` array, given the size of
+   * the message.
+   *
+   * @param message_size The size of the message
+   * @return
+   */
+  inline static size_t allocation_size(size_t message_size) {
+    return message_text_offset_ + message_size;
+  }
+
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -112,14 +178,7 @@ class Status {
   /**
    * General constructor for arbitrary status
    */
-  Status(StatusCode code, const std::string_view& msg);
-
-  /**
-   * General constructor for arbitrary status
-   */
-  Status(StatusCode code, const std::string& msg)
-      : Status(code, std::string_view{msg}) {
-  }
+  Status(const std::string_view& vicinity, const std::string_view& message);
 
   /** Destructor. */
   ~Status() {
@@ -133,12 +192,12 @@ class Status {
   void operator=(const Status& s);
 
   /**  Return a success status **/
-  static Status Ok() {
+  static inline Status Ok() {
     return Status();
   }
 
   /** Returns true iff the status indicates success **/
-  bool ok() const {
+  inline bool ok() const {
     return (state_ == nullptr);
   }
 
@@ -149,39 +208,13 @@ class Status {
   std::string to_string() const;
 
   /** Return an std::string copy of the Status message **/
-  std::string message() const {
-    uint32_t length;
-    memcpy(&length, state_, sizeof(length));
-    std::string msg;
-    msg.append((state_ + 7), length);
-    return msg;
+  inline std::string message() const {
+    return {message_text_ptr_(), message_size_()};
   }
-
- private:
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
-
-  /**
-   * OK status has a NULL state_.  Otherwise, state_ is a new[] array
-   * of the following form:
-   *    state_[0..3] == length of message
-   *    state_[4]    == code
-   *    state_[5..6] == reserved
-   *    state_[7..]  == message
-   */
-  const char* state_;
-
-  /* ********************************* */
-  /*           PRIVATE METHODS         */
-  /* ********************************* */
-
-  /** Clones and returns the input state (allocates memory). */
-  static const char* copy_state(const char* s);
 };
 
 inline Status::Status(const Status& s) {
-  state_ = (s.state_ == nullptr) ? nullptr : copy_state(s.state_);
+  copy_state(s);
 }
 
 inline void Status::operator=(const Status& s) {
@@ -189,227 +222,231 @@ inline void Status::operator=(const Status& s) {
   // and when both s and *this are ok.
   if (state_ != s.state_) {
     tdb_delete_array(state_);
-    state_ = (s.state_ == nullptr) ? nullptr : copy_state(s.state_);
+    copy_state(s);
   }
 }
 
-inline Status Status_Error(const std::string& msg) {
-  return {StatusCode::Error, msg};
-};
-
-/** Return a StorageManager error class Status with a given message **/
-inline Status Status_StorageManagerError(const std::string& msg) {
-  return Status(StatusCode::StorageManager, msg);
-}
 /**  Return a success status **/
 inline Status Status_Ok() {
-  return Status();
+  return {};
+}
+inline Status Status_Error(const std::string& msg) {
+  return {"Error", msg};
+};
+/** Return a StorageManager error class Status with a given message **/
+inline Status Status_StorageManagerError(const std::string& msg) {
+  return {"[TileDB::StorageManager] Error", msg};
 }
 /** Return a FragmentMetadata error class Status with a given message **/
 inline Status Status_FragmentMetadataError(const std::string& msg) {
-  return Status(StatusCode::FragmentMetadata, msg);
+  return {"[TileDB::FragmentMetadata] Error", msg};
 }
 /** Return a ArraySchema error class Status with a given message **/
 inline Status Status_ArraySchemaError(const std::string& msg) {
-  return Status(StatusCode::ArraySchema, msg);
+  return {"[TileDB::ArraySchema] Error", msg};
 }
 /** Return a ArraySchemaEvolution error class Status with a given message **/
 inline Status Status_ArraySchemaEvolutionError(const std::string& msg) {
-  return Status(StatusCode::ArraySchemaEvolution, msg);
+  return {"[TileDB::ArraySchemaEvolution] Error", msg};
 }
 /** Return a Metadata error class Status with a given message **/
 inline Status Status_MetadataError(const std::string& msg) {
-  return Status(StatusCode::Metadata, msg);
+  return {"[TileDB::Metadata] Error", msg};
 }
 /** Return a IO error class Status with a given message **/
 inline Status Status_IOError(const std::string& msg) {
-  return Status(StatusCode::IO, msg);
+  return {"[TileDB::IO] Error", msg};
 }
 /** Return a GZip error class Status with a given message **/
 inline Status Status_GZipError(const std::string& msg) {
-  return Status(StatusCode::GZip, msg);
+  return {"[TileDB::GZip] Error", msg};
 }
 /** Return a ChecksumError error class Status with a given message **/
 inline Status Status_ChecksumError(const std::string& msg) {
-  return Status(StatusCode::ChecksumError, msg);
+  return {"[TileDB::ChecksumError] Error", msg};
 }
 /** Return a Compression error class Status with a given message **/
 inline Status Status_CompressionError(const std::string& msg) {
-  return Status(StatusCode::Compression, msg);
+  return {"[TileDB::Compression] Error", msg};
 }
 /** Return a Tile error class Status with a given message **/
 inline Status Status_TileError(const std::string& msg) {
-  return Status(StatusCode::Tile, msg);
+  return {"[TileDB::Tile] Error", msg};
 }
 /** Return a TileIO error class Status with a given message **/
 inline Status Status_TileIOError(const std::string& msg) {
-  return Status(StatusCode::TileIO, msg);
+  return {"[TileDB::TileIO] Error", msg};
 }
 /** Return a Buffer error class Status with a given message **/
 inline Status Status_BufferError(const std::string& msg) {
-  return Status(StatusCode::Buffer, msg);
+  return {"[TileDB::Buffer] Error", msg};
 }
 /** Return a Query error class Status with a given message **/
 inline Status Status_QueryError(const std::string& msg) {
-  return Status(StatusCode::Query, msg);
+  return {"[TileDB::Query] Error", msg};
 }
 /** Return a ValidityVector error class Status with a given message **/
 inline Status Status_ValidityVectorError(const std::string& msg) {
-  return Status(StatusCode::ValidityVector, msg);
+  return {"[TileDB::ValidityVector] Error", msg};
 }
 /** Return a Status_VFSError error class Status with a given message **/
 inline Status Status_VFSError(const std::string& msg) {
-  return Status(StatusCode::VFS, msg);
+  return {"[TileDB::VFS] Error", msg};
 }
 /** Return a Dimension error class Status with a given message **/
 inline Status Status_DimensionError(const std::string& msg) {
-  return Status(StatusCode::Dimension, msg);
+  return {"[TileDB::Dimension] Error", msg};
 }
 /** Return a Domain error class Status with a given message **/
 inline Status Status_DomainError(const std::string& msg) {
-  return Status(StatusCode::Domain, msg);
+  return {"[TileDB::Domain] Error", msg};
 }
 /** Return a Consolidator error class Status with a given message **/
 inline Status Status_ConsolidatorError(const std::string& msg) {
-  return Status(StatusCode::Consolidator, msg);
+  return {"[TileDB::Consolidator] Error", msg};
 }
 /** Return a LRUCache error class Status with a given message **/
 inline Status Status_LRUCacheError(const std::string& msg) {
-  return Status(StatusCode::LRUCache, msg);
+  return {"[TileDB::LRUCache] Error", msg};
 }
 /** Return a Config error class Status with a given message **/
 inline Status Status_ConfigError(const std::string& msg) {
-  return Status(StatusCode::Config, msg);
+  return {"[TileDB::Config] Error", msg};
 }
 /** Return a Utils error class Status with a given message **/
 inline Status Status_UtilsError(const std::string& msg) {
-  return Status(StatusCode::Utils, msg);
+  return {"[TileDB::Utils] Error", msg};
 }
 /** Return a FS_S3 error class Status with a given message **/
 inline Status Status_S3Error(const std::string& msg) {
-  return Status(StatusCode::FS_S3, msg);
+  return {"[TileDB::S3] Error", msg};
 }
 /** Return a FS_AZURE error class Status with a given message **/
 inline Status Status_AzureError(const std::string& msg) {
-  return Status(StatusCode::FS_AZURE, msg);
+  return {"[TileDB::Azure] Error", msg};
 }
 /** Return a FS_GCS error class Status with a given message **/
 inline Status Status_GCSError(const std::string& msg) {
-  return Status(StatusCode::FS_GCS, msg);
+  return {"[TileDB::GCS] Error", msg};
 }
 /** Return a FS_HDFS error class Status with a given message **/
 inline Status Status_HDFSError(const std::string& msg) {
-  return Status(StatusCode::FS_HDFS, msg);
+  return {"[TileDB::HDFS] Error", msg};
 }
 /** Return a FS_MEM error class Status with a given message **/
 inline Status Status_MemFSError(const std::string& msg) {
-  return Status(StatusCode::FS_MEM, msg);
+  return {"[TileDB::MemFS] Error", msg};
 }
 /** Return a Attribute error class Status with a given message **/
 inline Status Status_AttributeError(const std::string& msg) {
-  return Status(StatusCode::Attribute, msg);
+  return {"[TileDB::Attribute] Error", msg};
 }
 /** Return a Status_SparseGlobalOrderReaderError error class Status with a
  * given message **/
 inline Status Status_SparseGlobalOrderReaderError(const std::string& msg) {
-  return Status(StatusCode::SparseGlobalOrderReaderError, msg);
+  return {"[TileDB::SparseGlobalOrderReaderError] Error", msg};
 }
 /** Return a Status_SparseUnorderedWithDupsReaderError error class Status with
  * a given message **/
 inline Status Status_SparseUnorderedWithDupsReaderError(
     const std::string& msg) {
-  return Status(StatusCode::SparseUnorderedWithDupsReaderError, msg);
+  return {"[TileDB::SparseUnorderedWithDupsReaderError] Error", msg};
 }
 /** Return a Status_DenseReaderError error class Status with a given message
  * **/
 inline Status Status_DenseReaderError(const std::string& msg) {
-  return Status(StatusCode::DenseReaderError, msg);
+  return {"[TileDB::DenseReaderError] Error", msg};
 }
 /** Return a Reader error class Status with a given message **/
 inline Status Status_ReaderError(const std::string& msg) {
-  return Status(StatusCode::Reader, msg);
+  return {"[TileDB::Reader] Error", msg};
 }
 /** Return a Writer error class Status with a given message **/
 inline Status Status_WriterError(const std::string& msg) {
-  return Status(StatusCode::Writer, msg);
+  return {"[TileDB::Writer] Error", msg};
 }
 /** Return a PreallocatedBuffer error class Status with a given message
  * **/
 inline Status Status_PreallocatedBufferError(const std::string& msg) {
-  return Status(StatusCode::PreallocatedBuffer, msg);
+  return {"[TileDB::PreallocatedBuffer] Error", msg};
 }
 /** Return a Status_FilterError error class Status with a given message **/
 inline Status Status_FilterError(const std::string& msg) {
-  return Status(StatusCode::Filter, msg);
+  return {"[TileDB::Filter] Error", msg};
 }
 /** Return a Encryption error class Status with a given message **/
 inline Status Status_EncryptionError(const std::string& msg) {
-  return Status(StatusCode::Encryption, msg);
+  return {"[TileDB::Encryption] Error", msg};
 }
 /** Return an Array error class Status with a given message **/
 inline Status Status_ArrayError(const std::string& msg) {
-  return Status(StatusCode::Array, msg);
+  return {"[TileDB::Array] Error", msg};
 }
 /** Return a VFSFileHandle error class Status with a given message **/
 inline Status Status_VFSFileHandleError(const std::string& msg) {
-  return Status(StatusCode::VFSFileHandleError, msg);
+  return {"[TileDB::VFSFileHandle] Error", msg};
 }
 /** Return a Status_ContextError error class Status with a given message **/
 inline Status Status_ContextError(const std::string& msg) {
-  return Status(StatusCode::ContextError, msg);
+  return {"[TileDB::Context] Error", msg};
 }
 /** Return a Status_SubarrayError error class Status with a given message **/
 inline Status Status_SubarrayError(const std::string& msg) {
-  return Status(StatusCode::SubarrayError, msg);
+  return {"[TileDB::Subarray] Error", msg};
 }
 /** Return a Status_SubarrayPartitionerError error class Status with a given
  * message
- * **/
+ **/
 inline Status Status_SubarrayPartitionerError(const std::string& msg) {
-  return Status(StatusCode::SubarrayPartitionerError, msg);
+  return {"[TileDB::SubarrayPartitioner] Error", msg};
 }
 /** Return a Status_RTreeError error class Status with a given message **/
 inline Status Status_RTreeError(const std::string& msg) {
-  return Status(StatusCode::RTreeError, msg);
+  return {"[TileDB::RTree] Error", msg};
 }
 /** Return a Status_CellSlabIterError error class Status with a given message
  * **/
 inline Status Status_CellSlabIterError(const std::string& msg) {
-  return Status(StatusCode::CellSlabIterError, msg);
+  return {"[TileDB::CellSlabIter] Error", msg};
 }
 /** Return a Status_RestError error class Status with a given message **/
 inline Status Status_RestError(const std::string& msg) {
-  return Status(StatusCode::RestError, msg);
+  return {"[TileDB::REST] Error", msg};
 }
 /** Return a Status_SerializationError error class Status with a given message
  * **/
 inline Status Status_SerializationError(const std::string& msg) {
-  return Status(StatusCode::SerializationError, msg);
+  return {"[TileDB::Serialization] Error", msg};
 }
 /** Return a Status_ThreadPoolError error class Status with a given message
  * **/
 inline Status Status_ThreadPoolError(const std::string& msg) {
-  return Status(StatusCode::ThreadPoolError, msg);
+  return {"[TileDB::ThreadPool] Error", msg};
 }
 /** Return a Status_FragmentInfoError error class Status with a given message
  * **/
 inline Status Status_FragmentInfoError(const std::string& msg) {
-  return Status(StatusCode::FragmentInfoError, msg);
+  return {"[TileDB::FragmentInfo] Error", msg};
 }
 /** Return a Status_DenseTilerError error class Status with a given message
  * **/
 inline Status Status_DenseTilerError(const std::string& msg) {
-  return Status(StatusCode::DenseTilerError, msg);
+  return {"[TileDB::DenseTiler] Error", msg};
 }
 /** Return a Status_QueryConditionError error class Status with a given
  * message **/
 inline Status Status_QueryConditionError(const std::string& msg) {
-  return Status(StatusCode::QueryConditionError, msg);
+  return {"[TileDB::QueryCondition] Error", msg};
 }
 /** Return a Status_ArrayDirectoryError error class Status with a given
  * message **/
 inline Status Status_ArrayDirectoryError(const std::string& msg) {
-  return Status(StatusCode::ArrayDirectoryError, msg);
+  return {"[TileDB::ArrayDirectory] Error", msg};
+}
+/** Return a Status_TaskError error class Status with a given
+ * message **/
+inline Status Status_TaskError(const std::string& msg) {
+  return {"[TileDB::Task] Error", msg};
 }
 }  // namespace common
 }  // namespace tiledb

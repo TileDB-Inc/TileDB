@@ -764,7 +764,7 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
 
 TEST_CASE(
     "C API: Test fragment info, load from array with string dimension",
-    "[capi][fragment_info][load][string-dim][mbr]") {
+    "[capi][fragment_info][load][string-dims][mbr]") {
   // Create TileDB context
   tiledb_ctx_t* ctx = nullptr;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
@@ -1509,7 +1509,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C API: Test fragment info, dump with string dimension",
-    "[capi][fragment_info][dump][string-dim]") {
+    "[capi][fragment_info][dump][string-dims]") {
   // Create TileDB context
   tiledb_ctx_t* ctx = nullptr;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
@@ -1678,4 +1678,183 @@ TEST_CASE(
   remove_dir(array_name, ctx, vfs);
   tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
+}
+
+TEST_CASE(
+    "C API: Test fragment info, consolidated fragment metadata multiple",
+    "[capi][fragment_info][consolidated-metadata][multiple]") {
+  // Create TileDB context
+  tiledb_ctx_t* ctx = nullptr;
+  int rc = tiledb_ctx_alloc(nullptr, &ctx);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_vfs_t* vfs = nullptr;
+  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create array
+  uint64_t domain[] = {1, 10};
+  uint64_t tile_extent = 5;
+  create_array(
+      ctx,
+      array_name,
+      TILEDB_DENSE,
+      {"d"},
+      {TILEDB_UINT64},
+      {domain},
+      {&tile_extent},
+      {"a"},
+      {TILEDB_INT32},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      2);
+
+  // Write a dense fragment
+  QueryBuffers buffers;
+  uint64_t subarray[] = {1, 6};
+  std::vector<int32_t> a = {1, 2, 3, 4, 5, 6};
+  uint64_t a_size = a.size() * sizeof(int32_t);
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  std::string written_frag_uri;
+  write_array(
+      ctx,
+      array_name,
+      1,
+      subarray,
+      TILEDB_ROW_MAJOR,
+      buffers,
+      &written_frag_uri);
+
+  // Write another dense fragment
+  subarray[0] = 1;
+  subarray[1] = 7;
+  a = {7, 1, 2, 3, 4, 5, 6};
+  a_size = a.size() * sizeof(int32_t);
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  write_array(ctx, array_name, 3, subarray, TILEDB_ROW_MAJOR, buffers);
+
+  // Create fragment info object
+  tiledb_fragment_info_t* fragment_info = nullptr;
+  rc = tiledb_fragment_info_alloc(ctx, array_name.c_str(), &fragment_info);
+  CHECK(rc == TILEDB_OK);
+
+  // Load fragment info
+  rc = tiledb_fragment_info_load(ctx, fragment_info);
+  CHECK(rc == TILEDB_OK);
+
+  // Check for consolidated metadata
+  int32_t has;
+  rc = tiledb_fragment_info_has_consolidated_metadata(
+      ctx, fragment_info, 0, &has);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has == 0);
+  rc = tiledb_fragment_info_has_consolidated_metadata(
+      ctx, fragment_info, 1, &has);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has == 0);
+  rc = tiledb_fragment_info_has_consolidated_metadata(
+      ctx, fragment_info, 2, &has);
+  CHECK(rc == TILEDB_ERR);
+
+  // Get number of unconsolidated fragment metadata
+  uint32_t unconsolidated = 0;
+  rc = tiledb_fragment_info_get_unconsolidated_metadata_num(
+      ctx, fragment_info, &unconsolidated);
+  CHECK(rc == TILEDB_OK);
+  CHECK(unconsolidated == 2);
+
+  // Consolidate fragment metadata
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.consolidation.mode", "fragment_meta", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  // Consolidate - this will consolidate only the fragment metadata
+  rc = tiledb_array_consolidate(ctx, array_name.c_str(), config);
+  CHECK(rc == TILEDB_OK);
+
+  // Load fragment info
+  rc = tiledb_fragment_info_load(ctx, fragment_info);
+  CHECK(rc == TILEDB_OK);
+
+  // Check for consolidated metadata
+  rc = tiledb_fragment_info_has_consolidated_metadata(
+      ctx, fragment_info, 0, &has);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has == 1);
+  rc = tiledb_fragment_info_has_consolidated_metadata(
+      ctx, fragment_info, 1, &has);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has == 1);
+
+  // Get number of unconsolidated fragment metadata
+  rc = tiledb_fragment_info_get_unconsolidated_metadata_num(
+      ctx, fragment_info, &unconsolidated);
+  CHECK(rc == TILEDB_OK);
+  CHECK(unconsolidated == 0);
+
+  // Write another dense fragment in between the existing 2
+  subarray[0] = 2;
+  subarray[1] = 9;
+  a = {6, 7, 1, 2, 3, 4, 5, 6};
+  a_size = a.size() * sizeof(int32_t);
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  write_array(ctx, array_name, 2, subarray, TILEDB_ROW_MAJOR, buffers);
+
+  // Load fragment info
+  rc = tiledb_fragment_info_load(ctx, fragment_info);
+  CHECK(rc == TILEDB_OK);
+
+  // Check for consolidated metadata
+  rc = tiledb_fragment_info_has_consolidated_metadata(
+      ctx, fragment_info, 0, &has);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has == 1);
+  rc = tiledb_fragment_info_has_consolidated_metadata(
+      ctx, fragment_info, 1, &has);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has == 0);
+  rc = tiledb_fragment_info_has_consolidated_metadata(
+      ctx, fragment_info, 2, &has);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has == 1);
+
+  // Get number of unconsolidated fragment metadata
+  rc = tiledb_fragment_info_get_unconsolidated_metadata_num(
+      ctx, fragment_info, &unconsolidated);
+  CHECK(rc == TILEDB_OK);
+  CHECK(unconsolidated == 1);
+
+  // Consolidate - this will consolidate only the fragment metadata
+  rc = tiledb_array_consolidate(ctx, array_name.c_str(), config);
+  CHECK(rc == TILEDB_OK);
+
+  // Load fragment info
+  rc = tiledb_fragment_info_load(ctx, fragment_info);
+  CHECK(rc == TILEDB_OK);
+
+  // Check again
+  rc = tiledb_fragment_info_has_consolidated_metadata(
+      ctx, fragment_info, 1, &has);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has == 1);
+
+  // Get number of unconsolidated fragment metadata
+  rc = tiledb_fragment_info_get_unconsolidated_metadata_num(
+      ctx, fragment_info, &unconsolidated);
+  CHECK(rc == TILEDB_OK);
+  CHECK(unconsolidated == 0);
+
+  // Clean up
+  tiledb_fragment_info_free(&fragment_info);
+  remove_dir(array_name, ctx, vfs);
+  tiledb_ctx_free(&ctx);
+  tiledb_vfs_free(&vfs);
+  tiledb_error_free(&error);
+  tiledb_config_free(&config);
 }

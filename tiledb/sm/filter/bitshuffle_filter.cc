@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -60,6 +60,7 @@ void BitshuffleFilter::dump(FILE* out) const {
 
 Status BitshuffleFilter::run_forward(
     const Tile& tile,
+    Tile* const,  // offsets_tile
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -164,6 +165,7 @@ Status BitshuffleFilter::shuffle_part(
 
 Status BitshuffleFilter::run_reverse(
     const Tile& tile,
+    Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

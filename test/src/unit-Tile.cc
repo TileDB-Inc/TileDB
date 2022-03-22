@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -155,7 +155,7 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
   // Verify all public attributes are identical.
   CHECK(tile2.cell_size() == cell_size);
   CHECK(tile2.cell_num() == buffer_len);
-  CHECK(tile2.dim_num() == dim_num);
+  CHECK(tile2.zipped_coords_dim_num() == dim_num);
   CHECK(tile2.empty() == false);
   CHECK(tile2.filtered() == false);
   CHECK(tile2.format_version() == format_version);
@@ -204,7 +204,7 @@ TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
   // Verify all public attributes are identical.
   CHECK(tile2.cell_size() == cell_size);
   CHECK(tile2.cell_num() == buffer_len);
-  CHECK(tile2.dim_num() == dim_num);
+  CHECK(tile2.zipped_coords_dim_num() == dim_num);
   CHECK(tile2.empty() == false);
   CHECK(tile2.filtered() == false);
   CHECK(tile2.format_version() == format_version);

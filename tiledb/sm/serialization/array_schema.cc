@@ -210,47 +210,54 @@ Status attribute_to_capnp(
   return Status::Ok();
 }
 
-Status attribute_from_capnp(
-    const capnp::Attribute::Reader& attribute_reader,
-    tdb_unique_ptr<Attribute>* attribute) {
+tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
+    const capnp::Attribute::Reader& attribute_reader) {
+  // Get datatype
   Datatype datatype = Datatype::ANY;
-  RETURN_NOT_OK(datatype_enum(attribute_reader.getType(), &datatype));
-
-  attribute->reset(tdb_new(Attribute, attribute_reader.getName(), datatype));
-  RETURN_NOT_OK(
-      (*attribute)->set_cell_val_num(attribute_reader.getCellValNum()));
+  RETURN_NOT_OK_TUPLE(
+      datatype_enum(attribute_reader.getType(), &datatype), nullopt);
 
   // Set nullable.
   const bool nullable = attribute_reader.getNullable();
-  RETURN_NOT_OK((*attribute)->set_nullable(nullable));
 
-  // Set the fill value.
-  if (attribute_reader.hasFillValue()) {
-    auto fill_value = attribute_reader.getFillValue();
-    if (nullable) {
-      (*attribute)
-          ->set_fill_value(
-              fill_value.asBytes().begin(),
-              fill_value.size(),
-              attribute_reader.getFillValueValidity());
-    } else {
-      (*attribute)
-          ->set_fill_value(fill_value.asBytes().begin(), fill_value.size());
-    }
-  }
-
-  // Set filter pipelines.
+  // FIlter pipelines
+  tdb_unique_ptr<FilterPipeline> filters;
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
-    tdb_unique_ptr<FilterPipeline> filters;
-    RETURN_NOT_OK(filter_pipeline_from_capnp(filter_pipeline_reader, &filters));
-    RETURN_NOT_OK((*attribute)->set_filter_pipeline(filters.get()));
+    RETURN_NOT_OK_TUPLE(
+        filter_pipeline_from_capnp(filter_pipeline_reader, &filters), nullopt);
   }
 
-  // Set nullable.
-  RETURN_NOT_OK((*attribute)->set_nullable(attribute_reader.getNullable()));
+  // Fill value
+  ByteVecValue fill_value_vec;
+  uint8_t fill_value_validity = 0;
+  if (attribute_reader.hasFillValue()) {
+    // To initialize the ByteVecValue object, we do so by instantiating a
+    // vector of type uint8_t that points to the data stored in the
+    // byte vector.
+    auto capnp_byte_vec = attribute_reader.getFillValue().asBytes();
+    auto vec_ptr = capnp_byte_vec.begin();
+    std::vector<uint8_t> byte_vec(vec_ptr, vec_ptr + capnp_byte_vec.size());
+    fill_value_vec = ByteVecValue(move(byte_vec));
+    if (nullable) {
+      fill_value_validity = attribute_reader.getFillValueValidity();
+    }
+  } else {
+    // default initialization
+    fill_value_vec = Attribute::default_fill_value(
+        datatype, attribute_reader.getCellValNum());
+  }
 
-  return Status::Ok();
+  return {Status::Ok(),
+          tiledb::common::make_shared<Attribute>(
+              HERE(),
+              attribute_reader.getName(),
+              datatype,
+              nullable,
+              attribute_reader.getCellValNum(),
+              *(filters.get()),
+              fill_value_vec,
+              fill_value_validity)};
 }
 
 Status dimension_to_capnp(
@@ -473,7 +480,7 @@ Status array_schema_to_capnp(
 
   // Domain
   auto domain_builder = array_schema_builder->initDomain();
-  RETURN_NOT_OK(domain_to_capnp(array_schema.domain(), &domain_builder));
+  RETURN_NOT_OK(domain_to_capnp(array_schema.domain().get(), &domain_builder));
 
   // Attributes
   const unsigned num_attrs = array_schema.attribute_num();
@@ -521,7 +528,8 @@ Status array_schema_from_capnp(
   auto domain_reader = schema_reader.getDomain();
   tdb_unique_ptr<Domain> domain;
   RETURN_NOT_OK(domain_from_capnp(domain_reader, &domain));
-  RETURN_NOT_OK((*array_schema)->set_domain(domain.get()));
+  RETURN_NOT_OK(
+      (*array_schema)->set_domain(make_shared<Domain>(HERE(), domain.get())));
 
   // Set coords filter pipelines
   if (schema_reader.hasCoordsFilterPipeline()) {
@@ -552,9 +560,9 @@ Status array_schema_from_capnp(
   // Set attributes
   auto attributes_reader = schema_reader.getAttributes();
   for (auto attr_reader : attributes_reader) {
-    tdb_unique_ptr<Attribute> attribute;
-    RETURN_NOT_OK(attribute_from_capnp(attr_reader, &attribute));
-    RETURN_NOT_OK((*array_schema)->add_attribute(std::move(attribute), false));
+    auto&& [st_attr, attr]{attribute_from_capnp(attr_reader)};
+    RETURN_NOT_OK(st_attr);
+    RETURN_NOT_OK((*array_schema)->add_attribute(attr.value()));
   }
 
   // Set the range if we have two values

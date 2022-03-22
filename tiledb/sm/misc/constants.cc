@@ -84,7 +84,7 @@ const std::string array_fragment_meta_dir_name = "__fragment_meta";
 const std::string array_fragments_dir_name = "__fragments";
 
 /** The array commit directory name. */
-const std::string array_commit_dir_name = "__commits";
+const std::string array_commits_dir_name = "__commits";
 
 /** The fragment metadata file name. */
 const std::string fragment_metadata_filename = "__fragment_metadata.tdb";
@@ -202,6 +202,12 @@ const std::string write_file_suffix = ".wrt";
 
 /** Suffix for the special metadata files used in TileDB. */
 const std::string meta_file_suffix = ".meta";
+
+/** Suffix for the special commits files used in TileDB. */
+const std::string con_commits_file_suffix = ".con";
+
+/** Suffix for the special ignore files used in TileDB. */
+const std::string ignore_file_suffix = ".ign";
 
 /** Default datatype for a generic tile. */
 const Datatype generic_tile_datatype = Datatype::CHAR;

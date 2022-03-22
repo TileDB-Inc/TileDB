@@ -288,9 +288,10 @@ void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
   auto idx = it->second;
 
   // Fix the min offsets.
-  uint64_t offset = 0;
-  auto offsets = (uint64_t*)tile_min_buffer_[idx].data();
-  for (uint64_t i = 0; i < tile_min_buffer_[idx].size() / sizeof(uint64_t);
+  uint64_t offset = tile_min_var_buffer_[idx].size();
+  auto offsets = (uint64_t*)tile_min_buffer_[idx].data() + tile_index_base_;
+  for (uint64_t i = tile_index_base_;
+       i < tile_min_buffer_[idx].size() / sizeof(uint64_t);
        i++) {
     auto size = *offsets;
     *offsets = offset;
@@ -302,9 +303,10 @@ void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
   tile_min_var_buffer_[idx].resize(offset);
 
   // Fix the max offsets.
-  offset = 0;
-  offsets = (uint64_t*)tile_max_buffer_[idx].data();
-  for (uint64_t i = 0; i < tile_max_buffer_[idx].size() / sizeof(uint64_t);
+  offset = tile_max_var_buffer_[idx].size();
+  offsets = (uint64_t*)tile_max_buffer_[idx].data() + tile_index_base_;
+  for (uint64_t i = tile_index_base_;
+       i < tile_max_buffer_[idx].size() / sizeof(uint64_t);
        i++) {
     auto size = *offsets;
     *offsets = offset;
@@ -421,7 +423,11 @@ Status FragmentMetadata::compute_fragment_min_max_sum_null_count() {
               compute_fragment_min_max_sum<int64_t>(name);
               break;
             case Datatype::STRING_ASCII:
+            case Datatype::CHAR:
               compute_fragment_min_max_sum<char>(name);
+              break;
+            case Datatype::BLOB:
+              compute_fragment_min_max_sum<std::byte>(name);
               break;
             default:
               break;
@@ -1122,7 +1128,7 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   return Status::Ok();
 }
 
-void FragmentMetadata::set_rtree_domain(const Domain* domain) {
+void FragmentMetadata::set_rtree_domain(shared_ptr<const Domain> domain) {
   rtree_.set_domain(domain);
 }
 

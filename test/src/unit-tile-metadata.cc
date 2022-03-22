@@ -56,25 +56,58 @@ struct CPPFixedTileMetadataFx {
 
   void create_array(
       tiledb_layout_t layout, bool nullable, uint64_t cell_val_num) {
-    tiledb::Domain domain(ctx_);
-    auto d = tiledb::Dimension::create<uint32_t>(
-        ctx_, "d", {{0, 999}}, tile_extent_);
-    domain.add_dimension(d);
-
-    auto a = tiledb::Attribute::create<TestType>(ctx_, "a");
-    a.set_nullable(nullable);
-    a.set_cell_val_num(cell_val_num);
-
-    tiledb::ArraySchema schema(
-        ctx_, layout == TILEDB_ROW_MAJOR ? TILEDB_DENSE : TILEDB_SPARSE);
-    schema.set_domain(domain);
-    schema.add_attribute(a);
-
-    if (layout != TILEDB_ROW_MAJOR) {
-      schema.set_capacity(tile_extent_);
+    auto tiledb_type = TILEDB_CHAR;
+    if constexpr (!std::is_same<TestType, unsigned char>::value) {
+      auto type = tiledb::impl::type_to_tiledb<TestType>();
+      tiledb_type = type.tiledb_type;
     }
 
-    tiledb::Array::create(ARRAY_NAME, schema);
+    // Create TileDB context
+    tiledb_ctx_t* ctx;
+    tiledb_ctx_alloc(NULL, &ctx);
+
+    // The array will be 4x4 with dimensions "rows" and "cols", with domain
+    // [1,4].
+    uint32_t dim_domain[] = {0, 999};
+    tiledb_dimension_t* d;
+    tiledb_dimension_alloc(
+        ctx, "d", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d);
+
+    // Create domain
+    tiledb_domain_t* domain;
+    tiledb_domain_alloc(ctx, &domain);
+    tiledb_domain_add_dimension(ctx, domain, d);
+
+    // Create a single attribute "a" so each (i,j) cell can store an integer
+    tiledb_attribute_t* a;
+    tiledb_attribute_alloc(ctx, "a", tiledb_type, &a);
+    tiledb_attribute_set_nullable(ctx, a, nullable);
+    tiledb_attribute_set_cell_val_num(ctx, a, cell_val_num);
+
+    // Create array schema
+    tiledb_array_schema_t* array_schema;
+    tiledb_array_schema_alloc(
+        ctx,
+        layout == TILEDB_ROW_MAJOR ? TILEDB_DENSE : TILEDB_SPARSE,
+        &array_schema);
+    tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+    tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+    tiledb_array_schema_set_domain(ctx, array_schema, domain);
+    tiledb_array_schema_add_attribute(ctx, array_schema, a);
+
+    if (layout != TILEDB_ROW_MAJOR) {
+      tiledb_array_schema_set_capacity(ctx, array_schema, tile_extent_);
+    }
+
+    // Create array
+    tiledb_array_create(ctx, ARRAY_NAME, array_schema);
+
+    // Clean up
+    tiledb_attribute_free(&a);
+    tiledb_dimension_free(&d);
+    tiledb_domain_free(&domain);
+    tiledb_array_schema_free(&array_schema);
+    tiledb_ctx_free(&ctx);
   }
 
   void write_fragment(
@@ -135,7 +168,9 @@ struct CPPFixedTileMetadataFx {
       TestType val;
       a_val[i] =
           all_null ? 0 : (nullable && (i % tile_extent_ != 0) ? rand() % 2 : 1);
-      if constexpr (std::is_integral_v<TestType>) {
+      if constexpr (std::is_same<TestType, std::byte>::value) {
+        val = std::byte(0);
+      } else if constexpr (std::is_integral_v<TestType>) {
         if constexpr (std::is_signed_v<TestType>) {
           if constexpr (std::is_same<TestType, int64_t>::value) {
             std::uniform_int_distribution<int64_t> dist(
@@ -327,71 +362,90 @@ struct CPPFixedTileMetadataFx {
 
     // Do fragment metadata first for attribute.
     {
-      // Min/max/sum for all null tile are invalid.
-      if (!all_null) {
-        if constexpr (std::is_same<TestType, char>::value) {
-          // Validate min.
-          auto&& [st_min, min] = frag_meta[f]->get_min("a");
-          CHECK(st_min.ok());
-          if (st_min.ok()) {
-            CHECK((*min).size() == cell_val_num);
+      // Min/max/sum for byte don't exist.
+      if constexpr (std::is_same<TestType, std::byte>::value) {
+        // Validate no min.
+        auto&& [st_min, min] = frag_meta[f]->get_min("a");
+        CHECK(!st_min.ok());
 
-            // For strings, the index is stored in a signed value, switch to
-            // the index to unsigned.
-            int64_t idx = (int64_t)correct_mins_[f] -
-                          (int64_t)std::numeric_limits<char>::min();
-            CHECK(
-                0 == strncmp(
-                         (const char*)(*min).data(),
-                         string_ascii_[idx].c_str(),
-                         cell_val_num));
-          }
+        // Validate no max.
+        auto&& [st_max, max] = frag_meta[f]->get_max("a");
+        CHECK(!st_max.ok());
 
-          // Validate max.
-          auto&& [st_max, max] = frag_meta[f]->get_max("a");
-          CHECK(st_max.ok());
-          if (st_max.ok()) {
-            CHECK((*max).size() == cell_val_num);
+        // Validate no sum.
+        auto&& [st_sum, sum] = frag_meta[f]->get_sum("a");
+        CHECK(!st_sum.ok());
+      } else {
+        // Min/max/sum for all null tile are invalid.
+        if (!all_null) {
+          if constexpr (std::is_same<TestType, char>::value) {
+            // Validate min.
+            auto&& [st_min, min] = frag_meta[f]->get_min("a");
+            CHECK(st_min.ok());
+            if (st_min.ok()) {
+              CHECK((*min).size() == cell_val_num);
 
-            // For strings, the index is stored in a signed value, switch to
-            // the index to unsigned.
-            int64_t idx = (int64_t)correct_maxs_[f] -
-                          (int64_t)std::numeric_limits<char>::min();
-            CHECK(
-                0 == strncmp(
-                         (const char*)(*max).data(),
-                         string_ascii_[idx].c_str(),
-                         cell_val_num));
-          }
+              // For strings, the index is stored in a signed value, switch to
+              // the index to unsigned.
+              int64_t idx = (int64_t)correct_mins_[f] -
+                            (int64_t)std::numeric_limits<char>::min();
+              CHECK(
+                  0 == strncmp(
+                           (const char*)(*min).data(),
+                           string_ascii_[idx].c_str(),
+                           cell_val_num));
+            }
 
-          // Validate no sum.
-          auto&& [st_sum, sum] = frag_meta[f]->get_sum("a");
-          CHECK(!st_sum.ok());
-        } else {
-          // Validate min.
-          auto&& [st_min, min] = frag_meta[f]->get_min("a");
-          CHECK(st_min.ok());
-          if (st_min.ok()) {
-            CHECK((*min).size() == sizeof(TestType));
-            CHECK(0 == memcmp((*min).data(), &correct_mins_[f], (*min).size()));
-          }
+            // Validate max.
+            auto&& [st_max, max] = frag_meta[f]->get_max("a");
+            CHECK(st_max.ok());
+            if (st_max.ok()) {
+              CHECK((*max).size() == cell_val_num);
 
-          // Validate max.
-          auto&& [st_max, max] = frag_meta[f]->get_max("a");
-          CHECK(st_max.ok());
-          if (st_max.ok()) {
-            CHECK((*max).size() == sizeof(TestType));
-            CHECK(0 == memcmp((*max).data(), &correct_maxs_[f], (*max).size()));
-          }
+              // For strings, the index is stored in a signed value, switch to
+              // the index to unsigned.
+              int64_t idx = (int64_t)correct_maxs_[f] -
+                            (int64_t)std::numeric_limits<char>::min();
+              CHECK(
+                  0 == strncmp(
+                           (const char*)(*max).data(),
+                           string_ascii_[idx].c_str(),
+                           cell_val_num));
+            }
 
-          // Validate sum.
-          auto&& [st_sum, sum] = frag_meta[f]->get_sum("a");
-          CHECK(st_sum.ok());
-          if (st_sum.ok()) {
-            if constexpr (std::is_integral_v<TestType>) {
-              CHECK(*(int64_t*)*sum == correct_sums_int_[f]);
-            } else {
-              CHECK(*(double*)*sum - correct_sums_double_[f] < 0.0001);
+            // Validate no sum.
+            auto&& [st_sum, sum] = frag_meta[f]->get_sum("a");
+            CHECK(!st_sum.ok());
+          } else {
+            // Validate min.
+            auto&& [st_min, min] = frag_meta[f]->get_min("a");
+            CHECK(st_min.ok());
+            if (st_min.ok()) {
+              CHECK((*min).size() == sizeof(TestType));
+              CHECK(
+                  0 == memcmp((*min).data(), &correct_mins_[f], (*min).size()));
+            }
+
+            // Validate max.
+            auto&& [st_max, max] = frag_meta[f]->get_max("a");
+            CHECK(st_max.ok());
+            if (st_max.ok()) {
+              CHECK((*max).size() == sizeof(TestType));
+              CHECK(
+                  0 == memcmp((*max).data(), &correct_maxs_[f], (*max).size()));
+            }
+
+            if constexpr (!std::is_same<TestType, unsigned char>::value) {
+              // Validate sum.
+              auto&& [st_sum, sum] = frag_meta[f]->get_sum("a");
+              CHECK(st_sum.ok());
+              if (st_sum.ok()) {
+                if constexpr (std::is_integral_v<TestType>) {
+                  CHECK(*(int64_t*)*sum == correct_sums_int_[f]);
+                } else {
+                  CHECK(*(double*)*sum - correct_sums_double_[f] < 0.0001);
+                }
+              }
             }
           }
         }
@@ -425,80 +479,99 @@ struct CPPFixedTileMetadataFx {
 
     // Validate attribute metadta.
     // Min/max/sum for all null tile are invalid.
-    if (!all_null) {
-      if constexpr (std::is_same<TestType, char>::value) {
-        for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
-          // Validate min.
-          auto&& [st_min, min, min_size] =
-              frag_meta[f]->get_tile_min("a", tile_idx);
-          CHECK(st_min.ok());
-          if (st_min.ok()) {
-            CHECK(*min_size == cell_val_num);
+    if constexpr (std::is_same<TestType, std::byte>::value) {
+      // Validate no min.
+      auto&& [st_min, min, min_size] = frag_meta[f]->get_tile_min("a", 0);
+      CHECK(!st_min.ok());
 
-            // For strings, the index is stored in a signed value, switch to
-            // the index to unsigned.
-            int64_t idx = (int64_t)correct_tile_mins_[f][tile_idx] -
-                          (int64_t)std::numeric_limits<char>::min();
-            CHECK(
-                0 == strncmp(
-                         (const char*)*min,
-                         string_ascii_[idx].c_str(),
-                         cell_val_num));
+      // Validate no max.
+      auto&& [st_max, max, max_size] = frag_meta[f]->get_tile_max("a", 0);
+      CHECK(!st_max.ok());
+
+      // Validate no sum.
+      auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("a", 0);
+      CHECK(!st_sum.ok());
+    } else {
+      if (!all_null) {
+        if constexpr (std::is_same<TestType, char>::value) {
+          for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
+            // Validate min.
+            auto&& [st_min, min, min_size] =
+                frag_meta[f]->get_tile_min("a", tile_idx);
+            CHECK(st_min.ok());
+            if (st_min.ok()) {
+              CHECK(*min_size == cell_val_num);
+
+              // For strings, the index is stored in a signed value, switch to
+              // the index to unsigned.
+              int64_t idx = (int64_t)correct_tile_mins_[f][tile_idx] -
+                            (int64_t)std::numeric_limits<char>::min();
+              CHECK(
+                  0 == strncmp(
+                           (const char*)*min,
+                           string_ascii_[idx].c_str(),
+                           cell_val_num));
+            }
+
+            // Validate max.
+            auto&& [st_max, max, max_size] =
+                frag_meta[f]->get_tile_max("a", tile_idx);
+            CHECK(st_max.ok());
+            if (st_max.ok()) {
+              CHECK(*max_size == cell_val_num);
+
+              // For strings, the index is stored in a signed value, switch to
+              // the index to unsigned.
+              int64_t idx = (int64_t)correct_tile_maxs_[f][tile_idx] -
+                            (int64_t)std::numeric_limits<char>::min();
+              CHECK(
+                  0 == strncmp(
+                           (const char*)*max,
+                           string_ascii_[idx].c_str(),
+                           cell_val_num));
+            }
+
+            // Validate no sum.
+            auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("a", tile_idx);
+            CHECK(!st_sum.ok());
           }
+        } else {
+          (void)cell_val_num;
+          for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
+            // Validate min.
+            auto&& [st_min, min, min_size] =
+                frag_meta[f]->get_tile_min("a", tile_idx);
+            CHECK(st_min.ok());
+            if (st_min.ok()) {
+              CHECK(*min_size == sizeof(TestType));
+              CHECK(
+                  0 ==
+                  memcmp(*min, &correct_tile_mins_[f][tile_idx], *min_size));
+            }
 
-          // Validate max.
-          auto&& [st_max, max, max_size] =
-              frag_meta[f]->get_tile_max("a", tile_idx);
-          CHECK(st_max.ok());
-          if (st_max.ok()) {
-            CHECK(*max_size == cell_val_num);
+            // Validate max.
+            auto&& [st_max, max, max_size] =
+                frag_meta[f]->get_tile_max("a", tile_idx);
+            CHECK(st_max.ok());
+            if (st_max.ok()) {
+              CHECK(*max_size == sizeof(TestType));
+              CHECK(
+                  0 ==
+                  memcmp(*max, &correct_tile_maxs_[f][tile_idx], *max_size));
+            }
 
-            // For strings, the index is stored in a signed value, switch to
-            // the index to unsigned.
-            int64_t idx = (int64_t)correct_tile_maxs_[f][tile_idx] -
-                          (int64_t)std::numeric_limits<char>::min();
-            CHECK(
-                0 == strncmp(
-                         (const char*)*max,
-                         string_ascii_[idx].c_str(),
-                         cell_val_num));
-          }
-
-          // Validate no sum.
-          auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("a", tile_idx);
-          CHECK(!st_sum.ok());
-        }
-      } else {
-        (void)cell_val_num;
-        for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
-          // Validate min.
-          auto&& [st_min, min, min_size] =
-              frag_meta[f]->get_tile_min("a", tile_idx);
-          CHECK(st_min.ok());
-          if (st_min.ok()) {
-            CHECK(*min_size == sizeof(TestType));
-            CHECK(
-                0 == memcmp(*min, &correct_tile_mins_[f][tile_idx], *min_size));
-          }
-
-          // Validate max.
-          auto&& [st_max, max, max_size] =
-              frag_meta[f]->get_tile_max("a", tile_idx);
-          CHECK(st_max.ok());
-          if (st_max.ok()) {
-            CHECK(*max_size == sizeof(TestType));
-            CHECK(
-                0 == memcmp(*max, &correct_tile_maxs_[f][tile_idx], *max_size));
-          }
-
-          // Validate sum.
-          auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("a", tile_idx);
-          CHECK(st_sum.ok());
-          if (st_sum.ok()) {
-            if constexpr (std::is_integral_v<TestType>) {
-              CHECK(*(int64_t*)*sum == correct_tile_sums_int_[f][tile_idx]);
-            } else {
-              CHECK(*(double*)*sum == correct_tile_sums_double_[f][tile_idx]);
+            if constexpr (!std::is_same<TestType, unsigned char>::value) {
+              // Validate sum.
+              auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("a", tile_idx);
+              CHECK(st_sum.ok());
+              if (st_sum.ok()) {
+                if constexpr (std::is_integral_v<TestType>) {
+                  CHECK(*(int64_t*)*sum == correct_tile_sums_int_[f][tile_idx]);
+                } else {
+                  CHECK(
+                      *(double*)*sum == correct_tile_sums_double_[f][tile_idx]);
+                }
+              }
             }
           }
         }
@@ -545,6 +618,8 @@ struct CPPFixedTileMetadataFx {
 };
 
 typedef tuple<
+    std::byte,
+    unsigned char,  // Used for TILEDB_CHAR.
     char,
     uint8_t,
     uint16_t,

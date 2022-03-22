@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/array_schema/unit_dimension.cc
+ * @file tiledb/sm/array_schema/test/unit_dimension.cc
  *
  * @section LICENSE
  *
