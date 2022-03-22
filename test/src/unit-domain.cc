@@ -1,4 +1,6 @@
 /**
+ * TODO: This file will be moved to tiledb/sm/array_schema/test after PR
+ * 2865(object library part 7) is merged to dev.
  * @file unit-domain.cc
  *
  * @section LICENSE
