@@ -66,6 +66,7 @@ CAPNP_DECLARE_SCHEMA(92c8467685565269);
 CAPNP_DECLARE_SCHEMA(bda7916926591c22);
 CAPNP_DECLARE_SCHEMA(c41bcc7e8cc58f18);
 CAPNP_DECLARE_SCHEMA(dcdd20e1b79e915a);
+CAPNP_DECLARE_SCHEMA(c4e54a63294eddb7);
 
 }  // namespace schemas
 }  // namespace capnp
@@ -982,7 +983,7 @@ struct GroupMember {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(c41bcc7e8cc58f18, 0, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(c41bcc7e8cc58f18, 1, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -999,7 +1000,24 @@ struct Group {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(dcdd20e1b79e915a, 0, 4)
+    CAPNP_DECLARE_STRUCT_HEADER(dcdd20e1b79e915a, 0, 2)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct GroupUpdate {
+  GroupUpdate() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(c4e54a63294eddb7, 0, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -7964,6 +7982,8 @@ class GroupMember::Reader {
   inline bool hasType() const;
   inline ::capnp::Text::Reader getType() const;
 
+  inline bool getRelative() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -8016,6 +8036,9 @@ class GroupMember::Builder {
   inline ::capnp::Text::Builder initType(unsigned int size);
   inline void adoptType(::capnp::Orphan<::capnp::Text>&& value);
   inline ::capnp::Orphan<::capnp::Text> disownType();
+
+  inline bool getRelative();
+  inline void setRelative(bool value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -8074,16 +8097,6 @@ class Group::Reader {
   inline bool hasMetadata() const;
   inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Reader getMetadata()
       const;
-
-  inline bool hasMembersToRemove() const;
-  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
-  getMembersToRemove() const;
-
-  inline bool hasMembersToAdd() const;
-  inline ::capnp::List<
-      ::tiledb::sm::serialization::capnp::GroupMember,
-      ::capnp::Kind::STRUCT>::Reader
-  getMembersToAdd() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -8157,6 +8170,106 @@ class Group::Builder {
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayMetadata>
   disownMetadata();
 
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class Group::Pipeline {
+ public:
+  typedef Group Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+  inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Pipeline
+  getMetadata();
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class GroupUpdate::Reader {
+ public:
+  typedef GroupUpdate Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasMembersToRemove() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getMembersToRemove() const;
+
+  inline bool hasMembersToAdd() const;
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::GroupMember,
+      ::capnp::Kind::STRUCT>::Reader
+  getMembersToAdd() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class GroupUpdate::Builder {
+ public:
+  typedef GroupUpdate Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
   inline bool hasMembersToRemove();
   inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
   getMembersToRemove();
@@ -8203,9 +8316,9 @@ class Group::Builder {
 };
 
 #if !CAPNP_LITE
-class Group::Pipeline {
+class GroupUpdate::Pipeline {
  public:
-  typedef Group Pipelines;
+  typedef GroupUpdate Pipelines;
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -8213,9 +8326,6 @@ class Group::Pipeline {
   inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {
   }
-
-  inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Pipeline
-  getMetadata();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -16478,6 +16588,17 @@ inline ::capnp::Orphan<::capnp::Text> GroupMember::Builder::disownType() {
       _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
+inline bool GroupMember::Reader::getRelative() const {
+  return _reader.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline bool GroupMember::Builder::getRelative() {
+  return _builder.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void GroupMember::Builder::setRelative(bool value) {
+  _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
 inline bool Group::Reader::hasMembers() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -16607,114 +16728,114 @@ Group::Builder::disownMetadata() {
           _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
-inline bool Group::Reader::hasMembersToRemove() const {
-  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+inline bool GroupUpdate::Reader::hasMembersToRemove() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool Group::Builder::hasMembersToRemove() {
-  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+inline bool GroupUpdate::Builder::hasMembersToRemove() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
-Group::Reader::getMembersToRemove() const {
+GroupUpdate::Reader::getMembersToRemove() const {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
-          _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
-Group::Builder::getMembersToRemove() {
+GroupUpdate::Builder::getMembersToRemove() {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
-          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void Group::Builder::setMembersToRemove(
+inline void GroupUpdate::Builder::setMembersToRemove(
     ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
   ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
-          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
           value);
 }
-inline void Group::Builder::setMembersToRemove(
+inline void GroupUpdate::Builder::setMembersToRemove(
     ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
   ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
-          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
           value);
 }
 inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
-Group::Builder::initMembersToRemove(unsigned int size) {
+GroupUpdate::Builder::initMembersToRemove(unsigned int size) {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
-          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
           size);
 }
-inline void Group::Builder::adoptMembersToRemove(
+inline void GroupUpdate::Builder::adoptMembersToRemove(
     ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
         value) {
   ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
-          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
           kj::mv(value));
 }
 inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
-Group::Builder::disownMembersToRemove() {
+GroupUpdate::Builder::disownMembersToRemove() {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
-          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline bool Group::Reader::hasMembersToAdd() const {
-  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+inline bool GroupUpdate::Reader::hasMembersToAdd() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool Group::Builder::hasMembersToAdd() {
-  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+inline bool GroupUpdate::Builder::hasMembersToAdd() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::capnp::List<
     ::tiledb::sm::serialization::capnp::GroupMember,
     ::capnp::Kind::STRUCT>::Reader
-Group::Reader::getMembersToAdd() const {
+GroupUpdate::Reader::getMembersToAdd() const {
   return ::capnp::_::PointerHelpers<::capnp::List<
       ::tiledb::sm::serialization::capnp::GroupMember,
       ::capnp::Kind::STRUCT>>::get(_reader
                                        .getPointerField(
-                                           ::capnp::bounded<3>() *
+                                           ::capnp::bounded<1>() *
                                            ::capnp::POINTERS));
 }
 inline ::capnp::List<
     ::tiledb::sm::serialization::capnp::GroupMember,
     ::capnp::Kind::STRUCT>::Builder
-Group::Builder::getMembersToAdd() {
+GroupUpdate::Builder::getMembersToAdd() {
   return ::capnp::_::PointerHelpers<::capnp::List<
       ::tiledb::sm::serialization::capnp::GroupMember,
       ::capnp::Kind::STRUCT>>::get(_builder
                                        .getPointerField(
-                                           ::capnp::bounded<3>() *
+                                           ::capnp::bounded<1>() *
                                            ::capnp::POINTERS));
 }
-inline void Group::Builder::setMembersToAdd(
+inline void GroupUpdate::Builder::setMembersToAdd(
     ::capnp::List<
         ::tiledb::sm::serialization::capnp::GroupMember,
         ::capnp::Kind::STRUCT>::Reader value) {
   ::capnp::_::PointerHelpers<::capnp::List<
       ::tiledb::sm::serialization::capnp::GroupMember,
       ::capnp::Kind::STRUCT>>::
-      set(_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      set(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
           value);
 }
 inline ::capnp::List<
     ::tiledb::sm::serialization::capnp::GroupMember,
     ::capnp::Kind::STRUCT>::Builder
-Group::Builder::initMembersToAdd(unsigned int size) {
+GroupUpdate::Builder::initMembersToAdd(unsigned int size) {
   return ::capnp::_::PointerHelpers<::capnp::List<
       ::tiledb::sm::serialization::capnp::GroupMember,
       ::capnp::Kind::STRUCT>>::
       init(
-          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
           size);
 }
-inline void Group::Builder::adoptMembersToAdd(
+inline void GroupUpdate::Builder::adoptMembersToAdd(
     ::capnp::Orphan<::capnp::List<
         ::tiledb::sm::serialization::capnp::GroupMember,
         ::capnp::Kind::STRUCT>>&& value) {
@@ -16722,18 +16843,18 @@ inline void Group::Builder::adoptMembersToAdd(
       ::tiledb::sm::serialization::capnp::GroupMember,
       ::capnp::Kind::STRUCT>>::
       adopt(
-          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
           kj::mv(value));
 }
 inline ::capnp::Orphan<::capnp::List<
     ::tiledb::sm::serialization::capnp::GroupMember,
     ::capnp::Kind::STRUCT>>
-Group::Builder::disownMembersToAdd() {
+GroupUpdate::Builder::disownMembersToAdd() {
   return ::capnp::_::PointerHelpers<::capnp::List<
       ::tiledb::sm::serialization::capnp::GroupMember,
       ::capnp::Kind::STRUCT>>::disown(_builder
                                           .getPointerField(
-                                              ::capnp::bounded<3>() *
+                                              ::capnp::bounded<1>() *
                                               ::capnp::POINTERS));
 }
 
