@@ -309,27 +309,27 @@ TEST_CASE(
   std::vector<std::string_view> simple{s8, s8, s8, s8, s8, s1, s4, s4};
   CHECK(
       tiledb::sm::RLE::calculate_compression_params(simple) ==
-      std::tuple(5, 8, 3, 13));
+      std::tuple(1, 1, 3, 13));
 
   std::vector<std::string_view> last_unique{s8, s8, s8, s8, s4, s4, s1};
   CHECK(
       tiledb::sm::RLE::calculate_compression_params(last_unique) ==
-      std::tuple(4, 8, 3, 13));
+      std::tuple(1, 1, 3, 13));
 
   std::vector<std::string_view> first_unique{s1, s15, s15, s8, s8, s1, s4, s4};
   CHECK(
       tiledb::sm::RLE::calculate_compression_params(first_unique) ==
-      std::tuple(2, 15, 5, 29));
+      std::tuple(1, 1, 5, 29));
 
   std::vector<std::string_view> all_unique{s8, s15, s1, s3, s4};
   CHECK(
       tiledb::sm::RLE::calculate_compression_params(all_unique) ==
-      std::tuple(1, 15, 5, 31));
+      std::tuple(1, 1, 5, 31));
 
   std::vector<std::string_view> single_item{s4};
   CHECK(
       tiledb::sm::RLE::calculate_compression_params(single_item) ==
-      std::tuple(1, 4, 1, 4));
+      std::tuple(1, 1, 1, 4));
 
   std::vector<std::string_view> empty_in{};
   CHECK(
@@ -346,7 +346,7 @@ TEST_CASE(
   }
   CHECK(
       tiledb::sm::RLE::calculate_compression_params(all_same) ==
-      std::tuple(300000, 5000, 1, 5000));
+      std::tuple(4, 2, 1, 5000));
 }
 
 TEST_CASE(
