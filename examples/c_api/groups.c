@@ -42,8 +42,8 @@
  * The program then shows how to group these together using the TileDB Group API
  */
 
-#include <malloc.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <tiledb/tiledb.h>
 #include <tiledb/tiledb_experimental.h>
 
