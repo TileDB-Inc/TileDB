@@ -153,9 +153,9 @@ static tuple<Status, optional<shared_ptr<Filter>>> filter_constructor(
           tiledb::common::make_shared<CompressionFilter>(HERE(), type, level)};
     }
     default: {
-      assert(false);
-      return {Status_FilterError("Filter pipeline reader error; unknown type"),
-              nullopt};
+      throw std::logic_error(
+          "Invalid data received from filter pipeline capnp reader, unknown "
+          "type");
     }
   }
 }
