@@ -13,7 +13,7 @@ my_group                       # Group folder
 
 File `__tiledb_group.tdb` is empty and it is merely used to indicate that `my_group` is a TileDB group.
 
-Inside the array folder, you can find the following:
+Inside the group folder, you can find the following:
 
 * [Group details](./group.md) folder `__group`.
 * [Group metadata](./metadata.md) folder `__meta`.
