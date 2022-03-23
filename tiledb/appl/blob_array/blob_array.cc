@@ -261,7 +261,9 @@ Status BlobArray::export_to_vfs_fh(
       return Status_BlobArrayError("File must be open in WRITE OR APPEND mode");
 
     const uint64_t* ptr_file_size;
-    RETURN_NOT_OK(size(ptr_file_size));
+    if (auto s = size(ptr_file_size); !s.ok()) {
+      return s;
+    }
     if (ptr_file_size == nullptr) {
       return Status_BlobArrayError(
           "Unable to export file, file size metadata not found.");
@@ -272,10 +274,6 @@ Status BlobArray::export_to_vfs_fh(
     }
     uint64_t buffer_size = *ptr_file_size;
 
-    // VVVVVVVVVVVVVVV
-    // TBD: REMOVEME:
-    std::cout << "***buffer_size returned " << buffer_size << std::endl;
-    // ^^^^^^^^^^^^^^^
     Buffer data;
     data.realloc(buffer_size);
 

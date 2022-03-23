@@ -143,7 +143,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
   src/unit-capi-string_dims.cc
-  src/unit-capi-tiledb_file.cc
+  src/unit-capi-tiledb_array_as_file.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc

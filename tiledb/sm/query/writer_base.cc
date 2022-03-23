@@ -30,6 +30,8 @@
  * This file implements class WriterBase.
  */
 
+#include <iomanip>
+
 #include "tiledb/sm/query/writer_base.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
@@ -932,7 +934,9 @@ Status WriterBase::new_fragment_name(
   frag_uri->clear();
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
   std::stringstream ss;
-  ss << "/__" << timestamp << "_" << timestamp << "_" << uuid << "_"
+  ss << "/__" << std::setfill('0') << std::setw(13) << timestamp << "_"
+     << std::setfill('0') << std::setw(13) << timestamp
+     << "_" << uuid << "_"
      << format_version;
 
   *frag_uri = ss.str();

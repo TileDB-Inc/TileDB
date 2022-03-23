@@ -45,9 +45,9 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/storage_manager/context.h"
-//#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/filesystem/path_win.h"
 
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/vfs.h"
@@ -177,20 +177,16 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
       tiledb::sm::EncryptionType::NO_ENCRYPTION;
   const char* encryption_key = nullptr;
 
-  bool repeating = true;
-#if 01
   SECTION("- without encryption") {
     encryption_type = tiledb::sm::EncryptionType::NO_ENCRYPTION;
     encryption_key = "";
   }
-#endif
-#if 01
+
   SECTION("- with encryption") {
     encryption_type = tiledb::sm::EncryptionType::AES_256_GCM;
     encryption_key = "0123456789abcdeF0123456789abcdeF";
   }
-#endif
-#if 01
+
   tiledb_config_t* cfg = nullptr;
   tiledb_error_t* err = nullptr;
   if (encryption_type != tiledb::sm::EncryptionType::NO_ENCRYPTION) {
@@ -210,7 +206,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
     tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
         key_len);
   }
-#endif
+
 
   tiledb::appl::BlobArray* blob_array;
   std::string test_array_name = localfs_temp_dir_ + "/" + "test_blob_array";
@@ -224,7 +220,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
 
   remove_temp_dir(test_array_name);
 
-  //  REQUIRE(blob_array->create(config_->config_).ok() == true);
   auto config = cfg ? cfg->config_ : config_->config_;
   REQUIRE(blob_array->create(config).ok() == true);
   REQUIRE(blob_array->is_open() == false);
@@ -234,10 +229,10 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
       REQUIRE(blob_array->close().ok() == true);
     auto open_res = blob_array->open(
         tiledb::sm::QueryType::WRITE,
-        encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
-        encryption_key,   //"",
+        encryption_type,
+        encryption_key,
         static_cast<uint32_t>(
-            strlen(encryption_key)));  // inherited from parent
+            strlen(encryption_key)));
     REQUIRE(blob_array->is_open() == true);
   };
   auto open_for_read = [&]() -> void {
@@ -245,10 +240,10 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
       REQUIRE(blob_array->close().ok() == true);
     auto open_res = blob_array->open(
         tiledb::sm::QueryType::READ,
-        encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
-        encryption_key,   //"",
+        encryption_type,
+        encryption_key,
         static_cast<uint32_t>(
-            strlen(encryption_key)));  // inherited from parent
+            strlen(encryption_key)));
     REQUIRE(blob_array->is_open() == true);
   };
   open_for_write();
@@ -269,44 +264,44 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   const std::string csv_path = files_dir + "/" + "quickstart_dense.csv";
   tiledb::sm::URI inp_uri(csv_path);
   std::vector<int> bufdata{1, 2, 3};
-  // std::string output_path = localfs_temp_dir_ + "outfile.dat";
   std::string output_path1 = localfs_temp_dir_ + "outfile1.dat";
   std::string output_path2 = localfs_temp_dir_ + "outfile2.dat";
-  // tiledb::sm::URI out_uri(output_path);
   tiledb::sm::URI out1_uri(output_path1);
   tiledb::sm::URI out2_uri(output_path2);
 
-  // TBD: REMOVE: NOTE:
-  // setting timeswtamp has no effect since blob_array itself
+  // setting timeswtamp has no effect if blob_array itself
   // sets an initial end_timestamp which is then apparently
   // propogated across all further opens of same array object.
+  // TBD:
+  // With no setting of end_timestamp in blob_array constructor,
+  // and setting the timestamps locally here, failues occur in the
+  // tests due to a failure to retrieve sizes metadata or a failure
+  // for query to complete.
+  // When timestamps are not set, those failures have not been
+  // occurring.
   auto basic_uri_to_array = [&](bool expected_result = false) {
+    // blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
     CHECK(
-        // blob_array->to_array_from_uri(inp_uri, config_->config_).ok() ==
-        // expected_result);
         blob_array->to_array_from_uri(inp_uri, config).ok() == expected_result);
   };
   auto basic_buf_to_array = [&](bool expected_result = false) {
+    // blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
     CHECK(
         blob_array
             ->to_array_from_buffer(
                 bufdata.data(),
                 bufdata.size() * sizeof(bufdata[0]),
-                // config_->config_)
                 config)
             .ok() == expected_result);
   };
 
   auto basic_to_array = [&](bool expected_result = false) {
     basic_uri_to_array(expected_result);
-    //    blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
     basic_buf_to_array(expected_result);
-    //    blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
   };
 
   auto basic_export_vfs_fh = [&](bool expected_result = false) -> void {
     try {
-      tiledb::sm::VFS vfs;
       // Initialize VFS object
       auto storage_manager_ = ctx_->ctx_->storage_manager();
       auto stats = storage_manager_->stats();
@@ -314,15 +309,13 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
       auto io_tp = storage_manager_->io_tp();
       const tiledb::sm::Config* vfs_config = nullptr;
       auto ctx_config = storage_manager_->config();
+      tiledb::sm::VFS vfs;
       REQUIRE(vfs.init(stats, compute_tp, io_tp, &ctx_config, vfs_config).ok());
 
       tiledb::sm::VFSFileHandle vfsfh(
           out2_uri, &vfs, tiledb::sm::VFSMode::VFS_WRITE);
       REQUIRE(vfsfh.is_open());
 
-      // CHECK(
-      //    blob_array->export_to_vfs_fh(&vfsfh, nullptr).ok() ==
-      //    expected_result);
       stat = blob_array->export_to_vfs_fh(&vfsfh, nullptr);
       CHECK(stat.ok() == expected_result);
 
@@ -337,30 +330,8 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
     CHECK(stat.ok() == expected_result);
   };
   auto basic_export = [&](bool expected_result) -> void {
-  // CHECK(blob_array->export_to_uri(out_uri, config_->config_).ok() ==
-  // expected_result);
-#if 0
-    std::cout << "b4 export_to_uri" << std::endl;
-    //CHECK(
-    //    blob_array->export_to_uri(out_uri, config).ok() ==
-    //    expected_result);
-    // stat = blob_array->export_to_uri(out1_uri, config);
-    // CHECK(stat.ok( == expected_result));
-    basic_export_to_uri(expected_result);
-    std::cout << "aftr export_to_uri" << std::endl;
-#endif
-    std::cout << "b4 try_export_vfs_fh" << std::endl;
     basic_export_vfs_fh(expected_result);
-    std::cout << "aftr try_export_vfs_fh" << std::endl;
-#if 01
-    std::cout << "b4 export_to_uri" << std::endl;
-    // CHECK(blob_array->export_to_uri(out_uri, config).ok() ==
-    // expected_result);
-    // stat = blob_array->export_to_uri(out1_uri, config);
-    // CHECK(stat.ok() == expected_result);
     basic_export_to_uri(expected_result);
-    std::cout << "aftr export_to_uri" << std::endl;
-#endif
   };
 
 #if 0
@@ -370,8 +341,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   open_for_write();
   basic_uri_to_array(true);
   open_for_read();
-  // REQUIRE(blob_array->close().ok() == true);
-  // REQUIRE(blob_array->is_open() == true);
   basic_export_to_uri(true);
 
   REQUIRE(blob_array->close().ok() == true);
@@ -442,20 +411,9 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
               << std::endl;
   }
   basic_export(true);  // open for read and non-empty, should succeed
-  if (encryption_type == tiledb::sm::EncryptionType::AES_256_GCM) {
-    // cycle giving oppty to debug...
-    repeating = false;
-    do {
-      basic_export(true);  // open for read and non-empty, should succeed
-    } while (repeating);
-  }
 
   REQUIRE(blob_array->close().ok() == true);
 
-  // blob_array->libmagic_get_mime();
-  // blob_array->libmagic_get_mime_encoding();
-  // blob_array->store_mime_type();
-  // blob_array->store_mime_encoding();
   tiledb::appl::WhiteboxBlobArray wb_ba(*blob_array);
   auto open_wbba_for_write = [&]() -> void {
     if (wb_ba.is_open())
@@ -507,64 +465,187 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
 
   REQUIRE(blob_array->close().ok() == true);
 
+  auto show_dir = [&](std::string path) {
+    std::vector<tiledb::sm::URI> filelist;
+    tiledb::sm::URI uri_path(path);
+    vfs_->vfs_->ls(uri_path, &filelist);
+    std::cout << "path " << path << ", nitems " << filelist.size() << std::endl;
+    for (auto afile : filelist) {
+      uint64_t fsize = 0;
+      vfs_->vfs_->file_size(afile, &fsize);
+      std::cout << afile.to_path() << " " << fsize << std::endl;
+    }
+  };
+  auto show_dirs = [&]() -> void {
+    show_dir(localfs_temp_dir_);
+    show_dir(test_array_name);
+#if _WIN32
+    auto separator = "\\";
+#else
+    auto separator = "/";
+#endif
+    std::cout << "...__fragments..." << std::endl;
+    show_dir(test_array_name + separator + "__fragments");
+    std::cout << "...__meta..." << std::endl;
+    show_dir(test_array_name + separator + "__meta");
+  };
+  // compare actual contents for equality
+  auto cmp_files_check = [&](const std::string& file1,
+                             const std::string& file2) -> bool {
+    std::stringstream cmp_files_cmd;
+#ifdef _WIN32
+    // 'FC' does not like forward slashes
+    cmp_files_cmd << "FC "
+                  << tiledb::sm::path_win::slashes_to_backslashes(
+                         // tiledb::sm::path_win::path_from_uri(csv_path))
+                         tiledb::sm::path_win::path_from_uri(file1))
+                  << " "
+                  << tiledb::sm::path_win::slashes_to_backslashes(
+                         tiledb::sm::path_win::path_from_uri(file2))
+                  << " > nul";
+#else
+    // tiledb::sm::VFS::abs_path(output_path) << " > nul";
+    cmp_files_cmd << "diff " << file1 << " " << file2 << " > nul";
+#endif
+    // auto result = !system(cmpfilescmd.str().c_str());
+    auto result = system(cmp_files_cmd.str().c_str()) == 0;
+    CHECK(result);
+
+    if (!result) {
+      std::cout << "cmp " << file1 << "," << file2 << "different." << std::endl;
+      show_dirs();
+    }
+    return result;
+  };
+  //cmp_files_check(csv_path, output_path);
+
+  // try multiple store rapidly
+  std::string infiles[] = {
+      // file sizes - each file is slightly larger than previous file
+      files_dir + "/" + "fileapi0.csv",
+      files_dir + "/" + "fileapi1.csv",
+      files_dir + "/" + "fileapi2.csv",
+      files_dir + "/" + "fileapi3.csv",
+      files_dir + "/" + "fileapi4.csv",
+      files_dir + "/" + "fileapi5.csv",
+      files_dir + "/" + "fileapi6.csv",
+      files_dir + "/" + "fileapi7.csv",
+      files_dir + "/" + "fileapi8.csv",
+      files_dir + "/" + "fileapi9.csv",
+  };
+  int n_infiles = sizeof(infiles) / sizeof(infiles[0]);
+  std::string outfiles[] = {
+      localfs_temp_dir_ + "out0",
+      localfs_temp_dir_ + "out1",
+      localfs_temp_dir_ + "out2",
+      localfs_temp_dir_ + "out3",
+      localfs_temp_dir_ + "out4",
+      localfs_temp_dir_ + "out5",
+      localfs_temp_dir_ + "out6",
+      localfs_temp_dir_ + "out7",
+      localfs_temp_dir_ + "out8",
+      localfs_temp_dir_ + "out9",
+  };
+  int n_outfiles = sizeof(outfiles) / sizeof(outfiles[0]);
+
+  assert(n_infiles == n_outfiles);
+
+  REQUIRE(blob_array->close().ok() == true);
+  remove_temp_dir(test_array_name);
+  remove_temp_dir(localfs_temp_dir_);
+  create_dir(localfs_temp_dir_, ctx_, vfs_);
+  REQUIRE(blob_array->create(config).ok() == true);
+  REQUIRE(blob_array->is_open() == false);
+
+
+  open_for_write();
+  bool expected_result = true;
+  for (auto i = 0; i < n_infiles; ++i) {
+    tiledb::sm::URI inp_uri(infiles[i]);
+    CHECK(
+        blob_array->to_array_from_uri(inp_uri, config).ok() == expected_result);
+  }
+  REQUIRE(blob_array->close().ok() == true);
+  open_for_read();
+  stat = blob_array->export_to_uri(out1_uri, config);
+  CHECK(stat.ok() == true);
+
+  open_for_read();
+  stat = blob_array->export_to_uri(out2_uri, config);
+  CHECK(stat.ok() == true);
+  cmp_files_check(out1_uri.to_string(), out2_uri.to_string());
+
+  for (auto i = 0; i < n_infiles; ++i) {
+    tiledb::sm::URI inp_uri(infiles[i]);
+    // blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
+    open_for_write();
+    CHECK(
+        blob_array->to_array_from_uri(inp_uri, config).ok() == expected_result);
+
+    tiledb::sm::URI out_uri(outfiles[i]);
+    open_for_read();
+    stat = blob_array->export_to_uri(out_uri, config);
+    CHECK(stat.ok() == true);
+  }
+
+  // compare all exports above to original source files
+  for (auto i = 0; i < n_outfiles; ++i) {
+    cmp_files_check(infiles[i], outfiles[i]);
+  }
+
+  REQUIRE(blob_array->close().ok() == true);
+  remove_temp_dir(test_array_name);
+  remove_temp_dir(localfs_temp_dir_);
+  create_dir(localfs_temp_dir_, ctx_, vfs_);
+  REQUIRE(blob_array->create(config).ok() == true);
+  REQUIRE(blob_array->is_open() == false);
+
+  open_for_write();
+
+  for (auto i = n_infiles - 1; i >= 0; --i) {
+    tiledb::sm::URI inp_uri(infiles[i]);
+    // blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
+    CHECK(
+        blob_array->to_array_from_uri(inp_uri, config).ok() == expected_result);
+  }
+  REQUIRE(blob_array->close().ok() == true);
+  open_for_read();
+  stat = blob_array->export_to_uri(out1_uri, config);
+  CHECK(stat.ok() == true);
+  open_for_read();
+  stat = blob_array->export_to_uri(out2_uri, config);
+  CHECK(stat.ok() == true);
+  cmp_files_check(out1_uri.to_string(), out2_uri.to_string());
+
+  REQUIRE(blob_array->close().ok() == true);
+
+  remove_temp_dir(test_array_name);
+  remove_temp_dir(localfs_temp_dir_);
+  create_dir(localfs_temp_dir_, ctx_, vfs_);
+  REQUIRE(blob_array->create(config).ok() == true);
+  REQUIRE(blob_array->is_open() == false);
+
+
+  for (auto i = n_infiles - 1; i >= 0; --i) {
+    tiledb::sm::URI inp_uri(infiles[i]);
+    open_for_write();
+    // blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
+    CHECK(
+        blob_array->to_array_from_uri(inp_uri, config).ok() == expected_result);
+
+    tiledb::sm::URI out_uri(outfiles[i]);
+    open_for_read();
+    stat = blob_array->export_to_uri(out_uri, config);
+    CHECK(stat.ok() == true);
+  }
+  for (auto i = 0; i < n_outfiles; ++i) {
+    cmp_files_check(infiles[i], outfiles[i]);
+  }
+
+  REQUIRE(blob_array->close().ok() == true);
+
   delete blob_array;
   if (cfg) {
     tiledb_config_free(&cfg);
   }
 }
-
-#if 0
-/*
- * The type lists need to be in sorted order for the tests to be valid.
- *
- * When you're not careful about rounding, you can inadvertently create values
- * that look distinct but actually are not.
- */
-TEMPLATE_LIST_TEST_CASE(
-    "Interval/Test - Sorted, distinct values in test lists",
-    "[interval]",
-    TypesUnderTest) {
-  typedef TestType T;
-  typedef TestTypeTraits<T> Tr;
-
-  SECTION("outer") {
-    std::vector v(Tr::outer);
-    REQUIRE(v.size() >= 1);
-    size_t n = v.size() - 1;
-    for (unsigned int j = 0; j < n; ++j) {
-      CHECK(v[j] != v[j + 1]);
-      if (v[j] != v[j + 1]) {
-        CHECK(v[j] < v[j + 1]);
-      }
-    }
-  }
-  SECTION("inner") {
-    std::vector v(Tr::inner);
-    REQUIRE(v.size() >= 1);
-    size_t n = v.size() - 1;
-    for (unsigned int j = 0; j < n; ++j) {
-      CHECK(v[j] != v[j + 1]);
-      if (v[j] != v[j + 1]) {
-        CHECK(v[j] < v[j + 1]);
-      }
-    }
-  }
-}
-
-TEMPLATE_LIST_TEST_CASE(
-    "Interval/TestTypeTraits - Floating-point not-finite elements",
-    "[interval]",
-    TypesUnderTest) {
-  typedef TestType T;
-  typedef TestTypeTraits<T> Tr;
-
-  if constexpr (std::is_floating_point_v<T>) {
-    // Verify that we've defined non-numeric traits correctly
-    CHECK(std::isinf(T(Tr::positive_infinity)));
-    CHECK(Tr::positive_infinity > 0);
-    CHECK(std::isinf(Tr::negative_infinity));
-    CHECK(Tr::negative_infinity < 0);
-    CHECK(std::isnan(Tr::NaN));
-  }
-}
-#endif  // 0

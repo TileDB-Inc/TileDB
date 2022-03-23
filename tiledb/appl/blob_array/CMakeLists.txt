@@ -37,6 +37,38 @@ target_compile_definitions(unit_blob_array PRIVATE
   -DTILEDB_TEST_INPUTS_DIR="${CMAKE_SOURCE_DIR}/test/inputs"
 )
 
+if (TILEDB_S3)
+#  add_definitions(-DHAVE_S3)
+  target_compile_definitions(unit_blob_array PRIVATE
+    -DHAVE_S3
+  )
+endif()
+
+# Azure dependencies
+if (TILEDB_AZURE)
+#  add_definitions(-DHAVE_AZURE)
+  target_compile_definitions(unit_blob_array PRIVATE
+    -DHAVE_AZURE
+  )
+endif()
+
+# GCS dependencies
+if (TILEDB_GCS)
+#  add_definitions(-DHAVE_GCS)
+  target_compile_definitions(unit_blob_array PRIVATE
+    -DHAVE_GCS
+  )
+endif()
+
+if (TILEDB_HDFS)
+  if(NOT WIN32)
+#   add_definitions(-DHAVE_HDFS)
+  target_compile_definitions(unit_blob_array PRIVATE
+    -DHAVE_HDFS
+  )
+  endif()
+endif()
+
 add_dependencies(unit_blob_array TILEDB_CORE_OBJECTS)
 
 #target_link_libraries(unit_blob_array PUBLIC Catch2::Catch2)

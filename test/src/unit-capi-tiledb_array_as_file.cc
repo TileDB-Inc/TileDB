@@ -232,6 +232,7 @@ TEST_CASE_METHOD(
   CHECK(
       tiledb_array_as_file_obtain(ctx_, &array, array_name.c_str(), cfg) ==
       TILEDB_OK);
+  array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
   CHECK(
       tiledb_array_as_file_import(ctx_, array, csv_path.c_str()) == TILEDB_OK);
 
@@ -256,7 +257,7 @@ TEST_CASE_METHOD(
 
   std::string base_array_name = "blob_array_test_create";
   std::string array_name = remote_temp_dir + base_array_name;
-  std::string output_path = localfs_temp_dir_ + "out";
+  std::string output_pathA = localfs_temp_dir_ + "outA";
   std::string output_pathB = localfs_temp_dir_ + "outB";
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
@@ -312,20 +313,26 @@ TEST_CASE_METHOD(
         tiledb_array_as_file_obtain(ctx_, &array, array_name.c_str(), cfg) ==
         TILEDB_OK);
 
+    array->array_->set_timestamp_end(1);
     REQUIRE(
         tiledb_array_as_file_obtain(ctx_, &array2, array_name.c_str(), cfg) ==
         TILEDB_OK);
+    array2->array_->set_timestamp_end(1);
   };
 
   prep_clean_data();
 
   const std::string csv_name = "quickstart_dense.csv";
   const std::string csv_path = files_dir + "/" + csv_name;
+  array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
+  array2->array_->set_timestamp_end(array->array_->timestamp_end());
   CHECK(
       tiledb_array_as_file_import(ctx_, array, csv_path.c_str()) == TILEDB_OK);
 
+//  array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
+//  array2->array_->set_timestamp_end(array->array_->timestamp_end());
   CHECK(
-      tiledb_array_as_file_export(ctx_, array2, output_path.c_str()) ==
+      tiledb_array_as_file_export(ctx_, array2, output_pathA.c_str()) ==
       TILEDB_OK);
 
   uint64_t original_file_size = 0;
@@ -335,23 +342,11 @@ TEST_CASE_METHOD(
   uint64_t exported_file_size = 0;
   CHECK(
       tiledb_vfs_file_size(
-          ctx_, vfs_, output_path.c_str(), &exported_file_size) == TILEDB_OK);
+          ctx_, vfs_, output_pathA.c_str(), &exported_file_size) == TILEDB_OK);
 
   REQUIRE(exported_file_size == original_file_size);
 
   auto show_dir = [&](std::string path) {
-#if 0
-    std::stringstream ls_cmd;
-#ifdef _WIN32
-    ls_cmd << "dir " << path;
-#else
-    ls_cmd << "ls -l " << path;
-#endif
-    auto do_nothing = []() { return; };
-    if (system(ls_cmd.str().c_str()))  // (void) wasn't working to 'ignore
-                                       // unused reuslt'
-      do_nothing();
-#else
     std::vector<tiledb::sm::URI> filelist;
     tiledb::sm::URI uri_path(path);
     vfs_->vfs_->ls(uri_path, &filelist);
@@ -361,7 +356,6 @@ TEST_CASE_METHOD(
       vfs_->vfs_->file_size(afile, &fsize);
       std::cout << afile.to_path() << " " << fsize << std::endl;
     }
-#endif
   };
   auto show_dirs = [&]() -> void {
     show_dir(temp_dir);
@@ -405,7 +399,7 @@ TEST_CASE_METHOD(
     }
     return result;
   };
-  cmp_files_check(csv_path, output_path);
+  cmp_files_check(csv_path, output_pathA);
 
   // try multiple store rapidly
   std::string infiles[] = {
@@ -443,10 +437,12 @@ TEST_CASE_METHOD(
     prep_clean_data();
 
     // be sure output_path not present
-    tiledb_vfs_remove_file(ctx_, vfs_, output_path.c_str());
+    tiledb_vfs_remove_file(ctx_, vfs_, output_pathA.c_str());
 
     // stores only, then export (last)
     for (auto i = 0; i < n_infiles; ++i) {
+      array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
+      array2->array_->set_timestamp_end(array->array_->timestamp_end());
       CHECK(
           tiledb_array_as_file_import(ctx_, array, infiles[i].c_str()) ==
           TILEDB_OK);
@@ -456,14 +452,18 @@ TEST_CASE_METHOD(
     show_dirs();
     CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
     CHECK(is_array2_open == 0);
+//    array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
+//    array2->array_->set_timestamp_end(array->array_->timestamp_end());
     CHECK(
         tiledb_array_as_file_export(ctx_, array, output_pathB.c_str()) ==
         TILEDB_OK);
     cmp_files_check(infiles[n_infiles - 1], output_pathB);
+//    array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
+//    array2->array_->set_timestamp_end(array->array_->timestamp_end());
     CHECK(
-        tiledb_array_as_file_export(ctx_, array2, output_path.c_str()) ==
+        tiledb_array_as_file_export(ctx_, array2, output_pathA.c_str()) ==
         TILEDB_OK);
-    cmp_files_check(infiles[n_infiles - 1], output_path);
+    cmp_files_check(infiles[n_infiles - 1], output_pathA);
 
     CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
     CHECK(is_array_open == 0);
@@ -474,6 +474,8 @@ TEST_CASE_METHOD(
     for (auto i = 0; i < n_infiles; ++i) {
       CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
       CHECK(is_array_open == 0);
+      array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
+      array2->array_->set_timestamp_end(array->array_->timestamp_end());
       CHECK(
           tiledb_array_as_file_import(ctx_, array, infiles[i].c_str()) ==
           TILEDB_OK);
@@ -481,6 +483,8 @@ TEST_CASE_METHOD(
       CHECK(is_array_open == 0);
       CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
       CHECK(is_array2_open == 0);
+//      array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
+//      array2->array_->set_timestamp_end(array->array_->timestamp_end());
       CHECK(
           tiledb_array_as_file_export(ctx_, array2, outfiles[i].c_str()) ==
           TILEDB_OK);
@@ -500,10 +504,12 @@ TEST_CASE_METHOD(
     prep_clean_data();
 
     // be sure output_path not present
-    tiledb_vfs_remove_file(ctx_, vfs_, output_path.c_str());
+    tiledb_vfs_remove_file(ctx_, vfs_, output_pathA.c_str());
 
     // stores only, then export (last)
     for (auto i = n_infiles - 1; i >= 0; --i) {
+      array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
+      array2->array_->set_timestamp_end(array->array_->timestamp_end());
       CHECK(
           tiledb_array_as_file_import(ctx_, array, infiles[i].c_str()) ==
           TILEDB_OK);
@@ -513,10 +519,12 @@ TEST_CASE_METHOD(
     show_dirs();
     CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
     CHECK(is_array2_open == 0);
+//    array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
+//    array2->array_->set_timestamp_end(array->array_->timestamp_end());
     CHECK(
-        tiledb_array_as_file_export(ctx_, array2, output_path.c_str()) ==
+        tiledb_array_as_file_export(ctx_, array2, output_pathA.c_str()) ==
         TILEDB_OK);
-    cmp_files_check(infiles[0], output_path);
+    cmp_files_check(infiles[0], output_pathA);
 
     CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
     CHECK(is_array_open == 0);
@@ -527,6 +535,8 @@ TEST_CASE_METHOD(
     for (auto i = n_infiles - 1; i >= 0; --i) {
       CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
       CHECK(is_array_open == 0);
+      array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
+      array2->array_->set_timestamp_end(array->array_->timestamp_end());
       CHECK(
           tiledb_array_as_file_import(ctx_, array, infiles[i].c_str()) ==
           TILEDB_OK);
@@ -534,6 +544,8 @@ TEST_CASE_METHOD(
       CHECK(is_array_open == 0);
       CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
       CHECK(is_array2_open == 0);
+//      array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
+//      array2->array_->set_timestamp_end(array->array_->timestamp_end());
       CHECK(
           tiledb_array_as_file_export(ctx_, array2, outfiles[i].c_str()) ==
           TILEDB_OK);
