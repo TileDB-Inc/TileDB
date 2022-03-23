@@ -188,9 +188,6 @@ TEST_CASE_METHOD(
   group.close();
   group.open(TILEDB_WRITE);
 
-  // Write null key
-  REQUIRE_THROWS(group.put_metadata(nullptr, TILEDB_INT32, 1, &v));
-
   // Write value type BLOB
   REQUIRE_THROWS(group.put_metadata("key", TILEDB_ANY, 1, &v));
 
