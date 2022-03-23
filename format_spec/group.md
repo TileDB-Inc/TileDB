@@ -7,6 +7,7 @@ my_group                       # Group folder
     |_ __tiledb_group.tdb      # Empty group file
     |_ __group                 # Group folder
         |_ <timestamped_name>  # Timestamped group file detailing members
+    |_ __meta                  # group metadata folder
 ```
 
 ## Group File
@@ -16,9 +17,9 @@ my_group                       # Group folder
 | :--- | :--- | :--- |
 | Version | `uint32_t` | Format version number of the group |
 | Number of Group Member | `uint32_t` | The number of group members. |
-| Group Member 1 | [Group Member](#group Member) | First group member |
+| Group Member 1 | [Group Member](##Group Member) | First group member |
 | … | … | … |
-| Group Member N | [Group Member](#group Member) | Nth group member |
+| Group Member N | [Group Member](##Group Member) | Nth group member |
 
 
 ## Group Member

@@ -615,40 +615,44 @@ Status Group::member_count(uint64_t* count) const {
   return Status::Ok();
 }
 
-Status Group::member_by_index(
-    uint64_t index, const char** uri, ObjectType* type) {
+tuple<Status, optional<std::string>, optional<ObjectType>>
+Group::member_by_index(uint64_t index) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   // Check if group is open
   if (!is_open_) {
-    return Status_GroupError("Cannot get member by index; Group is not open");
+    return {Status_GroupError("Cannot get member by index; Group is not open"),
+            std::nullopt,
+            std::nullopt};
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return Status_GroupError(
-        "Cannot get member; Group was not opened in read mode");
+    return {Status_GroupError(
+                "Cannot get member; Group was not opened in read mode"),
+            std::nullopt,
+            std::nullopt};
+    ;
   }
 
   if (index > members_vec_.size()) {
-    return Status_GroupError(
-        "index " + std::to_string(index) + " is larger than member count " +
-        std::to_string(members_vec_.size()));
+    return {
+        Status_GroupError(
+            "index " + std::to_string(index) + " is larger than member count " +
+            std::to_string(members_vec_.size())),
+        std::nullopt,
+        std::nullopt};
+    ;
   }
 
   auto member = members_vec_[index];
 
+  std::string uri = member->uri().to_string();
   if (member->relative()) {
-    std::string tmp =
-        group_uri_.join_path(member->uri().to_string()).to_string();
-    *uri = (char*)std::malloc(tmp.size() * sizeof(char));
-    memcpy((void*)*uri, tmp.data(), tmp.size());
-  } else {
-    *uri = member->uri().c_str();
+    uri = group_uri_.join_path(member->uri().to_string()).to_string();
   }
-  *type = member->type();
 
-  return Status::Ok();
+  return {Status::Ok(), uri, member->type()};
 }
 
 std::string Group::dump(

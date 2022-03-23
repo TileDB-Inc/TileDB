@@ -11,7 +11,7 @@
    * [File hierarchy](./array_file_hierarchy.md)
    * [Array Schema](./array_schema.md)
    * [Fragment](./fragment.md)
-   * [Array Metadata](./array_metadata.md)
+   * [Array Metadata](./metadata.md)
    * [Tile](./tile.md)
    * [Generic Tile](./generic_tile.md)
 * **Group**

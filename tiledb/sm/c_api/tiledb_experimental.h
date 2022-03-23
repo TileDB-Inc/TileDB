@@ -679,16 +679,19 @@ TILEDB_EXPORT int32_t tiledb_group_get_member_count(
  *
  * tiledb_group_close(ctx, group);
  * tiledb_group_open(ctx, group, TILEDB_READ);
- * const char *uri;
+ * char *uri;
  * tiledb_object_t type;
  * tiledb_group_get_member_by_index(ctx, group, 0, &uri, &type);
+ *
+ * free(uri);
  *
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param group An group opened in READ mode.
  * @param index index of member to fetch
- * @param uri URI of member
+ * @param uri URI of member, The caller takes ownership
+ *   of the c-string.
  * @param type type of member
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
@@ -696,7 +699,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_member_by_index(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     uint64_t index,
-    const char** uri,
+    char** uri,
     tiledb_object_t* type);
 
 /**

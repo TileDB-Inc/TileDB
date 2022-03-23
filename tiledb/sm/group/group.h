@@ -299,11 +299,10 @@ class Group {
   /**
    * Get a member by index
    * @param index
-   * @param uri
-   * @param type
-   * @return
+   * @return Tuple of Status, URI string, ObjectType
    */
-  Status member_by_index(uint64_t index, const char** uri, ObjectType* type);
+  tuple<Status, optional<std::string>, optional<ObjectType>> member_by_index(
+      uint64_t index);
 
   /** Returns `true` if the group is open. */
   bool is_open() const;

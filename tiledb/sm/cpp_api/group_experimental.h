@@ -362,11 +362,13 @@ class Group {
   tiledb::Object member(uint64_t index) const {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    const char* uri;
+    char* uri;
     tiledb_object_t type;
     ctx.handle_error(tiledb_group_get_member_by_index(
         c_ctx, group_.get(), index, &uri, &type));
-    return tiledb::Object(type, uri);
+    std::string uri_str(uri);
+    std::free(uri);
+    return tiledb::Object(type, uri_str);
   }
 
   std::string dump(const bool recursive) const {
