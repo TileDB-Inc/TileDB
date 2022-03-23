@@ -1,5 +1,4 @@
 #define CATCH_CONFIG_RUNNER
-#define CATCH_CONFIG_NO_POSIX_SIGNALS
 #include <catch.hpp>
 
 #include <cstdlib>
