@@ -7848,7 +7848,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_name(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    const char** name);
+    const char** name) TILEDB_NOEXCEPT;
 
 /**
  * Gets the number of fragments.
