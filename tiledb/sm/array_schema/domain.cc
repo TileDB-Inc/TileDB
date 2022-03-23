@@ -63,7 +63,7 @@ Domain::Domain() {
 
 Domain::Domain(
     Layout cell_order,
-    const std::vector<std::shared_ptr<Dimension>> dimensions,
+    const std::vector<shared_ptr<Dimension>> dimensions,
     Layout tile_order)
     : cell_order_(cell_order)
     , dimensions_(dimensions)
@@ -320,7 +320,7 @@ void Domain::crop_ndrange(NDRange* ndrange) const {
     dimensions_[d]->crop_range(&(*ndrange)[d]);
 }
 
-std::tuple<Status, optional<std::shared_ptr<Domain>>> Domain::deserialize(
+tuple<Status, optional<shared_ptr<Domain>>> Domain::deserialize(
     ConstBuffer* buff, uint32_t version, Layout cell_order, Layout tile_order) {
   Status st;
   // Load type
@@ -334,7 +334,7 @@ std::tuple<Status, optional<std::shared_ptr<Domain>>> Domain::deserialize(
     type = static_cast<Datatype>(type_c);
   }
 
-  std::vector<std::shared_ptr<Dimension>> dimensions;
+  std::vector<shared_ptr<Dimension>> dimensions;
   uint32_t dim_num;
   // Load dimensions
   st = buff->read(&dim_num, sizeof(uint32_t));

@@ -33,6 +33,7 @@
 #ifndef TILEDB_DOMAIN_H
 #define TILEDB_DOMAIN_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
@@ -66,7 +67,7 @@ class Domain {
   /** Constructor.*/
   Domain(
       Layout cell_order,
-      const std::vector<std::shared_ptr<Dimension>> dimensions,
+      const std::vector<shared_ptr<Dimension>> dimensions,
       Layout tile_order);
 
   /**
@@ -200,7 +201,7 @@ class Domain {
    * @param version The array schema version.
    * @return Status and Domain
    */
-  static std::tuple<Status, optional<std::shared_ptr<Domain>>> deserialize(
+  static tuple<Status, optional<shared_ptr<Domain>>> deserialize(
       ConstBuffer* buff,
       uint32_t version,
       Layout cell_order,
@@ -502,7 +503,7 @@ class Domain {
   Layout cell_order_;
 
   /** The domain dimensions. */
-  std::vector<std::shared_ptr<Dimension>> dimensions_;
+  std::vector<shared_ptr<Dimension>> dimensions_;
 
   /** The number of dimensions. */
   unsigned dim_num_;
