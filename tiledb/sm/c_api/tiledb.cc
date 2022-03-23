@@ -1863,7 +1863,10 @@ int32_t tiledb_domain_add_dimension(
       sanity_check(ctx, domain) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, domain->domain_->add_dimension(dim->dim_)))
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          domain->domain_->add_dimension(
+              tdb::make_shared<tiledb::sm::Dimension>(HERE(), dim->dim_))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2077,7 +2080,7 @@ int32_t tiledb_domain_get_dimension_from_index(
     return TILEDB_OOM;
   }
   (*dim)->dim_ = new (std::nothrow)
-      tiledb::sm::Dimension(domain->domain_->dimension(index));
+      tiledb::sm::Dimension(domain->domain_->dimension(index).get());
   if ((*dim)->dim_ == nullptr) {
     delete *dim;
     *dim = nullptr;
@@ -2104,7 +2107,7 @@ int32_t tiledb_domain_get_dimension_from_name(
     return TILEDB_OK;
   }
   std::string name_string(name);
-  auto found_dim = domain->domain_->dimension(name_string);
+  auto found_dim = domain->domain_->dimension(name_string).get();
 
   if (found_dim == nullptr) {
     auto st = Status_DomainError(
