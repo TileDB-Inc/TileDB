@@ -1369,6 +1369,10 @@ Status StorageManager::group_create(const std::string& group) {
   // Create group directory
   RETURN_NOT_OK(vfs_->create_dir(uri));
 
+  // Create group file
+  URI group_filename = uri.join_path(constants::group_filename);
+  RETURN_NOT_OK(vfs_->touch(group_filename));
+
   // Create metadata folder
   RETURN_NOT_OK(
       vfs_->create_dir(uri.join_path(constants::group_metadata_dir_name)));

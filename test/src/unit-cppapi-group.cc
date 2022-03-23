@@ -216,8 +216,7 @@ TEST_CASE_METHOD(
   std::string group1_uri = temp_dir + "group1";
   tiledb::Group::create(ctx_, group1_uri);
   // Open group in write mode
-  tiledb::Context ctx;
-  tiledb::Group group(ctx, std::string(group1_uri), TILEDB_WRITE);
+  tiledb::Group group(ctx_, std::string(group1_uri), TILEDB_WRITE);
 
   // Write items
   int32_t v = 5;
