@@ -44,10 +44,10 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/filesystem/path_win.h"
+#include "tiledb/sm/storage_manager/context.h"
 
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/vfs.h"
@@ -207,7 +207,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
         key_len);
   }
 
-
   tiledb::appl::BlobArray* blob_array;
   std::string test_array_name = localfs_temp_dir_ + "/" + "test_blob_array";
 
@@ -231,8 +230,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
         tiledb::sm::QueryType::WRITE,
         encryption_type,
         encryption_key,
-        static_cast<uint32_t>(
-            strlen(encryption_key)));
+        static_cast<uint32_t>(strlen(encryption_key)));
     REQUIRE(blob_array->is_open() == true);
   };
   auto open_for_read = [&]() -> void {
@@ -242,8 +240,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
         tiledb::sm::QueryType::READ,
         encryption_type,
         encryption_key,
-        static_cast<uint32_t>(
-            strlen(encryption_key)));
+        static_cast<uint32_t>(strlen(encryption_key)));
     REQUIRE(blob_array->is_open() == true);
   };
   open_for_write();
@@ -289,9 +286,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
     CHECK(
         blob_array
             ->to_array_from_buffer(
-                bufdata.data(),
-                bufdata.size() * sizeof(bufdata[0]),
-                config)
+                bufdata.data(), bufdata.size() * sizeof(bufdata[0]), config)
             .ok() == expected_result);
   };
 
@@ -517,7 +512,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
     }
     return result;
   };
-  //cmp_files_check(csv_path, output_path);
 
   // try multiple store rapidly
   std::string infiles[] = {
@@ -556,7 +550,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   create_dir(localfs_temp_dir_, ctx_, vfs_);
   REQUIRE(blob_array->create(config).ok() == true);
   REQUIRE(blob_array->is_open() == false);
-
 
   open_for_write();
   bool expected_result = true;
@@ -624,7 +617,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   create_dir(localfs_temp_dir_, ctx_, vfs_);
   REQUIRE(blob_array->create(config).ok() == true);
   REQUIRE(blob_array->is_open() == false);
-
 
   for (auto i = n_infiles - 1; i >= 0; --i) {
     tiledb::sm::URI inp_uri(infiles[i]);

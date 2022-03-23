@@ -108,10 +108,9 @@ Status Metadata::generate_uri(const URI& array_uri) {
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
 
   std::stringstream ss;
-    ss << "__" << std::setfill('0') << std::setw(13) << timestamp_range_.first
-       << "_" << std::setfill('0') << std::setw(13) << timestamp_range_.second
-       << "_"
-     << uuid;
+  ss << "__" << std::setfill('0') << std::setw(13) << timestamp_range_.first
+     << "_" << std::setfill('0') << std::setw(13) << timestamp_range_.second
+     << "_" << uuid;
   uri_ = array_uri.join_path(constants::array_metadata_dir_name)
              .join_path(ss.str());
 
