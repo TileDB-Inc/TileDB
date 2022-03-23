@@ -1867,7 +1867,7 @@ int32_t tiledb_domain_add_dimension(
   if (SAVE_ERROR_CATCH(
           ctx,
           domain->domain_->add_dimension(
-              tdb::make_shared<tiledb::sm::Dimension>(HERE(), dim->dim_))))
+              make_shared<tiledb::sm::Dimension>(HERE(), dim->dim_))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2176,9 +2176,8 @@ int32_t tiledb_array_schema_alloc(
   }
 
   // Create a new ArraySchema object
-  (*array_schema)->array_schema_ =
-      tiledb::common::make_shared<tiledb::sm::ArraySchema>(
-          HERE(), static_cast<tiledb::sm::ArrayType>(array_type));
+  (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
+      HERE(), static_cast<tiledb::sm::ArrayType>(array_type));
   if ((*array_schema)->array_schema_ == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema object");
     LOG_STATUS(st);

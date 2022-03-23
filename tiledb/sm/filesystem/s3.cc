@@ -1499,7 +1499,7 @@ Status S3::flush_direct(const URI& uri) {
 
   Aws::S3::Model::PutObjectRequest put_object_request;
 
-  auto stream = std::shared_ptr<Aws::IOStream>(
+  auto stream = shared_ptr<Aws::IOStream>(
       new boost::interprocess::bufferstream((char*)buff->data(), buff->size()));
 
   put_object_request.SetBody(stream);
@@ -1680,7 +1680,7 @@ S3::MakeUploadPartCtx S3::make_upload_part_req(
     const uint64_t length,
     const Aws::String& upload_id,
     const int upload_part_num) {
-  auto stream = std::shared_ptr<Aws::IOStream>(
+  auto stream = shared_ptr<Aws::IOStream>(
       new boost::interprocess::bufferstream((char*)buffer, length));
 
   Aws::S3::Model::UploadPartRequest upload_part_request;

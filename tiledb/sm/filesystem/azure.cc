@@ -137,7 +137,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   write_cache_max_size_ = max_parallel_ops_ * block_list_block_size_;
 
   // Initialize a credential object
-  std::shared_ptr<azure::storage_lite::storage_credential> credential =
+  shared_ptr<azure::storage_lite::storage_credential> credential =
       make_shared<azure::storage_lite::shared_key_credential>(
           HERE(), account_name, account_key);
 

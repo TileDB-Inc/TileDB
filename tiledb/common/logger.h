@@ -376,7 +376,7 @@ class Logger {
   /* ********************************* */
 
   /** The logger object. */
-  std::shared_ptr<spdlog::logger> logger_;
+  shared_ptr<spdlog::logger> logger_;
 
   /** The name of the logger */
   std::string name_;

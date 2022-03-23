@@ -124,8 +124,8 @@ ThreadPool::Task ThreadPool::execute(std::function<Status()>&& function) {
   shared_ptr<PackagedTask> parent_task = lookup_task(tid);
 
   // Create the packaged task.
-  auto task = tiledb::common::make_shared<PackagedTask>(
-      HERE(), std::move(function), std::move(parent_task));
+  auto task =
+      make_shared<PackagedTask>(HERE(), move(function), move(parent_task));
 
   // Fetch the future from the packaged task.
   ThreadPool::Task future = task->get_future();
