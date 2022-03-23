@@ -77,17 +77,11 @@ struct GroupFx {
   // Functions
   GroupFx();
   ~GroupFx();
-  void check_object_type(const std::string& path);
-  void check_delete(const std::string& path);
-  void check_move(const std::string& path);
-  void check_ls_1000(const std::string& path);
   void create_array(const std::string& path);
   void create_temp_dir(const std::string& path) const;
   void remove_temp_dir(const std::string& path) const;
-  void create_hierarchy(const std::string& path);
   std::string get_golden_walk(const std::string& path);
   std::string get_golden_ls(const std::string& path);
-  static int write_path(const char* path, tiledb_object_t type, void* data);
   static std::string random_name(const std::string& prefix);
   std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> read_group(
       tiledb_group_t* group) const;
@@ -176,167 +170,6 @@ void GroupFx::create_array(const std::string& path) {
   tiledb_array_schema_free(&array_schema);
 }
 
-void GroupFx::check_object_type(const std::string& path) {
-  std::string group, array;
-  tiledb_object_t type;
-
-  // Check group
-  group = path + "group/";
-  REQUIRE(tiledb_group_create(ctx_, group.c_str()) == TILEDB_OK);
-  REQUIRE(tiledb_object_type(ctx_, group.c_str(), &type) == TILEDB_OK);
-  CHECK(type == TILEDB_GROUP);
-
-  // Check invalid
-  array = group + "array/";
-  REQUIRE(tiledb_object_type(ctx_, array.c_str(), &type) == TILEDB_OK);
-  CHECK(type == TILEDB_INVALID);
-
-  // Check array
-  create_array(array);
-  REQUIRE(tiledb_object_type(ctx_, array.c_str(), &type) == TILEDB_OK);
-  CHECK(type == TILEDB_ARRAY);
-}
-
-void GroupFx::check_delete(const std::string& path) {
-  std::string group, array, invalid;
-  tiledb_object_t type;
-
-  // Check simple delete
-  group = path + "group/";
-  CHECK(tiledb_object_remove(ctx_, group.c_str()) == TILEDB_OK);
-
-  // Check invalid delete
-  invalid = group + "foo";
-  CHECK(tiledb_object_remove(ctx_, invalid.c_str()) == TILEDB_ERR);
-
-  // Check recursive delete
-  REQUIRE(tiledb_group_create(ctx_, group.c_str()) == TILEDB_OK);
-  REQUIRE(tiledb_group_create(ctx_, (group + "l1").c_str()) == TILEDB_OK);
-  REQUIRE(tiledb_group_create(ctx_, (group + "l1/l2").c_str()) == TILEDB_OK);
-  REQUIRE(tiledb_group_create(ctx_, (group + "l1/l2/l3").c_str()) == TILEDB_OK);
-  REQUIRE(tiledb_object_type(ctx_, (group + "l1").c_str(), &type) == TILEDB_OK);
-  CHECK(type == TILEDB_GROUP);
-  REQUIRE(
-      tiledb_object_type(ctx_, (group + "l1/l2").c_str(), &type) == TILEDB_OK);
-  CHECK(type == TILEDB_GROUP);
-  REQUIRE(
-      tiledb_object_type(ctx_, (group + "l1/l2/l3").c_str(), &type) ==
-      TILEDB_OK);
-  CHECK(type == TILEDB_GROUP);
-  REQUIRE(tiledb_object_remove(ctx_, (group + "l1").c_str()) == TILEDB_OK);
-  REQUIRE(
-      tiledb_object_type(ctx_, (group + "l1/l2/l3").c_str(), &type) ==
-      TILEDB_OK);
-  CHECK(type == TILEDB_INVALID);
-  REQUIRE(
-      tiledb_object_type(ctx_, (group + "l1/l2").c_str(), &type) == TILEDB_OK);
-  CHECK(type == TILEDB_INVALID);
-  REQUIRE(tiledb_object_type(ctx_, (group + "l1").c_str(), &type) == TILEDB_OK);
-  CHECK(type == TILEDB_INVALID);
-}
-
-void GroupFx::check_move(const std::string& path) {
-  // Move group
-  auto group = path + "group/";
-  auto old1 = group + "old1";
-  auto old2 = group + "old2";
-  auto new1 = group + "new1";
-  auto new2 = group + "new2";
-  REQUIRE(tiledb_group_create(ctx_, old1.c_str()) == TILEDB_OK);
-  REQUIRE(tiledb_group_create(ctx_, old2.c_str()) == TILEDB_OK);
-  CHECK(tiledb_object_move(ctx_, old1.c_str(), new1.c_str()) == TILEDB_OK);
-
-  tiledb_object_t type;
-  CHECK(tiledb_object_type(ctx_, new1.c_str(), &type) == TILEDB_OK);
-  CHECK(type == TILEDB_GROUP);
-
-  // Check move array
-  auto array = group + ARRAY;
-  auto array2 = group + "new_array";
-  create_array(array);
-  CHECK(tiledb_object_move(ctx_, array.c_str(), array2.c_str()) == TILEDB_OK);
-
-  // Check error on invalid path
-  auto inv1 = path + "invalid_path";
-  auto inv2 = path + "new_invalid_path";
-  CHECK(tiledb_object_move(ctx_, inv1.c_str(), inv2.c_str()) == TILEDB_ERR);
-}
-
-void GroupFx::check_ls_1000(const std::string& path) {
-  // Create a group
-  auto group = path + std::string("group/");
-  int rc = tiledb_group_create(ctx_, group.c_str());
-  CHECK(rc == TILEDB_OK);
-
-  // Create 1000 files inside the group
-  for (int i = 0; i < 1000; ++i) {
-    std::stringstream file;
-    file << group << i;
-    rc = tiledb_vfs_touch(ctx_, vfs_, file.str().c_str());
-    CHECK(rc == TILEDB_OK);
-  }
-
-  // Check type
-  tiledb_object_t type = TILEDB_INVALID;
-  CHECK(tiledb_object_type(ctx_, group.c_str(), &type) == TILEDB_OK);
-  CHECK(type == TILEDB_GROUP);
-}
-
-/**
- * Create the following directory hierarchy:
- * TEMP_DIR
- *    |_ dense_arrays
- *    |       |_ __tiledb_group.tdb
- *    |       |_ array_A
- *    |       |     |_ __array_schema.tdb
- *    |       |_ array_B
- *    |       |     |_ __array_schema.tdb
- *    |_ sparse_arrays
- *            |_ __tiledb_group.tdb
- *            |_ array_C
- *            |     |_ __array_schema.tdb
- *            |_ array_D
- *                  |_ __array_schema.tdb
- */
-void GroupFx::create_hierarchy(const std::string& path) {
-  int rc = tiledb_vfs_create_dir(ctx_, vfs_, path.c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_create_dir(ctx_, vfs_, (path + "dense_arrays").c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_touch(
-      ctx_, vfs_, (path + "dense_arrays/__tiledb_group.tdb").c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_create_dir(
-      ctx_, vfs_, (path + "dense_arrays/array_A").c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_touch(
-      ctx_, vfs_, (path + "dense_arrays/array_A/__array_schema.tdb").c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_create_dir(
-      ctx_, vfs_, (path + "dense_arrays/array_B").c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_touch(
-      ctx_, vfs_, (path + "dense_arrays/array_B/__array_schema.tdb").c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_create_dir(ctx_, vfs_, (path + "sparse_arrays").c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_touch(
-      ctx_, vfs_, (path + "sparse_arrays/__tiledb_group.tdb").c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_create_dir(
-      ctx_, vfs_, (path + "sparse_arrays/array_C").c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_touch(
-      ctx_, vfs_, (path + "sparse_arrays/array_C/__array_schema.tdb").c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_create_dir(
-      ctx_, vfs_, (path + "sparse_arrays/array_D").c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_touch(
-      ctx_, vfs_, (path + "sparse_arrays/array_D/__array_schema.tdb").c_str());
-  REQUIRE(rc == TILEDB_OK);
-}
-
 std::string GroupFx::get_golden_walk(const std::string& path) {
   std::string golden;
 
@@ -368,31 +201,6 @@ std::string GroupFx::get_golden_ls(const std::string& path) {
   return golden;
 }
 
-int GroupFx::write_path(const char* path, tiledb_object_t type, void* data) {
-  // Cast data to string
-  auto* str = static_cast<std::string*>(data);
-
-  // Simply print the path and type
-  std::string path_str = path;
-  if (path_str.back() == '/')
-    path_str.pop_back();
-  (*str) += path_str + " ";
-  switch (type) {
-    case TILEDB_ARRAY:
-      (*str) += "ARRAY";
-      break;
-    case TILEDB_GROUP:
-      (*str) += "GROUP";
-      break;
-    default:
-      (*str) += "INVALID";
-  }
-  (*str) += "\n";
-
-  // Always iterate till the end
-  return 1;
-}
-
 std::string GroupFx::random_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
@@ -406,7 +214,7 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
 
-  std::string group1_uri = temp_dir + "/group1";
+  std::string group1_uri = temp_dir + "group1";
   REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
   tiledb_group_t* group;
   REQUIRE(tiledb_group_alloc(ctx_, group1_uri.c_str(), &group) == TILEDB_OK);
@@ -458,7 +266,7 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
 
-  std::string group1_uri = temp_dir + "/group1";
+  std::string group1_uri = temp_dir + "group1";
   REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
 
   tiledb_group_t* group;

@@ -171,7 +171,7 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
 
-  std::string group1_uri = temp_dir + "/group1";
+  std::string group1_uri = temp_dir + "group1";
   tiledb::Group::create(ctx_, group1_uri);
   tiledb::Group group(ctx_, group1_uri, TILEDB_WRITE);
   group.close();
@@ -213,7 +213,7 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
 
-  std::string group1_uri = temp_dir + "/group1";
+  std::string group1_uri = temp_dir + "group1";
   tiledb::Group::create(ctx_, group1_uri);
   // Open group in write mode
   tiledb::Context ctx;
