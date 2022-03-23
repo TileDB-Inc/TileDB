@@ -566,7 +566,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   open_for_read();
   stat = blob_array->export_to_uri(out2_uri, config);
   CHECK(stat.ok() == true);
-  cmp_files_check(out1_uri.to_string(), out2_uri.to_string());
+  cmp_files_check(out1_uri.to_path(), out2_uri.to_path());
 
   for (auto i = 0; i < n_infiles; ++i) {
     tiledb::sm::URI inp_uri(infiles[i]);
@@ -608,7 +608,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   open_for_read();
   stat = blob_array->export_to_uri(out2_uri, config);
   CHECK(stat.ok() == true);
-  cmp_files_check(out1_uri.to_string(), out2_uri.to_string());
+  cmp_files_check(out1_uri.to_path(), out2_uri.to_path());
 
   REQUIRE(blob_array->close().ok() == true);
 

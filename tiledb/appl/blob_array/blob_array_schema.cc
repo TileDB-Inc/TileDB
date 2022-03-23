@@ -135,18 +135,19 @@ shared_ptr<Domain> BlobArraySchema::create_domain(uint64_t tile_extent) {
   // Create domain
   auto domain = make_shared<Domain>(HERE());
   // Set dimension
-  Dimension dimension(constants::blob_array_dimension_name, Datatype::UINT64);
+  auto dimension = make_shared<Dimension>(
+      constants::blob_array_dimension_name, Datatype::UINT64);
   // Set domain
   std::array<uint64_t, 2> dim_domain = default_domain;
   dim_domain[1] = dim_domain[1] - tile_extent - 1;
-  dimension.set_domain(&dim_domain);
-  dimension.set_tile_extent(&tile_extent);
+  dimension->set_domain(&dim_domain);
+  dimension->set_tile_extent(&tile_extent);
   // Set FilterPipeline
   // TODO: make default filter a constant
   FilterPipeline fp;
   fp.add_filter(BitWidthReductionFilter());
-  dimension.set_filter_pipeline(&fp);
-  domain->add_dimension(&dimension);
+  dimension->set_filter_pipeline(&fp);
+  domain->add_dimension(dimension);
   return domain;
 }
 

@@ -40,8 +40,8 @@
 #include "tiledb/sm/misc/cancelable_tasks.h"
 
 size_t random_ms(size_t max = 3) {
-  thread_local static std::mt19937 generator(
-      std::hash<std::thread::id>()(std::this_thread::get_id()));
+  thread_local static std::mt19937 generator(static_cast<unsigned int>(
+      std::hash<std::thread::id>()(std::this_thread::get_id())));
   std::uniform_int_distribution<size_t> distribution(0, max);
   return distribution(generator);
 }
