@@ -29,13 +29,16 @@ include(common NO_POLICY_SCOPE)
 #
 # Test-compile of object library ensures link-completeness
 #
+add_library(query_ast OBJECT query_ast.cc)
+
 add_executable(compile_ast EXCLUDE_FROM_ALL)
+target_link_libraries(compile_ast PRIVATE query_ast)
 target_sources(compile_ast PRIVATE
         test/compile_ast_main.cc)
 
 if (TILEDB_TESTS)
     add_executable(unit_ast EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_ast PRIVATE compressors)
+    target_link_libraries(unit_ast PRIVATE query_ast)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_ast PUBLIC Catch2::Catch2)
 

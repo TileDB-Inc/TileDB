@@ -34,7 +34,9 @@
 #define TILEDB_QUERY_AST_H
 
 #include <iostream>
+#include <memory>
 #include <sstream>
+#include <utility>
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
@@ -48,12 +50,15 @@ namespace tiledb {
 namespace sm {
 enum ASTNodeTag : char { NIL, VAL, EXPR };
 
-/** Represents a simple terminal/predicate **/
 class ASTNode {
  public:
   virtual ASTNodeTag get_tag() = 0;
   virtual std::string to_str() = 0;
+  virtual std::unique_ptr<ASTNode> clone() = 0;
+  virtual ~ASTNode() {
+  }
 };
+/** Represents a simple terminal/predicate **/
 class ASTNodeVal : public ASTNode {
   /** Value constructor. */
  public:
@@ -74,7 +79,7 @@ class ASTNodeVal : public ASTNode {
     }
   }
 
-  virtual ~ASTNodeVal() {
+  ~ASTNodeVal() {
   }
 
   /** Copy constructor. */
@@ -122,6 +127,14 @@ class ASTNodeVal : public ASTNode {
     return result_str;
   }
 
+  std::unique_ptr<ASTNode> clone() {
+    return std::make_unique<ASTNodeVal>(
+        field_name_,
+        condition_value_data_.data(),
+        condition_value_data_.size(),
+        op_);
+  }
+
   /** The attribute name. */
   std::string field_name_;
 
@@ -138,18 +151,24 @@ class ASTNodeVal : public ASTNode {
 class ASTNodeExpr : public ASTNode {
  public:
   ASTNodeExpr(
-      std::vector<shared_ptr<ASTNode>> nodes, QueryConditionCombinationOp c_op)
-      : nodes_(nodes)
-      , combination_op_(c_op) {
+      std::vector<std::unique_ptr<ASTNode>>&& nodes,
+      QueryConditionCombinationOp c_op)
+      : combination_op_(c_op) {
+    for (const auto& elem : nodes) {
+      nodes_.push_back(elem->clone());
+    }
   }
 
-  virtual ~ASTNodeExpr() {
+  ~ASTNodeExpr() {
   }
 
   /** Copy constructor. */
   ASTNodeExpr(const ASTNodeExpr& rhs)
-      : nodes_(rhs.nodes_)
-      , combination_op_(rhs.combination_op_){};
+      : combination_op_(rhs.combination_op_) {
+    for (const auto& elem : rhs.nodes_) {
+      nodes_.push_back(elem->clone());
+    }
+  };
 
   /** Move constructor. */
   ASTNodeExpr(ASTNodeExpr&& rhs)
@@ -159,7 +178,9 @@ class ASTNodeExpr : public ASTNode {
   /** Assignment operator. */
   ASTNodeExpr& operator=(const ASTNodeExpr& rhs) {
     if (this != &rhs) {
-      nodes_ = rhs.nodes_;
+      for (const auto& elem : rhs.nodes_) {
+        nodes_.push_back(elem->clone());
+      }
       combination_op_ = rhs.combination_op_;
     }
     return *this;
@@ -194,8 +215,17 @@ class ASTNodeExpr : public ASTNode {
     return result_str;
   }
 
+  std::unique_ptr<ASTNode> clone() {
+    std::vector<std::unique_ptr<ASTNode>> nodes_copy;
+    for (const auto& node : nodes_) {
+      nodes_copy.push_back(node->clone());
+    }
+    return std::make_unique<ASTNodeExpr>(
+        std::move(nodes_copy), combination_op_);
+  }
+
   /** The node list **/
-  std::vector<shared_ptr<ASTNode>> nodes_;
+  std::vector<std::unique_ptr<ASTNode>> nodes_;
 
   /** The combination operation **/
   QueryConditionCombinationOp combination_op_;
@@ -203,6 +233,11 @@ class ASTNodeExpr : public ASTNode {
  private:
   static const ASTNodeTag tag_{ASTNodeTag::EXPR};
 };
+
+std::unique_ptr<ASTNodeExpr> ast_combine(
+    const std::unique_ptr<ASTNode>& lhs,
+    const std::unique_ptr<ASTNode>& rhs,
+    QueryConditionCombinationOp combination_op);
 
 }  // namespace sm
 }  // namespace tiledb
