@@ -5,8 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +33,6 @@
 #ifndef TILEDB_BLOB_ARRAY_SCHEMA_H
 #define TILEDB_BLOB_ARRAY_SCHEMA_H
 
-//#include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
@@ -53,13 +51,10 @@ class Attribute;
 
 namespace tiledb {
 namespace appl {
-// namespace sm {
 
 using namespace tiledb::sm;
 using Domain = tiledb::sm::Domain;
 using Attribute = tiledb::sm::Attribute;
-
-// enum class ArrayType : uint8_t; //TBD: ArrayType not defined elsewhere?
 
 /** Specifies the file array schema. */
 class BlobArraySchema : public tiledb::sm::ArraySchema {

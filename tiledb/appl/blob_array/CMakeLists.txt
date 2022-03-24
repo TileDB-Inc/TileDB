@@ -85,39 +85,6 @@ target_link_libraries(
 message(STATUS "CMAKE_MODULE_PATH is ${CMAKE_MODULE_PATH}")
 message(STATUS "CMAKE_PREFIX_PATH is ${CMAKE_PREFIX_PATH}")
 
-if(0)
-#target_link_directories(unit_blob_array 
-find_package(Bzip2_EP REQUIRED)
-message(STATUS "Bzip2_FOUND is ${Bzip2_FOUND}")
-message(STATUS "Bzip2_LIBRARIES is ${Bzip2_LIBRARIES}")
-find_package(LZ4_EP REQUIRED)
-message(STATUS "LZ4_EP_FOUND is ${LZ4_EP_FOUND}")
-message(STATUS "LZ4_EP_LIBRARIES is ${LZ4_EP_LIBRARIES}")
-find_package(Spdlog_EP REQUIRED)
-message(STATUS "Spdlog_EP_FOUND is ${Spdlog_EP_FOUND}")
-message(STATUS "Spdlog_EP_LIBRARIES is ${Spdlog_EP_LIBRARIES}")
-find_package(Zlib_EP REQUIRED)
-message(STATUS "Zlib_EP_FOUND is ${Zlib_EP_FOUND}")
-message(STATUS "Zlib_EP_LIBRARIES is ${Zlib_EP_LIBRARIES}")
-find_package(Zstd_EP REQUIRED)
-message(STATUS "Zstd_EP_FOUND is ${Zstd_EP_FOUND}")
-message(STATUS "Zstd_EP_LIBRARIES is ${Zstd_EP_LIBRARIES}")
-find_package(Magic_EP REQUIRED)
-message(STATUS "Magic_EP_FOUND is ${Magic_EP_FOUND}")
-message(STATUS "Magic_EP_LIBRARIES is ${Magic_EP_LIBRARIES}")
-endif()
-if(0)
-target_link_libraries(unit_blob_array
-  INTERFACE
-    Bzip2::Bzip2
-    LZ4::LZ4
-    spdlog::spdlog
-    Zlib::Zlib
-    Zstd::Zstd
-    libmagic
-)
-endif()
-
 target_link_libraries(unit_blob_array
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB

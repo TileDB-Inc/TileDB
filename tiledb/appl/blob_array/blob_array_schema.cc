@@ -5,8 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,9 +44,6 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace appl {
-// namespace sm {
-
-// using namespace tiledb::sm;
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -85,6 +81,7 @@ BlobArraySchema::BlobArraySchema()
   auto timestamp = utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(timestamp, timestamp);
 
+  //TBD: are these filters to be used or avoided?
   // Set up default filter pipelines for coords, offsets, and validity values.
   cell_var_offsets_filters_.add_filter(CompressionFilter(
       constants::cell_var_offsets_compression,
@@ -99,7 +96,6 @@ BlobArraySchema::BlobArraySchema(const BlobArraySchema* blob_array_schema)
 }
 
 BlobArraySchema::~BlobArraySchema() {
-  //  clear();
 }
 
 /* ****************************** */
@@ -144,6 +140,7 @@ shared_ptr<Domain> BlobArraySchema::create_domain(uint64_t tile_extent) {
   dimension->set_tile_extent(&tile_extent);
   // Set FilterPipeline
   // TODO: make default filter a constant
+  // TBD: Should this filter be used at all or removed?
   FilterPipeline fp;
   fp.add_filter(BitWidthReductionFilter());
   dimension->set_filter_pipeline(&fp);
@@ -154,15 +151,10 @@ shared_ptr<Domain> BlobArraySchema::create_domain(uint64_t tile_extent) {
 tdb_shared_ptr<Attribute> BlobArraySchema::create_attribute(
     const FilterPipeline& fp) {
   tdb_shared_ptr<Attribute> attribute = make_shared<
-      // Attribute>(constants::blob_array_attribute_name, Datatype::UINT8,
-      // false);
       Attribute>(constants::blob_array_attribute_name, Datatype::BLOB, false);
   attribute->set_filter_pipeline(&fp);
-  // TBD: Is there currently only one attribute to be concerned with?
   attribute->set_cell_val_num(
-      tiledb::sm::constants::var_num);  // tiledb_var_num());  //
-                                        // TILEDB_VAR_NUM);
-                                        // //1);
+      tiledb::sm::constants::var_num);
   return attribute;
 }
 
@@ -173,9 +165,9 @@ uint64_t BlobArraySchema::compute_tile_extent_based_on_file_size(
   } else if (file_size > 1024UL * 1024 * 100) {           // 100MB
     return 1024ULL * 1024 * 1;                            // 1MB
   } else if (file_size > 1024UL * 1024 * 1) {             // 1MB
-    return 1024ULL * 256;                                 // 1KB
+    return 1024ULL * 256;                                 // 256KB
   } else {
-    return 1024ULL;  // 1KB
+    return 1024ULL;                                       // 1KB
   }
 }
 

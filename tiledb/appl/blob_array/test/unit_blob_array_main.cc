@@ -1,5 +1,5 @@
 /**
- * @file main.cc
+ * @file unit_blob_array_main.cc
  *
  * @section LICENSE
  *
@@ -132,7 +132,6 @@ BlobArrayFx::~BlobArrayFx() {
   tiledb_config_free(&config_);
 }
 
-#if 01
 void BlobArrayFx::create_temp_dir(const std::string& path) const {
   remove_temp_dir(path);
 //  REQUIRE(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
@@ -158,7 +157,6 @@ void BlobArrayFx::remove_temp_dir(const std::string& path) const {
       REQUIRE(tiledb_vfs_remove_file(ctx_, vfs_, path.c_str()) == TILEDB_OK);
   }
 }
-#endif
 
 std::string BlobArrayFx::random_name(const std::string& prefix) {
   std::stringstream ss;
@@ -363,32 +361,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   // since empty, nothing to export
   basic_export(false);
 
-#if 0 
-  //'extra' diagnostic section added to see what might happen if the two writes had 
-  // file closed in between them... failures do still seem to potentially occur (on
-  // the subsequent reads) tho maybe not quite as often as when both are written 
-  // within same open as done further below...
-  // 
-  //(already) opened for write ...
-  basic_uri_to_array(true); //quickstart_dense.csv 115 bytes
-
-  open_for_read();
-  stat = blob_array->export_to_uri(out1_uri, config);
-  CHECK(stat.ok() == true);
-
-  open_for_write();
-  basic_buf_to_array(true); //buf 3 ints, 12 bytes
-
-
-  open_for_read();
-  stat = blob_array->export_to_uri(out2_uri, config);
-  CHECK(stat.ok() == true);
-
-  // leave open state as we found, open WRITE, ALTHO NOT EMPTY
-  open_for_write();
-
-#endif
-
   // array open WRITE but empty (unless #ifdef code above active)
   basic_to_array(true);
 
@@ -416,8 +388,8 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
     //    blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
     auto open_res = wb_ba.open(
         tiledb::sm::QueryType::WRITE,
-        encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
-        encryption_key,   //"",
+        encryption_type,
+        encryption_key,
         static_cast<uint32_t>(
             strlen(encryption_key)));  // inherited from parent
     REQUIRE(wb_ba.is_open() == true);
@@ -428,10 +400,10 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
     //    blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
     auto open_res = wb_ba.open(
         tiledb::sm::QueryType::READ,
-        encryption_type,  // tiledb::sm::EncryptionType::NO_ENCRYPTION,
-        encryption_key,   //"",
+        encryption_type,
+        encryption_key,
         static_cast<uint32_t>(
-            strlen(encryption_key)));  // inherited from parent
+            strlen(encryption_key)));
     REQUIRE(wb_ba.is_open() == true);
   };
 

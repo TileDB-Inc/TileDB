@@ -59,6 +59,8 @@ class BlobArray : public tiledb::sm::Array {
   /* ********************************* */
 
   /** Constructor. */
+  BlobArray() = delete;
+
   BlobArray(const URI& array_uri, StorageManager* storage_manager);
 
   BlobArray(const BlobArray& rhs);
@@ -70,7 +72,7 @@ class BlobArray : public tiledb::sm::Array {
   /**
    * Create BlobArray array on disk using default settings
    * @param config
-   * @return
+   * @return Status
    */
   Status create([[maybe_unused]] const Config* config);
 
@@ -119,7 +121,8 @@ class BlobArray : public tiledb::sm::Array {
 
   /**
    * Get size based on current opened file
-   * @return size
+   * @param size, returned size if available
+   * @return Status, as to whether size successfully retrieved
    */
   Status size(const uint64_t*& size);
 
@@ -136,8 +139,11 @@ class BlobArray : public tiledb::sm::Array {
   /* ********************************* */
 
  private:
-  //  std::optional<EncryptionKey> get_encryption_key_from_config(const Config&
-  //  config) const;
+  /**
+   * Get encryption key from config if available
+   * @param config to be examined for key
+   * @return EncryptionKey data
+   */
   tdb_unique_ptr<EncryptionKey> get_encryption_key_from_config(
       const Config& config) const;
 
@@ -148,7 +154,6 @@ class BlobArray : public tiledb::sm::Array {
    * @param size size of buffer
    * @return mime type or nullptr if none detected
    */
-  // static const char*
   Status libmagic_get_mime_type(
       const char** mime_type, void* data, uint64_t size);
 
@@ -156,10 +161,11 @@ class BlobArray : public tiledb::sm::Array {
    * Get mime encoding from libmagic
    * @param data void buffer with first part of file (up to 1kb) for magic
    * detection
+   * @param mime_encoding, return pointer to determined mime_encoding or nullptr
+   * @param data for which to determine mime_encoding
    * @param size size of buffer
-   * @return mime encoding or nullptr if none detected
+   * @return Status
    */
-  // static const char*
   Status libmagic_get_mime_encoding(
       const char** mime_encoding, void* data, uint64_t size);
 

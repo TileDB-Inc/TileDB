@@ -282,10 +282,6 @@ Status BlobArray::export_to_vfs_fh(
     // Set read buffer
     // TODO: Add config option to let the user control how much of the file we
     // we read
-    // TODO: handle offset reading
-    //    RETURN_NOT_OK(query.set_buffer(
-    //        constants::blob_array_attribute_name, data.data(), &buffer_size));
-    //    std::array<uint64_t, 2> subarray = {offset, offset + file_size - 1};
     // Set buffer and aux items when data attr is variable length blob
     RETURN_NOT_OK(query.set_data_buffer(
         constants::blob_array_attribute_name, data.data(), &buffer_size));
@@ -297,16 +293,11 @@ Status BlobArray::export_to_vfs_fh(
 
     // Set subarray
     RETURN_NOT_OK(query.set_subarray(&subarray));
-    //    uint32_t delay_ms = 100;
-    //    uint32_t retry_cnt = 1;
     do {
       RETURN_NOT_OK(query.submit());
 
       // Check if query could not be completed
-      // TBD: -Why- does this check 'buffer_size == 0' rather than checking the
-      // query status?
       if (buffer_size == 0) {
-        // TBD: REMOVEME: dlh 'retry' addition when diagnosing...
         if (auto qstat = query.status(); qstat != QueryStatus::COMPLETED) {
           std::stringstream msg;
           msg << "export_to_vfs_fh, query.status() == "
@@ -314,18 +305,6 @@ Status BlobArray::export_to_vfs_fh(
           //<< " retry_cnt " << retry_cnt;
           // LOG_STATUS(msg.str());
           LOG_STATUS(Status_BlobArrayError(msg.str()));
-#if _WIN32
-#if 0
-          if (qstat == QueryStatus::INCOMPLETE) {
-            __debugbreak();
-            std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
-            if (retry_cnt--) {
-              delay_ms *= 2;
-              continue;
-            }
-          }
-#endif
-#endif
         }
         return Status_BlobArrayError(
             "Unable to export entire file; Query not able to complete with "
@@ -423,14 +402,11 @@ Status BlobArray::libmagic_get_mime_type(
     magic_close(magic);
     return LOG_STATUS(Status_BlobArrayError(
         std::string("cannot load magic database - ") + str_rval + err));
-    // return nullptr;
   }
-  // return magic_buffer(magic, data, size);
   *mime_type = magic_buffer(magic, data, size);
   return Status::Ok();
 }
 
-// const char*
 Status BlobArray::libmagic_get_mime_encoding(
     const char** mime_encoding, void* data, uint64_t size) {
   magic_t magic = magic_open(MAGIC_MIME_ENCODING);
@@ -446,17 +422,13 @@ Status BlobArray::libmagic_get_mime_encoding(
     magic_close(magic);
     return LOG_STATUS(Status_BlobArrayError(
         std::string("cannot load magic database - ") + str_rval + err));
-    // return nullptr;
   }
-  // return magic_buffer(magic, data, size);
   *mime_encoding = magic_buffer(magic, data, size);
   return Status::Ok();
 }
 
 Status BlobArray::store_mime_type(
     const Buffer& file_metadata, uint64_t metadata_read_size) {
-  // TBD: should query_type be checked for 'WRITE'?
-  // ...method is private, maybe not...
   const char* mime_type = nullptr;
   auto status = libmagic_get_mime_type(
       &mime_type, file_metadata.data(), metadata_read_size);
@@ -474,8 +446,6 @@ Status BlobArray::store_mime_type(
 
 Status BlobArray::store_mime_encoding(
     const Buffer& file_metadata, uint64_t metadata_read_size) {
-  // TBD: should query_type be checked for 'WRITE'?
-  // ...method is private, maybe not...
   const char* mime_encoding = nullptr;
   auto status = libmagic_get_mime_encoding(
       &mime_encoding, file_metadata.data(), metadata_read_size);
