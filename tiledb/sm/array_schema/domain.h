@@ -106,7 +106,7 @@ class Domain {
    * @param dim The dimension to be added.
    * @return Status
    */
-  Status add_dimension(const Dimension* dim);
+  Status add_dimension(shared_ptr<Dimension> dim);
 
   /** Returns true if all dimensions have fixed-sized domain datatypes. */
   bool all_dims_fixed() const;
@@ -228,10 +228,10 @@ class Domain {
   NDRange domain() const;
 
   /** Returns the i-th dimensions (nullptr upon error). */
-  const Dimension* dimension(unsigned int i) const;
+  shared_ptr<const Dimension> dimension(unsigned int i) const;
 
   /** Returns the dimension given a name (nullptr upon error). */
-  const Dimension* dimension(const std::string& name) const;
+  shared_ptr<const Dimension> dimension(const std::string& name) const;
 
   /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;

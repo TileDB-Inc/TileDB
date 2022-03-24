@@ -298,11 +298,12 @@ bool ArraySchema::dense() const {
   return array_type_ == ArrayType::DENSE;
 }
 
-const Dimension* ArraySchema::dimension(unsigned int i) const {
+shared_ptr<const Dimension> ArraySchema::dimension(unsigned int i) const {
   return domain_->dimension(i);
 }
 
-const Dimension* ArraySchema::dimension(const std::string& name) const {
+shared_ptr<const Dimension> ArraySchema::dimension(
+    const std::string& name) const {
   auto it = dim_map_.find(name);
   return it == dim_map_.end() ? nullptr : it->second;
 }
