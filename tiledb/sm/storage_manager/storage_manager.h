@@ -294,46 +294,6 @@ class StorageManager {
   Status array_vacuum(const char* array_name, const Config* config);
 
   /**
-   * Cleans up fragments that took part in consolidation. Note that this
-   * will coarsen the granularity of time traveling (see docs for more
-   * information).
-   *
-   * @param array_name The name of the array to be vacuumed.
-   * @param timestamp_start The timestamp to start vacuuming at.
-   * @param timestamp_end The timestamp to end vacuuming at.
-   * @return Status
-   */
-  Status array_vacuum_fragments(
-      const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
-
-  /**
-   * Cleans up consolidated fragment metadata (all except the last one).
-   *
-   * @param array_name The name of the array to be consolidated.
-   * @return Status
-   */
-  Status array_vacuum_fragment_meta(const char* array_name);
-
-  /**
-   * Cleans up consolidated array metadata.
-   *
-   * @param array_name The name of the array to be consolidated.
-   * @param timestamp_start The timestamp to start vacuuming at.
-   * @param timestamp_end The timestamp to end vacuuming at.
-   * @return Status
-   */
-  Status array_vacuum_array_meta(
-      const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
-
-  /**
-   * Cleans up consolidated commit files.
-   *
-   * @param array_name The name of the array to be consolidated.
-   * @return Status
-   */
-  Status array_vacuum_commits(const char* array_name);
-
-  /**
    * Consolidates the metadata of an array into a single file.
    *
    * @param array_name The name of the array whose metadata will be
