@@ -30,11 +30,14 @@
  * This file implements serialization for the Group class
  */
 
+// clang-format off
 #ifdef TILEDB_SERIALIZATION
 #include <capnp/compat/json.h>
+#include <capnp/message.h>
 #include <capnp/serialize.h>
 #include "tiledb/sm/serialization/capnp_utils.h"
 #endif
+// clang-format on
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -111,8 +114,10 @@ Status group_to_capnp(
 
   const auto& group_members = group->members();
   if (!group_members.empty()) {
-    auto group_members_builder =
-        group_builder->initMembers(group_members.size());
+    //    decltype(group_builder->getMembers().size())
+    //    memberCount{static_cast<decltype(group_builder->getMembers().size())>(group_members.size())};
+    auto memberCount = static_cast<::capnp::uint>(group_members.size());
+    auto group_members_builder = group_builder->initMembers(memberCount);
     decltype(group_members_builder.size()) i{0};
     for (const auto& it : group_members) {
       auto group_member_builder = group_members_builder[i];
@@ -121,32 +126,6 @@ Status group_to_capnp(
       ++i;
     }
   }
-
-  /*  const auto& group_members_to_add = group->members_to_add();
-    if (!group_members_to_add.empty()) {
-      auto group_members_to_add_builder =
-          group_builder->initMembersToAdd(group_members_to_add.size());
-      decltype(group_members_to_add_builder.size()) i{0};
-      for (const auto& it : group_members_to_add) {
-        auto group_member_to_add_builder = group_members_to_add_builder[i];
-        RETURN_NOT_OK(
-            group_member_to_capnp(it.second, &group_member_to_add_builder));
-        // Increment index
-        ++i;
-      }
-    }*/
-
-  /*  const auto& group_members_to_remove = group->members_to_remove();
-    if (!group_members_to_remove.empty()) {
-      auto group_members_to_remove_builder =
-          group_builder->initMembersToRemove(group_members_to_remove.size());
-      decltype(group_members_to_remove_builder.size()) i{0};
-      for (const auto& it : group_members_to_remove) {
-        group_members_to_remove_builder.set(i, it.c_str());
-        // Increment index
-        ++i;
-      }
-    }*/
 
   return Status::Ok();
 }
@@ -161,20 +140,6 @@ Status group_from_capnp(
     }
   }
 
-  /*  if (group_reader.hasMembersToAdd()) {
-      for (auto member_to_add : group_reader.getMembersToAdd()) {
-        auto&& [st, group_member] = group_member_from_capnp(&member_to_add);
-        RETURN_NOT_OK(st);
-        group->add_member(group_member.value());
-      }
-    }
-
-    if (group_reader.hasMembersToRemove()) {
-      for (auto uri : group_reader.getMembersToRemove()) {
-        group->mark_member_for_removal(uri.cStr());
-      }
-    }*/
-
   return Status::Ok();
 }
 
@@ -187,8 +152,12 @@ Status group_update_to_capnp(
 
   const auto& group_members_to_add = group->members_to_add();
   if (!group_members_to_add.empty()) {
+    //    decltype(::capnp::uint)
+    //    memberToAddCount{static_cast<decltype(group_update_builder->getMembersToAdd().size())>(group_members_to_add.size())};
+    auto memberToAddCount =
+        static_cast<::capnp::uint>(group_members_to_add.size());
     auto group_members_to_add_builder =
-        group_update_builder->initMembersToAdd(group_members_to_add.size());
+        group_update_builder->initMembersToAdd(memberToAddCount);
     decltype(group_members_to_add_builder.size()) i{0};
     for (const auto& it : group_members_to_add) {
       auto group_member_to_add_builder = group_members_to_add_builder[i];
@@ -201,9 +170,12 @@ Status group_update_to_capnp(
 
   const auto& group_members_to_remove = group->members_to_remove();
   if (!group_members_to_remove.empty()) {
+    //    decltype(group_update_builder->getMembersToRemove().size())
+    //    memberToRemoveCount{static_cast<decltype(group_update_builder->getMembersToRemove().size())>(group_members_to_remove.size())};
+    auto memberToRemoveCount =
+        static_cast<::capnp::uint>(group_members_to_remove.size());
     auto group_members_to_remove_builder =
-        group_update_builder->initMembersToRemove(
-            group_members_to_remove.size());
+        group_update_builder->initMembersToRemove(memberToRemoveCount);
     decltype(group_members_to_remove_builder.size()) i{0};
     for (const auto& it : group_members_to_remove) {
       group_members_to_remove_builder.set(i, it.c_str());
