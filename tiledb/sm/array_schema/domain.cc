@@ -74,14 +74,6 @@ Domain::Domain(
 
   // Compute number of cells per tile
   set_tile_cell_order_cmp_funcs();
-
-  // Set tile_extent to empty if cell order is HILBERT
-  if (cell_order_ == Layout::HILBERT) {
-    ByteVecValue be;
-    for (auto& d : dimensions_) {
-      d->set_tile_extent(be);
-    }
-  }
 }
 
 Domain::Domain(const Domain* domain) {
