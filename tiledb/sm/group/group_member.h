@@ -83,9 +83,6 @@ class GroupMember {
   static std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
   deserialize(ConstBuffer* buff);
 
-  friend std::ostream& operator<<(
-      std::ostream& os, const GroupMember& group_member);
-
  protected:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -105,4 +102,6 @@ class GroupMember {
 }  // namespace sm
 }  // namespace tiledb
 
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::GroupMember& group_member);
 #endif  // TILEDB_GROUP_MEMBER_H

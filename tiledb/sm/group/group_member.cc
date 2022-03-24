@@ -76,12 +76,12 @@ GroupMember::deserialize(ConstBuffer* buff) {
               "Unsupported group member version " + std::to_string(version)),
           std::nullopt};
 }
+}  // namespace sm
+}  // namespace tiledb
 
-std::ostream& operator<<(std::ostream& os, const GroupMember& group_member) {
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::GroupMember& group_member) {
   os << group_member.uri().last_path_part() << " "
      << object_type_str(group_member.type());
   return os;
 }
-
-}  // namespace sm
-}  // namespace tiledb
