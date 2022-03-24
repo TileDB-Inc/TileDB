@@ -81,7 +81,7 @@ BlobArraySchema::BlobArraySchema()
   auto timestamp = utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(timestamp, timestamp);
 
-  //TBD: are these filters to be used or avoided?
+  // TBD: are these filters to be used or avoided?
   // Set up default filter pipelines for coords, offsets, and validity values.
   cell_var_offsets_filters_.add_filter(CompressionFilter(
       constants::cell_var_offsets_compression,
@@ -150,11 +150,10 @@ shared_ptr<Domain> BlobArraySchema::create_domain(uint64_t tile_extent) {
 
 tdb_shared_ptr<Attribute> BlobArraySchema::create_attribute(
     const FilterPipeline& fp) {
-  tdb_shared_ptr<Attribute> attribute = make_shared<
-      Attribute>(constants::blob_array_attribute_name, Datatype::BLOB, false);
+  tdb_shared_ptr<Attribute> attribute = make_shared<Attribute>(
+      constants::blob_array_attribute_name, Datatype::BLOB, false);
   attribute->set_filter_pipeline(&fp);
-  attribute->set_cell_val_num(
-      tiledb::sm::constants::var_num);
+  attribute->set_cell_val_num(tiledb::sm::constants::var_num);
   return attribute;
 }
 
@@ -167,7 +166,7 @@ uint64_t BlobArraySchema::compute_tile_extent_based_on_file_size(
   } else if (file_size > 1024UL * 1024 * 1) {             // 1MB
     return 1024ULL * 256;                                 // 256KB
   } else {
-    return 1024ULL;                                       // 1KB
+    return 1024ULL;  // 1KB
   }
 }
 

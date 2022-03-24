@@ -402,8 +402,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
         tiledb::sm::QueryType::READ,
         encryption_type,
         encryption_key,
-        static_cast<uint32_t>(
-            strlen(encryption_key)));
+        static_cast<uint32_t>(strlen(encryption_key)));
     REQUIRE(wb_ba.is_open() == true);
   };
 
