@@ -114,8 +114,6 @@ Status group_to_capnp(
 
   const auto& group_members = group->members();
   if (!group_members.empty()) {
-    //    decltype(group_builder->getMembers().size())
-    //    memberCount{static_cast<decltype(group_builder->getMembers().size())>(group_members.size())};
     auto memberCount = static_cast<::capnp::uint>(group_members.size());
     auto group_members_builder = group_builder->initMembers(memberCount);
     decltype(group_members_builder.size()) i{0};
@@ -152,8 +150,6 @@ Status group_update_to_capnp(
 
   const auto& group_members_to_add = group->members_to_add();
   if (!group_members_to_add.empty()) {
-    //    decltype(::capnp::uint)
-    //    memberToAddCount{static_cast<decltype(group_update_builder->getMembersToAdd().size())>(group_members_to_add.size())};
     auto memberToAddCount =
         static_cast<::capnp::uint>(group_members_to_add.size());
     auto group_members_to_add_builder =
@@ -170,8 +166,6 @@ Status group_update_to_capnp(
 
   const auto& group_members_to_remove = group->members_to_remove();
   if (!group_members_to_remove.empty()) {
-    //    decltype(group_update_builder->getMembersToRemove().size())
-    //    memberToRemoveCount{static_cast<decltype(group_update_builder->getMembersToRemove().size())>(group_members_to_remove.size())};
     auto memberToRemoveCount =
         static_cast<::capnp::uint>(group_members_to_remove.size());
     auto group_members_to_remove_builder =
