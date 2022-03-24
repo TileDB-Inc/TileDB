@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -164,13 +164,13 @@ class ArraySchema {
   bool dense() const;
 
   /** Returns the i-th dimension. */
-  const Dimension* dimension(unsigned int i) const;
+  shared_ptr<const Dimension> dimension(unsigned int i) const;
 
   /**
    * Returns a constant pointer to the selected dimension (nullptr if it
    * does not exist).
    */
-  const Dimension* dimension(const std::string& name) const;
+  shared_ptr<const Dimension> dimension(const std::string& name) const;
 
   /** Returns the dimension names. */
   std::vector<std::string> dim_names() const;
@@ -260,7 +260,7 @@ class ArraySchema {
   Status deserialize(ConstBuffer* buff);
 
   /** Returns the array domain. */
-  const Domain* domain() const;
+  shared_ptr<const Domain> domain() const;
 
   /**
    * Initializes the ArraySchema object. It also performs a check to see if
@@ -298,7 +298,7 @@ class ArraySchema {
    * Sets the domain. The function returns an error if the array has been
    * previously set to be a key-value store.
    */
-  Status set_domain(Domain* domain);
+  Status set_domain(shared_ptr<Domain> domain);
 
   /** Sets the tile order. */
   Status set_tile_order(Layout tile_order);
@@ -392,10 +392,10 @@ class ArraySchema {
   FilterPipeline coords_filters_;
 
   /** It maps each dimension name to the corresponding dimension object. */
-  std::unordered_map<std::string, const Dimension*> dim_map_;
+  std::unordered_map<std::string, shared_ptr<const Dimension>> dim_map_;
 
   /** The array domain. */
-  Domain* domain_;
+  shared_ptr<Domain> domain_;
 
   /**
    * The tile order. It can be one of the following:
@@ -438,7 +438,14 @@ class ArraySchema {
    * Returns error if double delta compression is used in the zipped
    * coordinate filters and is inherited by a dimension.
    */
-  Status check_double_delta_compressor() const;
+  Status check_double_delta_compressor(
+      const FilterPipeline& coords_filters) const;
+
+  /**
+   * Returns error if RLE is used for string dimensions but it is not the only
+   * filter in the filter list.
+   */
+  Status check_rle_compressor(const FilterPipeline& coords_filters) const;
 
   /** Clears all members. Use with caution! */
   void clear();

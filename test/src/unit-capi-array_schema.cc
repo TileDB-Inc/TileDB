@@ -1189,14 +1189,14 @@ TEST_CASE_METHOD(
   const void* extent = NULL;
   rc = tiledb_dimension_get_tile_extent(ctx_, r_d1, &extent);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(extent != NULL);
+  REQUIRE(extent != nullptr);
   CHECK(*(const int32_t*)extent == 100);
   tiledb_dimension_t* r_d2;
   rc = tiledb_domain_get_dimension_from_index(ctx_, r_domain, 1, &r_d2);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_dimension_get_tile_extent(ctx_, r_d2, &extent);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(extent != NULL);
+  REQUIRE(extent != nullptr);
   CHECK(*(const float*)extent == d2_dom[1] - d2_dom[0]);
 
   // Clean up

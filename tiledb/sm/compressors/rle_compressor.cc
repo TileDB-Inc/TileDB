@@ -145,6 +145,19 @@ uint64_t RLE::overhead(uint64_t nbytes, uint64_t value_size) {
   return value_num * 2;
 }
 
+uint8_t RLE::compute_bytesize(uint64_t param_length) {
+  assert(param_length > 0);
+  if (param_length <= std::numeric_limits<uint8_t>::max()) {
+    return 1;
+  } else if (param_length <= std::numeric_limits<uint16_t>::max()) {
+    return 2;
+  } else if (param_length <= std::numeric_limits<uint32_t>::max()) {
+    return 4;
+  } else {
+    return 8;
+  }
+}
+
 tuple<uint64_t, uint64_t, uint64_t, uint64_t> RLE::calculate_compression_params(
     const span<std::string_view> input) {
   if (input.empty())
@@ -174,7 +187,123 @@ tuple<uint64_t, uint64_t, uint64_t, uint64_t> RLE::calculate_compression_params(
   output_strings_size += previous.size();
   max_identicals = std::max(identicals, max_identicals);
 
-  return {max_identicals, max_string_size, num_of_runs, output_strings_size};
+  return {compute_bytesize(max_identicals),
+          compute_bytesize(max_string_size),
+          num_of_runs,
+          output_strings_size};
+}
+
+Status RLE::compress(
+    const span<std::string_view> input,
+    uint64_t rle_len_size,
+    uint64_t string_len_size,
+    span<std::byte> output) {
+  if (input.empty() || output.empty() || rle_len_size == 0 ||
+      string_len_size == 0) {
+    return LOG_STATUS(Status_CompressionError(
+        "Failed compressing strings with RLE; empty input arguments"));
+  }
+
+  if (rle_len_size <= 1) {
+    if (string_len_size <= 1) {
+      compress<uint8_t, uint8_t>(input, output);
+    } else if (string_len_size <= 2) {
+      compress<uint8_t, uint16_t>(input, output);
+    } else if (string_len_size <= 4) {
+      compress<uint8_t, uint32_t>(input, output);
+    } else {
+      compress<uint8_t, uint64_t>(input, output);
+    }
+  } else if (rle_len_size <= 2) {
+    if (string_len_size <= 1) {
+      compress<uint16_t, uint8_t>(input, output);
+    } else if (string_len_size <= 2) {
+      compress<uint16_t, uint16_t>(input, output);
+    } else if (string_len_size <= 4) {
+      compress<uint16_t, uint32_t>(input, output);
+    } else {
+      compress<uint16_t, uint64_t>(input, output);
+    }
+  } else if (rle_len_size <= 4) {
+    if (string_len_size <= 1) {
+      compress<uint32_t, uint8_t>(input, output);
+    } else if (string_len_size <= 2) {
+      compress<uint32_t, uint16_t>(input, output);
+    } else if (string_len_size <= 4) {
+      compress<uint32_t, uint32_t>(input, output);
+    } else {
+      compress<uint32_t, uint64_t>(input, output);
+    }
+  } else {
+    if (string_len_size <= 1) {
+      compress<uint64_t, uint8_t>(input, output);
+    } else if (string_len_size <= 2) {
+      compress<uint64_t, uint16_t>(input, output);
+    } else if (string_len_size <= 4) {
+      compress<uint64_t, uint32_t>(input, output);
+    } else {
+      compress<uint64_t, uint64_t>(input, output);
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status RLE::decompress(
+    const span<const std::byte> input,
+    uint64_t rle_len_size,
+    uint64_t string_len_size,
+    span<std::byte> output,
+    span<uint64_t> output_offsets) {
+  if (input.empty() || output.empty() || rle_len_size == 0 ||
+      string_len_size == 0) {
+    return LOG_STATUS(Status_CompressionError(
+        "Failed decompressing strings with RLE; empty input arguments"));
+  }
+
+  if (rle_len_size <= 1) {
+    if (string_len_size <= 1) {
+      decompress<uint8_t, uint8_t>(input, output, output_offsets);
+    } else if (string_len_size <= 2) {
+      decompress<uint8_t, uint16_t>(input, output, output_offsets);
+    } else if (string_len_size <= 4) {
+      decompress<uint8_t, uint32_t>(input, output, output_offsets);
+    } else {
+      decompress<uint8_t, uint64_t>(input, output, output_offsets);
+    }
+  } else if (rle_len_size <= 2) {
+    if (string_len_size <= 1) {
+      decompress<uint16_t, uint8_t>(input, output, output_offsets);
+    } else if (string_len_size <= 2) {
+      decompress<uint16_t, uint16_t>(input, output, output_offsets);
+    } else if (string_len_size <= 4) {
+      decompress<uint16_t, uint32_t>(input, output, output_offsets);
+    } else {
+      decompress<uint16_t, uint64_t>(input, output, output_offsets);
+    }
+  } else if (rle_len_size <= 4) {
+    if (string_len_size <= 1) {
+      decompress<uint32_t, uint8_t>(input, output, output_offsets);
+    } else if (string_len_size <= 2) {
+      decompress<uint32_t, uint16_t>(input, output, output_offsets);
+    } else if (string_len_size <= 4) {
+      decompress<uint32_t, uint32_t>(input, output, output_offsets);
+    } else {
+      decompress<uint32_t, uint64_t>(input, output, output_offsets);
+    }
+  } else {
+    if (string_len_size <= 1) {
+      decompress<uint64_t, uint8_t>(input, output, output_offsets);
+    } else if (string_len_size <= 2) {
+      decompress<uint64_t, uint16_t>(input, output, output_offsets);
+    } else if (string_len_size <= 4) {
+      decompress<uint64_t, uint32_t>(input, output, output_offsets);
+    } else {
+      decompress<uint64_t, uint64_t>(input, output, output_offsets);
+    }
+  }
+
+  return Status::Ok();
 }
 
 }  // namespace sm

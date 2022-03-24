@@ -48,7 +48,10 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/filter/bit_width_reduction_filter.h"
+#include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_create.h"
+#include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
 
@@ -117,57 +120,62 @@ Status filter_pipeline_to_capnp(
   return Status::Ok();
 }
 
-Status filter_pipeline_from_capnp(
-    const capnp::FilterPipeline::Reader& filter_pipeline_reader,
-    tdb_unique_ptr<FilterPipeline>* filter_pipeline) {
-  filter_pipeline->reset(tdb_new(FilterPipeline));
-  if (!filter_pipeline_reader.hasFilters())
-    return Status::Ok();
+static tuple<Status, optional<shared_ptr<Filter>>> filter_constructor(
+    capnp::Filter::Reader reader) {
+  FilterType type = FilterType::FILTER_NONE;
+  RETURN_NOT_OK_TUPLE(
+      filter_type_enum(reader.getType().cStr(), &type), nullopt);
 
+  switch (type) {
+    case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
+      auto data = reader.getData();
+      uint32_t window = data.getUint32();
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<BitWidthReductionFilter>(HERE(), window)};
+    }
+    case FilterType::FILTER_POSITIVE_DELTA: {
+      auto data = reader.getData();
+      uint32_t window = data.getUint32();
+      return {Status::Ok(),
+              tiledb::common::make_shared<PositiveDeltaFilter>(HERE(), window)};
+    }
+    case FilterType::FILTER_GZIP:
+    case FilterType::FILTER_ZSTD:
+    case FilterType::FILTER_LZ4:
+    case FilterType::FILTER_RLE:
+    case FilterType::FILTER_BZIP2:
+    case FilterType::FILTER_DOUBLE_DELTA: {
+      auto data = reader.getData();
+      int32_t level = data.getInt32();
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<CompressionFilter>(HERE(), type, level)};
+    }
+    default: {
+      throw std::logic_error(
+          "Invalid data received from filter pipeline capnp reader, unknown "
+          "type");
+    }
+  }
+}
+
+tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
+    const capnp::FilterPipeline::Reader& filter_pipeline_reader) {
+  if (!filter_pipeline_reader.hasFilters())
+    return {Status::Ok(), make_shared<FilterPipeline>(HERE())};
+
+  std::vector<shared_ptr<Filter>> filter_list;
   auto filter_list_reader = filter_pipeline_reader.getFilters();
   for (auto filter_reader : filter_list_reader) {
-    FilterType type = FilterType::FILTER_NONE;
-    RETURN_NOT_OK(filter_type_enum(filter_reader.getType().cStr(), &type));
-    tdb_unique_ptr<Filter> filter(FilterCreate::make(type));
-    if (filter == nullptr)
-      return LOG_STATUS(Status_SerializationError(
-          "Error deserializing filter pipeline; failed to create filter."));
-
-    switch (filter->type()) {
-      case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
-        auto data = filter_reader.getData();
-        uint32_t window = data.getUint32();
-        RETURN_NOT_OK(
-            filter->set_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &window));
-        break;
-      }
-      case FilterType::FILTER_POSITIVE_DELTA: {
-        auto data = filter_reader.getData();
-        uint32_t window = data.getUint32();
-        RETURN_NOT_OK(filter->set_option(
-            FilterOption::POSITIVE_DELTA_MAX_WINDOW, &window));
-        break;
-      }
-      case FilterType::FILTER_GZIP:
-      case FilterType::FILTER_ZSTD:
-      case FilterType::FILTER_LZ4:
-      case FilterType::FILTER_RLE:
-      case FilterType::FILTER_BZIP2:
-      case FilterType::FILTER_DOUBLE_DELTA: {
-        auto data = filter_reader.getData();
-        int32_t level = data.getInt32();
-        RETURN_NOT_OK(
-            filter->set_option(FilterOption::COMPRESSION_LEVEL, &level));
-        break;
-      }
-      default:
-        break;
-    }
-
-    RETURN_NOT_OK((*filter_pipeline)->add_filter(*filter));
+    auto&& [st_f, filter]{filter_constructor(filter_reader)};
+    RETURN_NOT_OK_TUPLE(st_f, nullopt);
+    filter_list.push_back(filter.value());
   }
 
-  return Status::Ok();
+  return {Status::Ok(),
+          make_shared<FilterPipeline>(
+              HERE(), constants::max_tile_chunk_size, filter_list)};
 }
 
 Status attribute_to_capnp(
@@ -210,47 +218,55 @@ Status attribute_to_capnp(
   return Status::Ok();
 }
 
-Status attribute_from_capnp(
-    const capnp::Attribute::Reader& attribute_reader,
-    tdb_unique_ptr<Attribute>* attribute) {
+tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
+    const capnp::Attribute::Reader& attribute_reader) {
+  // Get datatype
   Datatype datatype = Datatype::ANY;
-  RETURN_NOT_OK(datatype_enum(attribute_reader.getType(), &datatype));
-
-  attribute->reset(tdb_new(Attribute, attribute_reader.getName(), datatype));
-  RETURN_NOT_OK(
-      (*attribute)->set_cell_val_num(attribute_reader.getCellValNum()));
+  RETURN_NOT_OK_TUPLE(
+      datatype_enum(attribute_reader.getType(), &datatype), nullopt);
 
   // Set nullable.
   const bool nullable = attribute_reader.getNullable();
-  RETURN_NOT_OK((*attribute)->set_nullable(nullable));
 
-  // Set the fill value.
-  if (attribute_reader.hasFillValue()) {
-    auto fill_value = attribute_reader.getFillValue();
-    if (nullable) {
-      (*attribute)
-          ->set_fill_value(
-              fill_value.asBytes().begin(),
-              fill_value.size(),
-              attribute_reader.getFillValueValidity());
-    } else {
-      (*attribute)
-          ->set_fill_value(fill_value.asBytes().begin(), fill_value.size());
-    }
-  }
-
-  // Set filter pipelines.
+  // FIlter pipelines
+  shared_ptr<FilterPipeline> filters;
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
-    tdb_unique_ptr<FilterPipeline> filters;
-    RETURN_NOT_OK(filter_pipeline_from_capnp(filter_pipeline_reader, &filters));
-    RETURN_NOT_OK((*attribute)->set_filter_pipeline(filters.get()));
+    auto&& [st_fp, f]{filter_pipeline_from_capnp(filter_pipeline_reader)};
+    RETURN_NOT_OK_TUPLE(st_fp, nullopt);
+    filters = f.value();
   }
 
-  // Set nullable.
-  RETURN_NOT_OK((*attribute)->set_nullable(attribute_reader.getNullable()));
+  // Fill value
+  ByteVecValue fill_value_vec;
+  uint8_t fill_value_validity = 0;
+  if (attribute_reader.hasFillValue()) {
+    // To initialize the ByteVecValue object, we do so by instantiating a
+    // vector of type uint8_t that points to the data stored in the
+    // byte vector.
+    auto capnp_byte_vec = attribute_reader.getFillValue().asBytes();
+    auto vec_ptr = capnp_byte_vec.begin();
+    std::vector<uint8_t> byte_vec(vec_ptr, vec_ptr + capnp_byte_vec.size());
+    fill_value_vec = ByteVecValue(move(byte_vec));
+    if (nullable) {
+      fill_value_validity = attribute_reader.getFillValueValidity();
+    }
+  } else {
+    // default initialization
+    fill_value_vec = Attribute::default_fill_value(
+        datatype, attribute_reader.getCellValNum());
+  }
 
-  return Status::Ok();
+  return {Status::Ok(),
+          tiledb::common::make_shared<Attribute>(
+              HERE(),
+              attribute_reader.getName(),
+              datatype,
+              nullable,
+              attribute_reader.getCellValNum(),
+              *(filters.get()),
+              fill_value_vec,
+              fill_value_validity)};
 }
 
 Status dimension_to_capnp(
@@ -313,7 +329,9 @@ tuple<Status, optional<shared_ptr<Dimension>>> dimension_from_capnp(
   tdb_unique_ptr<FilterPipeline> filters;
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
-    RETURN_NOT_OK_TUPLE(filter_pipeline_from_capnp(reader, &filters), nullopt);
+    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    RETURN_NOT_OK(st_fp);
+    RETURN_NOT_OK((*dimension)->set_filter_pipeline(filters.value().get()));
   }
 
   ByteVecValue tile_extent;
@@ -424,7 +442,7 @@ Status domain_to_capnp(
   auto dimensions_builder = domainBuilder->initDimensions(ndims);
   for (unsigned i = 0; i < ndims; i++) {
     auto dim_builder = dimensions_builder[i];
-    RETURN_NOT_OK(dimension_to_capnp(domain->dimension(i), &dim_builder));
+    RETURN_NOT_OK(dimension_to_capnp(domain->dimension(i).get(), &dim_builder));
   }
 
   return Status::Ok();
@@ -489,7 +507,7 @@ Status array_schema_to_capnp(
 
   // Domain
   auto domain_builder = array_schema_builder->initDomain();
-  RETURN_NOT_OK(domain_to_capnp(array_schema.domain(), &domain_builder));
+  RETURN_NOT_OK(domain_to_capnp(array_schema.domain().get(), &domain_builder));
 
   // Attributes
   const unsigned num_attrs = array_schema.attribute_num();
@@ -537,40 +555,44 @@ Status array_schema_from_capnp(
   auto domain_reader = schema_reader.getDomain();
   tdb_unique_ptr<Domain> domain;
   RETURN_NOT_OK(domain_from_capnp(domain_reader, &domain));
-  RETURN_NOT_OK((*array_schema)->set_domain(domain.get()));
+  RETURN_NOT_OK(
+      (*array_schema)->set_domain(make_shared<Domain>(HERE(), domain.get())));
 
   // Set coords filter pipelines
   if (schema_reader.hasCoordsFilterPipeline()) {
     auto reader = schema_reader.getCoordsFilterPipeline();
-    tdb_unique_ptr<FilterPipeline> filters;
-    RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
-    RETURN_NOT_OK((*array_schema)->set_coords_filter_pipeline(filters.get()));
+    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    RETURN_NOT_OK(st_fp);
+    RETURN_NOT_OK(
+        (*array_schema)->set_coords_filter_pipeline(filters.value().get()));
   }
 
   // Set offsets filter pipelines
   if (schema_reader.hasOffsetFilterPipeline()) {
     auto reader = schema_reader.getOffsetFilterPipeline();
-    tdb_unique_ptr<FilterPipeline> filters;
-    RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
+    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    RETURN_NOT_OK(st_fp);
     RETURN_NOT_OK(
-        (*array_schema)->set_cell_var_offsets_filter_pipeline(filters.get()));
+        (*array_schema)
+            ->set_cell_var_offsets_filter_pipeline(filters.value().get()));
   }
 
   // Set validity filter pipelines
   if (schema_reader.hasValidityFilterPipeline()) {
     auto reader = schema_reader.getValidityFilterPipeline();
-    tdb_unique_ptr<FilterPipeline> filters;
-    RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
+    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    RETURN_NOT_OK(st_fp);
     RETURN_NOT_OK(
-        (*array_schema)->set_cell_validity_filter_pipeline(filters.get()));
+        (*array_schema)
+            ->set_cell_validity_filter_pipeline(filters.value().get()));
   }
 
   // Set attributes
   auto attributes_reader = schema_reader.getAttributes();
   for (auto attr_reader : attributes_reader) {
-    tdb_unique_ptr<Attribute> attribute;
-    RETURN_NOT_OK(attribute_from_capnp(attr_reader, &attribute));
-    RETURN_NOT_OK((*array_schema)->add_attribute(std::move(attribute), false));
+    auto&& [st_attr, attr]{attribute_from_capnp(attr_reader)};
+    RETURN_NOT_OK(st_attr);
+    RETURN_NOT_OK((*array_schema)->add_attribute(attr.value()));
   }
 
   // Set the range if we have two values

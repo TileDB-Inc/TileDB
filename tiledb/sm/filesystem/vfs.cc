@@ -1479,6 +1479,10 @@ Status VFS::compute_read_batches(
     std::vector<BatchedRead>* batches) const {
   // Get config params
   bool found;
+  uint64_t max_batch_size = 0;
+  RETURN_NOT_OK(
+      config_.get<uint64_t>("vfs.max_batch_size", &max_batch_size, &found));
+  assert(found);
   uint64_t min_batch_size = 0;
   RETURN_NOT_OK(
       config_.get<uint64_t>("vfs.min_batch_size", &min_batch_size, &found));
@@ -1502,18 +1506,17 @@ Status VFS::compute_read_batches(
 
   // Start the first batch containing only the first region.
   BatchedRead curr_batch(sorted_regions.front());
-  uint64_t curr_batch_useful_bytes = curr_batch.nbytes;
   for (uint64_t i = 1; i < sorted_regions.size(); i++) {
     const auto& region = sorted_regions[i];
     uint64_t offset = std::get<0>(region);
     uint64_t nbytes = std::get<2>(region);
     uint64_t new_batch_size = (offset + nbytes) - curr_batch.offset;
     uint64_t gap = offset - (curr_batch.offset + curr_batch.nbytes);
-    if (new_batch_size <= min_batch_size || gap <= min_batch_gap) {
+    if (new_batch_size <= max_batch_size &&
+        (new_batch_size <= min_batch_size || gap <= min_batch_gap)) {
       // Extend current batch.
       curr_batch.nbytes = new_batch_size;
       curr_batch.regions.push_back(region);
-      curr_batch_useful_bytes += nbytes;
     } else {
       // Push the old batch and start a new one.
       batches->push_back(curr_batch);
@@ -1521,7 +1524,6 @@ Status VFS::compute_read_batches(
       curr_batch.nbytes = nbytes;
       curr_batch.regions.clear();
       curr_batch.regions.push_back(region);
-      curr_batch_useful_bytes = nbytes;
     }
   }
 

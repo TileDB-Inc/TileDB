@@ -55,6 +55,7 @@
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/query.h"
@@ -146,17 +147,31 @@ StorageManager::load_array_schemas_and_fragment_metadata(
   auto timer_se =
       stats_->start_timer("sm_load_array_schemas_and_fragment_metadata");
 
-  const auto& meta_uri = array_dir.latest_fragment_meta_uri();
+  const auto& meta_uris = array_dir.fragment_meta_uris();
   const auto& fragments_to_load = array_dir.fragment_uris();
 
-  // Get the consolidated fragment metadata
-  Buffer f_buff;
-  std::unordered_map<std::string, uint64_t> offsets;
-  RETURN_NOT_OK_TUPLE(
-      load_consolidated_fragment_meta(meta_uri, enc_key, &f_buff, &offsets),
-      nullopt,
-      nullopt,
-      nullopt);
+  // Get the consolidated fragment metadatas
+  std::vector<Buffer> f_buffs(meta_uris.size());
+  std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
+      meta_uris.size());
+  auto status = parallel_for(compute_tp_, 0, meta_uris.size(), [&](size_t i) {
+    auto&& [st, offsets] =
+        load_consolidated_fragment_meta(meta_uris[i], enc_key, &f_buffs[i]);
+    offsets_vectors[i] = std::move(offsets.value());
+    return st;
+  });
+  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt, nullopt);
+
+  // Get the unique fragment metadatas into a map.
+  std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
+  for (uint64_t i = 0; i < offsets_vectors.size(); i++) {
+    for (auto& offset : offsets_vectors[i]) {
+      if (offsets.count(offset.first) == 0) {
+        offsets.emplace(
+            offset.first, std::make_pair(&f_buffs[i], offset.second));
+      }
+    }
+  }
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
@@ -170,7 +185,6 @@ StorageManager::load_array_schemas_and_fragment_metadata(
       array_schemas_all.value(),
       enc_key,
       fragments_to_load,
-      &f_buff,
       offsets);
   RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt, nullopt, nullopt);
 
@@ -273,14 +287,13 @@ StorageManager::array_load_fragments(
   }
 
   // Load the fragment metadata
-  std::unordered_map<std::string, uint64_t> offsets;
+  std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
   auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(
       array->memory_tracker(),
       array->array_schema_latest_ptr(),
       array->array_schemas_all(),
       *array->encryption_key(),
       fragments_to_load,
-      nullptr,
       offsets);
   RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt);
 
@@ -410,6 +423,8 @@ Status StorageManager::array_vacuum(
   else if (std::string(mode) == "array_meta")
     RETURN_NOT_OK(
         array_vacuum_array_meta(array_name, timestamp_start, timestamp_end));
+  else if (std::string(mode) == "commits")
+    RETURN_NOT_OK(array_vacuum_commits(array_name));
   else
     return logger_->status(
         Status_StorageManagerError("Cannot vacuum array; Invalid vacuum mode"));
@@ -427,21 +442,48 @@ Status StorageManager::array_vacuum_fragments(
   ArrayDirectory array_dir;
   try {
     array_dir = ArrayDirectory(
-        vfs_, compute_tp_, URI(array_name), timestamp_start, timestamp_end);
+        vfs_,
+        compute_tp_,
+        URI(array_name),
+        timestamp_start,
+        timestamp_end,
+        ArrayDirectoryMode::VACUUM_FRAGMENTS);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
   const auto& fragment_uris_to_vacuum = array_dir.fragment_uris_to_vacuum();
+  const auto& commit_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
+  const auto& commit_uris_to_ignore = array_dir.commit_uris_to_ignore();
   const auto& vac_uris_to_vacuum = array_dir.fragment_vac_uris_to_vacuum();
+
+  if (commit_uris_to_ignore.size() > 0) {
+    // Write an ignore file to ensure consolidated WRT files still work
+    auto&& [st1, name] = array_dir.compute_new_fragment_name(
+        commit_uris_to_ignore.front(),
+        commit_uris_to_ignore.back(),
+        constants::format_version);
+    RETURN_NOT_OK(st1);
+
+    // Write URIs, relative to the array URI.
+    std::stringstream ss;
+    auto base_uri_size = array_dir.uri().to_string().size();
+    for (const auto& uri : commit_uris_to_ignore) {
+      ss << uri.to_string().substr(base_uri_size) << "\n";
+    }
+
+    auto data = ss.str();
+    URI ignore_file_uri =
+        array_dir.get_commits_dir(constants::format_version)
+            .join_path(name.value() + constants::ignore_file_suffix);
+    RETURN_NOT_OK(vfs_->write(ignore_file_uri, data.c_str(), data.size()));
+    RETURN_NOT_OK(vfs_->close_file(ignore_file_uri));
+  }
 
   // Delete the commit files
   auto status = parallel_for(
-      compute_tp_, 0, fragment_uris_to_vacuum.size(), [&, this](size_t i) {
-        auto&& [st, commit_uri] =
-            array_dir.get_commit_uri(fragment_uris_to_vacuum[i]);
-        RETURN_NOT_OK(st);
-        RETURN_NOT_OK(vfs_->remove_file(commit_uri.value()));
+      compute_tp_, 0, commit_uris_to_vacuum.size(), [&, this](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(commit_uris_to_vacuum[i]));
 
         return Status::Ok();
       });
@@ -482,14 +524,26 @@ Status StorageManager::array_vacuum_fragment_meta(const char* array_name) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
-  const auto& last = array_dir.latest_fragment_meta_uri();
   const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
 
-  // Vacuum after exclusively locking the array
+  // Get the latest timestamp
+  uint64_t t_latest = 0;
+  for (const auto& uri : fragment_meta_uris) {
+    std::pair<uint64_t, uint64_t> timestamp_range;
+    RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
+    if (timestamp_range.second > t_latest) {
+      t_latest = timestamp_range.second;
+    }
+  }
+
+  // Vacuum
   auto status = parallel_for(
       compute_tp_, 0, fragment_meta_uris.size(), [&, this](size_t i) {
-        if (fragment_meta_uris[i] != last)
-          RETURN_NOT_OK(vfs_->remove_file(fragment_meta_uris[i]));
+        auto& uri = fragment_meta_uris[i];
+        std::pair<uint64_t, uint64_t> timestamp_range;
+        RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
+        if (timestamp_range.second != t_latest)
+          RETURN_NOT_OK(vfs_->remove_file(uri));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
@@ -528,6 +582,53 @@ Status StorageManager::array_vacuum_array_meta(
   status = parallel_for(
       compute_tp_, 0, vac_uris_to_vacuum.size(), [&, this](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(vac_uris_to_vacuum[i]));
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(status);
+
+  return Status::Ok();
+}
+
+Status StorageManager::array_vacuum_commits(const char* array_name) {
+  if (array_name == nullptr)
+    return logger_->status(Status_StorageManagerError(
+        "Cannot vacuum array metadata; Array name cannot be null"));
+
+  // Get the array metadata URIs and vacuum file URIs to be vacuum
+  ArrayDirectory array_dir;
+  try {
+    array_dir = ArrayDirectory(
+        vfs_,
+        compute_tp_,
+        URI(array_name),
+        0,
+        utils::time::timestamp_now_ms(),
+        ArrayDirectoryMode::COMMITS);
+  } catch (const std::logic_error& le) {
+    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+  }
+
+  const auto& commits_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
+  const auto& consolidated_commits_uris_to_vacuum =
+      array_dir.consolidated_commits_uris_to_vacuum();
+
+  // Delete the commits files
+  auto status = parallel_for(
+      compute_tp_, 0, commits_uris_to_vacuum.size(), [&, this](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(commits_uris_to_vacuum[i]));
+
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(status);
+
+  // Delete vacuum files
+  status = parallel_for(
+      compute_tp_,
+      0,
+      consolidated_commits_uris_to_vacuum.size(),
+      [&, this](size_t i) {
+        RETURN_NOT_OK(
+            vfs_->remove_file(consolidated_commits_uris_to_vacuum[i]));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
@@ -633,7 +734,7 @@ Status StorageManager::array_create(
   RETURN_NOT_OK(vfs_->create_dir(array_schema_dir_uri));
 
   // Create commit directory
-  URI array_commit_uri = array_uri.join_path(constants::array_commit_dir_name);
+  URI array_commit_uri = array_uri.join_path(constants::array_commits_dir_name);
   RETURN_NOT_OK(vfs_->create_dir(array_commit_uri));
 
   // Create fragments directory
@@ -816,9 +917,8 @@ Status StorageManager::array_upgrade_version(
 
     // Create commit directory if necessary
     URI array_commit_uri =
-        array_uri.join_path(constants::array_commit_dir_name);
-    st = vfs_->create_dir(array_commit_uri);
-    RETURN_NOT_OK_ELSE(st, logger_->status(st));
+        array_uri.join_path(constants::array_commits_dir_name);
+    RETURN_NOT_OK_ELSE(vfs_->create_dir(array_commit_uri), logger_->status(st));
 
     // Create fragments directory if necessary
     URI array_fragments_uri =
@@ -901,6 +1001,11 @@ Status StorageManager::array_get_non_empty_domain(
 
 Status StorageManager::array_get_non_empty_domain_from_index(
     Array* array, unsigned idx, void* domain, bool* is_empty) {
+  // Check if array is open - must be open for reads
+  if (!array->is_open())
+    return logger_->status(Status_StorageManagerError(
+        "Cannot get non-empty domain; Array is not open"));
+
   // For easy reference
   const auto& array_schema = array->array_schema_latest();
   auto array_domain = array_schema.domain();
@@ -931,6 +1036,11 @@ Status StorageManager::array_get_non_empty_domain_from_name(
   if (name == nullptr)
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Invalid dimension name"));
+
+  // Check if array is open - must be open for reads
+  if (!array->is_open())
+    return logger_->status(Status_StorageManagerError(
+        "Cannot get non-empty domain; Array is not open"));
 
   NDRange dom;
   RETURN_NOT_OK(array_get_non_empty_domain(array, &dom, is_empty));
@@ -1325,19 +1435,27 @@ void StorageManager::increment_in_progress() {
 }
 
 Status StorageManager::is_array(const URI& uri, bool* is_array) const {
-  // Check if the schema directory exists or not
-  bool is_dir = false;
-  // Since is_dir could return NOT Ok status, we will not use RETURN_NOT_OK here
-  Status st =
-      vfs_->is_dir(uri.join_path(constants::array_schema_dir_name), &is_dir);
-  if (st.ok() && is_dir) {
-    *is_array = true;
-    return Status::Ok();
-  }
+  // Handle remote array
+  if (uri.is_tiledb()) {
+    auto&& [st, exists] = rest_client_->check_array_exists_from_rest(uri);
+    RETURN_NOT_OK(st);
+    *is_array = *exists;
+  } else {
+    // Check if the schema directory exists or not
+    bool is_dir = false;
+    // Since is_dir could return NOT Ok status, we will not use RETURN_NOT_OK
+    // here
+    Status st =
+        vfs_->is_dir(uri.join_path(constants::array_schema_dir_name), &is_dir);
+    if (st.ok() && is_dir) {
+      *is_array = true;
+      return Status::Ok();
+    }
 
-  // If there is no schema directory, we check schema file
-  RETURN_NOT_OK(
-      vfs_->is_file(uri.join_path(constants::array_schema_filename), is_array));
+    // If there is no schema directory, we check schema file
+    RETURN_NOT_OK(vfs_->is_file(
+        uri.join_path(constants::array_schema_filename), is_array));
+  }
   return Status::Ok();
 }
 
@@ -1347,8 +1465,15 @@ Status StorageManager::is_file(const URI& uri, bool* is_file) const {
 }
 
 Status StorageManager::is_group(const URI& uri, bool* is_group) const {
-  RETURN_NOT_OK(
-      vfs_->is_file(uri.join_path(constants::group_filename), is_group));
+  // Handle remote array
+  if (uri.is_tiledb()) {
+    auto&& [st, exists] = rest_client_->check_group_exists_from_rest(uri);
+    RETURN_NOT_OK(st);
+    *is_group = *exists;
+  } else {
+    RETURN_NOT_OK(
+        vfs_->is_file(uri.join_path(constants::group_filename), is_group));
+  }
   return Status::Ok();
 }
 
@@ -1548,7 +1673,12 @@ Status StorageManager::load_array_metadata(
   stats_->add_counter("read_array_meta_size", meta_size);
 
   // Deserialize metadata buffers
-  metadata->deserialize(metadata_buffs);
+  auto&& [st_metadata, deserialized_metadata]{
+      Metadata::deserialize(metadata_buffs)};
+  if (!st_metadata.ok()) {
+    return st_metadata;
+  }
+  *metadata = *(deserialized_metadata.value());
 
   // Sets the loaded metadata URIs
   metadata->set_loaded_metadata_uris(array_metadata_to_load);
@@ -1565,6 +1695,22 @@ Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
     auto uri_str = uri.to_string();
     dir_uri =
         URI(utils::parse::ends_with(uri_str, "/") ? uri_str : (uri_str + "/"));
+  } else if (uri.is_tiledb()) {
+    bool exists = false;
+    RETURN_NOT_OK(is_array(uri, &exists));
+    if (exists) {
+      *type = ObjectType::ARRAY;
+      return Status::Ok();
+    }
+
+    RETURN_NOT_OK(is_group(uri, &exists));
+    if (exists) {
+      *type = ObjectType::GROUP;
+      return Status::Ok();
+    }
+
+    *type = ObjectType::INVALID;
+    return Status::Ok();
   } else {
     // For non public cloud backends, listing a non-directory is an error.
     bool is_dir = false;
@@ -1981,8 +2127,8 @@ StorageManager::load_fragment_metadata(
         array_schemas_all,
     const EncryptionKey& encryption_key,
     const std::vector<TimestampedURI>& fragments_to_load,
-    Buffer* meta_buff,
-    const std::unordered_map<std::string, uint64_t>& offsets) {
+    const std::unordered_map<std::string, std::pair<Buffer*, uint64_t>>&
+        offsets) {
   auto timer_se = stats_->start_timer("load_fragment_metadata");
 
   // Load the metadata for each fragment
@@ -2036,8 +2182,8 @@ StorageManager::load_fragment_metadata(
       it = offsets.find(sf.uri_.to_string());
     }
     if (it != offsets.end()) {
-      f_buff = meta_buff;
-      offset = it->second;
+      f_buff = it->second.first;
+      offset = it->second.second;
     }
 
     // Load fragment metadata
@@ -2052,25 +2198,24 @@ StorageManager::load_fragment_metadata(
   return {Status::Ok(), fragment_metadata};
 }
 
-Status StorageManager::load_consolidated_fragment_meta(
-    const URI& uri,
-    const EncryptionKey& enc_key,
-    Buffer* f_buff,
-    std::unordered_map<std::string, uint64_t>* offsets) {
+tuple<Status, optional<std::vector<std::pair<std::string, uint64_t>>>>
+StorageManager::load_consolidated_fragment_meta(
+    const URI& uri, const EncryptionKey& enc_key, Buffer* f_buff) {
   auto timer_se = stats_->start_timer("read_load_consolidated_frag_meta");
 
   // No consolidated fragment metadata file
   if (uri.to_string().empty())
-    return Status::Ok();
+    return {Status::Ok(), nullopt};
 
   GenericTileIO tile_io(this, uri);
   Tile* tile = nullptr;
-  RETURN_NOT_OK(tile_io.read_generic(&tile, 0, enc_key, config_));
+  RETURN_NOT_OK_TUPLE(
+      tile_io.read_generic(&tile, 0, enc_key, config_), nullopt);
 
   f_buff->realloc(tile->size());
   f_buff->set_size(tile->size());
-  RETURN_NOT_OK_ELSE(
-      tile->read(f_buff->data(), 0, f_buff->size()), tdb_delete(tile));
+  RETURN_NOT_OK_ELSE_TUPLE(
+      tile->read(f_buff->data(), 0, f_buff->size()), tdb_delete(tile), nullopt);
   tdb_delete(tile);
 
   stats_->add_counter("consolidated_frag_meta_size", f_buff->size());
@@ -2081,15 +2226,17 @@ Status StorageManager::load_consolidated_fragment_meta(
 
   uint64_t name_size, offset;
   std::string name;
+  std::vector<std::pair<std::string, uint64_t>> ret;
+  ret.reserve(fragment_num);
   for (uint32_t f = 0; f < fragment_num; ++f) {
     f_buff->read(&name_size, sizeof(uint64_t));
     name.resize(name_size);
     f_buff->read(&name[0], name_size);
     f_buff->read(&offset, sizeof(uint64_t));
-    (*offsets)[name] = offset;
+    ret.emplace_back(name, offset);
   }
 
-  return Status::Ok();
+  return {Status::Ok(), ret};
 }
 
 Status StorageManager::set_default_tags() {

@@ -807,7 +807,7 @@ template <class DimType>
 uint64_t DenseReader::get_cell_pos_in_tile(
     const Layout& cell_order,
     const int32_t dim_num,
-    const Domain* const domain,
+    shared_ptr<const Domain> const domain,
     const ResultSpaceTile<DimType>& result_space_tile,
     const DimType* const coords) {
   uint64_t pos = 0;

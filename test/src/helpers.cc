@@ -1259,7 +1259,7 @@ std::string get_fragment_dir(std::string array_dir) {
 }
 
 std::string get_commit_dir(std::string array_dir) {
-  return array_dir + "/" + tiledb::sm::constants::array_commit_dir_name;
+  return array_dir + "/" + tiledb::sm::constants::array_commits_dir_name;
 }
 
 template void check_subarray<int8_t>(

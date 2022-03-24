@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -91,6 +91,9 @@ class Filter {
    *
    * Implemented by filter subclass.
    *
+   * @param tile Current tile on which the filter is being run
+   * @param offsets_tile Offsets tile of the current tile on which the filter is
+   * being run
    * @param input_metadata Buffer with metadata for `input`
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data
@@ -99,6 +102,7 @@ class Filter {
    */
   virtual Status run_forward(
       const Tile& tile,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -114,6 +118,8 @@ class Filter {
    * Implemented by filter subclass.
    *
    * @param tile Current tile on which the filter is being run
+   * @param offsets_tile Offsets tile of the current tile on which the filter is
+   * being run
    * @param input_metadata Buffer with metadata for `input`
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data
@@ -122,6 +128,7 @@ class Filter {
    */
   virtual Status run_reverse(
       const Tile& tile,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

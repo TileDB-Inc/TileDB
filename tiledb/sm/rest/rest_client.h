@@ -65,6 +65,26 @@ class RestClient {
   Status set_header(const std::string& name, const std::string& value);
 
   /**
+   * Check if an array exists by making a REST call. To start with this fetches
+   * the schema but ignores the body returned if non-error
+   *
+   * @param uri to check
+   * @return tuple of Status and if array exists
+   */
+  tuple<Status, std::optional<bool>> check_array_exists_from_rest(
+      const URI& uri);
+
+  /**
+   * Check if an group exists by making a REST call. To start with this fetches
+   * the schema but ignores the body returned if non-error
+   *
+   * @param uri to check
+   * @return tuple of Status and if group exists
+   */
+  tuple<Status, std::optional<bool>> check_group_exists_from_rest(
+      const URI& uri);
+
+  /**
    * Get a data encoded array schema from rest server.
    *
    * @param uri of array being loaded
