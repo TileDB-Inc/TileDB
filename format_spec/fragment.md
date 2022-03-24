@@ -49,6 +49,9 @@ The fragment metadata file has the following on-disk format:
 | Variable tile sizes for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized variable tile sizes for attribute/dimension 1 |
 | … | … | … |
 | Variable tile sizes for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized variable tile sizes for attribute/dimension N |
+| Validity tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized validity tile offsets for attribute/dimension 1 |
+| … | … | … |
+| Validity tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized validity tile offsets for attribute/dimension N |
 | Tile mins for attribute/dimension 1 | [Tile mins/maxs](#tile-mins-maxs) | The serialized mins for attribute/dimension 1 |
 | … | … | … |
 | Variable mins for attribute/dimension N | [Tile mins/maxs](#tile-mins-maxs) | The serialized mins for attribute/dimension N |
@@ -117,17 +120,6 @@ The tile offsets is a [generic tile](./generic_tile.md) with the following inter
 | Tile offset 1 | `uint64_t` | Offset 1 |
 | … | … | … |
 | Tile offset N | `uint64_t` | Offset N |
-
-### Tile Validities
-
-The tile validities is a [generic tile](./generic_tile.md) with the following internal format:
-
-| **Field** | **Type** | **Description** |
-| :--- | :--- | :--- |
-| Num tile validities | `uint64_t` | Number of tile validites |
-| Tile validity 1 | `uint8_t` | Validity 1 |
-| … | … | … |
-| Tile validity N | `uint8_t` | Validity N |
 
 ### Tile Sizes
 
