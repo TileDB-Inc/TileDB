@@ -135,6 +135,7 @@ struct DenseArrayFx {
       const std::string& array_name, bool split_coords);
   void read_large_dense_array(
       const std::string& array_name,
+      const tiledb_layout_t layout,
       std::vector<TestRange>& ranges,
       std::vector<uint64_t>& a1);
   void set_small_memory_budget();
@@ -2869,6 +2870,7 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
 
 void DenseArrayFx::read_large_dense_array(
     const std::string& array_name,
+    const tiledb_layout_t layout,
     std::vector<TestRange>& ranges,
     std::vector<uint64_t>& a1) {
   // Open array
@@ -2882,7 +2884,7 @@ void DenseArrayFx::read_large_dense_array(
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
+  rc = tiledb_query_set_layout(ctx_, query, layout);
   CHECK(rc == TILEDB_OK);
 
   for (auto& range : ranges) {
@@ -4977,19 +4979,33 @@ TEST_CASE_METHOD(
   ranges.emplace_back(1, 2, 2);
   ranges.emplace_back(1, 14, 14);
 
+  tiledb_layout_t layout = GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+
   std::vector<uint64_t> a1(12);
-  read_large_dense_array(array_name, ranges, a1);
+  read_large_dense_array(array_name, layout, ranges, a1);
 
   // clang-format off
-  uint64_t c_a1[] = {
-    202, 302, 402, 
-    1702, 1802, 1902, 
-    214, 314, 414, 
+  uint64_t c_a1_cm[] = {
+    202, 302, 402,
+    1702, 1802, 1902,
+    214, 314, 414,
     1714, 1814, 1914
   };
-  // clang-format on
 
-  CHECK(!memcmp(c_a1, a1.data(), sizeof(c_a1)));
+  uint64_t c_a1_rm[] = {
+    202, 214,
+    302, 314,
+    402, 414,
+    1702, 1714,
+    1802, 1814,
+    1902, 1914
+  };
+  // clang-format on
+  if (layout == TILEDB_ROW_MAJOR) {
+    CHECK(!memcmp(c_a1_rm, a1.data(), sizeof(c_a1_rm)));
+  } else {
+    CHECK(!memcmp(c_a1_cm, a1.data(), sizeof(c_a1_cm)));
+  }
 
   remove_temp_dir(temp_dir);
 }
@@ -5025,34 +5041,45 @@ TEST_CASE_METHOD(
   ranges.emplace_back(1, 11, 11);
   ranges.emplace_back(1, 14, 14);
 
+  tiledb_layout_t layout = GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+
   std::vector<uint64_t> a1(60);
-  read_large_dense_array(array_name, ranges, a1);
+  read_large_dense_array(array_name, layout, ranges, a1);
 
   // clang-format off
-  uint64_t c_a1[] = {
-    202, 302, 402, 
-    702, 802, 902, 
-    1202, 1302, 1402, 
-    1702, 1802, 1902, 
-    205, 305, 405, 
-    705, 805, 905, 
-    1205, 1305, 1405, 
-    1705, 1805, 1905, 
-    208, 308, 408, 
-    708, 808, 908, 
-    1208, 1308, 1408, 
-    1708, 1808, 1908, 
-    211, 311, 411, 
-    711, 811, 911, 
-    1211, 1311, 1411, 
-    1711, 1811, 1911, 
-    214, 314, 414, 
-    714, 814, 914, 
-    1214, 1314, 1414, 
-    1714, 1814, 1914
+  uint64_t c_a1_cm[] = {
+    202, 302, 402, 702, 802, 902,
+    1202, 1302, 1402, 1702, 1802, 1902,
+    205, 305, 405, 705, 805, 905,
+    1205, 1305, 1405, 1705, 1805, 1905,
+    208, 308, 408, 708, 808, 908,
+    1208, 1308, 1408, 1708, 1808, 1908,
+    211, 311, 411, 711, 811, 911,
+    1211, 1311, 1411, 1711, 1811, 1911,
+    214, 314, 414, 714, 814, 914,
+    1214, 1314, 1414, 1714, 1814, 1914
+  };
+
+  uint64_t c_a1_rm[] = {
+    202, 205, 208, 211, 214,
+    302, 305, 308, 311, 314,
+    402, 405, 408, 411, 414,
+    702, 705, 708, 711, 714,
+    802, 805, 808, 811, 814,
+    902, 905, 908, 911, 914,
+    1202, 1205, 1208, 1211, 1214,
+    1302, 1305, 1308, 1311, 1314,
+    1402, 1405, 1408, 1411, 1414,
+    1702, 1705, 1708, 1711, 1714,
+    1802, 1805, 1808, 1811, 1814,
+    1902, 1905, 1908, 1911, 1914
   };
   // clang-format on
-  CHECK(!memcmp(c_a1, a1.data(), sizeof(c_a1)));
+  if (layout == TILEDB_ROW_MAJOR) {
+    CHECK(!memcmp(c_a1_rm, a1.data(), sizeof(c_a1_rm)));
+  } else {
+    CHECK(!memcmp(c_a1_cm, a1.data(), sizeof(c_a1_cm)));
+  }
 
   remove_temp_dir(temp_dir);
 }
@@ -5082,18 +5109,34 @@ TEST_CASE_METHOD(
   ranges.emplace_back(0, 10, 16);
   ranges.emplace_back(1, 3, 4);
 
+  tiledb_layout_t layout = GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+
   std::vector<uint64_t> a1(18);
-  read_large_dense_array(array_name, ranges, a1);
+  read_large_dense_array(array_name, layout, ranges, a1);
 
   // clang-format off
-  uint64_t c_a1[] = {
-    503, 603, 
-    1003, 1103, 1203, 1303, 1403, 1503, 1603, 
-    504, 604, 
-    1004, 1104, 1204, 1304, 1404, 1504, 1604
+  uint64_t c_a1_cm[] = {
+    503, 603, 1003, 1103, 1203, 1303, 1403, 1503, 1603, 
+    504, 604, 1004, 1104, 1204, 1304, 1404, 1504, 1604
+  };
+
+  uint64_t c_a1_rm[] = {
+    503, 504,
+    603, 604,
+    1003, 1004,
+    1103, 1104,
+    1203, 1204,
+    1303, 1304,
+    1403, 1404,
+    1503, 1504, 
+    1603, 1604
   };
   // clang-format on
-  CHECK(!memcmp(c_a1, a1.data(), sizeof(c_a1)));
+  if (layout == TILEDB_ROW_MAJOR) {
+    CHECK(!memcmp(c_a1_rm, a1.data(), sizeof(c_a1_rm)));
+  } else {
+    CHECK(!memcmp(c_a1_cm, a1.data(), sizeof(c_a1_cm)));
+  }
 
   remove_temp_dir(temp_dir);
 }

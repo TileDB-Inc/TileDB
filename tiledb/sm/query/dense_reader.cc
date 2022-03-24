@@ -302,9 +302,24 @@ Status DenseReader::dense_read() {
         offset += range[1] - range[0] + 1;
       }
 
-      // The final offset contains the total number of cells in all ranges for
-      // this dimension.
-      range_info[d].total_size_ = offset;
+      // Sets the initial multiplier, will be adjusted in the next step.
+      range_info[d].multiplier_ = offset;
+    }
+  }
+
+  // Compute the correct multipliers.
+  uint64_t mult = 1;
+  if (subarray.layout() == Layout::COL_MAJOR) {
+    for (int32_t d = 0; d < static_cast<int32_t>(dim_num); d++) {
+      auto saved = mult;
+      mult *= range_info[d].multiplier_;
+      range_info[d].multiplier_ = saved;
+    }
+  } else {
+    for (int32_t d = static_cast<int32_t>(dim_num) - 1; d >= 0; d--) {
+      auto saved = mult;
+      mult *= range_info[d].multiplier_;
+      range_info[d].multiplier_ = saved;
     }
   }
 
@@ -875,8 +890,6 @@ uint64_t DenseReader::get_dest_cell_offset_row_col(
     const DimType* const range_coords,
     const std::vector<RangeInfo>& range_info) {
   uint64_t ret = 0;
-  uint64_t mult = 1;
-
   std::vector<uint64_t> converted_range_coords(dim_num);
   if (subarray.range_num() > 1) {
     tile_subarray.get_original_range_coords(
@@ -888,16 +901,16 @@ uint64_t DenseReader::get_dest_cell_offset_row_col(
       auto r = converted_range_coords[d];
       auto min = *static_cast<const DimType*>(
           subarray.ranges_for_dim((uint32_t)d)[r].start());
-      ret += mult * (coords[d] - min + range_info[d].cell_offsets_[r]);
-      mult *= range_info[d].total_size_;
+      ret += range_info[d].multiplier_ *
+             (coords[d] - min + range_info[d].cell_offsets_[r]);
     }
   } else {
     for (int32_t d = dim_num - 1; d >= 0; d--) {
       auto r = converted_range_coords[d];
       auto min = *static_cast<const DimType*>(
           subarray.ranges_for_dim((uint32_t)d)[r].start());
-      ret += mult * (coords[d] - min + range_info[d].cell_offsets_[r]);
-      mult *= range_info[d].total_size_;
+      ret += range_info[d].multiplier_ *
+             (coords[d] - min + range_info[d].cell_offsets_[r]);
     }
   }
 

@@ -64,8 +64,8 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
     /** Cell offset, per range for this dimension. */
     std::vector<uint64_t> cell_offsets_;
 
-    /** Total cells covered by all the ranges for this dimension. */
-    uint64_t total_size_;
+    /** Multiplier to be used in offset computation. */
+    uint64_t multiplier_;
   };
 
   /* ********************************* */
