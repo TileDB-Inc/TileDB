@@ -58,6 +58,18 @@
 
 using namespace tiledb::test;
 
+struct TestRange {
+  TestRange(uint64_t i, uint64_t min, uint64_t max)
+      : i_(i)
+      , min_(min)
+      , max_(max) {
+  }
+
+  uint64_t i_;
+  uint64_t min_;
+  uint64_t max_;
+};
+
 struct DenseArrayFx {
   // Constant parameters
   const char* ATTR_NAME = "a";
@@ -102,10 +114,12 @@ struct DenseArrayFx {
   void create_dense_array(const std::string& array_name);
   void create_dense_array_1_attribute(const std::string& array_name);
   void create_dense_array_same_tile(const std::string& array_name);
+  void create_large_dense_array_1_attribute(const std::string& array_name);
   void write_dense_vector_mixed(const std::string& array_name);
   void write_dense_array(const std::string& array_name);
   void write_dense_array_missing_attributes(const std::string& array_name);
   void write_partial_dense_array(const std::string& array_name);
+  void write_large_dense_array(const std::string& array_name);
   void read_dense_vector_mixed(const std::string& array_name);
   void read_dense_array_with_coords_full_global(
       const std::string& array_name, bool split_coords);
@@ -119,6 +133,10 @@ struct DenseArrayFx {
       const std::string& array_name, bool split_coords);
   void read_dense_array_with_coords_subarray_col(
       const std::string& array_name, bool split_coords);
+  void read_large_dense_array(
+      const std::string& array_name,
+      std::vector<TestRange>& ranges,
+      std::vector<uint64_t>& a1);
   void set_small_memory_budget();
   static std::string random_name(const std::string& prefix);
 
@@ -1555,6 +1573,63 @@ void DenseArrayFx::create_dense_array_same_tile(const std::string& array_name) {
   tiledb_array_schema_free(&array_schema);
 }
 
+void DenseArrayFx::create_large_dense_array_1_attribute(
+    const std::string& array_name) {
+  // Create dimensions
+  uint64_t dim_domain[] = {1, 20, 1, 15};
+  uint64_t tile_extents[] = {4, 3};
+  tiledb_dimension_t* d1;
+  int rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0], &d1);
+  CHECK(rc == TILEDB_OK);
+  tiledb_dimension_t* d2;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1], &d2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create attributes
+  tiledb_attribute_t* a1;
+  rc = tiledb_attribute_alloc(ctx_, "a1", TILEDB_UINT64, &a1);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a1);
+  CHECK(rc == TILEDB_OK);
+
+  // Check array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array
+  rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(&a1);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+}
+
 void DenseArrayFx::check_return_coords(
     const std::string& path, bool split_coords) {
   std::string array_name = path + "return_coords";
@@ -1767,6 +1842,68 @@ void DenseArrayFx::write_partial_dense_array(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
   uint64_t subarray[] = {3, 4, 3, 4};
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = submit_query_wrapper(array_name, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+void DenseArrayFx::write_large_dense_array(const std::string& array_name) {
+  // Prepare cell buffers
+  // clang-format off
+  uint64_t buffer_a1[] = {
+     101,  102,  103,  104,  105,  106,  107,  108,  109,  110,  111,  112,  113,  114,  115, 
+     201,  202,  203,  204,  205,  206,  207,  208,  209,  210,  211,  212,  213,  214,  215, 
+     301,  302,  303,  304,  305,  306,  307,  308,  309,  310,  311,  312,  313,  314,  315, 
+     401,  402,  403,  404,  405,  406,  407,  408,  409,  410,  411,  412,  413,  414,  415, 
+     501,  502,  503,  504,  505,  506,  507,  508,  509,  510,  511,  512,  513,  514,  515, 
+     601,  602,  603,  604,  605,  606,  607,  608,  609,  610,  611,  612,  613,  614,  615, 
+     701,  702,  703,  704,  705,  706,  707,  708,  709,  710,  711,  712,  713,  714,  715, 
+     801,  802,  803,  804,  805,  806,  807,  808,  809,  810,  811,  812,  813,  814,  815, 
+     901,  902,  903,  904,  905,  906,  907,  908,  909,  910,  911,  912,  913,  914,  915, 
+    1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 
+    1101, 1102, 1103, 1104, 1105, 1106, 1107, 1108, 1109, 1110, 1111, 1112, 1113, 1114, 1115, 
+    1201, 1202, 1203, 1204, 1205, 1206, 1207, 1208, 1209, 1210, 1211, 1212, 1213, 1214, 1215, 
+    1301, 1302, 1303, 1304, 1305, 1306, 1307, 1308, 1309, 1310, 1311, 1312, 1313, 1314, 1315, 
+    1401, 1402, 1403, 1404, 1405, 1406, 1407, 1408, 1409, 1410, 1411, 1412, 1413, 1414, 1415, 
+    1501, 1502, 1503, 1504, 1505, 1506, 1507, 1508, 1509, 1510, 1511, 1512, 1513, 1514, 1515, 
+    1601, 1602, 1603, 1604, 1605, 1606, 1607, 1608, 1609, 1610, 1611, 1612, 1613, 1614, 1615, 
+    1701, 1702, 1703, 1704, 1705, 1706, 1707, 1708, 1709, 1710, 1711, 1712, 1713, 1714, 1715, 
+    1801, 1802, 1803, 1804, 1805, 1806, 1807, 1808, 1809, 1810, 1811, 1812, 1813, 1814, 1815, 
+    1901, 1902, 1903, 1904, 1905, 1906, 1907, 1908, 1909, 1910, 1911, 1912, 1913, 1914, 1915, 
+    2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015,
+  };
+  
+  uint64_t buffer_size = sizeof(buffer_a1);
+  // clang-format on
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a1", buffer_a1, &buffer_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -2728,6 +2865,56 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
   free(buffer_coords_dim2);
   free(buffer_d1);
   free(buffer_d2);
+}
+
+void DenseArrayFx::read_large_dense_array(
+    const std::string& array_name,
+    std::vector<TestRange>& ranges,
+    std::vector<uint64_t>& a1) {
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
+  CHECK(rc == TILEDB_OK);
+
+  for (auto& range : ranges) {
+    rc = tiledb_query_add_range(
+        ctx_, query, range.i_, &range.min_, &range.max_, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+  }
+
+  uint64_t buffer_a1_size = a1.size() * sizeof(uint64_t);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a1", a1.data(), &buffer_a1_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = submit_query_wrapper(array_name, query);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
 }
 
 void DenseArrayFx::check_non_empty_domain(const std::string& path) {
@@ -4760,6 +4947,153 @@ TEST_CASE_METHOD(
 
   CHECK(!memcmp(c_a1, read_a1, sizeof(c_a1)));
   CHECK(!memcmp(c_a1, read_a2, sizeof(c_a1)));
+
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, simple multi-index",
+    "[capi][dense][multi-index][simple]") {
+  SECTION("- No serialization") {
+    serialize_query_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query_ = true;
+  }
+
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
+  std::string array_name = temp_dir + "dense_read_large";
+  create_temp_dir(temp_dir);
+
+  create_large_dense_array_1_attribute(array_name);
+
+  write_large_dense_array(array_name);
+
+  std::vector<TestRange> ranges;
+  ranges.emplace_back(0, 2, 4);
+  ranges.emplace_back(0, 17, 19);
+  ranges.emplace_back(1, 2, 2);
+  ranges.emplace_back(1, 14, 14);
+
+  std::vector<uint64_t> a1(12);
+  read_large_dense_array(array_name, ranges, a1);
+
+  // clang-format off
+  uint64_t c_a1[] = {
+    202, 302, 402, 
+    1702, 1802, 1902, 
+    214, 314, 414, 
+    1714, 1814, 1914
+  };
+  // clang-format on
+
+  CHECK(!memcmp(c_a1, a1.data(), sizeof(c_a1)));
+
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, complex multi-index",
+    "[capi][dense][multi-index][complex]") {
+  SECTION("- No serialization") {
+    serialize_query_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query_ = true;
+  }
+
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
+  std::string array_name = temp_dir + "dense_read_large";
+  create_temp_dir(temp_dir);
+
+  create_large_dense_array_1_attribute(array_name);
+
+  write_large_dense_array(array_name);
+
+  std::vector<TestRange> ranges;
+  ranges.emplace_back(0, 2, 4);
+  ranges.emplace_back(0, 7, 9);
+  ranges.emplace_back(0, 12, 14);
+  ranges.emplace_back(0, 17, 19);
+  ranges.emplace_back(1, 2, 2);
+  ranges.emplace_back(1, 5, 5);
+  ranges.emplace_back(1, 8, 8);
+  ranges.emplace_back(1, 11, 11);
+  ranges.emplace_back(1, 14, 14);
+
+  std::vector<uint64_t> a1(60);
+  read_large_dense_array(array_name, ranges, a1);
+
+  // clang-format off
+  uint64_t c_a1[] = {
+    202, 302, 402, 
+    702, 802, 902, 
+    1202, 1302, 1402, 
+    1702, 1802, 1902, 
+    205, 305, 405, 
+    705, 805, 905, 
+    1205, 1305, 1405, 
+    1705, 1805, 1905, 
+    208, 308, 408, 
+    708, 808, 908, 
+    1208, 1308, 1408, 
+    1708, 1808, 1908, 
+    211, 311, 411, 
+    711, 811, 911, 
+    1211, 1311, 1411, 
+    1711, 1811, 1911, 
+    214, 314, 414, 
+    714, 814, 914, 
+    1214, 1314, 1414, 
+    1714, 1814, 1914
+  };
+  // clang-format on
+  CHECK(!memcmp(c_a1, a1.data(), sizeof(c_a1)));
+
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, multi-index, cross tile boundary",
+    "[capi][dense][multi-index][cross-tile-boundary]") {
+  SECTION("- No serialization") {
+    serialize_query_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query_ = true;
+  }
+
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
+  std::string array_name = temp_dir + "dense_read_large";
+  create_temp_dir(temp_dir);
+
+  create_large_dense_array_1_attribute(array_name);
+
+  write_large_dense_array(array_name);
+
+  std::vector<TestRange> ranges;
+  ranges.emplace_back(0, 5, 6);
+  ranges.emplace_back(0, 10, 16);
+  ranges.emplace_back(1, 3, 4);
+
+  std::vector<uint64_t> a1(18);
+  read_large_dense_array(array_name, ranges, a1);
+
+  // clang-format off
+  uint64_t c_a1[] = {
+    503, 603, 
+    1003, 1103, 1203, 1303, 1403, 1503, 1603, 
+    504, 604, 
+    1004, 1104, 1204, 1304, 1404, 1504, 1604
+  };
+  // clang-format on
+  CHECK(!memcmp(c_a1, a1.data(), sizeof(c_a1)));
 
   remove_temp_dir(temp_dir);
 }
