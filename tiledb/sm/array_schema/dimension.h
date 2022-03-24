@@ -139,16 +139,6 @@ class Dimension {
     return datatype_size(type_);
   }
 
-  static ByteVecValue create_tile_extent(
-      const void* tile_extent_data, size_t coord_size) {
-    ByteVecValue te;
-    if (tile_extent_data != nullptr) {
-      te.resize(coord_size);
-      std::memcpy(te.data(), tile_extent_data, coord_size);
-    }
-    return te;
-  }
-
   /**
    * Populates the object members from the data in the input binary buffer.
    *

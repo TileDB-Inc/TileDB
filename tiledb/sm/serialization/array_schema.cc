@@ -306,10 +306,96 @@ Status dimension_to_capnp(
   return Status::Ok();
 }
 
+tuple<Status, optional<ByteVecValue>> tile_extent_from_capnp(
+    const capnp::Dimension::TileExtent::Reader tile_extent_reader,
+    Datatype dim_type) {
+  auto coord_size = datatype_size(dim_type);
+  ByteVecValue tile_extent(coord_size);
+  switch (dim_type) {
+    case Datatype::INT8: {
+      auto val = tile_extent_reader.getInt8();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::UINT8: {
+      auto val = tile_extent_reader.getUint8();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::INT16: {
+      auto val = tile_extent_reader.getInt16();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::UINT16: {
+      auto val = tile_extent_reader.getUint16();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::INT32: {
+      auto val = tile_extent_reader.getInt32();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::UINT32: {
+      auto val = tile_extent_reader.getUint32();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+    case Datatype::INT64: {
+      auto val = tile_extent_reader.getInt64();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::UINT64: {
+      auto val = tile_extent_reader.getUint64();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::FLOAT32: {
+      auto val = tile_extent_reader.getFloat32();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::FLOAT64: {
+      auto val = tile_extent_reader.getFloat64();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    default:
+      return {LOG_STATUS(Status_SerializationError(
+                  "Error deserializing dimension; unknown datatype.")),
+              nullopt};
+  }
+  return {Status::Ok(), tile_extent};
+}
+
 tuple<Status, optional<shared_ptr<Dimension>>> dimension_from_capnp(
     const capnp::Dimension::Reader& dimension_reader) {
   // datatype
-  Datatype dim_type = Datatype::ANY;
+  Datatype dim_type;
   RETURN_NOT_OK_TUPLE(
       datatype_enum(dimension_reader.getType().cStr(), &dim_type), nullopt);
   auto coord_size = datatype_size(dim_type);
@@ -328,95 +414,20 @@ tuple<Status, optional<shared_ptr<Dimension>>> dimension_from_capnp(
     domain = Range(domain_buffer.data(), coord_size * 2);
   }
 
-  tdb_unique_ptr<FilterPipeline> filters;
+  shared_ptr<FilterPipeline> filters;
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
-    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
-    RETURN_NOT_OK(st_fp);
-    RETURN_NOT_OK((*dimension)->set_filter_pipeline(filters.value().get()));
+    auto&& [st_fp, f]{filter_pipeline_from_capnp(reader)};
+    RETURN_NOT_OK_TUPLE(st_fp, nullopt);
+    filters = f.value();
   }
 
   ByteVecValue tile_extent;
   if (!dimension_reader.getNullTileExtent()) {
     auto tile_extent_reader = dimension_reader.getTileExtent();
-    switch (dim_type) {
-      case Datatype::INT8: {
-        auto val = tile_extent_reader.getInt8();
-        tile_extent = Dimension::create_tile_extent(&val, coord_size);
-        break;
-      }
-      case Datatype::UINT8: {
-        auto val = tile_extent_reader.getUint8();
-        tile_extent = Dimension::create_tile_extent(&val, coord_size);
-        break;
-      }
-      case Datatype::INT16: {
-        auto val = tile_extent_reader.getInt16();
-        tile_extent = Dimension::create_tile_extent(&val, coord_size);
-        break;
-      }
-      case Datatype::UINT16: {
-        auto val = tile_extent_reader.getUint16();
-        tile_extent = Dimension::create_tile_extent(&val, coord_size);
-        break;
-      }
-      case Datatype::INT32: {
-        auto val = tile_extent_reader.getInt32();
-        tile_extent = Dimension::create_tile_extent(&val, coord_size);
-        break;
-      }
-      case Datatype::UINT32: {
-        auto val = tile_extent_reader.getUint32();
-        tile_extent = Dimension::create_tile_extent(&val, coord_size);
-        break;
-      }
-      case Datatype::DATETIME_YEAR:
-      case Datatype::DATETIME_MONTH:
-      case Datatype::DATETIME_WEEK:
-      case Datatype::DATETIME_DAY:
-      case Datatype::DATETIME_HR:
-      case Datatype::DATETIME_MIN:
-      case Datatype::DATETIME_SEC:
-      case Datatype::DATETIME_MS:
-      case Datatype::DATETIME_US:
-      case Datatype::DATETIME_NS:
-      case Datatype::DATETIME_PS:
-      case Datatype::DATETIME_FS:
-      case Datatype::DATETIME_AS:
-      case Datatype::TIME_HR:
-      case Datatype::TIME_MIN:
-      case Datatype::TIME_SEC:
-      case Datatype::TIME_MS:
-      case Datatype::TIME_US:
-      case Datatype::TIME_NS:
-      case Datatype::TIME_PS:
-      case Datatype::TIME_FS:
-      case Datatype::TIME_AS:
-      case Datatype::INT64: {
-        auto val = tile_extent_reader.getInt64();
-        tile_extent = Dimension::create_tile_extent(&val, coord_size);
-        break;
-      }
-      case Datatype::UINT64: {
-        auto val = tile_extent_reader.getUint64();
-        tile_extent = Dimension::create_tile_extent(&val, coord_size);
-        break;
-      }
-      case Datatype::FLOAT32: {
-        auto val = tile_extent_reader.getFloat32();
-        tile_extent = Dimension::create_tile_extent(&val, coord_size);
-        break;
-      }
-      case Datatype::FLOAT64: {
-        auto val = tile_extent_reader.getFloat64();
-        tile_extent = Dimension::create_tile_extent(&val, coord_size);
-        break;
-      }
-      default:
-        return {LOG_STATUS(Status_SerializationError(
-                    "Error deserializing dimension; unknown datatype.")),
-                nullopt};
-    }
+    auto&& [st_te, te]{tile_extent_from_capnp(tile_extent_reader, dim_type)};
+    RETURN_NOT_OK_TUPLE(st_te, nullopt);
+    tile_extent = te.value();
   }
 
   return {Status::Ok(),
