@@ -249,6 +249,8 @@ void check_save_to_file() {
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.encryption_type NO_ENCRYPTION\n";
+  ss << "sm.group.timestamp_end 18446744073709551615\n";
+  ss << "sm.group.timestamp_start 0\n";
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
      << "\n";
   ss << "sm.max_tile_overlap_size 314572800\n";
@@ -587,6 +589,8 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values
       ["sm.mem.reader.sparse_unordered_with_dups.ratio_array_data"] = "0.1";
   all_param_values["sm.enable_signal_handlers"] = "true";
+  all_param_values["sm.group.timestamp_end"] = "18446744073709551615";
+  all_param_values["sm.group.timestamp_start"] = "0";
   all_param_values["sm.compute_concurrency_level"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["sm.io_concurrency_level"] =

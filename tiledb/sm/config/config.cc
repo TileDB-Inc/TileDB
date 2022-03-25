@@ -117,6 +117,8 @@ const std::string Config::SM_OFFSETS_BITSIZE = "64";
 const std::string Config::SM_OFFSETS_EXTRA_ELEMENT = "false";
 const std::string Config::SM_OFFSETS_FORMAT_MODE = "bytes";
 const std::string Config::SM_MAX_TILE_OVERLAP_SIZE = "314572800";  // 300MiB
+const std::string Config::SM_GROUP_TIMESTAMP_START = "0";
+const std::string Config::SM_GROUP_TIMESTAMP_END = std::to_string(UINT64_MAX);
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MAX_BATCH_SIZE = std::to_string(UINT64_MAX);
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
@@ -282,6 +284,8 @@ Config::Config() {
   param_values_["sm.var_offsets.extra_element"] = SM_OFFSETS_EXTRA_ELEMENT;
   param_values_["sm.var_offsets.mode"] = SM_OFFSETS_FORMAT_MODE;
   param_values_["sm.max_tile_overlap_size"] = SM_MAX_TILE_OVERLAP_SIZE;
+  param_values_["sm.group.timestamp_start"] = SM_GROUP_TIMESTAMP_START;
+  param_values_["sm.group.timestamp_end"] = SM_GROUP_TIMESTAMP_END;
   param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   param_values_["vfs.max_batch_size"] = VFS_MAX_BATCH_SIZE;
   param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
@@ -623,6 +627,10 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.var_offsets.mode"] = SM_OFFSETS_FORMAT_MODE;
   } else if (param == "sm.max_tile_overlap_size") {
     param_values_["sm.max_tile_overlap_size"] = SM_MAX_TILE_OVERLAP_SIZE;
+  } else if (param == "sm.group.timestamp_start") {
+    param_values_["sm.group.timestamp_start"] = SM_GROUP_TIMESTAMP_START;
+  } else if (param == "sm.group.timestamp_end") {
+    param_values_["sm.group.timestamp_end"] = SM_GROUP_TIMESTAMP_END;
   } else if (param == "vfs.min_parallel_size") {
     param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   } else if (param == "vfs.max_batch_size") {

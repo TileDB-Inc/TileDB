@@ -107,6 +107,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/helpers.h
   src/helpers.cc
   src/helpers-dimension.h
+  src/serialization_wrappers.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
@@ -128,6 +129,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-fill_values.cc
   src/unit-capi-filter.cc
   src/unit-capi-fragment_info.cc
+  src/unit-capi-group.cc
   src/unit-capi-incomplete.cc
   src/unit-capi-incomplete-2.cc
   src/unit-capi-metadata.cc
@@ -204,6 +206,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-fragment_info.cc
+    src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-nullable.cc
@@ -385,20 +388,6 @@ add_custom_target(
   check COMMAND ${CMAKE_CTEST_COMMAND} -V -C ${CMAKE_BUILD_TYPE}
   DEPENDS tiledb_unit
 )
-
-include(CMakePrintHelpers)
-cmake_print_properties(
-  TARGETS tiledb_unit
-  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
-  )
-cmake_print_properties(
-  TARGETS tiledb_test_support_lib
-  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
-  )
-cmake_print_properties(
-  TARGETS Catch2::Catch2
-  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
-  )
 
 # CI tests
 add_subdirectory(ci)

@@ -224,6 +224,12 @@ uint64_t generic_tile_cell_size = sizeof(char);
 /** The group file name. */
 const std::string group_filename = "__tiledb_group.tdb";
 
+/** The group details directory name. */
+const std::string group_detail_dir_name = "__group";
+
+/** The group metadata directory name. */
+const std::string group_metadata_dir_name = "__meta";
+
 /** The maximum number of bytes written in a single I/O. */
 const uint64_t max_write_bytes = std::numeric_limits<int>::max();
 

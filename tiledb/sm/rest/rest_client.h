@@ -38,6 +38,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/sm/group/group.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/stats.h"
 
@@ -204,6 +205,55 @@ class RestClient {
    */
   Status post_array_schema_evolution_to_rest(
       const URI& uri, ArraySchemaEvolution* array_schema_evolution);
+
+  /**
+   * Gets the group's metadata from the REST server (and updates the in-memory
+   * Metadata of the group to match the returned values).
+   *
+   * @param uri Group URI
+   * @param timestamp_start Inclusive starting timestamp at which to open group
+   * @param timestamp_end Inclusive ending timestamp at which to open group
+   * @param group Group to fetch metadata for
+   * @return Status
+   */
+  Status get_group_metadata_from_rest(
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      Group* group);
+
+  /**
+   * Posts the group's metadata to the REST server.
+   *
+   * @param uri Group URI
+   * @param timestamp_start Inclusive starting timestamp at which to open group
+   * @param timestamp_end Inclusive ending timestamp at which to open group
+   * @param group Group to update/post metadata for.
+   * @return Status
+   */
+  Status post_group_metadata_to_rest(
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      Group* group);
+
+  /**
+   * Get group details from the REST server.
+   *
+   * @param uri Group UI
+   * @param group Group to deserialize into
+   * @return Status
+   */
+  Status post_group_from_rest(const URI& uri, Group* group);
+
+  /**
+   * Post group details from the REST server.
+   *
+   * @param uri Group UI
+   * @param group Group to serialize
+   * @return Status
+   */
+  Status post_group_to_rest(const URI& uri, Group* group);
 
  private:
   /* ********************************* */

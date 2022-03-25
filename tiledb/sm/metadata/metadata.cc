@@ -346,6 +346,12 @@ void Metadata::reset(uint64_t timestamp) {
   timestamp_range_ = std::make_pair(timestamp, timestamp);
 }
 
+void Metadata::reset(
+    const uint64_t timestamp_start, const uint64_t timestamp_end) {
+  clear();
+  timestamp_range_ = std::make_pair(timestamp_start, timestamp_end);
+}
+
 Metadata::iterator Metadata::begin() const {
   return metadata_map_.cbegin();
 }

@@ -4,16 +4,16 @@ title: Array Metadata
 
 ## Main Structure
 
-The array metadata is a folder called `__meta` located here:
+The metadata is a folder called `__meta` located here:
 
 ```
 my_array                            # array folder
    |  ...
-   |_ __meta                        # array metadata folder
-         |_ <timestamped_name>      # array metadata file
-         |_ ...  
+   |_ __meta                        # metadata folder
+         |_ <timestamped_name>      # metadata file
+         |_ ...
          |_ <timestamped_name>.vac  # vacuum file
-         |_ ...  
+         |_ ...
 ```
 
 `<timestamped_name>` has format `__t1_t2_uuid_v`, where:
@@ -22,14 +22,13 @@ my_array                            # array folder
 * `uuid` is a unique identifier
 * `v` is the format version
 
-The array metadata folder can contain:
-
-* Any number of [array metadata files](#array-metadata-file)
+The metadata folder can contain:
+* Any number of [metadata files](#array-metadata-file)
 * Any number of [vacuum files](./vacuum_file.md)
 
-## Array Metadata File 
+## Metadata File
 
-The array metadata file has the following on-disk format:
+The metadata file has the following on-disk format:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
