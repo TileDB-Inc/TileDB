@@ -454,6 +454,51 @@ TILEDB_EXPORT int32_t tiledb_deserialize_config(
     int32_t client_side,
     tiledb_config_t** config) noexcept;
 
+/**
+ * Serializes the given group.
+ *
+ * Where possible the serialization is zero-copy. The returned buffer list
+ * contains an ordered list of pointers to buffers that logically contain the
+ * entire serialized group when concatenated.
+ *
+ * @note The caller must free the returned `tiledb_buffer_list_t`.
+ *
+ * @param ctx The TileDB context.
+ * @param group The group.
+ * @param serialization_type Type of serialization to use
+ * @param client_side If set to 1, deserialize from "client-side" perspective.
+ *    Else, "server-side."
+ * @param buffer_list Will be set to a newly allocated buffer list containing
+ *    the serialized group.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_serialize_group(
+    tiledb_ctx_t* ctx,
+    const tiledb_group_t* group,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_list_t** buffer_list);
+
+/**
+ * Deserializes into an existing group from the given buffer.
+ *
+ * @note The deserialization is zero-copy, so the source buffer must exceed
+ * the lifetime of the group being deserialized to.
+ *
+ * @param ctx The TileDB context.
+ * @param buffer Buffer to deserialize from
+ * @param serialization_type Type of deserialization to use
+ * @param client_side If set to 1, deserialize from "client-side" perspective.
+ *    Else, "server-side."
+ * @param group The group object to deserialize into (must be pre-allocated).
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_deserialize_group(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_group_t* group);
 #ifdef __cplusplus
 }
 #endif

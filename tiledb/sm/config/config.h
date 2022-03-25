@@ -303,6 +303,16 @@ class Config {
    */
   static const std::string SM_MAX_TILE_OVERLAP_SIZE;
 
+  /**
+   * A group will open between this value and timestamp_end.
+   * */
+  static const std::string SM_GROUP_TIMESTAMP_START;
+
+  /**
+   * An group will open between timestamp_start and this value.
+   *  */
+  static const std::string SM_GROUP_TIMESTAMP_END;
+
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
 

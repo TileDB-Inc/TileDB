@@ -76,6 +76,24 @@ URI::URI(const std::string& path) {
     uri_ = "";
 }
 
+URI::URI(const std::string& path, const bool& get_abs) {
+  if (path.empty()) {
+    uri_ = "";
+  } else if (URI::is_file(path)) {
+    if (get_abs) {
+      uri_ = VFS::abs_path(path);
+    } else {
+      uri_ = path;
+    }
+  } else if (
+      URI::is_hdfs(path) || URI::is_s3(path) || URI::is_azure(path) ||
+      URI::is_gcs(path) || URI::is_memfs(path) || URI::is_tiledb(path)) {
+    uri_ = path;
+  } else {
+    uri_ = "";
+  }
+}
+
 URI::~URI() = default;
 
 /* ********************************* */

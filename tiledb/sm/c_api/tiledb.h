@@ -596,6 +596,9 @@ typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
 /** A fragment info object. */
 typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
+/** An group object. */
+typedef struct tiledb_group_t tiledb_group_t;
+
 /* ********************************* */
 /*              ERROR                */
 /* ********************************* */
@@ -1863,7 +1866,7 @@ TILEDB_EXPORT int32_t tiledb_ctx_set_tag(
  * @param group_uri The group URI.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
+TILEDB_DEPRECATED_EXPORT int32_t
 tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) TILEDB_NOEXCEPT;
 
 /* ********************************* */
@@ -2387,7 +2390,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_cell_size(
  * @param ctx The TileDB context.
  * @param attr The attribute.
  * @param out The output.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error./
  */
 TILEDB_EXPORT int32_t tiledb_attribute_dump(
     tiledb_ctx_t* ctx,

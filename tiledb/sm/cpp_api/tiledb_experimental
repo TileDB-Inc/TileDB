@@ -34,5 +34,6 @@
 #define TILEDB_EXPERIMENTAL_CPP_H
 
 #include "array_schema_evolution.h"
+#include "group_experimental.h"
 
 #endif  // TILEDB_EXPERIMENTAL_CPP_H

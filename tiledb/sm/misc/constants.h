@@ -212,6 +212,12 @@ extern uint64_t generic_tile_cell_size;
 /** The group file name. */
 extern const std::string group_filename;
 
+/** The group details directory name. */
+extern const std::string group_detail_dir_name;
+
+/** The group metadata directory name. */
+extern const std::string group_metadata_dir_name;
+
 /** The maximum number of bytes written in a single I/O. */
 extern const uint64_t max_write_bytes;
 
