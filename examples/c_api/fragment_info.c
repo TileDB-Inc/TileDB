@@ -136,6 +136,11 @@ void get_fragment_info() {
   tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &num);
   printf("The number of written fragments is %d.\n", num);
 
+  // Get fragment name
+  const char* name;
+  tiledb_fragment_info_get_fragment_name(ctx, fragment_info, 0, &name);
+  printf("The fragment name is %s.\n", name);
+
   // Get fragment URI
   const char* uri;
   tiledb_fragment_info_get_fragment_uri(ctx, fragment_info, 0, &uri);
