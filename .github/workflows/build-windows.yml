@@ -2,8 +2,13 @@ name: windows build
 
 on:
   push:
+    branches:
+      - dev
+      - release-*
+      - refs/tags/*
   pull_request:
-
+    branches:
+      - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
   TILEDB_S3: OFF
@@ -99,10 +104,10 @@ jobs:
       - name: Prepare git
         run: git config --global core.autocrlf false
       - uses: actions/checkout@v2
-      - name: core tiledb windows build 
+      - name: core tiledb windows build
         run: |
-          $ErrorView = "NormalView" 
-          
+          $ErrorView = "NormalView"
+
           #directory $env:BUILD_BUILDDIRECTORY was created in step 'tiledb env prep'
           cd $env:BUILD_BUILDDIRECTORY
 
@@ -117,7 +122,7 @@ jobs:
             Write-Host "Unknown image name: '$($env:TILEDB_GA_IMAGE_NAME)'"
             exit $LastExitCode
           }
-          
+
           # allow double-checking path
           cmd /c "echo $PATH"
 
@@ -161,7 +166,7 @@ jobs:
           if ($env:TILEDB_WERROR -eq "OFF") {
             $bootstrapOptions = $bootstrapOptions + " -DisableWerror"
           }
-          
+
           $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
           Write-Host "bootstrapExpression: $bootstrapExpression"
           Invoke-Expression $bootstrapExpression
@@ -316,7 +321,7 @@ jobs:
         with:
           retention-days: 10
           name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{matrix.environ}}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
-          if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn` 
+          if-no-files-found: warn # 'ignore/', 'warn' or 'error' are available, defaults to `warn`
           # fails, empty env context... ${{ env.LOCALAPPDATA }}/CrashDumps/*.dmp
           path: |
             ${{ env.TDBLOCALAPPDATA }}/CrashDumps/*.dmp
