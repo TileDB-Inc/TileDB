@@ -716,7 +716,7 @@ void SparseArrayFx::test_random_subarrays(
     // Read subarray
     int* buffer = read_sparse_array_2D(
         array_name, d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ, TILEDB_ROW_MAJOR);
-    CHECK(buffer != NULL);
+    CHECK(buffer != nullptr);
 
     // check
     bool allok = true;

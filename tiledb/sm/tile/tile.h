@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -188,9 +188,10 @@ class Tile {
     return cell_size_;
   }
 
-  /** Returns the number of dimensions (0 if this is an attribute tile). */
-  inline unsigned int dim_num() const {
-    return dim_num_;
+  /** Returns the number of zipped coordinates (0 if this is an attribute tile).
+   */
+  inline unsigned int zipped_coords_dim_num() const {
+    return zipped_coords_dim_num_;
   }
 
   /** Checks if the tile is empty. */
@@ -228,9 +229,9 @@ class Tile {
     return (data_ == nullptr) ? 0 : size_;
   }
 
-  /** Returns *true* if the tile stores coordinates. */
+  /** Returns *true* if the tile stores zipped coordinates. */
   inline bool stores_coords() const {
-    return dim_num_ > 0;
+    return zipped_coords_dim_num_ > 0;
   }
 
   /** Returns the tile data type. */
@@ -275,10 +276,10 @@ class Tile {
   uint64_t cell_size_;
 
   /**
-   * The number of dimensions, in case the tile stores coordinates. It is 0
-   * in case the tile stores attributes.
+   * The number of dimensions, in case the tile stores zipped coordinates.
+   * It is 0 in case the tile stores attributes or other type of dimensions
    */
-  unsigned int dim_num_;
+  unsigned int zipped_coords_dim_num_;
 
   /** The format version of the data in this tile. */
   uint32_t format_version_;

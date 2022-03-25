@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -85,7 +85,8 @@ class FragmentInfo {
   Status set_config(const Config& config);
 
   /** Expand the non empty domain before start with a new range */
-  void expand_anterior_ndrange(const Domain* domain, const NDRange& range);
+  void expand_anterior_ndrange(
+      shared_ptr<const Domain> domain, const NDRange& range);
 
   /** Dumps the fragment info in ASCII format in the selected output. */
   void dump(FILE* out) const;
@@ -101,6 +102,9 @@ class FragmentInfo {
 
   /** Retrieves the number of cells in the fragment with the given index. */
   Status get_cell_num(uint32_t fid, uint64_t* cell_num) const;
+
+  /** Retrieves the name of the fragment with the given index. */
+  Status get_fragment_name(uint32_t fid, const char** name) const;
 
   /** Retrieves the size of the fragment with the given index. */
   Status get_fragment_size(uint32_t fid, uint64_t* size) const;
@@ -331,13 +335,7 @@ class FragmentInfo {
 
   /**
    * All the array schemas relevant to the loaded fragment metadata
-   * keyed by their file name. These schemas are also stored inside
-   * fragment metadata objects in `fragment_metadata_`, but as pointers,
-   * not shared pointers. Therefore, we need to store the shared pointers
-   * in a separate place here.
-   *
-   * TODO: when we transition to using a shared pointer for ArraySchema
-   * objects everywhere, we will not need to store this here.
+   * keyed by their file name.
    */
   std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
 

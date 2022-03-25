@@ -69,7 +69,7 @@ typedef struct tiledb_array_schema_evolution_t tiledb_array_schema_evolution_t;
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_evolution_alloc(
     tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t** array_schema_evolution);
+    tiledb_array_schema_evolution_t** array_schema_evolution) noexcept;
 
 /**
  * Destroys an array schema evolution, freeing associated memory.
@@ -83,7 +83,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_alloc(
  * @param array_schema_evolution The array schema evolution to be destroyed.
  */
 TILEDB_EXPORT void tiledb_array_schema_evolution_free(
-    tiledb_array_schema_evolution_t** array_schema_evolution);
+    tiledb_array_schema_evolution_t** array_schema_evolution) noexcept;
 
 /**
  * Adds an attribute to an array schema evolution.
@@ -105,7 +105,7 @@ TILEDB_EXPORT void tiledb_array_schema_evolution_free(
 TILEDB_EXPORT int32_t tiledb_array_schema_evolution_add_attribute(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
-    tiledb_attribute_t* attribute);
+    tiledb_attribute_t* attribute) noexcept;
 
 /**
  * Drops an attribute to an array schema evolution.
@@ -126,7 +126,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_add_attribute(
 TILEDB_EXPORT int32_t tiledb_array_schema_evolution_drop_attribute(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
-    const char* attribute_name);
+    const char* attribute_name) noexcept;
 
 /**
  * Sets timestamp range in an array schema evolution
@@ -148,7 +148,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
     uint64_t lo,
-    uint64_t hi);
+    uint64_t hi) noexcept;
 
 /* ********************************* */
 /*          ARRAY SCHEMA             */
@@ -158,7 +158,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_timestamp_range(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     uint64_t* lo,
-    uint64_t* hi);
+    uint64_t* hi) noexcept;
 
 /* ********************************* */
 /*               ARRAY               */
@@ -182,7 +182,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_timestamp_range(
 TILEDB_EXPORT int32_t tiledb_array_evolve(
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    tiledb_array_schema_evolution_t* array_schema_evolution);
+    tiledb_array_schema_evolution_t* array_schema_evolution) noexcept;
 
 /**
  * Upgrades an array to the latest format version.
@@ -201,7 +201,7 @@ TILEDB_EXPORT int32_t tiledb_array_evolve(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_upgrade_version(
-    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
+    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) noexcept;
 
 /* ********************************* */
 /*               QUERY               */
@@ -217,7 +217,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_point_ranges(
     tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     const void* start,
-    uint64_t count);
+    uint64_t count) noexcept;
 
 /**
  * Adds a set of point ranges along subarray dimension index. Each value
@@ -248,7 +248,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_point_ranges(
     tiledb_query_t* query,
     uint32_t dim_idx,
     const void* start,
-    uint64_t count);
+    uint64_t count) noexcept;
 
 /* ********************************* */
 /*        QUERY STATUS DETAILS       */
@@ -293,7 +293,7 @@ struct tiledb_query_status_details_t {
 TILEDB_EXPORT int32_t tiledb_query_get_status_details(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_query_status_details_t* status);
+    tiledb_query_status_details_t* status) noexcept;
 
 /* ********************************* */
 /*              CONTEXT              */
@@ -332,7 +332,9 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_ctx_alloc_with_error(
-    tiledb_config_t* config, tiledb_ctx_t** ctx, tiledb_error_t** error);
+    tiledb_config_t* config,
+    tiledb_ctx_t** ctx,
+    tiledb_error_t** error) noexcept;
 
 #ifdef __cplusplus
 }

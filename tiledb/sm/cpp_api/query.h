@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -582,9 +582,9 @@ class Query {
    * **Example:**
    *
    * @code{.cpp}
-   * // Set a 1D range on dimension 0, assuming the domain type is int64.
-   * int64_t start = 10;
-   * int64_t end = 20;
+   * // Set a 1D range on variable-sized string dimension "rows"
+   * std::string start = "ab"";
+   * std::string end = "d";
    * // Stride is optional
    * subarray.add_range(0, start, end);
    * @endcode
@@ -618,9 +618,9 @@ class Query {
    * **Example:**
    *
    * @code{.cpp}
-   * // Set a 1D range on dimension "rows", assuming the domain type is int64.
-   * int64_t start = 10;
-   * int64_t end = 20;
+   * // Set a 1D range on variable-sized string dimension "rows"
+   * std::string start = "ab"";
+   * std::string end = "d";
    * const std::string dim_name = "rows";
    * // Stride is optional
    * subarray.add_range(dim_name, start, end);

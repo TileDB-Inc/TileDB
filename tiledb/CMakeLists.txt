@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2021 TileDB, Inc.
+# Copyright (c) 2017-2022 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -120,7 +120,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status_code.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/stdx_string.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/types/dynamic_typed_datum.cc
@@ -500,6 +499,7 @@ if (SANITIZER)
       -fsanitize=${SANITIZER}
   )
 endif()
+
 
 # Coverage linker flags
 if (CMAKE_BUILD_TYPE MATCHES "Coverage")

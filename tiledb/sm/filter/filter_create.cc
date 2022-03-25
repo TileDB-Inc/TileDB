@@ -80,7 +80,9 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
 
 tuple<Status, optional<std::shared_ptr<tiledb::sm::Filter>>>
 tiledb::sm::FilterCreate::deserialize(
-    ConstBuffer* buff, const EncryptionKey& encryption_key) {
+    ConstBuffer* buff,
+    const EncryptionKey& encryption_key,
+    const uint32_t version) {
   Status st;
   uint8_t type;
   st = buff->read(&type, sizeof(uint8_t));
@@ -123,7 +125,7 @@ tiledb::sm::FilterCreate::deserialize(
       }
       return {Status::Ok(),
               tiledb::common::make_shared<CompressionFilter>(
-                  HERE(), compressor, compression_level)};
+                  HERE(), compressor, compression_level, version)};
     }
     case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
       uint32_t max_window_size;
@@ -176,7 +178,8 @@ tiledb::sm::FilterCreate::deserialize(
 }
 
 tuple<Status, optional<std::shared_ptr<tiledb::sm::Filter>>>
-tiledb::sm::FilterCreate::deserialize(ConstBuffer* buff) {
+tiledb::sm::FilterCreate::deserialize(
+    ConstBuffer* buff, const uint32_t version) {
   EncryptionKey encryption_key;
-  return tiledb::sm::FilterCreate::deserialize(buff, encryption_key);
+  return tiledb::sm::FilterCreate::deserialize(buff, encryption_key, version);
 }

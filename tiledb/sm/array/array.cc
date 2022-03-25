@@ -182,7 +182,7 @@ Status Array::open_without_fragments(
           array_uri_,
           0,
           UINT64_MAX,
-          true);
+          ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
