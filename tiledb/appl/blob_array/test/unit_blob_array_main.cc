@@ -275,12 +275,10 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   // When timestamps are not set, those failures have not been
   // occurring.
   auto basic_uri_to_array = [&](bool expected_result = false) {
-    // blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
     CHECK(
         blob_array->to_array_from_uri(inp_uri, config).ok() == expected_result);
   };
   auto basic_buf_to_array = [&](bool expected_result = false) {
-    // blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
     CHECK(
         blob_array
             ->to_array_from_buffer(
@@ -385,7 +383,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   auto open_wbba_for_write = [&]() -> void {
     if (wb_ba.is_open())
       REQUIRE(wb_ba.close().ok() == true);
-    //    blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
     auto open_res = wb_ba.open(
         tiledb::sm::QueryType::WRITE,
         encryption_type,
@@ -397,7 +394,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   auto open_wbba_for_read = [&]() -> void {
     if (wb_ba.is_open())
       REQUIRE(wb_ba.close().ok() == true);
-    //    blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
     auto open_res = wb_ba.open(
         tiledb::sm::QueryType::READ,
         encryption_type,
@@ -541,7 +537,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
 
   for (auto i = 0; i < n_infiles; ++i) {
     tiledb::sm::URI inp_uri(infiles[i]);
-    // blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
     open_for_write();
     CHECK(
         blob_array->to_array_from_uri(inp_uri, config).ok() == expected_result);
@@ -568,7 +563,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
 
   for (auto i = n_infiles - 1; i >= 0; --i) {
     tiledb::sm::URI inp_uri(infiles[i]);
-    // blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
     CHECK(
         blob_array->to_array_from_uri(inp_uri, config).ok() == expected_result);
   }
@@ -592,7 +586,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   for (auto i = n_infiles - 1; i >= 0; --i) {
     tiledb::sm::URI inp_uri(infiles[i]);
     open_for_write();
-    // blob_array->set_timestamp_end(blob_array->timestamp_end() + 1);
     CHECK(
         blob_array->to_array_from_uri(inp_uri, config).ok() == expected_result);
 

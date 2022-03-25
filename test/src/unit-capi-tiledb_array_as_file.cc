@@ -329,8 +329,6 @@ TEST_CASE_METHOD(
   CHECK(
       tiledb_array_as_file_import(ctx_, array, csv_path.c_str()) == TILEDB_OK);
 
-  //  array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
-  //  array2->array_->set_timestamp_end(array->array_->timestamp_end());
   CHECK(
       tiledb_array_as_file_export(ctx_, array2, output_pathA.c_str()) ==
       TILEDB_OK);
@@ -452,14 +450,10 @@ TEST_CASE_METHOD(
     show_dirs();
     CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
     CHECK(is_array2_open == 0);
-    //    array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
-    //    array2->array_->set_timestamp_end(array->array_->timestamp_end());
     CHECK(
         tiledb_array_as_file_export(ctx_, array, output_pathB.c_str()) ==
         TILEDB_OK);
     cmp_files_check(infiles[n_infiles - 1], output_pathB);
-    //    array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
-    //    array2->array_->set_timestamp_end(array->array_->timestamp_end());
     CHECK(
         tiledb_array_as_file_export(ctx_, array2, output_pathA.c_str()) ==
         TILEDB_OK);
@@ -483,9 +477,6 @@ TEST_CASE_METHOD(
       CHECK(is_array_open == 0);
       CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
       CHECK(is_array2_open == 0);
-      //      array->array_->set_timestamp_end(array->array_->timestamp_end() +
-      //      1);
-      //      array2->array_->set_timestamp_end(array->array_->timestamp_end());
       CHECK(
           tiledb_array_as_file_export(ctx_, array2, outfiles[i].c_str()) ==
           TILEDB_OK);
@@ -520,8 +511,6 @@ TEST_CASE_METHOD(
     show_dirs();
     CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
     CHECK(is_array2_open == 0);
-    //    array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
-    //    array2->array_->set_timestamp_end(array->array_->timestamp_end());
     CHECK(
         tiledb_array_as_file_export(ctx_, array2, output_pathA.c_str()) ==
         TILEDB_OK);
@@ -545,9 +534,6 @@ TEST_CASE_METHOD(
       CHECK(is_array_open == 0);
       CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
       CHECK(is_array2_open == 0);
-      //      array->array_->set_timestamp_end(array->array_->timestamp_end() +
-      //      1);
-      //      array2->array_->set_timestamp_end(array->array_->timestamp_end());
       CHECK(
           tiledb_array_as_file_export(ctx_, array2, outfiles[i].c_str()) ==
           TILEDB_OK);
