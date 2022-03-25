@@ -88,16 +88,32 @@ Domain create_domain(
   assert(dim_names.size() == dim_domains.size());
   assert(dim_names.size() == dim_tile_extents.size());
 
-  Domain domain;
+  std::vector<shared_ptr<Dimension>> dimensions;
   for (size_t d = 0; d < dim_names.size(); ++d) {
-    Dimension dim(dim_names[d], dim_types[d]);
-    dim.set_domain(dim_domains[d]);
-    dim.set_tile_extent(dim_tile_extents[d]);
-    domain.add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim));
+    uint32_t cell_val_num =
+        (datatype_is_string(dim_types[d])) ? constants::var_num : 1;
+    Range range;
+    if (dim_domains[d] != nullptr) {
+      range = Range(dim_domains[d], 2 * datatype_size(dim_types[d]));
+    }
+    ByteVecValue tile_extent;
+    if (dim_tile_extents[d] != nullptr) {
+      auto tile_extent_size = 2 * datatype_size(dim_types[d]);
+      tile_extent.resize(tile_extent_size);
+      std::memcpy(tile_extent.data(), dim_tile_extents[d], tile_extent_size);
+    }
+    shared_ptr<Dimension> dim = make_shared<Dimension>(
+        HERE(),
+        dim_names[d],
+        dim_types[d],
+        cell_val_num,
+        range,
+        FilterPipeline(),
+        tile_extent);
+    dimensions.emplace_back(std::move(dim));
   }
-  domain.init(Layout::ROW_MAJOR, Layout::ROW_MAJOR);
 
-  return domain;
+  return Domain(Layout::ROW_MAJOR, dimensions, Layout::ROW_MAJOR);
 }
 
 TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
