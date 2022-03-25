@@ -621,3 +621,30 @@ struct EstimatedResultSize {
   resultSizes @0 :Map(Text, ResultSize);
   memorySizes @1 :Map(Text, MemorySize);
 }
+
+struct GroupMember {
+  uri @0 :Text;
+  # URI of group Member
+
+  type @1 :Text;
+  # type of Member, group or array
+
+  relative @2 :Bool;
+  # is member URI relative to group
+}
+
+struct Group {
+  members @0 :List(GroupMember);
+  # list of Members in group
+
+  metadata  @1 :ArrayMetadata;
+  # metadata attached to group
+}
+
+struct GroupUpdate {
+  membersToRemove @0 :List(Text);
+  # members to remove
+
+  membersToAdd @1 :List(GroupMember);
+  # members to add
+}

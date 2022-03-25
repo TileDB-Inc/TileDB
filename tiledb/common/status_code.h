@@ -29,6 +29,7 @@
 #define TILEDB_STATUS_CODE_H
 
 #include <string>
+#include <string_view>
 
 namespace tiledb::common {
 
@@ -95,7 +96,10 @@ enum class StatusCode : char {
   FragmentInfoError,
   DenseTilerError,
   QueryConditionError,
-  ArrayDirectoryError
+  ArrayDirectoryError,
+  Group,
+  GroupDirectoryError,
+  GroupMemberError
 };
 
 std::string to_string(const StatusCode& sc);

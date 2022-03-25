@@ -81,6 +81,14 @@ class URI {
    */
   explicit URI(const std::string& path);
 
+  /**
+   * Constructor.
+   *
+   * @param path
+   * @param get_abs should local files become absolute
+   */
+  explicit URI(const std::string& path, const bool& get_abs);
+
   /** Destructor. */
   ~URI();
 

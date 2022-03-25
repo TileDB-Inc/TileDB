@@ -411,6 +411,19 @@ inline Status Status_QueryConditionError(const std::string& msg) {
 inline Status Status_ArrayDirectoryError(const std::string& msg) {
   return Status(StatusCode::ArrayDirectoryError, msg);
 }
+/** Return a Status_GroupDirectoryError error class Status with a given
+ * message **/
+inline Status Status_GroupDirectoryError(const std::string& msg) {
+  return Status(StatusCode::GroupDirectoryError, msg);
+}
+/** Return an Group error class Status with a given message **/
+inline Status Status_GroupError(const std::string& msg) {
+  return Status(StatusCode::Group, msg);
+}
+/** Return an GroupMember error class Status with a given message **/
+inline Status Status_GroupMemberError(const std::string& msg) {
+  return Status(StatusCode::GroupMemberError, msg);
+}
 }  // namespace common
 }  // namespace tiledb
 
