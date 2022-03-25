@@ -225,9 +225,6 @@ Status Group::close() {
       RETURN_NOT_OK(storage_manager_->group_close_for_reads(this));
     } else if (query_type_ == QueryType::WRITE) {
       RETURN_NOT_OK(apply_pending_changes());
-      //       Flush the group metadata
-      //      RETURN_NOT_OK(storage_manager_->store_metadata(
-      //          group_uri_, *encryption_key_, &metadata_));
       RETURN_NOT_OK(storage_manager_->group_close_for_writes(this));
     }
   }
@@ -599,20 +596,22 @@ bool Group::changes_applied() const {
   return changes_applied_;
 }
 
-Status Group::member_count(uint64_t* count) const {
+tuple<Status, optional<uint64_t>> Group::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    return Status_GroupError("Cannot get member by index; Group is not open");
+    return {Status_GroupError("Cannot get member by index; Group is not open"),
+            std::nullopt};
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return Status_GroupError(
-        "Cannot get member; Group was not opened in read mode");
+    return {Status_GroupError(
+                "Cannot get member; Group was not opened in read mode"),
+            std::nullopt};
   }
-  *count = members_.size();
-  return Status::Ok();
+
+  return {Status::Ok(), members_.size()};
 }
 
 tuple<Status, optional<std::string>, optional<ObjectType>>
@@ -684,7 +683,7 @@ std::string Group::dump(
 }
 
 /* ********************************* */
-/*          PRIVATE METHODS          */
+/*         PROTECTED METHODS         */
 /* ********************************* */
 
 tuple<Status, optional<std::string>> Group::generate_name() const {

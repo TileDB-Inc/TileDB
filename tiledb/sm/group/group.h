@@ -291,14 +291,14 @@ class Group {
   /**
    * Get count of members
    *
-   * @param count
-   * @return Status
+   * @return tuple of Status and optional member count
    */
-  Status member_count(uint64_t* count) const;
+  tuple<Status, optional<uint64_t>> member_count() const;
 
   /**
    * Get a member by index
-   * @param index
+   *
+   * @param index of member
    * @return Tuple of Status, URI string, ObjectType
    */
   tuple<Status, optional<std::string>, optional<ObjectType>> member_by_index(
@@ -328,7 +328,7 @@ class Group {
 
  protected:
   /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
+  /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
   /** The group URI. */
   URI group_uri_;
@@ -403,7 +403,7 @@ class Group {
   bool changes_applied_;
 
   /* ********************************* */
-  /*          PRIVATE METHODS          */
+  /*         PROTECTED METHODS         */
   /* ********************************* */
 
   /**

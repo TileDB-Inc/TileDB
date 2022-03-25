@@ -191,7 +191,7 @@ Status GroupDirectory::load_group_meta_uris() {
   auto group_meta_uri = uri_.join_path(constants::group_metadata_dir_name);
   RETURN_NOT_OK(vfs_->ls(group_meta_uri, &group_meta_dir_uris));
 
-  // Compute and group metadata URIs and the vacuum file URIs to vacuum. */
+  // Compute and group metadata URIs and the vacuum file URIs to vacuum.
   auto&& [st1, group_meta_uris_to_vacuum, group_meta_vac_uris_to_vacuum] =
       compute_uris_to_vacuum(group_meta_dir_uris);
   RETURN_NOT_OK(st1);
@@ -215,7 +215,7 @@ Status GroupDirectory::load_group_detail_uris() {
   auto group_detail_uri = uri_.join_path(constants::group_detail_dir_name);
   RETURN_NOT_OK(vfs_->ls(group_detail_uri, &group_detail_dir_uris));
 
-  // Compute and group details URIs and the vacuum file URIs to vacuum. */
+  // Compute and group details URIs and the vacuum file URIs to vacuum.
   auto&& [st1, group_detail_uris_to_vacuum, group_detail_vac_uris_to_vacuum] =
       compute_uris_to_vacuum(group_detail_dir_uris);
   RETURN_NOT_OK(st1);

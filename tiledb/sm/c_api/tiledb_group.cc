@@ -388,10 +388,25 @@ int32_t tiledb_group_get_member_count(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, group->group_->member_count(count)))
-    return TILEDB_ERR;
+  try {
+    auto&& [st, member_count] = group->group_->member_count();
+    if (!st.ok()) {
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
 
-  return TILEDB_OK;
+    *count = member_count.value();
+
+    return TILEDB_OK;
+  } catch (const std::exception& e) {
+    auto st = Status_Error(
+        std::string("Internal TileDB uncaught exception; ") + e.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_ERR;
 }
 
 int32_t tiledb_group_get_member_by_index(
