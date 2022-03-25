@@ -1,3 +1,77 @@
+# TileDB v2.8.0 Release Notes
+
+## Disk Format
+
+* Add Metadata to groups [#2966](https://github.com/TileDB-Inc/TileDB/pull/2966)
+* Add Group on disk structure for members [#2966](https://github.com/TileDB-Inc/TileDB/pull/2966)
+
+
+## New features
+
+* Support gs:// as an alias for gcs:// [#2864](https://github.com/TileDB-Inc/TileDB/pull/2864)
+* Eliminate LOG_FATAL use from codebase [#2897](https://github.com/TileDB-Inc/TileDB/pull/2897)
+* Collect missing docs [#2922](https://github.com/TileDB-Inc/TileDB/pull/2922)
+* Support `tiledb://` objects in the Object API [#2954](https://github.com/TileDB-Inc/TileDB/pull/2954)
+* RLE compression support for var-length string dimensions [#2938](https://github.com/TileDB-Inc/TileDB/pull/2938)
+* Add Metadata to groups [#2966](https://github.com/TileDB-Inc/TileDB/pull/2966)
+* Add robust API to groups for adding and removing members of a group [#2966](https://github.com/TileDB-Inc/TileDB/pull/2966)
+
+## Improvements
+
+* Support top-level cap'n proto array object [#2844](https://github.com/TileDB-Inc/TileDB/pull/2844)
+* Nicer error message for tiledb fragment listing [#2872](https://github.com/TileDB-Inc/TileDB/pull/2872)
+* Removing Buffer from Tile. [#2852](https://github.com/TileDB-Inc/TileDB/pull/2852)
+* Splitting Writer class into 3 separate classes. [#2884](https://github.com/TileDB-Inc/TileDB/pull/2884)
+* Adding a compressor algorithm for RLE encoding of strings [#2857](https://github.com/TileDB-Inc/TileDB/pull/2857)
+* Reader: treating empty string range as expected. [#2883](https://github.com/TileDB-Inc/TileDB/pull/2883)
+* Add a compression algorithm for dictionary encoding of strings [#2880](https://github.com/TileDB-Inc/TileDB/pull/2880)
+* Adds an ArrayDirectory class to manage all URIs within the array directory. [#2909](https://github.com/TileDB-Inc/TileDB/pull/2909)
+* Remove accidental addition of writer.cc. [#2917](https://github.com/TileDB-Inc/TileDB/pull/2917)
+* Tile metadata generator: code cleanup. [#2919](https://github.com/TileDB-Inc/TileDB/pull/2919)
+* Listing improvements: new directory structure for array. [#2918](https://github.com/TileDB-Inc/TileDB/pull/2918)
+* ArraySchema's Attribute smart pointer conversion [#2887](https://github.com/TileDB-Inc/TileDB/pull/2887)
+* Add option for tile level filtering [#2906](https://github.com/TileDB-Inc/TileDB/pull/2906)
+* Switch to smart pointers and const references for `ArraySchema`, and avoid fetching the latest array schema twice. [#2923](https://github.com/TileDB-Inc/TileDB/pull/2923)
+* Move vfs_helpers.cc and helper.cc into separate library with target that can be referenced elsewhere. [#2929](https://github.com/TileDB-Inc/TileDB/pull/2929)
+* Avoid calling `generate_uri` in `ArraySchema` accessors [#2928](https://github.com/TileDB-Inc/TileDB/pull/2928)
+* Global order writer: initialize last_var_offsets_. [#2930](https://github.com/TileDB-Inc/TileDB/pull/2930)
+* Wrap some C API functions with exception handlers. [#2650](https://github.com/TileDB-Inc/TileDB/pull/2650)
+* Fragment metadata: add min/max/sun/null count. [#2934](https://github.com/TileDB-Inc/TileDB/pull/2934)
+* Filter pipeline: incorrect stopping point during chunk parallellization. [#2955](https://github.com/TileDB-Inc/TileDB/pull/2955)
+* Adding support to consolidate ok/wrt files. [#2933](https://github.com/TileDB-Inc/TileDB/pull/2933)
+* Tile medatada: treating TILEDB_CHAR as TILEDB_STRING_ASCII. [#2953](https://github.com/TileDB-Inc/TileDB/pull/2953)
+* Fragment metadata: treating TILEDB_CHAR as TILEDB_STRING_ASCII. [#2958](https://github.com/TileDB-Inc/TileDB/pull/2958)
+* Global order writer: fixing multi writes for var size attributes. [#2963](https://github.com/TileDB-Inc/TileDB/pull/2963)
+* Convert FilterPipeline deserialize function to static factory function [#2799](https://github.com/TileDB-Inc/TileDB/pull/2799)
+* VFS: adding configuration for vfs.max_batch_size. [#2960](https://github.com/TileDB-Inc/TileDB/pull/2960)
+* Fixing build errors using MacOSX12.3.sdk. [#2981](https://github.com/TileDB-Inc/TileDB/pull/2981)
+* Support reading all consolidated fragment metadata files. [#2973](https://github.com/TileDB-Inc/TileDB/pull/2973)
+* Fixing compute_results_count_sparse_string for multiple range threads. [#2983](https://github.com/TileDB-Inc/TileDB/pull/2983)
+* Global writes: fixing OOM on write continuation. [#2993](https://github.com/TileDB-Inc/TileDB/pull/2993)
+* Do not store offsets when RLE is used on string dimensions [#2969](https://github.com/TileDB-Inc/TileDB/pull/2969)
+* Dynamically infer bytesizes for run length and strings for strings RLE compression [#2984](https://github.com/TileDB-Inc/TileDB/pull/2984)
+
+
+## Bug fixes
+
+* Avoid thread starvation by removing std::future usage in S3 multipart upload [#2851](https://github.com/TileDB-Inc/TileDB/pull/2851)
+* windows_sanity fix [#2870](https://github.com/TileDB-Inc/TileDB/pull/2870)
+* Adds missing pthreads link to dynamic memory unit test [#2888](https://github.com/TileDB-Inc/TileDB/pull/2888)
+* Remove `common.h` from `arrow_io_impl.h` [#2915](https://github.com/TileDB-Inc/TileDB/pull/2915)
+* Range::set_start and set_end should throw instead of empty returning [#2913](https://github.com/TileDB-Inc/TileDB/pull/2913)
+
+## API additions
+
+### C API
+
+* Introduce experimental `tiledb_ctx_alloc_with_error` to return error when context alloc fails [#2905](https://github.com/TileDB-Inc/TileDB/pull/2905)
+* Add `tiledb_group_*` APIs for robust group support [#2966](https://github.com/TileDB-Inc/TileDB/pull/2966)
+
+### C++ API
+
+* Add missing cstddef include to fix compile w/ GCC 7 [#2885](https://github.com/TileDB-Inc/TileDB/pull/2885)
+* Add `Group::*` APIs for robust group support [#2966](https://github.com/TileDB-Inc/TileDB/pull/2966)
+
 # TileDB v2.7.1 Release Notes
 
 ## Bug fixes
