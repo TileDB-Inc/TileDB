@@ -41,15 +41,15 @@ TEST_CASE("ASTNode Constructors", "[QueryCondition][ast][constructor]") {
   // ASTNodeVal constructor
   std::string field_name = "x";
   int val = 5;
-  auto node_val = make_unique<ASTNodeVal>(
-      field_name, &val, sizeof(val), QueryConditionOp::LT);
+  auto node_val = tdb_unique_ptr<ASTNodeVal>(
+      tdb_new(ASTNodeVal, field_name, &val, sizeof(val), QueryConditionOp::LT));
   REQUIRE(node_val->to_str() == "x LT 05 00 00 00");
 
   // ASTNodeVal constructor
   std::string field_name1 = "y";
   int val1 = 3;
-  auto node_val1 = make_unique<ASTNodeVal>(
-      field_name1, &val1, sizeof(val1), QueryConditionOp::GT);
+  auto node_val1 = tdb_unique_ptr<ASTNodeVal>(tdb_new(
+      ASTNodeVal, field_name1, &val1, sizeof(val1), QueryConditionOp::GT));
   REQUIRE(node_val1->to_str() == "y GT 03 00 00 00");
 
   // ASTNodeExpr constructor
@@ -60,21 +60,21 @@ TEST_CASE("ASTNode Constructors", "[QueryCondition][ast][constructor]") {
   // ASTNodeVal constructor
   std::string field_name2 = "a";
   int val2 = 23;
-  auto node_val2 = make_unique<ASTNodeVal>(
-      field_name2, &val2, sizeof(val2), QueryConditionOp::EQ);
+  auto node_val2 = tdb_unique_ptr<ASTNodeVal>(tdb_new(
+      ASTNodeVal, field_name2, &val2, sizeof(val2), QueryConditionOp::EQ));
   REQUIRE(node_val2->to_str() == "a EQ 17 00 00 00");
 
   // ASTNodeVal constructor
   std::string field_name3 = "b";
   int val3 = 2;
-  auto node_val3 = make_unique<ASTNodeVal>(
-      field_name3, &val3, sizeof(val3), QueryConditionOp::NE);
+  auto node_val3 = tdb_unique_ptr<ASTNodeVal>(tdb_new(
+      ASTNodeVal, field_name3, &val3, sizeof(val3), QueryConditionOp::NE));
   REQUIRE(node_val3->to_str() == "b NE 02 00 00 00");
 
   std::string field_name4 = "c";
   int val4 = 8;
-  auto node_val4 = make_unique<ASTNodeVal>(
-      field_name4, &val4, sizeof(val4), QueryConditionOp::LE);
+  auto node_val4 = tdb_unique_ptr<ASTNodeVal>(tdb_new(
+      ASTNodeVal, field_name4, &val4, sizeof(val4), QueryConditionOp::LE));
   REQUIRE(node_val4->to_str() == "c LE 08 00 00 00");
 
   auto combined_node_inter1 =

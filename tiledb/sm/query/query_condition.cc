@@ -94,8 +94,8 @@ Status QueryCondition::init(
   }
 
   // AST Construction
-  tree_ = std::make_unique<ASTNodeVal>(
-      field_name, condition_value, condition_value_size, op);
+  tree_ = tdb_unique_ptr<ASTNode>(tdb_new(
+      ASTNodeVal, field_name, condition_value, condition_value_size, op));
 
   clauses_.emplace_back(
       std::move(field_name), condition_value, condition_value_size, op);
