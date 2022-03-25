@@ -54,7 +54,7 @@ class ASTNode {
  public:
   virtual ASTNodeTag get_tag() = 0;
   virtual std::string to_str() = 0;
-  virtual std::unique_ptr<ASTNode> clone() = 0;
+  virtual tdb_unique_ptr<ASTNode> clone() = 0;
   virtual ~ASTNode() {
   }
 };
@@ -127,12 +127,13 @@ class ASTNodeVal : public ASTNode {
     return result_str;
   }
 
-  std::unique_ptr<ASTNode> clone() {
-    return std::make_unique<ASTNodeVal>(
+  tdb_unique_ptr<ASTNode> clone() {
+    return tdb_unique_ptr<ASTNode>(tdb_new(
+        ASTNodeVal,
         field_name_,
         condition_value_data_.data(),
         condition_value_data_.size(),
-        op_);
+        op_));
   }
 
   /** The attribute name. */
@@ -151,7 +152,7 @@ class ASTNodeVal : public ASTNode {
 class ASTNodeExpr : public ASTNode {
  public:
   ASTNodeExpr(
-      std::vector<std::unique_ptr<ASTNode>>&& nodes,
+      std::vector<tdb_unique_ptr<ASTNode>>&& nodes,
       QueryConditionCombinationOp c_op)
       : combination_op_(c_op) {
     for (const auto& elem : nodes) {
@@ -215,17 +216,17 @@ class ASTNodeExpr : public ASTNode {
     return result_str;
   }
 
-  std::unique_ptr<ASTNode> clone() {
-    std::vector<std::unique_ptr<ASTNode>> nodes_copy;
+  tdb_unique_ptr<ASTNode> clone() {
+    std::vector<tdb_unique_ptr<ASTNode>> nodes_copy;
     for (const auto& node : nodes_) {
       nodes_copy.push_back(node->clone());
     }
-    return std::make_unique<ASTNodeExpr>(
-        std::move(nodes_copy), combination_op_);
+    return tdb_unique_ptr<ASTNode>(
+        tdb_new(ASTNodeExpr, std::move(nodes_copy), combination_op_));
   }
 
   /** The node list **/
-  std::vector<std::unique_ptr<ASTNode>> nodes_;
+  std::vector<tdb_unique_ptr<ASTNode>> nodes_;
 
   /** The combination operation **/
   QueryConditionCombinationOp combination_op_;
@@ -234,9 +235,9 @@ class ASTNodeExpr : public ASTNode {
   static const ASTNodeTag tag_{ASTNodeTag::EXPR};
 };
 
-std::unique_ptr<ASTNodeExpr> ast_combine(
-    const std::unique_ptr<ASTNode>& lhs,
-    const std::unique_ptr<ASTNode>& rhs,
+tdb_unique_ptr<ASTNode> ast_combine(
+    const tdb_unique_ptr<ASTNode>& lhs,
+    const tdb_unique_ptr<ASTNode>& rhs,
     QueryConditionCombinationOp combination_op);
 
 }  // namespace sm

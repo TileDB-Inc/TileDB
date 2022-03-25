@@ -340,7 +340,7 @@ class QueryCondition {
   std::vector<QueryConditionCombinationOp> combination_ops_;
 
   /** AST Tree structure **/
-  std::unique_ptr<tiledb::sm::ASTNode> tree_{};
+  tdb_unique_ptr<tiledb::sm::ASTNode> tree_{};
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

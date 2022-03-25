@@ -35,12 +35,12 @@
 namespace tiledb {
 namespace sm {
 
-std::unique_ptr<ASTNodeExpr> ast_combine(
-    const std::unique_ptr<ASTNode>& lhs,
-    const std::unique_ptr<ASTNode>& rhs,
+tdb_unique_ptr<ASTNode> ast_combine(
+    const tdb_unique_ptr<ASTNode>& lhs,
+    const tdb_unique_ptr<ASTNode>& rhs,
     QueryConditionCombinationOp combination_op) {
   // AST Construction
-  std::vector<std::unique_ptr<ASTNode>> ast_nodes;
+  std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
   if (lhs->get_tag() == ASTNodeTag::VAL) {
     if (rhs->get_tag() == ASTNodeTag::VAL) {
       ast_nodes.push_back(lhs->clone());
@@ -89,7 +89,8 @@ std::unique_ptr<ASTNodeExpr> ast_combine(
       ast_nodes.push_back(rhs->clone());
     }
   }
-  return std::make_unique<ASTNodeExpr>(std::move(ast_nodes), combination_op);
+  return tdb_unique_ptr<ASTNode>(
+      tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
 }
 
 }  // namespace sm
