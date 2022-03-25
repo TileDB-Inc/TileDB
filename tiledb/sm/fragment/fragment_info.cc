@@ -172,6 +172,23 @@ Status FragmentInfo::get_cell_num(uint32_t fid, uint64_t* cell_num) const {
   return Status::Ok();
 }
 
+Status FragmentInfo::get_fragment_name(uint32_t fid, const char** name) const {
+  if (name == nullptr)
+    return LOG_STATUS(Status_FragmentInfoError(
+        "Cannot get fragment name; Name argument cannot be null"));
+
+  if (fid >= fragment_num())
+    return LOG_STATUS(Status_FragmentInfoError(
+        "Cannot get fragment URI; Invalid fragment index"));
+
+  auto meta = single_fragment_info_vec_[fid].meta();
+  auto meta_name =
+      meta->fragment_uri().remove_trailing_slash().last_path_part();
+  *name = meta_name.c_str();
+
+  return Status::Ok();
+}
+
 Status FragmentInfo::get_fragment_size(uint32_t fid, uint64_t* size) const {
   if (size == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(

@@ -6910,6 +6910,22 @@ int32_t tiledb_fragment_info_load_with_key(
   return TILEDB_OK;
 }
 
+int32_t tiledb_fragment_info_get_fragment_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    const char** name) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->get_fragment_name(fid, name)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_fragment_info_get_fragment_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
@@ -10278,6 +10294,15 @@ int32_t tiledb_fragment_info_load_with_key(
     uint32_t key_length) noexcept {
   return api_entry<detail::tiledb_fragment_info_load_with_key>(
       ctx, fragment_info, encryption_type, encryption_key, key_length);
+}
+
+int32_t tiledb_fragment_info_get_fragment_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    const char** name) noexcept {
+  return api_entry<detail::tiledb_fragment_info_get_fragment_name>(
+      ctx, fragment_info, fid, name);
 }
 
 int32_t tiledb_fragment_info_get_fragment_num(

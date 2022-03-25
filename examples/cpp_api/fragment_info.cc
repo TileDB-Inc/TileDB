@@ -94,6 +94,10 @@ void get_fragment_info() {
   std::cout << "The number of written fragments is " << num << ".\n"
             << std::endl;
 
+  // Get fragment name
+  std::string name = fragment_info.fragment_name(0);
+  std::cout << "The fragment name is " << name.c_str() << ".\n" << std::endl;
+
   // Get fragment URI
   std::string uri = fragment_info.fragment_uri(0);
   std::cout << "The fragment URI is " << uri.c_str() << ".\n" << std::endl;

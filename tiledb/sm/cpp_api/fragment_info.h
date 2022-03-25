@@ -105,6 +105,15 @@ class FragmentInfo {
     return std::string(uri_c);
   }
 
+  /** Returns the name of the fragment with the given index. */
+  std::string fragment_name(uint32_t fid) const {
+    auto& ctx = ctx_.get();
+    const char* name_c;
+    ctx.handle_error(tiledb_fragment_info_get_fragment_name(
+        ctx.ptr().get(), fragment_info_.get(), fid, &name_c));
+    return std::string(name_c);
+  }
+
   /**
    * Retrieves the non-empty domain of the fragment with the given index
    * on the given dimension index.
