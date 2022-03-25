@@ -1,7 +1,14 @@
 name: build-ubuntu-20.04-backwards-compatibility
 on:
   push:
+    branches:
+      - dev
+      - release-*
+      - refs/tags/*
   pull_request:
+    branches:
+      - '*'  # must quote since "*" is a YAML reserved character; we want a string
+
 env:
   CXX: g++
 

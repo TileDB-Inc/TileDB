@@ -2,8 +2,13 @@ name: rtools40
 
 on:
   push:
+    branches:
+      - dev
+      - release-*
+      - refs/tags/*
   pull_request:
-
+    branches:
+      - '*'  # must quote since "*" is a YAML reserved character; we want a string
 jobs:
   build:
     runs-on: windows-latest
