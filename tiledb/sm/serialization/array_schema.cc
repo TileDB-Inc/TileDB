@@ -306,7 +306,7 @@ Status dimension_to_capnp(
   return Status::Ok();
 }
 
-tuple<Status, optional<ByteVecValue>> tile_extent_from_capnp(
+ByteVecValue tile_extent_from_capnp(
     const capnp::Dimension::TileExtent::Reader tile_extent_reader,
     Datatype dim_type) {
   auto coord_size = datatype_size(dim_type);
@@ -385,20 +385,28 @@ tuple<Status, optional<ByteVecValue>> tile_extent_from_capnp(
       break;
     }
     default:
-      return {LOG_STATUS(Status_SerializationError(
-                  "Error deserializing dimension; unknown datatype.")),
-              nullopt};
+      throw std::logic_error(
+          "Default branch of switch statement in tile_extent_from_capnp should "
+          "not be reached.");
   }
-  return {Status::Ok(), tile_extent};
+  return tile_extent;
 }
 
-tuple<Status, optional<shared_ptr<Dimension>>> dimension_from_capnp(
+shared_ptr<Dimension> dimension_from_capnp(
     const capnp::Dimension::Reader& dimension_reader) {
   // datatype
   Datatype dim_type;
-  RETURN_NOT_OK_TUPLE(
-      datatype_enum(dimension_reader.getType().cStr(), &dim_type), nullopt);
+  Status s_datatype_enum =
+      datatype_enum(dimension_reader.getType().cStr(), &dim_type);
+  if (!s_datatype_enum.ok()) {
+    throw std::runtime_error(
+        "Error deserializing dimension, could not process datatype.");
+  }
   auto coord_size = datatype_size(dim_type);
+  if (coord_size == 0) {
+    throw std::runtime_error(
+        "Error deserializing dimension; unknown datatype.");
+  }
 
   // cell val num
   uint32_t cell_val_num =
@@ -408,9 +416,12 @@ tuple<Status, optional<shared_ptr<Dimension>>> dimension_from_capnp(
   if (dimension_reader.hasDomain()) {
     auto domain_reader = dimension_reader.getDomain();
     Buffer domain_buffer;
-    RETURN_NOT_OK_TUPLE(
-        utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer),
-        nullopt);
+    Status s_copy_capnp_list =
+        utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer);
+    if (!s_copy_capnp_list.ok()) {
+      throw std::runtime_error(
+          "Error deserializing dimension; could not process domain.");
+    }
     domain = Range(domain_buffer.data(), coord_size * 2);
   }
 
@@ -418,27 +429,27 @@ tuple<Status, optional<shared_ptr<Dimension>>> dimension_from_capnp(
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
     auto&& [st_fp, f]{filter_pipeline_from_capnp(reader)};
-    RETURN_NOT_OK_TUPLE(st_fp, nullopt);
+    if (!st_fp.ok()) {
+      throw std::runtime_error(
+          "Error deserializing dimension, could not process filter pipeline.");
+    }
     filters = f.value();
   }
 
   ByteVecValue tile_extent;
   if (!dimension_reader.getNullTileExtent()) {
     auto tile_extent_reader = dimension_reader.getTileExtent();
-    auto&& [st_te, te]{tile_extent_from_capnp(tile_extent_reader, dim_type)};
-    RETURN_NOT_OK_TUPLE(st_te, nullopt);
-    tile_extent = te.value();
+    tile_extent = tile_extent_from_capnp(tile_extent_reader, dim_type);
   }
 
-  return {Status::Ok(),
-          tiledb::common::make_shared<Dimension>(
-              HERE(),
-              dimension_reader.getName(),
-              dim_type,
-              cell_val_num,
-              domain,
-              *(filters.get()),
-              tile_extent)};
+  return tiledb::common::make_shared<Dimension>(
+      HERE(),
+      dimension_reader.getName(),
+      dim_type,
+      cell_val_num,
+      domain,
+      *(filters.get()),
+      tile_extent);
 }
 
 Status domain_to_capnp(
@@ -470,9 +481,8 @@ Status domain_from_capnp(
 
   auto dimensions = domain_reader.getDimensions();
   for (auto dimension : dimensions) {
-    tdb_unique_ptr<Dimension> dim;
-    RETURN_NOT_OK(dimension_from_capnp(dimension, &dim));
-    RETURN_NOT_OK((*domain)->add_dimension(dim.get()));
+    auto dim = dimension_from_capnp(dimension);
+    RETURN_NOT_OK((*domain)->add_dimension(dim));
   }
 
   return Status::Ok();
