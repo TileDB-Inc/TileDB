@@ -36,6 +36,7 @@
 #include "query_buffer.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/domain_data_ref.h"
 #include "tiledb/sm/array_schema/domain_typed_data_view.h"
 
@@ -98,10 +99,9 @@ class DomainBufferDataRef : public detail::DomainBuffersTypes,
       , k_(k) {
   }
 
-  UntypedDatumView dimension_datum_view(unsigned int i) const override;
-  //  {
-  //    return {qb_[i]->dimension_datum_at(*domain_.dimension(i), k_).datum()};
-  //  }
+  UntypedDatumView dimension_datum_view(unsigned int i) const override {
+    return {qb_[i]->dimension_datum_at(*domain_.dimension(i), k_).datum()};
+  }
 
   DomainBufferDataRef(const Domain& domain) = delete;
 };
