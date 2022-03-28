@@ -149,7 +149,7 @@ jobs:
 
       - name: 'upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v1
         with:
           retention-days: 10
           name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
