@@ -73,6 +73,47 @@ class ArraySchema {
   /** Constructor. */
   ArraySchema(ArrayType array_type);
 
+  /** Constructor.
+   * @param allows_dups True if the (sparse) array allows coordinate duplicates.
+   * @param array_uri An array name attached to the schema object.
+   * @param array_type The array type.
+   * @param attribute_map Maps each name to the corresponding attribute object.
+   * @param attributes The array attributes.
+   * @param capacity The tile capacity for the case of sparse fragments.
+   * @param cell_order The cell order.
+   * @param cell_var_offsets_filters
+   *    The filter pipeline run on offset tiles for var-length attributes.
+   * @param cell_validity_filters
+   *    The filter pipeline run on validity tiles for nullable attributes.
+   * @param coords_filters The filter pipeline run on coordinate tiles.
+   * @param dim_map Maps each name to the corresponding dimension object.
+   * @param domain The array domain.
+   * @param tile_order The tile order.
+   * @param version The format version of this array schema.
+   * @param timestamp_range The timestamp the array schema was written.
+   * @param uri The URI of the array schema file.
+   * @param name
+   *    The file name of array schema in the format of timestamp_timestamp_uuid.
+   **/
+  ArraySchema(
+      bool allows_dups,
+      URI array_uri,
+      ArrayType array_type,
+      std::unordered_map<std::string, const Attribute*> attribute_map,
+      std::vector<shared_ptr<const Attribute>> attributes,
+      uint64_t capacity,
+      Layout cell_order,
+      FilterPipeline cell_var_offsets_filters,
+      FilterPipeline cell_validity_filters,
+      FilterPipeline coords_filters,
+      std::unordered_map<std::string, shared_ptr<const Dimension>> dim_map,
+      shared_ptr<Domain> domain,
+      Layout tile_order,
+      uint32_t version,
+      std::pair<uint64_t, uint64_t> timestamp_range,
+      URI uri,
+      std::string name);
+
   /**
    * Constructor. Clones the input.
    *
@@ -255,9 +296,11 @@ class ArraySchema {
    * It assigns values to the members of the object from the input buffer.
    *
    * @param buff The binary representation of the object to read from.
-   * @return Status
+   * @param uri An optional uri object.
+   * @return A new ArraySchema.
    */
-  Status deserialize(ConstBuffer* buff);
+  static shared_ptr<ArraySchema> deserialize(
+      ConstBuffer* buff, const URI& uri = URI());
 
   /** Returns the array domain. */
   inline const Domain& domain() const {
