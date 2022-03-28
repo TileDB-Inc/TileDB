@@ -254,7 +254,8 @@ int Domain::cell_order_cmp(
   if (cell_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim = dimension(d);
-      auto res = cell_order_cmp_func_[d](dim, left.dimension_datum_view(d), right.dimension_datum_view(d));
+      auto res = cell_order_cmp_func_[d](
+          dim, left.dimension_datum_view(d), right.dimension_datum_view(d));
 
       if (res == 1 || res == -1)
         return res;
@@ -263,7 +264,8 @@ int Domain::cell_order_cmp(
   } else {  // COL_MAJOR
     for (unsigned d = dim_num_ - 1;; --d) {
       auto dim = dimension(d);
-      auto res = cell_order_cmp_func_[d](dim, left.dimension_datum_view(d), right.dimension_datum_view(d));
+      auto res = cell_order_cmp_func_[d](
+          dim, left.dimension_datum_view(d), right.dimension_datum_view(d));
 
       if (res == 1 || res == -1)
         return res;
@@ -697,8 +699,10 @@ int Domain::tile_order_cmp(
       if (dim->var_size() || !dim->tile_extent())
         continue;
 
-      auto res =
-          tile_order_cmp_func_[d](dim, left.dimension_datum_view(d).content(), right.dimension_datum_view(d).content());
+      auto res = tile_order_cmp_func_[d](
+          dim,
+          left.dimension_datum_view(d).content(),
+          right.dimension_datum_view(d).content());
 
       if (res == 1 || res == -1)
         return res;
@@ -710,8 +714,10 @@ int Domain::tile_order_cmp(
 
       // Inapplicable to var-sized dimensions or absent tile extents
       if (!dim->var_size() && dim->tile_extent()) {
-        auto res =
-            tile_order_cmp_func_[d](dim, left.dimension_datum_view(d).content(), right.dimension_datum_view(d).content());
+        auto res = tile_order_cmp_func_[d](
+            dim,
+            left.dimension_datum_view(d).content(),
+            right.dimension_datum_view(d).content());
 
         if (res == 1 || res == -1)
           return res;

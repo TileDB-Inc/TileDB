@@ -71,7 +71,8 @@ class DomainBuffersTypes {
  * A reference to a domain-typed datum. Roughly equivalent to a reference to
  * a DomainTypedDataView.
  */
-class DomainBufferDataRef : public detail::DomainBuffersTypes, public type::DomainDataRef {
+class DomainBufferDataRef : public detail::DomainBuffersTypes,
+                            public type::DomainDataRef {
   /**
    * Friends with DomainBuffersView for its factory.
    */
@@ -98,9 +99,9 @@ class DomainBufferDataRef : public detail::DomainBuffersTypes, public type::Doma
   }
 
   UntypedDatumView dimension_datum_view(unsigned int i) const override;
-//  {
-//    return {qb_[i]->dimension_datum_at(*domain_.dimension(i), k_).datum()};
-//  }
+  //  {
+  //    return {qb_[i]->dimension_datum_at(*domain_.dimension(i), k_).datum()};
+  //  }
 
   DomainBufferDataRef(const Domain& domain) = delete;
 };

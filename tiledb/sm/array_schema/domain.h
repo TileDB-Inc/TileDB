@@ -44,7 +44,7 @@
 
 using namespace tiledb::common;
 namespace tiledb::type {
-  class DomainDataRef;
+class DomainDataRef;
 };
 
 namespace tiledb::sm {
@@ -427,7 +427,8 @@ class Domain {
    *    - +1 if the first coordinates succeed the second on the tile order
    */
   int tile_order_cmp(
-      const tiledb::type::DomainDataRef& left, const tiledb::type::DomainDataRef& right) const;
+      const tiledb::type::DomainDataRef& left,
+      const tiledb::type::DomainDataRef& right) const;
 
   /**
    * Checks the tile order of the input coordinates for a given dimension.

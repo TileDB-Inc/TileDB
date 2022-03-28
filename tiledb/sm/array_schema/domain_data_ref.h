@@ -72,5 +72,5 @@ class DomainDataRef {
   virtual UntypedDatumView dimension_datum_view(unsigned int) const = 0;
 };
 
-}  // namespace tiledb::sm
+}  // namespace tiledb::type
 #endif  // TILEDB_ARRAYSCHEMA_DOMAIN_DATA_REF_H
