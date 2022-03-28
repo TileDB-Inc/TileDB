@@ -359,8 +359,8 @@ class QueryCondition {
    * @return The filtered cell slabs.
    */
   template <typename T, QueryConditionOp Op>
-  std::vector<ResultCellSlab> apply_clause(
-      const Clause& clause,
+  std::vector<ResultCellSlab> apply_val(
+      const tdb_unique_ptr<ASTNodeVal> &node,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
@@ -379,8 +379,8 @@ class QueryCondition {
    * @return Status, filtered cell slabs.
    */
   template <typename T>
-  tuple<Status, optional<std::vector<ResultCellSlab>>> apply_clause(
-      const Clause& clause,
+  tuple<Status, optional<std::vector<ResultCellSlab>>> apply_val(
+      const tdb_unique_ptr<ASTNodeVal> &node,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
@@ -397,12 +397,17 @@ class QueryCondition {
    * @param result_cell_slabs The input cell slabs.
    * @return Status, filtered cell slabs.
    */
-  tuple<Status, optional<std::vector<ResultCellSlab>>> apply_clause(
-      const QueryCondition::Clause& clause,
+  tuple<Status, optional<std::vector<ResultCellSlab>>> apply_val(
+      const tdb_unique_ptr<ASTNodeVal> &node,
       const ArraySchema& array_schema,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
+   optional<std::vector<ResultCellSlab>> apply_tree(
+       const tdb_unique_ptr<ASTNode> &node,
+       const ArraySchema& array_schema,
+      uint64_t stride,
+      const std::vector<ResultCellSlab>& result_cell_slabs) const;
   /**
    * Applies a clause on a dense result tile,
    * templated for a query condition operator.
@@ -417,8 +422,8 @@ class QueryCondition {
    * @param result_buffer The result buffer.
    */
   template <typename T, QueryConditionOp Op>
-  void apply_clause_dense(
-      const QueryCondition::Clause& clause,
+  void apply_val_dense(
+      const ASTNodeVal *node,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t length,
@@ -441,8 +446,8 @@ class QueryCondition {
    * @return Status.
    */
   template <typename T>
-  Status apply_clause_dense(
-      const Clause& clause,
+  Status apply_val_dense(
+      const ASTNodeVal *node,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t length,
@@ -465,8 +470,8 @@ class QueryCondition {
    * @param result_buffer The result buffer.
    * @return Status.
    */
-  Status apply_clause_dense(
-      const QueryCondition::Clause& clause,
+  Status apply_val_dense(
+      const ASTNodeVal *node,
       const ArraySchema& array_schema,
       ResultTile* result_tile,
       const uint64_t start,
@@ -474,6 +479,21 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       uint8_t* result_buffer) const;
+
+/**
+ * TODO: ADD COMMENT
+ * 
+ * @return Status 
+ */
+  void apply_tree_dense(
+    const tdb_unique_ptr<ASTNode> &node,
+    const ArraySchema& array_schema,
+    ResultTile* result_tile,
+    const uint64_t start,
+    const uint64_t length,
+    const uint64_t src_cell,
+    const uint64_t stride,
+    uint8_t* result_buffer) const;
 
   /**
    * Applies a clause on a sparse result tile,
@@ -485,8 +505,8 @@ class QueryCondition {
    * @param result_bitmap The result bitmap.
    */
   template <typename T, QueryConditionOp Op, typename BitmapType>
-  void apply_clause_sparse(
-      const QueryCondition::Clause& clause,
+  void apply_val_sparse(
+      const ASTNodeVal *node,
       ResultTile& result_tile,
       const bool var_size,
       std::vector<BitmapType>& result_bitmap) const;
@@ -501,8 +521,8 @@ class QueryCondition {
    * @return Status.
    */
   template <typename T, typename BitmapType>
-  Status apply_clause_sparse(
-      const Clause& clause,
+  Status apply_val_sparse(
+      const ASTNodeVal *node,
       ResultTile& result_tile,
       const bool var_size,
       std::vector<BitmapType>& result_bitmap) const;
@@ -518,9 +538,16 @@ class QueryCondition {
    * @return Status.
    */
   template <typename BitmapType>
-  Status apply_clause_sparse(
-      const QueryCondition::Clause& clause,
+  Status apply_val_sparse(
+      const ASTNodeVal *node,
       const ArraySchema& array_schema,
+      ResultTile& result_tile,
+      std::vector<BitmapType>& result_bitmap) const;
+  
+  template <typename BitmapType>
+  void apply_tree_sparse(
+      const tdb_unique_ptr<ASTNode> &node,
+       const ArraySchema& array_schema,
       ResultTile& result_tile,
       std::vector<BitmapType>& result_bitmap) const;
 };
