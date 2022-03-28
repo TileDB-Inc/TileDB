@@ -415,8 +415,8 @@ class DomainValueCmpBaseQB {
       , db_(db) {
   }
 
-  [[nodiscard]] DomainTypedDataView domain_data_at(size_t k) const {
-    return db_.domain_data_at(domain_, k);
+  [[nodiscard]] DomainBufferDataRef domain_ref_at(size_t k) const {
+    return db_.domain_ref_at(domain_, k);
   }
 };
 
@@ -448,8 +448,8 @@ class GlobalCmpQB : protected DomainValueCmpBaseQB {
    *     cell at `b`, and `false` otherwise.
    */
   bool operator()(uint64_t a, uint64_t b) const {
-    auto left{domain_data_at(a)};
-    auto right{domain_data_at(b)};
+    auto left{domain_ref_at(a)};
+    auto right{domain_ref_at(b)};
     auto tile_cmp = domain_.tile_order_cmp(left, right);
 
     if (tile_cmp == -1)
@@ -506,8 +506,8 @@ class HilbertCmpQB : protected DomainValueCmpBaseQB {
     // Assert: The hilbert values are equal
 
     // Compare cell order
-    auto left{domain_data_at(a)};
-    auto right{domain_data_at(b)};
+    auto left{domain_ref_at(a)};
+    auto right{domain_ref_at(b)};
     auto cell_cmp = domain_.cell_order_cmp(left, right);
     return cell_cmp == -1;
   }

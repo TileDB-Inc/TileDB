@@ -43,6 +43,9 @@
 #include <vector>
 
 using namespace tiledb::common;
+namespace tiledb::type {
+  class DomainDataRef;
+};
 
 namespace tiledb::sm {
 
@@ -163,7 +166,7 @@ class Domain {
    *    - +1 if the left coordinates succeed the right on the cell order
    */
   int cell_order_cmp(
-      const DomainTypedDataView& left, const DomainTypedDataView& right) const;
+      const type::DomainDataRef& left, const type::DomainDataRef& right) const;
 
   /**
    * Populates the object members from the data in the input binary buffer.
@@ -424,7 +427,7 @@ class Domain {
    *    - +1 if the first coordinates succeed the second on the tile order
    */
   int tile_order_cmp(
-      const DomainTypedDataView& left, const DomainTypedDataView& right) const;
+      const tiledb::type::DomainDataRef& left, const tiledb::type::DomainDataRef& right) const;
 
   /**
    * Checks the tile order of the input coordinates for a given dimension.

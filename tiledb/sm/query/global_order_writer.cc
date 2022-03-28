@@ -246,8 +246,8 @@ Status GlobalOrderWriter::check_global_order() const {
       0,
       coords_info_.coords_num_ - 1,
       [&](uint64_t i) {
-        auto left{domain_buffs.domain_data_at(domain, i)};
-        auto right{domain_buffs.domain_data_at(domain, i + 1)};
+        auto left{domain_buffs.domain_ref_at(domain, i)};
+        auto right{domain_buffs.domain_ref_at(domain, i + 1)};
         auto tile_cmp = domain.tile_order_cmp(left, right);
         auto fail = (tile_cmp > 0) ||
                     ((tile_cmp == 0) && domain.cell_order_cmp(left, right) > 0);

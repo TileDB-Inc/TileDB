@@ -36,19 +36,14 @@
 #include "query_buffer.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/domain_data_ref.h"
 #include "tiledb/sm/array_schema/domain_typed_data_view.h"
 
 namespace tiledb::sm {
 
-/**
- * A non-owning sequence of QueryBuffer pointers, one per dimension of the
- * domain of an open array.
- *
- * This class at present is hardly optimal. It began as a thin rewrite of
- * legacy code and still retains its flavor. It remains a relatively thin
- * wrapper around its storage type.
- */
-class DomainBuffersView {
+namespace detail {
+class DomainBuffersTypes {
+ public:
   /**
    * Buffer type for an individual dimension.
    *
@@ -65,6 +60,60 @@ class DomainBuffersView {
    */
   using storage_type = std::vector<per_dimension_type>;
 
+  /**
+   * The type of the sizes and indices of the storage type
+   */
+  using size_type = storage_type::size_type;
+};
+}  // namespace detail
+
+/**
+ * A reference to a domain-typed datum. Roughly equivalent to a reference to
+ * a DomainTypedDataView.
+ */
+class DomainBufferDataRef : public detail::DomainBuffersTypes, public type::DomainDataRef {
+  /**
+   * Friends with DomainBuffersView for its factory.
+   */
+  friend class DomainBuffersView;
+
+  const Domain& domain_;
+
+  /**
+   * The list of buffers, one for each dimension for some domain.
+   */
+  const storage_type& qb_;
+
+  /**
+   * The index into the buffers that this object refers to.
+   */
+  size_type k_;
+
+ public:
+  explicit DomainBufferDataRef(
+      const Domain& domain, const storage_type& qb, size_type k)
+      : domain_(domain)
+      , qb_(qb)
+      , k_(k) {
+  }
+
+  UntypedDatumView dimension_datum_view(unsigned int i) const override;
+//  {
+//    return {qb_[i]->dimension_datum_at(*domain_.dimension(i), k_).datum()};
+//  }
+
+  DomainBufferDataRef(const Domain& domain) = delete;
+};
+
+/**
+ * A non-owning sequence of QueryBuffer pointers, one per dimension of the
+ * domain of an open array.
+ *
+ * This class at present is hardly optimal. It began as a thin rewrite of
+ * legacy code and still retains its flavor. It remains a relatively thin
+ * wrapper around its storage type.
+ */
+class DomainBuffersView : public detail::DomainBuffersTypes {
   /**
    * The list of buffers, one for each dimension for some domain.
    */
@@ -162,7 +211,20 @@ class DomainBuffersView {
    */
   [[nodiscard]] DomainTypedDataView domain_data_at(
       const Domain& domain, size_t k) const {
-    return DomainTypedDataView{domain, tdb::Tag<InitializerQB>{}, qb_, k};
+    return {domain, tdb::Tag<InitializerQB>{}, qb_, k};
+  }
+
+  /**
+   * Factory method for DomainTypedDataRef. Creates a reference to data drawn
+   * from the QueryBuffer for each dimension, each at the given index.
+   *
+   * @param k Dimension index within the domain
+   * @return Domain value at index `k` drawn from the QueryBuffer map given at
+   * construction
+   */
+  [[nodiscard]] DomainBufferDataRef domain_ref_at(
+      const Domain& domain, size_t k) const {
+    return DomainBufferDataRef{domain, qb_, k};
   }
 };
 
