@@ -33,7 +33,7 @@
 #ifdef HAVE_S3
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/directory_entry.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 
 #include <aws/core/utils/logging/AWSLogging.h>
 #include <aws/core/utils/logging/DefaultLogSystem.h>
@@ -740,7 +740,7 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
          list_objects_outcome.GetResult().GetCommonPrefixes()) {
       std::string file(object.GetPrefix().c_str());
       // For "directories" it doesn't seem possible to get a shallow size in
-      // S3, so the size of such an entry will be nullopt in S3.
+      // S3, so the size of such an entry will be 0 in S3.
       entries.emplace_back(
           "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)), 0);
     }

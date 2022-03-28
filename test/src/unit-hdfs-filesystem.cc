@@ -33,7 +33,7 @@
 #ifdef HAVE_HDFS
 
 #include "catch.hpp"
-#include "tiledb/common/directory_entry.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
 #include "tiledb/sm/filesystem/uri.h"

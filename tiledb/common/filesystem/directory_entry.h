@@ -37,9 +37,7 @@
 
 #include <cstdint>
 
-namespace tiledb {
-namespace common {
-namespace filesystem {
+namespace tiledb::common::filesystem {
 
 class directory_entry {
  public:
@@ -48,7 +46,7 @@ class directory_entry {
   /* ********************************* */
 
   /** Constructor. */
-  directory_entry() = default;
+  directory_entry() = delete;
 
   /**
    * Copy constructor defaulted
@@ -70,7 +68,10 @@ class directory_entry {
    * @param p The path of the entry
    * @param size The size of the filesystem entry
    */
-  directory_entry(const std::string& p, uint64_t size);
+  directory_entry(const std::string& p, uintmax_t size)
+      : path_(p)
+      , size_(size) {
+  }
 
   /** Destructor. */
   ~directory_entry() = default;
@@ -94,19 +95,18 @@ class directory_entry {
   directory_entry& operator=(directory_entry&& dentry) = default;
 
   /**
-   * Assigns new content to the entry.
-   */
-  void assign(const class path& p);
-
-  /**
    * @return The full path the directory_entry refers to
    */
-  const class path& path() const;
+  const class path& path() const {
+    return path_;
+  }
 
   /**
    * @return The size of the file to which the directory entry refers
    */
-  uint64_t file_size() const;
+  uintmax_t file_size() const {
+    return size_;
+  }
 
  private:
   /* ********************************* */
@@ -117,11 +117,9 @@ class directory_entry {
   class path path_;
 
   /** The size of a filesystem entry */
-  uint64_t size_;
+  uintmax_t size_;
 };
 
-}  // namespace filesystem
-}  // namespace common
-}  // namespace tiledb
+}  // namespace tiledb::common::filesystem
 
 #endif  // TILEDB_DIRECTORY_ENTRY_H

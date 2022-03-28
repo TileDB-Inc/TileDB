@@ -39,7 +39,7 @@
 #include <future>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/directory_entry.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/global_state/global_state.h"

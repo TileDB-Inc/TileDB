@@ -40,7 +40,7 @@
 #include <sstream>
 #include <unordered_set>
 
-#include "tiledb/common/directory_entry.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/unique_rwlock.h"
 #include "tiledb/sm/filesystem/gcs.h"

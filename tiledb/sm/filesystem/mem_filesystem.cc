@@ -35,7 +35,7 @@
 #include <sstream>
 #include <unordered_set>
 
-#include "tiledb/common/directory_entry.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"

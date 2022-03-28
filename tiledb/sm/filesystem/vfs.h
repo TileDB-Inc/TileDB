@@ -40,7 +40,7 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/directory_entry.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/buffer/buffer.h"

@@ -1,5 +1,5 @@
 /**
- * @file   directory_entry.cc
+ * @file   path.h
  *
  * @section LICENSE
  *
@@ -27,40 +27,47 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class directory_entry.
+ * This file implements class path.
  */
 
-#include "directory_entry.h"
-#include "path.h"
+#ifndef TILEDB_PATH_H
+#define TILEDB_PATH_H
 
-namespace tiledb {
-namespace common {
-namespace filesystem {
-/* ********************************* */
-/*     CONSTRUCTORS & DESTRUCTORS    */
-/* ********************************* */
+#include <string>
 
-directory_entry::directory_entry(const std::string& p, uint64_t size)
-    : path_(p)
-    , size_(size) {
-}
+namespace tiledb::common::filesystem {
 
-/* ********************************* */
-/*                API                */
-/* ********************************* */
+class path {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
 
-void directory_entry::assign(const class path& path) {
-  path_ = path;
-}
+  /** Constructor. */
+  path() = delete;
 
-const class path& directory_entry::path() const {
-  return path_;
-}
+  /**
+   * Constructor
+   *
+   * @param p The path to hold
+   */
+  path(const std::string& p)
+      : path_(p) {
+  }
 
-uint64_t directory_entry::file_size() const {
-  return size_;
-}
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
 
-}  // namespace filesystem
-}  // namespace common
-}  // namespace tiledb
+  /** Returns the internal path string*/
+  const std::string& native() const {
+    return path_;
+  }
+
+ private:
+  std::string path_;
+};
+
+}  // namespace tiledb::common::filesystem
+
+#endif  // TILEDB_PATH_H

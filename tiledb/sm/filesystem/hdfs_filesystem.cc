@@ -41,7 +41,7 @@
 #ifdef HAVE_HDFS
 
 #include "hdfs_filesystem.h"
-#include "tiledb/common/directory_entry.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/config/config.h"

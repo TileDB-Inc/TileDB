@@ -33,7 +33,7 @@
 #ifndef _WIN32
 
 #include "tiledb/sm/filesystem/posix.h"
-#include "tiledb/common/directory_entry.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/common/thread_pool.h"
@@ -315,7 +315,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
     // Getting the file size here incurs an additional system call
     // via file_size() and ls() calls will feel this too.
     // If this penalty becomes noticeable, we should just duplicate
-    // thi implementation in ls() and don't get the size
+    // this implementation in ls() and don't get the size
     if (next_path->d_type == DT_DIR) {
       entries.emplace_back(abspath, 0);
     } else {
