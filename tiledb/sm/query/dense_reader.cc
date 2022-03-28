@@ -403,6 +403,9 @@ Status DenseReader::init_read_state() {
                            "subarrays do not "
                            "support global order"));
 
+  // Make sure ranges are sorted.
+  RETURN_NOT_OK(subarray_.sort_ranges(storage_manager_->compute_tp()));
+
   // Get config values.
   bool found = false;
   uint64_t memory_budget = 0;
