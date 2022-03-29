@@ -309,7 +309,15 @@ Status dimension_to_capnp(
 ByteVecValue tile_extent_from_capnp(
     const capnp::Dimension::TileExtent::Reader tile_extent_reader,
     Datatype dim_type) {
+  // When the datatype_size function returns 0, we know that the input datatype
+  // is invalid.
   auto coord_size = datatype_size(dim_type);
+  if (coord_size == 0) {
+    throw std::runtime_error(
+        "Error deserializing tile extent, datatype " + datatype_str(dim_type) +
+        " is invalid.");
+  }
+
   ByteVecValue tile_extent(coord_size);
   switch (dim_type) {
     case Datatype::INT8: {
@@ -402,10 +410,14 @@ shared_ptr<Dimension> dimension_from_capnp(
     throw std::runtime_error(
         "Error deserializing dimension, could not process datatype.");
   }
+
+  // When the datatype_size function returns 0, we know that the datatype is
+  // invalid.
   auto coord_size = datatype_size(dim_type);
   if (coord_size == 0) {
     throw std::runtime_error(
-        "Error deserializing dimension; unknown datatype.");
+        "Error deserializing dimension, datatype " + datatype_str(dim_type) +
+        " is invalid."););
   }
 
   // cell val num
