@@ -56,6 +56,7 @@
 #include "tiledb/sm/serialization/array_schema.h"
 
 #include <set>
+#include <string>
 
 using namespace tiledb::common;
 
@@ -314,7 +315,9 @@ ByteVecValue tile_extent_from_capnp(
   // is invalid.
   auto coord_size = datatype_size(dim_type);
   if (coord_size == 0) {
-    throw std::runtime_error(" Input datatype is invalid.");
+    throw std::runtime_error(
+        "From tile_extent_from_capnp: input datatype " +
+        std::to_string(static_cast<uint8_t>(dim_type)) + " is invalid.");
   }
 
   ByteVecValue tile_extent(coord_size);
@@ -393,8 +396,8 @@ ByteVecValue tile_extent_from_capnp(
     }
     default:
       throw std::logic_error(
-          "Default branch of switch statement in tile_extent_from_capnp should "
-          "not be reached.");
+          "From tile_extent_from_capnp: Default branch of switch statement "
+          "should not be reached.");
   }
   return tile_extent;
 }
@@ -407,15 +410,17 @@ shared_ptr<Dimension> dimension_from_capnp(
       datatype_enum(dimension_reader.getType().cStr(), &dim_type);
   if (!s_datatype_enum.ok()) {
     throw std::runtime_error(
-        "Could not process datatype obtained from the capnp dimension reader "
-        "object.");
+        "From dimension_from_capnp: Could not process datatype obtained from "
+        "the capnp dimension reader object.");
   }
 
   // When the datatype_size function returns 0, we know that the datatype is
   // invalid.
   auto coord_size = datatype_size(dim_type);
   if (coord_size == 0) {
-    throw std::runtime_error("Input datatype is invalid.");
+    throw std::runtime_error(
+        "From dimension_from_capnp: Input datatype " +
+        std::to_string(static_cast<uint8_t>(dim_type)) + " is invalid.");
   }
 
   // cell val num
@@ -430,8 +435,8 @@ shared_ptr<Dimension> dimension_from_capnp(
         utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer);
     if (!s_copy_capnp_list.ok()) {
       throw std::runtime_error(
-          "Could not process domain obtained from the capnp dimension reader "
-          "object.");
+          "From dimension_from_capnp: Could not process domain obtained from "
+          "the capnp dimension reader object.");
     }
     domain = Range(domain_buffer.data(), coord_size * 2);
   }
@@ -442,8 +447,8 @@ shared_ptr<Dimension> dimension_from_capnp(
     auto&& [st_fp, f]{filter_pipeline_from_capnp(reader)};
     if (!st_fp.ok()) {
       throw std::runtime_error(
-          "Could not process filter pipeline obtained from the capnp dimension "
-          "reader object.");
+          "From dimension_from_capnp: Could not process filter pipeline "
+          "obtained from the capnp dimension reader object.");
     }
     filters = f.value();
   }
