@@ -141,7 +141,7 @@ class RTree {
   /**
    * Sets the RTree domain.
    */
-  inline Status RTree::set_domain(const Domain* domain) {
+  inline Status set_domain(const Domain* domain) {
     domain_ = domain;
     return Status::Ok();
   }
