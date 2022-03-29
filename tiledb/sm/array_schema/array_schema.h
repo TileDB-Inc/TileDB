@@ -260,7 +260,7 @@ class ArraySchema {
   Status deserialize(ConstBuffer* buff);
 
   /** Returns the array domain. */
-  inline const Domain& ArraySchema::domain() const {
+  inline const Domain& domain() const {
     return *const_cast<const Domain*>(domain_.get());
   }
 
