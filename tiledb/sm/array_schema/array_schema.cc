@@ -599,8 +599,13 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   }
 
   // Load domain
-  domain_ = make_shared<Domain>(HERE());
-  RETURN_NOT_OK(domain_->deserialize(buff, version_));
+  auto&& [st_domain, deserialized_domain]{
+      Domain::deserialize(buff, version_, cell_order_, tile_order_)};
+  if (!st_domain.ok()) {
+    return st_domain;
+  }
+
+  domain_ = deserialized_domain.value();
 
   // Load attributes
   uint32_t attribute_num;

@@ -111,14 +111,15 @@ steps:
     includeRootFolder: false
     archiveType: 'tar' # Options: zip, 7z, tar, wim
     tarCompression: 'gz' # Optional. Options: gz, bz2, xz, none
-    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz
+    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.tar.gz
     replaceExistingArchive: true
     verbose: true # Optional
 
 - task: PublishBuildArtifacts@1
   inputs:
-    pathToPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-build-dir-$(ARTIFACT_EXTRAS).tar.gz'
+    pathToPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.tar.gz'
     artifactName: 'build-dirs'
+  condition: succeeded()
 
 - script: |
     echo $sourceVersion

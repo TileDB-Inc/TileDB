@@ -13,6 +13,8 @@ my_array                                    # array folder
          |      |_ a0.tdb                   # fixed-sized attribute 
          |      |_ a1.tdb                   # var-sized attribute (offsets) 
          |      |_ a1_var.tdb               # var-sized attribute (values)
+         |      |_ a2.tdb                   # fixed-sized nullable attribute
+         |      |_ a2_validity.tdb          # fixed-sized nullable attribute (validities)
          |      |_ ...      
          |      |_ d0.tdb                   # fixed-sized dimension 
          |      |_ d1.tdb                   # var-sized dimension (offsets) 
@@ -47,6 +49,9 @@ The fragment metadata file has the following on-disk format:
 | Variable tile sizes for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized variable tile sizes for attribute/dimension 1 |
 | … | … | … |
 | Variable tile sizes for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized variable tile sizes for attribute/dimension N |
+| Validity tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized validity tile offsets for attribute/dimension 1 |
+| … | … | … |
+| Validity tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized validity tile offsets for attribute/dimension N |
 | Tile mins for attribute/dimension 1 | [Tile mins/maxs](#tile-mins-maxs) | The serialized mins for attribute/dimension 1 |
 | … | … | … |
 | Variable mins for attribute/dimension N | [Tile mins/maxs](#tile-mins-maxs) | The serialized mins for attribute/dimension N |
