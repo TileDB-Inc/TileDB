@@ -51,7 +51,8 @@ enum class Datatype : uint8_t {
 #undef TILEDB_DATATYPE_ENUM
 };
 
-/** Returns the datatype size.
+/**
+ *  Returns the datatype size.
  *  Function also serves as a datatype validation function. When this function
  *  returns 0, we know the input datatype being passed in is invalid.
  */
