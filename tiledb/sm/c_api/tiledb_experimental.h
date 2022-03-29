@@ -359,6 +359,41 @@ TILEDB_EXPORT int32_t tiledb_ctx_alloc_with_error(
     tiledb_ctx_t** ctx,
     tiledb_error_t** error) noexcept;
 
+/* ********************************* */
+/*           CONSOLIDATION           */
+/* ********************************* */
+
+/**
+ * Consolidates the given fragment URIs into a single fragment.
+ *
+ * Note: This API needs to be used with caution until we implement
+ * consolidation with timestamps. For now, if the non-empty domain of the
+ * consolidated fragments overlap anything in the fragments that come in
+ * between, this could lead to unpredictable behavior.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const char* uris[2]={"__0_0_0807b1428b6c4ff48b3cdb3283ca7903_10",
+ *                      "__1_1_d9d965753d224194965575c1e9cdeeda_10"};
+ * tiledb_array_consolidate(ctx, "my_array", uris, 2);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The name of the TileDB array whose metadata will
+ *     be consolidated.
+ * @param fragment_uris URIs of the fragments to consolidate.
+ * @param num_fragments Number of URIs to consolidate.
+ *
+ * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_consolidate_fragments(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const char** fragment_uris,
+    const uint64_t num_fragments,
+    tiledb_config_t* config) noexcept;
+
 #ifdef __cplusplus
 }
 #endif

@@ -283,6 +283,28 @@ class StorageManager {
       const Config* config);
 
   /**
+   * Consolidates the fragments of an array into a single one.
+   *
+   * @param array_name The name of the array to be consolidated.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @param fragment_uris URIs of the fragments to consolidate.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @return Status
+   */
+  Status fragments_consolidate(
+      const char* array_name,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      const std::vector<std::string> fragment_uris,
+      const Config* config);
+
+  /**
    * Cleans up the array, such as its consolidated fragments and array
    * metadata. Note that this will coarsen the granularity of time traveling
    * (see docs for more information).
