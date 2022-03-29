@@ -53,8 +53,8 @@ namespace sm {
 ResultTile::ResultTile(
     unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
     : frag_idx_(frag_idx)
-    , tile_idx_(tile_idx) {
-  domain_ = array_schema.domain();
+    , tile_idx_(tile_idx)
+    , domain_(&array_schema.domain()) {
   coord_tiles_.resize(domain_->dim_num());
   attr_tiles_.resize(array_schema.attribute_num());
   for (uint64_t i = 0; i < array_schema.attribute_num(); i++) {
@@ -124,10 +124,6 @@ uint64_t ResultTile::cell_num() const {
   }
 
   return 0;
-}
-
-shared_ptr<const Domain> ResultTile::domain() const {
-  return domain_;
 }
 
 void ResultTile::erase_tile(const std::string& name) {

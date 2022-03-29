@@ -344,29 +344,29 @@ Status Consolidator::consolidate_fragments(
 }
 
 bool Consolidator::are_consolidatable(
-    shared_ptr<const Domain> domain,
+    const Domain& domain,
     const FragmentInfo& fragment_info,
     size_t start,
     size_t end,
     const NDRange& union_non_empty_domains) const {
   auto anterior_ndrange = fragment_info.anterior_ndrange();
   if (anterior_ndrange.size() != 0 &&
-      domain->overlap(union_non_empty_domains, anterior_ndrange))
+      domain.overlap(union_non_empty_domains, anterior_ndrange))
     return false;
 
   // Check overlap of union with earlier fragments
   const auto& fragments = fragment_info.single_fragment_info_vec();
   for (size_t i = 0; i < start; ++i) {
-    if (domain->overlap(
+    if (domain.overlap(
             union_non_empty_domains, fragments[i].non_empty_domain()))
       return false;
   }
 
   // Check consolidation amplification factor
-  auto union_cell_num = domain->cell_num(union_non_empty_domains);
+  auto union_cell_num = domain.cell_num(union_non_empty_domains);
   uint64_t sum_cell_num = 0;
   for (size_t i = start; i <= end; ++i) {
-    sum_cell_num += domain->cell_num(fragments[i].expanded_non_empty_domain());
+    sum_cell_num += domain.cell_num(fragments[i].expanded_non_empty_domain());
   }
 
   return (double(union_cell_num) / sum_cell_num) <= config_.amplification_;
@@ -614,7 +614,7 @@ Status Consolidator::create_buffers(
 
   // For easy reference
   auto attribute_num = array_schema.attribute_num();
-  auto domain = array_schema.domain();
+  auto& domain{array_schema.domain()};
   auto dim_num = array_schema.dim_num();
   auto sparse = !array_schema.dense();
 
@@ -626,7 +626,7 @@ Status Consolidator::create_buffers(
   }
   if (sparse) {
     for (unsigned i = 0; i < dim_num; ++i)
-      buffer_num += (domain->dimension(i)->var_size()) ? 2 : 1;
+      buffer_num += (domain.dimension(i)->var_size()) ? 2 : 1;
   }
 
   // Create buffers
@@ -699,7 +699,7 @@ Status Consolidator::compute_next_to_consolidate(
   // Preparation
   auto sparse = !array_schema.dense();
   const auto& fragments = fragment_info.single_fragment_info_vec();
-  auto domain = array_schema.domain();
+  auto& domain{array_schema.domain()};
   to_consolidate->clear();
   auto min = config_.min_frags_;
   min = (uint32_t)((min > fragments.size()) ? fragments.size() : min);
@@ -751,9 +751,9 @@ Status Consolidator::compute_next_to_consolidate(
         if (ratio >= size_ratio && (m_sizes[i - 1][j] != UINT64_MAX)) {
           m_sizes[i][j] = m_sizes[i - 1][j] + fragments[i + j].fragment_size();
           m_union[i][j] = m_union[i - 1][j];
-          domain->expand_ndrange(
+          domain.expand_ndrange(
               fragments[i + j].non_empty_domain(), &m_union[i][j]);
-          domain->expand_to_tiles(&m_union[i][j]);
+          domain.expand_to_tiles(&m_union[i][j]);
           if (!sparse && !are_consolidatable(
                              domain, fragment_info, j, j + i, m_union[i][j])) {
             // Mark this entry as invalid

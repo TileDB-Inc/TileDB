@@ -87,7 +87,7 @@ FragmentMetadata::FragmentMetadata(
     , last_tile_cell_num_(0)
     , sparse_tile_num_(0)
     , meta_file_size_(0)
-    , rtree_(RTree(array_schema_->domain(), constants::rtree_fanout))
+    , rtree_(RTree(&array_schema_->domain(), constants::rtree_fanout))
     , tile_index_base_(0)
     , version_(array_schema_->write_version())
     , timestamp_range_(timestamp_range)
@@ -453,7 +453,7 @@ uint64_t FragmentMetadata::cell_num() const {
   auto tile_num = this->tile_num();
   assert(tile_num != 0);
   if (dense_) {  // Dense fragment
-    return tile_num * array_schema_->domain()->cell_num_per_tile();
+    return tile_num * array_schema_->domain().cell_num_per_tile();
   } else {  // Sparse fragment
     return (tile_num - 1) * array_schema_->capacity() + last_tile_cell_num();
   }
@@ -461,7 +461,7 @@ uint64_t FragmentMetadata::cell_num() const {
 
 uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
   if (dense_)
-    return array_schema_->domain()->cell_num_per_tile();
+    return array_schema_->domain().cell_num_per_tile();
 
   uint64_t tile_num = this->tile_num();
   if (tile_pos != tile_num - 1)
@@ -715,7 +715,7 @@ Status FragmentMetadata::init(const NDRange& non_empty_domain) {
   // For easy reference
   auto dim_num = array_schema_->dim_num();
   auto num = array_schema_->attribute_num() + dim_num + 1;
-  auto domain = array_schema_->domain();
+  auto& domain{array_schema_->domain()};
 
   // Sanity check
   assert(!non_empty_domain.empty());
@@ -731,11 +731,11 @@ Status FragmentMetadata::init(const NDRange& non_empty_domain) {
     // dense consolidation, as the consolidator may have expanded
     // the fragment domain beyond the array domain to include
     // integral space tiles
-    domain->crop_ndrange(&non_empty_domain_);
+    domain.crop_ndrange(&non_empty_domain_);
 
     // Set expanded domain
     domain_ = non_empty_domain_;
-    domain->expand_to_tiles(&domain_);
+    domain.expand_to_tiles(&domain_);
   }
 
   // Set last tile cell number
@@ -1128,10 +1128,6 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   return Status::Ok();
 }
 
-void FragmentMetadata::set_rtree_domain(shared_ptr<const Domain> domain) {
-  rtree_.set_domain(domain);
-}
-
 void FragmentMetadata::set_last_tile_cell_num(uint64_t cell_num) {
   last_tile_cell_num_ = cell_num;
 }
@@ -1142,7 +1138,7 @@ uint64_t FragmentMetadata::tile_index_base() const {
 
 uint64_t FragmentMetadata::tile_num() const {
   if (dense_)
-    return array_schema_->domain()->tile_num(domain_);
+    return array_schema_->domain().tile_num(domain_);
 
   return sparse_tile_num_;
 }
@@ -1801,7 +1797,7 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   }
 
   ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(rtree_.deserialize(&cbuff, array_schema_->domain(), version_));
+  RETURN_NOT_OK(rtree_.deserialize(&cbuff, &array_schema_->domain(), version_));
 
   loaded_metadata_.rtree_ = true;
 
@@ -1854,7 +1850,7 @@ Status FragmentMetadata::get_footer_offset_and_size(
   uint32_t f_version;
   auto name = fragment_uri_.remove_trailing_slash().last_path_part();
   RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
-  if (array_schema_->domain()->all_dims_fixed() && f_version < 5) {
+  if (array_schema_->domain().all_dims_fixed() && f_version < 5) {
     RETURN_NOT_OK(get_footer_size(f_version, size));
     *offset = meta_file_size_ - *size;
   } else {
@@ -1909,9 +1905,9 @@ uint64_t FragmentMetadata::footer_size_v5_v6() const {
     // would not be empty. For reading the footer from storage, the footer
     // size is explicitly stored to and retrieved from storage, so this
     // function is not called then.
-    assert(array_schema_->domain()->all_dims_fixed());
+    assert(array_schema_->domain().all_dims_fixed());
     for (unsigned d = 0; d < dim_num; ++d)
-      domain_size += 2 * array_schema_->domain()->dimension(d)->coord_size();
+      domain_size += 2 * array_schema_->domain().dimension(d)->coord_size();
   } else {
     for (unsigned d = 0; d < dim_num; ++d) {
       domain_size += non_empty_domain_[d].size();
@@ -1949,9 +1945,9 @@ uint64_t FragmentMetadata::footer_size_v7_v10() const {
     // would not be empty. For reading the footer from storage, the footer
     // size is explicitly stored to and retrieved from storage, so this
     // function is not called then.
-    assert(array_schema_->domain()->all_dims_fixed());
+    assert(array_schema_->domain().all_dims_fixed());
     for (unsigned d = 0; d < dim_num; ++d)
-      domain_size += 2 * array_schema_->domain()->dimension(d)->coord_size();
+      domain_size += 2 * array_schema_->domain().dimension(d)->coord_size();
   } else {
     for (unsigned d = 0; d < dim_num; ++d) {
       domain_size += non_empty_domain_[d].size();
@@ -1991,9 +1987,9 @@ uint64_t FragmentMetadata::footer_size_v11_or_higher() const {
     // would not be empty. For reading the footer from storage, the footer
     // size is explicitly stored to and retrieved from storage, so this
     // function is not called then.
-    assert(array_schema_->domain()->all_dims_fixed());
+    assert(array_schema_->domain().all_dims_fixed());
     for (unsigned d = 0; d < dim_num; ++d)
-      domain_size += 2 * array_schema_->domain()->dimension(d)->coord_size();
+      domain_size += 2 * array_schema_->domain().dimension(d)->coord_size();
   } else {
     for (unsigned d = 0; d < dim_num; ++d) {
       domain_size += non_empty_domain_[d].size();
@@ -2034,7 +2030,7 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
   auto dim_num = array_schema_->dim_num();
 
   // Temporary domain vector
-  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+  auto coord_size = array_schema_->domain().dimension(0)->coord_size();
   auto temp_size = 2 * dim_num * coord_size;
   std::vector<uint8_t> temp(temp_size);
   uint8_t offset = 0;
@@ -2058,12 +2054,12 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
     tile_coords[i] = subarray_tile_domain[2 * i];
 
   // Walk through all tiles in subarray tile domain
-  auto domain = array_schema_->domain();
+  auto& domain{array_schema_->domain()};
   uint64_t tile_pos;
   do {
-    tile_pos = domain->get_tile_pos(metadata_domain, tile_coords);
+    tile_pos = domain.get_tile_pos(metadata_domain, tile_coords);
     tids.emplace_back(tile_pos);
-    domain->get_next_tile_coords(subarray_tile_domain, tile_coords);
+    domain.get_next_tile_coords(subarray_tile_domain, tile_coords);
   } while (utils::geometry::coords_in_rect(
       tile_coords, subarray_tile_domain, dim_num));
 
@@ -2082,7 +2078,7 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
   auto dim_num = array_schema_->dim_num();
 
   // Temporary domain vector
-  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+  auto coord_size = array_schema_->domain().dimension(0)->coord_size();
   auto temp_size = 2 * dim_num * coord_size;
   std::vector<uint8_t> temp(temp_size);
   uint8_t offset = 0;
@@ -2111,17 +2107,17 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
     tile_coords[i] = subarray_tile_domain[2 * i];
 
   // Walk through all tiles in subarray tile domain
-  auto domain = array_schema_->domain();
+  auto& domain{array_schema_->domain()};
   uint64_t tile_pos;
   do {
-    domain->get_tile_subarray(metadata_domain, tile_coords, tile_subarray);
+    domain.get_tile_subarray(metadata_domain, tile_coords, tile_subarray);
     utils::geometry::overlap(
         subarray, tile_subarray, dim_num, tile_overlap, &overlap);
     assert(overlap);
     cov = utils::geometry::coverage(tile_overlap, tile_subarray, dim_num);
-    tile_pos = domain->get_tile_pos(metadata_domain, tile_coords);
+    tile_pos = domain.get_tile_pos(metadata_domain, tile_coords);
     tids.emplace_back(tile_pos, cov);
-    domain->get_next_tile_coords(subarray_tile_domain, tile_coords);
+    domain.get_next_tile_coords(subarray_tile_domain, tile_coords);
   } while (utils::geometry::coords_in_rect(
       tile_coords, subarray_tile_domain, dim_num));
 
@@ -2143,8 +2139,7 @@ void FragmentMetadata::get_subarray_tile_domain(
   // Calculate subarray in tile domain
   for (unsigned d = 0; d < dim_num; ++d) {
     auto domain = (const T*)domain_[d].data();
-    auto tile_extent =
-        *(const T*)array_schema_->domain()->tile_extent(d).data();
+    auto tile_extent = *(const T*)array_schema_->domain().tile_extent(d).data();
     auto overlap = std::max(subarray[2 * d], domain[0]);
     subarray_tile_domain[2 * d] =
         Dimension::tile_idx(overlap, domain[0], tile_extent);
@@ -2165,7 +2160,7 @@ Status FragmentMetadata::expand_non_empty_domain(const NDRange& mbr) {
   }
 
   // Expand existing non-empty domain
-  array_schema_->domain()->expand_ndrange(mbr, &non_empty_domain_);
+  array_schema_->domain().expand_ndrange(mbr, &non_empty_domain_);
 
   return Status::Ok();
 }
@@ -2384,8 +2379,8 @@ Status FragmentMetadata::load_bounding_coords(ConstBuffer* buff) {
 
   // Get bounding coordinates
   // Note: This version supports only dimensions domains with the same type
-  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
-  auto dim_num = array_schema_->domain()->dim_num();
+  auto coord_size = array_schema_->domain().dimension(0)->coord_size();
+  auto dim_num = array_schema_->domain().dim_num();
   uint64_t bounding_coords_size = 2 * dim_num * coord_size;
   bounding_coords_.resize(bounding_coords_num);
   for (uint64_t i = 0; i < bounding_coords_num; ++i) {
@@ -2520,12 +2515,12 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
 
   // Set leaf level
   rtree_.set_leaf_num(mbr_num);
-  auto domain = array_schema_->domain();
-  auto dim_num = domain->dim_num();
+  auto& domain{array_schema_->domain()};
+  auto dim_num = domain.dim_num();
   for (uint64_t m = 0; m < mbr_num; ++m) {
     NDRange mbr(dim_num);
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto r_size = 2 * domain->dimension(d)->coord_size();
+      auto r_size = 2 * domain.dimension(d)->coord_size();
       mbr[d].set_range(buff->cur_data(), r_size);
       buff->advance_offset(r_size);
     }
@@ -2576,7 +2571,7 @@ Status FragmentMetadata::load_non_empty_domain_v1_v2(ConstBuffer* buff) {
   // Get expanded domain
   if (!non_empty_domain_.empty()) {
     domain_ = non_empty_domain_;
-    array_schema_->domain()->expand_to_tiles(&domain_);
+    array_schema_->domain().expand_to_tiles(&domain_);
   }
 
   return Status::Ok();
@@ -2594,7 +2589,7 @@ Status FragmentMetadata::load_non_empty_domain_v3_v4(ConstBuffer* buff) {
   if (!null_non_empty_domain) {
     auto dim_num = array_schema_->dim_num();
     // Note: These versions supports only dimensions domains with the same type
-    auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+    auto coord_size = array_schema_->domain().dimension(0)->coord_size();
     auto domain_size = 2 * dim_num * coord_size;
     std::vector<uint8_t> temp(domain_size);
     RETURN_NOT_OK(buff->read(&temp[0], domain_size));
@@ -2611,7 +2606,7 @@ Status FragmentMetadata::load_non_empty_domain_v3_v4(ConstBuffer* buff) {
   // Get expanded domain
   if (!non_empty_domain_.empty()) {
     domain_ = non_empty_domain_;
-    array_schema_->domain()->expand_to_tiles(&domain_);
+    array_schema_->domain().expand_to_tiles(&domain_);
   }
 
   return Status::Ok();
@@ -2626,12 +2621,12 @@ Status FragmentMetadata::load_non_empty_domain_v5_or_higher(ConstBuffer* buff) {
   char null_non_empty_domain = 0;
   RETURN_NOT_OK(buff->read(&null_non_empty_domain, sizeof(char)));
 
-  auto domain = array_schema_->domain();
+  auto& domain{array_schema_->domain()};
   if (null_non_empty_domain == 0) {
     auto dim_num = array_schema_->dim_num();
     non_empty_domain_.resize(dim_num);
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = domain->dimension(d);
+      auto dim = domain.dimension(d);
       if (!dim->var_size()) {  // Fixed-sized
         auto r_size = 2 * dim->coord_size();
         non_empty_domain_[d].set_range(buff->cur_data(), r_size);
@@ -2649,7 +2644,7 @@ Status FragmentMetadata::load_non_empty_domain_v5_or_higher(ConstBuffer* buff) {
   // Get expanded domain
   if (!non_empty_domain_.empty()) {
     domain_ = non_empty_domain_;
-    array_schema_->domain()->expand_to_tiles(&domain_);
+    array_schema_->domain().expand_to_tiles(&domain_);
   }
 
   return Status::Ok();
@@ -3852,9 +3847,9 @@ Status FragmentMetadata::write_array_schema_name(Buffer* buff) const {
 // ===== FORMAT =====
 // last_tile_cell_num(uint64_t)
 Status FragmentMetadata::write_last_tile_cell_num(Buffer* buff) const {
-  uint64_t cell_num_per_tile =
-      dense_ ? array_schema_->domain()->cell_num_per_tile() :
-               array_schema_->capacity();
+  uint64_t cell_num_per_tile = dense_ ?
+                                   array_schema_->domain().cell_num_per_tile() :
+                                   array_schema_->capacity();
 
   // Handle the case of zero
   uint64_t last_tile_cell_num =
@@ -3898,13 +3893,13 @@ Status FragmentMetadata::write_non_empty_domain(Buffer* buff) const {
 
   // Write domain size
   uint64_t domain_size = 0;
-  auto domain = array_schema_->domain();
-  auto dim_num = domain->dim_num();
+  auto& domain = array_schema_->domain();
+  auto dim_num = domain.dim_num();
   if (non_empty_domain_.empty()) {
     // Applicable only to homogeneous domains with fixed-sized types
-    assert(domain->all_dims_fixed());
-    assert(domain->all_dims_same_type());
-    domain_size = 2 * dim_num * domain->dimension(0)->coord_size();
+    assert(domain.all_dims_fixed());
+    assert(domain.all_dims_same_type());
+    domain_size = 2 * dim_num * domain.dimension(0)->coord_size();
 
     // Write domain (dummy values)
     std::vector<uint8_t> d(domain_size, 0);
@@ -3912,7 +3907,7 @@ Status FragmentMetadata::write_non_empty_domain(Buffer* buff) const {
   } else {
     // Write non-empty domain
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = domain->dimension(d);
+      auto dim = domain.dimension(d);
       const auto& r = non_empty_domain_[d];
       if (!dim->var_size()) {  // Fixed-sized
         RETURN_NOT_OK(buff->write(r.data(), r.size()));
@@ -4002,7 +3997,7 @@ Status FragmentMetadata::write_footer_to_file(Buffer* buff) const {
       fragment_metadata_uri, buff->data(), buff->size()));
 
   // Write the size in the end if there is at least one var-sized dimension
-  if (!array_schema_->domain()->all_dims_fixed() || version_ >= 10)
+  if (!array_schema_->domain().all_dims_fixed() || version_ >= 10)
     return storage_manager_->write(fragment_metadata_uri, &size, sizeof(size));
   return Status::Ok();
 }
