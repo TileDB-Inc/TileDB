@@ -309,13 +309,12 @@ Status dimension_to_capnp(
 ByteVecValue tile_extent_from_capnp(
     const capnp::Dimension::TileExtent::Reader tile_extent_reader,
     Datatype dim_type) {
+  // The datatype_size function also serves as a datatype validation function.
   // When the datatype_size function returns 0, we know that the input datatype
   // is invalid.
   auto coord_size = datatype_size(dim_type);
   if (coord_size == 0) {
-    throw std::runtime_error(
-        "Error deserializing tile extent, datatype " + datatype_str(dim_type) +
-        " is invalid.");
+    throw std::runtime_error(" Input datatype is invalid.");
   }
 
   ByteVecValue tile_extent(coord_size);
@@ -408,16 +407,15 @@ shared_ptr<Dimension> dimension_from_capnp(
       datatype_enum(dimension_reader.getType().cStr(), &dim_type);
   if (!s_datatype_enum.ok()) {
     throw std::runtime_error(
-        "Error deserializing dimension, could not process datatype.");
+        "Could not process datatype obtained from the capnp dimension reader "
+        "object.");
   }
 
   // When the datatype_size function returns 0, we know that the datatype is
   // invalid.
   auto coord_size = datatype_size(dim_type);
   if (coord_size == 0) {
-    throw std::runtime_error(
-        "Error deserializing dimension, datatype " + datatype_str(dim_type) +
-        " is invalid.");
+    throw std::runtime_error("Input datatype is invalid.");
   }
 
   // cell val num
@@ -432,7 +430,8 @@ shared_ptr<Dimension> dimension_from_capnp(
         utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer);
     if (!s_copy_capnp_list.ok()) {
       throw std::runtime_error(
-          "Error deserializing dimension; could not process domain.");
+          "Could not process domain obtained from the capnp dimension reader "
+          "object.");
     }
     domain = Range(domain_buffer.data(), coord_size * 2);
   }
@@ -443,7 +442,8 @@ shared_ptr<Dimension> dimension_from_capnp(
     auto&& [st_fp, f]{filter_pipeline_from_capnp(reader)};
     if (!st_fp.ok()) {
       throw std::runtime_error(
-          "Error deserializing dimension, could not process filter pipeline.");
+          "Could not process filter pipeline obtained from the capnp dimension "
+          "reader object.");
     }
     filters = f.value();
   }
