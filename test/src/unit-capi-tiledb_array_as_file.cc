@@ -293,7 +293,7 @@ TEST_CASE_METHOD(
   tiledb_array_t* array2 = nullptr;
   int32_t is_array_open, is_array2_open;
 
-  auto prep_clean_data = [&]() -> void {
+  auto prep_clean_data = [&](bool init_timestamp = true) -> void {
     if (array) {
       CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
       CHECK(is_array_open == 0);
@@ -313,22 +313,27 @@ TEST_CASE_METHOD(
         tiledb_array_as_file_obtain(ctx_, &array, array_name.c_str(), cfg) ==
         TILEDB_OK);
 
-    array->array_->set_timestamp_end(1);
+    if (init_timestamp) {
+      array->array_->set_timestamp_end(1);
+    }
     REQUIRE(
         tiledb_array_as_file_obtain(ctx_, &array2, array_name.c_str(), cfg) ==
         TILEDB_OK);
     array2->array_->set_timestamp_end(1);
   };
 
-  prep_clean_data();
+  // one export withOUT having set timestamp, to mimic basic functionality
+  // for real-world usage.
+  prep_clean_data(false);
 
   const std::string csv_name = "quickstart_dense.csv";
   const std::string csv_path = files_dir + "/" + csv_name;
-  array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
+  // array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
   array2->array_->set_timestamp_end(array->array_->timestamp_end());
   CHECK(
       tiledb_array_as_file_import(ctx_, array, csv_path.c_str()) == TILEDB_OK);
 
+  array2->array_->set_timestamp_end(array->array_->timestamp_end());
   CHECK(
       tiledb_array_as_file_export(ctx_, array2, output_pathA.c_str()) ==
       TILEDB_OK);
@@ -432,6 +437,7 @@ TEST_CASE_METHOD(
 
   {
     // process files in order of increasing size
+
     prep_clean_data();
 
     // be sure output_path not present
@@ -447,7 +453,7 @@ TEST_CASE_METHOD(
       CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
       CHECK(is_array_open == 0);
     }
-    show_dirs();
+
     CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
     CHECK(is_array2_open == 0);
     CHECK(
@@ -483,7 +489,6 @@ TEST_CASE_METHOD(
       CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
       CHECK(is_array2_open == 0);
     }
-    show_dirs();
 
     // compare all exports above to original source files
     for (auto i = 0; i < n_outfiles; ++i) {
@@ -508,7 +513,7 @@ TEST_CASE_METHOD(
       CHECK(tiledb_array_is_open(ctx_, array, &is_array_open) == TILEDB_OK);
       CHECK(is_array_open == 0);
     }
-    show_dirs();
+
     CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
     CHECK(is_array2_open == 0);
     CHECK(
@@ -540,7 +545,6 @@ TEST_CASE_METHOD(
       CHECK(tiledb_array_is_open(ctx_, array2, &is_array2_open) == TILEDB_OK);
       CHECK(is_array2_open == 0);
     }
-    show_dirs();
 
     // compare all exports above to original source files
     // (direction irrelevant for this)
