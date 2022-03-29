@@ -93,5 +93,18 @@ tdb_unique_ptr<ASTNode> ast_combine(
       tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
 }
 
+void ast_get_field_names(std::unordered_set<std::string> &field_name_set, tdb_unique_ptr<ASTNode>& node) {
+  if (!node) return;
+  if (node->get_tag() == ASTNodeTag::VAL) {
+    auto val_ptr = dynamic_cast<ASTNodeVal*>(node.get());
+    field_name_set.insert(val_ptr->field_name_);
+  } else {
+    auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
+    for (const auto &child : expr_ptr->nodes_) {
+      ast_get_field_names(field_name_set, child);
+    }
+  }
+}
+
 }  // namespace sm
 }  // namespace tiledb
