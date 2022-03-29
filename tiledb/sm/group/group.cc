@@ -634,7 +634,7 @@ Group::member_by_index(uint64_t index) {
     ;
   }
 
-  if (index > members_vec_.size()) {
+  if (index >= members_vec_.size()) {
     return {
         Status_GroupError(
             "index " + std::to_string(index) + " is larger than member count " +
