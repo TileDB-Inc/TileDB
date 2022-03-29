@@ -34,6 +34,7 @@
 #include <magic.h>
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/scoped_executor.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -180,19 +181,29 @@ Status BlobArray::to_array_from_buffer(
       return Status_BlobArrayError(
           "Can not save file; File opened in read mode; Reopen in write mode");
 
-    // TBD: remove debug...
-    // if (size != 115) //turns out, also writing 12-byte buffer...
-    //  __debugbreak();
-    //^^^^^^^^^^^^^^^^
+    // We want timestamp_end_ and timestamp_end_opened_at_ set
+    // This is required for writes to the query and the metadata to get the same
+    // timestamp.
+    // But, since the array may not be exclusively "ours", make sure they are
+    // reset to whatever they were.
+    auto current_timestamp_end = this->timestamp_end();
+    auto current_timestamp_opened_at = this->timestamp_end_opened_at_;
+    auto reset_timestamp_end = [&]() {
+      this->timestamp_end_ = current_timestamp_end;
+      this->timestamp_end_opened_at_ = current_timestamp_opened_at;
+    };
+    ScopedExecutor onexit(reset_timestamp_end);
+
+    // If a timestamp_end_ has not been set, set it to now...
+    if (current_timestamp_end == UINT64_MAX) {
+      timestamp_end_ = utils::time::timestamp_now_ms();
+      // static decltype(utils::time::timestamp_now_ms()) faux_time = 23;
+      // timestamp_end_ = ++faux_time;
+    }
+    // ...and make sure this matches, whether set just above or not.
+    timestamp_end_opened_at_ = timestamp_end_;
 
     Query query(storage_manager_, this);
-
-    // Set write buffer
-    // (when attribute was fixed size byte and contents were spread across cells
-    //    RETURN_NOT_OK(
-    //        query.set_buffer(constants::blob_array_attribute_name, data,
-    //        &size));
-    // std::array<uint64_t, 2> subarray = {0, size - 1};
 
     // Set write buffer and aux items when data attr is variable length blob
     RETURN_NOT_OK(query.set_data_buffer(
@@ -201,11 +212,16 @@ Status BlobArray::to_array_from_buffer(
     uint64_t sizeof_ofs_buf = sizeof(ofs_buf);
     RETURN_NOT_OK(query.set_offsets_buffer(
         constants::blob_array_attribute_name, ofs_buf, &sizeof_ofs_buf));
-    std::array<uint64_t, 2> subarray = {0, 0};
+    std::array<uint64_t, 2> v_subarray = {0, 0};
 
     // Set subarray
-    RETURN_NOT_OK(query.set_subarray(&subarray));
+    RETURN_NOT_OK(query.set_subarray(&v_subarray));
     RETURN_NOT_OK(query.submit());
+
+    // set timestamp to be used for metadata uri
+    this->metadata_.reset(timestamp_end_);
+    // make sure this array's metadata uri gen'd with that timestamp.
+    this->metadata_.generate_uri(this->array_uri_);
 
     RETURN_NOT_OK(put_metadata(
         constants::blob_array_metadata_size_key.c_str(),

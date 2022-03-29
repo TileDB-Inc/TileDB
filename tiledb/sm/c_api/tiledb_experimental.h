@@ -392,6 +392,9 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_obtain(
  * @param array The array returned to caller.
  * @param input_uri_filename The path to the file to import.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ * 
+ * @note The array metadata (and possibly its uri) is modified by
+ * this call.
  */
 TILEDB_EXPORT int32_t tiledb_array_as_file_import(
     tiledb_ctx_t* ctx,
