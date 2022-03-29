@@ -52,9 +52,9 @@ namespace sm {
 
 ResultTile::ResultTile(
     unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
-    : frag_idx_(frag_idx)
-    , tile_idx_(tile_idx)
-    , domain_(&array_schema.domain()) {
+    : domain_(&array_schema.domain())
+    , frag_idx_(frag_idx)
+    , tile_idx_(tile_idx) {
   coord_tiles_.resize(domain_->dim_num());
   attr_tiles_.resize(array_schema.attribute_num());
   for (uint64_t i = 0; i < array_schema.attribute_num(); i++) {
