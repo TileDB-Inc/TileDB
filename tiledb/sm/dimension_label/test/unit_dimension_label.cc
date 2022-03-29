@@ -98,8 +98,9 @@ TEMPLATE_TEST_CASE_SIG(
   const TLABEL x_max{60};
   const auto index_domain = create_range<uint64_t>(n_min, n_max);
   const auto label_domain = create_range<TLABEL>(x_min, x_max);
-  auto&& [status, dim_label] = DimensionLabel::create_uniform(
-      "label", DLABEL, 1, label_domain, Datatype::UINT64, 1, index_domain);
+  auto&& [status, dim_label] =
+      DimensionLabel::create_uniform(DimensionLabel::BaseSchema(
+          "label", DLABEL, 1, label_domain, Datatype::UINT64, 1, index_domain));
   REQUIRE(status.ok());
   REQUIRE(dim_label != nullptr);
   SECTION("Convert full data range") {
@@ -152,27 +153,29 @@ TEST_CASE(
   float label_domain_data[2] = {-1.0, 1.0};
   Range label_domain{label_domain_data, 2 * sizeof(float)};
   SECTION("label_cell_val_num!=1") {
-    auto&& [status, dim_label] = DimensionLabel::create_uniform(
-        "label",
-        Datatype::FLOAT32,
-        2,
-        label_domain,
-        Datatype::UINT64,
-        1,
-        index_domain);
+    auto&& [status, dim_label] =
+        DimensionLabel::create_uniform(DimensionLabel::BaseSchema(
+            "label",
+            Datatype::FLOAT32,
+            2,
+            label_domain,
+            Datatype::UINT64,
+            1,
+            index_domain));
     INFO(status.to_string());
     CHECK(!status.ok());
     REQUIRE(dim_label == nullptr);
   }
   SECTION("index_cell_val_num!=1") {
-    auto&& [status, dim_label] = DimensionLabel::create_uniform(
-        "label",
-        Datatype::FLOAT32,
-        1,
-        label_domain,
-        Datatype::UINT64,
-        2,
-        index_domain);
+    auto&& [status, dim_label] =
+        DimensionLabel::create_uniform(DimensionLabel::BaseSchema(
+            "label",
+            Datatype::FLOAT32,
+            1,
+            label_domain,
+            Datatype::UINT64,
+            2,
+            index_domain));
     INFO(status.to_string());
     CHECK(!status.ok());
     REQUIRE(dim_label == nullptr);
@@ -189,8 +192,9 @@ TEMPLATE_TEST_CASE_SIG(
   uint64_t index_domain_data[2] = {0, 10};
   Range index_domain{index_domain_data, 2 * sizeof(uint64_t)};
   SECTION("empty label domain") {
-    auto&& [status, dim_label] = DimensionLabel::create_uniform(
-        "label", DLABEL, 1, Range(), Datatype::UINT64, 1, index_domain);
+    auto&& [status, dim_label] =
+        DimensionLabel::create_uniform(DimensionLabel::BaseSchema(
+            "label", DLABEL, 1, Range(), Datatype::UINT64, 1, index_domain));
     INFO(status.to_string());
     CHECK(!status.ok());
     REQUIRE(dim_label == nullptr);
@@ -199,8 +203,15 @@ TEMPLATE_TEST_CASE_SIG(
     TLABEL label_domain_data[2] = {-std::numeric_limits<TLABEL>::quiet_NaN(),
                                    std::numeric_limits<TLABEL>::quiet_NaN()};
     Range label_domain{label_domain_data, 2 * sizeof(TLABEL)};
-    auto&& [status, dim_label] = DimensionLabel::create_uniform(
-        "label", DLABEL, 1, label_domain, Datatype::UINT64, 1, index_domain);
+    auto&& [status, dim_label] =
+        DimensionLabel::create_uniform(DimensionLabel::BaseSchema(
+            "label",
+            DLABEL,
+            1,
+            label_domain,
+            Datatype::UINT64,
+            1,
+            index_domain));
     INFO(status.to_string());
     CHECK(!status.ok());
     REQUIRE(dim_label == nullptr);
@@ -209,16 +220,30 @@ TEMPLATE_TEST_CASE_SIG(
     TLABEL label_domain_data[2] = {-std::numeric_limits<TLABEL>::infinity(),
                                    std::numeric_limits<TLABEL>::infinity()};
     Range label_domain{label_domain_data, 2 * sizeof(TLABEL)};
-    auto&& [status, dim_label] = DimensionLabel::create_uniform(
-        "label", DLABEL, 1, label_domain, Datatype::UINT64, 1, index_domain);
+    auto&& [status, dim_label] =
+        DimensionLabel::create_uniform(DimensionLabel::BaseSchema(
+            "label",
+            DLABEL,
+            1,
+            label_domain,
+            Datatype::UINT64,
+            1,
+            index_domain));
     CHECK(!status.ok());
     REQUIRE(dim_label == nullptr);
   }
   SECTION("lower bound greater than upper bound") {
     TLABEL label_domain_data[2] = {1.0, -1.0};
     Range label_domain{label_domain_data, 2 * sizeof(TLABEL)};
-    auto&& [status, dim_label] = DimensionLabel::create_uniform(
-        "label", DLABEL, 1, label_domain, Datatype::UINT64, 1, index_domain);
+    auto&& [status, dim_label] =
+        DimensionLabel::create_uniform(DimensionLabel::BaseSchema(
+            "label",
+            DLABEL,
+            1,
+            label_domain,
+            Datatype::UINT64,
+            1,
+            index_domain));
     INFO(status.to_string());
     CHECK(!status.ok());
     REQUIRE(dim_label == nullptr);
@@ -262,24 +287,39 @@ TEMPLATE_TEST_CASE_SIG(
     (int64_t, Datatype::TIME_AS)) {
   const auto index_domain = create_range<uint64_t>(0, 10);
   SECTION("empty label domain") {
-    auto&& [status, dim_label] = DimensionLabel::create_uniform(
-        "label", DLABEL, 1, Range(), Datatype::UINT64, 1, index_domain);
+    auto&& [status, dim_label] =
+        DimensionLabel::create_uniform(DimensionLabel::BaseSchema(
+            "label", DLABEL, 1, Range(), Datatype::UINT64, 1, index_domain));
     INFO(status.to_string());
     CHECK(!status.ok());
     REQUIRE(dim_label == nullptr);
   }
   SECTION("lower bound greater than upper bound") {
     const auto label_domain = create_range<TLABEL>(10, 0);
-    auto&& [status, dim_label] = DimensionLabel::create_uniform(
-        "label", DLABEL, 1, label_domain, Datatype::UINT64, 1, index_domain);
+    auto&& [status, dim_label] =
+        DimensionLabel::create_uniform(DimensionLabel::BaseSchema(
+            "label",
+            DLABEL,
+            1,
+            label_domain,
+            Datatype::UINT64,
+            1,
+            index_domain));
     INFO(status.to_string());
     CHECK(!status.ok());
     REQUIRE(dim_label == nullptr);
   }
   SECTION("bad label alignment") {
     const auto label_domain = create_range<TLABEL>(0, 12);
-    auto&& [status, dim_label] = DimensionLabel::create_uniform(
-        "label", DLABEL, 1, label_domain, Datatype::UINT64, 1, index_domain);
+    auto&& [status, dim_label] =
+        DimensionLabel::create_uniform(DimensionLabel::BaseSchema(
+            "label",
+            DLABEL,
+            1,
+            label_domain,
+            Datatype::UINT64,
+            1,
+            index_domain));
     INFO(status.to_string());
     CHECK(!status.ok());
     REQUIRE(dim_label == nullptr);

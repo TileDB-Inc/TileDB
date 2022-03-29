@@ -40,54 +40,31 @@ namespace tiledb::sm {
 
 DimensionLabel::DimensionLabel(
     LabelType label_type,
-    const std::string& name,
-    Datatype label_datatype,
-    uint32_t label_cell_val_num,
-    const Range& label_domain,
-    Datatype index_datatype,
-    uint32_t index_cell_val_num,
-    const Range& index_domain,
+    DimensionLabel::BaseSchema& schema,
     shared_ptr<DimensionLabelMapping> label_index_map)
-    : schema_(
-          label_type,
-          name,
-          label_datatype,
-          label_cell_val_num,
-          label_domain,
-          index_datatype,
-          index_cell_val_num,
-          index_domain)
+    : label_type_(label_type)
+    , schema_(schema)
     , label_index_map_(label_index_map) {
 }
 
 tuple<Status, shared_ptr<DimensionLabel>> DimensionLabel::create_uniform(
-    const std::string& name,
-    Datatype label_datatype,
-    uint32_t label_cell_val_num,
-    const Range& label_domain,
-    Datatype index_datatype,
-    uint32_t index_cell_val_num,
-    const Range& index_domain) {
-  if (label_cell_val_num != 1 || index_cell_val_num != 1)
+    DimensionLabel::BaseSchema&& schema) {
+  if (schema.label_cell_val_num != 1 || schema.index_cell_val_num != 1)
     return {Status_DimensionLabelError(
                 "Unable to create uniform dimension label; both label and "
                 "index must have cell value of length 1"),
             nullptr};
   try {
-    return {
-        Status::Ok(),
-        make_shared<DimensionLabel>(
-            HERE(),
-            LabelType::LABEL_UNIFORM,
-            name,
-            label_datatype,
-            label_cell_val_num,
-            label_domain,
-            index_datatype,
-            index_cell_val_num,
-            index_domain,
-            create_uniform_mapping(
-                label_datatype, label_domain, index_datatype, index_domain))};
+    return {Status::Ok(),
+            make_shared<DimensionLabel>(
+                HERE(),
+                LabelType::LABEL_UNIFORM,
+                schema,
+                create_uniform_mapping(
+                    schema.label_datatype,
+                    schema.label_domain,
+                    schema.index_datatype,
+                    schema.index_domain))};
   } catch (std::logic_error& err) {
     std::string msg{err.what()};
     return {Status_DimensionLabelError(
@@ -112,7 +89,6 @@ tuple<Status, Range> DimensionLabel::index_range(const Range& labels) const {
 /************************************************/
 
 DimensionLabel::BaseSchema::BaseSchema(
-    LabelType label_type,
     const std::string& name,
     Datatype label_datatype,
     uint32_t label_cell_val_num,
@@ -120,8 +96,7 @@ DimensionLabel::BaseSchema::BaseSchema(
     Datatype index_datatype,
     uint32_t index_cell_val_num,
     const Range& index_domain)
-    : label_type(label_type)
-    , name(name)
+    : name(name)
     , label_datatype(label_datatype)
     , label_cell_val_num(label_cell_val_num)
     , label_domain(label_domain)
