@@ -417,7 +417,7 @@ shared_ptr<Dimension> dimension_from_capnp(
   if (coord_size == 0) {
     throw std::runtime_error(
         "Error deserializing dimension, datatype " + datatype_str(dim_type) +
-        " is invalid."););
+        " is invalid.");
   }
 
   // cell val num
