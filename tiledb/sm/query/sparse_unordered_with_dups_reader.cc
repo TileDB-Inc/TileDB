@@ -807,7 +807,9 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
     uint8_t* val_buffer) {
   // Get source buffers.
   const auto stores_zipped_coords = is_dim && rt->stores_zipped_coords();
-  const auto tile_tuple = rt->tile_tuple(name);
+  const auto tile_tuple = stores_zipped_coords ?
+                              rt->tile_tuple(constants::coords) :
+                              rt->tile_tuple(name);
   const auto t = &std::get<0>(*tile_tuple);
   const auto src_buff = t->data_as<uint8_t>();
 
@@ -860,7 +862,9 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
     uint8_t* val_buffer) {
   // Get source buffers.
   const auto stores_zipped_coords = is_dim && rt->stores_zipped_coords();
-  const auto tile_tuple = rt->tile_tuple(name);
+  const auto tile_tuple = stores_zipped_coords ?
+                              rt->tile_tuple(constants::coords) :
+                              rt->tile_tuple(name);
   const auto t = &std::get<0>(*tile_tuple);
   const auto src_buff = t->data_as<uint8_t>();
   const auto t_val = &std::get<2>(*tile_tuple);
