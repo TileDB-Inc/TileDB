@@ -36,6 +36,7 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <unordered_set>
 #include <utility>
 
 #include "tiledb/common/common.h"
@@ -239,6 +240,8 @@ tdb_unique_ptr<ASTNode> ast_combine(
     const tdb_unique_ptr<ASTNode>& lhs,
     const tdb_unique_ptr<ASTNode>& rhs,
     QueryConditionCombinationOp combination_op);
+
+void ast_get_field_names(std::unordered_set<std::string> &field_name_set, tdb_unique_ptr<ASTNode>& node);
 
 }  // namespace sm
 }  // namespace tiledb

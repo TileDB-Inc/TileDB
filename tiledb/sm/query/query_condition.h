@@ -208,12 +208,12 @@ class QueryCondition {
       QueryCondition* combined_cond) const;
 
   /**
-   * Returns true if this condition does not have any conditional clauses.
+   * Returns true if this condition does not have any nodes in the AST representing the query condition.
    */
   bool empty() const;
 
   /**
-   * Returns a set of all unique field names among the conditional clauses.
+   * Returns a set of all unique field names among the value nodes in the AST representing the query condition.
    */
   std::unordered_set<std::string>& field_names() const;
 
@@ -325,32 +325,27 @@ class QueryCondition {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-  /**
-   * All clauses in this condition. Clauses `clauses_[i]` and
-   * `clauses_[i + 1]` are combined by the `combination_ops_[i]`
-   * operator.
-   */
-  std::vector<Clause> clauses_;
-
-  /** Caches all field names in `clauses_`.  */
-  mutable std::unordered_set<std::string> field_names_;
-
-  /** Logical operators to combine clauses stored in `clauses_`. */
-  std::vector<QueryConditionCombinationOp> combination_ops_;
-
-  /** AST Tree structure **/
+  /** AST Tree structure representing the condition. **/
   tdb_unique_ptr<tiledb::sm::ASTNode> tree_{};
+
+  /** Caches all clauses in `tree_`. */
+  mutable std::vector<Clause> clauses_;
+
+  /** Caches the logical operators to combine `clauses_`. */
+  mutable std::vector<QueryConditionCombinationOp> combination_ops_;
+
+  /** Caches all field names in the value nodes of the AST.  */
+  mutable std::unordered_set<std::string> field_names_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
   /**
-   * Applies a clause on primitive-typed result cell slabs,
+   * Applies a value node on primitive-typed result cell slabs,
    * templated for a query condition operator.
    *
-   * @param clause The clause to apply.
+   * @param node The value node to apply.
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
    * @param nullable The attribute is nullable or not.
@@ -368,9 +363,9 @@ class QueryCondition {
       const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
-   * Applies a clause on primitive-typed result cell slabs.
+   * Applies a value node on primitive-typed result cell slabs.
    *
-   * @param clause The clause to apply.
+   * @param node The value node to apply.
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
    * @param nullable The attribute is nullable or not.
@@ -388,10 +383,10 @@ class QueryCondition {
       const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
-   * Applies a clause to filter result cells from the input
+   * Applies a value node to filter result cells from the input
    * result cell slabs.
    *
-   * @param clause The clause to apply.
+   * @param node The value node to apply.
    * @param array_schema The current array schema.
    * @param stride The stride between cells.
    * @param result_cell_slabs The input cell slabs.
@@ -409,10 +404,10 @@ class QueryCondition {
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs) const;
   /**
-   * Applies a clause on a dense result tile,
+   * Applies a value node on a dense result tile,
    * templated for a query condition operator.
    *
-   * @param clause The clause to apply.
+   * @param node The value node to apply.
    * @param result_tile The result tile to get the cells from.
    * @param start The start cell.
    * @param length The number of cells to process.
@@ -435,7 +430,7 @@ class QueryCondition {
   /**
    * Applies a clause on a dense result tile.
    *
-   * @param clause The clause to apply.
+   * @param node The node to apply.
    * @param result_tile The result tile to get the cells from.
    * @param start The start cell.
    * @param length The number of cells to process.
@@ -457,10 +452,10 @@ class QueryCondition {
       uint8_t* result_buffer) const;
 
   /**
-   * Applies a clause to filter result cells from the input
+   * Applies a value node to filter result cells from the input
    * result tile.
    *
-   * @param clause The clause to apply.
+   * @param node The node to apply.
    * @param array_schema The current array schema.
    * @param result_tile The result tile to get the cells from.
    * @param start The start cell.
@@ -496,10 +491,10 @@ class QueryCondition {
     uint8_t* result_buffer) const;
 
   /**
-   * Applies a clause on a sparse result tile,
+   * Applies a value node on a sparse result tile,
    * templated for a query condition operator.
    *
-   * @param clause The clause to apply.
+   * @param node The node to apply.
    * @param result_tile The result tile to get the cells from.
    * @param var_size The attribute is var sized or not.
    * @param result_bitmap The result bitmap.
@@ -512,9 +507,9 @@ class QueryCondition {
       std::vector<BitmapType>& result_bitmap) const;
 
   /**
-   * Applies a clause on a sparse result tile.
+   * Applies a value node on a sparse result tile.
    *
-   * @param clause The clause to apply.
+   * @param node The node to apply.
    * @param result_tile The result tile to get the cells from.
    * @param var_size The attribute is var sized or not.
    * @param result_bitmap The result bitmap.
@@ -528,10 +523,10 @@ class QueryCondition {
       std::vector<BitmapType>& result_bitmap) const;
 
   /**
-   * Applies a clause to filter result cells from the input
+   * Applies a value node to filter result cells from the input
    * result tile.
    *
-   * @param clause The clause to apply.
+   * @param node The node to apply.
    * @param array_schema The current array schema.
    * @param result_tile The result tile to get the cells from.
    * @param result_bitmap The result bitmap.

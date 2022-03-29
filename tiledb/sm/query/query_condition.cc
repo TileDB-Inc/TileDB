@@ -189,31 +189,20 @@ Status QueryCondition::combine(
         "combination op is supported");
   }
 
-  combined_cond->clauses_ = clauses_;
-  combined_cond->clauses_.insert(
-      combined_cond->clauses_.end(), rhs.clauses_.begin(), rhs.clauses_.end());
-
-  combined_cond->combination_ops_ = combination_ops_;
-  combined_cond->combination_ops_.emplace_back(combination_op);
-  combined_cond->combination_ops_.insert(
-      combined_cond->combination_ops_.end(),
-      rhs.combination_ops_.begin(),
-      rhs.combination_ops_.end());
-
   combined_cond->field_names_.clear();
+  combined_cond->clauses_.clear();
+  combined_cond->combination_ops_.clear();
   combined_cond->tree_ = ast_combine(this->tree_, rhs.tree_, combination_op);
   return Status::Ok();
 }
 
 bool QueryCondition::empty() const {
-  return clauses_.empty();
+  return tree_ == nullptr;
 }
 
 std::unordered_set<std::string>& QueryCondition::field_names() const {
   if (field_names_.empty()) {
-    for (const auto& clause : clauses_) {
-      field_names_.insert(clause.field_name_);
-    }
+    ast_get_field_names(field_names_, tree_);
   }
 
   return field_names_;
