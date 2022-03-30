@@ -166,10 +166,41 @@ TEST_CASE(
       fp_with_rle.use_tile_chunking(is_var_sized, Datatype::STRING_ASCII));
 
   // Chunk in any other case
+  CHECK(fp_without_rle.use_tile_chunking(is_var_sized, Datatype::STRING_ASCII));
   CHECK(fp_with_rle.use_tile_chunking(!is_var_sized, Datatype::STRING_ASCII));
   CHECK(fp_with_rle.use_tile_chunking(is_var_sized, Datatype::TIME_MS));
   CHECK(fp_with_rle.use_tile_chunking(is_var_sized, Datatype::DATETIME_AS));
   CHECK(fp_with_rle.use_tile_chunking(is_var_sized, Datatype::BLOB));
   CHECK(fp_with_rle.use_tile_chunking(is_var_sized, Datatype::INT32));
   CHECK(fp_with_rle.use_tile_chunking(is_var_sized, Datatype::FLOAT64));
+}
+
+TEST_CASE(
+    "FilterPipeline: Test if offset filtering should be skipped",
+    "[filter-pipeline]") {
+  // pipeline that contains an RLE compressor
+  FilterPipeline fp_with_rle;
+  fp_with_rle.add_filter(CompressionFilter(Compressor::ZSTD, 2));
+  fp_with_rle.add_filter(BitWidthReductionFilter());
+  fp_with_rle.add_filter(CompressionFilter(Compressor::RLE, 1));
+
+  // pipeline that doesn't contain an RLE compressor
+  FilterPipeline fp_without_rle;
+  fp_without_rle.add_filter(CompressionFilter(Compressor::ZSTD, 2));
+  fp_without_rle.add_filter(BitWidthReductionFilter());
+
+  // Do not filter offsets if RLE is used for var-sized strings for schema
+  // version >= 12
+  CHECK(fp_with_rle.skip_offsets_filtering(Datatype::STRING_ASCII, 12));
+  CHECK(fp_with_rle.skip_offsets_filtering(Datatype::STRING_ASCII, 13));
+
+  // Filter offsets in any other case
+  CHECK_FALSE(
+      fp_without_rle.skip_offsets_filtering(Datatype::STRING_ASCII, 12));
+  CHECK_FALSE(fp_with_rle.skip_offsets_filtering(Datatype::STRING_ASCII, 11));
+  CHECK_FALSE(fp_with_rle.skip_offsets_filtering(Datatype::TIME_MS, 12));
+  CHECK_FALSE(fp_with_rle.skip_offsets_filtering(Datatype::DATETIME_AS, 12));
+  CHECK_FALSE(fp_with_rle.skip_offsets_filtering(Datatype::BLOB, 12));
+  CHECK_FALSE(fp_with_rle.skip_offsets_filtering(Datatype::INT32, 12));
+  CHECK_FALSE(fp_with_rle.skip_offsets_filtering(Datatype::FLOAT64, 12));
 }

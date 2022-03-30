@@ -1445,8 +1445,55 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
+void write_sparse_array_string_dim(
+    Context ctx,
+    const std::string& array_name,
+    std::string& data,
+    std::vector<uint64_t>& data_offsets,
+    tiledb_layout_t layout) {
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_layout(layout);
+  query.set_data_buffer("dim1", (char*)data.data(), data.size());
+  query.set_offsets_buffer("dim1", data_offsets.data(), data_offsets.size());
+
+  CHECK_NOTHROW(query.submit());
+
+  // Finalize is necessary in global writes, otherwise a no-op
+  query.finalize();
+
+  array.close();
+}
+
+void read_and_check_sparse_array_string_dim(
+    Context ctx,
+    const std::string& array_name,
+    std::string& expected_data,
+    std::vector<uint64_t>& expected_offsets,
+    tiledb_layout_t layout) {
+  Array array(ctx, array_name, TILEDB_READ);
+
+  std::vector<uint64_t> offsets_back(expected_offsets.size());
+  std::string data_back;
+  data_back.resize(expected_data.size());
+
+  Query query(ctx, array, TILEDB_READ);
+  query.add_range("dim1", std::string("ATSD987JIO"), std::string("TGSD987JPO"));
+  query.set_data_buffer("dim1", (char*)data_back.data(), data_back.size());
+  query.set_offsets_buffer("dim1", offsets_back.data(), offsets_back.size());
+  query.set_layout(layout);
+
+  CHECK_NOTHROW(query.submit());
+
+  // Check the element data and offsets are properly returned
+  CHECK(data_back == expected_data);
+  CHECK(offsets_back == expected_offsets);
+
+  array.close();
+}
+
 TEST_CASE(
-    "C++ API: Test filtering of string dimensions",
+    "C++ API: Test filtering of string dimensions on sparse arrays",
     "[cppapi][string-dims][rle-strings][sparse]") {
   std::string array_name = "test_rle_string_dim";
 
@@ -1464,62 +1511,65 @@ TEST_CASE(
     return start += 10;
   });
 
-  {
-    Context ctx;
-    Domain domain(ctx);
-    auto dim =
-        Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr);
-
-    // Create compressor as a filter
-    Filter filter(ctx, TILEDB_FILTER_RLE);
-    // Create filter list
-    FilterList filter_list(ctx);
-    // Add compressor to filter list
-    filter_list.add_filter(filter);
-    dim.set_filter_list(filter_list);
-
-    domain.add_dimension(dim);
-
-    ArraySchema schema(ctx, TILEDB_SPARSE);
-    schema.set_domain(domain);
-    schema.set_allows_dups(true);
-
-    tiledb::Array::create(array_name, schema);
-
-    auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
-    Query query(ctx, array, TILEDB_WRITE);
-    query.set_data_buffer("dim1", (char*)data.data(), data.size());
-    query.set_offsets_buffer(
-        "dim1", data_elem_offsets.data(), data_elem_offsets.size());
-
-    query.set_layout(TILEDB_UNORDERED);
-    query.submit();
-    query.finalize();
-    array.close();
-  }
-
-  {
-    Context ctx;
-    std::vector<uint64_t> offsets_back(data_elem_offsets.size());
-    std::string data_back;
-    data_back.resize(data.size());
-
-    auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
-    Query query(ctx, array, TILEDB_READ);
-    query.add_range(
-        "dim1", std::string("ATSD987JIO"), std::string("TGSD987JPO"));
-    query.set_data_buffer("dim1", (char*)data_back.data(), data_back.size());
-    query.set_offsets_buffer("dim1", offsets_back.data(), offsets_back.size());
-
-    query.submit();
-
-    CHECK(query.query_status() == Query::Status::COMPLETE);
-    CHECK(offsets_back == data_elem_offsets);
-    CHECK(data_back == data);
-  }
-
   Context ctx;
   VFS vfs(ctx);
+
+  // Create the array
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  Domain domain(ctx);
+  auto dim =
+      Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr);
+
+  // Create compressor as a filter
+  Filter filter(ctx, TILEDB_FILTER_RLE);
+  // Create filter list
+  FilterList filter_list(ctx);
+  // Add compressor to filter list
+  filter_list.add_filter(filter);
+  dim.set_filter_list(filter_list);
+
+  domain.add_dimension(dim);
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.set_allows_dups(true);
+  tiledb::Array::create(array_name, schema);
+
+  SECTION("Unordered write") {
+    write_sparse_array_string_dim(
+        ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
+    SECTION("Row major read") {
+      read_and_check_sparse_array_string_dim(
+          ctx, array_name, data, data_elem_offsets, TILEDB_ROW_MAJOR);
+    }
+    SECTION("Global order read") {
+      read_and_check_sparse_array_string_dim(
+          ctx, array_name, data, data_elem_offsets, TILEDB_GLOBAL_ORDER);
+    }
+    SECTION("Unordered read") {
+      read_and_check_sparse_array_string_dim(
+          ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
+    }
+  }
+  SECTION("Global order write") {
+    write_sparse_array_string_dim(
+        ctx, array_name, data, data_elem_offsets, TILEDB_GLOBAL_ORDER);
+    SECTION("Row major read") {
+      read_and_check_sparse_array_string_dim(
+          ctx, array_name, data, data_elem_offsets, TILEDB_ROW_MAJOR);
+    }
+    SECTION("Global order read") {
+      read_and_check_sparse_array_string_dim(
+          ctx, array_name, data, data_elem_offsets, TILEDB_GLOBAL_ORDER);
+    }
+    SECTION("Unordered read") {
+      read_and_check_sparse_array_string_dim(
+          ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
+    }
+  }
+
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
