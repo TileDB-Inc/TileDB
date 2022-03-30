@@ -234,7 +234,8 @@ TEST_CASE("Buffer: Overflow on set_offset 2", "[buffer][Buffer]") {
 }
 
 /**
- * `advance_offset` did not have a legacy of documented behavior. Below we treat
+ * `advance_offset` did not have a legacy of documented behavior. Below we
+ treat
  * it as if advancing past the end is the same as advancing to the end.
  */
 TEST_CASE("Buffer: advance_offset past end", "[buffer][Buffer]") {
