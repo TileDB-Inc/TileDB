@@ -591,7 +591,7 @@ TEST_CASE_METHOD(
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
 
-  rc = tiledb_group_remove_member(ctx_, group2, array3_uri.c_str());
+  rc = tiledb_group_remove_member(ctx_, group2, array3_relative_uri.c_str());
   REQUIRE(rc == TILEDB_OK);
   // There should be nothing left in group2
   group2_expected.clear();
