@@ -803,6 +803,16 @@ Status RestClient::update_attribute_buffer_sizes(
       *query_buffer.buffer_size_ = state.offset_size;
     } else if (query_buffer.buffer_size_ != nullptr)
       *query_buffer.buffer_size_ = state.data_size;
+
+    bool nullable = query->array_schema().is_nullable(name);
+    uint8_t* validity_buffer = nullptr;
+    uint64_t* validity_buffer_size = nullptr;
+    RETURN_NOT_OK(query->get_validity_buffer(
+        name.c_str(), &validity_buffer, &validity_buffer_size));
+
+    if (nullable && validity_buffer_size) {
+      *validity_buffer_size = state.validity_size;
+    }
   }
 
   return Status::Ok();
