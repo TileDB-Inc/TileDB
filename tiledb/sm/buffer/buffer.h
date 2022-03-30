@@ -89,6 +89,23 @@ class BufferBase {
   Status read(void* destination, uint64_t nbytes);
 
   /**
+   * Reads and returns a single value from the local data.
+   *
+   * @return The value read from local data.
+   */
+  template <class T>
+  T read_value() {
+    uint64_t nbytes{sizeof(T)};
+    if (nbytes > size_ - offset_)
+      throw std::runtime_error(
+          "Read buffer overflow; may not read beyond buffer size");
+    T output_value;
+    std::memcpy(&output_value, static_cast<char*>(data_) + offset_, nbytes);
+    offset_ += nbytes;
+    return output_value;
+  }
+
+  /**
    * Reads from the local data at an offset into the input buffer.
    *
    * @param destination The buffer to read the data into.
@@ -297,6 +314,17 @@ class Buffer : public BufferBase {
    * @return Status.
    */
   Status write(const void* buffer, uint64_t offset, uint64_t nbytes);
+
+  /**
+   * Writes a single into the local buffer.
+   *
+   * @param value The value to write to the local buffer.
+   * @return Status.
+   */
+  template <typename T>
+  Status write_value(const T& value) {
+    return write(&value, sizeof(T));
+  }
 
  private:
   /**

@@ -42,15 +42,15 @@ using namespace tiledb::sm;
 TEST_CASE("Buffer: Test default constructor with write void*", "[buffer]") {
   // Write a char array
   Status st;
-  char data[3] = {1, 2, 3};
+  char data[4] = {1, 2, 3, 4};
   auto buff = new Buffer();
   CHECK(buff->size() == 0);
 
   st = buff->write(data, sizeof(data));
   REQUIRE(st.ok());
-  CHECK(buff->offset() == 3);
+  CHECK(buff->offset() == 4);
   CHECK(buff->size() == sizeof(data));
-  CHECK(buff->alloced_size() == 3);
+  CHECK(buff->alloced_size() == 4);
   buff->reset_offset();
   CHECK(buff->offset() == 0);
 
@@ -69,12 +69,35 @@ TEST_CASE("Buffer: Test default constructor with write void*", "[buffer]") {
   CHECK(readtwo[1] == 3);
   CHECK(buff->offset() == 3);
 
+  // Read a single char value with read_value
+  const auto value2 = buff->read_value<char>();
+  CHECK(value2 == 4);
+  CHECK(buff->offset() == 4);
+
   // Reallocate
   st = buff->realloc(10);
   REQUIRE(st.ok());
-  CHECK(buff->size() == 3);
+  CHECK(buff->size() == 4);
   CHECK(buff->alloced_size() == 10);
-  CHECK(buff->offset() == 3);
+  CHECK(buff->offset() == 4);
+
+  // Write a single extra char value.
+  char new_data{5};
+  st = buff->write_value<char>(new_data);
+  REQUIRE(st.ok());
+  CHECK(buff->offset() == 5);
+
+  // Reset and read back all values.
+  buff->reset_offset();
+  CHECK(buff->offset() == 0);
+  char readfive[5]{};
+  st = buff->read(readfive, 5);
+  REQUIRE(st.ok());
+  CHECK(readfive[0] == 1);
+  CHECK(readfive[1] == 2);
+  CHECK(readfive[2] == 3);
+  CHECK(readfive[3] == 4);
+  CHECK(readfive[4] == 5);
 
   // Test copy constructor
   Buffer buff2 = *buff;
