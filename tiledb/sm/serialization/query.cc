@@ -1424,6 +1424,9 @@ Status query_from_capnp(
                   curr_offset_size + fixedlen_size_to_copy;
             if (existing_buffer_size_ptr != nullptr)
               *existing_buffer_size_ptr = curr_data_size + varlen_size;
+            if (nullable && existing_validity_buffer_size_ptr != nullptr)
+              *existing_validity_buffer_size_ptr =
+                  curr_validity_size + validitylen_size;
           } else {
             // Accumulate total bytes copied (caller's responsibility to
             // eventually update the query).
@@ -1435,11 +1438,6 @@ Status query_from_capnp(
             // Set whether the extra offset was included or not
             attr_copy_state->last_query_added_extra_offset =
                 query_reader.getVarOffsetsAddExtraElement();
-          }
-
-          if (nullable && existing_validity_buffer_size_ptr) {
-            *existing_validity_buffer_size_ptr =
-                curr_validity_size + validitylen_size;
           }
         } else {
           // Fixed size attribute; buffers already set.
