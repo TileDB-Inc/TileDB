@@ -35,6 +35,7 @@ add_library(dimension_label OBJECT dimension_label.cc )
 target_link_libraries(dimension_label PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(dimension_label PUBLIC misc_types $<TARGET_OBJECTS:misc_types>)
 target_link_libraries(dimension_label PUBLIC uniform_mapping $<TARGET_OBJECTS:uniform_mapping>)
+target_link_libraries(dimension_label PUBLIC buffer $<TARGET_OBJECTS:buffer>)
 
 add_executable(compile_dimension_label EXCLUDE_FROM_ALL)
 target_link_libraries(compile_dimension_label PRIVATE dimension_label)

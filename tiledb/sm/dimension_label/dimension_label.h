@@ -44,6 +44,9 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class Buffer;
+class ConstBuffer;
+
 /**
  * A TileDB dimension label.
  *
@@ -109,6 +112,30 @@ class DimensionLabel {
      * The domain of the original dimension. A pair of [lower, upper] bounds.
      */
     Range index_domain;
+
+    /**
+     * Populates the object members from the data in the input binary buffer.
+     *
+     * @param buff THe buffer to deserialize from.
+     * @param version The format spec version.
+     * @returns {status, dimension_label} The status of the deserialization and
+     * a pointer to the deserialized dimension label.
+     */
+    static tuple<Status, optional<DimensionLabel::BaseSchema>> deserialize(
+        ConstBuffer* buff,
+        uint32_t version,
+        Datatype index_datatype,
+        uint32_t index_cell_val_num,
+        const Range& index_domain);
+
+    /**
+     * Serializes the object members into a binary buffer.
+     *
+     * @param buff The buffer to serialize the data into.
+     * @param version The format spec version.
+     * @returns The status of the serialization.
+     */
+    Status serialize(Buffer* buff, uint32_t version) const;
   };
 
   /* No default constructor: not C.41 compliant. */
@@ -132,6 +159,20 @@ class DimensionLabel {
    **/
   static tuple<Status, shared_ptr<DimensionLabel>> create_uniform(
       DimensionLabel::BaseSchema&& schema);
+  /**
+   * Populates the object members from the data in the input binary buffer.
+   *
+   * @param buff THe buffer to deserialize from.
+   * @param version The format spec version.
+   * @returns {status, dimension_label} The status of the deserialization and
+   * a pointer to the deserialized dimension label.
+   */
+  static tuple<Status, shared_ptr<DimensionLabel>> deserialize(
+      ConstBuffer* buff,
+      uint32_t version,
+      Datatype index_datatype,
+      uint32_t index_cell_val_num,
+      const Range& index_domain);
 
   /**
    * Returns success status and a range on the dimension coordinates that
@@ -154,6 +195,15 @@ class DimensionLabel {
    * range that covers the same region of the array as in the input label.
    **/
   tuple<Status, Range> index_range(const Range& label_range) const;
+
+  /**
+   * Serializes the object members into a binary buffer.
+   *
+   * @param buff The buffer to serialize the data into.
+   * @param version The format spec version.
+   * @returns The status of the serialization.
+   */
+  Status serialize(Buffer* buff, uint32_t version) const;
 
  private:
   /**
