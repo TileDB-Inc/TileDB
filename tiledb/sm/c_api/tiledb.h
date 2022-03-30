@@ -1145,6 +1145,13 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    **Default**: 0.1
  *    The maximum byte size to read-ahead from the backend. <br>
  *    **Default**: 102400
+ * - `sm.group.timestamp_start` <br>
+ *    The start timestamp used for opening the group. <br>
+ *    **Default**: 0
+ * - `sm.group.timestamp_end` <br>
+ *    The end timestamp used for opening the group. <br>
+ *    Also used for the write timestamp if set. <br>
+ *    **Default**: UINT64_MAX
  * -  `vfs.read_ahead_cache_size` <br>
  *    The the total maximum size of the read-ahead cache, which is an LRU. <br>
  *    **Default**: 10485760
