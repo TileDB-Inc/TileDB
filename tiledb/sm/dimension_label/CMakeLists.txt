@@ -42,5 +42,5 @@ target_link_libraries(compile_dimension_label PRIVATE dimension_label)
 target_sources(compile_dimension_label PRIVATE test/compile_dimension_label_main.cc)
 
 if (TILEDB_TESTS)
-    add_subdirectory(test)
+  add_subdirectory(test)
 endif()

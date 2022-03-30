@@ -1,11 +1,11 @@
 /**
- * @file tiledb/sm/array_schema/unit_dimension_label.cc
+ * @file tiledb/sm/array_schema/unit_uniform_dimension_label.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,11 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This file tests the DimensionLabel class
+ * This file tests the uniform (evenly-spaced) virtual dimension label.
  */
 
 #include <array>
 #include <catch.hpp>
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/datatype.h"
 
@@ -48,6 +49,18 @@ void require_range_is_equal(const Range& result, const T start, const T end) {
   auto result_data = static_cast<const T*>(result.data());
   CHECK(start == result_data[0]);
   REQUIRE(end == result_data[1]);
+}
+
+template <typename T>
+void require_range_is_equal(const Range& expected, const Range& result) {
+  if (expected.empty() || result.empty()) {
+    REQUIRE((expected.empty() && result.empty()));
+    return;
+  }
+  auto expected_data = static_cast<const T*>(expected.data());
+  auto result_data = static_cast<const T*>(result.data());
+  CHECK(expected_data[0] == result_data[0]);
+  REQUIRE(expected_data[1] == result_data[1]);
 }
 
 template <typename T>
@@ -324,4 +337,82 @@ TEMPLATE_TEST_CASE_SIG(
     CHECK(!status.ok());
     REQUIRE(dim_label == nullptr);
   }
+}
+
+TEMPLATE_TEST_CASE_SIG(
+    "Round-trip uniform dimension label serialization",
+    "[dimension_label][uniform_label][serialize][deserialize]",
+    ((typename TLABEL, Datatype DLABEL), TLABEL, DLABEL),
+    (int8_t, Datatype::INT8),
+    (uint8_t, Datatype::UINT8),
+    (int16_t, Datatype::INT16),
+    (uint16_t, Datatype::UINT16),
+    (int32_t, Datatype::INT32),
+    (uint32_t, Datatype::UINT32),
+    (int64_t, Datatype::INT64),
+    (uint64_t, Datatype::UINT64),
+    (int64_t, Datatype::DATETIME_YEAR),
+    (int64_t, Datatype::DATETIME_MONTH),
+    (int64_t, Datatype::DATETIME_WEEK),
+    (int64_t, Datatype::DATETIME_DAY),
+    (int64_t, Datatype::DATETIME_HR),
+    (int64_t, Datatype::DATETIME_MIN),
+    (int64_t, Datatype::DATETIME_SEC),
+    (int64_t, Datatype::DATETIME_MS),
+    (int64_t, Datatype::DATETIME_US),
+    (int64_t, Datatype::DATETIME_NS),
+    (int64_t, Datatype::DATETIME_PS),
+    (int64_t, Datatype::DATETIME_FS),
+    (int64_t, Datatype::DATETIME_AS),
+    (int64_t, Datatype::TIME_HR),
+    (int64_t, Datatype::TIME_MIN),
+    (int64_t, Datatype::TIME_SEC),
+    (int64_t, Datatype::TIME_MS),
+    (int64_t, Datatype::TIME_US),
+    (int64_t, Datatype::TIME_NS),
+    (int64_t, Datatype::TIME_PS),
+    (int64_t, Datatype::TIME_FS),
+    (int64_t, Datatype::TIME_AS),
+    (float, Datatype::FLOAT32),
+    (double, Datatype::FLOAT64)) {
+  const uint32_t version{12};
+  const std::string name{"label"};
+  const uint32_t label_cell_val_num{1};
+  const auto label_domain = create_range<TLABEL>(0, 50);
+  const Datatype index_datatype{Datatype::UINT64};
+  const uint32_t index_cell_val_num{1};
+  const auto index_domain = create_range<uint64_t>(0, 5);
+  auto&& [status, dim_label] =
+      DimensionLabel::create_uniform(DimensionLabel::BaseSchema(
+          name,
+          DLABEL,
+          label_cell_val_num,
+          label_domain,
+          index_datatype,
+          index_cell_val_num,
+          index_domain));
+  REQUIRE(status.ok());
+  REQUIRE(dim_label != nullptr);
+  // Serialize the dimension label.
+  Buffer write_buffer;
+  status = dim_label->serialize(&write_buffer, version);
+  write_buffer.owns_data();
+  INFO(status.to_string());
+  REQUIRE(status.ok());
+  // Deserialize the dimension label.
+  ConstBuffer read_buffer(&write_buffer);
+  auto&& [read_status, dim_label2] = DimensionLabel::deserialize(
+      &read_buffer, version, index_datatype, index_cell_val_num, index_domain);
+  INFO(read_status.to_string());
+  REQUIRE(read_status.ok());
+  REQUIRE(dim_label2 != nullptr);
+  // Check values.
+  CHECK(dim_label2->label_type() == LabelType::LABEL_UNIFORM);
+  CHECK(dim_label2->name() == name);
+  CHECK(dim_label2->label_datatype() == DLABEL);
+  CHECK(dim_label2->label_cell_val_num() == label_cell_val_num);
+  require_range_is_equal<TLABEL>(dim_label2->label_domain(), label_domain);
+  REQUIRE(dim_label2->index_datatype() == index_datatype);
+  REQUIRE(dim_label2->index_cell_val_num() == index_cell_val_num);
+  require_range_is_equal<uint64_t>(dim_label2->index_domain(), index_domain);
 }

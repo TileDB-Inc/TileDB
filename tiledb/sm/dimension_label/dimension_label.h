@@ -118,6 +118,12 @@ class DimensionLabel {
      *
      * @param buff THe buffer to deserialize from.
      * @param version The format spec version.
+     * @param index_datatype Datatype of the dimension the dimension label is
+     * attached to.
+     * @param index_cell_val_num Number of values per cell of the dimension the
+     * dimension label is attached to.
+     * @param index_domain The domain of the dimension the dimension label is
+     * attached to.
      * @returns {status, dimension_label} The status of the deserialization and
      * a pointer to the deserialized dimension label.
      */
@@ -164,6 +170,12 @@ class DimensionLabel {
    *
    * @param buff THe buffer to deserialize from.
    * @param version The format spec version.
+   * @param index_datatype Datatype of the dimension the dimension label is
+   * attached to.
+   * @param index_cell_val_num Number of values per cell of the dimension the
+   * dimension label is attached to.
+   * @param index_domain The domain of the dimension the dimension label is
+   * attached to.
    * @returns {status, dimension_label} The status of the deserialization and
    * a pointer to the deserialized dimension label.
    */
