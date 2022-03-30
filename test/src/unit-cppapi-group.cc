@@ -383,6 +383,11 @@ TEST_CASE_METHOD(
   REQUIRE_THAT(
       group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
 
+  // Check that out of bounds indexing throws
+  REQUIRE_THROWS(group1.member(10));
+  // Checks for off by one indexing
+  REQUIRE_THROWS(group1.member(group1_expected.size()));
+
   // Close group
   group1.close();
   group2.close();
@@ -475,7 +480,7 @@ TEST_CASE_METHOD(
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
 
-  group2.remove_member(array3_uri.to_string());
+  group2.remove_member(array3_relative_uri);
   // There should be nothing left in group2
   group2_expected.clear();
 

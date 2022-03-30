@@ -492,7 +492,7 @@ int32_t tiledb_group_dump_str(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     char** dump_ascii,
-    const int recursive) {
+    const uint8_t recursive) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 

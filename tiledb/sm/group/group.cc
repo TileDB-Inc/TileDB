@@ -527,7 +527,21 @@ Status Group::mark_member_for_removal(const std::string& uri) {
         ", member already set for adding.");
   }
 
-  members_to_remove_.emplace(uri);
+  if (members_.find(uri) != members_.end()) {
+    members_to_remove_.emplace(uri);
+    return Status::Ok();
+  } else {
+    // try URI to see if we need to convert the local file to file://
+    URI uri_uri(uri);
+    if (members_.find(uri_uri.to_string()) != members_.end()) {
+      members_to_remove_.emplace(uri_uri.to_string());
+      return Status::Ok();
+    } else {
+      return Status_GroupError(
+          "Cannot remove group member " + uri +
+          ", member does not exist in group.");
+    }
+  }
   return Status::Ok();
 }
 
@@ -634,7 +648,7 @@ Group::member_by_index(uint64_t index) {
     ;
   }
 
-  if (index > members_vec_.size()) {
+  if (index >= members_vec_.size()) {
     return {
         Status_GroupError(
             "index " + std::to_string(index) + " is larger than member count " +

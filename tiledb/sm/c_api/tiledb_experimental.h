@@ -830,8 +830,10 @@ TILEDB_EXPORT int32_t tiledb_group_get_query_type(
  * @return  `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_dump_str(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, char** dump_ascii, int recursive)
-    TILEDB_NOEXCEPT;
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    char** dump_ascii,
+    uint8_t recursive) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }
