@@ -129,9 +129,9 @@ TEST_CASE("Test HDFS filesystem", "[hdfs]") {
   // ...../subdir/file
   // ...../subdir/subsubdir
 
-  std::string subdir = "hdfs:///tiledb_test/subdir";
-  std::string file = "hdfs:///tiledb_test/subdir/file";
-  std::string subsubdir = "hdfs:///tiledb_test/subdir/subsubdir";
+  std::string subdir = "hdfs://localhost:9000/tiledb_test/subdir";
+  std::string file = subdir + "/file";
+  std::string subsubdir = subdir + "/subsubdir";
 
   CHECK(hdfs.create_dir(URI(subdir)).ok());
   CHECK(hdfs.create_dir(URI(subsubdir)).ok());
@@ -146,8 +146,7 @@ TEST_CASE("Test HDFS filesystem", "[hdfs]") {
 
   REQUIRE(children.size() == 2);
   CHECK(children[0].path().native() == file);
-  CHECK(
-      children[1].path().native() == subsubdir.substr(0, subsubdir.size() - 1));
+  CHECK(children[1].path().native() == subsubdir.substr(0, subsubdir.size()));
 
   CHECK(children[0].file_size() == s.size());
   // Directories don't get a size
