@@ -47,6 +47,7 @@ jobs:
       TILEDB_AZURE: ${{ matrix.TILEDB_AZURE }} #azure }}
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
       TILEDB_ARROW_TESTS: ${{ matrix.TILEDB_ARROW_TESTS }}
+      TILEDB_CMAKE_BUILD_TYPE: 'Release'
     steps:
       - name: 'tiledb env prep'
         run: |
@@ -145,7 +146,7 @@ jobs:
           if ($env:TILEDB_TOOLS -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableTools"
           }
-          $CMakeBuildType = "Release"
+          $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
           if ($env:TILEDB_DEBUG -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableDebug"
             $CMakeBuildType = "Debug"
@@ -195,6 +196,8 @@ jobs:
         shell: powershell
         run: |
           write-host "begin run: 'Test'"
+
+          $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
 
           # Clone backwards compatibility test arrays
           if ($env:BACKWARDS_COMPATIBILITY_ARRAYS -eq "ON") {
