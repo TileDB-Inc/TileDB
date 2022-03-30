@@ -145,8 +145,12 @@ jobs:
           if ($env:TILEDB_TOOLS -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableTools"
           }
+          $CMakeBuildType = "Release"
           if ($env:TILEDB_DEBUG -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableDebug"
+            $CMakeBuildType = "Debug"
+          } elseif ($CMakeBuildType -eq "RelWithDebInfo") {
+            $bootstrapOptions = $bootstrapOptions + " -EnableReleaseSymbols"
           }
           # if ($env:TILEDB_CI_ASAN -eq "ON") {
           #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer address -EnableDebug"
@@ -171,14 +175,14 @@ jobs:
             exit $LastExitCode
           }
 
-          cmake --build $env:BUILD_BUILDDIRECTORY --config Release -j $env:NUMBER_OF_PROCESSORS 2>&1
+          cmake --build $env:BUILD_BUILDDIRECTORY --config $CMakeBuildType -j $env:NUMBER_OF_PROCESSORS 2>&1
 
           if ($LastExitCode -ne 0) {
             Write-Host "Build failed. CMake exit status: " $LastExitCocde
             exit $LastExitCode
           }
 
-          cmake --build $env:BUILD_BUILDDIRECTORY --target install-tiledb --config Release 2>&1
+          cmake --build $env:BUILD_BUILDDIRECTORY --target install-tiledb --config $CMakeBuildType 2>&1
 
           if ($LastExitCode -ne 0) {
             Write-Host "Installation failed."
@@ -211,7 +215,7 @@ jobs:
           }
 
           # CMake exits with non-0 status if there are any warnings during the build, so
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config $CMakeBuildType -- /verbosity:minimal
 
           if ($env:TILEDB_AZURE -eq "ON") {
             if($env.TILEDB_USE_CUSTOM_NODE_JS) {
@@ -237,11 +241,11 @@ jobs:
           }
 
           # Actually run tests
-          #~ $cmds = "cmake --build $env:BUILD_BUILDDIRECTORY\tiledb --target check --config Release -- /verbosity:minimal"
+          #~ $cmds = "cmake --build $env:BUILD_BUILDDIRECTORY\tiledb --target check --config $CMakeBuildType -- /verbosity:minimal"
           #~ Write-Host "cmds: '$cmds'"
           #~ Invoke-Expression $cmds
-          #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes | c:\msys64\usr\bin\awk '/1: ::set-output/{sub(/.*1: /, `"`"); print; next} 1'"
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\Release\tiledb_unit.exe -d=yes"
+          #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\$CMakeBuildType\tiledb_unit.exe -d=yes | c:\msys64\usr\bin\awk '/1: ::set-output/{sub(/.*1: /, `"`"); print; next} 1'"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\$CMakeBuildType\tiledb_unit.exe -d=yes"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
 
@@ -251,7 +255,7 @@ jobs:
           }
 
           # Build the examples
-          cmake --build $env:BUILD_BUILDDIRECTORY --target examples --config Release -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY --target examples --config $CMakeBuildType -- /verbosity:minimal
 
           if ($LastExitCode -ne 0) {
             Write-Host "Examples failed to build."
@@ -260,26 +264,51 @@ jobs:
 
           $env:Path += ";$env:BUILD_SOURCESDIRECTORY\dist\bin;$env:BUILD_BUILDDIRECTORY\externals\install\bin"
 
-          try {
-            $exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\Release\quickstart_dense_c.exe"
-            & $exepath
-          } catch {
-            Write-Host "C API example failed. Error:"
-            Write-Host $_
-            $host.SetShouldExit(1)
+          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\$CMakeBuildType") -Filter *.exe |
+          Foreach-Object {
+            try {
+              # $exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\$CMakeBuildType\quickstart_dense_c.exe"
+              $exepath = $_.FullName
+              & $exepath
+              if (!($?)) {
+              #$output = Invoke-Expressions $exepath
+              #if(! $output) {
+                #Write-Host "no output, Error ? running $exepath"
+                Write-Host "Error $LastExitCode running $exepath"
+                $host.SetShouldExit(1)
+              }
+            } catch {
+              Write-Host "C API example failed $exepath."
+              Write-Host "Error:"
+              Write-Host $_
+              $host.SetShouldExit(1)
+            }
           }
 
-          try {
-            $exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
-            & $exepath
-          } catch {
-            Write-Host "C++ API example failed."
-            $host.SetShouldExit(1)
-          }
+          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\$CMakeBuildType") -Filter *.exe |
+          Foreach-Object {
+            try {
+              #$exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\$CMakeBuildType\quickstart_dense_cpp.exe"
+              $exepath = $_.FullName
+              & $exepath
+              if (!($?)) {
+              #$output = Invoke-Expressions $exepath
+              # the executable can fail to run and an exception -not- be thrown, check each item for some expected output
+              # and report if none found.
+              #if(! $output) {
+                #Write-Host "no output, Error ? running $exepath"
+                Write-Host "Error $LastExitCode running $exepath"
+                $host.SetShouldExit(1)
+              }
+            } catch {
+              Write-Host "C++ API example failed $exepath."
+              $host.SetShouldExit(1)
+            }
 
-          if ($LastExitCode -ne 0) {
-            Write-Host "C++ API example failed."
-            $host.SetShouldExit($LastExitCode)
+            if ($LastExitCode -ne 0) {
+              Write-Host "C++ API example failed."
+              $host.SetShouldExit($LastExitCode)
+            }
           }
 
           # Build examples
@@ -292,11 +321,11 @@ jobs:
           # Build zip artifact
           cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_SOURCESDIRECTORY\dist" ..
 
-          cmake --build . --config Release -- /verbosity:minimal
+          cmake --build . --config $CMakeBuildType -- /verbosity:minimal
 
-          .\Release\ExampleExe.exe
+          .\$CMakeBuildType\ExampleExe.exe
 
-          .\Release\ExampleExe_static.exe
+          .\$CMakeBuildType\ExampleExe_static.exe
 
       - name: 'process crashdumps'
         shell: cmd
