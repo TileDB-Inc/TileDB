@@ -170,6 +170,26 @@ class Curl {
       const std::string& res_ns_uri);
 
   /**
+   * Wrapper for sending put request to server and returning
+   * the unbuffered response body.
+   *
+   * @param stats The stats instance to record into
+   * @param url URL to post to
+   * @param serialization_type Serialization type to use
+   * @param data Encoded data buffer for posting
+   * @param returned_data Buffer to store response data
+   * @param res_ns_uri Array Namespace and URI
+   * @return Status
+   */
+  Status put_data(
+      stats::Stats* stats,
+      const std::string& url,
+      SerializationType serialization_type,
+      const BufferList* data,
+      Buffer* returned_data,
+      const std::string& res_ns_uri);
+
+  /**
    * Callback defined by the caller of the 'post_data' variant for
    * receiving buffered response data.
    *
@@ -217,6 +237,21 @@ class Curl {
    * @return Status
    */
   Status patch_data_common(
+      SerializationType serialization_type,
+      const BufferList* data,
+      struct curl_slist** headers);
+
+  /**
+   * Common code shared between variants of 'put_data'.
+   *
+   * @param serialization_type Serialization type to use
+   * @param data Encoded data buffer for posting
+   * @param headers Request headers that must be freed after the curl
+   *    request is complete. If this routine returns a non-OK status,
+   *    the value returned through this parameter should be ignored.
+   * @return Status
+   */
+  Status put_data_common(
       SerializationType serialization_type,
       const BufferList* data,
       struct curl_slist** headers);
