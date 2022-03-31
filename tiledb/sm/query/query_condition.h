@@ -421,7 +421,6 @@ std::vector<ResultCellSlab> apply_tree(
    * @param node The value node to apply.
    * @param result_tile The result tile to get the cells from.
    * @param start The start cell.
-   * @param length The number of cells to process.
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
@@ -432,11 +431,10 @@ std::vector<ResultCellSlab> apply_tree(
       const ASTNodeVal *node,
       ResultTile* result_tile,
       const uint64_t start,
-      const uint64_t length,
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
-      uint8_t* result_buffer) const;
+      std::vector<uint8_t> &result_buffer) const;
 
   /**
    * Applies a value node on a dense result tile.
@@ -444,7 +442,6 @@ std::vector<ResultCellSlab> apply_tree(
    * @param node The node to apply.
    * @param result_tile The result tile to get the cells from.
    * @param start The start cell.
-   * @param length The number of cells to process.
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
@@ -456,11 +453,10 @@ std::vector<ResultCellSlab> apply_tree(
       const ASTNodeVal *node,
       ResultTile* result_tile,
       const uint64_t start,
-      const uint64_t length,
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
-      uint8_t* result_buffer) const;
+      std::vector<uint8_t> &result_buffer) const;
 
   /**
    * Applies a value node to filter result cells from the input
@@ -470,7 +466,6 @@ std::vector<ResultCellSlab> apply_tree(
    * @param array_schema The current array schema.
    * @param result_tile The result tile to get the cells from.
    * @param start The start cell.
-   * @param length The number of cells to process.
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param result_buffer The result buffer.
@@ -481,10 +476,9 @@ std::vector<ResultCellSlab> apply_tree(
       const ArraySchema& array_schema,
       ResultTile* result_tile,
       const uint64_t start,
-      const uint64_t length,
       const uint64_t src_cell,
       const uint64_t stride,
-      uint8_t* result_buffer) const;
+      std::vector<uint8_t> &result_buffer) const;
 
 /**
    * Applies the AST node to a set of cells.
@@ -493,7 +487,6 @@ std::vector<ResultCellSlab> apply_tree(
    * @param array_schema The array schema.
    * @param result_tile The result tile to get the cells from.
    * @param start The start cell.
-   * @param length The number of cells to process.
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param result_buffer The buffer to use for results.
@@ -504,10 +497,9 @@ std::vector<ResultCellSlab> apply_tree(
     const ArraySchema& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
-    const uint64_t length,
     const uint64_t src_cell,
     const uint64_t stride,
-    uint8_t* result_buffer) const;
+    std::vector<uint8_t> &result_buffer) const;
 
   /**
    * Applies a value node on a sparse result tile,

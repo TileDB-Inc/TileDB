@@ -38,6 +38,7 @@
 #include "tiledb/sm/misc/utils.h"
 
 #include <algorithm>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -808,11 +809,10 @@ void QueryCondition::apply_val_dense(
     const ASTNodeVal *node,
     ResultTile* result_tile,
     const uint64_t start,
-    const uint64_t length,
     const uint64_t src_cell,
     const uint64_t stride,
     const bool var_size,
-    uint8_t* result_buffer) const {
+    std::vector<uint8_t> &result_buffer) const {
   const std::string& field_name = node->field_name_;
 
   // Get the nullable buffer.
@@ -831,11 +831,11 @@ void QueryCondition::apply_val_dense(
         tile_offsets.size() / constants::cell_var_offset_size;
 
     // Iterate through each cell in this slab.
-    for (uint64_t c = 0; c < length; ++c) {
+    for (uint64_t c = 0; c < result_buffer.size(); ++c) {
       // Check the previous cell here, which breaks vectorization but as this
       // is string data requiring a strcmp which cannot be vectorized, this is
       // ok.
-      if (result_buffer[start + c] != 0) {
+      if (result_buffer[c] != 0) {
         const uint64_t buffer_offset = buffer_offsets[start + c * stride];
         const uint64_t next_cell_offset =
             (start + c * stride + 1 < buffer_offsets_el) ?
@@ -854,7 +854,7 @@ void QueryCondition::apply_val_dense(
             node->condition_value_data_.size());
 
         // Set the value.
-        result_buffer[start + c] &= (uint8_t)cmp;
+        result_buffer[c] &= (uint8_t)cmp;
       }
     }
   } else {
@@ -866,7 +866,7 @@ void QueryCondition::apply_val_dense(
     const uint64_t buffer_offset_inc = stride * cell_size;
 
     // Iterate through each cell in this slab.
-    for (uint64_t c = 0; c < length; ++c) {
+    for (uint64_t c = 0; c < result_buffer.size(); ++c) {
       // Get the cell value.
       const void* const cell_value = buffer + buffer_offset;
       buffer_offset += buffer_offset_inc;
@@ -879,7 +879,7 @@ void QueryCondition::apply_val_dense(
           node->condition_value_data_.size());
 
       // Set the value.
-      result_buffer[start + c] &= (uint8_t)cmp;
+      result_buffer[c] &= (uint8_t)cmp;
     }
   }
 }
@@ -889,18 +889,16 @@ Status QueryCondition::apply_val_dense(
     const ASTNodeVal *node,
     ResultTile* result_tile,
     const uint64_t start,
-    const uint64_t length,
     const uint64_t src_cell,
     const uint64_t stride,
     const bool var_size,
-    uint8_t* result_buffer) const {
+    std::vector<uint8_t> &result_buffer) const {
   switch (node->op_) {
     case QueryConditionOp::LT:
       apply_val_dense<T, QueryConditionOp::LT>(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -911,7 +909,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -922,7 +919,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -933,7 +929,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -944,7 +939,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -955,7 +949,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -975,10 +968,9 @@ Status QueryCondition::apply_val_dense(
     const ArraySchema& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
-    const uint64_t length,
     const uint64_t src_cell,
     const uint64_t stride,
-    uint8_t* result_buffer) const {
+    std::vector<uint8_t> &result_buffer) const {
   const auto attribute = array_schema.attribute(node->field_name_);
   if (!attribute) {
     return Status_QueryConditionError(
@@ -999,19 +991,19 @@ Status QueryCondition::apply_val_dense(
     // Null values can only be specified for equality operators.
     if (node->condition_value_ == nullptr) {
       if (node->op_ == QueryConditionOp::NE) {
-        for (uint64_t c = 0; c < length; ++c) {
-          result_buffer[start + c] *= buffer_validity[start + c * stride] != 0;
+        for (uint64_t c = 0; c < result_buffer.size(); ++c) {
+          result_buffer[c] *= buffer_validity[start + c * stride] != 0;
         }
       } else {
-        for (uint64_t c = 0; c < length; ++c) {
-          result_buffer[start + c] *= buffer_validity[start + c * stride] == 0;
+        for (uint64_t c = 0; c < result_buffer.size(); ++c) {
+          result_buffer[c] *= buffer_validity[start + c * stride] == 0;
         }
       }
       return Status::Ok();
     } else {
       // Turn off bitmap values for null cells.
-      for (uint64_t c = 0; c < length; ++c) {
-        result_buffer[start + c] *= buffer_validity[start + c * stride] != 0;
+      for (uint64_t c = 0; c < result_buffer.size(); ++c) {
+        result_buffer[c] *= buffer_validity[start + c * stride] != 0;
       }
     }
   }
@@ -1022,7 +1014,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -1032,7 +1023,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -1042,7 +1032,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -1052,7 +1041,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -1062,7 +1050,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -1072,7 +1059,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -1082,7 +1068,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -1092,7 +1077,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -1102,7 +1086,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -1112,7 +1095,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -1122,7 +1104,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -1133,7 +1114,6 @@ Status QueryCondition::apply_val_dense(
             node,
             result_tile,
             start,
-            length,
             src_cell,
             stride,
             var_size,
@@ -1143,7 +1123,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -1165,7 +1144,6 @@ Status QueryCondition::apply_val_dense(
           node,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           var_size,
@@ -1192,10 +1170,9 @@ void QueryCondition::apply_tree_dense(
   const ArraySchema& array_schema,
   ResultTile* result_tile,
   const uint64_t start,
-  const uint64_t length,
   const uint64_t src_cell,
   const uint64_t stride,
-  uint8_t* result_buffer) const {
+  std::vector<uint8_t> &result_buffer) const {
     if (node->get_tag() == ASTNodeTag::VAL) {
       const ASTNodeVal *node_ptr = dynamic_cast<ASTNodeVal*>(node.get());
       Status s = apply_val_dense(
@@ -1203,7 +1180,6 @@ void QueryCondition::apply_tree_dense(
         array_schema,
         result_tile,
         start,
-        length,
         src_cell,
         stride,
         result_buffer);
@@ -1213,39 +1189,41 @@ void QueryCondition::apply_tree_dense(
     } else {
       // for each child, declare a new result buffer, combine it all into the other one based on combination op
       auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
+      if (expr_ptr->combination_op_ == QueryConditionCombinationOp::AND) {
+        std::fill(result_buffer.begin(), result_buffer.end(), 1);
+      } else if (expr_ptr->combination_op_ == QueryConditionCombinationOp::OR) {
+        std::fill(result_buffer.begin(), result_buffer.end(), 0);
+      }
       for (const auto &child : expr_ptr->nodes_) {
-        /// TODO: change to C++ programming style
-        uint8_t child_result_buffer[start + length];
-        memset(child_result_buffer, true, start + length);
+        std::vector<uint8_t> child_result_buffer(result_buffer.size(), 1);
         apply_tree_dense(
           child, 
           array_schema,
           result_tile,
           start,
-          length,
           src_cell,
           stride,
           child_result_buffer);
+        
         switch(expr_ptr->combination_op_) {
           case QueryConditionCombinationOp::AND: {
-            for (uint64_t c = 0; c < length; ++c) {
-              result_buffer[start + c] &= child_result_buffer[start + c];
+            for (uint64_t c = 0; c < result_buffer.size(); ++c) {
+              result_buffer[c] &= child_result_buffer[c];
             }
           } break;
           case QueryConditionCombinationOp::OR: {
-            for (uint64_t c = 0; c < length; ++c) {
-              result_buffer[start + c] |= child_result_buffer[start + c];
+            for (uint64_t c = 0; c < result_buffer.size(); ++c) {
+              result_buffer[c] |= child_result_buffer[c];
             }
           } break;
           case QueryConditionCombinationOp::NOT: {
-            throw std::runtime_error("Query condition NOT operator is not supported in the TileDB system.");
-          }
+            throw std::runtime_error("QueryCondition NOT operator not supported in TileDB system.");
+          } break;
           default: {
             throw std::logic_error("QueryCondition operator apply_tree_dense case, should not get here.");
           }
         }
       }
-
     }
 }
 
@@ -1258,16 +1236,18 @@ Status QueryCondition::apply_dense(
     const uint64_t stride,
     uint8_t* result_buffer) {
   // Iterate through the tree.
+  std::vector<uint8_t> result_vector(length, 1);
   apply_tree_dense(
     tree_,
     array_schema,
     result_tile,
     start,
-    length,
     src_cell,
     stride,
-    result_buffer);
+    result_vector);
 
+  // copy into buffer
+  std::copy(result_vector.begin(), result_vector.end(), result_buffer + start);
   return Status::Ok();
 }
 
@@ -1656,32 +1636,37 @@ template <typename BitmapType>
     }
   } else {
     auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
-      for (const auto &child : expr_ptr->nodes_) {
-        std::vector<BitmapType> child_result_bitmap(result_bitmap.size(), true);
-        apply_tree_sparse(
-          child, 
-          array_schema,
-          result_tile,
-          child_result_bitmap);
-        switch(expr_ptr->combination_op_) {
-          case QueryConditionCombinationOp::AND: {
-            for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
-              result_bitmap[c] *= child_result_bitmap[c];
-            }
-          } break;
-          case QueryConditionCombinationOp::OR: {
-            for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
-              result_bitmap[c] |= child_result_bitmap[c];
-            }
-          } break;
-          case QueryConditionCombinationOp::NOT: {
-            throw std::runtime_error("Query condition NOT operator is not supported in the TileDB system.");
+    if (expr_ptr->combination_op_ == QueryConditionCombinationOp::AND) {
+        std::fill(result_bitmap.begin(), result_bitmap.end(), 1);
+      } else if (expr_ptr->combination_op_ == QueryConditionCombinationOp::OR) {
+        std::fill(result_bitmap.begin(), result_bitmap.end(), 0);
+      }
+    for (const auto &child : expr_ptr->nodes_) {
+      std::vector<BitmapType> child_result_bitmap(result_bitmap.size(), true);
+      apply_tree_sparse(
+        child, 
+        array_schema,
+        result_tile,
+        child_result_bitmap);
+      switch(expr_ptr->combination_op_) {
+        case QueryConditionCombinationOp::AND: {
+          for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
+            result_bitmap[c] *= child_result_bitmap[c];
           }
-          default: {
-            throw std::logic_error("QueryCondition operator apply_tree_sparse case, should not get here.");
+        } break;
+        case QueryConditionCombinationOp::OR: {
+          for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
+            result_bitmap[c] |= child_result_bitmap[c];
           }
+        } break;
+        case QueryConditionCombinationOp::NOT: {
+          throw std::runtime_error("Query condition NOT operator is not supported in the TileDB system.");
+        }
+        default: {
+          throw std::logic_error("QueryCondition operator apply_tree_sparse case, should not get here.");
         }
       }
+    }
   }
 }
 
