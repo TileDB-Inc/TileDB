@@ -1,3 +1,30 @@
+# TileDB v2.7.2 Release Notes
+
+## Disk Format
+
+## Breaking C API changes
+
+## Breaking behavior
+
+## New features
+
+## Improvements
+* Filter pipeline: incorrect stopping point during chunk parallellization. [#2952](https://github.com/TileDB-Inc/TileDB/pull/2952)
+* Tile medatada: treating TILEDB_CHAR as TILEDB_STRING_ASCII. [#2953](https://github.com/TileDB-Inc/TileDB/pull/2953)
+* Fixing compute_results_count_sparse_string for multiple range threads. [#2983](https://github.com/TileDB-Inc/TileDB/pull/2983)
+* Global writes: fixing OOM on write continuation. [#2993](https://github.com/TileDB-Inc/TileDB/pull/2993)
+* Dense reader: fix user buffer offset computation for multi-index queries. [#3002](https://github.com/TileDB-Inc/TileDB/pull/3002)
+* Bump Catch2 version to 2.13.8 [#3027](https://github.com/TileDB-Inc/TileDB/pull/3027)
+* Set default dense reader to legacy for 2.7 branch [#3039](https://github.com/TileDB-Inc/TileDB/pull/3039)
+
+## Deprecations
+
+## Bug fixes
+* Update Location of Zlib Download URL [#2945](https://github.com/TileDB-Inc/TileDB/pull/2945)
+* Fix leak in array_schema_latest on array close [#2992](https://github.com/TileDB-Inc/TileDB/pull/2992)
+
+## API additions
+
 # TileDB v2.7.1 Release Notes
 
 ## Bug fixes
