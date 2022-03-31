@@ -975,22 +975,10 @@ Status RestClient::post_group_create_to_rest(const URI& uri, Group* group) {
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns;
 
-  // Get the data
+  // Create the group and check for error
   Buffer returned_data;
-  RETURN_NOT_OK(curlc.post_data(
-      stats_,
-      url,
-      serialization_type_,
-      &serialized,
-      &returned_data,
-      cache_key));
-
-  if (returned_data.data() == nullptr || returned_data.size() == 0)
-    return LOG_STATUS(Status_RestError(
-        "Error getting group from REST; server returned no data."));
-
-  return serialization::group_deserialize(
-      group, serialization_type_, returned_data);
+  return curlc.post_data(
+      stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
 Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
