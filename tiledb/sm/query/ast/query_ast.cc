@@ -93,7 +93,7 @@ tdb_unique_ptr<ASTNode> ast_combine(
       tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
 }
 
-void ast_get_field_names(std::unordered_set<std::string> &field_name_set, tdb_unique_ptr<ASTNode>& node) {
+void ast_get_field_names(std::unordered_set<std::string> &field_name_set, const tdb_unique_ptr<ASTNode>& node) {
   if (!node) return;
   if (node->get_tag() == ASTNodeTag::VAL) {
     auto val_ptr = dynamic_cast<ASTNodeVal*>(node.get());
@@ -104,6 +104,22 @@ void ast_get_field_names(std::unordered_set<std::string> &field_name_set, tdb_un
       ast_get_field_names(field_name_set, child);
     }
   }
+}
+
+bool ast_is_previously_supported(const tdb_unique_ptr<ASTNode>& node) {
+  if (!node) return true;
+  if (node->get_tag() == ASTNodeTag::EXPR) {
+    auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
+    if (expr_ptr->combination_op_ != QueryConditionCombinationOp::AND) {
+      return false;
+    }
+    for (const auto &child : expr_ptr->nodes_) {
+      if (child->get_tag() != ASTNodeTag::VAL) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 }  // namespace sm
