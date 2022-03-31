@@ -1160,14 +1160,17 @@ tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
           std::nullopt};
 }
 
-Status RestClient::post_group_metadata_from_rest(
-    const URI&, uint64_t, uint64_t, Group*) {
+Status RestClient::post_group_metadata_from_rest(const URI&, Group*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::put_group_metadata_to_rest(
-    const URI&, uint64_t, uint64_t, Group*) {
+Status RestClient::put_group_metadata_to_rest(const URI&, Group*) {
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+Status RestClient::post_group_create_to_rest(const URI&, Group*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
