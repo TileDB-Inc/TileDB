@@ -112,6 +112,10 @@ Status group_to_capnp(
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
 
+  // Set config
+  auto config_builder = group_builder->initConfig();
+  RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
+
   const auto& group_members = group->members();
   if (!group_members.empty()) {
     auto group_members_builder =
@@ -130,6 +134,12 @@ Status group_to_capnp(
 
 Status group_from_capnp(
     const capnp::Group::Reader& group_reader, Group* group) {
+  if (group_reader.hasConfig()) {
+    tdb_unique_ptr<Config> decoded_config = nullptr;
+    RETURN_NOT_OK(config_from_capnp(group_reader.getConfig(), &decoded_config));
+    RETURN_NOT_OK(group->set_config(*decoded_config));
+  }
+
   if (group_reader.hasMembers()) {
     for (auto member : group_reader.getMembers()) {
       auto&& [st, group_member] = group_member_from_capnp(&member);
@@ -147,6 +157,10 @@ Status group_update_to_capnp(
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
   }
+
+  // Set config
+  auto config_builder = group_update_builder->initConfig();
+  RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
 
   const auto& group_members_to_add = group->members_to_add();
   if (!group_members_to_add.empty()) {
@@ -180,6 +194,12 @@ Status group_update_to_capnp(
 
 Status group_update_from_capnp(
     const capnp::GroupUpdate::Reader& group_reader, Group* group) {
+  if (group_reader.hasConfig()) {
+    tdb_unique_ptr<Config> decoded_config = nullptr;
+    RETURN_NOT_OK(config_from_capnp(group_reader.getConfig(), &decoded_config));
+    RETURN_NOT_OK(group->set_config(*decoded_config));
+  }
+
   if (group_reader.hasMembersToAdd()) {
     for (auto member_to_add : group_reader.getMembersToAdd()) {
       auto&& [st, group_member] = group_member_from_capnp(&member_to_add);
@@ -203,6 +223,10 @@ Status group_create_to_capnp(
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
   }
+
+  // Set config
+  auto config_builder = group_create_builder->initConfig();
+  RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
 
   group_create_builder->setUri(group->group_uri().to_string());
 
