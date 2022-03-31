@@ -36,6 +36,7 @@
 #include <unordered_set>
 
 #include "tiledb/common/status.h"
+#include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/result_cell_slab.h"
@@ -63,16 +64,14 @@ class QueryCondition {
         const uint64_t condition_value_size,
         const QueryConditionOp op)
         : field_name_(std::move(field_name))
+        , condition_value_data_(condition_value_size)
+        , condition_value_view_(
+              (condition_value != nullptr && condition_value_size == 0 ?
+                   (void*)"" :
+                   condition_value_data_.data()),
+              condition_value_data_.size())
         , op_(op) {
-      condition_value_data_.resize(condition_value_size);
-      condition_value_ = nullptr;
-
-      if (condition_value != nullptr) {
-        // Using an empty string litteral for empty string as vector::resize(0)
-        // doesn't guarantee an allocation.
-        condition_value_ = condition_value_size == 0 ?
-                               (void*)"" :
-                               condition_value_data_.data();
+      if (condition_value_view_.size() != 0) {
         memcpy(
             condition_value_data_.data(),
             condition_value,
@@ -84,27 +83,33 @@ class QueryCondition {
     Clause(const Clause& rhs)
         : field_name_(rhs.field_name_)
         , condition_value_data_(rhs.condition_value_data_)
-        , condition_value_(
-              rhs.condition_value_ == nullptr ? nullptr :
-                                                condition_value_data_.data())
+        , condition_value_view_(
+              (rhs.condition_value_view_.content() == nullptr ?
+                   nullptr :
+                   condition_value_data_.data()),
+              condition_value_data_.size())
         , op_(rhs.op_){};
 
     /** Move constructor. */
     Clause(Clause&& rhs)
         : field_name_(std::move(rhs.field_name_))
         , condition_value_data_(std::move(rhs.condition_value_data_))
-        , condition_value_(
-              rhs.condition_value_ == nullptr ? nullptr :
-                                                condition_value_data_.data())
+        , condition_value_view_(
+              (rhs.condition_value_view_.content() == nullptr ?
+                   nullptr :
+                   condition_value_data_.data()),
+              condition_value_data_.size())
         , op_(rhs.op_){};
 
     /** Assignment operator. */
     Clause& operator=(const Clause& rhs) {
       field_name_ = rhs.field_name_;
       condition_value_data_ = rhs.condition_value_data_;
-      condition_value_ = rhs.condition_value_ == nullptr ?
-                             nullptr :
-                             condition_value_data_.data();
+      condition_value_view_ = UntypedDatumView(
+          (rhs.condition_value_view_.content() == nullptr ?
+               nullptr :
+               condition_value_data_.data()),
+          condition_value_data_.size());
       op_ = rhs.op_;
 
       return *this;
@@ -114,9 +119,11 @@ class QueryCondition {
     Clause& operator=(Clause&& rhs) {
       field_name_ = std::move(rhs.field_name_);
       condition_value_data_ = std::move(rhs.condition_value_data_);
-      condition_value_ = rhs.condition_value_ == nullptr ?
-                             nullptr :
-                             condition_value_data_.data();
+      condition_value_view_ = UntypedDatumView(
+          (rhs.condition_value_view_.content() == nullptr ?
+               nullptr :
+               condition_value_data_.data()),
+          condition_value_data_.size());
       op_ = rhs.op_;
 
       return *this;
@@ -128,8 +135,8 @@ class QueryCondition {
     /** The value data. */
     ByteVecValue condition_value_data_;
 
-    /** The value to compare against. */
-    void* condition_value_;
+    /** A view of the value data. */
+    UntypedDatumView condition_value_view_;
 
     /** The comparison operator. */
     QueryConditionOp op_;
@@ -355,7 +362,7 @@ class QueryCondition {
       uint64_t stride,
       const bool var_size,
       const bool nullable,
-      const ByteVecValue& fill_value,
+      const UntypedDatumView& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
@@ -375,7 +382,7 @@ class QueryCondition {
       uint64_t stride,
       const bool var_size,
       const bool nullable,
-      const ByteVecValue& fill_value,
+      const UntypedDatumView& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**

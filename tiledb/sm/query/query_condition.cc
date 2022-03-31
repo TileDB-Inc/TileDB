@@ -103,7 +103,7 @@ Status QueryCondition::check(const ArraySchema& array_schema) const {
           "Clause field name is not an attribute " + field_name);
     }
 
-    if (clause.condition_value_ == nullptr) {
+    if (clause.condition_value_view_.content() == nullptr) {
       if (clause.op_ != QueryConditionOp::EQ &&
           clause.op_ != QueryConditionOp::NE) {
         return Status_QueryConditionError(
@@ -120,7 +120,7 @@ Status QueryCondition::check(const ArraySchema& array_schema) const {
 
     if (attribute->var_size() && attribute->type() != Datatype::STRING_ASCII &&
         attribute->type() != Datatype::CHAR &&
-        clause.condition_value_ != nullptr) {
+        clause.condition_value_view_.content() != nullptr) {
       return Status_QueryConditionError(
           "Clause non-empty attribute may only be var-sized for ASCII "
           "strings: " +
@@ -139,7 +139,8 @@ Status QueryCondition::check(const ArraySchema& array_schema) const {
 
     if (attribute->cell_size() != constants::var_size &&
         attribute->cell_size() != condition_value_size &&
-        !(attribute->nullable() && clause.condition_value_ == nullptr) &&
+        !(attribute->nullable() &&
+          clause.condition_value_view_.content() == nullptr) &&
         attribute->type() != Datatype::STRING_ASCII &&
         attribute->type() != Datatype::CHAR && (!attribute->var_size())) {
       return Status_QueryConditionError(
@@ -212,19 +213,21 @@ std::unordered_set<std::string>& QueryCondition::field_names() const {
 template <>
 struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LT> {
   static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs == nullptr) {
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    if (lhs.content() == nullptr) {
       return false;
     }
 
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const size_t min_size = std::min<size_t>(lhs.size(), rhs.size());
     const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+        static_cast<const char*>(lhs.content()),
+        static_cast<const char*>(rhs.content()),
+        min_size);
     if (cmp != 0) {
       return cmp < 0;
     }
 
-    return lhs_size < rhs_size;
+    return lhs.size() < rhs.size();
   }
 };
 
@@ -232,19 +235,21 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LT> {
 template <>
 struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LE> {
   static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs == nullptr) {
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    if (lhs.content() == nullptr) {
       return false;
     }
 
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const size_t min_size = std::min<size_t>(lhs.size(), rhs.size());
     const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+        static_cast<const char*>(lhs.content()),
+        static_cast<const char*>(rhs.content()),
+        min_size);
     if (cmp != 0) {
       return cmp < 0;
     }
 
-    return lhs_size <= rhs_size;
+    return lhs.size() <= rhs.size();
   }
 };
 
@@ -252,19 +257,21 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LE> {
 template <>
 struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GT> {
   static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs == nullptr) {
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    if (lhs.content() == nullptr) {
       return false;
     }
 
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const size_t min_size = std::min<size_t>(lhs.size(), rhs.size());
     const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+        static_cast<const char*>(lhs.content()),
+        static_cast<const char*>(rhs.content()),
+        min_size);
     if (cmp != 0) {
       return cmp > 0;
     }
 
-    return lhs_size > rhs_size;
+    return lhs.size() > rhs.size();
   }
 };
 
@@ -272,19 +279,21 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GT> {
 template <>
 struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GE> {
   static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs == nullptr) {
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    if (lhs.content() == nullptr) {
       return false;
     }
 
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const size_t min_size = std::min<size_t>(lhs.size(), rhs.size());
     const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+        static_cast<const char*>(lhs.content()),
+        static_cast<const char*>(rhs.content()),
+        min_size);
     if (cmp != 0) {
       return cmp > 0;
     }
 
-    return lhs_size >= rhs_size;
+    return lhs.size() >= rhs.size();
   }
 };
 
@@ -292,23 +301,23 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GE> {
 template <>
 struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::EQ> {
   static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs == rhs) {
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    if (lhs.content() == rhs.content()) {
       return true;
     }
 
-    if (lhs == nullptr || rhs == nullptr) {
+    if (lhs.content() == nullptr || rhs.content() == nullptr) {
       return false;
     }
 
-    if (lhs_size != rhs_size) {
+    if (lhs.size() != rhs.size()) {
       return false;
     }
 
     return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) == 0;
+               static_cast<const char*>(lhs.content()),
+               static_cast<const char*>(rhs.content()),
+               lhs.size()) == 0;
   }
 };
 
@@ -316,91 +325,103 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::EQ> {
 template <>
 struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::NE> {
   static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (rhs == nullptr && lhs != nullptr) {
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    if (rhs.content() == nullptr && lhs.content() != nullptr) {
       return true;
     }
 
-    if (lhs == nullptr || rhs == nullptr) {
+    if (lhs.content() == nullptr || rhs.content() == nullptr) {
       return false;
     }
 
-    if (lhs_size != rhs_size) {
+    if (lhs.size() != rhs.size()) {
       return true;
     }
 
     return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) != 0;
+               static_cast<const char*>(lhs.content()),
+               static_cast<const char*>(rhs.content()),
+               lhs.size()) != 0;
   }
 };
 
 /** Partial template specialization for `QueryConditionOp::LT`. */
 template <typename T>
 struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::LT> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
+  static inline bool cmp(
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    return lhs.content() != nullptr &&
+           *static_cast<const T*>(lhs.content()) <
+               *static_cast<const T*>(rhs.content());
   }
 };
 
 /** Partial template specialization for `QueryConditionOp::LE`. */
 template <typename T>
 struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::LE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           *static_cast<const T*>(lhs) <= *static_cast<const T*>(rhs);
+  static inline bool cmp(
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    return lhs.content() != nullptr &&
+           *static_cast<const T*>(lhs.content()) <=
+               *static_cast<const T*>(rhs.content());
   }
 };
 
 /** Partial template specialization for `QueryConditionOp::GT`. */
 template <typename T>
 struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::GT> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           *static_cast<const T*>(lhs) > *static_cast<const T*>(rhs);
+  static inline bool cmp(
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    return lhs.content() != nullptr &&
+           *static_cast<const T*>(lhs.content()) >
+               *static_cast<const T*>(rhs.content());
   }
 };
 
 /** Partial template specialization for `QueryConditionOp::GE`. */
 template <typename T>
 struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::GE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           *static_cast<const T*>(lhs) >= *static_cast<const T*>(rhs);
+  static inline bool cmp(
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    return lhs.content() != nullptr &&
+           *static_cast<const T*>(lhs.content()) >=
+               *static_cast<const T*>(rhs.content());
   }
 };
 
 /** Partial template specialization for `QueryConditionOp::EQ`. */
 template <typename T>
 struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::EQ> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    if (lhs == rhs) {
+  static inline bool cmp(
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    if (lhs.content() == rhs.content()) {
       return true;
     }
 
-    if (lhs == nullptr || rhs == nullptr) {
+    if (lhs.content() == nullptr || rhs.content() == nullptr) {
       return false;
     }
 
-    return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
+    return *static_cast<const T*>(lhs.content()) ==
+           *static_cast<const T*>(rhs.content());
   }
 };
 
 /** Partial template specialization for `QueryConditionOp::NE`. */
 template <typename T>
 struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::NE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    if (rhs == nullptr && lhs != nullptr) {
+  static inline bool cmp(
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    if (rhs.content() == nullptr && lhs.content() != nullptr) {
       return true;
     }
 
-    if (lhs == nullptr || rhs == nullptr) {
+    if (lhs.content() == nullptr || rhs.content() == nullptr) {
       return false;
     }
 
-    return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
+    return *static_cast<const T*>(lhs.content()) !=
+           *static_cast<const T*>(rhs.content());
   }
 };
 
@@ -429,7 +450,7 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
-    const ByteVecValue& fill_value,
+    const UntypedDatumView& fill_value_view,
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
   std::vector<ResultCellSlab> ret;
   const std::string& field_name = clause.field_name_;
@@ -442,10 +463,7 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
     // Handle an empty range.
     if (result_tile == nullptr && !nullable) {
       const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
-          fill_value.data(),
-          fill_value.size(),
-          clause.condition_value_,
-          clause.condition_value_data_.size());
+          fill_value_view, clause.condition_value_view_);
       if (cmp) {
         ret.emplace_back(result_tile, start, length);
       }
@@ -492,10 +510,7 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
 
           // Compare the cell value against the value in the clause.
           const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
-              cell_value,
-              cell_size,
-              clause.condition_value_,
-              clause.condition_value_data_.size());
+              {cell_value, cell_size}, clause.condition_value_view_);
           if (!cmp) {
             pending_start = create_new_result_slab(
                 start, pending_start, stride, c, result_tile, ret);
@@ -522,10 +537,7 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
 
           // Compare the cell value against the value in the clause.
           const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
-              cell_value,
-              cell_size,
-              clause.condition_value_,
-              clause.condition_value_data_.size());
+              {cell_value, cell_size}, clause.condition_value_view_);
           if (!cmp) {
             pending_start = create_new_result_slab(
                 start, pending_start, stride, c, result_tile, ret);
@@ -550,39 +562,70 @@ QueryCondition::apply_clause(
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
-    const ByteVecValue& fill_value,
+    const UntypedDatumView& fill_value_view,
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
   std::vector<ResultCellSlab> ret;
   switch (clause.op_) {
     case QueryConditionOp::LT:
       ret = apply_clause<T, QueryConditionOp::LT>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
       break;
     case QueryConditionOp::LE:
       ret = apply_clause<T, QueryConditionOp::LE>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
       break;
     case QueryConditionOp::GT:
       ret = apply_clause<T, QueryConditionOp::GT>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
       break;
     case QueryConditionOp::GE:
       ret = apply_clause<T, QueryConditionOp::GE>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
       break;
     case QueryConditionOp::EQ:
       ret = apply_clause<T, QueryConditionOp::EQ>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
       break;
     case QueryConditionOp::NE:
       ret = apply_clause<T, QueryConditionOp::NE>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
       break;
     default:
-      return {Status_QueryConditionError(
-                  "Cannot perform query comparison; Unknown query "
-                  "condition operator"),
-              nullopt};
+      return {
+          Status_QueryConditionError(
+              "Cannot perform query comparison; Unknown query "
+              "condition operator"),
+          nullopt};
   }
 
   return {Status::Ok(), std::move(ret)};
@@ -602,49 +645,115 @@ QueryCondition::apply_clause(
   }
 
   const ByteVecValue fill_value = attribute->fill_value();
+  const UntypedDatumView fill_value_view{fill_value.data(), fill_value.size()};
   const bool var_size = attribute->var_size();
   const bool nullable = attribute->nullable();
   switch (attribute->type()) {
     case Datatype::INT8:
       return apply_clause<int8_t>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
     case Datatype::UINT8:
       return apply_clause<uint8_t>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
     case Datatype::INT16:
       return apply_clause<int16_t>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
     case Datatype::UINT16:
       return apply_clause<uint16_t>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
     case Datatype::INT32:
       return apply_clause<int32_t>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
     case Datatype::UINT32:
       return apply_clause<uint32_t>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
     case Datatype::INT64:
       return apply_clause<int64_t>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
     case Datatype::UINT64:
       return apply_clause<uint64_t>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
     case Datatype::FLOAT32:
       return apply_clause<float>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
     case Datatype::FLOAT64:
       return apply_clause<double>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
     case Datatype::STRING_ASCII:
       return apply_clause<char*>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
     case Datatype::CHAR:
       if (var_size) {
         return apply_clause<char*>(
-            clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+            clause,
+            stride,
+            var_size,
+            nullable,
+            fill_value_view,
+            result_cell_slabs);
       }
       return apply_clause<char>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -659,7 +768,12 @@ QueryCondition::apply_clause(
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
       return apply_clause<int64_t>(
-          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+          clause,
+          stride,
+          var_size,
+          nullable,
+          fill_value_view,
+          result_cell_slabs);
     case Datatype::ANY:
     case Datatype::BLOB:
     case Datatype::STRING_UTF8:
@@ -668,11 +782,12 @@ QueryCondition::apply_clause(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
-      return {Status_QueryConditionError(
-                  "Cannot perform query comparison; Unsupported query "
-                  "conditional type on " +
-                  clause.field_name_),
-              nullopt};
+      return {
+          Status_QueryConditionError(
+              "Cannot perform query comparison; Unsupported query "
+              "conditional type on " +
+              clause.field_name_),
+          nullopt};
   }
 
   return {Status::Ok(), nullopt};
@@ -745,10 +860,7 @@ void QueryCondition::apply_clause_dense(
 
         // Compare the cell value against the value in the clause.
         const bool cmp = BinaryCmp<T, Op>::cmp(
-            cell_value,
-            cell_size,
-            clause.condition_value_,
-            clause.condition_value_data_.size());
+            {cell_value, cell_size}, clause.condition_value_view_);
 
         // Set the value.
         result_buffer[start + c] &= (uint8_t)cmp;
@@ -770,10 +882,7 @@ void QueryCondition::apply_clause_dense(
 
       // Compare the cell value against the value in the clause.
       const bool cmp = BinaryCmp<T, Op>::cmp(
-          cell_value,
-          cell_size,
-          clause.condition_value_,
-          clause.condition_value_data_.size());
+          {cell_value, cell_size}, clause.condition_value_view_);
 
       // Set the value.
       result_buffer[start + c] &= (uint8_t)cmp;
@@ -894,7 +1003,7 @@ Status QueryCondition::apply_clause_dense(
     ;
 
     // Null values can only be specified for equality operators.
-    if (clause.condition_value_ == nullptr) {
+    if (clause.condition_value_view_.content() == nullptr) {
       if (clause.op_ == QueryConditionOp::NE) {
         for (uint64_t c = 0; c < length; ++c) {
           result_buffer[start + c] *= buffer_validity[start + c * stride] != 0;
@@ -1113,15 +1222,17 @@ Status QueryCondition::apply_dense(
 template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LT> {
   static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    const size_t min_size = std::min<size_t>(lhs.size(), rhs.size());
     const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+        static_cast<const char*>(lhs.content()),
+        static_cast<const char*>(rhs.content()),
+        min_size);
     if (cmp != 0) {
       return cmp < 0;
     }
 
-    return lhs_size < rhs_size;
+    return lhs.size() < rhs.size();
   }
 };
 
@@ -1129,15 +1240,17 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LT> {
 template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LE> {
   static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    const size_t min_size = std::min<size_t>(lhs.size(), rhs.size());
     const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+        static_cast<const char*>(lhs.content()),
+        static_cast<const char*>(rhs.content()),
+        min_size);
     if (cmp != 0) {
       return cmp < 0;
     }
 
-    return lhs_size <= rhs_size;
+    return lhs.size() <= rhs.size();
   }
 };
 
@@ -1145,15 +1258,17 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LE> {
 template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GT> {
   static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    const size_t min_size = std::min<size_t>(lhs.size(), rhs.size());
     const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+        static_cast<const char*>(lhs.content()),
+        static_cast<const char*>(rhs.content()),
+        min_size);
     if (cmp != 0) {
       return cmp > 0;
     }
 
-    return lhs_size > rhs_size;
+    return lhs.size() > rhs.size();
   }
 };
 
@@ -1161,15 +1276,17 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GT> {
 template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GE> {
   static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    const size_t min_size = std::min<size_t>(lhs.size(), rhs.size());
     const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+        static_cast<const char*>(lhs.content()),
+        static_cast<const char*>(rhs.content()),
+        min_size);
     if (cmp != 0) {
       return cmp > 0;
     }
 
-    return lhs_size >= rhs_size;
+    return lhs.size() >= rhs.size();
   }
 };
 
@@ -1177,15 +1294,15 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GE> {
 template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::EQ> {
   static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs_size != rhs_size) {
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    if (lhs.size() != rhs.size()) {
       return false;
     }
 
     return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) == 0;
+               static_cast<const char*>(lhs.content()),
+               static_cast<const char*>(rhs.content()),
+               lhs.size()) == 0;
   }
 };
 
@@ -1193,63 +1310,75 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::EQ> {
 template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::NE> {
   static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs_size != rhs_size) {
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    if (lhs.size() != rhs.size()) {
       return true;
     }
 
     return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) != 0;
+               static_cast<const char*>(lhs.content()),
+               static_cast<const char*>(rhs.content()),
+               lhs.size()) != 0;
   }
 };
 
 /** Partial template specialization for `QueryConditionOp::LT`. */
 template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::LT> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
+  static inline bool cmp(
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    return *static_cast<const T*>(lhs.content()) <
+           *static_cast<const T*>(rhs.content());
   }
 };
 
 /** Partial template specialization for `QueryConditionOp::LE`. */
 template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::LE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) <= *static_cast<const T*>(rhs);
+  static inline bool cmp(
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    return *static_cast<const T*>(lhs.content()) <=
+           *static_cast<const T*>(rhs.content());
   }
 };
 
 /** Partial template specialization for `QueryConditionOp::GT`. */
 template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::GT> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) > *static_cast<const T*>(rhs);
+  static inline bool cmp(
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    return *static_cast<const T*>(lhs.content()) >
+           *static_cast<const T*>(rhs.content());
   }
 };
 
 /** Partial template specialization for `QueryConditionOp::GE`. */
 template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::GE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) >= *static_cast<const T*>(rhs);
+  static inline bool cmp(
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    return *static_cast<const T*>(lhs.content()) >=
+           *static_cast<const T*>(rhs.content());
   }
 };
 
 /** Partial template specialization for `QueryConditionOp::EQ`. */
 template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::EQ> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
+  static inline bool cmp(
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    return *static_cast<const T*>(lhs.content()) ==
+           *static_cast<const T*>(rhs.content());
   }
 };
 
 /** Partial template specialization for `QueryConditionOp::NE`. */
 template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::NE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
+  static inline bool cmp(
+      const UntypedDatumView& lhs, const UntypedDatumView& rhs) {
+    return *static_cast<const T*>(lhs.content()) !=
+           *static_cast<const T*>(rhs.content());
   }
 };
 
@@ -1289,10 +1418,7 @@ void QueryCondition::apply_clause_sparse(
 
         // Compare the cell value against the value in the clause.
         const bool cmp = BinaryCmp<T, Op>::cmp(
-            cell_value,
-            cell_size,
-            clause.condition_value_,
-            clause.condition_value_data_.size());
+            {cell_value, cell_size}, clause.condition_value_view_);
 
         // Set the value.
         result_bitmap[c] *= cmp;
@@ -1313,10 +1439,7 @@ void QueryCondition::apply_clause_sparse(
 
       // Compare the cell value against the value in the clause.
       const bool cmp = BinaryCmp<T, Op>::cmp(
-          cell_value,
-          cell_size,
-          clause.condition_value_,
-          clause.condition_value_data_.size());
+          {cell_value, cell_size}, clause.condition_value_view_);
 
       // Set the value.
       result_bitmap[c] *= cmp;
@@ -1387,7 +1510,7 @@ Status QueryCondition::apply_clause_sparse(
     const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
 
     // Null values can only be specified for equality operators.
-    if (clause.condition_value_ == nullptr) {
+    if (clause.condition_value_view_.content() == nullptr) {
       if (clause.op_ == QueryConditionOp::NE) {
         for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
           result_bitmap[c] *= buffer_validity[c] != 0;
