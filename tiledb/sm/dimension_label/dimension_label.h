@@ -174,6 +174,24 @@ class DimensionLabel {
       uint32_t index_cell_val_num,
       const Range& index_domain);
 
+  /** Returns the number of values per cell for the index. */
+  inline uint32_t index_cell_val_num() const {
+    return schema_.index_cell_val_num;
+  }
+
+  /** Returns the datatype of the original dimension. */
+  inline Datatype index_datatype() const {
+    return schema_.index_datatype;
+  }
+
+  /**
+   * Returnd the domain of the original dimension. A pair of [lower, upper]
+   * bounds.
+   **/
+  inline const Range& index_domain() const {
+    return schema_.index_domain;
+  }
+
   /**
    * Returns success status and a range on the dimension coordinates that
    * matches the label range.
@@ -196,6 +214,31 @@ class DimensionLabel {
    **/
   tuple<Status, Range> index_range(const Range& label_range) const;
 
+  /** Returns the number of values per cell for the label. */
+  inline uint32_t label_cell_val_num() const {
+    return schema_.label_cell_val_num;
+  }
+
+  /** Returns the datatype of the label. */
+  inline Datatype label_datatype() const {
+    return schema_.label_datatype;
+  }
+
+  /** Returns the domain of the label. A pair of [lower, upper] bounds. */
+  inline const Range& label_domain() const {
+    return schema_.label_domain;
+  }
+
+  /** Returns the type of the dimension label. */
+  inline LabelType label_type() const {
+    return label_type_;
+  }
+
+  /** Returns the name of the dimension label. */
+  inline const std::string& name() const {
+    return schema_.name;
+  }
+
   /**
    * Serializes the object members into a binary buffer.
    *
@@ -207,7 +250,7 @@ class DimensionLabel {
 
  private:
   /**
-   * The type of the dimension.
+   * The type of the dimension label.
    *
    * Possible types include:
    *
