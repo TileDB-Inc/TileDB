@@ -814,5 +814,66 @@ Status Curl::delete_data(
   return Status::Ok();
 }
 
+Status Curl::patch_data(
+    stats::Stats* const stats,
+    const std::string& url,
+    const SerializationType serialization_type,
+    const BufferList* data,
+    Buffer* const returned_data,
+    const std::string& res_uri) {
+  struct curl_slist* headers;
+  RETURN_NOT_OK(patch_data_common(serialization_type, data, &headers));
+
+  CURLcode ret;
+  headerData.uri = &res_uri;
+  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
+  curl_slist_free_all(headers);
+  RETURN_NOT_OK(st);
+
+  // Check for errors
+  RETURN_NOT_OK(check_curl_errors(ret, "PATCH", returned_data));
+
+  return Status::Ok();
+}
+
+Status Curl::patch_data_common(
+    const SerializationType serialization_type,
+    const BufferList* data,
+    struct curl_slist** headers) {
+  CURL* curl = curl_.get();
+  if (curl == nullptr)
+    return LOG_STATUS(
+        Status_RestError("Error posting data; curl instance is null."));
+
+  const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
+  if (data->total_size() > post_size_limit) {
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, data->total_size());
+  } else {
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
+  }
+
+  // Set auth and content-type for request
+  *headers = nullptr;
+  RETURN_NOT_OK_ELSE(set_headers(headers), curl_slist_free_all(*headers));
+  RETURN_NOT_OK_ELSE(
+      set_content_type(serialization_type, headers),
+      curl_slist_free_all(*headers));
+
+  /* HTTP PUT please */
+  curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
+  curl_easy_setopt(
+      curl, CURLOPT_READFUNCTION, buffer_list_read_memory_callback);
+  curl_easy_setopt(curl, CURLOPT_READDATA, data);
+
+  /* pass our list of custom made headers */
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headers);
+
+  /* set seek for handling redirects */
+  curl_easy_setopt(curl, CURLOPT_SEEKFUNCTION, &buffer_list_seek_callback);
+  curl_easy_setopt(curl, CURLOPT_SEEKDATA, data);
+
+  return Status::Ok();
+}
+
 }  // namespace sm
 }  // namespace tiledb

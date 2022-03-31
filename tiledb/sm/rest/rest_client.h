@@ -247,13 +247,22 @@ class RestClient {
   Status post_group_from_rest(const URI& uri, Group* group);
 
   /**
-   * Post group details from the REST server.
+   * Post group details to the REST server.
    *
    * @param uri Group UI
    * @param group Group to serialize
    * @return Status
    */
   Status post_group_to_rest(const URI& uri, Group* group);
+
+  /**
+   * Post group create to the REST server.
+   *
+   * @param uri Group UI
+   * @param group Group to create
+   * @return Status
+   */
+  Status post_group_create_to_rest(const URI& uri, Group* group);
 
  private:
   /* ********************************* */

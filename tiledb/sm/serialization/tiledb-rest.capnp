@@ -649,3 +649,8 @@ struct GroupUpdate {
   membersToAdd @1 :List(GroupMember) $Json.name("members_to_add");
   # members to add
 }
+
+struct GroupCreate {
+  uri @0 :Text;
+  # URI where group should be created
+}

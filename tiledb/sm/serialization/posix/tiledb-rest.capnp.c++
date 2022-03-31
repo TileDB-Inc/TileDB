@@ -5297,6 +5297,50 @@ const ::capnp::_::RawSchema s_c4e54a63294eddb7 = {
   1, 2, i_c4e54a63294eddb7, nullptr, nullptr, { &s_c4e54a63294eddb7, nullptr, nullptr, 0, 0, nullptr }
 };
 #endif  // !CAPNP_LITE
+static const ::capnp::_::AlignedData<33> b_fb7f36ad4d8ffe84 = {
+  {   0,   0,   0,   0,   5,   0,   6,   0,
+    132, 254, 143,  77, 173,  54, 127, 251,
+     18,   0,   0,   0,   1,   0,   0,   0,
+    127, 216, 135, 181,  36, 146, 125, 181,
+      1,   0,   7,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     21,   0,   0,   0, 242,   0,   0,   0,
+     33,   0,   0,   0,   7,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     29,   0,   0,   0,  63,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+    116, 105, 108, 101, 100,  98,  45, 114,
+    101, 115, 116,  46,  99,  97, 112, 110,
+    112,  58,  71, 114, 111, 117, 112,  67,
+    114, 101,  97, 116, 101,   0,   0,   0,
+      0,   0,   0,   0,   1,   0,   1,   0,
+      4,   0,   0,   0,   3,   0,   4,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   1,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     13,   0,   0,   0,  34,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      8,   0,   0,   0,   3,   0,   1,   0,
+     20,   0,   0,   0,   2,   0,   1,   0,
+    117, 114, 105,   0,   0,   0,   0,   0,
+     12,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     12,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0, }
+};
+::capnp::word const* const bp_fb7f36ad4d8ffe84 = b_fb7f36ad4d8ffe84.words;
+#if !CAPNP_LITE
+static const uint16_t m_fb7f36ad4d8ffe84[] = {0};
+static const uint16_t i_fb7f36ad4d8ffe84[] = {0};
+const ::capnp::_::RawSchema s_fb7f36ad4d8ffe84 = {
+  0xfb7f36ad4d8ffe84, b_fb7f36ad4d8ffe84.words, 33, nullptr, m_fb7f36ad4d8ffe84,
+  0, 1, i_fb7f36ad4d8ffe84, nullptr, nullptr, { &s_fb7f36ad4d8ffe84, nullptr, nullptr, 0, 0, nullptr }
+};
+#endif  // !CAPNP_LITE
 }  // namespace schemas
 }  // namespace capnp
 
@@ -5713,6 +5757,14 @@ constexpr uint16_t GroupUpdate::_capnpPrivate::pointerCount;
 #if !CAPNP_LITE
 constexpr ::capnp::Kind GroupUpdate::_capnpPrivate::kind;
 constexpr ::capnp::_::RawSchema const* GroupUpdate::_capnpPrivate::schema;
+#endif  // !CAPNP_LITE
+
+// GroupCreate
+constexpr uint16_t GroupCreate::_capnpPrivate::dataWordSize;
+constexpr uint16_t GroupCreate::_capnpPrivate::pointerCount;
+#if !CAPNP_LITE
+constexpr ::capnp::Kind GroupCreate::_capnpPrivate::kind;
+constexpr ::capnp::_::RawSchema const* GroupCreate::_capnpPrivate::schema;
 #endif  // !CAPNP_LITE
 
 

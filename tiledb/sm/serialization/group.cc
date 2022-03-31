@@ -197,6 +197,18 @@ Status group_update_from_capnp(
   return Status::Ok();
 }
 
+Status group_create_to_capnp(
+    const Group* group, capnp::GroupCreate::Builder* group_create_builder) {
+  if (group == nullptr) {
+    return LOG_STATUS(
+        Status_SerializationError("Error serializing group; group is null."));
+  }
+
+  group_create_builder->setUri(group->group_uri().to_string());
+
+  return Status::Ok();
+}
+
 Status group_serialize(
     const Group* group,
     SerializationType serialize_type,
@@ -395,6 +407,58 @@ Status group_update_deserialize(
   return Status::Ok();
 }
 
+Status group_create_serialize(
+    const Group* group,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    capnp::GroupCreate::Builder group_create_builder =
+        message.initRoot<capnp::GroupCreate>();
+    RETURN_NOT_OK(group_create_to_capnp(group, &group_create_builder));
+
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(group_create_builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
+        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
+        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status_SerializationError(
+            "Error serializing group create; Unknown serialization type "
+            "passed"));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing group ccreate; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing group create; exception " + std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
 #else
 
 Status group_serialize(const Group*, SerializationType, Buffer*) {
@@ -415,6 +479,11 @@ Status group_update_serialize(const Group*, SerializationType, Buffer*) {
 Status group_update_deserialize(Group*, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
+}
+
+Status group_create_serialize(const Group*, SerializationType, Buffer*) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot serialize; serialization not enabled."));
 }
 
 #endif  // TILEDB_SERIALIZATION
