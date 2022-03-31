@@ -130,9 +130,10 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_drop_attribute(
 
 /**
  * Sets timestamp range in an array schema evolution
- * The consecutive evolved schemas could have the same timestamps.
- * This function can be used to set different timestamps for consecutive
- * schemas.
+ * The evolved schema could have the same timestamp as previous schema.
+ * This function can be used to set a different timestamp for the evolved
+ * schema. The lo and hi values must be the same, otherwise it will throw a
+ * runtime error.
  *
  * **Example:**
  *
@@ -145,7 +146,8 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_drop_attribute(
  * @param ctx The TileDB context.
  * @param array_schema_evolution The schema evolution.
  * @param lo The lower bound of timestamp range.
- * @param hi The upper bound of timestamp range.
+ * @param hi The upper bound of timestamp range, it must euqal to the lower
+ * bound.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
