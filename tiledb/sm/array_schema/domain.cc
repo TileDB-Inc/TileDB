@@ -270,7 +270,9 @@ int Domain::cell_order_cmp(
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim = dimension(d);
       auto res = cell_order_cmp_func_[d](
-          dim.get(), left.dimension_datum_view(d), right.dimension_datum_view(d));
+          dim.get(),
+          left.dimension_datum_view(d),
+          right.dimension_datum_view(d));
 
       if (res == 1 || res == -1)
         return res;
@@ -280,7 +282,9 @@ int Domain::cell_order_cmp(
     for (unsigned d = dim_num_ - 1;; --d) {
       auto dim = dimension(d);
       auto res = cell_order_cmp_func_[d](
-          dim.get(), left.dimension_datum_view(d), right.dimension_datum_view(d));
+          dim.get(),
+          left.dimension_datum_view(d),
+          right.dimension_datum_view(d));
 
       if (res == 1 || res == -1)
         return res;
