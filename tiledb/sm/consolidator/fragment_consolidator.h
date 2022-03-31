@@ -1,11 +1,11 @@
 /**
- * @file   consolidator.h
+ * @file   fragment_consolidator.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,17 +27,18 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class Consolidator.
+ * This file defines class FragmentConsolidator.
  */
 
-#ifndef TILEDB_CONSOLIDATOR_H
-#define TILEDB_CONSOLIDATOR_H
+#ifndef TILEDB_FRAGMENT_CONSOLIDATOR_H
+#define TILEDB_FRAGMENT_CONSOLIDATOR_H
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/misc/types.h"
 
 #include <vector>
@@ -53,9 +54,57 @@ class Query;
 class StorageManager;
 class URI;
 
-/** Handles array consolidation. */
-class Consolidator {
+/** Handles fragment consolidation. */
+class FragmentConsolidator : public Consolidator {
  public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /**
+   * Constructor.
+   *
+   * @param config Config.
+   * @param storage_manager Storage manager.
+   */
+  explicit FragmentConsolidator(
+      const Config* config, StorageManager* storage_manager);
+
+  /** Destructor. */
+  ~FragmentConsolidator() = default;
+
+  DISABLE_COPY_AND_COPY_ASSIGN(FragmentConsolidator);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(FragmentConsolidator);
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /**
+   * Performs the consolidation operation.
+   *
+   * @param array_name URI of array to consolidate.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @return Status
+   */
+  Status consolidate(
+      const char* array_name,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length);
+
+  /**
+   * Performs the vacuuming operation.
+   *
+   * @param array_name URI of array to consolidate.
+   * @return Status
+   */
+  Status vacuum(const char* array_name);
+
+ private:
   /* ********************************* */
   /*           TYPE DEFINITIONS        */
   /* ********************************* */
@@ -88,134 +137,21 @@ class Consolidator {
      * consolidation.
      */
     float size_ratio_;
-    /**
-     * The consolidation mode. It can be one of:
-     *     - "fragments": only the fragments will be consoidated
-     *     - "fragment_meta": only the fragment metadata will be consolidated
-     *     - "array_meta": only the array metadata will be consolidated
-     *     - "commits": only the commit files will be consolidated
-     */
-    std::string mode_;
     /** Start time for consolidation. */
     uint64_t timestamp_start_;
     /** End time for consolidation. */
     uint64_t timestamp_end_;
     /** Is the refactored reader in use or not */
     bool use_refactored_reader_;
+    /** Start time for vacuuming. */
+    uint64_t vacuum_timestamp_start_;
+    /** End time for vacuuming. */
+    uint64_t vacuum_timestamp_end_;
   };
 
   /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /*          PRIVATE METHODS          */
   /* ********************************* */
-
-  /**
-   * Constructor.
-   *
-   * @param storage_manager The storage manager.
-   */
-  explicit Consolidator(StorageManager* storage_manager);
-
-  /** Destructor. */
-  ~Consolidator();
-
-  DISABLE_COPY_AND_COPY_ASSIGN(Consolidator);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(Consolidator);
-
-  /* ********************************* */
-  /*                API                */
-  /* ********************************* */
-
-  /**
-   * Consolidates the fragments, fragment metadata or array metadata of
-   * the input array, based on the consolidation mode set in the configuration.
-   *
-   * @param array_name URI of array to consolidate.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @param config Configuration parameters for the consolidation
-   *     (`nullptr` means default).
-   * @return Status
-   */
-  Status consolidate(
-      const char* array_name,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
-      const Config* config);
-
-  /**
-   * Consolidates only the array metadata of the input array.
-   *
-   * @param array_name URI of array whose metadata to consolidate.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @return Status
-   */
-  Status consolidate_array_meta(
-      const char* array_name,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length);
-
-  /**
-   * Consolidates only the commits of the input array.
-   *
-   * @param array_name URI of array whose metadata to consolidate.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @return Status
-   */
-  Status consolidate_commits(
-      const char* array_name,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length);
-
- private:
-  /* ********************************* */
-  /*        PRIVATE ATTRIBUTES         */
-  /* ********************************* */
-
-  /** Connsolidation configuration parameters. */
-  ConsolidationConfig config_;
-
-  /** The storage manager. */
-  StorageManager* storage_manager_;
-
-  /** The class stats. */
-  stats::Stats* stats_;
-
-  /** The class logger. */
-  shared_ptr<Logger> logger_;
-
-  /** UID of the logger instance */
-  inline static std::atomic<uint64_t> logger_id_ = 0;
-
-  /* ********************************* */
-  /*          PRIVATE METHODS           */
-  /* ********************************* */
-
-  /**
-   * Consolidates only the fragments of the input array.
-   *
-   * @param array_name URI of array to consolidate.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @return Status
-   */
-  Status consolidate_fragments(
-      const char* array_name,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length);
 
   /**
    * Checks if the fragments between `start` and `end` (inclusive)
@@ -266,36 +202,6 @@ class Consolidator {
       const std::vector<TimestampedURI>& to_consolidate,
       const NDRange& union_non_empty_domains,
       URI* new_fragment_uri);
-
-  /**
-   * Consolidates the fragment metadata of the input array.
-   *
-   * This function will write a file with format `__t1_t2_v`,
-   * where `t1` (`t2`) is the timestamp of the first (last)
-   * fragment whose footers it consolidates, and `v` is the
-   * format version.
-   *
-   * The file format is as follows:
-   * <number of fragments whose footers are consolidated in the file>
-   * <framgment #1 name size> <fragment #1 name> <fragment #1 footer offset>
-   * <framgment #2 name size> <fragment #2 name> <fragment #2 footer offset>
-   * ...
-   * <framgment #N name size> <fragment #N name> <fragment #N footer offset>
-   * <serialized footer for fragment #1>
-   * <serialized footer for fragment #2>
-   * ...
-   * <serialized footer for fragment #N>
-   *
-   * @param array_uri The array URI.
-   * @param enc_key If the array is encrypted, the private encryption
-   *    key.
-   * @return Status
-   */
-  Status consolidate_fragment_meta(
-      const URI& array_uri,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length);
 
   /**
    * Copies the array by reading from the fragments to be consolidated
@@ -391,9 +297,16 @@ class Consolidator {
   Status write_vacuum_file(
       const URI& vac_uri,
       const std::vector<TimestampedURI>& to_consolidate) const;
+
+  /* ********************************* */
+  /*        PRIVATE ATTRIBUTES         */
+  /* ********************************* */
+
+  /** Consolidation configuration parameters. */
+  ConsolidationConfig config_;
 };
 
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_FRAGMENT_H
+#endif  // TILEDB_FRAGMENT_CONSOLIDATOR_H
