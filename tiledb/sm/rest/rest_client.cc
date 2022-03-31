@@ -1016,7 +1016,7 @@ Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
-                          "/" + curlc.url_escape(group_uri) + "/contents";
+                          "/" + curlc.url_escape(group_uri);
 
   // Get the data
   Buffer returned_data;
@@ -1056,7 +1056,7 @@ Status RestClient::post_group_to_rest(const URI& uri, Group* group) {
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
-                          "/" + curlc.url_escape(group_uri) + "/contents";
+                          "/" + curlc.url_escape(group_uri);
 
   // Put the data
   Buffer returned_data;
