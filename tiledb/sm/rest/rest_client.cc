@@ -973,8 +973,7 @@ Status RestClient::post_group_create_to_rest(const URI& uri, Group* group) {
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
-                          "/" + curlc.url_escape(group_uri);
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns;
 
   // Get the data
   Buffer returned_data;
