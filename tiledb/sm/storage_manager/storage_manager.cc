@@ -46,6 +46,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/cache/buffer_lru_cache.h"
+#include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/object_type.h"
@@ -61,7 +62,6 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/consolidator.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
@@ -384,9 +384,10 @@ Status StorageManager::array_consolidate(
   }
 
   // Consolidate
-  Consolidator consolidator(this);
-  return consolidator.consolidate(
-      array_name, encryption_type, encryption_key, key_length, config);
+  auto mode = Consolidator::mode_from_config(config);
+  auto consolidator = Consolidator::create(mode, config, this);
+  return consolidator->consolidate(
+      array_name, encryption_type, encryption_key, key_length);
 }
 
 Status StorageManager::array_vacuum(
@@ -397,241 +398,9 @@ Status StorageManager::array_vacuum(
     config = &config_;
   }
 
-  // Get mode
-  const char* mode;
-  RETURN_NOT_OK(config->get("sm.vacuum.mode", &mode));
-
-  bool found = false;
-  uint64_t timestamp_start;
-  RETURN_NOT_OK(config->get<uint64_t>(
-      "sm.vacuum.timestamp_start", &timestamp_start, &found));
-  assert(found);
-
-  uint64_t timestamp_end;
-  RETURN_NOT_OK(
-      config->get<uint64_t>("sm.vacuum.timestamp_end", &timestamp_end, &found));
-  assert(found);
-
-  if (mode == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum array; Vacuum mode cannot be null"));
-  else if (std::string(mode) == "fragments")
-    RETURN_NOT_OK(
-        array_vacuum_fragments(array_name, timestamp_start, timestamp_end));
-  else if (std::string(mode) == "fragment_meta")
-    RETURN_NOT_OK(array_vacuum_fragment_meta(array_name));
-  else if (std::string(mode) == "array_meta")
-    RETURN_NOT_OK(
-        array_vacuum_array_meta(array_name, timestamp_start, timestamp_end));
-  else if (std::string(mode) == "commits")
-    RETURN_NOT_OK(array_vacuum_commits(array_name));
-  else
-    return logger_->status(
-        Status_StorageManagerError("Cannot vacuum array; Invalid vacuum mode"));
-
-  return Status::Ok();
-}
-
-Status StorageManager::array_vacuum_fragments(
-    const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
-  if (array_name == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum fragments; Array name cannot be null"));
-
-  // Get the fragment URIs and vacuum file URIs to be vacuum
-  ArrayDirectory array_dir;
-  try {
-    array_dir = ArrayDirectory(
-        vfs_,
-        compute_tp_,
-        URI(array_name),
-        timestamp_start,
-        timestamp_end,
-        ArrayDirectoryMode::VACUUM_FRAGMENTS);
-  } catch (const std::logic_error& le) {
-    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-  }
-
-  const auto& fragment_uris_to_vacuum = array_dir.fragment_uris_to_vacuum();
-  const auto& commit_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
-  const auto& commit_uris_to_ignore = array_dir.commit_uris_to_ignore();
-  const auto& vac_uris_to_vacuum = array_dir.fragment_vac_uris_to_vacuum();
-
-  if (commit_uris_to_ignore.size() > 0) {
-    // Write an ignore file to ensure consolidated WRT files still work
-    auto&& [st1, name] = array_dir.compute_new_fragment_name(
-        commit_uris_to_ignore.front(),
-        commit_uris_to_ignore.back(),
-        constants::format_version);
-    RETURN_NOT_OK(st1);
-
-    // Write URIs, relative to the array URI.
-    std::stringstream ss;
-    auto base_uri_size = array_dir.uri().to_string().size();
-    for (const auto& uri : commit_uris_to_ignore) {
-      ss << uri.to_string().substr(base_uri_size) << "\n";
-    }
-
-    auto data = ss.str();
-    URI ignore_file_uri =
-        array_dir.get_commits_dir(constants::format_version)
-            .join_path(name.value() + constants::ignore_file_suffix);
-    RETURN_NOT_OK(vfs_->write(ignore_file_uri, data.c_str(), data.size()));
-    RETURN_NOT_OK(vfs_->close_file(ignore_file_uri));
-  }
-
-  // Delete the commit files
-  auto status = parallel_for(
-      compute_tp_, 0, commit_uris_to_vacuum.size(), [&, this](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(commit_uris_to_vacuum[i]));
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  // Delete fragment directories
-  status = parallel_for(
-      compute_tp_, 0, fragment_uris_to_vacuum.size(), [&, this](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_dir(fragment_uris_to_vacuum[i]));
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  // Delete vacuum files
-  status = parallel_for(
-      compute_tp_, 0, vac_uris_to_vacuum.size(), [&, this](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(vac_uris_to_vacuum[i]));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
-}
-
-Status StorageManager::array_vacuum_fragment_meta(const char* array_name) {
-  if (array_name == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum fragment metadata; Array name cannot be null"));
-
-  // Get the consolidated fragment metadata URIs to be deleted
-  // (all except the last one)
-  ArrayDirectory array_dir;
-  try {
-    array_dir =
-        ArrayDirectory(vfs_, compute_tp_, URI(array_name), 0, UINT64_MAX);
-  } catch (const std::logic_error& le) {
-    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-  }
-
-  const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
-
-  // Get the latest timestamp
-  uint64_t t_latest = 0;
-  for (const auto& uri : fragment_meta_uris) {
-    std::pair<uint64_t, uint64_t> timestamp_range;
-    RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
-    if (timestamp_range.second > t_latest) {
-      t_latest = timestamp_range.second;
-    }
-  }
-
-  // Vacuum
-  auto status = parallel_for(
-      compute_tp_, 0, fragment_meta_uris.size(), [&, this](size_t i) {
-        auto& uri = fragment_meta_uris[i];
-        std::pair<uint64_t, uint64_t> timestamp_range;
-        RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
-        if (timestamp_range.second != t_latest)
-          RETURN_NOT_OK(vfs_->remove_file(uri));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
-}
-
-Status StorageManager::array_vacuum_array_meta(
-    const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
-  if (array_name == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum array metadata; Array name cannot be null"));
-
-  // Get the array metadata URIs and vacuum file URIs to be vacuum
-  ArrayDirectory array_dir;
-  try {
-    array_dir = ArrayDirectory(
-        vfs_, compute_tp_, URI(array_name), timestamp_start, timestamp_end);
-  } catch (const std::logic_error& le) {
-    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-  }
-
-  const auto& array_meta_uris_to_vacuum = array_dir.array_meta_uris_to_vacuum();
-  const auto& vac_uris_to_vacuum = array_dir.array_meta_vac_uris_to_vacuum();
-
-  // Delete the array metadata files
-  auto status = parallel_for(
-      compute_tp_, 0, array_meta_uris_to_vacuum.size(), [&, this](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(array_meta_uris_to_vacuum[i]));
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  // Delete vacuum files
-  status = parallel_for(
-      compute_tp_, 0, vac_uris_to_vacuum.size(), [&, this](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(vac_uris_to_vacuum[i]));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
-}
-
-Status StorageManager::array_vacuum_commits(const char* array_name) {
-  if (array_name == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum array metadata; Array name cannot be null"));
-
-  // Get the array metadata URIs and vacuum file URIs to be vacuum
-  ArrayDirectory array_dir;
-  try {
-    array_dir = ArrayDirectory(
-        vfs_,
-        compute_tp_,
-        URI(array_name),
-        0,
-        utils::time::timestamp_now_ms(),
-        ArrayDirectoryMode::COMMITS);
-  } catch (const std::logic_error& le) {
-    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-  }
-
-  const auto& commits_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
-  const auto& consolidated_commits_uris_to_vacuum =
-      array_dir.consolidated_commits_uris_to_vacuum();
-
-  // Delete the commits files
-  auto status = parallel_for(
-      compute_tp_, 0, commits_uris_to_vacuum.size(), [&, this](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(commits_uris_to_vacuum[i]));
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  // Delete vacuum files
-  status = parallel_for(
-      compute_tp_,
-      0,
-      consolidated_commits_uris_to_vacuum.size(),
-      [&, this](size_t i) {
-        RETURN_NOT_OK(
-            vfs_->remove_file(consolidated_commits_uris_to_vacuum[i]));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
+  auto mode = Consolidator::mode_from_config(config, true);
+  auto consolidator = Consolidator::create(mode, config, this);
+  return consolidator->vacuum(array_name);
 
   return Status::Ok();
 }
@@ -697,8 +466,9 @@ Status StorageManager::array_metadata_consolidate(
   }
 
   // Consolidate
-  Consolidator consolidator(this);
-  return consolidator.consolidate_array_meta(
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::ARRAY_META, config, this);
+  return consolidator->consolidate(
       array_name, encryption_type, encryption_key, key_length);
 }
 

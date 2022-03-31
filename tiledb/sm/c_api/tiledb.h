@@ -7829,6 +7829,28 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_fragment_info_load_with_key(
     uint32_t key_length) TILEDB_NOEXCEPT;
 
 /**
+ * Gets a fragment name.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const char* name;
+ * tiledb_fragment_info_get_fragment_name(ctx, fragment_info, 1, &name);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param fragment_info The fragment info object.
+ * @param fid The index of the fragment of interest.
+ * @param name The fragment name to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    const char** name) TILEDB_NOEXCEPT;
+
+/**
  * Gets the number of fragments.
  *
  * **Example:**

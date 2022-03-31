@@ -296,6 +296,20 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "Compression-RLE: Test bytesize computation",
+    "[compression][rle][rle-strings][ypatia]") {
+  REQUIRE_THROWS_AS(RLE::compute_bytesize(0), std::logic_error);
+  CHECK(RLE::compute_bytesize(1) == 1);
+  CHECK(RLE::compute_bytesize(0xff) == 1);
+  CHECK(RLE::compute_bytesize(0x100) == 2);
+  CHECK(RLE::compute_bytesize(0xffff) == 2);
+  CHECK(RLE::compute_bytesize(0x10000) == 4);
+  CHECK(RLE::compute_bytesize(0xffffffff) == 4);
+  CHECK(RLE::compute_bytesize(0x100000000) == 8);
+  CHECK(RLE::compute_bytesize(0xffffffffffffffff) == 8);
+}
+
+TEST_CASE(
     "Compression-RLE: Test compression parameter calculation of strings",
     "[compression][rle][rle-strings]") {
   // initialize the seed for generating pseudorandom strings
