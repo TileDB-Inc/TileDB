@@ -1,5 +1,6 @@
 @0xb57d9224b587d87f;
 
+using Json = import "/capnp/compat/json.capnp";
 using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("tiledb::sm::serialization::capnp");
 
@@ -642,9 +643,9 @@ struct Group {
 }
 
 struct GroupUpdate {
-  membersToRemove @0 :List(Text);
+  membersToRemove @0 :List(Text) $Json.name("members_to_remove");
   # members to remove
 
-  membersToAdd @1 :List(GroupMember);
+  membersToAdd @1 :List(GroupMember) $Json.name("members_to_add");
   # members to add
 }
