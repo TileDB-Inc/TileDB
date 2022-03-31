@@ -190,6 +190,21 @@ class Curl {
       const std::string& res_ns_uri);
 
   /**
+   * Wrapper for sending options request to server.
+   *
+   * @param stats The stats instance to record into
+   * @param url URL to post to
+   * @param serialization_type Serialization type to use
+   * @param res_ns_uri Array Namespace and URI
+   * @return Status
+   */
+  Status options(
+      stats::Stats* const stats,
+      const std::string& url,
+      SerializationType serialization_type,
+      const std::string& res_ns_uri);
+
+  /**
    * Callback defined by the caller of the 'post_data' variant for
    * receiving buffered response data.
    *
@@ -408,6 +423,19 @@ class Curl {
       CURLcode* curl_code,
       size_t (*write_cb)(void*, size_t, size_t, void*),
       void* write_arg) const;
+
+  /**
+   * Common code shared between variants of 'make_curl_options_request'.
+   *
+   * @param stats The stats instance to record into
+   * @param url URL to fetch
+   * @param curl_code Set to the return value of the curl call
+   * @return Status
+   */
+  Status make_curl_request_options_common(
+      stats::Stats* const stats,
+      const char* const url,
+      CURLcode* const curl_code) const;
 
   /**
    * Check the given curl code for errors, returning a TileDB error status if
