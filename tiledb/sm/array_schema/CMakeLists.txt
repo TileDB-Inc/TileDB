@@ -56,6 +56,7 @@ add_executable(compile_dimension EXCLUDE_FROM_ALL)
 target_link_libraries(compile_dimension PRIVATE dimension)
 target_sources(compile_dimension PRIVATE test/compile_dimension_main.cc)
 
+
 if (TILEDB_TESTS)
     add_executable(unit_array_schema EXCLUDE_FROM_ALL)
     target_link_libraries(unit_array_schema PRIVATE attribute dimension)
@@ -63,7 +64,9 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_array_schema PUBLIC Catch2::Catch2)
 
     # Sources for tests
-    target_sources(unit_array_schema PUBLIC test/main.cc test/unit_dimension.cc)
+    target_sources(unit_array_schema PUBLIC test/main.cc 
+      test/unit_dimension.cc
+      )
 
     add_test(
         NAME "unit_array_schema"

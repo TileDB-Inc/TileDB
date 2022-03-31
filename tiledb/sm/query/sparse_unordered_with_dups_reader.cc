@@ -807,7 +807,9 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
     uint8_t* val_buffer) {
   // Get source buffers.
   const auto stores_zipped_coords = is_dim && rt->stores_zipped_coords();
-  const auto tile_tuple = rt->tile_tuple(name);
+  const auto tile_tuple = stores_zipped_coords ?
+                              rt->tile_tuple(constants::coords) :
+                              rt->tile_tuple(name);
   const auto t = &std::get<0>(*tile_tuple);
   const auto src_buff = t->data_as<uint8_t>();
 
@@ -860,7 +862,9 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
     uint8_t* val_buffer) {
   // Get source buffers.
   const auto stores_zipped_coords = is_dim && rt->stores_zipped_coords();
-  const auto tile_tuple = rt->tile_tuple(name);
+  const auto tile_tuple = stores_zipped_coords ?
+                              rt->tile_tuple(constants::coords) :
+                              rt->tile_tuple(name);
   const auto t = &std::get<0>(*tile_tuple);
   const auto src_buff = t->data_as<uint8_t>();
   const auto t_val = &std::get<2>(*tile_tuple);
@@ -1378,10 +1382,11 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
 
         // Clear tiles from memory and adjust result_tiles.
         for (const auto& idx : *index_to_copy) {
-          const auto& name = names[idx];
-          if (condition_.field_names().count(name) == 0 &&
-              (!subarray_.is_set() || !is_dim)) {
-            clear_tiles(name, result_tiles, new_result_tiles_size);
+          const auto& name_to_clear = names[idx];
+          const auto is_dim_to_clear = array_schema_.is_dim(name_to_clear);
+          if (condition_.field_names().count(name_to_clear) == 0 &&
+              (!subarray_.is_set() || !is_dim_to_clear)) {
+            clear_tiles(name_to_clear, result_tiles, new_result_tiles_size);
           }
         }
         result_tiles.resize(new_result_tiles_size);

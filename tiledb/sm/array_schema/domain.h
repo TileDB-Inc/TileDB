@@ -64,6 +64,12 @@ class Domain {
   /** Empty constructor. */
   Domain();
 
+  /** Constructor.*/
+  Domain(
+      Layout cell_order,
+      const std::vector<shared_ptr<Dimension>> dimensions,
+      Layout tile_order);
+
   /**
    * Constructor that clones the input domain.
    *
@@ -193,9 +199,13 @@ class Domain {
    *
    * @param buff The buffer to deserialize from.
    * @param version The array schema version.
-   * @return Status
+   * @return Status and Domain
    */
-  Status deserialize(ConstBuffer* buff, uint32_t version);
+  static tuple<Status, optional<shared_ptr<Domain>>> deserialize(
+      ConstBuffer* buff,
+      uint32_t version,
+      Layout cell_order,
+      Layout tile_order);
 
   /** Returns the cell order. */
   Layout cell_order() const;
