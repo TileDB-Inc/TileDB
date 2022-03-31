@@ -128,10 +128,6 @@ unsigned RTree::dim_num() const {
   return (domain_ == nullptr) ? 0 : domain_->dim_num();
 }
 
-const Domain* RTree::domain() const {
-  return domain_;
-}
-
 unsigned RTree::fanout() const {
   return fanout_;
 }
@@ -289,11 +285,6 @@ Status RTree::serialize(Buffer* buff) const {
     }
   }
 
-  return Status::Ok();
-}
-
-Status RTree::set_domain(const Domain* domain) {
-  domain_ = domain;
   return Status::Ok();
 }
 

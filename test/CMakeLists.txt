@@ -102,7 +102,7 @@ set(TILEDB_TEST_SUPPORT_SOURCES
   src/helpers-dimension.h
   src/vfs_helpers.cc
   )
-  
+
 set(TILEDB_UNIT_TEST_SOURCES
   src/helpers.h
   src/helpers.cc
@@ -155,9 +155,10 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-ctx.cc
   src/unit-DenseTiler.cc
   src/unit-dimension.cc
+  src/unit-domain.cc
   src/unit-duplicates.cc
   src/unit-empty-var-length.cc
-  src/unit-filter-buffer.cc 
+  src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
   src/unit-gcs.cc
   src/unit-gs.cc
@@ -181,7 +182,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
   src/unit-SubarrayPartitioner-sparse.cc
-  src/unit-threadpool.cc
   src/unit-Tile.cc
   src/unit-TileDomain.cc
   src/unit-uri.cc
@@ -400,4 +400,6 @@ cmake_print_properties(
   TARGETS Catch2::Catch2
   PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
   )
-  
+
+# CI tests
+add_subdirectory(ci)

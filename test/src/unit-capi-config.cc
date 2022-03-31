@@ -266,7 +266,7 @@ void check_save_to_file() {
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
   ss << "sm.query.dense.reader refactored\n";
-  ss << "sm.query.sparse_global_order.reader legacy\n";
+  ss << "sm.query.sparse_global_order.reader refactored\n";
   ss << "sm.query.sparse_unordered_with_dups.reader refactored\n";
   ss << "sm.read_range_oob warn\n";
   ss << "sm.skip_checksum_validation false\n";
@@ -292,6 +292,7 @@ void check_save_to_file() {
   ss << "vfs.gcs.multi_part_size 5242880\n";
   ss << "vfs.gcs.request_timeout_ms 3000\n";
   ss << "vfs.gcs.use_multi_part_upload true\n";
+  ss << "vfs.max_batch_size " << std::to_string(UINT64_MAX) << "\n";
   ss << "vfs.min_batch_gap 512000\n";
   ss << "vfs.min_batch_size 20971520\n";
   ss << "vfs.min_parallel_size 10485760\n";
@@ -565,7 +566,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.memory_budget"] = "5368709120";
   all_param_values["sm.memory_budget_var"] = "10737418240";
   all_param_values["sm.query.dense.reader"] = "refactored";
-  all_param_values["sm.query.sparse_global_order.reader"] = "legacy";
+  all_param_values["sm.query.sparse_global_order.reader"] = "refactored";
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";
   all_param_values["sm.mem.malloc_trim"] = "true";
   all_param_values["sm.mem.total_budget"] = "10737418240";
@@ -610,6 +611,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.var_offsets.mode"] = "elements";
   all_param_values["sm.max_tile_overlap_size"] = "314572800";
 
+  all_param_values["vfs.max_batch_size"] = std::to_string(UINT64_MAX);
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
   all_param_values["vfs.min_parallel_size"] = "10485760";
@@ -673,6 +675,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.s3.object_canned_acl"] = "NOT_SET";
 
   std::map<std::string, std::string> vfs_param_values;
+  vfs_param_values["max_batch_size"] = std::to_string(UINT64_MAX);
   vfs_param_values["min_batch_gap"] = "512000";
   vfs_param_values["min_batch_size"] = "20971520";
   vfs_param_values["min_parallel_size"] = "10485760";

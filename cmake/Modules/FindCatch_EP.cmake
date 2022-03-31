@@ -57,8 +57,8 @@ if (NOT CATCH2_FOUND AND TILEDB_SUPERBUILD)
     PREFIX "externals"
     # Set download name to avoid collisions with only the version number in the filename
     DOWNLOAD_NAME ep_catch.zip
-    URL "https://github.com/catchorg/Catch2/archive/v2.13.4.zip"
-    URL_HASH SHA1=344f5803a12e7f0bafc6572b62c6c463244ee602
+    URL "https://github.com/catchorg/Catch2/archive/v2.13.8.zip"
+    URL_HASH SHA1=73adf43795abb7f481f07d307d11ac1fbc7a6015
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""

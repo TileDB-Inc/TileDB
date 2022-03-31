@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -52,9 +52,9 @@ namespace sm {
 
 ResultTile::ResultTile(
     unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
-    : frag_idx_(frag_idx)
+    : domain_(&array_schema.domain())
+    , frag_idx_(frag_idx)
     , tile_idx_(tile_idx) {
-  domain_ = array_schema.domain();
   coord_tiles_.resize(domain_->dim_num());
   attr_tiles_.resize(array_schema.attribute_num());
   for (uint64_t i = 0; i < array_schema.attribute_num(); i++) {
@@ -124,10 +124,6 @@ uint64_t ResultTile::cell_num() const {
   }
 
   return 0;
-}
-
-const Domain* ResultTile::domain() const {
-  return domain_;
 }
 
 void ResultTile::erase_tile(const std::string& name) {
@@ -206,7 +202,8 @@ const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
 
 const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
   auto coords_size = std::get<0>(coords_tile_).cell_size();
-  auto coord_size = coords_size / std::get<0>(coords_tile_).dim_num();
+  auto coord_size =
+      coords_size / std::get<0>(coords_tile_).zipped_coords_dim_num();
   const uint64_t offset = pos * coords_size + dim_idx * coord_size;
   void* const ret =
       static_cast<char*>(std::get<0>(coords_tile_).data()) + offset;
@@ -244,7 +241,7 @@ uint64_t ResultTile::coord_size(unsigned dim_idx) const {
   // Handle zipped coordinate tiles
   if (!std::get<0>(coords_tile_).empty())
     return std::get<0>(coords_tile_).cell_size() /
-           std::get<0>(coords_tile_).dim_num();
+           std::get<0>(coords_tile_).zipped_coords_dim_num();
 
   // Handle separate coordinate tiles
   assert(dim_idx < coord_tiles_.size());
@@ -851,7 +848,7 @@ void ResultTile::compute_results_count_sparse_string(
   const uint64_t zeroed_size = coords_num < 256 ? coords_num : 256;
   for (uint64_t i = min_cell; i < min_cell + coords_num; i += zeroed_size) {
     const uint64_t partition_size =
-        (i < cell_num - zeroed_size) ? zeroed_size : cell_num - i;
+        (i < max_cell - zeroed_size) ? zeroed_size : max_cell - i;
 
     // Check if all `r_bitmap` values are zero between `i` and
     // `partition_size`. To do so, first make sure the first byte is 0, then

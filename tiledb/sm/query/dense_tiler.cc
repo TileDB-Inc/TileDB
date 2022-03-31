@@ -97,7 +97,7 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
   // For easy reference
   CopyPlan ret;
   auto dim_num = (int32_t)array_schema_.dim_num();
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto subarray = subarray_->ndrange(0);  // Guaranteed to be unary
   std::vector<std::array<T, 2>> sub(dim_num);
   for (int32_t d = 0; d < dim_num; ++d)
@@ -142,7 +142,7 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
           sub_in_tile[dim_num - 1][1] - sub_in_tile[dim_num - 1][0] + 1;
       int32_t last_d = dim_num - 2;
       for (; last_d >= 0; --last_d) {
-        auto tile_extent = *(const T*)domain->tile_extent(last_d + 1).data();
+        auto tile_extent = *(const T*)domain.tile_extent(last_d + 1).data();
         if (sub_in_tile[last_d + 1][1] - sub_in_tile[last_d + 1][0] + 1 ==
                 tile_extent &&
             sub_in_tile[last_d + 1][0] == sub[last_d + 1][0] &&
@@ -163,7 +163,7 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
       ret.copy_el_ = sub_in_tile[0][1] - sub_in_tile[0][0] + 1;
       int32_t last_d = 1;
       for (; last_d < dim_num; ++last_d) {
-        auto tile_extent = *(const T*)domain->tile_extent(last_d - 1).data();
+        auto tile_extent = *(const T*)domain.tile_extent(last_d - 1).data();
         if (sub_in_tile[last_d - 1][1] - sub_in_tile[last_d - 1][0] + 1 ==
                 tile_extent &&
             sub_in_tile[last_d - 1][0] == sub[last_d - 1][0] &&
@@ -205,9 +205,9 @@ Status DenseTiler<T>::get_tile(
         "' is not a fixed-sized attribute"));
 
   // For easy reference
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto type = array_schema_.type(name);
-  auto cell_num_per_tile = domain->cell_num_per_tile();
+  auto cell_num_per_tile = domain.cell_num_per_tile();
   auto cell_size = array_schema_.cell_size(name);
   auto tile_size = cell_num_per_tile * cell_size;
   auto buff = (uint8_t*)buffers_->find(name)->second.buffer_;
@@ -239,9 +239,9 @@ Status DenseTiler<T>::get_tile_null(
         "' is not a nullable attribute"));
 
   // For easy reference
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto type = array_schema_.type(name);
-  auto cell_num_per_tile = domain->cell_num_per_tile();
+  auto cell_num_per_tile = domain.cell_num_per_tile();
   auto cell_size = constants::cell_validity_size;
   auto tile_size = cell_num_per_tile * cell_size;
   auto buff = (uint8_t*)buffers_->find(name)->second.validity_vector_.buffer();
@@ -274,9 +274,9 @@ Status DenseTiler<T>::get_tile_var(
         "' is not a var-sized attribute"));
 
   // For easy reference
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto type = array_schema_.type(name);
-  auto cell_num_in_tile = domain->cell_num_per_tile();
+  auto cell_num_in_tile = domain.cell_num_per_tile();
   auto tile_off_size = constants::cell_var_offset_size * cell_num_in_tile;
   auto buff_it = buffers_->find(name);
   assert(buff_it != buffers_->end());
@@ -395,7 +395,7 @@ template <class T>
 void DenseTiler<T>::calculate_first_sub_tile_coords() {
   // For easy reference
   auto dim_num = array_schema_.dim_num();
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto subarray = subarray_->ndrange(0);
 
   // Calculate the coordinates of the first tile in the entire
@@ -403,9 +403,9 @@ void DenseTiler<T>::calculate_first_sub_tile_coords() {
   // left cell)
   first_sub_tile_coords_.resize(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    T dom_start = *(const T*)domain->dimension(d)->domain().start();
+    T dom_start = *(const T*)domain.dimension(d)->domain().start();
     T sub_start = *(const T*)subarray[d].start();
-    T tile_extent = *(const T*)domain->tile_extent(d).data();
+    T tile_extent = *(const T*)domain.tile_extent(d).data();
     first_sub_tile_coords_[d] =
         Dimension::tile_idx(sub_start, dom_start, tile_extent);
   }
@@ -415,7 +415,7 @@ template <class T>
 void DenseTiler<T>::calculate_subarray_tile_coord_strides() {
   // For easy reference
   auto dim_num = (int32_t)array_schema_.dim_num();
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto subarray = subarray_->ndrange(0);
   auto layout = array_schema_.tile_order();
 
@@ -424,7 +424,7 @@ void DenseTiler<T>::calculate_subarray_tile_coord_strides() {
   if (layout == Layout::ROW_MAJOR) {
     sub_tile_coord_strides_.push_back(1);
     for (auto d = dim_num - 2; d >= 0; --d) {
-      auto tile_num = domain->dimension(d + 1)->tile_num(subarray[d + 1]);
+      auto tile_num = domain.dimension(d + 1)->tile_num(subarray[d + 1]);
       sub_tile_coord_strides_.push_back(
           sub_tile_coord_strides_.back() * tile_num);
     }
@@ -433,7 +433,7 @@ void DenseTiler<T>::calculate_subarray_tile_coord_strides() {
   } else {  // COL_MAJOR
     sub_tile_coord_strides_.push_back(1);
     for (int32_t d = 1; d < dim_num; ++d) {
-      auto tile_num = domain->dimension(d - 1)->tile_num(subarray[d - 1]);
+      auto tile_num = domain.dimension(d - 1)->tile_num(subarray[d - 1]);
       sub_tile_coord_strides_.push_back(
           sub_tile_coord_strides_.back() * tile_num);
     }
@@ -447,7 +447,7 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
   assert(sub_layout == Layout::ROW_MAJOR || sub_layout == Layout::COL_MAJOR);
   auto tile_layout = array_schema_.cell_order();
   auto dim_num = (int32_t)array_schema_.dim_num();
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto subarray = subarray_->ndrange(0);
 
   // Compute tile strides
@@ -456,7 +456,7 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
     tile_strides_el_[dim_num - 1] = 1;
     if (dim_num > 1) {
       for (auto d = dim_num - 2; d >= 0; --d) {
-        auto tile_extent = (const T*)(domain->tile_extent(d + 1).data());
+        auto tile_extent = (const T*)(domain.tile_extent(d + 1).data());
         assert(tile_extent != nullptr);
         tile_strides_el_[d] = Dimension::tile_extent_mult<T>(
             tile_strides_el_[d + 1], *tile_extent);
@@ -466,7 +466,7 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
     tile_strides_el_[0] = 1;
     if (dim_num > 1) {
       for (auto d = 1; d < dim_num; ++d) {
-        auto tile_extent = (const T*)(domain->tile_extent(d - 1).data());
+        auto tile_extent = (const T*)(domain.tile_extent(d - 1).data());
         assert(tile_extent != nullptr);
         tile_strides_el_[d] = Dimension::tile_extent_mult<T>(
             tile_strides_el_[d - 1], *tile_extent);
@@ -501,7 +501,7 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
 
 template <class T>
 void DenseTiler<T>::calculate_tile_num() {
-  tile_num_ = array_schema_.domain()->tile_num(subarray_->ndrange(0));
+  tile_num_ = array_schema_.domain().tile_num(subarray_->ndrange(0));
 }
 
 template <class T>
@@ -532,7 +532,7 @@ template <class T>
 std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
   // For easy reference
   auto dim_num = array_schema_.dim_num();
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
 
   // Get tile coordinates in the subarray tile domain
   auto tile_coords_in_sub = this->tile_coords_in_sub(id);
@@ -545,8 +545,8 @@ std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
   // Calculate tile subarray based on the tile coordinates in the domain
   std::vector<std::array<T, 2>> ret(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dom_start = *(const T*)domain->dimension(d)->domain().start();
-    auto tile_extent = *(const T*)domain->tile_extent(d).data();
+    auto dom_start = *(const T*)domain.dimension(d)->domain().start();
+    auto tile_extent = *(const T*)domain.tile_extent(d).data();
     ret[d][0] = Dimension::tile_coord_low(
         tile_coords_in_dom[d], dom_start, tile_extent);
     ret[d][1] = Dimension::tile_coord_high(

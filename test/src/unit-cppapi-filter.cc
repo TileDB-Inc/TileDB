@@ -229,3 +229,248 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter]") {
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+void write_sparse_array_string_attr(
+    tiledb::Context ctx,
+    const std::string& array_name,
+    std::string& data,
+    std::vector<uint64_t>& data_offsets,
+    tiledb_layout_t layout) {
+  using namespace tiledb;
+  // Write to array
+  std::vector<int64_t> d1 = {0, 10, 20, 20, 30, 30, 40};
+  std::vector<int64_t> d2 = {0, 10, 20, 30, 30, 40, 40};
+
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_layout(layout);
+  query.set_data_buffer("d1", d1);
+  query.set_data_buffer("d2", d2);
+  query.set_data_buffer("a1", data).set_offsets_buffer("a1", data_offsets);
+  CHECK_NOTHROW(query.submit());
+  array.close();
+
+  // Finalize is necessary in global writes, otherwise a no-op
+  query.finalize();
+
+  array.close();
+}
+
+void read_and_check_sparse_array_string_attr(
+    tiledb::Context ctx,
+    const std::string& array_name,
+    std::string& expected_data,
+    std::vector<uint64_t>& expected_offsets,
+    tiledb_layout_t layout) {
+  using namespace tiledb;
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array, TILEDB_READ);
+
+  std::string attr_val;
+  attr_val.resize(expected_data.size());
+  std::vector<uint64_t> attr_off(expected_offsets.size());
+
+  query.set_layout(layout);
+  query.set_data_buffer("a1", (char*)attr_val.data(), attr_val.size());
+  query.set_offsets_buffer("a1", attr_off);
+
+  CHECK_NOTHROW(query.submit());
+
+  // Check the element offsets are properly returned
+  CHECK(attr_val == expected_data);
+  CHECK(attr_off == expected_offsets);
+
+  array.close();
+}
+
+TEST_CASE(
+    "C++ API: Filter strings with RLE, sparse array",
+    "[cppapi][filter][rle-strings][sparse]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+  std::string array_name = "cpp_unit_array";
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create schema with filter lists
+  FilterList a1_filters(ctx);
+  a1_filters.add_filter({ctx, TILEDB_FILTER_RLE});
+
+  auto a1 = Attribute::create<std::string>(ctx, "a1");
+  a1.set_cell_val_num(TILEDB_VAR_NUM);
+  a1.set_filter_list(a1_filters);
+
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int64_t>(ctx, "d1", {{0, 100}}, 10);
+  auto d2 = Dimension::create<int64_t>(ctx, "d2", {{0, 100}}, 10);
+  domain.add_dimensions(d1, d2);
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.add_attribute(a1);
+  schema.set_allows_dups(true);
+
+  // Create array
+  Array::create(array_name, schema);
+
+  std::string a1_data{
+      "foo"
+      "foo"
+      "foobar"
+      "bar"
+      "bar"
+      "bar"
+      "bar"};
+  std::vector<uint64_t> a1_offsets{0, 3, 6, 12, 15, 18, 21};
+
+  SECTION("Unordered write") {
+    write_sparse_array_string_attr(
+        ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
+    SECTION("Row major read") {
+      read_and_check_sparse_array_string_attr(
+          ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
+    }
+    SECTION("Global order read") {
+      read_and_check_sparse_array_string_attr(
+          ctx, array_name, a1_data, a1_offsets, TILEDB_GLOBAL_ORDER);
+    }
+    SECTION("Unordered read") {
+      read_and_check_sparse_array_string_attr(
+          ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
+    }
+  }
+  SECTION("Global order write") {
+    write_sparse_array_string_attr(
+        ctx, array_name, a1_data, a1_offsets, TILEDB_GLOBAL_ORDER);
+    SECTION("Row major read") {
+      read_and_check_sparse_array_string_attr(
+          ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
+    }
+    SECTION("Global order read") {
+      read_and_check_sparse_array_string_attr(
+          ctx, array_name, a1_data, a1_offsets, TILEDB_GLOBAL_ORDER);
+    }
+    SECTION("Unordered read") {
+      read_and_check_sparse_array_string_attr(
+          ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
+    }
+  }
+
+  // Clean up
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+void write_dense_array_string_attr(
+    tiledb::Context ctx,
+    const std::string& array_name,
+    std::string& data,
+    std::vector<uint64_t>& data_offsets,
+    tiledb_layout_t layout) {
+  using namespace tiledb;
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+
+  query.set_data_buffer("a1", data);
+  query.set_offsets_buffer("a1", data_offsets);
+  query.set_layout(layout);
+  query.set_subarray<int64_t>({0, 1, 0, 2});
+
+  CHECK_NOTHROW(query.submit());
+
+  // Finalize is necessary in global writes, otherwise a no-op
+  query.finalize();
+
+  array.close();
+}
+
+void read_and_check_dense_array_string_attr(
+    tiledb::Context ctx,
+    const std::string& array_name,
+    std::string& expected_data,
+    std::vector<uint64_t>& expected_offsets) {
+  using namespace tiledb;
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array, TILEDB_READ);
+
+  std::string attr_val;
+  attr_val.resize(expected_data.size());
+  std::vector<uint64_t> attr_off(expected_offsets.size());
+
+  query.set_subarray<int64_t>({0, 1, 0, 2});
+  query.set_data_buffer("a1", (char*)attr_val.data(), attr_val.size());
+  query.set_offsets_buffer("a1", attr_off);
+  CHECK_NOTHROW(query.submit());
+
+  // Check the element offsets are properly returned
+  CHECK(attr_val == expected_data);
+  CHECK(attr_off == expected_offsets);
+
+  array.close();
+}
+
+TEST_CASE(
+    "C++ API: Filter strings with RLE, dense array",
+    "[cppapi][filter][rle-strings][dense]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+  std::string array_name = "cpp_unit_array";
+
+  // Create the array
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create schema with filter lists
+  FilterList a1_filters(ctx);
+  a1_filters.add_filter({ctx, TILEDB_FILTER_RLE});
+
+  auto a1 = Attribute::create<std::string>(ctx, "a1");
+  a1.set_cell_val_num(TILEDB_VAR_NUM);
+  a1.set_filter_list(a1_filters);
+
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int64_t>(ctx, "d1", {{0, 10}}, 1);
+  auto d2 = Dimension::create<int64_t>(ctx, "d2", {{0, 10}}, 1);
+  domain.add_dimensions(d1, d2);
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.set_tile_order(TILEDB_ROW_MAJOR);
+  schema.set_cell_order(TILEDB_ROW_MAJOR);
+  schema.add_attribute(a1);
+
+  // Create array
+  Array::create(array_name, schema);
+
+  std::string a1_data{
+      "foo"
+      "foo"
+      "foobar"
+      "bar"
+      "bar"
+      "bar"};
+  std::vector<uint64_t> a1_offsets{0, 3, 6, 12, 15, 18};
+
+  SECTION("Ordered write") {
+    write_dense_array_string_attr(
+        ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
+    read_and_check_dense_array_string_attr(
+        ctx, array_name, a1_data, a1_offsets);
+  }
+  SECTION("Global order write") {
+    write_dense_array_string_attr(
+        ctx, array_name, a1_data, a1_offsets, TILEDB_GLOBAL_ORDER);
+    read_and_check_dense_array_string_attr(
+        ctx, array_name, a1_data, a1_offsets);
+  }
+
+  // Clean up
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}

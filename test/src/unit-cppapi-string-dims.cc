@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB Inc.
+ * @copyright Copyright (c) 2021-2022 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -123,7 +123,7 @@ void write_array_1(
 
 TEST_CASE(
     "C++ API: Test infinite string splits",
-    "[cppapi][string-dim][infinite-split]") {
+    "[cppapi][string-dims][infinite-split]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -199,7 +199,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test default string dimensions",
-    "[cppapi][string-dim][default]") {
+    "[cppapi][string-dims][default]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
 
@@ -429,7 +429,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test default string dimensions with partitioning",
-    "[cppapi][string-dim][default][partitioning]") {
+    "[cppapi][string-dims][default][partitioning]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
 
@@ -699,7 +699,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test default string dimensions with partitioning - with SECTIONs",
-    "[cppapi][string-dim][default][partitioning]") {
+    "[cppapi][string-dims][default][partitioning]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
 
@@ -943,7 +943,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test default string dimensions with partitioning - dupsallowed, "
     "varying bufcnt",
-    "[cppapi][string-dim][default][partitioning]") {
+    "[cppapi][string-dims][default][partitioning]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
 
@@ -1196,7 +1196,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test default string dimensions with partitioning - dupsallowed - "
     "withsections",
-    "[cppapi][string-dim][default][partitioning]") {
+    "[cppapi][string-dims][default][partitioning]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
 
@@ -1445,22 +1445,79 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
+void write_sparse_array_string_dim(
+    Context ctx,
+    const std::string& array_name,
+    std::string& data,
+    std::vector<uint64_t>& data_offsets,
+    tiledb_layout_t layout) {
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_layout(layout);
+  query.set_data_buffer("dim1", (char*)data.data(), data.size());
+  query.set_offsets_buffer("dim1", data_offsets.data(), data_offsets.size());
+
+  CHECK_NOTHROW(query.submit());
+
+  // Finalize is necessary in global writes, otherwise a no-op
+  query.finalize();
+
+  array.close();
+}
+
+void read_and_check_sparse_array_string_dim(
+    Context ctx,
+    const std::string& array_name,
+    std::string& expected_data,
+    std::vector<uint64_t>& expected_offsets,
+    tiledb_layout_t layout) {
+  Array array(ctx, array_name, TILEDB_READ);
+
+  std::vector<uint64_t> offsets_back(expected_offsets.size());
+  std::string data_back;
+  data_back.resize(expected_data.size());
+
+  Query query(ctx, array, TILEDB_READ);
+  query.add_range("dim1", std::string("ATSD987JIO"), std::string("TGSD987JPO"));
+  query.set_data_buffer("dim1", (char*)data_back.data(), data_back.size());
+  query.set_offsets_buffer("dim1", offsets_back.data(), offsets_back.size());
+  query.set_layout(layout);
+
+  CHECK_NOTHROW(query.submit());
+
+  // Check the element data and offsets are properly returned
+  CHECK(data_back == expected_data);
+  CHECK(offsets_back == expected_offsets);
+
+  array.close();
+}
+
 TEST_CASE(
-    "C++ API: Test filtering of string dimension",
-    "[cppapi][string-dim][rle-strings][sparse]") {
+    "C++ API: Test filtering of string dimensions on sparse arrays",
+    "[cppapi][string-dims][rle-strings][sparse]") {
   std::string array_name = "test_rle_string_dim";
 
-  /*
-   * Write an array with string dimension and add RLE filter. This will result
-   * in tile filtering instead of chunk filtering. For now make sure we don't
-   * fail. In the future check filtering/unfiltering is done correclty
-   */
-
   // Create data buffer to use
-  std::string data = "aabbbcdddd";
-  std::vector<uint64_t> data_elem_offsets = {0, 2, 5, 6};
+  std::stringstream repetitions;
+  size_t repetition_num = 100;
+  for (size_t i = 0; i < repetition_num; i++)
+    repetitions << "GLSD987JHY";
+  std::string data =
+      "ATSD987JIO" + std::string(repetitions.str()) + "TGSD987JPO";
+  // Create the corresponding offsets buffer
+  std::vector<uint64_t> data_elem_offsets(repetition_num + 2);
+  int start = -10;
+  std::generate(data_elem_offsets.begin(), data_elem_offsets.end(), [&] {
+    return start += 10;
+  });
 
   Context ctx;
+  VFS vfs(ctx);
+
+  // Create the array
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
   Domain domain(ctx);
   auto dim =
       Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr);
@@ -1472,25 +1529,124 @@ TEST_CASE(
   // Add compressor to filter list
   filter_list.add_filter(filter);
   dim.set_filter_list(filter_list);
+
   domain.add_dimension(dim);
 
   ArraySchema schema(ctx, TILEDB_SPARSE);
   schema.set_domain(domain);
-
+  schema.set_allows_dups(true);
   tiledb::Array::create(array_name, schema);
 
-  auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
-  Query query(ctx, array, TILEDB_WRITE);
-  query.set_data_buffer("dim1", (char*)data.data(), data.size());
-  query.set_offsets_buffer(
-      "dim1", data_elem_offsets.data(), data_elem_offsets.size());
+  SECTION("Unordered write") {
+    write_sparse_array_string_dim(
+        ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
+    SECTION("Row major read") {
+      read_and_check_sparse_array_string_dim(
+          ctx, array_name, data, data_elem_offsets, TILEDB_ROW_MAJOR);
+    }
+    SECTION("Global order read") {
+      read_and_check_sparse_array_string_dim(
+          ctx, array_name, data, data_elem_offsets, TILEDB_GLOBAL_ORDER);
+    }
+    SECTION("Unordered read") {
+      read_and_check_sparse_array_string_dim(
+          ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
+    }
+  }
+  SECTION("Global order write") {
+    write_sparse_array_string_dim(
+        ctx, array_name, data, data_elem_offsets, TILEDB_GLOBAL_ORDER);
+    SECTION("Row major read") {
+      read_and_check_sparse_array_string_dim(
+          ctx, array_name, data, data_elem_offsets, TILEDB_ROW_MAJOR);
+    }
+    SECTION("Global order read") {
+      read_and_check_sparse_array_string_dim(
+          ctx, array_name, data, data_elem_offsets, TILEDB_GLOBAL_ORDER);
+    }
+    SECTION("Unordered read") {
+      read_and_check_sparse_array_string_dim(
+          ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
+    }
+  }
 
-  query.set_layout(TILEDB_UNORDERED);
-  query.submit();
-  query.finalize();
-  array.close();
-
-  VFS vfs(ctx);
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Test adding RLE filter of string dimensions",
+    "[cppapi][string-dims][rle-strings][sparse]") {
+  std::string array_name = "test_rle_string_dim";
+
+  Context ctx;
+  Domain domain(ctx);
+  // Create var-length string dimension
+  auto dim_var_string =
+      Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr);
+  auto dim_not_var_string =
+      tiledb::Dimension::create<int32_t>(ctx, "id", {{1, 100}}, 10);
+
+  // Create filters
+  Filter rle_filter(ctx, TILEDB_FILTER_RLE);
+  Filter another_filter(ctx, TILEDB_FILTER_CHECKSUM_MD5);
+
+  // Create filter list with RLE only
+  FilterList filter_list_rle_only(ctx);
+  filter_list_rle_only.add_filter(rle_filter);
+
+  // Create filter list with RLE and other filters
+  FilterList filter_list_with_others(ctx);
+  filter_list_with_others.add_filter(another_filter);
+  filter_list_with_others.add_filter(rle_filter);
+
+  {
+    // Add dimension that is not var length string
+    domain.add_dimension(dim_not_var_string);
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    schema.set_domain(domain);
+
+    CHECK_NOTHROW(schema.set_coords_filter_list(filter_list_rle_only));
+    CHECK_NOTHROW(schema.set_coords_filter_list(filter_list_with_others));
+
+    // Add var length string dimension
+    domain.add_dimension(dim_var_string);
+    schema.set_domain(domain);
+
+    // Test set_coords_filter_list
+    {
+      // Case 1: There is no more specific filter list for this dimension
+      // Adding RLE with other filters to var-length string dimension is not
+      // allowed
+      CHECK_THROWS(schema.set_coords_filter_list(filter_list_with_others));
+      // If only RLE is used, it's allowed
+      CHECK_NOTHROW(schema.set_coords_filter_list(filter_list_rle_only));
+    }
+
+    {
+      // set coords Case 2: There is a more specific filter, so whatever we set
+      // with set coords should not matter
+      CHECK_NOTHROW(dim_var_string.set_filter_list(filter_list_rle_only));
+
+      // We need to use another domain, as adding a dimension with the same name
+      // doesn't replace the old one
+      Domain domain2(ctx);
+      domain2.add_dimension(dim_var_string);
+      schema.set_domain(domain2);
+      CHECK_NOTHROW(schema.set_coords_filter_list(filter_list_with_others));
+    }
+
+    // Test set_filter_list
+    {
+      // Adding RLE with other filters to var-length string dimension is not
+      // allowed
+      CHECK_THROWS(dim_var_string.set_filter_list(filter_list_with_others));
+
+      // The rest of the cases are allowed
+      CHECK_NOTHROW(dim_var_string.set_filter_list(filter_list_rle_only));
+      CHECK_NOTHROW(dim_not_var_string.set_filter_list(filter_list_rle_only));
+      CHECK_NOTHROW(
+          dim_not_var_string.set_filter_list(filter_list_with_others));
+    }
+  }
 }

@@ -62,6 +62,21 @@ Domain::Domain() {
   cell_num_per_tile_ = 0;
 }
 
+Domain::Domain(
+    Layout cell_order,
+    const std::vector<shared_ptr<Dimension>> dimensions,
+    Layout tile_order)
+    : cell_order_(cell_order)
+    , dimensions_(dimensions)
+    , dim_num_((unsigned int)dimensions.size())
+    , tile_order_(tile_order) {
+  // Compute number of cells per tile
+  compute_cell_num_per_tile();
+
+  // Compute number of cells per tile
+  set_tile_cell_order_cmp_funcs();
+}
+
 Domain::Domain(const Domain* domain) {
   cell_num_per_tile_ = domain->cell_num_per_tile_;
   cell_order_ = domain->cell_order_;
@@ -113,8 +128,8 @@ Layout Domain::tile_order() const {
   return tile_order_;
 }
 
-Status Domain::add_dimension(const Dimension* dim) {
-  dimensions_.emplace_back(tdb_new(Dimension, dim));
+Status Domain::add_dimension(shared_ptr<Dimension> dim) {
+  dimensions_.emplace_back(dim);
   ++dim_num_;
 
   return Status::Ok();
@@ -255,7 +270,7 @@ int Domain::cell_order_cmp(
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim = dimension(d);
       auto res = cell_order_cmp_func_[d](
-          dim, left.dimension_datum_view(d), right.dimension_datum_view(d));
+          dim.get(), left.dimension_datum_view(d), right.dimension_datum_view(d));
 
       if (res == 1 || res == -1)
         return res;
@@ -265,7 +280,7 @@ int Domain::cell_order_cmp(
     for (unsigned d = dim_num_ - 1;; --d) {
       auto dim = dimension(d);
       auto res = cell_order_cmp_func_[d](
-          dim, left.dimension_datum_view(d), right.dimension_datum_view(d));
+          dim.get(), left.dimension_datum_view(d), right.dimension_datum_view(d));
 
       if (res == 1 || res == -1)
         return res;
@@ -284,28 +299,38 @@ void Domain::crop_ndrange(NDRange* ndrange) const {
     dimensions_[d]->crop_range(&(*ndrange)[d]);
 }
 
-Status Domain::deserialize(ConstBuffer* buff, uint32_t version) {
+tuple<Status, optional<shared_ptr<Domain>>> Domain::deserialize(
+    ConstBuffer* buff, uint32_t version, Layout cell_order, Layout tile_order) {
+  Status st;
   // Load type
   Datatype type = Datatype::INT32;
   if (version < 5) {
     uint8_t type_c;
-    RETURN_NOT_OK(buff->read(&type_c, sizeof(uint8_t)));
+    st = buff->read(&type_c, sizeof(uint8_t));
+    if (!st.ok()) {
+      return {st, nullopt};
+    }
     type = static_cast<Datatype>(type_c);
   }
 
+  std::vector<shared_ptr<Dimension>> dimensions;
+  uint32_t dim_num;
   // Load dimensions
-  RETURN_NOT_OK(buff->read(&dim_num_, sizeof(uint32_t)));
-  for (uint32_t i = 0; i < dim_num_; ++i) {
+  st = buff->read(&dim_num, sizeof(uint32_t));
+  if (!st.ok()) {
+    return {st, nullopt};
+  }
+  for (uint32_t i = 0; i < dim_num; ++i) {
     auto&& [st_dim, dim]{Dimension::deserialize(buff, version, type)};
     if (!st_dim.ok()) {
-      return Status_DomainError("Cannot deserialize dimension.");
+      return {Status_DomainError("Cannot deserialize dimension."), nullopt};
     }
-    dimensions_.emplace_back(tdb_new(Dimension, dim.value().get()));
+    dimensions.emplace_back(std::move(dim.value()));
   }
 
-  set_tile_cell_order_cmp_funcs();
-
-  return Status::Ok();
+  return {Status::Ok(),
+          tiledb::common::make_shared<Domain>(
+              HERE(), cell_order, dimensions, tile_order)};
 }
 
 const Range& Domain::domain(unsigned i) const {
@@ -321,17 +346,17 @@ NDRange Domain::domain() const {
   return ret;
 }
 
-const Dimension* Domain::dimension(unsigned int i) const {
+shared_ptr<const Dimension> Domain::dimension(unsigned int i) const {
   if (i > dim_num_)
     return nullptr;
-  return dimensions_[i].get();
+  return dimensions_[i];
 }
 
-const Dimension* Domain::dimension(const std::string& name) const {
+shared_ptr<const Dimension> Domain::dimension(const std::string& name) const {
   for (unsigned int i = 0; i < dim_num_; i++) {
     const auto& dim = dimensions_[i];
     if (dim->name() == name) {
-      return dim.get();
+      return dim;
     }
   }
   return nullptr;
@@ -700,7 +725,7 @@ int Domain::tile_order_cmp(
         continue;
 
       auto res = tile_order_cmp_func_[d](
-          dim,
+          dim.get(),
           left.dimension_datum_view(d).content(),
           right.dimension_datum_view(d).content());
 
@@ -715,7 +740,7 @@ int Domain::tile_order_cmp(
       // Inapplicable to var-sized dimensions or absent tile extents
       if (!dim->var_size() && dim->tile_extent()) {
         auto res = tile_order_cmp_func_[d](
-            dim,
+            dim.get(),
             left.dimension_datum_view(d).content(),
             right.dimension_datum_view(d).content());
 
@@ -735,7 +760,7 @@ int Domain::tile_order_cmp(
 int Domain::tile_order_cmp(
     unsigned dim_idx, const void* coord_a, const void* coord_b) const {
   auto dim = dimension(dim_idx);
-  return tile_order_cmp_func_[dim_idx](dim, coord_a, coord_b);
+  return tile_order_cmp_func_[dim_idx](dim.get(), coord_a, coord_b);
 }
 
 /* ****************************** */

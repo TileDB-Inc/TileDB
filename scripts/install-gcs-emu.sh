@@ -43,6 +43,8 @@ install_gcs(){
     #sed -i fails on GA CI macos...
     sed 's/git+git:/git+https:/' /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt > /tmp/tdbpatchedrequirements.txt
     echo 'itsdangerous==2.0.1' >> /tmp/tdbpatchedrequirements.txt
+    echo 'jinja2<3.1 # pinned due to incompatibility with gcs emulator 1.23' >> /tmp/tdbpatchedrequirements.txt
+    echo 'werkzeug<2.1 # pinned due to incompatibility with gcs emulator 1.23' >> /tmp/tdbpatchedrequirements.txt
     cp -f /tmp/tdbpatchedrequirements.txt /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt
     pip3 install -r /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt
 }

@@ -38,6 +38,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
@@ -120,7 +121,9 @@ class ResultTile {
   const TileTuple& coord_tile(unsigned dim_idx) const;
 
   /** Returns the stored domain. */
-  const Domain* domain() const;
+  const Domain* domain() const {
+    return domain_;
+  }
 
   /** Erases the tile for the input attribute/dimension. */
   void erase_tile(const std::string& name);

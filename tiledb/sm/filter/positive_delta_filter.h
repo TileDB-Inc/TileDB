@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -93,6 +93,7 @@ class PositiveDeltaFilter : public Filter {
    */
   Status run_forward(
       const Tile& tile,
+      Tile* const tile_offsets,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -103,6 +104,7 @@ class PositiveDeltaFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
+      Tile* const tile_offsets,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -141,6 +143,7 @@ class PositiveDeltaFilter : public Filter {
   template <typename T>
   Status run_forward(
       const Tile& tile,
+      Tile* const tile_offsets,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -150,6 +153,7 @@ class PositiveDeltaFilter : public Filter {
   template <typename T>
   Status run_reverse(
       const Tile& tile,
+      Tile* const tile_offsets,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

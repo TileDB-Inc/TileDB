@@ -35,6 +35,7 @@
 
 #include <atomic>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -54,6 +55,19 @@ class StorageManager;
 /** Processes dense read queries. */
 class DenseReader : public ReaderBase, public IQueryStrategy {
  public:
+  /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /** Range information, for a dimension, used for row/col reads. */
+  struct RangeInfo {
+    /** Cell offset, per range for this dimension. */
+    std::vector<uint64_t> cell_offsets_;
+
+    /** Multiplier to be used in offset computation. */
+    uint64_t multiplier_;
+  };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -148,7 +162,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       Subarray& subarray,
       std::vector<Subarray>& tile_subarrays,
       std::vector<uint64_t>& tile_offsets,
-      const std::vector<uint64_t>& range_offsets,
+      const std::vector<RangeInfo>& range_info,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles);
 
   /** Fix offsets buffer after reading all offsets. */
@@ -167,7 +181,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const Subarray& subarray,
       const std::vector<Subarray>& tile_subarrays,
       const std::vector<uint64_t>& tile_offsets,
-      const std::vector<uint64_t>& range_offsets,
+      const std::vector<RangeInfo>& range_info,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
       const std::vector<uint8_t>& qc_result);
 
@@ -176,7 +190,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   uint64_t get_cell_pos_in_tile(
       const Layout& cell_order,
       const int32_t dim_num,
-      const Domain* const domain,
+      const Domain& domain,
       const ResultSpaceTile<DimType>& result_space_tile,
       const DimType* const coords);
 
@@ -199,7 +213,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const Subarray& tile_subarray,
       const DimType* const coords,
       const DimType* const range_coords,
-      const std::vector<uint64_t>& range_offsets);
+      const std::vector<RangeInfo>& range_info);
 
   /** Copy fixed tiles to the output buffers. */
   template <class DimType>
@@ -213,7 +227,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const Subarray& subarray,
       const Subarray& tile_subarray,
       const uint64_t global_cell_offset,
-      const std::vector<uint64_t>& range_offsets,
+      const std::vector<RangeInfo>& range_info,
       const std::vector<uint8_t>& qc_result);
 
   /** Copy a tile var offsets to the output buffers. */
@@ -229,7 +243,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const Subarray& tile_subarray,
       const uint64_t global_cell_offset,
       std::vector<std::vector<void*>>& var_data,
-      const std::vector<uint64_t>& range_offsets,
+      const std::vector<RangeInfo>& range_info,
       const std::vector<uint8_t>& qc_result);
 
   /** Copy a var tile to the output buffers. */
@@ -243,7 +257,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const Subarray& tile_subarray,
       const uint64_t global_cell_offset,
       std::vector<std::vector<void*>>& var_data,
-      const std::vector<uint64_t>& range_offsets,
+      const std::vector<RangeInfo>& range_info,
       bool last_tile,
       std::vector<uint64_t>& var_buffer_sizes);
 

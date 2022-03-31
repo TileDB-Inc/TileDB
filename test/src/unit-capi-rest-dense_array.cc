@@ -644,7 +644,7 @@ void DenseArrayRESTFx::check_sorted_reads(const std::string& path) {
     // Read subarray
     int* buffer = read_dense_array_2D(
         array_name, d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ, TILEDB_ROW_MAJOR);
-    REQUIRE(buffer != NULL);
+    REQUIRE(buffer != nullptr);
 
     bool allok = true;
     // Check
@@ -895,7 +895,7 @@ void DenseArrayRESTFx::check_sorted_writes(const std::string& path) {
         subarray[3],
         TILEDB_READ,
         TILEDB_ROW_MAJOR);
-    REQUIRE(read_buffer != NULL);
+    REQUIRE(read_buffer != nullptr);
 
     // Check the two buffers
     bool allok = true;

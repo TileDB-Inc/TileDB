@@ -66,6 +66,12 @@ class Domain {
   /** Empty constructor. */
   Domain();
 
+  /** Constructor.*/
+  Domain(
+      Layout cell_order,
+      const std::vector<shared_ptr<Dimension>> dimensions,
+      Layout tile_order);
+
   /**
    * Constructor that clones the input domain.
    *
@@ -102,7 +108,7 @@ class Domain {
    * @param dim The dimension to be added.
    * @return Status
    */
-  Status add_dimension(const Dimension* dim);
+  Status add_dimension(shared_ptr<Dimension> dim);
 
   /** Returns true if all dimensions have fixed-sized domain datatypes. */
   bool all_dims_fixed() const;
@@ -173,9 +179,13 @@ class Domain {
    *
    * @param buff The buffer to deserialize from.
    * @param version The array schema version.
-   * @return Status
+   * @return Status and Domain
    */
-  Status deserialize(ConstBuffer* buff, uint32_t version);
+  static tuple<Status, optional<shared_ptr<Domain>>> deserialize(
+      ConstBuffer* buff,
+      uint32_t version,
+      Layout cell_order,
+      Layout tile_order);
 
   /** Returns the cell order. */
   Layout cell_order() const;
@@ -200,10 +210,10 @@ class Domain {
   NDRange domain() const;
 
   /** Returns the i-th dimensions (nullptr upon error). */
-  const Dimension* dimension(unsigned int i) const;
+  shared_ptr<const Dimension> dimension(unsigned int i) const;
 
   /** Returns the dimension given a name (nullptr upon error). */
-  const Dimension* dimension(const std::string& name) const;
+  shared_ptr<const Dimension> dimension(const std::string& name) const;
 
   /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;
@@ -456,7 +466,7 @@ class Domain {
   Layout cell_order_;
 
   /** The domain dimensions. */
-  std::vector<tdb_unique_ptr<Dimension>> dimensions_;
+  std::vector<shared_ptr<Dimension>> dimensions_;
 
   /** The number of dimensions. */
   unsigned dim_num_;

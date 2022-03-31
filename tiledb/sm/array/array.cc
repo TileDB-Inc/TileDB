@@ -462,13 +462,13 @@ Status Array::get_max_buffer_size(
         "Cannot get max buffer size; Attribute/Dimension name is null"));
 
   // Not applicable to heterogeneous domains
-  if (!array_schema_latest_->domain()->all_dims_same_type())
+  if (!array_schema_latest_->domain().all_dims_same_type())
     return LOG_STATUS(
         Status_ArrayError("Cannot get max buffer size; Function not "
                           "applicable to heterogeneous domains"));
 
   // Not applicable to variable-sized dimensions
-  if (!array_schema_latest_->domain()->all_dims_fixed())
+  if (!array_schema_latest_->domain().all_dims_fixed())
     return LOG_STATUS(Status_ArrayError(
         "Cannot get max buffer size; Function not "
         "applicable to domains with variable-sized dimensions"));
@@ -521,13 +521,13 @@ Status Array::get_max_buffer_size(
         "Cannot get max buffer size; Attribute/Dimension name is null"));
 
   // Not applicable to heterogeneous domains
-  if (!array_schema_latest_->domain()->all_dims_same_type())
+  if (!array_schema_latest_->domain().all_dims_same_type())
     return LOG_STATUS(
         Status_ArrayError("Cannot get max buffer size; Function not "
                           "applicable to heterogeneous domains"));
 
   // Not applicable to variable-sized dimensions
-  if (!array_schema_latest_->domain()->all_dims_fixed())
+  if (!array_schema_latest_->domain().all_dims_fixed())
     return LOG_STATUS(Status_ArrayError(
         "Cannot get max buffer size; Function not "
         "applicable to domains with variable-sized dimensions"));
@@ -860,14 +860,14 @@ void Array::clear_last_max_buffer_sizes() {
 
 Status Array::compute_max_buffer_sizes(const void* subarray) {
   // Applicable only to domains where all dimensions have the same type
-  if (!array_schema_latest_->domain()->all_dims_same_type())
+  if (!array_schema_latest_->domain().all_dims_same_type())
     return LOG_STATUS(
         Status_ArrayError("Cannot compute max buffer sizes; Inapplicable when "
                           "dimension domains have different types"));
 
   // Allocate space for max buffer sizes subarray
   auto dim_num = array_schema_latest_->dim_num();
-  auto coord_size = array_schema_latest_->domain()->dimension(0)->coord_size();
+  auto coord_size = array_schema_latest_->domain().dimension(0)->coord_size();
   auto subarray_size = 2 * dim_num * coord_size;
   last_max_buffer_sizes_subarray_.resize(subarray_size);
 
@@ -887,7 +887,7 @@ Status Array::compute_max_buffer_sizes(const void* subarray) {
         std::pair<uint64_t, uint64_t>(0, 0);
     for (unsigned d = 0; d < dim_num; ++d)
       last_max_buffer_sizes_
-          [array_schema_latest_->domain()->dimension(d)->name()] =
+          [array_schema_latest_->domain().dimension(d)->name()] =
               std::pair<uint64_t, uint64_t>(0, 0);
 
     RETURN_NOT_OK(compute_max_buffer_sizes(subarray, &last_max_buffer_sizes_));
@@ -936,7 +936,7 @@ Status Array::compute_max_buffer_sizes(
 
   // Rectify bound for dense arrays
   if (array_schema_latest_->dense()) {
-    auto cell_num = array_schema_latest_->domain()->cell_num(sub);
+    auto cell_num = array_schema_latest_->domain().cell_num(sub);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {
@@ -955,8 +955,8 @@ Status Array::compute_max_buffer_sizes(
 
   // Rectify bound for sparse arrays with integer domain, without duplicates
   if (!array_schema_latest_->dense() && !array_schema_latest_->allows_dups() &&
-      array_schema_latest_->domain()->all_dims_int()) {
-    auto cell_num = array_schema_latest_->domain()->cell_num(sub);
+      array_schema_latest_->domain().all_dims_int()) {
+    auto cell_num = array_schema_latest_->domain().cell_num(sub);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {
@@ -1025,7 +1025,7 @@ Status Array::compute_non_empty_domain() {
       // corrupt for these cases we want to check to prevent any segfaults
       // later.
       if (!meta_dom.empty())
-        array_schema_latest_->domain()->expand_ndrange(
+        array_schema_latest_->domain().expand_ndrange(
             meta_dom, &non_empty_domain_);
       else {
         // If the fragment's non-empty domain is indeed empty, lets log it so

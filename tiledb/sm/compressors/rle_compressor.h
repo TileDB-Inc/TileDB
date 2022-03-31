@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/endian.h"
 
 #include <limits>
@@ -143,8 +144,11 @@ class RLE {
    * Memory is allocated and owned by the caller
    */
   template <class T, class P>
-  static void decompress(const span<std::byte> input, span<std::byte> output) {
-    if (input.empty() || output.empty())
+  static void decompress(
+      const span<const std::byte> input,
+      span<std::byte> output,
+      span<uint64_t> output_offsets) {
+    if (input.empty() || output.empty() || output_offsets.empty())
       return;
 
     const uint64_t run_size = sizeof(T);
@@ -153,6 +157,7 @@ class RLE {
     T run_length = 0;
     P string_length = 0;
     uint64_t out_offset = 0;
+    size_t offset_index = 0;
     // Iterate input to read [run length|string size|string] items
     uint64_t in_index = 0;
     while (in_index < input.size()) {
@@ -162,11 +167,20 @@ class RLE {
       in_index += str_len_size;
       for (uint64_t j = 0; j < run_length; j++) {
         memcpy(&output[out_offset], &input[in_index], string_length);
+        output_offsets[offset_index++] = out_offset;
         out_offset += string_length;
       }
       in_index += string_length;
     }
   }
+
+  /**
+   * Return the number of bytes required to store an integer
+   *
+   * @param param_length Number to calculate the bytesize
+   * @return Number of bytes required to store the input number
+   */
+  static uint8_t compute_bytesize(uint64_t param_length);
 
   /**
    * Calculate RLE parameters prior to compressing a series of var-sized strings
@@ -178,11 +192,43 @@ class RLE {
   calculate_compression_params(const span<std::string_view> input);
 
   /**
+   * Compress variable sized strings in contiguous memory to RLE format
+   *
+   * @param input Input in form of a memory contiguous sequence of strings
+   * @param rle_len_size Bytesize to use to store run legths
+   * @param string_len_size Bytesize to use to store string sizes
+   * @param output RLE-encoded output as a series of [run
+   * length|string_size|string] items. Memory is allocated and owned by the
+   * caller
+   */
+  static Status compress(
+      const span<std::string_view> input,
+      uint64_t rle_len_size,
+      uint64_t string_len_size,
+      span<std::byte> output);
+
+  /**
+   * Decompress strings encoded in RLE format
+   *
+   * @param input Input in [run length|string_size|string] RLE format to
+   * decompress
+   * @param rle_len_size Bytesize to use to read run legths
+   * @param string_len_size Bytesize to use to read string sizes
+   * @param output Decoded output as a series of strings in contiguous memory.
+   * @param output_offsets Output offsets reconstructed from input
+   * Memory is allocated and owned by the caller
+   */
+  static Status decompress(
+      const span<const std::byte> input,
+      uint64_t rle_len_size,
+      uint64_t string_len_size,
+      span<std::byte> output,
+      span<uint64_t> output_offsets);
+
+  /**
    * Compress numbers in contiguous memory to RLE format
    *
    * @tparam T Type of integer in input
-   * @tparam P Type of integer to store run legths, must fit max num of
-   * repetitions in input
    * @param input Input in form of a memory contiguous sequence of numbers
    * @param output RLE-encoded as a series of [run length|value] items. Memory
    * is allocated and owned by the caller
@@ -217,8 +263,6 @@ class RLE {
    * Decompress numbers in contiguous memory encoded in RLE format
    *
    * @tparam T Type of integer in input
-   * @tparam P Type of integer to store run legths, must be the same used for
-   * encoding
    * @param input Input in [run length|value] RLE format to decompress
    * @param output Decoded output as a series of values in contiguous memory.
    * Memory is allocated and owned by the caller

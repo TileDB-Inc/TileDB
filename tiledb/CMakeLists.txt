@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2021 TileDB, Inc.
+# Copyright (c) 2017-2022 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -120,7 +120,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status_code.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/stdx_string.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/types/dynamic_typed_datum.cc
@@ -143,6 +142,11 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/zstd_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config_iter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidator/array_meta_consolidator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidator/commits_consolidator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidator/consolidator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidator/fragment_consolidator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidator/fragment_meta_consolidator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/encryption_key.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/encryption_key_validation.cc
@@ -219,7 +223,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/timer_stat.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/consolidator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/storage_manager.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/range_subset.cc
@@ -499,6 +502,7 @@ if (SANITIZER)
       -fsanitize=${SANITIZER}
   )
 endif()
+
 
 # Coverage linker flags
 if (CMAKE_BUILD_TYPE MATCHES "Coverage")

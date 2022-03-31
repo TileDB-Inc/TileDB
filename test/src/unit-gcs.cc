@@ -107,6 +107,20 @@ std::string GCSFx::random_bucket_name(const std::string& prefix) {
   return ss.str();
 }
 
+TEST_CASE_METHOD(GCSFx, "Test GCS init", "[gcs]") {
+  try {
+    Config config;
+    config.set("vfs.gcs.use_multi_part_upload", "true");
+    init_gcs(std::move(config));
+  } catch (...) {
+    INFO(
+        "GCS initialization failed. In order to run GCS tests, be sure to "
+        "source scripts/run-gcs.sh in this shell session before starting test "
+        "runner.");
+    REQUIRE(false);
+  }
+}
+
 TEST_CASE_METHOD(GCSFx, "Test GCS filesystem, file management", "[gcs]") {
   Config config;
   config.set("vfs.gcs.use_multi_part_upload", "true");

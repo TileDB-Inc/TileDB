@@ -35,6 +35,7 @@
 
 #include <vector>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/tile_overlap.h"
@@ -96,7 +97,9 @@ class RTree {
   unsigned dim_num() const;
 
   /** Returns the domain. */
-  const Domain* domain() const;
+  inline const Domain* domain() const {
+    return domain_;
+  }
 
   /** Returns the fanout. */
   unsigned fanout() const;
@@ -138,7 +141,10 @@ class RTree {
   /**
    * Sets the RTree domain.
    */
-  Status set_domain(const Domain* domain);
+  inline Status set_domain(const Domain* domain) {
+    domain_ = domain;
+    return Status::Ok();
+  }
 
   /**
    * Sets an MBR as a leaf in the tree. The function will error out
@@ -215,7 +221,12 @@ class RTree {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The domain. */
+  /**
+   * The domain for which this R-tree provides an index.
+   *
+   * This member variable can be changed to `const Domain&` after this class is
+   * C.41-compliant and its default constructor removed.
+   */
   const Domain* domain_;
 
   /** The fanout of the tree. */

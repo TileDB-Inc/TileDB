@@ -294,46 +294,6 @@ class StorageManager {
   Status array_vacuum(const char* array_name, const Config* config);
 
   /**
-   * Cleans up fragments that took part in consolidation. Note that this
-   * will coarsen the granularity of time traveling (see docs for more
-   * information).
-   *
-   * @param array_name The name of the array to be vacuumed.
-   * @param timestamp_start The timestamp to start vacuuming at.
-   * @param timestamp_end The timestamp to end vacuuming at.
-   * @return Status
-   */
-  Status array_vacuum_fragments(
-      const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
-
-  /**
-   * Cleans up consolidated fragment metadata (all except the last one).
-   *
-   * @param array_name The name of the array to be consolidated.
-   * @return Status
-   */
-  Status array_vacuum_fragment_meta(const char* array_name);
-
-  /**
-   * Cleans up consolidated array metadata.
-   *
-   * @param array_name The name of the array to be consolidated.
-   * @param timestamp_start The timestamp to start vacuuming at.
-   * @param timestamp_end The timestamp to end vacuuming at.
-   * @return Status
-   */
-  Status array_vacuum_array_meta(
-      const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
-
-  /**
-   * Cleans up consolidated commit files.
-   *
-   * @param array_name The name of the array to be consolidated.
-   * @return Status
-   */
-  Status array_vacuum_commits(const char* array_name);
-
-  /**
    * Consolidates the metadata of an array into a single file.
    *
    * @param array_name The name of the array whose metadata will be
@@ -1050,8 +1010,6 @@ class StorageManager {
    *     schema filename.
    * @param encryption_key The encryption key to use.
    * @param fragments_to_load The fragments whose metadata to load.
-   * @param meta_buff A buffer that may contain the consolidated fragment
-   *     metadata.
    * @param offsets A map from a fragment name to an offset in `meta_buff`
    *     where the basic fragment metadata can be found. If the offset
    *     cannot be found, then the metadata of that fragment will be loaded from
@@ -1068,8 +1026,8 @@ class StorageManager {
           array_schemas_all,
       const EncryptionKey& encryption_key,
       const std::vector<TimestampedURI>& fragments_to_load,
-      Buffer* meta_buff,
-      const std::unordered_map<std::string, uint64_t>& offsets);
+      const std::unordered_map<std::string, std::pair<Buffer*, uint64_t>>&
+          offsets);
 
   /**
    * Loads the latest consolidated fragment metadata from storage.
@@ -1077,15 +1035,12 @@ class StorageManager {
    * @param uri The URI of the consolidated fragment metadata.
    * @param enc_key The encryption key that may be needed to access the file.
    * @param f_buff The buffer to hold the consolidated fragment metadata.
-   * @param offsets A map from the fragment name to the offset in `f_buff` where
-   *     the basic fragment metadata starts.
-   * @return Status
+   * @return Status, vector from the fragment name to the offset in `f_buff`
+   *     where the basic fragment metadata starts.
    */
-  Status load_consolidated_fragment_meta(
-      const URI& uri,
-      const EncryptionKey& enc_key,
-      Buffer* f_buff,
-      std::unordered_map<std::string, uint64_t>* offsets);
+  tuple<Status, optional<std::vector<std::pair<std::string, uint64_t>>>>
+  load_consolidated_fragment_meta(
+      const URI& uri, const EncryptionKey& enc_key, Buffer* f_buff);
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();

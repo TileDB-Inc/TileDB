@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -83,7 +83,7 @@ Tile::Tile()
     : data_(nullptr, tiledb_free)
     , size_(0)
     , cell_size_(0)
-    , dim_num_(0)
+    , zipped_coords_dim_num_(0)
     , format_version_(0)
     , type_(Datatype::INT32)
     , filtered_buffer_(0) {
@@ -92,13 +92,13 @@ Tile::Tile()
 Tile::Tile(
     const Datatype type,
     const uint64_t cell_size,
-    const unsigned int dim_num,
+    const unsigned int zipped_coords_dim_num,
     void* const buffer,
     uint64_t size)
     : data_(static_cast<char*>(buffer), tiledb_free)
     , size_(size)
     , cell_size_(cell_size)
-    , dim_num_(dim_num)
+    , zipped_coords_dim_num_(zipped_coords_dim_num)
     , format_version_(0)
     , type_(type)
     , filtered_buffer_(0) {
@@ -133,7 +133,7 @@ Status Tile::init_unfiltered(
     unsigned int dim_num,
     bool fill_with_zeros) {
   cell_size_ = cell_size;
-  dim_num_ = dim_num;
+  zipped_coords_dim_num_ = dim_num;
   type_ = type;
   format_version_ = format_version;
 
@@ -158,9 +158,9 @@ Status Tile::init_filtered(
     uint32_t format_version,
     Datatype type,
     uint64_t cell_size,
-    unsigned int dim_num) {
+    unsigned int zipped_coords_dim_num) {
   cell_size_ = cell_size;
-  dim_num_ = dim_num;
+  zipped_coords_dim_num_ = zipped_coords_dim_num;
   type_ = type;
   format_version_ = format_version;
   size_ = 0;
@@ -215,11 +215,11 @@ Status Tile::write(const void* data, uint64_t offset, uint64_t nbytes) {
 }
 
 Status Tile::zip_coordinates() {
-  assert(dim_num_ > 0);
+  assert(zipped_coords_dim_num_ > 0);
 
   // For easy reference
   const uint64_t tile_size = size_;
-  const uint64_t coord_size = cell_size_ / dim_num_;
+  const uint64_t coord_size = cell_size_ / zipped_coords_dim_num_;
   const uint64_t cell_num = tile_size / cell_size_;
 
   // Create a tile clone
@@ -229,7 +229,7 @@ Status Tile::zip_coordinates() {
 
   // Zip coordinates
   uint64_t ptr_tmp = 0;
-  for (unsigned int j = 0; j < dim_num_; ++j) {
+  for (unsigned int j = 0; j < zipped_coords_dim_num_; ++j) {
     uint64_t ptr = j * coord_size;
     for (uint64_t i = 0; i < cell_num; ++i) {
       std::memcpy(data_.get() + ptr, tile_tmp + ptr_tmp, coord_size);
@@ -250,7 +250,7 @@ void Tile::swap(Tile& tile) {
   std::swap(size_, tile.size_);
   std::swap(data_, tile.data_);
   std::swap(cell_size_, tile.cell_size_);
-  std::swap(dim_num_, tile.dim_num_);
+  std::swap(zipped_coords_dim_num_, tile.zipped_coords_dim_num_);
   std::swap(format_version_, tile.format_version_);
   std::swap(type_, tile.type_);
 }

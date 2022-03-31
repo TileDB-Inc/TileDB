@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,7 @@
 #include <utility>
 #include <vector>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/enums/compressor.h"
@@ -65,6 +66,14 @@ class FilterPipeline {
  public:
   /** Constructor. Initializes an empty pipeline. */
   FilterPipeline();
+
+  /** Constructor.
+   *
+   * @param max_chunk_size.
+   * @param filters The vector of filters.
+   */
+  FilterPipeline(
+      uint32_t max_chunk_size, const std::vector<shared_ptr<Filter>>& filters);
 
   /** Destructor. */
   ~FilterPipeline() = default;
@@ -96,9 +105,11 @@ class FilterPipeline {
    * Populates the filter pipeline from the data in the input binary buffer.
    *
    * @param buff The buffer to deserialize from.
-   * @return Status
+   * @param version Array schema version
+   * @return Status and FilterPipeline
    */
-  Status deserialize(ConstBuffer* buff);
+  static tuple<Status, optional<FilterPipeline>> deserialize(
+      ConstBuffer* buff, const uint32_t version);
 
   /**
    * Dumps the filter pipeline details in ASCII format in the selected
@@ -128,12 +139,12 @@ class FilterPipeline {
   }
 
   /**
-   * Checks if a certain filter exists in the filter pipeline
+   * Checks if a certain filter type exists in the filter pipeline
    *
-   * @param filter The filter to search for
+   * @param filter_type The filter type to search for
    * @return True if found, false otherwise
    */
-  bool has_filter(const Filter& filter) const;
+  bool has_filter(const FilterType& filter_type) const;
 
   /**
    * Returns a pointer to the filter in the pipeline at the given index.
@@ -228,14 +239,18 @@ class FilterPipeline {
    * The length of tile_data will be the sum of all chunkI_orig_len for I in 0
    * to N.
    *
-   * @param tile Tile to filter
+   * @param reader_stats Reader stats
+   * @param tile Tile to unfilter
+   * @param offsets_tile Offsets tile to unfilter, null if it will be unfilered
+   * separately
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
    * @return Status
    */
   Status run_reverse(
       stats::Stats* reader_stats,
-      Tile* tile,
+      Tile* const tile,
+      Tile* const offsets_tile,
       ThreadPool* compute_tp,
       const Config& config) const;
 
@@ -294,20 +309,31 @@ class FilterPipeline {
    * Checks if an attribute/dimension needs to be filtered in chunks or as a
    * whole
    *
-   * @param is_dim True if checking for dimension, false if attribute
+   * @param type Datatype of the input attribute/dimension
+   * @param type Array schema version
+   * @return True if we can skip offsets filtering
+   */
+  bool skip_offsets_filtering(
+      const Datatype type,
+      const uint32_t version = constants::format_version) const;
+
+  /**
+   * Checks if an attribute/dimension needs to be filtered in chunks or as a
+   * whole
+   *
    * @param is_var True if checking for a var-sized attribute/dimension, false
    * if not
    * @param type Datatype of the input attribute/dimension
    * @return True if chunking needs to be used, false if not
    */
-  bool use_tile_chunking(bool is_dim, bool is_var, const Datatype type) const;
+  bool use_tile_chunking(bool is_var, const Datatype type) const;
 
  private:
   /** A pair of FilterBuffers. */
   typedef std::pair<FilterBuffer, FilterBuffer> FilterBufferPair;
 
   /** The ordered list of filters comprising the pipeline. */
-  std::vector<tdb_unique_ptr<Filter>> filters_;
+  std::vector<shared_ptr<Filter>> filters_;
 
   /** The max chunk size allowed within tiles. */
   uint32_t max_chunk_size_;
@@ -324,20 +350,16 @@ class FilterPipeline {
    * @param chunk_size Target chunk size.
    * @param tile Var tile.
    * @param offsets_tile Offsets tile.
-   * @param chunking True if the tile is filtered in chunks
    * @return Status, chunk offsets vector.
    */
-
-  tuple<Status, std::optional<std::vector<uint64_t>>> get_var_chunk_sizes(
-      uint32_t chunk_size,
-      Tile* const tile,
-      Tile* const offsets_tile,
-      bool chunking) const;
+  tuple<Status, optional<std::vector<uint64_t>>> get_var_chunk_sizes(
+      uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const;
 
   /**
    * Run the given buffer forward through the pipeline.
    *
-   * @param tile Current tile on which the filter pipeline is being run
+   * @param tile Current tile on which the filter pipeline is being run.
+   * @param offsets_tile Current offsets tile for var sized attributes.
    * @param input buffer to process.
    * @param chunk_size chunk size.
    * @param chunk_offsets chunk offsets computed for var sized attributes.
@@ -348,6 +370,7 @@ class FilterPipeline {
    */
   Status filter_chunks_forward(
       const Tile& tile,
+      Tile* const offsets_tile,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,
       FilteredBuffer& output,
@@ -357,6 +380,8 @@ class FilterPipeline {
    * Run the given list of chunks in reverse through the pipeline.
    *
    * @param tile Current tile on which the filter pipeline is being run
+   * @param offsets_tile Current offsets tile for var sized
+   * attributes/dimensions.
    * @param input Filtered chunk buffers to reverse.
    * @param output Chunked buffer where output of the last stage
    *    will be written.
@@ -366,6 +391,7 @@ class FilterPipeline {
    */
   Status filter_chunks_reverse(
       Tile& tile,
+      Tile* const offsets_tile,
       const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
       ThreadPool* const compute_tp,
       const Config& config) const;
@@ -374,13 +400,15 @@ class FilterPipeline {
    * The internal work routine for `run_reverse`.
    *
    * @param tile Tile to filter
+   * @param offsets_tile Offsets tile for var sized tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
    * @return Status
    */
   Status run_reverse_internal(
       stats::Stats* reader_stats,
-      Tile* tile,
+      Tile* const tile,
+      Tile* const offsets_tile,
       ThreadPool* compute_tp,
       const Config& config) const;
 };

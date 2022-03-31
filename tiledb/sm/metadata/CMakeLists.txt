@@ -41,3 +41,20 @@ target_link_libraries(metadata PUBLIC vfs $<TARGET_OBJECTS:vfs>)
 add_executable(compile_metadata EXCLUDE_FROM_ALL)
 target_link_libraries(compile_metadata PRIVATE metadata)
 target_sources(compile_metadata PRIVATE test/compile_metadata_main.cc)
+
+
+if (TILEDB_TESTS)
+    add_executable(unit_metadata EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_metadata PRIVATE metadata)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_metadata PUBLIC Catch2::Catch2)
+
+    # Sources for tests
+    target_sources(unit_metadata PUBLIC test/main.cc test/unit_metadata.cc)
+
+    add_test(
+        NAME "unit_metadata"
+        COMMAND $<TARGET_FILE:unit_metadata>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()

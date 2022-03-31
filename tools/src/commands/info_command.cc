@@ -333,12 +333,12 @@ void InfoCommand::write_text_mbrs() const {
 }
 
 std::tuple<double, double, double, double> InfoCommand::get_mbr(
-    const NDRange& mbr, const Domain* domain) const {
-  assert(domain->dim_num() == 2);
+    const NDRange& mbr, const tiledb::sm::Domain& domain) const {
+  assert(domain.dim_num() == 2);
   double x, y, width, height;
 
   // First dimension
-  auto d1_type = domain->dimension(0)->type();
+  auto d1_type = domain.dimension(0)->type();
   switch (d1_type) {
     case Datatype::INT8:
       y = static_cast<const int8_t*>(mbr[0].data())[0];
@@ -411,7 +411,7 @@ std::tuple<double, double, double, double> InfoCommand::get_mbr(
   }
 
   // Second dimension
-  auto d2_type = domain->dimension(1)->type();
+  auto d2_type = domain.dimension(1)->type();
   switch (d2_type) {
     case Datatype::INT8:
       x = static_cast<const int8_t*>(mbr[1].data())[0];
@@ -488,7 +488,7 @@ std::tuple<double, double, double, double> InfoCommand::get_mbr(
 
 // Works only for fixed-sized coordinates
 std::vector<std::string> InfoCommand::mbr_to_string(
-    const NDRange& mbr, const Domain* domain) const {
+    const NDRange& mbr, const tiledb::sm::Domain& domain) const {
   std::vector<std::string> result;
   const int8_t* r8;
   const uint8_t* ru8;
@@ -500,9 +500,9 @@ std::vector<std::string> InfoCommand::mbr_to_string(
   const uint64_t* ru64;
   const float* rf32;
   const double* rf64;
-  auto dim_num = domain->dim_num();
+  auto dim_num = domain.dim_num();
   for (unsigned d = 0; d < dim_num; d++) {
-    auto type = domain->dimension(d)->type();
+    auto type = domain.dimension(d)->type();
     switch (type) {
       case sm::Datatype::STRING_ASCII:
         result.push_back(std::string(mbr[d].start_str()));

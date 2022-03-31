@@ -802,7 +802,7 @@ SparseGlobalOrderReader::compute_parallelization_parameters(
     const uint64_t cell_offset) {
   // Prevent processing past the end of the cells in case there are more
   // threads than cells.
-  if (range_thread_idx > length - 1) {
+  if (length == 0 || range_thread_idx > length - 1) {
     return {0, 0, 0, true};
   }
 
@@ -1002,7 +1002,9 @@ Status SparseGlobalOrderReader::copy_fixed_data_tiles(
 
         // Get source buffers.
         const auto stores_zipped_coords = is_dim && rt->stores_zipped_coords();
-        const auto tile_tuple = rt->tile_tuple(name);
+        const auto tile_tuple = stores_zipped_coords ?
+                                    rt->tile_tuple(constants::coords) :
+                                    rt->tile_tuple(name);
         const auto t = &std::get<0>(*tile_tuple);
         const auto src_buff = t->data_as<uint8_t>();
         const auto t_val = &std::get<2>(*tile_tuple);

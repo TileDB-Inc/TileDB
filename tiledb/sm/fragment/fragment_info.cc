@@ -95,8 +95,8 @@ Status FragmentInfo::set_config(const Config& config) {
 }
 
 void FragmentInfo::expand_anterior_ndrange(
-    const Domain* domain, const NDRange& range) {
-  domain->expand_ndrange(range, &anterior_ndrange_);
+    const Domain& domain, const NDRange& range) {
+  domain.expand_ndrange(range, &anterior_ndrange_);
 }
 
 void FragmentInfo::dump(FILE* out) const {
@@ -169,6 +169,23 @@ Status FragmentInfo::get_cell_num(uint32_t fid, uint64_t* cell_num) const {
         "Cannot get fragment URI; Invalid fragment index"));
 
   *cell_num = single_fragment_info_vec_[fid].cell_num();
+
+  return Status::Ok();
+}
+
+Status FragmentInfo::get_fragment_name(uint32_t fid, const char** name) const {
+  if (name == nullptr)
+    return LOG_STATUS(Status_FragmentInfoError(
+        "Cannot get fragment name; Name argument cannot be null"));
+
+  if (fid >= fragment_num())
+    return LOG_STATUS(Status_FragmentInfoError(
+        "Cannot get fragment URI; Invalid fragment index"));
+
+  auto meta = single_fragment_info_vec_[fid].meta();
+  auto meta_name =
+      meta->fragment_uri().remove_trailing_slash().last_path_part();
+  *name = meta_name.c_str();
 
   return Status::Ok();
 }
@@ -881,7 +898,7 @@ Status FragmentInfo::load(
       // compute expanded non-empty domain (only for dense fragments)
       auto expanded_non_empty_domain = non_empty_domain;
       if (!sparse)
-        array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
+        array_schema->domain().expand_to_tiles(&expanded_non_empty_domain);
 
       // Push new fragment info
       single_fragment_info_vec_.emplace_back(SingleFragmentInfo(
@@ -1018,7 +1035,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   const auto& non_empty_domain = meta->non_empty_domain();
   auto expanded_non_empty_domain = non_empty_domain;
   if (!sparse)
-    meta->array_schema()->domain()->expand_to_tiles(&expanded_non_empty_domain);
+    meta->array_schema()->domain().expand_to_tiles(&expanded_non_empty_domain);
 
   // Set fragment info
   ret = SingleFragmentInfo(

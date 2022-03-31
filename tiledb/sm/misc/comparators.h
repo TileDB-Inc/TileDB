@@ -51,23 +51,23 @@ namespace tiledb::sm {
 class CellCmpBase {
  protected:
   /** The domain. */
-  const Domain* domain_;
+  const Domain& domain_;
 
   /** The number of dimensions. */
   unsigned dim_num_;
 
  public:
-  explicit CellCmpBase(const Domain* domain)
+  explicit CellCmpBase(const Domain& domain)
       : domain_(domain)
-      , dim_num_(domain->dim_num()) {
+      , dim_num_(domain.dim_num()) {
   }
 
   [[nodiscard]] int cell_order_cmp_RC(
       unsigned int d, const ResultCoords& a, const ResultCoords& b) const {
-    const auto& dim{*(domain_->dimension(d))};
+    const auto& dim{*(domain_.dimension(d))};
     auto v1{a.dimension_datum(dim, d)};
     auto v2{b.dimension_datum(dim, d)};
-    return domain_->cell_order_cmp(d, v1, v2);
+    return domain_.cell_order_cmp(d, v1, v2);
   }
 };
 
@@ -75,7 +75,7 @@ class CellCmpBase {
 class RowCmp : CellCmpBase {
  public:
   /** Constructor. */
-  explicit RowCmp(const Domain* domain)
+  explicit RowCmp(const Domain& domain)
       : CellCmpBase(domain) {
   }
 
@@ -105,7 +105,7 @@ class RowCmp : CellCmpBase {
 class ColCmp : CellCmpBase {
  public:
   /** Constructor. */
-  explicit ColCmp(const Domain* domain)
+  explicit ColCmp(const Domain& domain)
       : CellCmpBase(domain) {
   }
 
@@ -138,7 +138,7 @@ class ColCmp : CellCmpBase {
 class HilbertCmp : protected CellCmpBase {
  public:
   /** Constructor. */
-  HilbertCmp(const Domain* domain)
+  HilbertCmp(const Domain& domain)
       : CellCmpBase(domain) {
   }
 
@@ -185,7 +185,7 @@ class HilbertCmpReverse {
    *
    * @param domain The array domain.
    */
-  HilbertCmpReverse(const Domain* domain)
+  HilbertCmpReverse(const Domain& domain)
       : cmp_(domain) {
   }
 
@@ -218,7 +218,7 @@ class HilbertCmpRCI : protected CellCmpBase {
  public:
   /** Constructor. */
   HilbertCmpRCI(
-      const Domain* domain,
+      const Domain& domain,
       const std::vector<ResultCoords>::iterator& iter_begin)
       : CellCmpBase(domain)
       , iter_begin_(iter_begin) {
@@ -270,10 +270,10 @@ class GlobalCmp : protected CellCmpBase {
    * @param buff The buffer containing the actual values, used
    *     in positional comparisons.
    */
-  explicit GlobalCmp(const Domain* domain)
+  explicit GlobalCmp(const Domain& domain)
       : CellCmpBase(domain) {
-    tile_order_ = domain->tile_order();
-    cell_order_ = domain->cell_order();
+    tile_order_ = domain.tile_order();
+    cell_order_ = domain.cell_order();
   }
 
   /**
@@ -287,10 +287,10 @@ class GlobalCmp : protected CellCmpBase {
     if (tile_order_ == Layout::ROW_MAJOR) {
       for (unsigned d = 0; d < dim_num_; ++d) {
         // Not applicable to var-sized dimensions
-        if (domain_->dimension(d)->var_size())
+        if (domain_.dimension(d)->var_size())
           continue;
 
-        auto res = domain_->tile_order_cmp(d, a.coord(d), b.coord(d));
+        auto res = domain_.tile_order_cmp(d, a.coord(d), b.coord(d));
 
         if (res == -1)
           return true;
@@ -302,10 +302,10 @@ class GlobalCmp : protected CellCmpBase {
       assert(tile_order_ == Layout::COL_MAJOR);
       for (unsigned d = dim_num_ - 1;; --d) {
         // Not applicable to var-sized dimensions
-        if (domain_->dimension(d)->var_size())
+        if (domain_.dimension(d)->var_size())
           continue;
 
-        auto res = domain_->tile_order_cmp(d, a.coord(d), b.coord(d));
+        auto res = domain_.tile_order_cmp(d, a.coord(d), b.coord(d));
 
         if (res == -1)
           return true;
@@ -368,7 +368,7 @@ class GlobalCmpReverse {
    * @param buff The buffer containing the actual values, used
    *     in positional comparisons.
    */
-  explicit GlobalCmpReverse(const Domain* domain)
+  explicit GlobalCmpReverse(const Domain& domain)
       : cmp_(domain) {
   }
 

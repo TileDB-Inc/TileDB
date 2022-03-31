@@ -38,6 +38,7 @@
 #include <mutex>
 #include <vector>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/uri.h"
@@ -89,8 +90,14 @@ class Metadata {
   /** Constructor. */
   Metadata();
 
+  /** Constructor. */
+  Metadata(const std::map<std::string, MetadataValue>& metadata_map);
+
   /** Copy constructor. */
   Metadata(const Metadata& rhs);
+
+  /** Copy assignment. */
+  Metadata& operator=(const Metadata& other);
 
   /** Destructor. */
   ~Metadata();
@@ -113,7 +120,8 @@ class Metadata {
    * assummed to be sorted on time. The function will take care of any
    * deleted or overwritten metadata items considering the order.
    */
-  Status deserialize(const std::vector<tdb_shared_ptr<Buffer>>& metadata_buffs);
+  static tuple<Status, optional<shared_ptr<Metadata>>> deserialize(
+      const std::vector<shared_ptr<Buffer>>& metadata_buffs);
 
   /** Serializes all key-value metadata items into the input buffer. */
   Status serialize(Buffer* buff) const;
@@ -149,10 +157,10 @@ class Metadata {
    * Gets a metadata item as a key-value pair.
    *
    * @param key The metadata key.
-   * @param value_type The datatype of the value.
-   * @param value_num The number of items in the value part (they could be more
-   * than one).
-   * @param value The metadata value. It will be `nullptr` if the key does
+   * @param[out] value_type The datatype of the value.
+   * @param[out] value_num The number of items in the value part (they could be
+   * more than one).
+   * @param[out] value The metadata value. It will be `nullptr` if the key does
    *     not exist
    * @return Status
    */
@@ -166,12 +174,12 @@ class Metadata {
    * Gets a metadata item as a key-value pair using an index.
    *
    * @param index The index used to retrieve the metadata.
-   * @param key The metadata key.
-   * @param key_len The metadata key length.
-   * @param value_type The datatype of the value.
-   * @param value_num The number of items in the value part (they could be more
-   * than one).
-   * @param value The metadata value. It will be `nullptr` if the key does
+   * @param[out] key The metadata key.
+   * @param[out] key_len The metadata key length.
+   * @param[out] value_type The datatype of the value.
+   * @param[out] value_num The number of items in the value part (they could be
+   * more than one).
+   * @param[out] value The metadata value. It will be `nullptr` if the key does
    *     not exist
    * @return Status
    */

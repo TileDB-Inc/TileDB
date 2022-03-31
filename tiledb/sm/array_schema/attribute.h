@@ -230,6 +230,10 @@ class Attribute {
    */
   bool nullable() const;
 
+  /** The default fill value. */
+  static ByteVecValue default_fill_value(
+      Datatype datatype, uint32_t cell_val_num);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -262,10 +266,6 @@ class Attribute {
 
   /** Sets the default fill value. */
   void set_default_fill_value();
-
-  /** The default fill value. */
-  static ByteVecValue default_fill_value(
-      Datatype datatype, uint32_t cell_val_num);
 
   /** Returns the fill value in string form. */
   std::string fill_value_str() const;

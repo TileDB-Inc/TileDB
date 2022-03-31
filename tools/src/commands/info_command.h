@@ -86,7 +86,7 @@ class InfoCommand : public Command {
 
   /** Converts an opaque MBR to a 2D (double) rectangle. */
   std::tuple<double, double, double, double> get_mbr(
-      const sm::NDRange& mbr, const tiledb::sm::Domain* domain) const;
+      const sm::NDRange& mbr, const tiledb::sm::Domain& domain) const;
 
   /**
    * Converts an opaque MBR to a string vector. The vector contents are strings:
@@ -97,7 +97,7 @@ class InfoCommand : public Command {
    * @return String vector representation of MBR.
    */
   std::vector<std::string> mbr_to_string(
-      const sm::NDRange& mbr, const tiledb::sm::Domain* domain) const;
+      const sm::NDRange& mbr, const tiledb::sm::Domain& domain) const;
 };
 
 }  // namespace cli

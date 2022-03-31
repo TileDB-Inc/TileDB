@@ -97,6 +97,10 @@ TEST_CASE(
     std::string uri;
     CHECK_THROWS(uri = fragment_info.fragment_uri(1));
 
+    // Get fragment name
+    std::string name;
+    CHECK_THROWS(name = fragment_info.fragment_name(1));
+
     // Get non-empty domain, invalid index and name
     std::vector<uint64_t> non_empty_dom(2);
     CHECK_THROWS(fragment_info.get_non_empty_domain(0, 1, &non_empty_dom[0]));
@@ -401,7 +405,7 @@ TEST_CASE("C++ API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
 
 TEST_CASE(
     "C++ API: Test fragment info, load from array with string dimension",
-    "[cppapi][fragment_info][load][string-dim][mbr]") {
+    "[cppapi][fragment_info][load][string-dims][mbr]") {
   // Create TileDB context
   Context ctx;
   Config cfg;
