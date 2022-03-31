@@ -165,7 +165,7 @@ tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
   RETURN_NOT_OK_TUPLE(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),
       nullopt);
-  const std::string url = redirect_uri(cache_key) + "/v1/groups/" + group_ns +
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
                           "/" + curlc.url_escape(group_uri);
 
   // Make the request, the returned data is ignored for now.
