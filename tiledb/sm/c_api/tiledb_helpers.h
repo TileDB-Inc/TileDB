@@ -63,7 +63,6 @@ static bool create_error(tiledb_error_t** error, const Status& st) {
   return true;
 }
 
-#if 01
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
   if (array == nullptr || array->array_ == nullptr) {
     auto st = Status_Error("Invalid TileDB array object");
@@ -312,7 +311,6 @@ inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_file_t* file) {
   }
   return TILEDB_OK;
 }
-#endif
 
 inline int32_t check_filter_type(
     tiledb_ctx_t* ctx, tiledb_filter_t* filter, tiledb_filter_type_t type) {
@@ -327,7 +325,6 @@ inline int32_t check_filter_type(
   return TILEDB_OK;
 }
 
-#if 01
 /**
  * Helper macro similar to save_error() that catches all exceptions when
  * executing 'stmt'.
@@ -349,7 +346,6 @@ inline int32_t check_filter_type(
     }                                                                      \
     return save_error(ctx, _s);                                            \
   }()
-#endif
 
 #endif
 

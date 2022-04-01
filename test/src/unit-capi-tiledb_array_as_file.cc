@@ -556,7 +556,6 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_array_free(&array2);
 
-  // TBD: REINSTATE ME!
-  //  remove_temp_dir(array_name);
-  //  remove_temp_dir(output_path);
+  remove_temp_dir(array_name);
+  remove_temp_dir(output_path);
 }

@@ -959,6 +959,23 @@ if (TILEDB_STATIC)
   )
 endif()
 
+if(0)
+#hmm, what to do given following error when here...
+#'install TARGETS given target "libmagic" which does not exist.'
+
+if(TILEDB_LIBMAGIC_EP_BUILT)
+  # want magic.mgc to be installed
+
+  # TBD: When we build ok, but what if some environ hag magic installed 
+  # but platform tiledb installed on does does not have environ
+  # with magic.mgc present?
+
+  list(APPEND TILEDB_INSTALL_TARGETS
+    libmagic
+  )
+endif()
+endif()
+
 # Set directory where TileDBConfig.cmake will be installed
 set(CONFIG_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/TileDB")
 # Set name for export target file (will be installed to CONFIG_INSTALL_DIR)

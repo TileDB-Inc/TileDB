@@ -31,7 +31,7 @@
  * independent compilation away from any larger test suite.
  */
 
-#define TILEDB_NO_API_DEPRECATION_WARNINGS 1
+//#define TILEDB_NO_API_DEPRECATION_WARNINGS 1
 #define CATCH_CONFIG_MAIN
 #include "unit_blob_array.h"  // covers blob_array_schema as well
 
@@ -325,18 +325,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
     basic_export_to_uri(expected_result);
   };
 
-#if 0
-  //basic operations that will succeed to allow dev diag stepping thru,
-  //but winds up leaving array populated which causes later tests
-  //to fail as they expect the array to be empty.
-  open_for_write();
-  basic_uri_to_array(true);
-  open_for_read();
-  basic_export_to_uri(true);
-
-  REQUIRE(blob_array->close().ok() == true);
-#endif
-
   basic_to_array(false);
   basic_export(false);
 
@@ -369,12 +357,6 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
   // array open for read, has something in it
   basic_to_array(false);  // open read, unable to add
 
-  {
-    std::string encryption_type_string =
-        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
-    std::cout << "b4 export, encryption_type " << encryption_type_string
-              << std::endl;
-  }
   basic_export(true);  // open for read and non-empty, should succeed
 
   REQUIRE(blob_array->close().ok() == true);
@@ -446,9 +428,7 @@ TEST_CASE_METHOD(BlobArrayFx, "blob_array basic functionality", "") {
 #else
     auto separator = "/";
 #endif
-    std::cout << "...__fragments..." << std::endl;
     show_dir(test_array_name + separator + "__fragments");
-    std::cout << "...__meta..." << std::endl;
     show_dir(test_array_name + separator + "__meta");
   };
   // compare actual contents for equality
