@@ -200,7 +200,6 @@ Status QueryCondition::combine(
     const QueryCondition& rhs,
     const QueryConditionCombinationOp combination_op,
     QueryCondition* const combined_cond) const {
-  assert(combination_op == QueryConditionCombinationOp::AND);
   if (combination_op != QueryConditionCombinationOp::AND &&
       combination_op != QueryConditionCombinationOp::OR) {
     return Status_QueryConditionError(
