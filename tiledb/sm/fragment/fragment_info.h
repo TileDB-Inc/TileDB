@@ -85,8 +85,7 @@ class FragmentInfo {
   Status set_config(const Config& config);
 
   /** Expand the non empty domain before start with a new range */
-  void expand_anterior_ndrange(
-      shared_ptr<const Domain> domain, const NDRange& range);
+  void expand_anterior_ndrange(const Domain& domain, const NDRange& range);
 
   /** Dumps the fragment info in ASCII format in the selected output. */
   void dump(FILE* out) const;

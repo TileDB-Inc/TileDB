@@ -94,8 +94,8 @@ Status FragmentInfo::set_config(const Config& config) {
 }
 
 void FragmentInfo::expand_anterior_ndrange(
-    shared_ptr<const Domain> domain, const NDRange& range) {
-  domain->expand_ndrange(range, &anterior_ndrange_);
+    const Domain& domain, const NDRange& range) {
+  domain.expand_ndrange(range, &anterior_ndrange_);
 }
 
 void FragmentInfo::dump(FILE* out) const {
@@ -897,7 +897,7 @@ Status FragmentInfo::load(
       // compute expanded non-empty domain (only for dense fragments)
       auto expanded_non_empty_domain = non_empty_domain;
       if (!sparse)
-        array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
+        array_schema->domain().expand_to_tiles(&expanded_non_empty_domain);
 
       // Push new fragment info
       single_fragment_info_vec_.emplace_back(SingleFragmentInfo(
@@ -1034,7 +1034,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   const auto& non_empty_domain = meta->non_empty_domain();
   auto expanded_non_empty_domain = non_empty_domain;
   if (!sparse)
-    meta->array_schema()->domain()->expand_to_tiles(&expanded_non_empty_domain);
+    meta->array_schema()->domain().expand_to_tiles(&expanded_non_empty_domain);
 
   // Set fragment info
   ret = SingleFragmentInfo(

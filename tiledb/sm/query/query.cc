@@ -139,7 +139,7 @@ Status Query::add_range(
     return logger_->status(Status_QueryError(
         "Cannot add range; Setting range stride is currently unsupported"));
 
-  if (array_schema_->domain()->dimension(dim_idx)->var_size())
+  if (array_schema_->domain().dimension(dim_idx)->var_size())
     return logger_->status(
         Status_QueryError("Cannot add range; Range must be fixed-sized"));
 
@@ -195,7 +195,7 @@ Status Query::add_range_var(
     return logger_->status(
         Status_QueryError("Cannot add range; Invalid range"));
 
-  if (!array_schema_->domain()->dimension(dim_idx)->var_size())
+  if (!array_schema_->domain().dimension(dim_idx)->var_size())
     return logger_->status(
         Status_QueryError("Cannot add range; Range must be variable-sized"));
 
@@ -285,7 +285,7 @@ Status Query::add_range_by_name(
     const void* stride) {
   unsigned dim_idx;
   RETURN_NOT_OK(
-      array_schema_->domain()->get_dimension_index(dim_name, &dim_idx));
+      array_schema_->domain().get_dimension_index(dim_name, &dim_idx));
 
   return add_range(dim_idx, start, end, stride);
 }
@@ -298,7 +298,7 @@ Status Query::add_range_var_by_name(
     uint64_t end_size) {
   unsigned dim_idx;
   RETURN_NOT_OK(
-      array_schema_->domain()->get_dimension_index(dim_name, &dim_idx));
+      array_schema_->domain().get_dimension_index(dim_name, &dim_idx));
 
   return add_range_var(dim_idx, start, start_size, end, end_size);
 }
@@ -307,7 +307,7 @@ Status Query::get_range_num_from_name(
     const std::string& dim_name, uint64_t* range_num) const {
   unsigned dim_idx;
   RETURN_NOT_OK(
-      array_schema_->domain()->get_dimension_index(dim_name, &dim_idx));
+      array_schema_->domain().get_dimension_index(dim_name, &dim_idx));
 
   return get_range_num(dim_idx, range_num);
 }
@@ -320,7 +320,7 @@ Status Query::get_range_from_name(
     const void** stride) const {
   unsigned dim_idx;
   RETURN_NOT_OK(
-      array_schema_->domain()->get_dimension_index(dim_name, &dim_idx));
+      array_schema_->domain().get_dimension_index(dim_name, &dim_idx));
 
   return get_range(dim_idx, range_idx, start, end, stride);
 }
@@ -332,7 +332,7 @@ Status Query::get_range_var_size_from_name(
     uint64_t* end_size) const {
   unsigned dim_idx;
   RETURN_NOT_OK(
-      array_schema_->domain()->get_dimension_index(dim_name, &dim_idx));
+      array_schema_->domain().get_dimension_index(dim_name, &dim_idx));
 
   return get_range_var_size(dim_idx, range_idx, start_size, end_size);
 }
@@ -344,7 +344,7 @@ Status Query::get_range_var_from_name(
     void* end) const {
   unsigned dim_idx;
   RETURN_NOT_OK(
-      array_schema_->domain()->get_dimension_index(dim_name, &dim_idx));
+      array_schema_->domain().get_dimension_index(dim_name, &dim_idx));
 
   return get_range_var(dim_idx, range_idx, start, end);
 }
@@ -360,12 +360,12 @@ Status Query::get_est_result_size(const char* name, uint64_t* size) {
         "Cannot get estimated result size; Name cannot be null"));
 
   if (name == constants::coords &&
-      !array_schema_->domain()->all_dims_same_type())
+      !array_schema_->domain().all_dims_same_type())
     return logger_->status(Status_QueryError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with heterogeneous domain"));
 
-  if (name == constants::coords && !array_schema_->domain()->all_dims_fixed())
+  if (name == constants::coords && !array_schema_->domain().all_dims_fixed())
     return logger_->status(Status_QueryError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with domains with variable-sized dimensions"));
@@ -1186,12 +1186,12 @@ Status Query::check_buffer_names() {
 
 Status Query::check_set_fixed_buffer(const std::string& name) {
   if (name == constants::coords &&
-      !array_schema_->domain()->all_dims_same_type())
+      !array_schema_->domain().all_dims_same_type())
     return logger_->status(Status_QueryError(
         "Cannot set buffer; Setting a buffer for zipped coordinates is not "
         "applicable to heterogeneous domains"));
 
-  if (name == constants::coords && !array_schema_->domain()->all_dims_fixed())
+  if (name == constants::coords && !array_schema_->domain().all_dims_fixed())
     return logger_->status(Status_QueryError(
         "Cannot set buffer; Setting a buffer for zipped coordinates is not "
         "applicable to domains with variable-sized dimensions"));
@@ -1808,12 +1808,12 @@ void Query::set_status(QueryStatus status) {
 }
 
 Status Query::set_subarray(const void* subarray) {
-  if (!array_schema_->domain()->all_dims_same_type())
+  if (!array_schema_->domain().all_dims_same_type())
     return logger_->status(
         Status_QueryError("Cannot set subarray; Function not applicable to "
                           "heterogeneous domains"));
 
-  if (!array_schema_->domain()->all_dims_fixed())
+  if (!array_schema_->domain().all_dims_fixed())
     return logger_->status(
         Status_QueryError("Cannot set subarray; Function not applicable to "
                           "domains with variable-sized dimensions"));

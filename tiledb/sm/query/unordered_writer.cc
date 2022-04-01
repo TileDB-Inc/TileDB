@@ -381,9 +381,9 @@ Status UnorderedWriter::prepare_tiles_fixed(
   auto capacity = array_schema_.capacity();
   auto dups_num = coord_dups.size();
   auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
 
   // Initialize tiles
   const uint64_t t = 1 + (nullable ? 1 : 0);
@@ -465,9 +465,9 @@ Status UnorderedWriter::prepare_tiles_var(
   auto dups_num = coord_dups.size();
   auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
   auto attr_datatype_size = datatype_size(array_schema_.type(name));
-  auto domain = array_schema_.domain();
-  auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+  auto cell_num_per_tile = coords_info_.has_coords_ ?
+                               capacity :
+                               array_schema_.domain().cell_num_per_tile();
 
   // Initialize tiles
   const uint64_t t = 2 + (nullable ? 1 : 0);
@@ -578,7 +578,7 @@ Status UnorderedWriter::sort_coords(std::vector<uint64_t>* cell_pos) const {
   auto timer_se = stats_->start_timer("sort_coords");
 
   // For easy reference
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto cell_order = array_schema_.cell_order();
 
   // Prepare auxiliary vector for better performance

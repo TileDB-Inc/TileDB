@@ -247,16 +247,16 @@ Status GlobalOrderWriter::check_global_order() const {
   }
 
   // Check if all coordinates fall in the domain in parallel
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
       coords_info_.coords_num_ - 1,
       [&](uint64_t i) {
-        auto tile_cmp = domain->tile_order_cmp(buffs, i, i + 1);
+        auto tile_cmp = domain.tile_order_cmp(buffs, i, i + 1);
         auto fail =
             (tile_cmp > 0) ||
-            ((tile_cmp == 0) && domain->cell_order_cmp(buffs, i, i + 1) > 0);
+            ((tile_cmp == 0) && domain.cell_order_cmp(buffs, i, i + 1) > 0);
 
         if (fail) {
           std::stringstream ss;
@@ -471,7 +471,7 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   // Check if the total number of cells written is equal to the subarray size
   if (!coords_info_.has_coords_) {  // This implies a dense array
     auto expected_cell_num =
-        array_schema_.domain()->cell_num(subarray_.ndrange(0));
+        array_schema_.domain().cell_num(subarray_.ndrange(0));
     if (cell_num != expected_cell_num) {
       clean_up(uri);
       std::stringstream ss;
@@ -581,9 +581,9 @@ Status GlobalOrderWriter::global_write() {
 
 Status GlobalOrderWriter::global_write_handle_last_tile() {
   auto capacity = array_schema_.capacity();
-  auto domain = array_schema_.domain();
+  auto& domain = array_schema_.domain();
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   auto cell_num_last_tiles =
       global_write_state_->cells_written_[buffers_.begin()->first] %
       cell_num_per_tile;
@@ -724,9 +724,9 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   auto cell_size = array_schema_.cell_size(name);
   auto capacity = array_schema_.capacity();
   auto cell_num = *buffer_size / cell_size;
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
 
   // Do nothing if there are no cells to write
   if (cell_num == 0)
@@ -895,9 +895,9 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   auto buffer_var_size = it->second.buffer_var_size_;
   auto capacity = array_schema_.capacity();
   auto cell_num = buffer_size / constants::cell_var_offset_size;
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   auto attr_datatype_size = datatype_size(array_schema_.type(name));
 
   // Do nothing if there are no cells to write

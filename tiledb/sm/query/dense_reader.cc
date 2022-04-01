@@ -186,7 +186,7 @@ void DenseReader::reset() {
 
 template <class OffType>
 Status DenseReader::dense_read() {
-  auto type = array_schema_.domain()->dimension(0)->type();
+  auto type = array_schema_.domain().dimension(0)->type();
   switch (type) {
     case Datatype::INT8:
       return dense_read<int8_t, OffType>();
@@ -508,8 +508,8 @@ DenseReader::apply_query_condition(
     const auto& tile_coords = subarray.tile_coords();
     const auto cell_num = subarray.cell_num();
     const auto dim_num = array_schema_.dim_num();
-    auto stride = array_schema_.domain()->stride<DimType>(layout_);
-    const auto domain = array_schema_.domain();
+    auto stride = array_schema_.domain().stride<DimType>(layout_);
+    const auto& domain{array_schema_.domain()};
     const auto cell_order = array_schema_.cell_order();
     const auto global_order = layout_ == Layout::GLOBAL_ORDER;
 
@@ -833,7 +833,7 @@ template <class DimType>
 uint64_t DenseReader::get_cell_pos_in_tile(
     const Layout& cell_order,
     const int32_t dim_num,
-    shared_ptr<const Domain> const domain,
+    const Domain& domain,
     const ResultSpaceTile<DimType>& result_space_tile,
     const DimType* const coords) {
   uint64_t pos = 0;
@@ -843,12 +843,12 @@ uint64_t DenseReader::get_cell_pos_in_tile(
   if (cell_order == Layout::COL_MAJOR) {
     for (int32_t d = 0; d < dim_num; d++) {
       pos += mult * (coords[d] - start[d]);
-      mult *= *(const DimType*)domain->tile_extent(d).data();
+      mult *= *(const DimType*)domain.tile_extent(d).data();
     }
   } else {
     for (auto d = dim_num - 1; d >= 0; d--) {
       pos += mult * (coords[d] - start[d]);
-      mult *= *(const DimType*)domain->tile_extent(d).data();
+      mult *= *(const DimType*)domain.tile_extent(d).data();
     }
   }
 
@@ -935,9 +935,9 @@ Status DenseReader::copy_fixed_tiles(
     const std::vector<uint8_t>& qc_result) {
   // For easy reference
   const auto dim_num = array_schema_.dim_num();
-  const auto domain = array_schema_.domain();
+  const auto& domain{array_schema_.domain()};
   const auto cell_order = array_schema_.cell_order();
-  auto stride = array_schema_.domain()->stride<DimType>(layout_);
+  auto stride = array_schema_.domain().stride<DimType>(layout_);
   const auto& frag_domains = result_space_tile.frag_domains();
 
   if (stride == UINT64_MAX) {
@@ -1136,11 +1136,11 @@ Status DenseReader::copy_offset_tiles(
     const std::vector<RangeInfo>& range_info,
     const std::vector<uint8_t>& qc_result) {
   // For easy reference
-  const auto domain = array_schema_.domain();
+  const auto& domain{array_schema_.domain()};
   const auto dim_num = array_schema_.dim_num();
   const auto cell_order = array_schema_.cell_order();
-  const auto cell_num_per_tile = array_schema_.domain()->cell_num_per_tile();
-  auto stride = array_schema_.domain()->stride<DimType>(layout_);
+  const auto cell_num_per_tile = array_schema_.domain().cell_num_per_tile();
+  auto stride = array_schema_.domain().stride<DimType>(layout_);
   const auto& frag_domains = result_space_tile.frag_domains();
 
   if (stride == UINT64_MAX) {

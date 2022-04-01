@@ -1479,8 +1479,8 @@ void ReaderBase::compute_result_space_tiles(
     const Subarray& partitioner_subarray,
     std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) const {
   // For easy reference
-  auto domain = array_schema_.domain()->domain();
-  auto tile_extents = array_schema_.domain()->tile_extents();
+  auto domain = array_schema_.domain().domain();
+  auto tile_extents = array_schema_.domain().tile_extents();
   auto tile_order = array_schema_.tile_order();
 
   // Compute fragment tile domains
@@ -1635,7 +1635,7 @@ tuple<Status, optional<bool>> ReaderBase::fill_dense_coords_row_col(
     // Check for overflow
     for (size_t i = 0; i < buffers.size(); ++i) {
       auto idx = (dim_idx[i] == dim_num) ? 0 : dim_idx[i];
-      auto dim = array_schema_.domain()->dimension(idx);
+      auto dim = array_schema_.domain().dimension(idx);
       auto coord_size = dim->coord_size();
       coord_size = (dim_idx[i] == dim_num) ? coord_size * dim_num : coord_size;
       auto buff_size = *(buffers[i]->buffer_size_);

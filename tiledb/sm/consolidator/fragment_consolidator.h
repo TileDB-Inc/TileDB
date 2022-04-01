@@ -175,7 +175,7 @@ class FragmentConsolidator : public Consolidator {
    *     consolidated based on the above definition.
    */
   bool are_consolidatable(
-      shared_ptr<const Domain> domain,
+      const Domain& domain,
       const FragmentInfo& fragment_info,
       size_t start,
       size_t end,
