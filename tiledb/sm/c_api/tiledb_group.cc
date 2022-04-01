@@ -39,6 +39,7 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/group/group_v1.h"
+#include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/group.h"
 
 namespace tiledb::common::detail {
@@ -511,6 +512,58 @@ int32_t tiledb_group_dump_str(
   return TILEDB_OK;
 }
 
+int32_t tiledb_serialize_group_metadata(
+    tiledb_ctx_t* ctx,
+    const tiledb_group_t* group,
+    tiledb_serialization_type_t serialize_type,
+    tiledb_buffer_t** buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Allocate buffer
+  if (tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Serialize
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::metadata_serialize(
+              group->group_->metadata(),
+              (tiledb::sm::SerializationType)serialize_type,
+              (*buffer)->buffer_))) {
+    tiledb_buffer_free(buffer);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_group_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_serialization_type_t serialize_type,
+    const tiledb_buffer_t* buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, group) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Deserialize
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::metadata_deserialize(
+              group->group_->metadata(),
+              (tiledb::sm::SerializationType)serialize_type,
+              *(buffer->buffer_)))) {
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::common::detail
 
 int32_t tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri)
@@ -664,4 +717,22 @@ TILEDB_EXPORT int32_t tiledb_group_dump_str(
     TILEDB_NOEXCEPT {
   return api_entry<detail::tiledb_group_dump_str>(
       ctx, group, dump_ascii, recursive);
+}
+
+TILEDB_EXPORT int32_t tiledb_serialize_group_metadata(
+    tiledb_ctx_t* ctx,
+    const tiledb_group_t* group,
+    tiledb_serialization_type_t serialization_type,
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_serialize_group_metadata>(
+      ctx, group, serialization_type, buffer);
+}
+
+TILEDB_EXPORT int32_t tiledb_deserialize_group_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* buffer) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_deserialize_group_metadata>(
+      ctx, group, serialization_type, buffer);
 }

@@ -775,6 +775,38 @@ Status Curl::get_data(
   return Status::Ok();
 }
 
+Status Curl::options(
+    stats::Stats* const stats,
+    const std::string& url,
+    SerializationType serialization_type,
+    const std::string& res_ns_uri) {
+  CURL* curl = curl_.get();
+  if (curl == nullptr)
+    return LOG_STATUS(
+        Status_RestError("Error getting data; curl instance is null."));
+
+  // Set auth and content-type for request
+  struct curl_slist* headers = nullptr;
+  RETURN_NOT_OK_ELSE(set_headers(&headers), curl_slist_free_all(headers));
+  RETURN_NOT_OK_ELSE(
+      set_content_type(serialization_type, &headers),
+      curl_slist_free_all(headers));
+
+  /* pass our list of custom made headers */
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+  CURLcode ret;
+  headerData.uri = &res_ns_uri;
+  auto st = make_curl_request_options_common(stats, url.c_str(), &ret);
+  curl_slist_free_all(headers);
+  RETURN_NOT_OK(st);
+
+  // Check for errors
+  RETURN_NOT_OK(check_curl_errors(ret, "OPTIONS"));
+
+  return Status::Ok();
+}
+
 Status Curl::delete_data(
     stats::Stats* const stats,
     const std::string& url,
@@ -811,6 +843,232 @@ Status Curl::delete_data(
 
   // Check for errors
   RETURN_NOT_OK(check_curl_errors(ret, "DELETE", returned_data));
+
+  return Status::Ok();
+}
+
+Status Curl::patch_data(
+    stats::Stats* const stats,
+    const std::string& url,
+    const SerializationType serialization_type,
+    const BufferList* data,
+    Buffer* const returned_data,
+    const std::string& res_uri) {
+  struct curl_slist* headers;
+  RETURN_NOT_OK(patch_data_common(serialization_type, data, &headers));
+
+  CURLcode ret;
+  headerData.uri = &res_uri;
+  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
+  curl_slist_free_all(headers);
+  RETURN_NOT_OK(st);
+
+  // Check for errors
+  RETURN_NOT_OK(check_curl_errors(ret, "PATCH", returned_data));
+
+  return Status::Ok();
+}
+
+Status Curl::patch_data_common(
+    const SerializationType serialization_type,
+    const BufferList* data,
+    struct curl_slist** headers) {
+  CURL* curl = curl_.get();
+  if (curl == nullptr)
+    return LOG_STATUS(
+        Status_RestError("Error posting data; curl instance is null."));
+
+  const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
+  if (data->total_size() > post_size_limit) {
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, data->total_size());
+  } else {
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
+  }
+
+  // Set auth and content-type for request
+  *headers = nullptr;
+  RETURN_NOT_OK_ELSE(set_headers(headers), curl_slist_free_all(*headers));
+  RETURN_NOT_OK_ELSE(
+      set_content_type(serialization_type, headers),
+      curl_slist_free_all(*headers));
+
+  /* HTTP PUT please */
+  curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
+  curl_easy_setopt(
+      curl, CURLOPT_READFUNCTION, buffer_list_read_memory_callback);
+  curl_easy_setopt(curl, CURLOPT_READDATA, data);
+
+  /* pass our list of custom made headers */
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headers);
+
+  /* set seek for handling redirects */
+  curl_easy_setopt(curl, CURLOPT_SEEKFUNCTION, &buffer_list_seek_callback);
+  curl_easy_setopt(curl, CURLOPT_SEEKDATA, data);
+
+  return Status::Ok();
+}
+
+Status Curl::put_data(
+    stats::Stats* const stats,
+    const std::string& url,
+    const SerializationType serialization_type,
+    const BufferList* data,
+    Buffer* const returned_data,
+    const std::string& res_uri) {
+  struct curl_slist* headers;
+  RETURN_NOT_OK(put_data_common(serialization_type, data, &headers));
+
+  CURLcode ret;
+  headerData.uri = &res_uri;
+  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
+  curl_slist_free_all(headers);
+  RETURN_NOT_OK(st);
+
+  // Check for errors
+  RETURN_NOT_OK(check_curl_errors(ret, "PUT", returned_data));
+
+  return Status::Ok();
+}
+
+Status Curl::put_data_common(
+    const SerializationType serialization_type,
+    const BufferList* data,
+    struct curl_slist** headers) {
+  CURL* curl = curl_.get();
+  if (curl == nullptr)
+    return LOG_STATUS(
+        Status_RestError("Error posting data; curl instance is null."));
+
+  const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
+  if (data->total_size() > post_size_limit) {
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, data->total_size());
+  } else {
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
+  }
+
+  // Set auth and content-type for request
+  *headers = nullptr;
+  RETURN_NOT_OK_ELSE(set_headers(headers), curl_slist_free_all(*headers));
+  RETURN_NOT_OK_ELSE(
+      set_content_type(serialization_type, headers),
+      curl_slist_free_all(*headers));
+
+  /* HTTP PUT please */
+  curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+  curl_easy_setopt(
+      curl, CURLOPT_READFUNCTION, buffer_list_read_memory_callback);
+  curl_easy_setopt(curl, CURLOPT_READDATA, data);
+
+  /* pass our list of custom made headers */
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headers);
+
+  /* set seek for handling redirects */
+  curl_easy_setopt(curl, CURLOPT_SEEKFUNCTION, &buffer_list_seek_callback);
+  curl_easy_setopt(curl, CURLOPT_SEEKDATA, data);
+
+  return Status::Ok();
+}
+
+Status Curl::make_curl_request_options_common(
+    stats::Stats* const stats,
+    const char* const url,
+    CURLcode* const curl_code) const {
+  CURL* curl = curl_.get();
+  if (curl == nullptr)
+    return LOG_STATUS(
+        Status_RestError("Cannot make curl request; curl instance is null."));
+
+  *curl_code = CURLE_OK;
+  uint64_t retry_delay = retry_initial_delay_ms_;
+  // <= because the 0ths retry is actually the initial request
+  for (uint8_t i = 0; i <= retry_count_; i++) {
+    /* set url to fetch */
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+
+    /* HTTP OPTIONS please */
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "OPTIONS");
+
+    /* HEAD */
+    curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
+
+    /* set default user agent */
+    // curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+
+    /* Fail on error */
+    // curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+
+    /* set timeout */
+    // curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+
+    /* set compression */
+    const char* compressor = nullptr;
+    RETURN_NOT_OK(config_->get("rest.http_compressor", &compressor));
+
+    if (compressor != nullptr) {
+      // curl expects lowecase strings so let's convert
+      std::string comp(compressor);
+      std::locale loc;
+      for (std::string::size_type j = 0; j < comp.length(); ++j)
+        comp[j] = std::tolower(comp[j], loc);
+
+      if (comp != "none") {
+        if (comp == "any") {
+          comp = "";
+        }
+        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, comp.c_str());
+      }
+    }
+
+    /* enable location redirects */
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+
+    /* set maximum allowed redirects */
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 1);
+
+    /* enable forwarding auth to redirects */
+    curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
+
+    /* fetch the url */
+    CURLcode tmp_curl_code = curl_easy_perform(curl);
+
+    bool retry;
+    RETURN_NOT_OK(should_retry(&retry));
+    /* If Curl call was successful (not http status, but no socket error, etc)
+     * break */
+    if (tmp_curl_code == CURLE_OK && !retry) {
+      break;
+    }
+
+    /* Only store the first non-OK curl code, because it will likely be more
+     * useful than the curl codes from the retries. */
+    if (*curl_code == CURLE_OK) {
+      *curl_code = tmp_curl_code;
+    }
+
+    // Only sleep if this isn't the last failed request allowed
+    if (i < retry_count_ - 1) {
+      long http_code = 0;
+      if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) !=
+          CURLE_OK)
+        return LOG_STATUS(Status_RestError(
+            "Error checking curl error; could not get HTTP code."));
+
+      global_logger().debug(
+          "Request to {} failed with http response code {}, will sleep {}ms, "
+          "retry count {}",
+          url,
+          http_code,
+          retry_delay,
+          i);
+      // Increment counter for number of retries
+      stats->add_counter("rest_http_retries", 1);
+      stats->add_counter("rest_http_retry_time", retry_delay);
+      // Sleep for retry delay
+      std::this_thread::sleep_for(std::chrono::milliseconds(retry_delay));
+      // Increment retry delay, cast to uint64_t and we can ignore any rounding
+      retry_delay = static_cast<uint64_t>(retry_delay * retry_delay_factor_);
+    }
+  }
 
   return Status::Ok();
 }
