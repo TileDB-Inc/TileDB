@@ -130,10 +130,9 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_drop_attribute(
 
 /**
  * Sets timestamp range in an array schema evolution
- * The evolved schema could have the same timestamp as previous schema.
- * This function can be used to set a different timestamp for the evolved
- * schema. The lo and hi values must be the same, otherwise it will throw a
- * runtime error.
+ * This function sets the output timestamp of the committed array schema after
+ * evolution. The lo and hi values are currently required to be the same or else
+ * an error is thrown.
  *
  * **Example:**
  *
