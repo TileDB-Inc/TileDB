@@ -3,6 +3,10 @@ name: Check PR body
 on:
   pull_request:
     types: [opened, edited]
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
 
 jobs:
   check_pr_body:

@@ -4,6 +4,10 @@ on:
     types:
       - closed
       - labeled
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
 
 jobs:
   backport:

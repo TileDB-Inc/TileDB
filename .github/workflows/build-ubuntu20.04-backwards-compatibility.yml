@@ -1,7 +1,16 @@
 name: build-ubuntu-20.04-backwards-compatibility
 on:
   push:
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
   pull_request:
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
+
 env:
   CXX: g++
 
