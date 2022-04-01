@@ -208,12 +208,14 @@ class QueryCondition {
       QueryCondition* combined_cond) const;
 
   /**
-   * Returns true if this condition does not have any nodes in the AST representing the query condition.
+   * Returns true if this condition does not have any nodes in the AST
+   * representing the query condition.
    */
   bool empty() const;
 
   /**
-   * Returns a set of all unique field names among the value nodes in the AST representing the query condition.
+   * Returns a set of all unique field names among the value nodes in the AST
+   * representing the query condition.
    */
   std::unordered_set<std::string>& field_names() const;
 
@@ -355,7 +357,7 @@ class QueryCondition {
    */
   template <typename T, QueryConditionOp Op>
   std::vector<ResultCellSlab> apply_val(
-      const ASTNodeVal *node,
+      const ASTNodeVal* node,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
@@ -375,7 +377,7 @@ class QueryCondition {
    */
   template <typename T>
   tuple<Status, optional<std::vector<ResultCellSlab>>> apply_val(
-      const ASTNodeVal *node,
+      const ASTNodeVal* node,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
@@ -393,11 +395,10 @@ class QueryCondition {
    * @return Status, filtered cell slabs.
    */
   tuple<Status, optional<std::vector<ResultCellSlab>>> apply_val(
-      const ASTNodeVal *node,
+      const ASTNodeVal* node,
       const ArraySchema& array_schema,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs) const;
-
 
   /**
    * Applies the AST node to `result_cell_slabs`.
@@ -409,11 +410,11 @@ class QueryCondition {
    * @param stride The stride between cells.
    * @return Filtered cell slabs.
    */
-std::vector<ResultCellSlab> apply_tree(
-    const tdb_unique_ptr<ASTNode> &node,
-    const ArraySchema& array_schema,
-    uint64_t stride,
-    const std::vector<ResultCellSlab>& result_cell_slabs) const;
+  std::vector<ResultCellSlab> apply_tree(
+      const tdb_unique_ptr<ASTNode>& node,
+      const ArraySchema& array_schema,
+      uint64_t stride,
+      const std::vector<ResultCellSlab>& result_cell_slabs) const;
   /**
    * Applies a value node on a dense result tile,
    * templated for a query condition operator.
@@ -428,13 +429,13 @@ std::vector<ResultCellSlab> apply_tree(
    */
   template <typename T, QueryConditionOp Op>
   void apply_val_dense(
-      const ASTNodeVal *node,
+      const ASTNodeVal* node,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
-      std::vector<uint8_t> &result_buffer) const;
+      std::vector<uint8_t>& result_buffer) const;
 
   /**
    * Applies a value node on a dense result tile.
@@ -450,13 +451,13 @@ std::vector<ResultCellSlab> apply_tree(
    */
   template <typename T>
   Status apply_val_dense(
-      const ASTNodeVal *node,
+      const ASTNodeVal* node,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
-      std::vector<uint8_t> &result_buffer) const;
+      std::vector<uint8_t>& result_buffer) const;
 
   /**
    * Applies a value node to filter result cells from the input
@@ -472,15 +473,15 @@ std::vector<ResultCellSlab> apply_tree(
    * @return Status.
    */
   Status apply_val_dense(
-      const ASTNodeVal *node,
+      const ASTNodeVal* node,
       const ArraySchema& array_schema,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
-      std::vector<uint8_t> &result_buffer) const;
+      std::vector<uint8_t>& result_buffer) const;
 
-/**
+  /**
    * Applies the AST node to a set of cells.
    *
    * @param node The node to apply.
@@ -493,13 +494,13 @@ std::vector<ResultCellSlab> apply_tree(
    * @return Void.
    */
   void apply_tree_dense(
-    const tdb_unique_ptr<ASTNode> &node,
-    const ArraySchema& array_schema,
-    ResultTile* result_tile,
-    const uint64_t start,
-    const uint64_t src_cell,
-    const uint64_t stride,
-    std::vector<uint8_t> &result_buffer) const;
+      const tdb_unique_ptr<ASTNode>& node,
+      const ArraySchema& array_schema,
+      ResultTile* result_tile,
+      const uint64_t start,
+      const uint64_t src_cell,
+      const uint64_t stride,
+      std::vector<uint8_t>& result_buffer) const;
 
   /**
    * Applies a value node on a sparse result tile,
@@ -512,7 +513,7 @@ std::vector<ResultCellSlab> apply_tree(
    */
   template <typename T, QueryConditionOp Op, typename BitmapType>
   void apply_val_sparse(
-      const ASTNodeVal *node,
+      const ASTNodeVal* node,
       ResultTile& result_tile,
       const bool var_size,
       std::vector<BitmapType>& result_bitmap) const;
@@ -528,7 +529,7 @@ std::vector<ResultCellSlab> apply_tree(
    */
   template <typename T, typename BitmapType>
   Status apply_val_sparse(
-      const ASTNodeVal *node,
+      const ASTNodeVal* node,
       ResultTile& result_tile,
       const bool var_size,
       std::vector<BitmapType>& result_bitmap) const;
@@ -545,11 +546,11 @@ std::vector<ResultCellSlab> apply_tree(
    */
   template <typename BitmapType>
   Status apply_val_sparse(
-      const ASTNodeVal *node,
+      const ASTNodeVal* node,
       const ArraySchema& array_schema,
       ResultTile& result_tile,
       std::vector<BitmapType>& result_bitmap) const;
-  
+
   /**
    * Applies the AST node to a set of cells.
    *
@@ -561,8 +562,8 @@ std::vector<ResultCellSlab> apply_tree(
    */
   template <typename BitmapType>
   void apply_tree_sparse(
-      const tdb_unique_ptr<ASTNode> &node,
-       const ArraySchema& array_schema,
+      const tdb_unique_ptr<ASTNode>& node,
+      const ArraySchema& array_schema,
       ResultTile& result_tile,
       std::vector<BitmapType>& result_bitmap) const;
 };
