@@ -39,6 +39,7 @@
 #include <future>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/global_state/global_state.h"
@@ -51,6 +52,7 @@
 #include <put_block_list_request_base.h>
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb {
 namespace sm {
@@ -567,17 +569,34 @@ Status Azure::ls(
   assert(client_);
   assert(paths);
 
+  auto&& [st, entries] = ls_with_sizes(uri, delimiter, max_paths);
+  RETURN_NOT_OK(st);
+
+  for (auto& fs : *entries) {
+    paths->emplace_back(fs.path().native());
+  }
+
+  return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
+    const URI& uri, const std::string& delimiter, int max_paths) const {
+  assert(client_);
+
   const URI uri_dir = uri.add_trailing_slash();
 
   if (!uri_dir.is_azure()) {
-    return LOG_STATUS(Status_AzureError(
+    auto st = LOG_STATUS(Status_AzureError(
         std::string("URI is not an Azure URI: " + uri_dir.to_string())));
+    return {st, nullopt};
   }
 
   std::string container_name;
   std::string blob_path;
-  RETURN_NOT_OK(parse_azure_uri(uri_dir, &container_name, &blob_path));
+  RETURN_NOT_OK_TUPLE(
+      parse_azure_uri(uri_dir, &container_name, &blob_path), nullopt);
 
+  std::vector<directory_entry> entries;
   std::string continuation_token = "";
   do {
     std::future<azure::storage_lite::storage_outcome<
@@ -589,31 +608,41 @@ Status Azure::ls(
             blob_path,
             max_paths > 0 ? max_paths : 5000);
     if (!result.valid()) {
-      return LOG_STATUS(Status_AzureError(
+      auto st = LOG_STATUS(Status_AzureError(
           std::string("List blobs failed on: " + uri_dir.to_string())));
+      return {st, nullopt};
     }
 
     azure::storage_lite::storage_outcome<
         azure::storage_lite::list_blobs_segmented_response>
         outcome = result.get();
     if (!outcome.success()) {
-      return LOG_STATUS(Status_AzureError(
+      auto st = LOG_STATUS(Status_AzureError(
           std::string("List blobs failed on: " + uri_dir.to_string())));
+      return {st, nullopt};
     }
 
     azure::storage_lite::list_blobs_segmented_response response =
         outcome.response();
 
     for (const auto& blob : response.blobs) {
-      paths->emplace_back(
-          "azure://" + container_name + "/" +
-          remove_front_slash(remove_trailing_slash(blob.name)));
+      if (blob.is_directory) {
+        entries.emplace_back(
+            "azure://" + container_name + "/" +
+                remove_front_slash(remove_trailing_slash(blob.name)),
+            0);
+      } else {
+        entries.emplace_back(
+            "azure://" + container_name + "/" +
+                remove_front_slash(remove_trailing_slash(blob.name)),
+            blob.content_length);
+      }
     }
 
     continuation_token = response.next_marker;
   } while (!continuation_token.empty());
 
-  return Status::Ok();
+  return {Status::Ok(), entries};
 }
 
 Status Azure::move_object(const URI& old_uri, const URI& new_uri) {

@@ -34,6 +34,9 @@
 #include <catch.hpp>
 #include "test/src/helpers.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#ifdef _WIN32
+#include "tiledb/sm/filesystem/path_win.h"
+#endif
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
@@ -497,4 +500,73 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
     }
     vfs.terminate();
   }
+}
+
+TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
+  ThreadPool compute_tp;
+  ThreadPool io_tp;
+  REQUIRE(compute_tp.init(4).ok());
+  REQUIRE(io_tp.init(4).ok());
+  VFS vfs;
+  REQUIRE(
+      vfs.init(&g_helper_stats, &compute_tp, &io_tp, nullptr, nullptr).ok());
+
+#ifdef _WIN32
+  std::string path = tiledb::sm::Win::current_dir() + "\\vfs_test\\";
+#else
+  std::string path =
+      std::string("file://") + tiledb::sm::Posix::current_dir() + "/vfs_test/";
+#endif
+
+  // Clean up
+  bool is_dir;
+  vfs.is_dir(URI(path), &is_dir);
+  if (is_dir)
+    vfs.remove_dir(URI(path));
+
+  std::string dir = path + "ls_dir";
+  std::string file = dir + "/file";
+  std::string subdir = dir + "/subdir";
+  std::string subdir_file = subdir + "/file";
+
+  // Create directories and files
+  vfs.create_dir(URI(path));
+  vfs.create_dir(URI(dir));
+  vfs.create_dir(URI(subdir));
+  vfs.touch(URI(file));
+  vfs.touch(URI(subdir_file));
+
+  // Write to file
+  std::string s1 = "abcdef";
+  REQUIRE(vfs.write(URI(file), s1.data(), s1.size()).ok());
+
+  // Write to subdir file
+  std::string s2 = "abcdef";
+  REQUIRE(vfs.write(URI(subdir_file), s2.data(), s2.size()).ok());
+
+  // List
+  auto&& [status, rv] = vfs.ls_with_sizes(URI(dir));
+  auto children = *rv;
+
+  REQUIRE(status.ok());
+
+#ifdef _WIN32
+  // Normalization only for Windows
+  file = tiledb::sm::path_win::uri_from_path(file);
+  subdir = tiledb::sm::path_win::uri_from_path(subdir);
+#endif
+
+  // Check results
+  REQUIRE(children.size() == 2);
+
+  REQUIRE(children[0].path().native() == URI(file).to_path());
+  REQUIRE(children[1].path().native() == URI(subdir).to_path());
+
+  REQUIRE(children[0].file_size() == 6);
+
+  // Directories don't get a size
+  REQUIRE(children[1].file_size() == 0);
+
+  // Clean up
+  vfs.remove_dir(URI(path));
 }

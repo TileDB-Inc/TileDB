@@ -33,12 +33,14 @@
 #ifndef _WIN32
 
 #include "tiledb/sm/filesystem/posix.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/utils.h"
+#include "uri.h"
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -53,6 +55,7 @@
 #include <sstream>
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb {
 namespace sm {
@@ -282,23 +285,52 @@ bool Posix::is_file(const std::string& path) const {
 
 Status Posix::ls(
     const std::string& path, std::vector<std::string>* paths) const {
+  auto&& [st, entries] = ls_with_sizes(URI(path));
+
+  RETURN_NOT_OK(st);
+
+  for (auto& fs : *entries) {
+    paths->emplace_back(fs.path().native());
+  }
+
+  return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
+    const URI& uri) const {
+  std::string path = uri.to_path();
   struct dirent* next_path = nullptr;
   DIR* dir = opendir(path.c_str());
   if (dir == nullptr) {
-    return Status::Ok();
+    return {Status::Ok(), nullopt};
   }
+
+  std::vector<directory_entry> entries;
+
   while ((next_path = readdir(dir)) != nullptr) {
     if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
       continue;
     std::string abspath = path + "/" + next_path->d_name;
-    paths->emplace_back(abspath);
+
+    // Getting the file size here incurs an additional system call
+    // via file_size() and ls() calls will feel this too.
+    // If this penalty becomes noticeable, we should just duplicate
+    // this implementation in ls() and don't get the size
+    if (next_path->d_type == DT_DIR) {
+      entries.emplace_back(abspath, 0);
+    } else {
+      uint64_t size;
+      RETURN_NOT_OK_TUPLE(file_size(abspath, &size), nullopt);
+      entries.emplace_back(abspath, size);
+    }
   }
   // close parent directory
   if (closedir(dir) != 0) {
-    return LOG_STATUS(Status_IOError(
+    auto st = LOG_STATUS(Status_IOError(
         std::string("Cannot close parent directory; ") + strerror(errno)));
+    return {st, nullopt};
   }
-  return Status::Ok();
+  return {Status::Ok(), entries};
 }
 
 Status Posix::move_path(
@@ -330,7 +362,7 @@ Status Posix::copy_dir(
 
   while (!path_queue.empty()) {
     std::string file_name_abs = path_queue.front();
-    std::string file_name = file_name_abs.substr(old_path.length() + 1);
+    std::string file_name = file_name_abs.substr(old_path.length());
     path_queue.pop();
 
     if (is_dir(file_name_abs)) {
