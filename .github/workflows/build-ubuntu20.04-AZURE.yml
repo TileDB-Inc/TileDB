@@ -1,4 +1,4 @@
-name: build-ubuntu-20.04-SERIALIZATION
+name: build-ubuntu-20.04-AZURE
 on:
   push:
     branches:
@@ -9,9 +9,11 @@ on:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
-  TILEDB_SERIALIZATION: ON # NOTE: currently defined directly inline
+  BACKWARDS_COMPATIBILITY_ARRAYS: OFF
+  TILEDB_AZURE: ON
+  TILEDB_STATIC: OFF
+  TILEDB_ARROW_TESTS: ON
   CXX: g++
-  BACKWARDS_COMPATIBILITY_ARRAYS: ON
 
 jobs:
   build:
@@ -21,8 +23,8 @@ jobs:
         os:
           - ubuntu-20.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
-    timeout-minutes: 120
-    name: Build - ${{matrix.os}} - SERIALIZATION
+    timeout-minutes: 90
+    name: Build - ${{matrix.os}} - AZURE
     steps:
       - name: 'prep ubuntu for core dumps'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
@@ -70,9 +72,11 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: '3.8'
+
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
+          pip install pyarrow pybind11 numpy
         shell: bash
 
       - name: 'Build and test libtiledb'
@@ -80,20 +84,43 @@ jobs:
         run: |
           ulimit -c unlimited
           ulimit -c
+          #   - openssl configure uses ENV{SYSTEM} if available:
+          #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
+          #   - error description:
+          #     https://developercommunity.visualstudio.com/content/problem/602584/openssl-build-error-when-using-pipelines.htm
+          unset SYSTEM
 
-          bootstrap_args="${bootstrap_args} --enable-serialization";
+          # azure run does not treat intermediate failure as error
+          # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
+          set -e pipefail
+
+          git config --global user.name 'Azure Pipeline'
+          git config --global user.email 'no-reply@tiledb.io'
+
+          # Start Azurite - Azure is enabled
+          source scripts/install-azurite.sh;
+          source scripts/run-azurite.sh;
+
+          bootstrap_args="${bootstrap_args} --enable-azure";
           bootstrap_args="${bootstrap_args} --enable-release-symbols";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
-
+          
           # Bypass Catch2 Framework stdout interception with awk on test output
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          
+          for exampleexe in $(ls ./tiledb/examples/c_api/*_c) ; do echo $exampleexe; $exampleexe; done
+          for exampleexe in $(ls ./tiledb/examples/cpp_api/*_cpp) ; do echo $exampleexe; $exampleexe; done
+
+          # Kill the running Azurite server
+          kill -n 9 $AZURITE_PID
 
           # - bash: |
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build
           cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
           ./ExampleExe
+
           popd
           # Build and run the PNG ingestion example.
           # libpng (example dependency)
@@ -107,7 +134,7 @@ jobs:
 
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
 
-      - name: 'dump  core stacks'
+      - name: 'dump core stacks'
         if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: |
           # following contains answers with various possibilities for locating core files on various systems
@@ -153,7 +180,9 @@ jobs:
             done;
 
       - name: 'upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-        if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        #if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        #if: ${{ failure() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         uses: actions/upload-artifact@v2
         with:
           retention-days: 10

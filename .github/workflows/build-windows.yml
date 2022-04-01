@@ -47,7 +47,7 @@ jobs:
       TILEDB_AZURE: ${{ matrix.TILEDB_AZURE }} #azure }}
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
       TILEDB_ARROW_TESTS: ${{ matrix.TILEDB_ARROW_TESTS }}
-      TILEDB_CMAKE_BUILD_TYPE: 'Release'
+      TILEDB_CMAKE_BUILD_TYPE: 'RelWithDebInfo'
     steps:
       - name: 'tiledb env prep'
         run: |
@@ -150,6 +150,9 @@ jobs:
           if ($env:TILEDB_DEBUG -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableDebug"
             $CMakeBuildType = "Debug"
+            # Change in environment for next steps!
+            write-host "TILEDB_CMAKE_BUILD_TYPE=$CMakeBuildType" *>> $env:GITHUB_ENV
+            
           } elseif ($CMakeBuildType -eq "RelWithDebInfo") {
             $bootstrapOptions = $bootstrapOptions + " -EnableReleaseSymbols"
           }

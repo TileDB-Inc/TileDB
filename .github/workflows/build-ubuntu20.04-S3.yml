@@ -1,4 +1,4 @@
-name: build-ubuntu-20.04-HDFS
+name: build-ubuntu-20.04-S3
 on:
   push:
     branches:
@@ -10,9 +10,9 @@ on:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
-  TILEDB_HDFS: ON
-  CXX: g++-9
-  CC: gcc-9
+  TILEDB_STATIC: OFF
+  TILEDB_TOOLS: ON
+  CXX: g++
 
 jobs:
   build:
@@ -23,7 +23,7 @@ jobs:
           - ubuntu-20.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
-    name: Build - ${{matrix.os}} - HDFS
+    name: Build - ${{matrix.os}} - S3
     steps:
       - name: 'prep ubuntu for core dumps'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
@@ -83,25 +83,23 @@ jobs:
           ulimit -c unlimited
           ulimit -c
 
-          set -exo pipefail
+          # Start minio server if S3 is enabled
+          source scripts/install-minio.sh;
+          source scripts/run-minio.sh;
 
-          # - run: |
-          # Start HDFS server if enabled
-          # - ssh to localhost is required for HDFS launch...
-          # - /home/vsts has permissions g+w and is owned by user 'docker'
-          #   for VSTS purposes, so disable ssh strictness
-          sudo sed -i.bak 's/StrictModes\ yes/StrictModes\ no/g' /etc/ssh/sshd_config
-
-          source scripts/install-hadoop.sh
-          source scripts/run-hadoop.sh
-
-          bootstrap_args=" --enable-hdfs";
+          bootstrap_args="${bootstrap_args} --enable-s3";
+          bootstrap_args="${bootstrap_args} --enable-tools";
           bootstrap_args="${bootstrap_args} --enable-release-symbols";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
-          # Bypass Catch2 Framework stdout interception with awk on test output
-          # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          # make sure docker is still running...
+          printenv
+          docker ps -a
+
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          
+          for exampleexe in $(ls ./tiledb/examples/c_api/*_c) ; do echo $exampleexe; $exampleexe; done
+          for exampleexe in $(ls ./tiledb/examples/cpp_api/*_cpp) ; do echo $exampleexe; $exampleexe; done
 
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build

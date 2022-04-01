@@ -1,4 +1,4 @@
-name: build-ubuntu-20.04-S3
+name: build-ubuntu-20.04-GCS
 on:
   push:
     branches:
@@ -10,8 +10,8 @@ on:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
+  TILEDB_GCS: ON
   TILEDB_STATIC: OFF
-  TILEDB_TOOLS: ON
   CXX: g++
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
           - ubuntu-20.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
-    name: Build - ${{matrix.os}} - S3
+    name: Build - ${{matrix.os}} - GCS
     steps:
       - name: 'prep ubuntu for core dumps'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
@@ -75,6 +75,7 @@ jobs:
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
+          pip install pyarrow pybind11 numpy
         shell: bash
 
       - name: 'Build and test libtiledb'
@@ -83,35 +84,24 @@ jobs:
           ulimit -c unlimited
           ulimit -c
 
-          # Start minio server if S3 is enabled
-          source scripts/install-minio.sh;
-          source scripts/run-minio.sh;
+          # Start GCS Emulator if GCS is enabled
+          source scripts/install-gcs-emu.sh;
+          source scripts/run-gcs-emu.sh;
 
-          bootstrap_args="${bootstrap_args} --enable-s3";
-          bootstrap_args="${bootstrap_args} --enable-tools";
+          bootstrap_args="${bootstrap_args} --enable-gcs";
           bootstrap_args="${bootstrap_args} --enable-release-symbols";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
-          # make sure docker is still running...
-          printenv
-          docker ps -a
-
+          # Bypass Catch2 Framework stdout interception with awk on test output
+          # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          
+          for exampleexe in $(ls ./tiledb/examples/c_api/*_c) ; do echo $exampleexe; $exampleexe; done
+          for exampleexe in $(ls ./tiledb/examples/cpp_api/*_cpp) ; do echo $exampleexe; $exampleexe; done
 
-          pushd $GITHUB_WORKSPACE/examples/cmake_project
-          mkdir build && cd build
-          cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
-          ./ExampleExe
-          popd
-          # Build and run the PNG ingestion example.
-          # libpng (example dependency)
-          sudo apt-get install libpng-dev
-
-          pushd $GITHUB_WORKSPACE/examples/png_ingestion;
-          mkdir build && cd build;
-          cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make;
-          ./tiledb_png $GITHUB_WORKSPACE/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
-          popd;
+          # Kill the running GCS emulator server Linux only because OSX does not
+          # run the emulator
+          kill -9 $GCS_PID
 
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
 
