@@ -635,17 +635,31 @@ struct GroupMember {
 }
 
 struct Group {
-  members @0 :List(GroupMember);
+  config @0 :Config;
+  # Config
+
+  members @1 :List(GroupMember);
   # list of Members in group
 
-  metadata  @1 :ArrayMetadata;
+  metadata  @2 :ArrayMetadata;
   # metadata attached to group
 }
 
 struct GroupUpdate {
-  membersToRemove @0 :List(Text) $Json.name("members_to_remove");
+  config @0 :Config;
+  # Config
+
+  membersToRemove @1 :List(Text) $Json.name("members_to_remove");
   # members to remove
 
-  membersToAdd @1 :List(GroupMember) $Json.name("members_to_add");
+  membersToAdd @2 :List(GroupMember) $Json.name("members_to_add");
   # members to add
+}
+
+struct GroupCreate {
+  config @0 :Config;
+  # Config
+
+  uri @1 :Text;
+  # URI where group should be created
 }

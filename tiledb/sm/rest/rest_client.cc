@@ -166,13 +166,11 @@ tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
   RETURN_NOT_OK_TUPLE(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),
       nullopt);
-  const std::string url = redirect_uri(cache_key) + "/v1/groups/" + group_ns +
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
                           "/" + curlc.url_escape(group_uri);
 
   // Make the request, the returned data is ignored for now.
-  Buffer returned_data;
-  auto curl_st = curlc.get_data(
-      stats_, url, serialization_type_, &returned_data, cache_key);
+  auto curl_st = curlc.options(stats_, url, serialization_type_, cache_key);
 
   auto&& [status_st, http_status_code] = curlc.last_http_status_code();
   RETURN_NOT_OK_TUPLE(status_st, std::nullopt);
@@ -907,11 +905,7 @@ Status RestClient::post_array_schema_evolution_to_rest(
   return sc;
 }
 
-Status RestClient::get_group_metadata_from_rest(
-    const URI& uri,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end,
-    Group* group) {
+Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
   if (group == nullptr)
     return LOG_STATUS(Status_RestError(
         "Error getting group metadata from REST; group is null."));
@@ -923,11 +917,8 @@ Status RestClient::get_group_metadata_from_rest(
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/groups/" + group_ns +
-                          "/" + curlc.url_escape(group_uri) +
-                          "/group_metadata?" +
-                          "start_timestamp=" + std::to_string(timestamp_start) +
-                          "&end_timestamp=" + std::to_string(timestamp_end);
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
+                          "/" + curlc.url_escape(group_uri) + "/metadata";
 
   // Get the data
   Buffer returned_data;
@@ -941,11 +932,7 @@ Status RestClient::get_group_metadata_from_rest(
       group->metadata(), serialization_type_, returned_data);
 }
 
-Status RestClient::post_group_metadata_to_rest(
-    const URI& uri,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end,
-    Group* group) {
+Status RestClient::put_group_metadata_to_rest(const URI& uri, Group* group) {
   if (group == nullptr)
     return LOG_STATUS(Status_RestError(
         "Error posting group metadata to REST; group is null."));
@@ -964,13 +951,37 @@ Status RestClient::post_group_metadata_to_rest(
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/groups/" + group_ns +
-                          "/" + curlc.url_escape(group_uri) +
-                          "/group_metadata?" +
-                          "start_timestamp=" + std::to_string(timestamp_start) +
-                          "&end_timestamp=" + std::to_string(timestamp_end);
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
+                          "/" + curlc.url_escape(group_uri) + "/metadata";
 
   // Put the data
+  Buffer returned_data;
+  return curlc.put_data(
+      stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
+}
+
+Status RestClient::post_group_create_to_rest(const URI& uri, Group* group) {
+  if (group == nullptr)
+    return LOG_STATUS(
+        Status_RestError("Error posting group to REST; group is null."));
+
+  Buffer buff;
+  RETURN_NOT_OK(
+      serialization::group_create_serialize(group, serialization_type_, &buff));
+  // Wrap in a list
+  BufferList serialized;
+  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+
+  // Init curl and form the URL
+  Curl curlc;
+  std::string group_ns, group_uri;
+  RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri));
+  const std::string cache_key = group_ns + ":" + group_uri;
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns;
+
+  // Create the group and check for error
   Buffer returned_data;
   return curlc.post_data(
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
@@ -978,8 +989,8 @@ Status RestClient::post_group_metadata_to_rest(
 
 Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
   if (group == nullptr)
-    return LOG_STATUS(Status_RestError(
-        "Error posting group metadata to REST; group is null."));
+    return LOG_STATUS(
+        Status_RestError("Error posting group to REST; group is null."));
 
   Buffer buff;
   RETURN_NOT_OK(serialization::config_serialize(
@@ -995,10 +1006,8 @@ Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url =
-      redirect_uri(cache_key) + "/v1/groups/" + group_ns + "/" +
-      curlc.url_escape(group_uri) +
-      "/embedded?type=" + query_type_str(group->query_type());
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
+                          "/" + curlc.url_escape(group_uri);
 
   // Get the data
   Buffer returned_data;
@@ -1020,8 +1029,8 @@ Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
 
 Status RestClient::post_group_to_rest(const URI& uri, Group* group) {
   if (group == nullptr)
-    return LOG_STATUS(Status_RestError(
-        "Error posting group metadata to REST; group is null."));
+    return LOG_STATUS(
+        Status_RestError("Error posting group to REST; group is null."));
 
   Buffer buff;
   RETURN_NOT_OK(
@@ -1037,14 +1046,12 @@ Status RestClient::post_group_to_rest(const URI& uri, Group* group) {
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url =
-      redirect_uri(cache_key) + "/v1/groups/" + group_ns + "/" +
-      curlc.url_escape(group_uri) +
-      "/embedded?type=" + query_type_str(group->query_type());
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
+                          "/" + curlc.url_escape(group_uri);
 
   // Put the data
   Buffer returned_data;
-  return curlc.post_data(
+  return curlc.patch_data(
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
@@ -1144,14 +1151,17 @@ tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
           std::nullopt};
 }
 
-Status RestClient::get_group_metadata_from_rest(
-    const URI&, uint64_t, uint64_t, Group*) {
+Status RestClient::post_group_metadata_from_rest(const URI&, Group*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::post_group_metadata_to_rest(
-    const URI&, uint64_t, uint64_t, Group*) {
+Status RestClient::put_group_metadata_to_rest(const URI&, Group*) {
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+Status RestClient::post_group_create_to_rest(const URI&, Group*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }

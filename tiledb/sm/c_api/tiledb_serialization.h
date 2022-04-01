@@ -499,6 +499,40 @@ TILEDB_EXPORT int32_t tiledb_deserialize_group(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_group_t* group);
+
+/**
+ * Serializes the group metadata into the given buffer.
+ *
+ * @note The caller must free the returned `tiledb_buffer_t`.
+ *
+ * @param ctx The TileDB context.
+ * @param group Group whose metadata to serialize.
+ * @param serialization_type Type of serialization to use
+ * @param buffer Will be set to a newly allocated buffer containing the
+ *      serialized group metadata.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_serialize_group_metadata(
+    tiledb_ctx_t* ctx,
+    const tiledb_group_t* group,
+    tiledb_serialization_type_t serialization_type,
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
+
+/**
+ * Sets the group metadata on the given group instance by deserializing the
+ * group metadata from the given buffer.
+ *
+ * @param ctx The TileDB context.
+ * @param group Group whose metadata to set.
+ * @param serialization_type Type of serialization to use
+ * @param buffer Buffer containing serialized group metadata.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_deserialize_group_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* buffer) TILEDB_NOEXCEPT;
 #ifdef __cplusplus
 }
 #endif

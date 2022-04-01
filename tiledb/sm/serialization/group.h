@@ -101,6 +101,20 @@ Status group_update_deserialize(
     Group* group,
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
+
+/**
+ * Serialize a group's creation state via Cap'n Prto
+ *
+ * @param Group group object to serialize
+ * @param serialize_type format to serialize into Cap'n Proto or JSON
+ * @param serialized_buffer buffer to store serialized bytes in
+ * serialize the array URI
+ * @return Status
+ */
+Status group_create_serialize(
+    const Group* group,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
 }  // namespace serialization
 }  // namespace sm
 }  // namespace tiledb

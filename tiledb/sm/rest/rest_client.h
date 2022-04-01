@@ -211,31 +211,19 @@ class RestClient {
    * Metadata of the group to match the returned values).
    *
    * @param uri Group URI
-   * @param timestamp_start Inclusive starting timestamp at which to open group
-   * @param timestamp_end Inclusive ending timestamp at which to open group
    * @param group Group to fetch metadata for
    * @return Status
    */
-  Status get_group_metadata_from_rest(
-      const URI& uri,
-      uint64_t timestamp_start,
-      uint64_t timestamp_end,
-      Group* group);
+  Status post_group_metadata_from_rest(const URI& uri, Group* group);
 
   /**
    * Posts the group's metadata to the REST server.
    *
    * @param uri Group URI
-   * @param timestamp_start Inclusive starting timestamp at which to open group
-   * @param timestamp_end Inclusive ending timestamp at which to open group
    * @param group Group to update/post metadata for.
    * @return Status
    */
-  Status post_group_metadata_to_rest(
-      const URI& uri,
-      uint64_t timestamp_start,
-      uint64_t timestamp_end,
-      Group* group);
+  Status put_group_metadata_to_rest(const URI& uri, Group* group);
 
   /**
    * Get group details from the REST server.
@@ -247,13 +235,22 @@ class RestClient {
   Status post_group_from_rest(const URI& uri, Group* group);
 
   /**
-   * Post group details from the REST server.
+   * Post group details to the REST server.
    *
    * @param uri Group UI
    * @param group Group to serialize
    * @return Status
    */
   Status post_group_to_rest(const URI& uri, Group* group);
+
+  /**
+   * Post group create to the REST server.
+   *
+   * @param uri Group UI
+   * @param group Group to create
+   * @return Status
+   */
+  Status post_group_create_to_rest(const URI& uri, Group* group);
 
  private:
   /* ********************************* */

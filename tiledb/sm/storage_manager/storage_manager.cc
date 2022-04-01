@@ -56,6 +56,8 @@
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
+#include "tiledb/sm/group/group.h"
+#include "tiledb/sm/group/group_v1.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/time.h"
 #include "tiledb/sm/misc/utils.h"
@@ -1225,12 +1227,12 @@ const std::unordered_map<std::string, std::string>& StorageManager::tags()
   return tags_;
 }
 
-Status StorageManager::group_create(const std::string& group) {
+Status StorageManager::group_create(const std::string& group_uri) {
   // Create group URI
-  URI uri(group);
+  URI uri(group_uri);
   if (uri.is_invalid())
     return logger_->status(Status_StorageManagerError(
-        "Cannot create group '" + group + "'; Invalid group URI"));
+        "Cannot create group '" + group_uri + "'; Invalid group URI"));
 
   // Check if group exists
   bool exists;
@@ -1241,6 +1243,12 @@ Status StorageManager::group_create(const std::string& group) {
         "' already exists"));
 
   std::lock_guard<std::mutex> lock{object_create_mtx_};
+
+  if (uri.is_tiledb()) {
+    GroupV1 group(uri, this);
+    RETURN_NOT_OK(rest_client_->post_group_create_to_rest(uri, &group));
+    return Status::Ok();
+  }
 
   // Create group directory
   RETURN_NOT_OK(vfs_->create_dir(uri));
