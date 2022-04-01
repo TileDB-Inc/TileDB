@@ -663,7 +663,7 @@ struct GroupUpdate {
   config @0 :Config;
   # Config
 
-  groupUpdate @1 :GroupUpdateDetails  $Json.name("group_changes");
+  groupUpdate @1 :GroupUpdateDetails $Json.name("group_changes");
   # group update detials
 }
 

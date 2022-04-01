@@ -316,6 +316,7 @@ Status group_serialize(
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
+        json.handleByAnnotation<capnp::Group>();
         kj::String capnp_json = json.encode(groupBuilder);
         const auto json_len = capnp_json.size();
         const char nul = '\0';
@@ -360,6 +361,7 @@ Status group_deserialize(
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
+        json.handleByAnnotation<capnp::Group>();
         ::capnp::MallocMessageBuilder message_builder;
         capnp::Group::Builder group_builder =
             message_builder.initRoot<capnp::Group>();
@@ -415,6 +417,7 @@ Status group_update_serialize(
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
+        json.handleByAnnotation<capnp::GroupUpdate>();
         kj::String capnp_json = json.encode(groupUpdateBuilder);
         const auto json_len = capnp_json.size();
         const char nul = '\0';
@@ -459,6 +462,7 @@ Status group_update_deserialize(
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
+        json.handleByAnnotation<capnp::GroupUpdate>();
         ::capnp::MallocMessageBuilder message_builder;
         capnp::GroupUpdate::Builder group_update_builder =
             message_builder.initRoot<capnp::GroupUpdate>();
@@ -515,6 +519,7 @@ Status group_create_serialize(
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
+        json.handleByAnnotation<capnp::GroupCreate>();
         kj::String capnp_json = json.encode(group_create_builder);
         const auto json_len = capnp_json.size();
         const char nul = '\0';
@@ -541,7 +546,7 @@ Status group_create_serialize(
 
   } catch (kj::Exception& e) {
     return LOG_STATUS(Status_SerializationError(
-        "Error serializing group ccreate; kj::Exception: " +
+        "Error serializing group create; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
     return LOG_STATUS(Status_SerializationError(

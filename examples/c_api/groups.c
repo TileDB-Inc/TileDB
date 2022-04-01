@@ -147,7 +147,7 @@ void print_group() {
   tiledb_group_t* my_group;
 
   tiledb_group_alloc(ctx, "my_group", &my_group);
-  tiledb_group_open(ctx, my_group, TILEDB_WRITE);
+  tiledb_group_open(ctx, my_group, TILEDB_READ);
 
   char* str;
   tiledb_group_dump_str(ctx, my_group, &str, 1);
@@ -155,6 +155,7 @@ void print_group() {
   printf("%s\n", str);
 
   free(str);
+
   tiledb_group_close(ctx, my_group);
   tiledb_group_free(&my_group);
 }
