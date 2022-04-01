@@ -173,21 +173,23 @@ TEST_CASE("QueryCondition: Test char", "[QueryCondition][char_value]") {
   REQUIRE(query_condition.field_names().count(field_name) == 1);
 }
 
-TEST_CASE("QueryCondition: Test AST construction, basic", "[QueryCondition][ast][api]") {
+TEST_CASE(
+    "QueryCondition: Test AST construction, basic",
+    "[QueryCondition][ast][api]") {
   std::string field_name = "x";
   int val = 5;
   QueryCondition query_condition;
-  REQUIRE(query_condition
-              .init(
-                  std::string(field_name),
-                  &val,
-                  sizeof(int),
-                  QueryConditionOp::LT)
-              .ok());
+  REQUIRE(
+      query_condition
+          .init(
+              std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
+          .ok());
   REQUIRE(query_condition.ast_to_str() == "x LT 05 00 00 00");
 }
 
-TEST_CASE("Query Condition: Test AST construction, basic combine", "[QueryCondition][ast][api]") {
+TEST_CASE(
+    "Query Condition: Test AST construction, basic combine",
+    "[QueryCondition][ast][api]") {
   // AND combine
   {
     std::string field_name = "x";
@@ -215,8 +217,14 @@ TEST_CASE("Query Condition: Test AST construction, basic combine", "[QueryCondit
     REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
 
     QueryCondition combined_and;
-    REQUIRE(query_condition.combine(query_condition1, QueryConditionCombinationOp::AND, &combined_and).ok());
-    REQUIRE(combined_and.ast_to_str() == "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
+    REQUIRE(query_condition
+                .combine(
+                    query_condition1,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and)
+                .ok());
+    REQUIRE(
+        combined_and.ast_to_str() == "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
   }
 
   // OR combine
@@ -246,12 +254,19 @@ TEST_CASE("Query Condition: Test AST construction, basic combine", "[QueryCondit
     REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
 
     QueryCondition combined_or;
-    REQUIRE(query_condition.combine(query_condition1, QueryConditionCombinationOp::OR, &combined_or).ok());
-    REQUIRE(combined_or.ast_to_str() == "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
+    REQUIRE(
+        query_condition
+            .combine(
+                query_condition1, QueryConditionCombinationOp::OR, &combined_or)
+            .ok());
+    REQUIRE(
+        combined_or.ast_to_str() == "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
   }
 }
 
-TEST_CASE("Query Condition: Test AST contruction, tree structure", "[QueryCondition][ast][api]") {
+TEST_CASE(
+    "Query Condition: Test AST contruction, tree structure",
+    "[QueryCondition][ast][api]") {
   // AND of 2 ors
   {
     // First or
@@ -280,8 +295,13 @@ TEST_CASE("Query Condition: Test AST contruction, tree structure", "[QueryCondit
     REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
 
     QueryCondition combined_or;
-    REQUIRE(query_condition.combine(query_condition1, QueryConditionCombinationOp::OR, &combined_or).ok());
-    REQUIRE(combined_or.ast_to_str() == "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
+    REQUIRE(
+        query_condition
+            .combine(
+                query_condition1, QueryConditionCombinationOp::OR, &combined_or)
+            .ok());
+    REQUIRE(
+        combined_or.ast_to_str() == "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
 
     // Second and
     std::string field_name2 = "a";
@@ -309,12 +329,25 @@ TEST_CASE("Query Condition: Test AST contruction, tree structure", "[QueryCondit
     REQUIRE(query_condition3.ast_to_str() == "b NE 01 00 00 00");
 
     QueryCondition combined_or1;
-    REQUIRE(query_condition2.combine(query_condition3, QueryConditionCombinationOp::OR, &combined_or1).ok());
-    REQUIRE(combined_or1.ast_to_str() == "(a EQ 09 00 00 00 OR b NE 01 00 00 00)");
+    REQUIRE(query_condition2
+                .combine(
+                    query_condition3,
+                    QueryConditionCombinationOp::OR,
+                    &combined_or1)
+                .ok());
+    REQUIRE(
+        combined_or1.ast_to_str() == "(a EQ 09 00 00 00 OR b NE 01 00 00 00)");
 
     QueryCondition combined_and;
-    REQUIRE(combined_or.combine(combined_or1, QueryConditionCombinationOp::AND, &combined_and).ok());
-    REQUIRE(combined_and.ast_to_str() == "((x LT 05 00 00 00 OR y GT 03 00 00 00) AND (a EQ 09 00 00 00 OR b NE 01 00 00 00))");
+    REQUIRE(
+        combined_or
+            .combine(
+                combined_or1, QueryConditionCombinationOp::AND, &combined_and)
+            .ok());
+    REQUIRE(
+        combined_and.ast_to_str() ==
+        "((x LT 05 00 00 00 OR y GT 03 00 00 00) AND (a EQ 09 00 00 00 OR b NE "
+        "01 00 00 00))");
   }
 
   // OR of 2 ands
@@ -345,8 +378,14 @@ TEST_CASE("Query Condition: Test AST contruction, tree structure", "[QueryCondit
     REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
 
     QueryCondition combined_and;
-    REQUIRE(query_condition.combine(query_condition1, QueryConditionCombinationOp::AND, &combined_and).ok());
-    REQUIRE(combined_and.ast_to_str() == "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
+    REQUIRE(query_condition
+                .combine(
+                    query_condition1,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and)
+                .ok());
+    REQUIRE(
+        combined_and.ast_to_str() == "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
 
     // Second and
     std::string field_name2 = "a";
@@ -374,16 +413,33 @@ TEST_CASE("Query Condition: Test AST contruction, tree structure", "[QueryCondit
     REQUIRE(query_condition3.ast_to_str() == "b NE 01 00 00 00");
 
     QueryCondition combined_and1;
-    REQUIRE(query_condition2.combine(query_condition3, QueryConditionCombinationOp::AND, &combined_and1).ok());
-    REQUIRE(combined_and1.ast_to_str() == "(a EQ 09 00 00 00 AND b NE 01 00 00 00)");
+    REQUIRE(query_condition2
+                .combine(
+                    query_condition3,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and1)
+                .ok());
+    REQUIRE(
+        combined_and1.ast_to_str() ==
+        "(a EQ 09 00 00 00 AND b NE 01 00 00 00)");
 
     QueryCondition combined_or;
-    REQUIRE(combined_and.combine(combined_and1, QueryConditionCombinationOp::OR, &combined_or).ok());
-    REQUIRE(combined_or.ast_to_str() == "((x LT 05 00 00 00 AND y GT 03 00 00 00) OR (a EQ 09 00 00 00 AND b NE 01 00 00 00))");
+    REQUIRE(
+        combined_and
+            .combine(
+                combined_and1, QueryConditionCombinationOp::OR, &combined_or)
+            .ok());
+    REQUIRE(
+        combined_or.ast_to_str() ==
+        "((x LT 05 00 00 00 AND y GT 03 00 00 00) OR (a EQ 09 00 00 00 AND b "
+        "NE 01 00 00 00))");
   }
 }
 
-TEST_CASE("Query Condition: Test AST contruction, tree structure with same combining operator", "[QueryCondition][ast][api]") {
+TEST_CASE(
+    "Query Condition: Test AST contruction, tree structure with same combining "
+    "operator",
+    "[QueryCondition][ast][api]") {
   // OR of 2 ors
   {
     // First or
@@ -412,8 +468,13 @@ TEST_CASE("Query Condition: Test AST contruction, tree structure with same combi
     REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
 
     QueryCondition combined_or;
-    REQUIRE(query_condition.combine(query_condition1, QueryConditionCombinationOp::OR, &combined_or).ok());
-    REQUIRE(combined_or.ast_to_str() == "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
+    REQUIRE(
+        query_condition
+            .combine(
+                query_condition1, QueryConditionCombinationOp::OR, &combined_or)
+            .ok());
+    REQUIRE(
+        combined_or.ast_to_str() == "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
 
     // Second and
     std::string field_name2 = "a";
@@ -441,12 +502,25 @@ TEST_CASE("Query Condition: Test AST contruction, tree structure with same combi
     REQUIRE(query_condition3.ast_to_str() == "b NE 01 00 00 00");
 
     QueryCondition combined_or1;
-    REQUIRE(query_condition2.combine(query_condition3, QueryConditionCombinationOp::OR, &combined_or1).ok());
-    REQUIRE(combined_or1.ast_to_str() == "(a EQ 09 00 00 00 OR b NE 01 00 00 00)");
+    REQUIRE(query_condition2
+                .combine(
+                    query_condition3,
+                    QueryConditionCombinationOp::OR,
+                    &combined_or1)
+                .ok());
+    REQUIRE(
+        combined_or1.ast_to_str() == "(a EQ 09 00 00 00 OR b NE 01 00 00 00)");
 
     QueryCondition combined_or2;
-    REQUIRE(combined_or.combine(combined_or1, QueryConditionCombinationOp::OR, &combined_or2).ok());
-    REQUIRE(combined_or2.ast_to_str() == "(x LT 05 00 00 00 OR y GT 03 00 00 00 OR a EQ 09 00 00 00 OR b NE 01 00 00 00)");
+    REQUIRE(
+        combined_or
+            .combine(
+                combined_or1, QueryConditionCombinationOp::OR, &combined_or2)
+            .ok());
+    REQUIRE(
+        combined_or2.ast_to_str() ==
+        "(x LT 05 00 00 00 OR y GT 03 00 00 00 OR a EQ 09 00 00 00 OR b NE 01 "
+        "00 00 00)");
   }
 
   // AND of 2 ands
@@ -477,8 +551,14 @@ TEST_CASE("Query Condition: Test AST contruction, tree structure with same combi
     REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
 
     QueryCondition combined_and;
-    REQUIRE(query_condition.combine(query_condition1, QueryConditionCombinationOp::AND, &combined_and).ok());
-    REQUIRE(combined_and.ast_to_str() == "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
+    REQUIRE(query_condition
+                .combine(
+                    query_condition1,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and)
+                .ok());
+    REQUIRE(
+        combined_and.ast_to_str() == "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
 
     // Second and
     std::string field_name2 = "a";
@@ -506,12 +586,26 @@ TEST_CASE("Query Condition: Test AST contruction, tree structure with same combi
     REQUIRE(query_condition3.ast_to_str() == "b NE 01 00 00 00");
 
     QueryCondition combined_and1;
-    REQUIRE(query_condition2.combine(query_condition3, QueryConditionCombinationOp::AND, &combined_and1).ok());
-    REQUIRE(combined_and1.ast_to_str() == "(a EQ 09 00 00 00 AND b NE 01 00 00 00)");
+    REQUIRE(query_condition2
+                .combine(
+                    query_condition3,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and1)
+                .ok());
+    REQUIRE(
+        combined_and1.ast_to_str() ==
+        "(a EQ 09 00 00 00 AND b NE 01 00 00 00)");
 
     QueryCondition combined_and2;
-    REQUIRE(combined_and.combine(combined_and1, QueryConditionCombinationOp::AND, &combined_and2).ok());
-    REQUIRE(combined_and2.ast_to_str() == "(x LT 05 00 00 00 AND y GT 03 00 00 00 AND a EQ 09 00 00 00 AND b NE 01 00 00 00)");
+    REQUIRE(
+        combined_and
+            .combine(
+                combined_and1, QueryConditionCombinationOp::AND, &combined_and2)
+            .ok());
+    REQUIRE(
+        combined_and2.ast_to_str() ==
+        "(x LT 05 00 00 00 AND y GT 03 00 00 00 AND a EQ 09 00 00 00 AND b NE "
+        "01 00 00 00)");
   }
 }
 
