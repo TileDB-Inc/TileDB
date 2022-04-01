@@ -106,20 +106,17 @@ group_member_from_capnp(capnp::GroupMember::Reader* group_member_reader) {
   return {Status::Ok(), group_member};
 }
 
-Status group_to_capnp(
-    const Group* group, capnp::Group::Builder* group_builder) {
+Status group_details_to_capnp(
+    const Group* group,
+    capnp::Group::GroupDetails::Builder* group_details_builder) {
   if (group == nullptr)
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
 
-  // Set config
-  auto config_builder = group_builder->initConfig();
-  RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
-
   const auto& group_members = group->members();
   if (!group_members.empty()) {
     auto group_members_builder =
-        group_builder->initMembers(group_members.size());
+        group_details_builder->initMembers(group_members.size());
     uint64_t i = 0;
     for (const auto& it : group_members) {
       auto group_member_builder = group_members_builder[i];
@@ -132,6 +129,36 @@ Status group_to_capnp(
   return Status::Ok();
 }
 
+Status group_details_from_capnp(
+    const capnp::Group::GroupDetails::Reader& group_details_reader,
+    Group* group) {
+  if (group_details_reader.hasMembers()) {
+    for (auto member : group_details_reader.getMembers()) {
+      auto&& [st, group_member] = group_member_from_capnp(&member);
+      RETURN_NOT_OK(st);
+      RETURN_NOT_OK(group->add_member(group_member.value()));
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status group_to_capnp(
+    const Group* group, capnp::Group::Builder* group_builder) {
+  if (group == nullptr)
+    return LOG_STATUS(
+        Status_SerializationError("Error serializing group; group is null."));
+
+  // Set config
+  auto config_builder = group_builder->initConfig();
+  RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
+
+  auto group_details_builder = group_builder->initGroup();
+  RETURN_NOT_OK(group_details_to_capnp(group, &group_details_builder));
+
+  return Status::Ok();
+}
+
 Status group_from_capnp(
     const capnp::Group::Reader& group_reader, Group* group) {
   if (group_reader.hasConfig()) {
@@ -140,11 +167,68 @@ Status group_from_capnp(
     RETURN_NOT_OK(group->set_config(*decoded_config));
   }
 
-  if (group_reader.hasMembers()) {
-    for (auto member : group_reader.getMembers()) {
-      auto&& [st, group_member] = group_member_from_capnp(&member);
+  if (group_reader.hasGroup()) {
+    RETURN_NOT_OK(group_details_from_capnp(group_reader.getGroup(), group));
+  }
+
+  return Status::Ok();
+}
+
+Status group_update_details_to_capnp(
+    const Group* group,
+    capnp::GroupUpdate::GroupUpdateDetails::Builder*
+        group_update_details_builder) {
+  if (group == nullptr) {
+    return LOG_STATUS(
+        Status_SerializationError("Error serializing group; group is null."));
+  }
+
+  const auto& group_members_to_add = group->members_to_add();
+  if (!group_members_to_add.empty()) {
+    auto group_members_to_add_builder =
+        group_update_details_builder->initMembersToAdd(
+            group_members_to_add.size());
+    uint64_t i = 0;
+    for (const auto& it : group_members_to_add) {
+      auto group_member_to_add_builder = group_members_to_add_builder[i];
+      RETURN_NOT_OK(
+          group_member_to_capnp(it.second, &group_member_to_add_builder));
+      // Increment index
+      ++i;
+    }
+  }
+
+  const auto& group_members_to_remove = group->members_to_remove();
+  if (!group_members_to_remove.empty()) {
+    auto group_members_to_remove_builder =
+        group_update_details_builder->initMembersToRemove(
+            group_members_to_remove.size());
+    uint64_t i = 0;
+    for (const auto& it : group_members_to_remove) {
+      group_members_to_remove_builder.set(i, it.c_str());
+      // Increment index
+      ++i;
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status group_update_from_capnp(
+    const capnp::GroupUpdate::GroupUpdateDetails::Reader&
+        group_update_details_reader,
+    Group* group) {
+  if (group_update_details_reader.hasMembersToAdd()) {
+    for (auto member_to_add : group_update_details_reader.getMembersToAdd()) {
+      auto&& [st, group_member] = group_member_from_capnp(&member_to_add);
       RETURN_NOT_OK(st);
-      RETURN_NOT_OK(group->add_member(group_member.value()));
+      group->add_member(group_member.value());
+    }
+  }
+
+  if (group_update_details_reader.hasMembersToRemove()) {
+    for (auto uri : group_update_details_reader.getMembersToRemove()) {
+      group->mark_member_for_removal(uri.cStr());
     }
   }
 
@@ -162,32 +246,9 @@ Status group_update_to_capnp(
   auto config_builder = group_update_builder->initConfig();
   RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
 
-  const auto& group_members_to_add = group->members_to_add();
-  if (!group_members_to_add.empty()) {
-    auto group_members_to_add_builder =
-        group_update_builder->initMembersToAdd(group_members_to_add.size());
-    uint64_t i = 0;
-    for (const auto& it : group_members_to_add) {
-      auto group_member_to_add_builder = group_members_to_add_builder[i];
-      RETURN_NOT_OK(
-          group_member_to_capnp(it.second, &group_member_to_add_builder));
-      // Increment index
-      ++i;
-    }
-  }
-
-  const auto& group_members_to_remove = group->members_to_remove();
-  if (!group_members_to_remove.empty()) {
-    auto group_members_to_remove_builder =
-        group_update_builder->initMembersToRemove(
-            group_members_to_remove.size());
-    uint64_t i = 0;
-    for (const auto& it : group_members_to_remove) {
-      group_members_to_remove_builder.set(i, it.c_str());
-      // Increment index
-      ++i;
-    }
-  }
+  auto group_update_details_builder = group_update_builder->initGroupUpdate();
+  RETURN_NOT_OK(
+      group_update_details_to_capnp(group, &group_update_details_builder));
 
   return Status::Ok();
 }
@@ -200,19 +261,24 @@ Status group_update_from_capnp(
     RETURN_NOT_OK(group->set_config(*decoded_config));
   }
 
-  if (group_reader.hasMembersToAdd()) {
-    for (auto member_to_add : group_reader.getMembersToAdd()) {
-      auto&& [st, group_member] = group_member_from_capnp(&member_to_add);
-      RETURN_NOT_OK(st);
-      group->add_member(group_member.value());
-    }
+  if (group_reader.hasGroupUpdate()) {
+    RETURN_NOT_OK(
+        group_update_from_capnp(group_reader.getGroupUpdate(), group));
   }
 
-  if (group_reader.hasMembersToRemove()) {
-    for (auto uri : group_reader.getMembersToRemove()) {
-      group->mark_member_for_removal(uri.cStr());
-    }
+  return Status::Ok();
+}
+
+Status group_create_details_to_capnp(
+    const Group* group,
+    capnp::GroupCreate::GroupCreateDetails::Builder*
+        group_create_details_builder) {
+  if (group == nullptr) {
+    return LOG_STATUS(
+        Status_SerializationError("Error serializing group; group is null."));
   }
+
+  group_create_details_builder->setUri(group->group_uri().to_string());
 
   return Status::Ok();
 }
@@ -228,7 +294,9 @@ Status group_create_to_capnp(
   auto config_builder = group_create_builder->initConfig();
   RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
 
-  group_create_builder->setUri(group->group_uri().to_string());
+  auto group_create_details_builder = group_create_builder->initGroupDetails();
+  RETURN_NOT_OK(
+      group_create_details_to_capnp(group, &group_create_details_builder));
 
   return Status::Ok();
 }
