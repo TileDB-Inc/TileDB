@@ -38,6 +38,7 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/group/group_v1.h"
+#include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/group.h"
 
 /* ****************************** */
@@ -504,6 +505,58 @@ int32_t tiledb_group_dump_str(
 
   std::memcpy(*dump_ascii, str.data(), str.size());
   (*dump_ascii)[str.size()] = '\0';
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_serialize_group_metadata(
+    tiledb_ctx_t* ctx,
+    const tiledb_group_t* group,
+    tiledb_serialization_type_t serialize_type,
+    tiledb_buffer_t** buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Allocate buffer
+  if (tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Serialize
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::metadata_serialize(
+              group->group_->metadata(),
+              (tiledb::sm::SerializationType)serialize_type,
+              (*buffer)->buffer_))) {
+    tiledb_buffer_free(buffer);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_group_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_serialization_type_t serialize_type,
+    const tiledb_buffer_t* buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, group) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Deserialize
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::metadata_deserialize(
+              group->group_->metadata(),
+              (tiledb::sm::SerializationType)serialize_type,
+              *(buffer->buffer_)))) {
+    return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }

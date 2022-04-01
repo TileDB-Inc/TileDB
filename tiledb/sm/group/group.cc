@@ -207,8 +207,8 @@ Status Group::close() {
         if (rest_client == nullptr)
           return Status_GroupError(
               "Error closing group; remote group with no REST client.");
-        RETURN_NOT_OK(rest_client->post_group_metadata_to_rest(
-            group_uri_, timestamp_start_, timestamp_end_, this));
+        RETURN_NOT_OK(
+            rest_client->put_group_metadata_to_rest(group_uri_, this));
       }
       if (!members_to_remove_.empty() || !members_to_add_.empty()) {
         auto rest_client = storage_manager_->rest_client();
@@ -718,8 +718,7 @@ Status Group::load_metadata() {
     if (rest_client == nullptr)
       return Status_GroupError(
           "Cannot load metadata; remote group with no REST client.");
-    RETURN_NOT_OK(rest_client->get_group_metadata_from_rest(
-        group_uri_, timestamp_start_, timestamp_end_, this));
+    RETURN_NOT_OK(rest_client->post_group_metadata_from_rest(group_uri_, this));
   } else {
     assert(group_dir_->loaded());
     RETURN_NOT_OK(storage_manager_->load_group_metadata(
