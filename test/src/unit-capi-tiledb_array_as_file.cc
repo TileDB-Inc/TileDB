@@ -557,5 +557,6 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array2);
 
   remove_temp_dir(array_name);
-  remove_temp_dir(output_path);
+  remove_temp_dir(output_pathA);
+  remove_temp_dir(output_pathB);
 }
