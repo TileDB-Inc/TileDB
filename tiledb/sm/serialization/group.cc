@@ -278,7 +278,15 @@ Status group_create_details_to_capnp(
         Status_SerializationError("Error serializing group; group is null."));
   }
 
-  group_create_details_builder->setUri(group->group_uri().to_string());
+  const auto& group_uri = group->group_uri();
+  if (group_uri.is_tiledb()) {
+    std::string group_ns, group_uri_component;
+    RETURN_NOT_OK(group->group_uri().get_rest_components(
+        &group_ns, &group_uri_component));
+    group_create_details_builder->setUri(group_uri_component);
+  } else {
+    group_create_details_builder->setUri(group_uri.to_string());
+  }
 
   return Status::Ok();
 }
