@@ -19,12 +19,13 @@ jobs:
     - name: "Quarto render"
       shell: bash
       run: |
-        quarto render --execute-debug      
+        quarto render --fail-if-warnings
+        # https://github.com/quarto-dev/quarto-cli/issues/493
 
     - name: "Deploy to gh-pages"
       uses: peaceiris/actions-gh-pages@v3
       # Change to the name of your repo's primary branch name:
-      if: github.ref == 'refs/heads/main'
+      if: github.ref == 'refs/heads/dev'
       with:
         # This is GitHub Actions magic; no secrets for us to manage; and this works first-time
         # without any extra configs other than visiting Settings -> Pages in your GitHub repo.
