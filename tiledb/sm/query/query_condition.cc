@@ -621,11 +621,10 @@ QueryCondition::apply_clause(
           result_cell_slabs);
       break;
     default:
-      return {
-          Status_QueryConditionError(
-              "Cannot perform query comparison; Unknown query "
-              "condition operator"),
-          nullopt};
+      return {Status_QueryConditionError(
+                  "Cannot perform query comparison; Unknown query "
+                  "condition operator"),
+              nullopt};
   }
 
   return {Status::Ok(), std::move(ret)};
@@ -782,12 +781,11 @@ QueryCondition::apply_clause(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
-      return {
-          Status_QueryConditionError(
-              "Cannot perform query comparison; Unsupported query "
-              "conditional type on " +
-              clause.field_name_),
-          nullopt};
+      return {Status_QueryConditionError(
+                  "Cannot perform query comparison; Unsupported query "
+                  "conditional type on " +
+                  clause.field_name_),
+              nullopt};
   }
 
   return {Status::Ok(), nullopt};
