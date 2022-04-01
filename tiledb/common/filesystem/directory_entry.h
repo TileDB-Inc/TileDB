@@ -39,6 +39,13 @@
 
 namespace tiledb::common::filesystem {
 
+/**
+ * This class implements a minimal mimic of std::filesystem::directory_entry,
+ * it is the representation of a filesystem entry, be it a file, a directory
+ * or even an object on a remote filesystem.
+ * The directory_entry is identified by a path and holds metadata information
+ * about the represented filesystem entry.
+ */
 class directory_entry {
  public:
   /* ********************************* */

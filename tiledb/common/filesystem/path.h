@@ -37,6 +37,12 @@
 
 namespace tiledb::common::filesystem {
 
+/**
+ * This class implements a minimal mimic of std::filesystem::path,
+ * it holds the path of a filesystem entry, be it a path on a local
+ * filesystem or a URI in the form of s3://some_s3_path on a remote
+ * filesystem.
+ */
 class path {
  public:
   /* ********************************* */
