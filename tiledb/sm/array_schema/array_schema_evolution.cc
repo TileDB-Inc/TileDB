@@ -179,6 +179,12 @@ std::vector<std::string> ArraySchemaEvolution::attribute_names_to_drop() const {
 
 Status ArraySchemaEvolution::set_timestamp_range(
     const std::pair<uint64_t, uint64_t>& timestamp_range) {
+  if (timestamp_range.first != timestamp_range.second) {
+    throw std::runtime_error(std::string(
+        "Cannot set timestamp range; first element " +
+        std::to_string(timestamp_range.first) + " and second element " +
+        std::to_string(timestamp_range.second) + " are not equal!"));
+  }
   timestamp_range_ = timestamp_range;
   return Status::Ok();
 }
