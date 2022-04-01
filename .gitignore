@@ -1,5 +1,5 @@
 .vscode*
-*.swp
+*.sw?
 build/*
 dist/*
 cmake-build-*/*
@@ -31,3 +31,9 @@ doc/source/_sidebar.rst.inc
 doc/source/gensidebar.pyc
 examples/cmake_project/build
 CMakeUserPresets.json
+
+# Quarto dev-cache
+/.quarto/
+docs/.quarto
+# Let CI build this
+/docs
