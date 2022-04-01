@@ -1,6 +1,11 @@
 name: Build-Dockerfile
 
-on: pull_request
+on:
+  pull_request:
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
 
 jobs:
   build-dockerfile:

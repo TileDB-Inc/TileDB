@@ -3,7 +3,15 @@
 name: Render and deploy Quarto files
 on: 
   push:
+    paths:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
   pull_request:
+    paths:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
 
 jobs:
   quarto-render-and-deploy:

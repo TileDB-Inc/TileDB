@@ -5,9 +5,18 @@ on:
       - dev
       - release-*
       - refs/tags/*
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
+
 env:
   TILEDB_SERIALIZATION: ON # NOTE: currently defined directly inline
   CXX: g++
