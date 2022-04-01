@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,6 +57,7 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
     case tiledb::sm::FilterType::FILTER_RLE:
     case tiledb::sm::FilterType::FILTER_BZIP2:
     case tiledb::sm::FilterType::FILTER_DOUBLE_DELTA:
+    case tiledb::sm::FilterType::FILTER_DICTIONARY:
       return tdb_new(tiledb::sm::CompressionFilter, type, -1);
     case tiledb::sm::FilterType::FILTER_BIT_WIDTH_REDUCTION:
       return tdb_new(tiledb::sm::BitWidthReductionFilter);
@@ -111,7 +112,8 @@ tiledb::sm::FilterCreate::deserialize(
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
-    case FilterType::FILTER_DOUBLE_DELTA: {
+    case FilterType::FILTER_DOUBLE_DELTA:
+    case FilterType::FILTER_DICTIONARY: {
       uint8_t compressor_char;
       int compression_level;
       st = (buff->read(&compressor_char, sizeof(uint8_t)));

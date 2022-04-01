@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -328,6 +328,9 @@ extern const std::string filter_checksum_md5_str;
 
 /** String describing FILTER_CHECKSUM_SHA256. */
 extern const std::string filter_checksum_sha256_str;
+
+/** String describing FILTER_DICTIONARY. */
+extern const std::string filter_dictionary_str;
 
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;

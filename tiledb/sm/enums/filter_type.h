@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -85,6 +85,8 @@ inline const std::string& filter_type_str(FilterType filter_type) {
       return constants::filter_checksum_md5_str;
     case FilterType::FILTER_CHECKSUM_SHA256:
       return constants::filter_checksum_sha256_str;
+    case FilterType::FILTER_DICTIONARY:
+      return constants::filter_dictionary_str;
     default:
       return constants::empty_str;
   }
@@ -119,6 +121,8 @@ inline Status filter_type_enum(
     *filter_type = FilterType::FILTER_CHECKSUM_MD5;
   else if (filter_type_str == constants::filter_checksum_sha256_str)
     *filter_type = FilterType::FILTER_CHECKSUM_SHA256;
+  else if (filter_type_str == constants::filter_dictionary_str)
+    *filter_type = FilterType::FILTER_DICTIONARY;
   else {
     return Status_Error("Invalid FilterType " + filter_type_str);
   }
