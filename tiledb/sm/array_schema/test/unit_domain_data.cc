@@ -110,10 +110,12 @@ struct TestNullInitializer {
 
 TEST_CASE("DomainTypedDataView::DomainTypedDataView, null initializer") {
   Domain d{};
-  tiledb::sm::Dimension dim{"", tiledb::sm::Datatype::INT32};
-  d.add_dimension(&dim);
-  d.add_dimension(&dim);
-  d.add_dimension(&dim);
+  //  tiledb::sm::Dimension dim{"", tiledb::sm::Datatype::INT32};
+  auto dim{make_shared<tiledb::sm::Dimension>(
+      HERE(), "", tiledb::sm::Datatype::INT32)};
+  d.add_dimension(dim);
+  d.add_dimension(dim);
+  d.add_dimension(dim);
   WhiteboxDomainTypedDataView x{d, Tag<TestNullInitializer>{}};
   CHECK(x.size() == 3);
 }
@@ -130,10 +132,11 @@ TEST_CASE("DomainTypedDataView::DomainTypedDataView, simple initializer") {
   };
 
   Domain d{};
-  tiledb::sm::Dimension dim{"", tiledb::sm::Datatype::INT32};
-  d.add_dimension(&dim);
-  d.add_dimension(&dim);
-  d.add_dimension(&dim);
+  auto dim{make_shared<tiledb::sm::Dimension>(
+      HERE(), "", tiledb::sm::Datatype::INT32)};
+  d.add_dimension(dim);
+  d.add_dimension(dim);
+  d.add_dimension(dim);
   WhiteboxDomainTypedDataView x{d, Tag<Initializer>{}};
   CHECK(x.size() == 3);
   CHECK(x[0].size() == 0);
