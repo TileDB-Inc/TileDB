@@ -33,6 +33,7 @@
 #ifdef HAVE_S3
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 
 #include <aws/core/utils/logging/AWSLogging.h>
 #include <aws/core/utils/logging/DefaultLogSystem.h>
@@ -62,6 +63,8 @@
 
 #include "tiledb/sm/filesystem/s3.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+
+using tiledb::common::filesystem::directory_entry;
 
 namespace {
 
@@ -676,14 +679,27 @@ Status S3::ls(
     std::vector<std::string>* paths,
     const std::string& delimiter,
     int max_paths) const {
-  RETURN_NOT_OK(init_client());
+  auto&& [st, entries] = ls_with_sizes(prefix, delimiter, max_paths);
+  RETURN_NOT_OK(st);
+
+  for (auto& fs : *entries) {
+    paths->emplace_back(fs.path().native());
+  }
+
+  return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
+    const URI& prefix, const std::string& delimiter, int max_paths) const {
+  RETURN_NOT_OK_TUPLE(init_client(), nullopt);
 
   const auto prefix_dir = prefix.add_trailing_slash();
 
   auto prefix_str = prefix_dir.to_string();
   if (!prefix_dir.is_s3()) {
-    return LOG_STATUS(
+    auto st = LOG_STATUS(
         Status_S3Error(std::string("URI is not an S3 URI: " + prefix_str)));
+    return {st, nullopt};
   }
 
   Aws::Http::URI aws_uri = prefix_str.c_str();
@@ -696,35 +712,42 @@ Status S3::ls(
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     list_objects_request.SetRequestPayer(request_payer_);
 
+  std::vector<directory_entry> entries;
+
   bool is_done = false;
   while (!is_done) {
     // Not requesting more items than needed
     if (max_paths != -1)
       list_objects_request.SetMaxKeys(
-          max_paths - static_cast<int>(paths->size()));
+          max_paths - static_cast<int>(entries.size()));
     auto list_objects_outcome = client_->ListObjects(list_objects_request);
 
-    if (!list_objects_outcome.IsSuccess())
-      return LOG_STATUS(Status_S3Error(
+    if (!list_objects_outcome.IsSuccess()) {
+      auto st = LOG_STATUS(Status_S3Error(
           std::string("Error while listing with prefix '") + prefix_str +
           "' and delimiter '" + delimiter + "'" +
           outcome_error_message(list_objects_outcome)));
+      return {st, nullopt};
+    }
 
     for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
       std::string file(object.GetKey().c_str());
-      paths->push_back("s3://" + aws_auth + add_front_slash(file));
+      uint64_t size = object.GetSize();
+      entries.emplace_back("s3://" + aws_auth + add_front_slash(file), size);
     }
 
     for (const auto& object :
          list_objects_outcome.GetResult().GetCommonPrefixes()) {
       std::string file(object.GetPrefix().c_str());
-      paths->push_back(
-          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)));
+      // For "directories" it doesn't seem possible to get a shallow size in
+      // S3, so the size of such an entry will be 0 in S3.
+      entries.emplace_back(
+          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)), 0);
     }
 
     is_done =
         !list_objects_outcome.GetResult().GetIsTruncated() ||
-        (max_paths != -1 && paths->size() >= static_cast<size_t>(max_paths));
+        (max_paths != -1 && entries.size() >= static_cast<size_t>(max_paths));
     if (!is_done) {
       // The documentation states that "GetNextMarker" will be non-empty only
       // when the delimiter in the request is non-empty. When the delimiter is
@@ -742,7 +765,7 @@ Status S3::ls(
     }
   }
 
-  return Status::Ok();
+  return {Status::Ok(), entries};
 }
 
 Status S3::move_object(const URI& old_uri, const URI& new_uri) {

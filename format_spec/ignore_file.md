@@ -12,6 +12,7 @@ my_array                           # array folder
 or in the array metadata folder:
 
 In the file name:
+
 * `t1` and `t2` are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
 * `uuid` is a unique identifier
 * `v` is the format version
