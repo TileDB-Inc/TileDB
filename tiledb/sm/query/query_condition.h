@@ -61,7 +61,7 @@ class QueryCondition {
     Clause(
         std::string&& field_name,
         const void* const condition_value,
-        const uint64_t condition_value_size,
+        const size_t condition_value_size,
         const QueryConditionOp op)
         : field_name_(std::move(field_name))
         , condition_value_data_(condition_value_size)
@@ -184,7 +184,7 @@ class QueryCondition {
   Status init(
       std::string&& field_name,
       const void* condition_value,
-      uint64_t condition_value_size,
+      size_t condition_value_size,
       QueryConditionOp op);
 
   /**
@@ -359,7 +359,7 @@ class QueryCondition {
   template <typename T, QueryConditionOp Op>
   std::vector<ResultCellSlab> apply_clause(
       const Clause& clause,
-      uint64_t stride,
+      size_t stride,
       const bool var_size,
       const bool nullable,
       const UntypedDatumView& fill_value,
@@ -379,7 +379,7 @@ class QueryCondition {
   template <typename T>
   tuple<Status, optional<std::vector<ResultCellSlab>>> apply_clause(
       const Clause& clause,
-      uint64_t stride,
+      size_t stride,
       const bool var_size,
       const bool nullable,
       const UntypedDatumView& fill_value,
@@ -398,7 +398,7 @@ class QueryCondition {
   tuple<Status, optional<std::vector<ResultCellSlab>>> apply_clause(
       const QueryCondition::Clause& clause,
       const ArraySchema& array_schema,
-      uint64_t stride,
+      size_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
@@ -418,10 +418,10 @@ class QueryCondition {
   void apply_clause_dense(
       const QueryCondition::Clause& clause,
       ResultTile* result_tile,
-      const uint64_t start,
-      const uint64_t length,
-      const uint64_t src_cell,
-      const uint64_t stride,
+      const size_t start,
+      const size_t length,
+      const size_t src_cell,
+      const size_t stride,
       const bool var_size,
       uint8_t* result_buffer) const;
 
@@ -442,10 +442,10 @@ class QueryCondition {
   Status apply_clause_dense(
       const Clause& clause,
       ResultTile* result_tile,
-      const uint64_t start,
-      const uint64_t length,
-      const uint64_t src_cell,
-      const uint64_t stride,
+      const size_t start,
+      const size_t length,
+      const size_t src_cell,
+      const size_t stride,
       const bool var_size,
       uint8_t* result_buffer) const;
 
@@ -467,10 +467,10 @@ class QueryCondition {
       const QueryCondition::Clause& clause,
       const ArraySchema& array_schema,
       ResultTile* result_tile,
-      const uint64_t start,
-      const uint64_t length,
-      const uint64_t src_cell,
-      const uint64_t stride,
+      const size_t start,
+      const size_t length,
+      const size_t src_cell,
+      const size_t stride,
       uint8_t* result_buffer) const;
 
   /**

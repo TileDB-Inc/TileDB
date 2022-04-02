@@ -80,7 +80,7 @@ QueryCondition& QueryCondition::operator=(QueryCondition&& rhs) {
 Status QueryCondition::init(
     std::string&& field_name,
     const void* const condition_value,
-    const uint64_t condition_value_size,
+    const size_t condition_value_size,
     const QueryConditionOp op) {
   if (!clauses_.empty()) {
     return Status_QueryConditionError("Cannot reinitialize query condition");
@@ -95,7 +95,7 @@ Status QueryCondition::init(
 Status QueryCondition::check(const ArraySchema& array_schema) const {
   for (const auto& clause : clauses_) {
     const std::string field_name = clause.field_name_;
-    const uint64_t condition_value_size = clause.condition_value_data_.size();
+    const size_t condition_value_size = clause.condition_value_data_.size();
 
     const auto attribute = array_schema.attribute(field_name);
     if (!attribute) {
@@ -426,11 +426,11 @@ struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::NE> {
 };
 
 /** Used to create a new result slab in QueryCondition::apply_clause. */
-uint64_t create_new_result_slab(
-    uint64_t start,
-    uint64_t pending_start,
-    uint64_t stride,
-    uint64_t current,
+size_t create_new_result_slab(
+    size_t start,
+    size_t pending_start,
+    size_t stride,
+    size_t current,
     ResultTile* const result_tile,
     std::vector<ResultCellSlab>& result_cell_slabs) {
   // Create a result cell slab if there are pending cells.
@@ -447,7 +447,7 @@ uint64_t create_new_result_slab(
 template <typename T, QueryConditionOp Op>
 std::vector<ResultCellSlab> QueryCondition::apply_clause(
     const QueryCondition::Clause& clause,
-    const uint64_t stride,
+    const size_t stride,
     const bool var_size,
     const bool nullable,
     const UntypedDatumView& fill_value_view,
@@ -457,8 +457,8 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
 
   for (const auto& rcs : result_cell_slabs) {
     ResultTile* const result_tile = rcs.tile_;
-    const uint64_t start = rcs.start_;
-    const uint64_t length = rcs.length_;
+    const size_t start = static_cast<size_t>(rcs.start_);
+    const size_t length = static_cast<size_t>(rcs.length_);
 
     // Handle an empty range.
     if (result_tile == nullptr && !nullable) {
@@ -478,28 +478,30 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
 
       // Start the pending result cell slab at the start position
       // of the current result cell slab.
-      uint64_t pending_start = start;
-      uint64_t c = 0;
+      size_t pending_start = start;
+      size_t c = 0;
 
       if (var_size) {
         const auto& tile = std::get<1>(*tile_tuple);
         const char* buffer = static_cast<char*>(tile.data());
-        const uint64_t buffer_size = tile.size();
+        const size_t buffer_size = static_cast<size_t>(tile.size());
 
         const auto& tile_offsets = std::get<0>(*tile_tuple);
         const uint64_t* buffer_offsets =
             static_cast<uint64_t*>(tile_offsets.data());
-        const uint64_t buffer_offsets_el =
-            tile_offsets.size() / constants::cell_var_offset_size;
+        const size_t buffer_offsets_el =
+            static_cast<size_t>(tile_offsets.size() / constants::cell_var_offset_size);
 
         // Iterate through each cell in this slab.
         while (c < length) {
-          const uint64_t buffer_offset = buffer_offsets[start + c * stride];
-          const uint64_t next_cell_offset =
+          const size_t buffer_offset = buffer_offsets[start + c * stride];
+          const size_t next_cell_offset =
               (start + c * stride + 1 < buffer_offsets_el) ?
                   buffer_offsets[start + c * stride + 1] :
                   buffer_size;
-          const uint64_t cell_size = next_cell_offset - buffer_offset;
+
+          // In-memory data can be indexed with size_t
+          const size_t cell_size = next_cell_offset - buffer_offset;
 
           const bool null_cell =
               (nullable && buffer_validity[start + c * stride] == 0);
@@ -521,9 +523,9 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
       } else {
         const auto& tile = std::get<0>(*tile_tuple);
         const char* buffer = static_cast<char*>(tile.data());
-        const uint64_t cell_size = tile.cell_size();
-        uint64_t buffer_offset = start * cell_size;
-        const uint64_t buffer_offset_inc = stride * cell_size;
+        const size_t cell_size = static_cast<size_t>(tile.cell_size());
+        size_t buffer_offset = start * cell_size;
+        const size_t buffer_offset_inc = stride * cell_size;
 
         // Iterate through each cell in this slab.
         while (c < length) {
@@ -559,7 +561,7 @@ template <typename T>
 tuple<Status, optional<std::vector<ResultCellSlab>>>
 QueryCondition::apply_clause(
     const Clause& clause,
-    const uint64_t stride,
+    const size_t stride,
     const bool var_size,
     const bool nullable,
     const UntypedDatumView& fill_value_view,
@@ -634,7 +636,7 @@ tuple<Status, optional<std::vector<ResultCellSlab>>>
 QueryCondition::apply_clause(
     const QueryCondition::Clause& clause,
     const ArraySchema& array_schema,
-    const uint64_t stride,
+    const size_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
   const auto attribute = array_schema.attribute(clause.field_name_);
   if (!attribute) {
@@ -817,10 +819,10 @@ template <typename T, QueryConditionOp Op>
 void QueryCondition::apply_clause_dense(
     const QueryCondition::Clause& clause,
     ResultTile* result_tile,
-    const uint64_t start,
-    const uint64_t length,
-    const uint64_t src_cell,
-    const uint64_t stride,
+    const size_t start,
+    const size_t length,
+    const size_t src_cell,
+    const size_t stride,
     const bool var_size,
     uint8_t* result_buffer) const {
   const std::string& field_name = clause.field_name_;
@@ -832,26 +834,28 @@ void QueryCondition::apply_clause_dense(
     // Get var data buffer and tile offsets buffer.
     const auto& tile = std::get<1>(*tile_tuple);
     const char* buffer = static_cast<char*>(tile.data());
-    const uint64_t buffer_size = tile.size();
+    const size_t buffer_size = static_cast<size_t>(tile.size());
 
     const auto& tile_offsets = std::get<0>(*tile_tuple);
     const uint64_t* buffer_offsets =
         static_cast<uint64_t*>(tile_offsets.data()) + src_cell;
-    const uint64_t buffer_offsets_el =
-        tile_offsets.size() / constants::cell_var_offset_size;
+    const size_t buffer_offsets_el =
+        static_cast<size_t>(tile_offsets.size() / constants::cell_var_offset_size);
 
     // Iterate through each cell in this slab.
-    for (uint64_t c = 0; c < length; ++c) {
+    for (size_t c = 0; c < length; ++c) {
       // Check the previous cell here, which breaks vectorization but as this
       // is string data requiring a strcmp which cannot be vectorized, this is
       // ok.
       if (result_buffer[start + c] != 0) {
-        const uint64_t buffer_offset = buffer_offsets[start + c * stride];
-        const uint64_t next_cell_offset =
+        const size_t buffer_offset = static_cast<size_t>(buffer_offsets[start + c * stride]);
+        const size_t next_cell_offset =
             (start + c * stride + 1 < buffer_offsets_el) ?
                 buffer_offsets[start + c * stride + 1] :
                 buffer_size;
-        const uint64_t cell_size = next_cell_offset - buffer_offset;
+
+        // In-memory data can be indexed with size_t
+        const size_t cell_size = next_cell_offset - buffer_offset;
 
         // Get the cell value.
         const void* const cell_value = buffer + buffer_offset;
@@ -868,12 +872,12 @@ void QueryCondition::apply_clause_dense(
     // Get the fixed size data buffers.
     const auto& tile = std::get<0>(*tile_tuple);
     const char* buffer = static_cast<char*>(tile.data());
-    const uint64_t cell_size = tile.cell_size();
-    uint64_t buffer_offset = (start + src_cell) * cell_size;
-    const uint64_t buffer_offset_inc = stride * cell_size;
+    const size_t cell_size = static_cast<size_t>(tile.cell_size());
+    size_t buffer_offset = (start + src_cell) * cell_size;
+    const size_t buffer_offset_inc = stride * cell_size;
 
     // Iterate through each cell in this slab.
-    for (uint64_t c = 0; c < length; ++c) {
+    for (size_t c = 0; c < length; ++c) {
       // Get the cell value.
       const void* const cell_value = buffer + buffer_offset;
       buffer_offset += buffer_offset_inc;
@@ -892,10 +896,10 @@ template <typename T>
 Status QueryCondition::apply_clause_dense(
     const Clause& clause,
     ResultTile* result_tile,
-    const uint64_t start,
-    const uint64_t length,
-    const uint64_t src_cell,
-    const uint64_t stride,
+    const size_t start,
+    const size_t length,
+    const size_t src_cell,
+    const size_t stride,
     const bool var_size,
     uint8_t* result_buffer) const {
   switch (clause.op_) {
@@ -978,10 +982,10 @@ Status QueryCondition::apply_clause_dense(
     const QueryCondition::Clause& clause,
     const ArraySchema& array_schema,
     ResultTile* result_tile,
-    const uint64_t start,
-    const uint64_t length,
-    const uint64_t src_cell,
-    const uint64_t stride,
+    const size_t start,
+    const size_t length,
+    const size_t src_cell,
+    const size_t stride,
     uint8_t* result_buffer) const {
   const auto attribute = array_schema.attribute(clause.field_name_);
   if (!attribute) {
@@ -1003,18 +1007,18 @@ Status QueryCondition::apply_clause_dense(
     // Null values can only be specified for equality operators.
     if (clause.condition_value_view_.content() == nullptr) {
       if (clause.op_ == QueryConditionOp::NE) {
-        for (uint64_t c = 0; c < length; ++c) {
+        for (size_t c = 0; c < length; ++c) {
           result_buffer[start + c] *= buffer_validity[start + c * stride] != 0;
         }
       } else {
-        for (uint64_t c = 0; c < length; ++c) {
+        for (size_t c = 0; c < length; ++c) {
           result_buffer[start + c] *= buffer_validity[start + c * stride] == 0;
         }
       }
       return Status::Ok();
     } else {
       // Turn off bitmap values for null cells.
-      for (uint64_t c = 0; c < length; ++c) {
+      for (size_t c = 0; c < length; ++c) {
         result_buffer[start + c] *= buffer_validity[start + c * stride] != 0;
       }
     }
@@ -1392,24 +1396,26 @@ void QueryCondition::apply_clause_sparse(
     // Get var data buffer and tile offsets buffer.
     const auto& tile = std::get<1>(*tile_tuple);
     const char* buffer = static_cast<char*>(tile.data());
-    const uint64_t buffer_size = tile.size();
+    const size_t buffer_size = static_cast<size_t>(tile.size());
 
     const auto& tile_offsets = std::get<0>(*tile_tuple);
     const uint64_t* buffer_offsets =
         static_cast<uint64_t*>(tile_offsets.data());
-    const uint64_t buffer_offsets_el =
+    const size_t buffer_offsets_el =
         tile_offsets.size() / constants::cell_var_offset_size;
 
     // Iterate through each cell.
-    for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
+    for (size_t c = 0; c < buffer_offsets_el; ++c) {
       // Check the previous cell here, which breaks vectorization but as this
       // is string data requiring a strcmp which cannot be vectorized, this is
       // ok.
       if (result_bitmap[c] != 0) {
-        const uint64_t buffer_offset = buffer_offsets[c];
-        const uint64_t next_cell_offset =
+        const size_t buffer_offset = static_cast<size_t>(buffer_offsets[c]);
+        const size_t next_cell_offset =
             (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
-        const uint64_t cell_size = next_cell_offset - buffer_offset;
+        
+        // In-memory data can be indexed with size_t
+        const size_t cell_size = next_cell_offset - buffer_offset;
 
         // Get the cell value.
         const void* const cell_value = buffer + buffer_offset;
@@ -1426,12 +1432,12 @@ void QueryCondition::apply_clause_sparse(
     // Get the fixed size data buffers.
     const auto& tile = std::get<0>(*tile_tuple);
     const char* buffer = static_cast<char*>(tile.data());
-    const uint64_t cell_size = tile.cell_size();
-    const uint64_t buffer_el = tile.size() / cell_size;
+    const size_t cell_size = static_cast<size_t>(tile.cell_size());
+    const size_t buffer_el = static_cast<size_t>(tile.size() / cell_size);
 
     // Iterate through each cell without checking the bitmap to enable
     // vectorization.
-    for (uint64_t c = 0; c < buffer_el; ++c) {
+    for (size_t c = 0; c < buffer_el; ++c) {
       // Get the cell value.
       const void* const cell_value = buffer + c * cell_size;
 
@@ -1510,18 +1516,18 @@ Status QueryCondition::apply_clause_sparse(
     // Null values can only be specified for equality operators.
     if (clause.condition_value_view_.content() == nullptr) {
       if (clause.op_ == QueryConditionOp::NE) {
-        for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+        for (size_t c = 0; c < result_tile.cell_num(); c++) {
           result_bitmap[c] *= buffer_validity[c] != 0;
         }
       } else {
-        for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+        for (size_t c = 0; c < result_tile.cell_num(); c++) {
           result_bitmap[c] *= buffer_validity[c] == 0;
         }
       }
       return Status::Ok();
     } else {
       // Turn off bitmap values for null cells.
-      for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+      for (size_t c = 0; c < result_tile.cell_num(); c++) {
         result_bitmap[c] *= buffer_validity[c] != 0;
       }
     }
