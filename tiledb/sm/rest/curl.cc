@@ -713,9 +713,11 @@ Status Curl::post_data_common(
 
   // TODO: If you post more than 2GB, use CURLOPT_POSTFIELDSIZE_LARGE.
   const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
-  if (data->total_size() > post_size_limit)
-    return LOG_STATUS(
-        Status_RestError("Error posting data; buffer size > 2GB"));
+  if (data->total_size() > post_size_limit) {
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, data->total_size());
+  } else {
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
+  }
 
   // Set auth and content-type for request
   *headers = nullptr;
@@ -729,7 +731,6 @@ Status Curl::post_data_common(
   curl_easy_setopt(
       curl, CURLOPT_READFUNCTION, buffer_list_read_memory_callback);
   curl_easy_setopt(curl, CURLOPT_READDATA, data);
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
 
   /* pass our list of custom made headers */
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headers);
