@@ -489,8 +489,8 @@ std::vector<ResultCellSlab> QueryCondition::apply_clause(
         const auto& tile_offsets = std::get<0>(*tile_tuple);
         const uint64_t* buffer_offsets =
             static_cast<uint64_t*>(tile_offsets.data());
-        const size_t buffer_offsets_el =
-            static_cast<size_t>(tile_offsets.size() / constants::cell_var_offset_size);
+        const size_t buffer_offsets_el = static_cast<size_t>(
+            tile_offsets.size() / constants::cell_var_offset_size);
 
         // Iterate through each cell in this slab.
         while (c < length) {
@@ -839,8 +839,8 @@ void QueryCondition::apply_clause_dense(
     const auto& tile_offsets = std::get<0>(*tile_tuple);
     const uint64_t* buffer_offsets =
         static_cast<uint64_t*>(tile_offsets.data()) + src_cell;
-    const size_t buffer_offsets_el =
-        static_cast<size_t>(tile_offsets.size() / constants::cell_var_offset_size);
+    const size_t buffer_offsets_el = static_cast<size_t>(
+        tile_offsets.size() / constants::cell_var_offset_size);
 
     // Iterate through each cell in this slab.
     for (size_t c = 0; c < length; ++c) {
@@ -848,7 +848,8 @@ void QueryCondition::apply_clause_dense(
       // is string data requiring a strcmp which cannot be vectorized, this is
       // ok.
       if (result_buffer[start + c] != 0) {
-        const size_t buffer_offset = static_cast<size_t>(buffer_offsets[start + c * stride]);
+        const size_t buffer_offset =
+            static_cast<size_t>(buffer_offsets[start + c * stride]);
         const size_t next_cell_offset =
             (start + c * stride + 1 < buffer_offsets_el) ?
                 buffer_offsets[start + c * stride + 1] :
@@ -1413,7 +1414,7 @@ void QueryCondition::apply_clause_sparse(
         const size_t buffer_offset = static_cast<size_t>(buffer_offsets[c]);
         const size_t next_cell_offset =
             (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
-        
+
         // In-memory data can be indexed with size_t
         const size_t cell_size = next_cell_offset - buffer_offset;
 
