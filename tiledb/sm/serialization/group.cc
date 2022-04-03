@@ -153,8 +153,11 @@ Status group_to_capnp(
   auto config_builder = group_builder->initConfig();
   RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
 
-  auto group_details_builder = group_builder->initGroup();
-  RETURN_NOT_OK(group_details_to_capnp(group, &group_details_builder));
+  const auto& group_members = group->members();
+  if (!group_members.empty()) {
+    auto group_details_builder = group_builder->initGroup();
+    RETURN_NOT_OK(group_details_to_capnp(group, &group_details_builder));
+  }
 
   return Status::Ok();
 }
