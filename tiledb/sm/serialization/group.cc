@@ -497,18 +497,19 @@ Status group_update_deserialize(
       }
       default: {
         return LOG_STATUS(Status_SerializationError(
-            "Error deserializing group; Unknown serialization type "
+            "Error deserializing group update; Unknown serialization type "
             "passed"));
       }
     }
 
   } catch (kj::Exception& e) {
     return LOG_STATUS(Status_SerializationError(
-        "Error deserializing group; kj::Exception: " +
+        "Error deserializing group update; kj::Exception: " +
         std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
     return LOG_STATUS(Status_SerializationError(
-        "Error deserializing group; exception " + std::string(e.what())));
+        "Error deserializing group update; exception " +
+        std::string(e.what())));
   }
 
   return Status::Ok();
