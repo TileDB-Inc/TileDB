@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/resource_pool.h"
 #include "tiledb/sm/query/iquery_strategy.h"
+#include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/subarray/subarray.h"

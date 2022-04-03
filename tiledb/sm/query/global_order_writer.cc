@@ -238,26 +238,19 @@ Status GlobalOrderWriter::check_global_order() const {
   if (array_schema_.cell_order() == Layout::HILBERT)
     return check_global_order_hilbert();
 
-  // Prepare auxiliary vector for better performance
-  auto dim_num = array_schema_.dim_num();
-  std::vector<const QueryBuffer*> buffs(dim_num);
-  for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_.dimension(d)->name();
-    buffs[d] = &(buffers_.find(dim_name)->second);
-  }
-
   // Check if all coordinates fall in the domain in parallel
   auto& domain{array_schema_.domain()};
+  DomainBuffersView domain_buffs{array_schema_, buffers_};
   auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
       coords_info_.coords_num_ - 1,
       [&](uint64_t i) {
-        auto tile_cmp = domain.tile_order_cmp(buffs, i, i + 1);
-        auto fail =
-            (tile_cmp > 0) ||
-            ((tile_cmp == 0) && domain.cell_order_cmp(buffs, i, i + 1) > 0);
-
+        auto left{domain_buffs.domain_ref_at(domain, i)};
+        auto right{domain_buffs.domain_ref_at(domain, i + 1)};
+        auto tile_cmp = domain.tile_order_cmp(left, right);
+        auto fail = (tile_cmp > 0) ||
+                    ((tile_cmp == 0) && domain.cell_order_cmp(left, right) > 0);
         if (fail) {
           std::stringstream ss;
           ss << "Write failed; Coordinates " << coords_to_str(i);
@@ -276,17 +269,10 @@ Status GlobalOrderWriter::check_global_order() const {
 }
 
 Status GlobalOrderWriter::check_global_order_hilbert() const {
-  // Prepare auxiliary vector for better performance
-  auto dim_num = array_schema_.dim_num();
-  std::vector<const QueryBuffer*> buffs(dim_num);
-  for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_.dimension(d)->name();
-    buffs[d] = &buffers_.at(dim_name);
-  }
-
   // Compute hilbert values
+  DomainBuffersView domain_buffs{array_schema_, buffers_};
   std::vector<uint64_t> hilbert_values(coords_info_.coords_num_);
-  RETURN_NOT_OK(calculate_hilbert_values(buffs, &hilbert_values));
+  RETURN_NOT_OK(calculate_hilbert_values(domain_buffs, hilbert_values));
 
   // Check if all coordinates fall in the domain in parallel
   auto status = parallel_for(
