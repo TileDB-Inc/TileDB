@@ -139,10 +139,10 @@ class StatusException : public std::exception {
   }
 
   /// Default copy constructor
-  StatusException(const StatusException&) noexcept = default;
+  StatusException(const StatusException&) = default;
 
   /// Default move constructor
-  StatusException(StatusException&&) noexcept = default;
+  StatusException(StatusException&&) = default;
 
   /// Deleted copy assignment
   StatusException& operator=(const StatusException&) = delete;
