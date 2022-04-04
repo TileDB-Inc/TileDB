@@ -172,7 +172,9 @@ tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
                           "/" + curlc.url_escape(group_uri);
 
   // Make the request, the returned data is ignored for now.
-  auto curl_st = curlc.options(stats_, url, serialization_type_, cache_key);
+  Buffer returned_data;
+  auto curl_st = curlc.options(
+      stats_, url, serialization_type_, &returned_data, cache_key);
 
   auto&& [status_st, http_status_code] = curlc.last_http_status_code();
   RETURN_NOT_OK_TUPLE(status_st, std::nullopt);

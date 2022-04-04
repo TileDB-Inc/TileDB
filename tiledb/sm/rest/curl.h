@@ -199,6 +199,7 @@ class Curl {
    * @param stats The stats instance to record into
    * @param url URL to post to
    * @param serialization_type Serialization type to use
+   * @param returned_data Buffer to store response data
    * @param res_ns_uri Array Namespace and URI
    * @return Status
    */
@@ -206,6 +207,7 @@ class Curl {
       stats::Stats* const stats,
       const std::string& url,
       SerializationType serialization_type,
+      Buffer* returned_data,
       const std::string& res_ns_uri);
 
   /**
