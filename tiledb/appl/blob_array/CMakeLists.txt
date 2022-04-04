@@ -37,6 +37,12 @@ target_compile_definitions(unit_blob_array PRIVATE
   -DTILEDB_TEST_INPUTS_DIR="${CMAKE_SOURCE_DIR}/test/inputs"
 )
 
+if (NOT MSVC)
+  target_compile_definitions(unit_blob_array PRIVATE
+    -Wno-error=deprecated-declarations
+  )  
+endif()
+
 if (TILEDB_S3)
 #  add_definitions(-DHAVE_S3)
   target_compile_definitions(unit_blob_array PRIVATE
