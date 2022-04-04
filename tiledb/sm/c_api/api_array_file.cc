@@ -186,7 +186,6 @@ else {
   if (tiledb_array_close(ctx, *array) == TILEDB_ERR) {
     tiledb_array_free(array);
     *array = nullptr;
-    // tiledb_array_schema_free(&blob_array_schema);
     return TILEDB_ERR;
   }
 }
@@ -216,6 +215,9 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_import(
   if (tiledb_array_open(ctx, array, TILEDB_WRITE) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
+
+  auto close_array_on_exit = [&]() { tiledb_array_close(ctx, array); };
+  ScopedExecutor onexit(close_array_on_exit);
 
   if (is_blob_array(ctx, array) == TILEDB_ERR) {
     std::ostringstream errmsg;
@@ -247,7 +249,7 @@ TILEDB_EXPORT int32_t tiledb_array_as_file_import(
     ret_stat = TILEDB_ERR;
   }
 
-  tiledb_array_close(ctx, array);
+  // array will be closed on exist
 
   return ret_stat;
 }

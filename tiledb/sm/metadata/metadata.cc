@@ -37,7 +37,6 @@
 #include "tiledb/sm/misc/time.h"
 #include "tiledb/sm/misc/uuid.h"
 
-#include <iomanip>
 #include <iostream>
 #include <sstream>
 
@@ -108,9 +107,8 @@ Status Metadata::generate_uri(const URI& array_uri) {
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
 
   std::stringstream ss;
-  ss << "__" << std::setfill('0') << std::setw(13) << timestamp_range_.first
-     << "_" << std::setfill('0') << std::setw(13) << timestamp_range_.second
-     << "_" << uuid;
+  ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
+     << uuid;
   uri_ = array_uri.join_path(constants::array_metadata_dir_name)
              .join_path(ss.str());
 
@@ -322,7 +320,6 @@ Status Metadata::set_loaded_metadata_uris(
     return Status::Ok();
 
   loaded_metadata_uris_.clear();
-  loaded_metadata_uris_.reserve(loaded_metadata_uris.size());
   for (const auto& uri : loaded_metadata_uris)
     loaded_metadata_uris_.push_back(uri.uri_);
 

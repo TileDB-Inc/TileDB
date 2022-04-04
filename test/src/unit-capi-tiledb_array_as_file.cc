@@ -232,7 +232,7 @@ TEST_CASE_METHOD(
   CHECK(
       tiledb_array_as_file_obtain(ctx_, &array, array_name.c_str(), cfg) ==
       TILEDB_OK);
-  array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
+  array->array_->set_timestamp_end(1000000001ll * 1000);
   CHECK(
       tiledb_array_as_file_import(ctx_, array, csv_path.c_str()) == TILEDB_OK);
 
@@ -314,12 +314,17 @@ TEST_CASE_METHOD(
         TILEDB_OK);
 
     if (init_timestamp) {
-      array->array_->set_timestamp_end(1);
+      // 1000000001 - Sat Sep  8 21:46:41 2001
+      // at start+1 of current # of digits (10+3) present in our
+      // filename timestamps, 'til somewhere in 2286, where it will
+      // roll to 11+3 digits
+
+      array->array_->set_timestamp_end(1000000001ll * 1000);
     }
     REQUIRE(
         tiledb_array_as_file_obtain(ctx_, &array2, array_name.c_str(), cfg) ==
         TILEDB_OK);
-    array2->array_->set_timestamp_end(1);
+    array2->array_->set_timestamp_end(array->array_->timestamp_end());
   };
 
   // one export withOUT having set timestamp, to mimic basic functionality
@@ -328,8 +333,6 @@ TEST_CASE_METHOD(
 
   const std::string csv_name = "quickstart_dense.csv";
   const std::string csv_path = files_dir + "/" + csv_name;
-  // array->array_->set_timestamp_end(array->array_->timestamp_end() + 1);
-  array2->array_->set_timestamp_end(array->array_->timestamp_end());
   CHECK(
       tiledb_array_as_file_import(ctx_, array, csv_path.c_str()) == TILEDB_OK);
 

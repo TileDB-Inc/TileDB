@@ -191,6 +191,9 @@ Status BlobArray::to_array_from_buffer(
     auto reset_timestamp_end = [&]() {
       this->timestamp_end_ = current_timestamp_end;
       this->timestamp_end_opened_at_ = current_timestamp_opened_at;
+      // canNOT .reset() the metadta timestamp here as that has side-effect of
+      // clear()ing the metadata whose gen'd uri and data must be retained
+      // until the array is closed.
     };
     ScopedExecutor onexit(reset_timestamp_end);
 
@@ -200,8 +203,20 @@ Status BlobArray::to_array_from_buffer(
       // static decltype(utils::time::timestamp_now_ms()) faux_time = 23;
       // timestamp_end_ = ++faux_time;
     }
-    // ...and make sure this matches, whether set just above or not.
+    // ...and make sure this matches, whether set by above code or from user.
     timestamp_end_opened_at_ = timestamp_end_;
+
+    // set timestamp to be used for metadata uri
+    // this->metadata_.reset(timestamp_end_);
+    decltype(timestamp_end_opened_at_) timestamp_end_opened_at_to_set;
+    if (this->timestamp_end_opened_at_ == UINT64_MAX) {
+      timestamp_end_opened_at_to_set = 0;
+    } else {
+      timestamp_end_opened_at_to_set = this->timestamp_end_opened_at_;
+    }
+    this->metadata_.reset(timestamp_end_opened_at_to_set);
+    // make sure this array's metadata uri gen'd with that timestamp.
+    this->metadata_.generate_uri(this->array_uri_);
 
     Query query(storage_manager_, this);
 
@@ -218,10 +233,11 @@ Status BlobArray::to_array_from_buffer(
     RETURN_NOT_OK(query.set_subarray(&v_subarray));
     RETURN_NOT_OK(query.submit());
 
-    // set timestamp to be used for metadata uri
-    this->metadata_.reset(timestamp_end_);
-    // make sure this array's metadata uri gen'd with that timestamp.
-    this->metadata_.generate_uri(this->array_uri_);
+    // note that on exit (via ScopedExecutor above) 'this' routine will
+    // reset timestamp used in generating the metadata uri, -however-
+    // as the code elsewhere currently exists the generated uri itself (having
+    // been generated with the locally generated timestamp .reset() just above)
+    // will still be used when metadata is written on close.
 
     RETURN_NOT_OK(put_metadata(
         constants::blob_array_metadata_size_key.c_str(),
