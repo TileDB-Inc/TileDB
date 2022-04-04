@@ -135,7 +135,7 @@ class StatusException : public std::exception {
    */
   explicit StatusException(const Status& st)
       // Invoke the move constructor after factory validation of the argument
-      : StatusException(move(make_from_status(st))) {
+      : StatusException(make_from_status(st)) {
   }
 
   /// Default copy constructor
