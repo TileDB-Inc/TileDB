@@ -38,7 +38,7 @@ target_compile_definitions(unit_blob_array PRIVATE
 )
 
 if (NOT MSVC)
-  target_compile_definitions(unit_blob_array PRIVATE
+  target_compile_options(unit_blob_array PRIVATE
     -Wno-error=deprecated-declarations
   )  
 endif()
