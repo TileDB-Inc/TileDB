@@ -83,12 +83,15 @@ RestClient::RestClient()
 Status RestClient::init(
     stats::Stats* const parent_stats,
     const Config* config,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    const std::shared_ptr<Logger>& logger) {
   if (config == nullptr)
     return LOG_STATUS(
         Status_RestError("Error initializing rest client; config is null."));
 
   stats_ = parent_stats->create_child("RestClient");
+
+  logger_ = logger->clone("curl ", ++logger_id_);
 
   config_ = config;
   compute_tp_ = compute_tp;
@@ -121,7 +124,7 @@ Status RestClient::set_header(
 tuple<Status, std::optional<bool>> RestClient::check_array_exists_from_rest(
     const URI& uri) {
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK_TUPLE(uri.get_rest_components(&array_ns, &array_uri), nullopt);
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -158,7 +161,7 @@ tuple<Status, std::optional<bool>> RestClient::check_array_exists_from_rest(
 tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
     const URI& uri) {
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string group_ns, group_uri;
   RETURN_NOT_OK_TUPLE(uri.get_rest_components(&group_ns, &group_uri), nullopt);
   const std::string cache_key = group_ns + ":" + group_uri;
@@ -193,7 +196,7 @@ tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
 tuple<Status, optional<shared_ptr<ArraySchema>>>
 RestClient::get_array_schema_from_rest(const URI& uri) {
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK_TUPLE(uri.get_rest_components(&array_ns, &array_uri), nullopt);
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -240,7 +243,7 @@ Status RestClient::post_array_schema_to_rest(
         creation_access_credentials_name));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -261,7 +264,7 @@ Status RestClient::post_array_schema_to_rest(
 
 Status RestClient::deregister_array_from_rest(const URI& uri) {
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -285,7 +288,7 @@ Status RestClient::get_array_non_empty_domain(
         "Cannot get array non-empty domain; array URI is empty"));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(array->array_uri().get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -328,7 +331,7 @@ Status RestClient::get_array_max_buffer_sizes(
       subarray_str.empty() ? "" : ("?subarray=" + subarray_str);
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -366,7 +369,7 @@ Status RestClient::get_array_metadata_from_rest(
         "Error getting array metadata from REST; array is null."));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -409,7 +412,7 @@ Status RestClient::post_array_metadata_to_rest(
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -465,7 +468,7 @@ Status RestClient::post_query_submit(
       query, serialization_type_, true, &serialized));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -690,7 +693,7 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
       query, serialization_type_, true, &serialized));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -844,7 +847,7 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
       query, serialization_type_, true, &serialized));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -898,7 +901,7 @@ Status RestClient::post_array_schema_evolution_to_rest(
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -923,7 +926,7 @@ Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
         "Error getting group metadata from REST; group is null."));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string group_ns, group_uri;
   RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri));
   const std::string cache_key = group_ns + ":" + group_uri;
@@ -959,7 +962,7 @@ Status RestClient::put_group_metadata_to_rest(const URI& uri, Group* group) {
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string group_ns, group_uri;
   RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri));
   const std::string cache_key = group_ns + ":" + group_uri;
@@ -987,7 +990,7 @@ Status RestClient::post_group_create_to_rest(const URI& uri, Group* group) {
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string group_ns, group_uri;
   RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri));
   const std::string cache_key = group_ns + ":" + group_uri;
@@ -1014,7 +1017,7 @@ Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string group_ns, group_uri;
   RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri));
   const std::string cache_key = group_ns + ":" + group_uri;
@@ -1057,7 +1060,7 @@ Status RestClient::patch_group_to_rest(const URI& uri, Group* group) {
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string group_ns, group_uri;
   RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri));
   const std::string cache_key = group_ns + ":" + group_uri;
@@ -1088,7 +1091,8 @@ RestClient::RestClient() {
   (void)serialization_type_;
 }
 
-Status RestClient::init(stats::Stats*, const Config*, ThreadPool*) {
+Status RestClient::init(
+    stats::Stats*, const Config*, ThreadPool*, const std::shared_ptr<Logger>&) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }

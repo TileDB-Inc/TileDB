@@ -249,12 +249,14 @@ size_t write_header_callback(
   return size * count;
 }
 
-Curl::Curl()
+Curl::Curl(const std::shared_ptr<Logger>& logger)
     : config_(nullptr)
     , curl_(nullptr, curl_easy_cleanup)
     , retry_count_(0)
     , retry_delay_factor_(0)
-    , retry_initial_delay_ms_(0) {
+    , retry_initial_delay_ms_(0)
+
+    , logger_(logger->clone("curl ", ++logger_id_)) {
 }
 
 Status Curl::init(
