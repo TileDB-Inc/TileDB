@@ -400,7 +400,7 @@ class RestClient {
    * @param buffer of server message
    * @return Status
    */
-  Status ensure_json_null_delimited_string(Buffer& buffer);
+  Status ensure_json_null_delimited_string(Buffer* buffer);
 };
 
 }  // namespace sm

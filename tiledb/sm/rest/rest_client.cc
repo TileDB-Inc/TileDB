@@ -220,7 +220,7 @@ RestClient::get_array_schema_from_rest(const URI& uri) {
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK_TUPLE(
-      ensure_json_null_delimited_string(returned_data), nullopt);
+      ensure_json_null_delimited_string(&returned_data), nullopt);
   return serialization::array_schema_deserialize(
       serialization_type_, returned_data);
 }
@@ -311,7 +311,7 @@ Status RestClient::get_array_non_empty_domain(
                          "from REST; server returned no data."));
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
-  RETURN_NOT_OK(ensure_json_null_delimited_string(returned_data));
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
 
   // Deserialize data returned
   return serialization::nonempty_domain_deserialize(
@@ -352,7 +352,7 @@ Status RestClient::get_array_max_buffer_sizes(
                          "from REST; server returned no data."));
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
-  RETURN_NOT_OK(ensure_json_null_delimited_string(returned_data));
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
 
   // Deserialize data returned
   return serialization::max_buffer_sizes_deserialize(
@@ -390,7 +390,7 @@ Status RestClient::get_array_metadata_from_rest(
         "Error getting array metadata from REST; server returned no data."));
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
-  RETURN_NOT_OK(ensure_json_null_delimited_string(returned_data));
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::metadata_deserialize(
       array->metadata(), serialization_type_, returned_data);
 }
@@ -878,7 +878,7 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
         "Error getting array metadata from REST; server returned no data."));
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
-  RETURN_NOT_OK(ensure_json_null_delimited_string(returned_data));
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::query_est_result_size_deserialize(
       query, serialization_type_, true, returned_data);
 }
@@ -944,7 +944,7 @@ Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
         "Error getting group metadata from REST; server returned no data."));
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
-  RETURN_NOT_OK(ensure_json_null_delimited_string(returned_data));
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::metadata_deserialize(
       group->metadata(), serialization_type_, returned_data);
 }
@@ -1041,7 +1041,7 @@ Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
         "Error getting group from REST; server returned no data."));
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
-  RETURN_NOT_OK(ensure_json_null_delimited_string(returned_data));
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::group_deserialize(
       group, serialization_type_, returned_data);
 }
@@ -1075,10 +1075,10 @@ Status RestClient::patch_group_to_rest(const URI& uri, Group* group) {
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
-Status RestClient::ensure_json_null_delimited_string(Buffer& buffer) {
+Status RestClient::ensure_json_null_delimited_string(Buffer* buffer) {
   if (serialization_type_ == SerializationType::JSON &&
-      buffer.value<char>(buffer.size() - 1) != '\0') {
-    RETURN_NOT_OK(buffer.write("\0", 1));
+      buffer->value<char>(buffer->size() - 1) != '\0') {
+    RETURN_NOT_OK(buffer->write("\0", sizeof(char)));
   }
   return Status::Ok();
 }
