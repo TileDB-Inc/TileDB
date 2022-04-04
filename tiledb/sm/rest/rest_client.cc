@@ -1044,7 +1044,7 @@ Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
-  return serialization::group_deserialize(
+  return serialization::group_details_deserialize(
       group, serialization_type_, returned_data);
 }
 

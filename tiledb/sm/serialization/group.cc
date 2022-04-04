@@ -412,6 +412,110 @@ Status group_deserialize(
   return Status::Ok();
 }
 
+Status group_details_serialize(
+    const Group* group,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    capnp::Group::GroupDetails::Builder groupDetailsBuilder =
+        message.initRoot<capnp::Group::GroupDetails>();
+    RETURN_NOT_OK(group_details_to_capnp(group, &groupDetailsBuilder));
+
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        json.handleByAnnotation<capnp::Group::GroupDetails>();
+        kj::String capnp_json = json.encode(groupDetailsBuilder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
+        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
+        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status_SerializationError(
+            "Error serializing group details; Unknown serialization type "
+            "passed"));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing group details; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing group details; exception " + std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
+Status group_details_deserialize(
+    Group* group,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer) {
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        json.handleByAnnotation<capnp::Group::GroupDetails>();
+        ::capnp::MallocMessageBuilder message_builder;
+        capnp::Group::GroupDetails::Builder group_details_builder =
+            message_builder.initRoot<capnp::Group::GroupDetails>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            group_details_builder);
+        capnp::Group::GroupDetails::Reader group_details_reader =
+            group_details_builder.asReader();
+        RETURN_NOT_OK(group_details_from_capnp(group_details_reader, group));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
+        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
+        capnp::Group::GroupDetails::Reader group_details_reader =
+            reader.getRoot<capnp::Group::GroupDetails>();
+        RETURN_NOT_OK(group_details_from_capnp(group_details_reader, group));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status_SerializationError(
+            "Error deserializing group details; Unknown serialization type "
+            "passed"));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error deserializing group details; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error deserializing group details; exception " +
+        std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
 Status group_update_serialize(
     const Group* group,
     SerializationType serialize_type,
@@ -576,6 +680,16 @@ Status group_serialize(const Group*, SerializationType, Buffer*) {
 }
 
 Status group_deserialize(Group*, SerializationType, const Buffer&) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot deserialize; serialization not enabled."));
+}
+
+Status group_details_serialize(const Group*, SerializationType, Buffer*) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot serialize; serialization not enabled."));
+}
+
+Status group_details_deserialize(Group*, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
