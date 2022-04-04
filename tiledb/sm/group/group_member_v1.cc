@@ -43,15 +43,17 @@ GroupMemberV1::GroupMemberV1(
 
 // ===== FORMAT =====
 // format_version (uint32_t)
+// type (uint8_t)
+// relative (uint8_t)
 // uri_size (uint32_t)
 // uri (string)
-// type (uint8_t)
 Status GroupMemberV1::serialize(Buffer* buff) {
   RETURN_NOT_OK(buff->write(
       &GroupMemberV1::format_version_, sizeof(GroupMemberV1::format_version_)));
 
   // Write type
-  RETURN_NOT_OK(buff->write(&type_, sizeof(type_)));
+  uint8_t type = static_cast<uint8_t>(type_);
+  RETURN_NOT_OK(buff->write(&type, sizeof(type)));
 
   // Write relative
   RETURN_NOT_OK(buff->write(&relative_, sizeof(relative_)));
@@ -66,8 +68,10 @@ Status GroupMemberV1::serialize(Buffer* buff) {
 
 std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
 GroupMemberV1::deserialize(ConstBuffer* buff) {
-  ObjectType type = ObjectType::INVALID;
-  RETURN_NOT_OK_TUPLE(buff->read(&type, sizeof(type)), std::nullopt);
+  uint8_t type_placeholder;
+  RETURN_NOT_OK_TUPLE(
+      buff->read(&type_placeholder, sizeof(type_placeholder)), std::nullopt);
+  ObjectType type = static_cast<ObjectType>(type_placeholder);
 
   bool relative;
   RETURN_NOT_OK_TUPLE(buff->read(&relative, sizeof(relative)), std::nullopt);

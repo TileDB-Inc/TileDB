@@ -78,13 +78,13 @@ void create_arrays_groups() {
   create_array("my_group/sparse_arrays/array_D", TILEDB_SPARSE);
 
   tiledb::Group group(ctx, "my_group", TILEDB_WRITE);
-  group.add_member("my_group/dense_arrays/array_A", true);
-  group.add_member("my_group/dense_arrays/array_B", true);
-  group.add_member("my_group/sparse_arrays", true);
+  group.add_member("dense_arrays/array_A", true);
+  group.add_member("dense_arrays/array_B", true);
+  group.add_member("sparse_arrays", true);
 
   tiledb::Group group_sparse(ctx, "my_group/sparse_arrays", TILEDB_WRITE);
-  group_sparse.add_member("my_group/sparse_arrays/array_C", true);
-  group_sparse.add_member("my_group/sparse_arrays/array_D", true);
+  group_sparse.add_member("array_C", true);
+  group_sparse.add_member("array_D", true);
 }
 
 void print_group() {

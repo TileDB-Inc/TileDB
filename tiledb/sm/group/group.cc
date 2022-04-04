@@ -173,7 +173,8 @@ Status Group::open(QueryType query_type) {
           storage_manager_->compute_tp(),
           group_uri_,
           timestamp_start_,
-          timestamp_end_);
+          (timestamp_end_ != 0) ? timestamp_end_ :
+                                  utils::time::timestamp_now_ms());
     } catch (const std::logic_error& le) {
       return Status_GroupDirectoryError(le.what());
     }
@@ -458,7 +459,7 @@ Status Group::mark_member_for_addition(
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    return Status_GroupError("Cannot get member by index; Group is not open");
+    return Status_GroupError("Cannot add member; Group is not open");
   }
 
   // Check mode
@@ -482,7 +483,7 @@ Status Group::mark_member_for_addition(
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    return Status_GroupError("Cannot get member by index; Group is not open");
+    return Status_GroupError("Cannot add member; Group is not open");
   }
 
   // Check mode
@@ -527,7 +528,8 @@ Status Group::mark_member_for_removal(const std::string& uri) {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    return Status_GroupError("Cannot get member by index; Group is not open");
+    return Status_GroupError(
+        "Cannot mark member for removal; Group is not open");
   }
 
   // Check mode
@@ -628,7 +630,7 @@ tuple<Status, optional<uint64_t>> Group::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    return {Status_GroupError("Cannot get member by index; Group is not open"),
+    return {Status_GroupError("Cannot get member count; Group is not open"),
             std::nullopt};
   }
 
@@ -700,7 +702,12 @@ std::string Group::dump(
   for (const auto& it : members_vec_) {
     ss << "|" << indent << l_indent << " " << *it << std::endl;
     if (it->type() == ObjectType::GROUP && recursive) {
-      GroupV1 group_rec(it->uri(), storage_manager_);
+      URI uri = it->uri();
+      if (it->relative()) {
+        uri = group_uri_.join_path(it->uri().to_string());
+      }
+
+      GroupV1 group_rec(uri, storage_manager_);
       group_rec.open(QueryType::READ);
       ss << group_rec.dump(indent_size, num_indents + 2, recursive, false);
       group_rec.close();
