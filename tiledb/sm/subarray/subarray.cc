@@ -606,7 +606,7 @@ bool Subarray::coincides_with_tiles() const {
 template <class T>
 Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
   // TBD: is it ok that Subarray log id will increase as if it's a new subarray?
-  Subarray ret(array_, layout, stats_->parent(), logger_, coalesce_ranges_);
+  Subarray ret(array_, layout, stats_->parent(), logger_, false);
 
   T new_range[2];
   bool overlaps;
