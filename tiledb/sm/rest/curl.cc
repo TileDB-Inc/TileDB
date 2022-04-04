@@ -255,7 +255,6 @@ Curl::Curl(const std::shared_ptr<Logger>& logger)
     , retry_count_(0)
     , retry_delay_factor_(0)
     , retry_initial_delay_ms_(0)
-
     , logger_(logger->clone("curl ", ++logger_id_)) {
 }
 
@@ -720,6 +719,7 @@ Status Curl::post_data_common(
   } else {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
   }
+  logger_->debug("posting {} bytes to", data->total_size());
 
   // Set auth and content-type for request
   *headers = nullptr;
@@ -881,6 +881,7 @@ Status Curl::patch_data_common(
         Status_RestError("Error posting data; curl instance is null."));
 
   const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
+  logger_->debug("patching {} bytes to", data->total_size());
   if (data->total_size() > post_size_limit) {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, data->total_size());
   } else {
@@ -942,6 +943,7 @@ Status Curl::put_data_common(
         Status_RestError("Error posting data; curl instance is null."));
 
   const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
+  logger_->debug("puting {} bytes to", data->total_size());
   if (data->total_size() > post_size_limit) {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, data->total_size());
   } else {
