@@ -241,7 +241,7 @@ class RestClient {
    * @param group Group to serialize
    * @return Status
    */
-  Status post_group_to_rest(const URI& uri, Group* group);
+  Status patch_group_to_rest(const URI& uri, Group* group);
 
   /**
    * Post group create to the REST server.

@@ -1043,7 +1043,7 @@ Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
       group, serialization_type_, returned_data);
 }
 
-Status RestClient::post_group_to_rest(const URI& uri, Group* group) {
+Status RestClient::patch_group_to_rest(const URI& uri, Group* group) {
   if (group == nullptr)
     return LOG_STATUS(
         Status_RestError("Error posting group to REST; group is null."));
@@ -1051,6 +1051,7 @@ Status RestClient::post_group_to_rest(const URI& uri, Group* group) {
   Buffer buff;
   RETURN_NOT_OK(
       serialization::group_update_serialize(group, serialization_type_, &buff));
+
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
@@ -1195,7 +1196,7 @@ Status RestClient::post_group_from_rest(const URI&, Group*) {
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::post_group_to_rest(const URI&, Group*) {
+Status RestClient::patch_group_to_rest(const URI&, Group*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }

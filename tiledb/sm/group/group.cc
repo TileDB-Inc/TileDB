@@ -178,8 +178,17 @@ Status Group::open(QueryType query_type) {
       return Status_GroupDirectoryError(le.what());
     }
 
-    auto&& [st] = storage_manager_->group_open_for_writes(this);
+    auto&& [st, members] = storage_manager_->group_open_for_writes(this);
     RETURN_NOT_OK(st);
+
+    if (members.has_value()) {
+      members_ = members.value();
+      members_vec_.clear();
+      members_vec_.reserve(members_.size());
+      for (auto& it : members_) {
+        members_vec_.emplace_back(it.second);
+      }
+    }
 
     metadata_.reset(timestamp_start_, timestamp_end_);
   }
@@ -215,7 +224,7 @@ Status Group::close() {
         if (rest_client == nullptr)
           return Status_GroupError(
               "Error closing group; remote group with no REST client.");
-        RETURN_NOT_OK(rest_client->post_group_to_rest(group_uri_, this));
+        RETURN_NOT_OK(rest_client->patch_group_to_rest(group_uri_, this));
       }
     }
 
