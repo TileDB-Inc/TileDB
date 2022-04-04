@@ -1,5 +1,5 @@
 /**
- * @file status.h
+ * @file   tiledb/common/exception/test/unit_exception.cc
  *
  * @section LICENSE
  *
@@ -24,10 +24,45 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file merely forwards to the original `status.h` header, which has moved.
  */
 
-#include "exception/status.h"
+#include <catch.hpp>
+#include "../exception.h"
+
+using namespace tiledb::common;
+
+TEST_CASE("Exception - construct directly") {
+  try {
+    throw StatusException("where", "what");
+  } catch (const StatusException& e) {
+    CHECK(std::string(e.what()) == std::string("where: what"));
+  } catch (...) {
+    FAIL("threw something other than StatusException");
+  }
+}
+
+TEST_CASE("Exception - construct from error status") {
+  try {
+    Status st{"where", "what"};
+    throw StatusException(st);
+  } catch (const StatusException& e) {
+    CHECK(std::string(e.what()) == std::string("where: what"));
+  }
+}
+
+TEST_CASE("Exception - construct from invalid status") {
+  Status st{};
+  REQUIRE_THROWS(StatusException{st});
+  CHECK_THROWS_AS(StatusException{st}, std::invalid_argument);
+}
+
+TEST_CASE("throw_if_not_ok - nothrow on OK status") {
+  Status st{};
+  REQUIRE_NOTHROW(throw_if_not_ok(st));
+}
+
+TEST_CASE("throw_if_not_ok - throw on error status") {
+  Status st{"where", "what"};
+  REQUIRE_THROWS(throw_if_not_ok(st));
+  REQUIRE_THROWS_AS(throw_if_not_ok(st), StatusException);
+}

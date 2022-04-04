@@ -1,5 +1,5 @@
 /**
- * @file status.h
+ * @file exception.cc
  *
  * @section LICENSE
  *
@@ -24,10 +24,28 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file merely forwards to the original `status.h` header, which has moved.
  */
 
-#include "exception/status.h"
+#include "exception.h"
+
+namespace tiledb::common {
+
+const char* StatusException::what() const noexcept {
+  /*
+   * There's no semaphore on the deferred initialization of `what_`. The scope
+   * of exception objects is a throw statement and a catch sequence. There's no
+   * ordinary use of exception objects where there would be a race condition.
+   */
+  if (what_.empty()) {
+    /*
+     * The resulting value here is the same as if `Status::to_string` were
+     * called on an equivalent `Status` object.
+     */
+    what_.append(origin_);
+    what_.append(": ");
+    what_.append(message_);
+  }
+  return what_.c_str();
+}
+
+}  // namespace tiledb::common
