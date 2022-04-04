@@ -505,6 +505,11 @@ Status Group::mark_member_for_addition(
   ObjectType type = ObjectType::INVALID;
   RETURN_NOT_OK(
       storage_manager_->object_type(absolute_group_member_uri, &type));
+  if (type == ObjectType::INVALID) {
+    return Status_GroupError(
+        "Cannot add group member " + absolute_group_member_uri.to_string() +
+        ", type is INVALID. The member likely does not exist.");
+  }
 
   auto group_member =
       tdb::make_shared<GroupMemberV1>(HERE(), group_member_uri, type, relative);
