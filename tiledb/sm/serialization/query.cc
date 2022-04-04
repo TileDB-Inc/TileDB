@@ -121,7 +121,7 @@ Status stats_from_capnp(
 
   if (stats_reader.hasTimers()) {
     auto timers = stats->timers();
-    auto timers_reader = stats_reader.getCounters();
+    auto timers_reader = stats_reader.getTimers();
     for (const auto entry : timers_reader.getEntries()) {
       (*timers)[std::string(entry.getKey().cStr())] = entry.getValue();
     }
@@ -331,6 +331,7 @@ Status subarray_partitioner_to_capnp(
 }
 
 Status subarray_partitioner_from_capnp(
+    Stats* query_stats,
     Stats* reader_stats,
     const Config* config,
     const Array* array,
@@ -353,7 +354,7 @@ Status subarray_partitioner_from_capnp(
   RETURN_NOT_OK(layout_enum(subarray_reader.getLayout(), &layout));
 
   // Subarray, which is used to initialize the partitioner.
-  Subarray subarray(array, layout, reader_stats, dummy_logger, false);
+  Subarray subarray(array, layout, query_stats, dummy_logger, false);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
       config,
@@ -412,7 +413,7 @@ Status subarray_partitioner_from_capnp(
     partition_info->split_multi_range_ =
         partition_info_reader.getSplitMultiRange();
     partition_info->partition_ =
-        Subarray(array, layout, reader_stats, dummy_logger, false);
+        Subarray(array, layout, query_stats, dummy_logger, false);
     RETURN_NOT_OK(subarray_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
@@ -436,7 +437,7 @@ Status subarray_partitioner_from_capnp(
   for (unsigned i = 0; i < num_sr; i++) {
     auto subarray_reader_ = sr_reader[i];
     state->single_range_.emplace_back(
-        array, layout, reader_stats, dummy_logger, false);
+        array, layout, query_stats, dummy_logger, false);
     Subarray& subarray_ = state->single_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -445,7 +446,7 @@ Status subarray_partitioner_from_capnp(
   for (unsigned i = 0; i < num_m; i++) {
     auto subarray_reader_ = m_reader[i];
     state->multi_range_.emplace_back(
-        array, layout, reader_stats, dummy_logger, false);
+        array, layout, query_stats, dummy_logger, false);
     Subarray& subarray_ = state->multi_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -539,6 +540,7 @@ Status read_state_from_capnp(
   // Subarray partitioner
   if (read_state_reader.hasSubarrayPartitioner()) {
     RETURN_NOT_OK(subarray_partitioner_from_capnp(
+        query->stats(),
         reader->stats(),
         query->config(),
         array,
@@ -590,6 +592,7 @@ Status dense_read_state_from_capnp(
   // Subarray partitioner
   if (read_state_reader.hasSubarrayPartitioner()) {
     RETURN_NOT_OK(subarray_partitioner_from_capnp(
+        query->stats(),
         reader->stats(),
         query->config(),
         array,
@@ -800,7 +803,7 @@ Status reader_from_capnp(
   RETURN_NOT_OK(query->set_layout_unsafe(layout));
 
   // Subarray
-  Subarray subarray(array, layout, reader->stats(), dummy_logger, false);
+  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -842,7 +845,7 @@ Status index_reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, reader->stats(), dummy_logger, false);
+  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -885,7 +888,7 @@ Status dense_reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, reader->stats(), dummy_logger, false);
+  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -988,10 +991,6 @@ Status query_to_capnp(
         Status_SerializationError("Cannot serialize; array is null."));
 
   const auto& schema = query.array_schema();
-  const auto domain = schema.domain();
-  if (domain == nullptr)
-    return LOG_STATUS(
-        Status_SerializationError("Cannot serialize; array domain is null."));
 
   // Serialize basic fields
   query_builder->setType(query_type_str(type));
@@ -1156,12 +1155,7 @@ Status query_from_capnp(
 
   auto type = query->type();
   auto array = query->array();
-
   const auto& schema = query->array_schema();
-  const auto domain = schema.domain();
-  if (domain == nullptr)
-    return LOG_STATUS(
-        Status_SerializationError("Cannot deserialize; array domain is null."));
 
   if (array == nullptr)
     return LOG_STATUS(Status_SerializationError(
@@ -1780,7 +1774,7 @@ Status query_from_capnp(
 
       // Subarray
       if (writer_reader.hasSubarrayRanges()) {
-        Subarray subarray(array, layout, writer->stats(), dummy_logger, false);
+        Subarray subarray(array, layout, query->stats(), dummy_logger, false);
         auto subarray_reader = writer_reader.getSubarrayRanges();
         RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
         RETURN_NOT_OK(query->set_subarray_unsafe(subarray));

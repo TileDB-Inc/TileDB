@@ -1,11 +1,11 @@
 /**
- * @file   consolidator.cc
+ * @file   fragment_consolidator.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,22 +30,15 @@
  * This file implements the Consolidator class.
  */
 
-#include "tiledb/sm/storage_manager/consolidator.h"
+#include "tiledb/sm/consolidator/fragment_consolidator.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/filesystem/vfs.h"
-#include "tiledb/sm/fragment/single_fragment_info.h"
-#include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/time.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/sm/tile/generic_tile_io.h"
-#include "tiledb/sm/tile/tile.h"
 
 #include <iostream>
 #include <sstream>
@@ -56,196 +49,23 @@ namespace tiledb {
 namespace sm {
 
 /* ****************************** */
-/*   CONSTRUCTORS & DESTRUCTORS   */
+/*          CONSTRUCTOR           */
 /* ****************************** */
 
-Consolidator::Consolidator(StorageManager* storage_manager)
-    : storage_manager_(storage_manager)
-    , stats_(storage_manager_->stats()->create_child("Consolidator"))
-    , logger_(storage_manager_->logger()->clone("Consolidator", ++logger_id_)) {
+FragmentConsolidator::FragmentConsolidator(
+    const Config* config, StorageManager* storage_manager)
+    : Consolidator(storage_manager) {
+  auto st = set_config(config);
+  if (!st.ok()) {
+    throw std::logic_error(st.message());
+  }
 }
-
-Consolidator::~Consolidator() = default;
 
 /* ****************************** */
 /*               API              */
 /* ****************************** */
 
-Status Consolidator::consolidate(
-    const char* array_name,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    const Config* config) {
-  // Set config parameters
-  RETURN_NOT_OK(set_config(config));
-
-  // Consolidate based on mode
-  URI array_uri = URI(array_name);
-  if (config_.mode_ == "fragment_meta")
-    return consolidate_fragment_meta(
-        array_uri, encryption_type, encryption_key, key_length);
-  else if (config_.mode_ == "fragments")
-    return consolidate_fragments(
-        array_name, encryption_type, encryption_key, key_length);
-  else if (config_.mode_ == "array_meta")
-    return consolidate_array_meta(
-        array_name, encryption_type, encryption_key, key_length);
-  else if (config_.mode_ == "commits")
-    return consolidate_commits(
-        array_name, encryption_type, encryption_key, key_length);
-
-  return logger_->status(Status_ConsolidatorError(
-      "Cannot consolidate; Invalid consolidation mode"));
-}
-
-Status Consolidator::consolidate_array_meta(
-    const char* array_name,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
-  auto timer_se = stats_->start_timer("consolidate_array_meta");
-
-  // Open array for reading
-  auto array_uri = URI(array_name);
-  Array array_for_reads(array_uri, storage_manager_);
-  RETURN_NOT_OK(array_for_reads.open(
-      QueryType::READ,
-      config_.timestamp_start_,
-      config_.timestamp_end_,
-      encryption_type,
-      encryption_key,
-      key_length));
-
-  // Open array for writing
-  Array array_for_writes(array_uri, storage_manager_);
-  RETURN_NOT_OK_ELSE(
-      array_for_writes.open(
-          QueryType::WRITE, encryption_type, encryption_key, key_length),
-      array_for_reads.close());
-
-  // Swap the in-memory metadata between the two arrays.
-  // After that, the array for writes will store the (consolidated by
-  // the way metadata loading works) metadata of the array for reads
-  Metadata* metadata_r;
-  auto st = array_for_reads.metadata(&metadata_r);
-  if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
-    return st;
-  }
-  Metadata* metadata_w;
-  st = array_for_writes.metadata(&metadata_w);
-  if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
-    return st;
-  }
-  metadata_r->swap(metadata_w);
-
-  // Metadata uris to delete
-  const auto to_vacuum = metadata_w->loaded_metadata_uris();
-
-  // Generate new name for consolidated metadata
-  st = metadata_w->generate_uri(array_uri);
-  if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
-    return st;
-  }
-
-  // Get the new URI name
-  URI new_uri;
-  st = metadata_w->get_uri(array_uri, &new_uri);
-  if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
-    return st;
-  }
-
-  // Close arrays
-  RETURN_NOT_OK_ELSE(array_for_reads.close(), array_for_writes.close());
-  RETURN_NOT_OK(array_for_writes.close());
-
-  // Write vacuum file
-  URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
-
-  std::stringstream ss;
-  for (const auto& uri : to_vacuum)
-    ss << uri.to_string() << "\n";
-
-  auto data = ss.str();
-  RETURN_NOT_OK(
-      storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
-
-  return Status::Ok();
-}
-
-Status Consolidator::consolidate_commits(
-    const char* array_name,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
-  auto timer_se = stats_->start_timer("consolidate_commits");
-
-  // Open array for writing
-  auto array_uri = URI(array_name);
-  Array array_for_writes(array_uri, storage_manager_);
-  RETURN_NOT_OK(array_for_writes.open(
-      QueryType::WRITE, encryption_type, encryption_key, key_length));
-
-  // Ensure write version is at least 12.
-  auto write_version = array_for_writes.array_schema_latest().write_version();
-  RETURN_NOT_OK(array_for_writes.close());
-  if (write_version < 12) {
-    return logger_->status(Status_ConsolidatorError(
-        "Array version should be at least 12 to consolidate commits."));
-  }
-
-  // Get the array uri to consolidate from the array directory.
-  ArrayDirectory array_dir;
-  try {
-    array_dir = ArrayDirectory(
-        storage_manager_->vfs(),
-        storage_manager_->compute_tp(),
-        URI(array_name),
-        0,
-        utils::time::timestamp_now_ms(),
-        ArrayDirectoryMode::COMMITS);
-  } catch (const std::logic_error& le) {
-    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-  }
-
-  // Get the file name.
-  auto& to_consolidate = array_dir.commit_uris_to_consolidate();
-  auto&& [st1, name] = array_dir.compute_new_fragment_name(
-      to_consolidate.front(), to_consolidate.back(), write_version);
-  RETURN_NOT_OK(st1);
-
-  // Write consolidated file, URIs are relative to the array URI.
-  std::stringstream ss;
-  auto base_uri_size = array_dir.uri().to_string().size();
-  for (const auto& uri : to_consolidate) {
-    ss << uri.to_string().substr(base_uri_size) << "\n";
-  }
-
-  auto data = ss.str();
-  URI consolidated_commits_uri =
-      array_dir.get_commits_dir(write_version)
-          .join_path(name.value() + constants::con_commits_file_suffix);
-  RETURN_NOT_OK(storage_manager_->vfs()->write(
-      consolidated_commits_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(storage_manager_->vfs()->close_file(consolidated_commits_uri));
-
-  return Status::Ok();
-}
-
-/* ****************************** */
-/*        PRIVATE METHODS         */
-/* ****************************** */
-
-Status Consolidator::consolidate_fragments(
+Status FragmentConsolidator::consolidate(
     const char* array_name,
     EncryptionType encryption_type,
     const void* encryption_key,
@@ -343,36 +163,118 @@ Status Consolidator::consolidate_fragments(
   return Status::Ok();
 }
 
-bool Consolidator::are_consolidatable(
-    shared_ptr<const Domain> domain,
+Status FragmentConsolidator::vacuum(const char* array_name) {
+  if (array_name == nullptr)
+    return logger_->status(Status_StorageManagerError(
+        "Cannot vacuum fragments; Array name cannot be null"));
+
+  // Get the fragment URIs and vacuum file URIs to be vacuum
+  auto vfs = storage_manager_->vfs();
+  auto compute_tp = storage_manager_->compute_tp();
+  ArrayDirectory array_dir;
+  try {
+    array_dir = ArrayDirectory(
+        vfs,
+        compute_tp,
+        URI(array_name),
+        config_.vacuum_timestamp_start_,
+        config_.vacuum_timestamp_end_,
+        ArrayDirectoryMode::VACUUM_FRAGMENTS);
+  } catch (const std::logic_error& le) {
+    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+  }
+
+  const auto& fragment_uris_to_vacuum = array_dir.fragment_uris_to_vacuum();
+  const auto& commit_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
+  const auto& commit_uris_to_ignore = array_dir.commit_uris_to_ignore();
+  const auto& vac_uris_to_vacuum = array_dir.fragment_vac_uris_to_vacuum();
+
+  if (commit_uris_to_ignore.size() > 0) {
+    // Write an ignore file to ensure consolidated WRT files still work
+    auto&& [st1, name] = array_dir.compute_new_fragment_name(
+        commit_uris_to_ignore.front(),
+        commit_uris_to_ignore.back(),
+        constants::format_version);
+    RETURN_NOT_OK(st1);
+
+    // Write URIs, relative to the array URI.
+    std::stringstream ss;
+    auto base_uri_size = array_dir.uri().to_string().size();
+    for (const auto& uri : commit_uris_to_ignore) {
+      ss << uri.to_string().substr(base_uri_size) << "\n";
+    }
+
+    auto data = ss.str();
+    URI ignore_file_uri =
+        array_dir.get_commits_dir(constants::format_version)
+            .join_path(name.value() + constants::ignore_file_suffix);
+    RETURN_NOT_OK(vfs->write(ignore_file_uri, data.c_str(), data.size()));
+    RETURN_NOT_OK(vfs->close_file(ignore_file_uri));
+  }
+
+  // Delete the commit files
+  auto status =
+      parallel_for(compute_tp, 0, commit_uris_to_vacuum.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs->remove_file(commit_uris_to_vacuum[i]));
+
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(status);
+
+  // Delete fragment directories
+  status = parallel_for(
+      compute_tp, 0, fragment_uris_to_vacuum.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs->remove_dir(fragment_uris_to_vacuum[i]));
+
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(status);
+
+  // Delete vacuum files
+  status =
+      parallel_for(compute_tp, 0, vac_uris_to_vacuum.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs->remove_file(vac_uris_to_vacuum[i]));
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(status);
+
+  return Status::Ok();
+}
+
+/* ****************************** */
+/*        PRIVATE METHODS         */
+/* ****************************** */
+
+bool FragmentConsolidator::are_consolidatable(
+    const Domain& domain,
     const FragmentInfo& fragment_info,
     size_t start,
     size_t end,
     const NDRange& union_non_empty_domains) const {
   auto anterior_ndrange = fragment_info.anterior_ndrange();
   if (anterior_ndrange.size() != 0 &&
-      domain->overlap(union_non_empty_domains, anterior_ndrange))
+      domain.overlap(union_non_empty_domains, anterior_ndrange))
     return false;
 
   // Check overlap of union with earlier fragments
   const auto& fragments = fragment_info.single_fragment_info_vec();
   for (size_t i = 0; i < start; ++i) {
-    if (domain->overlap(
+    if (domain.overlap(
             union_non_empty_domains, fragments[i].non_empty_domain()))
       return false;
   }
 
   // Check consolidation amplification factor
-  auto union_cell_num = domain->cell_num(union_non_empty_domains);
+  auto union_cell_num = domain.cell_num(union_non_empty_domains);
   uint64_t sum_cell_num = 0;
   for (size_t i = start; i <= end; ++i) {
-    sum_cell_num += domain->cell_num(fragments[i].expanded_non_empty_domain());
+    sum_cell_num += domain.cell_num(fragments[i].expanded_non_empty_domain());
   }
 
   return (double(union_cell_num) / sum_cell_num) <= config_.amplification_;
 }
 
-Status Consolidator::consolidate(
+Status FragmentConsolidator::consolidate(
     Array& array_for_reads,
     Array& array_for_writes,
     const std::vector<TimestampedURI>& to_consolidate,
@@ -459,126 +361,7 @@ Status Consolidator::consolidate(
   return st;
 }
 
-Status Consolidator::consolidate_fragment_meta(
-    const URI& array_uri,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
-  auto timer_se = stats_->start_timer("consolidate_frag_meta");
-
-  // Open array for reading
-  Array array(array_uri, storage_manager_);
-  RETURN_NOT_OK(
-      array.open(QueryType::READ, encryption_type, encryption_key, key_length));
-
-  // Include only fragments with footers / separate basic metadata
-  Buffer buff;
-  const auto& tmp_meta = array.fragment_metadata();
-  std::vector<shared_ptr<FragmentMetadata>> meta;
-  for (auto m : tmp_meta) {
-    if (m->format_version() > 2)
-      meta.emplace_back(m);
-  }
-  auto fragment_num = (unsigned)meta.size();
-
-  // Do not consolidate if the number of fragments is not >1
-  if (fragment_num < 2)
-    return array.close();
-
-  // Write number of fragments
-  RETURN_NOT_OK(buff.write(&fragment_num, sizeof(uint32_t)));
-
-  // Compute new URI
-  URI uri;
-  auto& array_dir = array.array_directory();
-  auto first = meta.front()->fragment_uri();
-  auto last = meta.back()->fragment_uri();
-  auto write_version = array.array_schema_latest().write_version();
-  auto&& [st, name] =
-      array_dir.compute_new_fragment_name(first, last, write_version);
-  RETURN_NOT_OK(st);
-
-  auto frag_md_uri = array_dir.get_fragment_metadata_dir(write_version);
-  RETURN_NOT_OK(storage_manager_->vfs()->create_dir(frag_md_uri));
-  uri =
-      URI(frag_md_uri.to_string() + name.value() + constants::meta_file_suffix);
-
-  // Get the consolidated fragment metadata version
-  auto meta_name = uri.remove_trailing_slash().last_path_part();
-  auto pos = meta_name.find_last_of('.');
-  meta_name = (pos == std::string::npos) ? meta_name : meta_name.substr(0, pos);
-  uint32_t meta_version = 0;
-  RETURN_NOT_OK(utils::parse::get_fragment_version(meta_name, &meta_version));
-
-  // Calculate offset of first fragment footer
-  uint64_t offset = sizeof(uint32_t);  // Fragment num
-  for (auto m : meta) {
-    offset += sizeof(uint64_t);  // Name size
-    if (meta_version >= 9) {
-      offset += m->fragment_uri().last_path_part().size();  // Name
-    } else {
-      offset += m->fragment_uri().to_string().size();  // Name
-    }
-    offset += sizeof(uint64_t);  // Offset
-  }
-
-  // Serialize all fragment names and footer offsets into a single buffer
-  for (auto m : meta) {
-    // Write name size and name
-    std::string name;
-    if (meta_version >= 9) {
-      name = m->fragment_uri().last_path_part();
-    } else {
-      name = m->fragment_uri().to_string();
-    }
-    auto name_size = (uint64_t)name.size();
-    RETURN_NOT_OK(buff.write(&name_size, sizeof(uint64_t)));
-    RETURN_NOT_OK(buff.write(name.c_str(), name_size));
-    RETURN_NOT_OK(buff.write(&offset, sizeof(uint64_t)));
-
-    offset += m->footer_size();
-  }
-
-  // Serialize all fragment metadata footers in parallel
-  std::vector<Buffer> buffs(meta.size());
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, buffs.size(), [&](size_t i) {
-        RETURN_NOT_OK(meta[i]->write_footer(&buffs[i]));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  // Combine serialized fragment metadata footers into a single buffer
-  for (const auto& b : buffs)
-    RETURN_NOT_OK(buff.write(b.data(), b.size()));
-
-  // Close array
-  RETURN_NOT_OK(array.close());
-
-  // Write to file
-  EncryptionKey enc_key;
-  RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
-  Tile tile(
-      constants::generic_tile_datatype,
-      constants::generic_tile_cell_size,
-      0,
-      buff.data(),
-      buff.size());
-  buff.disown_data();
-
-  GenericTileIO tile_io(storage_manager_, uri);
-  uint64_t nbytes = 0;
-  RETURN_NOT_OK_ELSE(
-      tile_io.write_generic(&tile, enc_key, &nbytes), buff.clear());
-  (void)nbytes;
-  RETURN_NOT_OK_ELSE(storage_manager_->close_file(uri), buff.clear());
-
-  buff.clear();
-
-  return Status::Ok();
-}
-
-Status Consolidator::copy_array(
+Status FragmentConsolidator::copy_array(
     Query* query_r,
     Query* query_w,
     std::vector<ByteVec>* buffers,
@@ -606,7 +389,7 @@ Status Consolidator::copy_array(
   return Status::Ok();
 }
 
-Status Consolidator::create_buffers(
+Status FragmentConsolidator::create_buffers(
     const ArraySchema& array_schema,
     std::vector<ByteVec>* buffers,
     std::vector<uint64_t>* buffer_sizes) {
@@ -614,7 +397,7 @@ Status Consolidator::create_buffers(
 
   // For easy reference
   auto attribute_num = array_schema.attribute_num();
-  auto domain = array_schema.domain();
+  auto& domain{array_schema.domain()};
   auto dim_num = array_schema.dim_num();
   auto sparse = !array_schema.dense();
 
@@ -626,7 +409,7 @@ Status Consolidator::create_buffers(
   }
   if (sparse) {
     for (unsigned i = 0; i < dim_num; ++i)
-      buffer_num += (domain->dimension(i)->var_size()) ? 2 : 1;
+      buffer_num += (domain.dimension(i)->var_size()) ? 2 : 1;
   }
 
   // Create buffers
@@ -643,7 +426,7 @@ Status Consolidator::create_buffers(
   return Status::Ok();
 }
 
-Status Consolidator::create_queries(
+Status FragmentConsolidator::create_queries(
     Array* array_for_reads,
     Array* array_for_writes,
     const NDRange& subarray,
@@ -689,7 +472,7 @@ Status Consolidator::create_queries(
   return Status::Ok();
 }
 
-Status Consolidator::compute_next_to_consolidate(
+Status FragmentConsolidator::compute_next_to_consolidate(
     const ArraySchema& array_schema,
     const FragmentInfo& fragment_info,
     std::vector<TimestampedURI>* to_consolidate,
@@ -699,7 +482,7 @@ Status Consolidator::compute_next_to_consolidate(
   // Preparation
   auto sparse = !array_schema.dense();
   const auto& fragments = fragment_info.single_fragment_info_vec();
-  auto domain = array_schema.domain();
+  auto& domain{array_schema.domain()};
   to_consolidate->clear();
   auto min = config_.min_frags_;
   min = (uint32_t)((min > fragments.size()) ? fragments.size() : min);
@@ -751,9 +534,9 @@ Status Consolidator::compute_next_to_consolidate(
         if (ratio >= size_ratio && (m_sizes[i - 1][j] != UINT64_MAX)) {
           m_sizes[i][j] = m_sizes[i - 1][j] + fragments[i + j].fragment_size();
           m_union[i][j] = m_union[i - 1][j];
-          domain->expand_ndrange(
+          domain.expand_ndrange(
               fragments[i + j].non_empty_domain(), &m_union[i][j]);
-          domain->expand_to_tiles(&m_union[i][j]);
+          domain.expand_to_tiles(&m_union[i][j]);
           if (!sparse && !are_consolidatable(
                              domain, fragment_info, j, j + i, m_union[i][j])) {
             // Mark this entry as invalid
@@ -806,7 +589,7 @@ Status Consolidator::compute_next_to_consolidate(
   return Status::Ok();
 }
 
-Status Consolidator::set_query_buffers(
+Status FragmentConsolidator::set_query_buffers(
     Query* query,
     std::vector<ByteVec>* buffers,
     std::vector<uint64_t>* buffer_sizes) const {
@@ -877,11 +660,12 @@ Status Consolidator::set_query_buffers(
   return Status::Ok();
 }
 
-Status Consolidator::set_config(const Config* config) {
+Status FragmentConsolidator::set_config(const Config* config) {
   // Set the consolidation config for ease of use
   Config merged_config = storage_manager_->config();
-  if (config)
+  if (config) {
     merged_config.inherit(*config);
+  }
   bool found = false;
   config_.amplification_ = 0.0f;
   RETURN_NOT_OK(merged_config.get<float>(
@@ -907,11 +691,6 @@ Status Consolidator::set_config(const Config* config) {
   RETURN_NOT_OK(merged_config.get<uint32_t>(
       "sm.consolidation.step_max_frags", &config_.max_frags_, &found));
   assert(found);
-  const std::string mode = merged_config.get("sm.consolidation.mode", &found);
-  if (!found)
-    return logger_->status(Status_ConsolidatorError(
-        "Cannot consolidate; Consolidation mode cannot be null"));
-  config_.mode_ = mode;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_start", &config_.timestamp_start_, &found));
   assert(found);
@@ -922,6 +701,12 @@ Status Consolidator::set_config(const Config* config) {
       merged_config.get("sm.query.sparse_global_order.reader", &found);
   assert(found);
   config_.use_refactored_reader_ = reader.compare("refactored") == 0;
+  RETURN_NOT_OK(merged_config.get<uint64_t>(
+      "sm.vacuum.timestamp_start", &config_.vacuum_timestamp_start_, &found));
+  assert(found);
+  RETURN_NOT_OK(merged_config.get<uint64_t>(
+      "sm.vacuum.timestamp_end", &config_.vacuum_timestamp_end_, &found));
+  assert(found);
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)
@@ -940,7 +725,7 @@ Status Consolidator::set_config(const Config* config) {
   return Status::Ok();
 }
 
-Status Consolidator::write_vacuum_file(
+Status FragmentConsolidator::write_vacuum_file(
     const URI& vac_uri,
     const std::vector<TimestampedURI>& to_consolidate) const {
   std::stringstream ss;

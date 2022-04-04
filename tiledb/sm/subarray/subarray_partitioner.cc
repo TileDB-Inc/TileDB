@@ -902,7 +902,7 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
   // Compute splitting dimension and value
   const Range* r;
   for (auto d : dims) {
-    auto dim = array_schema.domain()->dimension(d);
+    auto dim = array_schema.domain().dimension(d);
     range.get_range(d, 0, &r);
     auto tiles_apart = dim->tile_num(*r) - 1;
     if (tiles_apart != 0) {

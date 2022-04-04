@@ -146,7 +146,11 @@ uint64_t RLE::overhead(uint64_t nbytes, uint64_t value_size) {
 }
 
 uint8_t RLE::compute_bytesize(uint64_t param_length) {
-  assert(param_length > 0);
+  if (param_length == 0) {
+    throw std::logic_error(
+        "Cannot compute RLE parameter bytesize for zero length");
+  }
+
   if (param_length <= std::numeric_limits<uint8_t>::max()) {
     return 1;
   } else if (param_length <= std::numeric_limits<uint16_t>::max()) {

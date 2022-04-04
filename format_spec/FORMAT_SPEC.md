@@ -1,9 +1,9 @@
 # Format Specification
 
+**Notes:**  
 
-:information_source: **Notes:**  
-- The current TileDB format version number is **12** (`uint32_t`).
-- All data written by TileDB and referenced in this document is **little-endian**. 
+* The current TileDB format version number is **12** (`uint32_t`).
+* All data written by TileDB and referenced in this document is **little-endian**. 
 
 ## Table of Contents
 
@@ -16,3 +16,7 @@
    * [Generic Tile](./generic_tile.md)
 * **Group**
    * [File hierarchy](./group_file_hierarchy.md)
+* **Other**
+   * [Consolidated Fragment Metadata File](./consolidated_fragment_metadata_file.md)
+   * [Filter Pipeline](./filter_pipeline.md)
+   * [Vacuum Pipeline](./vacuum_file.md)

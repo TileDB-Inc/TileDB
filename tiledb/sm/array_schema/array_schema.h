@@ -260,7 +260,9 @@ class ArraySchema {
   Status deserialize(ConstBuffer* buff);
 
   /** Returns the array domain. */
-  shared_ptr<const Domain> domain() const;
+  inline const Domain& domain() const {
+    return *const_cast<const Domain*>(domain_.get());
+  }
 
   /**
    * Initializes the ArraySchema object. It also performs a check to see if

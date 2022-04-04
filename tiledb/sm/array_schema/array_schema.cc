@@ -623,7 +623,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   }
 
   // Create dimension map
-  auto dim_num = domain()->dim_num();
+  auto dim_num = domain_->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim = dimension(d);
     dim_map_[dim->name()] = dim;
@@ -634,10 +634,6 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
 
   // Success
   return Status::Ok();
-}
-
-shared_ptr<const Domain> ArraySchema::domain() const {
-  return std::const_pointer_cast<const Domain>(domain_);
 }
 
 Status ArraySchema::init() {

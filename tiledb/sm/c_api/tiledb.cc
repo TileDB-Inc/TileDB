@@ -2729,7 +2729,7 @@ int32_t tiledb_array_schema_get_domain(
 
   // Create a new Domain object
   (*domain)->domain_ = new (std::nothrow)
-      tiledb::sm::Domain(array_schema->array_schema_->domain().get());
+      tiledb::sm::Domain(&array_schema->array_schema_->domain());
   if ((*domain)->domain_ == nullptr) {
     delete *domain;
     *domain = nullptr;

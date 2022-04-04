@@ -489,7 +489,7 @@ Status array_schema_to_capnp(
 
   // Domain
   auto domain_builder = array_schema_builder->initDomain();
-  RETURN_NOT_OK(domain_to_capnp(array_schema.domain().get(), &domain_builder));
+  RETURN_NOT_OK(domain_to_capnp(&array_schema.domain(), &domain_builder));
 
   // Attributes
   const unsigned num_attrs = array_schema.attribute_num();
