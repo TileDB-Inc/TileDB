@@ -368,6 +368,9 @@ class Curl {
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
+  /** Verbose logging in curl. */
+  bool verbose_;
+
   /**
    * Populates the curl slist with authorization (token or username+password),
    * and any extra headers.

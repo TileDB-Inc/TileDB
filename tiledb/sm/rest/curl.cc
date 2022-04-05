@@ -255,7 +255,8 @@ Curl::Curl(const std::shared_ptr<Logger>& logger)
     , retry_count_(0)
     , retry_delay_factor_(0)
     , retry_initial_delay_ms_(0)
-    , logger_(logger->clone("curl ", ++logger_id_)) {
+    , logger_(logger->clone("curl ", ++logger_id_))
+    , verbose_(false) {
 }
 
 Status Curl::init(
@@ -337,6 +338,9 @@ Status Curl::init(
 
   RETURN_NOT_OK(config_->get_vector<uint32_t>(
       "rest.retry_http_codes", &retry_http_codes_, &found));
+  assert(found);
+
+  RETURN_NOT_OK(config_->get<bool>("rest.curl.verbose", &verbose_, &found));
   assert(found);
 
   return Status::Ok();
@@ -474,6 +478,9 @@ Status Curl::make_curl_request_common(
     /* pass fetch buffer pointer */
     curl_easy_setopt(
         curl, CURLOPT_WRITEDATA, static_cast<void*>(&write_cb_state));
+
+    /* Set curl verbose mode */
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, verbose_);
 
     /* set default user agent */
     // curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
