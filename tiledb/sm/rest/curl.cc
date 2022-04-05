@@ -892,7 +892,7 @@ Status Curl::patch_data_common(
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
-        Status_RestError("Error posting data; curl instance is null."));
+        Status_RestError("Error patching data; curl instance is null."));
 
   const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
   logger_->debug("patching {} bytes to", data->total_size());
@@ -909,7 +909,10 @@ Status Curl::patch_data_common(
       set_content_type(serialization_type, headers),
       curl_slist_free_all(*headers));
 
-  /* HTTP PUT please */
+  /* Set POST so curl sends the body */
+  curl_easy_setopt(curl, CURLOPT_POST, 1);
+
+  /* HTTP PATCH please */
   curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
   curl_easy_setopt(
       curl, CURLOPT_READFUNCTION, buffer_list_read_memory_callback);
@@ -954,10 +957,10 @@ Status Curl::put_data_common(
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
-        Status_RestError("Error posting data; curl instance is null."));
+        Status_RestError("Error putting data; curl instance is null."));
 
   const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
-  logger_->debug("puting {} bytes to", data->total_size());
+  logger_->debug("putting {} bytes to", data->total_size());
   if (data->total_size() > post_size_limit) {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, data->total_size());
   } else {
@@ -970,6 +973,9 @@ Status Curl::put_data_common(
   RETURN_NOT_OK_ELSE(
       set_content_type(serialization_type, headers),
       curl_slist_free_all(*headers));
+
+  /* Set POST so curl sends the body */
+  curl_easy_setopt(curl, CURLOPT_POST, 1);
 
   /* HTTP PUT please */
   curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
