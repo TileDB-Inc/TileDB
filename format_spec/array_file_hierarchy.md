@@ -1,4 +1,6 @@
-# Array File Hierarchy
+---
+title: Array File Hierarchy
+---
 
 An array is a folder with the following structure:
 

@@ -1,4 +1,6 @@
-# Format Specification
+---
+title: Format Specification
+---
 
 **Notes:**  
 

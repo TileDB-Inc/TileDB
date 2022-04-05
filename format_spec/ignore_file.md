@@ -1,4 +1,6 @@
-# Ignore File
+---
+title: Ignore File
+---
 
 A ignore file has name `__t1_t2_uuid_v.ign` and is located in the array commit folder:
 

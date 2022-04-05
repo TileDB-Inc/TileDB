@@ -1,4 +1,6 @@
-# Array Metadata
+---
+title: Array Metadata
+---
 
 ## Main Structure
 

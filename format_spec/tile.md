@@ -1,4 +1,6 @@
-# Tile
+---
+title: Tile
+---
 
 ## Main Structure
 
