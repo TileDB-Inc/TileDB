@@ -669,6 +669,9 @@ Status SparseIndexReaderBase::add_extra_offset() {
     if (!array_schema_.var_size(name))
       continue;
 
+    if (*it.second.buffer_size_ <= 0)
+      continue;
+
     auto buffer = static_cast<unsigned char*>(it.second.buffer_);
     if (offsets_format_mode_ == "bytes") {
       memcpy(
