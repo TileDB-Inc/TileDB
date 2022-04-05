@@ -1,4 +1,6 @@
-# CMake
+---
+title: CMake
+---
 
 TileDB uses CMake for its configuration, build system, and package management.
 
