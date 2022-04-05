@@ -196,8 +196,8 @@ Status group_update_details_to_capnp(
     capnp::GroupUpdate::GroupUpdateDetails::Builder*
         group_update_details_builder) {
   if (group == nullptr) {
-    return LOG_STATUS(
-        Status_SerializationError("Error serializing group; group is null."));
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing group details; group is null."));
   }
 
   const auto& group_members_to_add = group->members_to_add();

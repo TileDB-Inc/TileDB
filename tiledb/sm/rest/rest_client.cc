@@ -1051,7 +1051,7 @@ Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
 Status RestClient::patch_group_to_rest(const URI& uri, Group* group) {
   if (group == nullptr)
     return LOG_STATUS(
-        Status_RestError("Error posting group to REST; group is null."));
+        Status_RestError("Error patching group to REST; group is null."));
 
   Buffer buff;
   RETURN_NOT_OK(

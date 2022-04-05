@@ -136,6 +136,11 @@ Status Group::open(QueryType query_type) {
     }
   }
 
+  // Make sure to reset any values
+  changes_applied_ = false;
+  members_to_remove_.clear();
+  members_to_add_.clear();
+
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -226,6 +231,10 @@ Status Group::close() {
           return Status_GroupError(
               "Error closing group; remote group with no REST client.");
         RETURN_NOT_OK(rest_client->patch_group_to_rest(group_uri_, this));
+
+        changes_applied_ = true;
+        members_to_remove_.clear();
+        members_to_add_.clear();
       }
     }
 
