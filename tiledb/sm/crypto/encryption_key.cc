@@ -32,8 +32,10 @@
 
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 
 using namespace tiledb::common;
 
@@ -88,6 +90,45 @@ bool EncryptionKey::is_valid_key_length(
 
 ConstBuffer EncryptionKey::key() const {
   return ConstBuffer(key_, key_length_);
+}
+
+tuple<Status, EncryptionType, std::string, uint32_t>
+EncryptionKey::get_encryption_from_cfg(const Config& config) {
+  std::string key;
+  EncryptionType type = EncryptionType::NO_ENCRYPTION;
+  uint32_t len = 0;
+
+  bool found = false;
+  key = config.get("sm.encryption_key", &found);
+  if (!found) {
+    return {Status_Error("Encryption key not found in config"), type, key, len};
+  }
+
+  std::string encryption_type_from_cfg;
+  found = false;
+  encryption_type_from_cfg = config.get("sm.encryption_type", &found);
+  if (!found) {
+    return {
+        Status_Error("Encryption type not found in config"), type, key, len};
+  }
+
+  auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+  RETURN_NOT_OK_TUPLE(st, type, key, len);
+  type = et.value();
+
+  if (is_valid_key_length(type, static_cast<uint32_t>(key.size()))) {
+    const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
+    if (unit_test_cfg.array_encryption_key_length.is_set()) {
+      len = unit_test_cfg.array_encryption_key_length.get();
+    } else {
+      len = static_cast<uint32_t>(key.size());
+    }
+  } else {
+    return {
+        Status_Error("Encryption key has an invalid length"), type, key, len};
+  }
+
+  return {Status::Ok(), type, key, len};
 }
 
 }  // namespace sm

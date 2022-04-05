@@ -33,6 +33,7 @@
 #ifndef TILEDB_ENCRYPTION_KEY_H
 #define TILEDB_ENCRYPTION_KEY_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/buffer/buffer.h"
 
@@ -42,6 +43,8 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+class Config;
 
 enum class EncryptionType : uint8_t;
 
@@ -71,6 +74,13 @@ class EncryptionKey {
    */
   static bool is_valid_key_length(
       EncryptionType encryption_type, uint32_t key_length);
+
+  /**
+   * Returns the encryption type, key and key length from the passed
+   * Config object
+   */
+  static tuple<Status, EncryptionType, std::string, uint32_t>
+  get_encryption_from_cfg(const Config& cfg);
 
   /** Returns a ConstBuffer holding a pointer to the key bytes. */
   ConstBuffer key() const;
