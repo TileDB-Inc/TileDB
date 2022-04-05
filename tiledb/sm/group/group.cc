@@ -418,6 +418,10 @@ Metadata* Group::metadata() {
   return &metadata_;
 }
 
+const Metadata* Group::metadata() const {
+  return &metadata_;
+}
+
 Status Group::metadata(Metadata** metadata) {
   // Load group metadata, if not loaded yet
   if (!metadata_loaded_)
@@ -426,6 +430,10 @@ Status Group::metadata(Metadata** metadata) {
   *metadata = &metadata_;
 
   return Status::Ok();
+}
+
+void Group::set_metadata_loaded(const bool metadata_loaded) {
+  metadata_loaded_ = metadata_loaded;
 }
 
 const EncryptionKey* Group::encryption_key() const {

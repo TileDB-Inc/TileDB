@@ -51,6 +51,7 @@
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/group/group_member_v1.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/group.h"
 
 #include <set>
@@ -84,14 +85,15 @@ std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
 group_member_from_capnp(capnp::GroupMember::Reader* group_member_reader) {
   if (!group_member_reader->hasUri()) {
     return {Status_SerializationError(
-                "Incomplete group member type in serialization, missing uri"),
+                "Incomplete group member type in deserialization, missing uri"),
             std::nullopt};
   }
 
   if (!group_member_reader->hasType()) {
-    return {Status_SerializationError(
-                "Incomplete group member type in serialization, missing type"),
-            std::nullopt};
+    return {
+        Status_SerializationError(
+            "Incomplete group member type in deserialization, missing type"),
+        std::nullopt};
   }
 
   ObjectType type;
@@ -126,6 +128,12 @@ Status group_details_to_capnp(
     }
   }
 
+  const Metadata* metadata = group->metadata();
+  if (metadata->num()) {
+    auto group_metadata_builder = group_details_builder->initMetadata();
+    RETURN_NOT_OK(metadata_to_capnp(metadata, &group_metadata_builder));
+  }
+
   return Status::Ok();
 }
 
@@ -138,6 +146,12 @@ Status group_details_from_capnp(
       RETURN_NOT_OK(st);
       RETURN_NOT_OK(group->add_member(group_member.value()));
     }
+  }
+
+  if (group_details_reader.hasMetadata()) {
+    RETURN_NOT_OK(metadata_from_capnp(
+        group_details_reader.getMetadata(), group->metadata()));
+    group->set_metadata_loaded(true);
   }
 
   return Status::Ok();

@@ -156,11 +156,21 @@ class Group {
    * @note This is potentially an unsafe operation
    * it could have contention with locks from lazy loading of metadata.
    * This should only be used by the serialization class
-   * (tiledb/sm/serialization/group_schema_latest.cc). In that class we need to
+   * (tiledb/sm/serialization/group.cc). In that class we need to
    * fetch the underlying Metadata object to set the values we are loading from
    * REST. A lock should already by taken before load_metadata is called.
    */
   Metadata* metadata();
+  const Metadata* metadata() const;
+
+  /**
+   * Set metadata loaded
+   * * This should only be used by the serialization class
+   * (tiledb/sm/serialization/group.cc).
+   * @param bool metadata was loaded
+   * @return void
+   */
+  void set_metadata_loaded(const bool metadata_loaded);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
