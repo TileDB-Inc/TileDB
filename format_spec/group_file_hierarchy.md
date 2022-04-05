@@ -1,4 +1,6 @@
-# Group File Hierarchy
+---
+title: Group File Hierarchy
+---
 
 A TileDB group is a folder with a single file in it:
 

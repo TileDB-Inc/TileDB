@@ -1,4 +1,6 @@
-# Filter Pipeline
+---
+title: Filter Pipeline
+---
 
 ## Main Structure
 
