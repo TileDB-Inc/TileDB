@@ -1,4 +1,6 @@
-# Initialization
+---
+title: Initialization
+---
 
 ## Prefer direct initialization with a braced initialization list 
 

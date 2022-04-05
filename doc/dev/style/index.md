@@ -1,4 +1,6 @@
-# C++ Style Guide
+---
+title: C++ Style Guide
+---
 
 When in doubt and not in conflict with this style guide, follow [C++ Core
 Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines)

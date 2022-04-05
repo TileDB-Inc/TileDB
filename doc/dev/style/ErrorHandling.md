@@ -1,4 +1,6 @@
-# Error handling
+---
+title: Error handling
+---
 
 The code began its life with a don't-throw-exceptions practice. It's beginning a transition into a do-throw-exceptions practice, although that hasn't started quite yet.
 

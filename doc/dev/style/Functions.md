@@ -1,4 +1,6 @@
-# Functions
+---
+title: Functions
+---
 
 ## Inputs on the right. Outputs on the left.
 

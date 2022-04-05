@@ -1,4 +1,6 @@
-# Memory Guidelines
+---
+title: Memory Guidelines
+---
 
 ## Pointers and Allocations
 
