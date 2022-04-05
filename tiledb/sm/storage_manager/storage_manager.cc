@@ -351,8 +351,12 @@ Status StorageManager::array_consolidate(
   }
 
   // Get encryption key from config
+  Status st;
+  EncryptionType t;
+  std::string key;
+  uint32_t len;
   if (encryption_key == nullptr) {
-    auto&& [st, t, key, len] = EncryptionKey::get_encryption_from_cfg(*config);
+    std::tie(st, t, key, len) = EncryptionKey::get_encryption_from_cfg(*config);
     RETURN_NOT_OK(st);
     if (!key.empty()) {
       encryption_key = key.c_str();
@@ -411,8 +415,12 @@ Status StorageManager::array_metadata_consolidate(
   }
 
   // Get encryption key from config
+  Status st;
+  EncryptionType t;
+  std::string key;
+  uint32_t len;
   if (encryption_key == nullptr) {
-    auto&& [st, t, key, len] = EncryptionKey::get_encryption_from_cfg(*config);
+    std::tie(st, t, key, len) = EncryptionKey::get_encryption_from_cfg(*config);
     RETURN_NOT_OK(st);
     if (!key.empty()) {
       encryption_key = key.c_str();
@@ -480,10 +488,12 @@ Status StorageManager::array_create(
 
   // Get encryption key from config
   Status st;
+  EncryptionType t;
+  std::string key;
+  uint32_t len;
   if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
-    auto&& [status, t, key, len] =
-        EncryptionKey::get_encryption_from_cfg(config_);
-    RETURN_NOT_OK(status);
+    std::tie(st, t, key, len) = EncryptionKey::get_encryption_from_cfg(config_);
+    RETURN_NOT_OK(st);
 
     EncryptionKey encryption_key_cfg;
     if (key.empty()) {
@@ -1170,10 +1180,13 @@ StorageManager::load_array_schema_from_uri(
   Tile* tile = nullptr;
 
   // Get encryption key from config
+  Status st;
+  EncryptionType t;
+  std::string key;
+  uint32_t len;
   if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
-    auto&& [status, t, key, len] =
-        EncryptionKey::get_encryption_from_cfg(config_);
-    RETURN_NOT_OK_TUPLE(status, nullopt);
+    std::tie(st, t, key, len) = EncryptionKey::get_encryption_from_cfg(config_);
+    RETURN_NOT_OK_TUPLE(st, nullopt);
 
     EncryptionKey encryption_key_cfg;
     if (key.empty()) {
@@ -1193,7 +1206,7 @@ StorageManager::load_array_schema_from_uri(
   Buffer buff;
   buff.realloc(tile->size());
   buff.set_size(tile->size());
-  auto st = tile->read(buff.data(), 0, buff.size());
+  st = tile->read(buff.data(), 0, buff.size());
   tdb_delete(tile);
   RETURN_NOT_OK_TUPLE(st, nullopt);
 

@@ -246,8 +246,12 @@ Status Array::open(
   }
 
   // Get encryption key from config
+  Status st;
+  EncryptionType t;
+  std::string key;
+  uint32_t len;
   if (encryption_key == nullptr) {
-    auto&& [st, t, key, len] = EncryptionKey::get_encryption_from_cfg(config_);
+    std::tie(st, t, key, len) = EncryptionKey::get_encryption_from_cfg(config_);
     RETURN_NOT_OK(st);
     if (!key.empty()) {
       encryption_key = key.c_str();

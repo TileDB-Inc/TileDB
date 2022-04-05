@@ -803,7 +803,7 @@ TEST_CASE_METHOD(
     rc = tiledb_config_set(cfg, "sm.encryption_type", "NO_ENCRYPTION", &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", "0", &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", "", &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
