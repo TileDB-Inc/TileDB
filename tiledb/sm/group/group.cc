@@ -560,21 +560,32 @@ Status Group::mark_member_for_removal(const std::string& uri) {
         ", member already set for adding.");
   }
 
-  if (members_.find(uri) != members_.end()) {
+  // If the group is remote don't check if the member actually exists client
+  // side There is a number of "acceptable" URIs for remote objects We leave it
+  // to the server to validate the request later.
+  if (remote_) {
     members_to_remove_.emplace(uri);
     return Status::Ok();
+    // If it's not remote check to validate the URI to remove actually exists in
+    // the group
   } else {
-    // try URI to see if we need to convert the local file to file://
-    URI uri_uri(uri);
-    if (members_.find(uri_uri.to_string()) != members_.end()) {
-      members_to_remove_.emplace(uri_uri.to_string());
+    if (members_.find(uri) != members_.end()) {
+      members_to_remove_.emplace(uri);
       return Status::Ok();
     } else {
-      return Status_GroupError(
-          "Cannot remove group member " + uri +
-          ", member does not exist in group.");
+      // try URI to see if we need to convert the local file to file://
+      URI uri_uri(uri);
+      if (members_.find(uri_uri.to_string()) != members_.end()) {
+        members_to_remove_.emplace(uri_uri.to_string());
+        return Status::Ok();
+      } else {
+        return Status_GroupError(
+            "Cannot remove group member " + uri +
+            ", member does not exist in group.");
+      }
     }
   }
+
   return Status::Ok();
 }
 
