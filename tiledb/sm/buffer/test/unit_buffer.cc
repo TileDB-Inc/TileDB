@@ -43,7 +43,7 @@ TEST_CASE("Buffer: Test default constructor with write void*", "[buffer]") {
   // Write a char array
   Status st;
   char data[3] = {1, 2, 3};
-  auto buff = new Buffer();
+  auto buff = make_shared<Buffer>(HERE());
   CHECK(buff->size() == 0);
 
   st = buff->write(data, sizeof(data));
@@ -94,8 +94,6 @@ TEST_CASE("Buffer: Test default constructor with write void*", "[buffer]") {
   CHECK(buff->owns_data() == buff3.owns_data());
   if (buff->data() != nullptr)
     CHECK(!std::memcmp(buff->data(), buff3.data(), buff->alloced_size()));
-
-  delete buff;
 }
 
 TEST_CASE("Buffer: Test swap", "[buffer]") {

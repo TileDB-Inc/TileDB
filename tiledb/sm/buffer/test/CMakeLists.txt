@@ -1,9 +1,9 @@
 #
-# tiledb/sm/buffer/CMakeLists.txt
+# tiledb/sm/buffer/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,23 +24,17 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
+find_package(Catch_EP REQUIRED)
 
-#
-# Object library for other units to depend upon
-#
-add_library(buffer OBJECT buffer.cc)
-target_link_libraries(buffer PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_buffer EXCLUDE_FROM_ALL)
-target_link_libraries(compile_buffer PRIVATE buffer)
-target_sources(compile_buffer PRIVATE
-    test/compile_buffer_main.cc $<TARGET_OBJECTS:buffer>
+add_executable(unit_buffer EXCLUDE_FROM_ALL)
+target_link_libraries(unit_buffer
+    PRIVATE buffer
+    PUBLIC Catch2::Catch2
 )
+target_sources(unit_buffer PUBLIC main.cc unit_buffer.cc)
 
-if (TILEDB_TESTS)
-  add_subdirectory(test)
-endif()
+add_test(
+    NAME "unit_buffer"
+    COMMAND $<TARGET_FILE:unit_buffer>
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
