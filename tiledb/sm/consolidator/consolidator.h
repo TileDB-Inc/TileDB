@@ -38,7 +38,6 @@
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
-#include "tiledb/sm/misc/types.h"
 
 #include <vector>
 

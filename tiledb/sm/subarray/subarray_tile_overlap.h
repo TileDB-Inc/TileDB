@@ -51,7 +51,6 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/sm/misc/tile_overlap.h"
-#include "tiledb/sm/misc/types.h"
 
 #include <iostream>
 
