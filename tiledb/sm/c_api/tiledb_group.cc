@@ -32,6 +32,7 @@
  **/
 
 #include "tiledb/sm/c_api/api_argument_validator.h"
+#include "tiledb/sm/c_api/api_exception_safety.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
@@ -39,6 +40,8 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/group/group_v1.h"
 #include "tiledb/sm/serialization/group.h"
+
+namespace tiledb::common::detail {
 
 /* ****************************** */
 /*              GROUP             */
@@ -506,4 +509,159 @@ int32_t tiledb_group_dump_str(
   (*dump_ascii)[str.size()] = '\0';
 
   return TILEDB_OK;
+}
+
+}  // namespace tiledb::common::detail
+
+int32_t tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri)
+    TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_create>(ctx, group_uri);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_alloc(
+    tiledb_ctx_t* ctx,
+    const char* group_uri,
+    tiledb_group_t** group) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_alloc>(ctx, group_uri, group);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_open(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_query_type_t query_type) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_open>(ctx, group, query_type);
+}
+
+TILEDB_EXPORT int32_t
+tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_close>(ctx, group);
+}
+
+TILEDB_EXPORT void tiledb_group_free(tiledb_group_t** group) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_free>(group);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_set_config(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_config_t* config) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_set_config>(ctx, group, config);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_get_config(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_config_t** config) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_get_config>(ctx, group, config);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_put_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* key,
+    tiledb_datatype_t value_type,
+    uint32_t value_num,
+    const void* value) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_put_metadata>(
+      ctx, group, key, value_type, value_num, value);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_delete_metadata(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* key) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_delete_metadata>(ctx, group, key);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_get_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* key,
+    tiledb_datatype_t* value_type,
+    uint32_t* value_num,
+    const void** value) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_get_metadata>(
+      ctx, group, key, value_type, value_num, value);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_get_metadata_num(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* num) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_get_metadata_num>(ctx, group, num);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_get_metadata_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    uint64_t index,
+    const char** key,
+    uint32_t* key_len,
+    tiledb_datatype_t* value_type,
+    uint32_t* value_num,
+    const void** value) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_get_metadata_from_index>(
+      ctx, group, index, key, key_len, value_type, value_num, value);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_has_metadata_key(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* key,
+    tiledb_datatype_t* value_type,
+    int32_t* has_key) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_has_metadata_key>(
+      ctx, group, key, value_type, has_key);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_add_member(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* uri,
+    const uint8_t relative) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_add_member>(ctx, group, uri, relative);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_remove_member(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* uri) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_remove_member>(ctx, group, uri);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_get_member_count(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* count) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_get_member_count>(ctx, group, count);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_get_member_by_index(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    uint64_t index,
+    char** uri,
+    tiledb_object_t* type) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_get_member_by_index>(
+      ctx, group, index, uri, type);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_is_open(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    int32_t* is_open) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_is_open>(ctx, group, is_open);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_get_uri(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char** group_uri) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_get_uri>(ctx, group, group_uri);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_get_query_type(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_query_type_t* query_type) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_get_query_type>(ctx, group, query_type);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_dump_str(
+    tiledb_ctx_t* ctx, tiledb_group_t* group, char** dump_ascii, int recursive)
+    TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_dump_str>(
+      ctx, group, dump_ascii, recursive);
 }
