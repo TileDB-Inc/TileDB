@@ -225,7 +225,8 @@ Status Group::close() {
         RETURN_NOT_OK(
             rest_client->put_group_metadata_to_rest(group_uri_, this));
       }
-      if (!members_to_remove_.empty() || !members_to_add_.empty()) {
+      if (!members_to_remove_.empty() || !members_to_add_.empty() ||
+          changes_applied_) {
         auto rest_client = storage_manager_->rest_client();
         if (rest_client == nullptr)
           return Status_GroupError(
@@ -243,7 +244,10 @@ Status Group::close() {
     if (query_type_ == QueryType::READ) {
       RETURN_NOT_OK(storage_manager_->group_close_for_reads(this));
     } else if (query_type_ == QueryType::WRITE) {
-      RETURN_NOT_OK(apply_pending_changes());
+      // If changes haven't been applied, apply them
+      if (!changes_applied_) {
+        RETURN_NOT_OK(apply_pending_changes());
+      }
       RETURN_NOT_OK(storage_manager_->group_close_for_writes(this));
     }
   }
@@ -652,6 +656,10 @@ tuple<Status, optional<URI>> Group::generate_detail_uri() const {
 
 bool Group::changes_applied() const {
   return changes_applied_;
+}
+
+void Group::set_changes_applied(const bool changes_applied) {
+  changes_applied_ = changes_applied;
 }
 
 tuple<Status, optional<uint64_t>> Group::member_count() const {

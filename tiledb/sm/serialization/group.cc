@@ -154,6 +154,8 @@ Status group_details_from_capnp(
     group->set_metadata_loaded(true);
   }
 
+  group->set_changes_applied(true);
+
   return Status::Ok();
 }
 
