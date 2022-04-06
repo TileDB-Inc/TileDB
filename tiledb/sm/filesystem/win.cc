@@ -188,7 +188,7 @@ std::string Win::current_dir() {
 Status Win::recursively_remove_directory(const std::string& path) const {
   const std::string glob = path + "\\*";
   WIN32_FIND_DATA find_data;
-  char* what_call = nullptr;
+  const char* what_call = nullptr;
 
   // Get first file in directory.
   HANDLE find_h = FindFirstFileEx(
@@ -332,7 +332,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Win::ls_with_sizes(
   const std::string glob = path + (ends_with_slash ? "*" : "\\*");
   WIN32_FIND_DATA find_data;
   std::vector<directory_entry> entries;
-  char* what_call = nullptr;
+  const char* what_call = nullptr;
 
   // Get first file in directory.
   HANDLE find_h = FindFirstFileEx(
