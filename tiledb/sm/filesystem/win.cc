@@ -90,7 +90,7 @@ std::string get_last_error_msg(
   std::string gle_desc = get_last_error_msg_desc(gle);
 
   auto buf_len = gle_desc.length() + std::strlen(func_desc) + 50;
-  auto display_buf = std::make_unique<char[]>( buf_len );
+  auto display_buf = std::make_unique<char[]>(buf_len);
   std::snprintf(
       display_buf.get(),
       buf_len,
