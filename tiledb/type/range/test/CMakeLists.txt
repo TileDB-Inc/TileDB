@@ -1,5 +1,6 @@
 #
-# tiledb/sm/subarray/CMakeLists.txt
+# tiledb/type/range/test/CMakeLists.txt
+#
 #
 # The MIT License
 #
@@ -23,26 +24,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+find_package(Catch_EP REQUIRED)
 
-include(common NO_POLICY_SCOPE)
-
-#
-# `range_subset` object library
-#
-add_library(range_subset OBJECT range_subset.cc)
-target_link_libraries(range_subset PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(range_subset PUBLIC constants $<TARGET_OBJECTS:constants>)
-target_link_libraries(range_subset PUBLIC thread_pool $<TARGET_OBJECTS:thread_pool>)
-target_link_libraries(range_subset PUBLIC range $<TARGET_OBJECTS:range>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_range_subset EXCLUDE_FROM_ALL)
-target_link_libraries(compile_range_subset PRIVATE range_subset)
-target_sources(compile_range_subset PRIVATE test/compile_range_subset_main.cc)
-
-
-if (TILEDB_TESTS)
-    add_subdirectory(test)
-endif()
+add_executable(unit_range EXCLUDE_FROM_ALL
+  main.cc
+  unit_check_range_is_subset.cc
+  unit_check_range_is_valid.cc
+  unit_crop_range.cc
+)
+target_link_libraries(unit_range
+  PRIVATE range
+  PUBLIC Catch2::Catch2
+)
+add_test(
+  NAME "unit_range"
+  COMMAND $<TARGET_FILE:unit_range>
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BUILD_DIR}
+)
