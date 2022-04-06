@@ -41,6 +41,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/type/range/range.h"
 
 #include <cassert>
 #include <iostream>
@@ -48,6 +49,7 @@
 #include <stdexcept>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
 
 namespace tiledb::sm {
 

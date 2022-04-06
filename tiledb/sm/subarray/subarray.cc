@@ -56,9 +56,11 @@
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
+using namespace tiledb::type;
 
 namespace tiledb {
 namespace sm {

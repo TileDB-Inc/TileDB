@@ -35,6 +35,7 @@
 #include <iostream>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
 
 namespace tiledb::sm {
 

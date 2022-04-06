@@ -36,13 +36,14 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/types.h"
+#include "tiledb/type/range/range.h"
 
 #include <optional>
 #include <type_traits>
 #include <vector>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
 
 namespace tiledb::sm {
 

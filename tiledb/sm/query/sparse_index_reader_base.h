@@ -37,7 +37,6 @@
 #include "reader_base.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/result_cell_slab.h"
 

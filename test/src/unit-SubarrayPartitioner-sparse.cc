@@ -47,6 +47,7 @@
 using namespace tiledb::common;
 using namespace tiledb::sm;
 using namespace tiledb::test;
+using namespace tiledb::type;
 
 /* ********************************* */
 /*         STRUCT DEFINITION         */
@@ -2286,7 +2287,7 @@ TEST_CASE_METHOD(
   // Check unsplittable
   tiledb::sm::Subarray subarray(
       array->array_, layout, &g_helper_stats, g_helper_logger());
-  tiledb::sm::Range r;
+  Range r;
   r.set_str_range("bb", "bb");
   subarray.add_range(0, std::move(r), true);
   ThreadPool tp;
@@ -2560,7 +2561,7 @@ TEST_CASE_METHOD(
 
   tiledb::sm::Subarray subarray(
       array->array_, layout, &g_helper_stats, g_helper_logger());
-  tiledb::sm::Range r;
+  Range r;
   r.set_str_range("cc", "ccd");
   subarray.add_range(0, std::move(r), true);
   ThreadPool tp;

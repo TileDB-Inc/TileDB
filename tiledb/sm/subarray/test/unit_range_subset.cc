@@ -33,11 +33,12 @@
 #include <catch.hpp>
 #include "../range_subset.h"
 #include "tiledb/common/thread_pool.h"
-#include "tiledb/sm/misc/types.h"
+#include "tiledb/type/range/range.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
+using namespace tiledb::type;
 
 // TODO: Generalize for all types
 TEST_CASE("CreateDefaultRangeSetAndSuperset") {

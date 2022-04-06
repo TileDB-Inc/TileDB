@@ -186,7 +186,7 @@ void check_subarray(
 
   // Check ranges
   uint64_t dim_range_num = 0;
-  const sm::Range* range;
+  const type::Range* range;
   for (unsigned i = 0; i < dim_num; ++i) {
     CHECK(subarray.get_range_num(i, &dim_range_num).ok());
     CHECK(dim_range_num == ranges[i].size() / 2);
@@ -264,9 +264,9 @@ void check_subarray_equiv(
 
   // Check ranges
   uint64_t dim_range_num1 = 0;
-  const sm::Range* range1;
+  const type::Range* range1;
   uint64_t dim_range_num2 = 0;
-  const sm::Range* range2;
+  const type::Range* range2;
   if (dim_num1 == dim_num2) {
     for (unsigned i = 0; i < dim_num1; ++i) {
       CHECK(subarray1.get_range_num(i, &dim_range_num1).ok());
@@ -313,9 +313,9 @@ bool subarray_equiv(
 
   // Check ranges
   uint64_t dim_range_num1 = 0;
-  const sm::Range* range1;
+  const type::Range* range1;
   uint64_t dim_range_num2 = 0;
-  const sm::Range* range2;
+  const type::Range* range2;
   if (dim_num1 == dim_num2) {
     for (unsigned i = 0; i < dim_num1; ++i) {
       equiv_state &= (subarray1.get_range_num(i, &dim_range_num1).ok());
@@ -725,7 +725,7 @@ void create_subarray(
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim_range_num = ranges[d].size() / 2;
     for (size_t j = 0; j < dim_range_num; ++j) {
-      sm::Range range(&ranges[d][2 * j], 2 * sizeof(T));
+      type::Range range(&ranges[d][2 * j], 2 * sizeof(T));
       ret.add_range(d, std::move(range), true);
     }
   }

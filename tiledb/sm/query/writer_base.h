@@ -37,7 +37,6 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
-#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/dense_tiler.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query.h"

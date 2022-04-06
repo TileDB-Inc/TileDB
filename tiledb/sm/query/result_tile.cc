@@ -35,6 +35,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/type/range/range.h"
 
 #include <cassert>
 #include <iostream>
@@ -42,6 +43,7 @@
 #include <numeric>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
 
 namespace tiledb {
 namespace sm {
