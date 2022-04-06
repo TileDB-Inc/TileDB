@@ -26,27 +26,20 @@
 
 find_package(Catch_EP REQUIRED)
 
-add_executable(unit_dimension_label EXCLUDE_FROM_ALL)
+add_executable(unit_dimension_label
+    EXCLUDE_FROM_ALL
+    main.cc
+    unit_dimension_label_base_schema.cc
+    unit_uniform_dimension_label.cc
+    unit_uniform_mapping.cc
+    )
 target_link_libraries(unit_dimension_label
     PRIVATE dimension_label
     PUBLIC Catch2::Catch2
     )
-target_sources(unit_dimension_label PUBLIC main.cc unit_dimension_label.cc)
+#target_sources(unit_uniform_dimension_label PUBLIC main.cc unit_uniform_dimension_label.cc)
 add_test(
     NAME "unit_dimension_label"
     COMMAND $<TARGET_FILE:unit_dimension_label>
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-
-add_executable(unit_uniform_mapping EXCLUDE_FROM_ALL)
-target_link_libraries(unit_uniform_mapping
-    PRIVATE uniform_mapping
-    PUBLIC Catch2::Catch2
-    )
-target_sources(unit_uniform_mapping PUBLIC main.cc unit_uniform_mapping.cc)
-add_test(
-    NAME "unit_uniform_mapping"
-    COMMAND $<TARGET_FILE:unit_uniform_mapping>
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )

@@ -44,6 +44,9 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class Buffer;
+class ConstBuffer;
+
 /**
  * A TileDB dimension label.
  *
@@ -72,78 +75,6 @@ namespace tiledb::sm {
  */
 class DimensionLabel {
  public:
-  /* No default constructor: not C.41 compliant. */
-  DimensionLabel() = delete;
-
-  /* Private constructor.
-   *
-   * @param label_type The dimension label type.
-   * @param name Name of the dimension label.
-   * @param label_datatype The TileDB datatype of the label.
-   * @param label_cell_val_num The number of values per cell for the label.
-   * @param label_domain The label domain. A pair of [lower, upper] bounds.
-   * @param index_datatype The TileDB datatype of the original dimension.
-   * @param index_cell_val_num The number of values per cell for the original
-   * dimension.
-   * @param index_domain The domain of the original domain. A pair of [lower,
-   * upper] bounds.
-   * @parame label_map Internal mapping from labels to indices.
-   * */
-  explicit DimensionLabel(
-      LabelType label_type,
-      const std::string& name,
-      Datatype label_datatype,
-      uint32_t label_cell_val_num,
-      const Range& label_domain,
-      Datatype index_datatype,
-      uint32_t index_cell_val_num,
-      const Range& index_domain,
-      shared_ptr<DimensionLabelMapping> label_map);
-
-  /**
-   * A factory for creating an uniform (evenly-spaced) virtual dimension label.
-   *
-   * @param name Name of the dimension label.
-   * @param label_datatype The TileDB datatype of the label.
-   * @param label_cell_val_num The number of values per cell for the label.
-   * @param label_domain The label domain. A pair of [lower, upper] bounds.
-   * @param index_datatype The TileDB datatype of the original dimension.
-   * @param index_cell_val_num The number of values per cell for the original
-   * dimension.
-   * @param index_domain The domain of the original domain. A pair of [lower,
-   * upper] bounds.
-   **/
-  static tuple<Status, shared_ptr<DimensionLabel>> create_uniform(
-      const std::string& name,
-      Datatype label_datatype,
-      uint32_t label_cell_val_num,
-      const Range& label_domain,
-      Datatype index_datatype,
-      uint32_t index_cell_val_num,
-      const Range& index_domain);
-
-  /**
-   * Returns success status and a range on the dimension coordinates that
-   * matches the label range.
-   *
-   * This function will be used to convert from a labelled Subarray to an
-   * un-labelled subarray.
-   *
-   * The index range that is returned from this function will map to the same
-   * region of the array as the input label range. The lower bound of the
-   * returned index range may round up to the nearest valid value. Similarly,
-   * the upper bound may round down to the nearest valid valid.
-   *
-   * If the input label range is out-of-bounds of the array, the status will
-   * return an error.
-   *
-   * @param label_range A range of a label coordinates. The label must be a
-   * valid non-empty range with ordered data of the label datatype.
-   * @returns {status, range} The status of the conversion and the output index
-   * range that covers the same region of the array as in the input label.
-   **/
-  tuple<Status, Range> index_range(const Range& label_range) const;
-
   /** The core data required for all dimension labels. */
   struct BaseSchema {
     /** No default constructor: not C.41 compliant. */
@@ -151,7 +82,6 @@ class DimensionLabel {
 
     /** Constructor. */
     BaseSchema(
-        LabelType label_type,
         const std::string& name,
         Datatype label_datatype,
         uint32_t label_cell_val_num,
@@ -159,14 +89,6 @@ class DimensionLabel {
         Datatype index_datatype,
         uint32_t index_cell_val_num,
         const Range& index_domain);
-
-    /** The type of the dimension
-     *
-     * Possible types include:
-     *
-     * * LABEL_UNIFORM: A uniform (evenly space) virtual dimension label.
-     **/
-    LabelType label_type;
 
     /** The dimension label name. */
     std::string name;
@@ -190,9 +112,164 @@ class DimensionLabel {
      * The domain of the original dimension. A pair of [lower, upper] bounds.
      */
     Range index_domain;
+
+    /**
+     * Populates the object members from the data in the input binary buffer.
+     *
+     * @param buff THe buffer to deserialize from.
+     * @param version The format spec version.
+     * @param index_datatype Datatype of the dimension the dimension label is
+     * attached to.
+     * @param index_cell_val_num Number of values per cell of the dimension the
+     * dimension label is attached to.
+     * @param index_domain The domain of the dimension the dimension label is
+     * attached to.
+     * @returns {status, dimension_label} The status of the deserialization and
+     * a pointer to the deserialized dimension label.
+     */
+    static tuple<Status, optional<DimensionLabel::BaseSchema>> deserialize(
+        ConstBuffer* buff,
+        uint32_t version,
+        Datatype index_datatype,
+        uint32_t index_cell_val_num,
+        const Range& index_domain);
+
+    /**
+     * Serializes the object members into a binary buffer.
+     *
+     * @param buff The buffer to serialize the data into.
+     * @param version The format spec version.
+     * @returns The status of the serialization.
+     */
+    Status serialize(Buffer* buff, uint32_t version) const;
   };
 
+  /* No default constructor: not C.41 compliant. */
+  DimensionLabel() = delete;
+
+  /* Constructor.
+   *
+   * @param label_type The dimension label type.
+   * @param schema Fundamental data required for all dimension labels.
+   * @param label_map Internal mapping from labels to indices.
+   **/
+  explicit DimensionLabel(
+      LabelType label_type,
+      DimensionLabel::BaseSchema& schema,
+      shared_ptr<DimensionLabelMapping> label_map);
+
+  /**
+   * A factory for creating an uniform (evenly-spaced) virtual dimension label.
+   *
+   * @param schema Fundamental data required for all dimension labels.
+   **/
+  static tuple<Status, shared_ptr<DimensionLabel>> create_uniform(
+      DimensionLabel::BaseSchema&& schema);
+  /**
+   * Populates the object members from the data in the input binary buffer.
+   *
+   * @param buff THe buffer to deserialize from.
+   * @param version The format spec version.
+   * @param index_datatype Datatype of the dimension the dimension label is
+   * attached to.
+   * @param index_cell_val_num Number of values per cell of the dimension the
+   * dimension label is attached to.
+   * @param index_domain The domain of the dimension the dimension label is
+   * attached to.
+   * @returns {status, dimension_label} The status of the deserialization and
+   * a pointer to the deserialized dimension label.
+   */
+  static tuple<Status, shared_ptr<DimensionLabel>> deserialize(
+      ConstBuffer* buff,
+      uint32_t version,
+      Datatype index_datatype,
+      uint32_t index_cell_val_num,
+      const Range& index_domain);
+
+  /** Returns the number of values per cell for the index. */
+  inline uint32_t index_cell_val_num() const {
+    return schema_.index_cell_val_num;
+  }
+
+  /** Returns the datatype of the original dimension. */
+  inline Datatype index_datatype() const {
+    return schema_.index_datatype;
+  }
+
+  /**
+   * Returnd the domain of the original dimension. A pair of [lower, upper]
+   * bounds.
+   **/
+  inline const Range& index_domain() const {
+    return schema_.index_domain;
+  }
+
+  /**
+   * Returns success status and a range on the dimension coordinates that
+   * matches the label range.
+   *
+   * This function will be used to convert from a labelled Subarray to an
+   * un-labelled subarray.
+   *
+   * The index range that is returned from this function will map to the same
+   * region of the array as the input label range. The lower bound of the
+   * returned index range may round up to the nearest valid value. Similarly,
+   * the upper bound may round down to the nearest valid valid.
+   *
+   * If the input label range is out-of-bounds of the array, the status will
+   * return an error.
+   *
+   * @param label_range A range of a label coordinates. The label must be a
+   * valid non-empty range with ordered data of the label datatype.
+   * @returns {status, range} The status of the conversion and the output index
+   * range that covers the same region of the array as in the input label.
+   **/
+  tuple<Status, Range> index_range(const Range& label_range) const;
+
+  /** Returns the number of values per cell for the label. */
+  inline uint32_t label_cell_val_num() const {
+    return schema_.label_cell_val_num;
+  }
+
+  /** Returns the datatype of the label. */
+  inline Datatype label_datatype() const {
+    return schema_.label_datatype;
+  }
+
+  /** Returns the domain of the label. A pair of [lower, upper] bounds. */
+  inline const Range& label_domain() const {
+    return schema_.label_domain;
+  }
+
+  /** Returns the type of the dimension label. */
+  inline LabelType label_type() const {
+    return label_type_;
+  }
+
+  /** Returns the name of the dimension label. */
+  inline const std::string& name() const {
+    return schema_.name;
+  }
+
+  /**
+   * Serializes the object members into a binary buffer.
+   *
+   * @param buff The buffer to serialize the data into.
+   * @param version The format spec version.
+   * @returns The status of the serialization.
+   */
+  Status serialize(Buffer* buff, uint32_t version) const;
+
  private:
+  /**
+   * The type of the dimension label.
+   *
+   * Possible types include:
+   *
+   *  * LABEL_UNIFORM: A uniform (evenly space) virtual dimension label.
+   **/
+  LabelType label_type_;
+
   /** Core data needed for all dimension label types. */
   BaseSchema schema_;
 

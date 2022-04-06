@@ -31,6 +31,7 @@
  */
 
 #include "dimension_label.h"
+#include "tiledb/sm/buffer/buffer.h"
 
 namespace tiledb::sm {
 
@@ -40,59 +41,67 @@ namespace tiledb::sm {
 
 DimensionLabel::DimensionLabel(
     LabelType label_type,
-    const std::string& name,
-    Datatype label_datatype,
-    uint32_t label_cell_val_num,
-    const Range& label_domain,
-    Datatype index_datatype,
-    uint32_t index_cell_val_num,
-    const Range& index_domain,
+    DimensionLabel::BaseSchema& schema,
     shared_ptr<DimensionLabelMapping> label_index_map)
-    : schema_(
-          label_type,
-          name,
-          label_datatype,
-          label_cell_val_num,
-          label_domain,
-          index_datatype,
-          index_cell_val_num,
-          index_domain)
+    : label_type_(label_type)
+    , schema_(schema)
     , label_index_map_(label_index_map) {
 }
 
 tuple<Status, shared_ptr<DimensionLabel>> DimensionLabel::create_uniform(
-    const std::string& name,
-    Datatype label_datatype,
-    uint32_t label_cell_val_num,
-    const Range& label_domain,
-    Datatype index_datatype,
-    uint32_t index_cell_val_num,
-    const Range& index_domain) {
-  if (label_cell_val_num != 1 || index_cell_val_num != 1)
+    DimensionLabel::BaseSchema&& schema) {
+  if (schema.label_cell_val_num != 1 || schema.index_cell_val_num != 1)
     return {Status_DimensionLabelError(
                 "Unable to create uniform dimension label; both label and "
                 "index must have cell value of length 1"),
             nullptr};
   try {
-    return {
-        Status::Ok(),
-        make_shared<DimensionLabel>(
-            HERE(),
-            LabelType::LABEL_UNIFORM,
-            name,
-            label_datatype,
-            label_cell_val_num,
-            label_domain,
-            index_datatype,
-            index_cell_val_num,
-            index_domain,
-            create_uniform_mapping(
-                label_datatype, label_domain, index_datatype, index_domain))};
+    return {Status::Ok(),
+            make_shared<DimensionLabel>(
+                HERE(),
+                LabelType::LABEL_UNIFORM,
+                schema,
+                create_uniform_mapping(
+                    schema.label_datatype,
+                    schema.label_domain,
+                    schema.index_datatype,
+                    schema.index_domain))};
   } catch (std::logic_error& err) {
     std::string msg{err.what()};
     return {Status_DimensionLabelError(
                 "Unable to create uniform dimension label; " + msg),
             nullptr};
+  }
+}
+
+tuple<Status, shared_ptr<DimensionLabel>> DimensionLabel::deserialize(
+    ConstBuffer* buff,
+    uint32_t version,
+    Datatype index_datatype,
+    uint32_t index_cell_val_num,
+    const Range& index_domain) {
+  // Load dimension label type
+  uint8_t label_type_data{};
+  auto status = buff->read(&label_type_data, sizeof(uint8_t));
+  if (!status.ok())
+    return {status, nullptr};
+  LabelType label_type{label_type_data};
+  // Load base dimension label data
+  auto&& [schema_status, schema] = DimensionLabel::BaseSchema::deserialize(
+      buff, version, index_datatype, index_cell_val_num, index_domain);
+  if (!status.ok())
+    return {status, nullptr};
+  // Load mapping parameters and data type.
+  switch (label_type) {
+    case LabelType::LABEL_UNIFORM:
+      return DimensionLabel::create_uniform(std::move(schema.value()));
+    default:
+      return {
+          Status_DimensionLabelError(
+              "Unabel to create dimension label; The requested dimension label "
+              "type is not supported " +
+              label_type_str(label_type)),
+          nullptr};
   }
 }
 
@@ -107,12 +116,23 @@ tuple<Status, Range> DimensionLabel::index_range(const Range& labels) const {
   }
 }
 
+Status DimensionLabel::serialize(Buffer* buff, uint32_t version) const {
+  // Write the dimension label type.
+  auto label_type_data = static_cast<uint8_t>(label_type_);
+  RETURN_NOT_OK(buff->write(&label_type_data, sizeof(uint8_t)));
+  // Write base schema.
+  RETURN_NOT_OK(schema_.serialize(buff, version));
+  // Write metadata for specific mapping - currently always zero.
+  uint32_t num_metadata{0};
+  RETURN_NOT_OK(buff->write(&num_metadata, sizeof(uint32_t)));
+  return Status::Ok();
+}
+
 /************************************************/
 /*        Dimension Label Base Schema           */
 /************************************************/
 
 DimensionLabel::BaseSchema::BaseSchema(
-    LabelType label_type,
     const std::string& name,
     Datatype label_datatype,
     uint32_t label_cell_val_num,
@@ -120,14 +140,106 @@ DimensionLabel::BaseSchema::BaseSchema(
     Datatype index_datatype,
     uint32_t index_cell_val_num,
     const Range& index_domain)
-    : label_type(label_type)
-    , name(name)
+    : name(name)
     , label_datatype(label_datatype)
     , label_cell_val_num(label_cell_val_num)
     , label_domain(label_domain)
     , index_datatype(index_datatype)
     , index_cell_val_num(index_cell_val_num)
     , index_domain(index_domain) {
+}
+
+// Format:
+// dimension label size (uint32_t)
+// dimension label name (c-string)
+// label datatype (uint8_t)
+// label number of values per cell (uint32_t)
+// label domain size (uint64_t)
+// label domain (void* - domain size)
+// label metadata size (uint32_t - specific to filter type)
+// label metadata (specific to filter type)
+tuple<Status, optional<DimensionLabel::BaseSchema>>
+DimensionLabel::BaseSchema::deserialize(
+    ConstBuffer* buff,
+    uint32_t,
+    Datatype index_datatype,
+    uint32_t index_cell_val_num,
+    const Range& index_domain) {
+  // Load dimension label name
+  uint32_t dimension_name_size;
+  auto status = buff->read(&dimension_name_size, sizeof(uint32_t));
+  if (!status.ok())
+    return {status, nullopt};
+  std::string name;
+  name.resize(dimension_name_size);
+  status = buff->read(&name[0], dimension_name_size);
+  if (!status.ok())
+    return {status, nullopt};
+  // Load label datatype
+  uint8_t datatype_data{};
+  status = buff->read(&datatype_data, sizeof(uint8_t));
+  if (!status.ok())
+    return {status, nullopt};
+  Datatype label_datatype{datatype_data};
+  // Load the number values in a cell for the label
+  uint32_t label_cell_val_num{};
+  status = buff->read(&label_cell_val_num, sizeof(uint32_t));
+  if (!status.ok())
+    return {status, nullopt};
+  // Load the label domain
+  uint64_t domain_size{};
+  status = buff->read(&domain_size, sizeof(uint64_t));
+  if (!status.ok())
+    return {status, nullopt};
+  Range label_domain;
+  if (domain_size != 0) {
+    std::vector<uint8_t> tmp(domain_size);
+    status = buff->read(&tmp[0], domain_size);
+    label_domain = Range(&tmp[0], domain_size);
+  }
+  return {Status::Ok(),
+          DimensionLabel::BaseSchema(
+              name,
+              label_datatype,
+              label_cell_val_num,
+              label_domain,
+              index_datatype,
+              index_cell_val_num,
+              index_domain)};
+}
+
+// Format:
+// dimension label size (uint32_t)
+// dimension label name (c-string)
+// label datatype (uint8_t)
+// label number of values per cell (uint32_t)
+// label domain size (uint64_t)
+// label domain (void* - domain size)
+// label metadata size (uint32_t - specific to filter type)
+// label metadata (specific to filter type)
+Status DimensionLabel::BaseSchema::serialize(Buffer* buff, uint32_t) const {
+  // Write the dimension label name size and name
+  auto name_size = (uint32_t)name.size();
+  RETURN_NOT_OK(buff->write(&name_size, sizeof(uint32_t)));
+  RETURN_NOT_OK(buff->write(name.c_str(), name_size));
+  // Write the dimension label datatype
+  auto label_datatype_data = static_cast<uint8_t>(label_datatype);
+  RETURN_NOT_OK(buff->write(&label_datatype_data, sizeof(uint8_t)));
+  // Write the dimension label number of values per cell
+  RETURN_NOT_OK(buff->write(&label_cell_val_num, sizeof(uint32_t)));
+  // Write the dimension label domain size and domain
+  if (datatype_is_string(label_datatype)) {
+    // sanity check: domain should be empty for string datatypes
+    if (!label_domain.empty())
+      throw std::logic_error("Domain should be empty for string dimensions");
+    uint64_t domain_size{0};
+    RETURN_NOT_OK(buff->write(&domain_size, sizeof(uint64_t)));
+  } else {
+    uint64_t domain_size{2 * datatype_size(label_datatype)};
+    RETURN_NOT_OK(buff->write(&domain_size, sizeof(uint64_t)));
+    RETURN_NOT_OK(buff->write(label_domain.data(), domain_size));
+  }
+  return Status::Ok();
 }
 
 }  // namespace tiledb::sm
