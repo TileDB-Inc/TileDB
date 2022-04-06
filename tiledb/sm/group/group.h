@@ -76,6 +76,13 @@ class Group {
   Status close();
 
   /**
+   * Clear a group
+   *
+   * @return
+   */
+  Status clear();
+
+  /**
    * Deletes metadata from an group opened in WRITE mode.
    *
    * @param key The key of the metadata item to be deleted.

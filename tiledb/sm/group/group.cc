@@ -466,6 +466,16 @@ Status Group::set_config(Config config) {
   return Status::Ok();
 }
 
+Status Group::clear() {
+  members_.clear();
+  members_vec_.clear();
+  members_to_remove_.clear();
+  members_to_add_.clear();
+  changes_applied_ = false;
+
+  return Status::Ok();
+}
+
 Status Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   const std::string& uri = group_member->uri().to_string();
