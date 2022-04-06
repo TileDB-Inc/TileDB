@@ -1,5 +1,5 @@
 /**
- * @file untyped_datum.h
+ * @file compile_domain_main.cc
  *
  * @section LICENSE
  *
@@ -26,35 +26,9 @@
  * THE SOFTWARE.
  */
 
-#ifndef TILEDB_COMMON_UNTYPED_DATUM_H
-#define TILEDB_COMMON_UNTYPED_DATUM_H
+#include "../domain.h"
 
-#include <ostream>
-
-namespace tiledb::common {
-
-/**
- * A non-owning view of a datum of any type.
- */
-class UntypedDatumView {
-  const void* datum_content_;
-  size_t datum_size_;
-
- public:
-  UntypedDatumView(const void* content, size_t size)
-      : datum_content_(content)
-      , datum_size_(size) {
-  }
-  [[nodiscard]] inline const void* content() const {
-    return datum_content_;
-  }
-  [[nodiscard]] inline size_t size() const {
-    return datum_size_;
-  }
-  template <class T>
-  [[nodiscard]] inline const T& value_as() const {
-    return *static_cast<const T*>(datum_content_);
-  }
-};
-}  // namespace tiledb::common
-#endif  // TILEDB_COMMON_UNTYPED_DATUM_H
+int main() {
+  (void)sizeof(tiledb::sm::Domain);
+  return 0;
+}
