@@ -47,8 +47,8 @@
 #endif
 #include <Shlwapi.h>
 #include <Windows.h>
-#include <wininet.h>  // For INTERNET_MAX_URL_LENGTH
 #include <strsafe.h>
+#include <wininet.h>  // For INTERNET_MAX_URL_LENGTH
 #include <algorithm>
 #include <cassert>
 #include <fstream>
@@ -63,7 +63,8 @@ namespace sm {
 
 namespace {
 /** Returns the last Windows error message string. */
-std::string get_last_error_msg(decltype(GetLastError()) gle, const char* func_desc = "") {
+std::string get_last_error_msg(
+    decltype(GetLastError()) gle, const char* func_desc = "") {
   DWORD err = gle;
   LPVOID lpMsgBuf;
   if (FormatMessage(
@@ -82,14 +83,14 @@ std::string get_last_error_msg(decltype(GetLastError()) gle, const char* func_de
   lpDisplayBuf = (LPVOID)LocalAlloc(
       LMEM_ZEROINIT,
       (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)func_desc) + 40) *
-          sizeof(TCHAR)); 
+          sizeof(TCHAR));
   StringCchPrintf(
-    (LPTSTR)lpDisplayBuf,
-    LocalSize(lpDisplayBuf) / sizeof(TCHAR),
-    TEXT("%s gle %d: %s"),
-    func_desc,
-    err,
-    lpMsgBuf); 
+      (LPTSTR)lpDisplayBuf,
+      LocalSize(lpDisplayBuf) / sizeof(TCHAR),
+      TEXT("%s gle %d: %s"),
+      func_desc,
+      err,
+      lpMsgBuf);
 
   std::string msg(reinterpret_cast<char*>(lpDisplayBuf));
   LocalFree(lpMsgBuf);
@@ -119,7 +120,8 @@ std::string Win::abs_path(const std::string& path) {
   std::string str_result;
   if (PathCanonicalize(result, full_path.c_str()) == FALSE) {
     auto gle = GetLastError();
-    LOG_STATUS(Status_IOError(std::string("Cannot canonicalize path. (" + get_last_error_msg(gle, "PC")  + ")")));
+    LOG_STATUS(Status_IOError(std::string(
+        "Cannot canonicalize path. (" + get_last_error_msg(gle, "PC") + ")")));
   } else {
     str_result = result;
   }
@@ -154,7 +156,7 @@ Status Win::touch(const std::string& filename) const {
       FILE_ATTRIBUTE_NORMAL,
       nullptr);
   if (auto gle = GetLastError();
-       file_h == INVALID_HANDLE_VALUE || CloseHandle(file_h) == 0) {
+      file_h == INVALID_HANDLE_VALUE || CloseHandle(file_h) == 0) {
     return LOG_STATUS(Status_IOError(
         std::string("Failed to create file '") + filename + " (" +
         get_last_error_msg(gle, "CF/CH") + ")'"));
@@ -225,8 +227,8 @@ err:
   if (find_h != INVALID_HANDLE_VALUE) {
     FindClose(find_h);
   }
-  return LOG_STATUS(
-      Status_IOError(std::string("Failed to remove directory '" + path + "' " + get_last_error_msg(gle) )));
+  return LOG_STATUS(Status_IOError(std::string(
+      "Failed to remove directory '" + path + "' " + get_last_error_msg(gle))));
 }
 
 Status Win::remove_dir(const std::string& path) const {
@@ -240,8 +242,8 @@ Status Win::remove_dir(const std::string& path) const {
 
 Status Win::remove_file(const std::string& path) const {
   if (!DeleteFile(path.c_str())) {
-    return LOG_STATUS(
-        Status_IOError(std::string("Failed to delete file '" + path + "' " + get_last_error_msg() )));
+    return LOG_STATUS(Status_IOError(std::string(
+        "Failed to delete file '" + path + "' " + get_last_error_msg())));
   }
   return Status::Ok();
 }
@@ -258,15 +260,14 @@ Status Win::file_size(const std::string& path, uint64_t* size) const {
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(Status_IOError(std::string(
-        "Failed to get file size for '" + path + 
-        + " (" + get_last_error_msg("CF") +
-        ")'")));
+        "Failed to get file size for '" + path + +" (" +
+        get_last_error_msg("CF") + ")'")));
   }
   if (!GetFileSizeEx(file_h, &nbytes)) {
     CloseHandle(file_h);
     return LOG_STATUS(Status_IOError(std::string(
-        "Failed to get file size for '" + path +
-        + " (" +  get_last_error_msg("CFSE") + ")'")));
+        "Failed to get file size for '" + path + +" (" +
+        get_last_error_msg("CFSE") + ")'")));
   }
   *size = nbytes.QuadPart;
   CloseHandle(file_h);
@@ -353,7 +354,8 @@ err:
   if (find_h != INVALID_HANDLE_VALUE) {
     FindClose(find_h);
   }
-  std::string errmsg("Failed to list directory \"" + path + "\" " + get_last_error_msg(gle));
+  std::string errmsg(
+      "Failed to list directory \"" + path + "\" " + get_last_error_msg(gle));
   auto st = LOG_STATUS(Status_IOError(errmsg));
   return {st, nullopt};
 }
@@ -364,7 +366,7 @@ Status Win::move_path(
           old_path.c_str(), new_path.c_str(), MOVEFILE_REPLACE_EXISTING) == 0) {
     return LOG_STATUS(Status_IOError(std::string(
         "Failed to rename '" + old_path + "' to '" + new_path + "'. (" +
-        get_last_error_msg("MFE") + ")" )));
+        get_last_error_msg("MFE") + ")")));
   }
   return Status::Ok();
 }
@@ -387,7 +389,7 @@ Status Win::read(
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File opening error (" +
-        get_last_error_msg("CF") + ")" ));
+        get_last_error_msg("CF") + ")"));
   }
 
   LARGE_INTEGER offset_lg_int;
@@ -396,7 +398,8 @@ Status Win::read(
     auto gle = GetLastError();
     CloseHandle(file_h);
     return LOG_STATUS(Status_IOError(
-        "Cannot read from file '" + path + "'; File seek error " + get_last_error_msg(gle)));
+        "Cannot read from file '" + path + "'; File seek error " +
+        get_last_error_msg(gle)));
   }
 
   unsigned long num_bytes_read = 0;
@@ -405,13 +408,16 @@ Status Win::read(
     auto gle = GetLastError();
     CloseHandle(file_h);
     return LOG_STATUS(Status_IOError(
-        "Cannot read from file '" + path + "'; File read error " 
-        + ( gle != 0 ? get_last_error_msg(gle, "RF") : "num_bytes_read " + std::to_string(num_bytes_read) + " != nbyes " + std::to_string(nbytes)) ));
+        "Cannot read from file '" + path + "'; File read error " +
+        (gle != 0 ? get_last_error_msg(gle, "RF") :
+                    "num_bytes_read " + std::to_string(num_bytes_read) +
+                        " != nbyes " + std::to_string(nbytes))));
   }
 
   if (CloseHandle(file_h) == 0) {
     return LOG_STATUS(Status_IOError(
-        "Cannot read from file '" + path + "'; File closing error " + get_last_error_msg()));
+        "Cannot read from file '" + path + "'; File closing error " +
+        get_last_error_msg()));
   }
 
   return Status::Ok();
@@ -433,20 +439,23 @@ Status Win::sync(const std::string& path) const {
       FILE_ATTRIBUTE_NORMAL,
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
-    return LOG_STATUS(
-        Status_IOError("Cannot sync file '" + path + "'; File opening error" + get_last_error_msg("CF")));
+    return LOG_STATUS(Status_IOError(
+        "Cannot sync file '" + path + "'; File opening error" +
+        get_last_error_msg("CF")));
   }
 
   if (FlushFileBuffers(file_h) == 0) {
     auto gle = GetLastError();
     CloseHandle(file_h);
-    return LOG_STATUS(
-        Status_IOError("Cannot sync file '" + path + "'; Sync error " + get_last_error_msg(gle, "FFB")));
+    return LOG_STATUS(Status_IOError(
+        "Cannot sync file '" + path + "'; Sync error " +
+        get_last_error_msg(gle, "FFB")));
   }
 
   if (CloseHandle(file_h) == 0) {
     return LOG_STATUS(Status_IOError(
-        "Cannot read from file '" + path + "'; File closing error " + get_last_error_msg()));
+        "Cannot read from file '" + path + "'; File closing error " +
+        get_last_error_msg()));
   }
 
   return Status::Ok();
