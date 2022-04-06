@@ -63,10 +63,9 @@ namespace sm {
 
 namespace {
 /** Returns the last Windows error message string. */
-std::string get_last_error_msg(
-    decltype(GetLastError()) gle, const char* func_desc = "") {
+std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
   DWORD err = gle;
-  LPVOID lpMsgBuf;
+  LPVOID lpMsgBuf = nullptr;
   if (FormatMessage(
           FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
               FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -76,25 +75,32 @@ std::string get_last_error_msg(
           (LPTSTR)&lpMsgBuf,
           0,
           NULL) == 0) {
-    LocalFree(lpMsgBuf);
+    if (lpMsgBuf) {
+      LocalFree(lpMsgBuf);
+    }
     return "unknown error";
   }
-  LPVOID lpDisplayBuf;
-  lpDisplayBuf = (LPVOID)LocalAlloc(
-      LMEM_ZEROINIT,
-      (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)func_desc) + 40) *
-          sizeof(TCHAR));
-  StringCchPrintf(
-      (LPTSTR)lpDisplayBuf,
-      LocalSize(lpDisplayBuf) / sizeof(TCHAR),
-      TEXT("%s gle %d: %s"),
-      func_desc,
-      err,
-      lpMsgBuf);
-
-  std::string msg(reinterpret_cast<char*>(lpDisplayBuf));
+  std::string msg(reinterpret_cast<char*>(lpMsgBuf));
   LocalFree(lpMsgBuf);
-  LocalFree(lpDisplayBuf);
+  return msg;
+}
+
+std::string get_last_error_msg(
+    decltype(GetLastError()) gle, const TCHAR* func_desc = "") {
+  std::string gle_desc = get_last_error_msg_desc(gle);
+  char* lpDisplayBuf;
+
+  auto buf_len = gle_desc.length() + std::strlen(func_desc) + 40;
+  std::shared_ptr<char[]> display_buf(new char[buf_len]);
+  std::snprintf(
+      display_buf.get(),
+      buf_len,
+      "%s gle %d: %s",
+      func_desc,
+      gle,
+      gle_desc.c_str());
+  std::string msg(display_buf.get());
+
   return msg;
 }
 std::string get_last_error_msg(const char* func_desc = "") {
@@ -121,7 +127,8 @@ std::string Win::abs_path(const std::string& path) {
   if (PathCanonicalize(result, full_path.c_str()) == FALSE) {
     auto gle = GetLastError();
     LOG_STATUS(Status_IOError(std::string(
-        "Cannot canonicalize path. (" + get_last_error_msg(gle, "PC") + ")")));
+        "Cannot canonicalize path. (" +
+        get_last_error_msg(gle, "PathCanonicalize") + ")")));
   } else {
     str_result = result;
   }
@@ -137,7 +144,7 @@ Status Win::create_dir(const std::string& path) const {
   if (CreateDirectory(path.c_str(), nullptr) == 0) {
     return LOG_STATUS(Status_IOError(
         std::string("Cannot create directory '") + path +
-        "': " + get_last_error_msg("CD")));
+        "': " + get_last_error_msg("CreateDirectory")));
   }
   return Status::Ok();
 }
@@ -159,7 +166,7 @@ Status Win::touch(const std::string& filename) const {
       file_h == INVALID_HANDLE_VALUE || CloseHandle(file_h) == 0) {
     return LOG_STATUS(Status_IOError(
         std::string("Failed to create file '") + filename + " (" +
-        get_last_error_msg(gle, "CF/CH") + ")'"));
+        get_last_error_msg(gle, "CreateFile") + ")'"));
   }
   return Status::Ok();
 }
@@ -170,7 +177,8 @@ std::string Win::current_dir() {
   char* path = (char*)tdb_malloc(length * sizeof(char));
   if (path == nullptr || GetCurrentDirectory(length, path) == 0) {
     LOG_STATUS(Status_IOError(std::string(
-        "Failed to get current directory. " + get_last_error_msg("GCD"))));
+        "Failed to get current directory. " +
+        get_last_error_msg("GetCurrentDirectory"))));
   }
   dir = path;
   tdb_free(path);
@@ -180,6 +188,7 @@ std::string Win::current_dir() {
 Status Win::recursively_remove_directory(const std::string& path) const {
   const std::string glob = path + "\\*";
   WIN32_FIND_DATA find_data;
+  char* what_call = nullptr;
 
   // Get first file in directory.
   HANDLE find_h = FindFirstFileEx(
@@ -190,6 +199,7 @@ Status Win::recursively_remove_directory(const std::string& path) const {
       nullptr,
       0);
   if (find_h == INVALID_HANDLE_VALUE) {
+    what_call = "FindFirstFileEx";
     goto err;
   }
 
@@ -200,10 +210,12 @@ Status Win::recursively_remove_directory(const std::string& path) const {
       std::string file_path = path + "\\" + find_data.cFileName;
       if (PathIsDirectory(file_path.c_str())) {
         if (!recursively_remove_directory(file_path).ok()) {
+          what_call = "recursively_remove_directory";
           goto err;
         }
       } else {
         if (!remove_file(file_path).ok()) {
+          what_call = "remove_file";
           goto err;
         }
       }
@@ -216,6 +228,7 @@ Status Win::recursively_remove_directory(const std::string& path) const {
   }
 
   if (RemoveDirectory(path.c_str()) == 0) {
+    what_call = "RemoveDirectory";
     goto err;
   }
 
@@ -227,8 +240,14 @@ err:
   if (find_h != INVALID_HANDLE_VALUE) {
     FindClose(find_h);
   }
+  std::string offender = __func__;
+  if (what_call) {
+    offender.append(" ");
+    offender.append(what_call);
+  }
   return LOG_STATUS(Status_IOError(std::string(
-      "Failed to remove directory '" + path + "' " + get_last_error_msg(gle))));
+      "Failed to remove directory '" + path + "' " +
+      get_last_error_msg(gle, offender.c_str()))));
 }
 
 Status Win::remove_dir(const std::string& path) const {
@@ -243,7 +262,8 @@ Status Win::remove_dir(const std::string& path) const {
 Status Win::remove_file(const std::string& path) const {
   if (!DeleteFile(path.c_str())) {
     return LOG_STATUS(Status_IOError(std::string(
-        "Failed to delete file '" + path + "' " + get_last_error_msg())));
+        "Failed to delete file '" + path + "' " +
+        get_last_error_msg("DeleteFile"))));
   }
   return Status::Ok();
 }
@@ -261,13 +281,13 @@ Status Win::file_size(const std::string& path, uint64_t* size) const {
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(Status_IOError(std::string(
         "Failed to get file size for '" + path + +" (" +
-        get_last_error_msg("CF") + ")'")));
+        get_last_error_msg("CreateFile") + ")'")));
   }
   if (!GetFileSizeEx(file_h, &nbytes)) {
     CloseHandle(file_h);
     return LOG_STATUS(Status_IOError(std::string(
         "Failed to get file size for '" + path + +" (" +
-        get_last_error_msg("CFSE") + ")'")));
+        get_last_error_msg("GetFileSizeEx") + ")'")));
   }
   *size = nbytes.QuadPart;
   CloseHandle(file_h);
@@ -312,6 +332,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Win::ls_with_sizes(
   const std::string glob = path + (ends_with_slash ? "*" : "\\*");
   WIN32_FIND_DATA find_data;
   std::vector<directory_entry> entries;
+  char* what_call = nullptr;
 
   // Get first file in directory.
   HANDLE find_h = FindFirstFileEx(
@@ -322,6 +343,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Win::ls_with_sizes(
       nullptr,
       0);
   if (find_h == INVALID_HANDLE_VALUE) {
+    what_call = "FindFirstFileEx";
     goto err;
   }
 
@@ -354,8 +376,14 @@ err:
   if (find_h != INVALID_HANDLE_VALUE) {
     FindClose(find_h);
   }
+  std::string offender = __func__;
+  if (what_call) {
+    offender.append(" ");
+    offender.append(what_call);
+  }
   std::string errmsg(
-      "Failed to list directory \"" + path + "\" " + get_last_error_msg(gle));
+      "Failed to list directory \"" + path + "\" " +
+      get_last_error_msg(gle, offender.c_str()));
   auto st = LOG_STATUS(Status_IOError(errmsg));
   return {st, nullopt};
 }
@@ -366,7 +394,7 @@ Status Win::move_path(
           old_path.c_str(), new_path.c_str(), MOVEFILE_REPLACE_EXISTING) == 0) {
     return LOG_STATUS(Status_IOError(std::string(
         "Failed to rename '" + old_path + "' to '" + new_path + "'. (" +
-        get_last_error_msg("MFE") + ")")));
+        get_last_error_msg("MoveFileEx") + ")")));
   }
   return Status::Ok();
 }
@@ -389,7 +417,7 @@ Status Win::read(
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File opening error (" +
-        get_last_error_msg("CF") + ")"));
+        get_last_error_msg("CreateFile") + ")"));
   }
 
   LARGE_INTEGER offset_lg_int;
@@ -399,7 +427,7 @@ Status Win::read(
     CloseHandle(file_h);
     return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File seek error " +
-        get_last_error_msg(gle)));
+        get_last_error_msg(gle, "SetFilePointerEx")));
   }
 
   unsigned long num_bytes_read = 0;
@@ -409,7 +437,7 @@ Status Win::read(
     CloseHandle(file_h);
     return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File read error " +
-        (gle != 0 ? get_last_error_msg(gle, "RF") :
+        (gle != 0 ? get_last_error_msg(gle, "ReadFile") :
                     "num_bytes_read " + std::to_string(num_bytes_read) +
                         " != nbyes " + std::to_string(nbytes))));
   }
@@ -417,7 +445,7 @@ Status Win::read(
   if (CloseHandle(file_h) == 0) {
     return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File closing error " +
-        get_last_error_msg()));
+        get_last_error_msg("CloseHandle")));
   }
 
   return Status::Ok();
@@ -441,7 +469,7 @@ Status Win::sync(const std::string& path) const {
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(Status_IOError(
         "Cannot sync file '" + path + "'; File opening error" +
-        get_last_error_msg("CF")));
+        get_last_error_msg("CreateFile")));
   }
 
   if (FlushFileBuffers(file_h) == 0) {
@@ -449,13 +477,13 @@ Status Win::sync(const std::string& path) const {
     CloseHandle(file_h);
     return LOG_STATUS(Status_IOError(
         "Cannot sync file '" + path + "'; Sync error " +
-        get_last_error_msg(gle, "FFB")));
+        get_last_error_msg(gle, "FlushFileBuffers")));
   }
 
   if (CloseHandle(file_h) == 0) {
     return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File closing error " +
-        get_last_error_msg()));
+        get_last_error_msg("CloseHandle")));
   }
 
   return Status::Ok();
@@ -487,7 +515,7 @@ Status Win::write(
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(Status_IOError(
         "Cannot write to file '" + path + "'; File opening error " +
-        get_last_error_msg("CF")));
+        get_last_error_msg("CreateFile")));
   }
   // Get the current file size.
   LARGE_INTEGER file_size_lg_int;
@@ -496,7 +524,7 @@ Status Win::write(
     CloseHandle(file_h);
     return LOG_STATUS(Status_IOError(
         "Cannot write to file '" + path + "'; File size error " +
-        get_last_error_msg(gle, "GFSE")));
+        get_last_error_msg(gle, "GetFileSizeEx")));
   }
   uint64_t file_offset = file_size_lg_int.QuadPart;
   // Ensure that each thread is responsible for at least min_parallel_size
@@ -570,7 +598,7 @@ Status Win::write_at(
         bytes_written != constants::max_write_bytes) {
       return LOG_STATUS(Status_IOError(std::string(
           "Cannot write to file; File writing error: " +
-          get_last_error_msg("WF"))));
+          get_last_error_msg("WriteFile"))));
     }
     buffer_size -= constants::max_write_bytes;
     byte_idx += constants::max_write_bytes;
@@ -587,7 +615,7 @@ Status Win::write_at(
       bytes_written != buffer_size) {
     return LOG_STATUS(Status_IOError(std::string(
         "Cannot write to file; File writing error: " +
-        get_last_error_msg("WF"))));
+        get_last_error_msg("WriteFile"))));
   }
   return Status::Ok();
 }
