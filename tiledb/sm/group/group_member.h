@@ -45,6 +45,20 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+/** Return a Status_GroupDirectoryError error class Status with a given
+ * message **/
+inline Status Status_GroupDirectoryError(const std::string& msg) {
+  return {"[TileDB::GroupDirectory] Error", msg};
+}
+/** Return an Group error class Status with a given message **/
+inline Status Status_GroupError(const std::string& msg) {
+  return {"[TileDB::Group] Error", msg};
+}
+/** Return an GroupMember error class Status with a given message **/
+inline Status Status_GroupMemberError(const std::string& msg) {
+  return {"[TileDB::GroupMember] Error", msg};
+}
+
 class GroupMember {
  public:
   GroupMember(

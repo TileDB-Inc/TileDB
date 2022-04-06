@@ -415,7 +415,9 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate_fragments(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_alloc(
-    tiledb_ctx_t* ctx, const char* group_uri, tiledb_group_t** group);
+    tiledb_ctx_t* ctx,
+    const char* group_uri,
+    tiledb_group_t** group) TILEDB_NOEXCEPT;
 
 /**
  * Opens a TileDB group. The group is opened using a query type as input.
@@ -447,7 +449,9 @@ TILEDB_EXPORT int32_t tiledb_group_alloc(
  *       the group object before opening the group.
  */
 TILEDB_EXPORT int32_t tiledb_group_open(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, tiledb_query_type_t query_type);
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_query_type_t query_type) TILEDB_NOEXCEPT;
 
 /**
  * Closes a TileDB group.
@@ -469,7 +473,7 @@ TILEDB_EXPORT int32_t tiledb_group_open(
  *     no effect.
  */
 TILEDB_EXPORT int32_t
-tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group);
+tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group) TILEDB_NOEXCEPT;
 
 /**
  * Creates a new TileDB group.
@@ -484,7 +488,7 @@ tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group);
  *
  * @param group The TileDB group to be freed
  */
-TILEDB_EXPORT void tiledb_group_free(tiledb_group_t** group);
+TILEDB_EXPORT void tiledb_group_free(tiledb_group_t** group) TILEDB_NOEXCEPT;
 
 /**
  * Sets the group config.
@@ -510,7 +514,9 @@ TILEDB_EXPORT void tiledb_group_free(tiledb_group_t** group);
  * @note The config should be set before opening an group.
  */
 TILEDB_EXPORT int32_t tiledb_group_set_config(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, tiledb_config_t* config);
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /**
  * Gets the group config.
@@ -529,7 +535,9 @@ TILEDB_EXPORT int32_t tiledb_group_set_config(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_get_config(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, tiledb_config_t** config);
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_config_t** config) TILEDB_NOEXCEPT;
 
 /**
  * It puts a metadata key-value item to an open group. The group must
@@ -554,7 +562,7 @@ TILEDB_EXPORT int32_t tiledb_group_put_metadata(
     const char* key,
     tiledb_datatype_t value_type,
     uint32_t value_num,
-    const void* value);
+    const void* value) TILEDB_NOEXCEPT;
 
 /**
  * It deletes a metadata key-value item from an open group. The group must
@@ -571,7 +579,7 @@ TILEDB_EXPORT int32_t tiledb_group_put_metadata(
  *     (i.e., the function will not error out).
  */
 TILEDB_EXPORT int32_t tiledb_group_delete_metadata(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* key);
+    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* key) TILEDB_NOEXCEPT;
 
 /**
  * It gets a metadata key-value item from an open group. The group must
@@ -597,7 +605,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_metadata(
     const char* key,
     tiledb_datatype_t* value_type,
     uint32_t* value_num,
-    const void** value);
+    const void** value) TILEDB_NOEXCEPT;
 
 /**
  * It gets then number of metadata items in an open group. The group must
@@ -609,7 +617,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_metadata(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_get_metadata_num(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* num);
+    tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* num) TILEDB_NOEXCEPT;
 
 /**
  * It gets a metadata item from an open group using an index.
@@ -636,7 +644,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_metadata_from_index(
     uint32_t* key_len,
     tiledb_datatype_t* value_type,
     uint32_t* value_num,
-    const void** value);
+    const void** value) TILEDB_NOEXCEPT;
 
 /**
  * Checks whether a key exists in metadata from an open group. The group must
@@ -656,7 +664,7 @@ TILEDB_EXPORT int32_t tiledb_group_has_metadata_key(
     tiledb_group_t* group,
     const char* key,
     tiledb_datatype_t* value_type,
-    int32_t* has_key);
+    int32_t* has_key) TILEDB_NOEXCEPT;
 
 /**
  * Add a member to a group
@@ -681,7 +689,7 @@ TILEDB_EXPORT int32_t tiledb_group_add_member(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* uri,
-    const uint8_t relative);
+    const uint8_t relative) TILEDB_NOEXCEPT;
 
 /**
  * Remove a member from a group
@@ -699,7 +707,7 @@ TILEDB_EXPORT int32_t tiledb_group_add_member(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_remove_member(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* uri);
+    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* uri) TILEDB_NOEXCEPT;
 
 /**
  * Get the count of members in a group
@@ -724,7 +732,7 @@ TILEDB_EXPORT int32_t tiledb_group_remove_member(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_get_member_count(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* count);
+    tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* count) TILEDB_NOEXCEPT;
 
 /**
  * Get a member of a group by index and details of group
@@ -761,7 +769,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_member_by_index(
     tiledb_group_t* group,
     uint64_t index,
     char** uri,
-    tiledb_object_t* type);
+    tiledb_object_t* type) TILEDB_NOEXCEPT;
 
 /**
  * Checks if the group is open.
@@ -772,7 +780,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_member_by_index(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_is_open(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, int32_t* is_open);
+    tiledb_ctx_t* ctx, tiledb_group_t* group, int32_t* is_open) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the URI the group was opened with. It outputs an error
@@ -784,7 +792,9 @@ TILEDB_EXPORT int32_t tiledb_group_is_open(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_get_uri(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, const char** group_uri);
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char** group_uri) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the query type with which the group was opened.
@@ -805,7 +815,9 @@ TILEDB_EXPORT int32_t tiledb_group_get_uri(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_get_query_type(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, tiledb_query_type_t* query_type);
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_query_type_t* query_type) TILEDB_NOEXCEPT;
 
 /**
  * Dump a string representation of a group
@@ -818,7 +830,8 @@ TILEDB_EXPORT int32_t tiledb_group_get_query_type(
  * @return  `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_dump_str(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, char** dump_ascii, int recursive);
+    tiledb_ctx_t* ctx, tiledb_group_t* group, char** dump_ascii, int recursive)
+    TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }
