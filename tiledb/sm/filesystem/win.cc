@@ -88,15 +88,15 @@ std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
 std::string get_last_error_msg(
     decltype(GetLastError()) gle, const TCHAR* func_desc = "") {
   std::string gle_desc = get_last_error_msg_desc(gle);
-  char* lpDisplayBuf;
 
-  auto buf_len = gle_desc.length() + std::strlen(func_desc) + 40;
+  auto buf_len = gle_desc.length() + std::strlen(func_desc) + 50;
   std::shared_ptr<char[]> display_buf(new char[buf_len]);
   std::snprintf(
       display_buf.get(),
       buf_len,
-      "%s gle %d: %s",
+      "%s gle %lu (0x%08lx): %s",
       func_desc,
+      gle,
       gle,
       gle_desc.c_str());
   std::string msg(display_buf.get());
