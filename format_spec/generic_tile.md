@@ -1,4 +1,6 @@
-# Generic Tile
+---
+title: Generic Tile
+---
 
 The generic tile is a [tile](./tile.md) prepended with some extra header data, so that it can be used stand-alone without requiring extra information from the array schema. A generic tile has the following on-disk format:
 

@@ -1,4 +1,6 @@
-# Array Schema
+---
+title: Array Schema
+---
 
 ## Current Array Schema Version
 

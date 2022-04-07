@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,7 @@
 #include <vector>
 
 #include "tiledb/common/types/dynamic_typed_datum.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/query/result_tile.h"
 
 using namespace tiledb::common;
@@ -114,16 +115,13 @@ struct ResultCoords {
     return tile_->coord(pos_, dim_idx);
   }
 
-  inline DynamicTypedDatumView dimension_datum(
+  inline UntypedDatumView dimension_datum(
       const Dimension& dim, unsigned dim_idx) const {
-    auto type = dim.type();
     if (dim.var_size()) {
       auto x{tile_->coord_string(pos_, dim_idx)};
-      return tdb::DynamicTypedDatumView{UntypedDatumView{x.data(), x.size()},
-                                        type};
+      return tdb::UntypedDatumView{x.data(), x.size()};
     } else {
-      return tdb::DynamicTypedDatumView{
-          UntypedDatumView{coord(dim_idx), dim.coord_size()}, type};
+      return tdb::UntypedDatumView{coord(dim_idx), dim.coord_size()};
     }
   }
 

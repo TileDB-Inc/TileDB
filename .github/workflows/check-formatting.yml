@@ -1,7 +1,15 @@
 name: check-formatting
 on:
   push:
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
   pull_request:
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
 
 jobs:
   build:

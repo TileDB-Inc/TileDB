@@ -1,4 +1,6 @@
-# Vacuum File
+---
+title: Vacuum File
+---
 
 A vacuum file has name `__t1_t2_uuid_v.vac` and can be located either in the array commit folder:
 

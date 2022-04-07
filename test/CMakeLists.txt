@@ -109,7 +109,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/helpers-dimension.h
   src/unit-azure.cc
   src/unit-backwards_compat.cc
-  src/unit-buffer.cc
   src/unit-bufferlist.cc
   src/unit-capi-any.cc
   src/unit-capi-array.cc

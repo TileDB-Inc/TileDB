@@ -270,15 +270,15 @@ Status WriterBase::add_written_fragment_info(const URI& uri) {
 }
 
 Status WriterBase::calculate_hilbert_values(
-    const std::vector<const QueryBuffer*>& buffs,
-    std::vector<uint64_t>* hilbert_values) const {
+    const DomainBuffersView& domain_buffers,
+    std::vector<uint64_t>& hilbert_values) const {
   auto dim_num = array_schema_.dim_num();
   Hilbert h(dim_num);
   auto bits = h.bits();
   auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   // Calculate Hilbert values in parallel
-  assert(hilbert_values->size() >= coords_info_.coords_num_);
+  assert(hilbert_values.size() >= coords_info_.coords_num_);
   auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
@@ -288,9 +288,9 @@ Status WriterBase::calculate_hilbert_values(
         for (uint32_t d = 0; d < dim_num; ++d) {
           auto dim = array_schema_.dimension(d);
           coords[d] = hilbert_order::map_to_uint64(
-              *dim, buffs[d], c, bits, max_bucket_val);
+              *dim, domain_buffers[d], c, bits, max_bucket_val);
         }
-        (*hilbert_values)[c] = h.coords_to_hilbert(&coords[0]);
+        hilbert_values[c] = h.coords_to_hilbert(&coords[0]);
 
         return Status::Ok();
       });

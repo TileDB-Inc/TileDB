@@ -134,5 +134,5 @@ TEST_CASE(
   meta.value()->get("key3", &type, &v_num, (const void**)(&v_3));
   CHECK(type == Datatype::STRING_ASCII);
   CHECK(v_num == value_3_size);
-  CHECK(std::string(v_3) == value_3);
+  CHECK(std::string(v_3, value_3_size) == value_3);
 }

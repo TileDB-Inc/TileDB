@@ -126,6 +126,7 @@ option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
 option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit tests" OFF)
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
+option(TILEDB_EXPERIMENTAL_FEATURES "If true, build and include experimental features" OFF)
 option(TILEDB_LEGACY_THREAD_POOL "Use legacy thread pool" OFF)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
@@ -173,6 +174,11 @@ endif()
 # When building static TileDB, we also need to install any static dependencies
 # built as external projects.
 set(TILEDB_INSTALL_STATIC_DEPS ${TILEDB_STATIC})
+
+# Set main TileDB Source
+set(TILEDB_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tiledb")
+# Set experimental TileDB Source
+set(TILEDB_EXPERIMENTAL_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/experimental")
 
 # Perform superbuild config and exit.
 if (TILEDB_SUPERBUILD)
@@ -273,6 +279,9 @@ endif()
 # Enable testing
 enable_testing()
 
+# Build the TileDB library experimental features
+add_subdirectory(experimental)
+
 # Build the TileDB library
 add_subdirectory(tiledb)
 
@@ -286,7 +295,9 @@ if (TILEDB_TESTS)
   # Add cmake target for "tests" to build all unit tests executables
   add_custom_target(tests)
   add_dependencies(tests tiledb_unit)
-  add_dependencies(tests unit_interval unit_datum unit_dynamic_memory unit_exception unit_thread_pool)
+
+  add_dependencies(tests unit_buffer unit_datum unit_dynamic_memory)
+  add_dependencies(tests unit_exception unit_interval unit_thread_pool)
   add_dependencies(tests unit_array_schema unit_filter_create unit_filter_pipeline unit_metadata)
   add_dependencies(tests unit_compressors)
   add_dependencies(tests unit_range_subset)
