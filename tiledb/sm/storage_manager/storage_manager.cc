@@ -1713,10 +1713,10 @@ Status StorageManager::load_array_metadata(
   stats_->add_counter("read_array_meta_size", meta_size);
 
   // Deserialize metadata buffers
-  metadata->deserialize(metadata_buffs);
+  RETURN_NOT_OK(metadata->deserialize(metadata_buffs));
 
   // Sets the loaded metadata URIs
-  metadata->set_loaded_metadata_uris(array_metadata_to_load);
+  RETURN_NOT_OK(metadata->set_loaded_metadata_uris(array_metadata_to_load));
 
   return Status::Ok();
 }
