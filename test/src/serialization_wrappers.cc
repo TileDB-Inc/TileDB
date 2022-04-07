@@ -82,3 +82,21 @@ int tiledb_array_create_serialization_wrapper(
 
   return rc;
 }
+
+int tiledb_group_serialize(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group_serialized,
+    tiledb_group_t* group_deserialized,
+    tiledb_serialization_type_t serialize_type) {
+  // Serialize and Deserialize
+  tiledb_buffer_t* buffer;
+  int rc =
+      tiledb_serialize_group(ctx, group_serialized, serialize_type, 1, &buffer);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_deserialize_group(
+      ctx, buffer, serialize_type, 0, group_deserialized);
+  REQUIRE(rc == TILEDB_OK);
+
+  return rc;
+}
