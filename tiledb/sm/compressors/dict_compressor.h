@@ -34,6 +34,7 @@
 #define TILEDB_DICT_COMPRESSOR_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/misc/endian.h"
 
 #include <map>
@@ -48,6 +49,20 @@ namespace sm {
 /** Handles dictionary compression/decompression of variable sized strings. */
 class DictEncoding {
  public:
+  // TODO: add docstring
+  static std::vector<std::string_view> compress(
+      const span<std::string_view> input,
+      uint64_t word_id_size,
+      span<std::byte> output);
+
+  // TODO: add docstring
+  static void decompress(
+      const span<const std::byte> input,
+      const std::vector<std::string_view>& dict,
+      uint64_t word_id_size,
+      span<std::byte> output,
+      span<uint64_t> output_offsets);
+
   /**
    * Compress variable sized strings into dictionary encoded format
    *
@@ -63,7 +78,7 @@ class DictEncoding {
    */
   template <class T>
   static std::vector<std::string_view> compress(
-      const span<std::string_view> input, span<T> output) {
+      const span<std::string_view> input, span<std::byte> output) {
     if (input.empty() || output.empty()) {
       return {};
     }
@@ -73,7 +88,9 @@ class DictEncoding {
     std::vector<std::string_view> dict;
     dict.reserve(input.size());
     T word_id = 0;
+    const auto word_id_size = sizeof(T);
     std::unordered_map<std::string_view, T> word_ids;
+    auto out_offset = &output[0];
 
     for (uint64_t i = 0; i < input.size(); i++) {
       // If we haven't seen that string before, add it to the dictionary
@@ -82,7 +99,8 @@ class DictEncoding {
         word_ids[input[i]] = word_id++;
       }
 
-      output[i] = word_ids[input[i]];
+      utils::endianness::encode_be<T>(word_ids[input[i]], out_offset);
+      out_offset += word_id_size;
     }
 
     return dict;
@@ -98,24 +116,29 @@ class DictEncoding {
    * each word
    * @param output Dictionary-encoded output as a series of ids of size T.
    * Memory is allocated and owned by the caller
+   * @param output_offsets Output offsets reconstructed from decoding the
+   * Dictionary compressed input. Memory is allocated and owned by the caller
    */
   template <class T>
   static void decompress(
-      const span<T> input,
+      const span<const std::byte> input,
       const std::vector<std::string_view>& dict,
-      span<std::byte> output) {
+      span<std::byte> output,
+      span<uint64_t> output_offsets) {
     if (input.empty() || output.empty() || dict.size() == 0) {
       return;
     }
 
     T word_id = 0;
-    uint64_t in_index = 0, out_index = 0;
+    size_t in_index = 0, out_index = 0, offset_index = 0;
 
     while (in_index < input.size()) {
-      word_id = input[in_index++];
+      word_id = utils::endianness::decode_be<T>(&input[in_index]);
+      in_index++;
       assert(word_id < dict.size());
       auto word = dict[word_id];
       memcpy(&output[out_index], word.data(), word.size());
+      output_offsets[offset_index++] = out_index;
       out_index += word.size();
     }
   }

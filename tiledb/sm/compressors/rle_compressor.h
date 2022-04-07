@@ -98,9 +98,9 @@ class RLE {
     if (input.empty() || output.empty())
       return;
 
-    const uint64_t run_size = sizeof(T);
-    const uint64_t str_len_size = sizeof(P);
-    const uint64_t max_run_length = std::numeric_limits<T>::max();
+    const size_t run_size = sizeof(T);
+    const size_t str_len_size = sizeof(P);
+    const size_t max_run_length = std::numeric_limits<T>::max();
 
     T run_length = 1;
     auto out_offset = &output[0];
@@ -142,6 +142,8 @@ class RLE {
    * decompress
    * @param output Decoded output as a series of strings in contiguous memory.
    * Memory is allocated and owned by the caller
+   * @param output_offsets Output offsets reconstructed from decoding the RLE
+   * compressed input. Memory is allocated and owned by the caller
    */
   template <class T, class P>
   static void decompress(
@@ -156,10 +158,10 @@ class RLE {
 
     T run_length = 0;
     P string_length = 0;
-    uint64_t out_offset = 0;
+    size_t out_offset = 0;
     size_t offset_index = 0;
     // Iterate input to read [run length|string size|string] items
-    uint64_t in_index = 0;
+    size_t in_index = 0;
     while (in_index < input.size()) {
       run_length = utils::endianness::decode_be<T>(&input[in_index]);
       in_index += run_size;
