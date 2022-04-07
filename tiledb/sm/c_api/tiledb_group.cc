@@ -591,7 +591,7 @@ tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group) TILEDB_NOEXCEPT {
 }
 
 TILEDB_EXPORT void tiledb_group_free(tiledb_group_t** group) TILEDB_NOEXCEPT {
-  return api_entry<detail::tiledb_group_free>(group);
+  return api_entry_void<detail::tiledb_group_free>(group);
 }
 
 TILEDB_EXPORT int32_t tiledb_group_set_config(
