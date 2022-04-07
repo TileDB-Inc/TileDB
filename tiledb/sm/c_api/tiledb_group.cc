@@ -713,8 +713,10 @@ TILEDB_EXPORT int32_t tiledb_group_get_query_type(
 }
 
 TILEDB_EXPORT int32_t tiledb_group_dump_str(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, char** dump_ascii, int recursive)
-    TILEDB_NOEXCEPT {
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    char** dump_ascii,
+    const uint8_t recursive) TILEDB_NOEXCEPT {
   return api_entry<detail::tiledb_group_dump_str>(
       ctx, group, dump_ascii, recursive);
 }
