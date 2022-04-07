@@ -140,6 +140,7 @@ Status Group::open(QueryType query_type) {
   changes_applied_ = false;
   members_to_remove_.clear();
   members_to_add_.clear();
+  members_.clear();
 
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
@@ -255,6 +256,7 @@ Status Group::close() {
   metadata_.clear();
   metadata_loaded_ = false;
   is_open_ = false;
+  clear();
 
   return Status::Ok();
 }
