@@ -1433,7 +1433,7 @@ StorageManager::load_array_schema_from_uri(
   ConstBuffer cbuff(&buff);
   auto deserialized_schema{ArraySchema::deserialize(&cbuff, schema_uri)};
 
-  return {Status::Ok(), deserialized_schema};
+  return {Status::Ok(), make_shared<ArraySchema>(HERE(), deserialized_schema)};
 }
 
 tuple<Status, optional<shared_ptr<ArraySchema>>>

@@ -74,45 +74,34 @@ class ArraySchema {
   ArraySchema(ArrayType array_type);
 
   /** Constructor.
-   * @param allows_dups True if the (sparse) array allows coordinate duplicates.
-   * @param array_uri An array name attached to the schema object.
+   * @param uri The URI of the array schema file.
+   * @param version The format version of this array schema.
    * @param array_type The array type.
-   * @param attribute_map Maps each name to the corresponding attribute object.
-   * @param attributes The array attributes.
-   * @param capacity The tile capacity for the case of sparse fragments.
+   * @param allows_dups True if the (sparse) array allows coordinate duplicates.
+   * @param domain The array domain.
    * @param cell_order The cell order.
+   * @param tile_order The tile order.
+   * @param capacity The tile capacity for the case of sparse fragments.
+   * @param attributes The array attributes.
    * @param cell_var_offsets_filters
    *    The filter pipeline run on offset tiles for var-length attributes.
    * @param cell_validity_filters
    *    The filter pipeline run on validity tiles for nullable attributes.
    * @param coords_filters The filter pipeline run on coordinate tiles.
-   * @param dim_map Maps each name to the corresponding dimension object.
-   * @param domain The array domain.
-   * @param tile_order The tile order.
-   * @param version The format version of this array schema.
-   * @param timestamp_range The timestamp the array schema was written.
-   * @param uri The URI of the array schema file.
-   * @param name
-   *    The file name of array schema in the format of timestamp_timestamp_uuid.
    **/
   ArraySchema(
-      bool allows_dups,
-      URI array_uri,
+      URI uri,
+      uint32_t version,
       ArrayType array_type,
-      std::unordered_map<std::string, const Attribute*> attribute_map,
-      std::vector<shared_ptr<const Attribute>> attributes,
-      uint64_t capacity,
+      bool allows_dups,
+      shared_ptr<Domain> domain,
       Layout cell_order,
+      Layout tile_order,
+      uint64_t capacity,
+      std::vector<shared_ptr<const Attribute>> attributes,
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
-      FilterPipeline coords_filters,
-      std::unordered_map<std::string, shared_ptr<const Dimension>> dim_map,
-      shared_ptr<Domain> domain,
-      Layout tile_order,
-      uint32_t version,
-      std::pair<uint64_t, uint64_t> timestamp_range,
-      URI uri,
-      std::string name);
+      FilterPipeline coords_filters);
 
   /**
    * Constructor. Clones the input.
@@ -299,8 +288,7 @@ class ArraySchema {
    * @param uri An optional uri object.
    * @return A new ArraySchema.
    */
-  static shared_ptr<ArraySchema> deserialize(
-      ConstBuffer* buff, const URI& uri = URI());
+  static ArraySchema deserialize(ConstBuffer* buff, const URI& uri);
 
   /** Returns the array domain. */
   inline const Domain& domain() const {
@@ -396,17 +384,59 @@ class ArraySchema {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The URI of the array schema file. */
+  URI uri_;
+
+  /** An array name attached to the schema object. */
+  URI array_uri_;
+
+  /** The format version of this array schema. */
+  uint32_t version_;
+
+  /**
+   * The timestamp the array schema was written.
+   * This is used to determine the array schema file name.
+   * The two timestamps are identical.
+   * It is stored as a pair to keep the usage consistent with metadata
+   */
+  std::pair<uint64_t, uint64_t> timestamp_range_;
+
+  /** The file name of array schema in the format of timestamp_timestamp_uuid */
+  std::string name_;
+
+  /** The array type. */
+  ArrayType array_type_;
+
   /**
    * True if the array allows coordinate duplicates. Applicable only
    * to sparse arrays.
    */
   bool allows_dups_;
 
-  /** An array name attached to the schema object. */
-  URI array_uri_;
+  /** The array domain. */
+  shared_ptr<Domain> domain_;
 
-  /** The array type. */
-  ArrayType array_type_;
+  /** It maps each dimension name to the corresponding dimension object. */
+  std::unordered_map<std::string, shared_ptr<const Dimension>> dim_map_;
+
+  /**
+   * The cell order. It can be one of the following:
+   *    - TILEDB_ROW_MAJOR
+   *    - TILEDB_COL_MAJOR
+   */
+  Layout cell_order_;
+
+  /**
+   * The tile order. It can be one of the following:
+   *    - TILEDB_ROW_MAJOR
+   *    - TILEDB_COL_MAJOR
+   */
+  Layout tile_order_;
+
+  /**
+   * The tile capacity for the case of sparse fragments.
+   */
+  uint64_t capacity_;
 
   /** It maps each attribute name to the corresponding attribute object.
    * Lifespan is maintained by the shared_ptr in attributes_. */
@@ -415,17 +445,6 @@ class ArraySchema {
   /** The array attributes.
    * Maintains lifespan for elements in both attributes_ and attribute_map_. */
   std::vector<shared_ptr<const Attribute>> attributes_;
-  /**
-   * The tile capacity for the case of sparse fragments.
-   */
-  uint64_t capacity_;
-
-  /**
-   * The cell order. It can be one of the following:
-   *    - TILEDB_ROW_MAJOR
-   *    - TILEDB_COL_MAJOR
-   */
-  Layout cell_order_;
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;
@@ -436,38 +455,8 @@ class ArraySchema {
   /** The filter pipeline run on coordinate tiles. */
   FilterPipeline coords_filters_;
 
-  /** It maps each dimension name to the corresponding dimension object. */
-  std::unordered_map<std::string, shared_ptr<const Dimension>> dim_map_;
-
-  /** The array domain. */
-  shared_ptr<Domain> domain_;
-
-  /**
-   * The tile order. It can be one of the following:
-   *    - TILEDB_ROW_MAJOR
-   *    - TILEDB_COL_MAJOR
-   */
-  Layout tile_order_;
-
-  /** The format version of this array schema. */
-  uint32_t version_;
-
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
-
-  /**
-   * The timestamp the array schema was written.
-   * This is used to determine the array schema file name.
-   * The two timestamps are identical.
-   * It is stored as a pair to keep the usage consistent with metadata
-   */
-  std::pair<uint64_t, uint64_t> timestamp_range_;
-
-  /** The URI of the array schema file. */
-  URI uri_;
-
-  /** The file name of array schema in the format of timestamp_timestamp_uuid */
-  std::string name_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
