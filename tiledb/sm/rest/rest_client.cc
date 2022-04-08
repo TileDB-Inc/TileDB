@@ -925,7 +925,14 @@ Status RestClient::post_array_schema_evolution_to_rest(
 Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
   if (group == nullptr)
     return LOG_STATUS(Status_RestError(
-        "Error getting group metadata from REST; group is null."));
+        "Error posting group metadata from REST; group is null."));
+
+  Buffer buff;
+  RETURN_NOT_OK(serialization::config_serialize(
+      group->config(), serialization_type_, &buff, true));
+  // Wrap in a list
+  BufferList serialized;
+  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -939,8 +946,13 @@ Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
 
   // Get the data
   Buffer returned_data;
-  RETURN_NOT_OK(curlc.get_data(
-      stats_, url, serialization_type_, &returned_data, cache_key));
+  RETURN_NOT_OK(curlc.post_data(
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(Status_RestError(
         "Error getting group metadata from REST; server returned no data."));
@@ -957,8 +969,8 @@ Status RestClient::put_group_metadata_to_rest(const URI& uri, Group* group) {
         "Error posting group metadata to REST; group is null."));
 
   Buffer buff;
-  RETURN_NOT_OK(serialization::metadata_serialize(
-      group->metadata(), serialization_type_, &buff));
+  RETURN_NOT_OK(serialization::group_metadata_serialize(
+      group, serialization_type_, &buff));
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));

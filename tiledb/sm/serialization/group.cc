@@ -64,6 +64,21 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
+Status group_metadata_to_capnp(
+    const Group* group, capnp::GroupMetadata::Builder* group_metadata_builder) {
+  // Set config
+  auto config_builder = group_metadata_builder->initConfig();
+  RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
+
+  const Metadata* metadata = group->metadata();
+  if (metadata->num()) {
+    auto metadata_builder = group_metadata_builder->initMetadata();
+    RETURN_NOT_OK(metadata_to_capnp(metadata, &metadata_builder));
+  }
+
+  return Status::Ok();
+}
+
 Status group_member_to_capnp(
     const tdb_shared_ptr<GroupMember>& group_member,
     capnp::GroupMember::Builder* group_member_builder) {
@@ -686,6 +701,60 @@ Status group_create_serialize(
   return Status::Ok();
 }
 
+Status group_metadata_serialize(
+    const Group* group,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    capnp::GroupMetadata::Builder group_metadata_builder =
+        message.initRoot<capnp::GroupMetadata>();
+    RETURN_NOT_OK(group_metadata_to_capnp(group, &group_metadata_builder));
+
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        json.handleByAnnotation<capnp::GroupCreate>();
+        kj::String capnp_json = json.encode(group_metadata_builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
+        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
+        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status_SerializationError(
+            "Error serializing group metadata; Unknown serialization type "
+            "passed"));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing group metadata; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing group metadata; exception " +
+        std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
 #else
 
 Status group_serialize(const Group*, SerializationType, Buffer*) {
@@ -719,6 +788,11 @@ Status group_update_deserialize(Group*, SerializationType, const Buffer&) {
 }
 
 Status group_create_serialize(const Group*, SerializationType, Buffer*) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot serialize; serialization not enabled."));
+}
+
+Status group_metadata_serialize(const Group*, SerializationType, Buffer*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

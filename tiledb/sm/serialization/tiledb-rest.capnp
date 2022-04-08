@@ -623,6 +623,14 @@ struct EstimatedResultSize {
   memorySizes @1 :Map(Text, MemorySize);
 }
 
+struct GroupMetadata {
+  config @0 :Config;
+  # Config
+
+  metadata  @1 :ArrayMetadata;
+  # metadata attached to group
+}
+
 struct GroupMember {
   uri @0 :Text;
   # URI of group Member

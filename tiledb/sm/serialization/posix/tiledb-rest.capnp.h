@@ -64,6 +64,7 @@ CAPNP_DECLARE_SCHEMA(926fe1c3b12ed651);
 CAPNP_DECLARE_SCHEMA(8cd4e323f1feea3b);
 CAPNP_DECLARE_SCHEMA(92c8467685565269);
 CAPNP_DECLARE_SCHEMA(bda7916926591c22);
+CAPNP_DECLARE_SCHEMA(838188de0fd57580);
 CAPNP_DECLARE_SCHEMA(c41bcc7e8cc58f18);
 CAPNP_DECLARE_SCHEMA(dcdd20e1b79e915a);
 CAPNP_DECLARE_SCHEMA(a2ea10c715b475c1);
@@ -971,6 +972,23 @@ struct EstimatedResultSize::MemorySize {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(bda7916926591c22, 3, 0)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct GroupMetadata {
+  GroupMetadata() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(838188de0fd57580, 0, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -8023,6 +8041,127 @@ class EstimatedResultSize::MemorySize::Pipeline {
   inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {
   }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class GroupMetadata::Reader {
+ public:
+  typedef GroupMetadata Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasConfig() const;
+  inline ::tiledb::sm::serialization::capnp::Config::Reader getConfig() const;
+
+  inline bool hasMetadata() const;
+  inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Reader getMetadata()
+      const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class GroupMetadata::Builder {
+ public:
+  typedef GroupMetadata Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasConfig();
+  inline ::tiledb::sm::serialization::capnp::Config::Builder getConfig();
+  inline void setConfig(
+      ::tiledb::sm::serialization::capnp::Config::Reader value);
+  inline ::tiledb::sm::serialization::capnp::Config::Builder initConfig();
+  inline void adoptConfig(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
+  disownConfig();
+
+  inline bool hasMetadata();
+  inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Builder
+  getMetadata();
+  inline void setMetadata(
+      ::tiledb::sm::serialization::capnp::ArrayMetadata::Reader value);
+  inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Builder
+  initMetadata();
+  inline void adoptMetadata(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayMetadata>&&
+          value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayMetadata>
+  disownMetadata();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class GroupMetadata::Pipeline {
+ public:
+  typedef GroupMetadata Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+  inline ::tiledb::sm::serialization::capnp::Config::Pipeline getConfig();
+  inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Pipeline
+  getMetadata();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -17059,6 +17198,113 @@ inline void EstimatedResultSize::MemorySize::Builder::setSizeValidity(
     ::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool GroupMetadata::Reader::hasConfig() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool GroupMetadata::Builder::hasConfig() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::Config::Reader
+GroupMetadata::Reader::getConfig() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
+          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::Config::Builder
+GroupMetadata::Builder::getConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Config::Pipeline
+GroupMetadata::Pipeline::getConfig() {
+  return ::tiledb::sm::serialization::capnp::Config::Pipeline(
+      _typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void GroupMetadata::Builder::setConfig(
+    ::tiledb::sm::serialization::capnp::Config::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::tiledb::sm::serialization::capnp::Config::Builder
+GroupMetadata::Builder::initConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::init(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void GroupMetadata::Builder::adoptConfig(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
+GroupMetadata::Builder::disownConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::disown(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool GroupMetadata::Reader::hasMetadata() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool GroupMetadata::Builder::hasMetadata() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Reader
+GroupMetadata::Reader::getMetadata() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayMetadata>::get(
+          _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Builder
+GroupMetadata::Builder::getMetadata() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayMetadata>::get(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Pipeline
+GroupMetadata::Pipeline::getMetadata() {
+  return ::tiledb::sm::serialization::capnp::ArrayMetadata::Pipeline(
+      _typeless.getPointerField(1));
+}
+#endif  // !CAPNP_LITE
+inline void GroupMetadata::Builder::setMetadata(
+    ::tiledb::sm::serialization::capnp::ArrayMetadata::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayMetadata>::set(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Builder
+GroupMetadata::Builder::initMetadata() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayMetadata>::init(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void GroupMetadata::Builder::adoptMetadata(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayMetadata>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayMetadata>::adopt(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayMetadata>
+GroupMetadata::Builder::disownMetadata() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayMetadata>::disown(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
 inline bool GroupMember::Reader::hasUri() const {
