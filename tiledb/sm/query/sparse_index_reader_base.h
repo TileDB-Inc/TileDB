@@ -35,6 +35,7 @@
 
 #include <queue>
 #include "reader_base.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/query/query_condition.h"
@@ -189,7 +190,7 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Constructor. */
   SparseIndexReaderBase(
       stats::Stats* stats,
-      tdb_shared_ptr<Logger> logger,
+      shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,

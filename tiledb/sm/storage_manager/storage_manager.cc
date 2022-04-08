@@ -1381,7 +1381,7 @@ StorageManager::load_array_schema_from_uri(
 
   // Deserialize
   ConstBuffer cbuff(&buff);
-  auto array_schema = tdb::make_shared<ArraySchema>(HERE());
+  auto array_schema = make_shared<ArraySchema>(HERE());
   RETURN_NOT_OK_TUPLE(array_schema->deserialize(&cbuff), nullopt);
   array_schema->set_uri(schema_uri);
 
@@ -1494,7 +1494,7 @@ Status StorageManager::load_array_metadata(
     GenericTileIO tile_io(this, uri);
     auto tile = (Tile*)nullptr;
     RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
-    auto metadata_buff = tdb::make_shared<Buffer>(HERE());
+    auto metadata_buff = make_shared<Buffer>(HERE());
     RETURN_NOT_OK(metadata_buff->realloc(tile->size()));
     metadata_buff->set_size(tile->size());
     RETURN_NOT_OK_ELSE(
@@ -1994,7 +1994,7 @@ StorageManager::load_fragment_metadata(
     if (f_version == 1) {  // This is equivalent to format version <=2
       bool sparse;
       RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
-      metadata = tdb::make_shared<FragmentMetadata>(
+      metadata = make_shared<FragmentMetadata>(
           HERE(),
           this,
           memory_tracker,
@@ -2003,7 +2003,7 @@ StorageManager::load_fragment_metadata(
           sf.timestamp_range_,
           !sparse);
     } else {  // Format version > 2
-      metadata = tdb::make_shared<FragmentMetadata>(
+      metadata = make_shared<FragmentMetadata>(
           HERE(),
           this,
           memory_tracker,

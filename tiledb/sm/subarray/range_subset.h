@@ -33,6 +33,7 @@
 #ifndef TILEDB_RANGE_SUBSET_H
 #define TILEDB_RANGE_SUBSET_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -303,7 +304,7 @@ class RangeSetAndSuperset {
   Status sort_ranges(ThreadPool* const compute_tp);
 
  private:
-  tdb_shared_ptr<detail::RangeSetAndSupersetInternals> impl_ = nullptr;
+  shared_ptr<detail::RangeSetAndSupersetInternals> impl_ = nullptr;
   /** Maximum possible range. */
   Range superset_ = Range();
 

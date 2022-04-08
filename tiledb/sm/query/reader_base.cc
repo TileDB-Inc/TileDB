@@ -55,7 +55,7 @@ namespace sm {
 
 ReaderBase::ReaderBase(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -83,7 +83,7 @@ ReaderBase::ReaderBase(
 
 template <class T>
 void ReaderBase::compute_result_space_tiles(
-    const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<T>& array_tile_domain,
     const std::vector<TileDomain<T>>& frag_tile_domains,

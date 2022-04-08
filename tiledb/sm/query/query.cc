@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/query.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
@@ -2032,7 +2033,7 @@ stats::Stats* Query::stats() const {
   return stats_;
 }
 
-tdb_shared_ptr<Buffer> Query::rest_scratch() const {
+shared_ptr<Buffer> Query::rest_scratch() const {
   return rest_scratch_;
 }
 

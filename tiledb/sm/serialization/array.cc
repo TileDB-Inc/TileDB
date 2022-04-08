@@ -39,6 +39,7 @@
 #endif
 // clang-format on
 
+#include "tiledb/common/common.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -175,7 +176,7 @@ Status array_from_capnp(
   RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
 
   if (array_reader.hasArraySchemasAll()) {
-    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>> all_schemas;
+    std::unordered_map<std::string, shared_ptr<ArraySchema>> all_schemas;
     auto all_schemas_reader = array_reader.getArraySchemasAll();
 
     if (all_schemas_reader.hasEntries()) {

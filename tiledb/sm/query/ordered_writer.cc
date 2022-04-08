@@ -67,7 +67,7 @@ namespace sm {
 
 OrderedWriter::OrderedWriter(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -189,7 +189,7 @@ Status OrderedWriter::ordered_write() {
   auto timer_se = stats_->start_timer("filter_tile");
 
   // Create new fragment
-  auto frag_meta = tdb::make_shared<FragmentMetadata>(HERE());
+  auto frag_meta = make_shared<FragmentMetadata>(HERE());
   RETURN_CANCEL_OR_ERROR(create_fragment(true, frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 
@@ -315,7 +315,7 @@ template <class T>
 Status OrderedWriter::prepare_filter_and_write_tiles(
     const std::string& name,
     std::vector<std::vector<WriterTile>>& tile_batches,
-    tdb_shared_ptr<FragmentMetadata> frag_meta,
+    shared_ptr<FragmentMetadata> frag_meta,
     DenseTiler<T>* dense_tiler,
     uint64_t thread_num) {
   auto timer_se = stats_->start_timer("prepare_filter_and_write_tiles");

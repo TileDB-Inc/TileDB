@@ -31,7 +31,6 @@
  */
 
 #include "tiledb/sm/query/writer_base.h"
-#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -69,7 +68,7 @@ namespace sm {
 
 WriterBase::WriterBase(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -435,7 +434,7 @@ std::vector<std::string> WriterBase::buffer_names() const {
   return ret;
 }
 
-Status WriterBase::close_files(tdb_shared_ptr<FragmentMetadata> meta) const {
+Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
   // Close attribute and dimension files
   const auto buffer_name = buffer_names();
 
@@ -475,7 +474,7 @@ Status WriterBase::close_files(tdb_shared_ptr<FragmentMetadata> meta) const {
 
 Status WriterBase::compute_coords_metadata(
     const std::unordered_map<std::string, std::vector<WriterTile>>& tiles,
-    tdb_shared_ptr<FragmentMetadata> meta) const {
+    shared_ptr<FragmentMetadata> meta) const {
   auto timer_se = stats_->start_timer("compute_coord_meta");
 
   // Applicable only if there are coordinates
@@ -609,7 +608,7 @@ std::string WriterBase::coords_to_str(uint64_t i) const {
 }
 
 Status WriterBase::create_fragment(
-    bool dense, tdb_shared_ptr<FragmentMetadata>& frag_meta) const {
+    bool dense, shared_ptr<FragmentMetadata>& frag_meta) const {
   URI uri;
   uint64_t timestamp = array_->timestamp_end_opened_at();
   if (!fragment_uri_.to_string().empty()) {
@@ -629,7 +628,7 @@ Status WriterBase::create_fragment(
     uri = frag_uri.join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
-  frag_meta = tdb::make_shared<FragmentMetadata>(
+  frag_meta = make_shared<FragmentMetadata>(
       HERE(),
       storage_manager_,
       nullptr,
@@ -1034,7 +1033,7 @@ Status WriterBase::split_coords_buffer() {
 }
 
 Status WriterBase::write_all_tiles(
-    tdb_shared_ptr<FragmentMetadata> frag_meta,
+    shared_ptr<FragmentMetadata> frag_meta,
     std::unordered_map<std::string, std::vector<WriterTile>>* const tiles) {
   auto timer_se = stats_->start_timer("tiles");
 
@@ -1075,7 +1074,7 @@ Status WriterBase::write_all_tiles(
 
 Status WriterBase::write_tiles(
     const std::string& name,
-    tdb_shared_ptr<FragmentMetadata> frag_meta,
+    shared_ptr<FragmentMetadata> frag_meta,
     uint64_t start_tile_id,
     std::vector<WriterTile>* const tiles,
     bool close_files) {

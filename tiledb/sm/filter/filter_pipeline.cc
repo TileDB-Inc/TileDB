@@ -229,7 +229,7 @@ Status FilterPipeline::filter_chunks_forward(
 
     // Save the finished chunk (last stage's output). This is safe to do
     // because when the local FilterStorage goes out of scope, it will not
-    // free the buffers saved here as their tdb_shared_ptr counters will not
+    // free the buffers saved here as their shared_ptr counters will not
     // be zero. However, as the output may have been a view on the input, we
     // do need to save both here to prevent the input buffer from being
     // freed.

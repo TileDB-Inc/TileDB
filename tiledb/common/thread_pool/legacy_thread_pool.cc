@@ -41,7 +41,7 @@ namespace common {
 // Define the static ThreadPool member variables.
 std::unordered_map<std::thread::id, ThreadPool*> ThreadPool::tp_index_;
 std::mutex ThreadPool::tp_index_lock_;
-std::unordered_map<std::thread::id, tdb_shared_ptr<ThreadPool::PackagedTask>>
+std::unordered_map<std::thread::id, shared_ptr<ThreadPool::PackagedTask>>
     ThreadPool::task_index_;
 std::mutex ThreadPool::task_index_lock_;
 
@@ -121,11 +121,11 @@ ThreadPool::Task ThreadPool::execute(std::function<Status()>&& function) {
 
   // Locate the currently executing task, which may be null.
   const std::thread::id tid = std::this_thread::get_id();
-  tdb_shared_ptr<PackagedTask> parent_task = lookup_task(tid);
+  shared_ptr<PackagedTask> parent_task = lookup_task(tid);
 
   // Create the packaged task.
-  auto task = tiledb::common::make_shared<PackagedTask>(
-      HERE(), std::move(function), std::move(parent_task));
+  auto task =
+      make_shared<PackagedTask>(HERE(), move(function), move(parent_task));
 
   // Fetch the future from the packaged task.
   ThreadPool::Task future = task->get_future();
@@ -177,7 +177,7 @@ ThreadPool::Task ThreadPool::execute(std::function<Status()>&& function) {
         if (!blocked_tasks_.empty()) {
           // Signal the first blocked task to wake up and check the task
           // stack for a task to execute.
-          tdb_shared_ptr<TaskState> blocked_task = *blocked_tasks_.begin();
+          shared_ptr<TaskState> blocked_task = *blocked_tasks_.begin();
           {
             std::lock_guard<std::mutex> lg(blocked_task->return_st_mutex_);
             blocked_task->check_task_stack_ = true;
@@ -291,8 +291,8 @@ Status ThreadPool::wait_or_work(Task&& task) {
       // ordering to prevent overflowing the call stack. We will skip tasks
       // that are not descendents of the task we are currently executing in.
       const std::thread::id tid = std::this_thread::get_id();
-      tdb_shared_ptr<PackagedTask> current_task = lookup_task(tid);
-      tdb_shared_ptr<PackagedTask> descendent_task = nullptr;
+      shared_ptr<PackagedTask> current_task = lookup_task(tid);
+      shared_ptr<PackagedTask> descendent_task = nullptr;
       if (current_task == nullptr) {
         // We are not executing in the context of a threadpool task, we do
         // not have any restriction on which task we can execute. Select
@@ -370,7 +370,7 @@ void ThreadPool::terminate() {
 
 void ThreadPool::worker(ThreadPool& pool) {
   while (true) {
-    tdb_shared_ptr<PackagedTask> task = nullptr;
+    shared_ptr<PackagedTask> task = nullptr;
 
     {
       // Wait until there's work to do.
@@ -429,7 +429,7 @@ void ThreadPool::remove_task_index() {
     task_index_.erase(thread.get_id());
 }
 
-tdb_shared_ptr<ThreadPool::PackagedTask> ThreadPool::lookup_task(
+shared_ptr<ThreadPool::PackagedTask> ThreadPool::lookup_task(
     const std::thread::id tid) {
   std::lock_guard<std::mutex> lock(task_index_lock_);
   if (task_index_.count(tid) == 1)
@@ -437,7 +437,7 @@ tdb_shared_ptr<ThreadPool::PackagedTask> ThreadPool::lookup_task(
   return nullptr;
 }
 
-void ThreadPool::exec_packaged_task(tdb_shared_ptr<PackagedTask> const task) {
+void ThreadPool::exec_packaged_task(shared_ptr<PackagedTask> const task) {
   const std::thread::id tid = std::this_thread::get_id();
 
   // Before we execute `task`, we must update `task_index_` to map
@@ -445,7 +445,7 @@ void ThreadPool::exec_packaged_task(tdb_shared_ptr<PackagedTask> const task) {
   // `task_index_` to protect the container itself. The elements
   // on the map are only ever accessed by the thread that the
   // element is keyed on, making it implicitly safe.
-  tdb_shared_ptr<PackagedTask> tmp_task = nullptr;
+  shared_ptr<PackagedTask> tmp_task = nullptr;
   std::unique_lock<std::mutex> ul(task_index_lock_);
   if (task_index_.count(tid) == 1)
     tmp_task = task_index_[tid];

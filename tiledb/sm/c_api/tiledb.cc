@@ -37,6 +37,7 @@
 #include "tiledb_serialization.h"
 #include "tiledb_struct_def.h"
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_profiler.h"
 #include "tiledb/common/logger.h"
@@ -1866,7 +1867,7 @@ int32_t tiledb_domain_add_dimension(
   if (SAVE_ERROR_CATCH(
           ctx,
           domain->domain_->add_dimension(
-              tdb::make_shared<tiledb::sm::Dimension>(HERE(), dim->dim_))))
+              make_shared<tiledb::sm::Dimension>(HERE(), dim->dim_))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2175,9 +2176,8 @@ int32_t tiledb_array_schema_alloc(
   }
 
   // Create a new ArraySchema object
-  (*array_schema)->array_schema_ =
-      tiledb::common::make_shared<tiledb::sm::ArraySchema>(
-          HERE(), static_cast<tiledb::sm::ArrayType>(array_type));
+  (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
+      HERE(), static_cast<tiledb::sm::ArrayType>(array_type));
   if ((*array_schema)->array_schema_ == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema object");
     LOG_STATUS(st);
@@ -2211,7 +2211,7 @@ int32_t tiledb_array_schema_add_attribute(
   if (SAVE_ERROR_CATCH(
           ctx,
           array_schema->array_schema_->add_attribute(
-              tdb::make_shared<tiledb::sm::Attribute>(HERE(), attr->attr_))))
+              make_shared<tiledb::sm::Attribute>(HERE(), attr->attr_))))
     return TILEDB_ERR;
   return TILEDB_OK;
 }

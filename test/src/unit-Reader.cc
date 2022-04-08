@@ -191,25 +191,22 @@ TEST_CASE_METHOD(
   d2.set_domain(&domain_vec[2]);
   d2.set_tile_extent(&tile_extents_vec[1]);
   Domain dom;
-  CHECK(dom.add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &d1))
-            .ok());
-  CHECK(dom.add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &d2))
-            .ok());
+  CHECK(dom.add_dimension(make_shared<Dimension>(HERE(), &d1)).ok());
+  CHECK(dom.add_dimension(make_shared<Dimension>(HERE(), &d2)).ok());
 
-  auto schema = tdb::make_shared<ArraySchema>(HERE());
-  CHECK(schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &dom)).ok());
+  auto schema = make_shared<ArraySchema>(HERE());
+  CHECK(schema->set_domain(make_shared<Domain>(HERE(), &dom)).ok());
 
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
+  std::vector<shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < frag_tile_domains.size() + 1; i++) {
-    tdb_shared_ptr<FragmentMetadata> fragment =
-        tdb::make_shared<FragmentMetadata>(
-            HERE(),
-            nullptr,
-            nullptr,
-            schema,
-            URI(),
-            std::make_pair<uint64_t, uint64_t>(0, 0),
-            true);
+    shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+        HERE(),
+        nullptr,
+        nullptr,
+        schema,
+        URI(),
+        std::make_pair<uint64_t, uint64_t>(0, 0),
+        true);
     fragments.emplace_back(std::move(fragment));
   }
 

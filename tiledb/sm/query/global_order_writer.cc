@@ -67,7 +67,7 @@ namespace sm {
 
 GlobalOrderWriter::GlobalOrderWriter(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -604,7 +604,7 @@ Status GlobalOrderWriter::init_global_write_state() {
   global_write_state_.reset(new GlobalWriteState);
 
   // Create fragment
-  global_write_state_->frag_meta_ = tdb::make_shared<FragmentMetadata>(HERE());
+  global_write_state_->frag_meta_ = make_shared<FragmentMetadata>(HERE());
   RETURN_NOT_OK(create_fragment(
       !coords_info_.has_coords_, global_write_state_->frag_meta_));
   auto uri = global_write_state_->frag_meta_->fragment_uri();
