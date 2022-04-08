@@ -152,6 +152,11 @@ if (NOT libmagic_FOUND)
         LOG_INSTALL TRUE
         LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
       )
+      ExternalProject_Add_Step(ep_magic afterbuild_diags
+        COMMAND "pwd"
+        COMMAND "find . -name '*.a' -exec ls {} \;"
+        COMMAND "cat ./src/ep_magic-stamp/*.log"
+      )
     endif()
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_magic)
     list(APPEND FORWARD_EP_CMAKE_ARGS

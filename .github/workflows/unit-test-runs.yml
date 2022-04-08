@@ -55,7 +55,7 @@ jobs:
             -DTILEDB_S3=${TILEDB_S3} \
             -DTILEDB_SERIALIZATION=${TILEDB_SERIALIZATION} \
             -DTILEDB_LEGACY_THREAD_POOL=${{ matrix.tp }}
-          make -j4
+          make -j4 VERBOSE=1
           # Build all unit tests
           make -C tiledb tests -j4
           # Run all unit tests

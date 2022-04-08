@@ -35,6 +35,7 @@
 #include "../zstd_compressor.h"
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/common/common.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -57,8 +58,8 @@ int main() {
 
   const int seg_sz = 4096;
   char fbuf[seg_sz];
-  auto inbuf = std::make_shared<tiledb::sm::Buffer>();
-  auto outbuf = std::make_shared<tiledb::sm::Buffer>();
+  auto inbuf = make_shared<tiledb::sm::Buffer>(HERE());
+  auto outbuf = make_shared<tiledb::sm::Buffer>(HERE());
   uint64_t nread;
   uint64_t cntread = 0;
 
@@ -114,8 +115,6 @@ int main() {
     printf("error writing postfix\n");
     exit(5);
   }
-  // delete inbuf;
-  // delete outbuf;
 
   return 0;
 }
