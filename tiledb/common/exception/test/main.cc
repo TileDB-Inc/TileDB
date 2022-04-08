@@ -1,11 +1,11 @@
 /**
- * @file   tiledb/common/common.h
+ * @file tiledb/common/exception/test/main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,42 +27,9 @@
  *
  * @section DESCRIPTION
  *
- * Common facilities of the TileDB library.
- *
- * The common facilities here are common by policy, not by convenience. The
- * elements here are expected to be used as ordinary language features. Each
- * element originates in some included file and then is incorporated into the
- * default namespace with a `using` declaration. The expectation is that common
- * elements be used *without* explicit namespace qualification.
+ * This file defines a test `main()`
  */
 
-#ifndef TILEDB_COMMON_COMMON_H
-#define TILEDB_COMMON_COMMON_H
-
-/*
- * All the standard library commonality is declared in "common-std.h".
- */
-#include "common-std.h"
-
-namespace tiledb::common {}
-namespace tdb = tiledb::common;
-
-/*
- * Dynamic memory
- */
-#include "dynamic_memory/dynamic_memory.h"
-using std::shared_ptr;
-using tiledb::common::allocator;
-using tiledb::common::make_shared;
-// using tiledb::common::make_unique;
-
-/*
- * Exception
- *
- * The exception header also put `class Status` in scope.
- */
-#include "exception/exception.h"
-using tiledb::common::StatusException;
-using tiledb::common::throw_if_not_ok;
-
-#endif  // TILEDB_COMMON_COMMON_H
+#define CATCH_CONFIG_MAIN
+#include <catch.hpp>
+#include "../exception.h"
