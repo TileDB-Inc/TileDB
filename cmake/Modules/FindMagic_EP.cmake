@@ -154,7 +154,7 @@ if (NOT libmagic_FOUND)
       )
       ExternalProject_Add_Step(ep_magic afterbuild_diags
         COMMAND "pwd"
-        COMMAND "find . -name '*.a' -exec ls {} \;"
+        COMMAND bash -c "find . -name '*.a' -exec ls {} \\;"
         COMMAND "cat ./src/ep_magic-stamp/*.log"
       )
     endif()
