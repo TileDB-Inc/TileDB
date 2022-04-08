@@ -1,5 +1,5 @@
 #
-# tiledb/sm/compressors/CMakeLists.txt
+# tiledb/sm/query/ast/CMakeLists.txt
 #
 #
 # The MIT License

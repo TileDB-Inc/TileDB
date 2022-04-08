@@ -1199,6 +1199,74 @@ std::string get_commit_dir(std::string array_dir) {
   return array_dir + "/" + tiledb::sm::constants::array_commits_dir_name;
 }
 
+std::string ptr_to_hex_str(const void* data, size_t size) {
+  const char* c_data = (char*)(data);
+  std::stringstream ss;
+  for (size_t i = 0; i < size; ++i) {
+    ss << std::setfill('0') << std::setw(2) << std::hex
+       << (0xff & (unsigned int)c_data[i]);
+    if (i != size - 1) {
+      ss << " ";
+    }
+  }
+  return ss.str();
+}
+
+std::string bbv_to_hex_str(const sm::ByteVecValue& b) {
+  std::stringstream ss;
+  for (size_t i = 0; i < b.size(); i++) {
+    if (b.data()[i] < 16) {
+      ss << "0";
+    }
+    ss << std::hex << +b.data()[i];
+    if (i != b.size() - 1) {
+      ss << " ";
+    }
+  }
+  return ss.str();
+}
+
+static std::string ast_value_node_to_str(sm::ASTNodeVal* n) {
+  std::string result_str;
+  result_str = n->field_name_ + " " + query_condition_op_str(n->op_) + " ";
+  if (n->condition_value_view_.content()) {
+    result_str += bbv_to_hex_str(n->condition_value_data_);
+  } else {
+    result_str += "null";
+  }
+  return result_str;
+}
+
+static std::string ast_expr_node_to_str(sm::ASTNodeExpr* n) {
+  std::string result_str;
+  result_str = "(";
+  for (size_t i = 0; i < n->nodes_.size(); i++) {
+    auto ptr = n->nodes_[i].get();
+    if (ptr != nullptr) {
+      result_str += ast_node_to_str(n->nodes_[i]);
+      if (i != n->nodes_.size() - 1) {
+        result_str += " ";
+        result_str += query_condition_combination_op_str(n->combination_op_);
+        result_str += " ";
+      }
+    }
+  }
+  result_str += ")";
+  return result_str;
+}
+
+std::string ast_node_to_str(tdb_unique_ptr<sm::ASTNode>& node) {
+  if (node->get_tag() == sm::ASTNodeTag::VAL) {
+    auto ptr = dynamic_cast<sm::ASTNodeVal*>(node.get());
+    return ast_value_node_to_str(ptr);
+  } else if (node->get_tag() == sm::ASTNodeTag::EXPR) {
+    auto ptr = dynamic_cast<sm::ASTNodeExpr*>(node.get());
+    return ast_expr_node_to_str(ptr);
+  }
+  throw std::logic_error(
+      "ast_node_to_str: argument node does not have tag VAL or EXPR.");
+}
+
 template void check_subarray<int8_t>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<int8_t>& ranges);
 template void check_subarray<uint8_t>(

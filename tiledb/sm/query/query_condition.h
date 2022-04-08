@@ -59,7 +59,7 @@ class QueryCondition {
   struct Clause {
     /** Value constructor. */
     Clause(
-        std::string field_name,
+        const std::string& field_name,
         const void* const condition_value,
         const uint64_t condition_value_size,
         const QueryConditionOp op)
@@ -271,9 +271,9 @@ class QueryCondition {
       uint64_t* cell_count);
 
   /**
-   * Returns the string representation of the AST.
+   * Returns the AST object.
    */
-  std::string ast_to_str();
+  tdb_unique_ptr<ASTNode>& ast();
 
   /**
    * Sets the clauses. This is internal state to only be used in
@@ -356,8 +356,8 @@ class QueryCondition {
    * @return The filtered cell slabs.
    */
   template <typename T, QueryConditionOp Op>
-  std::vector<ResultCellSlab> apply_val(
-      const ASTNodeVal* node,
+  std::vector<ResultCellSlab> apply_ast_node(
+      const ASTNodeVal& node,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
@@ -376,8 +376,8 @@ class QueryCondition {
    * @return Status, filtered cell slabs.
    */
   template <typename T>
-  tuple<Status, optional<std::vector<ResultCellSlab>>> apply_val(
-      const ASTNodeVal* node,
+  tuple<Status, optional<std::vector<ResultCellSlab>>> apply_ast_node(
+      const ASTNodeVal& node,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
@@ -394,14 +394,15 @@ class QueryCondition {
    * @param result_cell_slabs The input cell slabs.
    * @return Status, filtered cell slabs.
    */
-  tuple<Status, optional<std::vector<ResultCellSlab>>> apply_val(
-      const ASTNodeVal* node,
+  tuple<Status, optional<std::vector<ResultCellSlab>>> apply_ast_node(
+      const ASTNodeVal& node,
       const ArraySchema& array_schema,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
-   * Applies the AST node to `result_cell_slabs`.
+   * Applies the query condition represented with the AST to
+   * `result_cell_slabs`.
    *
    * @param node The node to apply.
    * @param array_schema The array schema associated with `result_cell_slabs`.
@@ -428,8 +429,8 @@ class QueryCondition {
    * @param result_buffer The result buffer.
    */
   template <typename T, QueryConditionOp Op>
-  void apply_val_dense(
-      const ASTNodeVal* node,
+  void apply_ast_node_dense(
+      const ASTNodeVal& node,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
@@ -450,8 +451,8 @@ class QueryCondition {
    * @return Status.
    */
   template <typename T>
-  Status apply_val_dense(
-      const ASTNodeVal* node,
+  Status apply_ast_node_dense(
+      const ASTNodeVal& node,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
@@ -472,8 +473,8 @@ class QueryCondition {
    * @param result_buffer The result buffer.
    * @return Status.
    */
-  Status apply_val_dense(
-      const ASTNodeVal* node,
+  Status apply_ast_node_dense(
+      const ASTNodeVal& node,
       const ArraySchema& array_schema,
       ResultTile* result_tile,
       const uint64_t start,
@@ -482,7 +483,7 @@ class QueryCondition {
       std::vector<uint8_t>& result_buffer) const;
 
   /**
-   * Applies the AST node to a set of cells.
+   * Applies the query condition represented with the AST to a set of cells.
    *
    * @param node The node to apply.
    * @param array_schema The array schema.
@@ -512,8 +513,8 @@ class QueryCondition {
    * @param result_bitmap The result bitmap.
    */
   template <typename T, QueryConditionOp Op, typename BitmapType>
-  void apply_val_sparse(
-      const ASTNodeVal* node,
+  void apply_ast_node_sparse(
+      const ASTNodeVal& node,
       ResultTile& result_tile,
       const bool var_size,
       std::vector<BitmapType>& result_bitmap) const;
@@ -528,8 +529,8 @@ class QueryCondition {
    * @return Status.
    */
   template <typename T, typename BitmapType>
-  Status apply_val_sparse(
-      const ASTNodeVal* node,
+  Status apply_ast_node_sparse(
+      const ASTNodeVal& node,
       ResultTile& result_tile,
       const bool var_size,
       std::vector<BitmapType>& result_bitmap) const;
@@ -545,14 +546,14 @@ class QueryCondition {
    * @return Status.
    */
   template <typename BitmapType>
-  Status apply_val_sparse(
-      const ASTNodeVal* node,
+  Status apply_ast_node_sparse(
+      const ASTNodeVal& node,
       const ArraySchema& array_schema,
       ResultTile& result_tile,
       std::vector<BitmapType>& result_bitmap) const;
 
   /**
-   * Applies the AST node to a set of cells.
+   * Applies the query condition represented with the AST to a set of cells.
    *
    * @param node The node to apply.
    * @param array_schema The array schema.

@@ -30,6 +30,7 @@
  * Tests the `QueryCondition` class.
  */
 
+#include "test/src/helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -184,429 +185,459 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  REQUIRE(query_condition.ast_to_str() == "x LT 05 00 00 00");
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition.ast()) ==
+      "x LT 05 00 00 00");
 }
 
 TEST_CASE(
-    "Query Condition: Test AST construction, basic combine",
+    "Query Condition: Test AST construction, basic AND combine",
     "[QueryCondition][ast][api]") {
-  // AND combine
-  {
-    std::string field_name = "x";
-    int val = 5;
-    QueryCondition query_condition;
-    REQUIRE(query_condition
-                .init(
-                    std::string(field_name),
-                    &val,
-                    sizeof(int),
-                    QueryConditionOp::LT)
-                .ok());
-    REQUIRE(query_condition.ast_to_str() == "x LT 05 00 00 00");
+  // AND combine.
+  std::string field_name = "x";
+  int val = 5;
+  QueryCondition query_condition;
+  REQUIRE(
+      query_condition
+          .init(
+              std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition.ast()) ==
+      "x LT 05 00 00 00");
 
-    std::string field_name1 = "y";
-    int val1 = 3;
-    QueryCondition query_condition1;
-    REQUIRE(query_condition1
-                .init(
-                    std::string(field_name1),
-                    &val1,
-                    sizeof(int),
-                    QueryConditionOp::GT)
-                .ok());
-    REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
+  std::string field_name1 = "y";
+  int val1 = 3;
+  QueryCondition query_condition1;
+  REQUIRE(query_condition1
+              .init(
+                  std::string(field_name1),
+                  &val1,
+                  sizeof(int),
+                  QueryConditionOp::GT)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
+      "y GT 03 00 00 00");
 
-    QueryCondition combined_and;
-    REQUIRE(query_condition
-                .combine(
-                    query_condition1,
-                    QueryConditionCombinationOp::AND,
-                    &combined_and)
-                .ok());
-    REQUIRE(
-        combined_and.ast_to_str() == "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
-  }
+  QueryCondition combined_and;
+  REQUIRE(
+      query_condition
+          .combine(
+              query_condition1, QueryConditionCombinationOp::AND, &combined_and)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_and.ast()) ==
+      "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
+}
 
+TEST_CASE(
+    "Query Condition: Test AST construction, basic OR combine",
+    "[QueryCondition][ast][api]") {
   // OR combine
-  {
-    std::string field_name = "x";
-    int val = 5;
-    QueryCondition query_condition;
-    REQUIRE(query_condition
-                .init(
-                    std::string(field_name),
-                    &val,
-                    sizeof(int),
-                    QueryConditionOp::LT)
-                .ok());
-    REQUIRE(query_condition.ast_to_str() == "x LT 05 00 00 00");
+  std::string field_name = "x";
+  int val = 5;
+  QueryCondition query_condition;
+  REQUIRE(
+      query_condition
+          .init(
+              std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition.ast()) ==
+      "x LT 05 00 00 00");
 
-    std::string field_name1 = "y";
-    int val1 = 3;
-    QueryCondition query_condition1;
-    REQUIRE(query_condition1
-                .init(
-                    std::string(field_name1),
-                    &val1,
-                    sizeof(int),
-                    QueryConditionOp::GT)
-                .ok());
-    REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
+  std::string field_name1 = "y";
+  int val1 = 3;
+  QueryCondition query_condition1;
+  REQUIRE(query_condition1
+              .init(
+                  std::string(field_name1),
+                  &val1,
+                  sizeof(int),
+                  QueryConditionOp::GT)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
+      "y GT 03 00 00 00");
 
-    QueryCondition combined_or;
-    REQUIRE(
-        query_condition
-            .combine(
-                query_condition1, QueryConditionCombinationOp::OR, &combined_or)
-            .ok());
-    REQUIRE(
-        combined_or.ast_to_str() == "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
-  }
+  QueryCondition combined_or;
+  REQUIRE(
+      query_condition
+          .combine(
+              query_condition1, QueryConditionCombinationOp::OR, &combined_or)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_or.ast()) ==
+      "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
 }
 
 TEST_CASE(
-    "Query Condition: Test AST contruction, tree structure",
+    "Query Condition: Test AST construction, tree structure, AND of 2 OR ASTs",
     "[QueryCondition][ast][api]") {
-  // AND of 2 ors
-  {
-    // First or
-    std::string field_name = "x";
-    int val = 5;
-    QueryCondition query_condition;
-    REQUIRE(query_condition
-                .init(
-                    std::string(field_name),
-                    &val,
-                    sizeof(int),
-                    QueryConditionOp::LT)
-                .ok());
-    REQUIRE(query_condition.ast_to_str() == "x LT 05 00 00 00");
+  // First OR compound AST.
+  std::string field_name = "x";
+  int val = 5;
+  QueryCondition query_condition;
+  REQUIRE(
+      query_condition
+          .init(
+              std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition.ast()) ==
+      "x LT 05 00 00 00");
 
-    std::string field_name1 = "y";
-    int val1 = 3;
-    QueryCondition query_condition1;
-    REQUIRE(query_condition1
-                .init(
-                    std::string(field_name1),
-                    &val1,
-                    sizeof(int),
-                    QueryConditionOp::GT)
-                .ok());
-    REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
+  std::string field_name1 = "y";
+  int val1 = 3;
+  QueryCondition query_condition1;
+  REQUIRE(query_condition1
+              .init(
+                  std::string(field_name1),
+                  &val1,
+                  sizeof(int),
+                  QueryConditionOp::GT)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
+      "y GT 03 00 00 00");
 
-    QueryCondition combined_or;
-    REQUIRE(
-        query_condition
-            .combine(
-                query_condition1, QueryConditionCombinationOp::OR, &combined_or)
-            .ok());
-    REQUIRE(
-        combined_or.ast_to_str() == "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
+  QueryCondition combined_or;
+  REQUIRE(
+      query_condition
+          .combine(
+              query_condition1, QueryConditionCombinationOp::OR, &combined_or)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_or.ast()) ==
+      "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
 
-    // Second and
-    std::string field_name2 = "a";
-    int val2 = 9;
-    QueryCondition query_condition2;
-    REQUIRE(query_condition2
-                .init(
-                    std::string(field_name2),
-                    &val2,
-                    sizeof(int),
-                    QueryConditionOp::EQ)
-                .ok());
-    REQUIRE(query_condition2.ast_to_str() == "a EQ 09 00 00 00");
+  // Second OR compound AST.
+  std::string field_name2 = "a";
+  int val2 = 9;
+  QueryCondition query_condition2;
+  REQUIRE(query_condition2
+              .init(
+                  std::string(field_name2),
+                  &val2,
+                  sizeof(int),
+                  QueryConditionOp::EQ)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
+      "a EQ 09 00 00 00");
 
-    std::string field_name3 = "b";
-    int val3 = 1;
-    QueryCondition query_condition3;
-    REQUIRE(query_condition3
-                .init(
-                    std::string(field_name3),
-                    &val3,
-                    sizeof(int),
-                    QueryConditionOp::NE)
-                .ok());
-    REQUIRE(query_condition3.ast_to_str() == "b NE 01 00 00 00");
+  std::string field_name3 = "b";
+  int val3 = 1;
+  QueryCondition query_condition3;
+  REQUIRE(query_condition3
+              .init(
+                  std::string(field_name3),
+                  &val3,
+                  sizeof(int),
+                  QueryConditionOp::NE)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
+      "b NE 01 00 00 00");
 
-    QueryCondition combined_or1;
-    REQUIRE(query_condition2
-                .combine(
-                    query_condition3,
-                    QueryConditionCombinationOp::OR,
-                    &combined_or1)
-                .ok());
-    REQUIRE(
-        combined_or1.ast_to_str() == "(a EQ 09 00 00 00 OR b NE 01 00 00 00)");
+  QueryCondition combined_or1;
+  REQUIRE(
+      query_condition2
+          .combine(
+              query_condition3, QueryConditionCombinationOp::OR, &combined_or1)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_or1.ast()) ==
+      "(a EQ 09 00 00 00 OR b NE 01 00 00 00)");
 
-    QueryCondition combined_and;
-    REQUIRE(
-        combined_or
-            .combine(
-                combined_or1, QueryConditionCombinationOp::AND, &combined_and)
-            .ok());
-    REQUIRE(
-        combined_and.ast_to_str() ==
-        "((x LT 05 00 00 00 OR y GT 03 00 00 00) AND (a EQ 09 00 00 00 OR b NE "
-        "01 00 00 00))");
-  }
-
-  // OR of 2 ands
-  {
-    // First and
-    std::string field_name = "x";
-    int val = 5;
-    QueryCondition query_condition;
-    REQUIRE(query_condition
-                .init(
-                    std::string(field_name),
-                    &val,
-                    sizeof(int),
-                    QueryConditionOp::LT)
-                .ok());
-    REQUIRE(query_condition.ast_to_str() == "x LT 05 00 00 00");
-
-    std::string field_name1 = "y";
-    int val1 = 3;
-    QueryCondition query_condition1;
-    REQUIRE(query_condition1
-                .init(
-                    std::string(field_name1),
-                    &val1,
-                    sizeof(int),
-                    QueryConditionOp::GT)
-                .ok());
-    REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
-
-    QueryCondition combined_and;
-    REQUIRE(query_condition
-                .combine(
-                    query_condition1,
-                    QueryConditionCombinationOp::AND,
-                    &combined_and)
-                .ok());
-    REQUIRE(
-        combined_and.ast_to_str() == "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
-
-    // Second and
-    std::string field_name2 = "a";
-    int val2 = 9;
-    QueryCondition query_condition2;
-    REQUIRE(query_condition2
-                .init(
-                    std::string(field_name2),
-                    &val2,
-                    sizeof(int),
-                    QueryConditionOp::EQ)
-                .ok());
-    REQUIRE(query_condition2.ast_to_str() == "a EQ 09 00 00 00");
-
-    std::string field_name3 = "b";
-    int val3 = 1;
-    QueryCondition query_condition3;
-    REQUIRE(query_condition3
-                .init(
-                    std::string(field_name3),
-                    &val3,
-                    sizeof(int),
-                    QueryConditionOp::NE)
-                .ok());
-    REQUIRE(query_condition3.ast_to_str() == "b NE 01 00 00 00");
-
-    QueryCondition combined_and1;
-    REQUIRE(query_condition2
-                .combine(
-                    query_condition3,
-                    QueryConditionCombinationOp::AND,
-                    &combined_and1)
-                .ok());
-    REQUIRE(
-        combined_and1.ast_to_str() ==
-        "(a EQ 09 00 00 00 AND b NE 01 00 00 00)");
-
-    QueryCondition combined_or;
-    REQUIRE(
-        combined_and
-            .combine(
-                combined_and1, QueryConditionCombinationOp::OR, &combined_or)
-            .ok());
-    REQUIRE(
-        combined_or.ast_to_str() ==
-        "((x LT 05 00 00 00 AND y GT 03 00 00 00) OR (a EQ 09 00 00 00 AND b "
-        "NE 01 00 00 00))");
-  }
+  QueryCondition combined_and;
+  REQUIRE(combined_or
+              .combine(
+                  combined_or1, QueryConditionCombinationOp::AND, &combined_and)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_and.ast()) ==
+      "((x LT 05 00 00 00 OR y GT 03 00 00 00) AND (a EQ 09 00 00 00 OR b NE "
+      "01 00 00 00))");
 }
 
 TEST_CASE(
-    "Query Condition: Test AST contruction, tree structure with same combining "
-    "operator",
+    "Query Condition: Test AST construction, tree structure, OR of 2 AND ASTs",
     "[QueryCondition][ast][api]") {
-  // OR of 2 ors
-  {
-    // First or
-    std::string field_name = "x";
-    int val = 5;
-    QueryCondition query_condition;
-    REQUIRE(query_condition
-                .init(
-                    std::string(field_name),
-                    &val,
-                    sizeof(int),
-                    QueryConditionOp::LT)
-                .ok());
-    REQUIRE(query_condition.ast_to_str() == "x LT 05 00 00 00");
+  // First AND compound AST.
+  std::string field_name = "x";
+  int val = 5;
+  QueryCondition query_condition;
+  REQUIRE(
+      query_condition
+          .init(
+              std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition.ast()) ==
+      "x LT 05 00 00 00");
 
-    std::string field_name1 = "y";
-    int val1 = 3;
-    QueryCondition query_condition1;
-    REQUIRE(query_condition1
-                .init(
-                    std::string(field_name1),
-                    &val1,
-                    sizeof(int),
-                    QueryConditionOp::GT)
-                .ok());
-    REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
+  std::string field_name1 = "y";
+  int val1 = 3;
+  QueryCondition query_condition1;
+  REQUIRE(query_condition1
+              .init(
+                  std::string(field_name1),
+                  &val1,
+                  sizeof(int),
+                  QueryConditionOp::GT)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
+      "y GT 03 00 00 00");
 
-    QueryCondition combined_or;
-    REQUIRE(
-        query_condition
-            .combine(
-                query_condition1, QueryConditionCombinationOp::OR, &combined_or)
-            .ok());
-    REQUIRE(
-        combined_or.ast_to_str() == "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
+  QueryCondition combined_and;
+  REQUIRE(
+      query_condition
+          .combine(
+              query_condition1, QueryConditionCombinationOp::AND, &combined_and)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_and.ast()) ==
+      "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
 
-    // Second and
-    std::string field_name2 = "a";
-    int val2 = 9;
-    QueryCondition query_condition2;
-    REQUIRE(query_condition2
-                .init(
-                    std::string(field_name2),
-                    &val2,
-                    sizeof(int),
-                    QueryConditionOp::EQ)
-                .ok());
-    REQUIRE(query_condition2.ast_to_str() == "a EQ 09 00 00 00");
+  // Second AND compound AST.
+  std::string field_name2 = "a";
+  int val2 = 9;
+  QueryCondition query_condition2;
+  REQUIRE(query_condition2
+              .init(
+                  std::string(field_name2),
+                  &val2,
+                  sizeof(int),
+                  QueryConditionOp::EQ)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
+      "a EQ 09 00 00 00");
 
-    std::string field_name3 = "b";
-    int val3 = 1;
-    QueryCondition query_condition3;
-    REQUIRE(query_condition3
-                .init(
-                    std::string(field_name3),
-                    &val3,
-                    sizeof(int),
-                    QueryConditionOp::NE)
-                .ok());
-    REQUIRE(query_condition3.ast_to_str() == "b NE 01 00 00 00");
+  std::string field_name3 = "b";
+  int val3 = 1;
+  QueryCondition query_condition3;
+  REQUIRE(query_condition3
+              .init(
+                  std::string(field_name3),
+                  &val3,
+                  sizeof(int),
+                  QueryConditionOp::NE)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
+      "b NE 01 00 00 00");
 
-    QueryCondition combined_or1;
-    REQUIRE(query_condition2
-                .combine(
-                    query_condition3,
-                    QueryConditionCombinationOp::OR,
-                    &combined_or1)
-                .ok());
-    REQUIRE(
-        combined_or1.ast_to_str() == "(a EQ 09 00 00 00 OR b NE 01 00 00 00)");
+  QueryCondition combined_and1;
+  REQUIRE(query_condition2
+              .combine(
+                  query_condition3,
+                  QueryConditionCombinationOp::AND,
+                  &combined_and1)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_and1.ast()) ==
+      "(a EQ 09 00 00 00 AND b NE 01 00 00 00)");
 
-    QueryCondition combined_or2;
-    REQUIRE(
-        combined_or
-            .combine(
-                combined_or1, QueryConditionCombinationOp::OR, &combined_or2)
-            .ok());
-    REQUIRE(
-        combined_or2.ast_to_str() ==
-        "(x LT 05 00 00 00 OR y GT 03 00 00 00 OR a EQ 09 00 00 00 OR b NE 01 "
-        "00 00 00)");
-  }
+  QueryCondition combined_or;
+  REQUIRE(
+      combined_and
+          .combine(combined_and1, QueryConditionCombinationOp::OR, &combined_or)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_or.ast()) ==
+      "((x LT 05 00 00 00 AND y GT 03 00 00 00) OR (a EQ 09 00 00 00 AND b "
+      "NE 01 00 00 00))");
+}
 
-  // AND of 2 ands
-  {
-    // First and
-    std::string field_name = "x";
-    int val = 5;
-    QueryCondition query_condition;
-    REQUIRE(query_condition
-                .init(
-                    std::string(field_name),
-                    &val,
-                    sizeof(int),
-                    QueryConditionOp::LT)
-                .ok());
-    REQUIRE(query_condition.ast_to_str() == "x LT 05 00 00 00");
+TEST_CASE(
+    "Query Condition: Test AST construction, tree structure with same "
+    "combining "
+    "operator, OR of 2 OR ASTs",
+    "[QueryCondition][ast][api]") {
+  // First OR compound AST.
+  std::string field_name = "x";
+  int val = 5;
+  QueryCondition query_condition;
+  REQUIRE(
+      query_condition
+          .init(
+              std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition.ast()) ==
+      "x LT 05 00 00 00");
 
-    std::string field_name1 = "y";
-    int val1 = 3;
-    QueryCondition query_condition1;
-    REQUIRE(query_condition1
-                .init(
-                    std::string(field_name1),
-                    &val1,
-                    sizeof(int),
-                    QueryConditionOp::GT)
-                .ok());
-    REQUIRE(query_condition1.ast_to_str() == "y GT 03 00 00 00");
+  std::string field_name1 = "y";
+  int val1 = 3;
+  QueryCondition query_condition1;
+  REQUIRE(query_condition1
+              .init(
+                  std::string(field_name1),
+                  &val1,
+                  sizeof(int),
+                  QueryConditionOp::GT)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
+      "y GT 03 00 00 00");
 
-    QueryCondition combined_and;
-    REQUIRE(query_condition
-                .combine(
-                    query_condition1,
-                    QueryConditionCombinationOp::AND,
-                    &combined_and)
-                .ok());
-    REQUIRE(
-        combined_and.ast_to_str() == "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
+  QueryCondition combined_or;
+  REQUIRE(
+      query_condition
+          .combine(
+              query_condition1, QueryConditionCombinationOp::OR, &combined_or)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_or.ast()) ==
+      "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
 
-    // Second and
-    std::string field_name2 = "a";
-    int val2 = 9;
-    QueryCondition query_condition2;
-    REQUIRE(query_condition2
-                .init(
-                    std::string(field_name2),
-                    &val2,
-                    sizeof(int),
-                    QueryConditionOp::EQ)
-                .ok());
-    REQUIRE(query_condition2.ast_to_str() == "a EQ 09 00 00 00");
+  // Second OR compound AST.
+  std::string field_name2 = "a";
+  int val2 = 9;
+  QueryCondition query_condition2;
+  REQUIRE(query_condition2
+              .init(
+                  std::string(field_name2),
+                  &val2,
+                  sizeof(int),
+                  QueryConditionOp::EQ)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
+      "a EQ 09 00 00 00");
 
-    std::string field_name3 = "b";
-    int val3 = 1;
-    QueryCondition query_condition3;
-    REQUIRE(query_condition3
-                .init(
-                    std::string(field_name3),
-                    &val3,
-                    sizeof(int),
-                    QueryConditionOp::NE)
-                .ok());
-    REQUIRE(query_condition3.ast_to_str() == "b NE 01 00 00 00");
+  std::string field_name3 = "b";
+  int val3 = 1;
+  QueryCondition query_condition3;
+  REQUIRE(query_condition3
+              .init(
+                  std::string(field_name3),
+                  &val3,
+                  sizeof(int),
+                  QueryConditionOp::NE)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
+      "b NE 01 00 00 00");
 
-    QueryCondition combined_and1;
-    REQUIRE(query_condition2
-                .combine(
-                    query_condition3,
-                    QueryConditionCombinationOp::AND,
-                    &combined_and1)
-                .ok());
-    REQUIRE(
-        combined_and1.ast_to_str() ==
-        "(a EQ 09 00 00 00 AND b NE 01 00 00 00)");
+  QueryCondition combined_or1;
+  REQUIRE(
+      query_condition2
+          .combine(
+              query_condition3, QueryConditionCombinationOp::OR, &combined_or1)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_or1.ast()) ==
+      "(a EQ 09 00 00 00 OR b NE 01 00 00 00)");
 
-    QueryCondition combined_and2;
-    REQUIRE(
-        combined_and
-            .combine(
-                combined_and1, QueryConditionCombinationOp::AND, &combined_and2)
-            .ok());
-    REQUIRE(
-        combined_and2.ast_to_str() ==
-        "(x LT 05 00 00 00 AND y GT 03 00 00 00 AND a EQ 09 00 00 00 AND b NE "
-        "01 00 00 00)");
-  }
+  QueryCondition combined_or2;
+  REQUIRE(
+      combined_or
+          .combine(combined_or1, QueryConditionCombinationOp::OR, &combined_or2)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_or2.ast()) ==
+      "(x LT 05 00 00 00 OR y GT 03 00 00 00 OR a EQ 09 00 00 00 OR b NE 01 "
+      "00 00 00)");
+}
+
+TEST_CASE(
+    "Query Condition: Test AST construction, tree structure with same "
+    "combining "
+    "operator, AND of 2 AND ASTs",
+    "[QueryCondition][ast][api]") {
+  // AND of 2 AND ASTs.
+  // First AND compound AST.
+  std::string field_name = "x";
+  int val = 5;
+  QueryCondition query_condition;
+  REQUIRE(
+      query_condition
+          .init(
+              std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition.ast()) ==
+      "x LT 05 00 00 00");
+
+  std::string field_name1 = "y";
+  int val1 = 3;
+  QueryCondition query_condition1;
+  REQUIRE(query_condition1
+              .init(
+                  std::string(field_name1),
+                  &val1,
+                  sizeof(int),
+                  QueryConditionOp::GT)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
+      "y GT 03 00 00 00");
+
+  QueryCondition combined_and;
+  REQUIRE(
+      query_condition
+          .combine(
+              query_condition1, QueryConditionCombinationOp::AND, &combined_and)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_and.ast()) ==
+      "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
+
+  // Second AND compound AST.
+  std::string field_name2 = "a";
+  int val2 = 9;
+  QueryCondition query_condition2;
+  REQUIRE(query_condition2
+              .init(
+                  std::string(field_name2),
+                  &val2,
+                  sizeof(int),
+                  QueryConditionOp::EQ)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
+      "a EQ 09 00 00 00");
+
+  std::string field_name3 = "b";
+  int val3 = 1;
+  QueryCondition query_condition3;
+  REQUIRE(query_condition3
+              .init(
+                  std::string(field_name3),
+                  &val3,
+                  sizeof(int),
+                  QueryConditionOp::NE)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
+      "b NE 01 00 00 00");
+
+  QueryCondition combined_and1;
+  REQUIRE(query_condition2
+              .combine(
+                  query_condition3,
+                  QueryConditionCombinationOp::AND,
+                  &combined_and1)
+              .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_and1.ast()) ==
+      "(a EQ 09 00 00 00 AND b NE 01 00 00 00)");
+
+  QueryCondition combined_and2;
+  REQUIRE(
+      combined_and
+          .combine(
+              combined_and1, QueryConditionCombinationOp::AND, &combined_and2)
+          .ok());
+  REQUIRE(
+      tiledb::test::ast_node_to_str(combined_and2.ast()) ==
+      "(x LT 05 00 00 00 AND y GT 03 00 00 00 AND a EQ 09 00 00 00 AND b NE "
+      "01 00 00 00)");
 }
 
 /**
@@ -643,7 +674,7 @@ void test_apply_cells<char*>(
   REQUIRE(query_condition
               .init(std::string(field_name), cmp_value, 2 * sizeof(char), op)
               .ok());
-  // Run Check
+  // Run Check for query_condition
   REQUIRE(query_condition.check(array_schema).ok());
 
   bool nullable = array_schema.attribute(field_name)->nullable();
@@ -715,7 +746,7 @@ void test_apply_cells<char*>(
       REQUIRE(
           query_condition_eq_null.init(std::string(field_name), nullptr, 0, op)
               .ok());
-      // Run Check
+      // Run Check for query_condition_eq_null
       REQUIRE(query_condition_eq_null.check(array_schema).ok());
 
       ResultCellSlab result_cell_slab_eq_null(result_tile, 0, cells);
@@ -819,7 +850,7 @@ void test_apply_cells(
   REQUIRE(
       query_condition.init(std::string(field_name), &cmp_value, sizeof(T), op)
           .ok());
-  // Run Check
+  // Run Check for query_condition
   REQUIRE(query_condition.check(array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
@@ -1277,7 +1308,7 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::GT)
               .ok());
-  // Run Check
+  // Run Check for query_condition1
   REQUIRE(query_condition_1.check(array_schema).ok());
   uint64_t cmp_value_2 = 6;
   QueryCondition query_condition_2;
@@ -1288,7 +1319,7 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::LE)
               .ok());
-  // Run Check
+  // Run Check for query_condition2
   REQUIRE(query_condition_2.check(array_schema).ok());
   QueryCondition query_condition_3;
   REQUIRE(query_condition_1
@@ -1366,7 +1397,7 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::GT)
               .ok());
-  // Run Check
+  // Run Check for query_condition1
   REQUIRE(query_condition_1.check(array_schema).ok());
   uint64_t cmp_value_2 = 3;
   QueryCondition query_condition_2;
@@ -1377,7 +1408,7 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::LE)
               .ok());
-  // Run Check
+  // Run Check for query_condition2
   REQUIRE(query_condition_2.check(array_schema).ok());
   QueryCondition query_condition_3;
   REQUIRE(query_condition_1
@@ -1399,6 +1430,260 @@ TEST_CASE(
   REQUIRE(result_cell_slabs[0].length_ == 4);
   REQUIRE(result_cell_slabs[1].start_ == 7);
   REQUIRE(result_cell_slabs[1].length_ == 3);
+
+  free(values);
+}
+
+TEST_CASE(
+    "QueryCondition: Test combinations, complex tree (OR of AND ASTs)",
+    "[QueryCondition][combinations]") {
+  const std::string field_name = "foo";
+  const uint64_t cells = 10;
+  const Datatype type = Datatype::UINT64;
+
+  // Initialize the array schema.
+  ArraySchema array_schema;
+  Attribute attr(field_name, type);
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
+  Domain domain;
+  Dimension dim("dim1", Datatype::UINT32);
+  uint32_t bounds[2] = {1, cells};
+  Range range(bounds, 2 * sizeof(uint32_t));
+  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(
+      domain
+          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+          .ok());
+  REQUIRE(
+      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+          .ok());
+
+  // Initialize the result tile.
+  ResultTile result_tile(0, 0, array_schema);
+  result_tile.init_attr_tile(field_name);
+  ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
+  Tile* const tile = &std::get<0>(*tile_tuple);
+
+  // Initialize and populate the data tile.
+  REQUIRE(tile->init_unfiltered(
+                  constants::format_version,
+                  type,
+                  cells * sizeof(uint64_t),
+                  sizeof(uint64_t),
+                  0)
+              .ok());
+  uint64_t* values = static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+  for (uint64_t i = 0; i < cells; ++i) {
+    values[i] = i;
+  }
+  REQUIRE(tile->write(values, 0, cells * sizeof(uint64_t)).ok());
+
+  // Build a combined query for `(>= 3 AND <= 6) OR (> 5 AND < 9)`.
+  uint64_t cmp_value_1 = 3;
+  QueryCondition query_condition_1;
+  REQUIRE(query_condition_1
+              .init(
+                  std::string(field_name),
+                  &cmp_value_1,
+                  sizeof(uint64_t),
+                  QueryConditionOp::GE)
+              .ok());
+  // Run Check for query_condition1
+  REQUIRE(query_condition_1.check(array_schema).ok());
+  uint64_t cmp_value_2 = 6;
+  QueryCondition query_condition_2;
+  REQUIRE(query_condition_2
+              .init(
+                  std::string(field_name),
+                  &cmp_value_2,
+                  sizeof(uint64_t),
+                  QueryConditionOp::LE)
+              .ok());
+  // Run Check for query_condition2
+  REQUIRE(query_condition_2.check(array_schema).ok());
+
+  QueryCondition combined_and;
+  REQUIRE(query_condition_1
+              .combine(
+                  query_condition_2,
+                  QueryConditionCombinationOp::AND,
+                  &combined_and)
+              .ok());
+
+  uint64_t cmp_value_3 = 5;
+  QueryCondition query_condition_3;
+  REQUIRE(query_condition_3
+              .init(
+                  std::string(field_name),
+                  &cmp_value_3,
+                  sizeof(uint64_t),
+                  QueryConditionOp::GT)
+              .ok());
+  // Run Check for query_condition3
+  REQUIRE(query_condition_3.check(array_schema).ok());
+  uint64_t cmp_value_4 = 9;
+  QueryCondition query_condition_4;
+  REQUIRE(query_condition_4
+              .init(
+                  std::string(field_name),
+                  &cmp_value_4,
+                  sizeof(uint64_t),
+                  QueryConditionOp::LT)
+              .ok());
+  // Run Check for query_condition2
+  REQUIRE(query_condition_4.check(array_schema).ok());
+  QueryCondition combined_and1;
+  REQUIRE(query_condition_3
+              .combine(
+                  query_condition_4,
+                  QueryConditionCombinationOp::AND,
+                  &combined_and1)
+              .ok());
+
+  QueryCondition combined_or;
+  REQUIRE(
+      combined_and
+          .combine(combined_and1, QueryConditionCombinationOp::OR, &combined_or)
+          .ok());
+
+  ResultCellSlab result_cell_slab(&result_tile, 0, cells);
+  std::vector<ResultCellSlab> result_cell_slabs;
+  result_cell_slabs.emplace_back(std::move(result_cell_slab));
+
+  REQUIRE(combined_or.apply(array_schema, result_cell_slabs, 1).ok());
+
+  // Check that the cell slab now contains cell index 6.
+  REQUIRE(result_cell_slabs.size() == 1);
+  REQUIRE(result_cell_slabs[0].start_ == 3);
+  REQUIRE(result_cell_slabs[0].length_ == 6);
+
+  free(values);
+}
+
+TEST_CASE(
+    "QueryCondition: Test combinations, complex tree (AND of OR ASTs)",
+    "[QueryCondition][combinations]") {
+  const std::string field_name = "foo";
+  const uint64_t cells = 10;
+  const Datatype type = Datatype::UINT64;
+
+  // Initialize the array schema.
+  ArraySchema array_schema;
+  Attribute attr(field_name, type);
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
+  Domain domain;
+  Dimension dim("dim1", Datatype::UINT32);
+  uint32_t bounds[2] = {1, cells};
+  Range range(bounds, 2 * sizeof(uint32_t));
+  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(
+      domain
+          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+          .ok());
+  REQUIRE(
+      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+          .ok());
+
+  // Initialize the result tile.
+  ResultTile result_tile(0, 0, array_schema);
+  result_tile.init_attr_tile(field_name);
+  ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
+  Tile* const tile = &std::get<0>(*tile_tuple);
+
+  // Initialize and populate the data tile.
+  REQUIRE(tile->init_unfiltered(
+                  constants::format_version,
+                  type,
+                  cells * sizeof(uint64_t),
+                  sizeof(uint64_t),
+                  0)
+              .ok());
+  uint64_t* values = static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+  for (uint64_t i = 0; i < cells; ++i) {
+    values[i] = i;
+  }
+  REQUIRE(tile->write(values, 0, cells * sizeof(uint64_t)).ok());
+
+  // Build a combined query for `(< 3 OR >= 8) AND (<= 4 OR = 9)`.
+  uint64_t cmp_value_1 = 3;
+  QueryCondition query_condition_1;
+  REQUIRE(query_condition_1
+              .init(
+                  std::string(field_name),
+                  &cmp_value_1,
+                  sizeof(uint64_t),
+                  QueryConditionOp::LT)
+              .ok());
+  // Run Check for query_condition1
+  REQUIRE(query_condition_1.check(array_schema).ok());
+  uint64_t cmp_value_2 = 8;
+  QueryCondition query_condition_2;
+  REQUIRE(query_condition_2
+              .init(
+                  std::string(field_name),
+                  &cmp_value_2,
+                  sizeof(uint64_t),
+                  QueryConditionOp::GE)
+              .ok());
+  // Run Check for query_condition2
+  REQUIRE(query_condition_2.check(array_schema).ok());
+
+  QueryCondition combined_or;
+  REQUIRE(
+      query_condition_1
+          .combine(
+              query_condition_2, QueryConditionCombinationOp::OR, &combined_or)
+          .ok());
+
+  uint64_t cmp_value_3 = 4;
+  QueryCondition query_condition_3;
+  REQUIRE(query_condition_3
+              .init(
+                  std::string(field_name),
+                  &cmp_value_3,
+                  sizeof(uint64_t),
+                  QueryConditionOp::LT)
+              .ok());
+  // Run Check for query_condition3
+  REQUIRE(query_condition_3.check(array_schema).ok());
+  uint64_t cmp_value_4 = 9;
+  QueryCondition query_condition_4;
+  REQUIRE(query_condition_4
+              .init(
+                  std::string(field_name),
+                  &cmp_value_4,
+                  sizeof(uint64_t),
+                  QueryConditionOp::EQ)
+              .ok());
+  // Run Check for query_condition2
+  REQUIRE(query_condition_4.check(array_schema).ok());
+  QueryCondition combined_or1;
+  REQUIRE(
+      query_condition_3
+          .combine(
+              query_condition_4, QueryConditionCombinationOp::OR, &combined_or1)
+          .ok());
+
+  QueryCondition combined_and;
+  REQUIRE(combined_or
+              .combine(
+                  combined_or1, QueryConditionCombinationOp::AND, &combined_and)
+              .ok());
+
+  ResultCellSlab result_cell_slab(&result_tile, 0, cells);
+  std::vector<ResultCellSlab> result_cell_slabs;
+  result_cell_slabs.emplace_back(std::move(result_cell_slab));
+
+  REQUIRE(combined_and.apply(array_schema, result_cell_slabs, 1).ok());
+
+  // Check that the cell slab now contains cell indexes 0, 1, 2, 9.
+  REQUIRE(result_cell_slabs.size() == 2);
+  REQUIRE(result_cell_slabs[0].start_ == 0);
+  REQUIRE(result_cell_slabs[0].length_ == 3);
+  REQUIRE(result_cell_slabs[1].start_ == 9);
+  REQUIRE(result_cell_slabs[1].length_ == 1);
 
   free(values);
 }
@@ -1520,7 +1805,7 @@ TEST_CASE(
   QueryCondition query_condition;
   REQUIRE(query_condition.init(std::string(field_name), cmp_value, 0, op).ok());
 
-  // Run Check
+  // Run Check for query_condition
   REQUIRE(query_condition.check(array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
@@ -1609,7 +1894,7 @@ void test_apply_cells_dense<char*>(
   REQUIRE(query_condition
               .init(std::string(field_name), cmp_value, 2 * sizeof(char), op)
               .ok());
-  // Run Check
+  // Run Check for query_condition
   REQUIRE(query_condition.check(array_schema).ok());
 
   bool nullable = array_schema.attribute(field_name)->nullable();
@@ -1680,7 +1965,7 @@ void test_apply_cells_dense<char*>(
       REQUIRE(
           query_condition_eq_null.init(std::string(field_name), nullptr, 0, op)
               .ok());
-      // Run Check
+      // Run Check for query_condition_eq_null
       REQUIRE(query_condition_eq_null.check(array_schema).ok());
 
       // Apply the query condition.
@@ -1722,7 +2007,7 @@ void test_apply_cells_dense(
   REQUIRE(
       query_condition.init(std::string(field_name), &cmp_value, sizeof(T), op)
           .ok());
-  // Run Check
+  // Run Check for query_condition
   REQUIRE(query_condition.check(array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
@@ -2125,7 +2410,7 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::GT)
               .ok());
-  // Run Check
+  // Run Check for query_condition1
   REQUIRE(query_condition_1.check(array_schema).ok());
   uint64_t cmp_value_2 = 6;
   QueryCondition query_condition_2;
@@ -2136,7 +2421,7 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::LE)
               .ok());
-  // Run Check
+  // Run Check for query_condition2
   REQUIRE(query_condition_2.check(array_schema).ok());
   QueryCondition query_condition_3;
   REQUIRE(query_condition_1
@@ -2217,7 +2502,7 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::GT)
               .ok());
-  // Run Check
+  // Run Check for query_condition1
   REQUIRE(query_condition_1.check(array_schema).ok());
   uint64_t cmp_value_2 = 3;
   QueryCondition query_condition_2;
@@ -2228,7 +2513,7 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::LE)
               .ok());
-  // Run Check
+  // Run Check for query_condition2
   REQUIRE(query_condition_2.check(array_schema).ok());
   QueryCondition query_condition_3;
   REQUIRE(query_condition_1
@@ -2249,6 +2534,262 @@ TEST_CASE(
   for (uint64_t cell_idx = 0; cell_idx < cells; ++cell_idx) {
     REQUIRE(
         result_bitmap[cell_idx] == (cell_idx >= 7 || cell_idx <= 3 ? 1 : 0));
+  }
+
+  free(values);
+}
+
+TEST_CASE(
+    "QueryCondition: Test combinations dense, complex tree (AND of OR ASTs)",
+    "[QueryCondition][combinations][dense]") {
+  const std::string field_name = "foo";
+  const uint64_t cells = 10;
+  const Datatype type = Datatype::UINT64;
+
+  // Initialize the array schema.
+  ArraySchema array_schema;
+  Attribute attr(field_name, type);
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
+  Domain domain;
+  Dimension dim("dim1", Datatype::UINT32);
+  uint32_t bounds[2] = {1, cells};
+  Range range(bounds, 2 * sizeof(uint32_t));
+  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(
+      domain
+          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+          .ok());
+  REQUIRE(
+      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+          .ok());
+
+  // Initialize the result tile.
+  ResultTile result_tile(0, 0, array_schema);
+  result_tile.init_attr_tile(field_name);
+  ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
+  Tile* const tile = &std::get<0>(*tile_tuple);
+
+  // Initialize and populate the data tile.
+  REQUIRE(tile->init_unfiltered(
+                  constants::format_version,
+                  type,
+                  cells * sizeof(uint64_t),
+                  sizeof(uint64_t),
+                  0)
+              .ok());
+  uint64_t* values = static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+  for (uint64_t i = 0; i < cells; ++i) {
+    values[i] = i;
+  }
+  REQUIRE(tile->write(values, 0, cells * sizeof(uint64_t)).ok());
+
+  // Build a combined query for `(< 3 OR >= 8) AND (<= 4 OR = 9)`.
+  uint64_t cmp_value_1 = 3;
+  QueryCondition query_condition_1;
+  REQUIRE(query_condition_1
+              .init(
+                  std::string(field_name),
+                  &cmp_value_1,
+                  sizeof(uint64_t),
+                  QueryConditionOp::LT)
+              .ok());
+  // Run Check for query_condition1
+  REQUIRE(query_condition_1.check(array_schema).ok());
+  uint64_t cmp_value_2 = 8;
+  QueryCondition query_condition_2;
+  REQUIRE(query_condition_2
+              .init(
+                  std::string(field_name),
+                  &cmp_value_2,
+                  sizeof(uint64_t),
+                  QueryConditionOp::GE)
+              .ok());
+  // Run Check for query_condition2
+  REQUIRE(query_condition_2.check(array_schema).ok());
+
+  QueryCondition combined_or;
+  REQUIRE(
+      query_condition_1
+          .combine(
+              query_condition_2, QueryConditionCombinationOp::OR, &combined_or)
+          .ok());
+
+  uint64_t cmp_value_3 = 4;
+  QueryCondition query_condition_3;
+  REQUIRE(query_condition_3
+              .init(
+                  std::string(field_name),
+                  &cmp_value_3,
+                  sizeof(uint64_t),
+                  QueryConditionOp::LT)
+              .ok());
+  // Run Check for query_condition3
+  REQUIRE(query_condition_3.check(array_schema).ok());
+  uint64_t cmp_value_4 = 9;
+  QueryCondition query_condition_4;
+  REQUIRE(query_condition_4
+              .init(
+                  std::string(field_name),
+                  &cmp_value_4,
+                  sizeof(uint64_t),
+                  QueryConditionOp::EQ)
+              .ok());
+  // Run Check for query_condition2
+  REQUIRE(query_condition_4.check(array_schema).ok());
+  QueryCondition combined_or1;
+  REQUIRE(
+      query_condition_3
+          .combine(
+              query_condition_4, QueryConditionCombinationOp::OR, &combined_or1)
+          .ok());
+
+  QueryCondition combined_and;
+  REQUIRE(combined_or
+              .combine(
+                  combined_or1, QueryConditionCombinationOp::AND, &combined_and)
+              .ok());
+
+  // Apply the query condition.
+  std::vector<uint8_t> result_bitmap(cells, 1);
+  REQUIRE(combined_and
+              .apply_dense(
+                  array_schema, &result_tile, 0, 10, 0, 1, result_bitmap.data())
+              .ok());
+
+  // Check that the cell slab now contains cell indexes 0, 1, 2, 3, and 7, 8, 9.
+  for (uint64_t cell_idx = 0; cell_idx < cells; ++cell_idx) {
+    REQUIRE(
+        result_bitmap[cell_idx] == (cell_idx <= 2 || cell_idx == 9 ? 1 : 0));
+  }
+
+  free(values);
+}
+
+TEST_CASE(
+    "QueryCondition: Test combinations dense, complex tree (OR of AND ASTs)",
+    "[QueryCondition][combinations][dense]") {
+  const std::string field_name = "foo";
+  const uint64_t cells = 10;
+  const Datatype type = Datatype::UINT64;
+
+  // Initialize the array schema.
+  ArraySchema array_schema;
+  Attribute attr(field_name, type);
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
+  Domain domain;
+  Dimension dim("dim1", Datatype::UINT32);
+  uint32_t bounds[2] = {1, cells};
+  Range range(bounds, 2 * sizeof(uint32_t));
+  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(
+      domain
+          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+          .ok());
+  REQUIRE(
+      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+          .ok());
+
+  // Initialize the result tile.
+  ResultTile result_tile(0, 0, array_schema);
+  result_tile.init_attr_tile(field_name);
+  ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
+  Tile* const tile = &std::get<0>(*tile_tuple);
+
+  // Initialize and populate the data tile.
+  REQUIRE(tile->init_unfiltered(
+                  constants::format_version,
+                  type,
+                  cells * sizeof(uint64_t),
+                  sizeof(uint64_t),
+                  0)
+              .ok());
+  uint64_t* values = static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+  for (uint64_t i = 0; i < cells; ++i) {
+    values[i] = i;
+  }
+  REQUIRE(tile->write(values, 0, cells * sizeof(uint64_t)).ok());
+
+  // Build a combined query for `(>= 3 AND <= 6) OR (> 5 AND < 9)`.
+  uint64_t cmp_value_1 = 3;
+  QueryCondition query_condition_1;
+  REQUIRE(query_condition_1
+              .init(
+                  std::string(field_name),
+                  &cmp_value_1,
+                  sizeof(uint64_t),
+                  QueryConditionOp::GE)
+              .ok());
+  // Run Check for query_condition1
+  REQUIRE(query_condition_1.check(array_schema).ok());
+  uint64_t cmp_value_2 = 6;
+  QueryCondition query_condition_2;
+  REQUIRE(query_condition_2
+              .init(
+                  std::string(field_name),
+                  &cmp_value_2,
+                  sizeof(uint64_t),
+                  QueryConditionOp::LE)
+              .ok());
+  // Run Check for query_condition2
+  REQUIRE(query_condition_2.check(array_schema).ok());
+
+  QueryCondition combined_and;
+  REQUIRE(query_condition_1
+              .combine(
+                  query_condition_2,
+                  QueryConditionCombinationOp::AND,
+                  &combined_and)
+              .ok());
+
+  uint64_t cmp_value_3 = 5;
+  QueryCondition query_condition_3;
+  REQUIRE(query_condition_3
+              .init(
+                  std::string(field_name),
+                  &cmp_value_3,
+                  sizeof(uint64_t),
+                  QueryConditionOp::GT)
+              .ok());
+  // Run Check for query_condition3
+  REQUIRE(query_condition_3.check(array_schema).ok());
+  uint64_t cmp_value_4 = 9;
+  QueryCondition query_condition_4;
+  REQUIRE(query_condition_4
+              .init(
+                  std::string(field_name),
+                  &cmp_value_4,
+                  sizeof(uint64_t),
+                  QueryConditionOp::LT)
+              .ok());
+  // Run Check for query_condition2
+  REQUIRE(query_condition_4.check(array_schema).ok());
+  QueryCondition combined_and1;
+  REQUIRE(query_condition_3
+              .combine(
+                  query_condition_4,
+                  QueryConditionCombinationOp::AND,
+                  &combined_and1)
+              .ok());
+
+  QueryCondition combined_or;
+  REQUIRE(
+      combined_and
+          .combine(combined_and1, QueryConditionCombinationOp::OR, &combined_or)
+          .ok());
+
+  // Apply the query condition.
+  std::vector<uint8_t> result_bitmap(cells, 1);
+  REQUIRE(combined_or
+              .apply_dense(
+                  array_schema, &result_tile, 0, 10, 0, 1, result_bitmap.data())
+              .ok());
+
+  // Check that the cell slab now contains cell indexes 3, 4, 5, 6, 7, 8.
+  for (uint64_t cell_idx = 0; cell_idx < cells; ++cell_idx) {
+    REQUIRE(
+        result_bitmap[cell_idx] == (cell_idx >= 3 && cell_idx <= 8 ? 1 : 0));
   }
 
   free(values);
@@ -2371,7 +2912,7 @@ TEST_CASE(
   QueryCondition query_condition;
   REQUIRE(query_condition.init(std::string(field_name), cmp_value, 0, op).ok());
 
-  // Run Check
+  // Run Check for query_condition
   REQUIRE(query_condition.check(array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
@@ -2459,7 +3000,7 @@ void test_apply_cells_sparse<char*>(
   REQUIRE(query_condition
               .init(std::string(field_name), cmp_value, 2 * sizeof(char), op)
               .ok());
-  // Run Check
+  // Run Check for query_condition
   REQUIRE(query_condition.check(array_schema).ok());
 
   bool nullable = array_schema.attribute(field_name)->nullable();
@@ -2532,7 +3073,7 @@ void test_apply_cells_sparse<char*>(
       REQUIRE(
           query_condition_eq_null.init(std::string(field_name), nullptr, 0, op)
               .ok());
-      // Run Check
+      // Run Check for query_condition_eq_null
       REQUIRE(query_condition_eq_null.check(array_schema).ok());
 
       // Apply the query condition.
@@ -2573,7 +3114,7 @@ void test_apply_cells_sparse(
   REQUIRE(
       query_condition.init(std::string(field_name), &cmp_value, sizeof(T), op)
           .ok());
-  // Run Check
+  // Run Check for query_condition
   REQUIRE(query_condition.check(array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
@@ -2979,7 +3520,7 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::GT)
               .ok());
-  // Run Check
+  // Run Check for query_condition1
   REQUIRE(query_condition_1.check(array_schema).ok());
   uint64_t cmp_value_2 = 6;
   QueryCondition query_condition_2;
@@ -2990,7 +3531,7 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::LE)
               .ok());
-  // Run Check
+  // Run Check for query_condition2
   REQUIRE(query_condition_2.check(array_schema).ok());
   QueryCondition query_condition_3;
   REQUIRE(query_condition_1
@@ -3073,7 +3614,7 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::GT)
               .ok());
-  // Run Check
+  // Run Check for query_condition1
   REQUIRE(query_condition_1.check(array_schema).ok());
   uint64_t cmp_value_2 = 3;
   QueryCondition query_condition_2;
@@ -3084,7 +3625,7 @@ TEST_CASE(
                   sizeof(uint64_t),
                   QueryConditionOp::LE)
               .ok());
-  // Run Check
+  // Run Check for query_condition2
   REQUIRE(query_condition_2.check(array_schema).ok());
   QueryCondition query_condition_3;
   REQUIRE(query_condition_1
@@ -3107,6 +3648,266 @@ TEST_CASE(
   for (uint64_t cell_idx = 0; cell_idx < cells; ++cell_idx) {
     REQUIRE(
         result_bitmap[cell_idx] == (cell_idx >= 7 || cell_idx <= 3 ? 1 : 0));
+  }
+
+  free(values);
+}
+
+TEST_CASE(
+    "QueryCondition: Test combinations sparse, complex tree (OR of AND ASTs)",
+    "[QueryCondition][combinations][sparse]") {
+  const std::string field_name = "foo";
+  const uint64_t cells = 10;
+  const Datatype type = Datatype::UINT64;
+
+  // Initialize the array schema.
+  ArraySchema array_schema;
+  Attribute attr(field_name, type);
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
+  Domain domain;
+  Dimension dim("dim1", Datatype::UINT32);
+  uint32_t bounds[2] = {1, cells};
+  Range range(bounds, 2 * sizeof(uint32_t));
+  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(
+      domain
+          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+          .ok());
+  REQUIRE(
+      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+          .ok());
+
+  // Initialize the result tile.
+  ResultTile result_tile(0, 0, array_schema);
+  result_tile.init_attr_tile(field_name);
+  ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
+  Tile* const tile = &std::get<0>(*tile_tuple);
+
+  // Initialize and populate the data tile.
+  REQUIRE(tile->init_unfiltered(
+                  constants::format_version,
+                  type,
+                  cells * sizeof(uint64_t),
+                  sizeof(uint64_t),
+                  0)
+              .ok());
+  uint64_t* values = static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+  for (uint64_t i = 0; i < cells; ++i) {
+    values[i] = i;
+  }
+  REQUIRE(tile->write(values, 0, cells * sizeof(uint64_t)).ok());
+
+  // Build a combined query for `(>= 3 AND <= 6) OR (> 5 AND < 9)`.
+  uint64_t cmp_value_1 = 3;
+  QueryCondition query_condition_1;
+  REQUIRE(query_condition_1
+              .init(
+                  std::string(field_name),
+                  &cmp_value_1,
+                  sizeof(uint64_t),
+                  QueryConditionOp::GE)
+              .ok());
+  // Run Check for query_condition1
+  REQUIRE(query_condition_1.check(array_schema).ok());
+  uint64_t cmp_value_2 = 6;
+  QueryCondition query_condition_2;
+  REQUIRE(query_condition_2
+              .init(
+                  std::string(field_name),
+                  &cmp_value_2,
+                  sizeof(uint64_t),
+                  QueryConditionOp::LE)
+              .ok());
+  // Run Check for query_condition2
+  REQUIRE(query_condition_2.check(array_schema).ok());
+
+  QueryCondition combined_and;
+  REQUIRE(query_condition_1
+              .combine(
+                  query_condition_2,
+                  QueryConditionCombinationOp::AND,
+                  &combined_and)
+              .ok());
+
+  uint64_t cmp_value_3 = 5;
+  QueryCondition query_condition_3;
+  REQUIRE(query_condition_3
+              .init(
+                  std::string(field_name),
+                  &cmp_value_3,
+                  sizeof(uint64_t),
+                  QueryConditionOp::GT)
+              .ok());
+  // Run Check for query_condition3
+  REQUIRE(query_condition_3.check(array_schema).ok());
+  uint64_t cmp_value_4 = 9;
+  QueryCondition query_condition_4;
+  REQUIRE(query_condition_4
+              .init(
+                  std::string(field_name),
+                  &cmp_value_4,
+                  sizeof(uint64_t),
+                  QueryConditionOp::LT)
+              .ok());
+  // Run Check for query_condition2
+  REQUIRE(query_condition_4.check(array_schema).ok());
+  QueryCondition combined_and1;
+  REQUIRE(query_condition_3
+              .combine(
+                  query_condition_4,
+                  QueryConditionCombinationOp::AND,
+                  &combined_and1)
+              .ok());
+
+  QueryCondition combined_or;
+  REQUIRE(
+      combined_and
+          .combine(combined_and1, QueryConditionCombinationOp::OR, &combined_or)
+          .ok());
+
+  // Apply the query condition.
+  uint64_t cell_count = 0;
+  std::vector<uint8_t> result_bitmap(cells, 1);
+  REQUIRE(combined_or
+              .apply_sparse<uint8_t>(
+                  array_schema, result_tile, result_bitmap, &cell_count)
+              .ok());
+
+  // Check that the cell slab now contains cell indexes 3, 4, 5, 6, 7, 8.
+  REQUIRE(cell_count == 6);
+  for (uint64_t cell_idx = 0; cell_idx < cells; ++cell_idx) {
+    REQUIRE(
+        result_bitmap[cell_idx] == (cell_idx >= 3 && cell_idx <= 8 ? 1 : 0));
+  }
+
+  free(values);
+}
+
+TEST_CASE(
+    "QueryCondition: Test combinations sparse, complex tree (AND of OR ASTs)",
+    "[QueryCondition][combinations][sparse]") {
+  const std::string field_name = "foo";
+  const uint64_t cells = 10;
+  const Datatype type = Datatype::UINT64;
+
+  // Initialize the array schema.
+  ArraySchema array_schema;
+  Attribute attr(field_name, type);
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
+  Domain domain;
+  Dimension dim("dim1", Datatype::UINT32);
+  uint32_t bounds[2] = {1, cells};
+  Range range(bounds, 2 * sizeof(uint32_t));
+  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(
+      domain
+          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+          .ok());
+  REQUIRE(
+      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+          .ok());
+
+  // Initialize the result tile.
+  ResultTile result_tile(0, 0, array_schema);
+  result_tile.init_attr_tile(field_name);
+  ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
+  Tile* const tile = &std::get<0>(*tile_tuple);
+
+  // Initialize and populate the data tile.
+  REQUIRE(tile->init_unfiltered(
+                  constants::format_version,
+                  type,
+                  cells * sizeof(uint64_t),
+                  sizeof(uint64_t),
+                  0)
+              .ok());
+  uint64_t* values = static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+  for (uint64_t i = 0; i < cells; ++i) {
+    values[i] = i;
+  }
+  REQUIRE(tile->write(values, 0, cells * sizeof(uint64_t)).ok());
+
+  // Build a combined query for `(< 3 OR >= 8) AND (<= 4 OR = 9)`.
+  uint64_t cmp_value_1 = 3;
+  QueryCondition query_condition_1;
+  REQUIRE(query_condition_1
+              .init(
+                  std::string(field_name),
+                  &cmp_value_1,
+                  sizeof(uint64_t),
+                  QueryConditionOp::LT)
+              .ok());
+  // Run Check for query_condition1
+  REQUIRE(query_condition_1.check(array_schema).ok());
+  uint64_t cmp_value_2 = 8;
+  QueryCondition query_condition_2;
+  REQUIRE(query_condition_2
+              .init(
+                  std::string(field_name),
+                  &cmp_value_2,
+                  sizeof(uint64_t),
+                  QueryConditionOp::GE)
+              .ok());
+  // Run Check for query_condition2
+  REQUIRE(query_condition_2.check(array_schema).ok());
+
+  QueryCondition combined_or;
+  REQUIRE(
+      query_condition_1
+          .combine(
+              query_condition_2, QueryConditionCombinationOp::OR, &combined_or)
+          .ok());
+
+  uint64_t cmp_value_3 = 4;
+  QueryCondition query_condition_3;
+  REQUIRE(query_condition_3
+              .init(
+                  std::string(field_name),
+                  &cmp_value_3,
+                  sizeof(uint64_t),
+                  QueryConditionOp::LT)
+              .ok());
+  // Run Check for query_condition3
+  REQUIRE(query_condition_3.check(array_schema).ok());
+  uint64_t cmp_value_4 = 9;
+  QueryCondition query_condition_4;
+  REQUIRE(query_condition_4
+              .init(
+                  std::string(field_name),
+                  &cmp_value_4,
+                  sizeof(uint64_t),
+                  QueryConditionOp::EQ)
+              .ok());
+  // Run Check for query_condition2
+  REQUIRE(query_condition_4.check(array_schema).ok());
+  QueryCondition combined_or1;
+  REQUIRE(
+      query_condition_3
+          .combine(
+              query_condition_4, QueryConditionCombinationOp::OR, &combined_or1)
+          .ok());
+
+  QueryCondition combined_and;
+  REQUIRE(combined_or
+              .combine(
+                  combined_or1, QueryConditionCombinationOp::AND, &combined_and)
+              .ok());
+
+  // Apply the query condition.
+  uint64_t cell_count = 0;
+  std::vector<uint8_t> result_bitmap(cells, 1);
+  REQUIRE(combined_and
+              .apply_sparse<uint8_t>(
+                  array_schema, result_tile, result_bitmap, &cell_count)
+              .ok());
+
+  // Check that the cell slab now contains cell indexes 0, 1, 2, 9.
+  REQUIRE(cell_count == 4);
+  for (uint64_t cell_idx = 0; cell_idx < cells; ++cell_idx) {
+    REQUIRE(
+        result_bitmap[cell_idx] == (cell_idx <= 2 || cell_idx == 9 ? 1 : 0));
   }
 
   free(values);
@@ -3229,7 +4030,7 @@ TEST_CASE(
   QueryCondition query_condition;
   REQUIRE(query_condition.init(std::string(field_name), cmp_value, 0, op).ok());
 
-  // Run Check
+  // Run Check for query_condition
   REQUIRE(query_condition.check(array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition

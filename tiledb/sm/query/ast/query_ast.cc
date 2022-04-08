@@ -39,14 +39,14 @@ tdb_unique_ptr<ASTNode> ast_combine(
     const tdb_unique_ptr<ASTNode>& lhs,
     const tdb_unique_ptr<ASTNode>& rhs,
     QueryConditionCombinationOp combination_op) {
-  // AST Construction
+  // AST Construction.
   std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
   if (lhs->get_tag() == ASTNodeTag::VAL) {
     if (rhs->get_tag() == ASTNodeTag::VAL) {
       ast_nodes.push_back(lhs->clone());
       ast_nodes.push_back(rhs->clone());
     } else {
-      // rhs is expression, lhs is value
+      // lhs is a simple tree, rhs is a compound tree.
       auto rhs_tree_expr = dynamic_cast<ASTNodeExpr*>(rhs.get());
       ast_nodes.push_back(lhs->clone());
       for (const auto& elem : rhs_tree_expr->nodes_) {
@@ -54,20 +54,23 @@ tdb_unique_ptr<ASTNode> ast_combine(
       }
     }
   } else if (rhs->get_tag() == ASTNodeTag::VAL) {
-    // lhs is expression, rhs is value
+    // lhs is a compound tree, rhs is a simple tree.
     auto lhs_tree_expr = dynamic_cast<ASTNodeExpr*>(lhs.get());
     for (const auto& elem : lhs_tree_expr->nodes_) {
       ast_nodes.push_back(elem->clone());
     }
     ast_nodes.push_back(rhs->clone());
-  } else {
-    // Both trees are expression trees
+  } else if (
+      lhs->get_tag() == ASTNodeTag::EXPR &&
+      rhs->get_tag() == ASTNodeTag::EXPR) {
+    // Both trees are expression trees.
     auto lhs_tree_expr = dynamic_cast<ASTNodeExpr*>(lhs.get());
     auto rhs_tree_expr = dynamic_cast<ASTNodeExpr*>(rhs.get());
 
     if (combination_op == lhs_tree_expr->combination_op_ &&
         lhs_tree_expr->combination_op_ == rhs_tree_expr->combination_op_) {
-      // same op
+      // The combination ops of the lhs compound tree, rhs compound tree, and
+      // the combination op argument passed in are identical.
       for (const auto& elem : lhs_tree_expr->nodes_) {
         ast_nodes.push_back(elem->clone());
       }
@@ -75,11 +78,15 @@ tdb_unique_ptr<ASTNode> ast_combine(
         ast_nodes.push_back(elem->clone());
       }
     } else if (combination_op == lhs_tree_expr->combination_op_) {
+      // The combination op argument passed in is the same as the combination op
+      // of the lhs compound tree.
       for (const auto& elem : lhs_tree_expr->nodes_) {
         ast_nodes.push_back(elem->clone());
       }
       ast_nodes.push_back(rhs->clone());
     } else if (combination_op == rhs_tree_expr->combination_op_) {
+      // The combination op argument passed in is the same as the combination op
+      // of the rhs compound tree.
       ast_nodes.push_back(lhs->clone());
       for (const auto& elem : rhs_tree_expr->nodes_) {
         ast_nodes.push_back(elem->clone());
@@ -88,6 +95,9 @@ tdb_unique_ptr<ASTNode> ast_combine(
       ast_nodes.push_back(lhs->clone());
       ast_nodes.push_back(rhs->clone());
     }
+  } else {
+    throw std::logic_error(
+        "ast_combine: argument node does not have tag VAL or EXPR.");
   }
   return tdb_unique_ptr<ASTNode>(
       tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
@@ -96,21 +106,24 @@ tdb_unique_ptr<ASTNode> ast_combine(
 void ast_get_field_names(
     std::unordered_set<std::string>& field_name_set,
     const tdb_unique_ptr<ASTNode>& node) {
-  if (!node)
+  if (node == nullptr)
     return;
   if (node->get_tag() == ASTNodeTag::VAL) {
     auto val_ptr = dynamic_cast<ASTNodeVal*>(node.get());
     field_name_set.insert(val_ptr->field_name_);
-  } else {
+  } else if (node->get_tag() == ASTNodeTag::EXPR) {
     auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
     for (const auto& child : expr_ptr->nodes_) {
       ast_get_field_names(field_name_set, child);
     }
+  } else {
+    throw std::logic_error(
+        "ast_get_field_names: argument node does not have tag VAL or EXPR.");
   }
 }
 
 bool ast_is_previously_supported(const tdb_unique_ptr<ASTNode>& node) {
-  if (!node)
+  if (node == nullptr)
     return true;
   if (node->get_tag() == ASTNodeTag::EXPR) {
     auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
