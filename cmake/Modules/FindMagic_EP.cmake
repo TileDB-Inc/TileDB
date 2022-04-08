@@ -124,6 +124,9 @@ if (NOT libmagic_FOUND)
               LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
               )
     else()
+      set(findcmdstr  "bash -c find . -name '*.a' -exec ls {} \;")
+      set(findargs " . -name '*.a' -exec ls {} \;")
+      set(findargs " . -name '*.a' -exec ls {} \\;")
       ExternalProject_Add(ep_magic
         PREFIX "externals"
         # URL "ftp://ftp.astron.com/pub/file/file-5.41.tar.gz"
@@ -154,7 +157,9 @@ if (NOT libmagic_FOUND)
       )
       ExternalProject_Add_Step(ep_magic afterbuild_diags
         COMMAND "pwd"
-        COMMAND bash -c "find . -name '*.a' -exec ls {} \\;"
+        #COMMAND bash -c "find . -name '*.a' -exec ls {} \\;"
+        #COMMAND "${findcmdstr}"
+        COMMAND bash -c "find ${findargs}"
         COMMAND "cat ./src/ep_magic-stamp/*.log"
       )
     endif()
