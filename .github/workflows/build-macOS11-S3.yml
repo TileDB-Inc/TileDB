@@ -31,6 +31,10 @@ jobs:
     timeout-minutes: 90
     name: Build - ${{ matrix.os }} - S3
     steps:
+      - name: 'diagnostic - hunt stuff'
+        run: |
+          find /usr -name unistd.h -exec ls -l {} \;
+
       - name: 'prep macos for core dumps'
         if: ${{ startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
         run: |

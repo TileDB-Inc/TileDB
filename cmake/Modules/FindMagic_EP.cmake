@@ -36,6 +36,7 @@ include(TileDBCommon)
 # Search the path set during the superbuild for the EP.
 set(LIBMAGIC_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
+if(0)
 # Try the builtin find module unless built w/ EP superbuild
 if ((NOT TILEDB_FORCE_ALL_DEPS) AND (NOT TILEDB_LIBMAGIC_EP_BUILT) 
   AND (NOT MSYS)) # RTOOLS problematic, build 'ours' which is self-contained
@@ -43,9 +44,16 @@ if ((NOT TILEDB_FORCE_ALL_DEPS) AND (NOT TILEDB_LIBMAGIC_EP_BUILT)
 elseif(TILEDB_LIBMAGIC_EP_BUILT)
   find_package(libmagic PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
+else()
+if(TILEDB_LIBMAGIC_EP_BUILT)
+  find_package(libmagic PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
+endif()
+endif()
 
+#if (1)
 # Next try finding the superbuild external project
 if (NOT libmagic_FOUND)
+#if (TILEDB_LIBMAGIC_EP_BUILT)
 #if ((NOT libmagic_FOUND) AND (NOT MSYS))
   find_path(libmagic_INCLUDE_DIR
     NAMES magic.h
@@ -76,9 +84,11 @@ if (NOT libmagic_FOUND)
     REQUIRED_VARS libmagic_LIBRARIES libmagic_INCLUDE_DIR
   )
 endif()
+#endif()
 
 # If not found, add it as an external project
 if (NOT libmagic_FOUND)
+#if(NOT TILEDB_LIBMAGIC_EP_BUILT)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Magic as an external project")
 
@@ -94,13 +104,19 @@ if (NOT libmagic_FOUND)
       ExternalProject_Add(ep_magic
               PREFIX "externals"
               GIT_REPOSITORY "https://github.com/TileDB-Inc/file-windows.git"
-              GIT_TAG "cmake-install-support"
+              #GIT_REPOSITORY "d:/dev/tiledb/gh.tdb.file-windows.git"
+              #GIT_REPOSITORY "d:/dev/tiledb/gh.tdb.file-windows-SM-D.git"
+              #GIT_TAG "cmake-install-support"
+              #GIT_TAG "dlh/cmake-install-support" # '/' no worky...
+              #GIT_TAG "dlh-cmake-install-support"
+              GIT_TAG "nplat-cmake-install-support"
               GIT_SUBMODULES_RECURSE TRUE
               UPDATE_COMMAND ""
               CMAKE_ARGS
                 -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                 "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
+                -Dlibmagic_STATIC_LIB=ON
               LOG_DOWNLOAD TRUE
               LOG_CONFIGURE TRUE
               LOG_BUILD TRUE
@@ -110,15 +126,26 @@ if (NOT libmagic_FOUND)
     else()
       ExternalProject_Add(ep_magic
         PREFIX "externals"
-        URL "ftp://ftp.astron.com/pub/file/file-5.41.tar.gz"
-        URL_HASH SHA1=8d80d2d50f4000e087aa60ffae4f099c63376762
-        DOWNLOAD_NAME "file-5.41.tar.gz"
+        # URL "ftp://ftp.astron.com/pub/file/file-5.41.tar.gz"
+        # URL_HASH SHA1=8d80d2d50f4000e087aa60ffae4f099c63376762
+        # DOWNLOAD_NAME "file-5.41.tar.gz"
+        GIT_REPOSITORY "https://github.com/TileDB-Inc/file-windows.git"
+        #GIT_REPOSITORY "/mnt/d/dev/tiledb/gh.tdb.file-windows-SM-D.git"
+        #GIT_TAG "cmake-install-support"
+        #GIT_TAG "dlh-cmake-install-support"
+        GIT_TAG "nplat-cmake-install-support"
+        GIT_SUBMODULES_RECURSE TRUE
         UPDATE_COMMAND ""
-        CONFIGURE_COMMAND
-              ${TILEDB_EP_BASE}/src/ep_magic/configure --prefix=${TILEDB_EP_INSTALL_PREFIX} CFLAGS=${CFLAGS_DEF} CXXFLAGS=${CXXFLAGS_DEF}
-        BUILD_IN_SOURCE TRUE
-        BUILD_COMMAND $(MAKE)
-        INSTALL_COMMAND $(MAKE) install
+        #CONFIGURE_COMMAND
+        #      ${TILEDB_EP_BASE}/src/ep_magic/configure --prefix=${TILEDB_EP_INSTALL_PREFIX} CFLAGS=${CFLAGS_DEF} CXXFLAGS=${CXXFLAGS_DEF}
+        #BUILD_IN_SOURCE TRUE
+        #BUILD_COMMAND $(MAKE)
+        #INSTALL_COMMAND $(MAKE) install
+        CMAKE_ARGS
+          -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+          "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
+          -Dlibmagic_STATIC_LIB=ON
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
