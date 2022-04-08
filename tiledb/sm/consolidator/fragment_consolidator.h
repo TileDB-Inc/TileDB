@@ -97,6 +97,29 @@ class FragmentConsolidator : public Consolidator {
       uint32_t key_length);
 
   /**
+   * Consolidates only the fragments of the input array using a list of
+   * fragments. Note that this might change ordering of fragments and
+   * currently does no checks for non-empty domains. It must be used
+   * carefully.
+   *
+   * @param array_name URI of array to consolidate.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @param fragment_uris The list of the fragments to consolidate.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default).
+   * @return Status
+   */
+  Status consolidate_fragments(
+      const char* array_name,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      const std::vector<std::string>& fragment_uris);
+
+  /**
    * Performs the vacuuming operation.
    *
    * @param array_name URI of array to consolidate.
@@ -175,7 +198,7 @@ class FragmentConsolidator : public Consolidator {
    *     consolidated based on the above definition.
    */
   bool are_consolidatable(
-      shared_ptr<const Domain> domain,
+      const Domain& domain,
       const FragmentInfo& fragment_info,
       size_t start,
       size_t end,

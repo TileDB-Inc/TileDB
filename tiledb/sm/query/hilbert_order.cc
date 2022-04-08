@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -52,8 +52,7 @@ uint64_t map_to_uint64(
     int bits,
     uint64_t max_bucket_val) {
   auto d{coord.dimension_datum(dim, dim_idx)};
-  return dim.map_to_uint64(
-      d.datum().content(), d.datum().size(), bits, max_bucket_val);
+  return dim.map_to_uint64(d.content(), d.size(), bits, max_bucket_val);
 }
 
 }  // namespace tiledb::sm::hilbert_order

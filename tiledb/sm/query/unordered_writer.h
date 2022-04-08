@@ -206,7 +206,7 @@ class UnorderedWriter : public WriterBase {
    * @param cell_pos The sorted cell positions to be created.
    * @return Status
    */
-  Status sort_coords(std::vector<uint64_t>* cell_pos) const;
+  Status sort_coords(std::vector<uint64_t>& cell_pos) const;
 
   /**
    * Writes in unordered layout. Applicable to both dense and sparse arrays.

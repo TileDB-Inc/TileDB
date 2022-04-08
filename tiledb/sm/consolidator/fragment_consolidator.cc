@@ -36,6 +36,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/misc/time.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -163,6 +164,103 @@ Status FragmentConsolidator::consolidate(
   return Status::Ok();
 }
 
+Status FragmentConsolidator::consolidate_fragments(
+    const char* array_name,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length,
+    const std::vector<std::string>& fragment_uris) {
+  auto timer_se = stats_->start_timer("consolidate_frags");
+
+  // Open array for reading
+  Array array_for_reads(URI(array_name), storage_manager_);
+  RETURN_NOT_OK(array_for_reads.open_without_fragments(
+      encryption_type, encryption_key, key_length));
+
+  // Open array for writing
+  Array array_for_writes(array_for_reads.array_uri(), storage_manager_);
+  RETURN_NOT_OK(array_for_writes.open(
+      QueryType::WRITE, encryption_type, encryption_key, key_length));
+
+  // Check if there is anything to consolidate
+  if (fragment_uris.size() <= 1)
+    return Status::Ok();
+
+  // Get all fragment info
+  FragmentInfo fragment_info(URI(array_name), storage_manager_);
+  auto st = fragment_info.load(
+      0,
+      utils::time::timestamp_now_ms(),
+      encryption_type,
+      encryption_key,
+      key_length,
+      false);
+  if (!st.ok()) {
+    array_for_reads.close();
+    array_for_writes.close();
+    return st;
+  }
+
+  // Make a set of the uris to consolidate
+  NDRange union_non_empty_domains;
+  std::unordered_set<std::string> to_consolidate_set;
+  for (auto& uri : fragment_uris) {
+    to_consolidate_set.emplace(uri);
+  }
+
+  // Make sure all fragments to consolidate are present
+  // Compute union of non empty domains as we go
+  uint64_t count = 0;
+  auto& domain{array_for_reads.array_schema_latest().domain()};
+  std::vector<TimestampedURI> to_consolidate;
+  to_consolidate.reserve(fragment_uris.size());
+  auto& frag_info_vec = fragment_info.single_fragment_info_vec();
+  for (auto& frag_info : frag_info_vec) {
+    auto uri = frag_info.uri().last_path_part();
+    if (to_consolidate_set.count(uri) != 0) {
+      count++;
+      domain.expand_ndrange(
+          frag_info.non_empty_domain(), &union_non_empty_domains);
+      domain.expand_to_tiles(&union_non_empty_domains);
+      to_consolidate.emplace_back(frag_info.uri(), frag_info.timestamp_range());
+    }
+  }
+
+  if (count != fragment_uris.size()) {
+    return logger_->status(Status_ConsolidatorError(
+        "Cannot consolidate; Not all fragments could be found"));
+  }
+
+  // Consolidate the selected fragments
+  URI new_fragment_uri;
+  st = consolidate(
+      array_for_reads,
+      array_for_writes,
+      to_consolidate,
+      union_non_empty_domains,
+      &new_fragment_uri);
+  if (!st.ok()) {
+    array_for_reads.close();
+    array_for_writes.close();
+    return st;
+  }
+
+  // Load info of the consolidated fragment and add it
+  // to the fragment info, replacing the fragments that it
+  // consolidated.
+  st = fragment_info.load_and_replace(new_fragment_uri, to_consolidate);
+  if (!st.ok()) {
+    array_for_reads.close();
+    array_for_writes.close();
+    return st;
+  }
+
+  RETURN_NOT_OK_ELSE(array_for_reads.close(), array_for_writes.close());
+  RETURN_NOT_OK(array_for_writes.close());
+
+  return Status::Ok();
+}
+
 Status FragmentConsolidator::vacuum(const char* array_name) {
   if (array_name == nullptr)
     return logger_->status(Status_StorageManagerError(
@@ -246,29 +344,29 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
 /* ****************************** */
 
 bool FragmentConsolidator::are_consolidatable(
-    shared_ptr<const Domain> domain,
+    const Domain& domain,
     const FragmentInfo& fragment_info,
     size_t start,
     size_t end,
     const NDRange& union_non_empty_domains) const {
   auto anterior_ndrange = fragment_info.anterior_ndrange();
   if (anterior_ndrange.size() != 0 &&
-      domain->overlap(union_non_empty_domains, anterior_ndrange))
+      domain.overlap(union_non_empty_domains, anterior_ndrange))
     return false;
 
   // Check overlap of union with earlier fragments
   const auto& fragments = fragment_info.single_fragment_info_vec();
   for (size_t i = 0; i < start; ++i) {
-    if (domain->overlap(
+    if (domain.overlap(
             union_non_empty_domains, fragments[i].non_empty_domain()))
       return false;
   }
 
   // Check consolidation amplification factor
-  auto union_cell_num = domain->cell_num(union_non_empty_domains);
+  auto union_cell_num = domain.cell_num(union_non_empty_domains);
   uint64_t sum_cell_num = 0;
   for (size_t i = start; i <= end; ++i) {
-    sum_cell_num += domain->cell_num(fragments[i].expanded_non_empty_domain());
+    sum_cell_num += domain.cell_num(fragments[i].expanded_non_empty_domain());
   }
 
   return (double(union_cell_num) / sum_cell_num) <= config_.amplification_;
@@ -397,7 +495,7 @@ Status FragmentConsolidator::create_buffers(
 
   // For easy reference
   auto attribute_num = array_schema.attribute_num();
-  auto domain = array_schema.domain();
+  auto& domain{array_schema.domain()};
   auto dim_num = array_schema.dim_num();
   auto sparse = !array_schema.dense();
 
@@ -409,7 +507,7 @@ Status FragmentConsolidator::create_buffers(
   }
   if (sparse) {
     for (unsigned i = 0; i < dim_num; ++i)
-      buffer_num += (domain->dimension(i)->var_size()) ? 2 : 1;
+      buffer_num += (domain.dimension(i)->var_size()) ? 2 : 1;
   }
 
   // Create buffers
@@ -482,7 +580,7 @@ Status FragmentConsolidator::compute_next_to_consolidate(
   // Preparation
   auto sparse = !array_schema.dense();
   const auto& fragments = fragment_info.single_fragment_info_vec();
-  auto domain = array_schema.domain();
+  auto& domain{array_schema.domain()};
   to_consolidate->clear();
   auto min = config_.min_frags_;
   min = (uint32_t)((min > fragments.size()) ? fragments.size() : min);
@@ -534,9 +632,9 @@ Status FragmentConsolidator::compute_next_to_consolidate(
         if (ratio >= size_ratio && (m_sizes[i - 1][j] != UINT64_MAX)) {
           m_sizes[i][j] = m_sizes[i - 1][j] + fragments[i + j].fragment_size();
           m_union[i][j] = m_union[i - 1][j];
-          domain->expand_ndrange(
+          domain.expand_ndrange(
               fragments[i + j].non_empty_domain(), &m_union[i][j]);
-          domain->expand_to_tiles(&m_union[i][j]);
+          domain.expand_to_tiles(&m_union[i][j]);
           if (!sparse && !are_consolidatable(
                              domain, fragment_info, j, j + i, m_union[i][j])) {
             // Mark this entry as invalid

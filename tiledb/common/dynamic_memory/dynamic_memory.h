@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -147,6 +147,20 @@ using TiledbTracedAllocator = typename std::conditional<
  */
 template <class T>
 using allocator = GovernedAllocator<T, TiledbTracedAllocator, Governor>;
+
+/**
+ * Predicate class for use with std::enable_if
+ *
+ * The required template is ignored. If weren't an argument, there couldn't be a
+ * substitution for an argument and SFINAE would never apply.
+ */
+template <class>
+struct is_tracing_enabled {
+  constexpr static bool value = detail::global_tracing<void>::enabled::value;
+};
+
+template <class T = void>
+constexpr bool is_tracing_enabled_v = is_tracing_enabled<T>::value;
 
 namespace /* anonymous */ {
 

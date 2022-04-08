@@ -1,0 +1,55 @@
+/*
+Cloned from https://github.com/TileDB-Inc/tiledb-quarto-template
+
+tiledb light blue #4d9fff
+tiledb dark  blue #0a2580
+*/
+
+.navbar-nav:hover .nav-link:hover {
+  color: #0a2580;
+}
+
+.sidebar-navigation .text-start {
+  font-weight: bold;
+}
+
+.sidebar.sidebar-navigation .active {
+  /*
+  color: #800000;
+  background-color: #e0e0e0;
+  */
+}
+
+.sidebar.sidebar-navigation .active, .sidebar.sidebar-navigation .show>.nav-link {
+  /*color: #0a2580;*/
+  color: #4d9fff;
+  background-color: #e0e0e0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+a {
+  color: #4d9fff;
+}
+a:before, a:focus, a:hover, a:link, a:visited {
+  color: #4d9fff;
+}
+
+code, p code:not(.sourceCode), li code:not(.sourceCode), kbd, pre {
+  color: #000000;
+  background-color: #f0f0f0;
+  font-size: 12px;
+  direction: ltr;
+  border-radius: 3px;
+}
+
+pre {
+  font-size: 12px;
+  padding: 10px;
+  text-decoration: none;
+
+  white-space: pre-wrap;       /* css-3 */
+  white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+  white-space: -pre-wrap;      /* Opera 4-6 */
+  white-space: -o-pre-wrap;    /* Opera 7 */
+}

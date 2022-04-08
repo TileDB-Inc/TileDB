@@ -52,6 +52,7 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class DomainBuffersView;
 class FragmentMetadata;
 class TileMetadataGenerator;
 class StorageManager;
@@ -196,11 +197,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
 
   /** Adss a fragment to `written_fragment_info_`. */
   Status add_written_fragment_info(const URI& uri);
-
-  /** Calculates the hilbert values of the input coordinate buffers. */
-  Status calculate_hilbert_values(
-      const std::vector<const QueryBuffer*>& buffs,
-      std::vector<uint64_t>* hilbert_values) const;
 
   /** Correctness checks for buffer sizes. */
   Status check_buffer_sizes() const;
@@ -493,6 +489,40 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       uint64_t start_tile_id,
       std::vector<WriterTile>* tiles,
       bool close_files = true);
+
+  /**
+   * Invoked on error. It removes the directory of the input URI and
+   * resets the global write state.
+   */
+  void clean_up(const URI& uri);
+
+  /** Calculates the hilbert values of the input coordinate buffers.
+   *
+   * @param[in] domain_buffers QueryBuffers for which to calculate values
+   * @param[out] hilbert_values Output values written into caller-defined vector
+   */
+  Status calculate_hilbert_values(
+      const DomainBuffersView& domain_buffers,
+      std::vector<uint64_t>& hilbert_values) const;
+
+  /**
+   * Prepares, filters and writes dense tiles for the given attribute.
+   *
+   * @tparam T The array domain datatype.
+   * @param name The attribute name.
+   * @param tile_batches The attribute tile batches.
+   * @param frag_meta The metadata of the new fragment.
+   * @param dense_tiler The dense tiler that will prepare the tiles.
+   * @param thread_num The number of threads to be used for the function.
+   * @param stats Statistics to gather in the function.
+   */
+  template <class T>
+  Status prepare_filter_and_write_tiles(
+      const std::string& name,
+      std::vector<std::vector<WriterTile>>& tile_batches,
+      tdb_shared_ptr<FragmentMetadata> frag_meta,
+      DenseTiler<T>* dense_tiler,
+      uint64_t thread_num);
 };
 
 }  // namespace sm

@@ -238,26 +238,19 @@ Status GlobalOrderWriter::check_global_order() const {
   if (array_schema_.cell_order() == Layout::HILBERT)
     return check_global_order_hilbert();
 
-  // Prepare auxiliary vector for better performance
-  auto dim_num = array_schema_.dim_num();
-  std::vector<const QueryBuffer*> buffs(dim_num);
-  for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_.dimension(d)->name();
-    buffs[d] = &(buffers_.find(dim_name)->second);
-  }
-
   // Check if all coordinates fall in the domain in parallel
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
+  DomainBuffersView domain_buffs{array_schema_, buffers_};
   auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
       coords_info_.coords_num_ - 1,
       [&](uint64_t i) {
-        auto tile_cmp = domain->tile_order_cmp(buffs, i, i + 1);
-        auto fail =
-            (tile_cmp > 0) ||
-            ((tile_cmp == 0) && domain->cell_order_cmp(buffs, i, i + 1) > 0);
-
+        auto left{domain_buffs.domain_ref_at(domain, i)};
+        auto right{domain_buffs.domain_ref_at(domain, i + 1)};
+        auto tile_cmp = domain.tile_order_cmp(left, right);
+        auto fail = (tile_cmp > 0) ||
+                    ((tile_cmp == 0) && domain.cell_order_cmp(left, right) > 0);
         if (fail) {
           std::stringstream ss;
           ss << "Write failed; Coordinates " << coords_to_str(i);
@@ -276,17 +269,10 @@ Status GlobalOrderWriter::check_global_order() const {
 }
 
 Status GlobalOrderWriter::check_global_order_hilbert() const {
-  // Prepare auxiliary vector for better performance
-  auto dim_num = array_schema_.dim_num();
-  std::vector<const QueryBuffer*> buffs(dim_num);
-  for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_.dimension(d)->name();
-    buffs[d] = &buffers_.at(dim_name);
-  }
-
   // Compute hilbert values
+  DomainBuffersView domain_buffs{array_schema_, buffers_};
   std::vector<uint64_t> hilbert_values(coords_info_.coords_num_);
-  RETURN_NOT_OK(calculate_hilbert_values(buffs, &hilbert_values));
+  RETURN_NOT_OK(calculate_hilbert_values(domain_buffs, hilbert_values));
 
   // Check if all coordinates fall in the domain in parallel
   auto status = parallel_for(
@@ -471,7 +457,7 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   // Check if the total number of cells written is equal to the subarray size
   if (!coords_info_.has_coords_) {  // This implies a dense array
     auto expected_cell_num =
-        array_schema_.domain()->cell_num(subarray_.ndrange(0));
+        array_schema_.domain().cell_num(subarray_.ndrange(0));
     if (cell_num != expected_cell_num) {
       clean_up(uri);
       std::stringstream ss;
@@ -581,9 +567,9 @@ Status GlobalOrderWriter::global_write() {
 
 Status GlobalOrderWriter::global_write_handle_last_tile() {
   auto capacity = array_schema_.capacity();
-  auto domain = array_schema_.domain();
+  auto& domain = array_schema_.domain();
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   auto cell_num_last_tiles =
       global_write_state_->cells_written_[buffers_.begin()->first] %
       cell_num_per_tile;
@@ -724,9 +710,9 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   auto cell_size = array_schema_.cell_size(name);
   auto capacity = array_schema_.capacity();
   auto cell_num = *buffer_size / cell_size;
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
 
   // Do nothing if there are no cells to write
   if (cell_num == 0)
@@ -895,9 +881,9 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   auto buffer_var_size = it->second.buffer_var_size_;
   auto capacity = array_schema_.capacity();
   auto cell_num = buffer_size / constants::cell_var_offset_size;
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   auto attr_datatype_size = datatype_size(array_schema_.type(name));
 
   // Do nothing if there are no cells to write

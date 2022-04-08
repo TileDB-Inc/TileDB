@@ -2729,7 +2729,7 @@ int32_t tiledb_array_schema_get_domain(
 
   // Create a new Domain object
   (*domain)->domain_ = new (std::nothrow)
-      tiledb::sm::Domain(array_schema->array_schema_->domain().get());
+      tiledb::sm::Domain(&array_schema->array_schema_->domain());
   if ((*domain)->domain_ == nullptr) {
     delete *domain;
     *domain = nullptr;
@@ -4918,6 +4918,38 @@ int32_t tiledb_array_consolidate_with_key(
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
               key_length,
+              (config == nullptr) ? &ctx->ctx_->storage_manager()->config() :
+                                    config->config_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_consolidate_fragments(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const char** fragment_uris,
+    const uint64_t num_fragments,
+    tiledb_config_t* config) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Convert the list of fragments to a vector
+  std::vector<std::string> uris;
+  uris.reserve(num_fragments);
+  for (uint64_t i = 0; i < num_fragments; i++) {
+    uris.emplace_back(fragment_uris[i]);
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->fragments_consolidate(
+              array_uri,
+              static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+              nullptr,
+              0,
+              uris,
               (config == nullptr) ? &ctx->ctx_->storage_manager()->config() :
                                     config->config_)))
     return TILEDB_ERR;
@@ -9549,6 +9581,16 @@ int32_t tiledb_array_consolidate_with_key(
     tiledb_config_t* config) noexcept {
   return api_entry<detail::tiledb_array_consolidate_with_key>(
       ctx, array_uri, encryption_type, encryption_key, key_length, config);
+}
+
+int32_t tiledb_array_consolidate_fragments(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const char** fragment_uris,
+    const uint64_t num_fragments,
+    tiledb_config_t* config) noexcept {
+  return api_entry<detail::tiledb_array_consolidate_fragments>(
+      ctx, array_uri, fragment_uris, num_fragments, config);
 }
 
 int32_t tiledb_array_vacuum(

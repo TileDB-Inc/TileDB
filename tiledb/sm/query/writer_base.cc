@@ -270,15 +270,15 @@ Status WriterBase::add_written_fragment_info(const URI& uri) {
 }
 
 Status WriterBase::calculate_hilbert_values(
-    const std::vector<const QueryBuffer*>& buffs,
-    std::vector<uint64_t>* hilbert_values) const {
+    const DomainBuffersView& domain_buffers,
+    std::vector<uint64_t>& hilbert_values) const {
   auto dim_num = array_schema_.dim_num();
   Hilbert h(dim_num);
   auto bits = h.bits();
   auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   // Calculate Hilbert values in parallel
-  assert(hilbert_values->size() >= coords_info_.coords_num_);
+  assert(hilbert_values.size() >= coords_info_.coords_num_);
   auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
@@ -288,9 +288,9 @@ Status WriterBase::calculate_hilbert_values(
         for (uint32_t d = 0; d < dim_num; ++d) {
           auto dim = array_schema_.dimension(d);
           coords[d] = hilbert_order::map_to_uint64(
-              *dim, buffs[d], c, bits, max_bucket_val);
+              *dim, domain_buffers[d], c, bits, max_bucket_val);
         }
-        (*hilbert_values)[c] = h.coords_to_hilbert(&coords[0]);
+        hilbert_values[c] = h.coords_to_hilbert(&coords[0]);
 
         return Status::Ok();
       });
@@ -306,7 +306,7 @@ Status WriterBase::check_buffer_sizes() const {
       (layout_ != Layout::ROW_MAJOR && layout_ != Layout::COL_MAJOR))
     return Status::Ok();
 
-  auto cell_num = array_schema_.domain()->cell_num(subarray_.ndrange(0));
+  auto cell_num = array_schema_.domain().cell_num(subarray_.ndrange(0));
   uint64_t expected_cell_num = 0;
   for (const auto& it : buffers_) {
     const auto& attr = it.first;
@@ -360,7 +360,7 @@ Status WriterBase::check_coord_oob() const {
     return Status::Ok();
 
   // Exit if all dimensions are strings
-  if (array_schema_.domain()->all_dims_string())
+  if (array_schema_.domain().all_dims_string())
     return Status::Ok();
 
   // Prepare auxiliary vectors for better performance
@@ -809,10 +809,10 @@ Status WriterBase::init_tile(const std::string& name, WriterTile* tile) const {
   // For easy reference
   auto cell_size = array_schema_.cell_size(name);
   auto type = array_schema_.type(name);
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto capacity = array_schema_.capacity();
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   auto tile_size = cell_num_per_tile * cell_size;
 
   // Initialize
@@ -826,10 +826,10 @@ Status WriterBase::init_tile(
     const std::string& name, WriterTile* tile, WriterTile* tile_var) const {
   // For easy reference
   auto type = array_schema_.type(name);
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto capacity = array_schema_.capacity();
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
 
   // Initialize
@@ -851,10 +851,10 @@ Status WriterBase::init_tile_nullable(
   // For easy reference
   auto cell_size = array_schema_.cell_size(name);
   auto type = array_schema_.type(name);
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto capacity = array_schema_.capacity();
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
 
   // Initialize
   RETURN_NOT_OK(tile->init_unfiltered(
@@ -880,10 +880,10 @@ Status WriterBase::init_tile_nullable(
     WriterTile* tile_validity) const {
   // For easy reference
   auto type = array_schema_.type(name);
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto capacity = array_schema_.capacity();
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
 
   // Initialize
@@ -995,7 +995,7 @@ Status WriterBase::split_coords_buffer() {
 
   // For easy reference
   auto dim_num = array_schema_.dim_num();
-  auto coord_size = array_schema_.domain()->dimension(0)->coord_size();
+  auto coord_size = array_schema_.domain().dimension(0)->coord_size();
   auto coords_size = dim_num * coord_size;
   coords_info_.coords_num_ = *coords_info_.coords_buffer_size_ / coords_size;
 

@@ -128,7 +128,7 @@ class ReadCellSlabIter {
   /* ********************************* */
 
   /** The array domain. */
-  shared_ptr<const Domain> domain_;
+  const Domain* domain_;
 
   /** The subarray layout. */
   Layout layout_;

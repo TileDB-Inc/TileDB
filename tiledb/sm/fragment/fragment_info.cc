@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -94,8 +95,8 @@ Status FragmentInfo::set_config(const Config& config) {
 }
 
 void FragmentInfo::expand_anterior_ndrange(
-    shared_ptr<const Domain> domain, const NDRange& range) {
-  domain->expand_ndrange(range, &anterior_ndrange_);
+    const Domain& domain, const NDRange& range) {
+  domain.expand_ndrange(range, &anterior_ndrange_);
 }
 
 void FragmentInfo::dump(FILE* out) const {
@@ -897,7 +898,7 @@ Status FragmentInfo::load(
       // compute expanded non-empty domain (only for dense fragments)
       auto expanded_non_empty_domain = non_empty_domain;
       if (!sparse)
-        array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
+        array_schema->domain().expand_to_tiles(&expanded_non_empty_domain);
 
       // Push new fragment info
       single_fragment_info_vec_.emplace_back(SingleFragmentInfo(
@@ -1034,7 +1035,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   const auto& non_empty_domain = meta->non_empty_domain();
   auto expanded_non_empty_domain = non_empty_domain;
   if (!sparse)
-    meta->array_schema()->domain()->expand_to_tiles(&expanded_non_empty_domain);
+    meta->array_schema()->domain().expand_to_tiles(&expanded_non_empty_domain);
 
   // Set fragment info
   ret = SingleFragmentInfo(

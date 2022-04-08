@@ -186,6 +186,23 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
   CHECK(s3_.is_dir(URI(TEST_DIR + "dir"), &is_dir).ok());
   CHECK(is_dir);  // This is viewed as a dir
 
+  // ls_with_sizes
+  std::string s = "abcdef";
+  CHECK(s3_.write(URI(file3), s.data(), s.size()).ok());
+  CHECK(s3_.flush_object(URI(file3)).ok());
+
+  auto&& [status, rv] = s3_.ls_with_sizes(URI(dir));
+  auto children = *rv;
+  REQUIRE(status.ok());
+
+  REQUIRE(children.size() == 2);
+  CHECK(children[0].path().native() == file3);
+  CHECK(children[1].path().native() == subdir.substr(0, subdir.size() - 1));
+
+  CHECK(children[0].file_size() == s.size());
+  // Directories don't get a size
+  CHECK(children[1].file_size() == 0);
+
   // Move file
   CHECK(s3_.move_object(URI(file5), URI(file6)).ok());
   CHECK(s3_.is_object(URI(file5), &exists).ok());

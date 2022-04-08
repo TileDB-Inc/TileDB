@@ -40,3 +40,7 @@ target_link_libraries(compile_buffer PRIVATE buffer)
 target_sources(compile_buffer PRIVATE
     test/compile_buffer_main.cc $<TARGET_OBJECTS:buffer>
 )
+
+if (TILEDB_TESTS)
+  add_subdirectory(test)
+endif()

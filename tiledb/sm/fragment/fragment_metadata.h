@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,6 +34,7 @@
 #ifndef TILEDB_FRAGMENT_METADATA_H
 #define TILEDB_FRAGMENT_METADATA_H
 
+#include <deque>
 #include <mutex>
 #include <unordered_map>
 #include <vector>
@@ -305,14 +306,6 @@ class FragmentMetadata {
    * @return Status
    */
   Status set_num_tiles(uint64_t num_tiles);
-
-  /**
-   * Sets the domain of the RTree during deserialization.
-   *
-   * @param domain The domain to be set.
-   * @return Status
-   */
-  void set_rtree_domain(shared_ptr<const Domain> domain);
 
   /**
    * Sets the tile "index base" which is added to the tile index in the set_*()

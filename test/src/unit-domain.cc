@@ -32,8 +32,11 @@
  * Tests the  `Domain` class.
  */
 
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/layout.h"
 
 #include <catch.hpp>
 

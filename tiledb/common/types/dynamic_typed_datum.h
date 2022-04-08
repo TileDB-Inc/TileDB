@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -70,6 +70,10 @@ class DynamicTypedDatumView {
   }
   [[nodiscard]] inline tiledb::sm::Datatype type() const {
     return type_;
+  }
+  template <class T>
+  [[nodiscard]] inline const T& value_as() const {
+    return *static_cast<const T*>(datum_.content());
   }
 };
 }  // namespace tiledb::common

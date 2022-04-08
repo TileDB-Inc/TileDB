@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -55,6 +55,7 @@
 #include "tiledb/sm/misc/endian.h"
 #include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
 
@@ -803,6 +804,11 @@ Status RestClient::update_attribute_buffer_sizes(
       *query_buffer.buffer_size_ = state.offset_size;
     } else if (query_buffer.buffer_size_ != nullptr)
       *query_buffer.buffer_size_ = state.data_size;
+
+    bool nullable = query->array_schema().is_nullable(name);
+    if (nullable && query_buffer.validity_vector_.buffer_size()) {
+      *query_buffer.validity_vector_.buffer_size() = state.validity_size;
+    }
   }
 
   return Status::Ok();

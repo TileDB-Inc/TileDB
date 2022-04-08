@@ -6331,9 +6331,6 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_create_with_key(
  * fragment files, fragment metadata files, or array metadata files into a
  * single file.
  *
- * You must first finalize all queries to the array before consolidation can
- * begin (as consolidation temporarily acquires an exclusive lock on the array).
- *
  * **Example:**
  *
  * @code{.c}
@@ -6360,9 +6357,6 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate(
  * Depending on the consoliation mode in the config, consolidates either the
  * fragment files, fragment metadata files, or array metadata files into a
  * single file.
- *
- * You must first finalize all queries to the array before consolidation can
- * begin (as consolidation temporarily acquires an exclusive lock on the array).
  *
  * **Example:**
  *
@@ -6822,9 +6816,6 @@ TILEDB_EXPORT int32_t tiledb_array_has_metadata_key(
 /**
  * Consolidates the array metadata into a single array metadata file.
  *
- * You must first finalize all queries to the array before consolidation can
- * begin (as consolidation temporarily acquires an exclusive lock on the array).
- *
  * **Example:**
  *
  * @code{.c}
@@ -6846,9 +6837,6 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata(
 
 /**
  * Consolidates the array metadata of an encrypted array into a single file.
- *
- * You must first finalize all queries to the array before consolidation can
- * begin (as consolidation temporarily acquires an exclusive lock on the array).
  *
  * **Example:**
  *

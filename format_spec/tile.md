@@ -1,4 +1,6 @@
-# Tile
+---
+title: Tile
+---
 
 ## Main Structure
 
@@ -246,8 +248,3 @@ The data output of the encryption filter is:
 | Metadata part N | `uint8_t[]` |  The encrypted bytes of data part N |
 
 Note that the original input metadata in **not** part of the output.
-
-
-
-
-

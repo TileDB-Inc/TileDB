@@ -80,6 +80,11 @@
 using namespace tiledb::common;
 
 namespace tiledb {
+
+namespace common::filesystem {
+class directory_entry;
+}
+
 namespace sm {
 
 /**
@@ -213,6 +218,21 @@ class S3 {
   Status ls(
       const URI& prefix,
       std::vector<std::string>* paths,
+      const std::string& delimiter = "/",
+      int max_paths = -1) const;
+
+  /**
+   *
+   * Lists objects and object information that start with `prefix`.
+   *
+   * @param prefix The parent path to list sub-paths.
+   * @param delimiter The uri is truncated to the first delimiter
+   * @param max_paths The maximum number of paths to be retrieved
+   * @return A list of directory_entry objects
+   */
+  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  ls_with_sizes(
+      const URI& prefix,
       const std::string& delimiter = "/",
       int max_paths = -1) const;
 

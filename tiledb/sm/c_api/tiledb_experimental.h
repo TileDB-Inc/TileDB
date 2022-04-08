@@ -130,6 +130,9 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_drop_attribute(
 
 /**
  * Sets timestamp range in an array schema evolution
+ * This function sets the output timestamp of the committed array schema after
+ * evolution. The lo and hi values are currently required to be the same or else
+ * an error is thrown.
  *
  * **Example:**
  *
@@ -141,7 +144,9 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_drop_attribute(
  *
  * @param ctx The TileDB context.
  * @param array_schema_evolution The schema evolution.
- * @param attribute_name The name of the attribute to be dropped.
+ * @param lo The lower bound of timestamp range.
+ * @param hi The upper bound of timestamp range, it must euqal to the lower
+ * bound.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
@@ -154,6 +159,24 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
 /*          ARRAY SCHEMA             */
 /* ********************************* */
 
+/**
+ * Gets timestamp range in an array schema evolution
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t timestamp_lo = 0;
+ * uint64_t timestamp_hi = 0;
+ * tiledb_array_schema_evolution_timestamp_range(ctx,
+ * array_schema_evolution, &timestamp_lo, &timestamp_hi);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema_evolution The schema evolution.
+ * @param lo The lower bound of timestamp range.
+ * @param hi The upper bound of timestamp range.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
 TILEDB_EXPORT int32_t tiledb_array_schema_timestamp_range(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
@@ -335,6 +358,41 @@ TILEDB_EXPORT int32_t tiledb_ctx_alloc_with_error(
     tiledb_config_t* config,
     tiledb_ctx_t** ctx,
     tiledb_error_t** error) noexcept;
+
+/* ********************************* */
+/*           CONSOLIDATION           */
+/* ********************************* */
+
+/**
+ * Consolidates the given fragment URIs into a single fragment.
+ *
+ * Note: This API needs to be used with caution until we implement
+ * consolidation with timestamps. For now, if the non-empty domain of the
+ * consolidated fragments overlap anything in the fragments that come in
+ * between, this could lead to unpredictable behavior.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const char* uris[2]={"__0_0_0807b1428b6c4ff48b3cdb3283ca7903_10",
+ *                      "__1_1_d9d965753d224194965575c1e9cdeeda_10"};
+ * tiledb_array_consolidate(ctx, "my_array", uris, 2);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The name of the TileDB array whose metadata will
+ *     be consolidated.
+ * @param fragment_uris URIs of the fragments to consolidate.
+ * @param num_fragments Number of URIs to consolidate.
+ *
+ * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_consolidate_fragments(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const char** fragment_uris,
+    const uint64_t num_fragments,
+    tiledb_config_t* config) noexcept;
 
 #ifdef __cplusplus
 }

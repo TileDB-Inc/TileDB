@@ -5173,20 +5173,20 @@ TEST_CASE_METHOD(
 
   // clang-format off
   uint64_t c_a1_cm[] = {
-    503, 603, 1003, 1103, 1203, 1303, 1403, 1503, 1603, 
-    504, 604, 1004, 1104, 1204, 1304, 1404, 1504, 1604
+    1003, 1103, 1203, 1303, 1403, 1503, 1603, 503, 603,
+    1004, 1104, 1204, 1304, 1404, 1504, 1604, 504, 604
   };
 
   uint64_t c_a1_rm[] = {
-    503, 504,
-    603, 604,
     1003, 1004,
     1103, 1104,
     1203, 1204,
     1303, 1304,
     1403, 1404,
     1503, 1504, 
-    1603, 1604
+    1603, 1604,
+    503, 504,
+    603, 604
   };
   // clang-format on
   if (layout == TILEDB_ROW_MAJOR) {
@@ -5194,6 +5194,48 @@ TEST_CASE_METHOD(
   } else {
     CHECK(!memcmp(c_a1_cm, a1.data(), sizeof(c_a1_cm)));
   }
+
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, multi-index, out of order ranges, coalesce",
+    "[capi][dense][multi-index][out-of-order-ranges-2]") {
+  SECTION("- No serialization") {
+    serialize_query_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query_ = true;
+  }
+
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
+  std::string array_name = temp_dir + "dense_read_large";
+  create_temp_dir(temp_dir);
+
+  create_large_dense_array_1_attribute(array_name);
+
+  write_large_dense_array(array_name);
+
+  std::vector<TestRange> ranges;
+  ranges.emplace_back(0, 1, 1);
+  ranges.emplace_back(1, 1, 1);
+  ranges.emplace_back(1, 8, 8);
+  ranges.emplace_back(1, 2, 2);
+
+  tiledb_layout_t layout = GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+
+  std::vector<uint64_t> a1(3);
+  read_large_dense_array(array_name, layout, ranges, a1);
+
+  // clang-format off
+  uint64_t c_a1[] = {
+    101, 108, 102
+  };
+  // clang-format on
+
+  CHECK(!memcmp(c_a1, a1.data(), sizeof(c_a1)));
 
   remove_temp_dir(temp_dir);
 }

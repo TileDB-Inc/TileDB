@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1583,7 +1583,7 @@ Status Reader::dedup_result_coords(
 }
 
 Status Reader::dense_read() {
-  auto type = array_schema_.domain()->dimension(0)->type();
+  auto type = array_schema_.domain().dimension(0)->type();
   switch (type) {
     case Datatype::INT8:
       return dense_read<int8_t>();
@@ -1661,7 +1661,7 @@ Status Reader::dense_read() {
       result_tiles,
       result_cell_slabs));
 
-  auto stride = array_schema_.domain()->stride<T>(subarray.layout());
+  auto stride = array_schema_.domain().stride<T>(subarray.layout());
   RETURN_NOT_OK(apply_query_condition(
       result_cell_slabs,
       result_tiles,
@@ -1808,7 +1808,7 @@ Status Reader::sort_result_coords(
     size_t coords_num,
     Layout layout) const {
   auto timer_se = stats_->start_timer("sort_result_coords");
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
 
   if (layout == Layout::ROW_MAJOR) {
     parallel_sort(
@@ -1824,7 +1824,7 @@ Status Reader::sort_result_coords(
           storage_manager_->compute_tp(),
           hilbert_values.begin(),
           hilbert_values.end(),
-          HilbertCmp(domain, iter_begin));
+          HilbertCmpRCI(domain, iter_begin));
       RETURN_NOT_OK(reorganize_result_coords(iter_begin, &hilbert_values));
     } else {
       parallel_sort(
@@ -1914,11 +1914,11 @@ bool Reader::sparse_tile_overwritten(
   const auto& mbr = fragment_metadata_[frag_idx]->mbr(tile_idx);
   assert(!mbr.empty());
   auto fragment_num = (unsigned)fragment_metadata_.size();
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
 
   for (unsigned f = frag_idx + 1; f < fragment_num; ++f) {
     if (fragment_metadata_[f]->dense() &&
-        domain->covered(mbr, fragment_metadata_[f]->non_empty_domain()))
+        domain.covered(mbr, fragment_metadata_[f]->non_empty_domain()))
       return true;
   }
 
@@ -1951,7 +1951,7 @@ void Reader::get_result_tile_stats(
     if (!fragment_metadata_[rt->frag_idx()]->dense())
       cell_num += rt->cell_num();
     else
-      cell_num += array_schema_.domain()->cell_num_per_tile();
+      cell_num += array_schema_.domain().cell_num_per_tile();
   }
   stats_->add_counter("cell_num", cell_num);
 }

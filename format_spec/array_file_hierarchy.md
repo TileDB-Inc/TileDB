@@ -1,4 +1,6 @@
-# Array File Hierarchy
+---
+title: Array File Hierarchy
+---
 
 An array is a folder with the following structure:
 
@@ -24,6 +26,7 @@ my_array                                # array folder
 ```
 
 A `<timestamped_name>` above has format `__t1_t2_uuid_v`, where 
+
 * `t1` and `t2` are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
 * `uuid` is a unique identifier
 * `v` is the format version

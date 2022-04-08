@@ -2,7 +2,15 @@ name: windows build
 
 on:
   push:
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
   pull_request:
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF

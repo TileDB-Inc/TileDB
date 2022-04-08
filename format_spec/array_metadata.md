@@ -1,4 +1,6 @@
-# Array Metadata
+---
+title: Array Metadata
+---
 
 ## Main Structure
 
@@ -15,11 +17,13 @@ my_array                            # array folder
 ```
 
 `<timestamped_name>` has format `__t1_t2_uuid_v`, where:
+
 * `t1` and `t2` are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
 * `uuid` is a unique identifier
 * `v` is the format version
 
 The array metadata folder can contain:
+
 * Any number of [array metadata files](#array-metadata-file)
 * Any number of [vacuum files](./vacuum_file.md)
 

@@ -121,7 +121,9 @@ class ResultTile {
   const TileTuple& coord_tile(unsigned dim_idx) const;
 
   /** Returns the stored domain. */
-  shared_ptr<const Domain> domain() const;
+  const Domain* domain() const {
+    return domain_;
+  }
 
   /** Erases the tile for the input attribute/dimension. */
   void erase_tile(const std::string& name);
@@ -331,7 +333,7 @@ class ResultTile {
   /* ********************************* */
 
   /** The array domain. */
-  shared_ptr<const Domain> domain_;
+  const Domain* domain_;
 
   /** The id of the fragment this tile belongs to. */
   unsigned frag_idx_ = UINT32_MAX;

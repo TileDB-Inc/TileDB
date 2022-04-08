@@ -991,10 +991,6 @@ Status query_to_capnp(
         Status_SerializationError("Cannot serialize; array is null."));
 
   const auto& schema = query.array_schema();
-  const auto domain = schema.domain();
-  if (domain == nullptr)
-    return LOG_STATUS(
-        Status_SerializationError("Cannot serialize; array domain is null."));
 
   // Serialize basic fields
   query_builder->setType(query_type_str(type));
@@ -1159,12 +1155,7 @@ Status query_from_capnp(
 
   auto type = query->type();
   auto array = query->array();
-
   const auto& schema = query->array_schema();
-  const auto domain = schema.domain();
-  if (domain == nullptr)
-    return LOG_STATUS(
-        Status_SerializationError("Cannot deserialize; array domain is null."));
 
   if (array == nullptr)
     return LOG_STATUS(Status_SerializationError(
