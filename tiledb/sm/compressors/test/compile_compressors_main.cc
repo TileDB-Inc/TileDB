@@ -34,8 +34,8 @@
 #include "../rle_compressor.h"
 #include "../zstd_compressor.h"
 
-#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/common/common.h"
+#include "tiledb/sm/buffer/buffer.h"
 
 #include <stdint.h>
 #include <stdio.h>
