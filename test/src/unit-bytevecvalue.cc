@@ -33,6 +33,7 @@
 #include <cstring>
 #include <numeric>
 
+#include "test/src/helpers.h"
 #include "tiledb/sm/misc/types.h"
 
 #include "catch.hpp"
@@ -74,31 +75,30 @@ TEST_CASE("ByteVecValue Constructors", "[bytevecvalue]") {
 
   REQUIRE(d.size() == 256);
   REQUIRE(d);
-  REQUIRE(d.to_hex_str() == hex_str);
+  REQUIRE(tiledb::test::bbv_to_hex_str(d) == hex_str);
+}
+
+template <class T>
+void test_case(T val) {
+  ByteVecValue vec;
+  vec.resize(sizeof(T));
+  memcpy(vec.data(), &val, sizeof(T));
+  REQUIRE(
+      tiledb::test::bbv_to_hex_str(vec) ==
+      tiledb::test::ptr_to_hex_str(&val, sizeof(T)));
 }
 
 TEST_CASE("ByteVecValue from pointers", "[bytevecvalue]") {
-  int8_t z = 49;
-  ByteVecValue z_vec;
-  z_vec.resize(sizeof(int8_t));
-  memcpy(z_vec.data(), &z, sizeof(int8_t));
-  REQUIRE(z_vec.to_hex_str() == "31");
-
-  int16_t y = 1000;
-  ByteVecValue y_vec;
-  y_vec.resize(sizeof(int16_t));
-  memcpy(y_vec.data(), &y, sizeof(int16_t));
-  REQUIRE(y_vec.to_hex_str() == "e8 03");
-
-  int32_t a = 985761475;
-  ByteVecValue a_vec;
-  a_vec.resize(sizeof(int32_t));
-  memcpy(a_vec.data(), &a, sizeof(int32_t));
-  REQUIRE(a_vec.to_hex_str() == "c3 86 c1 3a");
-
-  int64_t b = 981934736546381904;
-  ByteVecValue b_vec;
-  b_vec.resize(sizeof(int64_t));
-  memcpy(b_vec.data(), &b, sizeof(int64_t));
-  REQUIRE(b_vec.to_hex_str() == "50 c0 76 bc 70 88 a0 0d");
+  test_case<int8_t>(49);
+  test_case<uint8_t>(50);
+  test_case<int16_t>(1000);
+  test_case<uint16_t>(2022);
+  test_case<int32_t>(985761475);
+  test_case<uint32_t>(1985761475);
+  test_case<int64_t>(981934736546381904);
+  test_case<uint64_t>(93472336546381904);
+  test_case<float>(225647.472);
+  test_case<double>(2390786325647.4734521);
+  std::string s = "supercalifragilisticexpialidocious";
+  test_case<char*>(const_cast<char*>(s.c_str()));
 }

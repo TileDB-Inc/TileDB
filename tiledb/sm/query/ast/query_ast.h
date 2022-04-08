@@ -54,9 +54,11 @@ enum ASTNodeTag : char { NIL, VAL, EXPR };
 
 class ASTNode {
  public:
+  /** Returns the tag attached to the node. */
   virtual ASTNodeTag get_tag() = 0;
-  virtual std::string to_str() = 0;
+  /** Returns a deep copy of the node. */
   virtual tdb_unique_ptr<ASTNode> clone() = 0;
+  /** Default virtual destructor. */
   virtual ~ASTNode() {
   }
 };
@@ -83,6 +85,7 @@ class ASTNodeVal : public ASTNode {
     }
   };
 
+  /** Default destructor. */
   ~ASTNodeVal() {
   }
 
@@ -133,21 +136,12 @@ class ASTNodeVal : public ASTNode {
     return *this;
   }
 
+  /** Returns the tag attached to the node. */
   ASTNodeTag get_tag() {
     return tag_;
   }
 
-  std::string to_str() {
-    std::string result_str;
-    result_str = field_name_ + " " + query_condition_op_str(op_) + " ";
-    if (condition_value_view_.content()) {
-      result_str += condition_value_data_.to_hex_str();
-    } else {
-      result_str += "null";
-    }
-    return result_str;
-  }
-
+  /** Returns a deep copy of the node. */
   tdb_unique_ptr<ASTNode> clone() {
     return tdb_unique_ptr<ASTNode>(tdb_new(
         ASTNodeVal,
@@ -184,6 +178,7 @@ class ASTNodeExpr : public ASTNode {
     }
   }
 
+  /** Default destructor. */
   ~ASTNodeExpr() {
   }
 
@@ -218,28 +213,12 @@ class ASTNodeExpr : public ASTNode {
     return *this;
   }
 
+  /** Returns the tag attached to the node. */
   ASTNodeTag get_tag() {
     return tag_;
   }
 
-  std::string to_str() {
-    std::string result_str;
-    result_str = "(";
-    for (size_t i = 0; i < nodes_.size(); i++) {
-      auto ptr = nodes_[i].get();
-      if (ptr != nullptr) {
-        result_str += ptr->to_str();
-        if (i != nodes_.size() - 1) {
-          result_str += " ";
-          result_str += query_condition_combination_op_str(combination_op_);
-          result_str += " ";
-        }
-      }
-    }
-    result_str += ")";
-    return result_str;
-  }
-
+  /** Returns a deep copy of the node. */
   tdb_unique_ptr<ASTNode> clone() {
     std::vector<tdb_unique_ptr<ASTNode>> nodes_copy;
     for (const auto& node : nodes_) {
@@ -259,15 +238,35 @@ class ASTNodeExpr : public ASTNode {
   static const ASTNodeTag tag_{ASTNodeTag::EXPR};
 };
 
+/**
+ * @brief This function takes two AST trees (lhs and rhs) and combines
+ * them into one combined AST, connecting them with the combination op.
+ *
+ * @param lhs left AST
+ * @param rhs right AST
+ * @param combination_op the combination op to combine the nodes with
+ * @return unique pointer containing the values of the combined op
+ */
 tdb_unique_ptr<ASTNode> ast_combine(
     const tdb_unique_ptr<ASTNode>& lhs,
     const tdb_unique_ptr<ASTNode>& rhs,
     QueryConditionCombinationOp combination_op);
 
+/**
+ * @brief Returns a set of field names from all the value nodes in the AST.
+ *
+ * @param field_name_set The set to store the field names in.
+ * @param node The node we are collecting field names from.
+ */
 void ast_get_field_names(
     std::unordered_set<std::string>& field_name_set,
     const tdb_unique_ptr<ASTNode>& node);
 
+/**
+ * @brief Returns true if the ast is previously supported by older versions of
+ * TileDB. (i.e. is either a value node or only has AND combination ops. )
+ * @param node The AST we are evaluating this condition on.
+ */
 bool ast_is_previously_supported(const tdb_unique_ptr<ASTNode>& node);
 
 }  // namespace sm

@@ -86,7 +86,7 @@ Status QueryCondition::init(
     return Status_QueryConditionError("Cannot reinitialize query condition");
   }
 
-  // AST Construction
+  // AST Construction.
   tree_ = tdb_unique_ptr<ASTNode>(tdb_new(
       ASTNodeVal, field_name, condition_value, condition_value_size, op));
 
@@ -94,22 +94,26 @@ Status QueryCondition::init(
 }
 
 static Status value_node_check(
-    const ArraySchema& array_schema, ASTNodeVal* node) {
-  const std::string field_name = node->field_name_;
-  const uint64_t condition_value_size = node->condition_value_data_.size();
+    const ArraySchema& array_schema, const ASTNodeVal& node) {
+  const std::string field_name = node.field_name_;
+  const uint64_t condition_value_size = node.condition_value_data_.size();
   const auto attribute = array_schema.attribute(field_name);
+  // We should check that the field_name represents an attribute in the array
+  // schema corresponding to this QueryCondition object.
   if (!attribute) {
     return Status_QueryConditionError(
         "Value node field name is not an attribute " + field_name);
   }
 
-  if (node->condition_value_view_.content() == nullptr) {
-    if (node->op_ != QueryConditionOp::EQ &&
-        node->op_ != QueryConditionOp::NE) {
+  // We should ensure that we only run null equality or inequality checks.
+  if (node.condition_value_view_.content() == nullptr) {
+    if (node.op_ != QueryConditionOp::EQ && node.op_ != QueryConditionOp::NE) {
       return Status_QueryConditionError(
           "Null value can only be used with equality operators");
     }
 
+    // We should ensure that an attribute that is marked as nullable
+    // corresponds to a type that is nullable.
     if ((!attribute->nullable()) &&
         (attribute->type() != Datatype::STRING_ASCII &&
          attribute->type() != Datatype::CHAR)) {
@@ -118,30 +122,34 @@ static Status value_node_check(
     }
   }
 
+  // We should ensure that non-empty attributes are only var-sized for
+  // ASCII strings.
   if (attribute->var_size() && attribute->type() != Datatype::STRING_ASCII &&
       attribute->type() != Datatype::CHAR &&
-      node->condition_value_view_.content() != nullptr) {
+      node.condition_value_view_.content() != nullptr) {
     return Status_QueryConditionError(
         "Value node non-empty attribute may only be var-sized for ASCII "
         "strings: " +
         field_name);
   }
 
+  // We should ensure that for non string fixed size attributes, we store only
+  // one value per cell.
   if (attribute->cell_val_num() != 1 &&
       attribute->type() != Datatype::STRING_ASCII &&
       attribute->type() != Datatype::CHAR && (!attribute->var_size())) {
     return Status_QueryConditionError(
         "Value node attribute must have one value per cell for non-string "
-        "fixed "
-        "size "
-        "attributes: " +
+        "fixed size attributes: " +
         field_name);
   }
 
+  // We should ensure that the condition value size matches the attribute's
+  // value size.
   if (attribute->cell_size() != constants::var_size &&
       attribute->cell_size() != condition_value_size &&
       !(attribute->nullable() &&
-        node->condition_value_view_.content() == nullptr) &&
+        node.condition_value_view_.content() == nullptr) &&
       attribute->type() != Datatype::STRING_ASCII &&
       attribute->type() != Datatype::CHAR && (!attribute->var_size())) {
     return Status_QueryConditionError(
@@ -150,6 +158,7 @@ static Status value_node_check(
         " != " + std::to_string(condition_value_size));
   }
 
+  // We should ensure that the attribute type is valid.
   switch (attribute->type()) {
     case Datatype::ANY:
       return Status_QueryConditionError(
@@ -170,13 +179,20 @@ static Status value_node_check(
 
 static Status ast_check(
     const ArraySchema& array_schema, const tdb_unique_ptr<ASTNode>& node) {
+  // Ensure that there are no null nodes in the tree.
   if (!node)
     return Status_QueryConditionError(
         "AST node in recursive tree structure should not be null.");
+  // Case on the tag of the tree node.
   if (node->get_tag() == ASTNodeTag::VAL) {
+    // If the node is a value node, then we run the check on value nodes.
     auto node_ptr = dynamic_cast<ASTNodeVal*>(node.get());
-    return value_node_check(array_schema, node_ptr);
-  } else {
+    if (node_ptr)
+      return value_node_check(array_schema, *node_ptr);
+    return Status_QueryConditionError("AST value node is null.");
+  } else if (node->get_tag() == ASTNodeTag::EXPR) {
+    // If the node is a compound expression node, we ensure there are at least
+    // two children in the node and then run a check on each child nodes.
     auto node_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
     if (node_ptr->nodes_.size() < 2) {
       return Status_QueryConditionError(
@@ -185,6 +201,8 @@ static Status ast_check(
     for (const auto& child : node_ptr->nodes_) {
       RETURN_NOT_OK(ast_check(array_schema, child));
     }
+  } else {
+    return Status_QueryConditionError("AST node has invalid tag.");
   }
   return Status::Ok();
 }
@@ -422,7 +440,7 @@ struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::NE> {
   }
 };
 
-/** Used to create a new result slab in QueryCondition::apply_val. */
+/** Used to create a new result slab in QueryCondition::apply_ast_node. */
 uint64_t create_new_result_slab(
     uint64_t start,
     uint64_t pending_start,
@@ -442,15 +460,15 @@ uint64_t create_new_result_slab(
 }
 
 template <typename T, QueryConditionOp Op>
-std::vector<ResultCellSlab> QueryCondition::apply_val(
-    const ASTNodeVal* node,
+std::vector<ResultCellSlab> QueryCondition::apply_ast_node(
+    const ASTNodeVal& node,
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
   std::vector<ResultCellSlab> ret;
-  const std::string& field_name = node->field_name_;
+  const std::string& field_name = node.field_name_;
 
   for (const auto& rcs : result_cell_slabs) {
     ResultTile* const result_tile = rcs.tile_;
@@ -462,8 +480,8 @@ std::vector<ResultCellSlab> QueryCondition::apply_val(
       const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
           fill_value.data(),
           fill_value.size(),
-          node->condition_value_view_.content(),
-          node->condition_value_data_.size());
+          node.condition_value_view_.content(),
+          node.condition_value_data_.size());
       if (cmp) {
         ret.emplace_back(result_tile, start, length);
       }
@@ -512,8 +530,8 @@ std::vector<ResultCellSlab> QueryCondition::apply_val(
           const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
               cell_value,
               cell_size,
-              node->condition_value_view_.content(),
-              node->condition_value_data_.size());
+              node.condition_value_view_.content(),
+              node.condition_value_data_.size());
           if (!cmp) {
             pending_start = create_new_result_slab(
                 start, pending_start, stride, c, result_tile, ret);
@@ -542,8 +560,8 @@ std::vector<ResultCellSlab> QueryCondition::apply_val(
           const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
               cell_value,
               cell_size,
-              node->condition_value_view_.content(),
-              node->condition_value_data_.size());
+              node.condition_value_view_.content(),
+              node.condition_value_data_.size());
           if (!cmp) {
             pending_start = create_new_result_slab(
                 start, pending_start, stride, c, result_tile, ret);
@@ -562,37 +580,38 @@ std::vector<ResultCellSlab> QueryCondition::apply_val(
 }
 
 template <typename T>
-tuple<Status, optional<std::vector<ResultCellSlab>>> QueryCondition::apply_val(
-    const ASTNodeVal* node,
+tuple<Status, optional<std::vector<ResultCellSlab>>>
+QueryCondition::apply_ast_node(
+    const ASTNodeVal& node,
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
   std::vector<ResultCellSlab> ret;
-  switch (node->op_) {
+  switch (node.op_) {
     case QueryConditionOp::LT:
-      ret = apply_val<T, QueryConditionOp::LT>(
+      ret = apply_ast_node<T, QueryConditionOp::LT>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
       break;
     case QueryConditionOp::LE:
-      ret = apply_val<T, QueryConditionOp::LE>(
+      ret = apply_ast_node<T, QueryConditionOp::LE>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
       break;
     case QueryConditionOp::GT:
-      ret = apply_val<T, QueryConditionOp::GT>(
+      ret = apply_ast_node<T, QueryConditionOp::GT>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
       break;
     case QueryConditionOp::GE:
-      ret = apply_val<T, QueryConditionOp::GE>(
+      ret = apply_ast_node<T, QueryConditionOp::GE>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
       break;
     case QueryConditionOp::EQ:
-      ret = apply_val<T, QueryConditionOp::EQ>(
+      ret = apply_ast_node<T, QueryConditionOp::EQ>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
       break;
     case QueryConditionOp::NE:
-      ret = apply_val<T, QueryConditionOp::NE>(
+      ret = apply_ast_node<T, QueryConditionOp::NE>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
       break;
     default:
@@ -605,16 +624,16 @@ tuple<Status, optional<std::vector<ResultCellSlab>>> QueryCondition::apply_val(
   return {Status::Ok(), std::move(ret)};
 }
 
-tuple<Status, optional<std::vector<ResultCellSlab>>> QueryCondition::apply_val(
-    const ASTNodeVal* node,
+tuple<Status, optional<std::vector<ResultCellSlab>>>
+QueryCondition::apply_ast_node(
+    const ASTNodeVal& node,
     const ArraySchema& array_schema,
     const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
-  const auto attribute = array_schema.attribute(node->field_name_);
+  const auto attribute = array_schema.attribute(node.field_name_);
   if (!attribute) {
-    return {
-        Status_QueryConditionError("Unknown attribute " + node->field_name_),
-        nullopt};
+    return {Status_QueryConditionError("Unknown attribute " + node.field_name_),
+            nullopt};
   }
 
   const ByteVecValue fill_value = attribute->fill_value();
@@ -622,44 +641,44 @@ tuple<Status, optional<std::vector<ResultCellSlab>>> QueryCondition::apply_val(
   const bool nullable = attribute->nullable();
   switch (attribute->type()) {
     case Datatype::INT8:
-      return apply_val<int8_t>(
+      return apply_ast_node<int8_t>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::UINT8:
-      return apply_val<uint8_t>(
+      return apply_ast_node<uint8_t>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::INT16:
-      return apply_val<int16_t>(
+      return apply_ast_node<int16_t>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::UINT16:
-      return apply_val<uint16_t>(
+      return apply_ast_node<uint16_t>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::INT32:
-      return apply_val<int32_t>(
+      return apply_ast_node<int32_t>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::UINT32:
-      return apply_val<uint32_t>(
+      return apply_ast_node<uint32_t>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::INT64:
-      return apply_val<int64_t>(
+      return apply_ast_node<int64_t>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::UINT64:
-      return apply_val<uint64_t>(
+      return apply_ast_node<uint64_t>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::FLOAT32:
-      return apply_val<float>(
+      return apply_ast_node<float>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::FLOAT64:
-      return apply_val<double>(
+      return apply_ast_node<double>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::STRING_ASCII:
-      return apply_val<char*>(
+      return apply_ast_node<char*>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::CHAR:
       if (var_size) {
-        return apply_val<char*>(
+        return apply_ast_node<char*>(
             node, stride, var_size, nullable, fill_value, result_cell_slabs);
       }
-      return apply_val<char>(
+      return apply_ast_node<char>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
@@ -674,7 +693,7 @@ tuple<Status, optional<std::vector<ResultCellSlab>>> QueryCondition::apply_val(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
-      return apply_val<int64_t>(
+      return apply_ast_node<int64_t>(
           node, stride, var_size, nullable, fill_value, result_cell_slabs);
     case Datatype::ANY:
     case Datatype::BLOB:
@@ -687,13 +706,30 @@ tuple<Status, optional<std::vector<ResultCellSlab>>> QueryCondition::apply_val(
       return {Status_QueryConditionError(
                   "Cannot perform query comparison; Unsupported query "
                   "conditional type on " +
-                  node->field_name_),
+                  node.field_name_),
               nullopt};
   }
 
   return {Status::Ok(), nullopt};
 }
 
+/**
+ * @brief This function takes two ResultCellSlab vectors and merges them so they
+ * contain the union of the ranges represented in its two arguments.
+ *
+ * Since the ResultCellSlab object is essentially a range object that contains
+ * a start index and a length, this function will iterate through all the slabs
+ * in both vectors and determine if there are any overlapping ranges that we
+ * should consider and merge together into one range in the return accumulator,
+ * ret.
+ *
+ * This function assumes that the ranges in both arr1 and arr2 are sorted by
+ * their start index.
+ *
+ * @param arr1 Array of ResultCellSlabs to merge.
+ * @param arr2 Array of ResultCellSlabs to merge.
+ * @return The vector that merges these ResultCellSlab vectors together.
+ */
 static std::vector<ResultCellSlab> result_slabs_merge_union(
     const std::vector<ResultCellSlab>& arr1,
     const std::vector<ResultCellSlab>& arr2) {
@@ -719,17 +755,45 @@ static std::vector<ResultCellSlab> result_slabs_merge_union(
   }
 
   while (iter1 < arr1.size()) {
-    ret.push_back(arr1[iter1]);
+    if (ret.size() > 0 &&
+        ret.back().start_ + ret.back().length_ >= arr1[iter1].start_) {
+      ret.back().length_ =
+          arr1[iter1].start_ + arr1[iter1].length_ - ret.back().start_;
+    } else {
+      ret.push_back(arr1[iter1]);
+    }
     iter1 += 1;
   }
 
   while (iter2 < arr2.size()) {
-    ret.push_back(arr2[iter2]);
+    if (ret.size() > 0 &&
+        ret.back().start_ + ret.back().length_ >= arr2[iter2].start_) {
+      ret.back().length_ =
+          arr2[iter2].start_ + arr2[iter2].length_ - ret.back().start_;
+    } else {
+      ret.push_back(arr2[iter2]);
+    }
     iter2 += 1;
   }
   return ret;
 }
 
+/**
+ * @brief This function takes two ResultCellSlab vectors and merges them so they
+ * contain the intersection of the ranges represented in its two arguments.
+ *
+ * Since the ResultCellSlab object is essentially a range object that contains
+ * a start index and a length, this function will iterate through all the slabs
+ * in both vectors and determine if there are any overlapping ranges that we
+ * should add to the result accumulator vector, ret.
+ *
+ * This function assumes that the ranges in both arr1 and arr2 are sorted by
+ * their start index.
+ *
+ * @param arr1 Array of ResultCellSlabs to merge.
+ * @param arr2 Array of ResultCellSlabs to merge.
+ * @return The vector that merges these ResultCellSlab vectors together.
+ */
 static std::vector<ResultCellSlab> result_slabs_merge_intersection(
     const std::vector<ResultCellSlab>& arr1,
     const std::vector<ResultCellSlab>& arr2) {
@@ -764,50 +828,57 @@ std::vector<ResultCellSlab> QueryCondition::apply_tree(
     const ArraySchema& array_schema,
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
-  // how to implement?
+  // Case on the tag of the tree node.
   if (node->get_tag() == ASTNodeTag::VAL) {
+    // In the simple value node case, we run the value evaluator function and
+    // return the result back.
     auto node_ptr = dynamic_cast<ASTNodeVal*>(node.get());
     auto&& [st, tmp_result_cell_slabs] =
-        apply_val(node_ptr, array_schema, stride, result_cell_slabs);
+        apply_ast_node(*node_ptr, array_schema, stride, result_cell_slabs);
     if (!st.ok()) {
-      throw std::runtime_error("From apply_tree: apply_val failed.");
+      throw std::runtime_error("From apply_tree: apply_ast_node failed.");
     }
     return tmp_result_cell_slabs.value();
-  }
-  auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
-  std::vector<std::vector<ResultCellSlab>> child_result_cell_slabs;
-  for (const auto& child : expr_ptr->nodes_) {
-    auto child_vec = apply_tree(child, array_schema, stride, result_cell_slabs);
-    child_result_cell_slabs.push_back(child_vec);
-  }
+  } else if (node->get_tag() == ASTNodeTag::EXPR) {
+    // In the recursive case, for all the children of the node, we obtain
+    // the result accumulator vectors and combine them using the
+    // result_slabs_merge_union (for OR combination op) and
+    // result_slabs_merge_intersection (for AND combination op) functions above.
+    auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
+    std::vector<std::vector<ResultCellSlab>> child_result_cell_slabs;
+    for (const auto& child : expr_ptr->nodes_) {
+      auto child_vec =
+          apply_tree(child, array_schema, stride, result_cell_slabs);
+      child_result_cell_slabs.push_back(child_vec);
+    }
 
-  switch (expr_ptr->combination_op_) {
-    case QueryConditionCombinationOp::AND: {
-      return std::accumulate(
-          child_result_cell_slabs.begin(),
-          child_result_cell_slabs.end(),
-          result_cell_slabs,
-          result_slabs_merge_intersection);
-    } break;
-    case QueryConditionCombinationOp::OR: {
-      return std::accumulate(
-          child_result_cell_slabs.begin(),
-          child_result_cell_slabs.end(),
-          std::vector<ResultCellSlab>(),
-          result_slabs_merge_union);
-    } break;
-    case QueryConditionCombinationOp::NOT: {
-      throw std::runtime_error(
-          "Query condition NOT operator is not supported in the TileDB "
-          "system.");
-    }
-    default: {
-      throw std::logic_error(
-          "QueryCondition operator apply_tree case, should not get here.");
+    switch (expr_ptr->combination_op_) {
+      case QueryConditionCombinationOp::AND: {
+        return std::accumulate(
+            child_result_cell_slabs.begin(),
+            child_result_cell_slabs.end(),
+            result_cell_slabs,
+            result_slabs_merge_intersection);
+      } break;
+      case QueryConditionCombinationOp::OR: {
+        return std::accumulate(
+            child_result_cell_slabs.begin(),
+            child_result_cell_slabs.end(),
+            std::vector<ResultCellSlab>(),
+            result_slabs_merge_union);
+      } break;
+      case QueryConditionCombinationOp::NOT: {
+        throw std::runtime_error(
+            "Query condition NOT operator is not supported in the TileDB "
+            "system.");
+      }
+      default: {
+        throw std::logic_error(
+            "apply_tree: invalid combination op, should not get here.");
+      }
     }
   }
-  throw std::logic_error(
-      "QueryCondition operator apply_tree case, should not get here.");
+  throw std::logic_error("apply_tree: invalid node tag, should not get here.");
 }
 
 Status QueryCondition::apply(
@@ -818,10 +889,6 @@ Status QueryCondition::apply(
     return Status::Ok();
   }
 
-  // Iterate through each clause, mutating the result cell
-  // slabs to skip cells that do not fit into any of the
-  // clauses. This assumes all clauses are combined with a
-  // logical "AND".
   auto tmp_result_cell_slabs =
       apply_tree(tree_, array_schema, stride, result_cell_slabs);
   result_cell_slabs = std::move(tmp_result_cell_slabs);
@@ -830,15 +897,15 @@ Status QueryCondition::apply(
 }
 
 template <typename T, QueryConditionOp Op>
-void QueryCondition::apply_val_dense(
-    const ASTNodeVal* node,
+void QueryCondition::apply_ast_node_dense(
+    const ASTNodeVal& node,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
     const bool var_size,
     std::vector<uint8_t>& result_buffer) const {
-  const std::string& field_name = node->field_name_;
+  const std::string& field_name = node.field_name_;
 
   // Get the nullable buffer.
   const auto tile_tuple = result_tile->tile_tuple(field_name);
@@ -875,8 +942,8 @@ void QueryCondition::apply_val_dense(
         const bool cmp = BinaryCmp<T, Op>::cmp(
             cell_value,
             cell_size,
-            node->condition_value_view_.content(),
-            node->condition_value_data_.size());
+            node.condition_value_view_.content(),
+            node.condition_value_data_.size());
 
         // Set the value.
         result_buffer[c] &= (uint8_t)cmp;
@@ -900,8 +967,8 @@ void QueryCondition::apply_val_dense(
       const bool cmp = BinaryCmp<T, Op>::cmp(
           cell_value,
           cell_size,
-          node->condition_value_view_.content(),
-          node->condition_value_data_.size());
+          node.condition_value_view_.content(),
+          node.condition_value_data_.size());
 
       // Set the value.
       result_buffer[c] &= (uint8_t)cmp;
@@ -910,37 +977,37 @@ void QueryCondition::apply_val_dense(
 }
 
 template <typename T>
-Status QueryCondition::apply_val_dense(
-    const ASTNodeVal* node,
+Status QueryCondition::apply_ast_node_dense(
+    const ASTNodeVal& node,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
     const bool var_size,
     std::vector<uint8_t>& result_buffer) const {
-  switch (node->op_) {
+  switch (node.op_) {
     case QueryConditionOp::LT:
-      apply_val_dense<T, QueryConditionOp::LT>(
+      apply_ast_node_dense<T, QueryConditionOp::LT>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
       break;
     case QueryConditionOp::LE:
-      apply_val_dense<T, QueryConditionOp::LE>(
+      apply_ast_node_dense<T, QueryConditionOp::LE>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
       break;
     case QueryConditionOp::GT:
-      apply_val_dense<T, QueryConditionOp::GT>(
+      apply_ast_node_dense<T, QueryConditionOp::GT>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
       break;
     case QueryConditionOp::GE:
-      apply_val_dense<T, QueryConditionOp::GE>(
+      apply_ast_node_dense<T, QueryConditionOp::GE>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
       break;
     case QueryConditionOp::EQ:
-      apply_val_dense<T, QueryConditionOp::EQ>(
+      apply_ast_node_dense<T, QueryConditionOp::EQ>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
       break;
     case QueryConditionOp::NE:
-      apply_val_dense<T, QueryConditionOp::NE>(
+      apply_ast_node_dense<T, QueryConditionOp::NE>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
       break;
     default:
@@ -952,17 +1019,17 @@ Status QueryCondition::apply_val_dense(
   return Status::Ok();
 }
 
-Status QueryCondition::apply_val_dense(
-    const ASTNodeVal* node,
+Status QueryCondition::apply_ast_node_dense(
+    const ASTNodeVal& node,
     const ArraySchema& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
     std::vector<uint8_t>& result_buffer) const {
-  const auto attribute = array_schema.attribute(node->field_name_);
+  const auto attribute = array_schema.attribute(node.field_name_);
   if (!attribute) {
-    return Status_QueryConditionError("Unknown attribute " + node->field_name_);
+    return Status_QueryConditionError("Unknown attribute " + node.field_name_);
   }
 
   const bool var_size = attribute->var_size();
@@ -970,15 +1037,15 @@ Status QueryCondition::apply_val_dense(
 
   // Process the validity buffer now.
   if (nullable) {
-    const auto tile_tuple = result_tile->tile_tuple(node->field_name_);
+    const auto tile_tuple = result_tile->tile_tuple(node.field_name_);
     const auto& tile_validity = std::get<2>(*tile_tuple);
     const auto buffer_validity =
         static_cast<uint8_t*>(tile_validity.data()) + src_cell;
     ;
 
     // Null values can only be specified for equality operators.
-    if (node->condition_value_view_.content() == nullptr) {
-      if (node->op_ == QueryConditionOp::NE) {
+    if (node.condition_value_view_.content() == nullptr) {
+      if (node.op_ == QueryConditionOp::NE) {
         for (uint64_t c = 0; c < result_buffer.size(); ++c) {
           result_buffer[c] *= buffer_validity[start + c * stride] != 0;
         }
@@ -998,41 +1065,41 @@ Status QueryCondition::apply_val_dense(
 
   switch (attribute->type()) {
     case Datatype::INT8:
-      return apply_val_dense<int8_t>(
+      return apply_ast_node_dense<int8_t>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
     case Datatype::UINT8:
-      return apply_val_dense<uint8_t>(
+      return apply_ast_node_dense<uint8_t>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
     case Datatype::INT16:
-      return apply_val_dense<int16_t>(
+      return apply_ast_node_dense<int16_t>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
     case Datatype::UINT16:
-      return apply_val_dense<uint16_t>(
+      return apply_ast_node_dense<uint16_t>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
     case Datatype::INT32:
-      return apply_val_dense<int32_t>(
+      return apply_ast_node_dense<int32_t>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
     case Datatype::UINT32:
-      return apply_val_dense<uint32_t>(
+      return apply_ast_node_dense<uint32_t>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
     case Datatype::INT64:
-      return apply_val_dense<int64_t>(
+      return apply_ast_node_dense<int64_t>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
     case Datatype::UINT64:
-      return apply_val_dense<uint64_t>(
+      return apply_ast_node_dense<uint64_t>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
     case Datatype::FLOAT32:
-      return apply_val_dense<float>(
+      return apply_ast_node_dense<float>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
     case Datatype::FLOAT64:
-      return apply_val_dense<double>(
+      return apply_ast_node_dense<double>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
     case Datatype::STRING_ASCII:
-      return apply_val_dense<char*>(
+      return apply_ast_node_dense<char*>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
     case Datatype::CHAR:
       if (var_size) {
-        return apply_val_dense<char*>(
+        return apply_ast_node_dense<char*>(
             node,
             result_tile,
             start,
@@ -1041,7 +1108,7 @@ Status QueryCondition::apply_val_dense(
             var_size,
             result_buffer);
       }
-      return apply_val_dense<char>(
+      return apply_ast_node_dense<char>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
@@ -1056,7 +1123,7 @@ Status QueryCondition::apply_val_dense(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
-      return apply_val_dense<int64_t>(
+      return apply_ast_node_dense<int64_t>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
     case Datatype::ANY:
     case Datatype::BLOB:
@@ -1069,7 +1136,7 @@ Status QueryCondition::apply_val_dense(
       return Status_QueryConditionError(
           "Cannot perform query comparison; Unsupported query "
           "conditional type on " +
-          node->field_name_);
+          node.field_name_);
   }
 
   return Status::Ok();
@@ -1083,10 +1150,13 @@ void QueryCondition::apply_tree_dense(
     const uint64_t src_cell,
     const uint64_t stride,
     std::vector<uint8_t>& result_buffer) const {
+  // Case on the tag of the tree node.
   if (node->get_tag() == ASTNodeTag::VAL) {
+    // In the simple value node case, we run the value evaluator function and
+    // return the result back.
     const ASTNodeVal* node_ptr = dynamic_cast<ASTNodeVal*>(node.get());
-    Status s = apply_val_dense(
-        node_ptr,
+    Status s = apply_ast_node_dense(
+        *node_ptr,
         array_schema,
         result_tile,
         start,
@@ -1095,11 +1165,11 @@ void QueryCondition::apply_tree_dense(
         result_buffer);
     if (!s.ok()) {
       throw std::runtime_error(
-          "From apply_tree_dense: apply_val_dense failed.");
+          "apply_tree_dense: apply_ast_node_dense failed.");
     }
-  } else {
-    // for each child, declare a new result buffer, combine it all into the
-    // other one based on combination op
+  } else if (node->get_tag() == ASTNodeTag::EXPR) {
+    // For each child, declare a new result buffer, combine it all into the
+    // other one based on the combination op.
     auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
     if (expr_ptr->combination_op_ == QueryConditionCombinationOp::AND) {
       std::fill(result_buffer.begin(), result_buffer.end(), 1);
@@ -1118,6 +1188,9 @@ void QueryCondition::apply_tree_dense(
           child_result_buffer);
 
       switch (expr_ptr->combination_op_) {
+        // Note that we use a bitwise AND operator to combine
+        // the accumulator result buffer and child result buffer in the AND
+        // combination op case, and bitwise OR in the OR combination op case.
         case QueryConditionCombinationOp::AND: {
           for (uint64_t c = 0; c < result_buffer.size(); ++c) {
             result_buffer[c] &= child_result_buffer[c];
@@ -1134,11 +1207,13 @@ void QueryCondition::apply_tree_dense(
         } break;
         default: {
           throw std::logic_error(
-              "QueryCondition operator apply_tree_dense case, should not get "
-              "here.");
+              "apply_tree_dense: invalid combination op, should not get here.");
         }
       }
     }
+  } else {
+    throw std::logic_error(
+        "apply_tree_dense: invalid node tag, should not get here.");
   }
 }
 
@@ -1155,7 +1230,7 @@ Status QueryCondition::apply_dense(
   apply_tree_dense(
       tree_, array_schema, result_tile, start, src_cell, stride, result_vector);
 
-  // copy into buffer
+  // Copy into buffer.
   std::copy(result_vector.begin(), result_vector.end(), result_buffer + start);
   return Status::Ok();
 }
@@ -1305,12 +1380,12 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::NE> {
 };
 
 template <typename T, QueryConditionOp Op, typename BitmapType>
-void QueryCondition::apply_val_sparse(
-    const ASTNodeVal* node,
+void QueryCondition::apply_ast_node_sparse(
+    const ASTNodeVal& node,
     ResultTile& result_tile,
     const bool var_size,
     std::vector<BitmapType>& result_bitmap) const {
-  const auto tile_tuple = result_tile.tile_tuple(node->field_name_);
+  const auto tile_tuple = result_tile.tile_tuple(node.field_name_);
 
   if (var_size) {
     // Get var data buffer and tile offsets buffer.
@@ -1342,8 +1417,8 @@ void QueryCondition::apply_val_sparse(
         const bool cmp = BinaryCmp<T, Op>::cmp(
             cell_value,
             cell_size,
-            node->condition_value_view_.content(),
-            node->condition_value_data_.size());
+            node.condition_value_view_.content(),
+            node.condition_value_data_.size());
 
         // Set the value.
         result_bitmap[c] *= cmp;
@@ -1366,8 +1441,8 @@ void QueryCondition::apply_val_sparse(
       const bool cmp = BinaryCmp<T, Op>::cmp(
           cell_value,
           cell_size,
-          node->condition_value_view_.content(),
-          node->condition_value_data_.size());
+          node.condition_value_view_.content(),
+          node.condition_value_data_.size());
 
       // Set the value.
       result_bitmap[c] *= cmp;
@@ -1376,34 +1451,34 @@ void QueryCondition::apply_val_sparse(
 }
 
 template <typename T, typename BitmapType>
-Status QueryCondition::apply_val_sparse(
-    const ASTNodeVal* node,
+Status QueryCondition::apply_ast_node_sparse(
+    const ASTNodeVal& node,
     ResultTile& result_tile,
     const bool var_size,
     std::vector<BitmapType>& result_bitmap) const {
-  switch (node->op_) {
+  switch (node.op_) {
     case QueryConditionOp::LT:
-      apply_val_sparse<T, QueryConditionOp::LT>(
+      apply_ast_node_sparse<T, QueryConditionOp::LT>(
           node, result_tile, var_size, result_bitmap);
       break;
     case QueryConditionOp::LE:
-      apply_val_sparse<T, QueryConditionOp::LE>(
+      apply_ast_node_sparse<T, QueryConditionOp::LE>(
           node, result_tile, var_size, result_bitmap);
       break;
     case QueryConditionOp::GT:
-      apply_val_sparse<T, QueryConditionOp::GT>(
+      apply_ast_node_sparse<T, QueryConditionOp::GT>(
           node, result_tile, var_size, result_bitmap);
       break;
     case QueryConditionOp::GE:
-      apply_val_sparse<T, QueryConditionOp::GE>(
+      apply_ast_node_sparse<T, QueryConditionOp::GE>(
           node, result_tile, var_size, result_bitmap);
       break;
     case QueryConditionOp::EQ:
-      apply_val_sparse<T, QueryConditionOp::EQ>(
+      apply_ast_node_sparse<T, QueryConditionOp::EQ>(
           node, result_tile, var_size, result_bitmap);
       break;
     case QueryConditionOp::NE:
-      apply_val_sparse<T, QueryConditionOp::NE>(
+      apply_ast_node_sparse<T, QueryConditionOp::NE>(
           node, result_tile, var_size, result_bitmap);
       break;
     default:
@@ -1416,14 +1491,14 @@ Status QueryCondition::apply_val_sparse(
 }
 
 template <typename BitmapType>
-Status QueryCondition::apply_val_sparse(
-    const ASTNodeVal* node,
+Status QueryCondition::apply_ast_node_sparse(
+    const ASTNodeVal& node,
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap) const {
-  const auto attribute = array_schema.attribute(node->field_name_);
+  const auto attribute = array_schema.attribute(node.field_name_);
   if (!attribute) {
-    return Status_QueryConditionError("Unknown attribute " + node->field_name_);
+    return Status_QueryConditionError("Unknown attribute " + node.field_name_);
   }
 
   const bool var_size = attribute->var_size();
@@ -1432,13 +1507,13 @@ Status QueryCondition::apply_val_sparse(
   // Process the validity buffer now.
 
   if (nullable) {
-    const auto tile_tuple = result_tile.tile_tuple(node->field_name_);
+    const auto tile_tuple = result_tile.tile_tuple(node.field_name_);
     const auto& tile_validity = std::get<2>(*tile_tuple);
     const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
 
     // Null values can only be specified for equality operators.
-    if (node->condition_value_view_.content() == nullptr) {
-      if (node->op_ == QueryConditionOp::NE) {
+    if (node.condition_value_view_.content() == nullptr) {
+      if (node.op_ == QueryConditionOp::NE) {
         for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
           result_bitmap[c] *= buffer_validity[c] != 0;
         }
@@ -1458,44 +1533,44 @@ Status QueryCondition::apply_val_sparse(
 
   switch (attribute->type()) {
     case Datatype::INT8:
-      return apply_val_sparse<int8_t, BitmapType>(
+      return apply_ast_node_sparse<int8_t, BitmapType>(
           node, result_tile, var_size, result_bitmap);
     case Datatype::UINT8:
-      return apply_val_sparse<uint8_t, BitmapType>(
+      return apply_ast_node_sparse<uint8_t, BitmapType>(
           node, result_tile, var_size, result_bitmap);
     case Datatype::INT16:
-      return apply_val_sparse<int16_t, BitmapType>(
+      return apply_ast_node_sparse<int16_t, BitmapType>(
           node, result_tile, var_size, result_bitmap);
     case Datatype::UINT16:
-      return apply_val_sparse<uint16_t, BitmapType>(
+      return apply_ast_node_sparse<uint16_t, BitmapType>(
           node, result_tile, var_size, result_bitmap);
     case Datatype::INT32:
-      return apply_val_sparse<int32_t, BitmapType>(
+      return apply_ast_node_sparse<int32_t, BitmapType>(
           node, result_tile, var_size, result_bitmap);
     case Datatype::UINT32:
-      return apply_val_sparse<uint32_t, BitmapType>(
+      return apply_ast_node_sparse<uint32_t, BitmapType>(
           node, result_tile, var_size, result_bitmap);
     case Datatype::INT64:
-      return apply_val_sparse<int64_t, BitmapType>(
+      return apply_ast_node_sparse<int64_t, BitmapType>(
           node, result_tile, var_size, result_bitmap);
     case Datatype::UINT64:
-      return apply_val_sparse<uint64_t, BitmapType>(
+      return apply_ast_node_sparse<uint64_t, BitmapType>(
           node, result_tile, var_size, result_bitmap);
     case Datatype::FLOAT32:
-      return apply_val_sparse<float, BitmapType>(
+      return apply_ast_node_sparse<float, BitmapType>(
           node, result_tile, var_size, result_bitmap);
     case Datatype::FLOAT64:
-      return apply_val_sparse<double, BitmapType>(
+      return apply_ast_node_sparse<double, BitmapType>(
           node, result_tile, var_size, result_bitmap);
     case Datatype::STRING_ASCII:
-      return apply_val_sparse<char*, BitmapType>(
+      return apply_ast_node_sparse<char*, BitmapType>(
           node, result_tile, var_size, result_bitmap);
     case Datatype::CHAR:
       if (var_size) {
-        return apply_val_sparse<char*, BitmapType>(
+        return apply_ast_node_sparse<char*, BitmapType>(
             node, result_tile, var_size, result_bitmap);
       }
-      return apply_val_sparse<char, BitmapType>(
+      return apply_ast_node_sparse<char, BitmapType>(
           node, result_tile, var_size, result_bitmap);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
@@ -1510,7 +1585,7 @@ Status QueryCondition::apply_val_sparse(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
-      return apply_val_sparse<int64_t, BitmapType>(
+      return apply_ast_node_sparse<int64_t, BitmapType>(
           node, result_tile, var_size, result_bitmap);
     case Datatype::ANY:
     case Datatype::BLOB:
@@ -1523,7 +1598,7 @@ Status QueryCondition::apply_val_sparse(
       return Status_QueryConditionError(
           "Cannot perform query comparison; Unsupported query "
           "conditional type on " +
-          node->field_name_);
+          node.field_name_);
   }
 
   return Status::Ok();
@@ -1535,15 +1610,20 @@ void QueryCondition::apply_tree_sparse(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap) const {
+  // Case on the tag of the tree node.
   if (node->get_tag() == ASTNodeTag::VAL) {
+    // In the simple value node case, we run the value evaluator function and
+    // return the result back.
     auto node_ptr = dynamic_cast<ASTNodeVal*>(node.get());
-    Status s = apply_val_sparse<BitmapType>(
-        node_ptr, array_schema, result_tile, result_bitmap);
+    Status s = apply_ast_node_sparse<BitmapType>(
+        *node_ptr, array_schema, result_tile, result_bitmap);
     if (!s.ok()) {
       throw std::runtime_error(
-          "From apply_tree_sparse: apply_val_sparse failed.");
+          "apply_tree_sparse: apply_ast_node_sparse failed.");
     }
-  } else {
+  } else if (node->get_tag() == ASTNodeTag::EXPR) {
+    // For each child, declare a new result buffer, combine it all into the
+    // other one based on the combination op.
     auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
     if (expr_ptr->combination_op_ == QueryConditionCombinationOp::AND) {
       std::fill(result_bitmap.begin(), result_bitmap.end(), 1);
@@ -1553,6 +1633,10 @@ void QueryCondition::apply_tree_sparse(
     for (const auto& child : expr_ptr->nodes_) {
       std::vector<BitmapType> child_result_bitmap(result_bitmap.size(), true);
       apply_tree_sparse(child, array_schema, result_tile, child_result_bitmap);
+      // Note that we use the multiplication operator (which functions
+      // effectively as a bitwise AND) to combine the accumulator result buffer
+      // and child result buffer in the AND combination op case, and bitwise OR
+      // in the OR combination op case.
       switch (expr_ptr->combination_op_) {
         case QueryConditionCombinationOp::AND: {
           for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
@@ -1571,11 +1655,14 @@ void QueryCondition::apply_tree_sparse(
         }
         default: {
           throw std::logic_error(
-              "QueryCondition operator apply_tree_sparse case, should not get "
+              "apply_tree_sparse: invalid combination op, should not get "
               "here.");
         }
       }
     }
+  } else {
+    throw std::logic_error(
+        "apply_tree_sparse: invalid node tag, should not get here.");
   }
 }
 
@@ -1593,8 +1680,8 @@ Status QueryCondition::apply_sparse(
   return Status::Ok();
 }
 
-std::string QueryCondition::ast_to_str() {
-  return tree_->to_str();
+tdb_unique_ptr<ASTNode>& QueryCondition::ast() {
+  return tree_;
 }
 
 void QueryCondition::set_clauses(std::vector<Clause>&& clauses) {
@@ -1645,7 +1732,7 @@ static void ast_get_clauses(
         val_ptr->condition_value_data_.size(),
         val_ptr->op_);
     clauses_vector.emplace_back(c);
-  } else {
+  } else if (node->get_tag() == ASTNodeTag::EXPR) {
     auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
     for (const auto& child : expr_ptr->nodes_) {
       ast_get_clauses(clauses_vector, child);
