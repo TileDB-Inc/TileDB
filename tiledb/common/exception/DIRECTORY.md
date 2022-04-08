@@ -13,7 +13,7 @@ There is no particular urgency to this goal. The code has used `Status` for year
 * **Elimination of code-junk macros `RETURN_NOT_OK` and their ilk.** Error handling is fundamental. It can't be avoided; it must be faced. In C++ there's a basic choice to use exceptions or to use return values. There's syntactic overhead with both. The choice is between `try` statements with exceptions and `return`-`if`-`return` statements otherwise.
 
   Using `try` statement syntactically marks off error handling code to readily identifiable blocks. Using `if` statements (or a macro encapsulation) intermixes code for each possible failure in with the code that might fail. Since most failures are rare-to-nonexistent, particularly possible logic errors, `try` statements end up with code that is far easier to read.
-* **Promotion of RAII and C.41.** When there's a policy of avoiding exceptions, constructors can't throw to enforce class invariants. This means that having class invariants requires private constructors and dedicated factory functions in all cases. Of course it's easier not to do this, which leads to the practive of not defining class invariants. This bypasses the benefits of RAII and obviates the utility of C.41 compliance. 
+* **Promotion of RAII and C.41.** When there's a policy of avoiding exceptions, constructors can't throw to enforce class invariants. This means that having class invariants requires private constructors and dedicated factory functions in all cases. Of course it's easier not to do this, which leads to the practice of not defining class invariants. This bypasses the benefits of RAII and obviates the utility of C.41 compliance. 
 
 ## Progress toward the goal
 
