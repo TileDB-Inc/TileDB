@@ -52,8 +52,8 @@ endif()
 
 #if (1)
 # Next try finding the superbuild external project
-if (NOT libmagic_FOUND)
-#if (TILEDB_LIBMAGIC_EP_BUILT)
+#if (NOT libmagic_FOUND)
+if (TILEDB_LIBMAGIC_EP_BUILT)
 #if ((NOT libmagic_FOUND) AND (NOT MSYS))
   find_path(libmagic_INCLUDE_DIR
     NAMES magic.h
@@ -87,7 +87,7 @@ endif()
 #endif()
 
 # If not found, add it as an external project
-if (NOT libmagic_FOUND)
+#if (NOT libmagic_FOUND)
 #if(NOT TILEDB_LIBMAGIC_EP_BUILT)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Magic as an external project")
@@ -125,8 +125,6 @@ if (NOT libmagic_FOUND)
               )
     else()
       set(findcmdstr  "bash -c find . -name '*.a' -exec ls {} \;")
-      set(findargs " . -name '*.a' -exec ls {} \;")
-      set(findargs " . -name '*.a' -exec ls {} \\;")
       ExternalProject_Add(ep_magic
         PREFIX "externals"
         # URL "ftp://ftp.astron.com/pub/file/file-5.41.tar.gz"
@@ -142,9 +140,12 @@ if (NOT libmagic_FOUND)
         #CONFIGURE_COMMAND
         #      ${TILEDB_EP_BASE}/src/ep_magic/configure --prefix=${TILEDB_EP_INSTALL_PREFIX} CFLAGS=${CFLAGS_DEF} CXXFLAGS=${CXXFLAGS_DEF}
         #BUILD_IN_SOURCE TRUE
-        #BUILD_COMMAND $(MAKE)
+        BUILD_COMMAND $(MAKE) VERBOSE=1
+#        LIST_SEPARATOR ^^
+#        COMMAND bash -c "${findcmdstr}"
         #INSTALL_COMMAND $(MAKE) install
         CMAKE_ARGS
+          --trace
           -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
           -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
           "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
@@ -155,13 +156,49 @@ if (NOT libmagic_FOUND)
         LOG_INSTALL TRUE
         LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
       )
+      set(findcmdstr  "bash -c find . -name '*.a' -exec ls {} \;")
+      set(findcmdstr  "find . -name '*.a' -exec ls {} \;")
+      set(findcmdstr  "find . -name '*.a' -exec ls {} \\;")
+      set(findargs " . -name '*.a' -exec ls {} \;")
+      set(findargs " . -name '*.a' -exec ls {} \\;")
+      set(SEMI ";")
+      if(0)
+      message("${findcmdstr}")
+      string(REPLACE ";" "^^" findcmdstr "${findcmdstr}")
+      message("${findcmdstr}")
+      message("${findargs}")
+      message("${SEMI}")
       ExternalProject_Add_Step(ep_magic afterbuild_diags
+        DEPENDEES build
         COMMAND "pwd"
+        #LIST_SEPARATOR ??
+        LIST_SEPARATOR ^^
         #COMMAND bash -c "find . -name '*.a' -exec ls {} \\;"
         #COMMAND "${findcmdstr}"
-        COMMAND bash -c "find ${findargs}"
+        COMMAND bash -c "echo oneA"
+        COMMAND bash -c "echo find . -name '*.a' -exec ls {} \\\;"
+        COMMAND bash -c "echo oneB"
+        #COMMAND bash -c echo find . -name '*.a' -exec ls {} ;
+        #COMMAND bash -c "echo find . -name '*.a' -exec ls {} \${SEMI}"
+        #COMMAND bash -c "echo find . -name '*.a' -exec ls {} \??"
+        #COMMAND bash -c "echo find . -name '*.a' -exec ls {} \\??"
+        #COMMAND bash -c "echo find . -name '*.a' -exec ls {} \\^^"
+        LIST_SEPARATOR ^^
+        COMMAND bash -c "echo find . -name '*.a' -exec ls {} \\;"
+        #COMMAND bash -c "echo find . -name '*.a' -exec ls {} \\;"
+        COMMAND bash -c "echo twoA"
+        COMMAND bash -c "${findcmdstr}"
+        COMMAND bash -c "echo twoAA"
+        #COMMAND bash -c "echo find ${findargs}"
+        COMMAND bash -c "echo find ${findargs} \\${SEMI}"
+        COMMAND bash -c "echo twoB"
+        COMMAND bash -c \"echo find ${findargs}\"
+        COMMAND bash -c "echo three"
+        COMMAND bash -c \"find ${findargs}\"
+        COMMAND bash -c "echo four"
         COMMAND "cat ./src/ep_magic-stamp/*.log"
       )
+      endif()
     endif()
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_magic)
     list(APPEND FORWARD_EP_CMAKE_ARGS
@@ -173,7 +210,7 @@ if (NOT libmagic_FOUND)
   else()
     message(FATAL_ERROR "Unable to find Magic")
   endif()
-endif()
+#endif()
 
 if (libmagic_FOUND AND NOT TARGET libmagic)
   message(STATUS "Found Magic, adding imported target: ${libmagic_LIBRARIES}")
