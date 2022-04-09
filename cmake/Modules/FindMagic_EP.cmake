@@ -88,7 +88,7 @@ endif()
 
 # If not found, add it as an external project
 #if (NOT libmagic_FOUND)
-#if(NOT TILEDB_LIBMAGIC_EP_BUILT)
+if(NOT TILEDB_LIBMAGIC_EP_BUILT)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Magic as an external project")
 
@@ -210,7 +210,7 @@ endif()
   else()
     message(FATAL_ERROR "Unable to find Magic")
   endif()
-#endif()
+endif()
 
 if (libmagic_FOUND AND NOT TARGET libmagic)
   message(STATUS "Found Magic, adding imported target: ${libmagic_LIBRARIES}")
