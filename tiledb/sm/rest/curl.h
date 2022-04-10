@@ -38,6 +38,7 @@
 #if !defined(NOMINMAX)
 #define NOMINMAX  // curl may include windows headers
 #endif
+
 #include <curl/curl.h>
 #include <cstdlib>
 #include <functional>
@@ -45,6 +46,9 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+
+#include "tiledb/common/dynamic_memory/dynamic_memory.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"
@@ -97,7 +101,7 @@ size_t write_header_callback(
 class Curl {
  public:
   /** Constructor. */
-  Curl();
+  explicit Curl(const std::shared_ptr<Logger>& logger);
 
   /** Destructor. */
   ~Curl() = default;
@@ -195,6 +199,7 @@ class Curl {
    * @param stats The stats instance to record into
    * @param url URL to post to
    * @param serialization_type Serialization type to use
+   * @param returned_data Buffer to store response data
    * @param res_ns_uri Array Namespace and URI
    * @return Status
    */
@@ -202,6 +207,7 @@ class Curl {
       stats::Stats* const stats,
       const std::string& url,
       SerializationType serialization_type,
+      Buffer* returned_data,
       const std::string& res_ns_uri);
 
   /**
@@ -355,6 +361,15 @@ class Curl {
 
   /** List of http status codes to retry. */
   std::vector<uint32_t> retry_http_codes_;
+
+  /** The class logger. */
+  std::shared_ptr<Logger> logger_;
+
+  /** UID of the logger instance */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
+
+  /** Verbose logging in curl. */
+  bool verbose_;
 
   /**
    * Populates the curl slist with authorization (token or username+password),

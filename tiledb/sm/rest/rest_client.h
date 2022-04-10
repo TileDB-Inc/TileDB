@@ -36,6 +36,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/group/group.h"
@@ -60,7 +61,10 @@ class RestClient {
 
   /** Initialize the REST client with the given config. */
   Status init(
-      stats::Stats* parent_stats, const Config* config, ThreadPool* compute_tp);
+      stats::Stats* parent_stats,
+      const Config* config,
+      ThreadPool* compute_tp,
+      const std::shared_ptr<Logger>& logger);
 
   /** Sets a header that will be attached to all requests. */
   Status set_header(const std::string& name, const std::string& value);
@@ -241,7 +245,7 @@ class RestClient {
    * @param group Group to serialize
    * @return Status
    */
-  Status post_group_to_rest(const URI& uri, Group* group);
+  Status patch_group_to_rest(const URI& uri, Group* group);
 
   /**
    * Post group create to the REST server.
@@ -291,6 +295,12 @@ class RestClient {
 
   /** Mutex for thread-safety. */
   mutable std::mutex redirect_mtx_;
+
+  /** The class logger. */
+  shared_ptr<Logger> logger_;
+
+  /** UID of the logger instance */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
@@ -382,6 +392,15 @@ class RestClient {
    * @return Returns the redirection URI if exists and empty string otherwise
    */
   std::string redirect_uri(const std::string& cache_key);
+
+  /**
+   * Cap'n proto requires JSON messages to be null terminated c-style strings.
+   * This function checks if using JSON that returned buffers are null delimited
+   *
+   * @param buffer of server message
+   * @return Status
+   */
+  Status ensure_json_null_delimited_string(Buffer* buffer);
 };
 
 }  // namespace sm

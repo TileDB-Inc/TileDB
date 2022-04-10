@@ -77,6 +77,9 @@ class Config {
   /** The default exponential delay factor for retrying a http request. */
   static const std::string REST_RETRY_DELAY_FACTOR;
 
+  /** The default for Curl's verbose mode used by REST. */
+  static const std::string REST_CURL_VERBOSE;
+
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 

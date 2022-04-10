@@ -249,12 +249,14 @@ size_t write_header_callback(
   return size * count;
 }
 
-Curl::Curl()
+Curl::Curl(const std::shared_ptr<Logger>& logger)
     : config_(nullptr)
     , curl_(nullptr, curl_easy_cleanup)
     , retry_count_(0)
     , retry_delay_factor_(0)
-    , retry_initial_delay_ms_(0) {
+    , retry_initial_delay_ms_(0)
+    , logger_(logger->clone("curl ", ++logger_id_))
+    , verbose_(false) {
 }
 
 Status Curl::init(
@@ -336,6 +338,9 @@ Status Curl::init(
 
   RETURN_NOT_OK(config_->get_vector<uint32_t>(
       "rest.retry_http_codes", &retry_http_codes_, &found));
+  assert(found);
+
+  RETURN_NOT_OK(config_->get<bool>("rest.curl.verbose", &verbose_, &found));
   assert(found);
 
   return Status::Ok();
@@ -473,6 +478,9 @@ Status Curl::make_curl_request_common(
     /* pass fetch buffer pointer */
     curl_easy_setopt(
         curl, CURLOPT_WRITEDATA, static_cast<void*>(&write_cb_state));
+
+    /* Set curl verbose mode */
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, verbose_);
 
     /* set default user agent */
     // curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
@@ -718,6 +726,7 @@ Status Curl::post_data_common(
   } else {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
   }
+  logger_->debug("posting {} bytes to", data->total_size());
 
   // Set auth and content-type for request
   *headers = nullptr;
@@ -779,6 +788,7 @@ Status Curl::options(
     stats::Stats* const stats,
     const std::string& url,
     SerializationType serialization_type,
+    Buffer* returned_data,
     const std::string& res_ns_uri) {
   CURL* curl = curl_.get();
   if (curl == nullptr)
@@ -795,14 +805,20 @@ Status Curl::options(
   /* pass our list of custom made headers */
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
+  /* HTTP OPTIONS please */
+  curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "OPTIONS");
+
+  /* HEAD */
+  curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
+
   CURLcode ret;
   headerData.uri = &res_ns_uri;
-  auto st = make_curl_request_options_common(stats, url.c_str(), &ret);
+  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 
   // Check for errors
-  RETURN_NOT_OK(check_curl_errors(ret, "OPTIONS"));
+  RETURN_NOT_OK(check_curl_errors(ret, "OPTIONS", returned_data));
 
   return Status::Ok();
 }
@@ -876,9 +892,10 @@ Status Curl::patch_data_common(
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
-        Status_RestError("Error posting data; curl instance is null."));
+        Status_RestError("Error patching data; curl instance is null."));
 
   const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
+  logger_->debug("patching {} bytes to", data->total_size());
   if (data->total_size() > post_size_limit) {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, data->total_size());
   } else {
@@ -892,7 +909,10 @@ Status Curl::patch_data_common(
       set_content_type(serialization_type, headers),
       curl_slist_free_all(*headers));
 
-  /* HTTP PUT please */
+  /* Set POST so curl sends the body */
+  curl_easy_setopt(curl, CURLOPT_POST, 1);
+
+  /* HTTP PATCH please */
   curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
   curl_easy_setopt(
       curl, CURLOPT_READFUNCTION, buffer_list_read_memory_callback);
@@ -937,9 +957,10 @@ Status Curl::put_data_common(
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
-        Status_RestError("Error posting data; curl instance is null."));
+        Status_RestError("Error putting data; curl instance is null."));
 
   const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
+  logger_->debug("putting {} bytes to", data->total_size());
   if (data->total_size() > post_size_limit) {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, data->total_size());
   } else {
@@ -952,6 +973,9 @@ Status Curl::put_data_common(
   RETURN_NOT_OK_ELSE(
       set_content_type(serialization_type, headers),
       curl_slist_free_all(*headers));
+
+  /* Set POST so curl sends the body */
+  curl_easy_setopt(curl, CURLOPT_POST, 1);
 
   /* HTTP PUT please */
   curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
@@ -968,110 +992,5 @@ Status Curl::put_data_common(
 
   return Status::Ok();
 }
-
-Status Curl::make_curl_request_options_common(
-    stats::Stats* const stats,
-    const char* const url,
-    CURLcode* const curl_code) const {
-  CURL* curl = curl_.get();
-  if (curl == nullptr)
-    return LOG_STATUS(
-        Status_RestError("Cannot make curl request; curl instance is null."));
-
-  *curl_code = CURLE_OK;
-  uint64_t retry_delay = retry_initial_delay_ms_;
-  // <= because the 0ths retry is actually the initial request
-  for (uint8_t i = 0; i <= retry_count_; i++) {
-    /* set url to fetch */
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-
-    /* HTTP OPTIONS please */
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "OPTIONS");
-
-    /* HEAD */
-    curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
-
-    /* set default user agent */
-    // curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-
-    /* Fail on error */
-    // curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
-
-    /* set timeout */
-    // curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
-
-    /* set compression */
-    const char* compressor = nullptr;
-    RETURN_NOT_OK(config_->get("rest.http_compressor", &compressor));
-
-    if (compressor != nullptr) {
-      // curl expects lowecase strings so let's convert
-      std::string comp(compressor);
-      std::locale loc;
-      for (std::string::size_type j = 0; j < comp.length(); ++j)
-        comp[j] = std::tolower(comp[j], loc);
-
-      if (comp != "none") {
-        if (comp == "any") {
-          comp = "";
-        }
-        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, comp.c_str());
-      }
-    }
-
-    /* enable location redirects */
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-
-    /* set maximum allowed redirects */
-    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 1);
-
-    /* enable forwarding auth to redirects */
-    curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
-
-    /* fetch the url */
-    CURLcode tmp_curl_code = curl_easy_perform(curl);
-
-    bool retry;
-    RETURN_NOT_OK(should_retry(&retry));
-    /* If Curl call was successful (not http status, but no socket error, etc)
-     * break */
-    if (tmp_curl_code == CURLE_OK && !retry) {
-      break;
-    }
-
-    /* Only store the first non-OK curl code, because it will likely be more
-     * useful than the curl codes from the retries. */
-    if (*curl_code == CURLE_OK) {
-      *curl_code = tmp_curl_code;
-    }
-
-    // Only sleep if this isn't the last failed request allowed
-    if (i < retry_count_ - 1) {
-      long http_code = 0;
-      if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) !=
-          CURLE_OK)
-        return LOG_STATUS(Status_RestError(
-            "Error checking curl error; could not get HTTP code."));
-
-      global_logger().debug(
-          "Request to {} failed with http response code {}, will sleep {}ms, "
-          "retry count {}",
-          url,
-          http_code,
-          retry_delay,
-          i);
-      // Increment counter for number of retries
-      stats->add_counter("rest_http_retries", 1);
-      stats->add_counter("rest_http_retry_time", retry_delay);
-      // Sleep for retry delay
-      std::this_thread::sleep_for(std::chrono::milliseconds(retry_delay));
-      // Increment retry delay, cast to uint64_t and we can ignore any rounding
-      retry_delay = static_cast<uint64_t>(retry_delay * retry_delay_factor_);
-    }
-  }
-
-  return Status::Ok();
-}
-
 }  // namespace sm
 }  // namespace tiledb

@@ -52,4 +52,19 @@ int tiledb_array_create_serialization_wrapper(
     tiledb_array_schema_t* array_schema,
     bool serialize_array_schema);
 
+/**
+ * Wrap a group in serialize/deserialize call
+ *
+ * @param ctx tiledb context
+ * @param group_serialized group to serialize
+ * @param group_deserialized group to deserialize into
+ * @param serialize_type serialization format
+ * @return status
+ */
+int tiledb_group_serialize(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group_serialized,
+    tiledb_group_t* group_deserialized,
+    tiledb_serialization_type_t serialize_type);
+
 #endif  // TILEDB_TEST_SERIALIZATION_WRAPPERS_H

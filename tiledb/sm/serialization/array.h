@@ -91,7 +91,8 @@ Status metadata_from_capnp(
  * @return Status
  */
 Status metadata_to_capnp(
-    Metadata* metadata, capnp::ArrayMetadata::Builder* array_metadata_builder);
+    const Metadata* metadata,
+    capnp::ArrayMetadata::Builder* array_metadata_builder);
 #endif
 
 Status array_serialize(

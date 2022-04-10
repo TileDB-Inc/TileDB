@@ -76,6 +76,33 @@ Status group_deserialize(
     const Buffer& serialized_buffer);
 
 /**
+ * Serialize a group details via Cap'n Prto
+ *
+ * @param Group group object to serialize
+ * @param serialize_type format to serialize into Cap'n Proto or JSON
+ * @param serialized_buffer buffer to store serialized bytes in
+ * serialize the array URI
+ * @return Status
+ */
+Status group_details_serialize(
+    const Group* group,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
+
+/**
+ * Deserialize a group details via Cap'n proto
+ *
+ * @param group to deserialize into
+ * @param serialize_type format the data is serialized in Cap'n Proto of JSON
+ * @param serialized_buffer buffer to read serialized bytes from
+ * @return Status
+ */
+Status group_details_deserialize(
+    Group* group,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer);
+
+/**
  * Serialize a group's update state via Cap'n Prto
  *
  * @param Group group object to serialize
@@ -105,7 +132,7 @@ Status group_update_deserialize(
 /**
  * Serialize a group's creation state via Cap'n Prto
  *
- * @param Group group object to serialize
+ * @param group group object to serialize
  * @param serialize_type format to serialize into Cap'n Proto or JSON
  * @param serialized_buffer buffer to store serialized bytes in
  * serialize the array URI
@@ -115,6 +142,21 @@ Status group_create_serialize(
     const Group* group,
     SerializationType serialize_type,
     Buffer* serialized_buffer);
+
+/**
+ * Serialize a group metadata for remote POSTING
+ *
+ * @param group group object to serialize
+ * @param serialize_type format to serialize into Cap'n Proto or JSON
+ * @param serialized_buffer buffer to store serialized bytes in
+ * serialize the array URI
+ * @return Status
+ */
+Status group_metadata_serialize(
+    const Group* group,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
+
 }  // namespace serialization
 }  // namespace sm
 }  // namespace tiledb
