@@ -140,7 +140,7 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
         #CONFIGURE_COMMAND
         #      ${TILEDB_EP_BASE}/src/ep_magic/configure --prefix=${TILEDB_EP_INSTALL_PREFIX} CFLAGS=${CFLAGS_DEF} CXXFLAGS=${CXXFLAGS_DEF}
         #BUILD_IN_SOURCE TRUE
-        BUILD_COMMAND $(MAKE) VERBOSE=1
+        #BUILD_COMMAND $(MAKE) VERBOSE=1
 #        LIST_SEPARATOR ^^
 #        COMMAND bash -c "${findcmdstr}"
         #INSTALL_COMMAND $(MAKE) install
@@ -221,7 +221,7 @@ if (libmagic_FOUND AND NOT TARGET libmagic)
   )
 endif()
 
-if (MSYS)
+if (MSYS AND TILEDB_LIBMAGIC_EP_BUILT)
   target_link_libraries(libmagic  INTERFACE -lregex -ltre -lgettextpo -lgettextlib -lintl -liconv)
 endif()
 
