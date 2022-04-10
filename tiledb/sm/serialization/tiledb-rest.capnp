@@ -623,6 +623,14 @@ struct EstimatedResultSize {
   memorySizes @1 :Map(Text, MemorySize);
 }
 
+struct GroupMetadata {
+  config @0 :Config;
+  # Config
+
+  metadata  @1 :ArrayMetadata;
+  # metadata attached to group
+}
+
 struct GroupMember {
   uri @0 :Text;
   # URI of group Member
@@ -635,31 +643,50 @@ struct GroupMember {
 }
 
 struct Group {
+  # Group
+
+  struct GroupDetails {
+    members @0 :List(GroupMember);
+    # list of Members in group
+
+    metadata  @1 :ArrayMetadata;
+    # metadata attached to group
+  }
+
   config @0 :Config;
   # Config
 
-  members @1 :List(GroupMember);
-  # list of Members in group
-
-  metadata  @2 :ArrayMetadata;
-  # metadata attached to group
+  group @1 :GroupDetails  $Json.name("group");
 }
 
 struct GroupUpdate {
+  struct GroupUpdateDetails {
+    membersToRemove @0 :List(Text) $Json.name("members_to_remove");
+    # members to remove
+
+    membersToAdd @1 :List(GroupMember) $Json.name("members_to_add");
+    # members to add
+  }
+
   config @0 :Config;
   # Config
 
-  membersToRemove @1 :List(Text) $Json.name("members_to_remove");
-  # members to remove
-
-  membersToAdd @2 :List(GroupMember) $Json.name("members_to_add");
-  # members to add
+  groupUpdate @1 :GroupUpdateDetails $Json.name("group_changes");
+  # group update detials
 }
 
 struct GroupCreate {
+  # Create group details
+
+  struct GroupCreateDetails {
+  # details of a group
+
+    uri @0 :Text;
+    # URI where group should be created
+  }
+
   config @0 :Config;
   # Config
 
-  uri @1 :Text;
-  # URI where group should be created
+  groupDetails @1 :GroupCreateDetails $Json.name("group_details");
 }

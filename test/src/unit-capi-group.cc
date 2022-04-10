@@ -41,6 +41,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
+#include "serialization_wrappers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
@@ -85,6 +86,8 @@ struct GroupFx {
   static std::string random_name(const std::string& prefix);
   std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> read_group(
       tiledb_group_t* group) const;
+  void set_group_timestamp(
+      tiledb_group_t* group, const uint64_t& timestamp) const;
 };
 
 GroupFx::GroupFx()
@@ -100,6 +103,26 @@ GroupFx::~GroupFx() {
   REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
+}
+
+void GroupFx::set_group_timestamp(
+    tiledb_group_t* group, const uint64_t& timestamp) const {
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  int rc = tiledb_config_set(
+      config,
+      "sm.group.timestamp_end",
+      std::to_string(timestamp).c_str(),
+      &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  rc = tiledb_group_set_config(ctx_, group, config);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_config_free(&config);
 }
 
 std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> GroupFx::read_group(
@@ -226,6 +249,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_ERR);
 
   // Write metadata on an group opened in READ mode
+  set_group_timestamp(group, 1);
   rc = tiledb_group_open(ctx_, group, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_group_put_metadata(ctx_, group, "key", TILEDB_INT32, 1, &v);
@@ -234,6 +258,7 @@ TEST_CASE_METHOD(
   // Close group
   rc = tiledb_group_close(ctx_, group);
   REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group, 1);
   REQUIRE(tiledb_group_open(ctx_, group, TILEDB_WRITE) == TILEDB_OK);
 
   // Write null key
@@ -272,6 +297,7 @@ TEST_CASE_METHOD(
   tiledb_group_t* group;
   int rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group);
   REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group, 1);
   rc = tiledb_group_open(ctx_, group, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
@@ -291,6 +317,7 @@ TEST_CASE_METHOD(
   // Open the group in read mode
   rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group);
   REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group, 1);
   rc = tiledb_group_open(ctx_, group, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
@@ -392,12 +419,14 @@ TEST_CASE_METHOD(
   tiledb_group_t* group1;
   int rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group1);
   REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group1, 1);
   rc = tiledb_group_open(ctx_, group1, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_group_t* group2;
   rc = tiledb_group_alloc(ctx_, group2_uri.c_str(), &group2);
   REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group2, 1);
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
@@ -440,9 +469,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Remove assets from group
+  set_group_timestamp(group1, 2);
   rc = tiledb_group_open(ctx_, group1, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  set_group_timestamp(group2, 2);
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
@@ -463,9 +494,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Check read again
+  set_group_timestamp(group1, 2);
   rc = tiledb_group_open(ctx_, group1, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
+  set_group_timestamp(group2, 2);
   rc = tiledb_group_open(ctx_, group2, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
@@ -532,12 +565,14 @@ TEST_CASE_METHOD(
   tiledb_group_t* group1;
   int rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group1);
   REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group1, 1);
   rc = tiledb_group_open(ctx_, group1, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_group_t* group2;
   rc = tiledb_group_alloc(ctx_, group2_uri.c_str(), &group2);
   REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group2, 1);
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
@@ -580,9 +615,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Remove assets from group
+  set_group_timestamp(group1, 2);
   rc = tiledb_group_open(ctx_, group1, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  set_group_timestamp(group2, 2);
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
@@ -603,9 +640,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Check read again
+  set_group_timestamp(group1, 2);
   rc = tiledb_group_open(ctx_, group1, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
+  set_group_timestamp(group2, 2);
   rc = tiledb_group_open(ctx_, group2, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
@@ -626,3 +665,294 @@ TEST_CASE_METHOD(
   tiledb_group_free(&group2);
   remove_temp_dir(temp_dir);
 }
+
+#ifdef TILEDB_SERIALIZATION
+TEST_CASE_METHOD(
+    GroupFx,
+    "C API: Group, write/read, serialization",
+    "[capi][group][metadata][read]") {
+  // Create and open group in write mode
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  const tiledb::sm::URI array1_uri(temp_dir + "array1");
+  const tiledb::sm::URI array2_uri(temp_dir + "array2");
+  const tiledb::sm::URI array3_uri(temp_dir + "array3");
+  create_array(array1_uri.to_string());
+  create_array(array2_uri.to_string());
+  create_array(array3_uri.to_string());
+
+  tiledb::sm::URI group1_uri(temp_dir + "group1");
+  REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
+
+  tiledb::sm::URI group2_uri(temp_dir + "group2");
+  REQUIRE(tiledb_group_create(ctx_, group2_uri.c_str()) == TILEDB_OK);
+
+  tiledb::sm::URI group3_uri(temp_dir + "group1_deserialized");
+  REQUIRE(tiledb_group_create(ctx_, group3_uri.c_str()) == TILEDB_OK);
+
+  tiledb::sm::URI group4_uri(temp_dir + "group2_deserialized");
+  REQUIRE(tiledb_group_create(ctx_, group4_uri.c_str()) == TILEDB_OK);
+
+  // Set expected
+  std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> group1_expected = {
+      {array1_uri, TILEDB_ARRAY},
+      {array2_uri, TILEDB_ARRAY},
+      {group2_uri, TILEDB_GROUP},
+  };
+  std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> group2_expected = {
+      {array3_uri, TILEDB_ARRAY},
+  };
+  std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> group3_expected = {
+      {array1_uri, TILEDB_ARRAY},
+      {array2_uri, TILEDB_ARRAY},
+      {group2_uri, TILEDB_GROUP},
+  };
+  std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> group4_expected = {
+      {array3_uri, TILEDB_ARRAY},
+  };
+
+  tiledb_group_t* group1_write;
+  int rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group1_write);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group1_write, 1);
+  rc = tiledb_group_open(ctx_, group1_write, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_group_t* group2_write;
+  rc = tiledb_group_alloc(ctx_, group2_uri.c_str(), &group2_write);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group2_write, 1);
+  rc = tiledb_group_open(ctx_, group2_write, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_group_add_member(ctx_, group1_write, array1_uri.c_str(), false);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_group_add_member(ctx_, group1_write, array2_uri.c_str(), false);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_group_add_member(ctx_, group2_write, array3_uri.c_str(), false);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_group_add_member(ctx_, group1_write, group2_uri.c_str(), false);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close
+  rc = tiledb_group_close(ctx_, group1_write);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_group_close(ctx_, group2_write);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Free
+  tiledb_group_free(&group1_write);
+  tiledb_group_free(&group2_write);
+
+  // Reopen in read mode
+  tiledb_group_t* group1_read;
+  rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group1_read);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group1_read, 1);
+  rc = tiledb_group_open(ctx_, group1_read, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_group_t* group2_read;
+  rc = tiledb_group_alloc(ctx_, group2_uri.c_str(), &group2_read);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group2_read, 1);
+  rc = tiledb_group_open(ctx_, group2_read, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> group1_received =
+      read_group(group1_read);
+  REQUIRE_THAT(
+      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
+
+  std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> group2_received =
+      read_group(group2_read);
+  REQUIRE_THAT(
+      group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+
+  // Now that we validated the groups were written correctly
+  // lets test taking a read, serializing it and writing
+  tiledb_group_t* group3_write_deserialized;
+  rc = tiledb_group_alloc(ctx_, group3_uri.c_str(), &group3_write_deserialized);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group3_write_deserialized, 1);
+  rc = tiledb_group_open(ctx_, group3_write_deserialized, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_group_serialize(
+      ctx_, group1_read, group3_write_deserialized, TILEDB_JSON);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close deserialized write group
+  rc = tiledb_group_close(ctx_, group3_write_deserialized);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_group_free(&group3_write_deserialized);
+
+  tiledb_group_t* group4_write_deserialized;
+  rc = tiledb_group_alloc(ctx_, group4_uri.c_str(), &group4_write_deserialized);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group4_write_deserialized, 1);
+  rc = tiledb_group_open(ctx_, group4_write_deserialized, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_group_serialize(
+      ctx_, group2_read, group4_write_deserialized, TILEDB_JSON);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close deserialized write group
+  rc = tiledb_group_close(ctx_, group4_write_deserialized);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_group_free(&group4_write_deserialized);
+
+  // Check group3 read
+  tiledb_group_t* group3_read;
+  rc = tiledb_group_alloc(ctx_, group3_uri.c_str(), &group3_read);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group3_read, 1);
+  rc = tiledb_group_open(ctx_, group3_read, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> group3_received =
+      read_group(group3_read);
+  REQUIRE_THAT(
+      group3_received, Catch::Matchers::UnorderedEquals(group3_expected));
+
+  // Check group4 read
+  tiledb_group_t* group4_read;
+  rc = tiledb_group_alloc(ctx_, group4_uri.c_str(), &group4_read);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group4_read, 1);
+  rc = tiledb_group_open(ctx_, group4_read, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> group4_received =
+      read_group(group4_read);
+  REQUIRE_THAT(
+      group4_received, Catch::Matchers::UnorderedEquals(group4_expected));
+
+  // Close read groups
+  rc = tiledb_group_close(ctx_, group1_read);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_group_close(ctx_, group2_read);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_group_close(ctx_, group3_read);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_group_close(ctx_, group4_read);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Remove assets from group
+  rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group1_write);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group1_write, 2);
+  rc = tiledb_group_open(ctx_, group1_write, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_group_alloc(ctx_, group2_uri.c_str(), &group2_write);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group2_write, 2);
+  rc = tiledb_group_open(ctx_, group2_write, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_group_remove_member(ctx_, group1_write, group2_uri.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  // Group is the latest element
+  group1_expected.resize(group1_expected.size() - 1);
+  group3_expected.resize(group3_expected.size() - 1);
+
+  rc = tiledb_group_remove_member(ctx_, group2_write, array3_uri.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  // There should be nothing left in group2/group4
+  group2_expected.clear();
+  group4_expected.clear();
+
+  // Materialized groups
+  rc = tiledb_group_close(ctx_, group1_write);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_group_close(ctx_, group2_write);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_group_free(&group1_write);
+  tiledb_group_free(&group2_write);
+
+  // Check read again
+  set_group_timestamp(group1_read, 2);
+  rc = tiledb_group_open(ctx_, group1_read, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  set_group_timestamp(group2_read, 2);
+  rc = tiledb_group_open(ctx_, group2_read, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  group1_received = read_group(group1_read);
+  REQUIRE_THAT(
+      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
+
+  group2_received = read_group(group2_read);
+  REQUIRE_THAT(
+      group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+
+  // Now that we validated the groups were written correctly
+  // lets test taking a read, serializing it and writing
+  rc = tiledb_group_alloc(ctx_, group3_uri.c_str(), &group3_write_deserialized);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group3_write_deserialized, 2);
+  rc = tiledb_group_open(ctx_, group3_write_deserialized, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_group_serialize(
+      ctx_, group1_read, group3_write_deserialized, TILEDB_JSON);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close deserialized write group
+  rc = tiledb_group_close(ctx_, group3_write_deserialized);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_group_free(&group3_write_deserialized);
+
+  rc = tiledb_group_alloc(ctx_, group4_uri.c_str(), &group4_write_deserialized);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group4_write_deserialized, 2);
+  rc = tiledb_group_open(ctx_, group4_write_deserialized, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_group_serialize(
+      ctx_, group2_read, group4_write_deserialized, TILEDB_JSON);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close deserialized write group
+  rc = tiledb_group_close(ctx_, group4_write_deserialized);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_group_free(&group4_write_deserialized);
+
+  // Check deserialized group3
+  set_group_timestamp(group3_read, 2);
+  rc = tiledb_group_open(ctx_, group3_read, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+  group3_received = read_group(group3_read);
+  REQUIRE_THAT(
+      group3_received, Catch::Matchers::UnorderedEquals(group3_expected));
+
+  // Check deserialized group4
+  set_group_timestamp(group4_read, 2);
+  rc = tiledb_group_open(ctx_, group4_read, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+  group4_received = read_group(group4_read);
+  REQUIRE_THAT(
+      group4_received, Catch::Matchers::UnorderedEquals(group4_expected));
+
+  // Close group
+  rc = tiledb_group_close(ctx_, group1_read);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_group_close(ctx_, group2_read);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_group_close(ctx_, group3_read);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_group_close(ctx_, group4_read);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_group_free(&group1_read);
+  tiledb_group_free(&group2_read);
+  tiledb_group_free(&group3_read);
+  tiledb_group_free(&group4_read);
+  remove_temp_dir(temp_dir);
+}
+#endif

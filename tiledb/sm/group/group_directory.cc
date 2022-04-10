@@ -117,7 +117,6 @@ Status GroupDirectory::load() {
   std::vector<ThreadPool::Task> tasks;
   std::vector<URI> root_dir_uris;
   std::vector<URI> commits_dir_uris;
-  URI latest_fragment_meta_uri_v12_or_higher;
 
   // Lists all directories in parallel. Skipping for schema only.
   // Some processing is also done here for things that don't depend on others.
@@ -318,8 +317,9 @@ GroupDirectory::compute_filtered_uris(
   std::vector<TimestampedURI> filtered_uris;
 
   // Do nothing if there are not enough URIs
-  if (uris.empty())
+  if (uris.empty()) {
     return {Status::Ok(), filtered_uris};
+  }
 
   // Get the URIs that must be ignored
   std::unordered_set<std::string> to_ignore_set;

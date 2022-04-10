@@ -1564,7 +1564,6 @@ Status StorageManager::load_array_metadata(
     meta_size += b->size();
   stats_->add_counter("read_array_meta_size", meta_size);
 
-  // Deserialize metadata buffers
   auto&& [st_metadata, deserialized_metadata]{
       Metadata::deserialize(metadata_buffs)};
   if (!st_metadata.ok()) {
@@ -1573,7 +1572,7 @@ Status StorageManager::load_array_metadata(
   *metadata = *(deserialized_metadata.value());
 
   // Sets the loaded metadata URIs
-  metadata->set_loaded_metadata_uris(array_metadata_to_load);
+  RETURN_NOT_OK(metadata->set_loaded_metadata_uris(array_metadata_to_load));
 
   return Status::Ok();
 }
@@ -1972,7 +1971,7 @@ Status StorageManager::init_rest_client() {
   RETURN_NOT_OK(config_.get("rest.server_address", &server_address));
   if (server_address != nullptr) {
     rest_client_.reset(tdb_new(RestClient));
-    RETURN_NOT_OK(rest_client_->init(stats_, &config_, compute_tp_));
+    RETURN_NOT_OK(rest_client_->init(stats_, &config_, compute_tp_, logger_));
   }
 
   return Status::Ok();
@@ -2116,17 +2115,27 @@ StorageManager::group_open_for_reads(Group* group) {
   return {Status::Ok(), std::nullopt};
 }
 
-std::tuple<Status> StorageManager::group_open_for_writes(Group* group) {
-  // Checks
-  if (!vfs_->supports_uri_scheme(group->group_uri()))
-    return {logger_->status(Status_StorageManagerError(
-        "Cannot open group; URI scheme unsupported."))};
+std::tuple<
+    Status,
+    std::optional<
+        const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>>>
+StorageManager::group_open_for_writes(Group* group) {
+  auto timer_se = stats_->start_timer("group_open_for_writes");
 
-  // Mark the array as open
+  // Load group data
+  auto&& [st, group_deserialized] =
+      load_group_details(group->group_directory(), *group->encryption_key());
+  RETURN_NOT_OK_TUPLE(st, std::nullopt);
+
+  // Mark the array as now open
   std::lock_guard<std::mutex> lock{open_groups_mtx_};
   open_groups_.insert(group);
 
-  return {Status::Ok()};
+  if (group_deserialized.has_value()) {
+    return {Status::Ok(), group_deserialized.value()->members()};
+  }
+
+  return {Status::Ok(), std::nullopt};
 }
 
 Status StorageManager::load_group_metadata(

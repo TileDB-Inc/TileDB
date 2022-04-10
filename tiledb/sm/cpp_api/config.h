@@ -715,6 +715,10 @@ class Config {
    *    The delay factor to exponentially wait until further retries of a
    *    failed REST request <br>
    *    **Default**: 1.25
+   * - `rest.curl.verbose` <br>
+   * Set curl to run in verbose mode for REST requests <br>
+   * curl will print to stdout with this option
+   *    **Default**: false
    */
   Config& set(const std::string& param, const std::string& value) {
     tiledb_error_t* err;

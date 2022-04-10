@@ -84,12 +84,15 @@ RestClient::RestClient()
 Status RestClient::init(
     stats::Stats* const parent_stats,
     const Config* config,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    const std::shared_ptr<Logger>& logger) {
   if (config == nullptr)
     return LOG_STATUS(
         Status_RestError("Error initializing rest client; config is null."));
 
   stats_ = parent_stats->create_child("RestClient");
+
+  logger_ = logger->clone("curl ", ++logger_id_);
 
   config_ = config;
   compute_tp_ = compute_tp;
@@ -122,7 +125,7 @@ Status RestClient::set_header(
 tuple<Status, std::optional<bool>> RestClient::check_array_exists_from_rest(
     const URI& uri) {
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK_TUPLE(uri.get_rest_components(&array_ns, &array_uri), nullopt);
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -159,7 +162,7 @@ tuple<Status, std::optional<bool>> RestClient::check_array_exists_from_rest(
 tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
     const URI& uri) {
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string group_ns, group_uri;
   RETURN_NOT_OK_TUPLE(uri.get_rest_components(&group_ns, &group_uri), nullopt);
   const std::string cache_key = group_ns + ":" + group_uri;
@@ -170,7 +173,9 @@ tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
                           "/" + curlc.url_escape(group_uri);
 
   // Make the request, the returned data is ignored for now.
-  auto curl_st = curlc.options(stats_, url, serialization_type_, cache_key);
+  Buffer returned_data;
+  auto curl_st = curlc.options(
+      stats_, url, serialization_type_, &returned_data, cache_key);
 
   auto&& [status_st, http_status_code] = curlc.last_http_status_code();
   RETURN_NOT_OK_TUPLE(status_st, std::nullopt);
@@ -194,7 +199,7 @@ tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
 tuple<Status, optional<shared_ptr<ArraySchema>>>
 RestClient::get_array_schema_from_rest(const URI& uri) {
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK_TUPLE(uri.get_rest_components(&array_ns, &array_uri), nullopt);
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -216,6 +221,9 @@ RestClient::get_array_schema_from_rest(const URI& uri) {
             "Error getting array schema from REST; server returned no data.")),
         nullopt};
 
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  RETURN_NOT_OK_TUPLE(
+      ensure_json_null_delimited_string(&returned_data), nullopt);
   return serialization::array_schema_deserialize(
       serialization_type_, returned_data);
 }
@@ -238,7 +246,7 @@ Status RestClient::post_array_schema_to_rest(
         creation_access_credentials_name));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -259,7 +267,7 @@ Status RestClient::post_array_schema_to_rest(
 
 Status RestClient::deregister_array_from_rest(const URI& uri) {
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -283,7 +291,7 @@ Status RestClient::get_array_non_empty_domain(
         "Cannot get array non-empty domain; array URI is empty"));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(array->array_uri().get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -305,6 +313,9 @@ Status RestClient::get_array_non_empty_domain(
         Status_RestError("Error getting array non-empty domain "
                          "from REST; server returned no data."));
 
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
+
   // Deserialize data returned
   return serialization::nonempty_domain_deserialize(
       array, returned_data, serialization_type_);
@@ -323,7 +334,7 @@ Status RestClient::get_array_max_buffer_sizes(
       subarray_str.empty() ? "" : ("?subarray=" + subarray_str);
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -343,6 +354,9 @@ Status RestClient::get_array_max_buffer_sizes(
         Status_RestError("Error getting array max buffer sizes "
                          "from REST; server returned no data."));
 
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
+
   // Deserialize data returned
   return serialization::max_buffer_sizes_deserialize(
       schema, returned_data, serialization_type_, buffer_sizes);
@@ -358,7 +372,7 @@ Status RestClient::get_array_metadata_from_rest(
         "Error getting array metadata from REST; array is null."));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -378,6 +392,8 @@ Status RestClient::get_array_metadata_from_rest(
     return LOG_STATUS(Status_RestError(
         "Error getting array metadata from REST; server returned no data."));
 
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::metadata_deserialize(
       array->metadata(), serialization_type_, returned_data);
 }
@@ -399,7 +415,7 @@ Status RestClient::post_array_metadata_to_rest(
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -455,7 +471,7 @@ Status RestClient::post_query_submit(
       query, serialization_type_, true, &serialized));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -680,7 +696,7 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
       query, serialization_type_, true, &serialized));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -834,7 +850,7 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
       query, serialization_type_, true, &serialized));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -864,6 +880,8 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
     return LOG_STATUS(Status_RestError(
         "Error getting array metadata from REST; server returned no data."));
 
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::query_est_result_size_deserialize(
       query, serialization_type_, true, returned_data);
 }
@@ -886,7 +904,7 @@ Status RestClient::post_array_schema_evolution_to_rest(
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
@@ -908,10 +926,17 @@ Status RestClient::post_array_schema_evolution_to_rest(
 Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
   if (group == nullptr)
     return LOG_STATUS(Status_RestError(
-        "Error getting group metadata from REST; group is null."));
+        "Error posting group metadata from REST; group is null."));
+
+  Buffer buff;
+  RETURN_NOT_OK(serialization::config_serialize(
+      group->config(), serialization_type_, &buff, true));
+  // Wrap in a list
+  BufferList serialized;
+  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string group_ns, group_uri;
   RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri));
   const std::string cache_key = group_ns + ":" + group_uri;
@@ -922,12 +947,19 @@ Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
 
   // Get the data
   Buffer returned_data;
-  RETURN_NOT_OK(curlc.get_data(
-      stats_, url, serialization_type_, &returned_data, cache_key));
+  RETURN_NOT_OK(curlc.post_data(
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(Status_RestError(
         "Error getting group metadata from REST; server returned no data."));
 
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::metadata_deserialize(
       group->metadata(), serialization_type_, returned_data);
 }
@@ -938,14 +970,14 @@ Status RestClient::put_group_metadata_to_rest(const URI& uri, Group* group) {
         "Error posting group metadata to REST; group is null."));
 
   Buffer buff;
-  RETURN_NOT_OK(serialization::metadata_serialize(
-      group->metadata(), serialization_type_, &buff));
+  RETURN_NOT_OK(serialization::group_metadata_serialize(
+      group, serialization_type_, &buff));
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string group_ns, group_uri;
   RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri));
   const std::string cache_key = group_ns + ":" + group_uri;
@@ -973,7 +1005,7 @@ Status RestClient::post_group_create_to_rest(const URI& uri, Group* group) {
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string group_ns, group_uri;
   RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri));
   const std::string cache_key = group_ns + ":" + group_uri;
@@ -993,14 +1025,14 @@ Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
         Status_RestError("Error posting group to REST; group is null."));
 
   Buffer buff;
-  RETURN_NOT_OK(serialization::config_serialize(
-      group->config(), serialization_type_, &buff, true));
+  RETURN_NOT_OK(
+      serialization::group_serialize(group, serialization_type_, &buff));
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string group_ns, group_uri;
   RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri));
   const std::string cache_key = group_ns + ":" + group_uri;
@@ -1023,24 +1055,27 @@ Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
     return LOG_STATUS(Status_RestError(
         "Error getting group from REST; server returned no data."));
 
-  return serialization::group_deserialize(
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
+  return serialization::group_details_deserialize(
       group, serialization_type_, returned_data);
 }
 
-Status RestClient::post_group_to_rest(const URI& uri, Group* group) {
+Status RestClient::patch_group_to_rest(const URI& uri, Group* group) {
   if (group == nullptr)
     return LOG_STATUS(
-        Status_RestError("Error posting group to REST; group is null."));
+        Status_RestError("Error patching group to REST; group is null."));
 
   Buffer buff;
   RETURN_NOT_OK(
       serialization::group_update_serialize(group, serialization_type_, &buff));
+
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string group_ns, group_uri;
   RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri));
   const std::string cache_key = group_ns + ":" + group_uri;
@@ -1055,6 +1090,14 @@ Status RestClient::post_group_to_rest(const URI& uri, Group* group) {
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
+Status RestClient::ensure_json_null_delimited_string(Buffer* buffer) {
+  if (serialization_type_ == SerializationType::JSON &&
+      buffer->value<char>(buffer->size() - 1) != '\0') {
+    RETURN_NOT_OK(buffer->write("\0", sizeof(char)));
+  }
+  return Status::Ok();
+}
+
 #else
 
 RestClient::RestClient() {
@@ -1063,7 +1106,8 @@ RestClient::RestClient() {
   (void)serialization_type_;
 }
 
-Status RestClient::init(stats::Stats*, const Config*, ThreadPool*) {
+Status RestClient::init(
+    stats::Stats*, const Config*, ThreadPool*, const std::shared_ptr<Logger>&) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
@@ -1171,7 +1215,7 @@ Status RestClient::post_group_from_rest(const URI&, Group*) {
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::post_group_to_rest(const URI&, Group*) {
+Status RestClient::patch_group_to_rest(const URI&, Group*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
