@@ -351,7 +351,7 @@ class Array {
    * fetch the underlying Metadata object to set the values we are loading from
    * REST. A lock should already by taken before load_metadata is called.
    */
-  Metadata* metadata();
+  Metadata* unsafe_metadata();
 
   /** Returns the non-empty domain of the opened array.
    *  If the non_empty_domain has not been computed or loaded

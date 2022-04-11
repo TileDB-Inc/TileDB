@@ -148,7 +148,8 @@ Status array_to_capnp(
       utils::serialize_non_empty_domain(nonempty_domain_builder, array));
 
   auto array_metadata_builder = array_builder->initArrayMetadata();
-  RETURN_NOT_OK(metadata_to_capnp(array->metadata(), &array_metadata_builder));
+  RETURN_NOT_OK(
+      metadata_to_capnp(array->unsafe_metadata(), &array_metadata_builder));
 
   return Status::Ok();
 }
@@ -201,7 +202,7 @@ Status array_from_capnp(
     const auto& array_metadata_reader = array_reader.getArrayMetadata();
     // Deserialize
     RETURN_NOT_OK(
-        metadata_from_capnp(array_metadata_reader, array->metadata()));
+        metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
   }
 
   return Status::Ok();

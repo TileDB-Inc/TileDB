@@ -6346,7 +6346,7 @@ int32_t tiledb_deserialize_array_metadata(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::metadata_deserialize(
-              array->array_->metadata(),
+              array->array_->unsafe_metadata(),
               (tiledb::sm::SerializationType)serialize_type,
               *(buffer->buffer_)))) {
     return TILEDB_ERR;
