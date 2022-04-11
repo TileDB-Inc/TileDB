@@ -477,7 +477,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_group(
     const tiledb_group_t* group,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer_list);
+    tiledb_buffer_t** buffer_list) TILEDB_NOEXCEPT;
 
 /**
  * Deserializes into an existing group from the given buffer.
@@ -498,7 +498,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_group(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_group_t* group);
+    tiledb_group_t* group) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the group metadata into the given buffer.

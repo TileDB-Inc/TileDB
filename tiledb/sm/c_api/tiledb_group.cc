@@ -738,3 +738,23 @@ TILEDB_EXPORT int32_t tiledb_deserialize_group_metadata(
   return api_entry<detail::tiledb_deserialize_group_metadata>(
       ctx, group, serialization_type, buffer);
 }
+
+TILEDB_EXPORT int32_t tiledb_serialize_group(
+    tiledb_ctx_t* ctx,
+    const tiledb_group_t* group,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer_list) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_serialize_group>(
+      ctx, group, serialize_type, client_side, buffer_list);
+}
+
+TILEDB_EXPORT int32_t tiledb_deserialize_group(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_group_t* group) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_deserialize_group>(
+      ctx, buffer, serialize_type, client_side, group);
+}
