@@ -79,6 +79,10 @@ if (TILEDB_LIBMAGIC_EP_BUILT)
     ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 
+  message(STATUS "dlh - LIBMAGIC_PATHS is ${LIBMAGIC_PATHS}");
+  message(STATUS "dlh - LIBMAGIC_LIBRARIES is ${LIBMAGIC_LIBRARIES}");
+  message(STATUS "dlh - LIBMAGIC_INCLUDE_DIR is ${LIBMAGIC_INCLUDE_DIR}");
+  
   include(FindPackageHandleStandardArgs)
   FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
     REQUIRED_VARS libmagic_LIBRARIES libmagic_INCLUDE_DIR
@@ -139,8 +143,8 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
         UPDATE_COMMAND ""
         #CONFIGURE_COMMAND
         #      ${TILEDB_EP_BASE}/src/ep_magic/configure --prefix=${TILEDB_EP_INSTALL_PREFIX} CFLAGS=${CFLAGS_DEF} CXXFLAGS=${CXXFLAGS_DEF}
-        #BUILD_IN_SOURCE TRUE
-        #BUILD_COMMAND $(MAKE) VERBOSE=1
+        BUILD_IN_SOURCE TRUE
+        BUILD_COMMAND $(MAKE) VERBOSE=1
 #        LIST_SEPARATOR ^^
 #        COMMAND bash -c "${findcmdstr}"
         #INSTALL_COMMAND $(MAKE) install
@@ -164,7 +168,7 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
       set(SEMI ";")
       if(0)
       message("${findcmdstr}")
-      string(REPLACE ";" "^^" findcmdstr "${findcmdstr}")
+      string(REPLACE ";" "@" findcmdstr "${findcmdstr}")
       message("${findcmdstr}")
       message("${findargs}")
       message("${SEMI}")
@@ -172,11 +176,13 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
         DEPENDEES build
         COMMAND "pwd"
         #LIST_SEPARATOR ??
-        LIST_SEPARATOR ^^
+        #LIST_SEPARATOR ^^
+        LIST_SEPARATOR @
         #COMMAND bash -c "find . -name '*.a' -exec ls {} \\;"
         #COMMAND "${findcmdstr}"
         COMMAND bash -c "echo oneA"
         COMMAND bash -c "echo find . -name '*.a' -exec ls {} \\\;"
+        COMMAND bash -c "echo find . -name '*.a' -exec ls {} \\@"
         COMMAND bash -c "echo oneB"
         #COMMAND bash -c echo find . -name '*.a' -exec ls {} ;
         #COMMAND bash -c "echo find . -name '*.a' -exec ls {} \${SEMI}"
@@ -185,6 +191,7 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
         #COMMAND bash -c "echo find . -name '*.a' -exec ls {} \\^^"
         LIST_SEPARATOR ^^
         COMMAND bash -c "echo find . -name '*.a' -exec ls {} \\;"
+        COMMAND bash -c "echo find . -name '*.a' -exec ls {} \\^^"
         #COMMAND bash -c "echo find . -name '*.a' -exec ls {} \\;"
         COMMAND bash -c "echo twoA"
         COMMAND bash -c "${findcmdstr}"
