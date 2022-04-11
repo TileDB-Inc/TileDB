@@ -51,6 +51,7 @@ find_package(Threads REQUIRED)
 # Subdirectories
 ############################################################
 
+add_subdirectory(api)
 add_subdirectory(common)
 add_subdirectory(type)
 add_subdirectory(sm)
