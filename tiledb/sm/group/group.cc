@@ -429,7 +429,7 @@ Status Group::has_metadata_key(
   return Status::Ok();
 }
 
-Metadata* Group::metadata() {
+Metadata* Group::unsafe_metadata() {
   return &metadata_;
 }
 

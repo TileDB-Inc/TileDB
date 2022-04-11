@@ -165,7 +165,7 @@ Status group_details_from_capnp(
 
   if (group_details_reader.hasMetadata()) {
     RETURN_NOT_OK(metadata_from_capnp(
-        group_details_reader.getMetadata(), group->metadata()));
+        group_details_reader.getMetadata(), group->unsafe_metadata()));
     group->set_metadata_loaded(true);
   }
 
