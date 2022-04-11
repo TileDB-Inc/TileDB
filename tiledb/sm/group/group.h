@@ -76,6 +76,13 @@ class Group {
   Status close();
 
   /**
+   * Clear a group
+   *
+   * @return
+   */
+  Status clear();
+
+  /**
    * Deletes metadata from an group opened in WRITE mode.
    *
    * @param key The key of the metadata item to be deleted.
@@ -156,11 +163,21 @@ class Group {
    * @note This is potentially an unsafe operation
    * it could have contention with locks from lazy loading of metadata.
    * This should only be used by the serialization class
-   * (tiledb/sm/serialization/group_schema_latest.cc). In that class we need to
+   * (tiledb/sm/serialization/group.cc). In that class we need to
    * fetch the underlying Metadata object to set the values we are loading from
    * REST. A lock should already by taken before load_metadata is called.
    */
   Metadata* metadata();
+  const Metadata* metadata() const;
+
+  /**
+   * Set metadata loaded
+   * * This should only be used by the serialization class
+   * (tiledb/sm/serialization/group.cc).
+   * @param bool metadata was loaded
+   * @return void
+   */
+  void set_metadata_loaded(const bool metadata_loaded);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
@@ -287,6 +304,14 @@ class Group {
    * @return changes_applied_
    */
   bool changes_applied() const;
+
+  /**
+   * Set changes applied, only used in serialization
+   * @param changes_applied should changes be considered to be applied? If so
+   * then this will enable writes from a deserialized group
+   *
+   */
+  void set_changes_applied(bool changes_applied);
 
   /**
    * Get count of members

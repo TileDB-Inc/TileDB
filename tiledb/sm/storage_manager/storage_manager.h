@@ -308,10 +308,14 @@ class StorageManager {
   /** Opens an group for writes.
    *
    * @param group The group to open.
-   * @return tuple of Status
+   * @return tuple of Status, latest GroupSchema and map of all group schemas
    *        Status Ok on success, else error
    */
-  std::tuple<Status> group_open_for_writes(Group* group);
+  std::tuple<
+      Status,
+      std::optional<
+          const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>>>
+  group_open_for_writes(Group* group);
 
   /**
    * Load fragments for an already open array.

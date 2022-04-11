@@ -64,6 +64,7 @@ const std::string Config::REST_RETRY_HTTP_CODES = "503";
 const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
+const std::string Config::REST_CURL_VERBOSE = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
 const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
 const std::string Config::SM_DEDUP_COORDS = "false";
@@ -219,6 +220,7 @@ Config::Config() {
   param_values_["rest.retry_count"] = REST_RETRY_COUNT;
   param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
   param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
+  param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
@@ -512,6 +514,8 @@ Status Config::unset(const std::string& param) {
     param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
   } else if (param == "rest.retry_delay_factor") {
     param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
+  } else if (param == "rest.curl.verbose") {
+    param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
   } else if (param == "config.env_var_prefix") {
     param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   } else if (param == "config.logging_level") {

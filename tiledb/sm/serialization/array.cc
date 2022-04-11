@@ -56,7 +56,8 @@ namespace serialization {
 #ifdef TILEDB_SERIALIZATION
 
 Status metadata_to_capnp(
-    Metadata* metadata, capnp::ArrayMetadata::Builder* array_metadata_builder) {
+    const Metadata* metadata,
+    capnp::ArrayMetadata::Builder* array_metadata_builder) {
   if (metadata == nullptr)
     return LOG_STATUS(Status_SerializationError(
         "Error serializing array metadata; array metadata instance is null"));
