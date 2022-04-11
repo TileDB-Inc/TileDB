@@ -808,6 +808,8 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
   append_dep_lib(libmagic)
+  append_dep_lib(pcre2-posix)
+  append_dep_lib(pcre2-8)
 endif()
 
 ############################################################

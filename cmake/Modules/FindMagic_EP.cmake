@@ -73,15 +73,34 @@ if (TILEDB_LIBMAGIC_EP_BUILT)
 
   # Link statically if installed with the EP.
   find_library(libmagic_LIBRARIES
-    magic
+  # TBD: should 'magic' here be 'libmagic'???
+    #magic
+    libmagic
     PATHS ${LIBMAGIC_PATHS}
     PATH_SUFFIXES lib a
     ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 
   message(STATUS "dlh - LIBMAGIC_PATHS is ${LIBMAGIC_PATHS}")
-  message(STATUS "dlh - LIBMAGIC_LIBRARIES is ${LIBMAGIC_LIBRARIES}")
-  message(STATUS "dlh - LIBMAGIC_INCLUDE_DIR is ${LIBMAGIC_INCLUDE_DIR}")
+  
+  find_library(libmagic_pcre2posix_LIBRARIES
+    pcre2-posix
+    PATHS ${LIBMAGIC_PATHS} ${TILEDB_EP_SOURCE_DIR}/ep_magic
+    PATH_SUFFIXES lib a
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
+  find_library(libmagic_pcre2_8_LIBRARIES
+    pcre2-8
+    PATHS ${LIBMAGIC_PATHS} ${TILEDB_EP_SOURCE_DIR}/ep_magic
+    PATH_SUFFIXES lib a
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
+
+  message(STATUS "dlh - LIBMAGIC_PATHS is ${LIBMAGIC_PATHS}")
+  message(STATUS "dlh - libmagic_LIBRARIES is ${libmagic_LIBRARIES}")
+  message(STATUS "dlh - libmagic_INCLUDE_DIR is ${libmagic_INCLUDE_DIR}")
+  message(STATUS "dlh - libmagic_pcre2posix_LIBRARIES is ${libmagic_pcre2posix_LIBRARIES}")
+  message(STATUS "dlh - libmagic_pcre2_8_LIBRARIES is ${libmagic_pcre2_8_LIBRARIES}")
   
   include(FindPackageHandleStandardArgs)
   FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
@@ -235,4 +254,7 @@ endif()
 # If we built a static EP, install it if required.
 if (TILEDB_LIBMAGIC_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
   install_target_libs(libmagic)
+  # TBD: appropriate? needed? for APPLE? *nix, win finding these, APPLE not...
+  install_target_libs(pcre2-posix)
+  install_target_libs(pcre2-8)
 endif()
