@@ -41,9 +41,11 @@ GroupMember::GroupMember(
     const URI& uri,
     const ObjectType& type,
     const bool& relative,
-    uint32_t version)
+    uint32_t version,
+    const std::optional<std::string>& name)
     : uri_(uri)
     , type_(type)
+    , name_(name)
     , relative_(relative)
     , version_(version) {
 }
@@ -54,6 +56,10 @@ const URI& GroupMember::uri() const {
 
 ObjectType GroupMember::type() const {
   return type_;
+}
+
+const std::optional<std::string> GroupMember::name() const {
+  return name_;
 }
 
 const bool& GroupMember::relative() const {
@@ -81,7 +87,11 @@ GroupMember::deserialize(ConstBuffer* buff) {
 
 std::ostream& operator<<(
     std::ostream& os, const tiledb::sm::GroupMember& group_member) {
-  os << group_member.uri().last_path_part() << " "
-     << object_type_str(group_member.type());
+  if (group_member.name().has_value()) {
+    os << group_member.name().value() << " ";
+  } else {
+    os << group_member.uri().last_path_part() << " ";
+  }
+  os << object_type_str(group_member.type());
   return os;
 }
