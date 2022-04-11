@@ -6311,11 +6311,17 @@ int32_t tiledb_serialize_array_metadata(
       sanity_check(ctx, *buffer) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // Get metadata to serialize, this will load it if it does not exist
+  tiledb::sm::Metadata* metadata;
+  if (SAVE_ERROR_CATCH(ctx, array->array_->metadata(&metadata))) {
+    return TILEDB_ERR;
+  }
+
   // Serialize
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::metadata_serialize(
-              array->array_->metadata(),
+              metadata,
               (tiledb::sm::SerializationType)serialize_type,
               (*buffer)->buffer_))) {
     detail::tiledb_buffer_free(buffer);
