@@ -47,6 +47,23 @@ target_sources(compile_compressors PRIVATE
         test/compile_compressors_main.cc $<TARGET_OBJECTS:compressors>
 )
 
+#
+# tiledb crude gzip archiver initially for embedding magic.mgc
+#
+add_executable(tiledb_gzip)
+target_link_libraries(tiledb_gzip PRIVATE compressors)
+target_sources(tiledb_gzip PRIVATE
+        util/tiledb_gzip.cc 
+        $<TARGET_OBJECTS:compressors>
+#        ${CMAKE_SOURCE_DIR}/tiledb/sm/filter/filter_buffer.cc
+#        ${CMAKE_SOURCE_DIR}/tiledb/sm/filter/filter_storage.cc
+)
+target_link_libraries(
+    tiledb_gzip PUBLIC 
+#    $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+       filter # OBJECTS library
+    )
+
 if (TILEDB_TESTS)
     add_executable(unit_compressors EXCLUDE_FROM_ALL)
     target_link_libraries(unit_compressors PRIVATE compressors)
