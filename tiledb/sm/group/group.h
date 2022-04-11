@@ -167,7 +167,7 @@ class Group {
    * fetch the underlying Metadata object to set the values we are loading from
    * REST. A lock should already by taken before load_metadata is called.
    */
-  Metadata* metadata();
+  Metadata* unsafe_metadata();
   const Metadata* metadata() const;
 
   /**
