@@ -37,6 +37,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/compressors/bzip_compressor.h"
 #include "tiledb/sm/compressors/dd_compressor.h"
+#include "tiledb/sm/compressors/dict_compressor.h"
 #include "tiledb/sm/compressors/gzip_compressor.h"
 #include "tiledb/sm/compressors/lz4_compressor.h"
 #include "tiledb/sm/compressors/rle_compressor.h"
@@ -207,25 +208,6 @@ Status CompressionFilter::get_option_impl(
   }
 }
 
-size_t CompressionFilter::calculate_output_metadata_size(
-    const Tile& tile,
-    const std::vector<ConstBuffer>& data_parts,
-    const std::vector<ConstBuffer>& metadata_parts) const {
-  auto total_num_parts = data_parts.size() + metadata_parts.size();
-  auto metadata_size =
-      2 * sizeof(uint32_t) + total_num_parts * 2 * sizeof(uint32_t);
-
-  if (compressor_ == Compressor::RLE) {
-    if (datatype_is_string(tile.type())) {
-      // Add two extra metadata bytes that store run length datasize and
-      // string length datasize, and output offsets size
-      metadata_size += 2 * sizeof(uint8_t) + sizeof(uint32_t);
-    }
-  }
-
-  return metadata_size;
-}
-
 Status CompressionFilter::run_forward(
     const Tile& tile,
     Tile* const offsets_tile,
@@ -244,25 +226,24 @@ Status CompressionFilter::run_forward(
     return LOG_STATUS(
         Status_FilterError("Input is too large to be compressed."));
 
+  if (tile.type() == Datatype::STRING_ASCII && offsets_tile) {
+    if (compressor_ == Compressor::RLE ||
+        compressor_ == Compressor::DICTIONARY_ENCODING)
+      return compress_var_string_coords(
+          *input, offsets_tile, *output, *output_metadata);
+  }
+
   std::vector<ConstBuffer> data_parts = input->buffers(),
                            metadata_parts = input_metadata->buffers();
-
   // Allocate output metadata
+  auto total_num_parts = data_parts.size() + metadata_parts.size();
   auto metadata_size =
-      calculate_output_metadata_size(tile, data_parts, metadata_parts);
+      2 * sizeof(uint32_t) + total_num_parts * 2 * sizeof(uint32_t);
   auto num_metadata_parts = static_cast<uint32_t>(metadata_parts.size());
   auto num_data_parts = static_cast<uint32_t>(data_parts.size());
   RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
   RETURN_NOT_OK(output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
   RETURN_NOT_OK(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
-
-  if (compressor_ == Compressor::RLE && tile.type() == Datatype::STRING_ASCII &&
-      offsets_tile) {
-    // String RLE is supported but only allowed on single filter
-    assert(num_data_parts == 1);
-    return compress_var_string_coords(
-        *input, offsets_tile, *output, *output_metadata);
-  }
 
   // Allocate output data
   uint64_t output_size_ub = 0;
@@ -316,12 +297,11 @@ Status CompressionFilter::run_reverse(
   Buffer* metadata_buffer = output_metadata->buffer_ptr(0);
   assert(metadata_buffer != nullptr);
 
-  if (compressor_ == Compressor::RLE && tile.type() == Datatype::STRING_ASCII &&
-      version_ >= 12 && offsets_tile) {
-    // String RLE is only allowed on first/single filter
-    assert(num_data_parts == 1);
-    return decompress_var_string_coords(
-        *input, *input_metadata, offsets_tile, *output);
+  if (tile.type() == Datatype::STRING_ASCII && version_ >= 12 && offsets_tile) {
+    if (compressor_ == Compressor::RLE ||
+        compressor_ == Compressor::DICTIONARY_ENCODING)
+      return decompress_var_string_coords(
+          *input, *input_metadata, offsets_tile, *output);
   }
 
   for (uint32_t i = 0; i < num_metadata_parts; i++)
@@ -367,7 +347,9 @@ Status CompressionFilter::compress_part(
       RETURN_NOT_OK(DoubleDelta::compress(type, &input_buffer, output));
       break;
     case Compressor::DICTIONARY_ENCODING:
-      // TODO: add method when available
+      return LOG_STATUS(
+          Status_FilterError("CompressionFilter error; Dictionary encoding "
+                             "only applies to variable length strings"));
       break;
     default:
       assert(0);
@@ -438,8 +420,9 @@ Status CompressionFilter::decompress_part(
       st = DoubleDelta::decompress(type, &input_buffer, &output_buffer);
       break;
     case Compressor::DICTIONARY_ENCODING:
-      // TODO: add method when available
-      break;
+      return LOG_STATUS(
+          Status_FilterError("CompressionFilter error; Dictionary encoding "
+                             "only applies to variable length strings"));
   }
 
   if (output->owns_data())
@@ -450,7 +433,8 @@ Status CompressionFilter::decompress_part(
   return st;
 }
 
-std::vector<std::string_view> CompressionFilter::create_input_view(
+tuple<std::vector<std::string_view>, uint64_t>
+CompressionFilter::create_input_view(
     const FilterBuffer& input, Tile* const offsets_tile) {
   auto input_buf = static_cast<const char*>(input.buffers()[0].data());
   auto offsets_data = static_cast<uint64_t*>(offsets_tile->data());
@@ -458,16 +442,35 @@ std::vector<std::string_view> CompressionFilter::create_input_view(
   std::vector<std::string_view> input_view(offsets_size);
 
   size_t i = 0;
+  uint64_t max_str_len = 0;
   for (i = 0; i < offsets_size - 1; i++) {
-    input_view[i] = std::string_view(
-        input_buf + offsets_data[i], offsets_data[i + 1] - offsets_data[i]);
+    auto length = offsets_data[i + 1] - offsets_data[i];
+    input_view[i] = std::string_view(input_buf + offsets_data[i], length);
+    max_str_len = std::max(length, max_str_len);
   }
 
   // special case for the last string
   input_view[i] = std::string_view(
       input_buf + offsets_data[i], input.size() - offsets_data[i]);
 
-  return input_view;
+  return {input_view, max_str_len};
+}
+
+uint8_t CompressionFilter::compute_bytesize(uint64_t param_length) {
+  if (param_length == 0) {
+    throw std::logic_error(
+        "Cannot compute RLE parameter bytesize for zero length");
+  }
+
+  if (param_length <= std::numeric_limits<uint8_t>::max()) {
+    return 1;
+  } else if (param_length <= std::numeric_limits<uint16_t>::max()) {
+    return 2;
+  } else if (param_length <= std::numeric_limits<uint32_t>::max()) {
+    return 4;
+  } else {
+    return 8;
+  }
 }
 
 Status CompressionFilter::compress_var_string_coords(
@@ -475,49 +478,93 @@ Status CompressionFilter::compress_var_string_coords(
     Tile* const offsets_tile,
     FilterBuffer& output,
     FilterBuffer& output_metadata) const {
-  assert(offsets_tile);
-
   if (input.num_buffers() != 1) {
-    return LOG_STATUS(
-        Status_FilterError("Var-sized string input has to be in single "
-                           "buffer format to be compressed with RLE"));
+    throw std::logic_error(
+        "Var-sized string input has to be in single "
+        "buffer format to be compressed with RLE or Dictionary encoding");
   }
 
   // Construct string view of input
-  auto input_view = create_input_view(input, offsets_tile);
+  auto [input_view, max_string_len] = create_input_view(input, offsets_tile);
 
-  // Estimate and allocate output size
-  auto
-      [rle_len_bytesize,
-       string_len_bytesize,
-       num_of_runs,
-       output_strings_size] = RLE::calculate_compression_params(input_view);
-  uint64_t output_size_ub =
-      num_of_runs * (rle_len_bytesize + string_len_bytesize) +
-      output_strings_size;
-  uint32_t input_offsets_size = offsets_tile->size();
+  size_t metadata_size = 0;
+  auto num_strings = offsets_tile->size() / constants::cell_var_offset_size;
+  // Estimate metadata and output size
+  size_t rle_len_bytesize = 0, string_len_bytesize = 0, output_size_ub = 0;
+  size_t max_id_bytesize = 0, max_strlen_bytesize = 0, dict_size = 0;
+  if (compressor_ == Compressor::RLE) {
+    // Three extra metadata bytes to store run length datasize,
+    // string length datasize, and output offsets size
+    metadata_size += 2 * sizeof(uint8_t) + sizeof(uint32_t);
+    // FIXME: those bytesizes rename
+    auto
+        [rle_len_bytesize,
+         string_len_bytesize,
+         num_of_runs,
+         output_strings_size] = RLE::calculate_compression_params(input_view);
+    output_size_ub = num_of_runs * (rle_len_bytesize + string_len_bytesize) +
+                     output_strings_size;
+  } else if (compressor_ == Compressor::DICTIONARY_ENCODING) {
+    max_id_bytesize = compute_bytesize(num_strings);
+    max_strlen_bytesize = compute_bytesize(max_string_len);
+    // estimate for worst case dict_size whenall strings unique, in format:
+    // [num_of_strings|size_str1|str1|...|size_strN|strN]
+    dict_size = max_strlen_bytesize * num_strings + input.size();
+    // Two extra metadata bytes to store string length datasize and output ids
+    // size
+    metadata_size += sizeof(uint8_t) * 2 + dict_size;
+    // Allocate for the worst case, assume all strings are unique and allocate a
+    // datatype that can fit the ids for each unique string.
+    // TODO: create a calculate_compression_params instead to find max uniques
+    // as a preprocess step?
+    output_size_ub = num_strings * max_id_bytesize;
+  }  // TODO: add an else case?
+
+  // Allocate output metadata
+  auto total_num_parts = 1;
+  metadata_size +=
+      2 * sizeof(uint32_t) + total_num_parts * 2 * sizeof(uint32_t);
+  uint32_t num_metadata_parts = 0;
+  uint32_t num_data_parts = 1;
+  RETURN_NOT_OK(output_metadata.prepend_buffer(metadata_size));
+  RETURN_NOT_OK(output_metadata.write(&num_metadata_parts, sizeof(uint32_t)));
+  RETURN_NOT_OK(output_metadata.write(&num_data_parts, sizeof(uint32_t)));
 
   // Allocate output data buffer
   RETURN_NOT_OK(output.prepend_buffer(output_size_ub));
   Buffer* data_buffer = output.buffer_ptr(0);
   assert(data_buffer != nullptr);
   data_buffer->reset_offset();
+  data_buffer->set_size(output_size_ub);
   auto output_view = span<std::byte>(
       reinterpret_cast<std::byte*>(data_buffer->data()), output_size_ub);
 
-  Status st = RLE::compress(
-      input_view, rle_len_bytesize, string_len_bytesize, output_view);
-  RETURN_NOT_OK(st);
-
-  data_buffer->set_size(output_size_ub);
-
-  // Note: assumes single buffer (holds when RLE is the first/only filter)
+  // Note: assumes single buffer
   auto input_size = input.buffers()[0].size();
+  uint32_t input_offsets_size = offsets_tile->size();
   RETURN_NOT_OK(output_metadata.write(&input_size, sizeof(uint32_t)));
   RETURN_NOT_OK(output_metadata.write(&output_size_ub, sizeof(uint32_t)));
   RETURN_NOT_OK(output_metadata.write(&input_offsets_size, sizeof(uint32_t)));
-  RETURN_NOT_OK(output_metadata.write(&rle_len_bytesize, sizeof(uint8_t)));
-  RETURN_NOT_OK(output_metadata.write(&string_len_bytesize, sizeof(uint8_t)));
+
+  if (compressor_ == Compressor::RLE) {
+    RETURN_NOT_OK(RLE::compress(
+        input_view, rle_len_bytesize, string_len_bytesize, output_view));
+    RETURN_NOT_OK(output_metadata.write(&rle_len_bytesize, sizeof(uint8_t)));
+    RETURN_NOT_OK(output_metadata.write(&string_len_bytesize, sizeof(uint8_t)));
+  } else if (compressor_ == Compressor::DICTIONARY_ENCODING) {
+    auto dict =
+        DictEncoding::compress(input_view, max_id_bytesize, output_view);
+    RETURN_NOT_OK(output_metadata.write(&max_id_bytesize, sizeof(uint8_t)));
+    RETURN_NOT_OK(output_metadata.write(&max_strlen_bytesize, sizeof(uint8_t)));
+    std::vector<std::byte> flattened_dict = DictEncoding::serialize_dictionary(
+        dict, max_strlen_bytesize, dict_size);
+    // FIXME: NOT NECESSARILY since input_size fits in 4 bytes, dict size will
+    // fit too
+    auto dict_size = flattened_dict.size();
+    RETURN_NOT_OK(output_metadata.write(&dict_size, sizeof(uint32_t)));
+    RETURN_NOT_OK(
+        output_metadata.write(flattened_dict.data(), flattened_dict.size()));
+  }
 
   return Status::Ok();
 }
@@ -528,9 +575,9 @@ Status CompressionFilter::decompress_var_string_coords(
     Tile* offsets_tile,
     FilterBuffer& output) const {
   if (input.num_buffers() != 1) {
-    return LOG_STATUS(
-        Status_FilterError("Var-sized string input has to be in single "
-                           "buffer format to get decompressed with RLE"));
+    throw std::logic_error(
+        "Var-sized string input has to be in single "
+        "buffer format to be decompressed with RLE or Dictionary encoding");
   }
 
   // Read the part metadata
@@ -539,10 +586,6 @@ Status CompressionFilter::decompress_var_string_coords(
   RETURN_NOT_OK(input_metadata.read(&compressed_size, sizeof(uint32_t)));
   RETURN_NOT_OK(
       input_metadata.read(&uncompressed_offsets_size, sizeof(uint32_t)));
-
-  uint8_t rle_len_bytesize, string_len_bytesize;
-  RETURN_NOT_OK(input_metadata.read(&rle_len_bytesize, sizeof(uint8_t)));
-  RETURN_NOT_OK(input_metadata.read(&string_len_bytesize, sizeof(uint8_t)));
 
   // Get views of input and output
   auto input_buffer = input.buffers()[0];
@@ -555,18 +598,28 @@ Status CompressionFilter::decompress_var_string_coords(
       reinterpret_cast<std::uint64_t*>(offsets_tile->data()),
       uncompressed_offsets_size);
 
-  switch (compressor_) {
-    case Compressor::RLE: {
-      RLE::decompress(
-          input_view,
-          rle_len_bytesize,
-          string_len_bytesize,
-          output_view,
-          offsets_view);
-      break;
-    }
-    default:
-      break;
+  if (compressor_ == Compressor::RLE) {
+    uint8_t rle_len_bytesize, string_len_bytesize;
+    RETURN_NOT_OK(input_metadata.read(&rle_len_bytesize, sizeof(uint8_t)));
+    RETURN_NOT_OK(input_metadata.read(&string_len_bytesize, sizeof(uint8_t)));
+    RLE::decompress(
+        input_view,
+        rle_len_bytesize,
+        string_len_bytesize,
+        output_view,
+        offsets_view);
+  } else if (compressor_ == Compressor::DICTIONARY_ENCODING) {
+    uint8_t ids_bytesize = 0, string_len_bytesize = 0;
+    uint32_t dict_size = 0;
+    RETURN_NOT_OK(input_metadata.read(&ids_bytesize, sizeof(uint8_t)));
+    RETURN_NOT_OK(input_metadata.read(&string_len_bytesize, sizeof(uint8_t)));
+    RETURN_NOT_OK(input_metadata.read(&dict_size, sizeof(uint32_t)));
+    std::vector<std::byte> flattened_dict(dict_size);
+    RETURN_NOT_OK(input_metadata.read(flattened_dict.data(), dict_size));
+    std::vector<std::string> dict = DictEncoding::deserialize_dictionary(
+        flattened_dict, string_len_bytesize);
+    DictEncoding::decompress(
+        input_view, dict, ids_bytesize, output_view, offsets_view);
   }
 
   if (output_buffer->owns_data())

@@ -44,11 +44,11 @@ namespace sm {
 
 std::vector<std::string_view> DictEncoding::compress(
     const span<std::string_view> input,
-    uint64_t word_id_size,
+    const uint8_t word_id_size,
     span<std::byte> output) {
   if (input.empty() || output.empty() || word_id_size == 0) {
     throw std::logic_error(
-        "Failed compressing strings with dictionary; empty input arguments");
+        "Failed compressing strings with dictionary; empty input arguments.");
   }
 
   if (word_id_size <= 1) {
@@ -64,14 +64,14 @@ std::vector<std::string_view> DictEncoding::compress(
 
 void DictEncoding::decompress(
     const span<const std::byte> input,
-    const std::vector<std::string_view>& dict,
-    uint64_t word_id_size,
+    const span<const std::string> dict,
+    const uint8_t word_id_size,
     span<std::byte> output,
     span<uint64_t> output_offsets) {
   if (input.empty() || output.empty() || word_id_size == 0) {
     throw std::logic_error(
         "Failed decompressing dictionary-encoded strings; empty input "
-        "arguments");
+        "arguments.");
   }
 
   if (word_id_size <= 1) {
@@ -82,6 +82,40 @@ void DictEncoding::decompress(
     decompress<uint32_t>(input, dict, output, output_offsets);
   } else {
     decompress<uint64_t>(input, dict, output, output_offsets);
+  }
+}
+
+std::vector<std::byte> DictEncoding::serialize_dictionary(
+    const span<std::string_view> dict,
+    const size_t strlen_bytesize,
+    const size_t dict_size) {
+  if (dict.empty() || strlen_bytesize == 0 || dict_size == 0) {
+    throw std::logic_error(
+        "Failed serializing dictionary when encoding strings; empty input "
+        "arguments.");
+  }
+
+  if (strlen_bytesize <= 1) {
+    return serialize_dictionary<uint8_t>(dict, dict_size);
+  } else if (strlen_bytesize <= 2) {
+    return serialize_dictionary<uint16_t>(dict, dict_size);
+  } else if (strlen_bytesize <= 4) {
+    return serialize_dictionary<uint32_t>(dict, dict_size);
+  } else {
+    return serialize_dictionary<uint64_t>(dict, dict_size);
+  }
+}
+
+std::vector<std::string> DictEncoding::deserialize_dictionary(
+    const span<std::byte> serialized_dict, size_t strlen_bytesize) {
+  if (strlen_bytesize <= 1) {
+    return deserialize_dictionary<uint8_t>(serialized_dict);
+  } else if (strlen_bytesize <= 2) {
+    return deserialize_dictionary<uint16_t>(serialized_dict);
+  } else if (strlen_bytesize <= 4) {
+    return deserialize_dictionary<uint32_t>(serialized_dict);
+  } else {
+    return deserialize_dictionary<uint64_t>(serialized_dict);
   }
 }
 

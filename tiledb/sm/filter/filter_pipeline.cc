@@ -733,7 +733,8 @@ Status FilterPipeline::append_encryption_filter(
 bool FilterPipeline::skip_offsets_filtering(
     Datatype type, const uint32_t version) const {
   if (version >= 12 && type == Datatype::STRING_ASCII) {
-    if (has_filter(FilterType::FILTER_RLE)) {
+    if (has_filter(FilterType::FILTER_RLE) ||
+        has_filter(FilterType::FILTER_DICTIONARY)) {
       return true;
     }
   }
@@ -743,7 +744,8 @@ bool FilterPipeline::skip_offsets_filtering(
 
 bool FilterPipeline::use_tile_chunking(bool is_var, Datatype type) const {
   if (is_var && type == Datatype::STRING_ASCII) {
-    if (has_filter(FilterType::FILTER_RLE)) {
+    if (has_filter(FilterType::FILTER_RLE) ||
+        has_filter(FilterType::FILTER_DICTIONARY)) {
       return false;
     }
   }

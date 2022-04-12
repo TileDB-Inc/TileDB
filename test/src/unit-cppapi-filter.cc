@@ -285,7 +285,7 @@ void read_and_check_sparse_array_string_attr(
 
 TEST_CASE(
     "C++ API: Filter strings with RLE, sparse array",
-    "[cppapi][filter][rle-strings][sparse]") {
+    "[cppapi][filter][rle-strings][sparse][ypatia]") {
   using namespace tiledb;
   Context ctx;
   VFS vfs(ctx);
@@ -293,6 +293,8 @@ TEST_CASE(
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
+
+  // auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
 
   // Create schema with filter lists
   FilterList a1_filters(ctx);

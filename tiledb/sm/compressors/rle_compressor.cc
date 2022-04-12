@@ -256,8 +256,8 @@ Status RLE::compress(
 
 Status RLE::decompress(
     const span<const std::byte> input,
-    uint64_t rle_len_size,
-    uint64_t string_len_size,
+    const uint8_t rle_len_size,
+    const uint8_t string_len_size,
     span<std::byte> output,
     span<uint64_t> output_offsets) {
   if (input.empty() || output.empty() || rle_len_size == 0 ||

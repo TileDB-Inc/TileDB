@@ -96,8 +96,9 @@ TEST_CASE(
   std::vector<std::byte> decompressed(exp_decomp_size);
   auto num_strings = 8;
   std::vector<uint64_t> decompressed_offsets(num_strings);
+  std::vector<std::string> input_dict{str1, str2, str3};
   tiledb::sm::DictEncoding::decompress<uint8_t>(
-      compressed, dict, decompressed, decompressed_offsets);
+      compressed, input_dict, decompressed, decompressed_offsets);
 
   // In decompressed array there are only chars, so compare using memcpy
   CHECK(
@@ -133,8 +134,9 @@ TEMPLATE_LIST_TEST_CASE(
     uncompressed.emplace_back(str);
   }
 
-  // Allocate the compressed array - we know the size will be equal to input
-  std::vector<std::byte> compressed(num_strings);
+  // Allocate the compressed array - we know the number of elements will be
+  // equal to input
+  std::vector<std::byte> compressed(num_strings * sizeof(T));
   std::string_view sv{string_rand};
   std::vector<std::string_view> exp_dict{sv};
   // Compress the input array
@@ -157,8 +159,9 @@ TEMPLATE_LIST_TEST_CASE(
   const auto exp_decomp_size = strout.size();
   std::vector<std::byte> decompressed(exp_decomp_size);
   std::vector<uint64_t> decompressed_offsets(num_strings);
+  std::vector<std::string> input_dict{string_rand};
   tiledb::sm::DictEncoding::decompress<T>(
-      compressed, dict, decompressed, decompressed_offsets);
+      compressed, input_dict, decompressed, decompressed_offsets);
 
   // In decompressed array there are only chars, so compare using memcpy
   CHECK(
@@ -180,7 +183,7 @@ TEMPLATE_LIST_TEST_CASE(
 
 TEST_CASE(
     "Compression-Dictionary: Test compression of unique strings (worst case)",
-    "[compression][dict][ypatia]") {
+    "[compression][dict]") {
   std::vector<std::string> uncompressed_v = {
       "HG543232", "ATG", "AT", "A", "TGC", "HG54", "HG5"};
   std::vector<std::string_view> uncompressed;
@@ -217,7 +220,7 @@ TEST_CASE(
   const auto num_strings = 7;
   std::vector<uint64_t> decompressed_offsets(num_strings);
   tiledb::sm::DictEncoding::decompress<uint8_t>(
-      compressed, dict, decompressed, decompressed_offsets);
+      compressed, uncompressed_v, decompressed, decompressed_offsets);
 
   // In decompressed array there are only chars, so compare using memcpy
   CHECK(
@@ -230,4 +233,43 @@ TEST_CASE(
   for (uint32_t i = 0; i < expected_offsets.size(); i++) {
     CHECK(expected_offsets[i] == decompressed_offsets[i]);
   }
+}
+
+typedef tuple<uint8_t, uint16_t, uint32_t, uint64_t> AllTypesUnderTest;
+TEMPLATE_LIST_TEST_CASE(
+    "Compression-Dictionary: Test dictionary serialization",
+    "[compression][dict][dict-serialization]",
+    AllTypesUnderTest) {
+  typedef TestType T;
+  std::vector<std::string> dictionary_ref = {
+      "HG543232", "ATG", "AT", "A", "TGC", "HG54", "HG5"};
+  std::vector<std::string_view> dictionary;
+  // the reference here is crucial, otherwise a temp string is created and
+  // therefore string_view will outlive it
+  for (const std::string& str : dictionary_ref) {
+    dictionary.emplace_back(str);
+  }
+
+  // Serialization
+  std::vector<uint8_t> exp_serialized_len{8, 3, 2, 1, 3, 4, 3};
+  // dict_size: T bytes for each length + the length of all strings
+  auto serialized_dict = tiledb::sm::DictEncoding::serialize_dictionary<T>(
+      dictionary, exp_serialized_len.size() * sizeof(T) + 24);
+
+  // Check results
+  auto serialized_dict_data =
+      reinterpret_cast<const char*>(serialized_dict.data());
+  for (size_t i = 0; i < exp_serialized_len.size(); i++) {
+    auto string_len = utils::endianness::decode_be<T>(serialized_dict_data);
+    CHECK(exp_serialized_len[i] == string_len);
+    serialized_dict_data += sizeof(T);
+    CHECK(strncmp(dictionary[i].data(), serialized_dict_data, string_len) == 0);
+    serialized_dict_data += string_len;
+  }
+
+  // Deserialization
+  auto dict =
+      tiledb::sm::DictEncoding::deserialize_dictionary<T>(serialized_dict);
+  // Check results
+  CHECK(dict == dictionary_ref);
 }

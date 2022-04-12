@@ -52,16 +52,26 @@ class DictEncoding {
   // TODO: add docstring
   static std::vector<std::string_view> compress(
       const span<std::string_view> input,
-      uint64_t word_id_size,
+      const uint8_t word_id_size,
       span<std::byte> output);
 
   // TODO: add docstring
   static void decompress(
       const span<const std::byte> input,
-      const std::vector<std::string_view>& dict,
-      uint64_t word_id_size,
+      const span<const std::string> dict,
+      const uint8_t word_id_size,
       span<std::byte> output,
       span<uint64_t> output_offsets);
+
+  // TODO: add docstring
+  static std::vector<std::byte> serialize_dictionary(
+      const span<std::string_view> dict,
+      const size_t strlen_bytesize,
+      const size_t dict_size);
+
+  // TODO: add docstring
+  static std::vector<std::string> deserialize_dictionary(
+      const span<std::byte> serialized_dict, size_t strlen_bytesize);
 
   /**
    * Compress variable sized strings into dictionary encoded format
@@ -80,17 +90,25 @@ class DictEncoding {
   static std::vector<std::string_view> compress(
       const span<std::string_view> input, span<std::byte> output) {
     if (input.empty() || output.empty()) {
-      return {};
+      throw std::logic_error(
+          "Empty arguments when compressing strings with dictionary encoding.");
     }
 
-    // We use string_views in the dictionary, which point to input strings. This
-    // means that input should not be freed before dictionary data is consumed
+    if (output.size() < input.size() * sizeof(T)) {
+      throw std::logic_error(
+          "Output buffer too small to fit the compressed input.");
+    }
+
+    // We use string_views in the dictionary, which point to input strings, so
+    // input should not be freed before dictionary data is consumed
     std::vector<std::string_view> dict;
     dict.reserve(input.size());
     T word_id = 0;
     const auto word_id_size = sizeof(T);
+    // hash table to store string - unique id associations
     std::unordered_map<std::string_view, T> word_ids;
-    auto out_offset = &output[0];
+    // auto out_offset = &output[0];
+    auto out_index = 0;
 
     for (uint64_t i = 0; i < input.size(); i++) {
       // If we haven't seen that string before, add it to the dictionary
@@ -99,8 +117,8 @@ class DictEncoding {
         word_ids[input[i]] = word_id++;
       }
 
-      utils::endianness::encode_be<T>(word_ids[input[i]], out_offset);
-      out_offset += word_id_size;
+      utils::endianness::encode_be<T>(word_ids[input[i]], &output[out_index]);
+      out_index += word_id_size;
     }
 
     return dict;
@@ -122,11 +140,12 @@ class DictEncoding {
   template <class T>
   static void decompress(
       const span<const std::byte> input,
-      const std::vector<std::string_view>& dict,
+      const span<const std::string> dict,
       span<std::byte> output,
       span<uint64_t> output_offsets) {
     if (input.empty() || output.empty() || dict.size() == 0) {
-      return;
+      throw std::logic_error(
+          "Empty arguments when decompressing dictionary encoded strings.");
     }
 
     T word_id = 0;
@@ -134,13 +153,64 @@ class DictEncoding {
 
     while (in_index < input.size()) {
       word_id = utils::endianness::decode_be<T>(&input[in_index]);
-      in_index++;
+      in_index += sizeof(T);
       assert(word_id < dict.size());
       auto word = dict[word_id];
       memcpy(&output[out_index], word.data(), word.size());
       output_offsets[offset_index++] = out_index;
       out_index += word.size();
     }
+  }
+
+  template <class T>
+  static std::vector<std::byte> serialize_dictionary(
+      const span<std::string_view> dict, const size_t dict_size) {
+    if (dict.empty() || dict_size == 0) {
+      throw std::logic_error(
+          "Empty arguments when serializing dictionary for dictionary "
+          "encoding.");
+    }
+
+    std::vector<std::byte> serialized_dict(dict_size);
+    size_t out_index = 0;
+    for (const auto dict_entry : dict) {
+      utils::endianness::encode_be<T>(
+          dict_entry.size(), &serialized_dict[out_index]);
+      out_index += sizeof(T);
+      memcpy(&serialized_dict[out_index], dict_entry.data(), dict_entry.size());
+      out_index += dict_entry.size();
+    }
+
+    serialized_dict.resize(out_index);
+
+    return serialized_dict;
+  }
+
+  template <class T>
+  static std::vector<std::string> deserialize_dictionary(
+      const span<std::byte> serialized_dict) {
+    if (serialized_dict.empty()) {
+      throw std::logic_error(
+          "Empty arguments when deserializing dictionary for dictionary "
+          "decoding.");
+    }
+
+    std::vector<std::string> dict;
+    // fixme preallocate?
+    dict.reserve(serialized_dict.size());
+    T str_len = 0;
+
+    size_t in_index = 0;
+    while (in_index < serialized_dict.size()) {
+      str_len = utils::endianness::decode_be<T>(&serialized_dict[in_index]);
+      in_index += sizeof(T);
+      // construct string in place
+      dict.emplace_back(
+          reinterpret_cast<const char*>(&serialized_dict[in_index]), str_len);
+      in_index += str_len;
+    }
+
+    return dict;
   }
 };
 }  // namespace sm
