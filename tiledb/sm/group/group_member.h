@@ -51,7 +51,8 @@ class GroupMember {
       const URI& uri,
       const ObjectType& type,
       const bool& relative,
-      uint32_t version);
+      uint32_t version,
+      const std::optional<std::string>& name);
 
   /** Destructor. */
   virtual ~GroupMember() = default;
@@ -61,6 +62,9 @@ class GroupMember {
 
   /** Return object type. */
   ObjectType type() const;
+
+  /** Return the Name. */
+  const std::optional<std::string> name() const;
 
   /** Return if object is relative. */
   const bool& relative() const;
@@ -92,6 +96,9 @@ class GroupMember {
 
   /** The group member type. */
   ObjectType type_;
+
+  /** The group member optional name. */
+  std::optional<std::string> name_;
 
   /** Is the URI relative to the group. */
   bool relative_;

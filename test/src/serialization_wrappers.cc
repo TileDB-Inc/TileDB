@@ -98,5 +98,6 @@ int tiledb_group_serialize(
       ctx, buffer, serialize_type, 0, group_deserialized);
   REQUIRE(rc == TILEDB_OK);
 
+  tiledb_buffer_free(&buffer);
   return rc;
 }
