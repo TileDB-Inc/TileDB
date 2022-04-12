@@ -84,6 +84,8 @@ struct GroupCPPFx {
   void create_temp_dir(const std::string& path) const;
   void remove_temp_dir(const std::string& path) const;
   std::vector<tiledb::Object> read_group(const tiledb::Group& group) const;
+  void set_group_timestamp(
+      tiledb::Group* group, const uint64_t& timestamp) const;
 };
 
 GroupCPPFx::GroupCPPFx()
@@ -100,6 +102,13 @@ GroupCPPFx::~GroupCPPFx() {
   REQUIRE(vfs_test_close(fs_vec_, ctx_c_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_c_);
+}
+
+void GroupCPPFx::set_group_timestamp(
+    tiledb::Group* group, const uint64_t& timestamp) const {
+  tiledb::Config config;
+  config.set("sm.group.timestamp_end", std::to_string(timestamp));
+  group->set_config(config);
 }
 
 std::vector<tiledb::Object> GroupCPPFx::read_group(
@@ -180,11 +189,13 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS(group.put_metadata("key", TILEDB_INT32, 1, &v));
 
   // Write metadata on an group opened in READ mode
+  set_group_timestamp(&group, 1);
   group.open(TILEDB_READ);
   REQUIRE_THROWS(group.put_metadata("key", TILEDB_INT32, 1, &v));
 
   // Close group
   group.close();
+  set_group_timestamp(&group, 1);
   group.open(TILEDB_WRITE);
 
   // Write value type BLOB
@@ -213,6 +224,10 @@ TEST_CASE_METHOD(
   tiledb::Group::create(ctx_, group1_uri);
   // Open group in write mode
   tiledb::Group group(ctx_, std::string(group1_uri), TILEDB_WRITE);
+  // Reopen a timestamp
+  group.close();
+  set_group_timestamp(&group, 1);
+  group.open(TILEDB_WRITE);
 
   // Write items
   int32_t v = 5;
@@ -227,6 +242,7 @@ TEST_CASE_METHOD(
   group.close();
 
   // Open the group in read mode
+  set_group_timestamp(&group, 1);
   group.open(TILEDB_READ);
 
   // Read
@@ -325,8 +341,14 @@ TEST_CASE_METHOD(
   };
 
   tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  group1.close();
+  set_group_timestamp(&group1, 1);
+  group1.open(TILEDB_WRITE);
 
   tiledb::Group group2(ctx_, group2_uri.to_string(), TILEDB_WRITE);
+  group2.close();
+  set_group_timestamp(&group2, 1);
+  group2.open(TILEDB_WRITE);
 
   group1.add_member(array1_uri.to_string(), false, "array1");
   group1.add_member(array2_uri.to_string(), false, "array2");
@@ -339,7 +361,9 @@ TEST_CASE_METHOD(
   group2.close();
 
   // Reopen in read mode
+  set_group_timestamp(&group1, 1);
   group1.open(TILEDB_READ);
+  set_group_timestamp(&group2, 1);
   group2.open(TILEDB_READ);
 
   std::vector<tiledb::Object> group1_received = read_group(group1);
@@ -355,7 +379,9 @@ TEST_CASE_METHOD(
   group2.close();
 
   // Remove assets from group
+  set_group_timestamp(&group1, 2);
   group1.open(TILEDB_WRITE);
+  set_group_timestamp(&group2, 2);
   group2.open(TILEDB_WRITE);
 
   group1.remove_member("group2");
@@ -371,7 +397,9 @@ TEST_CASE_METHOD(
   group2.close();
 
   // Check read again
+  set_group_timestamp(&group1, 2);
   group1.open(TILEDB_READ);
+  set_group_timestamp(&group2, 2);
   group2.open(TILEDB_READ);
 
   group1_received = read_group(group1);
@@ -431,8 +459,14 @@ TEST_CASE_METHOD(
   };
 
   tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  group1.close();
+  set_group_timestamp(&group1, 1);
+  group1.open(TILEDB_WRITE);
 
   tiledb::Group group2(ctx_, group2_uri.to_string(), TILEDB_WRITE);
+  group2.close();
+  set_group_timestamp(&group2, 1);
+  group2.open(TILEDB_WRITE);
 
   group1.add_member(array1_uri.to_string(), false);
   group1.add_member(array2_uri.to_string(), false);
@@ -461,7 +495,9 @@ TEST_CASE_METHOD(
   group2.close();
 
   // Remove assets from group
+  set_group_timestamp(&group1, 2);
   group1.open(TILEDB_WRITE);
+  set_group_timestamp(&group2, 2);
   group2.open(TILEDB_WRITE);
 
   group1.remove_member(group2_uri.to_string());
@@ -477,7 +513,9 @@ TEST_CASE_METHOD(
   group2.close();
 
   // Check read again
+  set_group_timestamp(&group1, 2);
   group1.open(TILEDB_READ);
+  set_group_timestamp(&group2, 2);
   group2.open(TILEDB_READ);
 
   group1_received = read_group(group1);
@@ -500,7 +538,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    GroupCPPFx, "C++ API: Group, write/read, relative", "[cppapi][group][read]") {
+    GroupCPPFx,
+    "C++ API: Group, write/read, relative",
+    "[cppapi][group][read]") {
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -546,8 +586,14 @@ TEST_CASE_METHOD(
   };
 
   tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  group1.close();
+  set_group_timestamp(&group1, 1);
+  group1.open(TILEDB_WRITE);
 
   tiledb::Group group2(ctx_, group2_uri.to_string(), TILEDB_WRITE);
+  group2.close();
+  set_group_timestamp(&group2, 1);
+  group2.open(TILEDB_WRITE);
 
   group1.add_member(array1_relative_uri, true);
   group1.add_member(array2_relative_uri, true);
@@ -576,7 +622,9 @@ TEST_CASE_METHOD(
   group2.close();
 
   // Remove assets from group
+  set_group_timestamp(&group1, 2);
   group1.open(TILEDB_WRITE);
+  set_group_timestamp(&group2, 2);
   group2.open(TILEDB_WRITE);
 
   group1.remove_member(group2_uri.to_string());
@@ -592,7 +640,9 @@ TEST_CASE_METHOD(
   group2.close();
 
   // Check read again
+  set_group_timestamp(&group1, 2);
   group1.open(TILEDB_READ);
+  set_group_timestamp(&group2, 2);
   group2.open(TILEDB_READ);
 
   group1_received = read_group(group1);
