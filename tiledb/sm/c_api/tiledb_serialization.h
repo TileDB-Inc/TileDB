@@ -57,7 +57,8 @@ typedef enum {
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_serialization_type_to_str(
-    tiledb_serialization_type_t serialization_type, const char** str) TILEDB_NOEXCEPT;
+    tiledb_serialization_type_t serialization_type,
+    const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a serialization type from the given string.
@@ -67,7 +68,8 @@ TILEDB_EXPORT int32_t tiledb_serialization_type_to_str(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_serialization_type_from_str(
-    const char* str, tiledb_serialization_type_t* serialization_type) TILEDB_NOEXCEPT;
+    const char* str,
+    tiledb_serialization_type_t* serialization_type) TILEDB_NOEXCEPT;
 
 /* ****************************** */
 /*          Serialization         */
