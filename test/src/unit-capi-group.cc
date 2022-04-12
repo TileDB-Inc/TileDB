@@ -131,13 +131,15 @@ std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> GroupFx::read_group(
   uint64_t count = 0;
   char* uri;
   tiledb_object_t type;
+  char* name;
   int rc = tiledb_group_get_member_count(ctx_, group, &count);
   REQUIRE(rc == TILEDB_OK);
   for (uint64_t i = 0; i < count; i++) {
-    rc = tiledb_group_get_member_by_index(ctx_, group, i, &uri, &type);
+    rc = tiledb_group_get_member_by_index(ctx_, group, i, &uri, &type, &name);
     REQUIRE(rc == TILEDB_OK);
     ret.emplace_back(uri, type);
     std::free(uri);
+    std::free(name);
   }
   return ret;
 }
@@ -430,13 +432,17 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_group_add_member(ctx_, group1, array1_uri.c_str(), false);
+  rc =
+      tiledb_group_add_member(ctx_, group1, array1_uri.c_str(), false, nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_group_add_member(ctx_, group1, array2_uri.c_str(), false);
+  rc =
+      tiledb_group_add_member(ctx_, group1, array2_uri.c_str(), false, nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_group_add_member(ctx_, group2, array3_uri.c_str(), false);
+  rc =
+      tiledb_group_add_member(ctx_, group2, array3_uri.c_str(), false, nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), false);
+  rc =
+      tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), false, nullptr);
   REQUIRE(rc == TILEDB_OK);
 
   // Close group from write mode
@@ -576,13 +582,17 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_group_add_member(ctx_, group1, array1_relative_uri.c_str(), true);
+  rc = tiledb_group_add_member(
+      ctx_, group1, array1_relative_uri.c_str(), true, nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_group_add_member(ctx_, group1, array2_relative_uri.c_str(), true);
+  rc = tiledb_group_add_member(
+      ctx_, group1, array2_relative_uri.c_str(), true, nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_group_add_member(ctx_, group2, array3_relative_uri.c_str(), true);
+  rc = tiledb_group_add_member(
+      ctx_, group2, array3_relative_uri.c_str(), true, nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), false);
+  rc =
+      tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), false, nullptr);
   REQUIRE(rc == TILEDB_OK);
 
   // Close group from write mode
@@ -727,13 +737,17 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2_write, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_group_add_member(ctx_, group1_write, array1_uri.c_str(), false);
+  rc = tiledb_group_add_member(
+      ctx_, group1_write, array1_uri.c_str(), false, nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_group_add_member(ctx_, group1_write, array2_uri.c_str(), false);
+  rc = tiledb_group_add_member(
+      ctx_, group1_write, array2_uri.c_str(), false, nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_group_add_member(ctx_, group2_write, array3_uri.c_str(), false);
+  rc = tiledb_group_add_member(
+      ctx_, group2_write, array3_uri.c_str(), false, nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_group_add_member(ctx_, group1_write, group2_uri.c_str(), false);
+  rc = tiledb_group_add_member(
+      ctx_, group1_write, group2_uri.c_str(), false, nullptr);
   REQUIRE(rc == TILEDB_OK);
 
   // Close

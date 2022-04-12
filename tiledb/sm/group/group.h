@@ -205,14 +205,15 @@ class Group {
   /**
    * Add a member to a group, this will be flushed to disk on close
    *
-   * @param group_member to add
+   * @param group_member_uri group member uri
+   * @param relative is this URI relative
+   * @param name optional name for member
    * @return Status
    */
   Status mark_member_for_addition(
-      const tdb_shared_ptr<GroupMember>& group_member);
-
-  Status mark_member_for_addition(
-      const URI& group_member_uri, const bool& relative);
+      const URI& group_member_uri,
+      const bool& relative,
+      std::optional<std::string>& name);
 
   /**
    * Remove a member from a group, this will be flushed to disk on close
@@ -324,10 +325,27 @@ class Group {
    * Get a member by index
    *
    * @param index of member
-   * @return Tuple of Status, URI string, ObjectType
+   * @return Tuple of Status, URI string, ObjectType, optional name
    */
-  tuple<Status, optional<std::string>, optional<ObjectType>> member_by_index(
-      uint64_t index);
+  tuple<
+      Status,
+      optional<std::string>,
+      optional<ObjectType>,
+      optional<std::string>>
+  member_by_index(uint64_t index);
+
+  /**
+   * Get a member by name
+   *
+   * @param name of member
+   * @return Tuple of Status, URI string, ObjectType, optional name
+   */
+  tuple<
+      Status,
+      optional<std::string>,
+      optional<ObjectType>,
+      optional<std::string>>
+  member_by_name(const std::string& name);
 
   /** Returns `true` if the group is open. */
   bool is_open() const;
@@ -411,6 +429,10 @@ class Group {
 
   /** Vector for index based lookup. */
   std::vector<tdb_shared_ptr<GroupMember>> members_vec_;
+
+  /** Unordered map of members by their name, if the member doesn't have a name,
+   * it will not be in the map. */
+  std::unordered_map<std::string, tdb_shared_ptr<GroupMember>> members_by_name_;
 
   /** Mapping of members slated for removal. */
   std::unordered_set<std::string> members_to_remove_;

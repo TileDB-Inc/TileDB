@@ -83,8 +83,9 @@ struct GroupCPPFx {
   void create_array(const std::string& path) const;
   void create_temp_dir(const std::string& path) const;
   void remove_temp_dir(const std::string& path) const;
-  std::vector<std::pair<tiledb::sm::URI, tiledb::Object::Type>> read_group(
-      const tiledb::Group& group) const;
+  std::vector<tiledb::Object> read_group(const tiledb::Group& group) const;
+  void set_group_timestamp(
+      tiledb::Group* group, const uint64_t& timestamp) const;
 };
 
 GroupCPPFx::GroupCPPFx()
@@ -103,13 +104,20 @@ GroupCPPFx::~GroupCPPFx() {
   tiledb_ctx_free(&ctx_c_);
 }
 
-std::vector<std::pair<tiledb::sm::URI, tiledb::Object::Type>>
-GroupCPPFx::read_group(const tiledb::Group& group) const {
-  std::vector<std::pair<tiledb::sm::URI, tiledb::Object::Type>> ret;
+void GroupCPPFx::set_group_timestamp(
+    tiledb::Group* group, const uint64_t& timestamp) const {
+  tiledb::Config config;
+  config.set("sm.group.timestamp_end", std::to_string(timestamp));
+  group->set_config(config);
+}
+
+std::vector<tiledb::Object> GroupCPPFx::read_group(
+    const tiledb::Group& group) const {
+  std::vector<tiledb::Object> ret;
   uint64_t count = group.member_count();
   for (uint64_t i = 0; i < count; i++) {
     tiledb::Object obj = group.member(i);
-    ret.emplace_back(obj.uri(), obj.type());
+    ret.emplace_back(obj);
   }
   return ret;
 }
@@ -181,11 +189,13 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS(group.put_metadata("key", TILEDB_INT32, 1, &v));
 
   // Write metadata on an group opened in READ mode
+  set_group_timestamp(&group, 1);
   group.open(TILEDB_READ);
   REQUIRE_THROWS(group.put_metadata("key", TILEDB_INT32, 1, &v));
 
   // Close group
   group.close();
+  set_group_timestamp(&group, 1);
   group.open(TILEDB_WRITE);
 
   // Write value type BLOB
@@ -214,6 +224,10 @@ TEST_CASE_METHOD(
   tiledb::Group::create(ctx_, group1_uri);
   // Open group in write mode
   tiledb::Group group(ctx_, std::string(group1_uri), TILEDB_WRITE);
+  // Reopen a timestamp
+  group.close();
+  set_group_timestamp(&group, 1);
+  group.open(TILEDB_WRITE);
 
   // Write items
   int32_t v = 5;
@@ -228,6 +242,7 @@ TEST_CASE_METHOD(
   group.close();
 
   // Open the group in read mode
+  set_group_timestamp(&group, 1);
   group.open(TILEDB_READ);
 
   // Read
@@ -292,7 +307,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    GroupCPPFx, "C++ API: Group, write/read", "[capi][group][metadata][read]") {
+    GroupCPPFx, "C++ API: Group, set name", "[cppapi][group][read]") {
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -312,20 +327,146 @@ TEST_CASE_METHOD(
   tiledb::Group::create(ctx_, group2_uri.to_string());
 
   // Set expected
-  std::vector<std::pair<tiledb::sm::URI, tiledb::Object::Type>>
-      group1_expected = {
-          {array1_uri, tiledb::Object::Type::Array},
-          {array2_uri, tiledb::Object::Type::Array},
-          {group2_uri, tiledb::Object::Type::Group},
-      };
-  std::vector<std::pair<tiledb::sm::URI, tiledb::Object::Type>>
-      group2_expected = {
-          {array3_uri, tiledb::Object::Type::Array},
-      };
+  std::vector<tiledb::Object> group1_expected = {
+      tiledb::Object(
+          tiledb::Object::Type::Array, array1_uri.to_string(), "array1"),
+      tiledb::Object(
+          tiledb::Object::Type::Array, array2_uri.to_string(), "array2"),
+      tiledb::Object(
+          tiledb::Object::Type::Group, group2_uri.to_string(), "group2"),
+  };
+  std::vector<tiledb::Object> group2_expected = {
+      tiledb::Object(
+          tiledb::Object::Type::Array, array3_uri.to_string(), "array3"),
+  };
 
   tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  group1.close();
+  set_group_timestamp(&group1, 1);
+  group1.open(TILEDB_WRITE);
 
   tiledb::Group group2(ctx_, group2_uri.to_string(), TILEDB_WRITE);
+  group2.close();
+  set_group_timestamp(&group2, 1);
+  group2.open(TILEDB_WRITE);
+
+  group1.add_member(array1_uri.to_string(), false, "array1");
+  group1.add_member(array2_uri.to_string(), false, "array2");
+  group1.add_member(group2_uri.to_string(), false, "group2");
+
+  group2.add_member(array3_uri.to_string(), false, "array3");
+
+  // Close group from write mode
+  group1.close();
+  group2.close();
+
+  // Reopen in read mode
+  set_group_timestamp(&group1, 1);
+  group1.open(TILEDB_READ);
+  set_group_timestamp(&group2, 1);
+  group2.open(TILEDB_READ);
+
+  std::vector<tiledb::Object> group1_received = read_group(group1);
+  REQUIRE_THAT(
+      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
+
+  std::vector<tiledb::Object> group2_received = read_group(group2);
+  REQUIRE_THAT(
+      group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+
+  // Close group
+  group1.close();
+  group2.close();
+
+  // Remove assets from group
+  set_group_timestamp(&group1, 2);
+  group1.open(TILEDB_WRITE);
+  set_group_timestamp(&group2, 2);
+  group2.open(TILEDB_WRITE);
+
+  group1.remove_member("group2");
+  // Group is the latest element
+  group1_expected.resize(group1_expected.size() - 1);
+
+  group2.remove_member("array3");
+  // There should be nothing left in group2
+  group2_expected.clear();
+
+  // Close group
+  group1.close();
+  group2.close();
+
+  // Check read again
+  set_group_timestamp(&group1, 2);
+  group1.open(TILEDB_READ);
+  set_group_timestamp(&group2, 2);
+  group2.open(TILEDB_READ);
+
+  group1_received = read_group(group1);
+  REQUIRE_THAT(
+      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
+
+  const auto& obj = group1.member(group1_expected[0].name().value());
+  REQUIRE(obj == group1_expected[0]);
+
+  group2_received = read_group(group2);
+  REQUIRE_THAT(
+      group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+
+  // Check that non-existent name throws
+  REQUIRE_THROWS(group1.member("10"));
+  // Checks for off by one indexing
+  REQUIRE_THROWS(group1.member(group1_expected.size()));
+
+  // Close group
+  group1.close();
+  group2.close();
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    GroupCPPFx, "C++ API: Group, write/read", "[cppapi][group][read]") {
+  // Create and open group in write mode
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  const tiledb::sm::URI array1_uri(temp_dir + "array1");
+  const tiledb::sm::URI array2_uri(temp_dir + "array2");
+  const tiledb::sm::URI array3_uri(temp_dir + "array3");
+  create_array(array1_uri.to_string());
+  create_array(array2_uri.to_string());
+  create_array(array3_uri.to_string());
+
+  tiledb::sm::URI group1_uri(temp_dir + "group1");
+  tiledb::Group::create(ctx_, group1_uri.to_string());
+
+  tiledb::sm::URI group2_uri(temp_dir + "group2");
+  tiledb::Group::create(ctx_, group2_uri.to_string());
+
+  // Set expected
+  std::vector<tiledb::Object> group1_expected = {
+      tiledb::Object(
+          tiledb::Object::Type::Array, array1_uri.to_string(), std::nullopt),
+      tiledb::Object(
+          tiledb::Object::Type::Array, array2_uri.to_string(), std::nullopt),
+      tiledb::Object(
+          tiledb::Object::Type::Group, group2_uri.to_string(), std::nullopt),
+  };
+  std::vector<tiledb::Object> group2_expected = {
+      tiledb::Object(
+          tiledb::Object::Type::Array, array3_uri.to_string(), std::nullopt),
+  };
+
+  tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  group1.close();
+  set_group_timestamp(&group1, 1);
+  group1.open(TILEDB_WRITE);
+
+  tiledb::Group group2(ctx_, group2_uri.to_string(), TILEDB_WRITE);
+  group2.close();
+  set_group_timestamp(&group2, 1);
+  group2.open(TILEDB_WRITE);
 
   group1.add_member(array1_uri.to_string(), false);
   group1.add_member(array2_uri.to_string(), false);
@@ -341,13 +482,11 @@ TEST_CASE_METHOD(
   group1.open(TILEDB_READ);
   group2.open(TILEDB_READ);
 
-  std::vector<std::pair<tiledb::sm::URI, tiledb::Object::Type>>
-      group1_received = read_group(group1);
+  std::vector<tiledb::Object> group1_received = read_group(group1);
   REQUIRE_THAT(
       group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
 
-  std::vector<std::pair<tiledb::sm::URI, tiledb::Object::Type>>
-      group2_received = read_group(group2);
+  std::vector<tiledb::Object> group2_received = read_group(group2);
   REQUIRE_THAT(
       group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
 
@@ -356,7 +495,9 @@ TEST_CASE_METHOD(
   group2.close();
 
   // Remove assets from group
+  set_group_timestamp(&group1, 2);
   group1.open(TILEDB_WRITE);
+  set_group_timestamp(&group2, 2);
   group2.open(TILEDB_WRITE);
 
   group1.remove_member(group2_uri.to_string());
@@ -372,7 +513,9 @@ TEST_CASE_METHOD(
   group2.close();
 
   // Check read again
+  set_group_timestamp(&group1, 2);
   group1.open(TILEDB_READ);
+  set_group_timestamp(&group2, 2);
   group2.open(TILEDB_READ);
 
   group1_received = read_group(group1);
@@ -397,7 +540,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     GroupCPPFx,
     "C++ API: Group, write/read, relative",
-    "[capi][group][metadata][read]") {
+    "[cppapi][group][read]") {
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -429,20 +572,28 @@ TEST_CASE_METHOD(
   create_array(array3_uri.to_string());
 
   // Set expected
-  std::vector<std::pair<tiledb::sm::URI, tiledb::Object::Type>>
-      group1_expected = {
-          {array1_uri, tiledb::Object::Type::Array},
-          {array2_uri, tiledb::Object::Type::Array},
-          {group2_uri, tiledb::Object::Type::Group},
-      };
-  std::vector<std::pair<tiledb::sm::URI, tiledb::Object::Type>>
-      group2_expected = {
-          {array3_uri, tiledb::Object::Type::Array},
-      };
+  std::vector<tiledb::Object> group1_expected = {
+      tiledb::Object(
+          tiledb::Object::Type::Array, array1_uri.to_string(), std::nullopt),
+      tiledb::Object(
+          tiledb::Object::Type::Array, array2_uri.to_string(), std::nullopt),
+      tiledb::Object(
+          tiledb::Object::Type::Group, group2_uri.to_string(), std::nullopt),
+  };
+  std::vector<tiledb::Object> group2_expected = {
+      tiledb::Object(
+          tiledb::Object::Type::Array, array3_uri.to_string(), std::nullopt),
+  };
 
   tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  group1.close();
+  set_group_timestamp(&group1, 1);
+  group1.open(TILEDB_WRITE);
 
   tiledb::Group group2(ctx_, group2_uri.to_string(), TILEDB_WRITE);
+  group2.close();
+  set_group_timestamp(&group2, 1);
+  group2.open(TILEDB_WRITE);
 
   group1.add_member(array1_relative_uri, true);
   group1.add_member(array2_relative_uri, true);
@@ -458,13 +609,11 @@ TEST_CASE_METHOD(
   group1.open(TILEDB_READ);
   group2.open(TILEDB_READ);
 
-  std::vector<std::pair<tiledb::sm::URI, tiledb::Object::Type>>
-      group1_received = read_group(group1);
+  std::vector<tiledb::Object> group1_received = read_group(group1);
   REQUIRE_THAT(
       group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
 
-  std::vector<std::pair<tiledb::sm::URI, tiledb::Object::Type>>
-      group2_received = read_group(group2);
+  std::vector<tiledb::Object> group2_received = read_group(group2);
   REQUIRE_THAT(
       group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
 
@@ -473,7 +622,9 @@ TEST_CASE_METHOD(
   group2.close();
 
   // Remove assets from group
+  set_group_timestamp(&group1, 2);
   group1.open(TILEDB_WRITE);
+  set_group_timestamp(&group2, 2);
   group2.open(TILEDB_WRITE);
 
   group1.remove_member(group2_uri.to_string());
@@ -489,7 +640,9 @@ TEST_CASE_METHOD(
   group2.close();
 
   // Check read again
+  set_group_timestamp(&group1, 2);
   group1.open(TILEDB_READ);
+  set_group_timestamp(&group2, 2);
   group2.open(TILEDB_READ);
 
   group1_received = read_group(group1);

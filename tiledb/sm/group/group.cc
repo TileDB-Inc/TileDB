@@ -165,10 +165,14 @@ Status Group::open(QueryType query_type) {
     RETURN_NOT_OK(st);
     if (members.has_value()) {
       members_ = members.value();
+      members_by_name_.clear();
       members_vec_.clear();
       members_vec_.reserve(members_.size());
       for (auto& it : members_) {
         members_vec_.emplace_back(it.second);
+        if (it.second->name().has_value()) {
+          members_by_name_.emplace(it.second->name().value(), it.second);
+        }
       }
     }
   } else {
@@ -190,10 +194,14 @@ Status Group::open(QueryType query_type) {
 
     if (members.has_value()) {
       members_ = members.value();
+      members_by_name_.clear();
       members_vec_.clear();
       members_vec_.reserve(members_.size());
       for (auto& it : members_) {
         members_vec_.emplace_back(it.second);
+        if (it.second->name().has_value()) {
+          members_by_name_.emplace(it.second->name().value(), it.second);
+        }
       }
     }
 
@@ -470,6 +478,7 @@ Status Group::set_config(Config config) {
 
 Status Group::clear() {
   members_.clear();
+  members_by_name_.clear();
   members_vec_.clear();
   members_to_remove_.clear();
   members_to_add_.clear();
@@ -483,36 +492,17 @@ Status Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
   const std::string& uri = group_member->uri().to_string();
   members_.emplace(uri, group_member);
   members_vec_.emplace_back(group_member);
+  if (group_member->name().has_value()) {
+    members_by_name_.emplace(group_member->name().value(), group_member);
+  }
 
   return Status::Ok();
 }
 
 Status Group::mark_member_for_addition(
-    const tdb_shared_ptr<GroupMember>& group_member) {
-  std::lock_guard<std::mutex> lck(mtx_);
-  // Check if group is open
-  if (!is_open_) {
-    return Status_GroupError("Cannot add member; Group is not open");
-  }
-
-  // Check mode
-  if (query_type_ != QueryType::WRITE) {
-    return Status_GroupError(
-        "Cannot get member; Group was not opened in read mode");
-  }
-
-  const std::string& uri = group_member->uri().to_string();
-  if (members_to_remove_.find(uri) != members_to_remove_.end()) {
-    return Status_GroupError(
-        "Cannot add group member " + uri + ", member already set for removal.");
-  }
-  members_to_add_.emplace(uri, group_member);
-
-  return Status::Ok();
-}
-
-Status Group::mark_member_for_addition(
-    const URI& group_member_uri, const bool& relative) {
+    const URI& group_member_uri,
+    const bool& relative,
+    std::optional<std::string>& name) {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
@@ -531,6 +521,29 @@ Status Group::mark_member_for_addition(
         "Cannot add group member " + uri + ", member already set for removal.");
   }
 
+  // If the name is set, validate its unique
+  if (name.has_value()) {
+    if (members_to_remove_.find(*name) != members_to_remove_.end()) {
+      return Status_GroupError(
+          "Cannot add group member " + *name +
+          ", member already set for removal.");
+    }
+
+    for (const auto& it : members_to_add_) {
+      if (it.second->name() == name) {
+        return Status_GroupError(
+            "Cannot add group member " + *name +
+            ", member already set for addition.");
+      }
+    }
+
+    if (members_by_name_.find(*name) != members_by_name_.end()) {
+      return Status_GroupError(
+          "Cannot add group member " + *name +
+          ", member already exists in group.");
+    }
+  }
+
   URI absolute_group_member_uri = group_member_uri;
   if (relative) {
     absolute_group_member_uri =
@@ -545,8 +558,8 @@ Status Group::mark_member_for_addition(
         ", type is INVALID. The member likely does not exist.");
   }
 
-  auto group_member =
-      tdb::make_shared<GroupMemberV1>(HERE(), group_member_uri, type, relative);
+  auto group_member = tdb::make_shared<GroupMemberV1>(
+      HERE(), group_member_uri, type, relative, name);
 
   members_to_add_.emplace(uri, group_member);
 
@@ -587,6 +600,11 @@ Status Group::mark_member_for_removal(const std::string& uri) {
   } else {
     if (members_.find(uri) != members_.end()) {
       members_to_remove_.emplace(uri);
+      return Status::Ok();
+    } else if (members_by_name_.find(uri) != members_by_name_.end()) {
+      // If the user passed the name, convert it to the URI for removal
+      members_to_remove_.emplace(
+          members_by_name_.find(uri)->second->uri().to_string());
       return Status::Ok();
     } else {
       // try URI to see if we need to convert the local file to file://
@@ -692,13 +710,18 @@ tuple<Status, optional<uint64_t>> Group::member_count() const {
   return {Status::Ok(), members_.size()};
 }
 
-tuple<Status, optional<std::string>, optional<ObjectType>>
+tuple<
+    Status,
+    optional<std::string>,
+    optional<ObjectType>,
+    optional<std::string>>
 Group::member_by_index(uint64_t index) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   // Check if group is open
   if (!is_open_) {
     return {Status_GroupError("Cannot get member by index; Group is not open"),
+            std::nullopt,
             std::nullopt,
             std::nullopt};
   }
@@ -708,8 +731,8 @@ Group::member_by_index(uint64_t index) {
     return {Status_GroupError(
                 "Cannot get member; Group was not opened in read mode"),
             std::nullopt,
+            std::nullopt,
             std::nullopt};
-    ;
   }
 
   if (index >= members_vec_.size()) {
@@ -718,8 +741,8 @@ Group::member_by_index(uint64_t index) {
             "index " + std::to_string(index) + " is larger than member count " +
             std::to_string(members_vec_.size())),
         std::nullopt,
+        std::nullopt,
         std::nullopt};
-    ;
   }
 
   auto member = members_vec_[index];
@@ -729,7 +752,49 @@ Group::member_by_index(uint64_t index) {
     uri = group_uri_.join_path(member->uri().to_string()).to_string();
   }
 
-  return {Status::Ok(), uri, member->type()};
+  return {Status::Ok(), uri, member->type(), member->name()};
+}
+
+tuple<
+    Status,
+    optional<std::string>,
+    optional<ObjectType>,
+    optional<std::string>>
+Group::member_by_name(const std::string& name) {
+  std::lock_guard<std::mutex> lck(mtx_);
+
+  // Check if group is open
+  if (!is_open_) {
+    return {Status_GroupError("Cannot get member by name; Group is not open"),
+            std::nullopt,
+            std::nullopt,
+            std::nullopt};
+  }
+
+  // Check mode
+  if (query_type_ != QueryType::READ) {
+    return {Status_GroupError(
+                "Cannot get member; Group was not opened in read mode"),
+            std::nullopt,
+            std::nullopt,
+            std::nullopt};
+  }
+
+  auto it = members_by_name_.find(name);
+  if (it == members_by_name_.end()) {
+    return {Status_GroupError(name + " does not exist in group"),
+            std::nullopt,
+            std::nullopt,
+            std::nullopt};
+  }
+
+  auto member = it->second;
+  std::string uri = member->uri().to_string();
+  if (member->relative()) {
+    uri = group_uri_.join_path(member->uri().to_string()).to_string();
+  }
+
+  return {Status::Ok(), uri, member->type(), member->name()};
 }
 
 std::string Group::dump(
@@ -822,9 +887,13 @@ Status Group::apply_pending_changes() {
   members_to_add_.clear();
 
   members_vec_.clear();
+  members_by_name_.clear();
   members_vec_.reserve(members_.size());
   for (auto& it : members_) {
     members_vec_.emplace_back(it.second);
+    if (it.second->name().has_value()) {
+      members_by_name_.emplace(it.second->name().value(), it.second);
+    }
   }
 
   return Status::Ok();

@@ -93,6 +93,11 @@ Status group_member_to_capnp(
 
   group_member_builder->setRelative(group_member->relative());
 
+  auto name = group_member->name();
+  if (name.has_value()) {
+    group_member_builder->setName(name.value());
+  }
+
   return Status::Ok();
 }
 
@@ -117,8 +122,13 @@ group_member_from_capnp(capnp::GroupMember::Reader* group_member_reader) {
       std::nullopt);
   const char* uri = group_member_reader->getUri().cStr();
   const bool relative = group_member_reader->getRelative();
+  std::optional<std::string> name = std::nullopt;
+  if (group_member_reader->hasName()) {
+    name = group_member_reader->getName().cStr();
+  }
+
   tdb_shared_ptr<GroupMember> group_member =
-      tdb::make_shared<GroupMemberV1>(HERE(), URI(uri), type, relative);
+      tdb::make_shared<GroupMemberV1>(HERE(), URI(uri), type, relative, name);
 
   return {Status::Ok(), group_member};
 }

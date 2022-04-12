@@ -38,8 +38,11 @@ namespace tiledb {
 namespace sm {
 
 GroupMemberV1::GroupMemberV1(
-    const URI& uri, const ObjectType& type, const bool& relative)
-    : GroupMember(uri, type, relative, GroupMemberV1::format_version_){};
+    const URI& uri,
+    const ObjectType& type,
+    const bool& relative,
+    const std::optional<std::string>& name)
+    : GroupMember(uri, type, relative, GroupMemberV1::format_version_, name){};
 
 // ===== FORMAT =====
 // format_version (uint32_t)
@@ -63,6 +66,15 @@ Status GroupMemberV1::serialize(Buffer* buff) {
   RETURN_NOT_OK(buff->write(&uri_size, sizeof(uri_size)));
   RETURN_NOT_OK(buff->write(uri_.c_str(), uri_size));
 
+  // Write name
+  bool name_set = name_.has_value();
+  RETURN_NOT_OK(buff->write(&name_set, sizeof(bool)));
+  if (name_set) {
+    uint64_t name_size = name_->size();
+    RETURN_NOT_OK(buff->write(&name_size, sizeof(name_size)));
+    RETURN_NOT_OK(buff->write(name_->data(), name_size));
+  }
+
   return Status::Ok();
 }
 
@@ -83,8 +95,22 @@ GroupMemberV1::deserialize(ConstBuffer* buff) {
   uri_string.resize(uri_size);
   RETURN_NOT_OK_TUPLE(buff->read(&uri_string[0], uri_size), std::nullopt);
 
+  bool name_set;
+  std::optional<std::string> name;
+  RETURN_NOT_OK_TUPLE(buff->read(&name_set, sizeof(name_set)), std::nullopt);
+  if (name_set) {
+    uint64_t name_size = 0;
+    RETURN_NOT_OK_TUPLE(
+        buff->read(&name_size, sizeof(name_size)), std::nullopt);
+
+    std::string name_string;
+    name_string.resize(name_size);
+    RETURN_NOT_OK_TUPLE(buff->read(&name_string[0], name_size), std::nullopt);
+    name = name_string;
+  }
+
   tdb_shared_ptr<GroupMemberV1> group_member = tdb::make_shared<GroupMemberV1>(
-      HERE(), URI(uri_string, !relative), type, relative);
+      HERE(), URI(uri_string, !relative), type, relative, name);
   return {Status::Ok(), group_member};
 }
 
