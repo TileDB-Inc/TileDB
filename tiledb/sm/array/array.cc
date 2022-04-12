@@ -818,7 +818,7 @@ Status Array::has_metadata_key(
   return Status::Ok();
 }
 
-Metadata* Array::metadata() {
+Metadata* Array::unsafe_metadata() {
   return &metadata_;
 }
 

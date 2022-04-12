@@ -128,7 +128,7 @@ Status StorageManager::array_close_for_writes(Array* array) {
 
   // Flush the array metadata
   RETURN_NOT_OK(store_metadata(
-      array->array_uri(), *array->encryption_key(), array->metadata()));
+      array->array_uri(), *array->encryption_key(), array->unsafe_metadata()));
 
   // Remove entry from open arrays
   std::lock_guard<std::mutex> lock{open_arrays_mtx_};
@@ -152,7 +152,7 @@ Status StorageManager::group_close_for_writes(Group* group) {
 
   // Flush the group metadata
   RETURN_NOT_OK(store_metadata(
-      group->group_uri(), *group->encryption_key(), group->metadata()));
+      group->group_uri(), *group->encryption_key(), group->unsafe_metadata()));
 
   // Store any changes required
   if (group->changes_applied()) {
