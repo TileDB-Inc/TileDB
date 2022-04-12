@@ -358,12 +358,6 @@ class ArraySchema {
   /** Returns the array schema uri. */
   const URI& uri() const;
 
-  /** Set schema URI, along with parsing out timestamp ranges and name. */
-  void set_uri(const URI& uri);
-
-  /** Get schema URI with return status. */
-  Status get_uri(URI* uri) const;
-
   /** Returns the schema name. If it is not set, will build it. */
   const std::string& name() const;
 

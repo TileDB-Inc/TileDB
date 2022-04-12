@@ -886,28 +886,10 @@ uint64_t ArraySchema::timestamp_start() const {
 }
 
 const URI& ArraySchema::uri() const {
-  std::lock_guard<std::mutex> lock(mtx_);
   return uri_;
 }
 
-void ArraySchema::set_uri(const URI& uri) {
-  std::lock_guard<std::mutex> lock(mtx_);
-  uri_ = uri;
-  name_ = uri_.last_path_part();
-  utils::parse::get_timestamp_range(uri_, &timestamp_range_);
-}
-
-Status ArraySchema::get_uri(URI* uri) const {
-  if (uri_.is_invalid()) {
-    return LOG_STATUS(
-        Status_ArraySchemaError("Error in ArraySchema; invalid URI"));
-  }
-  *uri = uri_;
-  return Status::Ok();
-}
-
 const std::string& ArraySchema::name() const {
-  std::lock_guard<std::mutex> lock(mtx_);
   return name_;
 }
 
