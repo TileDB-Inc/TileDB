@@ -51,19 +51,12 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  (void)sizeof(tiledb::sm::BZip);
-  (void)sizeof(tiledb::sm::DoubleDelta);
-  (void)sizeof(tiledb::sm::DictEncoding);
   (void)sizeof(tiledb::sm::GZip);
-  (void)sizeof(tiledb::sm::LZ4);
-  (void)sizeof(tiledb::sm::RLE);
-  (void)sizeof(tiledb::sm::ZStd);
 
   const int seg_sz = 4096;
   char fbuf[seg_sz];
   auto filter_stg = make_shared<tiledb::sm::FilterStorage>(HERE());
   auto inbuf = make_shared<tiledb::sm::Buffer>(HERE());
-  // auto zipped_buf = make_shared<tiledb::sm::Buffer>(HERE());
   auto zipped_buf = make_shared<tiledb::sm::FilterBuffer>(HERE(), &*filter_stg);
   uint64_t nread;
   uint64_t cntread = 0;
@@ -100,13 +93,7 @@ int main(int argc, char* argv[]) {
     }
   } while (nread == sizeof(fbuf));
 
-  __debugbreak();
-
-  // tiledb::sm::GZip::compress(9, &*inbuf, &*zipped_buf);
   tiledb::sm::ConstBuffer const_inbuf(&*inbuf);
-  // zipped_buf->set_size(inbuf->size());
-  // zipped_buf->ensure_alloced_size(inbuf->size());
-  // zipped_buf->prepend_buffer(inbuf->size());
   // Ensure space in output buffer for worst case.
   if (!zipped_buf->prepend_buffer(inbuf->size()).ok()) {
     printf("output buffer allocation error!\n");
@@ -115,32 +102,38 @@ int main(int argc, char* argv[]) {
   tiledb::sm::Buffer* out_buffer_ptr = zipped_buf->buffer_ptr(0);
   assert(out_buffer_ptr != nullptr);
   out_buffer_ptr->reset_offset();
-  // tiledb::sm::GZip::compress(9, &const_inbuf, &*zipped_buf);
   if (!tiledb::sm::GZip::compress(9, &const_inbuf, out_buffer_ptr).ok()) {
     printf("Error compressing data!\n");
     exit(-4);
   }
+  auto tdb_gzip_buf = make_shared<tiledb::sm::Buffer>(HERE());
   const char* prefix = "R\"tiledb_gzipped_mgc(";
   const char* postfix = ")tiledb_gzipped_mgc";
   if (fwrite(prefix, 1, strlen(prefix), outfile) != strlen(prefix)) {
     printf("error writing prefix\n");
     exit(1);
   }
+  tdb_gzip_buf->write(&cntread, sizeof(cntread));
   if (fwrite(&cntread, 1, sizeof(cntread), outfile) != sizeof(cntread)) {
     printf("error writing original bytecnt\n");
     exit(2);
   }
   uint64_t compressed_size = zipped_buf->size();
+  tdb_gzip_buf->write(&compressed_size, sizeof(compressed_size));
   if (fwrite(&compressed_size, 1, sizeof(compressed_size), outfile) !=
       sizeof(compressed_size)) {
     printf("error writing compressed bytecnt\n");
     exit(3);
   }
+
+  printf("compressed bytes only size %llu\n", zipped_buf->size());
   // now output the compressed data
   auto nremaining = zipped_buf->size();
   while (nremaining) {
     auto ntowrite = nremaining > seg_sz ? seg_sz : nremaining;
+    // TBD: error from ->read()?
     zipped_buf->read(fbuf, ntowrite);
+    tdb_gzip_buf->write(fbuf, ntowrite);
     if (fwrite(&ntowrite, 1, ntowrite, outfile) != ntowrite) {
       printf("error writing compressed data");
       exit(4);
@@ -152,59 +145,269 @@ int main(int argc, char* argv[]) {
     exit(5);
   }
 
-  // auto ungzip_buf = make_shared<tiledb::sm::FilterBuffer>(HERE(),
-  // &*filter_stg);
-  //  auto ungzip_buf = make_shared<tiledb::sm::Buffer>(HERE());
-  // ungzip_buf->prepend_buffer(inbuf->size()); // want uncompressed size
-  // tiledb::sm::PreallocatedBuffer
-  // pa_ungzip_buf(ungzip_buf->buffer_ptr(0)->cur_data(), inbuf->size()); TBD:
-  // does PreallocatedBuffer actualy -do- the allocation? NO! auto
-  // uncompressed_buf = make_shared<uint8_t>(HERE());
+  {
+    // filter_stg will be static file scope in gzip_wrappers.cc
+    auto filter_stg = make_shared<tiledb::sm::FilterStorage>(HERE());
+    // auto zipped_buf = make_shared<tiledb::sm::FilterBuffer>(HERE(),
+    // &*filter_stg);
+
+    auto gzip_compress = [&filter_stg](shared_ptr<tiledb::sm::FilterBuffer>&
+                                out_gzipped_buf,
+                            const shared_ptr<tiledb::sm::Buffer>& inbuf) {
+      tiledb::sm::ConstBuffer const_inbuf(&*inbuf);
+      out_gzipped_buf =
+          make_shared<tiledb::sm::FilterBuffer>(HERE(), &*filter_stg);
+      // Ensure space in output buffer for worst case.
+      if (!out_gzipped_buf->prepend_buffer(inbuf->size() + 2 * sizeof(uint64_t)).ok()) {
+        printf("output buffer allocation error!\n");
+        exit(-3);
+      }
+      tiledb::sm::Buffer* out_buffer_ptr = out_gzipped_buf->buffer_ptr(0);
+      assert(out_buffer_ptr != nullptr);
+      //out_buffer_ptr->reset_offset();
+      out_buffer_ptr->reset_size();
+      // skip space to write compressed/uncompressed sizes
+      out_buffer_ptr->advance_size(2 * sizeof(uint64_t));
+      out_buffer_ptr->advance_offset(2 * sizeof(uint64_t));
+      if (!tiledb::sm::GZip::compress(9, &const_inbuf, out_buffer_ptr).ok()) {
+        printf("Error compressing data!\n");
+        exit(-4);
+      }
+      printf(
+          "C2 offset %llu, size %llu\n",
+          out_buffer_ptr->offset(),
+          out_buffer_ptr->size());
+      out_buffer_ptr->realloc(out_buffer_ptr->offset());
+      printf(
+          "D2 offset %llu, size %llu\n",
+          out_buffer_ptr->offset(),
+          out_buffer_ptr->size());
+      // write sizes to beginning of buffer
+      uint64_t uncompressed_size = inbuf->size();
+      uint64_t compressed_size =
+          out_buffer_ptr->offset() - 2 * sizeof(uint64_t);
+      out_buffer_ptr->reset_offset();
+      // size();
+      out_buffer_ptr->write(&uncompressed_size, sizeof(uncompressed_size));
+      out_buffer_ptr->write(&compressed_size, sizeof(compressed_size));
+      printf(
+       "G2 offset %llu, size %llu\n",
+         out_buffer_ptr->offset(),
+         out_buffer_ptr->size());
+
+    };
+    auto gzip_compress2 = [](
+                             shared_ptr<tiledb::sm::Buffer>&
+                                 out_gzipped_buf,
+                             const shared_ptr<tiledb::sm::Buffer>& inbuf) {
+      uint64_t overhead_size = 2 * sizeof(uint64_t);
+      tiledb::sm::ConstBuffer const_inbuf(&*inbuf);
+      //out_gzipped_buf =
+      //    make_shared<tiledb::sm::Buffer>(HERE());
+      // Ensure space in output buffer for worst case.
+      if (!out_gzipped_buf
+               ->realloc(inbuf->size() + overhead_size)
+               .ok()) {
+        printf("output buffer allocation error!\n");
+        exit(-3);
+      }
+      out_gzipped_buf->reset_offset();
+      out_gzipped_buf->reset_size();
+      // printf(
+      //    "0 offset %llu, size %llu\n",
+      //    out_gzipped_buf->offset(),
+      //    out_gzipped_buf->size());
+      // tiledb::sm::Buffer* out_buffer_ptr = out_gzipped_buf->buffer_ptr(0);
+      tiledb::sm::Buffer* out_buffer_ptr = out_gzipped_buf.get();
+      assert(out_buffer_ptr != nullptr);
+      // printf(
+      //    "5 offset %llu, size %llu\n",
+      //    out_buffer_ptr->offset(),
+      //    out_buffer_ptr->size());
+      // printf(
+      //    "5b offset %llu, size %llu\n",
+      //    out_gzipped_buf->offset(),
+      //    out_gzipped_buf->size());
+      out_buffer_ptr->reset_offset();
+      // printf("A offset %llu, size %llu\n", out_buffer_ptr->offset(),
+      // out_buffer_ptr->size());
+      // 
+      // skip space to write compressed/uncompressed sizes
+      // (must advance_size() first as offset cannot be advanced beyond current size())
+      out_buffer_ptr->advance_size(overhead_size);
+      out_buffer_ptr->advance_offset(overhead_size);
+      printf("overhead_size %llu\n", overhead_size);
+      // printf(
+      //    "B offset %llu, size %llu\n",
+      //    out_buffer_ptr->offset(),
+      //    out_buffer_ptr->size());
+      // printf(
+      //    "Bb offset %llu, size %llu\n",
+      //    out_gzipped_buf->offset(),
+      //    out_gzipped_buf->size());
+      if (!tiledb::sm::GZip::compress(9, &const_inbuf, out_buffer_ptr).ok()) {
+        // TODO: Handle possibility that 'error' is just 'not enuf buffer', i.e.
+        // unable to compress into <= space of inbuf
+        printf("Error compressing data!\n");
+        exit(-4);
+      }
+      // printf(
+      //    "C offset %llu, size %llu\n",
+      //    out_buffer_ptr->offset(),
+      //    out_buffer_ptr->size());
+      // printf(
+      //    "Cb offset %llu, size %llu\n",
+      //    out_gzipped_buf->offset(),
+      //    out_gzipped_buf->size());
+      // downsize to only what's required
+      out_buffer_ptr->realloc(out_buffer_ptr->offset());
+      // printf(
+      //    "D offset %llu, size %llu\n",
+      //    out_buffer_ptr->offset(),
+      //    out_buffer_ptr->size());
+      // printf(
+      //    "Db offset %llu, size %llu\n",
+      //    out_gzipped_buf->offset(),
+      //    out_gzipped_buf->size());
+      uint64_t compressed_size =
+          out_buffer_ptr->offset() - overhead_size;
+      out_buffer_ptr->reset_offset();
+      // printf(
+      //    "E offset %llu, size %llu\n",
+      //    out_buffer_ptr->offset(),
+      //    out_buffer_ptr->size());
+      // printf(
+      //    "Eb offset %llu, size %llu\n",
+      //    out_gzipped_buf->offset(),
+      //    out_gzipped_buf->size());
+      uint64_t uncompressed_size = inbuf->size();
+      // write sizes to beginning of buffer
+      out_buffer_ptr->write(&uncompressed_size, sizeof(uncompressed_size));
+      // printf(
+      //    "F offset %llu, size %llu\n",
+      //    out_buffer_ptr->offset(),
+      //    out_buffer_ptr->size());
+      // printf(
+      //    "Fb offset %llu, size %llu\n",
+      //    out_gzipped_buf->offset(),
+      //    out_gzipped_buf->size());
+      out_buffer_ptr->write(&compressed_size, sizeof(compressed_size));
+      //printf(
+      //  "G offset %llu, size %llu\n",
+      //    out_buffer_ptr->offset(),
+      //    out_buffer_ptr->size());
+      // printf(
+      //    "Gb offset %llu, size %llu\n",
+      //    out_gzipped_buf->offset(),
+      //    out_gzipped_buf->size());
+    };
+
+    if (1)
+    {
+      //__debugbreak();
+      shared_ptr<tiledb::sm::Buffer> out_gzipped_buf =
+          make_shared<tiledb::sm::Buffer>(HERE());
+      gzip_compress2(out_gzipped_buf, inbuf);
+      if (out_gzipped_buf->size() != tdb_gzip_buf->size()) {
+        printf(
+            "Error, compressed data sizes mismatch! %llu, %llu\n",
+            out_gzipped_buf->size(),
+            tdb_gzip_buf->size());
+        exit(-13);
+      }
+      if (memcmp(
+              out_gzipped_buf->data(0),
+              tdb_gzip_buf->data(0),
+              out_gzipped_buf->size()) //tdb_gzip_buf->size())
+        ) {
+        printf("Error, compressed data mismatch!\n");
+        exit(-11);
+      }
+    }
+    if (01)
+    {
+      shared_ptr<tiledb::sm::FilterBuffer> out_gzipped_buf;
+      gzip_compress(out_gzipped_buf, inbuf);
+      if (out_gzipped_buf->buffer_ptr(0)->size() != tdb_gzip_buf->size()) {
+        printf(
+            "Error, compressed data sizes mismatch! %llu, %llu\n",
+            out_gzipped_buf->buffer_ptr(0)->size(),
+            tdb_gzip_buf->size());
+        exit(-13);
+      }
+      if (memcmp(
+              out_gzipped_buf->buffer_ptr(0)->data(0),
+              tdb_gzip_buf->data(0),
+              tdb_gzip_buf->size())) {
+        printf("Error, compressed data mismatch!\n");
+        exit(-11);
+      }
+    }
+  }
+
+
+  shared_ptr<tiledb::sm::ByteVecValue> expanded_buffer;
+  auto gzip_uncompress = [](shared_ptr<tiledb::sm::ByteVecValue>& outbuf,
+                            const uint8_t* compbuf) -> int {
+    //uint64_t expanded_size = *reinterpret_cast<uint64_t*>(outbuf->data());
+    //uint64_t compressed_size =
+    //    *reinterpret_cast<uint64_t*>(outbuf->data() + sizeof(uint64_t));
+    uint64_t expanded_size = *reinterpret_cast<const uint64_t*>(compbuf);
+    uint64_t compressed_size =
+        *reinterpret_cast<const uint64_t*>(compbuf + sizeof(uint64_t));
+
+    //uint8_t* comp_data = outbuf->data() + 2 * sizeof(uint64_t);
+    const uint8_t* comp_data = compbuf + 2 * sizeof(uint64_t);
+ 
+    outbuf = make_shared<tiledb::sm::ByteVecValue>(HERE(), expanded_size);
+
+    tiledb::sm::PreallocatedBuffer pa_gunzip_outbuf(
+        outbuf->data(),
+        expanded_size);  // the expected uncompressed size
+
+    tiledb::sm::ConstBuffer gzipped_input_buffer(comp_data, compressed_size);
+
+    if (!tiledb::sm::GZip::decompress(&gzipped_input_buffer, &pa_gunzip_outbuf)
+               .ok()) {
+      printf("Error decompressing data!\n");
+      //exit(-4);
+      return -4;
+    }
+    return 0;
+  };
+
+  #if 1
+  tdb_gzip_buf->set_offset(0);
+  gzip_uncompress(expanded_buffer, static_cast<uint8_t*>(tdb_gzip_buf->data()));
+  if (memcmp(expanded_buffer->data(), inbuf->data(), inbuf->size())) {
+    printf("Error uncompress data != original data!\n");
+    exit(9);
+  }
+
+#else
   auto uncompressed_size = inbuf->size();
   auto uncompressed_buf =
-      // make_shared<uint8_t>(HERE(), uint8_t[uncompressed_size]);
       make_shared<tiledb::sm::ByteVecValue>(HERE(), uncompressed_size);
 
   tiledb::sm::PreallocatedBuffer pa_gunzip_outbuf(
-      //      ungzip_buf->cur_data(), inbuf->size());
       uncompressed_buf->data(),
-      uncompressed_size);  // the uncompressed size
-  // out_buffer_ptr->reset_offset();
+      uncompressed_size);  // the expected uncompressed size 
 
-  //  auto compressed_size = zipped_buf->size();
+  zipped_buf->set_offset(0);
   auto comp_data = zipped_buf->buffer_ptr(0)->cur_data();
-  zipped_buf->set_offset(0);
   tiledb::sm::ConstBuffer gzipped_input_buffer(comp_data, compressed_size);
-#if 0
-  tiledb::sm::ConstBuffer gzipped_input_buffer(nullptr, 0);
-#if 01
-  zipped_buf->set_offset(0);
-  if (!zipped_buf->get_const_buffer(zipped_buf->size(), &gzipped_input_buffer)
-           .ok()) {
-    printf("error decompression check!\n");
-    exit(7);
 
-  }
-#endif
-#endif
-
-#if 01
   if (!tiledb::sm::GZip::decompress(&gzipped_input_buffer, &pa_gunzip_outbuf)
            .ok()) {
     printf("Error decompressing data!\n");
     exit(-4);
   }
-#endif
 
-#if 01
-  if (memcmp(
-          // pa_gunzip_outbuf.cur_data(), inbuf->cur_data(), inbuf->size())) {
-          pa_gunzip_outbuf.data(),
-          inbuf->data(),
-          inbuf->size())) {
+  if (memcmp(pa_gunzip_outbuf.data(), inbuf->data(), inbuf->size())) {
     printf("Error uncompress data != original data!\n");
     exit(9);
   }
+
 #endif
 
   return 0;
