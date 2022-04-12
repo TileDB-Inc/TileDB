@@ -291,7 +291,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    GroupCPPFx, "C++ API: Group, set name", "[capi][group][read]") {
+    GroupCPPFx, "C++ API: Group, set name", "[cppapi][group][read]") {
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -397,7 +397,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    GroupCPPFx, "C++ API: Group, write/read", "[capi][group][read]") {
+    GroupCPPFx, "C++ API: Group, write/read", "[cppapi][group][read]") {
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -500,7 +500,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    GroupCPPFx, "C++ API: Group, write/read, relative", "[capi][group][read]") {
+    GroupCPPFx, "C++ API: Group, write/read, relative", "[cppapi][group][read]") {
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
