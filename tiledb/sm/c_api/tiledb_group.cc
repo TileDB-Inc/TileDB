@@ -558,7 +558,7 @@ int32_t tiledb_deserialize_group_metadata(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::metadata_deserialize(
-              group->group_->metadata(),
+              group->group_->unsafe_metadata(),
               (tiledb::sm::SerializationType)serialize_type,
               *(buffer->buffer_)))) {
     return TILEDB_ERR;
