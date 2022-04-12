@@ -781,7 +781,7 @@ Group::member_by_name(const std::string& name) {
   }
 
   auto it = members_by_name_.find(name);
-  if (it == members_to_add_.end()) {
+  if (it == members_by_name_.end()) {
     return {Status_GroupError(name + " does not exist in group"),
             std::nullopt,
             std::nullopt,
