@@ -124,7 +124,7 @@ ArraySchema::ArraySchema(
   // Populate timestamp range
   st = utils::parse::get_timestamp_range(uri_, &timestamp_range_);
   if (!st.ok())
-    throw std::logic_error(st.message());
+    throw StatusException(st);
 
   // Set schema name
   name_ = uri_.last_path_part();
@@ -142,9 +142,21 @@ ArraySchema::ArraySchema(
     attribute_map_[attr->name()] = attr;
   }
 
-  st = init();
+  st = check_double_delta_compressor(coords_filters_);
   if (!st.ok())
-    throw std::logic_error(st.message());
+    throw StatusException(
+        Status_ArraySchemaError("Array schema check failed; Double delta "
+                                "compression used in zipped coords."));
+
+  st = check_rle_compressor(coords_filters_);
+  if (!st.ok())
+    throw StatusException(Status_ArraySchemaError(
+        "Array schema check failed; RLE compression used."));
+
+  if (!check_attribute_dimension_names())
+    throw StatusException(
+        Status_ArraySchemaError("Array schema check failed; Attributes "
+                                "and dimensions must have unique names"));
 }
 
 ArraySchema::ArraySchema(const ArraySchema& array_schema) {
@@ -608,9 +620,9 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
   if (!st.ok())
     throw std::runtime_error(
         "[ArraySchema::deserialize] Failed to load version.");
-  if (!(version <= 12))
-    throw std::runtime_error(
-        "[ArraySchema::deserialize] Incompatible format version.");
+  if (!(version <= constants::format_version))
+    throw StatusException(Status_ArraySchemaError(
+        "[ArraySchema::deserialize] Incompatible format version."));
 
   // Load allows_dups
   // Note: No security validation is possible.
@@ -629,7 +641,8 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
     throw std::runtime_error(
         "[ArraySchema::deserialize] Failed to load array type.");
   if (!array_type_is_valid(array_type_loaded).ok())
-    throw std::runtime_error("[ArraySchema::deserialize] Invalid array type.");
+    throw StatusException(Status_ArraySchemaError(
+        "[ArraySchema::deserialize] Invalid array type."));
   ArrayType array_type = ArrayType(array_type_loaded);
 
   // Load tile order
@@ -639,7 +652,8 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
     throw std::runtime_error(
         "[ArraySchema::deserialize] Failed to load tile order.");
   if (!tile_order_is_valid(tile_order_loaded).ok())
-    throw std::runtime_error("[ArraySchema::deserialize] Invalid tile order.");
+    throw StatusException(Status_ArraySchemaError(
+        "[ArraySchema::deserialize] Invalid tile order."));
   Layout tile_order = Layout(tile_order_loaded);
 
   // Load cell order
@@ -649,7 +663,8 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
     throw std::runtime_error(
         "[ArraySchema::deserialize] Failed to load cell order.");
   if (!cell_order_is_valid(cell_order_loaded).ok())
-    throw std::runtime_error("[ArraySchema::deserialize] Invalid cell order.");
+    throw StatusException(Status_ArraySchemaError(
+        "[ArraySchema::deserialize] Invalid cell order."));
   Layout cell_order = Layout(cell_order_loaded);
 
   // Load capacity
@@ -722,6 +737,27 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
     }
 
     attributes.emplace_back(make_shared<Attribute>(HERE(), move(attr.value())));
+  }
+
+  // Validate
+  if (cell_order == Layout::HILBERT &&
+      domain.value()->dim_num() > Hilbert::HC_MAX_DIM) {
+    throw StatusException(Status_ArraySchemaError(
+        "Array schema check failed; Maximum dimensions supported by Hilbert "
+        "order exceeded"));
+  }
+
+  if (array_type == ArrayType::DENSE) {
+    auto type = domain.value()->dimension(0)->type();
+    if (datatype_is_real(type)) {
+      throw StatusException(
+          Status_ArraySchemaError("Array schema check failed; Dense arrays "
+                                  "cannot have floating point domains"));
+    }
+    if (attributes.size() == 0) {
+      throw StatusException(Status_ArraySchemaError(
+          "Array schema check failed; No attributes provided"));
+    }
   }
 
   // Success
@@ -891,15 +927,6 @@ const URI& ArraySchema::uri() const {
 
 const std::string& ArraySchema::name() const {
   return name_;
-}
-
-Status ArraySchema::get_name(std::string* name) const {
-  if (name_.empty()) {
-    return LOG_STATUS(
-        Status_ArraySchemaError("Error in ArraySchema; Empty name"));
-  }
-  *name = name_;
-  return Status::Ok();
 }
 
 /* ****************************** */

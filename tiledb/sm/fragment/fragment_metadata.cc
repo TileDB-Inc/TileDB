@@ -95,7 +95,7 @@ FragmentMetadata::FragmentMetadata(
     , timestamp_range_(timestamp_range)
     , array_uri_(array_schema_->array_uri()) {
   build_idx_map();
-  array_schema_->get_name(&array_schema_name_);
+  array_schema_name_ = array_schema_->name();
 }
 
 FragmentMetadata::~FragmentMetadata() = default;
