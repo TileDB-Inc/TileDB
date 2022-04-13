@@ -40,10 +40,15 @@
 #include "tiledb/sm/filter/filter_storage.h"
 #include "tiledb/sm/misc/types.h"
 
+#include "gzip_wrappers.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <memory>
+#include <sstream>
+#include <iomanip>
+#include <iostream>
 
 #ifdef _WIN32
 #include <fcntl.h>
@@ -107,8 +112,155 @@ int main(int argc, char* argv[]) {
     exit(-4);
   }
   auto tdb_gzip_buf = make_shared<tiledb::sm::Buffer>(HERE());
-  const char* prefix = "R\"tiledb_gzipped_mgc(";
-  const char* postfix = ")tiledb_gzipped_mgc";
+#if 01
+  unsigned maxnperline = 128;
+  auto addbytevals = [&](void *_pbytes, uint64_t nbytes) {
+    uint8_t* pbytes = reinterpret_cast<uint8_t*>(_pbytes);
+    static unsigned cntout = 0;
+    for (auto i=0u; i < nbytes; ++i) {
+      //std::cout << "0x" << std::setw(2) << std::hex << std::setfill('0')
+      //          << (unsigned)pbytes[i] << ",";
+      fprintf(outfile,"'\\x%02x',", pbytes[i]);
+      if (++cntout > maxnperline)
+        cntout = 0,
+        //std::cout << std::endl;
+        fprintf(outfile, "\n");
+    }
+  };
+  addbytevals(&cntread, sizeof(cntread));
+  //std::cerr << hexstreamvalues.str() << std::endl;
+  uint64_t compressed_size = zipped_buf->size();
+  addbytevals(&compressed_size, sizeof(compressed_size));
+  //writehexstreamvaluesstring(hexstreamvalues);
+  //hexstreamvalues.clear();
+  auto nremaining = zipped_buf->size();
+  // vs19 complained...
+  // A) could not find raw string literal terminator
+  // B) that (all data as) one string was to large a string
+  while (nremaining) {
+    auto ntowrite = nremaining > seg_sz ? seg_sz : nremaining;
+    // TBD: error from ->read()?
+    zipped_buf->read(fbuf, ntowrite);
+    // temp code tryingt to elim pseudo EOF chars to see if this is cause of
+    // VS19's complaint trying to include file containing them
+    // (can also see
+    // https://developercommunity.visualstudio.com/t/bug-in-raw-string-implementation-converning-eof-02/254730)
+    // (I was running 16.11.3 when I encountered...)
+    // for(auto i = 0 ; i < ntowrite; ++i)
+    //  if(fbuf[i] == 0x1a) fbuf[i] = 0;
+    tdb_gzip_buf->write(fbuf, ntowrite);
+    addbytevals(fbuf, ntowrite);
+    //writehexstreamvaluesstring(hexstreamvalues);
+    //hexstreamvalues.clear();
+    nremaining -= ntowrite;
+  }
+#elif 0
+  std::string hexstringtowrite;
+  std::stringstream hexstreamvalues;
+  auto writehexstringvaluesstring = [&outfile](std::string& s) {
+    if (fwrite("\"", 1, 1, outfile) != 1) {
+      printf("error writing compressed data");
+      exit(4);
+    }
+    if (fwrite(s.c_str(), 1, s.length(), outfile) !=
+        s.length()) {
+      printf("error writing compressed data");
+      exit(4);
+    }
+    if (fwrite("\"", 1, 1, outfile) != 1) {
+      printf("error writing compressed data");
+      exit(4);
+    }
+    if (fwrite("\n", 1, 1, outfile) != 1) {
+      printf("error writing compressed data");
+      exit(4);
+    }
+  };
+  auto writehexstringchunks = [&](std::string s) {
+    int chunksize = 128;
+    while (s.length() > chunksize) {
+      std::string subs = s.substr(0, chunksize);
+      writehexstringvaluesstring(subs);
+      s.erase(0, chunksize);
+    }
+    writehexstringvaluesstring(s);
+  };
+  auto writehexstreamvaluesstring = [&](std::stringstream& ss) {
+    writehexstringchunks(ss.str());
+    ss.clear();
+  };
+  auto addhexchars =
+      [&](std::stringstream& hexstreamvalues, void* _pbytes, unsigned nbytes) {
+        auto pbytes = reinterpret_cast<uint8_t*>(_pbytes);
+        for (auto i = 0u; i < nbytes; ++i)
+          // hexstreamvalues << '\\x' << std::setw(2) << std::hex <<
+          // std::setfill('0') << pbytes[i];
+          #if 0
+          hexstreamvalues << "0x" << std::setfill('0') << std::hex
+                          << std::setw(2) << (unsigned)pbytes[i] << ",";
+          #else
+          hexstreamvalues << "\\x" << std::setfill('0') << std::hex
+                          << std::setw(2) << (unsigned)pbytes[i];
+        #endif
+        //if(hexstreamvalues.str().length() >= 128) {
+        //  writehexstringchunks(hexstreamvalues.str());
+        //  hexstreamvalues.clear();
+        //}
+      };
+  addhexchars(hexstreamvalues, &cntread, sizeof(cntread));
+  std::cerr << hexstreamvalues.str() << std::endl;
+  uint64_t compressed_size = zipped_buf->size();
+  addhexchars(hexstreamvalues, &compressed_size, sizeof(compressed_size));
+  writehexstreamvaluesstring(hexstreamvalues);
+  hexstreamvalues.clear();
+  auto nremaining = zipped_buf->size();
+  // vs19 complained...
+  // A) could not find raw string literal terminator
+  // B) that (all data as) one string was to large a string
+  while (nremaining) {
+    auto ntowrite = nremaining > seg_sz ? seg_sz : nremaining;
+    // TBD: error from ->read()?
+    zipped_buf->read(fbuf, ntowrite);
+    // temp code tryingt to elim pseudo EOF chars to see if this is cause of
+    // VS19's complaint trying to include file containing them
+    // (can also see https://developercommunity.visualstudio.com/t/bug-in-raw-string-implementation-converning-eof-02/254730)
+    // (I was running 16.11.3 when I encountered...)
+    //for(auto i = 0 ; i < ntowrite; ++i)
+    //  if(fbuf[i] == 0x1a) fbuf[i] = 0;
+    tdb_gzip_buf->write(fbuf, ntowrite);
+    addhexchars(hexstreamvalues, fbuf, ntowrite);
+    writehexstreamvaluesstring(hexstreamvalues);
+    hexstreamvalues.clear();
+    nremaining -= ntowrite;
+  }
+  #if 1
+  #else
+  if (fwrite("\"", 1, 1, outfile) != 1){
+      printf("error writing compressed data");
+      exit(4);
+  }
+  if (fwrite(hexstreamvalues.str().c_str(), 1, hexstreamvalues.str().length(), outfile)
+     != hexstreamvalues.str().length()) {
+      printf("error writing compressed data");
+      exit(4);
+  }
+  if (fwrite("\"", 1, 1, outfile) != 1){
+      printf("error writing compressed data");
+      exit(4);
+  }
+  #endif
+#else
+  // note: vs19 possibility "error C3512: the delimiting character sequence for
+  // a raw string literal shall have no more than 16 characters"
+  // const char* prefix = "R\"tiledb_gzip_mgc(";
+  const char* prefix = "R\"gzip_mgc(";
+  // vs19 complaining "Error	C3516	unexpected end-of-file found while
+  // processing the raw string literal; delimiter sequence 'gzip_mgc)' was not
+  // matched const char* postfix = ")tiledb_gzip_mgc\"";
+  // const char* postfix = "tiledb_gzip_mgc)\"";
+  // const char* postfix = ")gzip_mgc\"";
+  // const char* postfix = ")gzip_mgc)\"\n // end of binary data (above)";
+  const char* postfix = ")gzip_mgc\"\n // end of binary data (above)\n";
   if (fwrite(prefix, 1, strlen(prefix), outfile) != strlen(prefix)) {
     printf("error writing prefix\n");
     exit(1);
@@ -133,24 +285,36 @@ int main(int argc, char* argv[]) {
     auto ntowrite = nremaining > seg_sz ? seg_sz : nremaining;
     // TBD: error from ->read()?
     zipped_buf->read(fbuf, ntowrite);
+    // temp code tryingt to elim pseudo EOF chars to see if this is cause of
+    // VS19's complaint trying to include file containing them
+    // (can also see https://developercommunity.visualstudio.com/t/bug-in-raw-string-implementation-converning-eof-02/254730)
+    // (I was running 16.11.3 when I encountered...)
+    for(auto i = 0 ; i < ntowrite; ++i)
+      if(fbuf[i] == 0x1a) fbuf[i] = 0;
     tdb_gzip_buf->write(fbuf, ntowrite);
-    if (fwrite(&ntowrite, 1, ntowrite, outfile) != ntowrite) {
+#if 01
+    
+#else
+    //if (fwrite(&ntowrite, 1, ntowrite, outfile) != ntowrite) {
+    if (fwrite(&fbuf[0], 1, ntowrite, outfile) != ntowrite) {
       printf("error writing compressed data");
       exit(4);
     }
+#endif
     nremaining -= ntowrite;
   }
   if (fwrite(postfix, 1, strlen(postfix), outfile) != strlen(postfix)) {
     printf("error writing postfix\n");
     exit(5);
   }
-
+#endif
   {
     // filter_stg will be static file scope in gzip_wrappers.cc
     auto filter_stg = make_shared<tiledb::sm::FilterStorage>(HERE());
     // auto zipped_buf = make_shared<tiledb::sm::FilterBuffer>(HERE(),
     // &*filter_stg);
 
+    #if 0
     auto gzip_compress = [&filter_stg](shared_ptr<tiledb::sm::FilterBuffer>&
                                 out_gzipped_buf,
                             const shared_ptr<tiledb::sm::Buffer>& inbuf) {
@@ -196,6 +360,8 @@ int main(int argc, char* argv[]) {
          out_buffer_ptr->size());
 
     };
+    #endif
+    #if 0
     auto gzip_compress2 = [](
                              shared_ptr<tiledb::sm::Buffer>&
                                  out_gzipped_buf,
@@ -301,13 +467,16 @@ int main(int argc, char* argv[]) {
       //    out_gzipped_buf->offset(),
       //    out_gzipped_buf->size());
     };
+    #endif
 
     if (1)
     {
       //__debugbreak();
       shared_ptr<tiledb::sm::Buffer> out_gzipped_buf =
           make_shared<tiledb::sm::Buffer>(HERE());
-      gzip_compress2(out_gzipped_buf, inbuf);
+      //gzip_compress2(out_gzipped_buf, inbuf);
+      //gzip_compress(out_gzipped_buf, inbuf);
+      gzip_compress(out_gzipped_buf, inbuf->data(0), inbuf->size());
       if (out_gzipped_buf->size() != tdb_gzip_buf->size()) {
         printf(
             "Error, compressed data sizes mismatch! %llu, %llu\n",
@@ -324,19 +493,24 @@ int main(int argc, char* argv[]) {
         exit(-11);
       }
     }
-    if (01)
+    if (0)
     {
-      shared_ptr<tiledb::sm::FilterBuffer> out_gzipped_buf;
-      gzip_compress(out_gzipped_buf, inbuf);
-      if (out_gzipped_buf->buffer_ptr(0)->size() != tdb_gzip_buf->size()) {
+      //shared_ptr<tiledb::sm::FilterBuffer> out_gzipped_buf;
+      shared_ptr<tiledb::sm::Buffer> out_gzipped_buf;
+      //gzip_compress(out_gzipped_buf, inbuf);
+      gzip_compress(out_gzipped_buf, inbuf->data(0), inbuf->size());
+      // if (out_gzipped_buf->buffer_ptr(0)->size() != tdb_gzip_buf->size()) {
+      if (out_gzipped_buf->size() != tdb_gzip_buf->size()) {
         printf(
             "Error, compressed data sizes mismatch! %llu, %llu\n",
-            out_gzipped_buf->buffer_ptr(0)->size(),
+            //out_gzipped_buf->buffer_ptr(0)->size(),
+            out_gzipped_buf->size(),
             tdb_gzip_buf->size());
         exit(-13);
       }
       if (memcmp(
-              out_gzipped_buf->buffer_ptr(0)->data(0),
+              //out_gzipped_buf->buffer_ptr(0)->data(0),
+              out_gzipped_buf->data(),
               tdb_gzip_buf->data(0),
               tdb_gzip_buf->size())) {
         printf("Error, compressed data mismatch!\n");
@@ -345,8 +519,9 @@ int main(int argc, char* argv[]) {
     }
   }
 
-
-  shared_ptr<tiledb::sm::ByteVecValue> expanded_buffer;
+  shared_ptr<tiledb::sm::ByteVecValue> expanded_buffer =
+      make_shared<tiledb::sm::ByteVecValue>(HERE());
+#if 0
   auto gzip_uncompress = [](shared_ptr<tiledb::sm::ByteVecValue>& outbuf,
                             const uint8_t* compbuf) -> int {
     //uint64_t expanded_size = *reinterpret_cast<uint64_t*>(outbuf->data());
@@ -375,10 +550,12 @@ int main(int argc, char* argv[]) {
     }
     return 0;
   };
+  #endif
 
-  #if 1
+#if 1
   tdb_gzip_buf->set_offset(0);
-  gzip_uncompress(expanded_buffer, static_cast<uint8_t*>(tdb_gzip_buf->data()));
+  //gzip_uncompress(expanded_buffer, static_cast<uint8_t*>(tdb_gzip_buf->data()));
+  gzip_decompress(expanded_buffer, static_cast<uint8_t*>(tdb_gzip_buf->data()));
   if (memcmp(expanded_buffer->data(), inbuf->data(), inbuf->size())) {
     printf("Error uncompress data != original data!\n");
     exit(9);

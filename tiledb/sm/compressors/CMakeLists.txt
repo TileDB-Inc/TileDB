@@ -29,7 +29,7 @@ include(common NO_POLICY_SCOPE)
 #
 # `compressors` object library
 #
-add_library(compressors OBJECT bzip_compressor.cc dd_compressor.cc gzip_compressor.cc lz4_compressor.cc rle_compressor.cc zstd_compressor.cc)
+add_library(compressors OBJECT bzip_compressor.cc dd_compressor.cc gzip_compressor.cc lz4_compressor.cc rle_compressor.cc zstd_compressor.cc util/gzip_wrappers.cc)
 target_link_libraries(compressors PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(compressors PUBLIC buffer $<TARGET_OBJECTS:buffer>)
 find_package(Bzip2_EP REQUIRED)
