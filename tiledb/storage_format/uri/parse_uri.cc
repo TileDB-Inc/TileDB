@@ -31,6 +31,7 @@
  */
 
 #include "parse_uri.h"
+#include <algorithm>
 #include <cinttypes>  // For sscanf PRId64
 #include <sstream>
 

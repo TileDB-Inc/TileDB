@@ -34,6 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
