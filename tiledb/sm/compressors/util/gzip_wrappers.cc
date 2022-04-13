@@ -24,9 +24,16 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ * 
+ * @section DESCRIPTION
+ *
+ * This file defines gzip_compress and gzip_uncompress, routines
+ * that slightly simplify use of the gzip compression routines.
  */
 
 #include "gzip_wrappers.h"
+
+#include <inttypes.h>
 
 Status gzip_compress(shared_ptr<tiledb::sm::Buffer>& out_gzipped_buf,
     const void* in_bytes, uint64_t nbytes) {
@@ -51,7 +58,7 @@ Status gzip_compress(shared_ptr<tiledb::sm::Buffer>& out_gzipped_buf,
   out_buffer_ptr->reset_offset();
   out_buffer_ptr->advance_size(overhead_size);
   out_buffer_ptr->advance_offset(overhead_size);
-  printf("overhead_size %llu\n", overhead_size);
+  printf("overhead_size %" PRIu64 "\n", overhead_size);
   if (!tiledb::sm::GZip::compress(9, &const_in_buf, out_buffer_ptr).ok()) {
     // TODO: Handle possibility that 'error' is just 'not enuf buffer', i.e.
     // unable to compress into <= space of in_buf

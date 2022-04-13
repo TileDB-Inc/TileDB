@@ -330,28 +330,37 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 add_dependencies(TILEDB_CORE_OBJECTS tiledb_gzip)
 add_dependencies(TILEDB_CORE_OBJECTS compressors)
 
-set(MGC_GZIPPED_BIN_PATH "${TILEDB_EP_BASE}/install/bin/mgc_gzipped.bin")
+set(MGC_GZIPPED_BIN_PATH "${TILEDB_EP_BASE}/install/bin/magic_mgc_gzipped.bin")
 message(STATUS "MGC_GZIPPED_BIN_PATH is ${MGC_GZIPPED_BIN_PATH}")
+
 #TBD: seems tiledb_gzip doesn't exist yet when this tried...
 #find_program(TILEDB_GZIP_EXECUTABLE tiledb_gzip)
+
 #TBD - windows specific, need to figure this out...
-#set(TILEDB_GZIP_EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/tiledb/sm/compressors/RelWithDebInfo/tiledb_gzip.exe")
-set(TILEDB_GZIP_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/RelWithDebInfo/tiledb_gzip.exe")
+if(WIN32)
+  # TBD: fix build mode dependency
+  set(TILEDB_GZIP_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/RelWithDebInfo/tiledb_gzip.exe")
+else()
+  set(TILEDB_GZIP_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/tiledb_gzip")
+endif()
 message(STATUS "TILEDB_GZIP_EXECUTABLE is ${TILEDB_GZIP_EXECUTABLE}")
+
 #TBD: don't think magic.mgc exists yet either, tho setting this literally may work, not sure though...
 #find_file(MAGIC_MGC_DICT magic.mgc
 #  PATHS ${CMAKE_CURRENT_BINARY_DIR}
 #)
 set(MAGIC_MGC_DICT "${TILEDB_EP_BASE}/install/bin/magic.mgc")
 message(STATUS "MAGIC_MGC_DICT is ${MAGIC_MGC_DICT}")
+
 # TBD: When does this run?  needs to be before we build tiledb_core_objects and related
 add_custom_command( 
   OUTPUT "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/../externals/install/bin/mgc_gzipped.bin
   DEPENDS "${MAGIC_MGC_DICT}"
   # COMMAND "echo TILEDB_GZIP_EXECUTABLE is ${TILEDB_GZIP_EXECUTABLE}"
 #  COMMAND "${TILEDB_GZIP_EXECUTABLE}" < "${MAGIC_MGC_DICT}" "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/../externals/install/bin/mgc_gzipped.bin
-D:/dev/tiledb/gh.sc13281-fileapi-20220227-B.git/bld.vs19.B/externals/../tiledb/tiledb/sm/compressors/RelWithDebInfo/tiledb_gzip.exe
-  COMMAND "D:/dev/tiledb/gh.sc13281-fileapi-20220227-B.git/bld.vs19.B/tiledb/tiledb/sm/compressors/RelWithDebInfo/tiledb_gzip.exe" < "${MAGIC_MGC_DICT}" "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/../externals/install/bin/mgc_gzipped.bin
+#D:/dev/tiledb/gh.sc13281-fileapi-20220227-B.git/bld.vs19.B/externals/../tiledb/tiledb/sm/compressors/RelWithDebInfo/tiledb_gzip.exe
+#  COMMAND "D:/dev/tiledb/gh.sc13281-fileapi-20220227-B.git/bld.vs19.B/tiledb/tiledb/sm/compressors/RelWithDebInfo/tiledb_gzip.exe" < "${MAGIC_MGC_DICT}" "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/../externals/install/bin/mgc_gzipped.bin
+  COMMAND "${TILEDB_GZIP_EXECUTABLE}" < "${MAGIC_MGC_DICT}" "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/../externals/install/bin/mgc_gzipped.bin
 )
 add_custom_target(gen_mgc_gzip ALL
   DEPENDS ${MGC_GZIPPED_BIN_PATH} # ${TILEDB_EP_BASE}/../externals/install/bin/mgc_gzipped.bin

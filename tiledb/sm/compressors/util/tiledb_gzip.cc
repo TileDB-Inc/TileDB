@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -133,8 +133,10 @@ int main(int argc, char* argv[]) {
     }
   };
   addbytevals(&cntread, sizeof(cntread));
+  tdb_gzip_buf->write(&cntread, sizeof(cntread));
   uint64_t compressed_size = zipped_buf->size();
   addbytevals(&compressed_size, sizeof(compressed_size));
+  tdb_gzip_buf->write(&compressed_size, sizeof(compressed_size));
   auto nremaining = zipped_buf->size();
   // vs19 complained...
   // A) could not find raw string literal terminator
@@ -166,7 +168,8 @@ int main(int argc, char* argv[]) {
       gzip_compress(out_gzipped_buf, inbuf->data(0), inbuf->size());
       if (out_gzipped_buf->size() != tdb_gzip_buf->size()) {
         printf(
-            "Error, compressed data sizes mismatch! %llu, %llu\n",
+            "Error, compressed data sizes mismatch! %" PRIu64 ", %" PRIu64
+            "u\n",
             out_gzipped_buf->size(),
             tdb_gzip_buf->size());
         exit(-13);
@@ -189,8 +192,8 @@ int main(int argc, char* argv[]) {
       // if (out_gzipped_buf->buffer_ptr(0)->size() != tdb_gzip_buf->size()) {
       if (out_gzipped_buf->size() != tdb_gzip_buf->size()) {
         printf(
-            "Error, compressed data sizes mismatch! %llu, %llu\n",
-            //out_gzipped_buf->buffer_ptr(0)->size(),
+            "Error, compressed data sizes mismatch! %" PRIu64 ", %" PRIu64
+            "u\n",
             out_gzipped_buf->size(),
             tdb_gzip_buf->size());
         exit(-13);
