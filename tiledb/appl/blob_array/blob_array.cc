@@ -41,6 +41,7 @@
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
+#include "tiledb/sm/misc/mgc_dict.h"
 #include "tiledb/sm/misc/time.h"
 #include "tiledb/sm/query/query.h"
 
@@ -422,7 +423,7 @@ Status BlobArray::libmagic_get_mime_type(
   // returning 0 indicating no error
   //...apparent cause being that it could not find one of its .mgc databases to
   // load try set MAGIC=<path-of-build-tree-dir>/externals/install/bin/magic.mgc
-  if (auto rval = magic_load(magic, nullptr); rval != 0) {
+  if (auto rval = magic_dict::magic_load(magic); rval != 0) {
     auto str_rval = std::to_string(rval);
     auto err = magic_error(magic);
     if (!err) {
@@ -442,7 +443,7 @@ Status BlobArray::libmagic_get_mime_type(
 Status BlobArray::libmagic_get_mime_encoding(
     const char** mime_encoding, void* data, uint64_t size) {
   magic_t magic = magic_open(MAGIC_MIME_ENCODING);
-  if (auto rval = magic_load(magic, nullptr); rval != 0) {
+  if (auto rval = magic_dict::magic_load(magic); rval != 0) {
     auto str_rval = std::to_string(rval);
     auto err = magic_error(magic);
     if (!err) {

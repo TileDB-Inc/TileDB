@@ -33,6 +33,9 @@
 # C++ library, allow the VISIBLITY_PRESET for each c++ target to work
 cmake_policy(SET CMP0063 NEW)
 
+# dlh TBD what will this break?  hope to fix tiledb_gzip and related broken relative paths...
+cmake_policy(SET CMP0076 NEW) # absolute paths
+
 ############################################################
 # Find packages needed for object libraries
 ############################################################
@@ -143,6 +146,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/gzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/lz4_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/rle_compressor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/util/gzip_wrappers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/zstd_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config_iter.cc
@@ -186,6 +190,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/mgc_dict.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/math.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/parse_argument.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/time.cc
@@ -313,6 +318,50 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_CORE_SOURCES}
     ${TILEDB_EXTERNALS_SOURCES}
 )
+
+
+################
+# begin attempt to produce magic.mgc binary file
+
+# dlh TBD what will this break?  hope to fix tiledb_gzip and related broken relative paths...
+# seemed to make no difference, does it have to be earlier?
+#cmake_policy(SET CMP0076 NEW)
+
+add_dependencies(TILEDB_CORE_OBJECTS tiledb_gzip)
+add_dependencies(TILEDB_CORE_OBJECTS compressors)
+
+set(MGC_GZIPPED_BIN_PATH "${TILEDB_EP_BASE}/install/bin/mgc_gzipped.bin")
+message(STATUS "MGC_GZIPPED_BIN_PATH is ${MGC_GZIPPED_BIN_PATH}")
+#TBD: seems tiledb_gzip doesn't exist yet when this tried...
+#find_program(TILEDB_GZIP_EXECUTABLE tiledb_gzip)
+#TBD - windows specific, need to figure this out...
+#set(TILEDB_GZIP_EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/tiledb/sm/compressors/RelWithDebInfo/tiledb_gzip.exe")
+set(TILEDB_GZIP_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/RelWithDebInfo/tiledb_gzip.exe")
+message(STATUS "TILEDB_GZIP_EXECUTABLE is ${TILEDB_GZIP_EXECUTABLE}")
+#TBD: don't think magic.mgc exists yet either, tho setting this literally may work, not sure though...
+#find_file(MAGIC_MGC_DICT magic.mgc
+#  PATHS ${CMAKE_CURRENT_BINARY_DIR}
+#)
+set(MAGIC_MGC_DICT "${TILEDB_EP_BASE}/install/bin/magic.mgc")
+message(STATUS "MAGIC_MGC_DICT is ${MAGIC_MGC_DICT}")
+# TBD: When does this run?  needs to be before we build tiledb_core_objects and related
+add_custom_command( 
+  OUTPUT "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/../externals/install/bin/mgc_gzipped.bin
+  DEPENDS "${MAGIC_MGC_DICT}"
+  # COMMAND "echo TILEDB_GZIP_EXECUTABLE is ${TILEDB_GZIP_EXECUTABLE}"
+#  COMMAND "${TILEDB_GZIP_EXECUTABLE}" < "${MAGIC_MGC_DICT}" "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/../externals/install/bin/mgc_gzipped.bin
+D:/dev/tiledb/gh.sc13281-fileapi-20220227-B.git/bld.vs19.B/externals/../tiledb/tiledb/sm/compressors/RelWithDebInfo/tiledb_gzip.exe
+  COMMAND "D:/dev/tiledb/gh.sc13281-fileapi-20220227-B.git/bld.vs19.B/tiledb/tiledb/sm/compressors/RelWithDebInfo/tiledb_gzip.exe" < "${MAGIC_MGC_DICT}" "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/../externals/install/bin/mgc_gzipped.bin
+)
+add_custom_target(gen_mgc_gzip ALL
+  DEPENDS ${MGC_GZIPPED_BIN_PATH} # ${TILEDB_EP_BASE}/../externals/install/bin/mgc_gzipped.bin
+)
+add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_gzip)
+
+# end attempt to produce magic.mgc binary file
+################
+
+
 
 # Compile all core sources with PIC
 set_property(TARGET TILEDB_CORE_OBJECTS PROPERTY POSITION_INDEPENDENT_CODE ON)
