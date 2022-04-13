@@ -284,8 +284,8 @@ void read_and_check_sparse_array_string_attr(
 }
 
 TEST_CASE(
-    "C++ API: Filter strings with RLE, sparse array",
-    "[cppapi][filter][rle-strings][sparse][ypatia]") {
+    "C++ API: Filter strings with RLE or Dictionary encoding, sparse array",
+    "[cppapi][filter][rle-strings][dict-strings][sparse]") {
   using namespace tiledb;
   Context ctx;
   VFS vfs(ctx);
@@ -294,11 +294,11 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  // auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
+  auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
 
   // Create schema with filter lists
   FilterList a1_filters(ctx);
-  a1_filters.add_filter({ctx, TILEDB_FILTER_RLE});
+  a1_filters.add_filter({ctx, f});
 
   auto a1 = Attribute::create<std::string>(ctx, "a1");
   a1.set_cell_val_num(TILEDB_VAR_NUM);
@@ -414,8 +414,8 @@ void read_and_check_dense_array_string_attr(
 }
 
 TEST_CASE(
-    "C++ API: Filter strings with RLE, dense array",
-    "[cppapi][filter][rle-strings][dense]") {
+    "C++ API: Filter strings with RLE or Dictionary encoding, dense array",
+    "[cppapi][filter][rle-strings][dict-strings][dense]") {
   using namespace tiledb;
   Context ctx;
   VFS vfs(ctx);
@@ -428,9 +428,10 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
+  auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
   // Create schema with filter lists
   FilterList a1_filters(ctx);
-  a1_filters.add_filter({ctx, TILEDB_FILTER_RLE});
+  a1_filters.add_filter({ctx, f});
 
   auto a1 = Attribute::create<std::string>(ctx, "a1");
   a1.set_cell_val_num(TILEDB_VAR_NUM);

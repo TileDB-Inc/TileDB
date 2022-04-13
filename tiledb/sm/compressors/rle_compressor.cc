@@ -197,7 +197,6 @@ tuple<uint64_t, uint64_t, uint64_t, uint64_t> RLE::calculate_compression_params(
           output_strings_size};
 }
 
-// TODO: throw instead of returning status
 Status RLE::compress(
     const span<std::string_view> input,
     uint64_t rle_len_size,

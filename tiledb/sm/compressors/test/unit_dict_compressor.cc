@@ -121,8 +121,8 @@ TEMPLATE_LIST_TEST_CASE(
     FixedTypesUnderTest) {
   typedef TestType T;
   // pick values of at least 2 bytes
-  uint64_t num_strings = 5;  // std::numeric_limits<uint8_t>::max() + 1;
-  uint64_t string_len = 2;   // std::numeric_limits<uint8_t>::max() + 1;
+  uint64_t num_strings = std::numeric_limits<uint8_t>::max() + 1;
+  uint64_t string_len = std::numeric_limits<uint8_t>::max() + 1;
   // a single string repeated
   std::srand(10);
   std::string string_rand = random_string(string_len);

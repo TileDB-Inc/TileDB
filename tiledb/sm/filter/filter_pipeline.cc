@@ -731,21 +731,25 @@ Status FilterPipeline::append_encryption_filter(
 }
 
 bool FilterPipeline::skip_offsets_filtering(
-    Datatype type, const uint32_t version) const {
-  if (version >= 12 && type == Datatype::STRING_ASCII) {
-    if (has_filter(FilterType::FILTER_RLE) ||
-        has_filter(FilterType::FILTER_DICTIONARY)) {
-      return true;
-    }
+    const Datatype type, const uint32_t version) const {
+  if (version >= 12 && type == Datatype::STRING_ASCII &&
+      has_filter(FilterType::FILTER_RLE)) {
+    return true;
+  } else if (
+      version >= 13 && type == Datatype::STRING_ASCII &&
+      has_filter(FilterType::FILTER_DICTIONARY)) {
+    return true;
   }
 
   return false;
 }
 
-bool FilterPipeline::use_tile_chunking(bool is_var, Datatype type) const {
+bool FilterPipeline::use_tile_chunking(
+    const bool is_var, const uint32_t version, const Datatype type) const {
   if (is_var && type == Datatype::STRING_ASCII) {
-    if (has_filter(FilterType::FILTER_RLE) ||
-        has_filter(FilterType::FILTER_DICTIONARY)) {
+    if (version >= 12 && has_filter(FilterType::FILTER_RLE)) {
+      return false;
+    } else if (version >= 13 && has_filter(FilterType::FILTER_DICTIONARY)) {
       return false;
     }
   }

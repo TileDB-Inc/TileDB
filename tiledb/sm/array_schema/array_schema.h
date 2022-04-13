@@ -444,10 +444,10 @@ class ArraySchema {
       const FilterPipeline& coords_filters) const;
 
   /**
-   * Returns error if RLE is used for string dimensions but it is not the only
-   * filter in the filter list.
+   * Returns error if RLE or Dictionary encoding is used for string
+   * dimensions but it is not the only filter in the filter list.
    */
-  Status check_rle_compressor(const FilterPipeline& coords_filters) const;
+  Status check_string_compressor(const FilterPipeline& coords_filters) const;
 
   /** Clears all members. Use with caution! */
   void clear();

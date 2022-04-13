@@ -98,9 +98,9 @@ class RLE {
     if (input.empty() || output.empty())
       return;
 
-    const size_t run_size = sizeof(T);
-    const size_t str_len_size = sizeof(P);
-    const size_t max_run_length = std::numeric_limits<T>::max();
+    const uint64_t run_size = sizeof(T);
+    const uint64_t str_len_size = sizeof(P);
+    const uint64_t max_run_length = std::numeric_limits<T>::max();
 
     T run_length = 1;
     auto out_offset = &output[0];
@@ -158,10 +158,10 @@ class RLE {
 
     T run_length = 0;
     P string_length = 0;
-    size_t out_offset = 0;
+    uint64_t out_offset = 0;
     size_t offset_index = 0;
     // Iterate input to read [run length|string size|string] items
-    size_t in_index = 0;
+    uint64_t in_index = 0;
     while (in_index < input.size()) {
       run_length = utils::endianness::decode_be<T>(&input[in_index]);
       in_index += run_size;
