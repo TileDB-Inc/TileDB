@@ -50,6 +50,7 @@
 * Global writes: fixing OOM on write continuation. [#2993](https://github.com/TileDB-Inc/TileDB/pull/2993)
 * Do not store offsets when RLE is used on string dimensions [#2969](https://github.com/TileDB-Inc/TileDB/pull/2969)
 * Dynamically infer bytesizes for run length and strings for strings RLE compression [#2984](https://github.com/TileDB-Inc/TileDB/pull/2984)
+* Add ability to store (optional) name with group member [#3068](https://github.com/TileDB-Inc/TileDB/pull/3068)
 
 
 ## Bug fixes
@@ -59,6 +60,9 @@
 * Adds missing pthreads link to dynamic memory unit test [#2888](https://github.com/TileDB-Inc/TileDB/pull/2888)
 * Remove `common.h` from `arrow_io_impl.h` [#2915](https://github.com/TileDB-Inc/TileDB/pull/2915)
 * Range::set_start and set_end should throw instead of empty returning [#2913](https://github.com/TileDB-Inc/TileDB/pull/2913)
+* Global writer: fixing write continuation for fixed sized attributes. [#3062](https://github.com/TileDB-Inc/TileDB/pull/3062)
+* `tiledb_serialize_array_metadata` should load metadata if its not loaded before serializing [#3065](https://github.com/TileDB-Inc/TileDB/pull/3065)
+* `tiledb_serialize_group_metadata` should load group metadata if its not loaded. [#3070](https://github.com/TileDB-Inc/TileDB/pull/3070)
 
 ## API additions
 
