@@ -102,7 +102,7 @@ Subarray::Subarray(
     StorageManager* storage_manager)
     : stats_(
           parent_stats ? parent_stats->create_child("Subarray") :
-                         storage_manager ?
+          storage_manager ?
                          storage_manager->stats()->create_child("subSubarray") :
                          nullptr)
     , logger_(logger->clone("Subarray", ++logger_id_))
@@ -173,11 +173,15 @@ Status Subarray::add_range(
   }
 
   // Restrict the range to the dimension domain and add.
-  auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
-  if (!read_range_oob_error)
-    RETURN_NOT_OK(dim->adjust_range_oob(&range));
-  RETURN_NOT_OK(dim->check_range(range));
-  range_subset_[dim_idx].add_range_unrestricted(range);
+  auto dim_name = array_->array_schema_latest().dimension_ptr(dim_idx)->name();
+  auto&& [error_status, oob_warning] =
+      range_subset_[dim_idx].add_range(range, read_range_oob_error);
+  if (!error_status.ok())
+    return logger_->status(Status_SubarrayError(
+        "Cannot add range to dimension '" + dim_name + "'; " +
+        error_status.message()));
+  if (oob_warning.has_value())
+    LOG_WARN(oob_warning.value() + " on dimension '" + dim_name + "'");
 
   // Update is default.
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();

@@ -40,39 +40,39 @@ using namespace tiledb::type;
 namespace tiledb::sm {
 
 template <typename T>
-shared_ptr<detail::RangeSetAndSupersetInternals> create_range_subset_internals(
-    bool coalesce_ranges) {
+shared_ptr<detail::RangeSetAndSupersetImpl> create_range_subset_internals(
+    const Range& superset, bool coalesce_ranges) {
   if (coalesce_ranges) {
-    return make_shared<detail::RangeSetAndSupersetInternalsImpl<T, true>>(
-        HERE());
+    return make_shared<detail::TypedRangeSetAndSupersetImpl<T, true>>(
+        HERE(), superset);
   }
-  return make_shared<detail::RangeSetAndSupersetInternalsImpl<T, false>>(
-      HERE());
-};
+  return make_shared<detail::TypedRangeSetAndSupersetImpl<T, false>>(
+      HERE(), superset);
+}
 
-shared_ptr<detail::RangeSetAndSupersetInternals> range_subset_internals(
-    Datatype datatype, bool coalesce_ranges) {
+shared_ptr<detail::RangeSetAndSupersetImpl> range_subset_internals(
+    Datatype datatype, const Range& superset, bool coalesce_ranges) {
   switch (datatype) {
     case Datatype::INT8:
-      return create_range_subset_internals<int8_t>(coalesce_ranges);
+      return create_range_subset_internals<int8_t>(superset, coalesce_ranges);
     case Datatype::UINT8:
-      return create_range_subset_internals<uint8_t>(coalesce_ranges);
+      return create_range_subset_internals<uint8_t>(superset, coalesce_ranges);
     case Datatype::INT16:
-      return create_range_subset_internals<int16_t>(coalesce_ranges);
+      return create_range_subset_internals<int16_t>(superset, coalesce_ranges);
     case Datatype::UINT16:
-      return create_range_subset_internals<uint16_t>(coalesce_ranges);
+      return create_range_subset_internals<uint16_t>(superset, coalesce_ranges);
     case Datatype::INT32:
-      return create_range_subset_internals<int32_t>(coalesce_ranges);
+      return create_range_subset_internals<int32_t>(superset, coalesce_ranges);
     case Datatype::UINT32:
-      return create_range_subset_internals<uint32_t>(coalesce_ranges);
+      return create_range_subset_internals<uint32_t>(superset, coalesce_ranges);
     case Datatype::INT64:
-      return create_range_subset_internals<int64_t>(coalesce_ranges);
+      return create_range_subset_internals<int64_t>(superset, coalesce_ranges);
     case Datatype::UINT64:
-      return create_range_subset_internals<uint64_t>(coalesce_ranges);
+      return create_range_subset_internals<uint64_t>(superset, coalesce_ranges);
     case Datatype::FLOAT32:
-      return create_range_subset_internals<float>(coalesce_ranges);
+      return create_range_subset_internals<float>(superset, coalesce_ranges);
     case Datatype::FLOAT64:
-      return create_range_subset_internals<double>(coalesce_ranges);
+      return create_range_subset_internals<double>(superset, coalesce_ranges);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -95,9 +95,10 @@ shared_ptr<detail::RangeSetAndSupersetInternals> range_subset_internals(
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
-      return create_range_subset_internals<int64_t>(coalesce_ranges);
+      return create_range_subset_internals<int64_t>(superset, coalesce_ranges);
     case Datatype::STRING_ASCII:
-      return create_range_subset_internals<std::string>(coalesce_ranges);
+      return create_range_subset_internals<std::string>(
+          superset, coalesce_ranges);
     default:
       LOG_ERROR("Unexpected dimension datatype " + datatype_str(datatype));
       return nullptr;
@@ -109,8 +110,7 @@ RangeSetAndSuperset::RangeSetAndSuperset(
     const Range& superset,
     bool implicitly_initialize,
     bool coalesce_ranges)
-    : impl_(range_subset_internals(datatype, coalesce_ranges))
-    , superset_(superset)
+    : impl_(range_subset_internals(datatype, superset, coalesce_ranges))
     , is_implicitly_initialized_(implicitly_initialize) {
   if (implicitly_initialize)
     ranges_.emplace_back(superset);
@@ -118,6 +118,23 @@ RangeSetAndSuperset::RangeSetAndSuperset(
 
 Status RangeSetAndSuperset::sort_ranges(ThreadPool* const compute_tp) {
   return impl_->sort_ranges(compute_tp, ranges_);
+}
+
+tuple<Status, optional<std::string>> RangeSetAndSuperset::add_range(
+    Range& range, const bool read_range_oob_error) {
+  // Check range is valid
+  impl_->check_range_is_valid(range);
+  // Check or crop range (depending on if range out-of-bounds is an error),
+  // then add range to array.
+  if (read_range_oob_error) {
+    RETURN_NOT_OK_TUPLE(impl_->check_range_is_subset(range), nullopt);
+    auto error_status = add_range_unrestricted(range);
+    return {error_status, nullopt};
+  } else {
+    auto warn_message = impl_->crop_range_with_warning(range);
+    auto error_status = add_range_unrestricted(range);
+    return {error_status, warn_message};
+  }
 }
 
 Status RangeSetAndSuperset::add_range_unrestricted(const Range& range) {
