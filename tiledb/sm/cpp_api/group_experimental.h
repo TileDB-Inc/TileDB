@@ -331,17 +331,25 @@ class Group {
    * @param uri of member to add
    * @param relative is the URI relative to the group location
    */
-  void add_member(const std::string& uri, const bool& relative) {
+  void add_member(
+      const std::string& uri,
+      const bool& relative,
+      std::optional<std::string> name = std::nullopt) {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    ctx.handle_error(
-        tiledb_group_add_member(c_ctx, group_.get(), uri.c_str(), relative));
+    const char* name_cstr = nullptr;
+    if (name.has_value()) {
+      name_cstr = name->c_str();
+    }
+    ctx.handle_error(tiledb_group_add_member(
+        c_ctx, group_.get(), uri.c_str(), relative, name_cstr));
   }
 
   /**
    * Remove a member from a group
    *
-   * @param uri of member to remove
+   * @param uri of member to remove. Passing a name is also supported if the
+   * group member was assigned a name.
    */
   void remove_member(const std::string& uri) {
     auto& ctx = ctx_.get();
@@ -364,11 +372,29 @@ class Group {
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
     char* uri;
     tiledb_object_t type;
+    char* name;
     ctx.handle_error(tiledb_group_get_member_by_index(
-        c_ctx, group_.get(), index, &uri, &type));
+        c_ctx, group_.get(), index, &uri, &type, &name));
     std::string uri_str(uri);
     std::free(uri);
-    return tiledb::Object(type, uri_str);
+    std::optional<std::string> name_opt = std::nullopt;
+    if (name != nullptr) {
+      name_opt = name;
+      std::free(name);
+    }
+    return tiledb::Object(type, uri_str, name_opt);
+  }
+
+  tiledb::Object member(std::string name) const {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    char* uri;
+    tiledb_object_t type;
+    ctx.handle_error(tiledb_group_get_member_by_name(
+        c_ctx, group_.get(), name.c_str(), &uri, &type));
+    std::string uri_str(uri);
+    std::free(uri);
+    return tiledb::Object(type, uri_str, name);
   }
 
   std::string dump(const bool recursive) const {

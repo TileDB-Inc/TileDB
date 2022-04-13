@@ -357,15 +357,21 @@ int32_t tiledb_group_add_member(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* uri,
-    const uint8_t relative) {
+    const uint8_t relative,
+    const char* name) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  std::optional<std::string> name_optional = std::nullopt;
+  if (name != nullptr) {
+    name_optional = name;
+  }
+
   if (SAVE_ERROR_CATCH(
           ctx,
           group->group_->mark_member_for_addition(
-              tiledb::sm::URI(uri, !relative), relative)))
+              tiledb::sm::URI(uri, !relative), relative, name_optional)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -415,13 +421,63 @@ int32_t tiledb_group_get_member_by_index(
     tiledb_group_t* group,
     uint64_t index,
     char** uri,
+    tiledb_object_t* type,
+    char** name) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  try {
+    auto&& [st, uri_str, object_type, name_str] =
+        group->group_->member_by_index(index);
+    if (!st.ok()) {
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    *type = static_cast<tiledb_object_t>(object_type.value());
+    *uri = static_cast<char*>(std::malloc(uri_str.value().size() + 1));
+    if (*uri == nullptr)
+      return TILEDB_ERR;
+
+    std::memcpy(*uri, uri_str.value().data(), uri_str.value().size());
+    (*uri)[uri_str.value().size()] = '\0';
+
+    *name = nullptr;
+    if (name_str.has_value()) {
+      *name = static_cast<char*>(std::malloc(name_str.value().size() + 1));
+      if (*name == nullptr)
+        return TILEDB_ERR;
+
+      std::memcpy(*name, name_str.value().data(), name_str.value().size());
+      (*name)[name_str.value().size()] = '\0';
+    }
+
+    return TILEDB_OK;
+  } catch (const std::exception& e) {
+    auto st = Status_Error(
+        std::string("Internal TileDB uncaught exception; ") + e.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_ERR;
+}
+
+int32_t tiledb_group_get_member_by_name(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* name,
+    char** uri,
     tiledb_object_t* type) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
     return TILEDB_ERR;
 
   try {
-    auto&& [st, uri_str, object_type] = group->group_->member_by_index(index);
+    auto&& [st, uri_str, object_type, name_str] =
+        group->group_->member_by_name(name);
     if (!st.ok()) {
       save_error(ctx, st);
       return TILEDB_ERR;

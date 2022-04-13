@@ -640,6 +640,9 @@ struct GroupMember {
 
   relative @2 :Bool;
   # is member URI relative to group
+
+  name @3 :Text;
+  # name of member, optional
 }
 
 struct Group {

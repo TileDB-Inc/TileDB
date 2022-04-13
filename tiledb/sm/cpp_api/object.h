@@ -41,6 +41,7 @@
 
 #include <functional>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <type_traits>
 
@@ -70,13 +71,21 @@ class Object {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  explicit Object(const Type& type, const std::string& uri = "")
+  explicit Object(
+      const Type& type,
+      const std::string& uri = "",
+      const std::optional<std::string>& name = std::nullopt)
       : type_(type)
-      , uri_(uri) {
+      , uri_(uri)
+      , name_(name) {
   }
 
-  explicit Object(tiledb_object_t type, const std::string& uri = "")
-      : uri_(uri) {
+  explicit Object(
+      tiledb_object_t type,
+      const std::string& uri = "",
+      const std::optional<std::string>& name = std::nullopt)
+      : uri_(uri)
+      , name_(name) {
     switch (type) {
       case TILEDB_ARRAY:
         type_ = Type::Array;
@@ -90,7 +99,7 @@ class Object {
     }
   }
 
-  Object();
+  Object() = default;
   Object(const Object&) = default;
   Object(Object&&) = default;
   Object& operator=(const Object&) = default;
@@ -117,7 +126,10 @@ class Object {
         ret += "INVALID";
         break;
     }
-    ret += " \"" + uri_ + "\">";
+    ret += " \"" + uri_ + "\"";
+    if (name_.has_value()) {
+      ret += " - \"" + name_.value() + "\">";
+    }
     return ret;
   }
 
@@ -129,6 +141,22 @@ class Object {
   /** Returns the object URI. */
   std::string uri() const {
     return uri_;
+  }
+
+  /** Returns the object optional Name. */
+  std::optional<std::string> name() const {
+    return name_;
+  }
+
+  /** Compares configs for equality. */
+  bool operator==(const Object& rhs) const {
+    return this->type_ == rhs.type() && this->uri_ == rhs.uri() &&
+           this->name_ == rhs.name();
+  }
+
+  /** Compares configs for inequality. */
+  bool operator!=(const Object& rhs) const {
+    return !(*this == rhs);
   }
 
   /* ********************************* */
@@ -181,8 +209,11 @@ class Object {
   /** The object type. */
   Type type_;
 
-  /** The obkect uri. */
+  /** The object uri. */
   std::string uri_;
+
+  /** Optional object name. */
+  std::optional<std::string> name_;
 };
 
 /* ********************************* */

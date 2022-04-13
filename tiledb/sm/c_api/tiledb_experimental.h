@@ -614,13 +614,16 @@ TILEDB_EXPORT int32_t tiledb_group_has_metadata_key(
  * @param group An group opened in WRITE mode.
  * @param uri URI of member to add
  * @param relative is the URI relative to the group
+ * @param name optional name group member can be given to be looked up by. Set
+ * to NULL if wishing to remain unset.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_add_member(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* uri,
-    const uint8_t relative);
+    const uint8_t relative,
+    const char* name);
 
 /**
  * Remove a member from a group
@@ -634,7 +637,8 @@ TILEDB_EXPORT int32_t tiledb_group_add_member(
  *
  * @param ctx The TileDB context.
  * @param group An group opened in WRITE mode.
- * @param uri URI of member to add
+ * @param uri URI of member to remove. Passing a name is also supported if the
+ * group member was assigned a name.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_remove_member(
@@ -693,12 +697,53 @@ TILEDB_EXPORT int32_t tiledb_group_get_member_count(
  * @param uri URI of member, The caller takes ownership
  *   of the c-string.
  * @param type type of member
+ * @param name name of member, The caller takes ownership
+ *   of the c-string. NULL if name was not set
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_group_get_member_by_index(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     uint64_t index,
+    char** uri,
+    tiledb_object_t* type,
+    char** name);
+
+/**
+ * Get a member of a group by index and details of group
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_group_t* group;
+ * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
+ * tiledb_group_open(ctx, group, TILEDB_WRITE);
+ * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array", "array1");
+ * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2",
+ * "group2");
+ *
+ * tiledb_group_close(ctx, group);
+ * tiledb_group_open(ctx, group, TILEDB_READ);
+ * char *uri;
+ * tiledb_object_t type;
+ * tiledb_group_get_member_by_name(ctx, group, "array1", &uri, &type);
+ *
+ * free(uri);
+ *
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in READ mode.
+ * @param name name of member to fetch
+ * @param uri URI of member, The caller takes ownership
+ *   of the c-string.
+ * @param type type of member
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_get_member_by_name(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* name,
     char** uri,
     tiledb_object_t* type);
 
