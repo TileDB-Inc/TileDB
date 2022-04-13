@@ -301,6 +301,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_array_schema unit_filter_create unit_filter_pipeline unit_metadata)
   add_dependencies(tests unit_compressors)
   add_dependencies(tests unit_range_subset)
+  add_dependencies(tests unit_proxy)
 endif()
 
 # Build tools
