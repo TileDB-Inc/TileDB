@@ -45,6 +45,9 @@ class TestArgs {
       , b_(-2){};
   int a_;
   int b_;
+  bool validate() {
+    return a_ > 0 && b_ > 0;
+  }
 };
 
 /**
@@ -59,7 +62,7 @@ class TestT {
       : a_(a)
       , b_(b) {
     ++instance_count;
-  };
+  }
   TestT(TestArgs& x)
       : TestT(x.a_, x.b_) {
   }

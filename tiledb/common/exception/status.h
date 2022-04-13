@@ -228,6 +228,18 @@ class Status {
   }
 
   /**
+   * User-defined conversion to `bool`.
+   *
+   * This is not declared `explicit` to allow `if (status)` rather than `if
+   * (status.ok())`.
+   *
+   * @return
+   */
+  inline operator bool() const {
+    return ok();
+  }
+
+  /**
    * Return a std::string representation of this status object suitable for
    * printing.  Return "Ok" for success.
    */

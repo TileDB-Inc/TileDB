@@ -203,13 +203,13 @@ namespace {
    */
   constexpr ProxyState transition_table[n_states][n_events] {
                    /*construct*/        /*access_attach*/        /*access_release*/     /*destroy*/              /*shutdown*/
-  /*nascent*/     {ProxyState::present, ProxyState::error,       ProxyState::error,     ProxyState::aborted,     ProxyState::aborted},
-  /*present*/     {ProxyState::error,   ProxyState::access,      ProxyState::error,     ProxyState::destroyed,   ProxyState::present},
-  /*access*/      {ProxyState::error,   ProxyState::access,      ProxyState::present,   ProxyState::last_access, ProxyState::access},
-  /*last_access*/ {ProxyState::error,   ProxyState::last_access, ProxyState::destroyed, ProxyState::last_access, ProxyState::last_access},
-  /*destroyed*/   {ProxyState::error,   ProxyState::error,       ProxyState::error,     ProxyState::destroyed,   ProxyState::destroyed},
-  /*aborted*/     {ProxyState::error,   ProxyState::error,       ProxyState::error,     ProxyState::aborted,     ProxyState::aborted},
-  /*error*/       {ProxyState::error,   ProxyState::error,       ProxyState::error,     ProxyState::error,       ProxyState::error},
+  /*nascent*/     {ProxyState::present,     ProxyState::error,       ProxyState::error,     ProxyState::aborted,     ProxyState::aborted},
+  /*present*/     {ProxyState::present,     ProxyState::access,      ProxyState::error,     ProxyState::destroyed,   ProxyState::present},
+  /*access*/      {ProxyState::access,      ProxyState::access,      ProxyState::present,   ProxyState::last_access, ProxyState::access},
+  /*last_access*/ {ProxyState::last_access, ProxyState::last_access, ProxyState::destroyed, ProxyState::last_access, ProxyState::last_access},
+  /*destroyed*/   {ProxyState::error,       ProxyState::error,       ProxyState::error,     ProxyState::destroyed,   ProxyState::destroyed},
+  /*aborted*/     {ProxyState::error,       ProxyState::error,       ProxyState::error,     ProxyState::aborted,     ProxyState::aborted},
+  /*error*/       {ProxyState::error,       ProxyState::error,       ProxyState::error,     ProxyState::error,       ProxyState::error},
   };
 
   /**
@@ -430,9 +430,14 @@ class ProxyStateMachine {
           break;
         case ProxyAction::construct:
           try {
-            do_construct();
+            if (do_construct()) {
+              // Use the ordinary state transition
+            } else {
+              // Construction did not succeed. Stay in the `nascent` state.
+              new_state = ProxyState::nascent;
+            }
           } catch (...) {
-            state_ = ProxyState::aborted;
+            new_state = ProxyState::aborted;
             throw;
           }
           break;
@@ -460,7 +465,7 @@ class ProxyStateMachine {
           try {
             do_destroy();
           } catch (...) {
-            state_ = ProxyState::error;
+            new_state = ProxyState::error;
             throw;
           }
           break;
@@ -468,7 +473,7 @@ class ProxyStateMachine {
           try {
             do_shutdown();
           } catch (...) {
-            state_ = ProxyState::error;
+            new_state = ProxyState::error;
             throw;
           }
           break;
@@ -523,7 +528,7 @@ class ProxyStateMachine {
     return m_state_;
   }
 
-  virtual void do_construct() = 0;
+  virtual bool do_construct() = 0;
   virtual void do_destroy() = 0;
   virtual void do_shutdown() = 0;
 
@@ -555,6 +560,10 @@ class ProxyStateMachine {
  public:
   /**
    * Order to construct implemented here for exposure through `Proxy`.
+   *
+   * If validation or construction throws, the proxy will enter its error state.
+   * If validation does not succeed, construction will not happen and the proxy
+   * will stay in the `nascent` state.
    */
   void construct() {
     lock_type lock{m_state_, std::defer_lock};
@@ -592,17 +601,17 @@ class ProxyStateMachine {
  *   have a default constructor, since `Proxy` contains a member variable of
  *   this type.
  * * The class has a declaration `arguments_type` that holds arguments for the
- *   constructor during the nascent state of the proxy. The arguments class must
- *   contain a public member variable for each argument of the constructor
- *   called by `construct()`. These variables act like a C-style `struct` and
- *   may not be proscribed by class invariants. In other words, insofar as
- *   `Proxy` is concerned, anything goes with these member variables. A
- *   particular `Proxy` class might do more, of course, but that's outside the
- *   purview of `Proxy`.
- * * The class has a `bool validate()` member function that says whether the
- *   gathered arguments are well-formed. This can be anything from a constant
- *   return to a full pre-construction validation.
- * * The class has construtor `T(arguments_type&)`.
+ *   constructor during the nascent state of the proxy. The `Proxy` class is
+ *   outside _how_ this class is used. Typically its member variables act like a
+ *   C-style `struct` and are not proscribed by class invariants. There's no
+ *   requirement that the arguments class be this simple. An arguments class can
+ *   do more, but that's outside the purview of `Proxy`.
+ * * The class `LC::arguments_type` has a default constructor.
+ * * The class has a `B validate()` member function that says whether the
+ *   gathered arguments are well-formed, where `B` is a bool-convertible return
+ *   value. This can be anything from a constant return to a full
+ *   pre-construction validation.
+ * * The underlying class has construtor `T(LC::arguments_type&)`.
  * * The class has a `constexpr bool has_shutdown` member variable that
  *   indicates whether the class has a `shutdown()` method defined. A class can
  *   shutdown if it can refuse new operations that would change any internal
@@ -615,38 +624,64 @@ class ProxyStateMachine {
  *
  * The basic principle of this class is first to gather constructor arguments
  * and then to construct an object when it's first used. After construction,
- * new constructor arguments are ignored.
+ * new constructor arguments are ignored. A full elaboration of this principle
+ * covers the entire life cycle of an object, but all the complexity starts with
+ * a need to set constructor arguments piecemeal rather than all at once.
  *
  * This class supports external shutdown from an outside controller. Upon a
  * shutdown signal, this proxy moves into a state where no underlying object
  * exists. If an object never existed, it refuses to construct a new one. If an
  * object does exist, it is destroyed.
  *
- * This class has limited thread safety. Shutdown signals may arrive
- * asynchronously, and this class always shuts down safely in that case. The
- * guarantee is that operations that cause state transitions always proceed
- * atomically, but operations that do not cause state transitions are not
- * atomic. Argument gathering always happens in the `nascent` state and never
- * causes a state transition. Construction always changes state. The rule of
- * thumb is that this class has two-thread safety: all of the construction
- * lifecycle operations must be in one thread and shutdown signal from another
- * thread. What is specifically not thread-safe is gathering construction
- * arguments and constructing from multiple threads.
+ * This class is thread-safe. More precisely, this class as instantiated is
+ * as thread-safe as its template arguments allow. All public member functions
+ * may be called _safely_ in any order, even as not all sequences of function
+ * calls are _sensible_.
  *
- * A race between `construct()` and `destroy()` may resolve either to the
- * `aborted` or to the `destroyed` state, depending on which executes first. A
- * race between `shutdown()` and `destroy()` is almost the same, except in the
- * case for underlying classes that support their own shutdown. In that case
- * such an object may be first shut down by the external signal and then
- * immediately destroyed.
+ * Public member functions come in two types: synchronous and asynchronous. A
+ * synchronous member function completes is operation before returning. An
+ * asynchronous member function may queue its operation if another one is in
+ * progress, but it is not required to do so.
  *
- * A race between argument gathering and `shutdown()` is always resolved to the
- * `aborted` state. Any arguments gathered before shutdown are ignored, so it
- * makes no difference whether they're collected beforehand. This situation,
- * though, is the reason that `args()` returns `shared_ptr`, so that the proxy
- * can properly abort and destroy its own reference to the arguments object
- * while at the same time avoiding a segfault in a thread that's still gathering
- * arguments.
+ * The synchronous functions are the life cycle functions.
+ * - args(). Pre-construction. No state transition.
+ * - construct(). Construction. Transition to `present` state.
+ * - access(). Existence. Transitions involving access states.
+ * - destroy(). Destruction. Transition to a non-existent state.
+ * The one asynchronous function is an overlay on top of life cycle.
+ * - shutdown(). Shut down the object if possible; destroy it if not.
+ *
+ * All synchronous operations that cause state transitions are atomic with the
+ * state transition. Argument gathering always happens in the `nascent` state
+ * and never causes a state transition. If the arguments object of this `Proxy`
+ * is accessed from multiple threads, it's the joint responsibility of the
+ * arguments class and the underlying class to prevent a data race.
+ *
+ * While this class _does not_ synchronize the arguments instance with
+ * construction, it _does_ synchronize access the underlying object during its
+ * life span. In other words, the underlying object is central and the arguments
+ * object is ancillary; they are not on equal footing. An alternate version of
+ * this `Proxy` could put them on equal footing; the present design choice is
+ * to avoid overhead.
+ *
+ * Races between functions that cause state transitions always resolve
+ * coherently, but it's worth illustrating with a few cases:
+ *
+ * * A race between `construct()` and `destroy()` may resolve either to the
+ *   `aborted` or to the `destroyed` state, depending on which executes first.
+ * * A race between `shutdown()` and `destroy()` has the same outcome if the
+ *   underlying class down not support its own shutdown; in both cases the
+ *   object is destroyed by the first call and the second has no effect. If
+ *   the class does have its own shutdown, the underlying object is always
+ *   destroyed, but it might receive a shutdown order immediately before
+ *   destruction.
+ * * A race between argument gathering and `shutdown()` is always resolved to
+ *   the `aborted` state. Any arguments gathered before shutdown are ignored, so
+ *   it makes no difference whether they're collected beforehand. This
+ *   situation, though, is a reason that `args()` returns `shared_ptr`, so that
+ *   the proxy can properly abort and destroy its own reference to the arguments
+ *   object while at the same time avoiding a segfault in a thread that's still
+ *   gathering arguments.
  *
  * @tparam T The underlying C.41 type behind the proxy
  * @tparam LC Life cycle class
@@ -674,13 +709,17 @@ class Proxy : public ProxyStateMachine<LC::has_shutdown> {
   /**
    * Construct the underlying object.
    */
-  void do_construct() override {
+  bool do_construct() override {
+    if (!bool{args_->validate()}) {
+      return false;
+    }
     underlying_.emplace(*args_.get());
     /*
      * There may still be other references to the arguments object, but we get
      * rid of ours here.
      */
     args_.reset();
+    return true;
   }
 
   /**

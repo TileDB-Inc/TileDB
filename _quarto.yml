@@ -2,6 +2,9 @@
 project:
   type: website
   output-dir: docs
+  render:
+    - format_spec/**/*
+    - tiledb/**/*
 
 format:
   html:
