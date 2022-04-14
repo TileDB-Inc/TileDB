@@ -217,7 +217,7 @@ void read_and_check_empty_coords_array(
   query.set_data_buffer("attr", attr_val);
   query.set_offsets_buffer("attr", attr_off);
 
-  // Query outside uniwrtten coordinates of the array
+  // Query outside unwritten coordinates of the array
   int64_t d1_start = 1, d1_end = 2;
   int64_t d2_start = 3, d2_end = 4;
   query.add_range("d1", d1_start, d1_end);
