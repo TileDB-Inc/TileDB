@@ -241,32 +241,22 @@ tdb_unique_ptr<ASTNode> ASTNodeExpr::combine(
     const tdb_unique_ptr<ASTNode>& rhs,
     const QueryConditionCombinationOp& combination_op) {
   std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
-  if (!rhs->is_expr()) {
-    if (combination_op == combination_op_) {
-      for (const auto& child : nodes_) {
-        ast_nodes.push_back(child->clone());
-      }
-    } else {
-      ast_nodes.push_back(this->clone());
+  if (combination_op == combination_op_) {
+    for (const auto& child : nodes_) {
+      ast_nodes.push_back(child->clone());
     }
-    ast_nodes.push_back(rhs->clone());
   } else {
-    if (combination_op == combination_op_) {
-      for (const auto& child : nodes_) {
-        ast_nodes.push_back(child->clone());
-      }
-    } else {
-      ast_nodes.push_back(this->clone());
-    }
-
-    if (combination_op == rhs->get_node_combination_op()) {
-      for (const auto& child : rhs->get_node_children()) {
-        ast_nodes.push_back(child->clone());
-      }
-    } else {
-      ast_nodes.push_back(rhs->clone());
-    }
+    ast_nodes.push_back(this->clone());
   }
+
+  if (rhs->is_expr() && combination_op == rhs->get_node_combination_op()) {
+    for (const auto& child : rhs->get_node_children()) {
+      ast_nodes.push_back(child->clone());
+    }
+  } else {
+    ast_nodes.push_back(rhs->clone());
+  }
+
   return tdb_unique_ptr<ASTNode>(
       tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
 }
