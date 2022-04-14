@@ -328,14 +328,18 @@ struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::NE> {
 
 template <typename T, QueryConditionOp Op>
 void QueryCondition::apply_ast_node(
-    const ASTNodeVal& node,
+    const tdb_unique_ptr<ASTNode>& node,
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     std::vector<uint8_t>& result_cell_bitmap) const {
-  const std::string& field_name = node.field_name_;
+  const std::string& field_name = node->get_node_field_name();
+  const void* condition_value_content =
+      node->get_node_condition_value_view().content();
+  const size_t condition_value_size =
+      node->get_node_condition_value_data().size();
   uint64_t starting_index = 0;
   for (const auto& rcs : result_cell_slabs) {
     ResultTile* const result_tile = rcs.tile_;
@@ -347,8 +351,8 @@ void QueryCondition::apply_ast_node(
       const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
           fill_value.data(),
           fill_value.size(),
-          node.condition_value_view_.content(),
-          node.condition_value_data_.size());
+          condition_value_content,
+          condition_value_size);
       if (!cmp) {
         for (size_t c = starting_index; c < starting_index + length; ++c) {
           result_cell_bitmap[c] = 0;
@@ -398,8 +402,8 @@ void QueryCondition::apply_ast_node(
           const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
               cell_value,
               cell_size,
-              node.condition_value_view_.content(),
-              node.condition_value_data_.size());
+              condition_value_content,
+              condition_value_size);
           result_cell_bitmap[starting_index + c] &= (uint8_t)cmp;
           ++c;
         }
@@ -424,8 +428,8 @@ void QueryCondition::apply_ast_node(
           const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
               cell_value,
               cell_size,
-              node.condition_value_view_.content(),
-              node.condition_value_data_.size());
+              condition_value_content,
+              condition_value_size);
           result_cell_bitmap[starting_index + c] &= (uint8_t)cmp;
           ++c;
         }
@@ -437,14 +441,14 @@ void QueryCondition::apply_ast_node(
 
 template <typename T>
 void QueryCondition::apply_ast_node(
-    const ASTNodeVal& node,
+    const tdb_unique_ptr<ASTNode>& node,
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     std::vector<uint8_t>& result_cell_bitmap) const {
-  switch (node.op_) {
+  switch (node->get_node_op()) {
     case QueryConditionOp::LT:
       apply_ast_node<T, QueryConditionOp::LT>(
           node,
@@ -515,16 +519,16 @@ void QueryCondition::apply_ast_node(
 }
 
 void QueryCondition::apply_ast_node(
-    const ASTNodeVal& node,
+    const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
     const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     std::vector<uint8_t>& result_cell_bitmap) const {
-  const auto attribute = array_schema.attribute(node.field_name_);
+  const auto attribute = array_schema.attribute(node->get_node_field_name());
   if (!attribute) {
     throw std::runtime_error(
         "QueryCondition::apply_ast_node: Unknown attribute " +
-        node.field_name_);
+        node->get_node_field_name());
   }
 
   const ByteVecValue fill_value = attribute->fill_value();
@@ -696,7 +700,7 @@ void QueryCondition::apply_ast_node(
           "QueryCondition::apply_ast_node: Cannot perform query comparison; "
           "Unsupported query "
           "conditional type on " +
-          node.field_name_);
+          node->get_node_field_name());
   }
 
   return;
@@ -708,24 +712,24 @@ void QueryCondition::apply_tree(
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     std::vector<uint8_t>& result_cell_bitmap) const {
-  // Case on the tag of the tree node.
-  if (node->get_tag() == ASTNodeTag::VAL) {
+  // Case on the type of the tree node.
+  if (!node->is_expr()) {
     // In the simple value node case, run the value evaluator function and
     // return the result back.
-    auto node_ptr = dynamic_cast<ASTNodeVal*>(node.get());
     apply_ast_node(
-        *node_ptr, array_schema, stride, result_cell_slabs, result_cell_bitmap);
-  } else if (node->get_tag() == ASTNodeTag::EXPR) {
+        node, array_schema, stride, result_cell_slabs, result_cell_bitmap);
+  } else {
     // For each child, declare a new result buffer, combine it all into the
     // other one based on the combination op.
-    auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
-    if (expr_ptr->combination_op_ == QueryConditionCombinationOp::AND) {
+    const QueryConditionCombinationOp& combination_op =
+        node->get_node_combination_op();
+    if (combination_op == QueryConditionCombinationOp::AND) {
       std::fill(result_cell_bitmap.begin(), result_cell_bitmap.end(), 1);
-    } else if (expr_ptr->combination_op_ == QueryConditionCombinationOp::OR) {
+    } else if (combination_op == QueryConditionCombinationOp::OR) {
       std::fill(result_cell_bitmap.begin(), result_cell_bitmap.end(), 0);
     }
 
-    for (const auto& child : expr_ptr->nodes_) {
+    for (const auto& child : node->get_node_children()) {
       std::vector<uint8_t> child_result_cell_bitmap(
           result_cell_bitmap.size(), 1);
       apply_tree(
@@ -735,7 +739,7 @@ void QueryCondition::apply_tree(
           result_cell_slabs,
           child_result_cell_bitmap);
 
-      switch (expr_ptr->combination_op_) {
+      switch (combination_op) {
         case QueryConditionCombinationOp::AND: {
           for (size_t c = 0; c < result_cell_bitmap.size(); ++c) {
             result_cell_bitmap[c] *= child_result_cell_bitmap[c];
@@ -757,9 +761,6 @@ void QueryCondition::apply_tree(
         }
       }
     }
-  } else {
-    throw std::logic_error(
-        "apply_tree: invalid node tag, should not get here.");
   }
 }
 
@@ -808,14 +809,18 @@ Status QueryCondition::apply(
 
 template <typename T, QueryConditionOp Op>
 void QueryCondition::apply_ast_node_dense(
-    const ASTNodeVal& node,
+    const tdb_unique_ptr<ASTNode>& node,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
     const bool var_size,
     span<uint8_t>& result_buffer) const {
-  const std::string& field_name = node.field_name_;
+  const std::string& field_name = node->get_node_field_name();
+  const void* condition_value_content =
+      node->get_node_condition_value_view().content();
+  const size_t condition_value_size =
+      node->get_node_condition_value_data().size();
 
   // Get the nullable buffer.
   const auto tile_tuple = result_tile->tile_tuple(field_name);
@@ -852,8 +857,8 @@ void QueryCondition::apply_ast_node_dense(
         const bool cmp = BinaryCmp<T, Op>::cmp(
             cell_value,
             cell_size,
-            node.condition_value_view_.content(),
-            node.condition_value_data_.size());
+            condition_value_content,
+            condition_value_size);
 
         // Set the value.
         result_buffer[c] &= (uint8_t)cmp;
@@ -875,10 +880,7 @@ void QueryCondition::apply_ast_node_dense(
 
       // Compare the cell value against the value in the value node.
       const bool cmp = BinaryCmp<T, Op>::cmp(
-          cell_value,
-          cell_size,
-          node.condition_value_view_.content(),
-          node.condition_value_data_.size());
+          cell_value, cell_size, condition_value_content, condition_value_size);
 
       // Set the value.
       result_buffer[c] &= (uint8_t)cmp;
@@ -888,14 +890,14 @@ void QueryCondition::apply_ast_node_dense(
 
 template <typename T>
 Status QueryCondition::apply_ast_node_dense(
-    const ASTNodeVal& node,
+    const tdb_unique_ptr<ASTNode>& node,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
     const bool var_size,
     span<uint8_t>& result_buffer) const {
-  switch (node.op_) {
+  switch (node->get_node_op()) {
     case QueryConditionOp::LT:
       apply_ast_node_dense<T, QueryConditionOp::LT>(
           node, result_tile, start, src_cell, stride, var_size, result_buffer);
@@ -930,16 +932,17 @@ Status QueryCondition::apply_ast_node_dense(
 }
 
 Status QueryCondition::apply_ast_node_dense(
-    const ASTNodeVal& node,
+    const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
     span<uint8_t>& result_buffer) const {
-  const auto attribute = array_schema.attribute(node.field_name_);
+  const auto attribute = array_schema.attribute(node->get_node_field_name());
   if (!attribute) {
-    return Status_QueryConditionError("Unknown attribute " + node.field_name_);
+    return Status_QueryConditionError(
+        "Unknown attribute " + node->get_node_field_name());
   }
 
   const bool var_size = attribute->var_size();
@@ -947,15 +950,16 @@ Status QueryCondition::apply_ast_node_dense(
 
   // Process the validity buffer now.
   if (nullable) {
-    const auto tile_tuple = result_tile->tile_tuple(node.field_name_);
+    const auto tile_tuple =
+        result_tile->tile_tuple(node->get_node_field_name());
     const auto& tile_validity = std::get<2>(*tile_tuple);
     const auto buffer_validity =
         static_cast<uint8_t*>(tile_validity.data()) + src_cell;
     ;
 
     // Null values can only be specified for equality operators.
-    if (node.condition_value_view_.content() == nullptr) {
-      if (node.op_ == QueryConditionOp::NE) {
+    if (node->get_node_condition_value_view().content() == nullptr) {
+      if (node->get_node_op() == QueryConditionOp::NE) {
         for (uint64_t c = 0; c < result_buffer.size(); ++c) {
           result_buffer[c] *= buffer_validity[start + c * stride] != 0;
         }
@@ -1046,7 +1050,7 @@ Status QueryCondition::apply_ast_node_dense(
       return Status_QueryConditionError(
           "Cannot perform query comparison; Unsupported query "
           "conditional type on " +
-          node.field_name_);
+          node->get_node_field_name());
   }
 
   return Status::Ok();
@@ -1060,13 +1064,12 @@ void QueryCondition::apply_tree_dense(
     const uint64_t src_cell,
     const uint64_t stride,
     span<uint8_t>& result_buffer) const {
-  // Case on the tag of the tree node.
-  if (node->get_tag() == ASTNodeTag::VAL) {
+  // Case on the type of the tree node.
+  if (!node->is_expr()) {
     // In the simple value node case, run the value evaluator function and
     // return the result back.
-    const ASTNodeVal* node_ptr = dynamic_cast<ASTNodeVal*>(node.get());
     Status s = apply_ast_node_dense(
-        *node_ptr,
+        node,
         array_schema,
         result_tile,
         start,
@@ -1077,16 +1080,17 @@ void QueryCondition::apply_tree_dense(
       throw std::runtime_error(
           "apply_tree_dense: apply_ast_node_dense failed.");
     }
-  } else if (node->get_tag() == ASTNodeTag::EXPR) {
+  } else {
     // For each child, declare a new result buffer, combine it all into the
     // other one based on the combination op.
-    auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
-    if (expr_ptr->combination_op_ == QueryConditionCombinationOp::AND) {
+    const QueryConditionCombinationOp& combination_op =
+        node->get_node_combination_op();
+    if (combination_op == QueryConditionCombinationOp::AND) {
       std::fill(result_buffer.begin(), result_buffer.end(), 1);
-    } else if (expr_ptr->combination_op_ == QueryConditionCombinationOp::OR) {
+    } else if (combination_op == QueryConditionCombinationOp::OR) {
       std::fill(result_buffer.begin(), result_buffer.end(), 0);
     }
-    for (const auto& child : expr_ptr->nodes_) {
+    for (const auto& child : node->get_node_children()) {
       std::vector<uint8_t> child_result_vector(result_buffer.size(), 1);
       span<uint8_t> child_result_buffer(
           child_result_vector.data(), result_buffer.size());
@@ -1099,7 +1103,7 @@ void QueryCondition::apply_tree_dense(
           stride,
           child_result_buffer);
 
-      switch (expr_ptr->combination_op_) {
+      switch (combination_op) {
         // Note that a bitwise AND operator is used to combine
         // the accumulator result buffer and child result buffer in the AND
         // combination op case, and bitwise OR in the OR combination op case.
@@ -1123,9 +1127,6 @@ void QueryCondition::apply_tree_dense(
         }
       }
     }
-  } else {
-    throw std::logic_error(
-        "apply_tree_dense: invalid node tag, should not get here.");
   }
 }
 
@@ -1290,11 +1291,15 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::NE> {
 
 template <typename T, QueryConditionOp Op, typename BitmapType>
 void QueryCondition::apply_ast_node_sparse(
-    const ASTNodeVal& node,
+    const tdb_unique_ptr<ASTNode>& node,
     ResultTile& result_tile,
     const bool var_size,
     std::vector<BitmapType>& result_bitmap) const {
-  const auto tile_tuple = result_tile.tile_tuple(node.field_name_);
+  const auto tile_tuple = result_tile.tile_tuple(node->get_node_field_name());
+  const void* condition_value_content =
+      node->get_node_condition_value_view().content();
+  const size_t condition_value_size =
+      node->get_node_condition_value_data().size();
 
   if (var_size) {
     // Get var data buffer and tile offsets buffer.
@@ -1326,8 +1331,8 @@ void QueryCondition::apply_ast_node_sparse(
         const bool cmp = BinaryCmp<T, Op>::cmp(
             cell_value,
             cell_size,
-            node.condition_value_view_.content(),
-            node.condition_value_data_.size());
+            condition_value_content,
+            condition_value_size);
 
         // Set the value.
         result_bitmap[c] *= cmp;
@@ -1348,10 +1353,7 @@ void QueryCondition::apply_ast_node_sparse(
 
       // Compare the cell value against the value in the value node.
       const bool cmp = BinaryCmp<T, Op>::cmp(
-          cell_value,
-          cell_size,
-          node.condition_value_view_.content(),
-          node.condition_value_data_.size());
+          cell_value, cell_size, condition_value_content, condition_value_size);
 
       // Set the value.
       result_bitmap[c] *= cmp;
@@ -1361,11 +1363,11 @@ void QueryCondition::apply_ast_node_sparse(
 
 template <typename T, typename BitmapType>
 Status QueryCondition::apply_ast_node_sparse(
-    const ASTNodeVal& node,
+    const tdb_unique_ptr<ASTNode>& node,
     ResultTile& result_tile,
     const bool var_size,
     std::vector<BitmapType>& result_bitmap) const {
-  switch (node.op_) {
+  switch (node->get_node_op()) {
     case QueryConditionOp::LT:
       apply_ast_node_sparse<T, QueryConditionOp::LT>(
           node, result_tile, var_size, result_bitmap);
@@ -1401,13 +1403,14 @@ Status QueryCondition::apply_ast_node_sparse(
 
 template <typename BitmapType>
 Status QueryCondition::apply_ast_node_sparse(
-    const ASTNodeVal& node,
+    const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap) const {
-  const auto attribute = array_schema.attribute(node.field_name_);
+  const auto attribute = array_schema.attribute(node->get_node_field_name());
   if (!attribute) {
-    return Status_QueryConditionError("Unknown attribute " + node.field_name_);
+    return Status_QueryConditionError(
+        "Unknown attribute " + node->get_node_field_name());
   }
 
   const bool var_size = attribute->var_size();
@@ -1416,13 +1419,13 @@ Status QueryCondition::apply_ast_node_sparse(
   // Process the validity buffer now.
 
   if (nullable) {
-    const auto tile_tuple = result_tile.tile_tuple(node.field_name_);
+    const auto tile_tuple = result_tile.tile_tuple(node->get_node_field_name());
     const auto& tile_validity = std::get<2>(*tile_tuple);
     const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
 
     // Null values can only be specified for equality operators.
-    if (node.condition_value_view_.content() == nullptr) {
-      if (node.op_ == QueryConditionOp::NE) {
+    if (node->get_node_condition_value_view().content() == nullptr) {
+      if (node->get_node_op() == QueryConditionOp::NE) {
         for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
           result_bitmap[c] *= buffer_validity[c] != 0;
         }
@@ -1507,7 +1510,7 @@ Status QueryCondition::apply_ast_node_sparse(
       return Status_QueryConditionError(
           "Cannot perform query comparison; Unsupported query "
           "conditional type on " +
-          node.field_name_);
+          node->get_node_field_name());
   }
 
   return Status::Ok();
@@ -1519,34 +1522,34 @@ void QueryCondition::apply_tree_sparse(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap) const {
-  // Case on the tag of the tree node.
-  if (node->get_tag() == ASTNodeTag::VAL) {
+  // Case on the type of the tree node.
+  if (!node->is_expr()) {
     // In the simple value node case, run the value evaluator function and
     // return the result back.
-    auto node_ptr = dynamic_cast<ASTNodeVal*>(node.get());
     Status s = apply_ast_node_sparse<BitmapType>(
-        *node_ptr, array_schema, result_tile, result_bitmap);
+        node, array_schema, result_tile, result_bitmap);
     if (!s.ok()) {
       throw std::runtime_error(
           "apply_tree_sparse: apply_ast_node_sparse failed.");
     }
-  } else if (node->get_tag() == ASTNodeTag::EXPR) {
+  } else {
     // For each child, declare a new result buffer, combine it all into the
     // other one based on the combination op.
-    auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
-    if (expr_ptr->combination_op_ == QueryConditionCombinationOp::AND) {
+    const QueryConditionCombinationOp& combination_op =
+        node->get_node_combination_op();
+    if (combination_op == QueryConditionCombinationOp::AND) {
       std::fill(result_bitmap.begin(), result_bitmap.end(), 1);
-    } else if (expr_ptr->combination_op_ == QueryConditionCombinationOp::OR) {
+    } else if (combination_op == QueryConditionCombinationOp::OR) {
       std::fill(result_bitmap.begin(), result_bitmap.end(), 0);
     }
-    for (const auto& child : expr_ptr->nodes_) {
+    for (const auto& child : node->get_node_children()) {
       std::vector<BitmapType> child_result_bitmap(result_bitmap.size(), true);
       apply_tree_sparse(child, array_schema, result_tile, child_result_bitmap);
       // Note that the multiplication operator (which functions
       // effectively as a bitwise AND) is used to combine the accumulator result
       // buffer and child result buffer in the AND combination op case, and
       // bitwise OR in the OR combination op case.
-      switch (expr_ptr->combination_op_) {
+      switch (combination_op) {
         case QueryConditionCombinationOp::AND: {
           for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
             result_bitmap[c] *= child_result_bitmap[c];
@@ -1569,9 +1572,6 @@ void QueryCondition::apply_tree_sparse(
         }
       }
     }
-  } else {
-    throw std::logic_error(
-        "apply_tree_sparse: invalid node tag, should not get here.");
   }
 }
 
@@ -1633,18 +1633,15 @@ static void ast_get_clauses(
     const tdb_unique_ptr<ASTNode>& node) {
   if (!node)
     return;
-  if (node->get_tag() == ASTNodeTag::VAL) {
-    auto val_ptr = dynamic_cast<ASTNodeVal*>(node.get());
-
+  if (!node->is_expr()) {
     QueryCondition::Clause c(
-        val_ptr->field_name_,
-        val_ptr->condition_value_data_.data(),
-        val_ptr->condition_value_data_.size(),
-        val_ptr->op_);
+        node->get_node_field_name(),
+        node->get_node_condition_value_view().content(),
+        node->get_node_condition_value_data().size(),
+        node->get_node_op());
     clauses_vector.emplace_back(c);
-  } else if (node->get_tag() == ASTNodeTag::EXPR) {
-    auto expr_ptr = dynamic_cast<ASTNodeExpr*>(node.get());
-    for (const auto& child : expr_ptr->nodes_) {
+  } else {
+    for (const auto& child : node->get_node_children()) {
       ast_get_clauses(clauses_vector, child);
     }
   }

@@ -708,7 +708,7 @@ std::string bbv_to_hex_str(const sm::ByteVecValue& b);
 /**
  * Returns the string representation of an Query AST node.
  */
-std::string ast_node_to_str(tdb_unique_ptr<sm::ASTNode>& node);
+std::string ast_node_to_str(const tdb_unique_ptr<sm::ASTNode>& node);
 
 }  // End of namespace test
 

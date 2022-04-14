@@ -1226,45 +1226,34 @@ std::string bbv_to_hex_str(const sm::ByteVecValue& b) {
   return ss.str();
 }
 
-static std::string ast_value_node_to_str(sm::ASTNodeVal* n) {
+std::string ast_node_to_str(const tdb_unique_ptr<sm::ASTNode>& node) {
+  if (node == nullptr)
+    return "";
   std::string result_str;
-  result_str = n->field_name_ + " " + query_condition_op_str(n->op_) + " ";
-  if (n->condition_value_view_.content()) {
-    result_str += bbv_to_hex_str(n->condition_value_data_);
+  if (!node->is_expr()) {
+    result_str = node->get_node_field_name() + " " +
+                 query_condition_op_str(node->get_node_op()) + " ";
+    if (node->get_node_condition_value_view().content()) {
+      result_str += bbv_to_hex_str(node->get_node_condition_value_data());
+    } else {
+      result_str += "null";
+    }
+    return result_str;
   } else {
-    result_str += "null";
-  }
-  return result_str;
-}
-
-static std::string ast_expr_node_to_str(sm::ASTNodeExpr* n) {
-  std::string result_str;
-  result_str = "(";
-  for (size_t i = 0; i < n->nodes_.size(); i++) {
-    auto ptr = n->nodes_[i].get();
-    if (ptr != nullptr) {
-      result_str += ast_node_to_str(n->nodes_[i]);
-      if (i != n->nodes_.size() - 1) {
+    result_str = "(";
+    const auto& nodes = node->get_node_children();
+    for (size_t i = 0; i < nodes.size(); i++) {
+      result_str += ast_node_to_str(nodes[i]);
+      if (i != nodes.size() - 1) {
         result_str += " ";
-        result_str += query_condition_combination_op_str(n->combination_op_);
+        result_str +=
+            query_condition_combination_op_str(node->get_node_combination_op());
         result_str += " ";
       }
     }
+    result_str += ")";
+    return result_str;
   }
-  result_str += ")";
-  return result_str;
-}
-
-std::string ast_node_to_str(tdb_unique_ptr<sm::ASTNode>& node) {
-  if (node->get_tag() == sm::ASTNodeTag::VAL) {
-    auto ptr = dynamic_cast<sm::ASTNodeVal*>(node.get());
-    return ast_value_node_to_str(ptr);
-  } else if (node->get_tag() == sm::ASTNodeTag::EXPR) {
-    auto ptr = dynamic_cast<sm::ASTNodeExpr*>(node.get());
-    return ast_expr_node_to_str(ptr);
-  }
-  throw std::logic_error(
-      "ast_node_to_str: argument node does not have tag VAL or EXPR.");
 }
 
 template void check_subarray<int8_t>(

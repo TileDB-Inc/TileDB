@@ -36,9 +36,9 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-/** Returns the tag attached to the node. */
-ASTNodeTag ASTNodeVal::get_tag() const {
-  return tag_;
+/** Returns true is the node is an expression node. */
+bool ASTNodeVal::is_expr() const {
+  return false;
 }
 
 /** Returns a deep copy of the node. */
@@ -144,15 +144,14 @@ tdb_unique_ptr<ASTNode> ASTNodeVal::combine(
     const tdb_unique_ptr<ASTNode>& rhs,
     const QueryConditionCombinationOp& combination_op) {
   std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
-  if (rhs->get_tag() == ASTNodeTag::VAL) {
+  if (!rhs->is_expr()) {
     ast_nodes.push_back(this->clone());
     ast_nodes.push_back(rhs->clone());
-  } else if (rhs->get_tag() == ASTNodeTag::EXPR) {
+  } else {  // rhs is an expression node.
     // lhs is a simple tree, rhs is a compound tree.
-    auto rhs_tree_expr = dynamic_cast<ASTNodeExpr*>(rhs.get());
     ast_nodes.push_back(this->clone());
-    if (rhs_tree_expr->combination_op_ == combination_op) {
-      for (const auto& elem : rhs_tree_expr->nodes_) {
+    if (rhs->get_node_combination_op() == combination_op) {
+      for (const auto& elem : rhs->get_node_children()) {
         ast_nodes.push_back(elem->clone());
       }
     } else {
@@ -163,9 +162,36 @@ tdb_unique_ptr<ASTNode> ASTNodeVal::combine(
       tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
 }
 
-/** Returns the tag attached to the node. */
-ASTNodeTag ASTNodeExpr::get_tag() const {
-  return tag_;
+/** Value node getter methods */
+const std::string& ASTNodeVal::get_node_field_name() const {
+  return field_name_;
+}
+const ByteVecValue& ASTNodeVal::get_node_condition_value_data() const {
+  return condition_value_data_;
+}
+const UntypedDatumView& ASTNodeVal::get_node_condition_value_view() const {
+  return condition_value_view_;
+}
+const QueryConditionOp& ASTNodeVal::get_node_op() const {
+  return op_;
+}
+
+/** Expression node getter methods */
+const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeVal::get_node_children()
+    const {
+  throw std::runtime_error(
+      "ASTNodeVal::get_node_children: called get_node_children() on a value "
+      "node.");
+}
+const QueryConditionCombinationOp& ASTNodeVal::get_node_combination_op() const {
+  throw std::runtime_error(
+      "ASTNodeVal::get_node_combination_op: called get_node_combination_op on "
+      "a value node.");
+}
+
+/** Returns true is the node is an expression node. */
+bool ASTNodeExpr::is_expr() const {
+  return true;
 }
 
 /** Returns a deep copy of the node. */
@@ -190,7 +216,7 @@ bool ASTNodeExpr::is_previously_supported() const {
     return false;
   }
   for (const auto& child : nodes_) {
-    if (child->get_tag() != ASTNodeTag::VAL) {
+    if (child->is_expr()) {
       return false;
     }
   }
@@ -215,7 +241,7 @@ tdb_unique_ptr<ASTNode> ASTNodeExpr::combine(
     const tdb_unique_ptr<ASTNode>& rhs,
     const QueryConditionCombinationOp& combination_op) {
   std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
-  if (rhs->get_tag() == ASTNodeTag::VAL) {
+  if (!rhs->is_expr()) {
     if (combination_op == combination_op_) {
       for (const auto& child : nodes_) {
         ast_nodes.push_back(child->clone());
@@ -224,8 +250,7 @@ tdb_unique_ptr<ASTNode> ASTNodeExpr::combine(
       ast_nodes.push_back(this->clone());
     }
     ast_nodes.push_back(rhs->clone());
-  } else if (rhs->get_tag() == ASTNodeTag::EXPR) {
-    auto rhs_tree_expr = dynamic_cast<ASTNodeExpr*>(rhs.get());
+  } else {
     if (combination_op == combination_op_) {
       for (const auto& child : nodes_) {
         ast_nodes.push_back(child->clone());
@@ -234,8 +259,8 @@ tdb_unique_ptr<ASTNode> ASTNodeExpr::combine(
       ast_nodes.push_back(this->clone());
     }
 
-    if (combination_op == rhs_tree_expr->combination_op_) {
-      for (const auto& child : rhs_tree_expr->nodes_) {
+    if (combination_op == rhs->get_node_combination_op()) {
+      for (const auto& child : rhs->get_node_children()) {
         ast_nodes.push_back(child->clone());
       }
     } else {
@@ -245,5 +270,37 @@ tdb_unique_ptr<ASTNode> ASTNodeExpr::combine(
   return tdb_unique_ptr<ASTNode>(
       tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
 }
+
+/** Value node getter methods */
+const std::string& ASTNodeExpr::get_node_field_name() const {
+  throw std::runtime_error(
+      "ASTNodeExpr::get_node_field_name: called get_node_field_name() on a "
+      "expression node.");
+}
+const ByteVecValue& ASTNodeExpr::get_node_condition_value_data() const {
+  throw std::runtime_error(
+      "ASTNodeExpr::get_node_condition_value_data: called "
+      "get_node_condition_value_data() on a expression node.");
+}
+const UntypedDatumView& ASTNodeExpr::get_node_condition_value_view() const {
+  throw std::runtime_error(
+      "ASTNodeExpr::get_node_condition_value_view: called "
+      "get_node_condition_value_view() on a expression node.");
+}
+const QueryConditionOp& ASTNodeExpr::get_node_op() const {
+  throw std::runtime_error(
+      "ASTNodeExpr::get_node_op: called get_node_op() on a expression node.");
+}
+
+/** Expression node getter methods */
+const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeExpr::get_node_children()
+    const {
+  return nodes_;
+}
+const QueryConditionCombinationOp& ASTNodeExpr::get_node_combination_op()
+    const {
+  return combination_op_;
+}
+
 }  // namespace sm
 }  // namespace tiledb

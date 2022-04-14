@@ -359,7 +359,7 @@ class QueryCondition {
    */
   template <typename T, QueryConditionOp Op>
   void apply_ast_node(
-      const ASTNodeVal& node,
+      const tdb_unique_ptr<ASTNode>& node,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
@@ -380,7 +380,7 @@ class QueryCondition {
    */
   template <typename T>
   void apply_ast_node(
-      const ASTNodeVal& node,
+      const tdb_unique_ptr<ASTNode>& node,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
@@ -399,7 +399,7 @@ class QueryCondition {
    * @return Status, filtered cell slabs.
    */
   void apply_ast_node(
-      const ASTNodeVal& node,
+      const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
@@ -437,7 +437,7 @@ class QueryCondition {
    */
   template <typename T, QueryConditionOp Op>
   void apply_ast_node_dense(
-      const ASTNodeVal& node,
+      const tdb_unique_ptr<ASTNode>& node,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
@@ -459,7 +459,7 @@ class QueryCondition {
    */
   template <typename T>
   Status apply_ast_node_dense(
-      const ASTNodeVal& node,
+      const tdb_unique_ptr<ASTNode>& node,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
@@ -481,7 +481,7 @@ class QueryCondition {
    * @return Status.
    */
   Status apply_ast_node_dense(
-      const ASTNodeVal& node,
+      const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
       ResultTile* result_tile,
       const uint64_t start,
@@ -521,7 +521,7 @@ class QueryCondition {
    */
   template <typename T, QueryConditionOp Op, typename BitmapType>
   void apply_ast_node_sparse(
-      const ASTNodeVal& node,
+      const tdb_unique_ptr<ASTNode>& node,
       ResultTile& result_tile,
       const bool var_size,
       std::vector<BitmapType>& result_bitmap) const;
@@ -537,7 +537,7 @@ class QueryCondition {
    */
   template <typename T, typename BitmapType>
   Status apply_ast_node_sparse(
-      const ASTNodeVal& node,
+      const tdb_unique_ptr<ASTNode>& node,
       ResultTile& result_tile,
       const bool var_size,
       std::vector<BitmapType>& result_bitmap) const;
@@ -554,7 +554,7 @@ class QueryCondition {
    */
   template <typename BitmapType>
   Status apply_ast_node_sparse(
-      const ASTNodeVal& node,
+      const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
       ResultTile& result_tile,
       std::vector<BitmapType>& result_bitmap) const;

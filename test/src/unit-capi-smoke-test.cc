@@ -1405,7 +1405,7 @@ TEST_CASE_METHOD(
                                                          TILEDB_UNORDERED,
                                                          TILEDB_GLOBAL_ORDER}) {
                   for (const tiledb_query_condition_combination_op_t
-                           combination_op : {TILEDB_AND, TILEDB_OR}) {
+                           combination_op : {TILEDB_AND}) {
                     vector<test_dim_t> test_dims;
                     for (const test_dim_t& dim : dims) {
                       test_dims.emplace_back(dim);
