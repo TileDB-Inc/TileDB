@@ -35,6 +35,7 @@
 
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <unordered_set>
 #include <utility>
@@ -51,12 +52,12 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-enum class ASTNodeTag : char { VAL, EXPR };
 
 class ASTNode {
  public:
-  /** Returns the tag attached to the node. */
-  virtual ASTNodeTag get_tag() const = 0;
+  /** Returns whether the node is an expression node (and false if it's a value
+   * node). */
+  virtual bool is_expr() const = 0;
   /** Returns a deep copy of the node. */
   virtual tdb_unique_ptr<ASTNode> clone() const = 0;
   /** Returns a set of field names from all the value nodes in the AST. */
@@ -71,6 +72,19 @@ class ASTNode {
   virtual tdb_unique_ptr<ASTNode> combine(
       const tdb_unique_ptr<ASTNode>& rhs,
       const QueryConditionCombinationOp& combination_op) = 0;
+
+  /** Value node getter methods */
+  virtual const std::string& get_node_field_name() const = 0;
+  virtual const ByteVecValue& get_node_condition_value_data() const = 0;
+  virtual const UntypedDatumView& get_node_condition_value_view() const = 0;
+  virtual const QueryConditionOp& get_node_op() const = 0;
+
+  /** Expression node getter methods */
+  virtual const std::vector<tdb_unique_ptr<ASTNode>>& get_node_children()
+      const = 0;
+  virtual const QueryConditionCombinationOp& get_node_combination_op()
+      const = 0;
+
   /** Default virtual destructor. */
   virtual ~ASTNode() {
   }
@@ -103,55 +117,13 @@ class ASTNodeVal : public ASTNode {
   ~ASTNodeVal() {
   }
 
-  /** Copy constructor. */
-  ASTNodeVal(const ASTNodeVal& rhs)
-      : field_name_(rhs.field_name_)
-      , condition_value_data_(rhs.condition_value_data_)
-      , condition_value_view_(
-            (rhs.condition_value_view_.content() == nullptr ?
-                 nullptr :
-                 condition_value_data_.data()),
-            condition_value_data_.size())
-      , op_(rhs.op_){};
+  DISABLE_COPY(ASTNodeVal);
+  DISABLE_MOVE(ASTNodeVal);
+  DISABLE_COPY_ASSIGN(ASTNodeVal);
+  DISABLE_MOVE_ASSIGN(ASTNodeVal);
 
-  /** Move constructor. */
-  ASTNodeVal(ASTNodeVal&& rhs)
-      : field_name_(std::move(rhs.field_name_))
-      , condition_value_data_(std::move(rhs.condition_value_data_))
-      , condition_value_view_(
-            (rhs.condition_value_view_.content() == nullptr ?
-                 nullptr :
-                 condition_value_data_.data()),
-            condition_value_data_.size())
-      , op_(rhs.op_){};
-
-  /** Copy-assignment operator. */
-  ASTNodeVal& operator=(const ASTNodeVal& rhs) {
-    if (this != &rhs) {
-      field_name_ = rhs.field_name_;
-      condition_value_data_ = rhs.condition_value_data_;
-      condition_value_view_ = UntypedDatumView(
-          (rhs.condition_value_view_.content() == nullptr ?
-               nullptr :
-               condition_value_data_.data()),
-          condition_value_data_.size());
-      op_ = rhs.op_;
-    }
-    return *this;
-  }
-
-  /** Move-assignment operator. */
-  ASTNodeVal& operator=(ASTNodeVal&& rhs) {
-    field_name_ = std::move(rhs.field_name_);
-    condition_value_data_ = std::move(rhs.condition_value_data_);
-    condition_value_view_ = std::move(rhs.condition_value_view_);
-    op_ = rhs.op_;
-
-    return *this;
-  }
-
-  /** Returns the tag attached to the node. */
-  ASTNodeTag get_tag() const override;
+  /** Returns true is the node is an expression node. */
+  bool is_expr() const override;
 
   /** Returns a deep copy of the node. */
   tdb_unique_ptr<ASTNode> clone() const override;
@@ -166,6 +138,19 @@ class ASTNodeVal : public ASTNode {
   tdb_unique_ptr<ASTNode> combine(
       const tdb_unique_ptr<ASTNode>& rhs,
       const QueryConditionCombinationOp& combination_op) override;
+
+  /** Value node getter methods */
+  virtual const std::string& get_node_field_name() const override;
+  virtual const ByteVecValue& get_node_condition_value_data() const override;
+  virtual const UntypedDatumView& get_node_condition_value_view()
+      const override;
+  virtual const QueryConditionOp& get_node_op() const override;
+
+  /** Expression node getter methods */
+  virtual const std::vector<tdb_unique_ptr<ASTNode>>& get_node_children()
+      const override;
+  virtual const QueryConditionCombinationOp& get_node_combination_op()
+      const override;
 
   /** The attribute name. */
   std::string field_name_;
@@ -178,59 +163,28 @@ class ASTNodeVal : public ASTNode {
 
   /** The comparison operator. */
   QueryConditionOp op_;
-
- private:
-  static const ASTNodeTag tag_{ASTNodeTag::VAL};
 };
 
 class ASTNodeExpr : public ASTNode {
  public:
   ASTNodeExpr(
-      std::vector<tdb_unique_ptr<ASTNode>>&& nodes,
+      std::vector<tdb_unique_ptr<ASTNode>> nodes,
       const QueryConditionCombinationOp& c_op)
-      : combination_op_(c_op) {
-    for (const auto& elem : nodes) {
-      nodes_.push_back(elem->clone());
-    }
+      : nodes_(std::move(nodes))
+      , combination_op_(c_op) {
   }
 
   /** Default destructor. */
   ~ASTNodeExpr() {
   }
 
-  /** Copy constructor. */
-  ASTNodeExpr(const ASTNodeExpr& rhs)
-      : combination_op_(rhs.combination_op_) {
-    for (const auto& elem : rhs.nodes_) {
-      nodes_.push_back(elem->clone());
-    }
-  };
+  DISABLE_COPY(ASTNodeExpr);
+  DISABLE_MOVE(ASTNodeExpr);
+  DISABLE_COPY_ASSIGN(ASTNodeExpr);
+  DISABLE_MOVE_ASSIGN(ASTNodeExpr);
 
-  /** Move constructor. */
-  ASTNodeExpr(ASTNodeExpr&& rhs)
-      : nodes_(std::move(rhs.nodes_))
-      , combination_op_(rhs.combination_op_){};
-
-  /** Copy-assignment operator. */
-  ASTNodeExpr& operator=(const ASTNodeExpr& rhs) {
-    if (this != &rhs) {
-      for (const auto& elem : rhs.nodes_) {
-        nodes_.push_back(elem->clone());
-      }
-      combination_op_ = rhs.combination_op_;
-    }
-    return *this;
-  }
-
-  /** Move-assignment operator. */
-  ASTNodeExpr& operator=(ASTNodeExpr&& rhs) {
-    nodes_ = std::move(rhs.nodes_);
-    combination_op_ = rhs.combination_op_;
-    return *this;
-  }
-
-  /** Returns the tag attached to the node. */
-  ASTNodeTag get_tag() const override;
+  /** Returns true is the node is an expression node. */
+  bool is_expr() const override;
 
   /** Returns a deep copy of the node. */
   tdb_unique_ptr<ASTNode> clone() const override;
@@ -246,14 +200,22 @@ class ASTNodeExpr : public ASTNode {
       const tdb_unique_ptr<ASTNode>& rhs,
       const QueryConditionCombinationOp& combination_op) override;
 
+  /** Value node getter methods */
+  const std::string& get_node_field_name() const override;
+  const ByteVecValue& get_node_condition_value_data() const override;
+  const UntypedDatumView& get_node_condition_value_view() const override;
+  const QueryConditionOp& get_node_op() const override;
+
+  /** Expression node getter methods */
+  const std::vector<tdb_unique_ptr<ASTNode>>& get_node_children()
+      const override;
+  const QueryConditionCombinationOp& get_node_combination_op() const override;
+
   /** The node list **/
   std::vector<tdb_unique_ptr<ASTNode>> nodes_;
 
   /** The combination operation **/
   QueryConditionCombinationOp combination_op_;
-
- private:
-  static const ASTNodeTag tag_{ASTNodeTag::EXPR};
 };
 
 }  // namespace sm
