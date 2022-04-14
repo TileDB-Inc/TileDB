@@ -512,7 +512,7 @@ Status Group::mark_member_for_addition(
   // Check mode
   if (query_type_ != QueryType::WRITE) {
     return Status_GroupError(
-        "Cannot get member; Group was not opened in read mode");
+        "Cannot get member; Group was not opened in write mode");
   }
 
   const std::string& uri = group_member_uri.to_string();
