@@ -500,7 +500,7 @@ DenseReader::apply_query_condition(
     const std::vector<RangeInfo>& range_info,
     std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles) {
   std::vector<uint8_t> qc_result;
-  if (!condition_.clauses().empty()) {
+  if (!condition_.empty()) {
     // For easy reference.
     const auto& tile_coords = subarray.tile_coords();
     const auto cell_num = subarray.cell_num();

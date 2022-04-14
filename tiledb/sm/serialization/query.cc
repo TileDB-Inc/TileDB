@@ -42,6 +42,7 @@
 #endif
 // clang-format on
 
+#include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
@@ -609,44 +610,38 @@ Status dense_read_state_from_capnp(
   return Status::Ok();
 }
 
+static Status condition_ast_to_capnp(
+  const tdb_unique_ptr<ASTNode> &node,
+  capnp::ASTNode::Builder* ast_builder) {
+    if (!node->is_expr()) {
+      ast_builder->setIsExpression(false);
+      ast_builder->setFieldName(node->get_node_field_name());
+      
+      // Copy the condition value into a capnp vector of bytes.
+      const ByteVecValue &value = node->get_node_condition_value_data();
+      auto capnpValue = kj::Vector<uint8_t>();
+      capnpValue.addAll(kj::ArrayPtr<uint8_t>(
+          const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.data())),
+          value.size()));
+
+      // Store the condition value vector of bytes.
+      ast_builder->setValue(capnpValue.asPtr());
+
+      const std::string op_str = query_condition_op_str(node->get_node_op());
+      ast_builder->setOp(op_str);
+    } else {
+      ast_builder->setIsExpression(true);
+      /// TODO: CHILDREN
+    }
+    return Status::Ok();
+}
+
 Status condition_to_capnp(
     const QueryCondition& condition,
     capnp::Condition::Builder* condition_builder) {
-  // Serialize the clauses.
-  const std::vector<QueryCondition::Clause> clauses = condition.clauses();
-  assert(!clauses.empty());
-  auto clause_builder = condition_builder->initClauses(clauses.size());
-  for (size_t i = 0; i < clauses.size(); ++i) {
-    clause_builder[i].setFieldName(clauses[i].field_name_);
-
-    // Copy the condition value into a capnp vector of bytes.
-    const ByteVecValue value = clauses[i].condition_value_data_;
-    auto capnpValue = kj::Vector<uint8_t>();
-    capnpValue.addAll(kj::ArrayPtr<uint8_t>(
-        const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.data())),
-        value.size()));
-
-    // Store the condition value vector of bytes.
-    clause_builder[i].setValue(capnpValue.asPtr());
-
-    const std::string op_str = query_condition_op_str(clauses[i].op_);
-    clause_builder[i].setOp(op_str);
-  }
-
-  // Serialize the combination ops.
-  const std::vector<QueryConditionCombinationOp> combination_ops =
-      condition.combination_ops();
-  if (!combination_ops.empty()) {
-    auto combination_ops_builder =
-        condition_builder->initClauseCombinationOps(combination_ops.size());
-    for (size_t i = 0; i < combination_ops.size(); ++i) {
-      const std::string op_str =
-          query_condition_combination_op_str(combination_ops[i]);
-      combination_ops_builder.set(i, op_str);
-    }
-  }
-
-  return Status::Ok();
+  const tdb_unique_ptr<ASTNode> &ast = condition.ast();
+  auto ast_builder = condition_builder->initTree();
+  return condition_ast_to_capnp(ast, &ast_builder);
 }
 
 Status reader_to_capnp(
@@ -752,42 +747,43 @@ Status dense_reader_to_capnp(
   return Status::Ok();
 }
 
+tdb_unique_ptr<ASTNode> condition_ast_from_capnp(const capnp::ASTNode::Reader& ast_reader) {
+  if (!ast_reader.getIsExpression()) {
+    std::string field_name = ast_reader.getFieldName();
+    auto condition_value = ast_reader.getValue();
+
+    QueryConditionOp op = QueryConditionOp::LT;
+    Status s = query_condition_op_enum(ast_reader.getOp(), &op);
+    if (!s.ok()) {
+      throw std::runtime_error("condition_ast_from_capnp: query_condition_op_enum failed.");
+    }
+
+    return tdb_unique_ptr<ASTNode>(
+      tdb_new(ASTNodeVal, field_name, condition_value.asBytes().begin(), condition_value.size(), op));
+  } 
+
+  std::string combination_op_str = ast_reader.getCombinationOp();
+  QueryConditionCombinationOp combination_op =
+        QueryConditionCombinationOp::AND;
+  Status s = query_condition_combination_op_enum(
+    combination_op_str, &combination_op);
+  if (!s.ok()) {
+    throw std::runtime_error("condition_ast_from_capnp: query_condition_combination_op_enum failed.");
+  }
+  std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
+  for (const auto child : ast_reader.getChildren()) {
+    ast_nodes.push_back(condition_ast_from_capnp(child));
+  }
+  return tdb_unique_ptr<ASTNode>(
+    tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
+
+}
+
 Status condition_from_capnp(
     const capnp::Condition::Reader& condition_reader,
     QueryCondition* const condition) {
-  // Deserialize the clauses.
-  std::vector<QueryCondition::Clause> clauses;
-  assert(condition_reader.hasClauses());
-  for (const auto clause : condition_reader.getClauses()) {
-    std::string field_name = clause.getFieldName();
-
-    auto condition_value = clause.getValue();
-
-    QueryConditionOp op = QueryConditionOp::LT;
-    RETURN_NOT_OK(query_condition_op_enum(clause.getOp(), &op));
-
-    clauses.emplace_back(
-        std::move(field_name),
-        condition_value.asBytes().begin(),
-        condition_value.size(),
-        op);
-  }
-  condition->set_clauses(std::move(clauses));
-
-  // Deserialize the combination ops.
-  if (condition_reader.hasClauseCombinationOps()) {
-    std::vector<QueryConditionCombinationOp> combination_ops;
-    for (const auto combination_op_str :
-         condition_reader.getClauseCombinationOps()) {
-      QueryConditionCombinationOp combination_op =
-          QueryConditionCombinationOp::AND;
-      RETURN_NOT_OK(query_condition_combination_op_enum(
-          combination_op_str, &combination_op));
-      combination_ops.emplace_back(combination_op);
-    }
-    condition->set_combination_ops(std::move(combination_ops));
-  }
-
+  auto ast_reader = condition_reader.getTree();
+  condition->set_ast(condition_ast_from_capnp(ast_reader));
   return Status::Ok();
 }
 

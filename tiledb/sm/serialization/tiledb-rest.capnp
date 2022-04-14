@@ -398,27 +398,34 @@ struct ReadState {
   # The subarray partitioner
 }
 
-struct ConditionClause {
-  # A clause within a condition
+struct ASTNode {
+  # A representation of the AST representing a query condition
+  isExpression @0 :Bool;
+  # True if node is an expression/compound node
 
-  fieldName @0 :Text;
+  # Value node fields
+  fieldName @1 :Text;
   # The name of the field this clause applies to
 
-  value @1 :Data;
+  value @2 :Data;
   # The comparison value
 
-  op @2 :Text;
+  op @3 :Text;
   # The comparison operation
+
+  # Expression node fields
+  children @4 :List(ASTNode);
+  # A list of children 
+
+  combinationOp @5 :Text;
+  # The combination logical operator
 }
 
 struct Condition {
   # The query condition
 
-  clauses @0 :List(ConditionClause);
-  # All clauses in this condition
-
-  clauseCombinationOps @1 :List(Text);
-  # The operation that combines each condition
+  tree @0 :ASTNode;
+  # The AST representing this condition
 }
 
 struct QueryReader {

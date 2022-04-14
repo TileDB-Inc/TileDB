@@ -112,8 +112,6 @@ Status QueryCondition::combine(
   }
 
   combined_cond->field_names_.clear();
-  combined_cond->clauses_.clear();
-  combined_cond->combination_ops_.clear();
   combined_cond->tree_ = this->tree_->combine(rhs.tree_, combination_op);
   return Status::Ok();
 }
@@ -1589,92 +1587,12 @@ Status QueryCondition::apply_sparse(
   return Status::Ok();
 }
 
-tdb_unique_ptr<ASTNode>& QueryCondition::ast() {
+const tdb_unique_ptr<ASTNode>& QueryCondition::ast() const {
   return tree_;
 }
 
-void QueryCondition::set_clauses(std::vector<Clause>&& clauses) {
-  // This is because AND nodes are the only structure supported currently within
-  // serialization.
-  std::vector<Clause> temp_clauses = std::move(clauses);
-  if (temp_clauses.size() == 0) {
-    tree_ = nullptr;
-  } else if (temp_clauses.size() == 1) {
-    tree_ = tdb_unique_ptr<ASTNode>(tdb_new(
-        ASTNodeVal,
-        temp_clauses[0].field_name_,
-        temp_clauses[0].condition_value_data_.data(),
-        temp_clauses[0].condition_value_data_.size(),
-        temp_clauses[0].op_));
-  } else {
-    std::vector<tdb_unique_ptr<ASTNode>> nodes;
-    for (const auto& clause : temp_clauses) {
-      nodes.emplace_back(tdb_unique_ptr<ASTNode>(tdb_new(
-          ASTNodeVal,
-          clause.field_name_,
-          clause.condition_value_data_.data(),
-          clause.condition_value_data_.size(),
-          clause.op_)));
-    }
-
-    tree_ = tdb_unique_ptr<ASTNode>(tdb_new(
-        ASTNodeExpr, std::move(nodes), QueryConditionCombinationOp::AND));
-  }
-}
-
-void QueryCondition::set_combination_ops(
-    std::vector<QueryConditionCombinationOp>&& combination_ops) {
-  auto temp_combination_ops = std::move(combination_ops);
-  (void)temp_combination_ops;
-}
-
-static void ast_get_clauses(
-    std::vector<QueryCondition::Clause>& clauses_vector,
-    const tdb_unique_ptr<ASTNode>& node) {
-  if (!node)
-    return;
-  if (!node->is_expr()) {
-    QueryCondition::Clause c(
-        node->get_node_field_name(),
-        node->get_node_condition_value_view().content(),
-        node->get_node_condition_value_data().size(),
-        node->get_node_op());
-    clauses_vector.emplace_back(c);
-  } else {
-    for (const auto& child : node->get_node_children()) {
-      ast_get_clauses(clauses_vector, child);
-    }
-  }
-}
-
-std::vector<QueryCondition::Clause> QueryCondition::clauses() const {
-  if (tree_ && !tree_->is_previously_supported()) {
-    throw std::runtime_error(
-        "From QueryCondition::clauses(): OR serialization not supported.");
-  }
-
-  if (clauses_.empty() && tree_) {
-    ast_get_clauses(clauses_, tree_);
-  }
-  return clauses_;
-}
-
-std::vector<QueryConditionCombinationOp> QueryCondition::combination_ops()
-    const {
-  if (tree_ && !tree_->is_previously_supported()) {
-    throw std::runtime_error(
-        "From QueryCondition::combination_ops(): OR serialization not "
-        "supported.");
-  }
-  if (combination_ops_.empty() && tree_) {
-    if (clauses_.empty())
-      ast_get_clauses(clauses_, tree_);
-    for (size_t i = 0; i < clauses_.size() - 1; ++i) {
-      combination_ops_.emplace_back(QueryConditionCombinationOp::AND);
-    }
-  }
-
-  return combination_ops_;
+void QueryCondition::set_ast(tdb_unique_ptr<ASTNode> &&ast) {
+  tree_ = std::move(ast);
 }
 
 // Explicit template instantiations.
