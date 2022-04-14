@@ -97,8 +97,8 @@ TEST_CASE("ByteVecValue from pointers", "[bytevecvalue]") {
   test_case<uint32_t>(1985761475);
   test_case<int64_t>(981934736546381904);
   test_case<uint64_t>(93472336546381904);
-  test_case<float>(10.472);
-  test_case<double>(239347.47521);
+  test_case<float>(10.472F);
+  test_case<double>(239347.47521L);
   std::string s = "supercalifragilisticexpialidocious";
   test_case<char*>(const_cast<char*>(s.c_str()));
 }
