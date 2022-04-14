@@ -762,7 +762,7 @@ class Proxy : public ProxyStateMachine<LC::has_shutdown> {
    * about the initial construction of the object.
    */
   Proxy()
-      : args_(make_shared<LC::arguments_type>(HERE())) {
+      : args_(make_shared<typename LC::arguments_type>(HERE())) {
   }
 
   /// Copy constructor is deleted
@@ -802,7 +802,7 @@ class Proxy : public ProxyStateMachine<LC::has_shutdown> {
      * dependency.
      */
     lock_type lock{Base::m_state_, std::defer_lock};
-    event_access_attach(lock);
+    Base::event_access_attach(lock);
     /*
      * At this point the state machine has processed the event. If the `proxy`
      * is able to provide an accessor, it will be in an attached state. In all
