@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -224,6 +224,12 @@ uint64_t generic_tile_cell_size = sizeof(char);
 /** The group file name. */
 const std::string group_filename = "__tiledb_group.tdb";
 
+/** The group details directory name. */
+const std::string group_detail_dir_name = "__group";
+
+/** The group metadata directory name. */
+const std::string group_metadata_dir_name = "__meta";
+
 /** The maximum number of bytes written in a single I/O. */
 const uint64_t max_write_bytes = std::numeric_limits<int>::max();
 
@@ -342,6 +348,9 @@ const std::string filter_checksum_md5_str = "CHECKSUM_MD5";
 
 /** String describing FILTER_CHECKSUM_SHA256. */
 const std::string filter_checksum_sha256_str = "CHECKSUM_SHA256";
+
+/** String describing FILTER_DICTIONARY. */
+const std::string filter_dictionary_str = "DICTIONARY_ENCODING";
 
 /** The string representation for FilterOption type compression_level. */
 const std::string filter_option_compression_level_str = "COMPRESSION_LEVEL";
@@ -546,7 +555,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization format version number. */
-const uint32_t format_version = 12;
+const uint32_t format_version = 13;
 
 /** The lowest version supported for back compat writes. */
 const uint32_t back_compat_writes_min_format_version = 7;

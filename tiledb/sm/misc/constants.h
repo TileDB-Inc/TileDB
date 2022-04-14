@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -212,6 +212,12 @@ extern uint64_t generic_tile_cell_size;
 /** The group file name. */
 extern const std::string group_filename;
 
+/** The group details directory name. */
+extern const std::string group_detail_dir_name;
+
+/** The group metadata directory name. */
+extern const std::string group_metadata_dir_name;
+
 /** The maximum number of bytes written in a single I/O. */
 extern const uint64_t max_write_bytes;
 
@@ -328,6 +334,9 @@ extern const std::string filter_checksum_md5_str;
 
 /** String describing FILTER_CHECKSUM_SHA256. */
 extern const std::string filter_checksum_sha256_str;
+
+/** String describing FILTER_DICTIONARY. */
+extern const std::string filter_dictionary_str;
 
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;

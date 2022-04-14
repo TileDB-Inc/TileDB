@@ -43,9 +43,12 @@
 #include <vector>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
+
 namespace tiledb::type {
 class DomainDataRef;
-};
+class Range;
+}  // namespace tiledb::type
 
 namespace tiledb::sm {
 

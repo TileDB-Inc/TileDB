@@ -37,12 +37,14 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/type/range/range.h"
 
 #include <cassert>
 #include <iostream>
 #include <sstream>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
 
 namespace tiledb {
 namespace sm {

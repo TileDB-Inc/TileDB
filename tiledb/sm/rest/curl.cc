@@ -249,12 +249,14 @@ size_t write_header_callback(
   return size * count;
 }
 
-Curl::Curl()
+Curl::Curl(const std::shared_ptr<Logger>& logger)
     : config_(nullptr)
     , curl_(nullptr, curl_easy_cleanup)
     , retry_count_(0)
     , retry_delay_factor_(0)
-    , retry_initial_delay_ms_(0) {
+    , retry_initial_delay_ms_(0)
+    , logger_(logger->clone("curl ", ++logger_id_))
+    , verbose_(false) {
 }
 
 Status Curl::init(
@@ -336,6 +338,9 @@ Status Curl::init(
 
   RETURN_NOT_OK(config_->get_vector<uint32_t>(
       "rest.retry_http_codes", &retry_http_codes_, &found));
+  assert(found);
+
+  RETURN_NOT_OK(config_->get<bool>("rest.curl.verbose", &verbose_, &found));
   assert(found);
 
   return Status::Ok();
@@ -473,6 +478,9 @@ Status Curl::make_curl_request_common(
     /* pass fetch buffer pointer */
     curl_easy_setopt(
         curl, CURLOPT_WRITEDATA, static_cast<void*>(&write_cb_state));
+
+    /* Set curl verbose mode */
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, verbose_);
 
     /* set default user agent */
     // curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
@@ -718,6 +726,7 @@ Status Curl::post_data_common(
   } else {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
   }
+  logger_->debug("posting {} bytes to", data->total_size());
 
   // Set auth and content-type for request
   *headers = nullptr;
@@ -775,6 +784,45 @@ Status Curl::get_data(
   return Status::Ok();
 }
 
+Status Curl::options(
+    stats::Stats* const stats,
+    const std::string& url,
+    SerializationType serialization_type,
+    Buffer* returned_data,
+    const std::string& res_ns_uri) {
+  CURL* curl = curl_.get();
+  if (curl == nullptr)
+    return LOG_STATUS(
+        Status_RestError("Error getting data; curl instance is null."));
+
+  // Set auth and content-type for request
+  struct curl_slist* headers = nullptr;
+  RETURN_NOT_OK_ELSE(set_headers(&headers), curl_slist_free_all(headers));
+  RETURN_NOT_OK_ELSE(
+      set_content_type(serialization_type, &headers),
+      curl_slist_free_all(headers));
+
+  /* pass our list of custom made headers */
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+  /* HTTP OPTIONS please */
+  curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "OPTIONS");
+
+  /* HEAD */
+  curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
+
+  CURLcode ret;
+  headerData.uri = &res_ns_uri;
+  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
+  curl_slist_free_all(headers);
+  RETURN_NOT_OK(st);
+
+  // Check for errors
+  RETURN_NOT_OK(check_curl_errors(ret, "OPTIONS", returned_data));
+
+  return Status::Ok();
+}
+
 Status Curl::delete_data(
     stats::Stats* const stats,
     const std::string& url,
@@ -815,5 +863,134 @@ Status Curl::delete_data(
   return Status::Ok();
 }
 
+Status Curl::patch_data(
+    stats::Stats* const stats,
+    const std::string& url,
+    const SerializationType serialization_type,
+    const BufferList* data,
+    Buffer* const returned_data,
+    const std::string& res_uri) {
+  struct curl_slist* headers;
+  RETURN_NOT_OK(patch_data_common(serialization_type, data, &headers));
+
+  CURLcode ret;
+  headerData.uri = &res_uri;
+  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
+  curl_slist_free_all(headers);
+  RETURN_NOT_OK(st);
+
+  // Check for errors
+  RETURN_NOT_OK(check_curl_errors(ret, "PATCH", returned_data));
+
+  return Status::Ok();
+}
+
+Status Curl::patch_data_common(
+    const SerializationType serialization_type,
+    const BufferList* data,
+    struct curl_slist** headers) {
+  CURL* curl = curl_.get();
+  if (curl == nullptr)
+    return LOG_STATUS(
+        Status_RestError("Error patching data; curl instance is null."));
+
+  const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
+  logger_->debug("patching {} bytes to", data->total_size());
+  if (data->total_size() > post_size_limit) {
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, data->total_size());
+  } else {
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
+  }
+
+  // Set auth and content-type for request
+  *headers = nullptr;
+  RETURN_NOT_OK_ELSE(set_headers(headers), curl_slist_free_all(*headers));
+  RETURN_NOT_OK_ELSE(
+      set_content_type(serialization_type, headers),
+      curl_slist_free_all(*headers));
+
+  /* Set POST so curl sends the body */
+  curl_easy_setopt(curl, CURLOPT_POST, 1);
+
+  /* HTTP PATCH please */
+  curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
+  curl_easy_setopt(
+      curl, CURLOPT_READFUNCTION, buffer_list_read_memory_callback);
+  curl_easy_setopt(curl, CURLOPT_READDATA, data);
+
+  /* pass our list of custom made headers */
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headers);
+
+  /* set seek for handling redirects */
+  curl_easy_setopt(curl, CURLOPT_SEEKFUNCTION, &buffer_list_seek_callback);
+  curl_easy_setopt(curl, CURLOPT_SEEKDATA, data);
+
+  return Status::Ok();
+}
+
+Status Curl::put_data(
+    stats::Stats* const stats,
+    const std::string& url,
+    const SerializationType serialization_type,
+    const BufferList* data,
+    Buffer* const returned_data,
+    const std::string& res_uri) {
+  struct curl_slist* headers;
+  RETURN_NOT_OK(put_data_common(serialization_type, data, &headers));
+
+  CURLcode ret;
+  headerData.uri = &res_uri;
+  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
+  curl_slist_free_all(headers);
+  RETURN_NOT_OK(st);
+
+  // Check for errors
+  RETURN_NOT_OK(check_curl_errors(ret, "PUT", returned_data));
+
+  return Status::Ok();
+}
+
+Status Curl::put_data_common(
+    const SerializationType serialization_type,
+    const BufferList* data,
+    struct curl_slist** headers) {
+  CURL* curl = curl_.get();
+  if (curl == nullptr)
+    return LOG_STATUS(
+        Status_RestError("Error putting data; curl instance is null."));
+
+  const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
+  logger_->debug("putting {} bytes to", data->total_size());
+  if (data->total_size() > post_size_limit) {
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, data->total_size());
+  } else {
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
+  }
+
+  // Set auth and content-type for request
+  *headers = nullptr;
+  RETURN_NOT_OK_ELSE(set_headers(headers), curl_slist_free_all(*headers));
+  RETURN_NOT_OK_ELSE(
+      set_content_type(serialization_type, headers),
+      curl_slist_free_all(*headers));
+
+  /* Set POST so curl sends the body */
+  curl_easy_setopt(curl, CURLOPT_POST, 1);
+
+  /* HTTP PUT please */
+  curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+  curl_easy_setopt(
+      curl, CURLOPT_READFUNCTION, buffer_list_read_memory_callback);
+  curl_easy_setopt(curl, CURLOPT_READDATA, data);
+
+  /* pass our list of custom made headers */
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headers);
+
+  /* set seek for handling redirects */
+  curl_easy_setopt(curl, CURLOPT_SEEKFUNCTION, &buffer_list_seek_callback);
+  curl_easy_setopt(curl, CURLOPT_SEEKDATA, data);
+
+  return Status::Ok();
+}
 }  // namespace sm
 }  // namespace tiledb

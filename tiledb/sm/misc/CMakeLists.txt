@@ -64,6 +64,7 @@ target_sources(compile_math PRIVATE test/compile_math_main.cc)
 # `misc_types` object library
 #
 add_library(misc_types OBJECT types.cc)
+target_link_libraries(misc_types PUBLIC range $<TARGET_OBJECTS:range>)
 #
 # Test-compile of object library ensures link-completeness
 #

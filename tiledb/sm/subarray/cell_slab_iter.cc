@@ -38,11 +38,13 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/type/range/range.h"
 
 #include <cassert>
 #include <iostream>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
 
 namespace tiledb {
 namespace sm {
@@ -249,7 +251,7 @@ Status CellSlabIter<T>::init_ranges() {
   auto array_domain = array_schema.domain().domain();
   uint64_t range_num;
   T tile_extent, dim_domain_start;
-  const tiledb::sm::Range* r;
+  const tiledb::type::Range* r;
 
   ranges_.resize(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {

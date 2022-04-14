@@ -160,7 +160,7 @@ class CompressionFilter : public Filter {
   std::mutex zstd_decompress_ctx_pool_mtx_;
 
   /** A resource pool to be used in ZStd compressor for improved performance */
-  std::shared_ptr<BlockingResourcePool<ZStd::ZSTD_Compress_Context>>
+  shared_ptr<BlockingResourcePool<ZStd::ZSTD_Compress_Context>>
       zstd_compress_ctx_pool_;
 
   /** A resource pool to be used in ZStd decompressor for improved performance

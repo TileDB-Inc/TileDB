@@ -35,6 +35,7 @@
 
 #include <tiledb/common/logger_public.h>
 #include "tiledb.h"
+#include "tiledb/common/common.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/layout.h"
@@ -83,7 +84,7 @@ static tiledb::sm::stats::Stats g_helper_stats("test");
 
 // A dummy `Logger` instance. This is useful for constructing
 // objects that require a parent `Logger` object.
-tdb_shared_ptr<Logger> g_helper_logger(void);
+shared_ptr<Logger> g_helper_logger(void);
 
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;

@@ -72,7 +72,7 @@ SubarrayPartitioner::SubarrayPartitioner(
     const uint64_t memory_budget_validity,
     ThreadPool* const compute_tp,
     Stats* const parent_stats,
-    tdb_shared_ptr<Logger> logger)
+    shared_ptr<Logger> logger)
     : stats_(parent_stats->create_child("SubarrayPartitioner"))
     , logger_(logger->clone("SubarrayPartitioner", ++logger_id_))
     , config_(config)

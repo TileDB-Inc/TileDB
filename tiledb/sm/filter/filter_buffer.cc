@@ -42,13 +42,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-FilterBuffer::BufferOrView::BufferOrView(const tdb_shared_ptr<Buffer>& buffer) {
+FilterBuffer::BufferOrView::BufferOrView(const shared_ptr<Buffer>& buffer) {
   underlying_buffer_ = buffer;
   is_view_ = false;
 }
 
 FilterBuffer::BufferOrView::BufferOrView(
-    const tdb_shared_ptr<Buffer>& buffer, uint64_t offset, uint64_t nbytes) {
+    const shared_ptr<Buffer>& buffer, uint64_t offset, uint64_t nbytes) {
   is_view_ = true;
   underlying_buffer_ = buffer;
   view_ = tdb_unique_ptr<Buffer>(
@@ -65,7 +65,7 @@ Buffer* FilterBuffer::BufferOrView::buffer() const {
   return is_view_ ? view_.get() : underlying_buffer_.get();
 }
 
-tdb_shared_ptr<Buffer> FilterBuffer::BufferOrView::underlying_buffer() const {
+shared_ptr<Buffer> FilterBuffer::BufferOrView::underlying_buffer() const {
   return underlying_buffer_;
 }
 
@@ -128,7 +128,7 @@ Status FilterBuffer::init(void* data, uint64_t nbytes) {
     return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; cannot init buffer: read-only."));
 
-  tdb_shared_ptr<Buffer> buffer(tdb_new(Buffer, data, nbytes));
+  shared_ptr<Buffer> buffer(tdb_new(Buffer, data, nbytes));
   offset_ = 0;
   buffers_.emplace_back(buffer);
   current_relative_offset_ = 0;

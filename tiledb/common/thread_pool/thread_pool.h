@@ -38,6 +38,7 @@
 #include <functional>
 #include <future>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
@@ -166,8 +167,8 @@ class ThreadPool {
 
   /** Producer-consumer queue where functions to be executed are kept */
   ProducerConsumerQueue<
-      std::shared_ptr<std::packaged_task<Status()>>,
-      std::deque<std::shared_ptr<std::packaged_task<Status()>>>>
+      shared_ptr<std::packaged_task<Status()>>,
+      std::deque<shared_ptr<std::packaged_task<Status()>>>>
       task_queue_;
 
   /** The worker threads */

@@ -39,6 +39,7 @@
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
@@ -95,7 +96,7 @@ inline IterT skip_invalid_elements(IterT it, const IterT& end) {
 
 Reader::Reader(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,

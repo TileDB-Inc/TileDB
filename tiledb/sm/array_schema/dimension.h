@@ -50,6 +50,11 @@
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
+using namespace tiledb::type;
+
+namespace tiledb::type {
+class Range;
+}
 
 namespace tiledb {
 namespace sm {

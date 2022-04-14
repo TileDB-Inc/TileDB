@@ -69,7 +69,7 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , array_uri_(array_uri)
     , array_dir_()
     , array_uri_serialized_(array_uri)
-    , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
+    , encryption_key_(make_shared<EncryptionKey>(HERE()))
     , is_open_(false)
     , timestamp_start_(0)
     , timestamp_end_(UINT64_MAX)
@@ -818,7 +818,7 @@ Status Array::has_metadata_key(
   return Status::Ok();
 }
 
-Metadata* Array::metadata() {
+Metadata* Array::unsafe_metadata() {
   return &metadata_;
 }
 

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -275,6 +275,8 @@ class Filter {
         return "CHECKSUM_MD5";
       case TILEDB_FILTER_CHECKSUM_SHA256:
         return "CHECKSUM_SHA256";
+      case TILEDB_FILTER_DICTIONARY:
+        return "DICTIONARY_ENCODING";
     }
     return "";
   }

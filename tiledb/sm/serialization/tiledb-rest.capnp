@@ -1,5 +1,6 @@
 @0xb57d9224b587d87f;
 
+using Json = import "/capnp/compat/json.capnp";
 using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("tiledb::sm::serialization::capnp");
 
@@ -620,4 +621,75 @@ struct EstimatedResultSize {
 
   resultSizes @0 :Map(Text, ResultSize);
   memorySizes @1 :Map(Text, MemorySize);
+}
+
+struct GroupMetadata {
+  config @0 :Config;
+  # Config
+
+  metadata  @1 :ArrayMetadata;
+  # metadata attached to group
+}
+
+struct GroupMember {
+  uri @0 :Text;
+  # URI of group Member
+
+  type @1 :Text;
+  # type of Member, group or array
+
+  relative @2 :Bool;
+  # is member URI relative to group
+
+  name @3 :Text;
+  # name of member, optional
+}
+
+struct Group {
+  # Group
+
+  struct GroupDetails {
+    members @0 :List(GroupMember);
+    # list of Members in group
+
+    metadata  @1 :ArrayMetadata;
+    # metadata attached to group
+  }
+
+  config @0 :Config;
+  # Config
+
+  group @1 :GroupDetails  $Json.name("group");
+}
+
+struct GroupUpdate {
+  struct GroupUpdateDetails {
+    membersToRemove @0 :List(Text) $Json.name("members_to_remove");
+    # members to remove
+
+    membersToAdd @1 :List(GroupMember) $Json.name("members_to_add");
+    # members to add
+  }
+
+  config @0 :Config;
+  # Config
+
+  groupUpdate @1 :GroupUpdateDetails $Json.name("group_changes");
+  # group update detials
+}
+
+struct GroupCreate {
+  # Create group details
+
+  struct GroupCreateDetails {
+  # details of a group
+
+    uri @0 :Text;
+    # URI where group should be created
+  }
+
+  config @0 :Config;
+  # Config
+
+  groupDetails @1 :GroupCreateDetails $Json.name("group_details");
 }

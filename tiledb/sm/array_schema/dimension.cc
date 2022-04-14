@@ -35,6 +35,7 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/type/range/range.h"
 
 #include <bitset>
 #include <cassert>
@@ -42,6 +43,7 @@
 #include <iostream>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
 
 tiledb::common::blank<tiledb::sm::Dimension>::blank()
     : tiledb::sm::Dimension{"", tiledb::sm::Datatype::INT32} {

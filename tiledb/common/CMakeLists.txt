@@ -27,9 +27,10 @@
 include(common-root)
 include(common)
 
-add_subdirectory(thread_pool)
 add_subdirectory(dynamic_memory)
+add_subdirectory(exception)
 add_subdirectory(governor)
+add_subdirectory(thread_pool)
 add_subdirectory(types)
 
 if (TILEDB_TESTS)
@@ -43,7 +44,8 @@ set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
 # `baseline` object library
 #
 add_library(baseline OBJECT
-    logger.cc status.cc governor/governor.cc heap_profiler.cc heap_memory.cc
+    logger.cc governor/governor.cc heap_profiler.cc heap_memory.cc
+    exception/exception.cc exception/status.cc
 )
 find_package(Spdlog_EP REQUIRED)
 target_link_libraries(baseline PUBLIC spdlog::spdlog)

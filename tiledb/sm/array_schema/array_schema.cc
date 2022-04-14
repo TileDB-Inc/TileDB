@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -617,7 +618,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
     }
 
     attributes_.emplace_back(
-        tdb::make_shared<Attribute>(HERE(), move(attr.value())));
+        make_shared<Attribute>(HERE(), move(attr.value())));
     auto a = attributes_.back().get();
     attribute_map_[a->name()] = a;
   }

@@ -46,6 +46,11 @@
 #include "tiledb/sm/rtree/rtree.h"
 
 using namespace tiledb::common;
+using namespace tiledb::type;
+
+namespace tiledb::type {
+class Range;
+}
 
 namespace tiledb {
 namespace sm {

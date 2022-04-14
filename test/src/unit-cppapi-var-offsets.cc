@@ -234,7 +234,7 @@ void write_dense_array(
     std::vector<int32_t>& data,
     std::vector<uint64_t>& data_offsets,
     tiledb_layout_t layout,
-    std::shared_ptr<Config> config = nullptr) {
+    shared_ptr<Config> config = nullptr) {
   std::vector<int64_t> d1 = {1, 1, 2, 2};
   std::vector<int64_t> d2 = {1, 2, 1, 2};
 
@@ -275,7 +275,7 @@ void write_dense_array(
     std::vector<int32_t>& data,
     std::vector<uint32_t>& data_offsets,
     tiledb_layout_t layout,
-    std::shared_ptr<Config> config = nullptr) {
+    shared_ptr<Config> config = nullptr) {
   std::vector<int64_t> d1 = {1, 1, 2, 2};
   std::vector<int64_t> d2 = {1, 2, 1, 2};
 
@@ -319,7 +319,7 @@ void read_and_check_dense_array(
     const std::string& array_name,
     std::vector<int32_t>& expected_data,
     std::vector<uint64_t>& expected_offsets,
-    std::shared_ptr<Config> config = nullptr) {
+    shared_ptr<Config> config = nullptr) {
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
 
@@ -351,7 +351,7 @@ void read_and_check_dense_array(
     const std::string& array_name,
     std::vector<int32_t>& expected_data,
     std::vector<uint32_t>& expected_offsets,
-    std::shared_ptr<Config> config = nullptr) {
+    shared_ptr<Config> config = nullptr) {
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
 

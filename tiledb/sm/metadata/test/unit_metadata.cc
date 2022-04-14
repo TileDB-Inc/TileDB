@@ -51,7 +51,7 @@ inline T& buffer_metadata(void* p) {
 
 TEST_CASE(
     "Metadata: Test metadata deserialization", "[metadata][deserialization]") {
-  std::vector<tdb_shared_ptr<Buffer>> metadata_buffs;
+  std::vector<shared_ptr<Buffer>> metadata_buffs;
 
   // key_1:a, value_1:100,200
   std::string key_1 = "key1";

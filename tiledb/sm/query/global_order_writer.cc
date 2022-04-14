@@ -67,7 +67,7 @@ namespace sm {
 
 GlobalOrderWriter::GlobalOrderWriter(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -604,7 +604,7 @@ Status GlobalOrderWriter::init_global_write_state() {
   global_write_state_.reset(new GlobalWriteState);
 
   // Create fragment
-  global_write_state_->frag_meta_ = tdb::make_shared<FragmentMetadata>(HERE());
+  global_write_state_->frag_meta_ = make_shared<FragmentMetadata>(HERE());
   RETURN_NOT_OK(create_fragment(
       !coords_info_.has_coords_, global_write_state_->frag_meta_));
   auto uri = global_write_state_->frag_meta_->fragment_uri();
@@ -779,18 +779,20 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
             init_tile_nullable(name, &((*tiles)[i]), &((*tiles)[i + 1])));
 
     // Handle last tile (it must be either full or empty)
+    uint64_t tile_idx = 0;
     if (last_tile_cell_idx == cell_num_per_tile) {
       (*tiles)[0].swap(last_tile);
       if (nullable) {
         (*tiles)[1].swap(last_tile_validity);
       }
+      tile_idx += t;
     } else {
       assert(last_tile_cell_idx == 0);
     }
 
     // Write all remaining cells one by one
     if (coord_dups.empty()) {
-      for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write;) {
+      for (uint64_t i = 0; i < cell_num_to_write;) {
         RETURN_NOT_OK((*tiles)[tile_idx].write(
             buffer + cell_idx * cell_size, 0, cell_size * cell_num_per_tile));
 

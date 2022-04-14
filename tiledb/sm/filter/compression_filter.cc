@@ -108,6 +108,9 @@ void CompressionFilter::dump(FILE* out) const {
     case Compressor::DOUBLE_DELTA:
       compressor_str = "DOUBLE_DELTA";
       break;
+    case Compressor::DICTIONARY_ENCODING:
+      compressor_str = "DICTIONARY_ENCODING";
+      break;
     default:
       compressor_str = "NO_COMPRESSION";
   }
@@ -144,6 +147,8 @@ FilterType CompressionFilter::compressor_to_filter(Compressor compressor) {
       return FilterType::FILTER_BZIP2;
     case Compressor::DOUBLE_DELTA:
       return FilterType::FILTER_DOUBLE_DELTA;
+    case Compressor::DICTIONARY_ENCODING:
+      return FilterType::FILTER_DICTIONARY;
     default:
       assert(false);
       return FilterType::FILTER_NONE;
@@ -166,6 +171,8 @@ Compressor CompressionFilter::filter_to_compressor(FilterType type) {
       return Compressor::BZIP2;
     case FilterType::FILTER_DOUBLE_DELTA:
       return Compressor::DOUBLE_DELTA;
+    case FilterType::FILTER_DICTIONARY:
+      return Compressor::DICTIONARY_ENCODING;
     default:
       assert(false);
       return Compressor::NO_COMPRESSION;
@@ -359,6 +366,9 @@ Status CompressionFilter::compress_part(
     case Compressor::DOUBLE_DELTA:
       RETURN_NOT_OK(DoubleDelta::compress(type, &input_buffer, output));
       break;
+    case Compressor::DICTIONARY_ENCODING:
+      // TODO: add method when available
+      break;
     default:
       assert(0);
   }
@@ -426,6 +436,9 @@ Status CompressionFilter::decompress_part(
       break;
     case Compressor::DOUBLE_DELTA:
       st = DoubleDelta::decompress(type, &input_buffer, &output_buffer);
+      break;
+    case Compressor::DICTIONARY_ENCODING:
+      // TODO: add method when available
       break;
   }
 
@@ -580,6 +593,8 @@ uint64_t CompressionFilter::overhead(const Tile& tile, uint64_t nbytes) const {
       return BZip::overhead(nbytes);
     case Compressor::DOUBLE_DELTA:
       return DoubleDelta::overhead(nbytes);
+    case Compressor::DICTIONARY_ENCODING:
+    // TODO: add method when available
     default:
       // No compression
       return 0;
@@ -601,7 +616,7 @@ void CompressionFilter::init_compression_resource_pool(uint64_t size) {
   std::lock_guard g(zstd_compress_ctx_pool_mtx_);
   if (zstd_compress_ctx_pool_ == nullptr) {
     zstd_compress_ctx_pool_ =
-        tdb::make_shared<BlockingResourcePool<ZStd::ZSTD_Compress_Context>>(
+        make_shared<BlockingResourcePool<ZStd::ZSTD_Compress_Context>>(
             HERE(), size);
   }
 }
@@ -610,7 +625,7 @@ void CompressionFilter::init_decompression_resource_pool(uint64_t size) {
   std::lock_guard g(zstd_decompress_ctx_pool_mtx_);
   if (zstd_decompress_ctx_pool_ == nullptr) {
     zstd_decompress_ctx_pool_ =
-        tdb::make_shared<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>(
+        make_shared<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>(
             HERE(), size);
   }
 }

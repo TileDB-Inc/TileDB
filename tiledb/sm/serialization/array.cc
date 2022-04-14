@@ -39,6 +39,7 @@
 #endif
 // clang-format on
 
+#include "tiledb/common/common.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -54,21 +55,9 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
-Status array_metadata_to_capnp(
-    Array* array, capnp::ArrayMetadata::Builder* array_metadata_builder) {
-  if (array == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing array metadata; array instance is null"));
-
-  Metadata* metadata = array->metadata();
-  QueryType query_type;
-  RETURN_NOT_OK(array->get_query_type(&query_type));
-  if (query_type == QueryType::WRITE) {
-    array->metadata();
-  } else {
-    RETURN_NOT_OK(array->metadata(&metadata));
-  }
-
+Status metadata_to_capnp(
+    const Metadata* metadata,
+    capnp::ArrayMetadata::Builder* array_metadata_builder) {
   if (metadata == nullptr)
     return LOG_STATUS(Status_SerializationError(
         "Error serializing array metadata; array metadata instance is null"));
@@ -90,11 +79,11 @@ Status array_metadata_to_capnp(
   return Status::Ok();
 }
 
-Status array_metadata_from_capnp(
-    const capnp::ArrayMetadata::Reader& array_metadata_reader, Array* array) {
+Status metadata_from_capnp(
+    const capnp::ArrayMetadata::Reader& array_metadata_reader,
+    Metadata* metadata) {
   auto entries_reader = array_metadata_reader.getEntries();
   const size_t num_entries = entries_reader.size();
-  Metadata* metadata = array->metadata();
 
   for (size_t i = 0; i < num_entries; i++) {
     auto entry_reader = entries_reader[i];
@@ -124,6 +113,8 @@ Status array_to_capnp(
     Array* array,
     capnp::Array::Builder* array_builder,
     const bool client_side) {
+  // Currently unused
+  (void)client_side;
   // The serialized URI is set if it exists
   // this is used for backwards compatibility with pre TileDB 2.5 clients that
   // want to serialized a query object TileDB >= 2.5 no longer needs to send the
@@ -157,7 +148,8 @@ Status array_to_capnp(
       utils::serialize_non_empty_domain(nonempty_domain_builder, array));
 
   auto array_metadata_builder = array_builder->initArrayMetadata();
-  RETURN_NOT_OK(array_metadata_to_capnp(array, &array_metadata_builder));
+  RETURN_NOT_OK(
+      metadata_to_capnp(array->unsafe_metadata(), &array_metadata_builder));
 
   return Status::Ok();
 }
@@ -175,7 +167,7 @@ Status array_from_capnp(
   RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
 
   if (array_reader.hasArraySchemasAll()) {
-    std::unordered_map<std::string, tdb_shared_ptr<ArraySchema>> all_schemas;
+    std::unordered_map<std::string, shared_ptr<ArraySchema>> all_schemas;
     auto all_schemas_reader = array_reader.getArraySchemasAll();
 
     if (all_schemas_reader.hasEntries()) {
@@ -209,15 +201,18 @@ Status array_from_capnp(
   if (array_reader.hasArrayMetadata()) {
     const auto& array_metadata_reader = array_reader.getArrayMetadata();
     // Deserialize
-    RETURN_NOT_OK(array_metadata_from_capnp(array_metadata_reader, array));
+    RETURN_NOT_OK(
+        metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
   }
 
   return Status::Ok();
 }
 
-Status array_metadata_serialize(
-    Array* array, SerializationType serialize_type, Buffer* serialized_buffer) {
-  if (array == nullptr)
+Status metadata_serialize(
+    Metadata* metadata,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  if (metadata == nullptr)
     return LOG_STATUS(Status_SerializationError(
         "Error serializing array metadata; array instance is null"));
 
@@ -226,7 +221,7 @@ Status array_metadata_serialize(
     ::capnp::MallocMessageBuilder message;
     auto builder = message.initRoot<capnp::ArrayMetadata>();
 
-    RETURN_NOT_OK(array_metadata_to_capnp(array, &builder));
+    RETURN_NOT_OK(metadata_to_capnp(metadata, &builder));
 
     // Copy to buffer
     serialized_buffer->reset_size();
@@ -271,16 +266,13 @@ Status array_metadata_serialize(
   return Status::Ok();
 }
 
-Status array_metadata_deserialize(
-    Array* array,
+Status metadata_deserialize(
+    Metadata* metadata,
     SerializationType serialize_type,
     const Buffer& serialized_buffer) {
-  if (array == nullptr)
+  if (metadata == nullptr)
     return LOG_STATUS(Status_SerializationError(
-        "Error deserializing array metadata; null array instance given."));
-  if (array->metadata() == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error deserializing array metadata; null metadata instance."));
+        "Error deserializing metadata; null metadata instance given."));
 
   try {
     switch (serialize_type) {
@@ -294,7 +286,7 @@ Status array_metadata_deserialize(
         auto reader = builder.asReader();
 
         // Deserialize
-        RETURN_NOT_OK(array_metadata_from_capnp(reader, array));
+        RETURN_NOT_OK(metadata_from_capnp(reader, metadata));
 
         break;
       }
@@ -307,7 +299,7 @@ Status array_metadata_deserialize(
         auto reader = msg_reader.getRoot<capnp::ArrayMetadata>();
 
         // Deserialize
-        RETURN_NOT_OK(array_metadata_from_capnp(reader, array));
+        RETURN_NOT_OK(metadata_from_capnp(reader, metadata));
 
         break;
       }
@@ -441,12 +433,12 @@ Status array_deserialize(Array*, SerializationType, const Buffer&) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status array_metadata_serialize(Array*, SerializationType, Buffer*) {
+Status metadata_serialize(Metadata*, SerializationType, Buffer*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
-Status array_metadata_deserialize(Array*, SerializationType, const Buffer&) {
+Status metadata_deserialize(Metadata*, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

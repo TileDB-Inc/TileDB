@@ -116,7 +116,7 @@ Status Metadata::generate_uri(const URI& array_uri) {
 }
 
 tuple<Status, optional<shared_ptr<Metadata>>> Metadata::deserialize(
-    const std::vector<tdb_shared_ptr<Buffer>>& metadata_buffs) {
+    const std::vector<shared_ptr<Buffer>>& metadata_buffs) {
   std::map<std::string, MetadataValue> metadata_map;
   if (metadata_buffs.empty())
     return {Status::Ok(), make_shared<Metadata>(HERE())};
@@ -344,6 +344,12 @@ void Metadata::reset(uint64_t timestamp) {
   clear();
   timestamp = (timestamp != 0) ? timestamp : utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(timestamp, timestamp);
+}
+
+void Metadata::reset(
+    const uint64_t timestamp_start, const uint64_t timestamp_end) {
+  clear();
+  timestamp_range_ = std::make_pair(timestamp_start, timestamp_end);
 }
 
 Metadata::iterator Metadata::begin() const {

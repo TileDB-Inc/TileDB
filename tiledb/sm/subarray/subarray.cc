@@ -56,9 +56,11 @@
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
+using namespace tiledb::type;
 
 namespace tiledb {
 namespace sm {
@@ -79,7 +81,7 @@ Subarray::Subarray()
 Subarray::Subarray(
     const Array* array,
     Stats* const parent_stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     const bool coalesce_ranges,
     StorageManager* storage_manager)
     : Subarray(
@@ -95,7 +97,7 @@ Subarray::Subarray(
     const Array* const array,
     const Layout layout,
     Stats* const parent_stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     const bool coalesce_ranges,
     StorageManager* storage_manager)
     : stats_(
@@ -2011,7 +2013,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     const ArraySchema& array_schema,
     bool all_dims_same_type,
     bool all_dims_fixed,
-    const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_meta,
+    const std::vector<shared_ptr<FragmentMetadata>>& fragment_meta,
     const std::vector<std::string>& names,
     const std::vector<bool>& var_sizes,
     const std::vector<bool>& nullable,
@@ -2867,7 +2869,7 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(
-    tdb_shared_ptr<FragmentMetadata> meta,
+    shared_ptr<FragmentMetadata> meta,
     unsigned frag_idx,
     bool dense,
     ThreadPool* const compute_tp,

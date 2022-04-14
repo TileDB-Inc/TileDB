@@ -35,6 +35,7 @@
 
 #include <atomic>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/query/writer_base.h"
 
@@ -81,7 +82,7 @@ class GlobalOrderWriter : public WriterBase {
     std::unordered_map<std::string, uint64_t> cells_written_;
 
     /** The fragment metadata that the writer will focus on. */
-    tdb_shared_ptr<FragmentMetadata> frag_meta_;
+    shared_ptr<FragmentMetadata> frag_meta_;
   };
 
   /* ********************************* */
@@ -91,7 +92,7 @@ class GlobalOrderWriter : public WriterBase {
   /** Constructor. */
   GlobalOrderWriter(
       stats::Stats* stats,
-      tdb_shared_ptr<Logger> logger,
+      shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,

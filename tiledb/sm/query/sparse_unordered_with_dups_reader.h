@@ -35,10 +35,10 @@
 
 #include <atomic>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
@@ -67,7 +67,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   /** Constructor. */
   SparseUnorderedWithDupsReader(
       stats::Stats* stats,
-      tdb_shared_ptr<Logger> logger,
+      shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -102,7 +102,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   template <class OffType>
   static tuple<bool, uint64_t, uint64_t> compute_var_size_offsets(
       stats::Stats* stats,
-      const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       const std::vector<ResultTile*>& result_tiles,
       const uint64_t first_tile_min_pos,
       std::vector<uint64_t>& cell_offsets,

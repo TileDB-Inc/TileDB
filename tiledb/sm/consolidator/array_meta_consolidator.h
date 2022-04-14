@@ -39,7 +39,6 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
-#include "tiledb/sm/misc/types.h"
 
 using namespace tiledb::common;
 

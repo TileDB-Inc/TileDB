@@ -35,9 +35,9 @@
 
 #include <atomic>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
-#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/dense_tiler.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query.h"
@@ -67,7 +67,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /** Constructor. */
   WriterBase(
       stats::Stats* stats,
-      tdb_shared_ptr<Logger> logger,
+      shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -226,7 +226,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   void clear_coord_buffers();
 
   /** Closes all attribute files, flushing their state to storage. */
-  Status close_files(tdb_shared_ptr<FragmentMetadata> meta) const;
+  Status close_files(shared_ptr<FragmentMetadata> meta) const;
 
   /**
    * Computes the coordinates metadata (e.g., MBRs).
@@ -238,7 +238,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status compute_coords_metadata(
       const std::unordered_map<std::string, std::vector<WriterTile>>& tiles,
-      tdb_shared_ptr<FragmentMetadata> meta) const;
+      shared_ptr<FragmentMetadata> meta) const;
 
   /**
    * Computes the tiles metadata (min/max/sum/null count).
@@ -266,7 +266,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @return Status
    */
   Status create_fragment(
-      bool dense, tdb_shared_ptr<FragmentMetadata>& frag_meta) const;
+      bool dense, shared_ptr<FragmentMetadata>& frag_meta) const;
 
   /**
    * Runs the input coordinate and attribute tiles through their
@@ -468,7 +468,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @return Status
    */
   Status write_all_tiles(
-      tdb_shared_ptr<FragmentMetadata> frag_meta,
+      shared_ptr<FragmentMetadata> frag_meta,
       std::unordered_map<std::string, std::vector<WriterTile>>* tiles);
 
   /**
@@ -485,7 +485,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status write_tiles(
       const std::string& name,
-      tdb_shared_ptr<FragmentMetadata> frag_meta,
+      shared_ptr<FragmentMetadata> frag_meta,
       uint64_t start_tile_id,
       std::vector<WriterTile>* tiles,
       bool close_files = true);

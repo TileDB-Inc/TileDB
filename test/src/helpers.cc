@@ -32,6 +32,7 @@
 
 #include "helpers.h"
 #include "catch.hpp"
+#include "serialization_wrappers.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -121,9 +122,8 @@ bool use_refactored_sparse_unordered_with_dups_reader() {
   return use_refactored_readers;
 }
 
-tdb_shared_ptr<Logger> g_helper_logger(void) {
-  static tdb_shared_ptr<Logger> g_helper_logger =
-      make_shared<Logger>(HERE(), "");
+shared_ptr<Logger> g_helper_logger(void) {
+  static shared_ptr<Logger> g_helper_logger = make_shared<Logger>(HERE(), "");
   return g_helper_logger;
 }
 
@@ -186,7 +186,7 @@ void check_subarray(
 
   // Check ranges
   uint64_t dim_range_num = 0;
-  const sm::Range* range;
+  const type::Range* range;
   for (unsigned i = 0; i < dim_num; ++i) {
     CHECK(subarray.get_range_num(i, &dim_range_num).ok());
     CHECK(dim_range_num == ranges[i].size() / 2);
@@ -264,9 +264,9 @@ void check_subarray_equiv(
 
   // Check ranges
   uint64_t dim_range_num1 = 0;
-  const sm::Range* range1;
+  const type::Range* range1;
   uint64_t dim_range_num2 = 0;
-  const sm::Range* range2;
+  const type::Range* range2;
   if (dim_num1 == dim_num2) {
     for (unsigned i = 0; i < dim_num1; ++i) {
       CHECK(subarray1.get_range_num(i, &dim_range_num1).ok());
@@ -313,9 +313,9 @@ bool subarray_equiv(
 
   // Check ranges
   uint64_t dim_range_num1 = 0;
-  const sm::Range* range1;
+  const type::Range* range1;
   uint64_t dim_range_num2 = 0;
-  const sm::Range* range2;
+  const type::Range* range2;
   if (dim_num1 == dim_num2) {
     for (unsigned i = 0; i < dim_num1; ++i) {
       equiv_state &= (subarray1.get_range_num(i, &dim_range_num1).ok());
@@ -340,69 +340,6 @@ bool subarray_equiv(
 void close_array(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   int rc = tiledb_array_close(ctx, array);
   CHECK(rc == TILEDB_OK);
-}
-
-int array_create_wrapper(
-    tiledb_ctx_t* ctx,
-    const std::string& path,
-    tiledb_array_schema_t* array_schema,
-    bool serialize_array_schema) {
-#ifndef TILEDB_SERIALIZATION
-  return tiledb_array_create(ctx, path.c_str(), array_schema);
-#endif
-
-  if (!serialize_array_schema) {
-    return tiledb_array_create(ctx, path.c_str(), array_schema);
-  }
-
-  // Serialize the array
-  tiledb_buffer_t* buff;
-  REQUIRE(
-      tiledb_serialize_array_schema(
-          ctx,
-          array_schema,
-          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          1,
-          &buff) == TILEDB_OK);
-
-  // Load array schema from the rest server
-  tiledb_array_schema_t* new_array_schema = nullptr;
-  REQUIRE(
-      tiledb_deserialize_array_schema(
-          ctx,
-          buff,
-          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          0,
-          &new_array_schema) == TILEDB_OK);
-
-  // Create array from new schema
-  int rc = tiledb_array_create(ctx, path.c_str(), new_array_schema);
-
-  // Serialize the new array schema and deserialize into the original array
-  // schema.
-  tiledb_buffer_t* buff2;
-  REQUIRE(
-      tiledb_serialize_array_schema(
-          ctx,
-          new_array_schema,
-          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          0,
-          &buff2) == TILEDB_OK);
-  REQUIRE(
-      tiledb_deserialize_array_schema(
-          ctx,
-          buff2,
-          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          1,
-          &array_schema) == TILEDB_OK);
-
-  // Clean up.
-  tiledb_array_schema_free(&array_schema);
-  tiledb_array_schema_free(&new_array_schema);
-  tiledb_buffer_free(&buff);
-  tiledb_buffer_free(&buff2);
-
-  return rc;
 }
 
 void create_array(
@@ -491,7 +428,7 @@ void create_array(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  rc = array_create_wrapper(
+  rc = tiledb_array_create_serialization_wrapper(
       ctx, array_name, array_schema, serialize_array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -725,7 +662,7 @@ void create_subarray(
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim_range_num = ranges[d].size() / 2;
     for (size_t j = 0; j < dim_range_num; ++j) {
-      sm::Range range(&ranges[d][2 * j], 2 * sizeof(T));
+      type::Range range(&ranges[d][2 * j], 2 * sizeof(T));
       ret.add_range(d, std::move(range), true);
     }
   }

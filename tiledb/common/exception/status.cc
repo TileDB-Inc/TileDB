@@ -45,7 +45,7 @@
  * external synchronization.
  */
 
-#include "tiledb/common/status.h"
+#include "status.h"
 #include <cassert>
 
 namespace tiledb::common {

@@ -43,7 +43,6 @@
 #include "constants.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/misc/types.h"
 
 namespace tiledb {
 namespace sm {

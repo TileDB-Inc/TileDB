@@ -34,6 +34,7 @@ target_link_libraries(attribute PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(attribute PUBLIC buffer $<TARGET_OBJECTS:buffer>)
 target_link_libraries(attribute PUBLIC constants $<TARGET_OBJECTS:constants>)
 target_link_libraries(attribute PUBLIC filter_pipeline $<TARGET_OBJECTS:filter_pipeline>)
+target_link_libraries(attribute PUBLIC range $<TARGET_OBJECTS:range>)
 target_link_libraries(attribute PUBLIC stringx $<TARGET_OBJECTS:stringx>)
 #
 # Test-compile of object library ensures link-completeness
@@ -49,6 +50,7 @@ add_library(dimension OBJECT dimension.cc)
 target_link_libraries(dimension PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(dimension PUBLIC filter_pipeline $<TARGET_OBJECTS:filter_pipeline>)
 target_link_libraries(dimension PUBLIC misc_types $<TARGET_OBJECTS:misc_types>)
+target_link_libraries(dimension PUBLIC range $<TARGET_OBJECTS:range>)
 #
 # Test-compile of object library ensures link-completeness
 #
