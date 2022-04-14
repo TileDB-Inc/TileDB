@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,6 +43,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 
@@ -50,27 +51,40 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-enum ASTNodeTag : char { NIL, VAL, EXPR };
+enum class ASTNodeTag : char { VAL, EXPR };
 
 class ASTNode {
  public:
   /** Returns the tag attached to the node. */
-  virtual ASTNodeTag get_tag() = 0;
+  virtual ASTNodeTag get_tag() const = 0;
   /** Returns a deep copy of the node. */
-  virtual tdb_unique_ptr<ASTNode> clone() = 0;
+  virtual tdb_unique_ptr<ASTNode> clone() const = 0;
+  /** Returns a set of field names from all the value nodes in the AST. */
+  virtual void get_field_names(
+      std::unordered_set<std::string>& field_name_set) const = 0;
+  /** Returns true is the AST is previously supported by previous versions of
+   * TileDB. */
+  virtual bool is_previously_supported() const = 0;
+  /** Returns whether a tree is a valid QC AST according to the array schema. */
+  virtual Status check(const ArraySchema& array_schema) const = 0;
+  /** Combines AST node with rhs being passed in. */
+  virtual tdb_unique_ptr<ASTNode> combine(
+      const tdb_unique_ptr<ASTNode>& rhs,
+      const QueryConditionCombinationOp& combination_op) = 0;
   /** Default virtual destructor. */
   virtual ~ASTNode() {
   }
 };
+
 /** Represents a simple terminal/predicate **/
 class ASTNodeVal : public ASTNode {
   /** Value constructor. */
  public:
   ASTNodeVal(
-      std::string field_name,
+      const std::string& field_name,
       const void* const condition_value,
-      const uint64_t condition_value_size,
-      const QueryConditionOp op)
+      const uint64_t& condition_value_size,
+      const QueryConditionOp& op)
       : field_name_(field_name)
       , condition_value_data_(condition_value_size)
       , condition_value_view_(
@@ -111,7 +125,7 @@ class ASTNodeVal : public ASTNode {
             condition_value_data_.size())
       , op_(rhs.op_){};
 
-  /** Assignment operator. */
+  /** Copy-assignment operator. */
   ASTNodeVal& operator=(const ASTNodeVal& rhs) {
     if (this != &rhs) {
       field_name_ = rhs.field_name_;
@@ -137,19 +151,21 @@ class ASTNodeVal : public ASTNode {
   }
 
   /** Returns the tag attached to the node. */
-  ASTNodeTag get_tag() {
-    return tag_;
-  }
+  ASTNodeTag get_tag() const override;
 
   /** Returns a deep copy of the node. */
-  tdb_unique_ptr<ASTNode> clone() {
-    return tdb_unique_ptr<ASTNode>(tdb_new(
-        ASTNodeVal,
-        field_name_,
-        condition_value_data_.data(),
-        condition_value_data_.size(),
-        op_));
-  }
+  tdb_unique_ptr<ASTNode> clone() const override;
+
+  void get_field_names(
+      std::unordered_set<std::string>& field_name_set) const override;
+
+  bool is_previously_supported() const override;
+
+  Status check(const ArraySchema& array_schema) const override;
+
+  tdb_unique_ptr<ASTNode> combine(
+      const tdb_unique_ptr<ASTNode>& rhs,
+      const QueryConditionCombinationOp& combination_op) override;
 
   /** The attribute name. */
   std::string field_name_;
@@ -171,7 +187,7 @@ class ASTNodeExpr : public ASTNode {
  public:
   ASTNodeExpr(
       std::vector<tdb_unique_ptr<ASTNode>>&& nodes,
-      QueryConditionCombinationOp c_op)
+      const QueryConditionCombinationOp& c_op)
       : combination_op_(c_op) {
     for (const auto& elem : nodes) {
       nodes_.push_back(elem->clone());
@@ -195,7 +211,7 @@ class ASTNodeExpr : public ASTNode {
       : nodes_(std::move(rhs.nodes_))
       , combination_op_(rhs.combination_op_){};
 
-  /** Assignment operator. */
+  /** Copy-assignment operator. */
   ASTNodeExpr& operator=(const ASTNodeExpr& rhs) {
     if (this != &rhs) {
       for (const auto& elem : rhs.nodes_) {
@@ -214,19 +230,21 @@ class ASTNodeExpr : public ASTNode {
   }
 
   /** Returns the tag attached to the node. */
-  ASTNodeTag get_tag() {
-    return tag_;
-  }
+  ASTNodeTag get_tag() const override;
 
   /** Returns a deep copy of the node. */
-  tdb_unique_ptr<ASTNode> clone() {
-    std::vector<tdb_unique_ptr<ASTNode>> nodes_copy;
-    for (const auto& node : nodes_) {
-      nodes_copy.push_back(node->clone());
-    }
-    return tdb_unique_ptr<ASTNode>(
-        tdb_new(ASTNodeExpr, std::move(nodes_copy), combination_op_));
-  }
+  tdb_unique_ptr<ASTNode> clone() const override;
+
+  void get_field_names(
+      std::unordered_set<std::string>& field_name_set) const override;
+
+  bool is_previously_supported() const override;
+
+  Status check(const ArraySchema& array_schema) const override;
+
+  tdb_unique_ptr<ASTNode> combine(
+      const tdb_unique_ptr<ASTNode>& rhs,
+      const QueryConditionCombinationOp& combination_op) override;
 
   /** The node list **/
   std::vector<tdb_unique_ptr<ASTNode>> nodes_;
@@ -237,37 +255,6 @@ class ASTNodeExpr : public ASTNode {
  private:
   static const ASTNodeTag tag_{ASTNodeTag::EXPR};
 };
-
-/**
- * @brief This function takes two AST trees (lhs and rhs) and combines
- * them into one combined AST, connecting them with the combination op.
- *
- * @param lhs left AST
- * @param rhs right AST
- * @param combination_op the combination op to combine the nodes with
- * @return unique pointer containing the values of the combined op
- */
-tdb_unique_ptr<ASTNode> ast_combine(
-    const tdb_unique_ptr<ASTNode>& lhs,
-    const tdb_unique_ptr<ASTNode>& rhs,
-    QueryConditionCombinationOp combination_op);
-
-/**
- * @brief Returns a set of field names from all the value nodes in the AST.
- *
- * @param field_name_set The set to store the field names in.
- * @param node The node we are collecting field names from.
- */
-void ast_get_field_names(
-    std::unordered_set<std::string>& field_name_set,
-    const tdb_unique_ptr<ASTNode>& node);
-
-/**
- * @brief Returns true if the ast is previously supported by older versions of
- * TileDB. (i.e. is either a value node or only has AND combination ops. )
- * @param node The AST we are evaluating this condition on.
- */
-bool ast_is_previously_supported(const tdb_unique_ptr<ASTNode>& node);
 
 }  // namespace sm
 }  // namespace tiledb

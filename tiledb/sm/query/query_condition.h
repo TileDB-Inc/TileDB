@@ -33,6 +33,8 @@
 #ifndef TILEDB_QUERY_CONDITION_H
 #define TILEDB_QUERY_CONDITION_H
 
+#include "external/include/span/span.hpp"
+
 #include <unordered_set>
 
 #include "tiledb/common/status.h"
@@ -61,8 +63,8 @@ class QueryCondition {
     Clause(
         const std::string& field_name,
         const void* const condition_value,
-        const uint64_t condition_value_size,
-        const QueryConditionOp op)
+        const uint64_t& condition_value_size,
+        const QueryConditionOp& op)
         : field_name_(field_name)
         , op_(op) {
       condition_value_data_.resize(condition_value_size);
@@ -99,7 +101,7 @@ class QueryCondition {
                                                 condition_value_data_.data())
         , op_(rhs.op_){};
 
-    /** Assignment operator. */
+    /** Copy-assignment operator. */
     Clause& operator=(const Clause& rhs) {
       field_name_ = rhs.field_name_;
       condition_value_data_ = rhs.condition_value_data_;
@@ -179,7 +181,7 @@ class QueryCondition {
       std::string&& field_name,
       const void* condition_value,
       uint64_t condition_value_size,
-      QueryConditionOp op);
+      const QueryConditionOp& op);
 
   /**
    * Verifies that the current state contains supported comparison
@@ -352,17 +354,18 @@ class QueryCondition {
    * @param var_size The attribute is var sized or not.
    * @param nullable The attribute is nullable or not.
    * @param fill_value The fill value for the cells.
-   * @param result_cell_slabs The input cell slabs.
+   * @param result_cell_bitmap The input cell bitmap.
    * @return The filtered cell slabs.
    */
   template <typename T, QueryConditionOp Op>
-  std::vector<ResultCellSlab> apply_ast_node(
+  void apply_ast_node(
       const ASTNodeVal& node,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
       const ByteVecValue& fill_value,
-      const std::vector<ResultCellSlab>& result_cell_slabs) const;
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      std::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
    * Applies a value node on primitive-typed result cell slabs.
@@ -372,17 +375,18 @@ class QueryCondition {
    * @param var_size The attribute is var sized or not.
    * @param nullable The attribute is nullable or not.
    * @param fill_value The fill value for the cells.
-   * @param result_cell_slabs The input cell slabs.
+   * @param result_cell_bitmap The input cell bitmap.
    * @return Status, filtered cell slabs.
    */
   template <typename T>
-  tuple<Status, optional<std::vector<ResultCellSlab>>> apply_ast_node(
+  void apply_ast_node(
       const ASTNodeVal& node,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
       const ByteVecValue& fill_value,
-      const std::vector<ResultCellSlab>& result_cell_slabs) const;
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      std::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
    * Applies a value node to filter result cells from the input
@@ -391,14 +395,15 @@ class QueryCondition {
    * @param node The value node to apply.
    * @param array_schema The current array schema.
    * @param stride The stride between cells.
-   * @param result_cell_slabs The input cell slabs.
+   * @param result_cell_bitmap The input cell bitmap.
    * @return Status, filtered cell slabs.
    */
-  tuple<Status, optional<std::vector<ResultCellSlab>>> apply_ast_node(
+  void apply_ast_node(
       const ASTNodeVal& node,
       const ArraySchema& array_schema,
       uint64_t stride,
-      const std::vector<ResultCellSlab>& result_cell_slabs) const;
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      std::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
    * Applies the query condition represented with the AST to
@@ -406,16 +411,18 @@ class QueryCondition {
    *
    * @param node The node to apply.
    * @param array_schema The array schema associated with `result_cell_slabs`.
-   * @param result_cell_slabs The cell slabs to filter. Mutated to remove cell
-   *   slabs that do not meet the criteria in this query condition.
+   * @param result_cell_bitmap A bitmap representation of cell slabs to filter.
+   * Mutated to remove cell slabs that do not meet the criteria in this query
+   * condition.
    * @param stride The stride between cells.
    * @return Filtered cell slabs.
    */
-  std::vector<ResultCellSlab> apply_tree(
+  void apply_tree(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
       uint64_t stride,
-      const std::vector<ResultCellSlab>& result_cell_slabs) const;
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      std::vector<uint8_t>& result_cell_bitmap) const;
   /**
    * Applies a value node on a dense result tile,
    * templated for a query condition operator.
@@ -436,7 +443,7 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
-      std::vector<uint8_t>& result_buffer) const;
+      span<uint8_t>& result_buffer) const;
 
   /**
    * Applies a value node on a dense result tile.
@@ -458,7 +465,7 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
-      std::vector<uint8_t>& result_buffer) const;
+      span<uint8_t>& result_buffer) const;
 
   /**
    * Applies a value node to filter result cells from the input
@@ -480,7 +487,7 @@ class QueryCondition {
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
-      std::vector<uint8_t>& result_buffer) const;
+      span<uint8_t>& result_buffer) const;
 
   /**
    * Applies the query condition represented with the AST to a set of cells.
@@ -501,7 +508,7 @@ class QueryCondition {
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
-      std::vector<uint8_t>& result_buffer) const;
+      span<uint8_t>& result_buffer) const;
 
   /**
    * Applies a value node on a sparse result tile,

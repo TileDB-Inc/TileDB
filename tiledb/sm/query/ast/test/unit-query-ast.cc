@@ -55,7 +55,7 @@ TEST_CASE("ASTNode Constructors", "[QueryCondition][ast][constructor]") {
 
   // ASTNodeExpr constructor
   auto combined_node =
-      ast_combine(node_val, node_val1, QueryConditionCombinationOp::AND);
+      node_val->combine(node_val1, QueryConditionCombinationOp::AND);
   REQUIRE(
       ast_node_to_str(combined_node) ==
       "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
@@ -81,15 +81,15 @@ TEST_CASE("ASTNode Constructors", "[QueryCondition][ast][constructor]") {
   REQUIRE(ast_node_to_str(node_val4) == "c LE 08 00 00 00");
 
   auto combined_node_inter1 =
-      ast_combine(node_val2, node_val3, QueryConditionCombinationOp::OR);
+      node_val2->combine(node_val3, QueryConditionCombinationOp::OR);
   auto combined_node1 =
-      ast_combine(node_inter1, node_val4, QueryConditionCombinationOp::OR);
+      node_inter1->combine(node_val4, QueryConditionCombinationOp::OR);
   REQUIRE(
       ast_node_to_str(combined_node1) ==
       "(a EQ 17 00 00 00 OR b NE 02 00 00 00 OR c LE 08 00 00 00)");
 
-  auto combined_node2 = ast_combine(
-      combined_node, combined_node1, QueryConditionCombinationOp::OR);
+  auto combined_node2 =
+      combined_node->combine(combined_node1, QueryConditionCombinationOp::OR);
   REQUIRE(
       ast_node_to_str(combined_node2) ==
       "((x LT 05 00 00 00 AND y GT 03 00 00 00) OR (a EQ 17 00 00 00 OR b NE "

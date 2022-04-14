@@ -1568,7 +1568,7 @@ TEST_CASE(
 
   REQUIRE(combined_or.apply(array_schema, result_cell_slabs, 1).ok());
 
-  // Check that the cell slab now contains cell index 6.
+  // Check that the cell slab now contains cell indexes 3, 4, 5, 6, 7, 8.
   REQUIRE(result_cell_slabs.size() == 1);
   REQUIRE(result_cell_slabs[0].start_ == 3);
   REQUIRE(result_cell_slabs[0].length_ == 6);
