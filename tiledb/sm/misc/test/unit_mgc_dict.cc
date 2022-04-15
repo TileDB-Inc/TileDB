@@ -86,7 +86,7 @@ int check_embedded_data_validity() {
         "ERROR magic.mgc data len (%" PRIu64
         ") does not match embedded data length (%" PRIu64 ")\n",
         magic_mgc_len,
-        magic_mgc_embedded_data->size());
+        reinterpret_cast<uint64_t>(magic_mgc_embedded_data->size()) );
     return 7;
   }
 
