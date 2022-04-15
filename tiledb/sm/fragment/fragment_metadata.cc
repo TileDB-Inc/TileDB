@@ -51,6 +51,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
