@@ -205,6 +205,37 @@ void partial_read_and_check_sparse_array(
   array.close();
 }
 
+void read_and_check_empty_coords_array(
+    Context ctx, const std::string& array_name, tiledb_layout_t layout) {
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array, TILEDB_READ);
+
+  std::vector<int32_t> attr_val(4);
+  std::vector<uint64_t> attr_off(4);
+
+  query.set_layout(layout);
+  query.set_data_buffer("attr", attr_val);
+  query.set_offsets_buffer("attr", attr_off);
+
+  // Query outside unwritten coordinates of the array
+  int64_t d1_start = 1, d1_end = 2;
+  int64_t d2_start = 3, d2_end = 4;
+  query.add_range("d1", d1_start, d1_end);
+  query.add_range("d2", d2_start, d2_end);
+
+  CHECK_NOTHROW(query.submit());
+
+  // Check the element offsets are properly returned
+  uint64_t offset_elem_num = 0, data_vals_num = 0, validity_elem_num = 0;
+  std::tie(offset_elem_num, data_vals_num, validity_elem_num) =
+      query.result_buffer_elements_nullable()["attr"];
+
+  CHECK(offset_elem_num == 0);
+  CHECK(data_vals_num == 0);
+
+  array.close();
+}
+
 void create_dense_array(const std::string& array_name) {
   Context ctx;
   VFS vfs(ctx);
@@ -678,6 +709,47 @@ TEST_CASE(
         }
       }
 
+      SECTION("Query unwritten coordinates") {
+        CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
+        Context ctx(config);
+
+        // Write data with extra element indicating total number of bytes
+        data_offsets.push_back(sizeof(data[0]) * data.size());
+
+        SECTION("Unordered write") {
+          write_sparse_array(
+              ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+          SECTION("Row major read") {
+            read_and_check_empty_coords_array(
+                ctx, array_name, TILEDB_ROW_MAJOR);
+          }
+          SECTION("Global order read") {
+            read_and_check_empty_coords_array(
+                ctx, array_name, TILEDB_GLOBAL_ORDER);
+          }
+          SECTION("Unordered read") {
+            read_and_check_empty_coords_array(
+                ctx, array_name, TILEDB_UNORDERED);
+          }
+        }
+        SECTION("Global order write") {
+          write_sparse_array(
+              ctx, array_name, data, data_offsets, TILEDB_GLOBAL_ORDER);
+          SECTION("Row major read") {
+            read_and_check_empty_coords_array(
+                ctx, array_name, TILEDB_ROW_MAJOR);
+          }
+          SECTION("Global order read") {
+            read_and_check_empty_coords_array(
+                ctx, array_name, TILEDB_GLOBAL_ORDER);
+          }
+          SECTION("Unordered read") {
+            read_and_check_empty_coords_array(
+                ctx, array_name, TILEDB_UNORDERED);
+          }
+        }
+      }
+
       SECTION("User offsets buffer too small") {
         Context ctx(config);
 
@@ -1100,7 +1172,8 @@ TEST_CASE(
         config["sm.var_offsets.mode"] = "elements";
         Context ctx(config);
 
-        // Write data with extra element indicating the total number of elements
+        // Write data with extra element indicating the total number of
+        // elements
         element_offsets.push_back(data.size());
 
         SECTION("Ordered write") {
