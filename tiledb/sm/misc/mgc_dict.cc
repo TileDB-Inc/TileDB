@@ -62,9 +62,9 @@ magic_dict::magic_dict() {
 
 int magic_dict::magic_load(magic_t magic) {
   void* data[1] = {uncompressed_magic_dict_};
-  uint64_t sizes[1] = {expanded_buffer_->size()};
+  size_t sizes[1] = {expanded_buffer_->size()};
   // zero ok, non-zero error
-  return magic_load_buffers(magic, &data[0], sizes, 1);
+  return magic_load_buffers(magic, &data[0], &sizes[0], 1);
 }
 
 const shared_ptr<tiledb::sm::ByteVecValue> magic_dict::expanded_buffer() {
