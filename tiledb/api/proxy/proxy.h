@@ -74,8 +74,8 @@ constexpr unsigned int n_events = to_index(ProxyEvent::shutdown) + 1;
  * The state transitions as a cartoon in ASCII art:
  * ```
  * nascent --> present --> destroyed
- *  |           ^    |      |
- *  v           |    v      v
+ *  |           |    ^      ^
+ *  v           v    |      |
  * aborted      access --> last_access
  * ```
  */
@@ -360,7 +360,6 @@ class ProxyStateMachine {
    */
   void event(lock_type& lock_state, ProxyEvent ev) {
     // Assert: event state is `Quiet`
-    ProxyEvent event;
     /*
      * Create the queue lock always in the locked state. Queue processing has
      * nothing long-lived, so we always block for exclusive access to the queue.
@@ -401,6 +400,7 @@ class ProxyStateMachine {
     // Assert: event state is `Hand-off`
     // Whether `try_lock` locked or not, we now have a lock.
 
+    ProxyEvent event{};
     if (queue_.empty()) {
       event = ev;
     } else {
@@ -516,6 +516,8 @@ class ProxyStateMachine {
          * `lock_queue` executes.
          */
       }
+      event = queue_.front();
+      queue_.pop();
     }
   }
 
