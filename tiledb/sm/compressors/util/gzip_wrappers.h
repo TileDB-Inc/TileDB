@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * This file declare gzip_compress and gzip_uncompress, routines
@@ -50,8 +50,9 @@
  */
 Status gzip_compress(
     shared_ptr<tiledb::sm::Buffer>& out_gzipped_buf,
-    //const shared_ptr<tiledb::sm::Buffer>& in_buf);
-    const void* in_bytes, uint64_t nbytes);
+    // const shared_ptr<tiledb::sm::Buffer>& in_buf);
+    const void* in_bytes,
+    uint64_t nbytes);
 
 /**
  * gzip decompress data from inbuf into linear series of bytesw in outbuf
@@ -64,4 +65,4 @@ Status gzip_compress(
 Status gzip_decompress(
     shared_ptr<tiledb::sm::ByteVecValue>& out_buf, const uint8_t* comp_buf);
 
-  #endif
+#endif

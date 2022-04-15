@@ -30,8 +30,8 @@
 
 #include "tiledb/sm/compressors/util/gzip_wrappers.h"
 
-#include <string>
 #include <stdexcept>
+#include <string>
 
 namespace tiledb {
 namespace sm {
@@ -51,7 +51,10 @@ magic_dict::magic_dict() {
     return;
 
   expanded_buffer_ = make_shared<tiledb::sm::ByteVecValue>(HERE());
-  if (!gzip_decompress(expanded_buffer_, reinterpret_cast<const uint8_t *>(&magic_mgc_compressed_bytes[0])).ok()) {
+  if (!gzip_decompress(
+           expanded_buffer_,
+           reinterpret_cast<const uint8_t*>(&magic_mgc_compressed_bytes[0]))
+           .ok()) {
     throw std::runtime_error("gzip_decompress failure!");
   }
   uncompressed_magic_dict_ = expanded_buffer_.get()->data();

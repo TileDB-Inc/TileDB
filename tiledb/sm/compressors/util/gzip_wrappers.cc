@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * This file defines gzip_compress and gzip_uncompress, routines
@@ -35,21 +35,22 @@
 
 #include <inttypes.h>
 
-Status gzip_compress(shared_ptr<tiledb::sm::Buffer>& out_gzipped_buf,
-    const void* in_bytes, uint64_t nbytes) {
+Status gzip_compress(
+    shared_ptr<tiledb::sm::Buffer>& out_gzipped_buf,
+    const void* in_bytes,
+    uint64_t nbytes) {
   /**
-  * buffer format:
-  *    uint64_t uncompressed_size
-  *    uint64_t compressed_size
-  *    uint8_t [compressed_size] - compressed data
+   * buffer format:
+   *    uint64_t uncompressed_size
+   *    uint64_t compressed_size
+   *    uint8_t [compressed_size] - compressed data
    */
   uint64_t overhead_size = 2 * sizeof(uint64_t);
   tiledb::sm::ConstBuffer const_in_buf(in_bytes, nbytes);
   // Ensure space in output buffer for worst acceptable case.
   if (!out_gzipped_buf->realloc(nbytes + overhead_size).ok()) {
     return LOG_STATUS(
-        Status_CompressionError(
-        "gzip output buffer allocation error"));
+        Status_CompressionError("gzip output buffer allocation error"));
   }
   out_gzipped_buf->reset_offset();
   out_gzipped_buf->reset_size();
@@ -62,8 +63,7 @@ Status gzip_compress(shared_ptr<tiledb::sm::Buffer>& out_gzipped_buf,
   if (!tiledb::sm::GZip::compress(9, &const_in_buf, out_buffer_ptr).ok()) {
     // TODO: Handle possibility that 'error' is just 'not enuf buffer', i.e.
     // unable to compress into <= space of in_buf
-    return LOG_STATUS(
-        Status_CompressionError("gzip Error compressing data!"));
+    return LOG_STATUS(Status_CompressionError("gzip Error compressing data!"));
   }
   RETURN_NOT_OK(out_buffer_ptr->realloc(out_buffer_ptr->offset()));
   uint64_t compressed_size = out_buffer_ptr->offset() - overhead_size;
@@ -78,8 +78,8 @@ Status gzip_compress(shared_ptr<tiledb::sm::Buffer>& out_gzipped_buf,
   return Status::Ok();
 }
 
-Status gzip_decompress(shared_ptr<tiledb::sm::ByteVecValue>& out_buf,
-                          const uint8_t* comp_buf) {
+Status gzip_decompress(
+    shared_ptr<tiledb::sm::ByteVecValue>& out_buf, const uint8_t* comp_buf) {
   /**
    * Expected compressed buffer format:
    *    uint64_t uncompressed_size

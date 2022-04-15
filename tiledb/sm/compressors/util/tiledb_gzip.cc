@@ -46,10 +46,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <memory>
-#include <sstream>
 #include <iomanip>
 #include <iostream>
+#include <memory>
+#include <sstream>
 
 #ifdef _WIN32
 #include <fcntl.h>
@@ -81,9 +81,7 @@ int main(int argc, char* argv[]) {
       exit(-2);
     }
   }
-  auto closefile = [&]() { 
-    fclose(outfile);
-  };
+  auto closefile = [&]() { fclose(outfile); };
   tiledb::common::ScopedExecutor onexit1(closefile);
 
 #ifdef _WIN32
@@ -119,17 +117,17 @@ int main(int argc, char* argv[]) {
   auto tdb_gzip_buf = make_shared<tiledb::sm::Buffer>(HERE());
 
   unsigned maxnperline = 128;
-  auto addbytevals = [&](void *_pbytes, uint64_t nbytes) {
+  auto addbytevals = [&](void* _pbytes, uint64_t nbytes) {
     uint8_t* pbytes = reinterpret_cast<uint8_t*>(_pbytes);
     static unsigned cntout = 0;
-    for (auto i=0u; i < nbytes; ++i) {
-      //std::cout << "0x" << std::setw(2) << std::hex << std::setfill('0')
+    for (auto i = 0u; i < nbytes; ++i) {
+      // std::cout << "0x" << std::setw(2) << std::hex << std::setfill('0')
       //          << (unsigned)pbytes[i] << ",";
-      fprintf(outfile,"'\\x%02x',", pbytes[i]);
+      fprintf(outfile, "'\\x%02x',", pbytes[i]);
       if (++cntout > maxnperline)
         cntout = 0,
-        //std::cout << std::endl;
-        fprintf(outfile, "\n");
+        // std::cout << std::endl;
+            fprintf(outfile, "\n");
     }
   };
   addbytevals(&cntread, sizeof(cntread));
@@ -140,14 +138,15 @@ int main(int argc, char* argv[]) {
   auto nremaining = zipped_buf->size();
   // vs19 complained...
   // A) could not find raw string literal terminator
-  //    for almost identical error, though not quite same cause, can see 
+  //    for almost identical error, though not quite same cause, can see
   // https://developercommunity.visualstudio.com/t/bug-in-raw-string-implementation-converning-eof-02/254730)
   // vs19 16.11.3 was in use with tiledb failed #include of raw literal file
   // B) that (all data as) one string was to large a string
-  // C) many shorter strings expecting concatention were causing 
+  // C) many shorter strings expecting concatention were causing
   //    compiler heap memory errors (100+GB)
   // D) caused warnings trying to do direct 0xXX numeric values
-  // end result format is comma delimited '\xXX' characters with periodic line splits
+  // end result format is comma delimited '\xXX' characters with periodic line
+  // splits
   while (nremaining) {
     auto ntowrite = nremaining > seg_sz ? seg_sz : nremaining;
     // TBD: error from ->read()?
@@ -158,13 +157,12 @@ int main(int argc, char* argv[]) {
   }
 
   {
-    if (1)
-    {
+    if (1) {
       //__debugbreak();
       shared_ptr<tiledb::sm::Buffer> out_gzipped_buf =
           make_shared<tiledb::sm::Buffer>(HERE());
-      //gzip_compress2(out_gzipped_buf, inbuf);
-      //gzip_compress(out_gzipped_buf, inbuf);
+      // gzip_compress2(out_gzipped_buf, inbuf);
+      // gzip_compress(out_gzipped_buf, inbuf);
       gzip_compress(out_gzipped_buf, inbuf->data(0), inbuf->size());
       if (out_gzipped_buf->size() != tdb_gzip_buf->size()) {
         printf(
@@ -177,17 +175,16 @@ int main(int argc, char* argv[]) {
       if (memcmp(
               out_gzipped_buf->data(0),
               tdb_gzip_buf->data(0),
-              out_gzipped_buf->size()) //tdb_gzip_buf->size())
-        ) {
+              out_gzipped_buf->size())  // tdb_gzip_buf->size())
+      ) {
         printf("Error, compressed data mismatch!\n");
         exit(-11);
       }
     }
-    if (0)
-    {
-      //shared_ptr<tiledb::sm::FilterBuffer> out_gzipped_buf;
+    if (0) {
+      // shared_ptr<tiledb::sm::FilterBuffer> out_gzipped_buf;
       shared_ptr<tiledb::sm::Buffer> out_gzipped_buf;
-      //gzip_compress(out_gzipped_buf, inbuf);
+      // gzip_compress(out_gzipped_buf, inbuf);
       gzip_compress(out_gzipped_buf, inbuf->data(0), inbuf->size());
       // if (out_gzipped_buf->buffer_ptr(0)->size() != tdb_gzip_buf->size()) {
       if (out_gzipped_buf->size() != tdb_gzip_buf->size()) {
@@ -199,7 +196,7 @@ int main(int argc, char* argv[]) {
         exit(-13);
       }
       if (memcmp(
-              //out_gzipped_buf->buffer_ptr(0)->data(0),
+              // out_gzipped_buf->buffer_ptr(0)->data(0),
               out_gzipped_buf->data(),
               tdb_gzip_buf->data(0),
               tdb_gzip_buf->size())) {
@@ -214,7 +211,8 @@ int main(int argc, char* argv[]) {
 
 #if 1
   tdb_gzip_buf->set_offset(0);
-  //gzip_uncompress(expanded_buffer, static_cast<uint8_t*>(tdb_gzip_buf->data()));
+  // gzip_uncompress(expanded_buffer,
+  // static_cast<uint8_t*>(tdb_gzip_buf->data()));
   gzip_decompress(expanded_buffer, static_cast<uint8_t*>(tdb_gzip_buf->data()));
   if (memcmp(expanded_buffer->data(), inbuf->data(), inbuf->size())) {
     printf("Error uncompress data != original data!\n");
