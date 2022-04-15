@@ -351,12 +351,9 @@ message(STATUS "MAGIC_MGC_DICT is ${MAGIC_MGC_DICT}")
 add_custom_command( 
   OUTPUT "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/mgc_gzipped.bin
   DEPENDS "${MAGIC_MGC_DICT}"
-  COMMAND bash -c "ls -l ${tdb_gzip_embedded_data_EXECUTABLE} ${MAGIC_MGC_DICT}"
   COMMAND "${tdb_gzip_embedded_data_EXECUTABLE}" < "${MAGIC_MGC_DICT}" "${MGC_GZIPPED_BIN_PATH}"
-  COMMAND bash -c "ls -l ${tdb_gzip_embedded_data_EXECUTABLE} ${MAGIC_MGC_DICT} ${MGC_GZIPPED_BIN_PATH}"
   # also put it where unit_mgc_dict build can find it
   COMMAND ${CMAKE_COMMAND} -E copy "${MGC_GZIPPED_BIN_PATH}" "${MGC_GZIPPED_BIN_PATH2}"
-  COMMAND bash -c "ls -l ${tdb_gzip_embedded_data_EXECUTABLE} ${MAGIC_MGC_DICT} ${MGC_GZIPPED_BIN_PATH} ${MGC_GZIPPED_BIN_PATH2}"
 )
 add_custom_target(gen_mgc_gzip ALL
   DEPENDS ${MGC_GZIPPED_BIN_PATH}

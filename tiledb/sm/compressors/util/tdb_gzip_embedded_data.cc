@@ -114,6 +114,8 @@ int main(int argc, char* argv[]) {
     printf("Error compressing data!\n");
     exit(-4);
   }
+  std::cerr << "sizes input " << inbuf->size() << ", compressed "
+            << out_buffer_ptr->size() << std::endl;
   auto tdb_gzip_buf = make_shared<tiledb::sm::Buffer>(HERE());
 
   unsigned maxnperline = 128;

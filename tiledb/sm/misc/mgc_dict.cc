@@ -30,6 +30,7 @@
 
 #include "tiledb/sm/compressors/util/gzip_wrappers.h"
 
+#include <iostream>
 #include <stdexcept>
 #include <string>
 
@@ -47,6 +48,9 @@ void* magic_dict::uncompressed_magic_dict_ = nullptr;
 static magic_dict magic_dict_object;
 
 magic_dict::magic_dict() {
+}
+
+void magic_dict::prepare_data() {
   if (uncompressed_magic_dict_)
     return;
 
@@ -57,10 +61,14 @@ magic_dict::magic_dict() {
            .ok()) {
     throw std::runtime_error("gzip_decompress failure!");
   }
+
   uncompressed_magic_dict_ = expanded_buffer_.get()->data();
 }
 
 int magic_dict::magic_load(magic_t magic) {
+  if (!uncompressed_magic_dict_)
+    prepare_data();
+
   void* data[1] = {uncompressed_magic_dict_};
   size_t sizes[1] = {expanded_buffer_->size()};
   // zero ok, non-zero error
@@ -68,6 +76,8 @@ int magic_dict::magic_load(magic_t magic) {
 }
 
 const shared_ptr<tiledb::sm::ByteVecValue> magic_dict::expanded_buffer() {
+  if (!uncompressed_magic_dict_)
+    prepare_data();
   return expanded_buffer_;
 }
 

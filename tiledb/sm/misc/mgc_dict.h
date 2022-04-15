@@ -59,6 +59,11 @@ class magic_dict {
 
  private:
   /**
+   * decompress and init data items
+   */
+  static void prepare_data();
+
+  /**
    * raw pointer to expanded bytes for use with magic_load_buffers(),
    * points to the data held within expanded_buffer_
    */
