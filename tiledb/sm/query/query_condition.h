@@ -63,8 +63,8 @@ class QueryCondition {
     Clause(
         const std::string& field_name,
         const void* const condition_value,
-        const uint64_t& condition_value_size,
-        const QueryConditionOp& op)
+        const uint64_t condition_value_size,
+        const QueryConditionOp op)
         : field_name_(field_name)
         , op_(op) {
       condition_value_data_.resize(condition_value_size);

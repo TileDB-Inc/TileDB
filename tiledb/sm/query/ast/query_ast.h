@@ -55,7 +55,7 @@ namespace sm {
 
 class ASTNode {
  public:
-  /** Returns whether the node is an expression node (and false if it's a value
+  /** Returns true if it is an expression node (and false if it's a value
    * node). */
   virtual bool is_expr() const = 0;
   /** Returns a deep copy of the node. */
@@ -65,25 +65,22 @@ class ASTNode {
       std::unordered_set<std::string>& field_name_set) const = 0;
   /** Returns true is the AST is previously supported by previous versions of
    * TileDB. */
-  virtual bool is_previously_supported() const = 0;
+  virtual bool is_or_supported() const = 0;
   /** Returns whether a tree is a valid QC AST according to the array schema. */
-  virtual Status check(const ArraySchema& array_schema) const = 0;
+  virtual Status check_node_validity(const ArraySchema& array_schema) const = 0;
   /** Combines AST node with rhs being passed in. */
   virtual tdb_unique_ptr<ASTNode> combine(
       const tdb_unique_ptr<ASTNode>& rhs,
       const QueryConditionCombinationOp& combination_op) = 0;
 
   /** Value node getter methods */
-  virtual const std::string& get_node_field_name() const = 0;
-  virtual const ByteVecValue& get_node_condition_value_data() const = 0;
-  virtual const UntypedDatumView& get_node_condition_value_view() const = 0;
-  virtual const QueryConditionOp& get_node_op() const = 0;
+  virtual const std::string& get_field_name() const = 0;
+  virtual const UntypedDatumView& get_condition_value_view() const = 0;
+  virtual const QueryConditionOp& get_op() const = 0;
 
   /** Expression node getter methods */
-  virtual const std::vector<tdb_unique_ptr<ASTNode>>& get_node_children()
-      const = 0;
-  virtual const QueryConditionCombinationOp& get_node_combination_op()
-      const = 0;
+  virtual const std::vector<tdb_unique_ptr<ASTNode>>& get_children() const = 0;
+  virtual const QueryConditionCombinationOp& get_combination_op() const = 0;
 
   /** Default virtual destructor. */
   virtual ~ASTNode() {
@@ -97,8 +94,8 @@ class ASTNodeVal : public ASTNode {
   ASTNodeVal(
       const std::string& field_name,
       const void* const condition_value,
-      const uint64_t& condition_value_size,
-      const QueryConditionOp& op)
+      const uint64_t condition_value_size,
+      const QueryConditionOp op)
       : field_name_(field_name)
       , condition_value_data_(condition_value_size)
       , condition_value_view_(
@@ -122,7 +119,7 @@ class ASTNodeVal : public ASTNode {
   DISABLE_COPY_ASSIGN(ASTNodeVal);
   DISABLE_MOVE_ASSIGN(ASTNodeVal);
 
-  /** Returns true is the node is an expression node. */
+  /** Returns true if it is an expression node. */
   bool is_expr() const override;
 
   /** Returns a deep copy of the node. */
@@ -131,27 +128,24 @@ class ASTNodeVal : public ASTNode {
   void get_field_names(
       std::unordered_set<std::string>& field_name_set) const override;
 
-  bool is_previously_supported() const override;
+  bool is_or_supported() const override;
 
-  Status check(const ArraySchema& array_schema) const override;
+  Status check_node_validity(const ArraySchema& array_schema) const override;
 
   tdb_unique_ptr<ASTNode> combine(
       const tdb_unique_ptr<ASTNode>& rhs,
       const QueryConditionCombinationOp& combination_op) override;
 
   /** Value node getter methods */
-  virtual const std::string& get_node_field_name() const override;
-  virtual const ByteVecValue& get_node_condition_value_data() const override;
-  virtual const UntypedDatumView& get_node_condition_value_view()
-      const override;
-  virtual const QueryConditionOp& get_node_op() const override;
+  const std::string& get_field_name() const override;
+  const UntypedDatumView& get_condition_value_view() const override;
+  const QueryConditionOp& get_op() const override;
 
   /** Expression node getter methods */
-  virtual const std::vector<tdb_unique_ptr<ASTNode>>& get_node_children()
-      const override;
-  virtual const QueryConditionCombinationOp& get_node_combination_op()
-      const override;
+  const std::vector<tdb_unique_ptr<ASTNode>>& get_children() const override;
+  const QueryConditionCombinationOp& get_combination_op() const override;
 
+ private:
   /** The attribute name. */
   std::string field_name_;
 
@@ -169,7 +163,7 @@ class ASTNodeExpr : public ASTNode {
  public:
   ASTNodeExpr(
       std::vector<tdb_unique_ptr<ASTNode>> nodes,
-      const QueryConditionCombinationOp& c_op)
+      const QueryConditionCombinationOp c_op)
       : nodes_(std::move(nodes))
       , combination_op_(c_op) {
   }
@@ -183,7 +177,7 @@ class ASTNodeExpr : public ASTNode {
   DISABLE_COPY_ASSIGN(ASTNodeExpr);
   DISABLE_MOVE_ASSIGN(ASTNodeExpr);
 
-  /** Returns true is the node is an expression node. */
+  /** Returns true if it is an expression node. */
   bool is_expr() const override;
 
   /** Returns a deep copy of the node. */
@@ -192,25 +186,24 @@ class ASTNodeExpr : public ASTNode {
   void get_field_names(
       std::unordered_set<std::string>& field_name_set) const override;
 
-  bool is_previously_supported() const override;
+  bool is_or_supported() const override;
 
-  Status check(const ArraySchema& array_schema) const override;
+  Status check_node_validity(const ArraySchema& array_schema) const override;
 
   tdb_unique_ptr<ASTNode> combine(
       const tdb_unique_ptr<ASTNode>& rhs,
       const QueryConditionCombinationOp& combination_op) override;
 
   /** Value node getter methods */
-  const std::string& get_node_field_name() const override;
-  const ByteVecValue& get_node_condition_value_data() const override;
-  const UntypedDatumView& get_node_condition_value_view() const override;
-  const QueryConditionOp& get_node_op() const override;
+  const std::string& get_field_name() const override;
+  const UntypedDatumView& get_condition_value_view() const override;
+  const QueryConditionOp& get_op() const override;
 
   /** Expression node getter methods */
-  const std::vector<tdb_unique_ptr<ASTNode>>& get_node_children()
-      const override;
-  const QueryConditionCombinationOp& get_node_combination_op() const override;
+  const std::vector<tdb_unique_ptr<ASTNode>>& get_children() const override;
+  const QueryConditionCombinationOp& get_combination_op() const override;
 
+ private:
   /** The node list **/
   std::vector<tdb_unique_ptr<ASTNode>> nodes_;
 
