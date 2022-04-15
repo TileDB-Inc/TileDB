@@ -400,7 +400,7 @@ class ProxyStateMachine {
     // Assert: event state is `Hand-off`
     // Whether `try_lock` locked or not, we now have a lock.
 
-    ProxyEvent event{};
+    ProxyEvent event;
     if (queue_.empty()) {
       event = ev;
     } else {
@@ -419,8 +419,8 @@ class ProxyStateMachine {
       lock_queue.unlock();
       // Assert: event state is `Change`
 
-      auto new_state{transition_table[to_index(state_)][to_index(ev)]};
-      auto action{action_table[to_index(state_)][to_index(ev)]};
+      auto new_state{transition_table[to_index(state_)][to_index(event)]};
+      auto action{action_table[to_index(state_)][to_index(event)]};
       /*
        * Actions each happen within a try-block to ensure state consistency in
        * case of an exception.
