@@ -191,11 +191,11 @@ class QueryCondition {
    * Sets the AST. This is internal state to only be used in
    * the serialization path.
    */
-  void set_ast(tdb_unique_ptr<ASTNode> &&ast);
+  void set_ast(tdb_unique_ptr<ASTNode>&& ast);
 
   /**
-   * Returns the AST object. This is internal state to only be used in testing and 
-   * the serialization path.
+   * Returns the AST object. This is internal state to only be used in testing
+   * and the serialization path.
    */
   const tdb_unique_ptr<ASTNode>& ast() const;
 

@@ -1591,7 +1591,7 @@ const tdb_unique_ptr<ASTNode>& QueryCondition::ast() const {
   return tree_;
 }
 
-void QueryCondition::set_ast(tdb_unique_ptr<ASTNode> &&ast) {
+void QueryCondition::set_ast(tdb_unique_ptr<ASTNode>&& ast) {
   tree_ = std::move(ast);
 }
 

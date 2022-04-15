@@ -1204,8 +1204,11 @@ void SmokeTestFx::smoke_test(
       for (uint64_t i = 0; i < total_cells; ++i) {
         const bool expected = test_query_condition->cmp(&a_write_buffer[i]) &&
                               a_write_buffer_validity[i];
-        if (!expected) {
-          expected_a_values_read[i] = false;
+        if (combination_op == TILEDB_AND) {
+          expected_a_values_read[i] = expected_a_values_read[i] && expected;
+        } else {
+          REQUIRE(combination_op == TILEDB_OR);
+          expected_a_values_read[i] = expected_a_values_read[i] || expected;
         }
       }
     } else {
@@ -1213,8 +1216,15 @@ void SmokeTestFx::smoke_test(
       for (uint64_t i = 0; i < total_cells; ++i) {
         const bool expected =
             test_query_condition->cmp(&c_write_buffer[(i * 2)]);
-        if (!expected) {
-          expected_c_values_read[string(&c_write_buffer[i * 2], 2)] = false;
+        if (combination_op == TILEDB_AND) {
+          expected_c_values_read[string(&c_write_buffer[i * 2], 2)] =
+              expected_c_values_read[string(&c_write_buffer[i * 2], 2)] &&
+              expected;
+        } else {
+          REQUIRE(combination_op == TILEDB_OR);
+          expected_c_values_read[string(&c_write_buffer[i * 2], 2)] =
+              expected_c_values_read[string(&c_write_buffer[i * 2], 2)] ||
+              expected;
         }
       }
     }
@@ -1357,6 +1367,7 @@ TEST_CASE_METHOD(
   query_conditions_vec.push_back({make_condition<int32_t>("a", TILEDB_GE, 3)});
   query_conditions_vec.push_back({make_condition<int32_t>("a", TILEDB_EQ, 7)});
   query_conditions_vec.push_back({make_condition<int32_t>("a", TILEDB_NE, 10)});
+
   query_conditions_vec.push_back({
       make_condition<int32_t>("a", TILEDB_GT, 6),
       make_condition<int32_t>("a", TILEDB_LE, 20),
@@ -1366,12 +1377,14 @@ TEST_CASE_METHOD(
       make_condition<int32_t>("a", TILEDB_GE, 7),
       make_condition<int32_t>("a", TILEDB_NE, 9),
   });
+
   query_conditions_vec.push_back(
       {make_condition<const char*>("c", TILEDB_LT, "ae")});
   query_conditions_vec.push_back(
       {make_condition<const char*>("c", TILEDB_GE, "ad")});
   query_conditions_vec.push_back(
       {make_condition<const char*>("c", TILEDB_EQ, "ab")});
+
   query_conditions_vec.push_back(
       {make_condition<int32_t>("a", TILEDB_LT, 30),
        make_condition<const char*>("c", TILEDB_GE, "ad")});
