@@ -72,7 +72,7 @@ int check_embedded_data_validity() {
   uint64_t magic_mgc_len = ftell(infile);
   fseek(infile, 0L, SEEK_SET);
 
-  char* magic_mgc_data = tdb_new_array( char, magic_mgc_len);
+  char* magic_mgc_data = tdb_new_array(char, magic_mgc_len);
   if (fread(magic_mgc_data, 1, magic_mgc_len, infile) != magic_mgc_len) {
     fprintf(stderr, "ERROR reading data from %s\n", TILEDB_PATH_TO_MAGIC_MGC);
     return 4;
