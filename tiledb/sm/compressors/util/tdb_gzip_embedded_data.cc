@@ -148,11 +148,11 @@ int main(int argc, char* argv[]) {
   while (nremaining) {
     auto ntowrite = nremaining > seg_sz ? seg_sz : nremaining;
     // TBD: error from ->read()?
-    if(!zipped_buf->read(fbuf, ntowrite).ok()){
+    if (!zipped_buf->read(fbuf, ntowrite).ok()) {
       printf("ERROR reading from compressed data.\n");
       exit(-7);
     }
-    if(!tdb_gzip_buf->write(fbuf, ntowrite).ok()) {
+    if (!tdb_gzip_buf->write(fbuf, ntowrite).ok()) {
       printf("ERROR writing compressed format buffer.");
       exit(-11);
     }
@@ -166,8 +166,7 @@ int main(int argc, char* argv[]) {
   gzip_compress(out_gzipped_buf, inbuf->data(0), inbuf->size());
   if (out_gzipped_buf->size() != tdb_gzip_buf->size()) {
     printf(
-        "Error, compressed data sizes mismatch! %" PRIu64 ", %" PRIu64
-        "u\n",
+        "Error, compressed data sizes mismatch! %" PRIu64 ", %" PRIu64 "u\n",
         out_gzipped_buf->size(),
         tdb_gzip_buf->size());
     exit(-13);

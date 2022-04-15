@@ -128,11 +128,6 @@ if(MAGIC_MGC_PATH-NOTFOUND)
   message(FATAL_ERROR "Failed to find libmagic 'magic.mgc' file.")
 endif()
 add_executable(unit_mgc_dict EXCLUDE_FROM_ALL)
-message(STATUS "A unit_mgc_dict include items")
-cmake_print_properties(
-  TARGETS unit_mgc_dict
-  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
-  )
 target_sources(unit_mgc_dict PRIVATE
         test/unit_mgc_dict.cc 
         mgc_dict.cc

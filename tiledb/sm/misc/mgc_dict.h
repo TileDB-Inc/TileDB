@@ -55,7 +55,7 @@ class magic_dict {
    * @return a shared pointer to the internal ByteVecValue holding
    * the expanded data.
    */
-  static const shared_ptr<tiledb::sm::ByteVecValue> expanded_buffer() ;
+  static const shared_ptr<tiledb::sm::ByteVecValue> expanded_buffer();
 
  private:
   /**

@@ -40,8 +40,8 @@
 #include "tiledb/sm/misc/types.h"
 
 #include <inttypes.h>
-#include <stdio.h>
 #include <memory.h>
+#include <stdio.h>
 #include <iostream>
 #include <vector>
 
@@ -50,7 +50,6 @@
 #include <io.h>
 #endif
 
-
 #ifndef TILEDB_PATH_TO_MAGIC_MGC
 #error "TILEDB_PATH_TO_MAGIC_MGC not defined!"
 #endif
@@ -58,51 +57,69 @@
 using tiledb::sm::magic_dict;
 
 int check_embedded_data_validity() {
-  FILE *infile = nullptr;
+  FILE* infile = nullptr;
 #ifdef _WIN32
   infile = fopen(TILEDB_PATH_TO_MAGIC_MGC, "rb");
 #else
   infile = fopen(TILEDB_PATH_TO_MAGIC_MGC, "r");
 #endif
-  if(!infile) {
+  if (!infile) {
     fprintf(stderr, "ERROR: Unable to open %s\n", TILEDB_PATH_TO_MAGIC_MGC);
-    return 1 ;
+    return 1;
   }
-  
+
   fseek(infile, 0L, SEEK_END);
   uint64_t magic_mgc_len = ftell(infile);
   fseek(infile, 0L, SEEK_SET);
-  
-  char *magic_mgc_data = new char[magic_mgc_len];
-  if(fread(magic_mgc_data, 1, magic_mgc_len, infile) != magic_mgc_len) {
+
+  char* magic_mgc_data = new char[magic_mgc_len];
+  if (fread(magic_mgc_data, 1, magic_mgc_len, infile) != magic_mgc_len) {
     fprintf(stderr, "ERROR reading data from %s\n", TILEDB_PATH_TO_MAGIC_MGC);
-    return 4 ;
-  } 
-  fclose(infile);
-  
-  auto magic_mgc_embedded_data = tiledb::sm::magic_dict::expanded_buffer();
-  if(magic_mgc_embedded_data->size() != magic_mgc_len) {
-    fprintf(stderr, "ERROR magic.mgc data len (%" PRIu64 ") does not match embedded data length (%" PRIu64 ")\n", 
-      magic_mgc_len, magic_mgc_embedded_data->size()
-      );
-      return 7 ;
+    return 4;
   }
-  
-  if(memcmp(magic_mgc_data, magic_mgc_embedded_data->data(), magic_mgc_len)){
+  fclose(infile);
+
+  auto magic_mgc_embedded_data = tiledb::sm::magic_dict::expanded_buffer();
+  if (magic_mgc_embedded_data->size() != magic_mgc_len) {
+    fprintf(
+        stderr,
+        "ERROR magic.mgc data len (%" PRIu64
+        ") does not match embedded data length (%" PRIu64 ")\n",
+        magic_mgc_len,
+        magic_mgc_embedded_data->size());
+    return 7;
+  }
+
+  if (memcmp(magic_mgc_data, magic_mgc_embedded_data->data(), magic_mgc_len)) {
     fprintf(stderr, "ERROR magic.mgc data different from embedded data\n");
     return 10;
   }
-  
-  return 0 ;
+
+  return 0;
 }
 
-
-char empty_txt[] = {""}; // further below, treated differently from others here
+char empty_txt[] = {""};  // further below, treated differently from others here
 // data extracted from similarly named files to be found in test\input\files\*
 char fileapi0_csv[] = {
-    '\x72', '\x6f', '\x77', '\x73', '\x2c', '\x63', '\x6f', '\x6c',
-    '\x73', '\x2c', '\x61', '\x0a', '\x31', '\x2c', '\x31', '\x2c',
-    '\x31', '\x0a',
+    // note that clang format broke lines for -this one' but not others.
+    '\x72',
+    '\x6f',
+    '\x77',
+    '\x73',
+    '\x2c',
+    '\x63',
+    '\x6f',
+    '\x6c',
+    '\x73',
+    '\x2c',
+    '\x61',
+    '\x0a',
+    '\x31',
+    '\x2c',
+    '\x31',
+    '\x2c',
+    '\x31',
+    '\x0a',
 };
 char fileapi1_csv[] = {
     '\x72', '\x6f', '\x77', '\x73', '\x2c', '\x63', '\x6f', '\x6c',
@@ -212,26 +229,28 @@ char text_txt[] = {
 };
 
 struct file_data_sizes_s {
-  const char *file_name;
-  char *file_data;
+  const char* file_name;
+  char* file_data;
   uint64_t file_data_len;
-} file_data_sizes[] = {
-  { "empty_text", empty_txt, strlen(empty_txt) },
-  { "fileapi0_csv", fileapi0_csv, sizeof(fileapi0_csv) },
-  { "fileapi1_csv", fileapi1_csv, sizeof(fileapi1_csv) },
-  { "fileapi2_csv", fileapi2_csv, sizeof(fileapi2_csv) },
-  { "fileapi3_csv", fileapi3_csv, sizeof(fileapi3_csv) },
-  { "fileapi4_csv", fileapi4_csv, sizeof(fileapi4_csv) },
-  { "fileapi5_csv", fileapi5_csv, sizeof(fileapi5_csv) },
-  { "fileapi6_csv", fileapi6_csv, sizeof(fileapi6_csv) },
-  { "fileapi7_csv", fileapi7_csv, sizeof(fileapi7_csv) },
-  { "fileapi8_csv", fileapi8_csv, sizeof(fileapi8_csv) },
-  { "fileapi9_csv", fileapi9_csv, sizeof(fileapi9_csv) },
-  { "quickstart_dense_csv", quickstart_dense_csv, sizeof(quickstart_dense_csv) },
-  { "quickstart_dense_csv_gz", quickstart_dense_csv_gz, sizeof(quickstart_dense_csv_gz) },
-  { "text_txt", text_txt, sizeof(text_txt)},
-  { 0, 0, 0 }
-};
+} file_data_sizes[] = {{"empty_text", empty_txt, strlen(empty_txt)},
+                       {"fileapi0_csv", fileapi0_csv, sizeof(fileapi0_csv)},
+                       {"fileapi1_csv", fileapi1_csv, sizeof(fileapi1_csv)},
+                       {"fileapi2_csv", fileapi2_csv, sizeof(fileapi2_csv)},
+                       {"fileapi3_csv", fileapi3_csv, sizeof(fileapi3_csv)},
+                       {"fileapi4_csv", fileapi4_csv, sizeof(fileapi4_csv)},
+                       {"fileapi5_csv", fileapi5_csv, sizeof(fileapi5_csv)},
+                       {"fileapi6_csv", fileapi6_csv, sizeof(fileapi6_csv)},
+                       {"fileapi7_csv", fileapi7_csv, sizeof(fileapi7_csv)},
+                       {"fileapi8_csv", fileapi8_csv, sizeof(fileapi8_csv)},
+                       {"fileapi9_csv", fileapi9_csv, sizeof(fileapi9_csv)},
+                       {"quickstart_dense_csv",
+                        quickstart_dense_csv,
+                        sizeof(quickstart_dense_csv)},
+                       {"quickstart_dense_csv_gz",
+                        quickstart_dense_csv_gz,
+                        sizeof(quickstart_dense_csv_gz)},
+                       {"text_txt", text_txt, sizeof(text_txt)},
+                       {0, 0, 0}};
 
 int embedded_vs_external_identifications() {
   int errcnt = 0;
@@ -244,8 +263,7 @@ int embedded_vs_external_identifications() {
           "(magic_error() returned 0, unexpected error loading embedded data ";
     }
     magic_close(magic_mimeenc_embedded);
-    std::cerr << 
-        std::string("cannot load magic database - ") + str_rval + err;
+    std::cerr << std::string("cannot load magic database - ") + str_rval + err;
     return 1;
   }
   magic_t magic_mimeenc_external = magic_open(MAGIC_MIME_ENCODING);
@@ -260,8 +278,7 @@ int embedded_vs_external_identifications() {
           "alternate!)";
     }
     magic_close(magic_mimeenc_external);
-    std::cerr << 
-        std::string("cannot load magic database - ") + str_rval + err;
+    std::cerr << std::string("cannot load magic database - ") + str_rval + err;
     return 2;
   }
   magic_t magic_mimetyp_embedded = magic_open(MAGIC_MIME_TYPE);
@@ -273,8 +290,7 @@ int embedded_vs_external_identifications() {
           "(magic_error() returned 0, unexpected error loading embedded data ";
     }
     magic_close(magic_mimetyp_embedded);
-    std::cerr << 
-        std::string("cannot load magic database - ") + str_rval + err;
+    std::cerr << std::string("cannot load magic database - ") + str_rval + err;
     return 1;
   }
   magic_t magic_mimetyp_external = magic_open(MAGIC_MIME_TYPE);
@@ -289,22 +305,22 @@ int embedded_vs_external_identifications() {
           "alternate!)";
     }
     magic_close(magic_mimetyp_external);
-    std::cerr << 
-        std::string("cannot load magic database - ") + str_rval + err;
+    std::cerr << std::string("cannot load magic database - ") + str_rval + err;
     return 2;
   }
-  
+
   auto file_item = &file_data_sizes[0];
-  while(file_item->file_data) {
-    const char *mime_type_embedded = nullptr;
+  while (file_item->file_data) {
+    const char* mime_type_embedded = nullptr;
     const char* mime_type_external = nullptr;
     const char* mime_enc_embedded = nullptr;
     const char* mime_enc_external = nullptr;
-    
-    mime_type_embedded = magic_buffer(magic_mimetyp_embedded, file_item->file_data, file_item->file_data_len);
+
+    mime_type_embedded = magic_buffer(
+        magic_mimetyp_embedded, file_item->file_data, file_item->file_data_len);
     mime_type_external = magic_buffer(
         magic_mimetyp_external, file_item->file_data, file_item->file_data_len);
-    if(strcmp(mime_type_embedded, mime_type_external)){
+    if (strcmp(mime_type_embedded, mime_type_external)) {
       fprintf(
           stderr,
           "ERROR mismatch (%s) mime type embedded (%s) vs external (%s)\n",
@@ -317,7 +333,7 @@ int embedded_vs_external_identifications() {
         magic_mimeenc_embedded, file_item->file_data, file_item->file_data_len);
     mime_enc_external = magic_buffer(
         magic_mimeenc_external, file_item->file_data, file_item->file_data_len);
-    if(strcmp(mime_enc_embedded, mime_enc_external)){
+    if (strcmp(mime_enc_embedded, mime_enc_external)) {
       fprintf(
           stderr,
           "ERROR mismatch (%s) mime encoding embedded (%s) vs external (%s)\n",
@@ -330,9 +346,10 @@ int embedded_vs_external_identifications() {
   }
 
   if (errcnt) {
-    fprintf(stderr, "%d mismatch errors magic embedded vs external data\n", errcnt);
+    fprintf(
+        stderr, "%d mismatch errors magic embedded vs external data\n", errcnt);
   }
-  
+
   magic_close(magic_mimetyp_embedded);
   magic_close(magic_mimetyp_external);
   magic_close(magic_mimeenc_embedded);
@@ -342,15 +359,14 @@ int embedded_vs_external_identifications() {
 
 int main() {
   int failures = 0;
-  
+
   failures |= check_embedded_data_validity();
   failures |= embedded_vs_external_identifications();
-  
-  if(failures) {
+
+  if (failures) {
     fprintf(stderr, "ERRORS mgc_dict validation\n");
     return 1;
-  }
-  else {
+  } else {
     fprintf(stderr, "NO errors countered in mgc_dict validation\n");
     return 0;
   }

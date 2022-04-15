@@ -67,4 +67,4 @@ Status gzip_compress(
 Status gzip_decompress(
     shared_ptr<tiledb::sm::ByteVecValue>& out_buf, const uint8_t* comp_buf);
 
-#endif // TILEDB_GZIP_WRAPPER_H
+#endif  // TILEDB_GZIP_WRAPPER_H
