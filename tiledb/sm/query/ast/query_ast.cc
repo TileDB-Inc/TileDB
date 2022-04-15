@@ -56,11 +56,11 @@ void ASTNodeVal::get_field_names(
   field_name_set.insert(field_name_);
 }
 
-bool ASTNodeVal::is_previously_supported() const {
+bool ASTNodeVal::is_or_supported() const {
   return true;
 }
 
-Status ASTNodeVal::check(const ArraySchema& array_schema) const {
+Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   const uint64_t condition_value_size = condition_value_data_.size();
   const auto attribute = array_schema.attribute(field_name_);
   // Check that the field_name represents an attribute in the array
@@ -145,13 +145,13 @@ tdb_unique_ptr<ASTNode> ASTNodeVal::combine(
     const QueryConditionCombinationOp& combination_op) {
   std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
   if (!rhs->is_expr()) {
-    ast_nodes.push_back(this->clone());
+    ast_nodes.push_back(clone());
     ast_nodes.push_back(rhs->clone());
   } else {  // rhs is an expression node.
     // lhs is a simple tree, rhs is a compound tree.
-    ast_nodes.push_back(this->clone());
-    if (rhs->get_node_combination_op() == combination_op) {
-      for (const auto& elem : rhs->get_node_children()) {
+    ast_nodes.push_back(clone());
+    if (rhs->get_combination_op() == combination_op) {
+      for (const auto& elem : rhs->get_children()) {
         ast_nodes.push_back(elem->clone());
       }
     } else {
@@ -163,30 +163,25 @@ tdb_unique_ptr<ASTNode> ASTNodeVal::combine(
 }
 
 /** Value node getter methods */
-const std::string& ASTNodeVal::get_node_field_name() const {
+const std::string& ASTNodeVal::get_field_name() const {
   return field_name_;
 }
-const ByteVecValue& ASTNodeVal::get_node_condition_value_data() const {
-  return condition_value_data_;
-}
-const UntypedDatumView& ASTNodeVal::get_node_condition_value_view() const {
+const UntypedDatumView& ASTNodeVal::get_condition_value_view() const {
   return condition_value_view_;
 }
-const QueryConditionOp& ASTNodeVal::get_node_op() const {
+const QueryConditionOp& ASTNodeVal::get_op() const {
   return op_;
 }
 
 /** Expression node getter methods */
-const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeVal::get_node_children()
-    const {
+const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeVal::get_children() const {
   throw std::runtime_error(
-      "ASTNodeVal::get_node_children: called get_node_children() on a value "
-      "node.");
+      "ASTNodeVal::get_children: Cannot get children from an AST value node.");
 }
-const QueryConditionCombinationOp& ASTNodeVal::get_node_combination_op() const {
+const QueryConditionCombinationOp& ASTNodeVal::get_combination_op() const {
   throw std::runtime_error(
-      "ASTNodeVal::get_node_combination_op: called get_node_combination_op on "
-      "a value node.");
+      "ASTNodeVal::get_combination_op: Cannot get combination op from an AST "
+      "value node.");
 }
 
 /** Returns true is the node is an expression node. */
@@ -211,7 +206,7 @@ void ASTNodeExpr::get_field_names(
   }
 }
 
-bool ASTNodeExpr::is_previously_supported() const {
+bool ASTNodeExpr::is_or_supported() const {
   if (combination_op_ != QueryConditionCombinationOp::AND) {
     return false;
   }
@@ -223,7 +218,7 @@ bool ASTNodeExpr::is_previously_supported() const {
   return true;
 }
 
-Status ASTNodeExpr::check(const ArraySchema& array_schema) const {
+Status ASTNodeExpr::check_node_validity(const ArraySchema& array_schema) const {
   // If the node is a compound expression node, ensure there are at least
   // two children in the node and then run a check on each child node.
   if (nodes_.size() < 2) {
@@ -231,7 +226,7 @@ Status ASTNodeExpr::check(const ArraySchema& array_schema) const {
         "Non value AST node does not have at least 2 children.");
   }
   for (const auto& child : nodes_) {
-    RETURN_NOT_OK(child->check(array_schema));
+    RETURN_NOT_OK(child->check_node_validity(array_schema));
   }
 
   return Status::Ok();
@@ -246,11 +241,11 @@ tdb_unique_ptr<ASTNode> ASTNodeExpr::combine(
       ast_nodes.push_back(child->clone());
     }
   } else {
-    ast_nodes.push_back(this->clone());
+    ast_nodes.push_back(clone());
   }
 
-  if (rhs->is_expr() && combination_op == rhs->get_node_combination_op()) {
-    for (const auto& child : rhs->get_node_children()) {
+  if (rhs->is_expr() && combination_op == rhs->get_combination_op()) {
+    for (const auto& child : rhs->get_children()) {
       ast_nodes.push_back(child->clone());
     }
   } else {
@@ -262,33 +257,26 @@ tdb_unique_ptr<ASTNode> ASTNodeExpr::combine(
 }
 
 /** Value node getter methods */
-const std::string& ASTNodeExpr::get_node_field_name() const {
+const std::string& ASTNodeExpr::get_field_name() const {
   throw std::runtime_error(
-      "ASTNodeExpr::get_node_field_name: called get_node_field_name() on a "
+      "ASTNodeExpr::get_field_name: Cannot get field name from an AST "
       "expression node.");
 }
-const ByteVecValue& ASTNodeExpr::get_node_condition_value_data() const {
+const UntypedDatumView& ASTNodeExpr::get_condition_value_view() const {
   throw std::runtime_error(
-      "ASTNodeExpr::get_node_condition_value_data: called "
-      "get_node_condition_value_data() on a expression node.");
+      "ASTNodeExpr::get_condition_value_view: Cannot get condition value view "
+      "from an AST expression node.");
 }
-const UntypedDatumView& ASTNodeExpr::get_node_condition_value_view() const {
+const QueryConditionOp& ASTNodeExpr::get_op() const {
   throw std::runtime_error(
-      "ASTNodeExpr::get_node_condition_value_view: called "
-      "get_node_condition_value_view() on a expression node.");
-}
-const QueryConditionOp& ASTNodeExpr::get_node_op() const {
-  throw std::runtime_error(
-      "ASTNodeExpr::get_node_op: called get_node_op() on a expression node.");
+      "ASTNodeExpr::get_op: Cannot get op from an AST expression node.");
 }
 
 /** Expression node getter methods */
-const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeExpr::get_node_children()
-    const {
+const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeExpr::get_children() const {
   return nodes_;
 }
-const QueryConditionCombinationOp& ASTNodeExpr::get_node_combination_op()
-    const {
+const QueryConditionCombinationOp& ASTNodeExpr::get_combination_op() const {
   return combination_op_;
 }
 
