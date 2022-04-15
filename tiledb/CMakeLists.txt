@@ -336,7 +336,11 @@ set(MGC_GZIPPED_BIN_PATH2 "${CMAKE_CURRENT_BINARY_DIR}/sm/misc/magic_mgc_gzipped
 
 
 if(WIN32)
-  set(tdb_gzip_embedded_data_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/${CMAKE_BUILD_TYPE}/tdb_gzip_embedded_data.exe")
+  if(MSVC)
+    set(tdb_gzip_embedded_data_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/${CMAKE_BUILD_TYPE}/tdb_gzip_embedded_data.exe")
+  else()
+    set(tdb_gzip_embedded_data_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/tdb_gzip_embedded_data.exe")
+  endif()
 else()
   set(tdb_gzip_embedded_data_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/tdb_gzip_embedded_data")
 endif()

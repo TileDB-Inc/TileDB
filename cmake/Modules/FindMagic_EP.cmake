@@ -109,11 +109,6 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
       ExternalProject_Add(ep_magic
               PREFIX "externals"
               GIT_REPOSITORY "https://github.com/TileDB-Inc/file-windows.git"
-              #GIT_REPOSITORY "d:/dev/tiledb/gh.tdb.file-windows.git"
-              #GIT_REPOSITORY "d:/dev/tiledb/gh.tdb.file-windows-SM-D.git"
-              #GIT_TAG "cmake-install-support"
-              #GIT_TAG "dlh/cmake-install-support" # '/' no worky...
-              #GIT_TAG "dlh-cmake-install-support"
               GIT_TAG "nplat-cmake-install-support"
               GIT_SUBMODULES_RECURSE TRUE
               UPDATE_COMMAND ""
@@ -132,15 +127,10 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
       ExternalProject_Add(ep_magic
         PREFIX "externals"
         GIT_REPOSITORY "https://github.com/TileDB-Inc/file-windows.git"
-        #GIT_REPOSITORY "/mnt/d/dev/tiledb/gh.tdb.file-windows-SM-D.git"
-        #GIT_TAG "cmake-install-support"
-        #GIT_TAG "dlh-cmake-install-support"
         GIT_TAG "nplat-cmake-install-support"
         GIT_SUBMODULES_RECURSE TRUE
         UPDATE_COMMAND ""
-        BUILD_COMMAND $(MAKE) VERBOSE=1
         CMAKE_ARGS
-          --trace
           -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
           -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
           "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
