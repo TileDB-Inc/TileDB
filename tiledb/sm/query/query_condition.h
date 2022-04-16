@@ -54,6 +54,91 @@ enum class QueryConditionCombinationOp : uint8_t;
 class QueryCondition {
  public:
   /* ********************************* */
+  /*          PUBLIC DATATYPES         */
+  /* ********************************* */
+
+  /** Represents a single, conditional clause. */
+  struct Clause {
+    /** Value constructor. */
+    Clause(
+        const std::string& field_name,
+        const void* const condition_value,
+        const uint64_t condition_value_size,
+        const QueryConditionOp op)
+        : field_name_(field_name)
+        , op_(op) {
+      condition_value_data_.resize(condition_value_size);
+      condition_value_ = nullptr;
+
+      if (condition_value != nullptr) {
+        // Using an empty string litteral for empty string as vector::resize(0)
+        // doesn't guarantee an allocation.
+        condition_value_ = condition_value_size == 0 ?
+                               (void*)"" :
+                               condition_value_data_.data();
+        memcpy(
+            condition_value_data_.data(),
+            condition_value,
+            condition_value_size);
+      }
+    };
+
+    /** Copy constructor. */
+    Clause(const Clause& rhs)
+        : field_name_(rhs.field_name_)
+        , condition_value_data_(rhs.condition_value_data_)
+        , condition_value_(
+              rhs.condition_value_ == nullptr ? nullptr :
+                                                condition_value_data_.data())
+        , op_(rhs.op_){};
+
+    /** Move constructor. */
+    Clause(Clause&& rhs)
+        : field_name_(std::move(rhs.field_name_))
+        , condition_value_data_(std::move(rhs.condition_value_data_))
+        , condition_value_(
+              rhs.condition_value_ == nullptr ? nullptr :
+                                                condition_value_data_.data())
+        , op_(rhs.op_){};
+
+    /** Copy-assignment operator. */
+    Clause& operator=(const Clause& rhs) {
+      field_name_ = rhs.field_name_;
+      condition_value_data_ = rhs.condition_value_data_;
+      condition_value_ = rhs.condition_value_ == nullptr ?
+                             nullptr :
+                             condition_value_data_.data();
+      op_ = rhs.op_;
+
+      return *this;
+    }
+
+    /** Move-assignment operator. */
+    Clause& operator=(Clause&& rhs) {
+      field_name_ = std::move(rhs.field_name_);
+      condition_value_data_ = std::move(rhs.condition_value_data_);
+      condition_value_ = rhs.condition_value_ == nullptr ?
+                             nullptr :
+                             condition_value_data_.data();
+      op_ = rhs.op_;
+
+      return *this;
+    }
+
+    /** The attribute name. */
+    std::string field_name_;
+
+    /** The value data. */
+    ByteVecValue condition_value_data_;
+
+    /** The value to compare against. */
+    void* condition_value_;
+
+    /** The comparison operator. */
+    QueryConditionOp op_;
+  };
+
+  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 

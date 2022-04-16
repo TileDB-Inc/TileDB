@@ -1231,23 +1231,25 @@ std::string ast_node_to_str(const tdb_unique_ptr<sm::ASTNode>& node) {
     return "";
   std::string result_str;
   if (!node->is_expr()) {
-    result_str = node->get_node_field_name() + " " +
-                 query_condition_op_str(node->get_node_op()) + " ";
-    if (node->get_node_condition_value_view().content()) {
-      result_str += bbv_to_hex_str(node->get_node_condition_value_data());
+    result_str = node->get_field_name() + " " +
+                 query_condition_op_str(node->get_op()) + " ";
+    if (node->get_condition_value_view().content()) {
+      result_str += ptr_to_hex_str(
+          node->get_condition_value_view().content(),
+          node->get_condition_value_view().size());
     } else {
       result_str += "null";
     }
     return result_str;
   } else {
     result_str = "(";
-    const auto& nodes = node->get_node_children();
+    const auto& nodes = node->get_children();
     for (size_t i = 0; i < nodes.size(); i++) {
       result_str += ast_node_to_str(nodes[i]);
       if (i != nodes.size() - 1) {
         result_str += " ";
         result_str +=
-            query_condition_combination_op_str(node->get_node_combination_op());
+            query_condition_combination_op_str(node->get_combination_op());
         result_str += " ";
       }
     }
