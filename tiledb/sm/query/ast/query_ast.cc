@@ -57,7 +57,7 @@ void ASTNodeVal::get_field_names(
 }
 
 bool ASTNodeVal::is_or_supported() const {
-  return true;
+  return false;
 }
 
 Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
@@ -208,14 +208,14 @@ void ASTNodeExpr::get_field_names(
 
 bool ASTNodeExpr::is_or_supported() const {
   if (combination_op_ != QueryConditionCombinationOp::AND) {
-    return false;
+    return true;
   }
   for (const auto& child : nodes_) {
     if (child->is_expr()) {
-      return false;
+      return true;
     }
   }
-  return true;
+  return false;
 }
 
 Status ASTNodeExpr::check_node_validity(const ArraySchema& array_schema) const {
