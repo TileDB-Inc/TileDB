@@ -710,6 +710,11 @@ std::string bbv_to_hex_str(const sm::ByteVecValue& b);
  */
 std::string ast_node_to_str(const tdb_unique_ptr<sm::ASTNode>& node);
 
+/**
+ * Returns true if two ASTNodes are equivalent representations.
+ */
+bool ast_equal(const tdb_unique_ptr<sm::ASTNode>& lhs, const tdb_unique_ptr<sm::ASTNode>& rhs);
+
 }  // End of namespace test
 
 }  // End of namespace tiledb
