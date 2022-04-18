@@ -754,7 +754,6 @@ class Config {
     const char* val;
     tiledb_error_t* err;
     tiledb_config_get(config_.get(), param.c_str(), &val, &err);
-    impl::check_config_error(err);
 
     return val != nullptr;
   }
