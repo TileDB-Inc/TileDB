@@ -602,6 +602,15 @@ const unsigned concurrent_attr_reads = 2;
 /** The redirection header key in REST response. */
 extern const std::string redirection_header_key = "location";
 
+/** String describing MIME_NONE. */
+const std::string mime_none_str = "NONE";
+
+/** String describing MIME_TIFF. */
+const std::string mime_tiff_str = "image/tiff";
+
+/** String describing MIME_PDF. */
+const std::string mime_pdf_str = "application/pdf";
+
 const void* fill_value(Datatype type) {
   switch (type) {
     case Datatype::BLOB:

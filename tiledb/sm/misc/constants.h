@@ -599,6 +599,16 @@ extern const std::array<std::string, 6> cert_files_linux;
 
 /** Delimiter for lists passed as config parameter */
 extern const std::string config_delimiter;
+
+/** String describing MIME_NONE. */
+extern const std::string mime_none_str;
+
+/** String describing MIME_TIFF. */
+extern const std::string mime_tiff_str;
+
+/** String describing MIME_PDF. */
+extern const std::string mime_pdf_str;
+
 }  // namespace constants
 
 }  // namespace sm

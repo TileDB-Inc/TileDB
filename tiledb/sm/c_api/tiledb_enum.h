@@ -282,3 +282,12 @@
     /** Append mode */
     TILEDB_VFS_MODE_ENUM(VFS_APPEND) = 2,
 #endif
+
+#ifdef TILEDB_MIME_TYPE_ENUM
+    /** Unspecified MIME type*/
+    TILEDB_MIME_TYPE_ENUM(MIME_NONE) = 0,
+    /** image/tiff*/
+    TILEDB_MIME_TYPE_ENUM(MIME_TIFF) = 1,
+    /** application/pdf*/
+    TILEDB_MIME_TYPE_ENUM(MIME_PDF) = 2,
+#endif

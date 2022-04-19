@@ -882,6 +882,135 @@ TILEDB_EXPORT int32_t tiledb_group_dump_str(
     char** dump_ascii,
     const uint8_t recursive) TILEDB_NOEXCEPT;
 
+/* ********************************* */
+/*                FILESTORE          */
+/* ********************************* */
+
+/**
+ * Creates an array schema based on the properties of the provided URI
+ * or a default schema if no URI is provided
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_t* schema;
+ * tiledb_filestore_schema_create(ctx, "/path/file.pdf", TILEDB_MIME_AUTODETECT,
+ * &schema);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri The file URI.
+ * @param mime_type The mime_type of the file
+ * @param array_schema The TileDB array schema to be created
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
+    tiledb_ctx_t* ctx,
+    const char* uri,
+    tiledb_mime_type_t mime_type,
+    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
+
+/**
+ * Imports a file into a TileDB filestore array
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_t* schema;
+ * tiledb_filestore_schema_create(ctx, path_to_file, TILEDB_MIME_AUTODETECT,
+ * &schema); tiledb_array_create(ctx, path_to_array, schema);
+ * tiledb_filestore_uri_import(ctx, path_to_array, path_to_file);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri The array URI.
+ * @param uri The file URI.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
+    tiledb_ctx_t* ctx,
+    const char* filestore_array_uri,
+    const char* file_uri) TILEDB_NOEXCEPT;
+
+/**
+ * Exports a filestore array into a bare file
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filestore_uri_export(ctx, path_to_file, path_to_array);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri The file URI.
+ * @param uri The array URI.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
+    tiledb_ctx_t* ctx,
+    const char* file_uri,
+    const char* filstore_array_uri) TILEDB_NOEXCEPT;
+
+/**
+ * Writes size bytes starting at address buf into filestore array
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_t* schema;
+ * tiledb_filestore_schema_create(ctx, NULL, TILEDB_MIME_PDF, &schema);
+ * tiledb_array_create(ctx, path_to_array, schema);
+ * tiledb_filestore_buffer_import(ctx, path_to_array, buf, size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri The array URI.
+ * @param buf The input buffer
+ * @param size Number of bytes to be imported
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
+    tiledb_ctx_t* ctx, const char* filestore_array_uri, void* buf, size_t size)
+    TILEDB_NOEXCEPT;
+
+/**
+ * Dump the content of a filestore array into a buffer
+ * **Example:**
+ *
+ * @code{.c}
+ * void *buf;
+ * size_t alloc_size = 1024;
+ * tiledb_filestore_buffer_export(ctx, path_to_array, &buf, alloc_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri The array URI.
+ * @param buf The buffer that will contain the filestore array content
+ * @param alloc_size The number of bytes to be exported into the buffer
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
+    tiledb_ctx_t* ctx,
+    const char* filestore_array_uri,
+    void** buf,  // TODO: maybe it's not the best idea to allocate the buffer
+                 // internally
+    size_t alloc_size) TILEDB_NOEXCEPT;
+
+/**
+ * Get the string representation of a mime type enum
+ *
+ * @param mime_type The mime enum
+ * @param str The resulted string representation
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_mime_type_to_str(
+    tiledb_mime_type_t mime_type, const char** str) TILEDB_NOEXCEPT;
+
+/**
+ * Turn a string mime type into a TileDB enum
+ *
+ * @param str The mime type string
+ * @param mime_type The resulted mime enum
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_mime_type_from_str(
+    const char* str, tiledb_mime_type_t* mime_type) TILEDB_NOEXCEPT;
 #ifdef __cplusplus
 }
 #endif
