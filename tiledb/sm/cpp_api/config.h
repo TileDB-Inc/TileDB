@@ -750,10 +750,10 @@ class Config {
    * @param param Name of configuration parameter
    * @return true if the parameter exists, false otherwise
    */
-  bool contains(const std::string& param) const {
+  bool contains(const std::string_view& param) const {
     const char* val;
     tiledb_error_t* err;
-    tiledb_config_get(config_.get(), param.c_str(), &val, &err);
+    tiledb_config_get(config_.get(), param.data(), &val, &err);
 
     return val != nullptr;
   }
