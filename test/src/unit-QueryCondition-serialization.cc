@@ -37,6 +37,7 @@
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/query.h"
 #endif
 
 #include "test/src/helpers.h"
@@ -55,38 +56,233 @@
 
 using namespace tiledb::sm;
 
-extern "C++" Status condition_from_capnp(const serialization::capnp::Condition::Reader& condition_reader,
-    QueryCondition* const condition);
-
 TEST_CASE(
-    "QueryCondition serialization: Test basic construction serialization",
+    "QueryCondition serialization: Test serialization",
     "[QueryCondition][serialization]") {
-  std::string field_name = "foo";
-  int value = 5;
+  QueryCondition query_condition;
+  QueryCondition query_condition_clone;
 
-  QueryCondition query_condition1;
-  REQUIRE(query_condition1
-              .init(
-                  std::string(field_name),
-                  &value,
-                  sizeof(value),
-                  QueryConditionOp::LT)
+  SECTION("Test serialization, basic") {
+    std::string field_name = "x";
+    int val = 5;
+    REQUIRE(query_condition
+                .init(
+                    std::string(field_name),
+                    &val,
+                    sizeof(int),
+                    QueryConditionOp::LT)
+                .ok());
+  }
+
+  SECTION("Test serialization, basic AND combine") {
+    std::string field_name1 = "x";
+    int val1 = 5;
+    QueryCondition query_condition1;
+    REQUIRE(query_condition1
+                .init(
+                    std::string(field_name1),
+                    &val1,
+                    sizeof(int),
+                    QueryConditionOp::LT)
+                .ok());
+
+    std::string field_name2 = "y";
+    int val2 = 3;
+    QueryCondition query_condition2;
+    REQUIRE(query_condition2
+                .init(
+                    std::string(field_name2),
+                    &val2,
+                    sizeof(int),
+                    QueryConditionOp::GT)
+                .ok());
+
+    REQUIRE(query_condition1
+                .combine(
+                    query_condition2,
+                    QueryConditionCombinationOp::AND,
+                    &query_condition)
+                .ok());
+  }
+
+  SECTION("Test serialization, basic OR combine") {
+    std::string field_name1 = "x";
+    int val1 = 5;
+    QueryCondition query_condition1;
+    REQUIRE(query_condition1
+                .init(
+                    std::string(field_name1),
+                    &val1,
+                    sizeof(int),
+                    QueryConditionOp::LT)
+                .ok());
+
+    std::string field_name2 = "y";
+    int val2 = 3;
+    QueryCondition query_condition2;
+    REQUIRE(query_condition2
+                .init(
+                    std::string(field_name2),
+                    &val2,
+                    sizeof(int),
+                    QueryConditionOp::GT)
+                .ok());
+
+    REQUIRE(query_condition1
+                .combine(
+                    query_condition2,
+                    QueryConditionCombinationOp::OR,
+                    &query_condition)
+                .ok());
+  }
+
+  SECTION("Test serialization, OR of 2 AND ASTs") {
+    std::string field_name1 = "x";
+    int val1 = 5;
+    QueryCondition query_condition1;
+    REQUIRE(query_condition1
+                .init(
+                    std::string(field_name1),
+                    &val1,
+                    sizeof(int),
+                    QueryConditionOp::LT)
+                .ok());
+
+    std::string field_name2 = "y";
+    int val2 = 3;
+    QueryCondition query_condition2;
+    REQUIRE(query_condition2
+                .init(
+                    std::string(field_name2),
+                    &val2,
+                    sizeof(int),
+                    QueryConditionOp::GT)
+                .ok());
+
+    QueryCondition combined_and1;
+    REQUIRE(query_condition1
+                .combine(
+                    query_condition2,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and1)
+                .ok());
+
+    std::string field_name3 = "a";
+    int val3 = 1;
+    QueryCondition query_condition3;
+    REQUIRE(query_condition3
+                .init(
+                    std::string(field_name3),
+                    &val3,
+                    sizeof(int),
+                    QueryConditionOp::EQ)
+                .ok());
+
+    std::string field_name4 = "b";
+    int val4 = 2;
+    QueryCondition query_condition4;
+    REQUIRE(query_condition4
+                .init(
+                    std::string(field_name4),
+                    &val4,
+                    sizeof(int),
+                    QueryConditionOp::NE)
+                .ok());
+
+    QueryCondition combined_and2;
+    REQUIRE(query_condition3
+                .combine(
+                    query_condition4,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and2)
+                .ok());
+
+    REQUIRE(combined_and1
+                .combine(
+                    combined_and2,
+                    QueryConditionCombinationOp::OR,
+                    &query_condition)
+                .ok());
+  }
+
+  SECTION("Test serialization, AND of 2 OR ASTs") {
+    std::string field_name1 = "x";
+    int val1 = 5;
+    QueryCondition query_condition1;
+    REQUIRE(query_condition1
+                .init(
+                    std::string(field_name1),
+                    &val1,
+                    sizeof(int),
+                    QueryConditionOp::LT)
+                .ok());
+
+    std::string field_name2 = "y";
+    int val2 = 3;
+    QueryCondition query_condition2;
+    REQUIRE(query_condition2
+                .init(
+                    std::string(field_name2),
+                    &val2,
+                    sizeof(int),
+                    QueryConditionOp::GT)
+                .ok());
+
+    QueryCondition combined_or1;
+    REQUIRE(query_condition1
+                .combine(
+                    query_condition2,
+                    QueryConditionCombinationOp::OR,
+                    &combined_or1)
+                .ok());
+
+    std::string field_name3 = "a";
+    int val3 = 1;
+    QueryCondition query_condition3;
+    REQUIRE(query_condition3
+                .init(
+                    std::string(field_name3),
+                    &val3,
+                    sizeof(int),
+                    QueryConditionOp::EQ)
+                .ok());
+
+    std::string field_name4 = "b";
+    int val4 = 2;
+    QueryCondition query_condition4;
+    REQUIRE(query_condition4
+                .init(
+                    std::string(field_name4),
+                    &val4,
+                    sizeof(int),
+                    QueryConditionOp::NE)
+                .ok());
+
+    QueryCondition combined_or2;
+    REQUIRE(query_condition3
+                .combine(
+                    query_condition4,
+                    QueryConditionCombinationOp::OR,
+                    &combined_or2)
+                .ok());
+
+    REQUIRE(combined_or1
+                .combine(
+                    combined_or2,
+                    QueryConditionCombinationOp::AND,
+                    &query_condition)
+                .ok());
+  }
+
+  ::capnp::MallocMessageBuilder message;
+  tiledb::sm::serialization::capnp::Condition::Builder condition_builder =
+      message.initRoot<tiledb::sm::serialization::capnp::Condition>();
+  REQUIRE(tiledb::sm::serialization::condition_to_capnp(
+              query_condition, &condition_builder)
               .ok());
-    tiledb::sm::serialization::capnp::Condition::Builder builder;
-    REQUIRE(tiledb::sm::serialization::condition_to_capnp(query_condition1, &builder).ok());
-    QueryCondition query_condition1_clone;
-    REQUIRE(condition_from_capnp(builder, &query_condition1_clone).ok());
-    REQUIRE(tiledb::test::ast_equal(query_condition1.ast(), query_condition1_clone.ast()));
-}
-
-TEST_CASE(
-    "QueryCondition serialization: Test basic combine construction "
-    "serialization",
-    "[QueryCondition][serialization]") {
-}
-
-TEST_CASE(
-    "QueryCondition serialization: Test complex combine construction "
-    "serialization",
-    "[QueryCondition][serialization]") {
+  REQUIRE(tiledb::sm::serialization::condition_from_capnp(
+              condition_builder, &query_condition_clone)
+              .ok());
+  REQUIRE(tiledb::test::ast_equal(
+      query_condition.ast(), query_condition_clone.ast()));
 }

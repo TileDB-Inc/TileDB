@@ -617,7 +617,7 @@ static Status condition_ast_to_capnp(
     ast_builder->setFieldName(node->get_field_name());
 
     // Copy the condition value into a capnp vector of bytes.
-    const UntypedDatumView &value = node->get_condition_value_view();
+    const UntypedDatumView& value = node->get_condition_value_view();
     auto capnpValue = kj::Vector<uint8_t>();
     capnpValue.addAll(kj::ArrayPtr<uint8_t>(
         const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.content())),
@@ -630,23 +630,26 @@ static Status condition_ast_to_capnp(
     ast_builder->setOp(op_str);
   } else {
     ast_builder->setIsExpression(true);
-    auto children_builder = ast_builder->initChildren(node->get_children().size());
+    auto children_builder =
+        ast_builder->initChildren(node->get_children().size());
     for (size_t i = 0; i < node->get_children().size(); ++i) {
       auto child_builder = children_builder[i];
       condition_ast_to_capnp(node->get_children()[i], &child_builder);
     }
-    const std::string op_str = query_condition_combination_op_str(node->get_combination_op());
+    const std::string op_str =
+        query_condition_combination_op_str(node->get_combination_op());
     ast_builder->setCombinationOp(op_str);
   }
   return Status::Ok();
 }
 
-static void clause_to_capnp(const tdb_unique_ptr<ASTNode> &node,
-  capnp::ConditionClause::Builder* clause_builder) {
+static void clause_to_capnp(
+    const tdb_unique_ptr<ASTNode>& node,
+    capnp::ConditionClause::Builder* clause_builder) {
   clause_builder->setFieldName(node->get_field_name());
 
   // Copy the condition value into a capnp vector of bytes.
-  const UntypedDatumView &value = node->get_condition_value_view();
+  const UntypedDatumView& value = node->get_condition_value_view();
   auto capnpValue = kj::Vector<uint8_t>();
   capnpValue.addAll(kj::ArrayPtr<uint8_t>(
       const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.content())),
@@ -667,12 +670,13 @@ Status condition_to_capnp(
   auto ast_builder = condition_builder->initTree();
   RETURN_NOT_OK(condition_ast_to_capnp(ast, &ast_builder));
 
-  // For backwards compatability, we should also set the clauses and combination ops vectors when the current query condition 
+  // For backwards compatability, we should also set the clauses and combination
+  // ops vectors when the current query condition
   if (!ast->is_or_supported()) {
     if (ast->is_expr()) {
-      const std::vector<tdb_unique_ptr<ASTNode>> &clauses_vec = ast->get_children();
-      auto clauses_builder =
-            condition_builder->initClauses(clauses_vec.size());
+      const std::vector<tdb_unique_ptr<ASTNode>>& clauses_vec =
+          ast->get_children();
+      auto clauses_builder = condition_builder->initClauses(clauses_vec.size());
       for (size_t i = 0; i < clauses_vec.size(); ++i) {
         auto clause_builder = clauses_builder[i];
         clause_to_capnp(clauses_vec[i], &clause_builder);
@@ -683,14 +687,13 @@ Status condition_to_capnp(
         auto combination_ops_builder =
             condition_builder->initClauseCombinationOps(clauses_vec.size() - 1);
         for (size_t i = 0; i < clauses_vec.size() - 1; ++i) {
-          const std::string op_str =
-              query_condition_combination_op_str(QueryConditionCombinationOp::AND);
+          const std::string op_str = query_condition_combination_op_str(
+              QueryConditionCombinationOp::AND);
           combination_ops_builder.set(i, op_str);
         }
       }
     } else {
-      auto clauses_builder =
-            condition_builder->initClauses(1);
+      auto clauses_builder = condition_builder->initClauses(1);
       auto clause_builder = clauses_builder[0];
       clause_to_capnp(ast, &clause_builder);
     }
@@ -842,7 +845,7 @@ tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
 Status condition_from_capnp(
     const capnp::Condition::Reader& condition_reader,
     QueryCondition* const condition) {
-  if (condition_reader.hasClauses()) { // coming from older API
+  if (condition_reader.hasClauses()) {  // coming from older API
     std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
     for (const auto clause : condition_reader.getClauses()) {
       std::string field_name = clause.getFieldName();
@@ -852,18 +855,18 @@ Status condition_from_capnp(
       RETURN_NOT_OK(query_condition_op_enum(clause.getOp(), &op));
 
       ast_nodes.push_back(tdb_unique_ptr<ASTNode>(tdb_new(
-        ASTNodeVal,
-        field_name,
-        condition_value.asBytes().begin(),
-        condition_value.size(),
-        op)));
+          ASTNodeVal,
+          field_name,
+          condition_value.asBytes().begin(),
+          condition_value.size(),
+          op)));
     }
     assert(ast_nodes.size() > 0);
     if (ast_nodes.size() == 1) {
       condition->set_ast(std::move(ast_nodes[0]));
     } else {
-      auto tree_ptr = tdb_unique_ptr<ASTNode>(
-      tdb_new(ASTNodeExpr, std::move(ast_nodes), QueryConditionCombinationOp::AND));
+      auto tree_ptr = tdb_unique_ptr<ASTNode>(tdb_new(
+          ASTNodeExpr, std::move(ast_nodes), QueryConditionCombinationOp::AND));
       condition->set_ast(std::move(tree_ptr));
     }
   } else if (condition_reader.hasTree()) {
