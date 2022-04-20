@@ -31,7 +31,7 @@
  */
 
 #include <catch.hpp>
-#include "tiledb/sm/misc/math.h"
+#include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb::sm::utils;
