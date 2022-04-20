@@ -900,7 +900,7 @@ uint64_t DenseReader::get_dest_cell_offset_row_col(
     for (int32_t d = 0; d < dim_num; d++) {
       auto r = converted_range_coords[d];
       auto min = *static_cast<const DimType*>(
-          subarray.ranges_for_dim((uint32_t)d)[r].start());
+          subarray.ranges_for_dim((uint32_t)d)[r].start_fixed());
       ret += range_info[d].multiplier_ *
              (coords[d] - min + range_info[d].cell_offsets_[r]);
     }
@@ -908,7 +908,7 @@ uint64_t DenseReader::get_dest_cell_offset_row_col(
     for (int32_t d = dim_num - 1; d >= 0; d--) {
       auto r = converted_range_coords[d];
       auto min = *static_cast<const DimType*>(
-          subarray.ranges_for_dim((uint32_t)d)[r].start());
+          subarray.ranges_for_dim((uint32_t)d)[r].start_fixed());
       ret += range_info[d].multiplier_ *
              (coords[d] - min + range_info[d].cell_offsets_[r]);
     }
@@ -1382,6 +1382,11 @@ Status DenseReader::add_extra_offset() {
   for (const auto& it : buffers_) {
     const auto& name = it.first;
     if (!array_schema_.var_size(name))
+      continue;
+
+    // Do not apply offset for empty results because we will
+    // write backwards and corrupt memory we don't own.
+    if (*it.second.buffer_size_ == 0)
       continue;
 
     auto buffer = static_cast<unsigned char*>(it.second.buffer_);

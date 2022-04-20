@@ -45,7 +45,6 @@
 #include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/time.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
@@ -54,6 +53,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
