@@ -139,6 +139,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cache/buffer_lru_cache.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dd_compressor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dict_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/gzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/lz4_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/rle_compressor.cc

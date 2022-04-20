@@ -310,7 +310,7 @@ class FilterPipeline {
    * whole
    *
    * @param type Datatype of the input attribute/dimension
-   * @param type Array schema version
+   * @param version Array schema version
    * @return True if we can skip offsets filtering
    */
   bool skip_offsets_filtering(
@@ -323,10 +323,12 @@ class FilterPipeline {
    *
    * @param is_var True if checking for a var-sized attribute/dimension, false
    * if not
+   * @param version Array schema version
    * @param type Datatype of the input attribute/dimension
    * @return True if chunking needs to be used, false if not
    */
-  bool use_tile_chunking(bool is_var, const Datatype type) const;
+  bool use_tile_chunking(
+      const bool is_var, const uint32_t version, const Datatype type) const;
 
  private:
   /** A pair of FilterBuffers. */

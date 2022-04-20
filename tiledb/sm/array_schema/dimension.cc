@@ -1437,6 +1437,10 @@ Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
       return LOG_STATUS(Status_DimensionError(
           "RLE filter cannot be combined with other filters when applied to "
           "variable length string dimensions"));
+    } else if (pipeline->has_filter(FilterType::FILTER_DICTIONARY)) {
+      return LOG_STATUS(Status_AttributeError(
+          "Dictionary-encoding filter cannot be combined with other filters "
+          "when applied to variable length string dimensions"));
     }
   }
 
