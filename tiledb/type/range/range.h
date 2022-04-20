@@ -288,37 +288,32 @@ Status check_range_is_subset(const Range& superset, const Range& range) {
 
 /**
  * Performs correctness checks for a valid range. If any validity checks fail
- * an error status is returned.
+ * an exception is thrown.
  *
  * @param range The range to check.
- * @return Status of the checks.
  */
 template <
     typename T,
     typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
-Status check_range_is_valid(const Range& range) {
+void check_range_is_valid(const Range& range) {
   // Check has data.
   if (range.empty())
-    return Status_RangeError("Range is empty");
+    throw std::invalid_argument("Range is empty");
   auto r = (const T*)range.data();
   // Check for NaN
   if constexpr (std::is_floating_point_v<T>) {
     if (std::isnan(r[0]) || std::isnan(r[1]))
-      return Status_RangeError("Range contains NaN");
+      throw std::invalid_argument("Range contains NaN");
   }
   // Check range bounds
-  if (r[0] > r[1]) {
-    std::stringstream ss;
-    ss << "Lower range bound " << r[0]
-       << " cannot be larger than the higher bound " << r[1];
-    return Status_RangeError(ss.str());
-  }
-  // Return okay
-  return Status::Ok();
+  if (r[0] > r[1])
+    throw std::invalid_argument(
+        "Lower range bound " + std::to_string(r[0]) +
+        " cannot be larger than the higher bound " + std::to_string(r[1]));
 };
 
 /**
- * Crop a range to the requested bounds
+ * Crop a range to the requested bounds.
  *
  * @param bounds Bounds to crop the range to. Must be a valid range with data of
  * type T.

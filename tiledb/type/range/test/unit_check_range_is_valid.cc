@@ -47,27 +47,27 @@ TEMPLATE_TEST_CASE(
   SECTION("Test single point is valid") {
     TestType data[2]{1, 1};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(status.ok());
+    REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
   SECTION("Test standard range is valid") {
     TestType data[2]{1, 10};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(status.ok());
+    REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
   SECTION("Test full typeset is valid") {
     TestType fullset[2]{std::numeric_limits<TestType>::min(),
                         std::numeric_limits<TestType>::max()};
     Range range{&fullset[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(status.ok());
+    REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
+  }
+  SECTION("Test empty range is invalid") {
+    Range range;
+    REQUIRE_THROWS(check_range_is_valid<TestType>(range));
   }
   SECTION("Test lower bound larger than upper bound is invalid") {
     TestType data[2]{10, 1};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(check_range_is_valid<TestType>(range));
   }
 }
 
@@ -81,27 +81,27 @@ TEMPLATE_TEST_CASE(
   SECTION("Test single point is valid") {
     TestType data[2]{-1, -1};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(status.ok());
+    REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
   SECTION("Test standard range is valid") {
     TestType data[2]{-1, 10};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(status.ok());
+    REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
   SECTION("Test full typeset is valid") {
     TestType fullset[2]{std::numeric_limits<TestType>::min(),
                         std::numeric_limits<TestType>::max()};
     Range range{&fullset[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(status.ok());
+    REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
+  }
+  SECTION("Test empty range is invalid") {
+    Range range;
+    REQUIRE_THROWS(check_range_is_valid<TestType>(range));
   }
   SECTION("Test lower bound larger than upper bound is invalid") {
     TestType data[2]{1, -1};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(check_range_is_valid<TestType>(range));
   }
 }
 
@@ -113,64 +113,58 @@ TEMPLATE_TEST_CASE(
   SECTION("Test single point range is valid") {
     TestType data[2]{1.5, 1.5};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(status.ok());
+    REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
   SECTION("Test standard range is valid") {
     TestType data[2]{-10.5, 10.5};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(status.ok());
+    REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
   SECTION("Test the full typeset is valid") {
     TestType data[2]{std::numeric_limits<TestType>::min(),
                      std::numeric_limits<TestType>::max()};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(status.ok());
+    REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
   SECTION("Test range with lower infinite bound is valid") {
     TestType data[2]{-std::numeric_limits<TestType>::infinity(),
                      std::numeric_limits<TestType>::infinity()};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(status.ok());
+    REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
   SECTION("Test range with upper infinite bound is valid") {
     TestType data[2]{0.0, std::numeric_limits<TestType>::infinity()};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(status.ok());
+    REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
   SECTION("Test range with infinite bounds is valid") {
     TestType data[2]{-std::numeric_limits<TestType>::infinity(), 0.0};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(status.ok());
+    REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
+  }
+  SECTION("Test empty range is invalid") {
+    Range range;
+    REQUIRE_THROWS(check_range_is_valid<TestType>(range));
   }
   SECTION("Test range with NaN values is invalid") {
     TestType data[2]{std::numeric_limits<TestType>::quiet_NaN(),
                      std::numeric_limits<TestType>::quiet_NaN()};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(check_range_is_valid<TestType>(range));
   }
   SECTION("Test range with lower NaN value is invalid") {
     TestType data[2]{0.0, std::numeric_limits<TestType>::quiet_NaN()};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(check_range_is_valid<TestType>(range));
   }
   SECTION("Test range with upper NaN value is invalid") {
     TestType data[2]{std::numeric_limits<TestType>::quiet_NaN(), 0.0};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(check_range_is_valid<TestType>(range));
   }
   SECTION("Test lower bound larger than upper bound is invalid") {
     TestType data[2]{1.0, -1.0};
     Range range{&data[0], 2 * sizeof(TestType)};
-    auto status = check_range_is_valid<TestType>(range);
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(check_range_is_valid<TestType>(range));
   }
 }
