@@ -75,7 +75,7 @@ TEST_CASE(
     tiledb::sm::serialization::capnp::Condition::Builder builder;
     REQUIRE(tiledb::sm::serialization::condition_to_capnp(query_condition1, &builder).ok());
     QueryCondition query_condition1_clone;
-    REQUIRE(tiledb::sm::serialization::condition_from_capnp(builder, &query_condition1_clone).ok());
+    REQUIRE(condition_from_capnp(builder, &query_condition1_clone).ok());
     REQUIRE(tiledb::test::ast_equal(query_condition1.ast(), query_condition1_clone.ast()));
 }
 
