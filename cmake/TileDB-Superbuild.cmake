@@ -85,6 +85,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindLZ4_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindSpdlog_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZlib_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZstd_EP.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindMagic_EP.cmake)
 
 if (TILEDB_SERIALIZATION)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCapnp_EP.cmake)

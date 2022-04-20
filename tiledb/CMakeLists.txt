@@ -142,6 +142,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/gzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/lz4_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/rle_compressor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/util/gzip_wrappers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/zstd_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config_iter.cc
@@ -195,6 +196,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/mgc_dict.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/math.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/parse_argument.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/time.cc
@@ -326,6 +328,41 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_CORE_SOURCES}
     ${TILEDB_EXTERNALS_SOURCES}
 )
+
+
+add_dependencies(TILEDB_CORE_OBJECTS tdb_gzip_embedded_data)
+add_dependencies(TILEDB_CORE_OBJECTS compressors)
+
+set(MGC_GZIPPED_BIN_PATH "${CMAKE_CURRENT_BINARY_DIR}/magic_mgc_gzipped.bin")
+set(MGC_GZIPPED_BIN_PATH2 "${CMAKE_CURRENT_BINARY_DIR}/sm/misc/magic_mgc_gzipped.bin")
+
+
+if(WIN32)
+  if(MSVC)
+    set(tdb_gzip_embedded_data_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/${CMAKE_BUILD_TYPE}/tdb_gzip_embedded_data.exe")
+  else()
+    set(tdb_gzip_embedded_data_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/tdb_gzip_embedded_data.exe")
+  endif()
+else()
+  set(tdb_gzip_embedded_data_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/tdb_gzip_embedded_data")
+endif()
+
+set(MAGIC_MGC_DICT "${TILEDB_EP_BASE}/install/bin/magic.mgc")
+message(STATUS "MAGIC_MGC_DICT is ${MAGIC_MGC_DICT}")
+
+add_custom_command( 
+  OUTPUT "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/mgc_gzipped.bin
+  DEPENDS "${MAGIC_MGC_DICT}"
+  COMMAND "${tdb_gzip_embedded_data_EXECUTABLE}" < "${MAGIC_MGC_DICT}" "${MGC_GZIPPED_BIN_PATH}"
+  # also put it where unit_mgc_dict build can find it
+  COMMAND ${CMAKE_COMMAND} -E copy "${MGC_GZIPPED_BIN_PATH}" "${MGC_GZIPPED_BIN_PATH2}"
+)
+add_custom_target(gen_mgc_gzip ALL
+  DEPENDS ${MGC_GZIPPED_BIN_PATH}
+)
+add_dependencies(gen_mgc_gzip tdb_gzip_embedded_data)
+#add_dependencies(TILEDB_CORE_OBJECTS ${MGC_GZIPPED_BIN_PATH})
+add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_gzip)
 
 # Compile all core sources with PIC
 set_property(TARGET TILEDB_CORE_OBJECTS PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -532,6 +569,7 @@ find_package(LZ4_EP REQUIRED)
 find_package(Spdlog_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
+find_package(Magic_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
@@ -539,7 +577,15 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     spdlog::spdlog
     Zlib::Zlib
     Zstd::Zstd
+    libmagic
 )
+
+# GCC <9 need to link against libc++fs for c++17 filesystem library
+find_package(Filesystem REQUIRED COMPONENTS Final Experimental)
+if (NOT WIN32 OR NOT MSVC)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE std::filesystem)
+endif()
+
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
@@ -810,6 +856,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
+  append_dep_lib(libmagic)
 endif()
 
 ############################################################
