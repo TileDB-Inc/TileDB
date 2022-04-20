@@ -65,7 +65,7 @@ void magic_dict::prepare_data() {
   uncompressed_magic_dict_ = expanded_buffer_.get()->data();
 }
 
-int magic_dict::magic_load(magic_t magic) {
+int magic_dict::magic_mgc_embedded_load(magic_t magic) {
   if (!uncompressed_magic_dict_)
     prepare_data();
 

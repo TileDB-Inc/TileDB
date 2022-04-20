@@ -112,7 +112,15 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
               GIT_TAG "nplat-cmake-install-support"
               GIT_SUBMODULES_RECURSE TRUE
               UPDATE_COMMAND ""
+#              PATCH_COMMAND
+#                ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/magic.softmagic.c ./file/src/softmagic.c
+#                COMMAND ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/magic.apprentice.c ./file/src/apprentice.c
+#                COMMAND ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/magic.magic.c ./file/src/magic.c
+#                COMMAND ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/magic.file.c ./file/src/file.c
+#                COMMAND ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/magic.CMakeLists.txt ./CMakeLists.txt
               CMAKE_ARGS
+#                --trace
+#                -DVERBOSE=ON # actual =value doc'd as ignored
                 -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                 "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
@@ -130,8 +138,23 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
         GIT_TAG "nplat-cmake-install-support"
         GIT_SUBMODULES_RECURSE TRUE
         UPDATE_COMMAND ""
+#        BUILD_COMMAND
+#          $(MAKE) VERBOSE=1
+        #note: this -does- seem to "patch" 5.41 in my local environ and succeed in building wsl ubuntu
+        #PATCH_COMMAND
+        #  tar -xvf ../../../../../file-5.41.tar.gz
+        #  COMMAND ${CMAKE_COMMAND} -E make_directory where.are.we.directory
+        #  COMMAND ${CMAKE_COMMAND} -E rename ./file file.dir.from.git
+        #  COMMAND ${CMAKE_COMMAND} -E rename ./file-5.41 file
+#        PATCH_COMMAND
+#          ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/magic.softmagic.c ./file/src/softmagic.c
+#          COMMAND ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/magic.apprentice.c ./file/src/apprentice.c
+#          COMMAND ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/magic.magic.c ./file/src/magic.c
+#          COMMAND ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/magic.file.c ./file/src/file.c
+#          COMMAND ${CMAKE_COMMAND} -E copy ${TILEDB_CMAKE_INPUTS_DIR}/magic.CMakeLists.txt ./CMakeLists.txt
         CMAKE_ARGS
-          --trace
+#          --trace
+#          -DVERBOSE=ON # actual =value doc'd as ignored
           -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
           -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
           "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"

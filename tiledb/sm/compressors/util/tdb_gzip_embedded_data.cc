@@ -116,6 +116,20 @@ int main(int argc, char* argv[]) {
   }
   std::cerr << "sizes input " << inbuf->size() << ", compressed "
             << out_buffer_ptr->size() << std::endl;
+  {
+    // save compressed data to allow examination from filesystem
+    auto outgzip = fopen("magic-mgc.tdbgzip", "wb");
+    if (!outgzip) {
+      fprintf(stderr, "Unable to create magic-mgc.tdbgzip!\n");
+      exit(-21);
+    }
+    if (fwrite(out_buffer_ptr->data(0), 1, out_buffer_ptr->size(), outgzip) !=
+        out_buffer_ptr->size()) {
+      fprintf(stderr, "write failure magic-mgc.tdbgzip!\n");
+      exit(-22);
+    }
+    fclose(outgzip);
+  }
   auto tdb_gzip_buf = make_shared<tiledb::sm::Buffer>(HERE());
 
   unsigned maxnperline = 128;
@@ -188,6 +202,10 @@ int main(int argc, char* argv[]) {
   // brief sanity check the decompressed()d data matches original
   tdb_gzip_buf->set_offset(0);
   gzip_decompress(expanded_buffer, static_cast<uint8_t*>(tdb_gzip_buf->data()));
+  if (expanded_buffer->size() != inbuf->size()) {
+    fprintf(stderr, "re-expanded size different from original size!\n");
+    exit(-29);
+  }
   if (memcmp(expanded_buffer->data(), inbuf->data(), inbuf->size())) {
     printf("Error uncompress data != original data!\n");
     exit(-21);

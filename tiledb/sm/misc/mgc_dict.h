@@ -47,7 +47,7 @@ class magic_dict {
    * @param magic - libmagic object obtained from magic_open()
    * @return the value libmgaic returns from magic_load_buffers().
    */
-  static int magic_load(magic_t magic);
+  static int magic_mgc_embedded_load(magic_t magic);
 
   /**
    * Provides access to the internally expanded data.
