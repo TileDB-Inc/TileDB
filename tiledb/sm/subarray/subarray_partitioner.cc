@@ -1389,15 +1389,27 @@ void SubarrayPartitioner::compute_range_uint64(
         var ? dim->map_to_uint64(
                   max_string.data(), max_string.size(), bits, max_bucket_val) :
               (UINT64_MAX >> (64 - bits));
-
-    (*range_uint64)[d][0] =
-        empty_start ? 0 :  // min default
-            dim->map_to_uint64(
-                r->start(), r->start_size(), bits, max_bucket_val);
-    (*range_uint64)[d][1] =
-        empty_end ?
-            max_default :
-            dim->map_to_uint64(r->end(), r->end_size(), bits, max_bucket_val);
+    if (r->var_size()) {
+      auto start_str = r->start_str();
+      (*range_uint64)[d][0] =
+          empty_start ? 0 :  // min default
+              dim->map_to_uint64(
+                  start_str.data(), start_str.size(), bits, max_bucket_val);
+      auto end_str = r->end_str();
+      (*range_uint64)[d][1] =
+          empty_end ? max_default :
+                      dim->map_to_uint64(
+                          end_str.data(), end_str.size(), bits, max_bucket_val);
+    } else {
+      // Note: coord_size is ignored for fixed size in map_to_uint64.
+      (*range_uint64)[d][0] =
+          empty_start ? 0 :  // min default
+              dim->map_to_uint64(r->start_fixed(), 0, bits, max_bucket_val);
+      (*range_uint64)[d][1] =
+          empty_end ?
+              max_default :
+              dim->map_to_uint64(r->end_fixed(), 0, bits, max_bucket_val);
+    }
 
     assert((*range_uint64)[d][0] <= (*range_uint64)[d][1]);
 

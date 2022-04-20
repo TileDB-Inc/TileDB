@@ -1151,7 +1151,8 @@ uint64_t SparseGlobalOrderReader::compute_var_size_offsets(
 
   // Switch offsets buffer from cell size to offsets.
   auto offsets_buff = (OffType*)query_buffer.buffer_;
-  for (uint64_t c = 0; c < cell_offsets[result_cell_slabs.size()]; c++) {
+  for (uint64_t c = cell_offsets[0]; c < cell_offsets[result_cell_slabs.size()];
+       c++) {
     auto tmp = offsets_buff[c];
     offsets_buff[c] = new_var_buffer_size;
     new_var_buffer_size += tmp;
@@ -1162,47 +1163,46 @@ uint64_t SparseGlobalOrderReader::compute_var_size_offsets(
     // Buffers are full.
     buffers_full_ = true;
 
-    // First find the last full result tile that we can fit.
+    // Make sure that the start of the last RCS can fit the buffers. If not,
+    // pop the last slab until it does.
     auto total_cells = cell_offsets[result_cell_slabs.size() - 1];
     new_var_buffer_size = ((OffType*)query_buffer.buffer_)[total_cells];
     while (query_buffer.original_buffer_var_size_ < new_var_buffer_size) {
-      // Revert progress for this slab, and pop it.
+      // Revert progress for this slab in read state, and pop it.
       auto& last_rcs = result_cell_slabs.back();
       read_state_.frag_tile_idx_[last_rcs.tile_->frag_idx()] =
           std::pair<uint64_t, uint64_t>(
               last_rcs.tile_->tile_idx(), last_rcs.start_);
       result_cell_slabs.pop_back();
 
+      // Update the new var buffer size.
       auto total_cells = cell_offsets[result_cell_slabs.size() - 1];
       new_var_buffer_size = ((OffType*)query_buffer.buffer_)[total_cells];
     }
 
-    // Add in a partial slab if the buffer is not full.
-    if (query_buffer.original_buffer_var_size_ != new_var_buffer_size) {
-      auto& last_rcs = result_cell_slabs.back();
+    // Add as many cells from the last slab as possible, it could be 0.
+    auto& last_rcs = result_cell_slabs.back();
 
-      // Find the totals cells we can fit.
-      auto total_cells = cell_offsets[result_cell_slabs.size() - 1];
-      auto max = cell_offsets[result_cell_slabs.size()] - 1;
-      for (; total_cells < max; total_cells++) {
-        if (((OffType*)query_buffer.buffer_)[total_cells] >
-            query_buffer.original_buffer_var_size_)
-          break;
-      }
-
-      // Adjust cell offsets and rcs length.
-      cell_offsets[result_cell_slabs.size()] = total_cells;
-      last_rcs.length_ =
-          total_cells - cell_offsets[result_cell_slabs.size() - 1];
-
-      // Update the buffer size.
-      new_var_buffer_size = ((OffType*)query_buffer.buffer_)[total_cells];
-
-      // Update the cell progress.
-      read_state_.frag_tile_idx_[last_rcs.tile_->frag_idx()] =
-          std::pair<uint64_t, uint64_t>(
-              last_rcs.tile_->tile_idx(), last_rcs.start_ + last_rcs.length_);
+    // Find the totals cells we can fit.
+    total_cells = cell_offsets[result_cell_slabs.size() - 1];
+    auto max = cell_offsets[result_cell_slabs.size()] - 1;
+    for (; total_cells < max; total_cells++) {
+      if (((OffType*)query_buffer.buffer_)[total_cells + 1] >
+          query_buffer.original_buffer_var_size_)
+        break;
     }
+
+    // Adjust cell offsets and rcs length.
+    cell_offsets[result_cell_slabs.size()] = total_cells;
+    last_rcs.length_ = total_cells - cell_offsets[result_cell_slabs.size() - 1];
+
+    // Update the buffer size.
+    new_var_buffer_size = ((OffType*)query_buffer.buffer_)[total_cells];
+
+    // Update the cell progress.
+    read_state_.frag_tile_idx_[last_rcs.tile_->frag_idx()] =
+        std::pair<uint64_t, uint64_t>(
+            last_rcs.tile_->tile_idx(), last_rcs.start_ + last_rcs.length_);
   }
 
   return new_var_buffer_size;
@@ -1424,7 +1424,7 @@ Status SparseGlobalOrderReader::end_iteration() {
     num_rt += result_tiles_[f].size();
   }
 
-  logger_->debug("Done with iteration, num result tiles {1}", num_rt);
+  logger_->debug("Done with iteration, num result tiles {0}", num_rt);
 
   array_memory_tracker_->set_budget(std::numeric_limits<uint64_t>::max());
   return Status::Ok();

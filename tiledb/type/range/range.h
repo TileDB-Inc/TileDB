@@ -91,6 +91,7 @@ class Range {
   void set_range(const void* r, uint64_t r_size) {
     range_.resize(r_size);
     std::memcpy(range_.data(), r, r_size);
+    var_size_ = false;
   }
 
   /** Sets a var-sized range serialized in `r`. */
@@ -130,12 +131,14 @@ class Range {
   }
 
   /** Returns a pointer to the start of the range. */
-  const void* start() const {
+  const void* start_fixed() const {
+    assert(!var_size_);
+    assert(range_.size() != 0);
     return range_.data();
   }
 
   /** Copies 'start' into this range's start bytes for fixed-size ranges. */
-  void set_start(const void* const start) {
+  void set_start_fixed(const void* const start) {
     if (var_size_) {
       auto msg = "Unexpected var-sized range; cannot set start range.";
       LOG_ERROR(msg);
@@ -148,12 +151,23 @@ class Range {
 
   /** Returns the start as a string view. */
   std::string_view start_str() const {
-    return std::string_view((const char*)start(), start_size());
+    if (range_start_size_ == 0) {
+      return {nullptr, 0};
+    }
+    return std::string_view(
+        reinterpret_cast<const char*>(range_.data()), range_start_size_);
   }
 
   /** Returns the end as a string view. */
   std::string_view end_str() const {
-    return std::string_view((const char*)end(), end_size());
+    assert(var_size_);
+    auto size = range_.size() - range_start_size_;
+    if (size == 0) {
+      return {nullptr, 0};
+    }
+
+    return std::string_view(
+        reinterpret_cast<const char*>(range_.data()) + range_start_size_, size);
   }
 
   /**
@@ -161,6 +175,8 @@ class Range {
    * Non-zero only for var-sized ranges.
    */
   uint64_t start_size() const {
+    if (!var_size_)
+      return 0;
     return range_start_size_;
   }
 
@@ -175,13 +191,15 @@ class Range {
   }
 
   /** Returns a pointer to the end of the range. */
-  const void* end() const {
-    auto end_pos = var_size_ ? range_start_size_ : range_.size() / 2;
-    return range_.empty() ? nullptr : &range_[end_pos];
+  const void* end_fixed() const {
+    assert(!var_size_);
+    assert(range_.size() != 0);
+    auto end_pos = range_.size() / 2;
+    return &range_[end_pos];
   }
 
   /** Copies 'end' into this range's end bytes for fixed-size ranges. */
-  void set_end(const void* const end) {
+  void set_end_fixed(const void* const end) {
     if (var_size_) {
       auto msg = "Unexpected var-sized range; cannot set end range.";
       LOG_ERROR(msg);

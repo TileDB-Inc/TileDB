@@ -928,7 +928,7 @@ void ResultTile::compute_results_count_sparse(
               range_indexes.end(),
               c,
               [&](const uint64_t& index, const T& value) {
-                return ((const T*)ranges[index].start())[1] < value;
+                return ((const T*)ranges[index].start_fixed())[1] < value;
               });
 
           // If we didn't find a range we can set count to 0 and skip to next.
@@ -944,7 +944,7 @@ void ResultTile::compute_results_count_sparse(
               range_indexes.end(),
               c,
               [&](const uint64_t& index, const T& value) {
-                return ((const T*)ranges[index].start())[0] < value;
+                return ((const T*)ranges[index].start_fixed())[0] < value;
               });
 
           // If the upper bound isn't the end add +1 to the index.
@@ -958,7 +958,8 @@ void ResultTile::compute_results_count_sparse(
           // dim.
           uint64_t count = 0;
           for (uint64_t j = start_range_idx; j < end_range_idx; ++j) {
-            const auto& range = (const T*)ranges[range_indexes[j]].start();
+            const auto& range =
+                (const T*)ranges[range_indexes[j]].start_fixed();
             count += c >= range[0] && c <= range[1];
           }
 
@@ -981,7 +982,7 @@ void ResultTile::compute_results_count_sparse(
         T c = coords[pos * dim_num + dim_idx];
         uint64_t count = 0;
         for (uint64_t i = 0; i < range_indexes.size(); i++) {
-          const auto& range = (const T*)ranges[range_indexes[i]].start();
+          const auto& range = (const T*)ranges[range_indexes[i]].start_fixed();
           count += c >= range[0] && c <= range[1];
         }
 

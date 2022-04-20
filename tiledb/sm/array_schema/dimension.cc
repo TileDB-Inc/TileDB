@@ -848,7 +848,7 @@ void Dimension::relevant_ranges(
     const NDRange& ranges,
     const Range& mbr,
     std::vector<uint64_t>& relevant_ranges) {
-  const auto mbr_data = (const T*)mbr.start();
+  const auto mbr_data = (const T*)mbr.start_fixed();
   const auto mbr_start = mbr_data[0];
   const auto mbr_end = mbr_data[1];
 
@@ -858,7 +858,7 @@ void Dimension::relevant_ranges(
       ranges.end(),
       mbr_start,
       [&](const Range& a, const T value) {
-        return ((const T*)a.start())[1] < value;
+        return ((const T*)a.start_fixed())[1] < value;
       });
 
   if (it == ranges.end())
@@ -870,7 +870,7 @@ void Dimension::relevant_ranges(
   // conditional exit in the for loop below
   auto it2 = std::lower_bound(
       it, ranges.end(), mbr_end, [&](const Range& a, const T value) {
-        return ((const T*)a.start())[0] < value;
+        return ((const T*)a.start_fixed())[0] < value;
       });
 
   // If the upper bound isn't the end add +1 to the index
@@ -881,7 +881,7 @@ void Dimension::relevant_ranges(
 
   // Loop over only potential relevant ranges
   for (uint64_t r = start_range; r < end_range; ++r) {
-    const auto d1 = (const T*)ranges[r].start();
+    const auto d1 = (const T*)ranges[r].start_fixed();
 
     if ((d1[0] <= mbr_end && d1[1] >= mbr_start))
       relevant_ranges.emplace_back(r);
@@ -922,13 +922,13 @@ std::vector<bool> Dimension::covered_vec(
     const NDRange& ranges,
     const Range& mbr,
     const std::vector<uint64_t>& relevant_ranges) {
-  auto d1 = (const T*)mbr.start();
+  auto d1 = (const T*)mbr.start_fixed();
 
   std::vector<bool> covered;
   covered.resize(relevant_ranges.size());
   for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
     auto r = relevant_ranges[i];
-    auto d2 = (const T*)ranges[r].start();
+    auto d2 = (const T*)ranges[r].start_fixed();
 
     covered[i] = d1[0] >= d2[0] && d1[1] <= d2[1];
   }
@@ -1208,8 +1208,8 @@ uint64_t Dimension::map_to_uint64_2(
   assert(coord != nullptr);
   assert(!dim->domain().empty());
 
-  double dom_start_T = *(const T*)dim->domain().start();
-  double dom_end_T = *(const T*)dim->domain().end();
+  double dom_start_T = *(const T*)dim->domain().start_fixed();
+  double dom_end_T = *(const T*)dim->domain().end_fixed();
   auto dom_range_T = dom_end_T - dom_start_T;
   auto norm_coord_T = *(const T*)coord - dom_start_T;
   return (norm_coord_T / dom_range_T) * max_bucket_val;
@@ -1258,10 +1258,10 @@ ByteVecValue Dimension::map_from_uint64(
 
   // Add domain start
   auto value_T = static_cast<T>(value);
-  value_T += *(const T*)dim->domain().start();
+  value_T += *(const T*)dim->domain().start_fixed();
 
-  auto dom_start_T = *(const T*)dim->domain().start();
-  auto dom_end_T = *(const T*)dim->domain().end();
+  auto dom_start_T = *(const T*)dim->domain().start_fixed();
+  auto dom_end_T = *(const T*)dim->domain().end_fixed();
   double dom_range_T = dom_end_T - dom_start_T;
 
   // Essentially take the largest value in the bucket
@@ -1322,7 +1322,7 @@ bool Dimension::smaller_than(
   assert(value);
 
   auto value_T = *(const T*)(value.data());
-  auto range_start_T = *(const T*)range.start();
+  auto range_start_T = *(const T*)range.start_fixed();
   return value_T < range_start_T;
 }
 
