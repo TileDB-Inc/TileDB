@@ -3,6 +3,9 @@
 using Json = import "/capnp/compat/json.capnp";
 using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("tiledb::sm::serialization::capnp");
+using Go = import "/go.capnp";
+$Go.package("capnp_models");
+$Go.import("capnp_models");
 
 struct DomainArray {
   int8 @0 :List(Int8);
@@ -675,7 +678,7 @@ struct GroupUpdate {
   # Config
 
   groupUpdate @1 :GroupUpdateDetails $Json.name("group_changes");
-  # group update detials
+  # group update details
 }
 
 struct GroupCreate {
