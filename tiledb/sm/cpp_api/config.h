@@ -746,6 +746,19 @@ class Config {
   }
 
   /**
+   * Check if a configuration parameter exists.
+   * @param param Name of configuration parameter
+   * @return true if the parameter exists, false otherwise
+   */
+  bool contains(const std::string_view& param) const {
+    const char* val;
+    tiledb_error_t* err;
+    tiledb_config_get(config_.get(), param.data(), &val, &err);
+
+    return val != nullptr;
+  }
+
+  /**
    * Operator that enables setting parameters with `[]`.
    *
    * **Example:**
