@@ -205,7 +205,7 @@ Status Group::open(QueryType query_type) {
       }
     }
 
-    metadata_.reset(timestamp_start_, timestamp_end_);
+    metadata_.reset(timestamp_end_);
   }
 
   query_type_ = query_type;
