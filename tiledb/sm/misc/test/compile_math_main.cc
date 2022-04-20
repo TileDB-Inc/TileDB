@@ -26,7 +26,7 @@
  * THE SOFTWARE.
  */
 
-#include "../math.h"
+#include "../tdb_math.h"
 
 int main() {
   (void)tiledb::sm::utils::math::ceil(1, 1);

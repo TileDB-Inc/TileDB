@@ -1,5 +1,5 @@
 /**
- * @file time.h
+ * @file tdb_math.h
  *
  * @section LICENSE
  *
@@ -28,22 +28,41 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a timestamp function
+ * This file contains useful (global) functions.
  */
+
+#ifndef TILEDB_UTILS_MATH_H
+#define TILEDB_UTILS_MATH_H
 
 #include <cstdint>
 
-#ifndef TILEDB_MISC_TIME_H
-#define TILEDB_MISC_TIME_H
+namespace tiledb::sm::utils::math {
 
-namespace tiledb::sm::utils::time {
+/** Returns the value of x/y (integer division) rounded up. */
+uint64_t ceil(uint64_t x, uint64_t y);
+
+/** Returns log_b(x). */
+double log(double b, double x);
 
 /**
- * Returns the current time in milliseconds since
- * 1970-01-01 00:00:00 +0000 (UTC).
+ * Computes a * b, but it checks for overflow. In case the product
+ * overflows, it returns std::numeric_limits<T>::max().
  */
-uint64_t timestamp_now_ms();
+template <class T>
+T safe_mul(T a, T b);
 
-}  // namespace tiledb::sm::utils::time
+/**
+ * Returns the maximum power of 2 minus one that is smaller than
+ * or equal to `value`.
+ */
+uint64_t left_p2_m1(uint64_t value);
 
-#endif  // TILEDB_MISC_TIME_H
+/**
+ * Returns the minimum power of 2 minus one that is larger than
+ * or equal to `value`.
+ */
+uint64_t right_p2_m1(uint64_t value);
+
+}  // namespace tiledb::sm::utils::math
+
+#endif  // TILEDB_UTILS_MATH_H
