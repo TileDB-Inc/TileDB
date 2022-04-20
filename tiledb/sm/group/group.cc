@@ -581,7 +581,7 @@ Status Group::mark_member_for_removal(const std::string& uri) {
   // Check mode
   if (query_type_ != QueryType::WRITE) {
     return Status_GroupError(
-        "Cannot get member; Group was not opened in read mode");
+        "Cannot get member; Group was not opened in write mode");
   }
   if (members_to_add_.find(uri) != members_to_add_.end()) {
     return Status_GroupError(
