@@ -722,10 +722,10 @@ void QueryCondition::apply_tree(
     // other one based on the combination op.
     const QueryConditionCombinationOp& combination_op =
         node->get_combination_op();
-    if (combination_op == QueryConditionCombinationOp::AND) {
-      std::fill(result_cell_bitmap.begin(), result_cell_bitmap.end(), 1);
-    } else if (combination_op == QueryConditionCombinationOp::OR) {
-      std::fill(result_cell_bitmap.begin(), result_cell_bitmap.end(), 0);
+    
+    std::vector<uint8_t> combination_op_bitmap(result_cell_bitmap.size(), 1);
+    if (combination_op == QueryConditionCombinationOp::OR) {
+      std::fill(combination_op_bitmap.begin(), combination_op_bitmap.end(), 0);
     }
 
     for (const auto& child : node->get_children()) {
@@ -741,12 +741,12 @@ void QueryCondition::apply_tree(
       switch (combination_op) {
         case QueryConditionCombinationOp::AND: {
           for (size_t c = 0; c < result_cell_bitmap.size(); ++c) {
-            result_cell_bitmap[c] *= child_result_cell_bitmap[c];
+            combination_op_bitmap[c] *= child_result_cell_bitmap[c];
           }
         } break;
         case QueryConditionCombinationOp::OR: {
           for (size_t c = 0; c < result_cell_bitmap.size(); ++c) {
-            result_cell_bitmap[c] |= child_result_cell_bitmap[c];
+            combination_op_bitmap[c] |= child_result_cell_bitmap[c];
           }
         } break;
         case QueryConditionCombinationOp::NOT: {
@@ -759,6 +759,10 @@ void QueryCondition::apply_tree(
               "apply_tree: invalid combination op, should not get here.");
         }
       }
+    }
+
+    for (size_t c = 0; c < result_cell_bitmap.size(); ++c) {
+      result_cell_bitmap[c] *= combination_op_bitmap[c];
     }
   }
 }
@@ -1082,10 +1086,9 @@ void QueryCondition::apply_tree_dense(
     // other one based on the combination op.
     const QueryConditionCombinationOp& combination_op =
         node->get_combination_op();
-    if (combination_op == QueryConditionCombinationOp::AND) {
-      std::fill(result_buffer.begin(), result_buffer.end(), 1);
-    } else if (combination_op == QueryConditionCombinationOp::OR) {
-      std::fill(result_buffer.begin(), result_buffer.end(), 0);
+    std::vector<uint8_t> combination_result_buffer(result_buffer.size(), 1);
+    if (combination_op == QueryConditionCombinationOp::OR) {
+      std::fill(combination_result_buffer.begin(), combination_result_buffer.end(), 0);
     }
     for (const auto& child : node->get_children()) {
       std::vector<uint8_t> child_result_vector(result_buffer.size(), 1);
@@ -1106,12 +1109,12 @@ void QueryCondition::apply_tree_dense(
         // combination op case, and bitwise OR in the OR combination op case.
         case QueryConditionCombinationOp::AND: {
           for (uint64_t c = 0; c < result_buffer.size(); ++c) {
-            result_buffer[c] &= child_result_buffer[c];
+            combination_result_buffer[c] &= child_result_buffer[c];
           }
         } break;
         case QueryConditionCombinationOp::OR: {
           for (uint64_t c = 0; c < result_buffer.size(); ++c) {
-            result_buffer[c] |= child_result_buffer[c];
+            combination_result_buffer[c] |= child_result_buffer[c];
           }
         } break;
         case QueryConditionCombinationOp::NOT: {
@@ -1123,6 +1126,10 @@ void QueryCondition::apply_tree_dense(
               "apply_tree_dense: invalid combination op, should not get here.");
         }
       }
+    }
+
+    for (uint64_t c = 0; c < result_buffer.size(); ++c) {
+      result_buffer[c] &= combination_result_buffer[c];
     }
   }
 }
@@ -1533,10 +1540,9 @@ void QueryCondition::apply_tree_sparse(
     // other one based on the combination op.
     const QueryConditionCombinationOp& combination_op =
         node->get_combination_op();
-    if (combination_op == QueryConditionCombinationOp::AND) {
-      std::fill(result_bitmap.begin(), result_bitmap.end(), 1);
-    } else if (combination_op == QueryConditionCombinationOp::OR) {
-      std::fill(result_bitmap.begin(), result_bitmap.end(), 0);
+    std::vector<BitmapType> combination_op_bitmap(result_bitmap.size(), 1);
+    if (combination_op == QueryConditionCombinationOp::OR) {
+      std::fill(combination_op_bitmap.begin(), combination_op_bitmap.end(), 0);
     }
     for (const auto& child : node->get_children()) {
       std::vector<BitmapType> child_result_bitmap(result_bitmap.size(), true);
@@ -1548,12 +1554,12 @@ void QueryCondition::apply_tree_sparse(
       switch (combination_op) {
         case QueryConditionCombinationOp::AND: {
           for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
-            result_bitmap[c] *= child_result_bitmap[c];
+            combination_op_bitmap[c] *= child_result_bitmap[c];
           }
         } break;
         case QueryConditionCombinationOp::OR: {
           for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
-            result_bitmap[c] |= child_result_bitmap[c];
+            combination_op_bitmap[c] |= child_result_bitmap[c];
           }
         } break;
         case QueryConditionCombinationOp::NOT: {
@@ -1567,6 +1573,10 @@ void QueryCondition::apply_tree_sparse(
               "here.");
         }
       }
+    }
+
+    for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
+      result_bitmap[c] *= combination_op_bitmap[c];
     }
   }
 }
