@@ -722,7 +722,7 @@ void QueryCondition::apply_tree(
     // other one based on the combination op.
     const QueryConditionCombinationOp& combination_op =
         node->get_combination_op();
-    
+
     std::vector<uint8_t> combination_op_bitmap(result_cell_bitmap.size(), 1);
     if (combination_op == QueryConditionCombinationOp::OR) {
       std::fill(combination_op_bitmap.begin(), combination_op_bitmap.end(), 0);
@@ -1088,7 +1088,10 @@ void QueryCondition::apply_tree_dense(
         node->get_combination_op();
     std::vector<uint8_t> combination_result_buffer(result_buffer.size(), 1);
     if (combination_op == QueryConditionCombinationOp::OR) {
-      std::fill(combination_result_buffer.begin(), combination_result_buffer.end(), 0);
+      std::fill(
+          combination_result_buffer.begin(),
+          combination_result_buffer.end(),
+          0);
     }
     for (const auto& child : node->get_children()) {
       std::vector<uint8_t> child_result_vector(result_buffer.size(), 1);
