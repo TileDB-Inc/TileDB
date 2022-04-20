@@ -41,6 +41,7 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/array/consistency.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
@@ -467,6 +468,9 @@ class Array {
 
   /** Memory tracker for the array. */
   MemoryTracker memory_tracker_;
+
+  /** The map of currently open arrays. */
+  ConsistencySentry array_sentry_registry_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
