@@ -68,6 +68,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <algorithm>
 #include <iostream>
@@ -1044,8 +1045,10 @@ Status StorageManager::array_get_non_empty_domain_var_from_index(
   if (*is_empty)
     return Status::Ok();
 
-  std::memcpy(start, dom[idx].start(), dom[idx].start_size());
-  std::memcpy(end, dom[idx].end(), dom[idx].end_size());
+  auto start_str = dom[idx].start_str();
+  std::memcpy(start, start_str.data(), start_str.size());
+  auto end_str = dom[idx].end_str();
+  std::memcpy(end, end_str.data(), end_str.size());
 
   return Status::Ok();
 }
@@ -1074,8 +1077,10 @@ Status StorageManager::array_get_non_empty_domain_var_from_name(
       }
 
       if (!*is_empty) {
-        std::memcpy(start, dom[d].start(), dom[d].start_size());
-        std::memcpy(end, dom[d].end(), dom[d].end_size());
+        auto start_str = dom[d].start_str();
+        std::memcpy(start, start_str.data(), start_str.size());
+        auto end_str = dom[d].end_str();
+        std::memcpy(end, end_str.data(), end_str.size());
       }
 
       return Status::Ok();
