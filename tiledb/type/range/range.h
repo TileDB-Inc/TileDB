@@ -323,7 +323,6 @@ Status check_range_is_valid(const Range& range) {
  * @param bounds Bounds to crop the range to. Must be a valid range with data of
  * type T.
  * @param range The range to crop. Must be a valid range with data of type T.
- * @return Status that returns an error if range was mutated.
  */
 template <
     typename T,
@@ -331,11 +330,8 @@ template <
 void crop_range(const Range& bounds, Range& range) {
   auto bounds_data = (const T*)bounds.data();
   auto range_data = (T*)range.data();
-  // Check out-of-bounds
-  if (range_data[0] < bounds_data[0])
-    range_data[0] = bounds_data[0];
-  if (range_data[1] > bounds_data[1])
-    range_data[1] = bounds_data[1];
+  range_data[0] = std::max(bounds_data[0], range_data[0]);
+  range_data[1] = std::min(bounds_data[1], range_data[1]);
 };
 
 }  // namespace tiledb::type
