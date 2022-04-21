@@ -94,8 +94,10 @@ Status QueryCondition::init(
 }
 
 Status QueryCondition::check(const ArraySchema& array_schema) const {
-  if (!tree_)
+  if (!tree_) {
     return Status::Ok();
+  }
+
   RETURN_NOT_OK(tree_->check_node_validity(array_schema));
   return Status::Ok();
 }
@@ -114,7 +116,7 @@ Status QueryCondition::combine(
   combined_cond->field_names_.clear();
   combined_cond->clauses_.clear();
   combined_cond->combination_ops_.clear();
-  combined_cond->tree_ = this->tree_->combine(rhs.tree_, combination_op);
+  combined_cond->tree_ = tree_->combine(rhs.tree_, combination_op);
   return Status::Ok();
 }
 
@@ -720,8 +722,7 @@ void QueryCondition::apply_tree(
   } else {
     // For each child, declare a new result buffer, combine it all into the
     // other one based on the combination op.
-    const QueryConditionCombinationOp& combination_op =
-        node->get_combination_op();
+    const auto& combination_op = node->get_combination_op();
 
     std::vector<uint8_t> combination_op_bitmap(result_cell_bitmap.size(), 1);
     if (combination_op == QueryConditionCombinationOp::OR) {
@@ -751,12 +752,11 @@ void QueryCondition::apply_tree(
         } break;
         case QueryConditionCombinationOp::NOT: {
           throw std::runtime_error(
-              "Query condition NOT operator is not supported in the TileDB "
-              "system.");
+              "Query condition NOT operator is not currently supported.");
         }
         default: {
           throw std::logic_error(
-              "apply_tree: invalid combination op, should not get here.");
+              "Invalid combination operator when applying query condition.");
         }
       }
     }
@@ -956,7 +956,6 @@ Status QueryCondition::apply_ast_node_dense(
     const auto& tile_validity = std::get<2>(*tile_tuple);
     const auto buffer_validity =
         static_cast<uint8_t*>(tile_validity.data()) + src_cell;
-    ;
 
     // Null values can only be specified for equality operators.
     if (node->get_condition_value_view().content() == nullptr) {
@@ -1093,6 +1092,7 @@ void QueryCondition::apply_tree_dense(
           combination_result_buffer.end(),
           0);
     }
+
     for (const auto& child : node->get_children()) {
       std::vector<uint8_t> child_result_vector(result_buffer.size(), 1);
       span<uint8_t> child_result_buffer(
@@ -1122,11 +1122,11 @@ void QueryCondition::apply_tree_dense(
         } break;
         case QueryConditionCombinationOp::NOT: {
           throw std::runtime_error(
-              "QueryCondition NOT operator not supported in TileDB system.");
+              "Query condition NOT operator is not currently supported.");
         } break;
         default: {
           throw std::logic_error(
-              "apply_tree_dense: invalid combination op, should not get here.");
+              "Invalid combination operator when applying query condition.");
         }
       }
     }
@@ -1547,8 +1547,9 @@ void QueryCondition::apply_tree_sparse(
     if (combination_op == QueryConditionCombinationOp::OR) {
       std::fill(combination_op_bitmap.begin(), combination_op_bitmap.end(), 0);
     }
+
     for (const auto& child : node->get_children()) {
-      std::vector<BitmapType> child_result_bitmap(result_bitmap.size(), true);
+      std::vector<BitmapType> child_result_bitmap(result_bitmap.size(), 1);
       apply_tree_sparse(child, array_schema, result_tile, child_result_bitmap);
       // Note that the multiplication operator (which functions
       // effectively as a bitwise AND) is used to combine the accumulator result
@@ -1567,13 +1568,11 @@ void QueryCondition::apply_tree_sparse(
         } break;
         case QueryConditionCombinationOp::NOT: {
           throw std::runtime_error(
-              "Query condition NOT operator is not supported in the TileDB "
-              "system.");
+              "Query condition NOT operator is not currently supported.");
         }
         default: {
           throw std::logic_error(
-              "apply_tree_sparse: invalid combination op, should not get "
-              "here.");
+              "Invalid combination operator when applying query condition.");
         }
       }
     }
@@ -1605,6 +1604,7 @@ tdb_unique_ptr<ASTNode>& QueryCondition::ast() {
 void QueryCondition::set_clauses(std::vector<Clause>&& clauses) {
   // This is because AND nodes are the only structure supported currently within
   // serialization.
+  /// TODO: remove this function after implementing serialization PR.
   std::vector<Clause> temp_clauses = std::move(clauses);
   if (temp_clauses.size() == 0) {
     tree_ = nullptr;
@@ -1633,6 +1633,7 @@ void QueryCondition::set_clauses(std::vector<Clause>&& clauses) {
 
 void QueryCondition::set_combination_ops(
     std::vector<QueryConditionCombinationOp>&& combination_ops) {
+  /// TODO: remove this function after implementing serialization PR.
   auto temp_combination_ops = std::move(combination_ops);
   (void)temp_combination_ops;
 }
@@ -1640,8 +1641,11 @@ void QueryCondition::set_combination_ops(
 static void ast_get_clauses(
     std::vector<QueryCondition::Clause>& clauses_vector,
     const tdb_unique_ptr<ASTNode>& node) {
-  if (!node)
+  /// TODO: remove this function after implementing serialization PR.
+  if (!node) {
     return;
+  }
+
   if (!node->is_expr()) {
     QueryCondition::Clause c(
         node->get_field_name(),
@@ -1657,6 +1661,7 @@ static void ast_get_clauses(
 }
 
 std::vector<QueryCondition::Clause> QueryCondition::clauses() const {
+  /// TODO: remove this function after implementing serialization PR.
   if (tree_ && !tree_->is_or_supported()) {
     throw std::runtime_error(
         "From QueryCondition::clauses(): OR serialization not supported.");
@@ -1675,9 +1680,11 @@ std::vector<QueryConditionCombinationOp> QueryCondition::combination_ops()
         "From QueryCondition::combination_ops(): OR serialization not "
         "supported.");
   }
+
   if (combination_ops_.empty() && tree_) {
-    if (clauses_.empty())
+    if (clauses_.empty()) {
       ast_get_clauses(clauses_, tree_);
+    }
     for (size_t i = 0; i < clauses_.size() - 1; ++i) {
       combination_ops_.emplace_back(QueryConditionCombinationOp::AND);
     }
