@@ -32,6 +32,7 @@
  * @section REFERENCE
  *
  * http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0627r6.pdf
+ * https://en.cppreference.com/w/cpp/utility/unreachable
  */
 
 #ifndef TILEDB_UNREACHABLE_H
@@ -48,13 +49,21 @@ namespace stdx {
  * that support `__builtin_unreachable` will also work.
  *
  * The github project [Hedley](https://nemequ.github.io/hedley/) has a more
- * extensive implementation with more compiler support should that ever be
+ * extensive implementation with more compiler support should than ever be
  * needed.
  */
 [[noreturn]] inline void unreachable() {
 #ifdef _MSC_VER
+  /*
+   * Use of `__assume(0)` is from the Microsoft documentation
+   * https://docs.microsoft.com/en-us/cpp/intrinsics/assume
+   */
   __assume(0);
 #else
+  /*
+   * gcc: https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html#index-_005f_005fbuiltin_005funreachable
+   * clang: https://clang.llvm.org/docs/LanguageExtensions.html#builtin-unreachable
+   */
   __builtin_unreachable();
 #endif
   /*
