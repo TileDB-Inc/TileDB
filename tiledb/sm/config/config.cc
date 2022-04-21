@@ -77,7 +77,7 @@ const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
 const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
 const std::string Config::SM_QUERY_DENSE_READER = "refactored";
-const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "refactored";
+const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "legacy";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
