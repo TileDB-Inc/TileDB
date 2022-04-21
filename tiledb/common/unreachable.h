@@ -49,8 +49,7 @@ namespace stdx {
  * that support `__builtin_unreachable` will also work.
  *
  * The github project [Hedley](https://nemequ.github.io/hedley/) has a more
- * extensive implementation with more compiler support should than ever be
- * needed.
+ * extensive implementation with more compiler support should it ever be needed.
  */
 [[noreturn]] inline void unreachable() {
 #ifdef _MSC_VER
