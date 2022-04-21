@@ -31,22 +31,13 @@
  */
 
 #ifdef TILEDB_SERIALIZATION
-#include <capnp/compat/json.h>
 #include <capnp/message.h>
-#include <capnp/serialize.h>
-#include "tiledb/sm/serialization/array.h"
-#include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
 #include "tiledb/sm/serialization/query.h"
 #endif
 
 #include "test/src/helpers.h"
 #include "tiledb/common/common.h"
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/array_schema/attribute.h"
-#include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/array_schema/domain.h"
-#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/query_condition.h"
