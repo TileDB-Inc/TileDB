@@ -1,3 +1,13 @@
+# TileDB v2.8.1 Release Notes
+
+## Improvements
+* Add golang annotation to capnp spec file [#3089](https://github.com/TileDB-Inc/TileDB/pull/3089)
+* Update group metadata REST request to standardize cap'n proto class usage [#3095](https://github.com/TileDB-Inc/TileDB/pull/3095)
+
+## Bug fixes
+* Sparse Index Reader Fix: Check For Empty Buffer [#3051](https://github.com/TileDB-Inc/TileDB/pull/3051)
+* Reset group metadata only based on end timestamp to ensure its always reset to now [#3091](https://github.com/TileDB-Inc/TileDB/pull/3091)
+
 # TileDB v2.8.0 Release Notes
 
 ## Disk Format
