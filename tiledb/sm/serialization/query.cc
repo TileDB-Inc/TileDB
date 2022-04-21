@@ -666,7 +666,7 @@ Status condition_to_capnp(
     const QueryCondition& condition,
     capnp::Condition::Builder* condition_builder) {
   const tdb_unique_ptr<ASTNode>& ast = condition.ast();
-  assert(!ast->empty());
+  assert(!condition.empty());
   auto ast_builder = condition_builder->initTree();
   RETURN_NOT_OK(condition_ast_to_capnp(ast, &ast_builder));
 
