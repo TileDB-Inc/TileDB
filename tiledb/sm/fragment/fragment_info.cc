@@ -412,10 +412,10 @@ Status FragmentInfo::get_non_empty_domain_var(
         "Cannot get non-empty domain var; Dimension is fixed-sized"));
 
   assert(!non_empty_domain[did].empty());
-  auto start_str = non_empty_domain[did].start_str();
-  std::memcpy(start, start_str.data(), start_str.size());
-  auto end_str = non_empty_domain[did].end_str();
-  std::memcpy(end, end_str.data(), end_str.size());
+  std::memcpy(
+      start, non_empty_domain[did].start(), non_empty_domain[did].start_size());
+  std::memcpy(
+      end, non_empty_domain[did].end(), non_empty_domain[did].end_size());
 
   return Status::Ok();
 }
@@ -664,10 +664,14 @@ Status FragmentInfo::get_mbr_var(
         "Cannot get MBR var; Dimension is fixed-sized"));
 
   assert(!minimum_bounding_rectangle[did].empty());
-  auto start_str = minimum_bounding_rectangle[did].start_str();
-  std::memcpy(start, start_str.data(), start_str.size());
-  auto end_str = minimum_bounding_rectangle[did].end_str();
-  std::memcpy(end, end_str.data(), end_str.size());
+  std::memcpy(
+      start,
+      minimum_bounding_rectangle[did].start(),
+      minimum_bounding_rectangle[did].start_size());
+  std::memcpy(
+      end,
+      minimum_bounding_rectangle[did].end(),
+      minimum_bounding_rectangle[did].end_size());
 
   return Status::Ok();
 }

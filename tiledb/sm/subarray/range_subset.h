@@ -75,14 +75,14 @@ struct AddStrategy<
     // last range on `ranges`, they are contiguous and will be coalesced.
     Range& last_range = ranges.back();
     const bool contiguous_after =
-        *static_cast<const T*>(last_range.end_fixed()) !=
+        *static_cast<const T*>(last_range.end()) !=
             std::numeric_limits<T>::max() &&
-        *static_cast<const T*>(last_range.end_fixed()) + 1 ==
-            *static_cast<const T*>(new_range.start_fixed());
+        *static_cast<const T*>(last_range.end()) + 1 ==
+            *static_cast<const T*>(new_range.start());
 
     // Coalesce `range` with `last_range` if they are contiguous.
     if (contiguous_after) {
-      last_range.set_end_fixed(new_range.end_fixed());
+      last_range.set_end(new_range.end());
     } else {
       ranges.emplace_back(new_range);
     }
@@ -115,8 +115,8 @@ struct SortStrategy<
         ranges.begin(),
         ranges.end(),
         [&](const Range& a, const Range& b) {
-          const T* a_data = static_cast<const T*>(a.start_fixed());
-          const T* b_data = static_cast<const T*>(b.start_fixed());
+          const T* a_data = static_cast<const T*>(a.start());
+          const T* b_data = static_cast<const T*>(b.start());
           return a_data[0] < b_data[0] ||
                  (a_data[0] == b_data[0] && a_data[1] < b_data[1]);
         });

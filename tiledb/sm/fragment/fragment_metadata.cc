@@ -239,9 +239,7 @@ void FragmentMetadata::set_tile_min_var(
                   tile_min_var_buffer_[idx].size() - offset[0];
 
   // Copy var data
-  if (size) {  // avoid (potentially) illegal index ref's when size is zero
-    memcpy(&tile_min_var_buffer_[idx][offset[0]], min, size);
-  }
+  memcpy(&tile_min_var_buffer_[idx][offset[0]], min, size);
 }
 
 void FragmentMetadata::set_tile_max(
@@ -283,9 +281,7 @@ void FragmentMetadata::set_tile_max_var(
                   tile_max_var_buffer_[idx].size() - offset[0];
 
   // Copy var data
-  if (size) {  // avoid (potentially) illegal index ref's when size is zero
-    memcpy(&tile_max_var_buffer_[idx][offset[0]], max, size);
-  }
+  memcpy(&tile_max_var_buffer_[idx][offset[0]], max, size);
 }
 
 void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
@@ -3015,13 +3011,11 @@ Status FragmentMetadata::load_tile_min_values(unsigned idx, ConstBuffer* buff) {
           "Cannot load fragment metadata; Reading tile min buffer failed"));
     }
 
-    if (var_buffer_size) {
-      tile_min_var_buffer_[idx].resize(var_buffer_size);
-      st = buff->read(&tile_min_var_buffer_[idx][0], var_buffer_size);
-      if (!st.ok()) {
-        return LOG_STATUS(Status_FragmentMetadataError(
-            "Cannot load fragment metadata; Reading tile min buffer failed"));
-      }
+    tile_min_var_buffer_[idx].resize(var_buffer_size);
+    st = buff->read(&tile_min_var_buffer_[idx][0], var_buffer_size);
+    if (!st.ok()) {
+      return LOG_STATUS(Status_FragmentMetadataError(
+          "Cannot load fragment metadata; Reading tile min buffer failed"));
     }
   }
 
@@ -3077,14 +3071,11 @@ Status FragmentMetadata::load_tile_max_values(unsigned idx, ConstBuffer* buff) {
           "Cannot load fragment metadata; Reading tile max buffer failed"));
     }
 
-    if (var_buffer_size) {
-      tile_max_var_buffer_[idx].resize(var_buffer_size);
-      st = buff->read(&tile_max_var_buffer_[idx][0], var_buffer_size);
-      if (!st.ok()) {
-        return LOG_STATUS(
-            Status_FragmentMetadataError("Cannot load fragment metadata; "
-                                         "Reading tile max var buffer failed"));
-      }
+    tile_max_var_buffer_[idx].resize(var_buffer_size);
+    st = buff->read(&tile_max_var_buffer_[idx][0], var_buffer_size);
+    if (!st.ok()) {
+      return LOG_STATUS(Status_FragmentMetadataError(
+          "Cannot load fragment metadata; Reading tile max var buffer failed"));
     }
   }
 

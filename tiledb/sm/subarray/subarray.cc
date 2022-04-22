@@ -695,15 +695,8 @@ Status Subarray::get_range(
     return logger_->status(
         Status_SubarrayError("Cannot get range; Invalid range index"));
 
-  auto& range = range_subset_[dim_idx][range_idx];
-  auto is_var = range.var_size();
-  if (is_var) {
-    *start = range_subset_[dim_idx][range_idx].start_str().data();
-    *end = range_subset_[dim_idx][range_idx].end_str().data();
-  } else {
-    *start = range_subset_[dim_idx][range_idx].start_fixed();
-    *end = range_subset_[dim_idx][range_idx].end_fixed();
-  }
+  *start = range_subset_[dim_idx][range_idx].start();
+  *end = range_subset_[dim_idx][range_idx].end();
 
   return Status::Ok();
 }

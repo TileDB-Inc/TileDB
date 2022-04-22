@@ -1045,10 +1045,8 @@ Status StorageManager::array_get_non_empty_domain_var_from_index(
   if (*is_empty)
     return Status::Ok();
 
-  auto start_str = dom[idx].start_str();
-  std::memcpy(start, start_str.data(), start_str.size());
-  auto end_str = dom[idx].end_str();
-  std::memcpy(end, end_str.data(), end_str.size());
+  std::memcpy(start, dom[idx].start(), dom[idx].start_size());
+  std::memcpy(end, dom[idx].end(), dom[idx].end_size());
 
   return Status::Ok();
 }
@@ -1077,10 +1075,8 @@ Status StorageManager::array_get_non_empty_domain_var_from_name(
       }
 
       if (!*is_empty) {
-        auto start_str = dom[d].start_str();
-        std::memcpy(start, start_str.data(), start_str.size());
-        auto end_str = dom[d].end_str();
-        std::memcpy(end, end_str.data(), end_str.size());
+        std::memcpy(start, dom[d].start(), dom[d].start_size());
+        std::memcpy(end, dom[d].end(), dom[d].end_size());
       }
 
       return Status::Ok();
