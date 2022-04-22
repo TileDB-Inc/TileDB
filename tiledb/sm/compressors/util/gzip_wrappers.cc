@@ -56,8 +56,9 @@ Status gzip_compress(
   out_gzipped_buf->reset_size();
   out_gzipped_buf->advance_size(overhead_size);
   out_gzipped_buf->advance_offset(overhead_size);
-  if (auto stat = tiledb::sm::GZip::compress(9, &const_in_buf, out_gzipped_buf.get());
-             !stat.ok()) {
+  if (auto stat =
+          tiledb::sm::GZip::compress(9, &const_in_buf, out_gzipped_buf.get());
+      !stat.ok()) {
     // TODO: Handle possibility that 'error' is just 'not enuf buffer', i.e.
     // unable to compress into <= space of in_buf (currently that is not
     // returned as a distinct error from Gzip::compress())
