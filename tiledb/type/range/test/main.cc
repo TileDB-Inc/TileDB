@@ -1,12 +1,11 @@
 /**
- * @file time.h
+ * @file tiledb/type/range/test/main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,22 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a timestamp function
+ * This file defines a test `main()`
  */
 
-#include <cstdint>
-
-#ifndef TILEDB_MISC_TIME_H
-#define TILEDB_MISC_TIME_H
-
-namespace tiledb::sm::utils::time {
-
-/**
- * Returns the current time in milliseconds since
- * 1970-01-01 00:00:00 +0000 (UTC).
- */
-uint64_t timestamp_now_ms();
-
-}  // namespace tiledb::sm::utils::time
-
-#endif  // TILEDB_MISC_TIME_H
+#define CATCH_CONFIG_MAIN
+#include <catch.hpp>

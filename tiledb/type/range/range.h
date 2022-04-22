@@ -36,7 +36,9 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 
+#include <cmath>
 #include <cstring>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -273,6 +275,76 @@ class Range {
    * set to +1 the depth of the original range.
    */
   uint64_t partition_depth_;
+};
+
+/**
+ * Performs checks to verify a range is a subset of the superset.
+ *
+ * Both the superset and the range must be valid ranges of the appropriate type
+ * as checked by ``check_range_is_valid``.
+ *
+ * @param superset The range that is the assumed superset. Must be a valid range
+ * with data of type T.
+ * @param range The range that is the assumed subset. Must be a valid
+ * range with data of type T.
+ * @return Status of the checks.
+ */
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+Status check_range_is_subset(const Range& superset, const Range& range) {
+  auto domain = (const T*)superset.data();
+  auto r = (const T*)range.data();
+  if (r[0] < domain[0] || r[1] > domain[1]) {
+    std::stringstream ss;
+    ss << "Range [" << r[0] << ", " << r[1] << "] is out of domain bounds ["
+       << domain[0] << ", " << domain[1] << "]";
+    return Status_RangeError(ss.str());
+  }
+  return Status::Ok();
+};
+
+/**
+ * Performs correctness checks for a valid range. If any validity checks fail
+ * an exception is thrown.
+ *
+ * @param range The range to check.
+ */
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+void check_range_is_valid(const Range& range) {
+  // Check has data.
+  if (range.empty())
+    throw std::invalid_argument("Range is empty");
+  auto r = (const T*)range.data();
+  // Check for NaN
+  if constexpr (std::is_floating_point_v<T>) {
+    if (std::isnan(r[0]) || std::isnan(r[1]))
+      throw std::invalid_argument("Range contains NaN");
+  }
+  // Check range bounds
+  if (r[0] > r[1])
+    throw std::invalid_argument(
+        "Lower range bound " + std::to_string(r[0]) +
+        " cannot be larger than the higher bound " + std::to_string(r[1]));
+};
+
+/**
+ * Crop a range to the requested bounds.
+ *
+ * @param bounds Bounds to crop the range to. Must be a valid range with data of
+ * type T.
+ * @param range The range to crop. Must be a valid range with data of type T.
+ */
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+void crop_range(const Range& bounds, Range& range) {
+  auto bounds_data = (const T*)bounds.data();
+  auto range_data = (T*)range.data();
+  range_data[0] = std::max(bounds_data[0], range_data[0]);
+  range_data[1] = std::min(bounds_data[1], range_data[1]);
 };
 
 }  // namespace tiledb::type

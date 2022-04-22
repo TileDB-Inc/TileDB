@@ -52,7 +52,7 @@ target_sources(compile_constants PRIVATE test/compile_constants_main.cc)
 #
 # `math` object library
 #
-add_library(math OBJECT math.cc)
+add_library(math OBJECT tdb_math.cc)
 #
 # Test-compile of object library ensures link-completeness
 #
@@ -87,7 +87,7 @@ target_sources(compile_parse_argument PRIVATE test/compile_parse_argument_main.c
 #
 # `time` object library
 #
-add_library(time OBJECT time.cc)
+add_library(time OBJECT tdb_time.cc)
 #
 # Test-compile of object library ensures link-completeness
 #

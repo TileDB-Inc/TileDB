@@ -42,9 +42,9 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_math.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
@@ -771,8 +771,8 @@ Status WriterBase::filter_tile(
       &filters, array_->get_encryption_key()));
 
   // Check if chunk or tile level filtering/unfiltering is appropriate
-  bool use_chunking =
-      filters.use_tile_chunking(array_schema_.var_size(name), tile->type());
+  bool use_chunking = filters.use_tile_chunking(
+      array_schema_.var_size(name), array_schema_.version(), tile->type());
 
   assert(!tile->filtered());
   RETURN_NOT_OK(filters.run_forward(

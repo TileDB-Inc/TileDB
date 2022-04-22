@@ -40,7 +40,7 @@
 #include "tiledb/sm/group/group_member_v1.h"
 #include "tiledb/sm/group/group_v1.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/rest/rest_client.h"
 
@@ -205,7 +205,7 @@ Status Group::open(QueryType query_type) {
       }
     }
 
-    metadata_.reset(timestamp_start_, timestamp_end_);
+    metadata_.reset(timestamp_end_);
   }
 
   query_type_ = query_type;
@@ -581,7 +581,7 @@ Status Group::mark_member_for_removal(const std::string& uri) {
   // Check mode
   if (query_type_ != QueryType::WRITE) {
     return Status_GroupError(
-        "Cannot get member; Group was not opened in read mode");
+        "Cannot get member; Group was not opened in write mode");
   }
   if (members_to_add_.find(uri) != members_to_add_.end()) {
     return Status_GroupError(

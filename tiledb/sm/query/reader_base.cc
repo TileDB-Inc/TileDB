@@ -1217,7 +1217,8 @@ Status ReaderBase::unfilter_tiles(
   auto chunking = true;
   if (var_size) {
     auto filters = array_schema_.filters(name);
-    chunking = filters.use_tile_chunking(var_size, array_schema_.type(name));
+    chunking = filters.use_tile_chunking(
+        var_size, array_schema_.version(), array_schema_.type(name));
   }
 
   // The per tile cache is only used in readers where unfiltering

@@ -929,8 +929,8 @@ Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
         "Error posting group metadata from REST; group is null."));
 
   Buffer buff;
-  RETURN_NOT_OK(serialization::config_serialize(
-      group->config(), serialization_type_, &buff, true));
+  RETURN_NOT_OK(serialization::group_metadata_serialize(
+      group, serialization_type_, &buff));
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));

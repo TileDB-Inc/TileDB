@@ -46,7 +46,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <cassert>
@@ -251,7 +251,7 @@ Status ArraySchema::check() const {
   }
 
   RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
-  RETURN_NOT_OK(check_rle_compressor(coords_filters()));
+  RETURN_NOT_OK(check_string_compressor(coords_filters()));
 
   if (!check_attribute_dimension_names())
     return LOG_STATUS(
@@ -671,7 +671,7 @@ void ArraySchema::set_capacity(uint64_t capacity) {
 
 Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline* pipeline) {
   assert(pipeline);
-  RETURN_NOT_OK(check_rle_compressor(*pipeline));
+  RETURN_NOT_OK(check_string_compressor(*pipeline));
   RETURN_NOT_OK(check_double_delta_compressor(*pipeline));
 
   coords_filters_ = *pipeline;
@@ -863,14 +863,17 @@ Status ArraySchema::check_double_delta_compressor(
   return Status::Ok();
 }
 
-Status ArraySchema::check_rle_compressor(const FilterPipeline& filters) const {
-  // There is no error if only 1 filter is used for RLE
-  if (filters.size() <= 1 || !filters.has_filter(FilterType::FILTER_RLE)) {
+Status ArraySchema::check_string_compressor(
+    const FilterPipeline& filters) const {
+  // There is no error if only 1 filter is used for RLE or Dictionary-encoding
+  if (filters.size() <= 1 ||
+      !(filters.has_filter(FilterType::FILTER_RLE) ||
+        filters.has_filter(FilterType::FILTER_DICTIONARY))) {
     return Status::Ok();
   }
 
   // Error if there are also other filters set for a string dimension together
-  // with RLE
+  // with RLE or Dictionary-encoding
   auto dim_num = domain_->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim = domain_->dimension(d);
@@ -879,9 +882,15 @@ Status ArraySchema::check_rle_compressor(const FilterPipeline& filters) const {
     // list already set for that dimension (then coords_filters_ will be used)
     if (dim->type() == Datatype::STRING_ASCII && dim->var_size() &&
         dim_filters.empty()) {
-      return LOG_STATUS(Status_ArraySchemaError(
-          "RLE filter cannot be combined with other filters when applied to "
-          "variable length string dimensions"));
+      if (filters.has_filter(FilterType::FILTER_RLE)) {
+        return LOG_STATUS(Status_ArraySchemaError(
+            "RLE filter cannot be combined with other filters when applied to "
+            "variable length string dimensions"));
+      } else {
+        return LOG_STATUS(Status_ArraySchemaError(
+            "Dictionary-encoding filter cannot be combined with other filters "
+            "when applied to variable length string dimensions"));
+      }
     }
   }
 

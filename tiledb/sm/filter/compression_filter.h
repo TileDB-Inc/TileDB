@@ -238,9 +238,18 @@ class CompressionFilter : public Filter {
   /** Initializes the decompression resource pool */
   void init_decompression_resource_pool(uint64_t size) override;
 
-  /** Creates a vector of views of the input strings */
-  static std::vector<std::string_view> create_input_view(
+  /** Creates a vector of views of the input strings and returns the max string
+   * size */
+  static tuple<std::vector<std::string_view>, uint64_t> create_input_view(
       const FilterBuffer& input, Tile* const offsets_tile);
+
+  /**
+   * Return the number of bytes required to store an integer
+   *
+   * @param param_length Number to calculate the bytesize
+   * @return Number of bytes required to store the input number
+   */
+  static uint8_t compute_bytesize(uint64_t param_length);
 };
 
 }  // namespace sm
