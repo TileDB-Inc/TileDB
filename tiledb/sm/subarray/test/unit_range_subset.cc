@@ -48,8 +48,8 @@ TEST_CASE("CreateDefaultRangeSetAndSuperset") {
   CHECK(range_subset.num_ranges() == 1);
   Range default_range = range_subset[0];
   CHECK(!default_range.empty());
-  const uint64_t* start = (uint64_t*)default_range.start_fixed();
-  const uint64_t* end = (uint64_t*)default_range.end_fixed();
+  const uint64_t* start = (uint64_t*)default_range.start();
+  const uint64_t* end = (uint64_t*)default_range.end();
   CHECK(*start == 0);
   CHECK(*end == 10);
 }
@@ -69,8 +69,8 @@ TEST_CASE("RangeSetAndSuperset::RangeSetAndSuperset") {
     range_subset.add_range_unrestricted(r2);
     CHECK(range_subset.num_ranges() == 1);
     auto combined_range = range_subset[0];
-    const uint64_t* start = (uint64_t*)combined_range.start_fixed();
-    const uint64_t* end = (uint64_t*)combined_range.end_fixed();
+    const uint64_t* start = (uint64_t*)combined_range.start();
+    const uint64_t* end = (uint64_t*)combined_range.end();
     CHECK(*start == 1);
     CHECK(*end == 5);
   }
@@ -118,14 +118,14 @@ TEST_CASE(
     CHECK(range_subset.num_ranges() == 2);
     // Check the first range.
     auto result_range = range_subset[0];
-    const uint64_t* start = (uint64_t*)result_range.start_fixed();
-    const uint64_t* end = (uint64_t*)result_range.end_fixed();
+    const uint64_t* start = (uint64_t*)result_range.start();
+    const uint64_t* end = (uint64_t*)result_range.end();
     CHECK(*start == 1);
     CHECK(*end == 2);
     // Check the second range.
     result_range = range_subset[1];
-    start = (uint64_t*)result_range.start_fixed();
-    end = (uint64_t*)result_range.end_fixed();
+    start = (uint64_t*)result_range.start();
+    end = (uint64_t*)result_range.end();
     CHECK(*start == 4);
     CHECK(*end == 5);
   }

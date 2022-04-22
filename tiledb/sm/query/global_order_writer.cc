@@ -720,11 +720,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
 
   // First fill the last tile
   auto& last_tile = global_write_state_->last_tiles_[name][0];
-  decltype(&global_write_state_->last_tiles_[name][1]) last_tile_validity =
-      nullptr;
-  if (nullable) {
-    last_tile_validity = &global_write_state_->last_tiles_[name][1];
-  }
+  auto& last_tile_validity = global_write_state_->last_tiles_[name][1];
   uint64_t cell_idx = 0;
   uint64_t last_tile_cell_idx =
       global_write_state_->cells_written_[name] % cell_num_per_tile;
@@ -736,7 +732,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
             last_tile_cell_idx * cell_size,
             cell_size));
         if (nullable) {
-          RETURN_NOT_OK(last_tile_validity->write(
+          RETURN_NOT_OK(last_tile_validity.write(
               buffer_validity + cell_idx * constants::cell_validity_size,
               last_tile_cell_idx * constants::cell_validity_size,
               constants::cell_validity_size));
@@ -752,7 +748,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
               last_tile_cell_idx * cell_size,
               cell_size));
           if (nullable) {
-            RETURN_NOT_OK(last_tile_validity->write(
+            RETURN_NOT_OK(last_tile_validity.write(
                 buffer_validity + cell_idx * constants::cell_validity_size,
                 last_tile_cell_idx * constants::cell_validity_size,
                 constants::cell_validity_size));
@@ -787,7 +783,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
     if (last_tile_cell_idx == cell_num_per_tile) {
       (*tiles)[0].swap(last_tile);
       if (nullable) {
-        (*tiles)[1].swap(*last_tile_validity);
+        (*tiles)[1].swap(last_tile_validity);
       }
       tile_idx += t;
     } else {
@@ -844,7 +840,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
           last_tile_cell_idx * cell_size,
           cell_size));
       if (nullable) {
-        RETURN_NOT_OK(last_tile_validity->write(
+        RETURN_NOT_OK(last_tile_validity.write(
             buffer_validity + cell_idx * constants::cell_validity_size,
             last_tile_cell_idx * constants::cell_validity_size,
             constants::cell_validity_size));
@@ -858,7 +854,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
             last_tile_cell_idx * cell_size,
             cell_size));
         if (nullable) {
-          RETURN_NOT_OK(last_tile_validity->write(
+          RETURN_NOT_OK(last_tile_validity.write(
               buffer_validity + cell_idx * constants::cell_validity_size,
               last_tile_cell_idx * constants::cell_validity_size,
               constants::cell_validity_size));
@@ -900,10 +896,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   auto& last_tile_vector = global_write_state_->last_tiles_[name];
   auto& last_tile = last_tile_vector[0];
   auto& last_tile_var = last_tile_vector[1];
-  decltype(&last_tile_vector[2]) last_tile_validity = nullptr;
-  if (nullable) {
-    last_tile_validity = &last_tile_vector[2];
-  }
+  auto& last_tile_validity = last_tile_vector[2];
   auto& last_var_offset = global_write_state_->last_var_offsets_[name];
   uint64_t cell_idx = 0;
   uint64_t last_tile_cell_idx =
@@ -931,7 +924,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
 
         // Write validity value(s).
         if (nullable)
-          RETURN_NOT_OK(last_tile_validity->write(
+          RETURN_NOT_OK(last_tile_validity.write(
               buffer_validity + cell_idx,
               last_tile_cell_idx * constants::cell_validity_size,
               constants::cell_validity_size));
@@ -963,7 +956,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
 
           // Write validity value(s).
           if (nullable)
-            RETURN_NOT_OK(last_tile_validity->write(
+            RETURN_NOT_OK(last_tile_validity.write(
                 buffer_validity + cell_idx,
                 last_tile_cell_idx * constants::cell_validity_size,
                 constants::cell_validity_size));
@@ -1002,7 +995,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
       (*tiles)[0].swap(last_tile);
       (*tiles)[1].swap(last_tile_var);
       if (nullable) {
-        (*tiles)[2].swap(*last_tile_validity);
+        (*tiles)[2].swap(last_tile_validity);
       }
       tile_idx += t;
     } else {
@@ -1118,7 +1111,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
 
       // Write validity value(s).
       if (nullable)
-        RETURN_NOT_OK(last_tile_validity->write(
+        RETURN_NOT_OK(last_tile_validity.write(
             buffer_validity + cell_idx,
             last_tile_cell_idx * constants::cell_validity_size,
             constants::cell_validity_size));
@@ -1146,7 +1139,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
 
         // Write validity value(s).
         if (nullable)
-          RETURN_NOT_OK(last_tile_validity->write(
+          RETURN_NOT_OK(last_tile_validity.write(
               buffer_validity + cell_idx,
               last_tile_cell_idx * constants::cell_validity_size,
               constants::cell_validity_size));

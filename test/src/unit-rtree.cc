@@ -829,7 +829,9 @@ std::vector<NDRange> create_str_int32_mbrs(
 }
 
 std::pair<std::string, std::string> range_to_str(const Range& r) {
-  return std::pair<std::string, std::string>(r.start_str(), r.end_str());
+  auto start = std::string((const char*)r.start(), r.start_size());
+  auto end = std::string((const char*)r.end(), r.end_size());
+  return std::pair<std::string, std::string>(start, end);
 }
 
 TEST_CASE(
