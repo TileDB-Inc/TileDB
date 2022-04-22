@@ -52,7 +52,6 @@
  */
 Status gzip_compress(
     shared_ptr<tiledb::sm::Buffer>& out_gzipped_buf,
-    // const shared_ptr<tiledb::sm::Buffer>& in_buf);
     const void* in_bytes,
     uint64_t nbytes);
 

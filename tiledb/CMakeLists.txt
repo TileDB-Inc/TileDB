@@ -361,7 +361,6 @@ add_custom_target(gen_mgc_gzip ALL
   DEPENDS ${MGC_GZIPPED_BIN_PATH}
 )
 add_dependencies(gen_mgc_gzip tdb_gzip_embedded_data)
-#add_dependencies(TILEDB_CORE_OBJECTS ${MGC_GZIPPED_BIN_PATH})
 add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_gzip)
 
 # Compile all core sources with PIC
@@ -1063,6 +1062,8 @@ string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9]*)" _ ${ver})
 set(ver_patch ${CMAKE_MATCH_1})
 
 set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
+
+set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
 
 # PKG Config file
 configure_file(

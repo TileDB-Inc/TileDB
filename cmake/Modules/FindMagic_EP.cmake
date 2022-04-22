@@ -66,20 +66,6 @@ if (TILEDB_LIBMAGIC_EP_BUILT)
     ${NO_DEFAULT_PATH}
   )
 
-  find_library(libmagic_pcre2posix_LIBRARIES
-    pcre2-posix
-    PATHS ${LIBMAGIC_PATHS} ${TILEDB_EP_SOURCE_DIR}/ep_magic
-    PATH_SUFFIXES lib a
-    ${NO_DEFAULT_PATH}
-  )
-  find_library(libmagic_pcre2_8_LIBRARIES
-    pcre2-8
-    PATHS ${LIBMAGIC_PATHS} ${TILEDB_EP_SOURCE_DIR}/ep_magic
-    PATH_SUFFIXES lib a
-    #${TILEDB_DEPS_NO_DEFAULT_PATH}
-    ${NO_DEFAULT_PATH}
-  )
-
   include(FindPackageHandleStandardArgs)
   FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
     REQUIRED_VARS libmagic_LIBRARIES libmagic_INCLUDE_DIR
@@ -103,7 +89,8 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
     ExternalProject_Add(ep_magic
       PREFIX "externals"
       GIT_REPOSITORY "https://github.com/TileDB-Inc/file-windows.git"
-      GIT_TAG "nplat-cmake-install-support"
+      #GIT_TAG "nplat-cmake-install-support"
+      GIT_TAG "117c8a6533adb135c2c9fd06342daa671a44cb34"
       GIT_SUBMODULES_RECURSE TRUE
       UPDATE_COMMAND ""
       CMAKE_ARGS
@@ -136,10 +123,6 @@ if (libmagic_FOUND AND NOT TARGET libmagic)
     IMPORTED_LOCATION "${libmagic_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${libmagic_INCLUDE_DIR}"
   )
-endif()
-
-if (MSYS AND TILEDB_LIBMAGIC_EP_BUILT)
-  target_link_libraries(libmagic  INTERFACE -lregex -ltre -lgettextpo -lgettextlib -lintl -liconv)
 endif()
 
 # If we built a static EP, install it if required.

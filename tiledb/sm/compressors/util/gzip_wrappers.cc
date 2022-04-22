@@ -39,6 +39,7 @@ Status gzip_compress(
     shared_ptr<tiledb::sm::Buffer>& out_gzipped_buf,
     const void* in_bytes,
     uint64_t nbytes) {
+  assert(out_gzipped_buf.get() != nullptr);
   /**
    * buffer format:
    *    uint64_t uncompressed_size
@@ -52,28 +53,27 @@ Status gzip_compress(
     return LOG_STATUS(
         Status_CompressionError("gzip output buffer allocation error"));
   }
-  out_gzipped_buf->reset_offset();
   out_gzipped_buf->reset_size();
-  tiledb::sm::Buffer* out_buffer_ptr = out_gzipped_buf.get();
-  assert(out_buffer_ptr != nullptr);
-  out_buffer_ptr->reset_offset();
-  out_buffer_ptr->advance_size(overhead_size);
-  out_buffer_ptr->advance_offset(overhead_size);
-  printf("overhead_size %" PRIu64 "\n", overhead_size);
-  if (!tiledb::sm::GZip::compress(9, &const_in_buf, out_buffer_ptr).ok()) {
+  out_gzipped_buf->advance_size(overhead_size);
+  out_gzipped_buf->advance_offset(overhead_size);
+  if (auto stat = tiledb::sm::GZip::compress(9, &const_in_buf, out_gzipped_buf.get());
+             !stat.ok()) {
     // TODO: Handle possibility that 'error' is just 'not enuf buffer', i.e.
-    // unable to compress into <= space of in_buf
-    return LOG_STATUS(Status_CompressionError("gzip Error compressing data!"));
+    // unable to compress into <= space of in_buf (currently that is not
+    // returned as a distinct error from Gzip::compress())
+    return stat;
   }
-  RETURN_NOT_OK(out_buffer_ptr->realloc(out_buffer_ptr->offset()));
-  uint64_t compressed_size = out_buffer_ptr->offset() - overhead_size;
-  out_buffer_ptr->reset_offset();
+  // adjust to size actually used
+  out_gzipped_buf->set_size(out_gzipped_buf->offset());
+  uint64_t compressed_size = out_gzipped_buf->offset() - overhead_size;
   uint64_t uncompressed_size = nbytes;
+  // return next 'write()' position to beginning of buffer
+  out_gzipped_buf->reset_offset();
   // write sizes to beginning of buffer
   RETURN_NOT_OK(
-      out_buffer_ptr->write(&uncompressed_size, sizeof(uncompressed_size)));
+      out_gzipped_buf->write(&uncompressed_size, sizeof(uncompressed_size)));
   RETURN_NOT_OK(
-      out_buffer_ptr->write(&compressed_size, sizeof(compressed_size)));
+      out_gzipped_buf->write(&compressed_size, sizeof(compressed_size)));
 
   return Status::Ok();
 }
