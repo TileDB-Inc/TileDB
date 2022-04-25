@@ -519,11 +519,16 @@ class QueryCondition {
    * @param var_size The attribute is var sized or not.
    * @param result_bitmap The result bitmap.
    */
-  template <typename T, QueryConditionOp Op, typename BitmapType>
+  template <
+      typename T,
+      QueryConditionOp Op,
+      typename BitmapType,
+      typename CombinationOp>
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       ResultTile& result_tile,
       const bool var_size,
+      CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
 
   /**
@@ -535,11 +540,12 @@ class QueryCondition {
    * @param result_bitmap The result bitmap.
    * @return Status.
    */
-  template <typename T, typename BitmapType>
-  Status apply_ast_node_sparse(
+  template <typename T, typename BitmapType, typename CombinationOp>
+  void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       ResultTile& result_tile,
       const bool var_size,
+      CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
 
   /**
@@ -552,11 +558,29 @@ class QueryCondition {
    * @param result_bitmap The result bitmap.
    * @return Status.
    */
-  template <typename BitmapType>
-  Status apply_ast_node_sparse(
+  template <typename BitmapType, typename CombinationOp>
+  void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
       ResultTile& result_tile,
+      CombinationOp combination_op,
+      std::vector<BitmapType>& result_bitmap) const;
+
+  /**
+   * Applies the query condition represented with the AST to a set of cells.
+   *
+   * @param node The node to apply.
+   * @param array_schema The array schema.
+   * @param result_tile The result tile to get the cells from.
+   * @param result_bitmap The bitmap to use for results.
+   * @return Void.
+   */
+  template <typename BitmapType, typename CombinationOp>
+  void apply_tree_sparse(
+      const tdb_unique_ptr<ASTNode>& node,
+      const ArraySchema& array_schema,
+      ResultTile& result_tile,
+      CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
 
   /**
