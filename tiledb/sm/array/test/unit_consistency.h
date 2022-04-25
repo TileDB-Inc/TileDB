@@ -36,6 +36,7 @@
 
 #include <catch.hpp>
 #include <iostream>
+//#include "tiledb/sm/storage_manager/context.h"
 #include "../array.h"
 #include "../consistency.h"
 
@@ -52,23 +53,45 @@ class ConsistencySentry;
 namespace tiledb {
 namespace sm {
 
+using entry_type = std::multimap<const URI, Array&>::const_iterator;
+
 class WhiteboxConsistencyController : public ConsistencyController {
  public:
   WhiteboxConsistencyController() = default;
   ~WhiteboxConsistencyController() = default;
 
-  // just a test to get the linker to work
-  void c_test() {
-    ConsistencyController::test();
+  entry_type register_array(const URI uri, Array& array) {
+    return ConsistencyController::register_array(uri, array);
   }
 
-  ConsistencySentry make_sentry(const URI& uri, Array& array) {
+  void deregister_array(entry_type entry) {
+    ConsistencyController::deregister_array(entry);
+  }
+
+  ConsistencySentry make_sentry(const URI uri, Array& array) {
     return ConsistencyController::make_sentry(uri, array);
+  }
+
+  bool contains(const URI uri) {
+    return ConsistencyController::contains(uri);
+  }
+
+  bool is_element_of(URI uri1, URI uri2) {
+    return ConsistencyController::is_element_of(uri1, uri2);
   }
 
   size_t registry_size() {
     return array_registry_.size();
   }
+
+  /*StorageManager* context_storage_manager() {
+    tiledb::sm::Context* ctx = nullptr;
+    tiledb::sm::Config* config = new tiledb::sm::Config();
+    ctx->init(config);
+    return ctx->storage_manager();
+  }*/
+
+ private:
 };
 
 }  // namespace sm

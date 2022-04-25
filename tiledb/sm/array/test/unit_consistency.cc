@@ -39,26 +39,107 @@ using namespace tiledb::common;
 using namespace tiledb::sm;
 
 TEST_CASE("WhiteboxConsistencyController::ConsistencyController") {
-  WhiteboxConsistencyController w;
+  // Create a Whitebox instance
+  WhiteboxConsistencyController x;
 }
 
 TEST_CASE(
     "WhiteboxConsistencyController: Empty registry",
     "[ConsistencyController][empty_registry]") {
-  WhiteboxConsistencyController w;
-  size_t size = w.registry_size();
-  REQUIRE(size == 0);
+  // Create a Whitebox instance
+  WhiteboxConsistencyController x;
+
+  // Check that nothing is registered
+  REQUIRE(x.registry_size() == 0);
+}
+
+TEST_CASE(
+    "WhiteboxConsistencyController: Null arrays, direct registration",
+    "[ConsistencyController][null_array][direct_registration]") {
+  // Create a Whitebox instance with nothing registered
+  WhiteboxConsistencyController x;
+  REQUIRE(x.registry_size() == 0);
+
+  // Register an empty URI
+  const URI uri_empty = URI();
+  Array* array = nullptr;
+  entry_type iter_empty = x.register_array(uri_empty, *array);
+  REQUIRE(x.registry_size() == 1);
+
+  // Register a non-empty URI
+  const URI uri_non_empty = URI("non-empty");
+  entry_type iter_non_empty = x.register_array(uri_non_empty, *array);
+
+  // Check registration
+  REQUIRE(x.registry_size() == 2);
+  REQUIRE(x.contains(uri_empty) == true);
+  REQUIRE(x.contains(uri_non_empty) == true);
+
+  const URI uri_not_contained = URI("not_contained");
+  REQUIRE(x.contains(uri_not_contained) == false);
+
+  // #TODO: improve implementation of is_element_of
+  REQUIRE(x.is_element_of(uri_empty, uri_non_empty) == true);
+
+  // Deregister uri_empty
+  x.deregister_array(iter_empty);
+  REQUIRE(x.registry_size() == 1);
+
+  // Check contents of registry
+  REQUIRE(x.contains(uri_empty) == false);
+  REQUIRE(x.contains(uri_non_empty) == true);
+
+  // Re-register uri_empty and check registry
+  iter_empty = x.register_array(uri_empty, *array);
+  REQUIRE(x.registry_size() == 2);
+  REQUIRE(x.contains(uri_empty) == true);
+  REQUIRE(x.contains(uri_non_empty) == true);
+
+  // Deregister both entries
+  x.deregister_array(iter_empty);
+  REQUIRE(x.contains(uri_empty) == false);
+  x.deregister_array(iter_non_empty);
+  REQUIRE(x.contains(uri_non_empty) == false);
+  REQUIRE(x.registry_size() == 0);
+}
+
+TEST_CASE(
+    "WhiteboxConsistencyController: Sentry null arrays",
+    "[ConsistencyController][null_array][sentry]") {
+  // Create a Whitebox instance with nothing registered
+  WhiteboxConsistencyController x;
+  REQUIRE(x.registry_size() == 0);
+
+  // Register an empty URI
+  const URI uri_empty = URI();
+  Array* array = nullptr;
+  tiledb::sm::ConsistencySentry sentry_uri_empty =
+      x.make_sentry(uri_empty, *array);
+  REQUIRE(x.registry_size() == 1);
+
+  // Register a non-empty URI
+  const URI uri_non_empty = URI("non-empty");
+  tiledb::sm::ConsistencySentry sentry_uri_non_empty =
+      x.make_sentry(uri_non_empty, *array);
+
+  // Check registration
+  REQUIRE(x.registry_size() == 2);
+  REQUIRE(x.contains(uri_empty) == true);
+  REQUIRE(x.contains(uri_non_empty) == true);
+
+  const URI uri_not_contained = URI("not_contained");
+  REQUIRE(x.contains(uri_not_contained) == false);
 }
 
 TEST_CASE(
     "WhiteboxConsistencyController: Single array",
-    "[ConsistencyController][single_array]") {
-  // open array
-  WhiteboxConsistencyController w;
-  size_t size = w.registry_size();
-  std::cerr << size << std::endl;
-
-  // const URI* uri = nullptr;
-  // Array* array = nullptr;
-  // w.make_sentry(*uri, *array);
+    "[ConsistencyController][array][single]") {
+  // allocate array
+  /*WhiteboxConsistencyController x;
+  StorageManager* sm = x.context_storage_manager();
+  CHECK(sm != nullptr);
+  const URI& uri1 = URI();
+  Array* array = new Array(uri1, sm);
+  CHECK(array != nullptr);*/
+  // Context::init linker error
 }

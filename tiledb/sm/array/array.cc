@@ -84,7 +84,7 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , remote_(array_uri.is_tiledb())
     , metadata_loaded_(false)
     , non_empty_domain_computed_(false)
-    , array_sentry_registry_(controller().make_sentry(array_uri, *this)) {
+    , array_sentry_registry_(controller().make_sentry(array_uri_, *this)) {
 }
 
 /* ********************************* */

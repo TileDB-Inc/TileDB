@@ -49,7 +49,7 @@ class ConsistencyController;
 class ConsistencySentry;
 class WhiteboxConsistencyController;
 
-using entry_type = std::multimap<const URI&, Array&>::const_iterator;
+using entry_type = std::multimap<const URI, Array&>::const_iterator;
 
 /**
  * Tracks the open arrays on disk, considering that a given
@@ -87,23 +87,29 @@ class ConsistencyController {
   /* ********************************* */
 
   /** Create the sentry object for the Array. */
-  ConsistencySentry make_sentry(const URI& uri, Array& array);
+  ConsistencySentry make_sentry(const URI uri, Array& array);
 
   /** Returns the iterator to the multimap after adding an entry. */
-  entry_type register_array(const URI& uri, Array& array);
+  entry_type register_array(const URI uri, Array& array);
 
   /** Takes an entry out of the multimap. */
   void deregister_array(entry_type entry);
 
-  void test();
-
   size_t registry_size();
 
   /** Returns true if the array is open, i.e. registered in the multimap. */
-  bool uri_is_open(URI);  // perhaps a better name for this - posted in paper
+  bool contains(const URI uri);
 
-  /** Returns true if a URI is an element of a registered array. */
-  bool is_element_of(URI, URI);
+  /**
+   * Returns true if a URI is an element of a registered array.
+   * The first argument should be the URI in the multimap.
+   * The second argument should be the URI being checked as a suspected element.
+   *
+   * Note: For now, user error is allowed and calling
+   * `is_element_of(element_uri, registered_uri)` will call
+   * `is_element_of(registered_uri, element_uri)`.
+   * */
+  bool is_element_of(URI registered_uri, URI element_uri);
 
  private:
   /* ********************************* */
@@ -111,7 +117,7 @@ class ConsistencyController {
   /* ********************************* */
 
   /** The open array registry. */
-  std::multimap<const URI&, Array&> array_registry_;
+  std::multimap<const URI, Array&> array_registry_;
 
   /** Mutex for sentry class. */
   std::mutex mtx_;

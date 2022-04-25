@@ -33,7 +33,6 @@
 #include <iostream>
 
 #include "tiledb/sm/array/consistency.h"
-#include "tiledb/sm/filesystem/uri.h"
 
 using namespace tiledb::common;
 
@@ -57,43 +56,53 @@ ConsistencySentry::~ConsistencySentry() {
 /*                API                */
 /* ********************************* */
 ConsistencySentry ConsistencyController::make_sentry(
-    const URI& uri, Array& array) {
-  if (uri.is_invalid())
-    throw std::runtime_error("Cannot make sentry, invalid URI.");
+    const URI uri, Array& array) {
   return ConsistencySentry{*this, register_array(uri, array)};
 }
 
-entry_type ConsistencyController::register_array(const URI& uri, Array& array) {
+entry_type ConsistencyController::register_array(const URI uri, Array& array) {
   std::lock_guard<std::mutex> lock(mtx_);
-  // std::cerr<<uri.c_str()<<std::endl;
-
-  // still fails, uris not all found
-  /*const char* base = "";
-  entry_type iter;
-  if (uri.c_str() == base) {
-    iter = array_registry_.begin();
-    array_registry_.insert(iter, {uri, array});
-  } else {
-    iter = array_registry_.insert({uri, array});
-  }*/
-
   entry_type iter = array_registry_.insert({uri, array});
 
   return iter;
 }
 
-void ConsistencyController::test() {
-  std::cerr << "TESTING" << std::endl;
-}
-
 void ConsistencyController::deregister_array(entry_type entry) {
   std::lock_guard<std::mutex> lock(mtx_);
   array_registry_.erase(entry);
-  // std::cerr<<"Deregistration size: "<<array_registry_.size()<<std::endl;
 }
 
 size_t ConsistencyController::registry_size() {
   return array_registry_.size();
+}
+
+bool ConsistencyController::contains(const URI uri) {
+  for (entry_type iter = array_registry_.begin(); iter != array_registry_.end();
+       iter++) {
+    if (iter->first == uri)
+      return true;
+  }
+  return false;
+}
+
+/* TODO: Finish; this currently returns
+  `contains(registered_uri) || contains(element_uri)`. */
+bool ConsistencyController::is_element_of(
+    const URI registered_uri, const URI element_uri) {
+  // check if registry contains 1 or 2
+  // user error allowed, if contains 2 call is_element_of(2, 1)
+
+  bool has1 = contains(registered_uri);
+  if (!has1) {
+    bool has2 = contains(element_uri);
+    if (has2)
+      return is_element_of(element_uri, registered_uri);
+  } else {
+    // for now just return true
+    return true;
+  }
+
+  return false;
 }
 
 }  // namespace sm
