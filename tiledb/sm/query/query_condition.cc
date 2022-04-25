@@ -1296,11 +1296,16 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::NE> {
   }
 };
 
-template <typename T, QueryConditionOp Op, typename BitmapType>
+template <
+    typename T,
+    QueryConditionOp Op,
+    typename BitmapType,
+    typename CombinationOp>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
     ResultTile& result_tile,
     const bool var_size,
+    CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   const auto tile_tuple = result_tile.tile_tuple(node->get_field_name());
   const void* condition_value_content =
@@ -1341,7 +1346,7 @@ void QueryCondition::apply_ast_node_sparse(
             condition_value_size);
 
         // Set the value.
-        result_bitmap[c] *= cmp;
+        result_bitmap[c] = combination_op(result_bitmap[c], cmp);
       }
     }
   } else {
@@ -1362,61 +1367,59 @@ void QueryCondition::apply_ast_node_sparse(
           cell_value, cell_size, condition_value_content, condition_value_size);
 
       // Set the value.
-      result_bitmap[c] *= cmp;
+      result_bitmap[c] = combination_op(result_bitmap[c], cmp);
     }
   }
 }
 
-template <typename T, typename BitmapType>
-Status QueryCondition::apply_ast_node_sparse(
+template <typename T, typename BitmapType, typename CombinationOp>
+void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
     ResultTile& result_tile,
     const bool var_size,
+    CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   switch (node->get_op()) {
     case QueryConditionOp::LT:
-      apply_ast_node_sparse<T, QueryConditionOp::LT>(
-          node, result_tile, var_size, result_bitmap);
+      apply_ast_node_sparse<T, QueryConditionOp::LT, BitmapType>(
+          node, result_tile, var_size, combination_op, result_bitmap);
       break;
     case QueryConditionOp::LE:
-      apply_ast_node_sparse<T, QueryConditionOp::LE>(
-          node, result_tile, var_size, result_bitmap);
+      apply_ast_node_sparse<T, QueryConditionOp::LE, BitmapType>(
+          node, result_tile, var_size, combination_op, result_bitmap);
       break;
     case QueryConditionOp::GT:
-      apply_ast_node_sparse<T, QueryConditionOp::GT>(
-          node, result_tile, var_size, result_bitmap);
+      apply_ast_node_sparse<T, QueryConditionOp::GT, BitmapType>(
+          node, result_tile, var_size, combination_op, result_bitmap);
       break;
     case QueryConditionOp::GE:
-      apply_ast_node_sparse<T, QueryConditionOp::GE>(
-          node, result_tile, var_size, result_bitmap);
+      apply_ast_node_sparse<T, QueryConditionOp::GE, BitmapType>(
+          node, result_tile, var_size, combination_op, result_bitmap);
       break;
     case QueryConditionOp::EQ:
-      apply_ast_node_sparse<T, QueryConditionOp::EQ>(
-          node, result_tile, var_size, result_bitmap);
+      apply_ast_node_sparse<T, QueryConditionOp::EQ, BitmapType>(
+          node, result_tile, var_size, combination_op, result_bitmap);
       break;
     case QueryConditionOp::NE:
-      apply_ast_node_sparse<T, QueryConditionOp::NE>(
-          node, result_tile, var_size, result_bitmap);
+      apply_ast_node_sparse<T, QueryConditionOp::NE, BitmapType>(
+          node, result_tile, var_size, combination_op, result_bitmap);
       break;
     default:
-      return Status_QueryConditionError(
-          "Cannot perform query comparison; Unknown query "
-          "condition operator");
+      throw std::runtime_error(
+          "Cannot perform query comparison; Unknown query condition operator.");
   }
-
-  return Status::Ok();
 }
 
-template <typename BitmapType>
-Status QueryCondition::apply_ast_node_sparse(
+template <typename BitmapType, typename CombinationOp>
+void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
     ResultTile& result_tile,
+    CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   const auto attribute = array_schema.attribute(node->get_field_name());
   if (!attribute) {
-    return Status_QueryConditionError(
-        "Unknown attribute " + node->get_field_name());
+    throw std::runtime_error("Unknown attribute " + node->get_field_name());
   }
 
   const bool var_size = attribute->var_size();
@@ -1440,7 +1443,7 @@ Status QueryCondition::apply_ast_node_sparse(
           result_bitmap[c] *= buffer_validity[c] == 0;
         }
       }
-      return Status::Ok();
+      return;
     } else {
       // Turn off bitmap values for null cells.
       for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
@@ -1452,44 +1455,44 @@ Status QueryCondition::apply_ast_node_sparse(
   switch (attribute->type()) {
     case Datatype::INT8:
       return apply_ast_node_sparse<int8_t, BitmapType>(
-          node, result_tile, var_size, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
     case Datatype::UINT8:
       return apply_ast_node_sparse<uint8_t, BitmapType>(
-          node, result_tile, var_size, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
     case Datatype::INT16:
       return apply_ast_node_sparse<int16_t, BitmapType>(
-          node, result_tile, var_size, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
     case Datatype::UINT16:
       return apply_ast_node_sparse<uint16_t, BitmapType>(
-          node, result_tile, var_size, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
     case Datatype::INT32:
       return apply_ast_node_sparse<int32_t, BitmapType>(
-          node, result_tile, var_size, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
     case Datatype::UINT32:
       return apply_ast_node_sparse<uint32_t, BitmapType>(
-          node, result_tile, var_size, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
     case Datatype::INT64:
       return apply_ast_node_sparse<int64_t, BitmapType>(
-          node, result_tile, var_size, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
     case Datatype::UINT64:
       return apply_ast_node_sparse<uint64_t, BitmapType>(
-          node, result_tile, var_size, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
     case Datatype::FLOAT32:
       return apply_ast_node_sparse<float, BitmapType>(
-          node, result_tile, var_size, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
     case Datatype::FLOAT64:
       return apply_ast_node_sparse<double, BitmapType>(
-          node, result_tile, var_size, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
     case Datatype::STRING_ASCII:
       return apply_ast_node_sparse<char*, BitmapType>(
-          node, result_tile, var_size, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
     case Datatype::CHAR:
       if (var_size) {
         return apply_ast_node_sparse<char*, BitmapType>(
-            node, result_tile, var_size, result_bitmap);
+            node, result_tile, var_size, combination_op, result_bitmap);
       }
       return apply_ast_node_sparse<char, BitmapType>(
-          node, result_tile, var_size, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -1504,7 +1507,7 @@ Status QueryCondition::apply_ast_node_sparse(
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
       return apply_ast_node_sparse<int64_t, BitmapType>(
-          node, result_tile, var_size, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
     case Datatype::ANY:
     case Datatype::BLOB:
     case Datatype::STRING_UTF8:
@@ -1513,13 +1516,50 @@ Status QueryCondition::apply_ast_node_sparse(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
-      return Status_QueryConditionError(
-          "Cannot perform query comparison; Unsupported query "
-          "conditional type on " +
+      throw std::runtime_error(
+          "Cannot perform query comparison; Unsupported query conditional type "
+          "on " +
           node->get_field_name());
   }
+}
 
-  return Status::Ok();
+template <typename BitmapType, typename CombinationOp>
+void QueryCondition::apply_tree_sparse(
+    const tdb_unique_ptr<ASTNode>& node,
+    const ArraySchema& array_schema,
+    ResultTile& result_tile,
+    CombinationOp combination_op,
+    std::vector<BitmapType>& result_bitmap) const {
+  // For each child, declare a new result buffer, combine it all into the
+  // other one based on the combination op.
+  const QueryConditionCombinationOp& c_op = node->get_combination_op();
+  const uint8_t fill_value = c_op == QueryConditionCombinationOp::AND ? 1 : 0;
+  std::vector<BitmapType> combination_op_bitmap(
+      result_bitmap.size(), fill_value);
+
+  for (const auto& child : node->get_children()) {
+    if (!child->is_expr()) {
+      apply_ast_node_sparse(
+          child,
+          array_schema,
+          result_tile,
+          combination_op,
+          combination_op_bitmap);
+    } else {
+      std::vector<BitmapType> child_result_bitmap(result_bitmap.size(), 1);
+      apply_tree_sparse<BitmapType>(
+          child, array_schema, result_tile, child_result_bitmap);
+
+      for (size_t c = 0; c < child_result_bitmap.size(); ++c) {
+        combination_op_bitmap[c] =
+            combination_op(combination_op_bitmap[c], child_result_bitmap[c]);
+      }
+    }
+  }
+
+  for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
+    result_bitmap[c] *= combination_op_bitmap[c];
+  }
 }
 
 template <typename BitmapType>
@@ -1528,57 +1568,33 @@ void QueryCondition::apply_tree_sparse(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap) const {
-  // Case on the type of the tree node.
-  if (!node->is_expr()) {
-    // In the simple value node case, run the value evaluator function and
-    // return the result back.
-    Status s = apply_ast_node_sparse<BitmapType>(
-        node, array_schema, result_tile, result_bitmap);
-    if (!s.ok()) {
+  switch (node->get_combination_op()) {
+    // Note that a bitwise AND operator is used to combine
+    // the accumulator result buffer and child result buffer in the AND
+    // combination op case, and bitwise OR in the OR combination op case.
+    case QueryConditionCombinationOp::AND: {
+      apply_tree_sparse<BitmapType>(
+          node,
+          array_schema,
+          result_tile,
+          std::logical_and<BitmapType>(),
+          result_bitmap);
+    } break;
+    case QueryConditionCombinationOp::OR: {
+      apply_tree_sparse<BitmapType>(
+          node,
+          array_schema,
+          result_tile,
+          std::logical_or<BitmapType>(),
+          result_bitmap);
+    } break;
+    case QueryConditionCombinationOp::NOT: {
       throw std::runtime_error(
-          "apply_tree_sparse: apply_ast_node_sparse failed.");
-    }
-  } else {
-    // For each child, declare a new result buffer, combine it all into the
-    // other one based on the combination op.
-    const QueryConditionCombinationOp& combination_op =
-        node->get_combination_op();
-    std::vector<BitmapType> combination_op_bitmap(result_bitmap.size(), 1);
-    if (combination_op == QueryConditionCombinationOp::OR) {
-      std::fill(combination_op_bitmap.begin(), combination_op_bitmap.end(), 0);
-    }
-
-    for (const auto& child : node->get_children()) {
-      std::vector<BitmapType> child_result_bitmap(result_bitmap.size(), 1);
-      apply_tree_sparse(child, array_schema, result_tile, child_result_bitmap);
-      // Note that the multiplication operator (which functions
-      // effectively as a bitwise AND) is used to combine the accumulator result
-      // buffer and child result buffer in the AND combination op case, and
-      // bitwise OR in the OR combination op case.
-      switch (combination_op) {
-        case QueryConditionCombinationOp::AND: {
-          for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
-            combination_op_bitmap[c] *= child_result_bitmap[c];
-          }
-        } break;
-        case QueryConditionCombinationOp::OR: {
-          for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
-            combination_op_bitmap[c] |= child_result_bitmap[c];
-          }
-        } break;
-        case QueryConditionCombinationOp::NOT: {
-          throw std::runtime_error(
-              "Query condition NOT operator is not currently supported.");
-        }
-        default: {
-          throw std::logic_error(
-              "Invalid combination operator when applying query condition.");
-        }
-      }
-    }
-
-    for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
-      result_bitmap[c] *= combination_op_bitmap[c];
+          "Query condition NOT operator is not currently supported.");
+    } break;
+    default: {
+      throw std::logic_error(
+          "Invalid combination operator when applying query condition.");
     }
   }
 }
@@ -1589,9 +1605,18 @@ Status QueryCondition::apply_sparse(
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap,
     uint64_t* cell_count) {
-  // Iterate through the tree.
-  apply_tree_sparse<BitmapType>(
-      tree_, array_schema, result_tile, result_bitmap);
+  if (!tree_->is_expr()) {
+    apply_ast_node_sparse<BitmapType, std::logical_and<BitmapType>>(
+        tree_,
+        array_schema,
+        result_tile,
+        std::logical_and<BitmapType>(),
+        result_bitmap);
+  } else {
+    // Iterate through the tree.
+    apply_tree_sparse<BitmapType>(
+        tree_, array_schema, result_tile, result_bitmap);
+  }
   *cell_count = std::accumulate(result_bitmap.begin(), result_bitmap.end(), 0);
 
   return Status::Ok();
