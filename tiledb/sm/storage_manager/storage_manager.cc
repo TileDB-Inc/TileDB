@@ -1432,11 +1432,15 @@ StorageManager::load_array_schema_from_uri(
 
   // Deserialize
   ConstBuffer cbuff(&buff);
-  auto array_schema = make_shared<ArraySchema>(HERE());
-  RETURN_NOT_OK_TUPLE(array_schema->deserialize(&cbuff), nullopt);
-  array_schema->set_uri(schema_uri);
+  auto deserialized_schema{ArraySchema::deserialize(&cbuff, schema_uri)};
 
-  return {Status::Ok(), array_schema};
+  // #TODO Update catch statement after later StatusException changes
+  try {
+    return {Status::Ok(),
+            make_shared<ArraySchema>(HERE(), deserialized_schema)};
+  } catch (const StatusException& e) {
+    return {Status_StorageManagerError(e.what()), nullopt};
+  }
 }
 
 tuple<Status, optional<shared_ptr<ArraySchema>>>
