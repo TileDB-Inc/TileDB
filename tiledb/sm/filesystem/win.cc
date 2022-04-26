@@ -33,6 +33,7 @@
 
 #include "win.h"
 #include "path_win.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -91,9 +92,7 @@ std::string get_last_error_msg(
 
   auto buf_len = gle_desc.length() + std::strlen(func_desc) + 50;
   auto deleter = [](char* p) { tdb_delete_array(p); };
-  auto display_buf =
-      std::unique_ptr<char, decltype(deleter)>(
-          tdb_new_array(char, buf_len), deleter);
+  auto display_buf = shared_ptr<char>(tdb_new_array(char, buf_len), deleter);
   std::snprintf(
       display_buf.get(),
       buf_len,
