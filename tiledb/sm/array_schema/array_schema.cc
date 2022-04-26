@@ -95,6 +95,70 @@ ArraySchema::ArraySchema(ArrayType array_type)
   generate_uri();
 }
 
+ArraySchema::ArraySchema(
+    URI uri,
+    uint32_t version,
+    ArrayType array_type,
+    bool allows_dups,
+    shared_ptr<Domain> domain,
+    Layout cell_order,
+    Layout tile_order,
+    uint64_t capacity,
+    std::vector<shared_ptr<const Attribute>> attributes,
+    FilterPipeline cell_var_offsets_filters,
+    FilterPipeline cell_validity_filters,
+    FilterPipeline coords_filters)
+    : uri_(uri)
+    , version_(version)
+    , array_type_(array_type)
+    , allows_dups_(allows_dups)
+    , domain_(domain)
+    , cell_order_(cell_order)
+    , tile_order_(tile_order)
+    , capacity_(capacity)
+    , attributes_(attributes)
+    , cell_var_offsets_filters_(cell_var_offsets_filters)
+    , cell_validity_filters_(cell_validity_filters)
+    , coords_filters_(coords_filters) {
+  Status st;
+  // Populate timestamp range
+  st = utils::parse::get_timestamp_range(uri_, &timestamp_range_);
+  if (!st.ok())
+    throw StatusException(st);
+
+  // Set schema name
+  name_ = uri_.last_path_part();
+
+  // Create dimension map
+  dim_map_.clear();
+  for (unsigned d = 0; d < domain_->dim_num(); ++d) {
+    auto dim = domain_->dimension(d);
+    dim_map_[dim->name()] = dim;
+  }
+
+  // Create attribute map
+  if (!attributes_.empty()) {
+    auto attr = attributes_.back().get();
+    attribute_map_[attr->name()] = attr;
+  }
+
+  st = check_double_delta_compressor(coords_filters_);
+  if (!st.ok())
+    throw StatusException(
+        Status_ArraySchemaError("Array schema check failed; Double delta "
+                                "compression used in zipped coords."));
+
+  st = check_rle_compressor(coords_filters_);
+  if (!st.ok())
+    throw StatusException(Status_ArraySchemaError(
+        "Array schema check failed; RLE compression used."));
+
+  if (!check_attribute_dimension_names())
+    throw StatusException(
+        Status_ArraySchemaError("Array schema check failed; Attributes "
+                                "and dimensions must have unique names"));
+}
+
 ArraySchema::ArraySchema(const ArraySchema& array_schema) {
   allows_dups_ = array_schema.allows_dups_;
   array_uri_ = array_schema.array_uri_;
@@ -546,95 +610,170 @@ Status ArraySchema::drop_attribute(const std::string& attr_name) {
   return Status::Ok();
 }
 
-Status ArraySchema::deserialize(ConstBuffer* buff) {
+// #TODO Add security validation on incoming URI
+ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
+  Status st;
   // Load version
-  RETURN_NOT_OK(buff->read(&version_, sizeof(uint32_t)));
+  // #TODO Add security validation
+  uint32_t version;
+  st = buff->read(&version, sizeof(uint32_t));
+  if (!st.ok())
+    throw std::runtime_error(
+        "[ArraySchema::deserialize] Failed to load version.");
+  if (!(version <= constants::format_version))
+    throw StatusException(Status_ArraySchemaError(
+        "[ArraySchema::deserialize] Incompatible format version."));
 
   // Load allows_dups
-  if (version_ >= 5)
-    RETURN_NOT_OK(buff->read(&allows_dups_, sizeof(bool)));
+  // Note: No security validation is possible.
+  bool allows_dups = false;
+  if (version >= 5) {
+    st = buff->read(&allows_dups, sizeof(bool));
+    if (!st.ok())
+      throw std::runtime_error(
+          "[ArraySchema::deserialize] Failed to load allows_dups.");
+  }
 
   // Load array type
-  uint8_t array_type;
-  RETURN_NOT_OK(buff->read(&array_type, sizeof(uint8_t)));
-  array_type_ = (ArrayType)array_type;
+  uint8_t array_type_loaded;
+  st = buff->read(&array_type_loaded, sizeof(uint8_t));
+  if (!st.ok())
+    throw std::runtime_error(
+        "[ArraySchema::deserialize] Failed to load array type.");
+  if (!array_type_is_valid(array_type_loaded).ok())
+    throw StatusException(Status_ArraySchemaError(
+        "[ArraySchema::deserialize] Invalid array type."));
+  ArrayType array_type = ArrayType(array_type_loaded);
 
   // Load tile order
-  uint8_t tile_order;
-  RETURN_NOT_OK(buff->read(&tile_order, sizeof(uint8_t)));
-  tile_order_ = (Layout)tile_order;
+  uint8_t tile_order_loaded;
+  st = buff->read(&tile_order_loaded, sizeof(uint8_t));
+  if (!st.ok())
+    throw std::runtime_error(
+        "[ArraySchema::deserialize] Failed to load tile order.");
+  if (!tile_order_is_valid(tile_order_loaded).ok())
+    throw StatusException(Status_ArraySchemaError(
+        "[ArraySchema::deserialize] Invalid tile order."));
+  Layout tile_order = Layout(tile_order_loaded);
 
   // Load cell order
-  uint8_t cell_order;
-  RETURN_NOT_OK(buff->read(&cell_order, sizeof(uint8_t)));
-  cell_order_ = (Layout)cell_order;
+  uint8_t cell_order_loaded;
+  st = buff->read(&cell_order_loaded, sizeof(uint8_t));
+  if (!st.ok())
+    throw std::runtime_error(
+        "[ArraySchema::deserialize] Failed to load cell order.");
+  if (!cell_order_is_valid(cell_order_loaded).ok())
+    throw StatusException(Status_ArraySchemaError(
+        "[ArraySchema::deserialize] Invalid cell order."));
+  Layout cell_order = Layout(cell_order_loaded);
 
   // Load capacity
-  RETURN_NOT_OK(buff->read(&capacity_, sizeof(uint64_t)));
+  // #TODO Add security validation
+  uint64_t capacity;
+  st = buff->read(&capacity, sizeof(uint64_t));
+  if (!st.ok())
+    throw std::runtime_error(
+        "[ArraySchema::deserialize] Failed to load capacity.");
 
   // Load coords filters
+  // Note: Security validation delegated to invoked API
+  // #TODO Add security validation
   auto&& [st_coords_filters, coords_filters]{
-      FilterPipeline::deserialize(buff, version_)};
+      FilterPipeline::deserialize(buff, version)};
   if (!st_coords_filters.ok()) {
-    return Status_ArraySchemaError("Cannot deserialize coords filters");
+    throw std::runtime_error(
+        "[ArraySchema::deserialize] Cannot deserialize coords filters.");
   }
-  coords_filters_ = coords_filters.value();
 
   // Load offsets filters
+  // Note: Security validation delegated to invoked API
+  // #TODO Add security validation
   auto&& [st_cell_var_filters, cell_var_filters]{
-      FilterPipeline::deserialize(buff, version_)};
+      FilterPipeline::deserialize(buff, version)};
   if (!st_coords_filters.ok()) {
-    return Status_ArraySchemaError("Cannot deserialize cell var filters");
+    throw std::runtime_error(
+        "[ArraySchema::deserialize] Cannot deserialize cell var filters.");
   }
-  cell_var_offsets_filters_ = cell_var_filters.value();
 
   // Load validity filters
-  if (version_ >= 7) {
-    auto&& [st_cell_validity_filters, cell_validity_filters]{
-        FilterPipeline::deserialize(buff, version_)};
+  // Note: Security validation delegated to invoked API
+  // #TODO Add security validation
+  FilterPipeline cell_validity_filters;
+  if (version >= 7) {
+    auto&& [st_cell_validity_filters, cell_validity_filters_deserialized]{
+        FilterPipeline::deserialize(buff, version)};
     if (!st_cell_validity_filters.ok()) {
-      return Status_ArraySchemaError(
-          "Cannot deserialize cell validity filters");
+      throw std::runtime_error(
+          "[ArraySchema::deserialize] Cannot deserialize cell validity "
+          "filters.");
     }
-    cell_validity_filters_ = cell_validity_filters.value();
+    cell_validity_filters = cell_validity_filters_deserialized.value();
   }
 
   // Load domain
-  auto&& [st_domain, deserialized_domain]{
-      Domain::deserialize(buff, version_, cell_order_, tile_order_)};
+  // Note: Security validation delegated to invoked API
+  // #TODO Add security validation
+  auto&& [st_domain, domain]{
+      Domain::deserialize(buff, version, cell_order, tile_order)};
   if (!st_domain.ok()) {
-    return st_domain;
+    throw std::runtime_error(
+        "[ArraySchema::deserialize] Cannot deserialize domain.");
   }
-
-  domain_ = deserialized_domain.value();
 
   // Load attributes
+  // Note: Security validation delegated to invoked API
+  // #TODO Add security validation
+  std::vector<shared_ptr<const Attribute>> attributes;
   uint32_t attribute_num;
-  RETURN_NOT_OK(buff->read(&attribute_num, sizeof(uint32_t)));
+  st = buff->read(&attribute_num, sizeof(uint32_t));
+  if (!st.ok())
+    throw std::runtime_error(
+        "[ArraySchema::deserialize] Cannot load attribute_num.");
   for (uint32_t i = 0; i < attribute_num; ++i) {
-    auto&& [st_attr, attr]{Attribute::deserialize(buff, version_)};
+    auto&& [st_attr, attr]{Attribute::deserialize(buff, version)};
     if (!st_attr.ok()) {
-      return st_attr;
+      throw std::runtime_error(
+          "[ArraySchema::deserialize] Cannot deserialize attributes.");
     }
 
-    attributes_.emplace_back(
-        make_shared<Attribute>(HERE(), move(attr.value())));
-    auto a = attributes_.back().get();
-    attribute_map_[a->name()] = a;
+    attributes.emplace_back(make_shared<Attribute>(HERE(), move(attr.value())));
   }
 
-  // Create dimension map
-  auto dim_num = domain_->dim_num();
-  for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = dimension(d);
-    dim_map_[dim->name()] = dim;
+  // Validate
+  if (cell_order == Layout::HILBERT &&
+      domain.value()->dim_num() > Hilbert::HC_MAX_DIM) {
+    throw StatusException(Status_ArraySchemaError(
+        "Array schema check failed; Maximum dimensions supported by Hilbert "
+        "order exceeded"));
   }
 
-  // Initialize the rest of the object members
-  RETURN_NOT_OK(init());
+  if (array_type == ArrayType::DENSE) {
+    auto type = domain.value()->dimension(0)->type();
+    if (datatype_is_real(type)) {
+      throw StatusException(
+          Status_ArraySchemaError("Array schema check failed; Dense arrays "
+                                  "cannot have floating point domains"));
+    }
+    if (attributes.size() == 0) {
+      throw StatusException(Status_ArraySchemaError(
+          "Array schema check failed; No attributes provided"));
+    }
+  }
 
   // Success
-  return Status::Ok();
+  return ArraySchema(
+      uri,
+      version,
+      array_type,
+      allows_dups,
+      domain.value(),
+      cell_order,
+      tile_order,
+      capacity,
+      attributes,
+      cell_var_filters.value(),
+      cell_validity_filters,
+      coords_filters.value());
 }
 
 Status ArraySchema::init() {
@@ -783,38 +922,11 @@ uint64_t ArraySchema::timestamp_start() const {
 }
 
 const URI& ArraySchema::uri() const {
-  std::lock_guard<std::mutex> lock(mtx_);
   return uri_;
 }
 
-void ArraySchema::set_uri(const URI& uri) {
-  std::lock_guard<std::mutex> lock(mtx_);
-  uri_ = uri;
-  name_ = uri_.last_path_part();
-  utils::parse::get_timestamp_range(uri_, &timestamp_range_);
-}
-
-Status ArraySchema::get_uri(URI* uri) const {
-  if (uri_.is_invalid()) {
-    return LOG_STATUS(
-        Status_ArraySchemaError("Error in ArraySchema; invalid URI"));
-  }
-  *uri = uri_;
-  return Status::Ok();
-}
-
 const std::string& ArraySchema::name() const {
-  std::lock_guard<std::mutex> lock(mtx_);
   return name_;
-}
-
-Status ArraySchema::get_name(std::string* name) const {
-  if (name_.empty()) {
-    return LOG_STATUS(
-        Status_ArraySchemaError("Error in ArraySchema; Empty name"));
-  }
-  *name = name_;
-  return Status::Ok();
 }
 
 /* ****************************** */
