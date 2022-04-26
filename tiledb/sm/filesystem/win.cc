@@ -90,7 +90,10 @@ std::string get_last_error_msg(
   std::string gle_desc = get_last_error_msg_desc(gle);
 
   auto buf_len = gle_desc.length() + std::strlen(func_desc) + 50;
-  auto display_buf = std::make_unique<char[]>(buf_len);
+  auto deleter = [](char* p) { tdb_delete_array(p); };
+  auto display_buf =
+      std::unique_ptr<char, decltype(deleter)>(
+          tdb_new_array(char, buf_len), deleter);
   std::snprintf(
       display_buf.get(),
       buf_len,
