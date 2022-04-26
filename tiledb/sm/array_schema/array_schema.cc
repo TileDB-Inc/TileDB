@@ -148,7 +148,7 @@ ArraySchema::ArraySchema(
         Status_ArraySchemaError("Array schema check failed; Double delta "
                                 "compression used in zipped coords."));
 
-  st = check_rle_compressor(coords_filters_);
+  st = check_string_compressor(coords_filters_);
   if (!st.ok())
     throw StatusException(Status_ArraySchemaError(
         "Array schema check failed; RLE compression used."));
