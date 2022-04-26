@@ -119,3 +119,29 @@ endif()
 add_executable(compile_uuid EXCLUDE_FROM_ALL)
 target_link_libraries(compile_uuid PRIVATE uuid)
 target_sources(compile_uuid PRIVATE test/compile_uuid_main.cc)
+
+# simple unit test of magic.mgc embedded data vs external data
+find_file(MAGIC_MGC_PATH magic.mgc REQUIRED
+  PATHS ${TILEDB_EP_BASE}/install/bin
+)
+if(MAGIC_MGC_PATH-NOTFOUND)
+  message(FATAL_ERROR "Failed to find libmagic 'magic.mgc' file.")
+endif()
+add_executable(unit_mgc_dict EXCLUDE_FROM_ALL)
+target_sources(unit_mgc_dict PRIVATE
+        test/unit_mgc_dict.cc 
+        mgc_dict.cc
+)
+target_link_libraries(unit_mgc_dict PRIVATE 
+  compressors
+  filter
+  libmagic
+  )
+
+target_compile_options(unit_mgc_dict PRIVATE -DTILEDB_PATH_TO_MAGIC_MGC=\"${MAGIC_MGC_PATH}\")
+find_package(Magic_EP REQUIRED)
+target_include_directories(unit_mgc_dict
+  PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}
+   "${libmagic_INCLUDE_DIR}"
+)
