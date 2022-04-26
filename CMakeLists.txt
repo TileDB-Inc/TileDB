@@ -43,9 +43,9 @@ endif()
 
 string(REGEX MATCH "TILEDB_VERSION_MAJOR ([0-9])*" _ ${VERFILE})
 set(TILEDB_VERSION_MAJOR ${CMAKE_MATCH_1})
-string(REGEX MATCH "TILEDB_VERSION_MINOR ([0-9])*" _ ${VERFILE})
+string(REGEX MATCH "TILEDB_VERSION_MINOR ([0-9]+)*" _ ${VERFILE})
 set(TILEDB_VERSION_MINOR ${CMAKE_MATCH_1})
-string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9])*" _ ${VERFILE})
+string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9]+)*" _ ${VERFILE})
 set(TILEDB_VERSION_PATCH ${CMAKE_MATCH_1})
 
 set(TILEDB_VERSION "${TILEDB_VERSION_MAJOR}.${TILEDB_VERSION_MINOR}.${TILEDB_VERSION_PATCH}")
@@ -301,6 +301,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_array_schema unit_filter_create unit_filter_pipeline unit_metadata)
   add_dependencies(tests unit_compressors)
   add_dependencies(tests unit_range_subset)
+  add_dependencies(tests unit_mgc_dict)
 endif()
 
 # Build tools

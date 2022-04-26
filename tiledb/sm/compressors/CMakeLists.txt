@@ -29,7 +29,7 @@ include(common NO_POLICY_SCOPE)
 #
 # `compressors` object library
 #
-add_library(compressors OBJECT bzip_compressor.cc dd_compressor.cc dict_compressor.cc gzip_compressor.cc lz4_compressor.cc rle_compressor.cc zstd_compressor.cc)
+add_library(compressors OBJECT bzip_compressor.cc dd_compressor.cc dict_compressor.cc gzip_compressor.cc lz4_compressor.cc rle_compressor.cc zstd_compressor.cc util/gzip_wrappers.cc)
 target_link_libraries(compressors PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(compressors PUBLIC buffer $<TARGET_OBJECTS:buffer>)
 find_package(Bzip2_EP REQUIRED)
@@ -46,6 +46,20 @@ target_link_libraries(compile_compressors PRIVATE compressors)
 target_sources(compile_compressors PRIVATE
         test/compile_compressors_main.cc $<TARGET_OBJECTS:compressors>
 )
+
+#
+# tiledb crude gzip archiver initially for embedding magic.mgc
+#
+add_executable(tdb_gzip_embedded_data)
+target_link_libraries(tdb_gzip_embedded_data PRIVATE compressors)
+target_sources(tdb_gzip_embedded_data PRIVATE
+        util/tdb_gzip_embedded_data.cc 
+        $<TARGET_OBJECTS:compressors>
+)
+target_link_libraries(
+    tdb_gzip_embedded_data PUBLIC 
+    filter # OBJECTS library
+    )
 
 if (TILEDB_TESTS)
     add_executable(unit_compressors EXCLUDE_FROM_ALL)
