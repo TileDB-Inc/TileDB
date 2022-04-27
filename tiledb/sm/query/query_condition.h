@@ -248,7 +248,7 @@ class QueryCondition {
    * @param result_cell_bitmap The input cell bitmap.
    * @return The filtered cell slabs.
    */
-  template <typename T, QueryConditionOp Op>
+  template <typename T, QueryConditionOp Op, typename ConditionOp>
   void apply_ast_node(
       const tdb_unique_ptr<ASTNode>& node,
       uint64_t stride,
@@ -256,6 +256,7 @@ class QueryCondition {
       const bool nullable,
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
+      ConditionOp condition_op,
       std::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
@@ -269,7 +270,7 @@ class QueryCondition {
    * @param result_cell_bitmap The input cell bitmap.
    * @return Status, filtered cell slabs.
    */
-  template <typename T>
+  template <typename T, typename CombinationOp>
   void apply_ast_node(
       const tdb_unique_ptr<ASTNode>& node,
       uint64_t stride,
@@ -277,6 +278,7 @@ class QueryCondition {
       const bool nullable,
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
+      CombinationOp combination_op,
       std::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
@@ -289,11 +291,34 @@ class QueryCondition {
    * @param result_cell_bitmap The input cell bitmap.
    * @return Status, filtered cell slabs.
    */
+  template <typename CombinationOp>
   void apply_ast_node(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
+      CombinationOp combination_op,
+      std::vector<uint8_t>& result_cell_bitmap) const;
+
+  /**
+   * Applies the query condition represented with the AST to
+   * `result_cell_slabs`.
+   *
+   * @param node The node to apply.
+   * @param array_schema The array schema associated with `result_cell_slabs`.
+   * @param result_cell_bitmap A bitmap representation of cell slabs to filter.
+   * Mutated to remove cell slabs that do not meet the criteria in this query
+   * condition.
+   * @param stride The stride between cells.
+   * @return Filtered cell slabs.
+   */
+  template <typename CombinationOp>
+  void apply_tree(
+      const tdb_unique_ptr<ASTNode>& node,
+      const ArraySchema& array_schema,
+      uint64_t stride,
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      CombinationOp combination_op,
       std::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
@@ -326,7 +351,7 @@ class QueryCondition {
    * @param var_size The attribute is var sized or not.
    * @param result_buffer The result buffer.
    */
-  template <typename T, QueryConditionOp Op>
+  template <typename T, QueryConditionOp Op, typename CombinationOp>
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       ResultTile* result_tile,
@@ -334,6 +359,7 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
+      CombinationOp combination_op,
       span<uint8_t>& result_buffer) const;
 
   /**
@@ -348,14 +374,15 @@ class QueryCondition {
    * @param result_buffer The result buffer.
    * @return Status.
    */
-  template <typename T>
-  Status apply_ast_node_dense(
+  template <typename T, typename CombinationOp>
+  void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
+      CombinationOp combination_op,
       span<uint8_t>& result_buffer) const;
 
   /**
@@ -371,13 +398,38 @@ class QueryCondition {
    * @param result_buffer The result buffer.
    * @return Status.
    */
-  Status apply_ast_node_dense(
+  template <typename CombinationOp>
+  void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
+      CombinationOp combination_op,
+      span<uint8_t>& result_buffer) const;
+
+  /**
+   * Applies the query condition represented with the AST to a set of cells.
+   *
+   * @param node The node to apply.
+   * @param array_schema The array schema.
+   * @param result_tile The result tile to get the cells from.
+   * @param start The start cell.
+   * @param src_cell The cell offset in the source tile.
+   * @param stride The stride between cells.
+   * @param result_buffer The buffer to use for results.
+   * @return Void.
+   */
+  template <typename CombinationOp>
+  void apply_tree_dense(
+      const tdb_unique_ptr<ASTNode>& node,
+      const ArraySchema& array_schema,
+      ResultTile* result_tile,
+      const uint64_t start,
+      const uint64_t src_cell,
+      const uint64_t stride,
+      CombinationOp combination_op,
       span<uint8_t>& result_buffer) const;
 
   /**
@@ -410,11 +462,16 @@ class QueryCondition {
    * @param var_size The attribute is var sized or not.
    * @param result_bitmap The result bitmap.
    */
-  template <typename T, QueryConditionOp Op, typename BitmapType>
+  template <
+      typename T,
+      QueryConditionOp Op,
+      typename BitmapType,
+      typename CombinationOp>
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       ResultTile& result_tile,
       const bool var_size,
+      CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
 
   /**
@@ -426,11 +483,12 @@ class QueryCondition {
    * @param result_bitmap The result bitmap.
    * @return Status.
    */
-  template <typename T, typename BitmapType>
-  Status apply_ast_node_sparse(
+  template <typename T, typename BitmapType, typename CombinationOp>
+  void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       ResultTile& result_tile,
       const bool var_size,
+      CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
 
   /**
@@ -443,11 +501,29 @@ class QueryCondition {
    * @param result_bitmap The result bitmap.
    * @return Status.
    */
-  template <typename BitmapType>
-  Status apply_ast_node_sparse(
+  template <typename BitmapType, typename CombinationOp>
+  void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
       ResultTile& result_tile,
+      CombinationOp combination_op,
+      std::vector<BitmapType>& result_bitmap) const;
+
+  /**
+   * Applies the query condition represented with the AST to a set of cells.
+   *
+   * @param node The node to apply.
+   * @param array_schema The array schema.
+   * @param result_tile The result tile to get the cells from.
+   * @param result_bitmap The bitmap to use for results.
+   * @return Void.
+   */
+  template <typename BitmapType, typename CombinationOp>
+  void apply_tree_sparse(
+      const tdb_unique_ptr<ASTNode>& node,
+      const ArraySchema& array_schema,
+      ResultTile& result_tile,
+      CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
 
   /**
