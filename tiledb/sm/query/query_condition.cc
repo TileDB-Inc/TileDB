@@ -100,7 +100,7 @@ Status QueryCondition::check(const ArraySchema& array_schema) const {
 
   RETURN_NOT_OK(tree_->check_node_validity(array_schema));
   return Status::Ok();
-}scalbn
+}
 
 Status QueryCondition::combine(
     const QueryCondition& rhs,
