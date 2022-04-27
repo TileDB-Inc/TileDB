@@ -31,6 +31,9 @@
  * This file defines the C API of TileDB for filestore.
  **/
 
+// Avoid deprecation warnings for the cpp api
+#define TILEDB_DEPRECATED
+
 #include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/c_api/api_exception_safety.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -130,6 +133,12 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
   }
 
   Array array(context, std::string(filestore_array_uri), TILEDB_WRITE);
+
+  // Sync up the fragment timestamp and metadata timestamp
+  uint64_t time_now = tiledb_timestamp_now_ms();
+  array.set_open_timestamp_start(time_now);
+  array.set_open_timestamp_end(time_now);
+  array.reopen();
 
   // TODO: detect mimetype and encoding with libmagic
   std::string mime_type = "application/pdf";
@@ -298,6 +307,34 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
 
   Context context(ctx, false);
   Array array(context, std::string(filestore_array_uri), TILEDB_WRITE);
+
+  // Sync up the fragment timestamp and metadata timestamp
+  uint64_t time_now = tiledb_timestamp_now_ms();
+  array.set_open_timestamp_start(time_now);
+  array.set_open_timestamp_end(time_now);
+  array.reopen();
+
+  // TODO: detect mimetype and encoding with libmagic
+  std::string mime_type = "application/pdf";
+  std::string mime_encoding = "us-ascii";
+
+  // We need to dump all the relevant metadata at this point so that
+  // clients have all the necessary info when consuming the array
+  array.put_metadata(
+      tiledb::sm::constants::filestore_metadata_size_key,
+      TILEDB_UINT64,
+      1,
+      &size);
+  array.put_metadata(
+      tiledb::sm::constants::filestore_metadata_mime_encoding_key,
+      TILEDB_STRING_ASCII,
+      mime_encoding.size(),
+      mime_encoding.c_str());
+  array.put_metadata(
+      tiledb::sm::constants::filestore_metadata_mime_type_key,
+      TILEDB_STRING_ASCII,
+      mime_type.size(),
+      mime_type.c_str());
 
   Query query(context, array);
   query.set_layout(TILEDB_ROW_MAJOR);
