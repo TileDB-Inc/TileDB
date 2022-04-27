@@ -30,6 +30,11 @@
  * Tests the C++ API for query related functions.
  */
 
+#include <cstdlib>
+#include <ctime>
+#include <vector>
+#include <iostream>
+
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
@@ -290,4 +295,74 @@ TEST_CASE(
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
+}
+
+TEST_CASE("C++ API: Test read for sparse arrays with added ranges and query condition", "[cppapi][query][query-condition]") {
+  std::srand(static_cast<uint32_t>(time(0)));
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create the array
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 20}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 20}}, 4));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  schema.add_attribute(Attribute::create<float>(ctx, "b"));
+  Array::create(array_name, schema);
+
+  // Write some initial data and close the array.
+  std::vector<int> row_dims;
+  std::vector<int> col_dims;
+  std::vector<int> a_data;
+  std::vector<float> b_data;
+
+  for (int i = 0; i < 400; ++i) {
+    int row = (i / 20) + 1;
+    int col = (i % 20) + 1;
+    int a = i % 2 == 1 ? 0 : 1;
+    float b = i % 2 == 1 ? 4.2f : static_cast<float>(rand())/(static_cast<float>(RAND_MAX/3.8));
+
+    row_dims.push_back(row);
+    col_dims.push_back(col);
+    a_data.push_back(a);
+    b_data.push_back(b);
+  }
+
+  std::cout << "we passed here???\n";
+
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w
+      .set_data_buffer("rows", row_dims)
+      .set_data_buffer("cols", col_dims)
+      .set_data_buffer("a", a_data)
+      .set_data_buffer("b", b_data);
+
+  std::cout << "we didn't pass here\n";
+  
+  query_w.submit();
+  std::cout << "1\n";
+  query_w.finalize();
+  std::cout << "2\n";
+  array_w.close();
+
+  std::cout << "we didn't pass here1\n";
+
+  // Open and read an array without closing it.
+  Array array1(ctx, array_name, TILEDB_READ);
+  Query query1(ctx, array1);
+  query1.submit();
+  REQUIRE(query1.result_buffer_elements().size() == 400);
+  for (const auto &elem : query1.result_buffer_elements()) {
+    std::cout << elem.first << " " << elem.second.first << " " << elem.second.second << std::endl;
+  }
+  query1.finalize();
+
+  array1.close();
 }
