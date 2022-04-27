@@ -351,7 +351,7 @@ endif()
 set(MAGIC_MGC_DICT "${TILEDB_EP_BASE}/install/bin/magic.mgc")
 message(STATUS "MAGIC_MGC_DICT is ${MAGIC_MGC_DICT}")
 
-add_custom_command( 
+add_custom_command(
   OUTPUT "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/mgc_gzipped.bin
   DEPENDS "${MAGIC_MGC_DICT}"
   COMMAND "${tdb_gzip_embedded_data_EXECUTABLE}" < "${MAGIC_MGC_DICT}" "${MGC_GZIPPED_BIN_PATH}"
@@ -579,12 +579,6 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Zstd::Zstd
     libmagic
 )
-
-# GCC <9 need to link against libc++fs for c++17 filesystem library
-find_package(Filesystem REQUIRED COMPONENTS Final Experimental)
-if (NOT WIN32 OR NOT MSVC)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE std::filesystem)
-endif()
 
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
