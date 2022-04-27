@@ -43,6 +43,8 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_ast PUBLIC Catch2::Catch2)
 
     # Sources for tests
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../../tiledb/sm/c_api")
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/tiledb")
     target_sources(unit_ast PUBLIC test/main.cc test/unit-query-ast.cc)
 
     add_test(

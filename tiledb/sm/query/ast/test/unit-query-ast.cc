@@ -29,6 +29,7 @@
  *
  * Tests the `ASTNode`, `ASTNodeVal` and `ASTNodeExpr` classes.
  */
+#include <iostream>
 
 #include "test/src/helpers.h"
 #include "tiledb/common/common.h"
@@ -100,4 +101,47 @@ TEST_CASE("ASTNode Constructors", "[QueryCondition][ast][constructor]") {
       ast_node_to_str(clone_combined_node2) ==
       "((x LT 05 00 00 00 AND y GT 03 00 00 00) OR (a EQ 17 00 00 00 OR b NE "
       "02 00 00 00 OR c LE 08 00 00 00))");
+}
+
+TEST_CASE(
+    "AST Constructors with depth > 2", "[QueryCondition][ast][constructor]") {
+  std::vector<int> vals = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  std::vector<tdb_unique_ptr<ASTNodeVal>> ast_value_vector;
+  for (size_t i = 0; i < 7; ++i) {
+    auto node_val = tdb_unique_ptr<ASTNodeVal>(tdb_new(
+        ASTNodeVal, "x", &vals[i], sizeof(vals[i]), QueryConditionOp::EQ));
+    ast_value_vector.push_back(std::move(node_val));
+  }
+
+  for (size_t i = 7; i < vals.size(); ++i) {
+    auto node_val = tdb_unique_ptr<ASTNodeVal>(tdb_new(
+        ASTNodeVal, "x", &vals[i], sizeof(vals[i]), QueryConditionOp::NE));
+    ast_value_vector.push_back(std::move(node_val));
+  }
+
+  int x = 6;
+  auto x_neq_six = tdb_unique_ptr<ASTNodeVal>(
+      tdb_new(ASTNodeVal, "x", &x, sizeof(x), QueryConditionOp::NE));
+
+  auto one_or_two = ast_value_vector[0]->clone()->combine(
+      ast_value_vector[1]->clone(), QueryConditionCombinationOp::OR);
+  auto three_or_four = ast_value_vector[2]->clone()->combine(
+      ast_value_vector[3]->clone(), QueryConditionCombinationOp::OR);
+  auto six_or_seven = ast_value_vector[5]->clone()->combine(
+      ast_value_vector[6]->clone(), QueryConditionCombinationOp::OR);
+  auto eight_and_nine = ast_value_vector[7]->clone()->combine(
+      ast_value_vector[8]->clone(), QueryConditionCombinationOp::AND);
+
+  auto subtree_a =
+      one_or_two->combine(three_or_four, QueryConditionCombinationOp::AND);
+  auto subtree_d =
+      eight_and_nine->combine(six_or_seven, QueryConditionCombinationOp::AND);
+  auto subtree_c = subtree_d->combine(
+      ast_value_vector[4]->clone(), QueryConditionCombinationOp::OR);
+  auto subtree_b =
+      subtree_c->combine(x_neq_six, QueryConditionCombinationOp::AND);
+  auto tree = subtree_a->combine(subtree_b, QueryConditionCombinationOp::OR);
+
+  std::cout << "YEET\n";
+  std::cout << ast_node_to_str(tree) << std::endl;
 }
