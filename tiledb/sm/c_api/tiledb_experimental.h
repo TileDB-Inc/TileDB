@@ -893,20 +893,17 @@ TILEDB_EXPORT int32_t tiledb_group_dump_str(
  *
  * @code{.c}
  * tiledb_array_schema_t* schema;
- * tiledb_filestore_schema_create(ctx, "/path/file.pdf", TILEDB_MIME_AUTODETECT,
- * &schema);
+ * tiledb_filestore_schema_create(ctx, "/path/file.pdf", &schema);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param uri The file URI.
- * @param mime_type The mime_type of the file
  * @param array_schema The TileDB array schema to be created
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
     tiledb_ctx_t* ctx,
     const char* uri,
-    tiledb_mime_type_t mime_type,
     tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 /**
@@ -915,8 +912,8 @@ TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
  *
  * @code{.c}
  * tiledb_array_schema_t* schema;
- * tiledb_filestore_schema_create(ctx, path_to_file, TILEDB_MIME_AUTODETECT,
- * &schema); tiledb_array_create(ctx, path_to_array, schema);
+ * tiledb_filestore_schema_create(ctx, path_to_file, &schema);
+ * tiledb_array_create(ctx, path_to_array, schema);
  * tiledb_filestore_uri_import(ctx, path_to_array, path_to_file);
  * @endcode
  *
@@ -954,7 +951,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
  *
  * @code{.c}
  * tiledb_array_schema_t* schema;
- * tiledb_filestore_schema_create(ctx, NULL, TILEDB_MIME_PDF, &schema);
+ * tiledb_filestore_schema_create(ctx, NULL, &schema);
  * tiledb_array_create(ctx, path_to_array, schema);
  * tiledb_filestore_buffer_import(ctx, path_to_array, buf, size);
  * @endcode
@@ -974,23 +971,20 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
  * **Example:**
  *
  * @code{.c}
- * void *buf;
- * size_t alloc_size = 1024;
- * tiledb_filestore_buffer_export(ctx, path_to_array, &buf, alloc_size);
+ * size_t size = 1024;
+ * void *buf = malloc(size);
+ * tiledb_filestore_buffer_export(ctx, path_to_array, buf, size);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param uri The array URI.
  * @param buf The buffer that will contain the filestore array content
- * @param alloc_size The number of bytes to be exported into the buffer
+ * @param size The number of bytes to be exported into the buffer
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
-    tiledb_ctx_t* ctx,
-    const char* filestore_array_uri,
-    void** buf,  // TODO: maybe it's not the best idea to allocate the buffer
-                 // internally
-    size_t alloc_size) TILEDB_NOEXCEPT;
+    tiledb_ctx_t* ctx, const char* filestore_array_uri, void* buf, size_t size)
+    TILEDB_NOEXCEPT;
 
 /**
  * Get the string representation of a mime type enum
