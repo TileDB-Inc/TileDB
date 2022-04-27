@@ -328,7 +328,7 @@ struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::NE> {
   }
 };
 
-template <typename T, QueryConditionOp Op>
+template <typename T, QueryConditionOp Op, typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
     const uint64_t stride,
@@ -336,6 +336,7 @@ void QueryCondition::apply_ast_node(
     const bool nullable,
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs,
+    CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
   const std::string& field_name = node->get_field_name();
   const void* condition_value_content =
@@ -405,7 +406,9 @@ void QueryCondition::apply_ast_node(
               cell_size,
               condition_value_content,
               condition_value_size);
-          result_cell_bitmap[starting_index + c] &= (uint8_t)cmp;
+
+          result_cell_bitmap[starting_index + c] = combination_op(
+              result_cell_bitmap[starting_index + c], (uint8_t)cmp);
           ++c;
         }
       } else {
@@ -431,7 +434,8 @@ void QueryCondition::apply_ast_node(
               cell_size,
               condition_value_content,
               condition_value_size);
-          result_cell_bitmap[starting_index + c] &= (uint8_t)cmp;
+          result_cell_bitmap[starting_index + c] = combination_op(
+              result_cell_bitmap[starting_index + c], (uint8_t)cmp);
           ++c;
         }
       }
@@ -440,7 +444,7 @@ void QueryCondition::apply_ast_node(
   }
 }
 
-template <typename T>
+template <typename T, typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
     const uint64_t stride,
@@ -448,66 +452,73 @@ void QueryCondition::apply_ast_node(
     const bool nullable,
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs,
+    CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
   switch (node->get_op()) {
     case QueryConditionOp::LT:
-      apply_ast_node<T, QueryConditionOp::LT>(
+      apply_ast_node<T, QueryConditionOp::LT, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
       break;
     case QueryConditionOp::LE:
-      apply_ast_node<T, QueryConditionOp::LE>(
+      apply_ast_node<T, QueryConditionOp::LE, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
       break;
     case QueryConditionOp::GT:
-      apply_ast_node<T, QueryConditionOp::GT>(
+      apply_ast_node<T, QueryConditionOp::GT, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
       break;
     case QueryConditionOp::GE:
-      apply_ast_node<T, QueryConditionOp::GE>(
+      apply_ast_node<T, QueryConditionOp::GE, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
       break;
     case QueryConditionOp::EQ:
-      apply_ast_node<T, QueryConditionOp::EQ>(
+      apply_ast_node<T, QueryConditionOp::EQ, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
       break;
     case QueryConditionOp::NE:
-      apply_ast_node<T, QueryConditionOp::NE>(
+      apply_ast_node<T, QueryConditionOp::NE, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
       break;
     default:
@@ -519,11 +530,13 @@ void QueryCondition::apply_ast_node(
   return;
 }
 
+template <typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
     const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
+    CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
   const auto attribute = array_schema.attribute(node->get_field_name());
   if (!attribute) {
@@ -537,133 +550,146 @@ void QueryCondition::apply_ast_node(
   const bool nullable = attribute->nullable();
   switch (attribute->type()) {
     case Datatype::INT8: {
-      apply_ast_node<int8_t>(
+      apply_ast_node<int8_t, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
     } break;
     case Datatype::UINT8: {
-      apply_ast_node<uint8_t>(
+      apply_ast_node<uint8_t, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
     } break;
     case Datatype::INT16: {
-      apply_ast_node<int16_t>(
+      apply_ast_node<int16_t, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
     } break;
     case Datatype::UINT16: {
-      apply_ast_node<uint16_t>(
+      apply_ast_node<uint16_t, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
     } break;
     case Datatype::INT32: {
-      apply_ast_node<int32_t>(
+      apply_ast_node<int32_t, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
     } break;
     case Datatype::UINT32: {
-      apply_ast_node<uint32_t>(
+      apply_ast_node<uint32_t, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
     } break;
     case Datatype::INT64: {
-      apply_ast_node<int64_t>(
+      apply_ast_node<int64_t, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
     } break;
     case Datatype::UINT64: {
-      apply_ast_node<uint64_t>(
+      apply_ast_node<uint64_t, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
     } break;
     case Datatype::FLOAT32: {
-      apply_ast_node<float>(
+      apply_ast_node<float, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
     } break;
     case Datatype::FLOAT64: {
-      apply_ast_node<double>(
+      apply_ast_node<double, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
     } break;
     case Datatype::STRING_ASCII: {
-      apply_ast_node<char*>(
+      apply_ast_node<char*, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
     } break;
     case Datatype::CHAR: {
       if (var_size) {
-        apply_ast_node<char*>(
+        apply_ast_node<char*, CombinationOp>(
             node,
             stride,
             var_size,
             nullable,
             fill_value,
             result_cell_slabs,
+            combination_op,
             result_cell_bitmap);
       } else {
-        apply_ast_node<char>(
+        apply_ast_node<char, CombinationOp>(
             node,
             stride,
             var_size,
             nullable,
             fill_value,
             result_cell_slabs,
+            combination_op,
             result_cell_bitmap);
       }
     } break;
@@ -680,13 +706,14 @@ void QueryCondition::apply_ast_node(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS: {
-      apply_ast_node<int64_t>(
+      apply_ast_node<int64_t, CombinationOp>(
           node,
           stride,
           var_size,
           nullable,
           fill_value,
           result_cell_slabs,
+          combination_op,
           result_cell_bitmap);
     } break;
     case Datatype::ANY:
@@ -707,29 +734,35 @@ void QueryCondition::apply_ast_node(
   return;
 }
 
+template <typename CombinationOp>
 void QueryCondition::apply_tree(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
+    CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
-  // Case on the type of the tree node.
   if (!node->is_expr()) {
-    // In the simple value node case, run the value evaluator function and
-    // return the result back.
-    apply_ast_node(
-        node, array_schema, stride, result_cell_slabs, result_cell_bitmap);
-  } else {
-    // For each child, declare a new result buffer, combine it all into the
-    // other one based on the combination op.
-    const auto& combination_op = node->get_combination_op();
+    throw std::logic_error("Argument node should be an expression node.");
+  }
+  const uint8_t fill_value =
+      node->get_combination_op() == QueryConditionCombinationOp::AND ? 1 : 0;
+  std::vector<uint8_t> combination_op_bitmap(
+      result_cell_bitmap.size(), fill_value);
 
-    std::vector<uint8_t> combination_op_bitmap(result_cell_bitmap.size(), 1);
-    if (combination_op == QueryConditionCombinationOp::OR) {
-      std::fill(combination_op_bitmap.begin(), combination_op_bitmap.end(), 0);
-    }
+  for (const auto& child : node->get_children()) {
+    if (!child->is_expr()) {
+      apply_ast_node<CombinationOp>(
+          child,
+          array_schema,
+          stride,
+          result_cell_slabs,
+          combination_op,
+          combination_op_bitmap);
+    } else {
+      // For each child expression node, declare a new result buffer, combine
+      // it all into the other one based on the combination op.
 
-    for (const auto& child : node->get_children()) {
       std::vector<uint8_t> child_result_cell_bitmap(
           result_cell_bitmap.size(), 1);
       apply_tree(
@@ -739,30 +772,50 @@ void QueryCondition::apply_tree(
           result_cell_slabs,
           child_result_cell_bitmap);
 
-      switch (combination_op) {
-        case QueryConditionCombinationOp::AND: {
-          for (size_t c = 0; c < result_cell_bitmap.size(); ++c) {
-            combination_op_bitmap[c] *= child_result_cell_bitmap[c];
-          }
-        } break;
-        case QueryConditionCombinationOp::OR: {
-          for (size_t c = 0; c < result_cell_bitmap.size(); ++c) {
-            combination_op_bitmap[c] |= child_result_cell_bitmap[c];
-          }
-        } break;
-        case QueryConditionCombinationOp::NOT: {
-          throw std::runtime_error(
-              "Query condition NOT operator is not currently supported.");
-        }
-        default: {
-          throw std::logic_error(
-              "Invalid combination operator when applying query condition.");
-        }
+      for (size_t c = 0; c < result_cell_bitmap.size(); ++c) {
+        combination_op_bitmap[c] = combination_op(
+            combination_op_bitmap[c], child_result_cell_bitmap[c]);
       }
     }
+  }
 
-    for (size_t c = 0; c < result_cell_bitmap.size(); ++c) {
-      result_cell_bitmap[c] *= combination_op_bitmap[c];
+  for (size_t c = 0; c < result_cell_bitmap.size(); ++c) {
+    result_cell_bitmap[c] *= combination_op_bitmap[c];
+  }
+}
+
+void QueryCondition::apply_tree(
+    const tdb_unique_ptr<ASTNode>& node,
+    const ArraySchema& array_schema,
+    uint64_t stride,
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    std::vector<uint8_t>& result_cell_bitmap) const {
+  switch (node->get_combination_op()) {
+    case QueryConditionCombinationOp::AND: {
+      apply_tree<std::logical_and<uint8_t>>(
+          node,
+          array_schema,
+          stride,
+          result_cell_slabs,
+          std::logical_and<uint8_t>(),
+          result_cell_bitmap);
+    } break;
+    case QueryConditionCombinationOp::OR: {
+      apply_tree<std::logical_or<uint8_t>>(
+          node,
+          array_schema,
+          stride,
+          result_cell_slabs,
+          std::logical_or<uint8_t>(),
+          result_cell_bitmap);
+    } break;
+    case QueryConditionCombinationOp::NOT: {
+      throw std::runtime_error(
+          "Query condition NOT operator is not currently supported.");
+    }
+    default: {
+      throw std::logic_error(
+          "Invalid combination operator when applying query condition.");
     }
   }
 }
@@ -781,8 +834,18 @@ Status QueryCondition::apply(
   }
 
   std::vector<uint8_t> result_cell_bitmap(total_lengths, 1);
-  apply_tree(
-      tree_, array_schema, stride, result_cell_slabs, result_cell_bitmap);
+  if (!tree_->is_expr()) {
+    apply_ast_node<std::logical_and<uint8_t>>(
+        tree_,
+        array_schema,
+        stride,
+        result_cell_slabs,
+        std::logical_and<uint8_t>(),
+        result_cell_bitmap);
+  } else {
+    apply_tree(
+        tree_, array_schema, stride, result_cell_slabs, result_cell_bitmap);
+  }
 
   std::vector<ResultCellSlab> ret;
   uint64_t starting_index = 0;
@@ -810,7 +873,7 @@ Status QueryCondition::apply(
   return Status::Ok();
 }
 
-template <typename T, QueryConditionOp Op>
+template <typename T, QueryConditionOp Op, typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
     ResultTile* result_tile,
@@ -818,6 +881,7 @@ void QueryCondition::apply_ast_node_dense(
     const uint64_t src_cell,
     const uint64_t stride,
     const bool var_size,
+    CombinationOp combination_op,
     span<uint8_t>& result_buffer) const {
   const std::string& field_name = node->get_field_name();
   const void* condition_value_content =
@@ -863,7 +927,7 @@ void QueryCondition::apply_ast_node_dense(
             condition_value_size);
 
         // Set the value.
-        result_buffer[c] &= (uint8_t)cmp;
+        result_buffer[c] = combination_op(result_buffer[c], (uint8_t)cmp);
       }
     }
   } else {
@@ -885,66 +949,107 @@ void QueryCondition::apply_ast_node_dense(
           cell_value, cell_size, condition_value_content, condition_value_size);
 
       // Set the value.
-      result_buffer[c] &= (uint8_t)cmp;
+      result_buffer[c] = combination_op(result_buffer[c], (uint8_t)cmp);
     }
   }
 }
 
-template <typename T>
-Status QueryCondition::apply_ast_node_dense(
+template <typename T, typename CombinationOp>
+void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
     const bool var_size,
+    CombinationOp combination_op,
     span<uint8_t>& result_buffer) const {
   switch (node->get_op()) {
     case QueryConditionOp::LT:
-      apply_ast_node_dense<T, QueryConditionOp::LT>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      apply_ast_node_dense<T, QueryConditionOp::LT, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
       break;
     case QueryConditionOp::LE:
-      apply_ast_node_dense<T, QueryConditionOp::LE>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      apply_ast_node_dense<T, QueryConditionOp::LE, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
       break;
     case QueryConditionOp::GT:
-      apply_ast_node_dense<T, QueryConditionOp::GT>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      apply_ast_node_dense<T, QueryConditionOp::GT, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
       break;
     case QueryConditionOp::GE:
-      apply_ast_node_dense<T, QueryConditionOp::GE>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      apply_ast_node_dense<T, QueryConditionOp::GE, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
       break;
     case QueryConditionOp::EQ:
-      apply_ast_node_dense<T, QueryConditionOp::EQ>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      apply_ast_node_dense<T, QueryConditionOp::EQ, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
       break;
     case QueryConditionOp::NE:
-      apply_ast_node_dense<T, QueryConditionOp::NE>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      apply_ast_node_dense<T, QueryConditionOp::NE, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
       break;
     default:
-      return Status_QueryConditionError(
-          "Cannot perform query comparison; Unknown query "
-          "condition operator");
+      throw std::runtime_error(
+          "Cannot perform query comparison; Unknown query condition operator");
   }
-
-  return Status::Ok();
 }
 
-Status QueryCondition::apply_ast_node_dense(
+template <typename CombinationOp>
+void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
+    CombinationOp combination_op,
     span<uint8_t>& result_buffer) const {
   const auto attribute = array_schema.attribute(node->get_field_name());
   if (!attribute) {
-    return Status_QueryConditionError(
-        "Unknown attribute " + node->get_field_name());
+    throw std::runtime_error("Unknown attribute " + node->get_field_name());
   }
 
   const bool var_size = attribute->var_size();
@@ -968,7 +1073,7 @@ Status QueryCondition::apply_ast_node_dense(
           result_buffer[c] *= buffer_validity[start + c * stride] == 0;
         }
       }
-      return Status::Ok();
+      return;
     } else {
       // Turn off bitmap values for null cells.
       for (uint64_t c = 0; c < result_buffer.size(); ++c) {
@@ -979,51 +1084,136 @@ Status QueryCondition::apply_ast_node_dense(
 
   switch (attribute->type()) {
     case Datatype::INT8:
-      return apply_ast_node_dense<int8_t>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      return apply_ast_node_dense<int8_t, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
     case Datatype::UINT8:
-      return apply_ast_node_dense<uint8_t>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      return apply_ast_node_dense<uint8_t, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
     case Datatype::INT16:
-      return apply_ast_node_dense<int16_t>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      return apply_ast_node_dense<int16_t, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
     case Datatype::UINT16:
-      return apply_ast_node_dense<uint16_t>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      return apply_ast_node_dense<uint16_t, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
     case Datatype::INT32:
-      return apply_ast_node_dense<int32_t>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      return apply_ast_node_dense<int32_t, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
     case Datatype::UINT32:
-      return apply_ast_node_dense<uint32_t>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      return apply_ast_node_dense<uint32_t, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
     case Datatype::INT64:
-      return apply_ast_node_dense<int64_t>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      return apply_ast_node_dense<int64_t, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
     case Datatype::UINT64:
-      return apply_ast_node_dense<uint64_t>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      return apply_ast_node_dense<uint64_t, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
     case Datatype::FLOAT32:
-      return apply_ast_node_dense<float>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      return apply_ast_node_dense<float, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
     case Datatype::FLOAT64:
-      return apply_ast_node_dense<double>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      return apply_ast_node_dense<double, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
     case Datatype::STRING_ASCII:
-      return apply_ast_node_dense<char*>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      return apply_ast_node_dense<char*, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
     case Datatype::CHAR:
       if (var_size) {
-        return apply_ast_node_dense<char*>(
+        return apply_ast_node_dense<char*, CombinationOp>(
             node,
             result_tile,
             start,
             src_cell,
             stride,
             var_size,
+            combination_op,
             result_buffer);
       }
-      return apply_ast_node_dense<char>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      return apply_ast_node_dense<char, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -1037,8 +1227,15 @@ Status QueryCondition::apply_ast_node_dense(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
-      return apply_ast_node_dense<int64_t>(
-          node, result_tile, start, src_cell, stride, var_size, result_buffer);
+      return apply_ast_node_dense<int64_t, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          combination_op,
+          result_buffer);
     case Datatype::ANY:
     case Datatype::BLOB:
     case Datatype::STRING_UTF8:
@@ -1047,15 +1244,14 @@ Status QueryCondition::apply_ast_node_dense(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
-      return Status_QueryConditionError(
-          "Cannot perform query comparison; Unsupported query "
-          "conditional type on " +
+      throw std::runtime_error(
+          "Cannot perform query comparison; Unsupported query conditional type "
+          "on " +
           node->get_field_name());
   }
-
-  return Status::Ok();
 }
 
+template <typename CombinationOp>
 void QueryCondition::apply_tree_dense(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
@@ -1063,37 +1259,32 @@ void QueryCondition::apply_tree_dense(
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
+    CombinationOp combination_op,
     span<uint8_t>& result_buffer) const {
-  // Case on the type of the tree node.
   if (!node->is_expr()) {
-    // In the simple value node case, run the value evaluator function and
-    // return the result back.
-    Status s = apply_ast_node_dense(
-        node,
-        array_schema,
-        result_tile,
-        start,
-        src_cell,
-        stride,
-        result_buffer);
-    if (!s.ok()) {
-      throw std::runtime_error(
-          "apply_tree_dense: apply_ast_node_dense failed.");
-    }
-  } else {
-    // For each child, declare a new result buffer, combine it all into the
-    // other one based on the combination op.
-    const QueryConditionCombinationOp& combination_op =
-        node->get_combination_op();
-    std::vector<uint8_t> combination_result_buffer(result_buffer.size(), 1);
-    if (combination_op == QueryConditionCombinationOp::OR) {
-      std::fill(
-          combination_result_buffer.begin(),
-          combination_result_buffer.end(),
-          0);
-    }
+    throw std::logic_error("Argument node should be an expression node.");
+  }
 
-    for (const auto& child : node->get_children()) {
+  const uint8_t fill_value =
+      node->get_combination_op() == QueryConditionCombinationOp::AND ? 1 : 0;
+  std::vector<uint8_t> combination_result_vec(result_buffer.size(), fill_value);
+  span<uint8_t> combination_result_buffer(
+      combination_result_vec.data(), combination_result_vec.size());
+
+  for (const auto& child : node->get_children()) {
+    if (!child->is_expr()) {
+      apply_ast_node_dense(
+          child,
+          array_schema,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          combination_op,
+          combination_result_buffer);
+    } else {
+      // For each child expression node, declare a new result buffer, combine
+      // it all into the other one based on the combination op.
       std::vector<uint8_t> child_result_vector(result_buffer.size(), 1);
       span<uint8_t> child_result_buffer(
           child_result_vector.data(), result_buffer.size());
@@ -1106,33 +1297,56 @@ void QueryCondition::apply_tree_dense(
           stride,
           child_result_buffer);
 
-      switch (combination_op) {
-        // Note that a bitwise AND operator is used to combine
-        // the accumulator result buffer and child result buffer in the AND
-        // combination op case, and bitwise OR in the OR combination op case.
-        case QueryConditionCombinationOp::AND: {
-          for (uint64_t c = 0; c < result_buffer.size(); ++c) {
-            combination_result_buffer[c] &= child_result_buffer[c];
-          }
-        } break;
-        case QueryConditionCombinationOp::OR: {
-          for (uint64_t c = 0; c < result_buffer.size(); ++c) {
-            combination_result_buffer[c] |= child_result_buffer[c];
-          }
-        } break;
-        case QueryConditionCombinationOp::NOT: {
-          throw std::runtime_error(
-              "Query condition NOT operator is not currently supported.");
-        } break;
-        default: {
-          throw std::logic_error(
-              "Invalid combination operator when applying query condition.");
-        }
+      for (size_t c = 0; c < result_buffer.size(); ++c) {
+        combination_result_buffer[c] = combination_op(
+            combination_result_buffer[c], child_result_vector[c]);
       }
     }
+  }
 
-    for (uint64_t c = 0; c < result_buffer.size(); ++c) {
-      result_buffer[c] &= combination_result_buffer[c];
+  for (uint64_t c = 0; c < result_buffer.size(); ++c) {
+    result_buffer[c] &= combination_result_buffer[c];
+  }
+}
+
+void QueryCondition::apply_tree_dense(
+    const tdb_unique_ptr<ASTNode>& node,
+    const ArraySchema& array_schema,
+    ResultTile* result_tile,
+    const uint64_t start,
+    const uint64_t src_cell,
+    const uint64_t stride,
+    span<uint8_t>& result_buffer) const {
+  switch (node->get_combination_op()) {
+    case QueryConditionCombinationOp::AND: {
+      apply_tree_dense(
+          node,
+          array_schema,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          std::logical_and<uint8_t>(),
+          result_buffer);
+    } break;
+    case QueryConditionCombinationOp::OR: {
+      apply_tree_dense(
+          node,
+          array_schema,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          std::logical_or<uint8_t>(),
+          result_buffer);
+    } break;
+    case QueryConditionCombinationOp::NOT: {
+      throw std::runtime_error(
+          "Query condition NOT operator is not currently supported.");
+    } break;
+    default: {
+      throw std::logic_error(
+          "Invalid combination operator when applying query condition.");
     }
   }
 }
@@ -1147,8 +1361,20 @@ Status QueryCondition::apply_dense(
     uint8_t* result_buffer) {
   // Iterate through the tree.
   span<uint8_t> result_span(result_buffer + start, length);
-  apply_tree_dense(
-      tree_, array_schema, result_tile, start, src_cell, stride, result_span);
+  if (!tree_->is_expr()) {
+    apply_ast_node_dense<std::logical_and<uint8_t>>(
+        tree_,
+        array_schema,
+        result_tile,
+        start,
+        src_cell,
+        stride,
+        std::logical_and<uint8_t>(),
+        result_span);
+  } else {
+    apply_tree_dense(
+        tree_, array_schema, result_tile, start, src_cell, stride, result_span);
+  }
   return Status::Ok();
 }
 
@@ -1530,8 +1756,10 @@ void QueryCondition::apply_tree_sparse(
     ResultTile& result_tile,
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
-  // For each child, declare a new result buffer, combine it all into the
-  // other one based on the combination op.
+  if (!node->is_expr()) {
+    throw std::logic_error("Argument node should be an expression node.");
+  }
+
   const QueryConditionCombinationOp& c_op = node->get_combination_op();
   const uint8_t fill_value = c_op == QueryConditionCombinationOp::AND ? 1 : 0;
   std::vector<BitmapType> combination_op_bitmap(
@@ -1546,6 +1774,8 @@ void QueryCondition::apply_tree_sparse(
           combination_op,
           combination_op_bitmap);
     } else {
+      // For each child expression node, declare a new result buffer, combine
+      // it all into the other one based on the combination op.
       std::vector<BitmapType> child_result_bitmap(result_bitmap.size(), 1);
       apply_tree_sparse<BitmapType>(
           child, array_schema, result_tile, child_result_bitmap);
