@@ -5,11 +5,17 @@ on:
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
+      - 'doc/source/conf.py'
+      # We specifically check formatting for the tiledb_version.h
+      # - 'tiledb/sm/c_api/tiledb_version.h'
   pull_request:
     paths-ignore:
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
+      - 'doc/source/conf.py'
+      # We specifically check formatting for the tiledb_version.h
+      # - 'tiledb/sm/c_api/tiledb_version.h'
 
 jobs:
   build:
