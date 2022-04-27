@@ -60,6 +60,27 @@ target_link_libraries(
     tdb_gzip_embedded_data PUBLIC 
     filter # OBJECTS library
     )
+    
+#
+# link test for some webp routines
+#
+find_package(webp_ep REQUIRED)
+add_executable(link_webp_test1)
+target_link_libraries(link_webp_test1 PRIVATE webp)
+target_sources(
+    link_webp_test1 
+    PRIVATE
+    test/link_webp_test1.cc
+    )
+message(STATUS "compressors/cmakelists.txt, TILEDB_EXTERNALS_INCLUDE_DIRS is ${TILEDB_EXTERNALS_INCLUDE_DIRS}")
+message(STATUS "compressors/cmakelists.txt, CMAKE_BINARY_DIR is ${CMAKE_BINARY_DIR}")
+target_include_directories(
+    link_webp_test1 
+    PRIVATE
+    # "${TILEDB_EXTERNALS_INCLUDE_DIRS}"
+    "${CMAKE_BINARY_DIR}/../externals/install/include"
+
+    )
 
 if (TILEDB_TESTS)
     add_executable(unit_compressors EXCLUDE_FROM_ALL)

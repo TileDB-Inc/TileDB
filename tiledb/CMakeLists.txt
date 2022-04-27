@@ -570,6 +570,7 @@ find_package(Spdlog_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
 find_package(Magic_EP REQUIRED)
+find_package(Webp_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
@@ -578,6 +579,8 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Zlib::Zlib
     Zstd::Zstd
     libmagic
+    #webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux
+    webp
 )
 
 # GCC <9 need to link against libc++fs for c++17 filesystem library
@@ -857,6 +860,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
   append_dep_lib(libmagic)
+  append_dep_lib(webp)
 endif()
 
 ############################################################
@@ -1065,6 +1069,7 @@ set(ver_patch ${CMAKE_MATCH_1})
 set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
 
 set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
+string(CONCAT PKGCONF_REQ_PRIV ${PKGCONF_REQ_PRIV} " webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux")
 
 # PKG Config file
 configure_file(
