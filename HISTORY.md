@@ -1,10 +1,18 @@
+# TileDB v2.8.2 Release Notes
+
+## Bug fixes
+
+* Sparse unordered w/ dups reader: fix incomplete reason for cloud reads. [#3104](https://github.com/TileDB-Inc/TileDB/pull/3104)
+
 # TileDB v2.8.1 Release Notes
 
 ## Improvements
+
 * Add golang annotation to capnp spec file [#3089](https://github.com/TileDB-Inc/TileDB/pull/3089)
 * Update group metadata REST request to standardize cap'n proto class usage [#3095](https://github.com/TileDB-Inc/TileDB/pull/3095)
 
 ## Bug fixes
+
 * Sparse Index Reader Fix: Check For Empty Buffer [#3051](https://github.com/TileDB-Inc/TileDB/pull/3051)
 * Reset group metadata only based on end timestamp to ensure its always reset to now [#3091](https://github.com/TileDB-Inc/TileDB/pull/3091)
 
@@ -61,7 +69,6 @@
 * Do not store offsets when RLE is used on string dimensions [#2969](https://github.com/TileDB-Inc/TileDB/pull/2969)
 * Dynamically infer bytesizes for run length and strings for strings RLE compression [#2984](https://github.com/TileDB-Inc/TileDB/pull/2984)
 * Add ability to store (optional) name with group member [#3068](https://github.com/TileDB-Inc/TileDB/pull/3068)
-
 
 ## Bug fixes
 
