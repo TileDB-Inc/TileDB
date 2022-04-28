@@ -337,24 +337,10 @@ add_dependencies(TILEDB_CORE_OBJECTS compressors)
 set(MGC_GZIPPED_BIN_PATH "${CMAKE_CURRENT_BINARY_DIR}/magic_mgc_gzipped.bin")
 set(MGC_GZIPPED_BIN_PATH2 "${CMAKE_CURRENT_BINARY_DIR}/sm/misc/magic_mgc_gzipped.bin")
 
-
-if(WIN32)
-  if(MSVC)
-    set(tdb_gzip_embedded_data_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/${CMAKE_BUILD_TYPE}/tdb_gzip_embedded_data.exe")
-  else()
-    set(tdb_gzip_embedded_data_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/tdb_gzip_embedded_data.exe")
-  endif()
-else()
-  set(tdb_gzip_embedded_data_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/tdb_gzip_embedded_data")
-endif()
-
-set(MAGIC_MGC_DICT "${TILEDB_EP_BASE}/install/bin/magic.mgc")
-message(STATUS "MAGIC_MGC_DICT is ${MAGIC_MGC_DICT}")
-
 add_custom_command(
   OUTPUT "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/mgc_gzipped.bin
-  DEPENDS "${MAGIC_MGC_DICT}"
-  COMMAND "${tdb_gzip_embedded_data_EXECUTABLE}" < "${MAGIC_MGC_DICT}" "${MGC_GZIPPED_BIN_PATH}"
+  DEPENDS "${libmagic_DICTIONARY}"
+  COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_PATH}"
   # also put it where unit_mgc_dict build can find it
   COMMAND ${CMAKE_COMMAND} -E copy "${MGC_GZIPPED_BIN_PATH}" "${MGC_GZIPPED_BIN_PATH2}"
 )
