@@ -914,18 +914,20 @@ TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
  * tiledb_array_schema_t* schema;
  * tiledb_filestore_schema_create(ctx, path_to_file, &schema);
  * tiledb_array_create(ctx, path_to_array, schema);
- * tiledb_filestore_uri_import(ctx, path_to_array, path_to_file);
+ * tiledb_filestore_uri_import(ctx, path_to_array, path_to_file, MIME_NONE);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param uri The array URI.
- * @param uri The file URI.
+ * @param filestore_array_uri The array URI.
+ * @param file_uri The file URI.
+ * @param mime_type The mime type of the file
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
     tiledb_ctx_t* ctx,
     const char* filestore_array_uri,
-    const char* file_uri) TILEDB_NOEXCEPT;
+    const char* file_uri,
+    tiledb_mime_type_t mime_type) TILEDB_NOEXCEPT;
 
 /**
  * Exports a filestore array into a bare file
@@ -953,13 +955,14 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
  * tiledb_array_schema_t* schema;
  * tiledb_filestore_schema_create(ctx, NULL, &schema);
  * tiledb_array_create(ctx, path_to_array, schema);
- * tiledb_filestore_buffer_import(ctx, path_to_array, buf, size);
+ * tiledb_filestore_buffer_import(ctx, path_to_array, buf, size, MIME_NONE);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param uri The array URI.
  * @param buf The input buffer
  * @param size Number of bytes to be imported
+ * @param mime_type The mime type of the data
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(

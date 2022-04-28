@@ -137,7 +137,10 @@ TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
 TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
     tiledb_ctx_t* ctx,
     const char* filestore_array_uri,
-    const char* file_uri) TILEDB_NOEXCEPT {
+    const char* file_uri,
+    tiledb_mime_type_t mime_type) TILEDB_NOEXCEPT {
+  (void)mime_type;  // Unused
+
   if (sanity_check(ctx) == TILEDB_ERR || !filestore_array_uri || !file_uri) {
     return TILEDB_ERR;
   }
@@ -157,13 +160,13 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
       context, std::string(filestore_array_uri), TILEDB_WRITE, time_now);
 
   // Detect mimetype and encoding with libmagic
-  std::string mime_type = "";
+  std::string mime = "";
   std::string mime_encoding = "";
   uint64_t size = std::min(file_size, 1024ULL);
   std::vector<char> header(size);
   auto st = read_file_header(vfs, file_uri, header);
   if (st.ok()) {
-    mime_type = libmagic_get_mime(header.data(), header.size());
+    mime = libmagic_get_mime(header.data(), header.size());
     mime_encoding = libmagic_get_mime_encoding(header.data(), header.size());
   } else {
     LOG_STATUS(Status_Error(
@@ -185,8 +188,8 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_mime_type_key,
       TILEDB_STRING_ASCII,
-      mime_type.size(),
-      mime_type.c_str());
+      mime.size(),
+      mime.c_str());
 
   // Write the data in batches using the global order writer
   VFS::filebuf fb(vfs);
@@ -321,8 +324,13 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
 }
 
 TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
-    tiledb_ctx_t* ctx, const char* filestore_array_uri, void* buf, size_t size)
-    TILEDB_NOEXCEPT {
+    tiledb_ctx_t* ctx,
+    const char* filestore_array_uri,
+    void* buf,
+    size_t size,
+    tiledb_mime_type_t mime_type) TILEDB_NOEXCEPT {
+  (void)mime_type;  // Unused
+
   if (sanity_check(ctx) == TILEDB_ERR || !filestore_array_uri || !buf) {
     return TILEDB_ERR;
   }
@@ -340,7 +348,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
 
   // Detect mimetype and encoding with libmagic
   uint64_t s = std::min(size, 1024UL);
-  std::string mime_type = libmagic_get_mime(buf, s);
+  std::string mime = libmagic_get_mime(buf, s);
   std::string mime_encoding = libmagic_get_mime_encoding(buf, s);
 
   // We need to dump all the relevant metadata at this point so that
@@ -358,8 +366,8 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_mime_type_key,
       TILEDB_STRING_ASCII,
-      mime_type.size(),
-      mime_type.c_str());
+      mime.size(),
+      mime.c_str());
 
   Query query(context, array);
   query.set_layout(TILEDB_ROW_MAJOR);
@@ -519,9 +527,10 @@ TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
 TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
     tiledb_ctx_t* ctx,
     const char* filestore_array_uri,
-    const char* file_uri) TILEDB_NOEXCEPT {
+    const char* file_uri,
+    tiledb_mime_type_t mime_type) TILEDB_NOEXCEPT {
   return api_entry<detail::tiledb_filestore_uri_import>(
-      ctx, filestore_array_uri, file_uri);
+      ctx, filestore_array_uri, file_uri, mime_type);
 }
 
 TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
@@ -533,10 +542,13 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
 }
 
 TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
-    tiledb_ctx_t* ctx, const char* filestore_array_uri, void* buf, size_t size)
-    TILEDB_NOEXCEPT {
+    tiledb_ctx_t* ctx,
+    const char* filestore_array_uri,
+    void* buf,
+    size_t size,
+    tiledb_mime_type_t mime_type) TILEDB_NOEXCEPT {
   return api_entry<detail::tiledb_filestore_buffer_import>(
-      ctx, filestore_array_uri, buf, size);
+      ctx, filestore_array_uri, buf, size, mime_type);
 }
 
 TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
