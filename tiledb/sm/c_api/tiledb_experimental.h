@@ -993,6 +993,28 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
     TILEDB_NOEXCEPT;
 
 /**
+ * Get the uncompressed size of a filestore array
+ * **Example:**
+ *
+ * @code{.c}
+ * size_t size;
+ * tiledb_filestore_size(ctx, path_to_array, &size);
+ * void *buf = malloc(size);
+ * tiledb_filestore_buffer_export(ctx, path_to_array, buf, size);
+ * free(buf);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri The array URI.
+ * @param size The returned uncompressed size of the filestore array
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_filestore_size(
+    tiledb_ctx_t* ctx,
+    const char* filestore_array_uri,
+    size_t* size) TILEDB_NOEXCEPT;
+
+/**
  * Get the string representation of a mime type enum
  *
  * @param mime_type The mime enum

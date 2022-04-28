@@ -426,6 +426,30 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
   return TILEDB_OK;
 }
 
+TILEDB_EXPORT int32_t tiledb_filestore_size(
+    tiledb_ctx_t* ctx,
+    const char* filestore_array_uri,
+    size_t* size) TILEDB_NOEXCEPT {
+  if (sanity_check(ctx) == TILEDB_ERR || !filestore_array_uri || !size) {
+    return TILEDB_ERR;
+  }
+
+  Context context(ctx, false);
+  Array array(context, std::string(filestore_array_uri), TILEDB_READ);
+
+  tiledb_datatype_t dtype;
+  uint32_t num;
+  const void* file_size;
+  array.get_metadata(
+      tiledb::sm::constants::filestore_metadata_size_key,
+      &dtype,
+      &num,
+      &file_size);
+  *size = *static_cast<const uint64_t*>(file_size);
+
+  return TILEDB_OK;
+}
+
 TILEDB_EXPORT int32_t tiledb_mime_type_to_str(
     tiledb_mime_type_t mime_type, const char** str) TILEDB_NOEXCEPT {
   const auto& strval =
@@ -556,6 +580,14 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
     TILEDB_NOEXCEPT {
   return api_entry<detail::tiledb_filestore_buffer_export>(
       ctx, filestore_array_uri, buf, size);
+}
+
+TILEDB_EXPORT int32_t tiledb_filestore_size(
+    tiledb_ctx_t* ctx,
+    const char* filestore_array_uri,
+    size_t* size) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_filestore_size>(
+      ctx, filestore_array_uri, size);
 }
 
 TILEDB_EXPORT int32_t tiledb_mime_type_to_str(
