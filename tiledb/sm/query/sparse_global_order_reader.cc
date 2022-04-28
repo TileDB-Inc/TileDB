@@ -1196,6 +1196,11 @@ uint64_t SparseGlobalOrderReader::compute_var_size_offsets(
     cell_offsets[result_cell_slabs.size()] = total_cells;
     last_rcs.length_ = total_cells - cell_offsets[result_cell_slabs.size() - 1];
 
+    // Remove empty cell slab.
+    if (last_rcs.length_ == 0) {
+      result_cell_slabs.pop_back();
+    }
+
     // Update the buffer size.
     new_var_buffer_size = ((OffType*)query_buffer.buffer_)[total_cells];
 
@@ -1359,7 +1364,7 @@ Status SparseGlobalOrderReader::process_slabs(
     }
   }
 
-  logger_->debug("Done copying tiles");
+  logger_->debug("Done copying tiles, buffers full {0}", buffers_full_);
   return Status::Ok();
 }
 
