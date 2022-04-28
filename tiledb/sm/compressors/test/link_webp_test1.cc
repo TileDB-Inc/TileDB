@@ -28,8 +28,6 @@
 
 //------------------------------------------------------------------------------
 
-// static int verbose = 0;
-
 static void AllocExtraInfo(WebPPicture* const pic) {
   const int mb_w = (pic->width + 15) / 16;
   const int mb_h = (pic->height + 15) / 16;
@@ -102,7 +100,6 @@ int main(int argc, const char* argv[]) {
   int return_value = -1;
   const char *in_file = NULL, *out_file = NULL;
   FILE* out = NULL;
-  // int c;
   int short_output = 0;
   int quiet = 0;
   int blend_alpha = 0;
