@@ -28,6 +28,7 @@
 #   - libmagic_INCLUDE_DIR, directory containing headers
 #   - libmagic_LIBRARIES, the Magic library path
 #   - libmagic_FOUND, whether Magic has been found
+#   - libmagic_DICTIONARY, whether magic.mgc has been found
 #   - The libmagic imported target
 
 # Include some common helper functions.
@@ -63,6 +64,12 @@ if (TILEDB_LIBMAGIC_EP_BUILT)
     PATHS ${LIBMAGIC_PATHS}
     PATH_SUFFIXES lib a
     #${TILEDB_DEPS_NO_DEFAULT_PATH}
+    ${NO_DEFAULT_PATH}
+  )
+
+  find_file(libmagic_DICTIONARY magic.mgc
+    PATHS ${LIBMAGIC_PATHS}
+    PATH_SUFFIXES bin share
     ${NO_DEFAULT_PATH}
   )
 
@@ -111,6 +118,11 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
 
     set(TILEDB_LIBMAGIC_DIR "${TILEDB_EP_INSTALL_PREFIX}")
 
+    find_file(libmagic_DICTIONARY magic.mgc
+      PATHS ${TILEDB_LIBMAGIC_DIR}
+      PATH_SUFFIXES bin share
+      ${NO_DEFAULT_PATH}
+    )
   else()
     message(FATAL_ERROR "Unable to find Magic")
   endif()
