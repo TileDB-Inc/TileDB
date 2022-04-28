@@ -966,8 +966,11 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
-    tiledb_ctx_t* ctx, const char* filestore_array_uri, void* buf, size_t size)
-    TILEDB_NOEXCEPT;
+    tiledb_ctx_t* ctx,
+    const char* filestore_array_uri,
+    void* buf,
+    size_t size,
+    tiledb_mime_type_t mime_type) TILEDB_NOEXCEPT;
 
 /**
  * Dump the content of a filestore array into a buffer
