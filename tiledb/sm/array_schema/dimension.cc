@@ -1142,10 +1142,7 @@ void Dimension::splitting_value<double>(
   assert(unsplittable != nullptr);
 
   auto r_t = (const double*)r.data();
-
-  // Cast `r_t` elements to `long double` to prevent overflow
-  // before dividing by 2.
-  const double sp = r_t[0] + ((long double)r_t[1] - (long double)r_t[0]) / 2;
+  const double sp = r_t[0] + (r_t[1] / 2 - r_t[0] / 2);
 
   v->assign_as<double>(sp);
   *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(double));
