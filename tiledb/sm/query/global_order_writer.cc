@@ -831,7 +831,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
         (*tiles)[1].swap(*last_tile_validity);
       }
       tile_idx += t;
-    } else if (last_tile_cell_idx == 0) {
+    } else if (last_tile_cell_idx != 0) {
       return Status_WriterError(
           "Last tile was not empty when it should have been");
     }
@@ -1047,7 +1047,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
         (*tiles)[2].swap(*last_tile_validity);
       }
       tile_idx += t;
-    } else if (last_tile_cell_idx == 0) {
+    } else if (last_tile_cell_idx != 0) {
       return Status_WriterError(
           "Last tile was not empty when it should have been");
     }
