@@ -2419,6 +2419,10 @@ Status Subarray::precompute_all_ranges_tile_overlap(
         }
 
         for (unsigned d = 0; d < dim_num; d++) {
+          if (is_default_[d]) {
+            continue;
+          }
+
           // Run all ranges in parallel.
           const uint64_t range_num = range_subset_[d].num_ranges();
 
@@ -2448,7 +2452,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
         for (int64_t t = tile_bitmaps[0].size() - 1; t >= min; t--) {
           bool comb = true;
           for (unsigned d = 0; d < dim_num; d++) {
-            comb &= (bool)tile_bitmaps[d][t];
+            comb &= is_default_[d] || (bool)tile_bitmaps[d][t];
           }
 
           if (!comb) {
