@@ -979,18 +979,22 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
  * @code{.c}
  * size_t size = 1024;
  * void *buf = malloc(size);
- * tiledb_filestore_buffer_export(ctx, path_to_array, buf, size);
+ * tiledb_filestore_buffer_export(ctx, path_to_array, 0, buf, size);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param uri The array URI.
+ * @param filestore_array_uri The array URI.
+ * @param offset The offset at which we should start exporting from the array
  * @param buf The buffer that will contain the filestore array content
  * @param size The number of bytes to be exported into the buffer
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
-    tiledb_ctx_t* ctx, const char* filestore_array_uri, void* buf, size_t size)
-    TILEDB_NOEXCEPT;
+    tiledb_ctx_t* ctx,
+    const char* filestore_array_uri,
+    size_t offset,
+    void* buf,
+    size_t size) TILEDB_NOEXCEPT;
 
 /**
  * Get the uncompressed size of a filestore array
@@ -1000,7 +1004,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
  * size_t size;
  * tiledb_filestore_size(ctx, path_to_array, &size);
  * void *buf = malloc(size);
- * tiledb_filestore_buffer_export(ctx, path_to_array, buf, size);
+ * tiledb_filestore_buffer_export(ctx, path_to_array, 0, buf, size);
  * free(buf);
  * @endcode
  *

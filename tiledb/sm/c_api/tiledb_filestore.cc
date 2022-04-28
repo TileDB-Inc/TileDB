@@ -384,8 +384,11 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
 }
 
 TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
-    tiledb_ctx_t* ctx, const char* filestore_array_uri, void* buf, size_t size)
-    TILEDB_NOEXCEPT {
+    tiledb_ctx_t* ctx,
+    const char* filestore_array_uri,
+    size_t offset,
+    void* buf,
+    size_t size) TILEDB_NOEXCEPT {
   if (sanity_check(ctx) == TILEDB_ERR || !filestore_array_uri || !buf) {
     return TILEDB_ERR;
   }
@@ -405,7 +408,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
       &dtype,
       &num,
       &file_size);
-  if (file_size && *static_cast<const uint64_t*>(file_size) < size) {
+  if (file_size && *static_cast<const uint64_t*>(file_size) <= offset + size) {
     auto st =
         Status_Error("The number of bytes requested is bigger than the array");
     LOG_STATUS(st);
@@ -415,7 +418,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
 
   Subarray subarray(context, array);
   subarray.add_range(
-      0, static_cast<uint64_t>(0), static_cast<uint64_t>(size - 1));
+      0, static_cast<uint64_t>(offset), static_cast<uint64_t>(size - 1));
   Query query(context, array);
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_subarray(subarray);
@@ -576,10 +579,13 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
 }
 
 TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
-    tiledb_ctx_t* ctx, const char* filestore_array_uri, void* buf, size_t size)
-    TILEDB_NOEXCEPT {
+    tiledb_ctx_t* ctx,
+    const char* filestore_array_uri,
+    size_t offset,
+    void* buf,
+    size_t size) TILEDB_NOEXCEPT {
   return api_entry<detail::tiledb_filestore_buffer_export>(
-      ctx, filestore_array_uri, buf, size);
+      ctx, filestore_array_uri, offset, buf, size);
 }
 
 TILEDB_EXPORT int32_t tiledb_filestore_size(
