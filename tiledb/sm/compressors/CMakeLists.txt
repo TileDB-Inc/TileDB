@@ -66,7 +66,13 @@ target_link_libraries(
 #
 find_package(webp_ep REQUIRED)
 add_executable(link_webp_test1)
+if (WIN32)
 target_link_libraries(link_webp_test1 PRIVATE webp)
+else() #if (NOT WIN32)
+  # On Linux, must explicitly link -lpthread -ldl in order for static linking
+  # to libzstd or libcurl to work.
+  target_link_libraries(link_webp_test1 webp pthread dl)
+endif()
 target_sources(
     link_webp_test1 
     PRIVATE

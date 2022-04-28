@@ -1,5 +1,5 @@
 // stripped to point of non-useability to demonstrate linkage success
-// based on cwebp.cc from 
+// based on cwebp.cc from
 // https://chromium.googlesource.com/webm/libwebp
 // commit a19a25bb03757d5bb14f8d9755ab39f06d0ae5ef
 // Copyright 2011 Google Inc. All Rights Reserved.
@@ -21,16 +21,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-#include "webp/mux_types.h"
-#include "webp/types.h"
 #include "webp/decode.h"
 #include "webp/encode.h"
+#include "webp/mux_types.h"
+#include "webp/types.h"
 
 //------------------------------------------------------------------------------
 
-static int verbose = 0;
-
+// static int verbose = 0;
 
 static void AllocExtraInfo(WebPPicture* const pic) {
   const int mb_w = (pic->width + 15) / 16;
@@ -44,9 +42,9 @@ static void AllocExtraInfo(WebPPicture* const pic) {
 
 enum {
   METADATA_EXIF = (1 << 0),
-  METADATA_ICC  = (1 << 1),
-  METADATA_XMP  = (1 << 2),
-  METADATA_ALL  = METADATA_EXIF | METADATA_ICC | METADATA_XMP
+  METADATA_ICC = (1 << 1),
+  METADATA_XMP = (1 << 2),
+  METADATA_ALL = METADATA_EXIF | METADATA_ICC | METADATA_XMP
 };
 
 static const int kChunkHeaderSize = 8;
@@ -55,8 +53,7 @@ static const int kTagSize = 4;
 //------------------------------------------------------------------------------
 
 static int ProgressReport(int percent, const WebPPicture* const picture) {
-  fprintf(stderr, "[%s]: %3d %%      \r",
-          (char*)picture->user_data, percent);
+  fprintf(stderr, "[%s]: %3d %%      \r", (char*)picture->user_data, percent);
   return 1;  // all ok
 }
 
@@ -74,36 +71,38 @@ static void HelpShort(void) {
 // Error messages
 
 static const char* const kErrorMessages[VP8_ENC_ERROR_LAST] = {
-  "OK",
-  "OUT_OF_MEMORY: Out of memory allocating objects",
-  "BITSTREAM_OUT_OF_MEMORY: Out of memory re-allocating byte buffer",
-  "NULL_PARAMETER: NULL parameter passed to function",
-  "INVALID_CONFIGURATION: configuration is invalid",
-  "BAD_DIMENSION: Bad picture dimension. Maximum width and height "
-  "allowed is 16383 pixels.",
-  "PARTITION0_OVERFLOW: Partition #0 is too big to fit 512k.\n"
-  "To reduce the size of this partition, try using less segments "
-  "with the -segments option, and eventually reduce the number of "
-  "header bits using -partition_limit. More details are available "
-  "in the manual (`man cwebp`)",
-  "PARTITION_OVERFLOW: Partition is too big to fit 16M",
-  "BAD_WRITE: Picture writer returned an I/O error",
-  "FILE_TOO_BIG: File would be too big to fit in 4G",
-  "USER_ABORT: encoding abort requested by user"
-};
+    "OK",
+    "OUT_OF_MEMORY: Out of memory allocating objects",
+    "BITSTREAM_OUT_OF_MEMORY: Out of memory re-allocating byte buffer",
+    "NULL_PARAMETER: NULL parameter passed to function",
+    "INVALID_CONFIGURATION: configuration is invalid",
+    "BAD_DIMENSION: Bad picture dimension. Maximum width and height "
+    "allowed is 16383 pixels.",
+    "PARTITION0_OVERFLOW: Partition #0 is too big to fit 512k.\n"
+    "To reduce the size of this partition, try using less segments "
+    "with the -segments option, and eventually reduce the number of "
+    "header bits using -partition_limit. More details are available "
+    "in the manual (`man cwebp`)",
+    "PARTITION_OVERFLOW: Partition is too big to fit 16M",
+    "BAD_WRITE: Picture writer returned an I/O error",
+    "FILE_TOO_BIG: File would be too big to fit in 4G",
+    "USER_ABORT: encoding abort requested by user"};
 
 //------------------------------------------------------------------------------
 
-//do outside of function, because...
-//"Use of the warning pragma in the function to change the state of a warning number larger than 4699 only takes effect after the end of the function."
+#ifdef _MSC_VER
+// do outside of function, because...
+//"Use of the warning pragma in the function to change the state of a warning
+// number larger than 4699 only takes effect after the end of the function."
 #pragma warning(disable : 4701)  // 'config', 'picture_no_alpha'
+#endif
 int main(int argc, const char* argv[]) {
   (void)argv;
   (void)argc;
   int return_value = -1;
   const char *in_file = NULL, *out_file = NULL;
   FILE* out = NULL;
-  int c;
+  // int c;
   int short_output = 0;
   int quiet = 0;
   int blend_alpha = 0;
@@ -115,15 +114,14 @@ int main(int argc, const char* argv[]) {
   int show_progress = 0;
   int keep_metadata = 0;
   WebPPicture picture;
-  int print_distortion = -1;        // -1=off, 0=PSNR, 1=SSIM, 2=LSIM
-  WebPPicture original_picture;    // when PSNR or SSIM is requested
+  int print_distortion = -1;     // -1=off, 0=PSNR, 1=SSIM, 2=LSIM
+  WebPPicture original_picture;  // when PSNR or SSIM is requested
   WebPConfig config;
   WebPAuxStats stats;
   WebPMemoryWriter memory_writer;
   int use_memory_writer;
   WebPMemoryWriterInit(&memory_writer);
-  if (!WebPPictureInit(&picture) ||
-      !WebPPictureInit(&original_picture) ||
+  if (!WebPPictureInit(&picture) || !WebPPictureInit(&original_picture) ||
       !WebPConfigInit(&config)) {
     fprintf(stderr, "Error! Version mismatch!\n");
   }
@@ -149,18 +147,23 @@ int main(int argc, const char* argv[]) {
   // warning for such options.
   if (!quiet && config.lossless == 1) {
     if (config.target_size > 0 || config.target_PSNR > 0) {
-      fprintf(stderr, "Encoding for specified size or PSNR is not supported"
-                      " for lossless encoding. Ignoring such option(s)!\n");
+      fprintf(
+          stderr,
+          "Encoding for specified size or PSNR is not supported"
+          " for lossless encoding. Ignoring such option(s)!\n");
     }
     if (config.partition_limit > 0) {
-      fprintf(stderr, "Partition limit option is not required for lossless"
-                      " encoding. Ignoring this option!\n");
+      fprintf(
+          stderr,
+          "Partition limit option is not required for lossless"
+          " encoding. Ignoring this option!\n");
     }
   }
   // If a target size or PSNR was given, but somehow the -pass option was
   // omitted, force a reasonable value.
   if (config.target_size > 0 || config.target_PSNR > 0) {
-    if (config.pass == 1) config.pass = 6;
+    if (config.pass == 1)
+      config.pass = 6;
   }
 
   if (!WebPValidateConfig(&config)) {
@@ -171,9 +174,9 @@ int main(int argc, const char* argv[]) {
   // Read the input. We need to decide if we prefer ARGB or YUVA
   // samples, depending on the expected compression mode (this saves
   // some conversion steps).
-  picture.use_argb = (config.lossless || config.use_sharp_yuv ||
-                      config.preprocessing > 0 ||
-                      crop || (resize_w | resize_h) > 0);
+  picture.use_argb =
+      (config.lossless || config.use_sharp_yuv || config.preprocessing > 0 ||
+       crop || (resize_w | resize_h) > 0);
   picture.progress_hook = (show_progress && !quiet) ? ProgressReport : NULL;
 
   if (blend_alpha) {
@@ -277,8 +280,11 @@ int main(int argc, const char* argv[]) {
   // Compress.
   if (!WebPEncode(&config, &picture)) {
     fprintf(stderr, "Error! Cannot encode picture as WebP\n");
-    fprintf(stderr, "Error code: %d (%s)\n",
-            picture.error_code, kErrorMessages[picture.error_code]);
+    fprintf(
+        stderr,
+        "Error code: %d (%s)\n",
+        picture.error_code,
+        kErrorMessages[picture.error_code]);
     goto Error;
   }
 
@@ -305,11 +311,9 @@ int main(int argc, const char* argv[]) {
     original_picture.stats = NULL;
   }
 
-
-
   return_value = 0;
 
- Error:
+Error:
   WebPMemoryWriterClear(&memory_writer);
   WebPFree(picture.extra_info);
   WebPPictureFree(&picture);
@@ -317,7 +321,7 @@ int main(int argc, const char* argv[]) {
   if (out != NULL && out != stdout) {
     fclose(out);
   }
-  return 0;
- }
+  return return_value;
+}
 
 //------------------------------------------------------------------------------
