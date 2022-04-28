@@ -612,7 +612,7 @@ const std::string mime_tiff_str = "image/tiff";
 const std::string mime_pdf_str = "application/pdf";
 
 /** The default tile extent used in filestore arrays. */
-const size_t filestore_default_tile_extent = 1024;
+const uint64_t filestore_default_tile_extent = 1024;
 
 /** Name of the single dimension used in filestore arrays. */
 const std::string filestore_dimension_name = "position";

@@ -610,7 +610,7 @@ extern const std::string mime_tiff_str;
 extern const std::string mime_pdf_str;
 
 /** The default tile extent used in filestore arrays. */
-extern const size_t filestore_default_tile_extent;
+extern const uint64_t filestore_default_tile_extent;
 
 /** Name of the single dimension used in filestore arrays. */
 extern const std::string filestore_dimension_name;

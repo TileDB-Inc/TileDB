@@ -34,6 +34,8 @@
 // Avoid deprecation warnings for the cpp api
 #define TILEDB_DEPRECATED
 
+#include <algorithm>
+
 #include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/c_api/api_exception_safety.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -48,10 +50,17 @@
 #include "tiledb/sm/cpp_api/subarray.h"
 #include "tiledb/sm/cpp_api/vfs.h"
 #include "tiledb/sm/enums/mime_type.h"
+#include "tiledb/sm/misc/mgc_dict.h"
 
 namespace tiledb::common::detail {
 
-size_t compute_tile_extent_based_on_file_size(size_t file_size);
+// Forward declarations
+uint64_t compute_tile_extent_based_on_file_size(uint64_t file_size);
+std::string libmagic_get_mime(void* data, uint64_t size);
+std::string libmagic_get_mime_encoding(void* data, uint64_t size);
+bool libmagic_file_is_compressed(void* data, uint64_t size);
+Status read_file_header(
+    const VFS& vfs, const char* uri, std::vector<char>& header);
 
 TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
     tiledb_ctx_t* ctx,
@@ -63,20 +72,30 @@ TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
   }
 
   Context context(ctx, false);
-  size_t tile_extent = tiledb::sm::constants::filestore_default_tile_extent;
+  uint64_t tile_extent = tiledb::sm::constants::filestore_default_tile_extent;
 
-  // The user provided a uri, let's examine the file and get some insights
   bool is_compressed_libmagic = true;
   if (uri) {
+    // The user provided a uri, let's examine the file and get some insights
     // Get the file size, calculate a reasonable tile extent
     VFS vfs(context);
-    size_t file_size = vfs.file_size(std::string(uri));
+    uint64_t file_size = vfs.file_size(std::string(uri));
     if (file_size) {
       tile_extent = compute_tile_extent_based_on_file_size(file_size);
     }
 
-    // TODO: detect compression is_compressed_libmagic=false/true
-    is_compressed_libmagic = true;
+    // Detect if the file is compressed or not
+    uint64_t size = std::min(file_size, 1024ULL);
+    std::vector<char> header(size);
+    auto st = read_file_header(vfs, uri, header);
+    // Don't fail if compression cannot be detected, log a message
+    // and default to uncompressed array
+    if (st.ok()) {
+      is_compressed_libmagic = libmagic_file_is_compressed(header.data(), size);
+    } else {
+      LOG_STATUS(
+          Status_Error("Compression couldn't be detected - " + st.message()));
+    }
   }
 
   *array_schema = new tiledb_array_schema_t;
@@ -127,22 +146,29 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
 
   // Get the file size
   VFS vfs(context);
-  size_t file_size = vfs.file_size(std::string(file_uri));
+  uint64_t file_size = vfs.file_size(std::string(file_uri));
   if (!file_size) {
     return TILEDB_OK;  // NOOP
   }
 
-  Array array(context, std::string(filestore_array_uri), TILEDB_WRITE);
-
   // Sync up the fragment timestamp and metadata timestamp
   uint64_t time_now = tiledb_timestamp_now_ms();
-  array.set_open_timestamp_start(time_now);
-  array.set_open_timestamp_end(time_now);
-  array.reopen();
+  Array array(
+      context, std::string(filestore_array_uri), TILEDB_WRITE, time_now);
 
-  // TODO: detect mimetype and encoding with libmagic
-  std::string mime_type = "application/pdf";
-  std::string mime_encoding = "us-ascii";
+  // Detect mimetype and encoding with libmagic
+  std::string mime_type = "";
+  std::string mime_encoding = "";
+  uint64_t size = std::min(file_size, 1024ULL);
+  std::vector<char> header(size);
+  auto st = read_file_header(vfs, file_uri, header);
+  if (st.ok()) {
+    mime_type = libmagic_get_mime(header.data(), header.size());
+    mime_encoding = libmagic_get_mime_encoding(header.data(), header.size());
+  } else {
+    LOG_STATUS(Status_Error(
+        "MIME type and encoding couldn't be detected - " + st.message()));
+  }
 
   // We need to dump all the relevant metadata at this point so that
   // clients have all the necessary info when consuming the array
@@ -174,7 +200,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
   }
   std::istream input(&fb);
 
-  size_t tile_extent = compute_tile_extent_based_on_file_size(file_size);
+  uint64_t tile_extent = compute_tile_extent_based_on_file_size(file_size);
   Query query(context, array);
   query.set_layout(TILEDB_GLOBAL_ORDER);
   std::vector<std::byte> buffer(tile_extent);
@@ -306,17 +332,16 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
   }
 
   Context context(ctx, false);
-  Array array(context, std::string(filestore_array_uri), TILEDB_WRITE);
 
   // Sync up the fragment timestamp and metadata timestamp
   uint64_t time_now = tiledb_timestamp_now_ms();
-  array.set_open_timestamp_start(time_now);
-  array.set_open_timestamp_end(time_now);
-  array.reopen();
+  Array array(
+      context, std::string(filestore_array_uri), TILEDB_WRITE, time_now);
 
-  // TODO: detect mimetype and encoding with libmagic
-  std::string mime_type = "application/pdf";
-  std::string mime_encoding = "us-ascii";
+  // Detect mimetype and encoding with libmagic
+  uint64_t s = std::min(size, 1024UL);
+  std::string mime_type = libmagic_get_mime(buf, s);
+  std::string mime_encoding = libmagic_get_mime_encoding(buf, s);
 
   // We need to dump all the relevant metadata at this point so that
   // clients have all the necessary info when consuming the array
@@ -410,16 +435,75 @@ TILEDB_EXPORT int32_t tiledb_mime_type_from_str(
   return TILEDB_OK;
 }
 
-size_t compute_tile_extent_based_on_file_size(size_t file_size) {
-  if (file_size > 1024ULL * 1024ULL * 1024ULL * 10ULL) {  // 10GB
-    return 1024ULL * 1024ULL * 100ULL;                    // 100MB
-  } else if (file_size > 1024ULL * 1024ULL * 100ULL) {    // 100MB
-    return 1024ULL * 1024ULL * 1ULL;                      // 1MB
-  } else if (file_size > 1024ULL * 1024ULL) {             // 1MB
-    return 1024ULL * 256ULL;                              // 256KB
+uint64_t compute_tile_extent_based_on_file_size(uint64_t file_size) {
+  if (file_size > 1024ULL * 1024ULL * 1024ULL) {        // 1GB
+    return 1024ULL * 1024ULL * 100ULL;                  // 100MB
+  } else if (file_size > 1024ULL * 1024ULL * 100ULL) {  // 100MB
+    return 1024ULL * 1024ULL * 1ULL;                    // 1MB
+  } else if (file_size > 1024ULL * 1024ULL) {           // 1MB
+    return 1024ULL * 256ULL;                            // 256KB
   } else {
     return 1024ULL;  // 1KB
   }
+}
+
+std::string libmagic_get_mime(void* data, uint64_t size) {
+  magic_t magic = magic_open(MAGIC_MIME_TYPE);
+  if (tiledb::sm::magic_dict::magic_mgc_embedded_load(magic)) {
+    LOG_STATUS(Status_Error(
+        std::string("Cannot load magic database - ") + magic_error(magic)));
+    magic_close(magic);
+    return "";
+  }
+  auto rv = magic_buffer(magic, data, size);
+  if (!rv) {
+    LOG_STATUS(Status_Error(
+        std::string("Cannot get the mime type - ") + magic_error(magic)));
+    return "";
+  }
+  return rv;
+}
+
+std::string libmagic_get_mime_encoding(void* data, uint64_t size) {
+  magic_t magic = magic_open(MAGIC_MIME_ENCODING);
+  if (tiledb::sm::magic_dict::magic_mgc_embedded_load(magic)) {
+    LOG_STATUS(Status_Error(
+        std::string("Cannot load magic database - ") + magic_error(magic)));
+    magic_close(magic);
+    return "";
+  }
+  auto rv = magic_buffer(magic, data, size);
+  if (!rv) {
+    LOG_STATUS(Status_Error(
+        std::string("Cannot get the mime encoding - ") + magic_error(magic)));
+    return "";
+  }
+  return rv;
+}
+
+bool libmagic_file_is_compressed(void* data, uint64_t size) {
+  magic_t magic = magic_open(MAGIC_MIME_ENCODING | MAGIC_NO_CHECK_COMPRESS);
+  if (tiledb::sm::magic_dict::magic_mgc_embedded_load(magic)) {
+    LOG_STATUS(Status_Error(
+        std::string("cannot load magic database - ") + magic_error(magic)));
+    magic_close(magic);
+    return true;
+  }
+  return strcmp(magic_buffer(magic, data, size), "binary") == 0;
+}
+
+Status read_file_header(
+    const VFS& vfs, const char* uri, std::vector<char>& header) {
+  VFS::filebuf fb(vfs);
+  if (!fb.open(uri, std::ios::in)) {
+    return Status_Error("the file couldn't be opened");
+  }
+  std::istream input(&fb);
+  if (!input.read(header.data(), header.size())) {
+    return Status_Error("the file couldn't be read");
+  }
+  fb.close();
+  return Status::Ok();
 }
 
 }  // namespace tiledb::common::detail
