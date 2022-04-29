@@ -331,9 +331,6 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 )
 
 
-add_dependencies(TILEDB_CORE_OBJECTS tdb_gzip_embedded_data)
-add_dependencies(TILEDB_CORE_OBJECTS compressors)
-
 set(MGC_GZIPPED_BIN_PATH "${CMAKE_CURRENT_BINARY_DIR}/magic_mgc_gzipped.bin")
 set(MGC_GZIPPED_BIN_PATH2 "${CMAKE_CURRENT_BINARY_DIR}/sm/misc/magic_mgc_gzipped.bin")
 

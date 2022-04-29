@@ -67,12 +67,6 @@ if (TILEDB_LIBMAGIC_EP_BUILT)
     ${NO_DEFAULT_PATH}
   )
 
-  find_file(libmagic_DICTIONARY magic.mgc
-    PATHS ${LIBMAGIC_PATHS}
-    PATH_SUFFIXES bin share
-    ${NO_DEFAULT_PATH}
-  )
-
   include(FindPackageHandleStandardArgs)
   FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
     REQUIRED_VARS libmagic_LIBRARIES libmagic_INCLUDE_DIR
@@ -116,17 +110,16 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
       -DTILEDB_LIBMAGIC_EP_BUILT=TRUE
     )
 
-    set(TILEDB_LIBMAGIC_DIR "${TILEDB_EP_INSTALL_PREFIX}")
-
-    find_file(libmagic_DICTIONARY magic.mgc
-      PATHS ${TILEDB_LIBMAGIC_DIR}
-      PATH_SUFFIXES bin share
-      ${NO_DEFAULT_PATH}
-    )
   else()
     message(FATAL_ERROR "Unable to find Magic")
   endif()
 endif()
+
+find_file(libmagic_DICTIONARY magic.mgc
+  PATHS ${LIBMAGIC_PATHS}
+  PATH_SUFFIXES bin share
+  ${NO_DEFAULT_PATH}
+)
 
 if (libmagic_FOUND AND NOT TARGET libmagic)
   message(STATUS "Found Magic, adding imported target: ${libmagic_LIBRARIES}")
