@@ -229,7 +229,12 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
     query.submit();
   }
 
-  if (input.eof()) {
+  // If the end of the file was reached, but less than tile_extent bytes
+  // were read, write the read bytes into the array.
+  // Check input.gcount() to guard against the case when file_size is
+  // a multiple of tile_extent, thus eof gets set but there are no more
+  // bytes to read
+  if (input.eof() && input.gcount() > 0) {
     size_t read_bytes = input.gcount();
     // Initialize the remaining empty cells to 0
     std::memset(buffer.data() + read_bytes, 0, buffer.size() - read_bytes);
@@ -238,7 +243,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
         buffer.data(),
         buffer.size());
     query.submit();
-  } else {
+  } else if (!input.eof()) {
     // Something must have gone wrong whilst reading the file
     auto st = Status_Error("Error whilst reading the file");
     LOG_STATUS(st);
@@ -517,7 +522,7 @@ std::string libmagic_get_mime_encoding(void* data, uint64_t size) {
 }
 
 bool libmagic_file_is_compressed(void* data, uint64_t size) {
-  magic_t magic = magic_open(MAGIC_MIME_ENCODING | MAGIC_NO_CHECK_COMPRESS);
+  magic_t magic = magic_open(MAGIC_MIME_ENCODING);
   if (tiledb::sm::magic_dict::magic_mgc_embedded_load(magic)) {
     LOG_STATUS(Status_Error(
         std::string("cannot load magic database - ") + magic_error(magic)));
