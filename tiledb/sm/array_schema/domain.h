@@ -213,6 +213,8 @@ class Domain {
   NDRange domain() const;
 
   /** Returns the i-th dimensions (nullptr upon error). */
+  const Dimension* dimension_ptr(unsigned int i) const;
+
   shared_ptr<const Dimension> dimension(unsigned int i) const;
 
   /** Returns the dimension given a name (nullptr upon error). */
