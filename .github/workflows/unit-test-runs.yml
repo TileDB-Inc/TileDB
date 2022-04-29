@@ -30,9 +30,8 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-        tp: [ON, OFF]
       fail-fast: false
-    name: Build - ${{ matrix.os }} (${{ matrix.tp }})
+    name: Build - ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
       - name: 'Print env'
@@ -65,8 +64,7 @@ jobs:
             -DTILEDB_AZURE=${TILEDB_AZURE}\
             -DTILEDB_GCS=${TILEDB_GCS} \
             -DTILEDB_S3=${TILEDB_S3} \
-            -DTILEDB_SERIALIZATION=${TILEDB_SERIALIZATION} \
-            -DTILEDB_LEGACY_THREAD_POOL=${{ matrix.tp }}
+            -DTILEDB_SERIALIZATION=${TILEDB_SERIALIZATION}
           make -j4
           # Build all unit tests
           make -C tiledb tests -j4

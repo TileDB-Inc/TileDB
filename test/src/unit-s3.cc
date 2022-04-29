@@ -53,7 +53,7 @@ struct S3Fx {
       tiledb::sm::URI(S3_PREFIX + random_name("tiledb") + "/");
   const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
   tiledb::sm::S3 s3_;
-  ThreadPool thread_pool_;
+  ThreadPool thread_pool_{2};
 
   S3Fx();
   ~S3Fx();
@@ -70,7 +70,6 @@ S3Fx::S3Fx() {
   REQUIRE(config.set("vfs.s3.use_virtual_addressing", "false").ok());
   REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
-  REQUIRE(thread_pool_.init(2).ok());
   REQUIRE(s3_.init(&g_helper_stats, config, &thread_pool_).ok());
 
   // Create bucket
@@ -366,8 +365,6 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use BucketCannedACL", "[s3]") {
   REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
 
-  REQUIRE(thread_pool_.init(2).ok());
-
   // function to try creating bucket with BucketCannedACL indicated
   // by string parameter.
   auto try_with_bucket_canned_acl = [&](const char* bucket_acl_to_try) {
@@ -408,7 +405,6 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
   REQUIRE(config.set("vfs.s3.use_virtual_addressing", "false").ok());
   REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
-  REQUIRE(thread_pool_.init(2).ok());
 
   // function exercising SetACL() for objects
   // using functionality cloned from file management test case.

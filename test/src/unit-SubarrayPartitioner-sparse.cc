@@ -343,8 +343,7 @@ void SubarrayPartitionerSparseFx::test_subarray_partitioner(
   Subarray subarray;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   Config config;
   SubarrayPartitioner subarray_partitioner(
       &config,
@@ -374,8 +373,7 @@ void SubarrayPartitionerSparseFx::test_subarray_partitioner(
   Subarray subarray;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   Config config;
   SubarrayPartitioner subarray_partitioner(
       &config,
@@ -403,8 +401,7 @@ void SubarrayPartitionerSparseFx::test_subarray_partitioner(
   Subarray subarray;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   Config config;
   SubarrayPartitioner subarray_partitioner(
       &config,
@@ -685,8 +682,7 @@ TEST_CASE_METHOD(
 
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   Config config;
   SubarrayPartitioner subarray_partitioner(
       &config,
@@ -2290,8 +2286,7 @@ TEST_CASE_METHOD(
   Range r;
   r.set_str_range("bb", "bb");
   subarray.add_range(0, std::move(r), true);
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   Config config;
   SubarrayPartitioner partitioner(
       &config,
@@ -2564,8 +2559,7 @@ TEST_CASE_METHOD(
   Range r;
   r.set_str_range("cc", "ccd");
   subarray.add_range(0, std::move(r), true);
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   Config config;
   SubarrayPartitioner partitioner(
       &config,

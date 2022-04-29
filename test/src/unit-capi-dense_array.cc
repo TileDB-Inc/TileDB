@@ -676,34 +676,31 @@ void DenseArrayFx::write_dense_array_by_tiles(
     const int64_t domain_size_1,
     const int64_t tile_extent_0,
     const int64_t tile_extent_1) {
-  // Error code
-  int rc;
-
   // Other initializations
-  auto buffer = generate_2D_buffer(domain_size_0, domain_size_1);
-  int64_t cell_num_in_tile = tile_extent_0 * tile_extent_1;
-  auto buffer_a1 = new int[cell_num_in_tile];
+  auto buffer{generate_2D_buffer(domain_size_0, domain_size_1)};
+  int64_t cell_num_in_tile{tile_extent_0 * tile_extent_1};
+  auto buffer_a1{new int[cell_num_in_tile]};
   for (int64_t i = 0; i < cell_num_in_tile; ++i)
     buffer_a1[i] = 0;
-  void* buffers[2];
-  buffers[0] = buffer_a1;
-  uint64_t buffer_sizes[2];
-  int64_t index = 0L;
-  uint64_t buffer_size = 0L;
+  void* buffers[2]{buffer_a1, nullptr};
+
+  uint64_t buffer_sizes[2]{0UL, 0UL};
+  int64_t index{0L};
+  uint64_t buffer_size{0L};
 
   const char* attributes[] = {ATTR_NAME};
 
   // Open array
-  tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  tiledb_array_t* array{nullptr};
+  auto rc{tiledb_array_alloc(ctx_, array_name.c_str(), &array)};
   CHECK(rc == TILEDB_OK);
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
-    tiledb_config_t* cfg;
-    tiledb_error_t* err = nullptr;
+    tiledb_config_t* cfg{nullptr};
+    tiledb_error_t* err{nullptr};
     REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
     REQUIRE(err == nullptr);
-    std::string encryption_type_string =
-        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
+    std::string encryption_type_string{
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type)};
     REQUIRE(
         tiledb_config_set(
             cfg, "sm.encryption_type", encryption_type_string.c_str(), &err) ==
@@ -721,7 +718,7 @@ void DenseArrayFx::write_dense_array_by_tiles(
   CHECK(rc == TILEDB_OK);
 
   // Create query
-  tiledb_query_t* query;
+  tiledb_query_t* query{nullptr};
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
@@ -739,7 +736,7 @@ void DenseArrayFx::write_dense_array_by_tiles(
       int64_t tile_cols = ((j + tile_extent_1) < domain_size_1) ?
                               tile_extent_1 :
                               (domain_size_1 - j);
-      int64_t k = 0, l = 0;
+      int64_t k{0L}, l{0L};
       for (k = 0; k < tile_rows; ++k) {
         for (l = 0; l < tile_cols; ++l) {
           index = uint64_t(k * tile_cols + l);
@@ -747,9 +744,18 @@ void DenseArrayFx::write_dense_array_by_tiles(
         }
       }
       buffer_size = k * l * sizeof(int);
-      buffer_sizes[0] = {buffer_size};
+      buffer_sizes[0] = buffer_size;
 
-      rc = submit_query_wrapper(array_name, query);
+      auto rc{submit_query_wrapper(array_name, query)};
+
+      const char* msg = "unset";
+      tiledb_error_t* err{nullptr};
+      tiledb_ctx_get_last_error(ctx_, &err);
+      if (err != nullptr) {
+        tiledb_error_message(err, &msg);
+      }
+      INFO(msg);
+
       REQUIRE(rc == TILEDB_OK);
     }
   }

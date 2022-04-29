@@ -55,10 +55,10 @@ namespace cli {
 using namespace tiledb::sm;
 
 /** The thread pool for compute-bound tasks. */
-ThreadPool compute_tp_;
+ThreadPool compute_tp_{std::thread::hardware_concurrency()};
 
 /** The thread pool for io-bound tasks. */
-ThreadPool io_tp_;
+ThreadPool io_tp_{std::thread::hardware_concurrency()};
 
 clipp::group InfoCommand::get_cli() {
   using namespace clipp;
@@ -97,9 +97,6 @@ clipp::group InfoCommand::get_cli() {
 }
 
 void InfoCommand::run() {
-  io_tp_.init(std::thread::hardware_concurrency());
-  compute_tp_.init(std::thread::hardware_concurrency());
-
   switch (type_) {
     case InfoType::None:
       break;
@@ -122,7 +119,7 @@ void InfoCommand::print_tile_sizes() const {
   stats::Stats stats("");
   StorageManager sm(
       &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""));
-  THROW_NOT_OK(sm.init(nullptr));
+  THROW_NOT_OK(sm.init(Config()));
 
   // Open the array
   URI uri(array_uri_);
@@ -200,7 +197,7 @@ void InfoCommand::print_schema_info() const {
   stats::Stats stats("");
   StorageManager sm(
       &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""));
-  THROW_NOT_OK(sm.init(nullptr));
+  THROW_NOT_OK(sm.init(Config()));
 
   // Open the array
   URI uri(array_uri_);
@@ -218,7 +215,7 @@ void InfoCommand::write_svg_mbrs() const {
   stats::Stats stats("");
   StorageManager sm(
       &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""));
-  THROW_NOT_OK(sm.init(nullptr));
+  THROW_NOT_OK(sm.init(Config()));
 
   // Open the array
   URI uri(array_uri_);
@@ -294,7 +291,7 @@ void InfoCommand::write_text_mbrs() const {
   stats::Stats stats("");
   StorageManager sm(
       &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""));
-  THROW_NOT_OK(sm.init(nullptr));
+  THROW_NOT_OK(sm.init(Config()));
 
   // Open the array
   URI uri(array_uri_);

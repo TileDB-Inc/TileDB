@@ -30,28 +30,37 @@
  * This file defines the ThreadPool class.
  */
 
-#ifdef LEGACY_THREAD_POOL
-#include "legacy_thread_pool.cc"
-#else
-
 #include <cassert>
 #include <memory>
 #include <queue>
+#include <thread>
 
 #include "tiledb/common/logger.h"
 #include "tiledb/common/thread_pool.h"
 
 namespace tiledb::common {
 
-Status ThreadPool::init(size_t n) {
-  if (n == 0) {
-    return Status_ThreadPoolError(
-        "Unable to initialize a thread pool with a concurrency level of 0.");
+ThreadPool::ThreadPool(size_t n)
+    : concurrency_level_(n) {
+  // If concurrency_level_ is set to zero, construct the thread pool in shutdown
+  // state.  Explicitly shut down the task queue as well.
+  if (concurrency_level_ == 0) {
+    task_queue_.drain();
+    return;
   }
-  Status st = Status::Ok();
 
-  concurrency_level_ = n;
-  threads_.reserve(n);
+  // Set an upper limit on number of threads per core.  One use for this is in
+  // testing error conditions in creating a context.
+  if (concurrency_level_ >= 256 * std::thread::hardware_concurrency()) {
+    std::string msg = "Error initializing thread pool of concurrency level " +
+                      std::to_string(concurrency_level_) +
+                      "; Requested size too large";
+    auto st = Status_ThreadPoolError(msg);
+    LOG_STATUS(st);
+    throw std::runtime_error(msg);
+  }
+
+  threads_.reserve(concurrency_level_);
 
   for (size_t i = 0; i < concurrency_level_; ++i) {
     std::thread tmp;
@@ -67,25 +76,27 @@ Status ThreadPool::init(size_t n) {
       } catch (const std::system_error& e) {
         if (e.code() != std::errc::resource_unavailable_try_again ||
             tries == 0) {
-          st = Status_ThreadPoolError(
+          auto st = Status_ThreadPoolError(
               "Error initializing thread pool of concurrency level " +
               std::to_string(concurrency_level_) + "; " + e.what());
           LOG_STATUS(st);
-          break;
+          shutdown();
+          throw std::runtime_error(
+              "Error initializing thread pool of concurrency level " +
+              std::to_string(concurrency_level_) + "; " + e.what());
         }
         continue;
       }
       break;
     }
-    if (!st.ok()) {
+
+    try {
+      threads_.emplace_back(std::move(tmp));
+    } catch (...) {
       shutdown();
-      return st;
+      throw;
     }
-
-    threads_.emplace_back(std::move(tmp));
   }
-
-  return st;
 }
 
 void ThreadPool::worker() {
@@ -99,7 +110,10 @@ void ThreadPool::worker() {
   }
 }
 
+// shutdown is private and only called by constructor and destructor (RAII), so
+// shutdown won't be called from multiple threads.
 void ThreadPool::shutdown() {
+  concurrency_level_.store(0);
   task_queue_.drain();
   for (auto&& t : threads_) {
     t.join();
@@ -181,5 +195,3 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
 }
 
 }  // namespace tiledb::common
-
-#endif  // LEGACY_THREAD_POOL
