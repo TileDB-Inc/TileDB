@@ -120,23 +120,15 @@ class SingleCoord {
   /**
    * Constructor
    *
-   * @param dim_num the number of dimensions
-   */
-  SingleCoord(unsigned dim_num)
-      : coords_(dim_num)
-      , qb_(dim_num)
-      , sizes_(dim_num)
-      , single_offset_(0)
-      , single_offset_size_(sizeof(uint64_t)) {
-  }
-
-  /**
-   * Store the values of the coordinate to the passed in data ref.
-   *
    * @param schema Array schema.
    * @param coord Data ref to the coordinate.
    */
-  void set(const ArraySchema& schema, const DomainBufferDataRef& coord) {
+  SingleCoord(const ArraySchema& schema, const DomainBufferDataRef& coord)
+      : coords_(schema.dim_num())
+      , qb_(schema.dim_num())
+      , sizes_(schema.dim_num() + 1)
+      , single_offset_(1) {
+    sizes_[schema.dim_num()] = sizeof(uint64_t);
     for (unsigned d = 0; d < coords_.size(); ++d) {
       bool var_size = schema.dimension(d)->var_size();
       auto dv = coord.dimension_datum_view(d);
@@ -145,7 +137,8 @@ class SingleCoord {
       memcpy(coords_[d].data(), dv.content(), sizes_[d]);
 
       if (var_size) {
-        qb_[d].set_offsets_buffer(&single_offset_, &single_offset_size_);
+        qb_[d].set_offsets_buffer(
+            &single_offset_[0], &sizes_[schema.dim_num()]);
         qb_[d].set_data_var_buffer(coords_[d].data(), &sizes_[d]);
       } else {
         qb_[d].set_data_buffer(coords_[d].data(), &sizes_[d]);
@@ -181,12 +174,7 @@ class SingleCoord {
   /**
    * Used as the offsets buffer for a var sized attribute.
    */
-  uint64_t single_offset_;
-
-  /**
-   * Size of the offsets data.
-   */
-  uint64_t single_offset_size_;
+  std::vector<uint64_t> single_offset_;
 };
 
 /**

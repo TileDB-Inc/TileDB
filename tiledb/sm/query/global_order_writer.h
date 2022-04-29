@@ -56,12 +56,7 @@ class GlobalOrderWriter : public WriterBase {
    * State used only in global writes, where the user can "append"
    * by successive query submissions until the query is finalized.
    */
-  class GlobalWriteState {
-   public:
-    GlobalWriteState(uint64_t dim_num)
-        : last_cell_coords_(dim_num) {
-    }
-
+  struct GlobalWriteState {
     /**
      * Stores the last tile of each attribute/dimension for each write
      * operation. The key is the attribute/dimension name. For fixed-sized
@@ -91,7 +86,7 @@ class GlobalOrderWriter : public WriterBase {
     shared_ptr<FragmentMetadata> frag_meta_;
 
     /** The last cell written. */
-    SingleCoord last_cell_coords_;
+    std::optional<SingleCoord> last_cell_coords_;
 
     /** The last hilbert value written. */
     uint64_t last_hilbert_value_;

@@ -244,7 +244,7 @@ Status GlobalOrderWriter::check_global_order() const {
   DomainBuffersView domain_buffs{array_schema_, buffers_};
   if (global_write_state_->cells_written_.begin()->second > 0) {
     DomainBuffersView last_cell_buffs{array_schema_,
-                                      global_write_state_->last_cell_coords_};
+                                      *global_write_state_->last_cell_coords_};
     auto left{last_cell_buffs.domain_ref_at(domain, 0)};
     auto right{domain_buffs.domain_ref_at(domain, 0)};
 
@@ -289,7 +289,8 @@ Status GlobalOrderWriter::check_global_order() const {
   // Save the last cell's coordinates.
   auto last_cell_coords{
       domain_buffs.domain_ref_at(domain, coords_info_.coords_num_ - 1)};
-  global_write_state_->last_cell_coords_.set(array_schema_, last_cell_coords);
+  global_write_state_->last_cell_coords_ =
+      SingleCoord(array_schema_, last_cell_coords);
 
   return Status::Ok();
 }
@@ -642,7 +643,7 @@ Status GlobalOrderWriter::init_global_write_state() {
     return logger_->status(
         Status_WriterError("Cannot initialize global write state; State not "
                            "properly finalized"));
-  global_write_state_.reset(tdb_new(GlobalWriteState, array_schema_.dim_num()));
+  global_write_state_.reset(new GlobalWriteState);
 
   // Create fragment
   global_write_state_->frag_meta_ = make_shared<FragmentMetadata>(HERE());
