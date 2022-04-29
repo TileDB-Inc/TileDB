@@ -162,7 +162,9 @@ class Range {
 
   /** Returns the end as a string view. */
   std::string_view end_str() const {
-    assert(var_size_);
+    // must be variable
+    // or have no data if 'fixed' (primarily default construction)
+    assert(var_size_ || !range_.size());
     auto size = range_.size() - range_start_size_;
     if (size == 0) {
       return {nullptr, 0};
