@@ -865,35 +865,17 @@ int32_t tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx) {
    * construction fails.
    */
   try {
-    (*ctx)->ctx_ = new tiledb::sm::Context();
+    if (config == nullptr) {
+      (*ctx)->ctx_ = new tiledb::sm::Context();
+    } else {
+      (*ctx)->ctx_ = new tiledb::sm::Context(*(config->config_));
+    }
   } catch (...) {
     delete (*ctx);
     (*ctx) = nullptr;
     throw;
   }
 
-  /*
-   * Initialize the context. Unwind both the context and the context holder on
-   * failure.
-   */
-  try {
-    auto conf = (config == nullptr) ?
-                    static_cast<tiledb::sm::Config*>(nullptr) :
-                    config->config_;
-    auto st = (*ctx)->ctx_->init(conf);
-    if (!st.ok()) {
-      delete (*ctx)->ctx_;
-      delete (*ctx);
-      (*ctx) = nullptr;
-      LOG_STATUS(st);
-      return TILEDB_ERR;
-    }
-  } catch (...) {
-    delete (*ctx)->ctx_;
-    delete (*ctx);
-    (*ctx) = nullptr;
-    throw;
-  }
   return TILEDB_OK;
 }
 
@@ -2111,7 +2093,7 @@ int32_t tiledb_array_schema_load(
       return TILEDB_ERR;
 
     // For easy reference
-    auto storage_manager = ctx->ctx_->storage_manager();
+    auto storage_manager{ctx->ctx_->storage_manager()};
     auto vfs = storage_manager->vfs();
     auto tp = storage_manager->compute_tp();
 
@@ -2215,7 +2197,7 @@ int32_t tiledb_array_schema_load_with_key(
     }
 
     // For easy reference
-    auto storage_manager = ctx->ctx_->storage_manager();
+    auto storage_manager{ctx->ctx_->storage_manager()};
     auto vfs = storage_manager->vfs();
     auto tp = storage_manager->compute_tp();
 
@@ -3609,8 +3591,8 @@ int32_t tiledb_query_get_subarray_t(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
   tiledb_array_t tdb_array;
-  // Drop 'const'ness leaving 'Array *' knowing use here is local/temporary and
-  // being passed into tiledb_subarray_alloc() which is not modifying it
+  // Drop 'const'ness leaving 'Array *' knowing use here is local/temporary
+  // and being passed into tiledb_subarray_alloc() which is not modifying it
   tdb_array.array_ =
       const_cast<tiledb::sm::Array*>(query->query_->subarray()->array());
   if (tiledb_subarray_alloc(ctx, &tdb_array, subarray) != TILEDB_OK) {
@@ -7609,29 +7591,20 @@ int32_t tiledb_ctx_alloc_with_error(
     return TILEDB_OOM;
 
   // Create a context object
-  (*ctx)->ctx_ = new (std::nothrow) tiledb::sm::Context();
+  if (config == nullptr) {
+    (*ctx)->ctx_ = new (std::nothrow) tiledb::sm::Context();
+  } else {
+    (*ctx)->ctx_ = new (std::nothrow) tiledb::sm::Context(*(config->config_));
+  }
   if ((*ctx)->ctx_ == nullptr) {
     delete (*ctx);
     (*ctx) = nullptr;
     return TILEDB_OOM;
   }
 
-  // Initialize the context
-  auto conf =
-      (config == nullptr) ? (tiledb::sm::Config*)nullptr : config->config_;
-  auto st = (*ctx)->ctx_->init(conf);
-
-  if (!st.ok()) {
-    delete (*ctx)->ctx_;
-    delete (*ctx);
-    (*ctx) = nullptr;
-    LOG_STATUS(st);
-    create_error(error, st);
-    return TILEDB_ERR;
-  }
-
   // Success
   return TILEDB_OK;
+
 } catch (const std::bad_alloc& e) {
   delete (*ctx)->ctx_;
   delete (*ctx);

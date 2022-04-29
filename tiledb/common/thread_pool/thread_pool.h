@@ -53,16 +53,19 @@ class ThreadPool {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  ThreadPool()
-      : concurrency_level_(0) {
-  }
+  /**
+   * Constructor.
+   *
+   * @param n The number of threads to be spawned for the thread pool.  This
+   * should be a value between 1 and 256 * hardware_concurrency.  A value of
+   * zero will construct the thread pool in its shutdown state--constructed but
+   * not accepting nor executing any tasks.  A value of 256*hardware_concurrency
+   * or larger is an error.
+   */
+  explicit ThreadPool(size_t n);
 
-  /** Constructor. */
-  explicit ThreadPool(
-      size_t n) {  // There shouldn't be an uninitalized threadpool (IMO)
-    init(n);
-  }
+  /** Deleted default constructor */
+  ThreadPool() = delete;
 
   /** Destructor. */
   ~ThreadPool() {
@@ -72,16 +75,6 @@ class ThreadPool {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /**
-   * Initialize the thread pool.
-   *
-   * @param concurrency_level Maximum level of concurrency. Defaults to
-   * available hardware concurrency.
-   * @return Status
-   */
-
-  Status init(size_t concurrency_level = std::thread::hardware_concurrency());
 
  public:
   size_t concurrency_level() {
@@ -177,7 +170,6 @@ class ThreadPool {
   /** The maximum level of concurrency among all of the worker threads */
   std::atomic<size_t> concurrency_level_;
 };
-
 }  // namespace tiledb::common
 
 #endif  // TILEDB_THREAD_POOL_H

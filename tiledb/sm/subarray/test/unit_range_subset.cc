@@ -109,8 +109,7 @@ TEST_CASE(
     range_subset.add_range_unrestricted(r2);
     CHECK(range_subset.num_ranges() == 2);
     // Create ThreadPool.
-    ThreadPool pool;
-    REQUIRE(pool.init(2).ok());
+    ThreadPool pool{2};
     //  Sort ranges.
     auto sort_status = range_subset.sort_ranges(&pool);
     CHECK(sort_status.ok());
@@ -148,8 +147,7 @@ TEST_CASE("RangeSetAndSuperset::sort - STRING_ASCII") {
     range_subset.add_range_unrestricted(r2);
     CHECK(range_subset.num_ranges() == 2);
     // Create ThreadPool.
-    ThreadPool pool;
-    REQUIRE(pool.init(2).ok());
+    ThreadPool pool{2};
     // Sort ranges.
     auto sort_status = range_subset.sort_ranges(&pool);
     CHECK(sort_status.ok());

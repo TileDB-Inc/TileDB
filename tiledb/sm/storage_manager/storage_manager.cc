@@ -40,6 +40,7 @@
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array/array_directory.h"
@@ -109,6 +110,15 @@ StorageManager::~StorageManager() {
 
     tdb_delete(vfs_);
   }
+
+  bool found{false};
+  bool use_malloc_trim{false};
+  const Status& st =
+      config().get<bool>("sm.mem.malloc_trim", &use_malloc_trim, &found);
+  if (st.ok() && found && use_malloc_trim) {
+    tdb_malloc_trim();
+  }
+  assert(found);
 }
 
 /* ****************************** */
@@ -1272,9 +1282,8 @@ Status StorageManager::group_create(const std::string& group_uri) {
   return Status::Ok();
 }
 
-Status StorageManager::init(const Config* config) {
-  if (config != nullptr)
-    config_ = *config;
+Status StorageManager::init(const Config& config) {
+  config_ = config;
 
   // Get config params
   bool found = false;
@@ -1304,11 +1313,11 @@ Status StorageManager::init(const Config* config) {
   return Status::Ok();
 }
 
-ThreadPool* StorageManager::compute_tp() {
+ThreadPool* StorageManager::compute_tp() const {
   return compute_tp_;
 }
 
-ThreadPool* StorageManager::io_tp() {
+ThreadPool* StorageManager::io_tp() const {
   return io_tp_;
 }
 

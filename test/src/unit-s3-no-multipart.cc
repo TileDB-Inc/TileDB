@@ -53,7 +53,7 @@ struct S3DirectFx {
       tiledb::sm::URI(S3_PREFIX + random_name("tiledb") + "/");
   const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
   tiledb::sm::S3 s3_;
-  ThreadPool thread_pool_;
+  ThreadPool thread_pool_{2};
 
   S3DirectFx();
   ~S3DirectFx();
@@ -74,7 +74,6 @@ S3DirectFx::S3DirectFx() {
   // set max buffer size to 10 MB
   REQUIRE(config.set("vfs.s3.multipart_part_size", "10000000").ok());
   REQUIRE(config.set("vfs.s3.use_multipart_upload", "false").ok());
-  REQUIRE(thread_pool_.init(2).ok());
   REQUIRE(s3_.init(&g_helper_stats, config, &thread_pool_).ok());
 
   // Create bucket
