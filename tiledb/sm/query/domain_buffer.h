@@ -100,7 +100,7 @@ class DomainBufferDataRef : public detail::DomainBuffersTypes,
   }
 
   UntypedDatumView dimension_datum_view(unsigned int i) const override {
-    return {qb_[i]->dimension_datum_at(*domain_.dimension(i), k_).datum()};
+    return {qb_[i]->dimension_datum_at(*domain_.dimension_ref(i), k_).datum()};
   }
 
   DomainBufferDataRef(const Domain& domain) = delete;

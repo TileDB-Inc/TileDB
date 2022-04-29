@@ -212,6 +212,9 @@ class Domain {
   /** Returns the domain as a N-dimensional range object. */
   NDRange domain() const;
 
+  /** Returns const ref to the i-th dimensions. */
+  const std::shared_ptr<Dimension>& dimension_ref(unsigned int i) const;
+
   /** Returns the i-th dimensions (nullptr upon error). */
   shared_ptr<const Dimension> dimension(unsigned int i) const;
 

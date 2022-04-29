@@ -270,7 +270,7 @@ int Domain::cell_order_cmp(
     const type::DomainDataRef& left, const type::DomainDataRef& right) const {
   if (cell_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
-      auto dim = dimension(d);
+      auto dim = dimension_ref(d);
       auto res = cell_order_cmp_func_[d](
           dim.get(),
           left.dimension_datum_view(d),
@@ -282,7 +282,7 @@ int Domain::cell_order_cmp(
     }
   } else {  // COL_MAJOR
     for (unsigned d = dim_num_ - 1;; --d) {
-      auto dim = dimension(d);
+      auto dim = dimension_ref(d);
       auto res = cell_order_cmp_func_[d](
           dim.get(),
           left.dimension_datum_view(d),
@@ -350,6 +350,12 @@ NDRange Domain::domain() const {
     ret[d] = dimensions_[d]->domain();
 
   return ret;
+}
+
+const std::shared_ptr<Dimension>& Domain::dimension_ref(unsigned int i) const {
+  if (i > dim_num_)
+    throw std::logic_error("dimension index out of bounds");
+  return dimensions_[i];
 }
 
 shared_ptr<const Dimension> Domain::dimension(unsigned int i) const {
@@ -724,7 +730,7 @@ int Domain::tile_order_cmp(
     const type::DomainDataRef& left, const type::DomainDataRef& right) const {
   if (tile_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
-      auto dim = dimension(d);
+      auto dim = dimension_ref(d);
 
       // Inapplicable to var-sized dimensions or absent tile extents
       if (dim->var_size() || !dim->tile_extent())
@@ -741,7 +747,7 @@ int Domain::tile_order_cmp(
     }
   } else {  // COL_MAJOR
     for (unsigned d = dim_num_ - 1;; --d) {
-      auto dim = dimension(d);
+      auto dim = dimension_ref(d);
 
       // Inapplicable to var-sized dimensions or absent tile extents
       if (!dim->var_size() && dim->tile_extent()) {
