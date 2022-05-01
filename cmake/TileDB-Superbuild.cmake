@@ -55,7 +55,8 @@ if (TILEDB_TESTS)
   )
 endif()
 
-if (WIN32)
+# MSVC_MP_FLAG is defined in MSVC only
+if (MSVC)
   list(APPEND INHERITED_CMAKE_ARGS
     -DMSVC_MP_FLAG=${MSVC_MP_FLAG}
   )
