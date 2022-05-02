@@ -102,7 +102,7 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "schema_test_create";
-  std::string csv_path = files_dir + "/" + "quickstart_dense.csv";
+  std::string csv_path = files_dir + "/" + "text.txt";
 
   create_temp_dir(temp_dir);
 
@@ -151,27 +151,150 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "uri_import";
-  std::string csv_path = files_dir + "/" + "quickstart_dense.csv";
+  std::string file_path = files_dir + "/" + "text.txt";
   create_temp_dir(temp_dir);
 
   tiledb_array_schema_t* schema;
   CHECK(
-      tiledb_filestore_schema_create(ctx_, csv_path.c_str(), &schema) ==
+      tiledb_filestore_schema_create(ctx_, file_path.c_str(), &schema) ==
       TILEDB_OK);
   CHECK(tiledb_array_create(ctx_, array_name.c_str(), schema) == TILEDB_OK);
 
   // Check uri import
   CHECK(
       tiledb_filestore_uri_import(
-          ctx_, array_name.c_str(), csv_path.c_str(), TILEDB_MIME_NONE) ==
+          ctx_, array_name.c_str(), file_path.c_str(), TILEDB_MIME_NONE) ==
       TILEDB_OK);
 
   tiledb_array_t* array;
   CHECK(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
-  CHECK(tiledb_array_open(ctx_, array, TILEDB_WRITE) == TILEDB_OK);
+  CHECK(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
 
   // Check metadata
   std::string file_content("Simple text file.\nWith two lines.");
+  const void* value;
+  tiledb_datatype_t dtype;
+  uint32_t num;
+  CHECK(
+      tiledb_array_get_metadata(
+          ctx_,
+          array,
+          tiledb::sm::constants::filestore_metadata_size_key.c_str(),
+          &dtype,
+          &num,
+          &value) == TILEDB_OK);
+  REQUIRE(*static_cast<const uint64_t*>(value) == file_content.size() + 1);
+
+  // Read array
+  std::vector<std::byte> buffer(file_content.size());
+  uint64_t subarray_read[] = {0, file_content.size() - 1};
+  uint64_t size = buffer.size();
+  tiledb_query_t* query;
+  tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  tiledb_query_set_subarray(ctx_, query, subarray_read);
+  tiledb_query_set_data_buffer(
+      ctx_,
+      query,
+      tiledb::sm::constants::filestore_attribute_name.c_str(),
+      buffer.data(),
+      &size);
+  CHECK(tiledb_query_submit(ctx_, query) == TILEDB_OK);
+
+  // Check correctness
+  CHECK(!std::memcmp(buffer.data(), file_content.data(), buffer.size()));
+
+  // Clean up
+  tiledb_array_close(ctx_, array);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+  tiledb_array_schema_free(&schema);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    FileFx, "C API: Test exporting to uri", "[capi][filestore][uri][export]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+
+  std::string array_name = temp_dir + "uri_export";
+  std::string file_path = files_dir + "/" + "text.txt";
+  std::string copy_file_path = temp_dir + "copy.txt";
+  create_temp_dir(temp_dir);
+
+  tiledb_array_schema_t* schema;
+  CHECK(
+      tiledb_filestore_schema_create(ctx_, file_path.c_str(), &schema) ==
+      TILEDB_OK);
+  CHECK(tiledb_array_create(ctx_, array_name.c_str(), schema) == TILEDB_OK);
+  CHECK(
+      tiledb_filestore_uri_import(
+          ctx_, array_name.c_str(), file_path.c_str(), TILEDB_MIME_NONE) ==
+      TILEDB_OK);
+
+  tiledb_array_t* array;
+  CHECK(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  CHECK(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
+
+  CHECK(
+      tiledb_filestore_uri_export(
+          ctx_, copy_file_path.c_str(), array_name.c_str()) == TILEDB_OK);
+
+  std::string file_content("Simple text file.\nWith two lines.");
+
+  uint64_t size;
+  REQUIRE(
+      tiledb_vfs_file_size(ctx_, vfs_, copy_file_path.c_str(), &size) ==
+      TILEDB_OK);
+  REQUIRE(size == file_content.size() + 1);
+
+  char buffer[100];
+  tiledb_vfs_fh_t* fh;
+  REQUIRE(
+      tiledb_vfs_open(
+          ctx_, vfs_, copy_file_path.c_str(), TILEDB_VFS_READ, &fh) ==
+      TILEDB_OK);
+  CHECK(tiledb_vfs_read(ctx_, fh, 0, buffer, file_content.size()) == TILEDB_OK);
+
+  // Check correctness
+  CHECK(!std::memcmp(buffer, file_content.data(), file_content.size()));
+
+  // Clean up
+  tiledb_vfs_close(ctx_, fh);
+  tiledb_array_close(ctx_, array);
+  tiledb_array_free(&array);
+  tiledb_array_schema_free(&schema);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    FileFx,
+    "C API: Test importing from a buffer",
+    "[capi][filestore][buffer][import]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+
+  std::string array_name = temp_dir + "buffer_import";
+  create_temp_dir(temp_dir);
+
+  tiledb_array_schema_t* schema;
+  CHECK(tiledb_filestore_schema_create(ctx_, nullptr, &schema) == TILEDB_OK);
+  CHECK(tiledb_array_create(ctx_, array_name.c_str(), schema) == TILEDB_OK);
+
+  std::string file_content("Simple text file.\nWith two lines.");
+
+  // Check buffer import
+  CHECK(
+      tiledb_filestore_buffer_import(
+          ctx_,
+          array_name.c_str(),
+          file_content.data(),
+          file_content.size(),
+          TILEDB_MIME_NONE) == TILEDB_OK);
+
+  tiledb_array_t* array;
+  CHECK(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  CHECK(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
+
+  // Check metadata
   const void* value;
   tiledb_datatype_t dtype;
   uint32_t num;
@@ -208,6 +331,57 @@ TEST_CASE_METHOD(
   tiledb_array_close(ctx_, array);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_array_schema_free(&schema);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    FileFx,
+    "C API: Test exporting to a buffer",
+    "[capi][filestore][buffer][export]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+
+  std::string array_name = temp_dir + "uri_export";
+  create_temp_dir(temp_dir);
+
+  tiledb_array_schema_t* schema;
+  CHECK(tiledb_filestore_schema_create(ctx_, nullptr, &schema) == TILEDB_OK);
+  CHECK(tiledb_array_create(ctx_, array_name.c_str(), schema) == TILEDB_OK);
+
+  std::string file_content("Simple text file.\nWith two lines.");
+  CHECK(
+      tiledb_filestore_buffer_import(
+          ctx_,
+          array_name.c_str(),
+          file_content.data(),
+          file_content.size(),
+          TILEDB_MIME_NONE) == TILEDB_OK);
+
+  tiledb_array_t* array;
+  CHECK(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  CHECK(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
+
+  char buffer[100];
+  CHECK(
+      tiledb_filestore_buffer_export(
+          ctx_, array_name.c_str(), 0, buffer, file_content.size()) ==
+      TILEDB_OK);
+  CHECK(!std::memcmp(buffer, file_content.data(), file_content.size()));
+
+  // Check exporting from offset
+  CHECK(
+      tiledb_filestore_buffer_export(
+          ctx_, array_name.c_str(), 18, buffer, 15) == TILEDB_OK);
+  CHECK(!std::memcmp(buffer, "With two lines.", 15));
+
+  // Check filestore size
+  size_t size;
+  CHECK(tiledb_filestore_size(ctx_, array_name.c_str(), &size) == TILEDB_OK);
+  CHECK(size == file_content.size());
+
+  // Clean up
+  tiledb_array_close(ctx_, array);
+  tiledb_array_free(&array);
   tiledb_array_schema_free(&schema);
   remove_temp_dir(temp_dir);
 }

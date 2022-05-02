@@ -413,7 +413,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
       &dtype,
       &num,
       &file_size);
-  if (file_size && *static_cast<const uint64_t*>(file_size) <= offset + size) {
+  if (file_size && *static_cast<const uint64_t*>(file_size) < offset + size) {
     auto st =
         Status_Error("The number of bytes requested is bigger than the array");
     LOG_STATUS(st);
@@ -423,7 +423,9 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
 
   Subarray subarray(context, array);
   subarray.add_range(
-      0, static_cast<uint64_t>(offset), static_cast<uint64_t>(size - 1));
+      0,
+      static_cast<uint64_t>(offset),
+      static_cast<uint64_t>(offset + size - 1));
   Query query(context, array);
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_subarray(subarray);
