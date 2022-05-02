@@ -30,6 +30,9 @@ include(common NO_POLICY_SCOPE)
 # `filter` object library
 #
 add_library(filter OBJECT filter.cc filter_buffer.cc filter_storage.cc)
+if (APPLE)
+  set_target_properties(filter PROPERTIES "OSX_ARCHITECTURES" "arm64;x86_64")
+endif()
 target_link_libraries(filter PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(filter PUBLIC buffer $<TARGET_OBJECTS:buffer>)
 target_link_libraries(filter PUBLIC crypto $<TARGET_OBJECTS:crypto>)

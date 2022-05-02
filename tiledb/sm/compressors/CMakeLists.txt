@@ -30,6 +30,9 @@ include(common NO_POLICY_SCOPE)
 # `compressors` object library
 #
 add_library(compressors OBJECT bzip_compressor.cc dd_compressor.cc dict_compressor.cc gzip_compressor.cc lz4_compressor.cc rle_compressor.cc zstd_compressor.cc util/gzip_wrappers.cc)
+if (APPLE)
+  set_target_properties(compressors PROPERTIES "OSX_ARCHITECTURES" "arm64;x86_64")
+endif()
 target_link_libraries(compressors PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(compressors PUBLIC buffer $<TARGET_OBJECTS:buffer>)
 find_package(Bzip2_EP REQUIRED)
@@ -57,7 +60,7 @@ target_sources(tdb_gzip_embedded_data PRIVATE
 
 # Build this target as a universal binary so it can be run on the host. SC-17377
 if (APPLE)
-  target_compile_options("OSX_ARCHITECTURE" "arm64;x86_64")
+  set_target_properties(tdb_gzip_embedded_data PROPERTIES "OSX_ARCHITECTURES" "arm64;x86_64")
 endif()
 
 target_link_libraries(
