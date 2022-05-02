@@ -62,6 +62,7 @@ std::pair<Status, optional<std::string>> libmagic_get_mime_encoding(
 bool libmagic_file_is_compressed(void* data, uint64_t size);
 Status read_file_header(
     const VFS& vfs, const char* uri, std::vector<char>& header);
+std::pair<std::string, std::string> strip_file_extension(const char* file_uri);
 
 TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
     tiledb_ctx_t* ctx,
@@ -217,6 +218,17 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
       TILEDB_STRING_ASCII,
       static_cast<uint32_t>(mime.value().size()),
       mime.value().c_str());
+  auto&& [fname, fext] = strip_file_extension(file_uri);
+  array.put_metadata(
+      tiledb::sm::constants::filestore_metadata_original_filename_key,
+      TILEDB_STRING_ASCII,
+      static_cast<uint32_t>(fname.size()),
+      fname.c_str());
+  array.put_metadata(
+      tiledb::sm::constants::filestore_metadata_file_extension_key,
+      TILEDB_STRING_ASCII,
+      static_cast<uint32_t>(fext.size()),
+      fext.c_str());
 
   // Write the data in batches using the global order writer
   VFS::filebuf fb(vfs);
@@ -410,6 +422,16 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
       TILEDB_STRING_ASCII,
       static_cast<uint32_t>(mime.value().size()),
       mime.value().c_str());
+  array.put_metadata(
+      tiledb::sm::constants::filestore_metadata_original_filename_key,
+      TILEDB_STRING_ASCII,
+      static_cast<uint32_t>(0),
+      "");
+  array.put_metadata(
+      tiledb::sm::constants::filestore_metadata_file_extension_key,
+      TILEDB_STRING_ASCII,
+      static_cast<uint32_t>(0),
+      "");
 
   Query query(context, array);
   query.set_layout(TILEDB_ROW_MAJOR);
@@ -507,7 +529,7 @@ TILEDB_EXPORT int32_t tiledb_mime_type_to_str(
 
 TILEDB_EXPORT int32_t tiledb_mime_type_from_str(
     const char* str, tiledb_mime_type_t* mime_type) TILEDB_NOEXCEPT {
-  tiledb::sm::MimeType val = tiledb::sm::MimeType::MIME_NONE;
+  tiledb::sm::MimeType val = tiledb::sm::MimeType::MIME_AUTODETECT;
   if (!tiledb::sm::mime_type_enum(str, &val).ok())
     return TILEDB_ERR;
   *mime_type = (tiledb_mime_type_t)val;
@@ -567,14 +589,23 @@ std::pair<Status, optional<std::string>> libmagic_get_mime_encoding(
 }
 
 bool libmagic_file_is_compressed(void* data, uint64_t size) {
-  magic_t magic = magic_open(MAGIC_MIME_ENCODING);
+  std::unordered_set<std::string> compressed_mime_types = {
+      "application/x-bzip",
+      "application/x-bzip2",
+      "application/gzip",
+      "application/x-7z-compressed",
+      "application/zip"};
+
+  magic_t magic = magic_open(MAGIC_MIME_TYPE);
   if (tiledb::sm::magic_dict::magic_mgc_embedded_load(magic)) {
     LOG_STATUS(Status_Error(
         std::string("cannot load magic database - ") + magic_error(magic)));
     magic_close(magic);
     return true;
   }
-  return strcmp(magic_buffer(magic, data, size), "binary") == 0;
+  std::string mime(magic_buffer(magic, data, size));
+
+  return compressed_mime_types.find(mime) != compressed_mime_types.end();
 }
 
 Status read_file_header(
@@ -589,6 +620,15 @@ Status read_file_header(
   }
   fb.close();
   return Status::Ok();
+}
+
+std::pair<std::string, std::string> strip_file_extension(const char* file_uri) {
+  std::string uri(file_uri);
+  auto ext_pos = uri.find_last_of('.');
+  std::string ext = uri.substr(ext_pos + 1);
+  auto fname_pos = uri.find_last_of('/') + 1;
+
+  return {uri.substr(fname_pos, ext_pos - fname_pos), ext};
 }
 
 }  // namespace tiledb::common::detail

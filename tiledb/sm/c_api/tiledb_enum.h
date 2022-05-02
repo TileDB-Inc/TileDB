@@ -285,7 +285,7 @@
 
 #ifdef TILEDB_MIME_TYPE_ENUM
     /** Unspecified MIME type*/
-    TILEDB_MIME_TYPE_ENUM(MIME_NONE) = 0,
+    TILEDB_MIME_TYPE_ENUM(MIME_AUTODETECT) = 0,
     /** image/tiff*/
     TILEDB_MIME_TYPE_ENUM(MIME_TIFF) = 1,
     /** application/pdf*/

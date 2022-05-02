@@ -602,8 +602,8 @@ const unsigned concurrent_attr_reads = 2;
 /** The redirection header key in REST response. */
 extern const std::string redirection_header_key = "location";
 
-/** String describing MIME_NONE. */
-const std::string mime_none_str = "NONE";
+/** String describing MIME_AUTODETECT. */
+const std::string mime_autodetect_str = "AUTODETECT";
 
 /** String describing MIME_TIFF. */
 const std::string mime_tiff_str = "image/tiff";
@@ -628,6 +628,13 @@ const std::string filestore_metadata_mime_type_key = "mime_type";
 
 /** Name of the metadata key used in filestore arrays for mime encoding. */
 const std::string filestore_metadata_mime_encoding_key = "mime_encoding";
+
+/** Name of the metadata key used in filestore arrays for original filename. */
+const std::string filestore_metadata_original_filename_key =
+    "original_file_name";
+
+/** Name of the metadata key used in filestore arrays for filename extension. */
+const std::string filestore_metadata_file_extension_key = "file_extension";
 
 const void* fill_value(Datatype type) {
   switch (type) {

@@ -56,8 +56,8 @@ enum class MimeType : uint8_t {
 /** Returns the string representation of the input mime type. */
 inline const std::string& mime_type_str(MimeType mime_type) {
   switch (mime_type) {
-    case MimeType::MIME_NONE:
-      return constants::mime_none_str;
+    case MimeType::MIME_AUTODETECT:
+      return constants::mime_autodetect_str;
     case MimeType::MIME_TIFF:
       return constants::mime_tiff_str;
     case MimeType::MIME_PDF:
@@ -70,8 +70,8 @@ inline const std::string& mime_type_str(MimeType mime_type) {
 /** Returns the mime type given a string representation. */
 inline Status mime_type_enum(
     const std::string& mime_type_str, MimeType* mime_type) {
-  if (mime_type_str == constants::mime_none_str)
-    *mime_type = MimeType::MIME_NONE;
+  if (mime_type_str == constants::mime_autodetect_str)
+    *mime_type = MimeType::MIME_AUTODETECT;
   else if (mime_type_str == constants::mime_tiff_str)
     *mime_type = MimeType::MIME_TIFF;
   else if (mime_type_str == constants::mime_pdf_str)

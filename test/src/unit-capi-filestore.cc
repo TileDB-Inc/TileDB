@@ -163,8 +163,10 @@ TEST_CASE_METHOD(
   // Check uri import
   CHECK(
       tiledb_filestore_uri_import(
-          ctx_, array_name.c_str(), file_path.c_str(), TILEDB_MIME_NONE) ==
-      TILEDB_OK);
+          ctx_,
+          array_name.c_str(),
+          file_path.c_str(),
+          TILEDB_MIME_AUTODETECT) == TILEDB_OK);
 
   tiledb_array_t* array;
   CHECK(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
@@ -228,8 +230,10 @@ TEST_CASE_METHOD(
   CHECK(tiledb_array_create(ctx_, array_name.c_str(), schema) == TILEDB_OK);
   CHECK(
       tiledb_filestore_uri_import(
-          ctx_, array_name.c_str(), file_path.c_str(), TILEDB_MIME_NONE) ==
-      TILEDB_OK);
+          ctx_,
+          array_name.c_str(),
+          file_path.c_str(),
+          TILEDB_MIME_AUTODETECT) == TILEDB_OK);
 
   tiledb_array_t* array;
   CHECK(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
@@ -288,7 +292,7 @@ TEST_CASE_METHOD(
           array_name.c_str(),
           file_content.data(),
           file_content.size(),
-          TILEDB_MIME_NONE) == TILEDB_OK);
+          TILEDB_MIME_AUTODETECT) == TILEDB_OK);
 
   tiledb_array_t* array;
   CHECK(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
@@ -355,7 +359,7 @@ TEST_CASE_METHOD(
           array_name.c_str(),
           file_content.data(),
           file_content.size(),
-          TILEDB_MIME_NONE) == TILEDB_OK);
+          TILEDB_MIME_AUTODETECT) == TILEDB_OK);
 
   tiledb_array_t* array;
   CHECK(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);

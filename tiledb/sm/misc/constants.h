@@ -600,8 +600,8 @@ extern const std::array<std::string, 6> cert_files_linux;
 /** Delimiter for lists passed as config parameter */
 extern const std::string config_delimiter;
 
-/** String describing MIME_NONE. */
-extern const std::string mime_none_str;
+/** String describing MIME_AUTODETECT. */
+extern const std::string mime_autodetect_str;
 
 /** String describing MIME_TIFF. */
 extern const std::string mime_tiff_str;
@@ -626,6 +626,12 @@ extern const std::string filestore_metadata_mime_type_key;
 
 /** Name of the metadata key used in filestore arrays for mime encoding. */
 extern const std::string filestore_metadata_mime_encoding_key;
+
+/** Name of the metadata key used in filestore arrays for original filename. */
+extern const std::string filestore_metadata_original_filename_key;
+
+/** Name of the metadata key used in filestore arrays for filename extension. */
+extern const std::string filestore_metadata_file_extension_key;
 
 }  // namespace constants
 
