@@ -30,6 +30,10 @@ include(common NO_POLICY_SCOPE)
 # Object library for other units to depend upon
 #
 add_library(buffer OBJECT buffer.cc)
+if (APPLE)
+#  set_target_properties(compressors PROPERTIES "OSX_ARCHITECTURES" "arm64;x86_64")
+  set_target_properties(buffer PROPERTIES "OSX_ARCHITECTURES" "x86_64;arm64")
+endif()
 target_link_libraries(buffer PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #

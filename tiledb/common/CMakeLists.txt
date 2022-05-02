@@ -47,6 +47,10 @@ add_library(baseline OBJECT
     logger.cc governor/governor.cc heap_profiler.cc heap_memory.cc
     exception/exception.cc exception/status.cc
 )
+if (APPLE)
+#  set_target_properties(compressors PROPERTIES "OSX_ARCHITECTURES" "arm64;x86_64")
+  set_target_properties(baseline PROPERTIES "OSX_ARCHITECTURES" "x86_64;arm64")
+endif()
 find_package(Spdlog_EP REQUIRED)
 target_link_libraries(baseline PUBLIC spdlog::spdlog)
 #
