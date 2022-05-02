@@ -52,11 +52,16 @@ target_sources(compile_compressors PRIVATE
 #
 add_executable(tdb_gzip_embedded_data)
 target_sources(tdb_gzip_embedded_data PRIVATE
-        util/tdb_gzip_embedded_data.cc 
+        util/tdb_gzip_embedded_data.cc
 )
 
+# Build this target as a universal binary so it can be run on the host. SC-17377
+if (APPLE)
+  target_compile_options("OSX_ARCHITECTURE" "arm64;x86_64")
+endif()
+
 target_link_libraries(
-    tdb_gzip_embedded_data PUBLIC 
+    tdb_gzip_embedded_data PUBLIC
     filter
     compressors
     )
