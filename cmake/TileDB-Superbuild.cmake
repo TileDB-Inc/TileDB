@@ -56,7 +56,8 @@ if (TILEDB_TESTS)
   )
 endif()
 
-if (WIN32)
+# MSVC_MP_FLAG is defined by bootstrap.ps1
+if (DEFINED MSVC_MP_FLAG)
   list(APPEND INHERITED_CMAKE_ARGS
     -DMSVC_MP_FLAG=${MSVC_MP_FLAG}
   )
