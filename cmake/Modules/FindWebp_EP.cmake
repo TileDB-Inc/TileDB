@@ -23,12 +23,6 @@
 # THE SOFTWARE.
 #
 # Fetches and builds libwebp for use by tiledb.
-# TBD...
-# This module defines:
-#   - libmagic_INCLUDE_DIR, directory containing headers
-#   - libmagic_LIBRARIES, the Magic library path
-#   - libmagic_FOUND, whether Magic has been found
-#   - The libmagic imported target
 
 # Include some common helper functions.
 include(TileDBCommon)
@@ -36,38 +30,58 @@ include(TileDBCommon)
 # Search the path set during the superbuild for the EP.
 set(WEBP_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
-if (TILEDB_WEBP_EP_BUILT)
-  find_package(webp PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
-endif()
+#########################
+# from https://stackoverflow.com/a/56738858
+## https://stackoverflow.com/questions/32183975/how-to-print-all-the-properties-of-a-target-in-cmake/56738858#56738858
+## https://stackoverflow.com/a/56738858/3743145
+
+## Get all properties that cmake supports
+execute_process(COMMAND cmake --help-property-list OUTPUT_VARIABLE CMAKE_PROPERTY_LIST)
+## Convert command output into a CMake list
+STRING(REGEX REPLACE ";" "\\\\;" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
+STRING(REGEX REPLACE "\n" ";" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
+
+list(REMOVE_DUPLICATES CMAKE_PROPERTY_LIST)
+
+function(print_target_properties tgt)
+    if(NOT TARGET ${tgt})
+      message("There is no target named '${tgt}'")
+      return()
+    endif()
+
+    foreach (prop ${CMAKE_PROPERTY_LIST})
+        string(REPLACE "<CONFIG>" "${CMAKE_BUILD_TYPE}" prop ${prop})
+        get_target_property(propval ${tgt} ${prop})
+        if (propval)
+            message ("${tgt} ${prop} = ${propval}")
+        endif()
+    endforeach(prop)
+endfunction(print_target_properties)
+#########################
 
 if (TILEDB_WEBP_EP_BUILT)
-  find_path(webp_INCLUDE_DIR
-    NAMES encode.h decode.h demux.h mux.h mux_types.h
-    PATHS ${WEBP_PATHS}
-    PATH_SUFFIXES include/webp
-    ${NO_DEFAULT_PATH}
-  )
 
-  # Link statically if installed with the EP.
-  # TBD: Does this find/include the multiple libraries comprising webp?
-  find_library(webp_LIBRARIES
-    webp
-    PATHS ${WEBP_PATHS}
-    PATH_SUFFIXES lib a
-    #${TILEDB_DEPS_NO_DEFAULT_PATH}
-    ${NO_DEFAULT_PATH}
-  )
-  
-  message(STATUS "B4 webp_INCLUDE_DIR is ${wepb_INCLUDE_DIR}")
-  message(STATUS "B4 webp_LIBRARIES is ${wepb_LIBRARIES}")
-
-  include(FindPackageHandleStandardArgs)
-  FIND_PACKAGE_HANDLE_STANDARD_ARGS(webp
-    REQUIRED_VARS webp_LIBRARIES webp_INCLUDE_DIR
-  )
-
-  message(STATUS "AF webp_INCLUDE_DIR is ${wepb_INCLUDE_DIR}")
-  message(STATUS "AF webp_LIBRARIES is ${wepb_LIBRARIES}")
+ if (1)
+  find_package(WebP REQUIRED PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
+  message(STATUS "WebP_FOUND is ${WebP_FOUND}")
+  message(STATUS " webp_INCLUDE_DIR is ${wepb_INCLUDE_DIR}")
+  message(STATUS " webp_LIBRARIES is ${wepb_LIBRARIES}")
+  message(STATUS " WebP_INCLUDE_DIR is ${WebP_INCLUDE_DIR}")
+  message(STATUS " WebP_LIBRARIES is ${WebP_LIBRARIES}")
+  #print_target_properties(WebP)
+  print_target_properties(WebP::webp)
+  #find_package(webp PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
+  #message(STATUS "webp_FOUND is ${webp_FOUND}")
+  #print_target_properties(webp)
+  #find_package(Webp_EP REQUIRED)
+  #message(STATUS "Webp_EP_FOUND is ${Webp_EP_FOUND}")
+  #print_target_properties(Webp_EP)
+  #include(CMakePrintHelpers)
+  #cmake_print_properties(
+  #  TARGETS Webp_EP
+  #  PROPERTIES LOCATION INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES LIBRARIES_DIRECTORIES
+  #  )
+ endif()
 
 endif()
 
@@ -83,13 +97,14 @@ if(NOT TILEDB_WEBP_EP_BUILT)
     #  set(CXXFLAGS_DEF "${CMAKE_CXX_FLAGS} -fPIC")
     #endif()
 
-    # For both windows/nix using tiledb fork of file-windows from julian-r who has build a cmake version and patched for msvc++
     # that was modified by tiledb to also build with cmake for nix
     ExternalProject_Add(ep_webp
       PREFIX "externals"
       GIT_REPOSITORY "https://chromium.googlesource.com/webm/libwebp"
       #GIT_TAG "release-1.?.?" # after 'static' addition in some release
-      GIT_TAG "a19a25bb03757d5bb14f8d9755ab39f06d0ae5ef" # from branch 'main' history
+      # from branch 'main' history as the 'static' support added apr 12 2022
+      # at implementation time is not yet in release branch/tag.
+      GIT_TAG "a19a25bb03757d5bb14f8d9755ab39f06d0ae5ef" 
       GIT_SUBMODULES_RECURSE TRUE
       UPDATE_COMMAND ""
       CMAKE_ARGS
@@ -115,16 +130,10 @@ if(NOT TILEDB_WEBP_EP_BUILT)
   endif()
 endif()
 
-if (webp_FOUND AND NOT TARGET webp)
-  message(STATUS "Found webp, adding imported target: ${webp_LIBRARIES}")
-  add_library(webp UNKNOWN IMPORTED)
-  set_target_properties(webp PROPERTIES
-    IMPORTED_LOCATION "${webp_LIBRARIES}"
-    INTERFACE_INCLUDE_DIRECTORIES "${webp_INCLUDE_DIR}"
-  )
-endif()
-
-# If we built a static EP, install it if required.
-if (TILEDB_WEBP_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux)
+# Always building static EP, install it..
+if (TILEDB_WEBP_EP_BUILT)
+  #install_target_libs(webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux)
+  #install_target_libs($<TARGET_PROPERTY:WebP::webp,INTERFACE_LINK_LIBRARIES>)
+  #install_target_libs(WebP::webp)
+  install_target_libs(WebP::webpdecoder WebP::webp WebP::webpdemux WebP::webpmux)
 endif()
