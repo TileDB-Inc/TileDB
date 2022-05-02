@@ -210,12 +210,12 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_mime_encoding_key,
       TILEDB_STRING_ASCII,
-      mime_encoding.value().size(),
+      static_cast<uint32_t>(mime_encoding.value().size()),
       mime_encoding.value().c_str());
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_mime_type_key,
       TILEDB_STRING_ASCII,
-      mime.value().size(),
+      static_cast<uint32_t>(mime.value().size()),
       mime.value().c_str());
 
   // Write the data in batches using the global order writer
@@ -403,12 +403,12 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_mime_encoding_key,
       TILEDB_STRING_ASCII,
-      mime_encoding.value().size(),
+      static_cast<uint32_t>(mime_encoding.value().size()),
       mime_encoding.value().c_str());
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_mime_type_key,
       TILEDB_STRING_ASCII,
-      mime.value().size(),
+      static_cast<uint32_t>(mime.value().size()),
       mime.value().c_str());
 
   Query query(context, array);
