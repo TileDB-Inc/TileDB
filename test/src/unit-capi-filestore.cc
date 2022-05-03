@@ -54,11 +54,16 @@ struct FileFx {
   // Vector of supported filesystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
+  std::string compression_file_path_;
+  uint32_t expected_nfilters_;
+
   // Functions
   FileFx();
   ~FileFx();
   void create_temp_dir(const std::string& path) const;
   void remove_temp_dir(const std::string& path) const;
+  void check_metadata_correctness(
+      tiledb_array_t* array, uint64_t expected_file_size) const;
 };
 
 FileFx::FileFx()
@@ -97,19 +102,77 @@ void FileFx::remove_temp_dir(const std::string& path) const {
   }
 }
 
+void FileFx::check_metadata_correctness(
+    tiledb_array_t* array, uint64_t expected_file_size) const {
+  const void* value;
+  tiledb_datatype_t dtype;
+  uint32_t num;
+  CHECK(
+      tiledb_array_get_metadata(
+          ctx_,
+          array,
+          tiledb::sm::constants::filestore_metadata_size_key.c_str(),
+          &dtype,
+          &num,
+          &value) == TILEDB_OK);
+  REQUIRE(*static_cast<const uint64_t*>(value) == expected_file_size);
+  CHECK(
+      tiledb_array_get_metadata(
+          ctx_,
+          array,
+          tiledb::sm::constants::filestore_metadata_mime_type_key.c_str(),
+          &dtype,
+          &num,
+          &value) == TILEDB_OK);
+  CHECK(memcmp(value, "text/plain", num) == 0);
+  CHECK(
+      tiledb_array_get_metadata(
+          ctx_,
+          array,
+          tiledb::sm::constants::filestore_metadata_mime_encoding_key.c_str(),
+          &dtype,
+          &num,
+          &value) == TILEDB_OK);
+  CHECK(memcmp(value, "us-ascii", num) == 0);
+  CHECK(
+      tiledb_array_get_metadata(
+          ctx_,
+          array,
+          tiledb::sm::constants::filestore_metadata_original_filename_key
+              .c_str(),
+          &dtype,
+          &num,
+          &value) == TILEDB_OK);
+  // value == nullptr acceptable for buffer import
+  if (value) {
+    CHECK(memcmp(value, "text", num) == 0);
+  }
+  CHECK(
+      tiledb_array_get_metadata(
+          ctx_,
+          array,
+          tiledb::sm::constants::filestore_metadata_file_extension_key.c_str(),
+          &dtype,
+          &num,
+          &value) == TILEDB_OK);
+  // value == nullptr acceptable for buffer import
+  if (value) {
+    CHECK(memcmp(value, "txt", num) == 0);
+  }
+}
+
 TEST_CASE_METHOD(
     FileFx, "C API: Test schema create from uri", "[capi][filestore][schema]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
-  std::string array_name = temp_dir + "schema_test_create";
-  std::string csv_path = files_dir + "/" + "text.txt";
+  std::string txt_path = files_dir + "/" + "text.txt";
 
   create_temp_dir(temp_dir);
 
   tiledb_array_schema_t* schema;
 
   CHECK(
-      tiledb_filestore_schema_create(ctx_, csv_path.c_str(), &schema) ==
+      tiledb_filestore_schema_create(ctx_, txt_path.c_str(), &schema) ==
       TILEDB_OK);
 
   CHECK(tiledb_array_schema_check(ctx_, schema) == TILEDB_OK);
@@ -139,8 +202,63 @@ TEST_CASE_METHOD(
       &attr);
   REQUIRE(rc == TILEDB_OK);
 
+  // Cleanup
+  tiledb_attribute_free(&attr);
+  tiledb_dimension_free(&dim);
+  tiledb_domain_free(&domain);
   tiledb_array_schema_free(&schema);
 
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    FileFx,
+    "C API: Test schema create detects compression",
+    "[capi][filestore][schema][compression]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+
+  SECTION("- Uncompressed file") {
+    compression_file_path_ = files_dir + "/" + "text.txt";
+    expected_nfilters_ = 1;
+  }
+  SECTION("- Compressed file") {
+    compression_file_path_ = files_dir + "/" + "quickstart_dense.csv.gz";
+    expected_nfilters_ = 0;
+  }
+  SECTION("- Fake gz extension file") {
+    compression_file_path_ = files_dir + "/" + "fake_gz.gz";
+    expected_nfilters_ = 1;
+  }
+
+  create_temp_dir(temp_dir);
+
+  tiledb_array_schema_t* schema;
+  REQUIRE(
+      tiledb_filestore_schema_create(
+          ctx_, compression_file_path_.c_str(), &schema) == TILEDB_OK);
+
+  tiledb_attribute_t* attr;
+  REQUIRE(
+      tiledb_array_schema_get_attribute_from_name(
+          ctx_,
+          schema,
+          tiledb::sm::constants::filestore_attribute_name.c_str(),
+          &attr) == TILEDB_OK);
+
+  // Text files should get a default filter
+  tiledb_filter_list_t* attr_filters;
+  REQUIRE(
+      tiledb_attribute_get_filter_list(ctx_, attr, &attr_filters) == TILEDB_OK);
+  uint32_t nfilters;
+  REQUIRE(
+      tiledb_filter_list_get_nfilters(ctx_, attr_filters, &nfilters) ==
+      TILEDB_OK);
+  CHECK(nfilters == expected_nfilters_);
+
+  // Cleanup
+  tiledb_filter_list_free(&attr_filters);
+  tiledb_attribute_free(&attr);
+  tiledb_array_schema_free(&schema);
   remove_temp_dir(temp_dir);
 }
 
@@ -172,20 +290,10 @@ TEST_CASE_METHOD(
   CHECK(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
   CHECK(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
 
-  // Check metadata
   std::string file_content("Simple text file.\nWith two lines.");
-  const void* value;
-  tiledb_datatype_t dtype;
-  uint32_t num;
-  CHECK(
-      tiledb_array_get_metadata(
-          ctx_,
-          array,
-          tiledb::sm::constants::filestore_metadata_size_key.c_str(),
-          &dtype,
-          &num,
-          &value) == TILEDB_OK);
-  REQUIRE(*static_cast<const uint64_t*>(value) == file_content.size() + 1);
+
+  // Check metadata
+  check_metadata_correctness(array, file_content.size() + 1);
 
   // Read array
   std::vector<std::byte> buffer(file_content.size());
@@ -299,18 +407,7 @@ TEST_CASE_METHOD(
   CHECK(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
 
   // Check metadata
-  const void* value;
-  tiledb_datatype_t dtype;
-  uint32_t num;
-  CHECK(
-      tiledb_array_get_metadata(
-          ctx_,
-          array,
-          tiledb::sm::constants::filestore_metadata_size_key.c_str(),
-          &dtype,
-          &num,
-          &value) == TILEDB_OK);
-  REQUIRE(*static_cast<const uint64_t*>(value) == file_content.size());
+  check_metadata_correctness(array, file_content.size());
 
   // Read array
   std::vector<std::byte> buffer(file_content.size());
