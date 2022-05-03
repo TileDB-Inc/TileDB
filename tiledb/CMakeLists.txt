@@ -331,35 +331,17 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_EXTERNALS_SOURCES}
 )
 
-############===========================
+############################################################
+# provide actions/target for preparation of magic.mgc data for embedding/build
 
-if (0)
-set(MGC_GZIPPED_BIN_PATH "${CMAKE_CURRENT_BINARY_DIR}/magic_mgc_gzipped.bin")
-set(MGC_GZIPPED_BIN_PATH2 "${CMAKE_CURRENT_BINARY_DIR}/sm/misc/magic_mgc_gzipped.bin")
-add_custom_command(
-  OUTPUT "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/mgc_gzipped.bin
-  DEPENDS "${libmagic_DICTIONARY}"
-  COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_PATH}"
-  # also put it where unit_mgc_dict build can find it
-  COMMAND ${CMAKE_COMMAND} -E copy "${MGC_GZIPPED_BIN_PATH}" "${MGC_GZIPPED_BIN_PATH2}"
-)
-add_custom_target(gen_mgc_gzip ALL
-  DEPENDS ${MGC_GZIPPED_BIN_PATH}
-)
-add_dependencies(gen_mgc_gzip tdb_gzip_embedded_data)
-add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_gzip)
-endif()
-
-#---------------------
 set(MGC_GZIPPED_BIN_PATH3 "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc/magic_mgc_gzipped.bin")
-set(MGC_GZIPPED_BIN_PATH4 "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc")
+set(MGC_GZIPPED_BIN_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc")
 
 add_custom_command(
   OUTPUT "${MGC_GZIPPED_BIN_PATH3}"
   DEPENDS "${MGC_GZIPPED_BIN_PATH3}.tar.bz2"
-#  COMMAND ${CMAKE_COMMAND} -E tar xvj "${MGC_GZIPPED_BIN_PATH3}.tar.bz2" "${MGC_GZIPPED_BIN_PATH3}"
   COMMAND ${CMAKE_COMMAND} -E tar x "${MGC_GZIPPED_BIN_PATH3}.tar.bz2"
-  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_PATH4}"
+  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_DIRECTORY}"
 )
 add_custom_target(gen_mgc_unarch ALL
   DEPENDS ${MGC_GZIPPED_BIN_PATH3}
@@ -371,13 +353,9 @@ add_custom_target(
   COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_PATH3}"
   COMMAND ${CMAKE_COMMAND} -E tar cvj "${MGC_GZIPPED_BIN_PATH3}.tar.bz2" "${MGC_GZIPPED_BIN_PATH3}"
   DEPENDS "${libmagic_DICTIONARY}"
-#  WORKING_DIRECTORY
-#    ${TILEDB_EP_BASE}/..
-  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_PATH4}"
+  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_DIRECTORY}"
   COMMENT "Re-generate ${MGC_GZIPPED_BIN_PATH3} for embedded magic.mgc support"
 )
-
-############===========================
 
 # Compile all core sources with PIC
 set_property(TARGET TILEDB_CORE_OBJECTS PROPERTY POSITION_INDEPENDENT_CODE ON)
