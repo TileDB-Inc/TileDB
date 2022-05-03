@@ -45,9 +45,6 @@ enum {
   METADATA_ALL = METADATA_EXIF | METADATA_ICC | METADATA_XMP
 };
 
-static const int kChunkHeaderSize = 8;
-static const int kTagSize = 4;
-
 //------------------------------------------------------------------------------
 
 static int ProgressReport(int percent, const WebPPicture* const picture) {
