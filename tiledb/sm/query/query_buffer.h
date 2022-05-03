@@ -263,7 +263,7 @@ class QueryBuffer {
     using buffer_type = uint64_t;
     auto* offsets = static_cast<buffer_type*>(buffer_);
     size_t start_offset = offsets[index];
-    size_t next_offset = (*buffer_size_ < (index + 1) * sizeof(buffer_type)) ?
+    size_t next_offset = (*buffer_size_ > (index + 1) * sizeof(buffer_type)) ?
                              offsets[index + 1] :
                              *buffer_var_size_;
     return {static_cast<char*>(buffer_var_) + start_offset,
