@@ -1750,8 +1750,8 @@ Status Dimension::check_tile_extent_upper_floor_internal(
   const uint64_t range = domain[1] - domain[0] + 1;
   const T_FLOOR upper_floor =
       ((range - 1) / (tile_extent)) * (tile_extent) + domain[0];
-  const T_FLOOR upper_floor_max =
-      std::numeric_limits<T_FLOOR>::max() - (tile_extent - 1);
+  const T_FLOOR upper_floor_max = std::numeric_limits<T_FLOOR>::max() -
+                                  (static_cast<T_FLOOR>(tile_extent) - 1);
   const T_FLOOR extent_max =
       static_cast<T_FLOOR>(std::numeric_limits<T_EXTENT>::max());
   const bool exceeds =
