@@ -300,7 +300,7 @@ class GlobalCmp : protected CellCmpBase {
       }
     } else {  // COL_MAJOR
       assert(tile_order_ == Layout::COL_MAJOR);
-      for (unsigned d = dim_num_ - 1;; --d) {
+      for (int32_t d = static_cast<int32_t>(dim_num_) - 1; d >= 0; d--) {
         // Not applicable to var-sized dimensions
         if (domain_.dimension_ptr(d)->var_size())
           continue;
@@ -312,9 +312,6 @@ class GlobalCmp : protected CellCmpBase {
         if (res == 1)
           return false;
         // else same tile on dimension d --> continue
-
-        if (d == 0)
-          break;
       }
     }
 
@@ -331,7 +328,7 @@ class GlobalCmp : protected CellCmpBase {
       }
     } else {  // COL_MAJOR
       assert(cell_order_ == Layout::COL_MAJOR);
-      for (unsigned d = dim_num_ - 1;; --d) {
+      for (int32_t d = static_cast<int32_t>(dim_num_) - 1; d >= 0; d--) {
         auto res = cell_order_cmp_RC(d, a, b);
 
         if (res == -1)
@@ -339,9 +336,6 @@ class GlobalCmp : protected CellCmpBase {
         if (res == 1)
           return false;
         // else same tile on dimension d --> continue
-
-        if (d == 0)
-          break;
       }
     }
 
