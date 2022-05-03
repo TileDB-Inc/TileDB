@@ -90,8 +90,7 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
     ExternalProject_Add(ep_magic
       PREFIX "externals"
       GIT_REPOSITORY "https://github.com/TileDB-Inc/file-windows.git"
-      #GIT_TAG "nplat-cmake-install-support"
-      GIT_TAG "117c8a6533adb135c2c9fd06342daa671a44cb34"
+      GIT_TAG "494060c2ea02494aabfbfc75e76d0af95c36156c"
       GIT_SUBMODULES_RECURSE TRUE
       UPDATE_COMMAND ""
       CMAKE_ARGS
