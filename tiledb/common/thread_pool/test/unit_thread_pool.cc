@@ -412,7 +412,7 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
   std::atomic<int> result(0);
   ThreadPool pool{7};
 
-  Status unripe_banana_status = Status_TaskError("Caught Unripe banana");
+  Status unripe_banana_status = Status_TaskError("Caught msg: Unripe banana");
   Status unbaked_potato_status = Status_TileError("Unbaked potato");
 
   SECTION("One task error exception") {

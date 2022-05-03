@@ -128,8 +128,9 @@ class ThreadPool {
   }
 
   /**
-   * Wait on all the given tasks to complete. This is safe to call recursively
-   * and may execute pending tasks on the calling thread while waiting.
+   * Wait on all the given tasks to complete. This function is safe to call
+   * recursively and may execute pending tasks on the calling thread while
+   * waiting.
    *
    * @param tasks Task list to wait on.
    * @return Status::Ok if all tasks returned Status::Ok, otherwise the first
@@ -138,9 +139,14 @@ class ThreadPool {
   Status wait_all(std::vector<Task>& tasks);
 
   /**
-   * Wait on all the given tasks to complete, return a vector of their return
-   * Status. This is safe to call recursively and may execute pending tasks
-   * on the calling thread while waiting.
+   * Wait on all the given tasks to complete, returning a vector of their return
+   * Status.  Exceptions caught while waiting are returned as Status_TaskError.
+   * Status are saved at the same index in the return vector as the
+   * corresponding task in the input vector.  The status vector may contain more
+   * than one error Status.
+   *
+   * This function is safe to call recursively and may execute pending tasks
+   * with the calling thread while waiting.
    *
    * @param tasks Task list to wait on
    * @return Vector of each task's Status.
