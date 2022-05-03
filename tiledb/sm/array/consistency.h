@@ -37,6 +37,7 @@
 #include <map>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/uri.h"
 
 using namespace tiledb::common;
@@ -72,10 +73,13 @@ class ConsistencyController {
 
   /** Copy Constructor is deleted. */
   ConsistencyController(const ConsistencyController&) = delete;
+
   /** Move Constructor is deleted. */
   ConsistencyController(ConsistencyController&&) = delete;
+
   /** Copy assignment is deleted. */
   ConsistencyController& operator=(const ConsistencyController&) = delete;
+
   /** Move assignment is deleted. */
   ConsistencyController& operator=(ConsistencyController&&) = delete;
 
@@ -95,21 +99,19 @@ class ConsistencyController {
   /** Takes an entry out of the multimap. */
   void deregister_array(entry_type entry);
 
-  size_t registry_size();
-
   /** Returns true if the array is open, i.e. registered in the multimap. */
   bool contains(const URI uri);
 
   /**
-   * Returns true if a URI is an element of a registered array.
-   * The first argument should be the URI in the multimap.
-   * The second argument should be the URI being checked as a suspected element.
+   * Returns true if the given URIs have the same "prefix" and could
+   * potentially intersect one another.
+   * i.e. The second URI is an element of the first (or vice versa).
    *
-   * Note: For now, user error is allowed and calling
-   * `is_element_of(element_uri, registered_uri)` will call
-   * `is_element_of(registered_uri, element_uri)`.
-   * */
-  bool is_element_of(URI registered_uri, URI element_uri);
+   * Note: The order of the arguments does not matter;
+   * the API is checking for working tree intersection.
+   *
+   **/
+  bool is_element_of(const URI uri, const URI intersecting_uri);
 
  private:
   /* ********************************* */
@@ -127,8 +129,6 @@ class ConsistencyController {
  * Sentry class for ConsistencyController
  */
 class ConsistencySentry {
-  friend class WhiteboxConsistencyController;
-
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -136,17 +136,9 @@ class ConsistencySentry {
 
   /** Constructor. */
   ConsistencySentry(ConsistencyController& registry, entry_type entry);
-  /*ConsistencySentry(
-    ConsistencyController& registry, entry_type entry)
-      : array_controller_registry_(registry)
-      , entry_(entry) {
-  }*/
 
   /** Destructor. */
   ~ConsistencySentry();
-  /*~ConsistencySentry() {
-    array_controller_registry_.deregister_array(entry_);
-  }*/
 
  private:
   /* ********************************* */

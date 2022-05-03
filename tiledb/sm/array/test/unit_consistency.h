@@ -36,7 +36,7 @@
 
 #include <catch.hpp>
 #include <iostream>
-//#include "tiledb/sm/storage_manager/context.h"
+
 #include "../array.h"
 #include "../consistency.h"
 
@@ -84,14 +84,13 @@ class WhiteboxConsistencyController : public ConsistencyController {
     return array_registry_.size();
   }
 
-  /*StorageManager* context_storage_manager() {
-    tiledb::sm::Context* ctx = nullptr;
-    tiledb::sm::Config* config = new tiledb::sm::Config();
-    ctx->init(config);
-    return ctx->storage_manager();
-  }*/
-
- private:
+  tdb_unique_ptr<Array> create_array(const URI uri) {
+    ThreadPool* tp_cpu(0);
+    ThreadPool* tp_io(0);
+    stats::Stats stats("");
+    StorageManager sm(tp_cpu, tp_io, &stats, make_shared<Logger>(HERE(), ""));
+    return tdb_unique_ptr<Array>(new Array{uri, &sm, *this});
+  }
 };
 
 }  // namespace sm

@@ -59,6 +59,11 @@ class StorageManager;
 enum class QueryType : uint8_t;
 
 /**
+ * Free function that returns a reference to the ConsistencyController object.
+ */
+ConsistencyController& controller();
+
+/**
  * An array object to be opened for reads/writes. An ``Array`` instance
  * is associated with the timestamp it is opened at.
  */
@@ -69,7 +74,10 @@ class Array {
   /* ********************************* */
 
   /** Constructor. */
-  Array(const URI& array_uri, StorageManager* storage_manager);
+  Array(
+      const URI& array_uri,
+      StorageManager* storage_manager,
+      ConsistencyController& ctrlr = controller());
 
   /** Destructor. */
   ~Array() = default;

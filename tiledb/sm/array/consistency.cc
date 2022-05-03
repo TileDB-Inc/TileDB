@@ -42,6 +42,7 @@ namespace sm {
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
+
 ConsistencySentry::ConsistencySentry(
     ConsistencyController& registry, entry_type entry)
     : array_controller_registry_(registry)
@@ -55,6 +56,7 @@ ConsistencySentry::~ConsistencySentry() {
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+
 ConsistencySentry ConsistencyController::make_sentry(
     const URI uri, Array& array) {
   return ConsistencySentry{*this, register_array(uri, array)};
@@ -72,10 +74,6 @@ void ConsistencyController::deregister_array(entry_type entry) {
   array_registry_.erase(entry);
 }
 
-size_t ConsistencyController::registry_size() {
-  return array_registry_.size();
-}
-
 bool ConsistencyController::contains(const URI uri) {
   for (entry_type iter = array_registry_.begin(); iter != array_registry_.end();
        iter++) {
@@ -85,24 +83,22 @@ bool ConsistencyController::contains(const URI uri) {
   return false;
 }
 
-/* TODO: Finish; this currently returns
-  `contains(registered_uri) || contains(element_uri)`. */
 bool ConsistencyController::is_element_of(
-    const URI registered_uri, const URI element_uri) {
-  // check if registry contains 1 or 2
-  // user error allowed, if contains 2 call is_element_of(2, 1)
+    const URI uri, const URI intersecting_uri) {
+  std::string prefix =
+      std::string(uri.c_str())
+          .substr(
+              0,
+              std::string(uri.c_str()).size() - (uri.last_path_part()).size());
 
-  bool has1 = contains(registered_uri);
-  if (!has1) {
-    bool has2 = contains(element_uri);
-    if (has2)
-      return is_element_of(element_uri, registered_uri);
-  } else {
-    // for now just return true
-    return true;
-  }
+  std::string intersecting_prefix =
+      std::string(intersecting_uri.c_str())
+          .substr(
+              0,
+              std::string(intersecting_uri.c_str()).size() -
+                  (intersecting_uri.last_path_part()).size());
 
-  return false;
+  return (prefix == intersecting_prefix);
 }
 
 }  // namespace sm

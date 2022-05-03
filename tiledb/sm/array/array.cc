@@ -60,7 +60,7 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-static ConsistencyController& controller() {
+ConsistencyController& controller() {
   static ConsistencyController controller;
   return controller;
 }
@@ -69,7 +69,10 @@ static ConsistencyController& controller() {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Array::Array(const URI& array_uri, StorageManager* storage_manager)
+Array::Array(
+    const URI& array_uri,
+    StorageManager* storage_manager,
+    ConsistencyController& ctrlr)
     : array_schema_latest_(nullptr)
     , array_uri_(array_uri)
     , array_dir_()
@@ -84,7 +87,7 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , remote_(array_uri.is_tiledb())
     , metadata_loaded_(false)
     , non_empty_domain_computed_(false)
-    , array_sentry_registry_(controller().make_sentry(array_uri_, *this)) {
+    , array_sentry_registry_(ctrlr.make_sentry(array_uri_, *this)) {
 }
 
 /* ********************************* */
