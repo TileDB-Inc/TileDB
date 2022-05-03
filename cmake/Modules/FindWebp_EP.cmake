@@ -27,75 +27,14 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
-# Search the path set during the superbuild for the EP.
-set(WEBP_PATHS ${TILEDB_EP_INSTALL_PREFIX})
-
-#########################
-# from https://stackoverflow.com/a/56738858
-## https://stackoverflow.com/questions/32183975/how-to-print-all-the-properties-of-a-target-in-cmake/56738858#56738858
-## https://stackoverflow.com/a/56738858/3743145
-
-## Get all properties that cmake supports
-execute_process(COMMAND cmake --help-property-list OUTPUT_VARIABLE CMAKE_PROPERTY_LIST)
-## Convert command output into a CMake list
-STRING(REGEX REPLACE ";" "\\\\;" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
-STRING(REGEX REPLACE "\n" ";" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
-
-list(REMOVE_DUPLICATES CMAKE_PROPERTY_LIST)
-
-function(print_target_properties tgt)
-    if(NOT TARGET ${tgt})
-      message("There is no target named '${tgt}'")
-      return()
-    endif()
-
-    foreach (prop ${CMAKE_PROPERTY_LIST})
-        string(REPLACE "<CONFIG>" "${CMAKE_BUILD_TYPE}" prop ${prop})
-        get_target_property(propval ${tgt} ${prop})
-        if (propval)
-            message ("${tgt} ${prop} = ${propval}")
-        endif()
-    endforeach(prop)
-endfunction(print_target_properties)
-#########################
-
 if (TILEDB_WEBP_EP_BUILT)
-
- if (1)
   find_package(WebP REQUIRED PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
-  message(STATUS "WebP_FOUND is ${WebP_FOUND}")
-  message(STATUS " webp_INCLUDE_DIR is ${wepb_INCLUDE_DIR}")
-  message(STATUS " webp_LIBRARIES is ${wepb_LIBRARIES}")
-  message(STATUS " WebP_INCLUDE_DIR is ${WebP_INCLUDE_DIR}")
-  message(STATUS " WebP_LIBRARIES is ${WebP_LIBRARIES}")
-  #print_target_properties(WebP)
-  print_target_properties(WebP::webp)
-  #find_package(webp PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
-  #message(STATUS "webp_FOUND is ${webp_FOUND}")
-  #print_target_properties(webp)
-  #find_package(Webp_EP REQUIRED)
-  #message(STATUS "Webp_EP_FOUND is ${Webp_EP_FOUND}")
-  #print_target_properties(Webp_EP)
-  #include(CMakePrintHelpers)
-  #cmake_print_properties(
-  #  TARGETS Webp_EP
-  #  PROPERTIES LOCATION INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES LIBRARIES_DIRECTORIES
-  #  )
- endif()
-
 endif()
 
 # if not yet built add it as an external project
 if(NOT TILEDB_WEBP_EP_BUILT)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Webp as an external project")
-
-    #if (WIN32)
-    #  set(CFLAGS_DEF "")
-    #else()
-    #  set(CFLAGS_DEF "${CMAKE_C_FLAGS} -fPIC")
-    #  set(CXXFLAGS_DEF "${CMAKE_CXX_FLAGS} -fPIC")
-    #endif()
 
     # that was modified by tiledb to also build with cmake for nix
     ExternalProject_Add(ep_webp
@@ -141,13 +80,7 @@ endif()
 
 # Always building static EP, install it..
 if (TILEDB_WEBP_EP_BUILT)
-  #install_target_libs(webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux)
-  #install_target_libs($<TARGET_PROPERTY:WebP::webp,INTERFACE_LINK_LIBRARIES>)
-  #install_target_libs(WebP::webp)
-#  install_target_libs(WebP::webpdecoder WebP::webp WebP::webpdemux WebP::webpmux)
-#  install_target_libs(WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux)
-  # TBD: Multiple of these targets only seem to install -first- one in list... ???
-  # (whereas multiple 'simple' targets above seemed to install them all?)
+  # One install_target_libs() with all of these was only installing the first item.
   install_target_libs(WebP::webp)
   install_target_libs(WebP::webpdecoder)
   install_target_libs(WebP::webpdemux)
