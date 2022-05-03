@@ -93,6 +93,9 @@ class Context {
   /** A mutex for thread-safety. */
   std::mutex mtx_;
 
+  /** The class logger. */
+  shared_ptr<Logger> logger_;
+
   /** The thread pool for compute-bound tasks. */
   mutable ThreadPool compute_tp_;
 
@@ -101,9 +104,6 @@ class Context {
 
   /** The class stats. */
   shared_ptr<stats::Stats> stats_;
-
-  /** The class logger. */
-  shared_ptr<Logger> logger_;
 
   /** The storage manager. */
   tdb_unique_ptr<StorageManager> storage_manager_;

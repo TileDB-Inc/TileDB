@@ -44,23 +44,20 @@ TEST_CASE("C API: Test context", "[capi][context]") {
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
+  // Check alloc and alloc_with_error on non-error case
+  // It is allowed to create a thread pool with concurrency level = 0
   rc = tiledb_config_set(config, "sm.compute_concurrency_level", "0", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   tiledb_ctx_t* ctx{nullptr};
   rc = tiledb_ctx_alloc(config, &ctx);
-
-  // It is allowed to create a thread pool with concurrency level = 0
   CHECK(rc == TILEDB_OK);
   tiledb_ctx_free(&ctx);
   CHECK(ctx == nullptr);
 
   rc = tiledb_ctx_alloc_with_error(config, &ctx, &error);
-
-  // It is allowed to create a thread pool with concurrency level = 0
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
-
   tiledb_ctx_free(&ctx);
   CHECK(ctx == nullptr);
 
@@ -91,6 +88,25 @@ TEST_CASE("C API: Test context", "[capi][context]") {
       "pool of "
       "concurrency level " +
           too_large + "; Requested size too large");
+
+  // Check another non-failure
+  // Set this to non-error value
+  rc = tiledb_config_set(
+      config,
+      "sm.compute_concurrency_level",
+      std::to_string(4).c_str(),
+      &error);
+
+  // Set deprecated config
+  rc = tiledb_config_set(
+      config, "sm.num_reader_threads", std::to_string(7).c_str(), &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+
+  rc = tiledb_ctx_alloc(config, &ctx);
+  CHECK(rc == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
+  CHECK(ctx == nullptr);
 
   tiledb_error_free(&error);
   tiledb_config_free(&config);

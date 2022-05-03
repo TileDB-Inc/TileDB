@@ -40,6 +40,8 @@
 
 namespace tiledb::common {
 
+// Constructor.  May throw an exception on error.  No logging is done as the
+// logger may not yet be initialized.
 ThreadPool::ThreadPool(size_t n)
     : concurrency_level_(n) {
   // If concurrency_level_ is set to zero, construct the thread pool in shutdown
@@ -56,7 +58,6 @@ ThreadPool::ThreadPool(size_t n)
                       std::to_string(concurrency_level_) +
                       "; Requested size too large";
     auto st = Status_ThreadPoolError(msg);
-    LOG_STATUS(st);
     throw std::runtime_error(msg);
   }
 
@@ -65,10 +66,10 @@ ThreadPool::ThreadPool(size_t n)
   for (size_t i = 0; i < concurrency_level_; ++i) {
     std::thread tmp;
 
-    // Try to launch a thread running the worker()
-    // function. If we get resources_unvailable_try_again error, then try
-    // again. Three shall be the maximum number of retries and the maximum
-    // number of retries shall be three.
+    // Try to launch a thread running the worker() function. If we get
+    // resources_unvailable_try_again error, then try again. Three shall be the
+    // maximum number of retries and the maximum number of retries shall be
+    // three.
     size_t tries = 3;
     while (tries--) {
       try {
@@ -79,7 +80,6 @@ ThreadPool::ThreadPool(size_t n)
           auto st = Status_ThreadPoolError(
               "Error initializing thread pool of concurrency level " +
               std::to_string(concurrency_level_) + "; " + e.what());
-          LOG_STATUS(st);
           shutdown();
           throw std::runtime_error(
               "Error initializing thread pool of concurrency level " +
@@ -131,12 +131,19 @@ Status ThreadPool::wait_all(std::vector<Task>& tasks) {
   return Status::Ok();
 }
 
+// Return a vector of Status.  If any task returns an error value or throws an
+// exception, we save an error code in the corresponding location in the Status
+// vector.  All tasks are waited on before return.  Multiple error statuses may
+// be saved.  We may call logger here because thread pool will not be used until
+// context is fully constructed (which will include logger).
+// Unfortunately, C++ does not have the notion of an aggregate exception, so we
+// don't throw in the case of errors/exceptions.
 std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
   std::vector<Status> statuses(tasks.size());
 
   std::queue<size_t> pending_tasks;
 
-  // Enqueue all the tasks for processing
+  // Create queue of ids of all the pending tasks for processing
   for (size_t i = 0; i < statuses.size(); ++i) {
     pending_tasks.push(i);
   }
@@ -148,8 +155,8 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
     auto& task = tasks[task_id];
 
     if (!task.valid()) {
-      LOG_ERROR("Waiting on invalid task future.");
       statuses[task_id] = Status_ThreadPoolError("Invalid task future");
+      LOG_STATUS(statuses[task_id]);
     } else if (
         task.wait_for(std::chrono::milliseconds(0)) ==
         std::future_status::ready) {
@@ -159,9 +166,10 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
         try {
           return task.get();
         } catch (const std::exception& e) {
-          return Status_TaskError("Caught " + std::string(e.what()));
+          return Status_TaskError(
+              "Caught std::exception: " + std::string(e.what()));
         } catch (const std::string& msg) {
-          return Status_TaskError("Caught " + msg);
+          return Status_TaskError("Caught msg: " + msg);
         } catch (const Status& stat) {
           return stat;
         } catch (...) {
@@ -169,6 +177,9 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
         }
       }();
 
+      if (!st.ok()) {
+        LOG_STATUS(st);
+      }
       statuses[task_id] = st;
 
     } else {
@@ -185,7 +196,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
         // threads).
         std::this_thread::yield();
 
-        // (Or, we could wait some amount of time)
+        // (An alternative would be to wait some amount of time)
         // task.wait_for(std::chrono::milliseconds(10));
       }
     }
