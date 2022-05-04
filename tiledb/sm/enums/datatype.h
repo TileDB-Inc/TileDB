@@ -53,8 +53,9 @@ enum class Datatype : uint8_t {
 
 /**
  *  Returns the datatype size.
- *  Function also serves as a datatype validation function. When this function
- *  returns 0, we know the input datatype being passed in is invalid.
+ *
+ *  This function also serves as a datatype validation function;
+ *  If 0 is returned, the input Datatype is invalid.
  */
 inline uint64_t datatype_size(Datatype type) noexcept {
   switch (type) {
@@ -349,6 +350,28 @@ inline bool datatype_is_time(Datatype type) {
       type == Datatype::TIME_US || type == Datatype::TIME_NS ||
       type == Datatype::TIME_PS || type == Datatype::TIME_FS ||
       type == Datatype::TIME_AS);
+}
+
+inline uint8_t datatype_to_underlying(Datatype type) {
+  return static_cast<uint8_t>(type);
+}
+
+inline Status datatype_is_valid(Datatype type) {
+  uint8_t datatype_enum = datatype_to_underlying(type);
+  if (datatype_enum < 0 || datatype_enum > 40)
+    return Status_Error("Invalid Datatype " + std::to_string(datatype_enum));
+
+  return Status::Ok();
+}
+
+inline Status datatype_str_is_valid(const std::string& datatype_str) {
+  Datatype datatype_type;
+  RETURN_NOT_OK(datatype_enum(datatype_str, &datatype_type));
+  uint8_t datatype_enum = datatype_to_underlying(datatype_type);
+  if (datatype_enum < 0 || datatype_enum > 40)
+    return Status_Error("Invalid Datatype " + std::to_string(datatype_enum));
+
+  return Status::Ok();
 }
 
 }  // namespace sm

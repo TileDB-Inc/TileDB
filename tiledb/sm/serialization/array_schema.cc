@@ -305,19 +305,16 @@ Status dimension_to_capnp(
   return Status::Ok();
 }
 
+/**
+ * Deserialize a tile extent from a cap'n proto object.
+ *
+ * Note: This API operates under the assumption that before its invocation,
+ * dimension_from_capnp has validated dim_type.
+ */
 ByteVecValue tile_extent_from_capnp(
     const capnp::Dimension::TileExtent::Reader tile_extent_reader,
     Datatype dim_type) {
-  // The datatype_size function also serves as a datatype validation function.
-  // When the datatype_size function returns 0, we know that the input datatype
-  // is invalid.
   auto coord_size = datatype_size(dim_type);
-  if (coord_size == 0) {
-    throw std::runtime_error(
-        "From tile_extent_from_capnp: input datatype " +
-        std::to_string(static_cast<uint8_t>(dim_type)) + " is invalid.");
-  }
-
   ByteVecValue tile_extent(coord_size);
   switch (dim_type) {
     case Datatype::INT8: {
@@ -393,71 +390,83 @@ ByteVecValue tile_extent_from_capnp(
       break;
     }
     default:
-      throw std::logic_error(
-          "From tile_extent_from_capnp: Default branch of switch statement "
-          "should not be reached.");
+      throw std::runtime_error(
+          "[Deserialization::tile_extent_from_capnp] Failed to deserialize "
+          "tile extent from capnp.");
   }
   return tile_extent;
 }
 
+/** Deserialize a dimension from a cap'n proto object. */
 shared_ptr<Dimension> dimension_from_capnp(
     const capnp::Dimension::Reader& dimension_reader) {
-  // datatype
+  Status st;
+
+  // Deserialize datatype
   Datatype dim_type;
-  Status s_datatype_enum =
-      datatype_enum(dimension_reader.getType().cStr(), &dim_type);
-  if (!s_datatype_enum.ok()) {
+  st = datatype_enum(dimension_reader.getType().cStr(), &dim_type);
+  if (!st.ok()) {
     throw std::runtime_error(
-        "From dimension_from_capnp: Could not process datatype obtained from "
-        "the capnp dimension reader object.");
+        "[Deserialization::dimension_from_capnp] Failed to deserialize "
+        "datatype.");
   }
 
-  // When the datatype_size function returns 0, we know that the datatype is
-  // invalid.
+  // Validate the dim_type
+  st = datatype_is_valid(dim_type);
+  if (!st.ok())
+    throw std::runtime_error(
+        "[Deserialization::dimension_from_capnp] " +
+        std::to_string(datatype_to_underlying(dim_type)) +
+        " is not valid as a datatype.");
+
+  // Calculate size of coordinates and re-ensure dim_type is valid (size != 0)
   auto coord_size = datatype_size(dim_type);
   if (coord_size == 0) {
     throw std::runtime_error(
-        "From dimension_from_capnp: Input datatype " +
-        std::to_string(static_cast<uint8_t>(dim_type)) + " is invalid.");
+        "[Deserialization::dimension_from_capnp] " +
+        std::to_string(datatype_to_underlying(dim_type)) +
+        " is not valid as a datatype; datatype_size is 0.");
   }
 
-  // cell val num
+  // Calculate cell_val_num
   uint32_t cell_val_num =
       (datatype_is_string(dim_type)) ? constants::var_num : 1;
 
+  // Load domain
   Range domain;
   if (dimension_reader.hasDomain()) {
     auto domain_reader = dimension_reader.getDomain();
     Buffer domain_buffer;
-    Status s_copy_capnp_list =
-        utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer);
-    if (!s_copy_capnp_list.ok()) {
+    st = utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer);
+    if (!st.ok()) {
       throw std::runtime_error(
-          "From dimension_from_capnp: Could not process domain obtained from "
-          "the capnp dimension reader object.");
+          "[Deserialization::dimension_from_capnp] Failed to deserialize "
+          "domain.");
     }
     domain = Range(domain_buffer.data(), coord_size * 2);
   }
 
+  // Load filters
   shared_ptr<FilterPipeline> filters;
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
     auto&& [st_fp, f]{filter_pipeline_from_capnp(reader)};
     if (!st_fp.ok()) {
       throw std::runtime_error(
-          "From dimension_from_capnp: Could not process filter pipeline "
-          "obtained from the capnp dimension reader object.");
+          "[Deserialization::dimension_from_capnp] Failed to deserialize "
+          "filter pipeline.");
     }
     filters = f.value();
   }
 
+  // Load tile extent
   ByteVecValue tile_extent;
   if (!dimension_reader.getNullTileExtent()) {
     auto tile_extent_reader = dimension_reader.getTileExtent();
     tile_extent = tile_extent_from_capnp(tile_extent_reader, dim_type);
   }
 
-  return tiledb::common::make_shared<Dimension>(
+  return make_shared<Dimension>(
       HERE(),
       dimension_reader.getName(),
       dim_type,
