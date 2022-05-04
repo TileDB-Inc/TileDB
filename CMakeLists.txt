@@ -293,6 +293,8 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_range_subset)
   add_dependencies(tests unit_range)
   add_dependencies(tests unit_mgc_dict)
+
+  add_subdirectory(test/regression)
 endif()
 
 # Build tools
