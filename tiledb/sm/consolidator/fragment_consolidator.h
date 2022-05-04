@@ -137,7 +137,7 @@ class FragmentConsolidator : public Consolidator {
     /**
      * Include timestamps in the consolidated fragment or not.
      */
-    bool include_timestamps_;
+    bool with_timestamps_;
     /**
      * The factor by which the size of the dense fragment resulting
      * from consolidating a set of fragments (containing at least one

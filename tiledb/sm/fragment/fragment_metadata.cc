@@ -78,7 +78,8 @@ FragmentMetadata::FragmentMetadata(
     const shared_ptr<const ArraySchema>& array_schema,
     const URI& fragment_uri,
     const std::pair<uint64_t, uint64_t>& timestamp_range,
-    bool dense)
+    bool dense,
+    bool has_timestamps)
     : storage_manager_(storage_manager)
     , memory_tracker_(memory_tracker)
     , array_schema_(array_schema)
@@ -88,7 +89,7 @@ FragmentMetadata::FragmentMetadata(
     , fragment_uri_(fragment_uri)
     , has_consolidated_footer_(false)
     , last_tile_cell_num_(0)
-    , has_timestamps_(false)
+    , has_timestamps_(has_timestamps)
     , sparse_tile_num_(0)
     , meta_file_size_(0)
     , rtree_(RTree(&array_schema_->domain(), constants::rtree_fanout))
@@ -724,7 +725,7 @@ void FragmentMetadata::compute_tile_bitmap(
 Status FragmentMetadata::init(const NDRange& non_empty_domain) {
   // For easy reference
   auto dim_num = array_schema_->dim_num();
-  auto num = array_schema_->attribute_num() + dim_num + 1;
+  auto num = array_schema_->attribute_num() + dim_num + 1 + has_timestamps_;
   auto& domain{array_schema_->domain()};
 
   // Sanity check
@@ -1224,6 +1225,10 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
 
   if (name == constants::coords) {
     return {Status::Ok(), name};
+  }
+
+  if (name == constants::timestamps) {
+    return {Status::Ok(), "t"};
   }
 
   auto err = "Unable to locate dimension/attribute " + name;
@@ -3664,7 +3669,7 @@ Status FragmentMetadata::load_footer(
   RETURN_NOT_OK(load_file_var_sizes(cbuff.get()));
   RETURN_NOT_OK(load_file_validity_sizes(cbuff.get()));
 
-  unsigned num = array_schema_->attribute_num() + 1;
+  unsigned num = array_schema_->attribute_num() + 1 + has_timestamps_;
   num += (version_ >= 5) ? array_schema_->dim_num() : 0;
 
   tile_offsets_.resize(num);
@@ -4796,6 +4801,10 @@ void FragmentMetadata::build_idx_map() {
   for (unsigned i = 0; i < array_schema_->dim_num(); ++i) {
     const auto& dim_name{array_schema_->dimension_ptr(i)->name()};
     idx_map_[dim_name] = array_schema_->attribute_num() + 1 + i;
+  }
+  if (has_timestamps_) {
+    idx_map_[constants::timestamps] =
+        array_schema_->attribute_num() + 1 + array_schema_->dim_num();
   }
 }
 

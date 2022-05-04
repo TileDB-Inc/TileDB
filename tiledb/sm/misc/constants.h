@@ -119,6 +119,9 @@ extern int coords_compression_level;
 /** Special name reserved for the coordinates attribute. */
 extern const std::string coords;
 
+/** Special name reserved for the timestamp attribute. */
+extern const std::string timestamps;
+
 /** The special value for an empty int32. */
 extern const int empty_int32;
 
