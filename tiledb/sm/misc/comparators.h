@@ -64,7 +64,7 @@ class CellCmpBase {
 
   [[nodiscard]] int cell_order_cmp_RC(
       unsigned int d, const ResultCoords& a, const ResultCoords& b) const {
-    const auto& dim{*(domain_.dimension(d))};
+    const auto& dim{*(domain_.dimension_ptr(d))};
     auto v1{a.dimension_datum(dim, d)};
     auto v2{b.dimension_datum(dim, d)};
     return domain_.cell_order_cmp(d, v1, v2);
@@ -287,7 +287,7 @@ class GlobalCmp : protected CellCmpBase {
     if (tile_order_ == Layout::ROW_MAJOR) {
       for (unsigned d = 0; d < dim_num_; ++d) {
         // Not applicable to var-sized dimensions
-        if (domain_.dimension(d)->var_size())
+        if (domain_.dimension_ptr(d)->var_size())
           continue;
 
         auto res = domain_.tile_order_cmp(d, a.coord(d), b.coord(d));
@@ -302,7 +302,7 @@ class GlobalCmp : protected CellCmpBase {
       assert(tile_order_ == Layout::COL_MAJOR);
       for (unsigned d = dim_num_ - 1;; --d) {
         // Not applicable to var-sized dimensions
-        if (domain_.dimension(d)->var_size())
+        if (domain_.dimension_ptr(d)->var_size())
           continue;
 
         auto res = domain_.tile_order_cmp(d, a.coord(d), b.coord(d));
