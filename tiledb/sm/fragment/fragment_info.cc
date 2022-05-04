@@ -297,7 +297,7 @@ Status FragmentInfo::get_non_empty_domain(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -368,7 +368,7 @@ Status FragmentInfo::get_non_empty_domain_var_size(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -435,7 +435,7 @@ Status FragmentInfo::get_non_empty_domain_var(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -527,7 +527,7 @@ Status FragmentInfo::get_mbr(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -611,7 +611,7 @@ Status FragmentInfo::get_mbr_var_size(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -687,7 +687,7 @@ Status FragmentInfo::get_mbr_var(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }

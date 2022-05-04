@@ -507,7 +507,7 @@ Status FragmentConsolidator::create_buffers(
   }
   if (sparse) {
     for (unsigned i = 0; i < dim_num; ++i)
-      buffer_num += (domain.dimension(i)->var_size()) ? 2 : 1;
+      buffer_num += (domain.dimension_ptr(i)->var_size()) ? 2 : 1;
   }
 
   // Create buffers
@@ -737,7 +737,7 @@ Status FragmentConsolidator::set_query_buffers(
   }
   if (!dense) {
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = array_schema.dimension(d);
+      auto dim{array_schema.dimension_ptr(d)};
       auto dim_name = dim->name();
       if (!dim->var_size()) {
         RETURN_NOT_OK(query->set_data_buffer(

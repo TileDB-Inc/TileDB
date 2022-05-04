@@ -212,9 +212,6 @@ class Domain {
   /** Returns the domain as a N-dimensional range object. */
   NDRange domain() const;
 
-  /** Returns the i-th dimensions (nullptr upon error). */
-  shared_ptr<const Dimension> dimension(unsigned int i) const;
-
   inline const Dimension* dimension_ptr(unsigned int i) const {
     if (i > dim_num_) {
       throw std::invalid_argument("invalid dimension index");
@@ -223,7 +220,7 @@ class Domain {
   }
 
   /** Returns the dimension given a name (nullptr upon error). */
-  shared_ptr<const Dimension> dimension(const std::string& name) const;
+  const Dimension* dimension_ptr(const std::string& name) const;
 
   /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;

@@ -461,7 +461,7 @@ Status ReaderBase::read_tiles(
       if (is_dim) {
         const uint64_t dim_num = array_schema->dim_num();
         for (uint64_t d = 0; d < dim_num; ++d) {
-          if (array_schema->dimension(d)->name() == name) {
+          if (array_schema->dimension_ptr(d)->name() == name) {
             tile->init_coord_tile(name, d);
             break;
           }
@@ -1566,7 +1566,7 @@ tuple<Status, optional<bool>> ReaderBase::fill_dense_coords(
     dim_idx.emplace_back(dim_num);
   } else {
     for (unsigned d = 0; d < dim_num; ++d) {
-      const auto& dim = array_schema_.dimension(d);
+      const auto dim{array_schema_.dimension_ptr(d)};
       auto it = buffers_.find(dim->name());
       if (it != buffers_.end()) {
         buffers.emplace_back(&(it->second));
@@ -1637,8 +1637,7 @@ tuple<Status, optional<bool>> ReaderBase::fill_dense_coords_row_col(
     // Check for overflow
     for (size_t i = 0; i < buffers.size(); ++i) {
       auto idx = (dim_idx[i] == dim_num) ? 0 : dim_idx[i];
-      auto dim = array_schema_.domain().dimension(idx);
-      auto coord_size = dim->coord_size();
+      auto coord_size{array_schema_.domain().dimension_ptr(idx)->coord_size()};
       coord_size = (dim_idx[i] == dim_num) ? coord_size * dim_num : coord_size;
       auto buff_size = *(buffers[i]->buffer_size_);
       auto offset = offsets[i];

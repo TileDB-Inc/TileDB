@@ -491,11 +491,11 @@ Status serialize_subarray(
   // Check coords type
   auto dim_num = array_schema.dim_num();
   uint64_t subarray_size = 0;
-  Datatype first_dimension_datatype = array_schema.dimension(0)->type();
+  Datatype first_dimension_datatype{array_schema.dimension_ptr(0)->type()};
   // If all the dimensions are the same datatype, then we will store the
   // subarray in a type array for <=1.7 compatibility
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dimension = array_schema.dimension(d);
+    auto dimension{array_schema.dimension_ptr(d)};
     const auto coords_type = dimension->type();
 
     if (coords_type != first_dimension_datatype) {
@@ -538,9 +538,9 @@ Status deserialize_subarray(
   // Check coords type
   auto dim_num = array_schema.dim_num();
   uint64_t subarray_size = 0;
-  Datatype first_dimension_datatype = array_schema.dimension(0)->type();
+  Datatype first_dimension_datatype{array_schema.dimension_ptr(0)->type()};
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dimension = array_schema.dimension(d);
+    auto dimension{array_schema.dimension_ptr(d)};
     const auto coords_type = dimension->type();
 
     if (coords_type != first_dimension_datatype) {

@@ -194,13 +194,13 @@ class ArraySchema {
   bool dense() const;
 
   /** Returns the i-th dimension. */
-  shared_ptr<const Dimension> dimension(unsigned int i) const;
+  const Dimension* dimension_ptr(unsigned int i) const;
 
   /**
    * Returns a constant pointer to the selected dimension (nullptr if it
    * does not exist).
    */
-  shared_ptr<const Dimension> dimension(const std::string& name) const;
+  const Dimension* dimension_ptr(const std::string& name) const;
 
   /** Returns the dimension names. */
   std::vector<std::string> dim_names() const;
@@ -408,7 +408,7 @@ class ArraySchema {
   shared_ptr<Domain> domain_;
 
   /** It maps each dimension name to the corresponding dimension object. */
-  std::unordered_map<std::string, shared_ptr<const Dimension>> dim_map_;
+  std::unordered_map<std::string, const Dimension*> dim_map_;
 
   /**
    * The cell order. It can be one of the following:

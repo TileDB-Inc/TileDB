@@ -142,7 +142,7 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
       : qb_(schema.dim_num()) {
     auto n_dimensions{schema.dim_num()};
     for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
-      const auto& name = schema.dimension(i)->name();
+      const auto& name{schema.dimension_ptr(i)->name()};
       qb_[i] = &buffers.at(name);
     }
   }

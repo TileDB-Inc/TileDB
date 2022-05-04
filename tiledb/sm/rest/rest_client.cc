@@ -729,7 +729,7 @@ Status RestClient::subarray_to_str(
     const ArraySchema& schema,
     const void* subarray,
     std::string* subarray_str) {
-  const auto coords_type = schema.dimension(0)->type();
+  const auto coords_type{schema.dimension_ptr(0)->type()};
   const auto dim_num = schema.dim_num();
   const auto subarray_nelts = 2 * dim_num;
 

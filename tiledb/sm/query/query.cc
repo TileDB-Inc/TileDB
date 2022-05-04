@@ -140,13 +140,13 @@ Status Query::add_range(
     return logger_->status(Status_QueryError(
         "Cannot add range; Setting range stride is currently unsupported"));
 
-  if (array_schema_->domain().dimension(dim_idx)->var_size())
+  if (array_schema_->domain().dimension_ptr(dim_idx)->var_size())
     return logger_->status(
         Status_QueryError("Cannot add range; Range must be fixed-sized"));
 
   // Prepare a temp range
   std::vector<uint8_t> range;
-  auto coord_size = array_schema_->dimension(dim_idx)->coord_size();
+  auto coord_size{array_schema_->dimension_ptr(dim_idx)->coord_size()};
   range.resize(2 * coord_size);
   std::memcpy(&range[0], start, coord_size);
   std::memcpy(&range[coord_size], end, coord_size);
@@ -196,7 +196,7 @@ Status Query::add_range_var(
     return logger_->status(
         Status_QueryError("Cannot add range; Invalid range"));
 
-  if (!array_schema_->domain().dimension(dim_idx)->var_size())
+  if (!array_schema_->domain().dimension_ptr(dim_idx)->var_size())
     return logger_->status(
         Status_QueryError("Cannot add range; Range must be variable-sized"));
 
@@ -622,7 +622,7 @@ Status Query::get_buffer(
   // Check attribute
   if (name != constants::coords) {
     if (array_schema_->attribute(name) == nullptr &&
-        array_schema_->dimension(name) == nullptr)
+        array_schema_->dimension_ptr(name) == nullptr)
       return logger_->status(Status_QueryError(
           std::string("Cannot get buffer; Invalid attribute/dimension name '") +
           name + "'"));
@@ -646,7 +646,7 @@ Status Query::get_buffer(
         Status_QueryError("Cannot get buffer; Coordinates are not var-sized"));
   }
   if (array_schema_->attribute(name) == nullptr &&
-      array_schema_->dimension(name) == nullptr)
+      array_schema_->dimension_ptr(name) == nullptr)
     return logger_->status(Status_QueryError(
         std::string("Cannot get buffer; Invalid attribute/dimension name '") +
         name + "'"));
@@ -681,7 +681,7 @@ Status Query::get_offsets_buffer(
         Status_QueryError("Cannot get buffer; Coordinates are not var-sized"));
   }
   if (array_schema_->attribute(name) == nullptr &&
-      array_schema_->dimension(name) == nullptr)
+      array_schema_->dimension_ptr(name) == nullptr)
     return logger_->status(Status_QueryError(
         std::string("Cannot get buffer; Invalid attribute/dimension name '") +
         name + "'"));
@@ -709,7 +709,7 @@ Status Query::get_data_buffer(
   // Check attribute
   if (name != constants::coords) {
     if (array_schema_->attribute(name) == nullptr &&
-        array_schema_->dimension(name) == nullptr)
+        array_schema_->dimension_ptr(name) == nullptr)
       return logger_->status(Status_QueryError(
           std::string("Cannot get buffer; Invalid attribute/dimension name '") +
           name + "'"));
@@ -1842,7 +1842,7 @@ Status Query::set_subarray(const void* subarray) {
     }
 
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto r_size = 2 * array_schema_->dimension(d)->coord_size();
+      auto r_size{2 * array_schema_->dimension_ptr(d)->coord_size()};
       Range range(&s_ptr[offset], r_size);
       RETURN_NOT_OK(sub.add_range(d, std::move(range), err_on_range_oob));
       offset += r_size;

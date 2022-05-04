@@ -135,7 +135,7 @@ Status OrderedWriter::ordered_write() {
   assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
   assert(array_schema_.dense());
 
-  auto type = array_schema_.domain().dimension(0)->type();
+  auto type{array_schema_.domain().dimension_ptr(0)->type()};
   switch (type) {
     case Datatype::INT8:
       return ordered_write<int8_t>();
