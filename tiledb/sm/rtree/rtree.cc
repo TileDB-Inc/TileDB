@@ -204,9 +204,9 @@ void RTree::compute_tile_bitmap(
     const auto& mbr = levels_[entry.level_][entry.mbr_idx_];
 
     // If there is overlap
-    if (domain_->dimension(d)->overlap(range, mbr[d])) {
+    if (domain_->dimension_ptr(d)->overlap(range, mbr[d])) {
       // If there is full overlap
-      if (domain_->dimension(d)->covered(mbr[d], range)) {
+      if (domain_->dimension_ptr(d)->covered(mbr[d], range)) {
         auto subtree_leaf_num = this->subtree_leaf_num(entry.level_);
         assert(subtree_leaf_num > 0);
         uint64_t start = entry.mbr_idx_ * subtree_leaf_num;
@@ -269,8 +269,7 @@ Status RTree::serialize(Buffer* buff) const {
     for (uint64_t m = 0; m < mbr_num; ++m) {
       for (unsigned d = 0; d < dim_num; ++d) {
         const auto& r = levels_[l][m][d];
-        auto dim = domain_->dimension(d);
-        if (!dim->var_size()) {  // Fixed-sized
+        if (!domain_->dimension_ptr(d)->var_size()) {  // Fixed-sized
           // Just write the plain range
           RETURN_NOT_OK(buff->write(r.data(), r.size()));
         } else {  // Var-sized
@@ -378,7 +377,7 @@ Status RTree::deserialize_v1_v4(ConstBuffer* cbuff, const Domain* domain) {
     for (uint64_t m = 0; m < mbr_num; ++m) {
       levels_[l][m].resize(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
-        auto r_size = 2 * domain->dimension(d)->coord_size();
+        auto r_size{2 * domain->dimension_ptr(d)->coord_size()};
         levels_[l][m][d].set_range(cbuff->cur_data(), r_size);
         cbuff->advance_offset(r_size);
       }
@@ -412,7 +411,7 @@ Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
     for (uint64_t m = 0; m < mbr_num; ++m) {
       levels_[l][m].resize(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
-        auto dim = domain->dimension(d);
+        auto dim{domain->dimension_ptr(d)};
         if (!dim->var_size()) {  // Fixed-sized
           auto r_size = 2 * dim->coord_size();
           levels_[l][m][d].set_range(cbuff->cur_data(), r_size);

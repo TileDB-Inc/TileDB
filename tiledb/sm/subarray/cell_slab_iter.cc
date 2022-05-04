@@ -66,7 +66,7 @@ CellSlabIter<T>::CellSlabIter(const Subarray* subarray)
   if (subarray != nullptr) {
     const auto& array_schema = subarray->array()->array_schema_latest();
     auto dim_num = array_schema.dim_num();
-    auto coord_size = array_schema.dimension(0)->coord_size();
+    auto coord_size{array_schema.dimension_ptr(0)->coord_size()};
     aux_tile_coords_.resize(dim_num);
     aux_tile_coords_2_.resize(dim_num * coord_size);
   }
@@ -284,7 +284,7 @@ Status CellSlabIter<T>::sanity_check() const {
   // Check type
   bool error;
   const auto& array_schema = subarray_->array()->array_schema_latest();
-  auto type = array_schema.domain().dimension(0)->type();
+  auto type = array_schema.domain().dimension_ptr(0)->type();
   switch (type) {
     case Datatype::INT8:
       error = !std::is_same<T, int8_t>::value;
