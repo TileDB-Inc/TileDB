@@ -88,6 +88,7 @@ FragmentMetadata::FragmentMetadata(
     , fragment_uri_(fragment_uri)
     , has_consolidated_footer_(false)
     , last_tile_cell_num_(0)
+    , has_timestamps_(false)
     , sparse_tile_num_(0)
     , meta_file_size_(0)
     , rtree_(RTree(&array_schema_->domain(), constants::rtree_fanout))
@@ -113,6 +114,7 @@ FragmentMetadata::FragmentMetadata(const FragmentMetadata& other) {
   meta_file_size_ = other.meta_file_size_;
   version_ = other.version_;
   tile_index_base_ = other.tile_index_base_;
+  has_timestamps_ = other.has_timestamps_;
   sparse_tile_num_ = other.sparse_tile_num_;
   footer_size_ = other.footer_size_;
   footer_offset_ = other.footer_offset_;
@@ -132,6 +134,7 @@ FragmentMetadata& FragmentMetadata::operator=(const FragmentMetadata& other) {
   meta_file_size_ = other.meta_file_size_;
   version_ = other.version_;
   tile_index_base_ = other.tile_index_base_;
+  has_timestamps_ = other.has_timestamps_;
   sparse_tile_num_ = other.sparse_tile_num_;
   footer_size_ = other.footer_size_;
   footer_offset_ = other.footer_offset_;
@@ -1770,6 +1773,11 @@ Status FragmentMetadata::write_footer(Buffer* buff) const {
   RETURN_NOT_OK(write_non_empty_domain(buff));
   RETURN_NOT_OK(write_sparse_tile_num(buff));
   RETURN_NOT_OK(write_last_tile_cell_num(buff));
+
+  if (version_ >= 14) {
+    RETURN_NOT_OK(write_has_timestamps(buff));
+  }
+
   RETURN_NOT_OK(write_file_sizes(buff));
   RETURN_NOT_OK(write_file_var_sizes(buff));
   RETURN_NOT_OK(write_file_validity_sizes(buff));
@@ -2506,6 +2514,18 @@ Status FragmentMetadata::load_last_tile_cell_num(ConstBuffer* buff) {
     return LOG_STATUS(Status_FragmentMetadataError(
         "Cannot load fragment metadata; Reading last tile cell number "
         "failed"));
+  }
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// has_timestamps (char)
+Status FragmentMetadata::load_has_timestamps(ConstBuffer* buff) {
+  // Get includes timestamps
+  Status st = buff->read(&has_timestamps_, sizeof(char));
+  if (!st.ok()) {
+    return LOG_STATUS(Status_FragmentMetadataError(
+        "Cannot load fragment metadata; Reading include timestamps failed"));
   }
   return Status::Ok();
 }
@@ -3632,6 +3652,11 @@ Status FragmentMetadata::load_footer(
   RETURN_NOT_OK(load_non_empty_domain(cbuff.get()));
   RETURN_NOT_OK(load_sparse_tile_num(cbuff.get()));
   RETURN_NOT_OK(load_last_tile_cell_num(cbuff.get()));
+
+  if (version_ >= 14) {
+    RETURN_NOT_OK(load_has_timestamps(cbuff.get()));
+  }
+
   RETURN_NOT_OK(load_file_sizes(cbuff.get()));
   RETURN_NOT_OK(load_file_var_sizes(cbuff.get()));
   RETURN_NOT_OK(load_file_validity_sizes(cbuff.get()));
@@ -4724,6 +4749,11 @@ Status FragmentMetadata::write_dense(Buffer* buff) const {
 
 Status FragmentMetadata::write_sparse_tile_num(Buffer* buff) const {
   RETURN_NOT_OK(buff->write(&sparse_tile_num_, sizeof(uint64_t)));
+  return Status::Ok();
+}
+
+Status FragmentMetadata::write_has_timestamps(Buffer* buff) const {
+  RETURN_NOT_OK(buff->write(&has_timestamps_, sizeof(char)));
   return Status::Ok();
 }
 

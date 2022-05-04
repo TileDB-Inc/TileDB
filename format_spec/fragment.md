@@ -198,6 +198,7 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Non-empty domain | [MBR](#mbr) | An MBR denoting the non-empty domain |
 | Number of sparse tiles | `uint64_t` | Number of sparse tiles |
 | Last tile cell num | `uint64_t` | For sparse arrays, the number of cells in the last tile in the fragment |
+| Includes timestamps | `char` | Whether the fragment includes timestamps or not |
 | File sizes | `uint64_t[]` | The size in bytes of each attribute/dimension file in the fragment. For var-length attributes/dimensions, this is the size of the offsets file. |
 | File var sizes | `uint64_t[]` | The size in bytes of each var-length attribute/dimension file in the fragment. |
 | File validity sizes | `uint64_t[]` | The size in bytes of each attribute/dimension validity vector file in the fragment. |
