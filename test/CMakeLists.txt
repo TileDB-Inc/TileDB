@@ -161,6 +161,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
+  src/unit-global-order.cc
   src/unit-gcs.cc
   src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
