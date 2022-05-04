@@ -510,20 +510,41 @@ Status domain_to_capnp(
   return Status::Ok();
 }
 
-Status domain_from_capnp(
-    const capnp::Domain::Reader& domain_reader,
-    tdb_unique_ptr<Domain>* domain) {
-  Datatype datatype = Datatype::ANY;
-  RETURN_NOT_OK(datatype_enum(domain_reader.getType(), &datatype));
-  domain->reset(tdb_new(Domain));
+/* Deserialize a domain from a cap'n proto object. */
+shared_ptr<Domain> domain_from_capnp(
+    const capnp::Domain::Reader& domain_reader) {
+  Status st;
 
-  auto dimensions = domain_reader.getDimensions();
-  for (auto dimension : dimensions) {
-    auto dim = dimension_from_capnp(dimension);
-    RETURN_NOT_OK((*domain)->add_dimension(dim));
+  // Deserialize datatype
+  Datatype datatype = Datatype::ANY;
+  st = datatype_enum(domain_reader.getType(), &datatype);
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[Deserialization::domain_from_capnp] " +
+        std::string(domain_reader.getType().cStr()) +
+        " is not a valid datatype identifer.");
   }
 
-  return Status::Ok();
+  // Validate the datatype
+  try {
+    ensure_datatype_is_valid(datatype);
+  } catch (const std::exception& e) {
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::domain_from_capnp] "));
+  }
+
+  // Deserialize dimensions
+  // Note: Security validation delegated to invoked API
+  auto dimensions = domain_reader.getDimensions();
+  std::vector<shared_ptr<Dimension>> dims;
+  unsigned dim_num = 0;
+  for (auto dimension : dimensions) {
+    shared_ptr<Dimension> dim{dimension_from_capnp(dimension)};
+    dims.emplace_back(dim);
+    ++dim_num;
+  }
+
+  return make_shared<Domain>(HERE(), dims, dim_num);
 }
 
 Status array_schema_to_capnp(
@@ -614,10 +635,8 @@ Status array_schema_from_capnp(
   }
 
   auto domain_reader = schema_reader.getDomain();
-  tdb_unique_ptr<Domain> domain;
-  RETURN_NOT_OK(domain_from_capnp(domain_reader, &domain));
-  RETURN_NOT_OK(
-      (*array_schema)->set_domain(make_shared<Domain>(HERE(), domain.get())));
+  auto domain{domain_from_capnp(domain_reader)};
+  RETURN_NOT_OK((*array_schema)->set_domain(domain));
 
   // Set coords filter pipelines
   if (schema_reader.hasCoordsFilterPipeline()) {
