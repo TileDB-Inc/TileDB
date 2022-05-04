@@ -795,6 +795,12 @@ Status FragmentConsolidator::set_config(const Config* config) {
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
   assert(found);
+  config_.include_timestamps_ = false;
+  RETURN_NOT_OK(merged_config.get<bool>(
+      "sm.consolidation.with_timestamps",
+      &config_.include_timestamps_,
+      &found));
+  assert(found);
   std::string reader =
       merged_config.get("sm.query.sparse_global_order.reader", &found);
   assert(found);

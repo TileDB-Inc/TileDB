@@ -247,6 +247,7 @@ void check_save_to_file() {
   ss << "sm.consolidation.steps 4294967295\n";
   ss << "sm.consolidation.timestamp_end " << std::to_string(UINT64_MAX) << "\n";
   ss << "sm.consolidation.timestamp_start 0\n";
+  ss << "sm.consolidation.with_timestamps false\n";
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.encryption_type NO_ENCRYPTION\n";
@@ -603,6 +604,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.consolidation.timestamp_start"] = "0";
   all_param_values["sm.consolidation.timestamp_end"] =
       std::to_string(UINT64_MAX);
+  all_param_values["sm.consolidation.with_timestamps"] = "false";
   all_param_values["sm.consolidation.step_min_frags"] = "4294967295";
   all_param_values["sm.consolidation.step_max_frags"] = "4294967295";
   all_param_values["sm.consolidation.buffer_size"] = "50000000";
