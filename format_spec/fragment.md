@@ -193,6 +193,8 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Version number | `uint32_t` | Format version number of the fragment |
+| Array schema name size | `uint64_t` | Size of the array schema name |
+| Array schema name | `string` | Array schema name |
 | Dense | `char` | Whether the array is dense |
 | Null non-empty domain | `char` | Indicates whether the non-empty domain is null or not |
 | Non-empty domain | [MBR](#mbr) | An MBR denoting the non-empty domain |
