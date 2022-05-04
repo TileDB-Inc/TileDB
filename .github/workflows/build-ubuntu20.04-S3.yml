@@ -106,6 +106,7 @@ jobs:
           docker ps -a
 
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/regression/tiledb_regression -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build
