@@ -178,6 +178,7 @@ steps:
     fi
 
     make -j4 -C tiledb tiledb_unit
+    make -j4 -C tiledb tiledb_regression
 
     if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
       export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5
@@ -191,6 +192,7 @@ steps:
       # run directly the executable, cmake catches the segfault and blocks
       # the core dump
       ./tiledb/test/tiledb_unit -d yes
+      ./tiledb/test/regression/tiledb_regression -d yes
     fi
 
     # Kill the running Minio server, OSX only because Linux runs it within
