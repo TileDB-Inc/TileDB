@@ -1073,6 +1073,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
  *    Only for `fragments` and `array_meta` consolidation mode. <br>
  *    **Default**: UINT64_MAX
+ * - `sm.consolidation.with_timestamps` <br>
+ *    **Experimental** <br>
+ *    Consolidation with timestamps will include, for each cells, the
+ *    timestamp at which the cell was written. <br>
+ *    **Default**: "false"
  * - `sm.memory_budget` <br>
  *    The memory budget for tiles of fixed-sized attributes (or offsets for
  *    var-sized attributes) to be fetched during reads.<br>
