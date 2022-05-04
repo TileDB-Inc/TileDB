@@ -215,6 +215,13 @@ class Domain {
   /** Returns the i-th dimensions (nullptr upon error). */
   shared_ptr<const Dimension> dimension(unsigned int i) const;
 
+  inline const Dimension* dimension_ptr(unsigned int i) const {
+    if (i > dim_num_) {
+      throw std::invalid_argument("invalid dimension index");
+    }
+    return dimension_ptrs_[i];
+  }
+
   /** Returns the dimension given a name (nullptr upon error). */
   shared_ptr<const Dimension> dimension(const std::string& name) const;
 
@@ -468,8 +475,17 @@ class Domain {
   /** The cell order of the array the domain belongs to. */
   Layout cell_order_;
 
-  /** The domain dimensions. */
+  /**
+   * Allocation for the dimensions of this domain.
+   *
+   * This array holds the memory resource for the dimensions.
+   */
   std::vector<shared_ptr<Dimension>> dimensions_;
+
+  /**
+   * Non-allocating mirror of the dimensions vector.
+   */
+  std::vector<const Dimension*> dimension_ptrs_;
 
   /** The number of dimensions. */
   unsigned dim_num_;
