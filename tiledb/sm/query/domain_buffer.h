@@ -130,7 +130,7 @@ class SingleCoord {
       , single_offset_(1) {
     sizes_[schema.dim_num()] = sizeof(uint64_t);
     for (unsigned d = 0; d < coords_.size(); ++d) {
-      bool var_size = schema.dimension(d)->var_size();
+      bool var_size = schema.dimension_ptr(d)->var_size();
       auto dv = coord.dimension_datum_view(d);
       sizes_[d] = dv.size();
       coords_[d].resize(sizes_[d]);
