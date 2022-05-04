@@ -100,7 +100,7 @@ class DomainBufferDataRef : public detail::DomainBuffersTypes,
   }
 
   UntypedDatumView dimension_datum_view(unsigned int i) const override {
-    return {qb_[i]->dimension_datum_at(*domain_.dimension(i), k_).datum()};
+    return {qb_[i]->dimension_datum_at(*domain_.dimension_ptr(i), k_).datum()};
   }
 
   DomainBufferDataRef(const Domain& domain) = delete;
@@ -198,7 +198,7 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
         size_t k) {
       // Construct datum in place with placement-new
       new (item) UntypedDatumView{
-          qb[i]->dimension_datum_at(*domain.dimension(i), k).datum()};
+          qb[i]->dimension_datum_at(*domain.dimension_ptr(i), k).datum()};
     }
   };
 
