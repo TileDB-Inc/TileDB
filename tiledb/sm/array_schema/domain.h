@@ -212,6 +212,16 @@ class Domain {
   /** Returns the domain as a N-dimensional range object. */
   NDRange domain() const;
 
+  /**
+   * Return a pointer to the dimension given by the argument index
+   *
+   * This function does not return `nullptr`. It throws if the argument is
+   * invalid. It relies on the class invariant that absent dimensions (as
+   * manifested by a null pointer) are not allowed.
+   *
+   * @param i index of the dimension within the domain
+   * @return non-null pointer to the dimension
+   */
   inline const Dimension* dimension_ptr(unsigned int i) const {
     if (i > dim_num_) {
       throw std::invalid_argument("invalid dimension index");
@@ -475,12 +485,23 @@ class Domain {
   /**
    * Allocation for the dimensions of this domain.
    *
-   * This array holds the memory resource for the dimensions.
+   * This array keeps the memory resource for the dimensions. This is its only
+   * responsibility, and as such only appears in initialization code. Pointers
+   * to the stored `Dimension` objects are mirrored in `dimension_ptrs_`.
+   *
+   * @invariant All pointers in the vector are non-null.
    */
   std::vector<shared_ptr<Dimension>> dimensions_;
 
   /**
    * Non-allocating mirror of the dimensions vector.
+   *
+   * This vector holds pointers to the dimensions for ordinary, efficient use.
+   * The `shared_ptr` of `dimensions_` is only used for resource management, so
+   * this variable mirrors just the pointers, avoiding all overhead of using
+   * `shared_ptr` ordinarily.
+   *
+   * @invariant All pointers in the vector are non-null.
    */
   std::vector<const Dimension*> dimension_ptrs_;
 

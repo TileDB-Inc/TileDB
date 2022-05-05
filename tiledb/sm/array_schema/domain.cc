@@ -72,10 +72,17 @@ Domain::Domain(
     , dimensions_(dimensions)
     , dim_num_((unsigned int)dimensions.size())
     , tile_order_(tile_order) {
-  // Initialize the dimensions mirror
+  /*
+   * Verify that the input vector has no non-null elements in order to meet the
+   * class invariant. Initialize the dimensions mirror.
+   */
   dimension_ptrs_.reserve(dimensions_.size());
   for (const auto& dim : dimensions_) {
-    dimension_ptrs_.emplace_back(dim.get());
+    auto p{dim.get()};
+    if (p == nullptr) {
+      throw std::invalid_argument("May not have null dimensions in a domain");
+    }
+    dimension_ptrs_.emplace_back(p);
   }
 
   // Compute number of cells per tile
@@ -147,6 +154,7 @@ Layout Domain::tile_order() const {
 Status Domain::add_dimension(shared_ptr<Dimension> dim) {
   auto p{dim.get()};
   if (p == nullptr) {
+    // Class invariant prohibits null dimensions in a domain.
     throw std::invalid_argument("May not add null dimensions to a domain");
   }
   dimensions_.emplace_back(dim);
