@@ -30,7 +30,6 @@
  * Tests the C++ API for query related functions.
  */
 
-#include <cstdlib>
 #include <ctime>
 #include <iostream>
 #include <vector>

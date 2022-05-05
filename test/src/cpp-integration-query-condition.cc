@@ -1,5 +1,5 @@
 /**
- * @file   integration-query-condition.cc
+ * @file   cpp-integration-query-condition.cc
  *
  * @section LICENSE
  *
@@ -42,19 +42,65 @@
 
 using namespace tiledb;
 
+int num_rows = 20;
 int a_fill_value = -1;
 float b_fill_value = 0.0;
 const std::string array_name = "cpp_unit_array";
 
-void setup(
+inline int index_from_row_col(int r, int c) {
+  return ((r - 1) * num_rows) + (c - 1);
+}
+
+/**
+ * @brief Create a TileDB array with the following characteristics.
+ * - Two dimensions called rows and cols. Each dimension is of type
+ * int, and has a lower bound of 1 and a higher bound of 20, inclusive.
+ * - Two attributes called "a" (of type int) and "b" (of type float).
+ * - Tile size of 4.
+ *
+ * The data in the array is set as follows. On attribute a, each cell's value
+ * is 0 if the column index is 1 if the column dimension is odd, and 0 if the
+ * column index is even. This makes the cell values on attribute a look like
+ * the following:
+ *
+ * 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0
+ * .
+ * . (for 20 rows total)
+ * .
+ * 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0
+ *
+ * On attribute b, the cell values are based on a more complex system.
+ * The values are set with likeness to the diagram below. Keep in mind
+ * that each row is 20 cells long.
+ *
+ * 3.4  4.2  Z  4.2  Y    4.2  Z  4.2  ... 3.4  4.2  Z  4.2
+ * Y    4.2  Z  4.2  3.4  4.2  Z  4.2  ... Y    4.2  Z  4.2
+ * .
+ * . (for 20 rows total)
+ * .
+ * Y    4.2  Z  4.2  3.4  4.2  Z  4.2  ... Y    4.2  Z  4.2
+ *
+ * Legend:
+ * Y: 3.45 <= val <= 3.7
+ * Z: val <= 3.2
+ * Numbers are true to their cell value.
+ *
+ *
+ * @param ctx Context.
+ * @param array_type Type of array (sparse or dense).
+ * @param set_dups Whether the array allows coordinate duplicates.
+ * @param a_data_read Data buffer to store cell values on attribute a.
+ * @param b_data_read Data buffer to store cell values on attribute b.
+ */
+void create_array(
     Context& ctx,
     tiledb_array_type_t array_type,
     bool set_dups,
     std::vector<int>& a_data_read,
     std::vector<float>& b_data_read) {
   Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 20}}, 4))
-      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 20}}, 4));
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, num_rows}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, num_rows}}, 4));
   ArraySchema schema(ctx, array_type);
   if (set_dups) {
     schema.set_allows_dups(true);
@@ -76,9 +122,9 @@ void setup(
   std::vector<int> a_data;
   std::vector<float> b_data;
 
-  for (int i = 0; i < 400; ++i) {
-    int row = (i / 20) + 1;
-    int col = (i % 20) + 1;
+  for (int i = 0; i < num_rows * num_rows; ++i) {
+    int row = (i / num_rows) + 1;
+    int col = (i % num_rows) + 1;
     int a = i % 2 == 1 ? 0 : 1;
     float b;
     if (i % 8 == 0) {
@@ -126,7 +172,7 @@ void setup(
     array_w.close();
   }
 
-  // Open and read the entire array.
+  // Open and read the entire array to save data for future comparisons.
   Array array1(ctx, array_name, TILEDB_READ);
   Query query1(ctx, array1);
   query1.set_layout(TILEDB_ROW_MAJOR)
@@ -134,19 +180,23 @@ void setup(
       .set_data_buffer("b", b_data_read);
 
   if (array_type == TILEDB_DENSE) {
-    int range[] = {1, 20};
+    int range[] = {1, num_rows};
     query1.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
   }
   query1.submit();
+
+  // Check the query for accuracy. The query results should contain all the
+  // elements.
+  size_t total_num_elements = static_cast<size_t>(num_rows * num_rows);
   auto table = query1.result_buffer_elements();
   REQUIRE(table.size() == 2);
   REQUIRE(table["a"].first == 0);
-  REQUIRE(table["a"].second == 400);
+  REQUIRE(table["a"].second == total_num_elements);
   REQUIRE(table["b"].first == 0);
-  REQUIRE(table["b"].second == 400);
+  REQUIRE(table["b"].second == total_num_elements);
 
-  for (size_t i = 0; i < 400; ++i) {
+  for (size_t i = 0; i < total_num_elements; ++i) {
     if (i % 2 == 0) {
       REQUIRE(a_data_read[i] == 1);
       REQUIRE(b_data_read[i] <= 3.8);
@@ -163,6 +213,8 @@ void setup(
 TEST_CASE(
     "Test read for sparse arrays with no range, with query condition",
     "[query][query-condition][apply]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -170,24 +222,30 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_SPARSE, false, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_SPARSE, false, a_data_read, b_data_read);
 
+  // Create the query, which reads over the entire array with query condition (b
+  // < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
   QueryCondition qc(ctx);
   float val = 4.0f;
   qc.init("b", &val, sizeof(float), TILEDB_LT);
 
-  std::vector<int> a_data_read_2(400);
-  std::vector<float> b_data_read_2(400);
+  std::vector<int> a_data_read_2(num_rows * num_rows);
+  std::vector<float> b_data_read_2(num_rows * num_rows);
   query2.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_data_read_2)
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
+
+  // Check the query for accuracy. The query results should contain 200
+  // elements. Each of these elements should have the cell value 1 on attribute
+  // a and should match the original value in the array that reads all elements.
   auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
@@ -196,11 +254,11 @@ TEST_CASE(
   REQUIRE(table2["b"].second == 200);
 
   for (int i = 0; i < 200; i++) {
-    int og_i = 2 * i;
+    int original_arr_i = 2 * i;
     REQUIRE(a_data_read_2[i] == 1);
-    REQUIRE(a_data_read_2[i] == a_data_read[og_i]);
+    REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
     REQUIRE(
-        fabs(b_data_read_2[i] - b_data_read[og_i]) <
+        fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
         std::numeric_limits<float>::epsilon());
   }
 
@@ -215,6 +273,8 @@ TEST_CASE(
     "Test read for sparse arrays with added range within a tile, with query "
     "condition",
     "[query][query-condition][apply]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -222,11 +282,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_SPARSE, false, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_SPARSE, false, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[2,3], cols[2,3] with
+  // query condition (b < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
 
@@ -244,6 +306,8 @@ TEST_CASE(
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
+
+  // Check the query for accuracy. The query results should contain 2 elements.
   auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
@@ -251,16 +315,18 @@ TEST_CASE(
   REQUIRE(table2["b"].first == 0);
   REQUIRE(table2["b"].second == 2);
 
-  // testing (2,3)
-  REQUIRE(a_data_read_2[0] == a_data_read[22]);
+  // Testing (2,3), which should be in the result buffer.
+  int ind_0 = index_from_row_col(2, 3);
+  REQUIRE(a_data_read_2[0] == a_data_read[ind_0]);
   REQUIRE(
-      fabs(b_data_read_2[0] - b_data_read[22]) <
+      fabs(b_data_read_2[0] - b_data_read[ind_0]) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (3,3)
-  REQUIRE(a_data_read_2[1] == a_data_read[42]);
+  // Testing (3,3), which should be in the result buffer.
+  int ind_1 = index_from_row_col(3, 3);
+  REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
   REQUIRE(
-      fabs(b_data_read_2[1] - b_data_read[42]) <
+      fabs(b_data_read_2[1] - b_data_read[ind_1]) <
       std::numeric_limits<float>::epsilon());
 
   query2.finalize();
@@ -274,6 +340,8 @@ TEST_CASE(
     "Test read for sparse arrays with range across tile for rows dimension, "
     "within tile for cols dimension, with query condition",
     "[query][query-condition][apply]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -281,11 +349,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_SPARSE, false, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_SPARSE, false, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[7,10], cols[2,3] with
+  // query condition (b < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
 
@@ -304,6 +374,8 @@ TEST_CASE(
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
+
+  // Check the query for accuracy. The query results should contain 4 elements.
   auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
@@ -311,28 +383,32 @@ TEST_CASE(
   REQUIRE(table2["b"].first == 0);
   REQUIRE(table2["b"].second == 4);
 
-  // testing (7,3)
-  REQUIRE(a_data_read_2[0] == a_data_read[122]);
+  // Testing (7,3), which should be in the result buffer.
+  int ind_0 = index_from_row_col(7, 3);
+  REQUIRE(a_data_read_2[0] == a_data_read[ind_0]);
   REQUIRE(
-      fabs(b_data_read_2[0] - b_data_read[122]) <
+      fabs(b_data_read_2[0] - b_data_read[ind_0]) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (8,3)
-  REQUIRE(a_data_read_2[1] == a_data_read[142]);
+  // Testing (8,3), which should be in the result buffer.
+  int ind_1 = index_from_row_col(8, 3);
+  REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
   REQUIRE(
-      fabs(b_data_read_2[1] - b_data_read[142]) <
+      fabs(b_data_read_2[1] - b_data_read[ind_1]) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (9,3)
-  REQUIRE(a_data_read_2[2] == a_data_read[162]);
+  // Testing (9,3), which should be in the result buffer.
+  int ind_2 = index_from_row_col(9, 3);
+  REQUIRE(a_data_read_2[2] == a_data_read[ind_2]);
   REQUIRE(
-      fabs(b_data_read_2[2] - b_data_read[162]) <
+      fabs(b_data_read_2[2] - b_data_read[ind_2]) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (10,3)
-  REQUIRE(a_data_read_2[3] == a_data_read[182]);
+  // Testing (10,3), which should be in the result buffer.
+  int ind_3 = index_from_row_col(10, 3);
+  REQUIRE(a_data_read_2[3] == a_data_read[ind_3]);
   REQUIRE(
-      fabs(b_data_read_2[3] - b_data_read[182]) <
+      fabs(b_data_read_2[3] - b_data_read[ind_3]) <
       std::numeric_limits<float>::epsilon());
 
   query2.finalize();
@@ -346,6 +422,8 @@ TEST_CASE(
     "Test read for sparse arrays with range within tile for rows dimension, "
     "across tile for col dimension, with query condition",
     "[query][query-condition][apply]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -353,11 +431,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_SPARSE, false, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_SPARSE, false, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[2,3], cols[7,10] with
+  // query condition (b < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
 
@@ -376,6 +456,8 @@ TEST_CASE(
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
+
+  // Check the query for accuracy. The query results should contain 4 elements.
   auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
@@ -383,25 +465,26 @@ TEST_CASE(
   REQUIRE(table2["b"].first == 0);
   REQUIRE(table2["b"].second == 4);
 
-  // testing (2,7)
-  REQUIRE(a_data_read_2[0] == a_data_read[26]);
+  // Testing (2,7), which should be in the result buffer.
+  int ind_0 = index_from_row_col(2, 7);
+  REQUIRE(a_data_read_2[0] == a_data_read[ind_0]);
   REQUIRE(
-      fabs(b_data_read_2[0] - b_data_read[26]) <
+      fabs(b_data_read_2[0] - b_data_read[ind_0]) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (2,9)
+  // Testing (2,9), which should be in the result buffer.
   REQUIRE(a_data_read_2[1] == a_data_read[28]);
   REQUIRE(
       fabs(b_data_read_2[1] - b_data_read[28]) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (3,7)
+  // Testing (3,7), which should be in the result buffer.
   REQUIRE(a_data_read_2[2] == a_data_read[46]);
   REQUIRE(
       fabs(b_data_read_2[2] - b_data_read[46]) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (3,9)
+  // Testing (3,9), which should be in the result buffer.
   REQUIRE(a_data_read_2[3] == a_data_read[48]);
   REQUIRE(
       fabs(b_data_read_2[3] - b_data_read[48]) <
@@ -418,6 +501,8 @@ TEST_CASE(
     "Test read for sparse arrays with ranges across tiles on both dimensions, "
     "with query condition",
     "[query][query-condition][apply]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -425,11 +510,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_SPARSE, false, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_SPARSE, false, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[7,14], cols[7,14] with
+  // query condition (b < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
   QueryCondition qc(ctx);
@@ -445,8 +532,9 @@ TEST_CASE(
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
-  auto table2 = query2.result_buffer_elements();
 
+  // Check the query for accuracy. The query results should contain 32 elements.
+  auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
   REQUIRE(table2["a"].second == 32);
@@ -455,13 +543,16 @@ TEST_CASE(
 
   for (int r = 7; r <= 14; ++r) {
     for (int c = 7; c <= 14; ++c) {
-      int og_i = ((r - 1) * 20) + (c - 1);
-      if (og_i % 2 == 0) {
+      int original_arr_i = index_from_row_col(r, c);
+      // The buffer should have kept elements that were originally constructed
+      // to have values less than 4.0; this means that any element whose
+      // original index is even should have been kept.
+      if (original_arr_i % 2 == 0) {
         int i = ((r - 7) * 4) + ((c - 7) / 2);
         REQUIRE(a_data_read_2[i] == 1);
-        REQUIRE(a_data_read_2[i] == a_data_read[og_i]);
+        REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
         REQUIRE(
-            fabs(b_data_read_2[i] - b_data_read[og_i]) <
+            fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
             std::numeric_limits<float>::epsilon());
       }
     }
@@ -478,6 +569,8 @@ TEST_CASE(
     "Test read for sparse arrays with ranges across tiles on both dimensions, "
     "with complex query condition",
     "[query][query-condition][apply]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -485,11 +578,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_SPARSE, false, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_SPARSE, false, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[7,14], cols[7,14] with
+  // query condition (b < 4.0f AND b <= 3.7f AND b >= 3.3f AND b != 3.4f).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
 
@@ -525,6 +620,7 @@ TEST_CASE(
   query2.submit();
   auto table2 = query2.result_buffer_elements();
 
+  // Check the query for accuracy. The query results should contain 8 elements.
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
   REQUIRE(table2["a"].second == 8);
@@ -533,13 +629,17 @@ TEST_CASE(
 
   for (int r = 7; r <= 14; ++r) {
     for (int c = 7; c <= 14; ++c) {
-      int og_i = ((r - 1) * 20) + (c - 1);
-      if (og_i % 8 == 4) {
+      int original_arr_i = index_from_row_col(r, c);
+      // The buffer should have kept elements that were originally constructed
+      // to have values that satisfy the range [3.3, 3.7] but are not equal
+      // to 3.4. This means that any element whose original index is 4 mod 8
+      // should be in the result buffer.
+      if (original_arr_i % 8 == 4) {
         int i = r - 7;
         REQUIRE(a_data_read_2[i] == 1);
-        REQUIRE(a_data_read_2[i] == a_data_read[og_i]);
+        REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
         REQUIRE(
-            fabs(b_data_read_2[i] - b_data_read[og_i]) <
+            fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
             std::numeric_limits<float>::epsilon());
       }
     }
@@ -556,6 +656,8 @@ TEST_CASE(
     "Test read for sparse arrays (dups allowed) with no range, with query "
     "condition",
     "[query][query-condition][apply-sparse]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -563,24 +665,30 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_SPARSE, true, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_SPARSE, true, a_data_read, b_data_read);
 
+  // Create the query, which reads over the entire array with query condition (b
+  // < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
   QueryCondition qc(ctx);
   float val = 4.0f;
   qc.init("b", &val, sizeof(float), TILEDB_LT);
 
-  std::vector<int> a_data_read_2(400);
-  std::vector<float> b_data_read_2(400);
-  query2.set_layout(TILEDB_ROW_MAJOR)
+  std::vector<int> a_data_read_2(num_rows * num_rows);
+  std::vector<float> b_data_read_2(num_rows * num_rows);
+  query2.set_layout(TILEDB_UNORDERED)
       .set_data_buffer("a", a_data_read_2)
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
+
+  // Check the query for accuracy. The query results should contain 200
+  // elements. Each of these elements should have the cell value 1 on attribute
+  // a and should match the original value in the array that reads all elements.
   auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
@@ -588,13 +696,24 @@ TEST_CASE(
   REQUIRE(table2["b"].first == 0);
   REQUIRE(table2["b"].second == 200);
 
-  for (int i = 0; i < 200; i++) {
-    int og_i = 2 * i;
-    REQUIRE(a_data_read_2[i] == 1);
-    REQUIRE(a_data_read_2[i] == a_data_read[og_i]);
-    REQUIRE(
-        fabs(b_data_read_2[i] - b_data_read[og_i]) <
-        std::numeric_limits<float>::epsilon());
+  // The unordered query should return the results in global order. Therefore,
+  // we iterate over each tile to collect our results.
+  int i = 0;
+  for (int tile_r = 1; tile_r <= num_rows; tile_r += 4) {
+    for (int tile_c = 1; tile_c <= num_rows; tile_c += 4) {
+      // Iterating over each tile.
+      for (int r = tile_r; r < tile_r + 4; ++r) {
+        for (int c = tile_c; c < tile_c + 4; c += 2) {
+          int original_arr_i = index_from_row_col(r, c);
+          REQUIRE(a_data_read_2[i] == 1);
+          REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
+          REQUIRE(
+              fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
+              std::numeric_limits<float>::epsilon());
+          i += 1;
+        }
+      }
+    }
   }
 
   query2.finalize();
@@ -606,9 +725,10 @@ TEST_CASE(
 
 TEST_CASE(
     "Test read for sparse arrays (dups allowed) with added range within a "
-    "tile, with query "
-    "condition",
+    "tile, with query condition",
     "[query][query-condition][apply-sparse]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -616,11 +736,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_SPARSE, true, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_SPARSE, true, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[2,3], cols[2,3] with
+  // query condition (b < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
 
@@ -638,6 +760,8 @@ TEST_CASE(
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
+
+  // Check the query for accuracy. The query results should contain 2 elements.
   auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
@@ -645,16 +769,18 @@ TEST_CASE(
   REQUIRE(table2["b"].first == 0);
   REQUIRE(table2["b"].second == 2);
 
-  // testing (2,3)
-  REQUIRE(a_data_read_2[0] == a_data_read[22]);
+  // Testing (2,3), which should be in the result buffer.
+  int ind_0 = index_from_row_col(2, 3);
+  REQUIRE(a_data_read_2[0] == a_data_read[ind_0]);
   REQUIRE(
-      fabs(b_data_read_2[0] - b_data_read[22]) <
+      fabs(b_data_read_2[0] - b_data_read[ind_0]) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (3,3)
-  REQUIRE(a_data_read_2[1] == a_data_read[42]);
+  // Testing (3,3), which should be in the result buffer.
+  int ind_1 = index_from_row_col(3, 3);
+  REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
   REQUIRE(
-      fabs(b_data_read_2[1] - b_data_read[42]) <
+      fabs(b_data_read_2[1] - b_data_read[ind_1]) <
       std::numeric_limits<float>::epsilon());
 
   query2.finalize();
@@ -666,9 +792,10 @@ TEST_CASE(
 
 TEST_CASE(
     "Test read for sparse arrays (dups allowed) with range across tile for "
-    "rows dimension, "
-    "within tile for cols dimension, with query condition",
+    "rows dimension, within tile for cols dimension, with query condition",
     "[query][query-condition][apply-sparse]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -676,11 +803,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_SPARSE, true, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_SPARSE, true, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[7,10], cols[2,3] with
+  // query condition (b < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
 
@@ -699,6 +828,8 @@ TEST_CASE(
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
+
+  // Check the query for accuracy. The query results should contain 4 elements.
   auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
@@ -706,28 +837,32 @@ TEST_CASE(
   REQUIRE(table2["b"].first == 0);
   REQUIRE(table2["b"].second == 4);
 
-  // testing (7,3)
-  REQUIRE(a_data_read_2[0] == a_data_read[122]);
+  // Testing (7,3), which should be in the result buffer.
+  int ind_0 = index_from_row_col(7, 3);
+  REQUIRE(a_data_read_2[0] == a_data_read[ind_0]);
   REQUIRE(
-      fabs(b_data_read_2[0] - b_data_read[122]) <
+      fabs(b_data_read_2[0] - b_data_read[ind_0]) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (8,3)
-  REQUIRE(a_data_read_2[1] == a_data_read[142]);
+  // Testing (8,3), which should be in the result buffer.
+  int ind_1 = index_from_row_col(8, 3);
+  REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
   REQUIRE(
-      fabs(b_data_read_2[1] - b_data_read[142]) <
+      fabs(b_data_read_2[1] - b_data_read[ind_1]) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (9,3)
-  REQUIRE(a_data_read_2[2] == a_data_read[162]);
+  // Testing (9,3), which should be in the result buffer.
+  int ind_2 = index_from_row_col(9, 3);
+  REQUIRE(a_data_read_2[2] == a_data_read[ind_2]);
   REQUIRE(
-      fabs(b_data_read_2[2] - b_data_read[162]) <
+      fabs(b_data_read_2[2] - b_data_read[ind_2]) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (10,3)
-  REQUIRE(a_data_read_2[3] == a_data_read[182]);
+  // Testing (10,3), which should be in the result buffer.
+  int ind_3 = index_from_row_col(10, 3);
+  REQUIRE(a_data_read_2[3] == a_data_read[ind_3]);
   REQUIRE(
-      fabs(b_data_read_2[3] - b_data_read[182]) <
+      fabs(b_data_read_2[3] - b_data_read[ind_3]) <
       std::numeric_limits<float>::epsilon());
 
   query2.finalize();
@@ -739,9 +874,10 @@ TEST_CASE(
 
 TEST_CASE(
     "Test read for sparse arrays (dups allowed) with range within tile for "
-    "rows dimension, "
-    "across tile for col dimension, with query condition",
+    "rows dimension, across tile for col dimension, with query condition",
     "[query][query-condition][apply-sparse]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -749,11 +885,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_SPARSE, true, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_SPARSE, true, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[2,3], cols[7,10] with
+  // query condition (b < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
 
@@ -772,6 +910,8 @@ TEST_CASE(
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
+
+  // Check the query for accuracy. The query results should contain 4 elements.
   auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
@@ -779,23 +919,17 @@ TEST_CASE(
   REQUIRE(table2["b"].first == 0);
   REQUIRE(table2["b"].second == 4);
 
-  // Ensure that the same data is in each array (global order)
-  std::vector<float> unordered_read_vals;
-  unordered_read_vals.push_back(b_data_read[26]);  //(2,2)
-  unordered_read_vals.push_back(b_data_read[46]);  //(3,2)
-  unordered_read_vals.push_back(b_data_read[28]);  //(2,3)
-  unordered_read_vals.push_back(b_data_read[48]);  //(3,3)
-
-  std::vector<float> b_data_read_2_copy;
-  for (size_t i = 0; i < 4; i++) {
-    b_data_read_2_copy.push_back(b_data_read_2[i]);
-  }
-
-  for (size_t i = 0; i < 4; ++i) {
-    REQUIRE(a_data_read_2[i] == 1);
-    REQUIRE(
-        fabs(b_data_read_2_copy[i] - unordered_read_vals[i]) <
-        std::numeric_limits<float>::epsilon());
+  // Ensure that the same data is in each array (global order).
+  int i = 0;
+  for (int c = range1[0]; c <= range1[1]; c += 2) {
+    for (int r = range[0]; r <= range[1]; ++r) {
+      int original_arr_i = index_from_row_col(r, c);
+      REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
+      REQUIRE(
+          fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
+          std::numeric_limits<float>::epsilon());
+      i += 1;
+    }
   }
 
   query2.finalize();
@@ -807,9 +941,10 @@ TEST_CASE(
 
 TEST_CASE(
     "Test read for sparse arrays (dups allowed) with ranges across tiles on "
-    "both dimensions, "
-    "with query condition",
+    "both dimensions, with query condition",
     "[query][query-condition][apply-sparse]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -817,11 +952,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_SPARSE, true, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_SPARSE, true, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[7,14], cols[7,14] with
+  // query condition (b < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
   QueryCondition qc(ctx);
@@ -837,8 +974,9 @@ TEST_CASE(
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
-  auto table2 = query2.result_buffer_elements();
 
+  // Check the query for accuracy. The query results should contain 32 elements.
+  auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
   REQUIRE(table2["a"].second == 32);
@@ -851,8 +989,8 @@ TEST_CASE(
   ranges_vec.push_back(std::make_pair(9, 12));
   ranges_vec.push_back(std::make_pair(13, 14));
 
-  for (size_t a = 0; a < 3; ++a) {    // rows
-    for (size_t b = 0; b < 3; ++b) {  // cols
+  for (size_t a = 0; a < 3; ++a) {    // Iterating over rows.
+    for (size_t b = 0; b < 3; ++b) {  // Iterating over cols.
       int row_lo = ranges_vec[a].first;
       int row_hi = ranges_vec[a].second;
       int col_lo = ranges_vec[b].first;
@@ -860,12 +998,16 @@ TEST_CASE(
 
       for (int r = row_lo; r <= row_hi; ++r) {
         for (int c = col_lo; c <= col_hi; ++c) {
-          int og_i = ((r - 1) * 20) + (c - 1);
-          if (og_i % 2 == 0) {
+          int original_arr_i = index_from_row_col(r, c);
+          // The buffer should have kept elements that were originally
+          // constructed to have values less than 4.0; this means that any
+          // element whose original index is even should be in the result
+          // buffer.
+          if (original_arr_i % 2 == 0) {
             REQUIRE(a_data_read_2[i] == 1);
-            REQUIRE(a_data_read_2[i] == a_data_read[og_i]);
+            REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
             REQUIRE(
-                fabs(b_data_read_2[i] - b_data_read[og_i]) <
+                fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
                 std::numeric_limits<float>::epsilon());
             i += 1;
           }
@@ -883,9 +1025,10 @@ TEST_CASE(
 
 TEST_CASE(
     "Test read for sparse arrays (dups allowed) with ranges across tiles on "
-    "both dimensions, "
-    "with complex query condition",
+    "both dimensions, with complex query condition",
     "[query][query-condition][apply-sparse]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -893,11 +1036,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_SPARSE, true, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_SPARSE, true, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[7,14], cols[7,14] with
+  // query condition (b < 4.0f AND b <= 3.7f AND b >= 3.3f AND b != 3.4f).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
 
@@ -931,8 +1076,9 @@ TEST_CASE(
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
-  auto table2 = query2.result_buffer_elements();
 
+  // Check the query for accuracy. The query results should contain 8 elements.
+  auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
   REQUIRE(table2["a"].second == 8);
@@ -945,8 +1091,8 @@ TEST_CASE(
   ranges_vec.push_back(std::make_pair(9, 12));
   ranges_vec.push_back(std::make_pair(13, 14));
 
-  for (size_t a = 0; a < 3; ++a) {    // rows
-    for (size_t b = 0; b < 3; ++b) {  // cols
+  for (size_t a = 0; a < 3; ++a) {    // Iterating over rows.
+    for (size_t b = 0; b < 3; ++b) {  // Iterating over cols.
       int row_lo = ranges_vec[a].first;
       int row_hi = ranges_vec[a].second;
       int col_lo = ranges_vec[b].first;
@@ -954,12 +1100,16 @@ TEST_CASE(
 
       for (int r = row_lo; r <= row_hi; ++r) {
         for (int c = col_lo; c <= col_hi; ++c) {
-          int og_i = ((r - 1) * 20) + (c - 1);
-          if (og_i % 8 == 4) {
+          int original_arr_i = index_from_row_col(r, c);
+          // The buffer should have kept elements that were originally
+          // constructed to have values that satisfy the range [3.3, 3.7] but
+          // are not equal to 3.4. This means that any element whose original
+          // index is 4 mod 8 should be in the result buffer.
+          if (original_arr_i % 8 == 4) {
             REQUIRE(a_data_read_2[i] == 1);
-            REQUIRE(a_data_read_2[i] == a_data_read[og_i]);
+            REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
             REQUIRE(
-                fabs(b_data_read_2[i] - b_data_read[og_i]) <
+                fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
                 std::numeric_limits<float>::epsilon());
             i += 1;
           }
@@ -975,6 +1125,8 @@ TEST_CASE(
 TEST_CASE(
     "Test read for dense arrays with no range, with query condition",
     "[query][query-condition][apply-dense]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -982,35 +1134,44 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
 
+  // Create the query, which reads over the entire array with query condition (b
+  // < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
   QueryCondition qc(ctx);
   float val = 4.0f;
   qc.init("b", &val, sizeof(float), TILEDB_LT);
 
-  std::vector<int> a_data_read_2(400);
-  std::vector<float> b_data_read_2(400);
+  std::vector<int> a_data_read_2(num_rows * num_rows);
+  std::vector<float> b_data_read_2(num_rows * num_rows);
   query2.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_data_read_2)
       .set_data_buffer("b", b_data_read_2);
-  int range[] = {1, 20};
+  int range[] = {1, num_rows};
   query2.add_range("rows", range[0], range[1])
       .add_range("cols", range[0], range[1]);
   query2.set_condition(qc);
   query2.submit();
+
+  // Check the query for accuracy. The query results should contain 400
+  // elements. Elements that meet the query conditioe should have the cell value
+  // 1 on attribute a and should match the original value in the array on
+  // attribute b. Elements that do not should have the fill value for both
+  // attributes.
+  size_t total_num_elements = static_cast<size_t>(num_rows * num_rows);
   auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
-  REQUIRE(table2["a"].second == 400);
+  REQUIRE(table2["a"].second == total_num_elements);
   REQUIRE(table2["b"].first == 0);
-  REQUIRE(table2["b"].second == 400);
+  REQUIRE(table2["b"].second == total_num_elements);
 
-  for (int i = 0; i < 400; ++i) {
+  for (int i = 0; i < num_rows * num_rows; ++i) {
     if (i % 2 == 0) {
       REQUIRE(a_data_read_2[i] == 1);
       REQUIRE(a_data_read_2[i] == a_data_read[i]);
@@ -1036,6 +1197,8 @@ TEST_CASE(
     "Test read for dense arrays with added range within a tile, with query "
     "condition",
     "[query][query-condition][apply-dense]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -1043,11 +1206,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[2,3], cols[2,3] with
+  // query condition (b < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
 
@@ -1066,34 +1231,38 @@ TEST_CASE(
   query2.set_condition(qc);
   query2.submit();
   auto table2 = query2.result_buffer_elements();
+
+  // Check the query for accuracy. The query results should contain 4 elements.
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
   REQUIRE(table2["a"].second == 4);
   REQUIRE(table2["b"].first == 0);
   REQUIRE(table2["b"].second == 4);
 
-  // testing (2,2)
+  // Testing (2,2), which should be filtered out.
   REQUIRE(a_data_read_2[0] == a_fill_value);
   REQUIRE(
       fabs(b_data_read_2[0] - b_fill_value) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (2,3)
-  REQUIRE(a_data_read_2[1] == a_data_read[22]);
+  // Testing (2,3), which should be in the result buffer.
+  int ind_1 = index_from_row_col(2, 3);
+  REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
   REQUIRE(
-      fabs(b_data_read_2[1] - b_data_read[22]) <
+      fabs(b_data_read_2[1] - b_data_read[ind_1]) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (3,2)
+  // Testing (3,2), which should be filtered out.
   REQUIRE(a_data_read_2[2] == a_fill_value);
   REQUIRE(
       fabs(b_data_read_2[2] - b_fill_value) <
       std::numeric_limits<float>::epsilon());
 
-  // testing (3,3)
-  REQUIRE(a_data_read_2[3] == a_data_read[42]);
+  // Testing (3,3), which should be in the result buffer.
+  int ind_3 = index_from_row_col(3, 3);
+  REQUIRE(a_data_read_2[3] == a_data_read[ind_3]);
   REQUIRE(
-      fabs(b_data_read_2[3] - b_data_read[42]) <
+      fabs(b_data_read_2[3] - b_data_read[ind_3]) <
       std::numeric_limits<float>::epsilon());
 
   query2.finalize();
@@ -1107,6 +1276,8 @@ TEST_CASE(
     "Test read for dense arrays with range across tile for rows dimension, "
     "within tile for cols dimension, with query condition",
     "[query][query-condition][apply-dense]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -1114,11 +1285,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[7,10], cols[2,3] with
+  // query condition (b < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
 
@@ -1137,6 +1310,8 @@ TEST_CASE(
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
+
+  // Check the query for accuracy. The query results should contain 8 elements.
   auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
@@ -1147,14 +1322,17 @@ TEST_CASE(
   for (int r = 7; r <= 10; ++r) {
     for (int c = 2; c <= 3; ++c) {
       int i = ((r - 7) * 2) + (c - 2);
-      int og_i = ((r - 1) * 20) + (c - 1);
+      int original_arr_i = index_from_row_col(r, c);
       if (c == 3) {
+        // If the column dimension value is 3, the cell should be in the result
+        // buffer.
         REQUIRE(a_data_read_2[i] == 1);
-        REQUIRE(a_data_read_2[i] == a_data_read[og_i]);
+        REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
         REQUIRE(
-            fabs(b_data_read_2[i] - b_data_read[og_i]) <
+            fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
             std::numeric_limits<float>::epsilon());
       } else {
+        // If the column dimension value is 2, the cell should be filtered out.
         REQUIRE(a_data_read_2[i] == a_fill_value);
         REQUIRE(
             fabs(b_data_read_2[i] - b_fill_value) <
@@ -1174,6 +1352,8 @@ TEST_CASE(
     "Test read for dense arrays with range within tile for rows dimension, "
     "across tile for cols dimension, with query condition",
     "[query][query-condition][apply-dense]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -1181,11 +1361,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[2,3], cols[7,10] with
+  // query condition (b < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
 
@@ -1204,6 +1386,8 @@ TEST_CASE(
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
+
+  // Check the query for accuracy. The query results should contain 8 elements.
   auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
@@ -1214,14 +1398,18 @@ TEST_CASE(
   for (int r = 2; r <= 3; ++r) {
     for (int c = 7; c <= 10; ++c) {
       int i = ((r - 2) * 4) + (c - 7);
-      int og_i = ((r - 1) * 20) + (c - 1);
+      int original_arr_i = index_from_row_col(r, c);
+      // If the column dimension value is 7 or 9, the cell should be in the
+      // result buffer.
       if (c == 7 || c == 9) {
         REQUIRE(a_data_read_2[i] == 1);
-        REQUIRE(a_data_read_2[i] == a_data_read[og_i]);
+        REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
         REQUIRE(
-            fabs(b_data_read_2[i] - b_data_read[og_i]) <
+            fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
             std::numeric_limits<float>::epsilon());
       } else {
+        // If the column dimension value is 8 or 10, the cell should be filtered
+        // out.
         REQUIRE(a_data_read_2[i] == a_fill_value);
         REQUIRE(
             fabs(b_data_read_2[i] - b_fill_value) <
@@ -1241,6 +1429,8 @@ TEST_CASE(
     "Test read for dense arrays with ranges across tiles on both dimensions, "
     "with query condition",
     "[query][query-condition][apply-dense]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -1248,11 +1438,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[7,14], cols[7,14] with
+  // query condition (b < 4.0).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
   QueryCondition qc(ctx);
@@ -1270,6 +1462,7 @@ TEST_CASE(
   query2.submit();
   auto table2 = query2.result_buffer_elements();
 
+  // Check the query for accuracy. The query results should contain 64 elements.
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
   REQUIRE(table2["a"].second == 64);
@@ -1278,15 +1471,20 @@ TEST_CASE(
 
   for (int r = 7; r <= 14; ++r) {
     for (int c = 7; c <= 14; ++c) {
-      int og_i = ((r - 1) * 20) + (c - 1);
+      int original_arr_i = index_from_row_col(r, c);
       int i = ((r - 7) * 8) + (c - 7);
-      if (og_i % 2 == 0) {
+      // The buffer should have kept elements that were originally constructed
+      // to have values less than 4.0; this means that any element whose
+      // original index is even should have been kept.
+      if (original_arr_i % 2 == 0) {
+        // Checking for original value.
         REQUIRE(a_data_read_2[i] == 1);
-        REQUIRE(a_data_read_2[i] == a_data_read[og_i]);
+        REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
         REQUIRE(
-            fabs(b_data_read_2[i] - b_data_read[og_i]) <
+            fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
             std::numeric_limits<float>::epsilon());
       } else {
+        // Checking for fill value.
         REQUIRE(a_data_read_2[i] == a_fill_value);
         REQUIRE(
             fabs(b_data_read_2[i] - b_fill_value) <
@@ -1306,6 +1504,8 @@ TEST_CASE(
     "Test read for dense arrays with ranges across tiles on both dimensions, "
     "with complex query condition",
     "[query][query-condition][apply-dense]") {
+  // Setup by creating buffers to store all elements and creating the original
+  // array.
   std::srand(static_cast<uint32_t>(time(0)));
   Context ctx;
   VFS vfs(ctx);
@@ -1313,11 +1513,13 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  std::vector<int> a_data_read(400);
-  std::vector<float> b_data_read(400);
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
 
-  setup(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
+  create_array(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
 
+  // Create the query, which reads over the range rows[7,14], cols[7,14] with
+  // query condition (b < 4.0f AND b <= 3.7f AND b >= 3.3f AND b != 3.4f).
   Array array2(ctx, array_name, TILEDB_READ);
   Query query2(ctx, array2);
 
@@ -1351,8 +1553,9 @@ TEST_CASE(
       .set_data_buffer("b", b_data_read_2);
   query2.set_condition(qc);
   query2.submit();
-  auto table2 = query2.result_buffer_elements();
 
+  // Check the query for accuracy. The query results should contain 64 elements.
+  auto table2 = query2.result_buffer_elements();
   REQUIRE(table2.size() == 2);
   REQUIRE(table2["a"].first == 0);
   REQUIRE(table2["a"].second == 64);
@@ -1361,15 +1564,21 @@ TEST_CASE(
 
   for (int r = 7; r <= 14; ++r) {
     for (int c = 7; c <= 14; ++c) {
-      int og_i = ((r - 1) * 20) + (c - 1);
+      int original_arr_i = index_from_row_col(r, c);
       int i = ((r - 7) * 8) + (c - 7);
-      if (og_i % 8 == 4) {
+      // The buffer should have kept elements that were originally constructed
+      // to have values that satisfy the range [3.3, 3.7] but are not equal
+      // to 3.4. This means that any element whose original index is 4 mod 8
+      // should have been kept.
+      if (original_arr_i % 8 == 4) {
+        // Checking for original value.
         REQUIRE(a_data_read_2[i] == 1);
-        REQUIRE(a_data_read_2[i] == a_data_read[og_i]);
+        REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
         REQUIRE(
-            fabs(b_data_read_2[i] - b_data_read[og_i]) <
+            fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
             std::numeric_limits<float>::epsilon());
       } else {
+        // Checking for fill value.
         REQUIRE(a_data_read_2[i] == a_fill_value);
         REQUIRE(
             fabs(b_data_read_2[i] - b_fill_value) <
