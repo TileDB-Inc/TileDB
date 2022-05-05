@@ -319,7 +319,7 @@ TypeInfo tiledb_dt_info(const ArraySchema& schema, const std::string& name) {
     return retval;
   } else if (schema.domain().has_dimension(name)) {
     auto dom = schema.domain();
-    auto dim = *dom.dimension(name);
+    auto dim = dom.dimension(name);
 
     auto retval = TypeInfo();
     retval.type = dim.type();
