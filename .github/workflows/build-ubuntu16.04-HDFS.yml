@@ -103,8 +103,36 @@ jobs:
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           
-          for exampleexe in $(ls ./tiledb/examples/c_api/*_c) ; do echo $exampleexe; $exampleexe; done
-          for exampleexe in $(ls ./tiledb/examples/cpp_api/*_cpp) ; do echo $exampleexe; $exampleexe; done
+          BaseDir="$(pwd)"
+          TestAppDir="$(pwd)/tiledb/examples/c_api/"
+          TestAppDataDir="$(pwd)/tiledb/examples/c_api/test_app_data"
+          # for exampleexe in $(ls ./tiledb/examples/c_api/*_c) ; do echo $exampleexe; $exampleexe; done
+          for exampleexe in $(ls ./tiledb/examples/c_api/*_c) ; 
+          do 
+            cd ${TestAppDir}
+            rm -rf ${TestAppDataDir}
+            mkdir ${TestAppDataDir}
+            cd ${TestAppDataDir}
+            echo $exampleexe; $exampleexe; 
+          done
+          cd ${TestAppDir}
+          rm -rf ${TestAppDataDir}
+
+          cd ${BaseDir}
+          TestAppDir="$(pwd)/tiledb/examples/cpp_api/"
+          TestAppDataDir="$(pwd)/tiledb/examples/cpp_api/test_app_data"
+          #for exampleexe in $(ls ./tiledb/examples/cpp_api/*_cpp) ; do echo $exampleexe; $exampleexe; done
+          for exampleexe in $(ls ./tiledb/examples/cpp_api/*_cpp) ; 
+          do 
+            cd ${TestAppDir}
+            rm -rf ${TestAppDataDir}
+            mkdir ${TestAppDataDir}
+            cd ${TestAppDataDir}
+            echo $exampleexe; $exampleexe; 
+          done
+          cd ${TestAppDir}
+          rm -rf ${TestAppDataDir}
+          cd ${BaseDir}
 
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build

@@ -270,9 +270,15 @@ jobs:
 
           $env:Path += ";$env:BUILD_SOURCESDIRECTORY\dist\bin;$env:BUILD_BUILDDIRECTORY\externals\install\bin"
 
+          $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api")
+          $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\test_app_data")
           Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\$CMakeBuildType") -Filter *.exe |
           Foreach-Object {
             try {
+              Set-Location -path $TestAppDir
+              Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
+              New-Item -ItemType Directory -Path $TestAppDataDir
+              Set-Location -path $TestAppDataDir
               # $exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\$CMakeBuildType\quickstart_dense_c.exe"
               $exepath = $_.FullName
               & $exepath
@@ -290,10 +296,18 @@ jobs:
               $host.SetShouldExit(1)
             }
           }
+          Set-Location -path $TestAppDir
+          Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
 
+          $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api")
+          $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\test_app_data")
           Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\$CMakeBuildType") -Filter *.exe |
           Foreach-Object {
             try {
+              Set-Location -path $TestAppDir
+              Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
+              New-Item -ItemType Directory -Path $TestAppDataDir
+              Set-Location -path $TestAppDataDir
               #$exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\$CMakeBuildType\quickstart_dense_cpp.exe"
               $exepath = $_.FullName
               & $exepath
@@ -316,6 +330,8 @@ jobs:
               $host.SetShouldExit($LastExitCode)
             }
           }
+          Set-Location -path $TestAppDir
+          Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
 
           # Build examples
           cd $env:BUILD_SOURCESDIRECTORY\examples\cmake_project
@@ -329,9 +345,15 @@ jobs:
 
           cmake --build . --config $CMakeBuildType -- /verbosity:minimal
 
-          .\$CMakeBuildType\ExampleExe.exe
+          #.\$CMakeBuildType\ExampleExe.exe
+          $cmd = ".\$CMakeBuildType\ExampleExe.exe"
+          Write-Host "cmd: '$cmd'"
+          Invoke-Expression $cmd
 
-          .\$CMakeBuildType\ExampleExe_static.exe
+          #.\$CMakeBuildType\ExampleExe_static.exe
+          $cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
+          Write-Host "cmd: '$cmd'"
+          Invoke-Expression $cmd
 
       - name: 'process crashdumps'
         shell: cmd
