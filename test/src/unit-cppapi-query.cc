@@ -30,10 +30,6 @@
  * Tests the C++ API for query related functions.
  */
 
-#include <ctime>
-#include <iostream>
-#include <vector>
-
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
