@@ -1276,7 +1276,7 @@ Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
 
   Buffer buff;
   RETURN_NOT_OK(serialization::group_metadata_serialize(
-      group, serialization_type_, &buff));
+      group, serialization_type_, &buff, false));
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
@@ -1319,7 +1319,7 @@ Status RestClient::put_group_metadata_to_rest(const URI& uri, Group* group) {
 
   Buffer buff;
   RETURN_NOT_OK(serialization::group_metadata_serialize(
-      group, serialization_type_, &buff));
+      group, serialization_type_, &buff, true));
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
