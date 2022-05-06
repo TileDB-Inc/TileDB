@@ -277,7 +277,7 @@ jobs:
             try {
               Set-Location -path $TestAppDir
               Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
-              New-Item -ItemType Directory -Path $TestAppDataDir
+              New-Item -ItemType Directory -Path $TestAppDataDir > $nul
               Set-Location -path $TestAppDataDir
               # $exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\$CMakeBuildType\quickstart_dense_c.exe"
               $exepath = $_.FullName
@@ -306,7 +306,7 @@ jobs:
             try {
               Set-Location -path $TestAppDir
               Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
-              New-Item -ItemType Directory -Path $TestAppDataDir
+              New-Item -ItemType Directory -Path $TestAppDataDir > $nul
               Set-Location -path $TestAppDataDir
               #$exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\$CMakeBuildType\quickstart_dense_cpp.exe"
               $exepath = $_.FullName
