@@ -104,7 +104,7 @@ void write_array_3() {
 
   // Prepare some data for the array
   std::vector<int> data = {201};
-  std::vector<int> subarray = {1,1,1,1};
+  std::vector<int> subarray = {1, 1, 1, 1};
 
   // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
