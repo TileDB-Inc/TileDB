@@ -2003,7 +2003,7 @@ uint64_t FragmentMetadata::footer_size_v11_or_higher() const {
     for (unsigned d = 0; d < dim_num; ++d) {
       domain_size += non_empty_domain_[d].size();
       if (array_schema_->dimension_ptr(d)->var_size()) {
-        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized}
+        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized
       }
     }
   }
