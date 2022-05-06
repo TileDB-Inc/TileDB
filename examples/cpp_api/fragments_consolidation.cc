@@ -103,17 +103,34 @@ void write_array_3() {
   Context ctx;
 
   // Prepare some data for the array
-  std::vector<int> data = {201, 202};
-  std::vector<int> coords_rows = {1, 3};
-  std::vector<int> coords_cols = {1, 4};
+  std::vector<int> data = {201};
+  std::vector<int> subarray = {1,1,1,1};
 
   // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array);
-  query.set_layout(TILEDB_UNORDERED)
+  query.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data)
-      .set_data_buffer("rows", coords_rows)
-      .set_data_buffer("cols", coords_cols);
+      .set_subarray(subarray);
+
+  // Perform the write and close the array.
+  query.submit();
+  array.close();
+}
+
+void write_array_4() {
+  Context ctx;
+
+  // Prepare some data for the array
+  std::vector<int> data = {202};
+  std::vector<int> subarray = {3, 3, 4, 4};
+
+  // Open the array for writing and create the query.
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array);
+  query.set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", data)
+      .set_subarray(subarray);
 
   // Perform the write and close the array.
   query.submit();
@@ -164,6 +181,7 @@ int main(int argc, char* argv[]) {
     write_array_1();
     write_array_2();
     write_array_3();
+    write_array_4();
   }
 
   // Optionally consolidate
