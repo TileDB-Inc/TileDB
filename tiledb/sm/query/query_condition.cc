@@ -821,6 +821,8 @@ void QueryCondition::apply_tree(
               std::logical_or<uint8_t>(),
               combination_op_bitmap);
         }
+
+        /// TODO: We have not tested for optimization of & versus *.
         for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
           result_cell_bitmap[c] *= combination_op_bitmap[c];
         }
@@ -1360,6 +1362,8 @@ void QueryCondition::apply_tree_dense(
               std::logical_or<uint8_t>(),
               combination_op_span);
         }
+
+        /// TODO: We have not tested for optimization of & versus *.
         for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
           result_buffer[c] *= combination_op_bitmap[c];
         }
@@ -1385,6 +1389,10 @@ Status QueryCondition::apply_dense(
     const uint64_t stride,
     uint8_t* result_buffer) {
   // Iterate through the tree.
+  if (result_buffer == nullptr) {
+    return Status_QueryConditionError("The result buffer is null.");
+  }
+
   span<uint8_t> result_span(result_buffer + start, length);
   apply_tree_dense(
       tree_,
@@ -1849,6 +1857,8 @@ void QueryCondition::apply_tree_sparse(
               std::logical_or<BitmapType>(),
               combination_op_bitmap);
         }
+
+        /// TODO: We have not tested for optimization of & versus *.
         for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
           result_bitmap[c] *= combination_op_bitmap[c];
         }
