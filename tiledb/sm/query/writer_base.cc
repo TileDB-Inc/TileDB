@@ -211,7 +211,8 @@ Status WriterBase::init() {
   RETURN_NOT_OK(config_.get("sm.check_global_order", &check_global_order));
   RETURN_NOT_OK(config_.get("sm.dedup_coords", &dedup_coords));
   assert(check_coord_dups != nullptr && dedup_coords != nullptr);
-  check_coord_dups_ = !strcmp(check_coord_dups, "true");
+  check_coord_dups_ =
+      disable_check_global_order_ ? false : !strcmp(check_coord_dups, "true");
   check_coord_oob_ = !strcmp(check_coord_oob, "true");
   check_global_order_ =
       disable_check_global_order_ ? false : !strcmp(check_global_order, "true");

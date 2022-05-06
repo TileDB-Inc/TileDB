@@ -143,11 +143,6 @@ Status SparseGlobalOrderReader::initialize_memory_budget() {
 Status SparseGlobalOrderReader::dowork() {
   auto timer_se = stats_->start_timer("dowork");
 
-  if (consolidation_with_timestamps_) {
-    return logger_->status(Status_SparseGlobalOrderReaderError(
-        "Consolidation with timestamps not yet implemented"));
-  }
-
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
 
@@ -652,8 +647,9 @@ SparseGlobalOrderReader::merge_result_cell_slabs(uint64_t num_cells, T cmp) {
         std::swap(to_process, next_tile);
       }
 
-      // If we allow duplicates, create one slab for all the dups.
-      if (allows_dups) {
+      // If we allow duplicates, or for consolidation with timestamps, create
+      // one slab for all the dups.
+      if (allows_dups || consolidation_with_timestamps_) {
         result_tile_used[next_tile.tile_->frag_idx()] = true;
         result_cell_slabs.emplace_back(next_tile.tile_, next_tile.pos_, 1);
         num_cells--;
@@ -920,7 +916,7 @@ Status SparseGlobalOrderReader::copy_var_data_tiles(
   auto timer_se = stats_->start_timer("copy_var_tiles");
 
   // For easy reference.
-  auto var_data_buffer = (uint8_t*)query_buffer.buffer_var_;
+  auto var_data_buffer = static_cast<uint8_t*>(query_buffer.buffer_var_);
 
   // Process all tiles/cells in parallel.
   auto status = parallel_for_2d(
@@ -1029,8 +1025,8 @@ Status SparseGlobalOrderReader::copy_fixed_data_tiles(
         }
 
         // Get dest buffers.
-        auto buffer =
-            (uint8_t*)query_buffer.buffer_ + dest_cell_offset * cell_size;
+        auto buffer = static_cast<uint8_t*>(query_buffer.buffer_) +
+                      dest_cell_offset * cell_size;
         auto val_buffer =
             query_buffer.validity_vector_.buffer() + dest_cell_offset;
 
@@ -1061,6 +1057,70 @@ Status SparseGlobalOrderReader::copy_fixed_data_tiles(
   return Status::Ok();
 }
 
+Status SparseGlobalOrderReader::copy_timestamps_tiles(
+    const uint64_t num_range_threads,
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    const std::vector<uint64_t>& cell_offsets,
+    QueryBuffer& query_buffer) {
+  auto timer_se = stats_->start_timer("copy_timestamps_tiles");
+
+  // Process all tiles/cells in parallel.
+  auto status = parallel_for_2d(
+      storage_manager_->compute_tp(),
+      0,
+      result_cell_slabs.size(),
+      0,
+      num_range_threads,
+      [&](uint64_t i, uint64_t range_thread_idx) {
+        // For easy reference.
+        auto& rcs = result_cell_slabs[i];
+        auto rt = (ResultTileWithBitmap<uint8_t>*)result_cell_slabs[i].tile_;
+        const uint64_t cell_size = sizeof(uint64_t);
+
+        // Get source buffers.
+        const auto tile_tuple = rt->tile_tuple(constants::timestamps);
+        const auto t = &std::get<0>(*tile_tuple);
+
+        // Compute parallelization parameters.
+        auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
+            compute_parallelization_parameters(
+                range_thread_idx,
+                num_range_threads,
+                rcs.start_,
+                rcs.length_,
+                cell_offsets[i]);
+        if (skip_copy) {
+          return Status::Ok();
+        }
+
+        // Get dest buffer.
+        auto buffer =
+            static_cast<uint64_t*>(query_buffer.buffer_) + dest_cell_offset;
+
+        if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
+          // Copy tile.
+          const auto src_buff = t->data_as<uint8_t>();
+          memcpy(
+              buffer,
+              src_buff + min_pos * cell_size,
+              (max_pos - min_pos) * cell_size);
+        } else {
+          // Copy fragment timestamp.
+          uint64_t timestamp =
+              fragment_metadata_[rt->frag_idx()]->timestamp_range().first;
+          for (uint64_t c = 0; c < (max_pos - min_pos); c++) {
+            *buffer = timestamp;
+            buffer++;
+          }
+        }
+
+        return Status::Ok();
+      });
+  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+
+  return Status::Ok();
+}
+
 tuple<Status, optional<std::vector<uint64_t>>>
 SparseGlobalOrderReader::respect_copy_memory_budget(
     const std::vector<std::string>& names,
@@ -1076,6 +1136,7 @@ SparseGlobalOrderReader::respect_copy_memory_budget(
         const auto& name = names[i];
         const auto var_sized = array_schema_.var_size(name);
         uint64_t* mem_usage = &total_mem_usage_per_attr[i];
+        const bool is_timestamps = name == constants::timestamps;
 
         // Keep track of tiles already accounted for.
         std::
@@ -1088,14 +1149,17 @@ SparseGlobalOrderReader::respect_copy_memory_budget(
             condition_.field_names().count(name) != 0)
           return Status::Ok();
 
-        // Get the size for this tile.
+        // Get the size for all tiles.
         uint64_t idx = 0;
         for (; idx < max_cs_idx; idx++) {
           auto rt =
               (ResultTileWithBitmap<uint8_t>*)result_cell_slabs[idx].tile_;
           auto id =
               std::pair<uint64_t, uint64_t>(rt->frag_idx(), rt->tile_idx());
-          if (accounted_tiles.count(id) == 0) {
+          const bool has_tile =
+              !is_timestamps ||
+              fragment_metadata_[rt->frag_idx()]->has_timestamps();
+          if (accounted_tiles.count(id) == 0 && has_tile) {
             accounted_tiles.emplace(id);
 
             // Size of the tile in memory.
@@ -1308,7 +1372,10 @@ Status SparseGlobalOrderReader::process_slabs(
       // Process all fixed tiles in parallel.
       OffType offset_div =
           elements_mode_ ? datatype_size(array_schema_.type(name)) : 1;
-      if (var_sized) {
+      if (name == constants::timestamps) {
+        RETURN_NOT_OK(copy_timestamps_tiles(
+            num_range_threads, result_cell_slabs, cell_offsets, query_buffer));
+      } else if (var_sized) {
         RETURN_NOT_OK(copy_offsets_tiles<OffType>(
             name,
             num_range_threads,
