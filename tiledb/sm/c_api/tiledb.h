@@ -207,6 +207,14 @@ typedef enum {
 #undef TILEDB_VFS_MODE_ENUM
 } tiledb_vfs_mode_t;
 
+/** MIME Type. */
+typedef enum {
+/** Helper macro for defining MimeType enums. */
+#define TILEDB_MIME_TYPE_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_MIME_TYPE_ENUM
+} tiledb_mime_type_t;
+
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */
