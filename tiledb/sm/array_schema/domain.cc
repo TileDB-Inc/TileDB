@@ -72,10 +72,17 @@ Domain::Domain(
     , dimensions_(dimensions)
     , dim_num_((unsigned int)dimensions.size())
     , tile_order_(tile_order) {
-  // Initialize the dimensions mirror
+  /*
+   * Verify that the input vector has no non-null elements in order to meet the
+   * class invariant. Initialize the dimensions mirror.
+   */
   dimension_ptrs_.reserve(dimensions_.size());
   for (const auto& dim : dimensions_) {
-    dimension_ptrs_.emplace_back(dim.get());
+    auto p{dim.get()};
+    if (p == nullptr) {
+      throw std::invalid_argument("May not have null dimensions in a domain");
+    }
+    dimension_ptrs_.emplace_back(p);
   }
 
   // Compute number of cells per tile
@@ -145,10 +152,14 @@ Layout Domain::tile_order() const {
 }
 
 Status Domain::add_dimension(shared_ptr<Dimension> dim) {
+  auto p{dim.get()};
+  if (p == nullptr) {
+    // Class invariant prohibits null dimensions in a domain.
+    throw std::invalid_argument("May not add null dimensions to a domain");
+  }
   dimensions_.emplace_back(dim);
-  dimension_ptrs_.emplace_back(dim.get());
+  dimension_ptrs_.emplace_back(p);
   ++dim_num_;
-
   return Status::Ok();
 }
 
@@ -285,9 +296,10 @@ int Domain::cell_order_cmp(
     const type::DomainDataRef& left, const type::DomainDataRef& right) const {
   if (cell_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
-      auto dim = dimension_ptr(d);
       auto res = cell_order_cmp_func_[d](
-          dim, left.dimension_datum_view(d), right.dimension_datum_view(d));
+          dimension_ptr(d),
+          left.dimension_datum_view(d),
+          right.dimension_datum_view(d));
 
       if (res == 1 || res == -1)
         return res;
@@ -295,9 +307,10 @@ int Domain::cell_order_cmp(
     }
   } else {  // COL_MAJOR
     for (unsigned d = dim_num_ - 1;; --d) {
-      auto dim = dimension_ptr(d);
       auto res = cell_order_cmp_func_[d](
-          dim, left.dimension_datum_view(d), right.dimension_datum_view(d));
+          dimension_ptr(d),
+          left.dimension_datum_view(d),
+          right.dimension_datum_view(d));
 
       if (res == 1 || res == -1)
         return res;
@@ -363,16 +376,9 @@ NDRange Domain::domain() const {
   return ret;
 }
 
-shared_ptr<const Dimension> Domain::dimension(unsigned int i) const {
-  if (i > dim_num_) {
-    return nullptr;
-  }
-  return dimensions_[i];
-}
-
-shared_ptr<const Dimension> Domain::dimension(const std::string& name) const {
+const Dimension* Domain::dimension_ptr(const std::string& name) const {
   for (unsigned int i = 0; i < dim_num_; i++) {
-    const auto& dim = dimensions_[i];
+    const auto dim = dimension_ptrs_[i];
     if (dim->name() == name) {
       return dim;
     }
@@ -737,7 +743,7 @@ int Domain::tile_order_cmp(
     const type::DomainDataRef& left, const type::DomainDataRef& right) const {
   if (tile_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
-      auto dim = dimension_ptr(d);
+      auto dim{dimension_ptr(d)};
 
       // Inapplicable to var-sized dimensions or absent tile extents
       if (dim->var_size() || !dim->tile_extent())
@@ -754,7 +760,7 @@ int Domain::tile_order_cmp(
     }
   } else {  // COL_MAJOR
     for (unsigned d = dim_num_ - 1;; --d) {
-      auto dim = dimension_ptr(d);
+      auto dim{dimension_ptr(d)};
 
       // Inapplicable to var-sized dimensions or absent tile extents
       if (!dim->var_size() && dim->tile_extent()) {
@@ -777,9 +783,8 @@ int Domain::tile_order_cmp(
 }
 
 int Domain::tile_order_cmp(
-    unsigned dim_idx, const void* coord_a, const void* coord_b) const {
-  auto dim = dimension(dim_idx);
-  return tile_order_cmp_func_[dim_idx](dim.get(), coord_a, coord_b);
+    unsigned d, const void* coord_a, const void* coord_b) const {
+  return tile_order_cmp_func_[d](dimension_ptr(d), coord_a, coord_b);
 }
 
 /* ****************************** */

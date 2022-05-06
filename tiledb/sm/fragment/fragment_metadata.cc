@@ -480,7 +480,7 @@ uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
 std::vector<Datatype> FragmentMetadata::dim_types() const {
   std::vector<Datatype> ret;
   for (uint32_t d = 0; d < array_schema_->dim_num(); d++) {
-    ret.emplace_back(array_schema_->dimension(d)->type());
+    ret.emplace_back(array_schema_->dimension_ptr(d)->type());
   }
 
   return ret;
@@ -501,7 +501,7 @@ Status FragmentMetadata::add_max_buffer_sizes(
   NDRange sub_nd(dim_num);
   uint64_t offset = 0;
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto r_size = 2 * array_schema_->dimension(d)->coord_size();
+    auto r_size{2 * array_schema_->dimension_ptr(d)->coord_size()};
     sub_nd[d].set_range(&sub_ptr[offset], r_size);
     offset += r_size;
   }
@@ -516,7 +516,7 @@ Status FragmentMetadata::add_max_buffer_sizes_dense(
         buffer_sizes) {
   // Note: applicable only to the dense case where all dimensions
   // have the same type
-  auto type = array_schema_->dimension(0)->type();
+  auto type{array_schema_->dimension_ptr(0)->type()};
   switch (type) {
     case Datatype::INT32:
       return add_max_buffer_sizes_dense<int32_t>(
@@ -1212,7 +1212,7 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
   }
 
   for (unsigned i = 0; i < array_schema_->dim_num(); ++i) {
-    const std::string dim_name = array_schema_->dimension(i)->name();
+    const auto& dim_name{array_schema_->dimension_ptr(i)->name()};
     if (dim_name == name) {
       const unsigned dim_idx = idx - array_schema_->attribute_num() - 1;
       return {Status::Ok(), "d" + std::to_string(dim_idx)};
@@ -1881,7 +1881,7 @@ uint64_t FragmentMetadata::footer_size_v3_v4() const {
   auto attribute_num = array_schema_->attribute_num();
   auto dim_num = array_schema_->dim_num();
   // v3 and v4 support only arrays where all dimensions have the same type
-  auto domain_size = 2 * dim_num * array_schema_->dimension(0)->coord_size();
+  auto domain_size{2 * dim_num * array_schema_->dimension_ptr(0)->coord_size()};
 
   // Get footer size
   uint64_t size = 0;
@@ -1914,12 +1914,13 @@ uint64_t FragmentMetadata::footer_size_v5_v6() const {
     // function is not called then.
     assert(array_schema_->domain().all_dims_fixed());
     for (unsigned d = 0; d < dim_num; ++d)
-      domain_size += 2 * array_schema_->domain().dimension(d)->coord_size();
+      domain_size += 2 * array_schema_->domain().dimension_ptr(d)->coord_size();
   } else {
     for (unsigned d = 0; d < dim_num; ++d) {
       domain_size += non_empty_domain_[d].size();
-      if (array_schema_->dimension(d)->var_size())
-        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized
+      if (array_schema_->dimension_ptr(d)->var_size()) {
+        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized}
+      }
     }
   }
 
@@ -1954,12 +1955,13 @@ uint64_t FragmentMetadata::footer_size_v7_v10() const {
     // function is not called then.
     assert(array_schema_->domain().all_dims_fixed());
     for (unsigned d = 0; d < dim_num; ++d)
-      domain_size += 2 * array_schema_->domain().dimension(d)->coord_size();
+      domain_size += 2 * array_schema_->domain().dimension_ptr(d)->coord_size();
   } else {
     for (unsigned d = 0; d < dim_num; ++d) {
       domain_size += non_empty_domain_[d].size();
-      if (array_schema_->dimension(d)->var_size())
-        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized
+      if (array_schema_->dimension_ptr(d)->var_size()) {
+        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized}
+      }
     }
   }
 
@@ -1996,12 +1998,13 @@ uint64_t FragmentMetadata::footer_size_v11_or_higher() const {
     // function is not called then.
     assert(array_schema_->domain().all_dims_fixed());
     for (unsigned d = 0; d < dim_num; ++d)
-      domain_size += 2 * array_schema_->domain().dimension(d)->coord_size();
+      domain_size += 2 * array_schema_->domain().dimension_ptr(d)->coord_size();
   } else {
     for (unsigned d = 0; d < dim_num; ++d) {
       domain_size += non_empty_domain_[d].size();
-      if (array_schema_->dimension(d)->var_size())
+      if (array_schema_->dimension_ptr(d)->var_size()) {
         domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized
+      }
     }
   }
 
@@ -2037,7 +2040,7 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
   auto dim_num = array_schema_->dim_num();
 
   // Temporary domain vector
-  auto coord_size = array_schema_->domain().dimension(0)->coord_size();
+  auto coord_size{array_schema_->domain().dimension_ptr(0)->coord_size()};
   auto temp_size = 2 * dim_num * coord_size;
   std::vector<uint8_t> temp(temp_size);
   uint8_t offset = 0;
@@ -2085,7 +2088,7 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
   auto dim_num = array_schema_->dim_num();
 
   // Temporary domain vector
-  auto coord_size = array_schema_->domain().dimension(0)->coord_size();
+  auto coord_size{array_schema_->domain().dimension_ptr(0)->coord_size()};
   auto temp_size = 2 * dim_num * coord_size;
   std::vector<uint8_t> temp(temp_size);
   uint8_t offset = 0;
@@ -2386,7 +2389,7 @@ Status FragmentMetadata::load_bounding_coords(ConstBuffer* buff) {
 
   // Get bounding coordinates
   // Note: This version supports only dimensions domains with the same type
-  auto coord_size = array_schema_->domain().dimension(0)->coord_size();
+  auto coord_size{array_schema_->domain().dimension_ptr(0)->coord_size()};
   auto dim_num = array_schema_->domain().dim_num();
   uint64_t bounding_coords_size = 2 * dim_num * coord_size;
   bounding_coords_.resize(bounding_coords_num);
@@ -2527,7 +2530,7 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
   for (uint64_t m = 0; m < mbr_num; ++m) {
     NDRange mbr(dim_num);
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto r_size = 2 * domain.dimension(d)->coord_size();
+      auto r_size{2 * domain.dimension_ptr(d)->coord_size()};
       mbr[d].set_range(buff->cur_data(), r_size);
       buff->advance_offset(r_size);
     }
@@ -2568,7 +2571,7 @@ Status FragmentMetadata::load_non_empty_domain_v1_v2(ConstBuffer* buff) {
     non_empty_domain_.resize(dim_num);
     uint64_t offset = 0;
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto coord_size = array_schema_->dimension(d)->coord_size();
+      auto coord_size{array_schema_->dimension_ptr(d)->coord_size()};
       Range r(&temp[offset], 2 * coord_size);
       non_empty_domain_[d] = std::move(r);
       offset += 2 * coord_size;
@@ -2596,14 +2599,14 @@ Status FragmentMetadata::load_non_empty_domain_v3_v4(ConstBuffer* buff) {
   if (!null_non_empty_domain) {
     auto dim_num = array_schema_->dim_num();
     // Note: These versions supports only dimensions domains with the same type
-    auto coord_size = array_schema_->domain().dimension(0)->coord_size();
-    auto domain_size = 2 * dim_num * coord_size;
+    auto coord_size_0{array_schema_->domain().dimension_ptr(0)->coord_size()};
+    auto domain_size = 2 * dim_num * coord_size_0;
     std::vector<uint8_t> temp(domain_size);
     RETURN_NOT_OK(buff->read(&temp[0], domain_size));
     non_empty_domain_.resize(dim_num);
     uint64_t offset = 0;
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto coord_size = array_schema_->dimension(d)->coord_size();
+      auto coord_size{array_schema_->dimension_ptr(d)->coord_size()};
       Range r(&temp[offset], 2 * coord_size);
       non_empty_domain_[d] = std::move(r);
       offset += 2 * coord_size;
@@ -2633,7 +2636,7 @@ Status FragmentMetadata::load_non_empty_domain_v5_or_higher(ConstBuffer* buff) {
     auto dim_num = array_schema_->dim_num();
     non_empty_domain_.resize(dim_num);
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = domain.dimension(d);
+      auto dim{domain.dimension_ptr(d)};
       if (!dim->var_size()) {  // Fixed-sized
         auto r_size = 2 * dim->coord_size();
         non_empty_domain_[d].set_range(buff->cur_data(), r_size);
@@ -3904,14 +3907,13 @@ Status FragmentMetadata::write_non_empty_domain(Buffer* buff) const {
   RETURN_NOT_OK(buff->write(&null_non_empty_domain, sizeof(char)));
 
   // Write domain size
-  uint64_t domain_size = 0;
   auto& domain = array_schema_->domain();
   auto dim_num = domain.dim_num();
   if (non_empty_domain_.empty()) {
     // Applicable only to homogeneous domains with fixed-sized types
     assert(domain.all_dims_fixed());
     assert(domain.all_dims_same_type());
-    domain_size = 2 * dim_num * domain.dimension(0)->coord_size();
+    auto domain_size{2 * dim_num * domain.dimension_ptr(0)->coord_size()};
 
     // Write domain (dummy values)
     std::vector<uint8_t> d(domain_size, 0);
@@ -3919,7 +3921,7 @@ Status FragmentMetadata::write_non_empty_domain(Buffer* buff) const {
   } else {
     // Write non-empty domain
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = domain.dimension(d);
+      auto dim{domain.dimension_ptr(d)};
       const auto& r = non_empty_domain_[d];
       if (!dim->var_size()) {  // Fixed-sized
         RETURN_NOT_OK(buff->write(r.data(), r.size()));
@@ -4762,7 +4764,7 @@ void FragmentMetadata::build_idx_map() {
   }
   idx_map_[constants::coords] = array_schema_->attribute_num();
   for (unsigned i = 0; i < array_schema_->dim_num(); ++i) {
-    auto dim_name = array_schema_->dimension(i)->name();
+    const auto& dim_name{array_schema_->dimension_ptr(i)->name()};
     idx_map_[dim_name] = array_schema_->attribute_num() + 1 + i;
   }
 }

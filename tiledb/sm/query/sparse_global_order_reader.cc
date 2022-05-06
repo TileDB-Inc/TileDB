@@ -556,7 +556,7 @@ Status SparseGlobalOrderReader::compute_hilbert_values(
           if (tile->bitmap_.size() == 0 || tile->bitmap_[rc.pos_]) {
             // Compute Hilbert number for all dimensions first.
             for (uint32_t d = 0; d < dim_num; ++d) {
-              auto dim = array_schema_.dimension(d);
+              auto dim{array_schema_.dimension_ptr(d)};
               coords[d] = hilbert_order::map_to_uint64(
                   *dim, rc, d, bits, max_bucket_val);
             }

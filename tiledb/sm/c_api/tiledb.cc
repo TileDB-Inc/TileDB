@@ -1500,7 +1500,8 @@ int32_t tiledb_domain_get_type(
     return TILEDB_ERR;
   }
 
-  *type = static_cast<tiledb_datatype_t>(domain->domain_->dimension(0)->type());
+  *type =
+      static_cast<tiledb_datatype_t>(domain->domain_->dimension_ptr(0)->type());
   return TILEDB_OK;
 }
 
@@ -1736,7 +1737,7 @@ int32_t tiledb_domain_get_dimension_from_index(
     return TILEDB_OOM;
   }
   (*dim)->dim_ = new (std::nothrow)
-      tiledb::sm::Dimension(domain->domain_->dimension(index).get());
+      tiledb::sm::Dimension(domain->domain_->dimension_ptr(index));
   if ((*dim)->dim_ == nullptr) {
     delete *dim;
     *dim = nullptr;
@@ -1763,7 +1764,7 @@ int32_t tiledb_domain_get_dimension_from_name(
     return TILEDB_OK;
   }
   std::string name_string(name);
-  auto found_dim = domain->domain_->dimension(name_string).get();
+  auto found_dim = domain->domain_->dimension_ptr(name_string);
 
   if (found_dim == nullptr) {
     auto st = Status_DomainError(

@@ -130,7 +130,7 @@ class SingleCoord {
       , single_offset_(1) {
     sizes_[schema.dim_num()] = sizeof(uint64_t);
     for (unsigned d = 0; d < coords_.size(); ++d) {
-      bool var_size = schema.dimension(d)->var_size();
+      bool var_size = schema.dimension_ptr(d)->var_size();
       auto dv = coord.dimension_datum_view(d);
       sizes_[d] = dv.size();
       coords_[d].resize(sizes_[d]);
@@ -213,7 +213,7 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
       : qb_(schema.dim_num()) {
     auto n_dimensions{schema.dim_num()};
     for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
-      const auto& name = schema.dimension(i)->name();
+      const auto& name{schema.dimension_ptr(i)->name()};
       qb_[i] = &buffers.at(name);
     }
   }
