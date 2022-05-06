@@ -210,23 +210,23 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
       &file_size);
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_mime_encoding_key,
-      TILEDB_STRING_ASCII,
+      TILEDB_STRING_UTF8,
       static_cast<uint32_t>(mime_encoding.value().size()),
       mime_encoding.value().c_str());
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_mime_type_key,
-      TILEDB_STRING_ASCII,
+      TILEDB_STRING_UTF8,
       static_cast<uint32_t>(mime.value().size()),
       mime.value().c_str());
   auto&& [fname, fext] = strip_file_extension(file_uri);
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_original_filename_key,
-      TILEDB_STRING_ASCII,
+      TILEDB_STRING_UTF8,
       static_cast<uint32_t>(fname.size()),
       fname.c_str());
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_file_extension_key,
-      TILEDB_STRING_ASCII,
+      TILEDB_STRING_UTF8,
       static_cast<uint32_t>(fext.size()),
       fext.c_str());
 
@@ -349,10 +349,25 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
     Query query(context, array);
     query.set_layout(TILEDB_ROW_MAJOR);
     query.set_subarray(subarray);
-    query.set_data_buffer(
-        tiledb::sm::constants::filestore_attribute_name,
-        data.data(),
-        write_size);
+
+    // Cloud compatibility hack. Currently stored tiledb file arrays have a
+    // TILEDB_UINT8 attribute. We should pass the right datatype here to
+    // support reads from existing tiledb file arrays.
+    auto attr_type =
+        array.schema()
+            .attribute(tiledb::sm::constants::filestore_attribute_name)
+            .type();
+    if (attr_type == TILEDB_UINT8) {
+      query.set_data_buffer(
+          tiledb::sm::constants::filestore_attribute_name,
+          reinterpret_cast<uint8_t*>(data.data()),
+          write_size);
+    } else {
+      query.set_data_buffer(
+          tiledb::sm::constants::filestore_attribute_name,
+          data.data(),
+          write_size);
+    }
     query.submit();
 
     output.write(reinterpret_cast<char*>(data.data()), write_size);
@@ -414,22 +429,22 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
       &size);
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_mime_encoding_key,
-      TILEDB_STRING_ASCII,
+      TILEDB_STRING_UTF8,
       static_cast<uint32_t>(mime_encoding.value().size()),
       mime_encoding.value().c_str());
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_mime_type_key,
-      TILEDB_STRING_ASCII,
+      TILEDB_STRING_UTF8,
       static_cast<uint32_t>(mime.value().size()),
       mime.value().c_str());
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_original_filename_key,
-      TILEDB_STRING_ASCII,
+      TILEDB_STRING_UTF8,
       static_cast<uint32_t>(0),
       "");
   array.put_metadata(
       tiledb::sm::constants::filestore_metadata_file_extension_key,
-      TILEDB_STRING_ASCII,
+      TILEDB_STRING_UTF8,
       static_cast<uint32_t>(0),
       "");
 
