@@ -734,7 +734,7 @@ void QueryCondition::apply_ast_node(
   return;
 }
 
-template <typename CombinationOp>
+template <typename CombinationOp = std::logical_and<uint8_t>>
 void QueryCondition::apply_tree(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
@@ -743,79 +743,96 @@ void QueryCondition::apply_tree(
     CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
   if (!node->is_expr()) {
-    throw std::logic_error("Argument node should be an expression node.");
-  }
-  const uint8_t fill_value =
-      node->get_combination_op() == QueryConditionCombinationOp::AND ? 1 : 0;
-  std::vector<uint8_t> combination_op_bitmap(
-      result_cell_bitmap.size(), fill_value);
+    apply_ast_node(
+        node,
+        array_schema,
+        stride,
+        result_cell_slabs,
+        combination_op,
+        result_cell_bitmap);
+  } else {
+    switch (node->get_combination_op()) {
+        /*
+         * cl(q; a) means evaluate a clause (which may be compound) with query q
+         * given existing bitmap a
+         *
+         * Identities:
+         *
+         * cl(q; a) = cl(q; 1) /\ a
+         * cl1(q; a) /\ cl2(q; b) = cl1(q; cl2(q; a))
+         *
+         * cl1(q; a) \/ cl2(q; a) = (cl1(q; 1) /\ a) \/ (cl2(q; 1) /\ a)
+         *                        = (cl1(q; 1) \/ cl2(q; 1)) /\ a
+         */
 
-  for (const auto& child : node->get_children()) {
-    if (!child->is_expr()) {
-      apply_ast_node<CombinationOp>(
-          child,
-          array_schema,
-          stride,
-          result_cell_slabs,
-          combination_op,
-          combination_op_bitmap);
-    } else {
-      // For each child expression node, declare a new result buffer, combine
-      // it all into the other one based on the combination op.
+        /*
+         * cl1(q; a) /\ cl2(q; a) = cl1(q; cl2(q; a))
+         */
+      case QueryConditionCombinationOp::AND: {
+        if constexpr (std::
+                          is_same_v<CombinationOp, std::logical_and<uint8_t>>) {
+          for (const auto& child : node->get_children()) {
+            apply_tree(
+                child,
+                array_schema,
+                stride,
+                result_cell_slabs,
+                std::logical_and<uint8_t>(),
+                result_cell_bitmap);
+          }
 
-      std::vector<uint8_t> child_result_cell_bitmap(
-          result_cell_bitmap.size(), 1);
-      apply_tree(
-          child,
-          array_schema,
-          stride,
-          result_cell_slabs,
-          child_result_cell_bitmap);
+          // Handle the cl'(q, a) case
+        } else if constexpr (std::is_same_v<
+                                 CombinationOp,
+                                 std::logical_or<uint8_t>>) {
+          std::vector<uint8_t> combination_op_bitmap(
+              result_cell_bitmap.size(), 1);
 
-      for (size_t c = 0; c < result_cell_bitmap.size(); ++c) {
-        combination_op_bitmap[c] = combination_op(
-            combination_op_bitmap[c], child_result_cell_bitmap[c]);
+          for (const auto& child : node->get_children()) {
+            apply_tree(
+                child,
+                array_schema,
+                stride,
+                result_cell_slabs,
+                std::logical_and<uint8_t>(),
+                combination_op_bitmap);
+          }
+          for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
+            result_cell_bitmap[c] |= combination_op_bitmap[c];
+          }
+        }
+      } break;
+
+        /*
+         * cl1(q; a) \/ cl2(q; a) = a /\ (cl1(q; 1) \/ cl2(q; 1))
+         *                        = a /\ (cl1'(q; 0) \/ cl2'(q; 0))
+         *                        = a /\ (cl1'(q; cl2'(q; 0)))
+         */
+      case QueryConditionCombinationOp::OR: {
+        std::vector<uint8_t> combination_op_bitmap(
+            result_cell_bitmap.size(), 0);
+
+        for (const auto& child : node->get_children()) {
+          apply_tree(
+              child,
+              array_schema,
+              stride,
+              result_cell_slabs,
+              std::logical_or<uint8_t>(),
+              combination_op_bitmap);
+        }
+        for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
+          result_cell_bitmap[c] *= combination_op_bitmap[c];
+        }
+      } break;
+      case QueryConditionCombinationOp::NOT: {
+        throw std::runtime_error(
+            "Query condition NOT operator is not currently supported.");
+      } break;
+      default: {
+        throw std::logic_error(
+            "Invalid combination operator when applying query condition.");
       }
-    }
-  }
-
-  for (size_t c = 0; c < result_cell_bitmap.size(); ++c) {
-    result_cell_bitmap[c] *= combination_op_bitmap[c];
-  }
-}
-
-void QueryCondition::apply_tree(
-    const tdb_unique_ptr<ASTNode>& node,
-    const ArraySchema& array_schema,
-    uint64_t stride,
-    const std::vector<ResultCellSlab>& result_cell_slabs,
-    std::vector<uint8_t>& result_cell_bitmap) const {
-  switch (node->get_combination_op()) {
-    case QueryConditionCombinationOp::AND: {
-      apply_tree<std::logical_and<uint8_t>>(
-          node,
-          array_schema,
-          stride,
-          result_cell_slabs,
-          std::logical_and<uint8_t>(),
-          result_cell_bitmap);
-    } break;
-    case QueryConditionCombinationOp::OR: {
-      apply_tree<std::logical_or<uint8_t>>(
-          node,
-          array_schema,
-          stride,
-          result_cell_slabs,
-          std::logical_or<uint8_t>(),
-          result_cell_bitmap);
-    } break;
-    case QueryConditionCombinationOp::NOT: {
-      throw std::runtime_error(
-          "Query condition NOT operator is not currently supported.");
-    }
-    default: {
-      throw std::logic_error(
-          "Invalid combination operator when applying query condition.");
     }
   }
 }
@@ -834,18 +851,13 @@ Status QueryCondition::apply(
   }
 
   std::vector<uint8_t> result_cell_bitmap(total_lengths, 1);
-  if (!tree_->is_expr()) {
-    apply_ast_node<std::logical_and<uint8_t>>(
-        tree_,
-        array_schema,
-        stride,
-        result_cell_slabs,
-        std::logical_and<uint8_t>(),
-        result_cell_bitmap);
-  } else {
-    apply_tree(
-        tree_, array_schema, stride, result_cell_slabs, result_cell_bitmap);
-  }
+  apply_tree(
+      tree_,
+      array_schema,
+      stride,
+      result_cell_slabs,
+      std::logical_and<uint8_t>(),
+      result_cell_bitmap);
 
   std::vector<ResultCellSlab> ret;
   uint64_t starting_index = 0;
@@ -882,7 +894,7 @@ void QueryCondition::apply_ast_node_dense(
     const uint64_t stride,
     const bool var_size,
     CombinationOp combination_op,
-    span<uint8_t>& result_buffer) const {
+    span<uint8_t> result_buffer) const {
   const std::string& field_name = node->get_field_name();
   const void* condition_value_content =
       node->get_condition_value_view().content();
@@ -963,7 +975,7 @@ void QueryCondition::apply_ast_node_dense(
     const uint64_t stride,
     const bool var_size,
     CombinationOp combination_op,
-    span<uint8_t>& result_buffer) const {
+    span<uint8_t> result_buffer) const {
   switch (node->get_op()) {
     case QueryConditionOp::LT:
       apply_ast_node_dense<T, QueryConditionOp::LT, CombinationOp>(
@@ -1046,7 +1058,7 @@ void QueryCondition::apply_ast_node_dense(
     const uint64_t src_cell,
     const uint64_t stride,
     CombinationOp combination_op,
-    span<uint8_t>& result_buffer) const {
+    span<uint8_t> result_buffer) const {
   const auto attribute = array_schema.attribute(node->get_field_name());
   if (!attribute) {
     throw std::runtime_error("Unknown attribute " + node->get_field_name());
@@ -1251,7 +1263,7 @@ void QueryCondition::apply_ast_node_dense(
   }
 }
 
-template <typename CombinationOp>
+template <typename CombinationOp = std::logical_and<uint8_t>>
 void QueryCondition::apply_tree_dense(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
@@ -1260,93 +1272,106 @@ void QueryCondition::apply_tree_dense(
     const uint64_t src_cell,
     const uint64_t stride,
     CombinationOp combination_op,
-    span<uint8_t>& result_buffer) const {
+    span<uint8_t> result_buffer) const {
   if (!node->is_expr()) {
-    throw std::logic_error("Argument node should be an expression node.");
-  }
+    apply_ast_node_dense(
+        node,
+        array_schema,
+        result_tile,
+        start,
+        src_cell,
+        stride,
+        combination_op,
+        result_buffer);
+  } else {
+    switch (node->get_combination_op()) {
+        /*
+         * cl(q; a) means evaluate a clause (which may be compound) with query q
+         * given existing bitmap a
+         *
+         * Identities:
+         *
+         * cl(q; a) = cl(q; 1) /\ a
+         * cl1(q; a) /\ cl2(q; b) = cl1(q; cl2(q; a))
+         *
+         * cl1(q; a) \/ cl2(q; a) = (cl1(q; 1) /\ a) \/ (cl2(q; 1) /\ a)
+         *                        = (cl1(q; 1) \/ cl2(q; 1)) /\ a
+         */
 
-  const uint8_t fill_value =
-      node->get_combination_op() == QueryConditionCombinationOp::AND ? 1 : 0;
-  std::vector<uint8_t> combination_result_vec(result_buffer.size(), fill_value);
-  span<uint8_t> combination_result_buffer(
-      combination_result_vec.data(), combination_result_vec.size());
+        /*
+         * cl1(q; a) /\ cl2(q; a) = cl1(q; cl2(q; a))
+         */
+      case QueryConditionCombinationOp::AND: {
+        if constexpr (std::
+                          is_same_v<CombinationOp, std::logical_and<uint8_t>>) {
+          for (const auto& child : node->get_children()) {
+            apply_tree_dense(
+                child,
+                array_schema,
+                result_tile,
+                start,
+                src_cell,
+                stride,
+                std::logical_and<uint8_t>(),
+                result_buffer);
+          }
 
-  for (const auto& child : node->get_children()) {
-    if (!child->is_expr()) {
-      apply_ast_node_dense(
-          child,
-          array_schema,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          combination_op,
-          combination_result_buffer);
-    } else {
-      // For each child expression node, declare a new result buffer, combine
-      // it all into the other one based on the combination op.
-      std::vector<uint8_t> child_result_vector(result_buffer.size(), 1);
-      span<uint8_t> child_result_buffer(
-          child_result_vector.data(), result_buffer.size());
-      apply_tree_dense(
-          child,
-          array_schema,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          child_result_buffer);
+          // Handle the cl'(q, a) case
+        } else if constexpr (std::is_same_v<
+                                 CombinationOp,
+                                 std::logical_or<uint8_t>>) {
+          std::vector<uint8_t> combination_op_bitmap(result_buffer.size(), 1);
+          span<uint8_t> combination_op_span(
+              combination_op_bitmap.data(), result_buffer.size());
 
-      for (size_t c = 0; c < result_buffer.size(); ++c) {
-        combination_result_buffer[c] = combination_op(
-            combination_result_buffer[c], child_result_vector[c]);
+          for (const auto& child : node->get_children()) {
+            apply_tree_dense(
+                child,
+                array_schema,
+                result_tile,
+                start,
+                src_cell,
+                stride,
+                std::logical_and<uint8_t>(),
+                combination_op_span);
+          }
+          for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
+            result_buffer[c] |= combination_op_bitmap[c];
+          }
+        }
+      } break;
+        /*
+         * cl1(q; a) \/ cl2(q; a) = a /\ (cl1(q; 1) \/ cl2(q; 1))
+         *                        = a /\ (cl1'(q; 0) \/ cl2'(q; 0))
+         *                        = a /\ (cl1'(q; cl2'(q; 0)))
+         */
+      case QueryConditionCombinationOp::OR: {
+        std::vector<uint8_t> combination_op_bitmap(result_buffer.size(), 0);
+        span<uint8_t> combination_op_span(
+            combination_op_bitmap.data(), result_buffer.size());
+        for (const auto& child : node->get_children()) {
+          apply_tree_dense(
+              child,
+              array_schema,
+              result_tile,
+              start,
+              src_cell,
+              stride,
+              std::logical_or<uint8_t>(),
+              combination_op_span);
+        }
+        for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
+          result_buffer[c] *= combination_op_bitmap[c];
+        }
+      } break;
+      case QueryConditionCombinationOp::NOT: {
+        throw std::runtime_error(
+            "Query condition NOT operator is not currently supported.");
+      } break;
+      default: {
+        throw std::logic_error(
+            "Invalid combination operator when applying query condition.");
       }
-    }
-  }
-
-  for (uint64_t c = 0; c < result_buffer.size(); ++c) {
-    result_buffer[c] &= combination_result_buffer[c];
-  }
-}
-
-void QueryCondition::apply_tree_dense(
-    const tdb_unique_ptr<ASTNode>& node,
-    const ArraySchema& array_schema,
-    ResultTile* result_tile,
-    const uint64_t start,
-    const uint64_t src_cell,
-    const uint64_t stride,
-    span<uint8_t>& result_buffer) const {
-  switch (node->get_combination_op()) {
-    case QueryConditionCombinationOp::AND: {
-      apply_tree_dense(
-          node,
-          array_schema,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          std::logical_and<uint8_t>(),
-          result_buffer);
-    } break;
-    case QueryConditionCombinationOp::OR: {
-      apply_tree_dense(
-          node,
-          array_schema,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          std::logical_or<uint8_t>(),
-          result_buffer);
-    } break;
-    case QueryConditionCombinationOp::NOT: {
-      throw std::runtime_error(
-          "Query condition NOT operator is not currently supported.");
-    } break;
-    default: {
-      throw std::logic_error(
-          "Invalid combination operator when applying query condition.");
     }
   }
 }
@@ -1361,20 +1386,15 @@ Status QueryCondition::apply_dense(
     uint8_t* result_buffer) {
   // Iterate through the tree.
   span<uint8_t> result_span(result_buffer + start, length);
-  if (!tree_->is_expr()) {
-    apply_ast_node_dense<std::logical_and<uint8_t>>(
-        tree_,
-        array_schema,
-        result_tile,
-        start,
-        src_cell,
-        stride,
-        std::logical_and<uint8_t>(),
-        result_span);
-  } else {
-    apply_tree_dense(
-        tree_, array_schema, result_tile, start, src_cell, stride, result_span);
-  }
+  apply_tree_dense(
+      tree_,
+      array_schema,
+      result_tile,
+      start,
+      src_cell,
+      stride,
+      std::logical_and<uint8_t>(),
+      result_span);
   return Status::Ok();
 }
 
@@ -1749,7 +1769,9 @@ void QueryCondition::apply_ast_node_sparse(
   }
 }
 
-template <typename BitmapType, typename CombinationOp>
+template <
+    typename BitmapType,
+    typename CombinationOp = std::logical_and<BitmapType>>
 void QueryCondition::apply_tree_sparse(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
@@ -1757,74 +1779,88 @@ void QueryCondition::apply_tree_sparse(
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   if (!node->is_expr()) {
-    throw std::logic_error("Argument node should be an expression node.");
-  }
+    apply_ast_node_sparse<BitmapType>(
+        node, array_schema, result_tile, combination_op, result_bitmap);
+  } else {
+    switch (node->get_combination_op()) {
+        /*
+         * cl(q; a) means evaluate a clause (which may be compound) with query q
+         * given existing bitmap a
+         *
+         * Identities:
+         *
+         * cl(q; a) = cl(q; 1) /\ a
+         * cl1(q; a) /\ cl2(q; b) = cl1(q; cl2(q; a))
+         *
+         * cl1(q; a) \/ cl2(q; a) = (cl1(q; 1) /\ a) \/ (cl2(q; 1) /\ a)
+         *                        = (cl1(q; 1) \/ cl2(q; 1)) /\ a
+         */
 
-  const QueryConditionCombinationOp& c_op = node->get_combination_op();
-  const uint8_t fill_value = c_op == QueryConditionCombinationOp::AND ? 1 : 0;
-  std::vector<BitmapType> combination_op_bitmap(
-      result_bitmap.size(), fill_value);
+        /*
+         * cl1(q; a) /\ cl2(q; a) = cl1(q; cl2(q; a))
+         */
+      case QueryConditionCombinationOp::AND: {
+        if constexpr (std::is_same_v<
+                          CombinationOp,
+                          std::logical_and<BitmapType>>) {
+          for (const auto& child : node->get_children()) {
+            apply_tree_sparse<BitmapType>(
+                child,
+                array_schema,
+                result_tile,
+                std::logical_and<BitmapType>(),
+                result_bitmap);
+          }
 
-  for (const auto& child : node->get_children()) {
-    if (!child->is_expr()) {
-      apply_ast_node_sparse(
-          child,
-          array_schema,
-          result_tile,
-          combination_op,
-          combination_op_bitmap);
-    } else {
-      // For each child expression node, declare a new result buffer, combine
-      // it all into the other one based on the combination op.
-      std::vector<BitmapType> child_result_bitmap(result_bitmap.size(), 1);
-      apply_tree_sparse<BitmapType>(
-          child, array_schema, result_tile, child_result_bitmap);
+          // Handle the cl'(q, a) case
+        } else if constexpr (std::is_same_v<
+                                 CombinationOp,
+                                 std::logical_or<BitmapType>>) {
+          std::vector<BitmapType> combination_op_bitmap(
+              result_bitmap.size(), 1);
 
-      for (size_t c = 0; c < child_result_bitmap.size(); ++c) {
-        combination_op_bitmap[c] =
-            combination_op(combination_op_bitmap[c], child_result_bitmap[c]);
+          for (const auto& child : node->get_children()) {
+            apply_tree_sparse<BitmapType>(
+                child,
+                array_schema,
+                result_tile,
+                std::logical_and<BitmapType>(),
+                combination_op_bitmap);
+          }
+          for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
+            result_bitmap[c] |= combination_op_bitmap[c];
+          }
+        }
+      } break;
+
+        /*
+         * cl1(q; a) \/ cl2(q; a) = a /\ (cl1(q; 1) \/ cl2(q; 1))
+         *                        = a /\ (cl1'(q; 0) \/ cl2'(q; 0))
+         *                        = a /\ (cl1'(q; cl2'(q; 0)))
+         */
+      case QueryConditionCombinationOp::OR: {
+        std::vector<BitmapType> combination_op_bitmap(result_bitmap.size(), 0);
+
+        for (const auto& child : node->get_children()) {
+          apply_tree_sparse<BitmapType>(
+              child,
+              array_schema,
+              result_tile,
+              std::logical_or<BitmapType>(),
+              combination_op_bitmap);
+        }
+        for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
+          result_bitmap[c] *= combination_op_bitmap[c];
+        }
+      } break;
+      case QueryConditionCombinationOp::NOT: {
+        throw std::runtime_error(
+            "Query condition NOT operator is not currently supported.");
+      } break;
+      default: {
+        throw std::logic_error(
+            "Invalid combination operator when applying query condition.");
       }
-    }
-  }
-
-  for (uint64_t c = 0; c < result_bitmap.size(); ++c) {
-    result_bitmap[c] *= combination_op_bitmap[c];
-  }
-}
-
-template <typename BitmapType>
-void QueryCondition::apply_tree_sparse(
-    const tdb_unique_ptr<ASTNode>& node,
-    const ArraySchema& array_schema,
-    ResultTile& result_tile,
-    std::vector<BitmapType>& result_bitmap) const {
-  switch (node->get_combination_op()) {
-    // Note that a bitwise AND operator is used to combine
-    // the accumulator result buffer and child result buffer in the AND
-    // combination op case, and bitwise OR in the OR combination op case.
-    case QueryConditionCombinationOp::AND: {
-      apply_tree_sparse<BitmapType>(
-          node,
-          array_schema,
-          result_tile,
-          std::logical_and<BitmapType>(),
-          result_bitmap);
-    } break;
-    case QueryConditionCombinationOp::OR: {
-      apply_tree_sparse<BitmapType>(
-          node,
-          array_schema,
-          result_tile,
-          std::logical_or<BitmapType>(),
-          result_bitmap);
-    } break;
-    case QueryConditionCombinationOp::NOT: {
-      throw std::runtime_error(
-          "Query condition NOT operator is not currently supported.");
-    } break;
-    default: {
-      throw std::logic_error(
-          "Invalid combination operator when applying query condition.");
     }
   }
 }
@@ -1835,18 +1871,12 @@ Status QueryCondition::apply_sparse(
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap,
     uint64_t* cell_count) {
-  if (!tree_->is_expr()) {
-    apply_ast_node_sparse<BitmapType, std::logical_and<BitmapType>>(
-        tree_,
-        array_schema,
-        result_tile,
-        std::logical_and<BitmapType>(),
-        result_bitmap);
-  } else {
-    // Iterate through the tree.
-    apply_tree_sparse<BitmapType>(
-        tree_, array_schema, result_tile, result_bitmap);
-  }
+  apply_tree_sparse<BitmapType>(
+      tree_,
+      array_schema,
+      result_tile,
+      std::logical_and<BitmapType>(),
+      result_bitmap);
   *cell_count = std::accumulate(result_bitmap.begin(), result_bitmap.end(), 0);
 
   return Status::Ok();
