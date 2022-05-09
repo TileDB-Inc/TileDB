@@ -879,6 +879,9 @@ class FragmentMetadata {
   /** Number of cells in the last tile (meaningful only in the sparse case). */
   uint64_t last_tile_cell_num_;
 
+  /** True if the fragment has timestamps, and false otherwise. */
+  bool has_timestamps_;
+
   /** Number of sparse tiles. */
   uint64_t sparse_tile_num_;
 
@@ -1203,6 +1206,14 @@ class FragmentMetadata {
   Status load_last_tile_cell_num(ConstBuffer* buff);
 
   /**
+   * Loads the `has_timestamps_` field from the buffer.
+   *
+   * @param buff Metadata buffer.
+   * @return Status
+   */
+  Status load_has_timestamps(ConstBuffer* buff);
+
+  /**
    * Loads the MBRs from the fragment metadata buffer.
    *
    * @param buff Metadata buffer.
@@ -1352,6 +1363,11 @@ class FragmentMetadata {
    * Writes the cell number of the last tile to the fragment metadata buffer.
    */
   Status write_last_tile_cell_num(Buffer* buff) const;
+
+  /**
+   * Writes the `has_timestamps_` field to the fragment metadata buffer.
+   */
+  Status write_has_timestamps(Buffer* buff) const;
 
   /**
    * Writes the R-tree to storage.

@@ -555,7 +555,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization format version number. */
-const uint32_t format_version = 13;
+const uint32_t format_version = 14;
 
 /** The lowest version supported for back compat writes. */
 const uint32_t back_compat_writes_min_format_version = 7;
