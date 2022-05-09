@@ -44,6 +44,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+/** Cast from datatype to enumeration without knowing the underlying type. */
+using datatype_underlying_t = uint8_t;
+
 /** Defines a datatype. */
 enum class Datatype : uint8_t {
 #define TILEDB_DATATYPE_ENUM(id) id
@@ -363,29 +366,26 @@ inline bool datatype_is_boolean(Datatype type) {
   return (type == Datatype::BOOL);
 }
 
-inline uint8_t datatype_to_underlying(Datatype type) {
-  return static_cast<uint8_t>(type);
+/* Return the underlying enumeration value given a Datatype. */
+inline datatype_underlying_t datatype_to_underlying(Datatype type) {
+  return static_cast<datatype_underlying_t>(type);
 }
 
-/* Note: Valid enumeration values are between 0 and 40. */
-inline Status datatype_is_valid(Datatype type) {
-  uint8_t datatype_enum = datatype_to_underlying(type);
+/** Returns Status::OK() if the input Datatype's enum is between 0 and 40. */
+inline Status is_datatype_valid(Datatype type) {
+  datatype_underlying_t datatype_enum{datatype_to_underlying(type)};
   if (datatype_enum > 40)
     return Status_Error("Invalid Datatype " + std::to_string(datatype_enum));
 
   return Status::Ok();
 }
 
-/* Note: Valid enumeration values are between 0 and 40. */
-inline Status datatype_str_is_valid(const std::string& datatype_str) {
+/** Returns Status::OK() if the datatype string's enum is between 0 and 40. */
+inline Status is_datatype_str_valid(const std::string& datatype_str) {
   Datatype datatype_type;
   RETURN_NOT_OK(datatype_enum(datatype_str, &datatype_type));
-  uint8_t datatype_enum = datatype_to_underlying(datatype_type);
 
-  if (datatype_enum > 40)
-    return Status_Error("Invalid Datatype " + std::to_string(datatype_enum));
-
-  return Status::Ok();
+  return is_datatype_valid(datatype_type);
 }
 
 }  // namespace sm

@@ -310,8 +310,7 @@ Status dimension_to_capnp(
 /**
  * Deserialize a tile extent from a cap'n proto object.
  *
- * Note: This API operates under the assumption that before its invocation,
- * dimension_from_capnp has validated dim_type.
+ * @pre dim_type is valid.
  */
 ByteVecValue tile_extent_from_capnp(
     const capnp::Dimension::TileExtent::Reader tile_extent_reader,
@@ -392,11 +391,31 @@ ByteVecValue tile_extent_from_capnp(
       break;
     }
     default:
-      throw std::runtime_error(
+      throw std::logic_error(
           "[Deserialization::tile_extent_from_capnp] Failed to deserialize "
           "tile extent from capnp.");
   }
   return tile_extent;
+}
+
+/** Deserialize a range from a cap'n proto object.
+ *
+ * @pre dim_type is valid.
+ */
+Range range_from_capnp(
+    Datatype dim_type, const capnp::Dimension::Reader& dimension_reader) {
+  if (dimension_reader.hasDomain()) {
+    auto domain_reader = dimension_reader.getDomain();
+    Buffer domain_buffer;
+    Status st = utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer);
+    if (!st.ok()) {
+      throw std::runtime_error(
+          "[Deserialization::range_from_capnp] Failed to deserialize domain.");
+    }
+    return Range{domain_buffer.data(), datatype_size(dim_type) * 2};
+  } else {
+    return Range{};
+  }
 }
 
 /** Deserialize a dimension from a cap'n proto object. */
@@ -409,12 +428,13 @@ shared_ptr<Dimension> dimension_from_capnp(
   st = datatype_enum(dimension_reader.getType().cStr(), &dim_type);
   if (!st.ok()) {
     throw std::runtime_error(
-        "[Deserialization::dimension_from_capnp] Failed to deserialize "
-        "datatype.");
+        "[Deserialization::dimension_from_capnp] " +
+        std::string(dimension_reader.getType().cStr()) +
+        " is not a valid datatype identifer.");
   }
 
-  // Validate the dim_type
-  st = datatype_is_valid(dim_type);
+  // Validate the dim_type, satisfying precondition of tile_extent_from_capnp
+  st = is_datatype_valid(dim_type);
   if (!st.ok())
     throw std::runtime_error(
         "[Deserialization::dimension_from_capnp] " +
@@ -424,32 +444,22 @@ shared_ptr<Dimension> dimension_from_capnp(
   // Calculate size of coordinates and re-ensure dim_type is valid (size != 0)
   auto coord_size = datatype_size(dim_type);
   if (coord_size == 0) {
-    throw std::runtime_error(
+    throw std::logic_error(
         "[Deserialization::dimension_from_capnp] " +
         std::to_string(datatype_to_underlying(dim_type)) +
         " is not valid as a datatype; datatype_size is 0.");
   }
 
   // Calculate cell_val_num
-  uint32_t cell_val_num =
-      (datatype_is_string(dim_type)) ? constants::var_num : 1;
+  uint32_t cell_val_num = datatype_is_string(dim_type) ? constants::var_num : 1;
 
   // Load domain
-  Range domain;
-  if (dimension_reader.hasDomain()) {
-    auto domain_reader = dimension_reader.getDomain();
-    Buffer domain_buffer;
-    st = utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer);
-    if (!st.ok()) {
-      throw std::runtime_error(
-          "[Deserialization::dimension_from_capnp] Failed to deserialize "
-          "domain.");
-    }
-    domain = Range(domain_buffer.data(), coord_size * 2);
-  }
+  // Note: If there is no domain in capnp, a default one is constructed.
+  Range domain = Range{range_from_capnp(dim_type, dimension_reader)};
 
   // Load filters
-  shared_ptr<FilterPipeline> filters;
+  // Note: If there is no FilterPipeline in capnp, a default one is constructed.
+  shared_ptr<FilterPipeline> filters{};
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
     auto&& [st_fp, f]{filter_pipeline_from_capnp(reader)};
@@ -462,7 +472,8 @@ shared_ptr<Dimension> dimension_from_capnp(
   }
 
   // Load tile extent
-  ByteVecValue tile_extent;
+  // Note: If there is no tile extent in capnp, a default one is constructed.
+  ByteVecValue tile_extent{};
   if (!dimension_reader.getNullTileExtent()) {
     auto tile_extent_reader = dimension_reader.getTileExtent();
     tile_extent = tile_extent_from_capnp(tile_extent_reader, dim_type);
