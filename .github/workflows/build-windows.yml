@@ -294,6 +294,7 @@ jobs:
               Set-Location -path $TestAppDataDir
               # $exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\$CMakeBuildType\quickstart_dense_c.exe"
               $exepath = $_.FullName
+              write-host "Executing $exepath"
               & $exepath
               if (!($?)) {
               #$output = Invoke-Expressions $exepath
@@ -323,6 +324,7 @@ jobs:
               Set-Location -path $TestAppDataDir
               #$exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\$CMakeBuildType\quickstart_dense_cpp.exe"
               $exepath = $_.FullName
+              write-host "Executing $exepath"
               & $exepath
               if (!($?)) {
               #$output = Invoke-Expressions $exepath

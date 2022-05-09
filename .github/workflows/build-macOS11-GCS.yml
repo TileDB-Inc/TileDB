@@ -91,10 +91,9 @@ jobs:
 
           
           BaseDir="$(pwd)"
-          TestAppDir="$(pwd)/tiledb/examples/c_api/"
+          TestAppDir="$(pwd)/tiledb/examples/c_api"
           TestAppDataDir="$(pwd)/tiledb/examples/c_api/test_app_data"
-          # for exampleexe in $(ls ./tiledb/examples/c_api/*_c) ; do echo $exampleexe; $exampleexe; done
-          for exampleexe in $(ls ./tiledb/examples/c_api/*_c) ; 
+          for exampleexe in $(ls ${TestAppDir}/*_c) ; 
           do 
             cd ${TestAppDir}
             rm -rf ${TestAppDataDir}
@@ -106,10 +105,9 @@ jobs:
           rm -rf ${TestAppDataDir}
 
           cd ${BaseDir}
-          TestAppDir="$(pwd)/tiledb/examples/cpp_api/"
+          TestAppDir="$(pwd)/tiledb/examples/cpp_api"
           TestAppDataDir="$(pwd)/tiledb/examples/cpp_api/test_app_data"
-          #for exampleexe in $(ls ./tiledb/examples/cpp_api/*_cpp) ; do echo $exampleexe; $exampleexe; done
-          for exampleexe in $(ls ./tiledb/examples/cpp_api/*_cpp) ; 
+          for exampleexe in $(ls ${TestAppDir}/*_cpp) ; 
           do 
             cd ${TestAppDir}
             rm -rf ${TestAppDataDir}
