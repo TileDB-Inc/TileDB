@@ -176,7 +176,8 @@ class Dimension {
   static uint64_t tile_idx(
       const T& v, const T& domain_low, const T& tile_extent) {
     typedef typename std::make_unsigned<T>::type unsigned_t;
-    return ((unsigned_t)v - (unsigned_t)domain_low) / (unsigned_t)tile_extent;
+    return static_cast<unsigned_t>(v - domain_low) /
+           static_cast<unsigned_t>(tile_extent);
   }
 
   /**

@@ -130,3 +130,86 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
   CHECK(dim.value()->cell_val_num() == constants::var_num);
   CHECK(dim.value()->var_size() == true);
 }
+
+typedef tuple<
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t,
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t>
+    IntegralTypes;
+TEMPLATE_LIST_TEST_CASE(
+    "test max tile extent for integer values",
+    "[dimension][integral][max][tile_extent]",
+    IntegralTypes) {
+  typedef TestType T;
+  T min = std::numeric_limits<T>::min() + std::is_signed<T>::value;
+  T max = std::numeric_limits<T>::max() - !std::is_signed<T>::value;
+
+  typedef typename std::make_unsigned<T>::type tile_extent_t;
+  T max_extent = (tile_extent_t)max - (tile_extent_t)min + 1;
+
+  auto tile_idx = Dimension::tile_idx(max, min, max_extent);
+
+  CHECK(Dimension::tile_coord_low(tile_idx, min, max_extent) == min);
+  CHECK(Dimension::tile_coord_high(tile_idx, min, max_extent) == max);
+
+  CHECK(Dimension::round_to_tile(min, min, max_extent) == min);
+  CHECK(Dimension::round_to_tile(max, min, max_extent) == min);
+}
+
+TEMPLATE_LIST_TEST_CASE(
+    "test min tile extent for integer values",
+    "[dimension][integral][min][tile_extent]",
+    IntegralTypes) {
+  typedef TestType T;
+  T min = std::numeric_limits<T>::min();
+  T max = std::numeric_limits<T>::max();
+
+  T min_extent = 1;
+
+  auto tile_idx = Dimension::tile_idx(max, min, min_extent);
+
+  CHECK(Dimension::tile_coord_low(0, min, min_extent) == min);
+  CHECK(Dimension::tile_coord_high(tile_idx, min, min_extent) == max);
+
+  CHECK(Dimension::round_to_tile(min, min, min_extent) == min);
+  CHECK(Dimension::round_to_tile(max, min, min_extent) == max);
+}
+
+typedef tuple<int8_t, int16_t, int32_t, int64_t> SignedIntegralTypes;
+TEMPLATE_LIST_TEST_CASE(
+    "test tile_idx signed",
+    "[dimension][integral][signed][tile_idx]",
+    SignedIntegralTypes) {
+  typedef TestType T;
+  for (T tile_extent = 5; tile_extent < 10; tile_extent++) {
+    for (T domain_low = -50; domain_low < 50; domain_low++) {
+      for (T val = domain_low; val < domain_low + 50; val++) {
+        uint64_t idx = static_cast<int64_t>(val - domain_low) /
+                       static_cast<int64_t>(tile_extent);
+        CHECK(Dimension::tile_idx(val, domain_low, tile_extent) == idx);
+      }
+    }
+  }
+}
+
+typedef tuple<uint8_t, uint16_t, uint32_t, uint64_t> UnsignedIntegralTypes;
+TEMPLATE_LIST_TEST_CASE(
+    "test tile_idx unsigned",
+    "[dimension][integral][unsigned][tile_idx]",
+    UnsignedIntegralTypes) {
+  typedef TestType T;
+  for (T tile_extent = 5; tile_extent < 10; tile_extent++) {
+    for (T domain_low = 0; domain_low < 100; domain_low++) {
+      for (T val = domain_low; val < domain_low + 100; val++) {
+        uint64_t idx = static_cast<uint64_t>(val - domain_low) /
+                       static_cast<uint64_t>(tile_extent);
+        CHECK(Dimension::tile_idx(val, domain_low, tile_extent) == idx);
+      }
+    }
+  }
+}
