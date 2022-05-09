@@ -47,6 +47,11 @@
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
+using namespace tiledb::type;
+
+namespace tiledb::type {
+class Range;
+}
 
 namespace tiledb {
 namespace sm {
@@ -209,7 +214,7 @@ class ResultTile {
       const ResultTile* result_tile,
       unsigned dim_idx,
       const Range& range,
-      const std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata,
+      const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
       unsigned frag_idx,
       std::vector<uint8_t>* result_bitmap,
       std::vector<uint8_t>* overwritten_bitmap);
@@ -288,7 +293,7 @@ class ResultTile {
   Status compute_results_dense(
       unsigned dim_idx,
       const Range& range,
-      const std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata,
+      const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
       unsigned frag_idx,
       std::vector<uint8_t>* result_bitmap,
       std::vector<uint8_t>* overwritten_bitmap) const;
@@ -361,7 +366,7 @@ class ResultTile {
       const ResultTile*,
       unsigned,
       const Range&,
-      const std::vector<tdb_shared_ptr<FragmentMetadata>>,
+      const std::vector<shared_ptr<FragmentMetadata>>,
       unsigned,
       std::vector<uint8_t>*,
       std::vector<uint8_t>*)>>

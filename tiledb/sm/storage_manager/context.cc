@@ -33,7 +33,6 @@
 #include "tiledb/common/common.h"
 
 #include "tiledb/common/logger.h"
-#include "tiledb/common/memory.h"
 #include "tiledb/sm/storage_manager/context.h"
 
 using namespace tiledb::common;
@@ -45,61 +44,26 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Context::Context()
+// Constructor.  Note order of construction:  storage_manager depends on the
+// preceding members to be initialized for its initialization.
+Context::Context(const Config& config)
     : last_error_(Status::Ok())
-    , storage_manager_(nullptr)
-    , stats_(tdb::make_shared<stats::Stats>(HERE(), "Context"))
-    , logger_(tdb::make_shared<Logger>(
-          HERE(), "Context: " + std::to_string(++logger_id_))) {
-}
-
-Context::~Context() {
-  bool found = false;
-  bool use_malloc_trim = false;
-
-  if (storage_manager_ != nullptr) {
-    const Status& st = storage_manager_->config().get<bool>(
-        "sm.mem.malloc_trim", &use_malloc_trim, &found);
-    if (st.ok() && found && use_malloc_trim) {
-      tdb_malloc_trim();
-    }
+    , logger_(make_shared<Logger>(
+          HERE(), "Context: " + std::to_string(++logger_id_)))
+    , compute_tp_(get_compute_thread_count(config))
+    , io_tp_(get_io_thread_count(config))
+    , stats_(make_shared<stats::Stats>(HERE(), "Context"))
+    , storage_manager_{} {
+  if (!init(config).ok()) {
+    logger_->status(
+        Status_ContextError("Failed to initialize Context in constructor."));
+    throw std::logic_error("Could not initialize Context in constructor");
   }
-
-  // Delete the `storage_manager_` to ensure it is destructed
-  // before the `compute_tp_` and `io_tp_` objects that it
-  // references.
-  tdb_delete(storage_manager_);
 }
 
 /* ****************************** */
 /*                API             */
 /* ****************************** */
-
-Status Context::init(Config* const config) {
-  RETURN_NOT_OK(init_loggers(config));
-
-  if (storage_manager_ != nullptr)
-    return logger_->status(Status_ContextError(
-        "Cannot initialize context; Context already initialized"));
-
-  // Initialize `compute_tp_` and `io_tp_`.
-  RETURN_NOT_OK(init_thread_pools(config));
-
-  // Register stats.
-  stats::all_stats.register_stats(stats_);
-
-  // Create storage manager
-  storage_manager_ = new (std::nothrow)
-      tiledb::sm::StorageManager(&compute_tp_, &io_tp_, stats_.get(), logger_);
-  if (storage_manager_ == nullptr)
-    return logger_->status(Status_ContextError(
-        "Cannot initialize context Storage manager allocation failed"));
-
-  // Initialize storage manager
-  auto sm = storage_manager_->init(config);
-
-  return sm;
-}
 
 Status Context::last_error() {
   std::lock_guard<std::mutex> lock(mtx_);
@@ -111,8 +75,9 @@ void Context::save_error(const Status& st) {
   last_error_ = st;
 }
 
+// Return pointer to underlying storage manager.
 StorageManager* Context::storage_manager() const {
-  return storage_manager_;
+  return &(*storage_manager_);
 }
 
 ThreadPool* Context::compute_tp() const {
@@ -127,12 +92,28 @@ stats::Stats* Context::stats() const {
   return stats_.get();
 }
 
-Status Context::init_thread_pools(Config* const config) {
-  // If `config` is null, use a default-constructed config.
-  Config tmp_config;
-  if (config != nullptr)
-    tmp_config = *config;
+Status Context::init(const Config& config) {
+  RETURN_NOT_OK(init_loggers(config));
 
+  // Register stats.
+  stats::all_stats.register_stats(stats_);
+
+  // Create storage manager
+  storage_manager_ = tdb_unique_ptr<tiledb::sm::StorageManager>{
+      new (std::nothrow) tiledb::sm::StorageManager(
+          &compute_tp_, &io_tp_, stats_.get(), logger_)};
+  if (storage_manager_ == nullptr)
+    return logger_->status(Status_ContextError(
+        "Cannot initialize context Storage manager allocation failed"));
+
+  // Initialize storage manager
+  auto sm = storage_manager_->init(config);
+
+  return sm;
+}
+
+Status Context::get_config_thread_count(
+    const Config& config, uint64_t& config_thread_count_ret) {
   // The "sm.num_async_threads", "sm.num_reader_threads",
   // "sm.num_writer_threads", and "sm.num_vfs_threads" have
   // been removed. If they are set, we will log an error message.
@@ -140,95 +121,116 @@ Status Context::init_thread_pools(Config* const config) {
   // existing users, we will take the maximum thread count
   // among all of these configurations and set them to the new
   // "sm.compute_concurrency_level" and "sm.io_concurrency_level".
-  uint64_t max_thread_count = 0;
+  uint64_t config_thread_count{0};
 
-  bool found;
-  uint64_t num_async_threads = 0;
-  RETURN_NOT_OK(tmp_config.get<uint64_t>(
-      "sm.num_async_threads", &num_async_threads, &found));
+  bool found{false};
+  uint64_t num_async_threads{0};
+  RETURN_NOT_OK(
+      config.get<uint64_t>("sm.num_async_threads", &num_async_threads, &found));
   if (found) {
-    max_thread_count = std::max(max_thread_count, num_async_threads);
+    config_thread_count = std::max(config_thread_count, num_async_threads);
     logger_->status(Status_StorageManagerError(
         "Config parameter \"sm.num_async_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
 
-  uint64_t num_reader_threads = 0;
-  RETURN_NOT_OK(tmp_config.get<uint64_t>(
+  uint64_t num_reader_threads{0};
+  RETURN_NOT_OK(config.get<uint64_t>(
       "sm.num_reader_threads", &num_reader_threads, &found));
   if (found) {
-    max_thread_count = std::max(max_thread_count, num_reader_threads);
+    config_thread_count = std::max(config_thread_count, num_reader_threads);
     logger_->status(Status_StorageManagerError(
         "Config parameter \"sm.num_reader_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
 
-  uint64_t num_writer_threads = 0;
-  RETURN_NOT_OK(tmp_config.get<uint64_t>(
+  uint64_t num_writer_threads{0};
+  RETURN_NOT_OK(config.get<uint64_t>(
       "sm.num_writer_threads", &num_writer_threads, &found));
   if (found) {
-    max_thread_count = std::max(max_thread_count, num_writer_threads);
+    config_thread_count = std::max(config_thread_count, num_writer_threads);
     logger_->status(Status_StorageManagerError(
         "Config parameter \"sm.num_writer_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
 
-  uint64_t num_vfs_threads = 0;
+  uint64_t num_vfs_threads{0};
   RETURN_NOT_OK(
-      tmp_config.get<uint64_t>("sm.num_vfs_threads", &num_vfs_threads, &found));
+      config.get<uint64_t>("sm.num_vfs_threads", &num_vfs_threads, &found));
   if (found) {
-    max_thread_count = std::max(max_thread_count, num_vfs_threads);
+    config_thread_count = std::max(config_thread_count, num_vfs_threads);
     logger_->status(Status_StorageManagerError(
         "Config parameter \"sm.num_vfs_threads\" has been removed; use "
         "config parameter \"sm.io_concurrency_level\"."));
   }
 
-  // Fetch the compute and io concurrency levels.
-  uint64_t compute_concurrency_level = 0;
-  RETURN_NOT_OK(tmp_config.get<uint64_t>(
-      "sm.compute_concurrency_level", &compute_concurrency_level, &found));
-  assert(found);
-  uint64_t io_concurrency_level = 0;
-  RETURN_NOT_OK(tmp_config.get<uint64_t>(
-      "sm.io_concurrency_level", &io_concurrency_level, &found));
-  assert(found);
-
   // The "sm.num_tbb_threads" has been deprecated. Users may still be setting
   // this configuration parameter. In this scenario, we will override the
   // compute and io concurrency levels if the configured tbb threads are
   // greater.
-  int num_tbb_threads = 0;
+  int num_tbb_threads{0};
   RETURN_NOT_OK(
-      tmp_config.get<int>("sm.num_tbb_threads", &num_tbb_threads, &found));
+      config.get<int>("sm.num_tbb_threads", &num_tbb_threads, &found));
   if (found && num_tbb_threads > 0)
-    max_thread_count =
-        std::max(max_thread_count, static_cast<uint64_t>(num_tbb_threads));
+    config_thread_count =
+        std::max(config_thread_count, static_cast<uint64_t>(num_tbb_threads));
 
-  // If 'max_thread_count' is larger than the compute or io concurrency levels,
-  // use that instead.
-  compute_concurrency_level =
-      std::max(max_thread_count, compute_concurrency_level);
-  io_concurrency_level = std::max(max_thread_count, io_concurrency_level);
-
-  // Initialize the thread pools.
-  RETURN_NOT_OK(compute_tp_.init(compute_concurrency_level));
-  RETURN_NOT_OK(io_tp_.init(io_concurrency_level));
+  config_thread_count_ret = static_cast<size_t>(config_thread_count);
 
   return Status::Ok();
 }
 
-Status Context::init_loggers(Config* const config) {
-  // If `config` is null, use a default-constructed config.
-  Config tmp_config;
-  if (config != nullptr)
-    tmp_config = *config;
+size_t Context::get_compute_thread_count(const Config& config) {
+  uint64_t config_thread_count{0};
+  if (!get_config_thread_count(config, config_thread_count).ok()) {
+    throw std::logic_error("Cannot get compute thread count");
+  }
 
+  bool found{false};
+  uint64_t compute_concurrency_level{0};
+  if (!config
+           .get<uint64_t>(
+               "sm.compute_concurrency_level",
+               &compute_concurrency_level,
+               &found)
+           .ok()) {
+    throw std::logic_error("Cannot get compute concurrency level");
+  }
+  assert(found);
+
+  return static_cast<size_t>(
+      std::max(config_thread_count, compute_concurrency_level));
+}
+
+size_t Context::get_io_thread_count(const Config& config) {
+  uint64_t config_thread_count{0};
+  if (!get_config_thread_count(config, config_thread_count).ok()) {
+    throw std::logic_error("Cannot get conig thread count");
+  }
+
+  bool found = false;
+  uint64_t io_concurrency_level{0};
+  if (!config
+           .get<uint64_t>(
+               "sm.io_concurrency_level", &io_concurrency_level, &found)
+           .ok()) {
+    throw std::logic_error("Cannot get io concurrency level");
+  }
+  assert(found);
+
+  io_concurrency_level = std::max(config_thread_count, io_concurrency_level);
+
+  return static_cast<size_t>(
+      std::max(config_thread_count, io_concurrency_level));
+}
+
+Status Context::init_loggers(const Config& config) {
   // temporarily set level to error so that possible errors reading
   // configuration are visible to the user
   logger_->set_level(Logger::Level::ERR);
 
   const char* format_conf;
-  RETURN_NOT_OK(tmp_config.get("config.logging_format", &format_conf));
+  RETURN_NOT_OK(config.get("config.logging_format", &format_conf));
   assert(format_conf != nullptr);
   Logger::Format format = Logger::Format::DEFAULT;
   RETURN_NOT_OK(logger_format_from_string(format_conf, &format));
@@ -239,8 +241,7 @@ Status Context::init_loggers(Config* const config) {
   // set logging level from config
   bool found = false;
   uint32_t level = static_cast<unsigned int>(Logger::Level::ERR);
-  RETURN_NOT_OK(
-      tmp_config.get<uint32_t>("config.logging_level", &level, &found));
+  RETURN_NOT_OK(config.get<uint32_t>("config.logging_level", &level, &found));
   assert(found);
   if (level > static_cast<unsigned int>(Logger::Level::TRACE)) {
     return logger_->status(Status_StorageManagerError(

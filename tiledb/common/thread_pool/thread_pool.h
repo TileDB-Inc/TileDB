@@ -38,6 +38,7 @@
 #include <functional>
 #include <future>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
@@ -52,16 +53,19 @@ class ThreadPool {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  ThreadPool()
-      : concurrency_level_(0) {
-  }
+  /**
+   * Constructor.
+   *
+   * @param n The number of threads to be spawned for the thread pool.  This
+   * should be a value between 1 and 256 * hardware_concurrency.  A value of
+   * zero will construct the thread pool in its shutdown state--constructed but
+   * not accepting nor executing any tasks.  A value of 256*hardware_concurrency
+   * or larger is an error.
+   */
+  explicit ThreadPool(size_t n);
 
-  /** Constructor. */
-  explicit ThreadPool(
-      size_t n) {  // There shouldn't be an uninitalized threadpool (IMO)
-    init(n);
-  }
+  /** Deleted default constructor */
+  ThreadPool() = delete;
 
   /** Destructor. */
   ~ThreadPool() {
@@ -71,16 +75,6 @@ class ThreadPool {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /**
-   * Initialize the thread pool.
-   *
-   * @param concurrency_level Maximum level of concurrency. Defaults to
-   * available hardware concurrency.
-   * @return Status
-   */
-
-  Status init(size_t concurrency_level = std::thread::hardware_concurrency());
 
  public:
   size_t concurrency_level() {
@@ -134,8 +128,9 @@ class ThreadPool {
   }
 
   /**
-   * Wait on all the given tasks to complete. This is safe to call recursively
-   * and may execute pending tasks on the calling thread while waiting.
+   * Wait on all the given tasks to complete. This function is safe to call
+   * recursively and may execute pending tasks on the calling thread while
+   * waiting.
    *
    * @param tasks Task list to wait on.
    * @return Status::Ok if all tasks returned Status::Ok, otherwise the first
@@ -144,9 +139,14 @@ class ThreadPool {
   Status wait_all(std::vector<Task>& tasks);
 
   /**
-   * Wait on all the given tasks to complete, return a vector of their return
-   * Status. This is safe to call recursively and may execute pending tasks
-   * on the calling thread while waiting.
+   * Wait on all the given tasks to complete, returning a vector of their return
+   * Status.  Exceptions caught while waiting are returned as Status_TaskError.
+   * Status are saved at the same index in the return vector as the
+   * corresponding task in the input vector.  The status vector may contain more
+   * than one error Status.
+   *
+   * This function is safe to call recursively and may execute pending tasks
+   * with the calling thread while waiting.
    *
    * @param tasks Task list to wait on
    * @return Vector of each task's Status.
@@ -166,8 +166,8 @@ class ThreadPool {
 
   /** Producer-consumer queue where functions to be executed are kept */
   ProducerConsumerQueue<
-      std::shared_ptr<std::packaged_task<Status()>>,
-      std::deque<std::shared_ptr<std::packaged_task<Status()>>>>
+      shared_ptr<std::packaged_task<Status()>>,
+      std::deque<shared_ptr<std::packaged_task<Status()>>>>
       task_queue_;
 
   /** The worker threads */
@@ -176,7 +176,6 @@ class ThreadPool {
   /** The maximum level of concurrency among all of the worker threads */
   std::atomic<size_t> concurrency_level_;
 };
-
 }  // namespace tiledb::common
 
 #endif  // TILEDB_THREAD_POOL_H

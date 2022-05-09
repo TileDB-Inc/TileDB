@@ -60,7 +60,7 @@ namespace sm {
 template <class BitmapType>
 SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -93,8 +93,7 @@ bool SparseUnorderedWithDupsReader<BitmapType>::incomplete() const {
 template <class BitmapType>
 QueryStatusDetailsReason
 SparseUnorderedWithDupsReader<BitmapType>::status_incomplete_reason() const {
-  // Returning early for deserialized incomplete queries.
-  if (result_tiles_.empty())
+  if (array_->is_remote())
     return QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE;
 
   if (!incomplete())
@@ -1201,7 +1200,7 @@ template <class OffType>
 tuple<bool, uint64_t, uint64_t>
 SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
     stats::Stats* stats,
-    const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     const std::vector<ResultTile*>& result_tiles,
     const uint64_t first_tile_min_pos,
     std::vector<uint64_t>& cell_offsets,
@@ -1522,7 +1521,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::end_iteration() {
 // Explicit template instantiations
 template SparseUnorderedWithDupsReader<uint8_t>::SparseUnorderedWithDupsReader(
     stats::Stats*,
-    tdb_shared_ptr<Logger>,
+    shared_ptr<Logger>,
     StorageManager*,
     Array*,
     Config&,
@@ -1532,7 +1531,7 @@ template SparseUnorderedWithDupsReader<uint8_t>::SparseUnorderedWithDupsReader(
     QueryCondition&);
 template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
     stats::Stats*,
-    tdb_shared_ptr<Logger>,
+    shared_ptr<Logger>,
     StorageManager*,
     Array*,
     Config&,

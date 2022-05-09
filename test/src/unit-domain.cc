@@ -32,8 +32,11 @@
  * Tests the  `Domain` class.
  */
 
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/layout.h"
 
 #include <catch.hpp>
 
@@ -116,13 +119,13 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize") {
   REQUIRE(st_dom.ok());
   CHECK(dom.value()->dim_num() == dim_num);
 
-  auto dim1 = dom.value()->dimension("d1");
+  auto dim1{dom.value()->dimension_ptr("d1")};
   CHECK(dim1->name() == dimension_name1);
   CHECK(dim1->type() == type1);
   CHECK(dim1->cell_val_num() == cell_val_num1);
   CHECK(dim1->filters().size() == num_filters1);
 
-  auto dim2 = dom.value()->dimension("d2");
+  auto dim2{dom.value()->dimension_ptr("d2")};
   CHECK(dim2->name() == dimension_name2);
   CHECK(dim2->type() == type2);
   CHECK(dim2->cell_val_num() == cell_val_num2);

@@ -52,6 +52,7 @@ find_package(Threads REQUIRED)
 ############################################################
 
 add_subdirectory(common)
+add_subdirectory(type)
 add_subdirectory(sm)
 
 ############################################################
@@ -95,6 +96,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/filter_list.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/fragment_info.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/group.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/group_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object_iter.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query.h
@@ -119,7 +121,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_profiler.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/stdx_string.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/types/dynamic_typed_datum.cc
@@ -132,13 +133,18 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/domain.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer_list.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/api_argument_validator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_filestore.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_group.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cache/buffer_lru_cache.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dd_compressor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dict_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/gzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/lz4_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/rle_compressor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/util/gzip_wrappers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/zstd_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config_iter.cc
@@ -184,12 +190,18 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/libcurl_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/watchdog.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_directory.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_member.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_member_v1.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_v1.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/math.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/mgc_dict.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/parse_argument.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/time.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/tdb_math.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/tdb_time.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/types.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
@@ -218,6 +230,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/global_stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc
@@ -233,6 +246,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/generic_tile_io.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile_metadata_generator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/writer_tile.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/parse_uri.cc
 )
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
 
@@ -255,6 +269,7 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
       PROPERTIES
@@ -268,6 +283,7 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
       PROPERTIES
@@ -304,6 +320,7 @@ set_source_files_properties(
   ${TileDB_blosc_SOURCES}
   PROPERTIES COMPILE_OPTIONS "${TileDB_blosc_COMPILE_OPTIONS}")
 
+add_subdirectory(storage_format)
 
 ############################################################
 # Build core objects as a reusable object library
@@ -312,6 +329,32 @@ set_source_files_properties(
 add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_CORE_SOURCES}
     ${TILEDB_EXTERNALS_SOURCES}
+)
+
+############################################################
+# provide actions/target for preparation of magic.mgc data for embedding/build
+
+set(MGC_GZIPPED_BIN_PATH3 "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc/magic_mgc_gzipped.bin")
+set(MGC_GZIPPED_BIN_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc")
+
+add_custom_command(
+  OUTPUT "${MGC_GZIPPED_BIN_PATH3}"
+  DEPENDS "${MGC_GZIPPED_BIN_PATH3}.tar.bz2"
+  COMMAND ${CMAKE_COMMAND} -E tar x "${MGC_GZIPPED_BIN_PATH3}.tar.bz2"
+  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_DIRECTORY}"
+)
+add_custom_target(gen_mgc_unarch ALL
+  DEPENDS ${MGC_GZIPPED_BIN_PATH3}
+)
+add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_unarch)
+
+add_custom_target(
+  update-embedded-magic-data
+  COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_PATH3}"
+  COMMAND ${CMAKE_COMMAND} -E tar cvj "${MGC_GZIPPED_BIN_PATH3}.tar.bz2" "${MGC_GZIPPED_BIN_PATH3}"
+  DEPENDS "${libmagic_DICTIONARY}"
+  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_DIRECTORY}"
+  COMMENT "Re-generate ${MGC_GZIPPED_BIN_PATH3} for embedded magic.mgc support"
 )
 
 # Compile all core sources with PIC
@@ -503,7 +546,6 @@ if (SANITIZER)
   )
 endif()
 
-
 # Coverage linker flags
 if (CMAKE_BUILD_TYPE MATCHES "Coverage")
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -520,6 +562,7 @@ find_package(LZ4_EP REQUIRED)
 find_package(Spdlog_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
+find_package(Magic_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
@@ -527,7 +570,9 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     spdlog::spdlog
     Zlib::Zlib
     Zstd::Zstd
+    libmagic
 )
+
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
@@ -798,6 +843,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
+  append_dep_lib(libmagic)
 endif()
 
 ############################################################
@@ -1004,6 +1050,8 @@ string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9]*)" _ ${ver})
 set(ver_patch ${CMAKE_MATCH_1})
 
 set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
+
+set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
 
 # PKG Config file
 configure_file(

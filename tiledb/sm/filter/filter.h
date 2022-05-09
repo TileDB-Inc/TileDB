@@ -33,6 +33,7 @@
 #ifndef TILEDB_FILTER_H
 #define TILEDB_FILTER_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 

@@ -1,4 +1,6 @@
-# Array File Hierarchy
+---
+title: Array File Hierarchy
+---
 
 An array is a folder with the following structure:
 
@@ -37,4 +39,4 @@ Inside the array folder, you can find the following:
 * Inside the same commit folder, any number of [consolidated commits files](./consolidated_commits_file.md) of the form `<timestamped_name>.con`.
 * Inside the same commit folder, any number of [ignore files](./ignore_file.md) of the form `<timestamped_name>.ign`.
 * Inside of a fragment metadata folder, any number of [consolidated fragment metadata files](./consolidated_fragment_metadata_file.md) of the form `<timestamped_name>.meta`.
-* [Array metadata](./array_metadata.md) folder `__meta`.
+* [Array metadata](./metadata.md) folder `__meta`.

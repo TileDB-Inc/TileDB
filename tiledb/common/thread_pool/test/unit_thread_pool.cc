@@ -48,8 +48,7 @@ size_t random_ms(size_t max = 3) {
 
 TEST_CASE("ThreadPool: Test empty", "[threadpool]") {
   for (int i = 0; i < 10; i++) {
-    ThreadPool pool;
-    REQUIRE(pool.init(4).ok());
+    ThreadPool pool{4};
   }
 }
 
@@ -57,8 +56,7 @@ TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
   std::atomic<int> result = 0;  // needs to be atomic b/c scavenging thread can
                                 // run in addition to thread pool
   std::vector<ThreadPool::Task> results;
-  ThreadPool pool;
-  REQUIRE(pool.init(1).ok());
+  ThreadPool pool{1};
 
   for (int i = 0; i < 100; i++) {
     ThreadPool::Task task = pool.execute([&result]() {
@@ -77,8 +75,7 @@ TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
 TEST_CASE("ThreadPool: Test multiple threads", "[threadpool]") {
   std::atomic<int> result(0);
   std::vector<ThreadPool::Task> results;
-  ThreadPool pool;
-  REQUIRE(pool.init(4).ok());
+  ThreadPool pool{4};
   for (int i = 0; i < 100; i++) {
     results.push_back(pool.execute([&result]() {
       result++;
@@ -92,8 +89,7 @@ TEST_CASE("ThreadPool: Test multiple threads", "[threadpool]") {
 TEST_CASE("ThreadPool: Test wait status", "[threadpool]") {
   std::atomic<int> result(0);
   std::vector<ThreadPool::Task> results;
-  ThreadPool pool;
-  REQUIRE(pool.init(4).ok());
+  ThreadPool pool{4};
   for (int i = 0; i < 100; i++) {
     results.push_back(pool.execute([&result, i]() {
       result++;
@@ -106,8 +102,7 @@ TEST_CASE("ThreadPool: Test wait status", "[threadpool]") {
 
 TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
   {
-    ThreadPool pool;
-    REQUIRE(pool.init(4).ok());
+    ThreadPool pool{4};
     std::atomic<int> result(0);
     for (int i = 0; i < 5; i++) {
       ThreadPool::Task task = pool.execute([&result]() {
@@ -125,11 +120,10 @@ TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
 TEST_CASE(
     "ThreadPool: Test pending task cancellation", "[threadpool][cancel]") {
   SECTION("- No cancellation callback") {
-    ThreadPool pool;
+    ThreadPool pool{2};
 
     tiledb::sm::CancelableTasks cancelable_tasks;
 
-    REQUIRE(pool.init(2).ok());
     std::atomic<int> result(0);
     std::vector<ThreadPool::Task> tasks;
 
@@ -157,9 +151,8 @@ TEST_CASE(
   }
 
   SECTION("- With cancellation callback") {
-    ThreadPool pool;
+    ThreadPool pool{2};
     tiledb::sm::CancelableTasks cancelable_tasks;
-    REQUIRE(pool.init(2).ok());
     std::atomic<int> result(0), num_cancelled(0);
     std::vector<ThreadPool::Task> tasks;
 
@@ -191,22 +184,20 @@ TEST_CASE(
   }
 }
 
-TEST_CASE("ThreadPool: Test execute with empty pool", "[threadpool]") {
-  ThreadPool pool;
-  std::atomic<int> result(0);
-  auto task = pool.execute([&result]() {
-    result = 100;
-    return Status::Ok();
-  });
-
-  REQUIRE(task.valid() == false);
-  REQUIRE(result == 0);
-}
+// Defer this test, pending final design of ThreadPool lifecycle
+// TEST_CASE("ThreadPool: Test construction of empty threadpool",
+// "[threadpool]") {
+//  try {
+//    ThreadPool pool;
+//  } catch (std::exception& e) {
+//    auto st = Status_ThreadPoolError(e.what());
+//    REQUIRE(!st.ok());
+//  }
+// }
 
 TEST_CASE("ThreadPool: Test recursion, simplest case", "[threadpool]") {
-  ThreadPool pool;
+  ThreadPool pool{1};
 
-  REQUIRE(pool.init(1).ok());
   std::atomic<int> result(0);
 
   std::vector<ThreadPool::Task> tasks;
@@ -229,18 +220,20 @@ TEST_CASE("ThreadPool: Test recursion, simplest case", "[threadpool]") {
 }
 
 TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
-  ThreadPool pool;
+  size_t num_threads = 0;
   SECTION("- One thread") {
-    REQUIRE(pool.init(1).ok());
+    num_threads = 1;
   }
 
   SECTION("- Two threads") {
-    REQUIRE(pool.init(2).ok());
+    num_threads = 2;
   }
 
   SECTION("- Ten threads") {
-    REQUIRE(pool.init(10).ok());
+    num_threads = 10;
   }
+
+  ThreadPool pool{num_threads};
 
   // Test recursive execute-and-wait.
   std::atomic<int> result(0);
@@ -304,28 +297,26 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
 }
 
 TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
-  ThreadPool pool_a;
-  ThreadPool pool_b;
+  size_t num_threads = 0;
 
   SECTION("- One thread") {
-    REQUIRE(pool_a.init(1).ok());
-    REQUIRE(pool_b.init(1).ok());
+    num_threads = 1;
   }
 
   SECTION("- Two threads") {
-    REQUIRE(pool_a.init(2).ok());
-    REQUIRE(pool_b.init(2).ok());
+    num_threads = 2;
   }
 
   SECTION("- Ten threads") {
-    REQUIRE(pool_a.init(10).ok());
-    REQUIRE(pool_b.init(10).ok());
+    num_threads = 10;
   }
 
   SECTION("- Twenty threads") {
-    REQUIRE(pool_a.init(20).ok());
-    REQUIRE(pool_b.init(20).ok());
+    num_threads = 20;
   }
+
+  ThreadPool pool_a{num_threads};
+  ThreadPool pool_b{num_threads};
 
   // This test logic is relatively inexpensive, run it 50 times
   // to increase the chance of encountering race conditions.
@@ -417,16 +408,12 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
   }
 }
 
-#ifndef LEGACY_THREAD_POOL
-
 TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
   std::atomic<int> result(0);
-  ThreadPool pool;
+  ThreadPool pool{7};
 
-  Status unripe_banana_status = Status_TaskError("Caught Unripe banana");
+  Status unripe_banana_status = Status_TaskError("Caught msg: Unripe banana");
   Status unbaked_potato_status = Status_TileError("Unbaked potato");
-
-  REQUIRE(pool.init(7).ok());
 
   SECTION("One task error exception") {
     std::vector<ThreadPool::Task> results;
@@ -558,4 +545,3 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
     REQUIRE(result == 207);
   }
 }
-#endif

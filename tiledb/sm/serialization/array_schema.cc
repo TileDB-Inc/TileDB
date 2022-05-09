@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -104,7 +104,8 @@ Status filter_pipeline_to_capnp(
       case FilterType::FILTER_LZ4:
       case FilterType::FILTER_RLE:
       case FilterType::FILTER_BZIP2:
-      case FilterType::FILTER_DOUBLE_DELTA: {
+      case FilterType::FILTER_DOUBLE_DELTA:
+      case FilterType::FILTER_DICTIONARY: {
         int32_t level;
         RETURN_NOT_OK(
             filter->get_option(FilterOption::COMPRESSION_LEVEL, &level));
@@ -145,7 +146,8 @@ static tuple<Status, optional<shared_ptr<Filter>>> filter_constructor(
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
-    case FilterType::FILTER_DOUBLE_DELTA: {
+    case FilterType::FILTER_DOUBLE_DELTA:
+    case FilterType::FILTER_DICTIONARY: {
       auto data = reader.getData();
       int32_t level = data.getInt32();
       return {
@@ -416,7 +418,7 @@ Status domain_to_capnp(
     return LOG_STATUS(
         Status_SerializationError("Error serializing domain; domain is null."));
 
-  domainBuilder->setType(datatype_str(domain->dimension(0)->type()));
+  domainBuilder->setType(datatype_str(domain->dimension_ptr(0)->type()));
   domainBuilder->setTileOrder(layout_str(domain->tile_order()));
   domainBuilder->setCellOrder(layout_str(domain->cell_order()));
 
@@ -424,7 +426,7 @@ Status domain_to_capnp(
   auto dimensions_builder = domainBuilder->initDimensions(ndims);
   for (unsigned i = 0; i < ndims; i++) {
     auto dim_builder = dimensions_builder[i];
-    RETURN_NOT_OK(dimension_to_capnp(domain->dimension(i).get(), &dim_builder));
+    RETURN_NOT_OK(dimension_to_capnp(domain->dimension_ptr(i), &dim_builder));
   }
 
   return Status::Ok();
@@ -952,7 +954,9 @@ Status nonempty_domain_deserialize(
           RETURN_NOT_OK(utils::deserialize_subarray(
               reader.getNonEmptyDomain(), schema, &subarray));
           std::memcpy(
-              nonempty_domain, subarray, 2 * schema.dimension(0)->coord_size());
+              nonempty_domain,
+              subarray,
+              2 * schema.dimension_ptr(0)->coord_size());
           tdb_free(subarray);
         }
 
@@ -973,7 +977,9 @@ Status nonempty_domain_deserialize(
           RETURN_NOT_OK(utils::deserialize_subarray(
               reader.getNonEmptyDomain(), schema, &subarray));
           std::memcpy(
-              nonempty_domain, subarray, 2 * schema.dimension(0)->coord_size());
+              nonempty_domain,
+              subarray,
+              2 * schema.dimension_ptr(0)->coord_size());
           tdb_free(subarray);
         }
 

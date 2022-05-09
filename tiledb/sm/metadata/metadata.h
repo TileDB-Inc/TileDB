@@ -228,6 +228,12 @@ class Metadata {
    */
   void reset(uint64_t timestamp);
 
+  /**
+   * Clears the metadata and assigns the input timestamp to
+   * its timestamp range.
+   */
+  void reset(uint64_t timestamp_start, uint64_t timestamp_end);
+
   /** Returns an iterator to the beginning of the metadata. */
   iterator begin() const;
 

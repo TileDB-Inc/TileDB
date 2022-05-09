@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -212,6 +212,12 @@ extern uint64_t generic_tile_cell_size;
 /** The group file name. */
 extern const std::string group_filename;
 
+/** The group details directory name. */
+extern const std::string group_detail_dir_name;
+
+/** The group metadata directory name. */
+extern const std::string group_metadata_dir_name;
+
 /** The maximum number of bytes written in a single I/O. */
 extern const uint64_t max_write_bytes;
 
@@ -328,6 +334,9 @@ extern const std::string filter_checksum_md5_str;
 
 /** String describing FILTER_CHECKSUM_SHA256. */
 extern const std::string filter_checksum_sha256_str;
+
+/** String describing FILTER_DICTIONARY. */
+extern const std::string filter_dictionary_str;
 
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;
@@ -590,6 +599,40 @@ extern const std::array<std::string, 6> cert_files_linux;
 
 /** Delimiter for lists passed as config parameter */
 extern const std::string config_delimiter;
+
+/** String describing MIME_AUTODETECT. */
+extern const std::string mime_autodetect_str;
+
+/** String describing MIME_TIFF. */
+extern const std::string mime_tiff_str;
+
+/** String describing MIME_PDF. */
+extern const std::string mime_pdf_str;
+
+/** The default tile extent used in filestore arrays. */
+extern const uint64_t filestore_default_tile_extent;
+
+/** Name of the single dimension used in filestore arrays. */
+extern const std::string filestore_dimension_name;
+
+/** Name of the single attribute used in filestore arrays. */
+extern const std::string filestore_attribute_name;
+
+/** Name of the metadata key used in filestore arrays for current size. */
+extern const std::string filestore_metadata_size_key;
+
+/** Name of the metadata key used in filestore arrays for mime type. */
+extern const std::string filestore_metadata_mime_type_key;
+
+/** Name of the metadata key used in filestore arrays for mime encoding. */
+extern const std::string filestore_metadata_mime_encoding_key;
+
+/** Name of the metadata key used in filestore arrays for original filename. */
+extern const std::string filestore_metadata_original_filename_key;
+
+/** Name of the metadata key used in filestore arrays for filename extension. */
+extern const std::string filestore_metadata_file_extension_key;
+
 }  // namespace constants
 
 }  // namespace sm

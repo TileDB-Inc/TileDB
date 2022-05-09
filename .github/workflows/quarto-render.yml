@@ -3,7 +3,19 @@
 name: Render and deploy Quarto files
 on: 
   push:
+    paths:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
+      - 'doc/source/conf.py'
+      - 'tiledb/sm/c_api/tiledb_version.h'
   pull_request:
+    paths:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
+      - 'doc/source/conf.py'
+      - 'tiledb/sm/c_api/tiledb_version.h'
 
 jobs:
   quarto-render-and-deploy:

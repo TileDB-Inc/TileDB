@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,6 +47,7 @@
 #include "tiledb/sm/enums/query_status_details.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/query/iquery_strategy.h"
+#include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/subarray/subarray.h"

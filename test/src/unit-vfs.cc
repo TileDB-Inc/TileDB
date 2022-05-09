@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,16 +37,15 @@
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
 #endif
+#include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
 using namespace tiledb::test;
 
 TEST_CASE("VFS: Test read batching", "[vfs]") {
-  ThreadPool compute_tp;
-  ThreadPool io_tp;
-  REQUIRE(compute_tp.init(4).ok());
-  REQUIRE(io_tp.init(4).ok());
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
 
   URI testfile("vfs_unit_test_data");
   std::unique_ptr<VFS> vfs(new VFS);
@@ -245,10 +244,8 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
 #ifdef _WIN32
 
 TEST_CASE("VFS: Test long paths (Win32)", "[vfs][windows]") {
-  ThreadPool compute_tp;
-  ThreadPool io_tp;
-  REQUIRE(compute_tp.init(4).ok());
-  REQUIRE(io_tp.init(4).ok());
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
 
   std::unique_ptr<VFS> vfs(new VFS);
   std::string tmpdir_base = tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
@@ -298,10 +295,8 @@ TEST_CASE("VFS: Test long paths (Win32)", "[vfs][windows]") {
 #else
 
 TEST_CASE("VFS: Test long posix paths", "[vfs]") {
-  ThreadPool compute_tp;
-  ThreadPool io_tp;
-  REQUIRE(compute_tp.init(4).ok());
-  REQUIRE(io_tp.init(4).ok());
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
 
   std::unique_ptr<VFS> vfs(new VFS);
   REQUIRE(
@@ -352,10 +347,8 @@ TEST_CASE("VFS: Test long posix paths", "[vfs]") {
 #endif
 
 TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
-  ThreadPool compute_tp;
-  ThreadPool io_tp;
-  REQUIRE(compute_tp.init(4).ok());
-  REQUIRE(io_tp.init(4).ok());
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
 
   bool s3_supported = false;
   bool hdfs_supported = false;
@@ -503,10 +496,8 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
 }
 
 TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
-  ThreadPool compute_tp;
-  ThreadPool io_tp;
-  REQUIRE(compute_tp.init(4).ok());
-  REQUIRE(io_tp.init(4).ok());
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
   VFS vfs;
   REQUIRE(
       vfs.init(&g_helper_stats, &compute_tp, &io_tp, nullptr, nullptr).ok());

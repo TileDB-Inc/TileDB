@@ -87,6 +87,20 @@ inline Status layout_enum(const std::string& layout_str, Layout* layout) {
   return Status::Ok();
 }
 
+inline Status tile_order_is_valid(uint8_t layout_enum) {
+  if (layout_enum != 0 && layout_enum != 1)
+    return Status_Error("[Tile order] Invalid Layout enum.");
+
+  return Status::Ok();
+}
+
+inline Status cell_order_is_valid(uint8_t layout_enum) {
+  if (layout_enum > 4)
+    return Status_Error("[Cell order] Invalid Layout enum.");
+
+  return Status::Ok();
+}
+
 }  // namespace sm
 }  // namespace tiledb
 

@@ -34,6 +34,11 @@
 #ifndef TILEDB_OBJECT_TYPE_H
 #define TILEDB_OBJECT_TYPE_H
 
+#include "tiledb/common/status.h"
+#include "tiledb/sm/misc/constants.h"
+
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 

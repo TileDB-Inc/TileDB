@@ -55,6 +55,7 @@
 #include <atomic>
 #include <sstream>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 
@@ -77,7 +78,7 @@ class Logger {
       const Logger::Format format = Logger::Format::DEFAULT,
       const bool root = false);
 
-  Logger(tdb_shared_ptr<spdlog::logger> logger);
+  Logger(shared_ptr<spdlog::logger> logger);
 
   /** Destructor. */
   ~Logger();
@@ -93,7 +94,7 @@ class Logger {
    * @param name The name of the new logger
    * @param id An id to use as suffix for the name of the new logger
    */
-  tdb_shared_ptr<Logger> clone(const std::string& name, uint64_t id);
+  shared_ptr<Logger> clone(const std::string& name, uint64_t id);
 
   /**
    * Log a trace statement with no message formatting.
@@ -375,7 +376,7 @@ class Logger {
   /* ********************************* */
 
   /** The logger object. */
-  std::shared_ptr<spdlog::logger> logger_;
+  shared_ptr<spdlog::logger> logger_;
 
   /** The name of the logger */
   std::string name_;

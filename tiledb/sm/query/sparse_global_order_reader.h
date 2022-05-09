@@ -35,10 +35,10 @@
 
 #include <atomic>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
@@ -66,7 +66,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** Constructor. */
   SparseGlobalOrderReader(
       stats::Stats* stats,
-      tdb_shared_ptr<Logger> logger,
+      shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,

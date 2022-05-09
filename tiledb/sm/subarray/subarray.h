@@ -56,6 +56,11 @@
 #include <vector>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
+
+namespace tiledb::type {
+class Range;
+}
 
 namespace tiledb {
 namespace sm {
@@ -182,7 +187,7 @@ class Subarray {
   Subarray(
       const Array* array,
       stats::Stats* parent_stats,
-      tdb_shared_ptr<Logger> logger,
+      shared_ptr<Logger> logger,
       bool coalesce_ranges = true,
       StorageManager* storage_manager = nullptr);
 
@@ -202,7 +207,7 @@ class Subarray {
       const Array* array,
       Layout layout,
       stats::Stats* parent_stats,
-      tdb_shared_ptr<Logger> logger,
+      shared_ptr<Logger> logger,
       bool coalesce_ranges = true,
       StorageManager* storage_manager = nullptr);
 
@@ -465,7 +470,7 @@ class Subarray {
       const ArraySchema& array_schema,
       bool all_dims_same_type,
       bool all_dims_fixed,
-      const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_meta,
+      const std::vector<shared_ptr<FragmentMetadata>>& fragment_meta,
       const std::vector<std::string>& name,
       const std::vector<bool>& var_sizes,
       const std::vector<bool>& nullable,
@@ -1023,7 +1028,7 @@ class Subarray {
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** The class logger. */
-  tdb_shared_ptr<Logger> logger_;
+  shared_ptr<Logger> logger_;
 
   /** The array the subarray object is associated with. */
   const Array* array_;
@@ -1235,7 +1240,7 @@ class Subarray {
    * @return Status
    */
   Status compute_relevant_fragment_tile_overlap(
-      tdb_shared_ptr<FragmentMetadata> meta,
+      shared_ptr<FragmentMetadata> meta,
       unsigned frag_idx,
       bool dense,
       ThreadPool* compute_tp,

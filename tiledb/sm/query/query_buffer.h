@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -257,14 +257,13 @@ class QueryBuffer {
    * retrieve the datum at sequence position `index`.
    *
    * @param index The index into a sequence of data of varying sizes.
-   * @return tuple<1> A pointer to the retrieved datum. tuple<2> The size of the
-   * retrieved datum.
+   * @return a view of the datum at the given index
    */
   tdb::UntypedDatumView varying_size_datum_at(size_t index) const {
     using buffer_type = uint64_t;
     auto* offsets = static_cast<buffer_type*>(buffer_);
     size_t start_offset = offsets[index];
-    size_t next_offset = (*buffer_size_ < (index + 1) * sizeof(buffer_type)) ?
+    size_t next_offset = (*buffer_size_ > (index + 1) * sizeof(buffer_type)) ?
                              offsets[index + 1] :
                              *buffer_var_size_;
     return {static_cast<char*>(buffer_var_) + start_offset,

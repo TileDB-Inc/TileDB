@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,7 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/subarray/cell_slab_iter.h"
@@ -54,7 +55,7 @@ namespace sm {
 
 ReaderBase::ReaderBase(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -82,7 +83,7 @@ ReaderBase::ReaderBase(
 
 template <class T>
 void ReaderBase::compute_result_space_tiles(
-    const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<T>& array_tile_domain,
     const std::vector<TileDomain<T>>& frag_tile_domains,
@@ -460,7 +461,7 @@ Status ReaderBase::read_tiles(
       if (is_dim) {
         const uint64_t dim_num = array_schema->dim_num();
         for (uint64_t d = 0; d < dim_num; ++d) {
-          if (array_schema->dimension(d)->name() == name) {
+          if (array_schema->dimension_ptr(d)->name() == name) {
             tile->init_coord_tile(name, d);
             break;
           }
@@ -1216,7 +1217,8 @@ Status ReaderBase::unfilter_tiles(
   auto chunking = true;
   if (var_size) {
     auto filters = array_schema_.filters(name);
-    chunking = filters.use_tile_chunking(var_size, array_schema_.type(name));
+    chunking = filters.use_tile_chunking(
+        var_size, array_schema_.version(), array_schema_.type(name));
   }
 
   // The per tile cache is only used in readers where unfiltering
@@ -1564,7 +1566,7 @@ tuple<Status, optional<bool>> ReaderBase::fill_dense_coords(
     dim_idx.emplace_back(dim_num);
   } else {
     for (unsigned d = 0; d < dim_num; ++d) {
-      const auto& dim = array_schema_.dimension(d);
+      const auto dim{array_schema_.dimension_ptr(d)};
       auto it = buffers_.find(dim->name());
       if (it != buffers_.end()) {
         buffers.emplace_back(&(it->second));
@@ -1635,8 +1637,7 @@ tuple<Status, optional<bool>> ReaderBase::fill_dense_coords_row_col(
     // Check for overflow
     for (size_t i = 0; i < buffers.size(); ++i) {
       auto idx = (dim_idx[i] == dim_num) ? 0 : dim_idx[i];
-      auto dim = array_schema_.domain().dimension(idx);
-      auto coord_size = dim->coord_size();
+      auto coord_size{array_schema_.domain().dimension_ptr(idx)->coord_size()};
       coord_size = (dim_idx[i] == dim_num) ? coord_size * dim_num : coord_size;
       auto buff_size = *(buffers[i]->buffer_size_);
       auto offset = offsets[i];

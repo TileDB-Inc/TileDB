@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,21 +36,26 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
+#include "tiledb/common/types/dynamic_typed_datum.h"
+#include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/query/query_buffer.h"
-#include "tiledb/sm/query/result_coords.h"
 
 #include <vector>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::type {
+class DomainDataRef;
+class Range;
+}  // namespace tiledb::type
+
+namespace tiledb::sm {
 
 class Buffer;
 class ConstBuffer;
 class Dimension;
-
+class DomainTypedDataView;
 enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
 
@@ -131,7 +136,6 @@ class Domain {
    * of a regular tile grid, this function assumes that the cells are in the
    * same regular tile.
    *
-   * @tparam T The coordinates type.
    * @param dim_idx The dimension to compare the coordinates on.
    * @param a The first input coordinates.
    * @param b The second input coordinates.
@@ -141,7 +145,9 @@ class Domain {
    *    - +1 if the first coordinate succeeds the second
    */
   int cell_order_cmp(
-      unsigned dim_idx, const ResultCoords& a, const ResultCoords& b) const;
+      unsigned dim_idx,
+      const UntypedDatumView a,
+      const UntypedDatumView b) const;
 
   /**
    * Checks the cell order of the input coordinates. Since the coordinates
@@ -159,40 +165,17 @@ class Domain {
   static int cell_order_cmp_2(const void* coord_a, const void* coord_b);
 
   /**
-   * Checks the cell order of the input coordinates. Since the coordinates
-   * are given for a single dimension, this function simply checks which
-   * coordinate is larger.
-   *
-   * @param dim The dimension to check the coordinates on.
-   * @param buff The buffer that stores all coordinates.
-   * @param a The position of the first coordinate in the buffer to check.
-   * @param b The position of the second coordinate in the buffer to check.
-   * @return One of the following:
-   *    - -1 if the first coordinate is smaller than the second
-   *    -  0 if the two coordinates have the same cell order
-   *    - +1 if the first coordinate is larger than the second
-   */
-  template <class T>
-  static int cell_order_cmp(
-      const Dimension* dim, const QueryBuffer* buff, uint64_t a, uint64_t b);
-
-  /**
    * Checks the cell order of the input coordinates.
    *
-   * @param coord_buffs The input coordinates, given n separate buffers,
-   *     one per dimension. The buffers are sorted in the same order of the
-   *     dimensions as defined in the array schema.
-   * @param a The position of the first coordinate tuple across all buffers.
-   * @param b The position of the second coordinate tuple across all buffers.
+   * @param left Left operand
+   * @param right Right operand
    * @return One of the following:
-   *    - -1 if the first coordinates precede the second on the cell order
+   *    - -1 if the left coordinates precede the right on the cell order
    *    -  0 if the two coordinates have the same cell order
-   *    - +1 if the first coordinates succeed the second on the cell order
+   *    - +1 if the left coordinates succeed the right on the cell order
    */
   int cell_order_cmp(
-      const std::vector<const QueryBuffer*>& coord_buffs,
-      uint64_t a,
-      uint64_t b) const;
+      const type::DomainDataRef& left, const type::DomainDataRef& right) const;
 
   /**
    * Populates the object members from the data in the input binary buffer.
@@ -219,7 +202,9 @@ class Domain {
   Layout tile_order() const;
 
   /** Returns the number of dimensions. */
-  unsigned int dim_num() const;
+  inline unsigned int dim_num() const {
+    return dim_num_;
+  }
 
   /** Returns the domain along the i-th dimension. */
   const Range& domain(unsigned i) const;
@@ -227,11 +212,25 @@ class Domain {
   /** Returns the domain as a N-dimensional range object. */
   NDRange domain() const;
 
-  /** Returns the i-th dimensions (nullptr upon error). */
-  shared_ptr<const Dimension> dimension(unsigned int i) const;
+  /**
+   * Return a pointer to the dimension given by the argument index
+   *
+   * This function does not return `nullptr`. It throws if the argument is
+   * invalid. It relies on the class invariant that absent dimensions (as
+   * manifested by a null pointer) are not allowed.
+   *
+   * @param i index of the dimension within the domain
+   * @return non-null pointer to the dimension
+   */
+  inline const Dimension* dimension_ptr(unsigned int i) const {
+    if (i > dim_num_) {
+      throw std::invalid_argument("invalid dimension index");
+    }
+    return dimension_ptrs_[i];
+  }
 
   /** Returns the dimension given a name (nullptr upon error). */
-  shared_ptr<const Dimension> dimension(const std::string& name) const;
+  const Dimension* dimension_ptr(const std::string& name) const;
 
   /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;
@@ -445,37 +444,18 @@ class Domain {
       const NDRange& r2) const;
 
   /**
-   * Checks the tile order of the input coordinates on the given dimension.
-   *
-   * @param The dimension to compare on.
-   * @param coord_a The first coordinate.
-   * @param coord_b The second coordinate.
-   * @return One of the following:
-   *    - -1 if the first coordinate precedes the second on the tile order
-   *    -  0 if the two coordinates have the same tile order
-   *    - +1 if the first coordinate succeeds the second on the tile order
-   */
-  template <class T>
-  static int tile_order_cmp(
-      const Dimension* dim, const void* coord_a, const void* coord_b);
-
-  /**
    * Checks the tile order of the input coordinates.
    *
-   * @param coord_buffs The input coordinates, given n separate buffers,
-   *     one per dimension. The buffers are sorted in the same order of the
-   *     dimensions as defined in the array schema.
-   * @param a The position of the first coordinate tuple across all buffers.
-   * @param b The position of the second coordinate tuple across all buffers.
+   * @param left
+   * @param right
    * @return One of the following:
    *    - -1 if the first coordinates precede the second on the tile order
    *    -  0 if the two coordinates have the same tile order
    *    - +1 if the first coordinates succeed the second on the tile order
    */
   int tile_order_cmp(
-      const std::vector<const QueryBuffer*>& coord_buffs,
-      uint64_t a,
-      uint64_t b) const;
+      const tiledb::type::DomainDataRef& left,
+      const tiledb::type::DomainDataRef& right) const;
 
   /**
    * Checks the tile order of the input coordinates for a given dimension.
@@ -502,8 +482,28 @@ class Domain {
   /** The cell order of the array the domain belongs to. */
   Layout cell_order_;
 
-  /** The domain dimensions. */
+  /**
+   * Allocation for the dimensions of this domain.
+   *
+   * This array keeps the memory resource for the dimensions. This is its only
+   * responsibility, and as such only appears in initialization code. Pointers
+   * to the stored `Dimension` objects are mirrored in `dimension_ptrs_`.
+   *
+   * @invariant All pointers in the vector are non-null.
+   */
   std::vector<shared_ptr<Dimension>> dimensions_;
+
+  /**
+   * Non-allocating mirror of the dimensions vector.
+   *
+   * This vector holds pointers to the dimensions for ordinary, efficient use.
+   * The `shared_ptr` of `dimensions_` is only used for resource management, so
+   * this variable mirrors just the pointers, avoiding all overhead of using
+   * `shared_ptr` ordinarily.
+   *
+   * @invariant All pointers in the vector are non-null.
+   */
+  std::vector<const Dimension*> dimension_ptrs_;
 
   /** The number of dimensions. */
   unsigned dim_num_;
@@ -520,7 +520,7 @@ class Domain {
    * - a, b: The positions of the two coordinates in the buffer to compare.
    */
   std::vector<int (*)(
-      const Dimension* dim, const QueryBuffer* buff, uint64_t a, uint64_t b)>
+      const Dimension* dim, const UntypedDatumView a, const UntypedDatumView b)>
       cell_order_cmp_func_;
 
   /**
@@ -546,6 +546,38 @@ class Domain {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /**
+   * Checks the cell order of the input coordinates. Since the coordinates
+   * are given for a single dimension, this function simply checks which
+   * coordinate is larger.
+   *
+   * @param dim The dimension to check the coordinates on.
+   * @param a The position of the first coordinate in the buffer to check.
+   * @param b The position of the second coordinate in the buffer to check.
+   * @return One of the following:
+   *    - -1 if the first coordinate is smaller than the second
+   *    -  0 if the two coordinates have the same cell order
+   *    - +1 if the first coordinate is larger than the second
+   */
+  template <class T>
+  static int cell_order_cmp_impl(
+      const Dimension* dim, UntypedDatumView a, UntypedDatumView b);
+
+  /**
+   * Checks the tile order of the input coordinates on the given dimension.
+   *
+   * @param dim The dimension to compare on.
+   * @param coord_a The first coordinate.
+   * @param coord_b The second coordinate.
+   * @return One of the following:
+   *    - -1 if the first coordinate precedes the second on the tile order
+   *    -  0 if the two coordinates have the same tile order
+   *    - +1 if the first coordinate succeeds the second on the tile order
+   */
+  template <class T>
+  static int tile_order_cmp_impl(
+      const Dimension* dim, const void* coord_a, const void* coord_b);
 
   /** Compute the number of cells per tile. */
   void compute_cell_num_per_tile();
@@ -655,7 +687,6 @@ class Domain {
   uint64_t get_tile_pos_row(const T* domain, const T* tile_coords) const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_DOMAIN_H

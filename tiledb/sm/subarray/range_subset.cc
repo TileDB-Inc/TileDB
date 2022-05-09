@@ -35,12 +35,13 @@
 #include <iostream>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
 
 namespace tiledb::sm {
 
 template <typename T>
-tdb_shared_ptr<detail::RangeSetAndSupersetInternals>
-create_range_subset_internals(bool coalesce_ranges) {
+shared_ptr<detail::RangeSetAndSupersetInternals> create_range_subset_internals(
+    bool coalesce_ranges) {
   if (coalesce_ranges) {
     return make_shared<detail::RangeSetAndSupersetInternalsImpl<T, true>>(
         HERE());
@@ -49,7 +50,7 @@ create_range_subset_internals(bool coalesce_ranges) {
       HERE());
 };
 
-tdb_shared_ptr<detail::RangeSetAndSupersetInternals> range_subset_internals(
+shared_ptr<detail::RangeSetAndSupersetInternals> range_subset_internals(
     Datatype datatype, bool coalesce_ranges) {
   switch (datatype) {
     case Datatype::INT8:

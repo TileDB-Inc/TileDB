@@ -33,16 +33,18 @@
 #ifndef TILEDB_RANGE_SUBSET_H
 #define TILEDB_RANGE_SUBSET_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/types.h"
+#include "tiledb/type/range/range.h"
 
 #include <optional>
 #include <type_traits>
 #include <vector>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
 
 namespace tiledb::sm {
 
@@ -73,14 +75,14 @@ struct AddStrategy<
     // last range on `ranges`, they are contiguous and will be coalesced.
     Range& last_range = ranges.back();
     const bool contiguous_after =
-        *static_cast<const T*>(last_range.end()) !=
+        *static_cast<const T*>(last_range.end_fixed()) !=
             std::numeric_limits<T>::max() &&
-        *static_cast<const T*>(last_range.end()) + 1 ==
-            *static_cast<const T*>(new_range.start());
+        *static_cast<const T*>(last_range.end_fixed()) + 1 ==
+            *static_cast<const T*>(new_range.start_fixed());
 
     // Coalesce `range` with `last_range` if they are contiguous.
     if (contiguous_after) {
-      last_range.set_end(new_range.end());
+      last_range.set_end_fixed(new_range.end_fixed());
     } else {
       ranges.emplace_back(new_range);
     }
@@ -113,8 +115,8 @@ struct SortStrategy<
         ranges.begin(),
         ranges.end(),
         [&](const Range& a, const Range& b) {
-          const T* a_data = static_cast<const T*>(a.start());
-          const T* b_data = static_cast<const T*>(b.start());
+          const T* a_data = static_cast<const T*>(a.start_fixed());
+          const T* b_data = static_cast<const T*>(b.start_fixed());
           return a_data[0] < b_data[0] ||
                  (a_data[0] == b_data[0] && a_data[1] < b_data[1]);
         });
@@ -302,7 +304,7 @@ class RangeSetAndSuperset {
   Status sort_ranges(ThreadPool* const compute_tp);
 
  private:
-  tdb_shared_ptr<detail::RangeSetAndSupersetInternals> impl_ = nullptr;
+  shared_ptr<detail::RangeSetAndSupersetInternals> impl_ = nullptr;
   /** Maximum possible range. */
   Range superset_ = Range();
 

@@ -2,7 +2,19 @@ name: rtools40
 
 on:
   push:
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
+      - 'doc/source/conf.py'
+      - 'tiledb/sm/c_api/tiledb_version.h'
   pull_request:
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
+      - 'doc/source/conf.py'
+      - 'tiledb/sm/c_api/tiledb_version.h'
 
 jobs:
   build:
@@ -10,8 +22,8 @@ jobs:
     strategy:
       matrix:
         include: [
-          { msystem: MINGW64, toolchain: x86_64 },
-          { msystem: MINGW32, toolchain: i686 },
+          #{ msystem: MINGW64, toolchain: x86_64 },
+          #{ msystem: MINGW32, toolchain: i686 },
           { msystem: ucrt64, toolchain: "ucrt-x86_64" }
         ]
       fail-fast: false

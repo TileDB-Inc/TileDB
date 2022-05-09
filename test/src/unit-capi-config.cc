@@ -225,6 +225,7 @@ void check_save_to_file() {
 #else
   ss << "config.logging_level 0\n";
 #endif
+  ss << "rest.curl.verbose false\n";
   ss << "rest.http_compressor any\n";
   ss << "rest.retry_count 25\n";
   ss << "rest.retry_delay_factor 1.25\n";
@@ -246,9 +247,12 @@ void check_save_to_file() {
   ss << "sm.consolidation.steps 4294967295\n";
   ss << "sm.consolidation.timestamp_end " << std::to_string(UINT64_MAX) << "\n";
   ss << "sm.consolidation.timestamp_start 0\n";
+  ss << "sm.consolidation.with_timestamps false\n";
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.encryption_type NO_ENCRYPTION\n";
+  ss << "sm.group.timestamp_end 18446744073709551615\n";
+  ss << "sm.group.timestamp_start 0\n";
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
      << "\n";
   ss << "sm.max_tile_overlap_size 314572800\n";
@@ -555,6 +559,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.retry_delay_factor"] = "1.25";
   all_param_values["rest.retry_initial_delay_ms"] = "500";
   all_param_values["rest.retry_http_codes"] = "503";
+  all_param_values["rest.curl.verbose"] = "false";
   all_param_values["sm.encryption_key"] = "";
   all_param_values["sm.encryption_type"] = "NO_ENCRYPTION";
   all_param_values["sm.dedup_coords"] = "false";
@@ -587,6 +592,8 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values
       ["sm.mem.reader.sparse_unordered_with_dups.ratio_array_data"] = "0.1";
   all_param_values["sm.enable_signal_handlers"] = "true";
+  all_param_values["sm.group.timestamp_end"] = "18446744073709551615";
+  all_param_values["sm.group.timestamp_start"] = "0";
   all_param_values["sm.compute_concurrency_level"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["sm.io_concurrency_level"] =
@@ -597,6 +604,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.consolidation.timestamp_start"] = "0";
   all_param_values["sm.consolidation.timestamp_end"] =
       std::to_string(UINT64_MAX);
+  all_param_values["sm.consolidation.with_timestamps"] = "false";
   all_param_values["sm.consolidation.step_min_frags"] = "4294967295";
   all_param_values["sm.consolidation.step_max_frags"] = "4294967295";
   all_param_values["sm.consolidation.buffer_size"] = "50000000";

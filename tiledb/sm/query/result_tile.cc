@@ -35,6 +35,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/type/range/range.h"
 
 #include <cassert>
 #include <iostream>
@@ -42,6 +43,7 @@
 #include <numeric>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
 
 namespace tiledb {
 namespace sm {
@@ -252,7 +254,7 @@ bool ResultTile::same_coords(
     const ResultTile& rt, uint64_t pos_a, uint64_t pos_b) const {
   auto dim_num = coord_tiles_.size();
   for (unsigned d = 0; d < dim_num; ++d) {
-    if (!domain_->dimension(d)->var_size()) {  // Fixed-sized
+    if (!domain_->dimension_ptr(d)->var_size()) {  // Fixed-sized
       if (std::memcmp(coord(pos_a, d), rt.coord(pos_b, d), coord_size(d)) != 0)
         return false;
     } else {  // Var-sized
@@ -320,7 +322,7 @@ Status ResultTile::read(
     assert(name != constants::coords);
     int dim_offset = 0;
     for (uint32_t i = 0; i < domain_->dim_num(); ++i) {
-      if (domain_->dimension(i)->name() == name) {
+      if (domain_->dimension_ptr(i)->name() == name) {
         dim_offset = i;
         break;
       }
@@ -388,7 +390,7 @@ void ResultTile::compute_results_dense(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
-    const std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
     unsigned frag_idx,
     std::vector<uint8_t>* result_bitmap,
     std::vector<uint8_t>* overwritten_bitmap) {
@@ -926,7 +928,7 @@ void ResultTile::compute_results_count_sparse(
               range_indexes.end(),
               c,
               [&](const uint64_t& index, const T& value) {
-                return ((const T*)ranges[index].start())[1] < value;
+                return ((const T*)ranges[index].start_fixed())[1] < value;
               });
 
           // If we didn't find a range we can set count to 0 and skip to next.
@@ -942,7 +944,7 @@ void ResultTile::compute_results_count_sparse(
               range_indexes.end(),
               c,
               [&](const uint64_t& index, const T& value) {
-                return ((const T*)ranges[index].start())[0] < value;
+                return ((const T*)ranges[index].start_fixed())[0] < value;
               });
 
           // If the upper bound isn't the end add +1 to the index.
@@ -956,7 +958,8 @@ void ResultTile::compute_results_count_sparse(
           // dim.
           uint64_t count = 0;
           for (uint64_t j = start_range_idx; j < end_range_idx; ++j) {
-            const auto& range = (const T*)ranges[range_indexes[j]].start();
+            const auto& range =
+                (const T*)ranges[range_indexes[j]].start_fixed();
             count += c >= range[0] && c <= range[1];
           }
 
@@ -979,7 +982,7 @@ void ResultTile::compute_results_count_sparse(
         T c = coords[pos * dim_num + dim_idx];
         uint64_t count = 0;
         for (uint64_t i = 0; i < range_indexes.size(); i++) {
-          const auto& range = (const T*)ranges[range_indexes[i]].start();
+          const auto& range = (const T*)ranges[range_indexes[i]].start_fixed();
           count += c >= range[0] && c <= range[1];
         }
 
@@ -993,7 +996,7 @@ void ResultTile::compute_results_count_sparse(
 Status ResultTile::compute_results_dense(
     unsigned dim_idx,
     const Range& range,
-    const std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
     unsigned frag_idx,
     std::vector<uint8_t>* result_bitmap,
     std::vector<uint8_t>* overwritten_bitmap) const {
@@ -1075,7 +1078,7 @@ void ResultTile::set_compute_results_func() {
   compute_results_count_sparse_uint8_t_func_.resize(dim_num);
   compute_results_count_sparse_uint64_t_func_.resize(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = domain_->dimension(d);
+    auto dim{domain_->dimension_ptr(d)};
     switch (dim->type()) {
       case Datatype::INT32:
         compute_results_dense_func_[d] = compute_results_dense<int32_t>;

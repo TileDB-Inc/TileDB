@@ -5,9 +5,21 @@ on:
       - dev
       - release-*
       - refs/tags/*
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
+      - 'doc/source/conf.py'
+      - 'tiledb/sm/c_api/tiledb_version.h'
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
+      - 'doc/source/conf.py'
+      - 'tiledb/sm/c_api/tiledb_version.h'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -88,6 +100,7 @@ jobs:
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/regression/tiledb_regression -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           
           BaseDir="$(pwd)"
           TestAppDir="$(pwd)/tiledb/examples/c_api/"

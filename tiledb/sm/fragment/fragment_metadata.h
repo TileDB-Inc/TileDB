@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,6 +34,7 @@
 #ifndef TILEDB_FRAGMENT_METADATA_H
 #define TILEDB_FRAGMENT_METADATA_H
 
+#include <deque>
 #include <mutex>
 #include <unordered_map>
 #include <vector>
@@ -45,6 +46,11 @@
 #include "tiledb/sm/rtree/rtree.h"
 
 using namespace tiledb::common;
+using namespace tiledb::type;
+
+namespace tiledb::type {
+class Range;
+}
 
 namespace tiledb {
 namespace sm {

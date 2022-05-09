@@ -367,6 +367,11 @@ class Config {
    *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
    *    Only for `fragments` and `array_meta` consolidation mode. <br>
    *    **Default**: UINT64_MAX
+   * - `sm.consolidation.with_timestamps` <br>
+   *    **Experimental** <br>
+   *    Consolidation with timestamps will include, for each cells, the
+   *    timestamp at which the cell was written. <br>
+   *    **Default**: "false"
    * - `sm.memory_budget` <br>
    *    The memory budget for tiles of fixed-sized attributes (or offsets for
    *    var-sized attributes) to be fetched during reads.<br>
@@ -439,6 +444,13 @@ class Config {
    *    **Default**: 0.1
    *    The maximum byte size to read-ahead from the backend. <br>
    *    **Default**: 102400
+   * - `sm.group.timestamp_start` <br>
+   *    The start timestamp used for opening the group. <br>
+   *    **Default**: 0
+   * - `sm.group.timestamp_end` <br>
+   *    The end timestamp used for opening the group. <br>
+   *    Also used for the write timestamp if set. <br>
+   *    **Default**: UINT64_MAX
    * -  `vfs.read_ahead_cache_size` <br>
    *    The the total maximum size of the read-ahead cache, which is an LRU.
    *    <br>
@@ -708,6 +720,10 @@ class Config {
    *    The delay factor to exponentially wait until further retries of a
    *    failed REST request <br>
    *    **Default**: 1.25
+   * - `rest.curl.verbose` <br>
+   * Set curl to run in verbose mode for REST requests <br>
+   * curl will print to stdout with this option
+   *    **Default**: false
    */
   Config& set(const std::string& param, const std::string& value) {
     tiledb_error_t* err;
@@ -732,6 +748,19 @@ class Config {
       throw TileDBError("Config Error: Invalid parameter '" + param + "'");
 
     return val;
+  }
+
+  /**
+   * Check if a configuration parameter exists.
+   * @param param Name of configuration parameter
+   * @return true if the parameter exists, false otherwise
+   */
+  bool contains(const std::string_view& param) const {
+    const char* val;
+    tiledb_error_t* err;
+    tiledb_config_get(config_.get(), param.data(), &val, &err);
+
+    return val != nullptr;
   }
 
   /**

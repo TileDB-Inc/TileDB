@@ -107,9 +107,9 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/helpers.h
   src/helpers.cc
   src/helpers-dimension.h
+  src/serialization_wrappers.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
-  src/unit-buffer.cc
   src/unit-bufferlist.cc
   src/unit-capi-any.cc
   src/unit-capi-array.cc
@@ -126,9 +126,11 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-dense_vector.cc
   src/unit-capi-enum_values.cc
   src/unit-capi-error.cc
+  src/unit-capi-filestore.cc
   src/unit-capi-fill_values.cc
   src/unit-capi-filter.cc
   src/unit-capi-fragment_info.cc
+  src/unit-capi-group.cc
   src/unit-capi-incomplete.cc
   src/unit-capi-incomplete-2.cc
   src/unit-capi-metadata.cc
@@ -160,6 +162,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
+  src/unit-global-order.cc
   src/unit-gcs.cc
   src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
@@ -205,6 +208,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-fragment_info.cc
+    src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-nullable.cc
@@ -386,20 +390,6 @@ add_custom_target(
   check COMMAND ${CMAKE_CTEST_COMMAND} -V -C ${CMAKE_BUILD_TYPE}
   DEPENDS tiledb_unit
 )
-
-include(CMakePrintHelpers)
-cmake_print_properties(
-  TARGETS tiledb_unit
-  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
-  )
-cmake_print_properties(
-  TARGETS tiledb_test_support_lib
-  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
-  )
-cmake_print_properties(
-  TARGETS Catch2::Catch2
-  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
-  )
 
 # CI tests
 add_subdirectory(ci)

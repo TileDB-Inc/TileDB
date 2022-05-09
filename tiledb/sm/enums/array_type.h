@@ -74,6 +74,13 @@ inline Status array_type_enum(
   return Status::Ok();
 }
 
+inline Status array_type_is_valid(uint8_t array_type_enum) {
+  if (array_type_enum != 0 && array_type_enum != 1)
+    return Status_Error("Invalid ArrayType enum.");
+
+  return Status::Ok();
+}
+
 }  // namespace sm
 }  // namespace tiledb
 

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,14 +31,17 @@
  */
 
 #include "tiledb/sm/fragment/fragment_info.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::sm;
 using namespace tiledb::common;
@@ -294,7 +297,7 @@ Status FragmentInfo::get_non_empty_domain(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -365,7 +368,7 @@ Status FragmentInfo::get_non_empty_domain_var_size(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -409,10 +412,10 @@ Status FragmentInfo::get_non_empty_domain_var(
         "Cannot get non-empty domain var; Dimension is fixed-sized"));
 
   assert(!non_empty_domain[did].empty());
-  std::memcpy(
-      start, non_empty_domain[did].start(), non_empty_domain[did].start_size());
-  std::memcpy(
-      end, non_empty_domain[did].end(), non_empty_domain[did].end_size());
+  auto start_str = non_empty_domain[did].start_str();
+  std::memcpy(start, start_str.data(), start_str.size());
+  auto end_str = non_empty_domain[did].end_str();
+  std::memcpy(end, end_str.data(), end_str.size());
 
   return Status::Ok();
 }
@@ -432,7 +435,7 @@ Status FragmentInfo::get_non_empty_domain_var(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -524,7 +527,7 @@ Status FragmentInfo::get_mbr(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -608,7 +611,7 @@ Status FragmentInfo::get_mbr_var_size(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -661,14 +664,10 @@ Status FragmentInfo::get_mbr_var(
         "Cannot get MBR var; Dimension is fixed-sized"));
 
   assert(!minimum_bounding_rectangle[did].empty());
-  std::memcpy(
-      start,
-      minimum_bounding_rectangle[did].start(),
-      minimum_bounding_rectangle[did].start_size());
-  std::memcpy(
-      end,
-      minimum_bounding_rectangle[did].end(),
-      minimum_bounding_rectangle[did].end_size());
+  auto start_str = minimum_bounding_rectangle[did].start_str();
+  std::memcpy(start, start_str.data(), start_str.size());
+  auto end_str = minimum_bounding_rectangle[did].end_str();
+  std::memcpy(end, end_str.data(), end_str.size());
 
   return Status::Ok();
 }
@@ -688,7 +687,7 @@ Status FragmentInfo::get_mbr_var(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -1010,7 +1009,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   }
 
   // Get fragment non-empty domain
-  auto meta = tdb::make_shared<FragmentMetadata>(
+  auto meta = make_shared<FragmentMetadata>(
       HERE(),
       storage_manager_,
       nullptr,
