@@ -60,8 +60,8 @@ namespace stdx {
   __assume(0);
 #else
   /*
-   * gcc: https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html#index-_005f_005fbuiltin_005funreachable
-   * clang: https://clang.llvm.org/docs/LanguageExtensions.html#builtin-unreachable
+   * https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html#index-_005f_005fbuiltin_005funreachable
+   * https://clang.llvm.org/docs/LanguageExtensions.html#builtin-unreachable
    */
   __builtin_unreachable();
 #endif
