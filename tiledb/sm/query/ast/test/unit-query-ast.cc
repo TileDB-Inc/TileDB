@@ -142,6 +142,5 @@ TEST_CASE(
       subtree_c->combine(x_neq_six, QueryConditionCombinationOp::AND);
   auto tree = subtree_a->combine(subtree_b, QueryConditionCombinationOp::OR);
 
-  std::cout << "YEET\n";
   std::cout << ast_node_to_str(tree) << std::endl;
 }

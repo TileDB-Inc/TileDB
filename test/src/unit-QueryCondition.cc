@@ -455,8 +455,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Query Condition: Test AST construction, tree structure with same "
-    "combining "
-    "operator, OR of 2 OR ASTs",
+    "combining operator, OR of 2 OR ASTs",
     "[QueryCondition][ast][api]") {
   // First OR compound AST.
   std::string field_name = "x";
@@ -547,8 +546,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Query Condition: Test AST construction, tree structure with same "
-    "combining "
-    "operator, AND of 2 AND ASTs",
+    "combining operator, AND of 2 AND ASTs",
     "[QueryCondition][ast][api]") {
   // AND of 2 AND ASTs.
   // First AND compound AST.
@@ -638,6 +636,10 @@ TEST_CASE(
       tiledb::test::ast_node_to_str(combined_and2.ast()) ==
       "(x LT 05 00 00 00 AND y GT 03 00 00 00 AND a EQ 09 00 00 00 AND b NE "
       "01 00 00 00)");
+}
+
+TEST_CASE("Query Condition: Test AST construction, complex tree structure") {
+  
 }
 
 /**
