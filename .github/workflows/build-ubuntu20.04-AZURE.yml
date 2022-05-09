@@ -9,6 +9,8 @@ on:
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
+      - 'doc/source/conf.py'
+      - 'tiledb/sm/c_api/tiledb_version.h'
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
@@ -16,6 +18,8 @@ on:
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
+      - 'doc/source/conf.py'
+      - 'tiledb/sm/c_api/tiledb_version.h'
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
@@ -117,6 +121,7 @@ jobs:
           # Bypass Catch2 Framework stdout interception with awk on test output
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/regression/tiledb_regression -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
           # Kill the running Azurite server
           kill -n 9 $AZURITE_PID

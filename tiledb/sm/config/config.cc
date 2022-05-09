@@ -111,6 +111,7 @@ const std::string Config::SM_CONSOLIDATION_MODE = "fragments";
 const std::string Config::SM_CONSOLIDATION_TIMESTAMP_START = "0";
 const std::string Config::SM_CONSOLIDATION_TIMESTAMP_END =
     std::to_string(UINT64_MAX);
+const std::string Config::SM_CONSOLIDATION_WITH_TIMESTAMPS = "false";
 const std::string Config::SM_VACUUM_MODE = "fragments";
 const std::string Config::SM_VACUUM_TIMESTAMP_START = "0";
 const std::string Config::SM_VACUUM_TIMESTAMP_END = std::to_string(UINT64_MAX);
@@ -279,6 +280,8 @@ Config::Config() {
       SM_CONSOLIDATION_TIMESTAMP_START;
   param_values_["sm.consolidation.timestamp_end"] =
       SM_CONSOLIDATION_TIMESTAMP_END;
+  param_values_["sm.consolidation.with_timestamps"] =
+      SM_CONSOLIDATION_WITH_TIMESTAMPS;
   param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
   param_values_["sm.vacuum.timestamp_start"] = SM_VACUUM_TIMESTAMP_START;
   param_values_["sm.vacuum.timestamp_end"] = SM_VACUUM_TIMESTAMP_END;
@@ -617,6 +620,9 @@ Status Config::unset(const std::string& param) {
   } else if (param == "sm.consolidation.timestamp_end") {
     param_values_["sm.consolidation.timestamp_end"] =
         SM_CONSOLIDATION_TIMESTAMP_END;
+  } else if (param == "sm.consolidation.with_timestamps") {
+    param_values_["sm.consolidation.with_timestamps"] =
+        SM_CONSOLIDATION_WITH_TIMESTAMPS;
   } else if (param == "sm.vacuum.mode") {
     param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
   } else if (param == "sm.vacuum.timestamp_start") {

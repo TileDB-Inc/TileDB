@@ -57,7 +57,8 @@ typedef enum {
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_serialization_type_to_str(
-    tiledb_serialization_type_t serialization_type, const char** str) noexcept;
+    tiledb_serialization_type_t serialization_type,
+    const char** str) TILEDB_NOEXCEPT;
 
 /**
  * Parses a serialization type from the given string.
@@ -67,7 +68,8 @@ TILEDB_EXPORT int32_t tiledb_serialization_type_to_str(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_serialization_type_from_str(
-    const char* str, tiledb_serialization_type_t* serialization_type) noexcept;
+    const char* str,
+    tiledb_serialization_type_t* serialization_type) TILEDB_NOEXCEPT;
 
 /* ****************************** */
 /*          Serialization         */
@@ -92,7 +94,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_array(
     const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept;
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
  * Deserializes a new array from the given buffer.
@@ -110,7 +112,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_array_t** array) noexcept;
+    tiledb_array_t** array) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the given array schema.
@@ -131,7 +133,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_schema(
     const tiledb_array_schema_t* array_schema,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept;
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
  * Deserializes a new array schema from the given buffer.
@@ -149,7 +151,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_schema(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_array_schema_t** array_schema) noexcept;
+    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the given array schema evolution.
@@ -170,7 +172,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_schema_evolution(
     const tiledb_array_schema_evolution_t* array_schema_evolution,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept;
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
  * Deserializes a new array schema evolution object from the given buffer.
@@ -189,7 +191,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_schema_evolution(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_array_schema_evolution_t** array_schema_evolution) noexcept;
+    tiledb_array_schema_evolution_t** array_schema_evolution) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the given query.
@@ -214,7 +216,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_query(
     const tiledb_query_t* query,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_list_t** buffer_list) noexcept;
+    tiledb_buffer_list_t** buffer_list) TILEDB_NOEXCEPT;
 
 /**
  * Deserializes into an existing query from the given buffer.
@@ -235,7 +237,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_query(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_query_t* query) noexcept;
+    tiledb_query_t* query) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the given non-empty domain information into the given buffer.
@@ -260,7 +262,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_nonempty_domain(
     int32_t is_empty,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept;
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
  * Deserializes non-empty domain information from the given buffer.
@@ -282,7 +284,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_nonempty_domain(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     void* nonempty_domain,
-    int32_t* is_empty) noexcept;
+    int32_t* is_empty) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the given non-empty domain information into the given buffer.
@@ -303,7 +305,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
     const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept;
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
  * Deserializes non-empty domain information from the given buffer.
@@ -321,7 +323,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
     tiledb_array_t* array,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side) noexcept;
+    int32_t client_side) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the array max buffer sizes information into the given buffer.
@@ -341,7 +343,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_max_buffer_sizes(
     const tiledb_array_t* array,
     const void* subarray,
     tiledb_serialization_type_t serialize_type,
-    tiledb_buffer_t** buffer) noexcept;
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the array metadata into the given buffer.
@@ -359,7 +361,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_metadata(
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     tiledb_serialization_type_t serialization_type,
-    tiledb_buffer_t** buffer) noexcept;
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
  * Sets the array metadata on the given array instance by deserializing the
@@ -375,7 +377,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_metadata(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialization_type,
-    const tiledb_buffer_t* buffer) noexcept;
+    const tiledb_buffer_t* buffer) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the given query's estimated result sizes map.
@@ -395,7 +397,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_query_est_result_sizes(
     const tiledb_query_t* query,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept;
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
  * Deserializes into an existing query from the given buffer.
@@ -413,7 +415,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_query_est_result_sizes(
     tiledb_query_t* query,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    const tiledb_buffer_t* buffer) noexcept;
+    const tiledb_buffer_t* buffer) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the given config.
@@ -434,7 +436,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_config(
     const tiledb_config_t* config,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept;
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
  * Deserializes a new config from the given buffer.
@@ -452,7 +454,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_config(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_config_t** config) noexcept;
+    tiledb_config_t** config) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the given group.

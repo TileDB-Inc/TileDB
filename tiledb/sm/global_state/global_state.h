@@ -69,7 +69,7 @@ class GlobalState {
    * @param config The TileDB configuration parameters (or nullptr).
    * @return Status
    */
-  Status init(const Config* config);
+  Status init(const Config& config = Config());
 
   /**
    * Register the given StorageManger instance.

@@ -42,10 +42,9 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/time.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/tdb_math.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
@@ -54,6 +53,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -285,7 +285,7 @@ Status WriterBase::calculate_hilbert_values(
       [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_.dimension(d);
+          auto dim{array_schema_.dimension_ptr(d)};
           coords[d] = hilbert_order::map_to_uint64(
               *dim, domain_buffers[d], c, bits, max_bucket_val);
         }
@@ -367,7 +367,7 @@ Status WriterBase::check_coord_oob() const {
   std::vector<unsigned char*> buffs(dim_num);
   std::vector<uint64_t> coord_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_.dimension(d)->name();
+    const auto& dim_name{array_schema_.dimension_ptr(d)->name()};
     buffs[d] = (unsigned char*)buffers_.find(dim_name)->second.buffer_;
     coord_sizes[d] = array_schema_.cell_size(dim_name);
   }
@@ -380,7 +380,7 @@ Status WriterBase::check_coord_oob() const {
       0,
       dim_num,
       [&](uint64_t c, unsigned d) {
-        auto dim = array_schema_.dimension(d);
+        auto dim{array_schema_.dimension_ptr(d)};
         if (datatype_is_string(dim->type()))
           return Status::Ok();
         return dim->oob(buffs[d] + c * coord_sizes[d]);
@@ -499,7 +499,7 @@ Status WriterBase::compute_coords_metadata(
         NDRange mbr(dim_num);
         std::vector<const void*> data(dim_num);
         for (unsigned d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_.dimension(d);
+          auto dim{array_schema_.dimension_ptr(d)};
           const auto& dim_name = dim->name();
           auto tiles_it = tiles.find(dim_name);
           assert(tiles_it != tiles.end());
@@ -517,7 +517,7 @@ Status WriterBase::compute_coords_metadata(
   RETURN_NOT_OK(status);
 
   // Set last tile cell number
-  auto dim_0 = array_schema_.dimension(0);
+  auto dim_0{array_schema_.dimension_ptr(0)};
   const auto& dim_tiles = tiles.find(dim_0->name())->second;
   const auto& last_tile_pos =
       (!dim_0->var_size()) ? dim_tiles.size() - 1 : dim_tiles.size() - 2;
@@ -596,7 +596,7 @@ std::string WriterBase::coords_to_str(uint64_t i) const {
 
   ss << "(";
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = array_schema_.dimension(d);
+    auto dim{array_schema_.dimension_ptr(d)};
     const auto& dim_name = dim->name();
     ss << buffers_.find(dim_name)->second.dimension_datum_at(*dim, i);
     if (d < dim_num - 1)
@@ -771,8 +771,8 @@ Status WriterBase::filter_tile(
       &filters, array_->get_encryption_key()));
 
   // Check if chunk or tile level filtering/unfiltering is appropriate
-  bool use_chunking =
-      filters.use_tile_chunking(array_schema_.var_size(name), tile->type());
+  bool use_chunking = filters.use_tile_chunking(
+      array_schema_.var_size(name), array_schema_.version(), tile->type());
 
   assert(!tile->filtered());
   RETURN_NOT_OK(filters.run_forward(
@@ -994,15 +994,15 @@ Status WriterBase::split_coords_buffer() {
 
   // For easy reference
   auto dim_num = array_schema_.dim_num();
-  auto coord_size = array_schema_.domain().dimension(0)->coord_size();
-  auto coords_size = dim_num * coord_size;
+  auto coords_size{dim_num *
+                   array_schema_.domain().dimension_ptr(0)->coord_size()};
   coords_info_.coords_num_ = *coords_info_.coords_buffer_size_ / coords_size;
 
   clear_coord_buffers();
 
   // New coord buffer allocations
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = array_schema_.dimension(d);
+    auto dim{array_schema_.dimension_ptr(d)};
     const auto& dim_name = dim->name();
     auto coord_buffer_size = coords_info_.coords_num_ * dim->coord_size();
     auto it = coord_buffer_sizes_.emplace(dim_name, coord_buffer_size);
@@ -1019,8 +1019,8 @@ Status WriterBase::split_coords_buffer() {
   // Split coordinates
   auto coord = (unsigned char*)nullptr;
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto coord_size = array_schema_.dimension(d)->coord_size();
-    const auto& dim_name = array_schema_.dimension(d)->name();
+    auto coord_size{array_schema_.dimension_ptr(d)->coord_size()};
+    const auto& dim_name{array_schema_.dimension_ptr(d)->name()};
     auto buff = (unsigned char*)(buffers_[dim_name].buffer_);
     for (uint64_t c = 0; c < coords_info_.coords_num_; ++c) {
       coord = &(((unsigned char*)coords_info_

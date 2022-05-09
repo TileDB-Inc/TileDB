@@ -47,9 +47,9 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
-#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/resource_pool.h"
+#include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
@@ -173,7 +173,7 @@ Status Subarray::add_range(
   }
 
   // Restrict the range to the dimension domain and add.
-  auto dim = array_->array_schema_latest().dimension(dim_idx);
+  auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
   if (!read_range_oob_error)
     RETURN_NOT_OK(dim->adjust_range_oob(&range));
   RETURN_NOT_OK(dim->check_range(range));
@@ -213,7 +213,7 @@ Status Subarray::set_subarray(const void* subarray) {
     uint64_t offset = 0;
     for (unsigned d = 0; d < dim_num; ++d) {
       auto r_size =
-          2 * array_->array_schema_latest().dimension(d)->coord_size();
+          2 * array_->array_schema_latest().dimension_ptr(d)->coord_size();
       Range range(&s_ptr[offset], r_size);
       RETURN_NOT_OK(this->add_range(d, std::move(range), err_on_range_oob_));
       offset += r_size;
@@ -252,7 +252,7 @@ Status Subarray::add_range(
 
   if (this->array_->array_schema_latest()
           .domain()
-          .dimension(dim_idx)
+          .dimension_ptr(dim_idx)
           ->var_size())
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Range must be fixed-sized"));
@@ -260,7 +260,7 @@ Status Subarray::add_range(
   // Prepare a temp range
   std::vector<uint8_t> range;
   auto coord_size =
-      this->array_->array_schema_latest().dimension(dim_idx)->coord_size();
+      this->array_->array_schema_latest().dimension_ptr(dim_idx)->coord_size();
   range.resize(2 * coord_size);
   std::memcpy(&range[0], start, coord_size);
   std::memcpy(&range[coord_size], end, coord_size);
@@ -296,7 +296,7 @@ Status Subarray::add_point_ranges(
 
   if (this->array_->array_schema_latest()
           .domain()
-          .dimension(dim_idx)
+          .dimension_ptr(dim_idx)
           ->var_size())
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Range must be fixed-sized"));
@@ -304,7 +304,7 @@ Status Subarray::add_point_ranges(
   // Prepare a temp range
   std::vector<uint8_t> range;
   auto coord_size =
-      this->array_->array_schema_latest().dimension(dim_idx)->coord_size();
+      this->array_->array_schema_latest().dimension_ptr(dim_idx)->coord_size();
   range.resize(2 * coord_size);
 
   for (size_t i = 0; i < count; i++) {
@@ -349,7 +349,10 @@ Status Subarray::add_range_var(
       (end == nullptr && end_size != 0))
     return LOG_STATUS(Status_SubarrayError("Cannot add range; Invalid range"));
 
-  if (!array_->array_schema_latest().domain().dimension(dim_idx)->var_size())
+  if (!array_->array_schema_latest()
+           .domain()
+           .dimension_ptr(dim_idx)
+           ->var_size())
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Range must be variable-sized"));
 
@@ -485,7 +488,7 @@ uint64_t Subarray::cell_num() const {
   unsigned dim_num = array_schema.dim_num();
   uint64_t ret = 1;
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = array_schema.dimension(d);
+    auto dim{array_schema.dimension_ptr(d)};
     uint64_t num = 0;
     auto& range_subset = range_subset_[d];
     for (uint64_t index = 0; index < range_subset.num_ranges(); ++index)
@@ -509,7 +512,8 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
   // Unary case or GLOBAL_ORDER
   if (range_num() == 1) {
     for (unsigned d = 0; d < dim_num; ++d) {
-      range_cell_num = domain.dimension(d)->domain_range(range_subset_[d][0]);
+      range_cell_num =
+          domain.dimension_ptr(d)->domain_range(range_subset_[d][0]);
       if (range_cell_num == std::numeric_limits<uint64_t>::max())  // Overflow
         return range_cell_num;
 
@@ -525,7 +529,7 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
   if (layout == Layout::ROW_MAJOR) {
     assert(!range_offsets_.empty());
     for (unsigned d = 0; d < dim_num; ++d) {
-      range_cell_num = domain.dimension(d)->domain_range(
+      range_cell_num = domain.dimension_ptr(d)->domain_range(
           range_subset_[d][tmp_idx / range_offsets_[d]]);
       tmp_idx %= range_offsets_[d];
       if (range_cell_num == std::numeric_limits<uint64_t>::max())  // Overflow
@@ -538,7 +542,7 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
   } else if (layout == Layout::COL_MAJOR) {
     assert(!range_offsets_.empty());
     for (unsigned d = dim_num - 1;; --d) {
-      range_cell_num = domain.dimension(d)->domain_range(
+      range_cell_num = domain.dimension_ptr(d)->domain_range(
           range_subset_[d][tmp_idx / range_offsets_[d]]);
       tmp_idx %= range_offsets_[d];
       if (range_cell_num == std::numeric_limits<uint64_t>::max())  // Overflow
@@ -565,7 +569,7 @@ uint64_t Subarray::cell_num(const std::vector<uint64_t>& range_coords) const {
 
   uint64_t ret = 1;
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = array_schema.dimension(d);
+    auto dim{array_schema.dimension_ptr(d)};
     ret = utils::math::safe_mul(
         ret, dim->domain_range(range_subset_[d][range_coords[d]]));
     if (ret == std::numeric_limits<uint64_t>::max())  // Overflow
@@ -597,7 +601,7 @@ bool Subarray::coincides_with_tiles() const {
 
   auto dim_num = array_->array_schema_latest().dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = array_->array_schema_latest().dimension(d);
+    auto dim{array_->array_schema_latest().dimension_ptr(d)};
     if (!dim->coincides_with_tiles(range_subset_[d][0]))
       return false;
   }
@@ -620,7 +624,7 @@ Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
 
   // Compute cropped subarray
   for (unsigned d = 0; d < dim_num(); ++d) {
-    auto r_size = 2 * array_schema.dimension(d)->coord_size();
+    auto r_size{2 * array_schema.dimension_ptr(d)->coord_size()};
     uint64_t i = 0;
     for (size_t r = 0; r < range_subset_[d].num_ranges(); ++r) {
       const auto& range = range_subset_[d][r];
@@ -695,8 +699,15 @@ Status Subarray::get_range(
     return logger_->status(
         Status_SubarrayError("Cannot get range; Invalid range index"));
 
-  *start = range_subset_[dim_idx][range_idx].start();
-  *end = range_subset_[dim_idx][range_idx].end();
+  auto& range = range_subset_[dim_idx][range_idx];
+  auto is_var = range.var_size();
+  if (is_var) {
+    *start = range_subset_[dim_idx][range_idx].start_str().data();
+    *end = range_subset_[dim_idx][range_idx].end_str().data();
+  } else {
+    *start = range_subset_[dim_idx][range_idx].start_fixed();
+    *end = range_subset_[dim_idx][range_idx].end_fixed();
+  }
 
   return Status::Ok();
 }
@@ -712,7 +723,7 @@ Status Subarray::get_range_var_size(
     return logger_->status(Status_SubarrayError(
         "Cannot get var range size; Invalid dimension index"));
 
-  auto dim = schema.domain().dimension(dim_idx);
+  auto dim{schema.domain().dimension_ptr(dim_idx)};
   if (!dim->var_size())
     return logger_->status(Status_SubarrayError(
         "Cannot get var range size; Dimension " + dim->name() +
@@ -824,7 +835,7 @@ bool Subarray::is_unary(uint64_t range_idx) const {
 
 void Subarray::set_is_default(uint32_t dim_index, bool is_default) {
   if (is_default) {
-    auto dim = array_->array_schema_latest().dimension(dim_index);
+    auto dim{array_->array_schema_latest().dimension_ptr(dim_index)};
     range_subset_.at(dim_index) = RangeSetAndSuperset(
         dim->type(), dim->domain(), is_default, coalesce_ranges_);
   }
@@ -1522,7 +1533,7 @@ const std::vector<Range>& Subarray::ranges_for_dim(uint32_t dim_idx) const {
 
 Status Subarray::set_ranges_for_dim(
     uint32_t dim_idx, const std::vector<Range>& ranges) {
-  auto dim = array_->array_schema_latest().dimension(dim_idx);
+  auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
   range_subset_[dim_idx] =
       RangeSetAndSuperset(dim->type(), dim->domain(), false, coalesce_ranges_);
   is_default_[dim_idx] = false;
@@ -1550,7 +1561,7 @@ Status Subarray::split(
   for (unsigned d = 0; d < dim_num; ++d) {
     const auto& r = range_subset_[d][0];
     if (d == splitting_dim) {
-      auto dim = array_->array_schema_latest().dimension(d);
+      auto dim{array_->array_schema_latest().dimension_ptr(d)};
       dim->split_range(r, splitting_value, &sr1, &sr2);
       RETURN_NOT_OK(r1->add_range_unsafe(d, sr1));
       RETURN_NOT_OK(r2->add_range_unsafe(d, sr2));
@@ -1604,7 +1615,7 @@ Status Subarray::split(
         }
       } else {  // Need to split a single range
         const auto& r = range_subset_[d][0];
-        auto dim = array_schema.dimension(d);
+        auto dim{array_schema.dimension_ptr(d)};
         dim->split_range(r, splitting_value, &sr1, &sr2);
         RETURN_NOT_OK(r1->add_range_unsafe(d, sr1));
         RETURN_NOT_OK(r2->add_range_unsafe(d, sr2));
@@ -1633,7 +1644,7 @@ const T* Subarray::tile_coords_ptr(
     const std::vector<T>& tile_coords,
     std::vector<uint8_t>* aux_tile_coords) const {
   auto dim_num = array_->array_schema_latest().dim_num();
-  auto coord_size = array_->array_schema_latest().dimension(0)->coord_size();
+  auto coord_size{array_->array_schema_latest().dimension_ptr(0)->coord_size()};
   std::memcpy(&((*aux_tile_coords)[0]), &tile_coords[0], dim_num * coord_size);
   auto it = tile_coords_map_.find(*aux_tile_coords);
   if (it == tile_coords_map_.end())
@@ -1854,7 +1865,7 @@ void Subarray::add_default_ranges() {
 
   range_subset_.clear();
   for (unsigned dim_index = 0; dim_index < dim_num; ++dim_index) {
-    auto dim = domain.dimension(dim_index);
+    auto dim{domain.dimension_ptr(dim_index)};
     range_subset_.push_back(RangeSetAndSuperset(
         dim->type(), dim->domain(), true, coalesce_ranges_));
   }
@@ -1930,7 +1941,7 @@ Status Subarray::compute_est_result_size(
     if (i < attribute_num)
       names[i] = attributes[i]->name();
     else if (i < attribute_num + dim_num)
-      names[i] = array_schema.domain().dimension(i - attribute_num)->name();
+      names[i] = array_schema.domain().dimension_ptr(i - attribute_num)->name();
     else
       names[i] = constants::coords;
   }
@@ -2119,7 +2130,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     uint64_t cell_num = 1;
     auto dim_num = array_schema.dim_num();
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = array_schema.dimension(d);
+      auto dim{array_schema.dimension_ptr(d)};
       cell_num = utils::math::safe_mul(
           cell_num, dim->domain_range(range_subset_[d][range_coords[d]]));
     }
@@ -2187,7 +2198,7 @@ Status Subarray::compute_tile_coords_col() {
 
   tile_coords_.resize(tile_coords_num);
   std::vector<uint8_t> coords;
-  auto coords_size = dim_num * array_schema.dimension(0)->coord_size();
+  auto coords_size{dim_num * array_schema.dimension_ptr(0)->coord_size()};
   coords.resize(coords_size);
   size_t coord_size = sizeof(T);
   size_t tile_coords_pos = 0;
@@ -2247,7 +2258,7 @@ Status Subarray::compute_tile_coords_row() {
 
   tile_coords_.resize(tile_coords_num);
   std::vector<uint8_t> coords;
-  auto coords_size = dim_num * array_schema.dimension(0)->coord_size();
+  auto coords_size{dim_num * array_schema.dimension_ptr(0)->coord_size()};
   coords.resize(coords_size);
   size_t coord_size = sizeof(T);
   size_t tile_coords_pos = 0;
@@ -2421,6 +2432,10 @@ Status Subarray::precompute_all_ranges_tile_overlap(
         }
 
         for (unsigned d = 0; d < dim_num; d++) {
+          if (is_default_[d]) {
+            continue;
+          }
+
           // Run all ranges in parallel.
           const uint64_t range_num = range_subset_[d].num_ranges();
 
@@ -2450,7 +2465,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
         for (int64_t t = tile_bitmaps[0].size() - 1; t >= min; t--) {
           bool comb = true;
           for (unsigned d = 0; d < dim_num; d++) {
-            comb &= (bool)tile_bitmaps[d][t];
+            comb &= is_default_[d] || (bool)tile_bitmaps[d][t];
           }
 
           if (!comb) {
@@ -2500,7 +2515,7 @@ Subarray Subarray::clone() const {
 TileOverlap Subarray::compute_tile_overlap(
     uint64_t range_idx, unsigned fid) const {
   assert(array_->array_schema_latest().dense());
-  auto type = array_->array_schema_latest().dimension(0)->type();
+  auto type{array_->array_schema_latest().dimension_ptr(0)->type()};
   switch (type) {
     case Datatype::INT8:
       return compute_tile_overlap<int8_t>(range_idx, fid);
@@ -2802,7 +2817,7 @@ Status Subarray::compute_relevant_fragments_for_dim(
     const std::vector<uint64_t>& end_coords,
     std::vector<uint8_t>* const frag_bytemap) const {
   const auto meta = array_->fragment_metadata();
-  auto dim = array_->array_schema_latest().dimension(dim_idx);
+  auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
 
   return parallel_for(compute_tp, 0, fragment_num, [&](const uint64_t f) {
     // We're done when we have already determined fragment `f` to
@@ -2956,7 +2971,7 @@ template <typename T>
 tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
     const uint64_t dim_idx) {
   const auto& ranges = range_subset_[dim_idx].ranges();
-  auto dim = array_->array_schema_latest().dimension(dim_idx);
+  auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
 
   if (ranges.size() > 1) {
     for (uint64_t r = 0; r < ranges.size() - 1; r++) {
@@ -2970,8 +2985,8 @@ tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
 
 tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
     const uint64_t dim_idx) {
-  const Datatype& datatype =
-      array_->array_schema_latest().dimension(dim_idx)->type();
+  const Datatype& datatype{
+      array_->array_schema_latest().dimension_ptr(dim_idx)->type()};
   switch (datatype) {
     case Datatype::INT8:
       return non_overlapping_ranges_for_dim<int8_t>(dim_idx);

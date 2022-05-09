@@ -41,9 +41,9 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_math.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
@@ -154,7 +154,7 @@ Status UnorderedWriter::check_coord_dups(
   std::vector<const unsigned char*> buffs_var(dim_num);
   std::vector<uint64_t*> buffs_var_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_.dimension(d)->name();
+    const auto& dim_name{array_schema_.dimension_ptr(d)->name()};
     buffs[d] = (const unsigned char*)buffers_.find(dim_name)->second.buffer_;
     coord_sizes[d] = array_schema_.cell_size(dim_name);
     buffs_var[d] =
@@ -170,7 +170,7 @@ Status UnorderedWriter::check_coord_dups(
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_.dimension(d);
+          auto dim{array_schema_.dimension_ptr(d)};
           if (!dim->var_size()) {  // Fixed-sized dimensions
             if (memcmp(
                     buffs[d] + cell_pos[i] * coord_sizes[d],
@@ -252,7 +252,7 @@ Status UnorderedWriter::compute_coord_dups(
   std::vector<const unsigned char*> buffs_var(dim_num);
   std::vector<uint64_t*> buffs_var_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_.dimension(d)->name();
+    const auto& dim_name{array_schema_.dimension_ptr(d)->name()};
     buffs[d] = (const unsigned char*)buffers_.find(dim_name)->second.buffer_;
     coord_sizes[d] = array_schema_.cell_size(dim_name);
     buffs_var[d] =
@@ -269,7 +269,7 @@ Status UnorderedWriter::compute_coord_dups(
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_.dimension(d);
+          auto dim{array_schema_.dimension_ptr(d)};
           if (!dim->var_size()) {  // Fixed-sized dimensions
             if (memcmp(
                     buffs[d] + cell_pos[i] * coord_sizes[d],

@@ -1522,7 +1522,7 @@ Status Reader::compute_result_coords(
   std::vector<std::string> var_size_dim_names;
   dim_names.reserve(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& name = array_schema_.dimension(d)->name();
+    const auto& name{array_schema_.dimension_ptr(d)->name()};
     dim_names.emplace_back(name);
     if (array_schema_.var_size(name))
       var_size_dim_names.emplace_back(name);
@@ -1584,7 +1584,7 @@ Status Reader::dedup_result_coords(
 }
 
 Status Reader::dense_read() {
-  auto type = array_schema_.domain().dimension(0)->type();
+  auto type{array_schema_.domain().dimension_ptr(0)->type()};
   switch (type) {
     case Datatype::INT8:
       return dense_read<int8_t>();
@@ -1930,7 +1930,7 @@ void Reader::erase_coord_tiles(std::vector<ResultTile>& result_tiles) const {
   for (auto& tile : result_tiles) {
     auto dim_num = array_schema_.dim_num();
     for (unsigned d = 0; d < dim_num; ++d)
-      tile.erase_tile(array_schema_.dimension(d)->name());
+      tile.erase_tile(array_schema_.dimension_ptr(d)->name());
     tile.erase_tile(constants::coords);
   }
 }
@@ -1972,7 +1972,7 @@ Status Reader::calculate_hilbert_values(
       storage_manager_->compute_tp(), 0, coords_num, [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_.dimension(d);
+          auto dim{array_schema_.dimension_ptr(d)};
           coords[d] = hilbert_order::map_to_uint64(
               *dim, *(iter_begin + c), d, bits, max_bucket_val);
         }

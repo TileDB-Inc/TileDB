@@ -36,7 +36,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -507,7 +507,7 @@ Status FragmentConsolidator::create_buffers(
   }
   if (sparse) {
     for (unsigned i = 0; i < dim_num; ++i)
-      buffer_num += (domain.dimension(i)->var_size()) ? 2 : 1;
+      buffer_num += (domain.dimension_ptr(i)->var_size()) ? 2 : 1;
   }
 
   // Create buffers
@@ -737,7 +737,7 @@ Status FragmentConsolidator::set_query_buffers(
   }
   if (!dense) {
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = array_schema.dimension(d);
+      auto dim{array_schema.dimension_ptr(d)};
       auto dim_name = dim->name();
       if (!dim->var_size()) {
         RETURN_NOT_OK(query->set_data_buffer(
@@ -794,6 +794,12 @@ Status FragmentConsolidator::set_config(const Config* config) {
   assert(found);
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
+  assert(found);
+  config_.include_timestamps_ = false;
+  RETURN_NOT_OK(merged_config.get<bool>(
+      "sm.consolidation.with_timestamps",
+      &config_.include_timestamps_,
+      &found));
   assert(found);
   std::string reader =
       merged_config.get("sm.query.sparse_global_order.reader", &found);

@@ -120,14 +120,15 @@ void create_arrays_groups() {
   tiledb_group_alloc(ctx, "my_group", &my_group);
   tiledb_group_open(ctx, my_group, TILEDB_WRITE);
 
-  tiledb_group_add_member(ctx, my_group, "dense_arrays/array_A", 1);
-  tiledb_group_add_member(ctx, my_group, "dense_arrays/array_B", 1);
-  tiledb_group_add_member(ctx, my_group, "sparse_arrays", 1);
+  tiledb_group_add_member(ctx, my_group, "dense_arrays/array_A", 1, NULL);
+  tiledb_group_add_member(ctx, my_group, "dense_arrays/array_B", 1, "array_b");
+  tiledb_group_add_member(
+      ctx, my_group, "sparse_arrays", 1, "sparse_arrays_group");
 
   tiledb_group_alloc(ctx, "my_group/sparse_arrays", &sparse_arrays_group);
   tiledb_group_open(ctx, sparse_arrays_group, TILEDB_WRITE);
-  tiledb_group_add_member(ctx, sparse_arrays_group, "array_C", 1);
-  tiledb_group_add_member(ctx, sparse_arrays_group, "array_D", 1);
+  tiledb_group_add_member(ctx, sparse_arrays_group, "array_C", 1, NULL);
+  tiledb_group_add_member(ctx, sparse_arrays_group, "array_D", 1, NULL);
 
   tiledb_group_close(ctx, my_group);
   tiledb_group_close(ctx, sparse_arrays_group);

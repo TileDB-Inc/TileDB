@@ -248,19 +248,23 @@ class Config {
    *     - "fragment_meta": only the fragment metadata will be consolidated
    *     - "array_meta": only the array metadata will be consolidated
    *     - "commits": only the commit files will be consolidated
-
    */
   static const std::string SM_CONSOLIDATION_MODE;
 
   /**
    * An array will consolidate between this value and timestamp_end.
-   * */
+   */
   static const std::string SM_CONSOLIDATION_TIMESTAMP_START;
 
   /**
    * An array will consolidate between timestamp_start and this value.
-   *  */
+   */
   static const std::string SM_CONSOLIDATION_TIMESTAMP_END;
+
+  /**
+   * Enable or disable consolidation with timestamps.
+   */
+  static const std::string SM_CONSOLIDATION_WITH_TIMESTAMPS;
 
   /**
    * The vacuum mode. It can be one of:
@@ -273,7 +277,7 @@ class Config {
 
   /**
    * An array will vacuum between this value and timestamp_end.
-   * */
+   */
   static const std::string SM_VACUUM_TIMESTAMP_START;
 
   /**
@@ -308,7 +312,7 @@ class Config {
 
   /**
    * A group will open between this value and timestamp_end.
-   * */
+   */
   static const std::string SM_GROUP_TIMESTAMP_START;
 
   /**

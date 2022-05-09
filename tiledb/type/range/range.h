@@ -36,7 +36,9 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 
+#include <cmath>
 #include <cstring>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -91,6 +93,7 @@ class Range {
   void set_range(const void* r, uint64_t r_size) {
     range_.resize(r_size);
     std::memcpy(range_.data(), r, r_size);
+    var_size_ = false;
   }
 
   /** Sets a var-sized range serialized in `r`. */
@@ -130,12 +133,14 @@ class Range {
   }
 
   /** Returns a pointer to the start of the range. */
-  const void* start() const {
+  const void* start_fixed() const {
+    assert(!var_size_);
+    assert(range_.size() != 0);
     return range_.data();
   }
 
   /** Copies 'start' into this range's start bytes for fixed-size ranges. */
-  void set_start(const void* const start) {
+  void set_start_fixed(const void* const start) {
     if (var_size_) {
       auto msg = "Unexpected var-sized range; cannot set start range.";
       LOG_ERROR(msg);
@@ -148,12 +153,25 @@ class Range {
 
   /** Returns the start as a string view. */
   std::string_view start_str() const {
-    return std::string_view((const char*)start(), start_size());
+    if (range_start_size_ == 0) {
+      return {nullptr, 0};
+    }
+    return std::string_view(
+        reinterpret_cast<const char*>(range_.data()), range_start_size_);
   }
 
   /** Returns the end as a string view. */
   std::string_view end_str() const {
-    return std::string_view((const char*)end(), end_size());
+    // Must be variable
+    // or have no data if 'fixed' (primarily default construction)
+    assert(var_size_ || !range_.size());
+    auto size = range_.size() - range_start_size_;
+    if (size == 0) {
+      return {nullptr, 0};
+    }
+
+    return std::string_view(
+        reinterpret_cast<const char*>(range_.data()) + range_start_size_, size);
   }
 
   /**
@@ -161,6 +179,8 @@ class Range {
    * Non-zero only for var-sized ranges.
    */
   uint64_t start_size() const {
+    if (!var_size_)
+      return 0;
     return range_start_size_;
   }
 
@@ -175,13 +195,15 @@ class Range {
   }
 
   /** Returns a pointer to the end of the range. */
-  const void* end() const {
-    auto end_pos = var_size_ ? range_start_size_ : range_.size() / 2;
-    return range_.empty() ? nullptr : &range_[end_pos];
+  const void* end_fixed() const {
+    assert(!var_size_);
+    assert(range_.size() != 0);
+    auto end_pos = range_.size() / 2;
+    return &range_[end_pos];
   }
 
   /** Copies 'end' into this range's end bytes for fixed-size ranges. */
-  void set_end(const void* const end) {
+  void set_end_fixed(const void* const end) {
     if (var_size_) {
       auto msg = "Unexpected var-sized range; cannot set end range.";
       LOG_ERROR(msg);
@@ -255,6 +277,76 @@ class Range {
    * set to +1 the depth of the original range.
    */
   uint64_t partition_depth_;
+};
+
+/**
+ * Performs checks to verify a range is a subset of the superset.
+ *
+ * Both the superset and the range must be valid ranges of the appropriate type
+ * as checked by ``check_range_is_valid``.
+ *
+ * @param superset The range that is the assumed superset. Must be a valid range
+ * with data of type T.
+ * @param range The range that is the assumed subset. Must be a valid
+ * range with data of type T.
+ * @return Status of the checks.
+ */
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+Status check_range_is_subset(const Range& superset, const Range& range) {
+  auto domain = (const T*)superset.data();
+  auto r = (const T*)range.data();
+  if (r[0] < domain[0] || r[1] > domain[1]) {
+    std::stringstream ss;
+    ss << "Range [" << r[0] << ", " << r[1] << "] is out of domain bounds ["
+       << domain[0] << ", " << domain[1] << "]";
+    return Status_RangeError(ss.str());
+  }
+  return Status::Ok();
+};
+
+/**
+ * Performs correctness checks for a valid range. If any validity checks fail
+ * an exception is thrown.
+ *
+ * @param range The range to check.
+ */
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+void check_range_is_valid(const Range& range) {
+  // Check has data.
+  if (range.empty())
+    throw std::invalid_argument("Range is empty");
+  auto r = (const T*)range.data();
+  // Check for NaN
+  if constexpr (std::is_floating_point_v<T>) {
+    if (std::isnan(r[0]) || std::isnan(r[1]))
+      throw std::invalid_argument("Range contains NaN");
+  }
+  // Check range bounds
+  if (r[0] > r[1])
+    throw std::invalid_argument(
+        "Lower range bound " + std::to_string(r[0]) +
+        " cannot be larger than the higher bound " + std::to_string(r[1]));
+};
+
+/**
+ * Crop a range to the requested bounds.
+ *
+ * @param bounds Bounds to crop the range to. Must be a valid range with data of
+ * type T.
+ * @param range The range to crop. Must be a valid range with data of type T.
+ */
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+void crop_range(const Range& bounds, Range& range) {
+  auto bounds_data = (const T*)bounds.data();
+  auto range_data = (T*)range.data();
+  range_data[0] = std::max(bounds_data[0], range_data[0]);
+  range_data[1] = std::min(bounds_data[1], range_data[1]);
 };
 
 }  // namespace tiledb::type

@@ -43,9 +43,9 @@ endif()
 
 string(REGEX MATCH "TILEDB_VERSION_MAJOR ([0-9])*" _ ${VERFILE})
 set(TILEDB_VERSION_MAJOR ${CMAKE_MATCH_1})
-string(REGEX MATCH "TILEDB_VERSION_MINOR ([0-9])*" _ ${VERFILE})
+string(REGEX MATCH "TILEDB_VERSION_MINOR ([0-9]+)*" _ ${VERFILE})
 set(TILEDB_VERSION_MINOR ${CMAKE_MATCH_1})
-string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9])*" _ ${VERFILE})
+string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9]+)*" _ ${VERFILE})
 set(TILEDB_VERSION_PATCH ${CMAKE_MATCH_1})
 
 set(TILEDB_VERSION "${TILEDB_VERSION_MAJOR}.${TILEDB_VERSION_MINOR}.${TILEDB_VERSION_PATCH}")
@@ -127,7 +127,6 @@ option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit test
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
 option(TILEDB_EXPERIMENTAL_FEATURES "If true, build and include experimental features" OFF)
-option(TILEDB_LEGACY_THREAD_POOL "Use legacy thread pool" OFF)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
@@ -255,15 +254,6 @@ endif()
 # Definitions for all targets
 add_definitions(-D_FILE_OFFSET_BITS=64)
 
-# Legacy thread pool
-if (TILEDB_LEGACY_THREAD_POOL)
-    message(STATUS "The TileDB library is compiled with LEGACY thread pool (${TILEDB_LEGACY_THREAD_POOL}).")
-    add_definitions(-DLEGACY_THREAD_POOL)
-else()
-    message(STATUS "The TileDB library is compiled with NEW thread pool (${TILEDB_LEGACY_THREAD_POOL}).")
-endif()
-
-
 # AVX2 flag
 include(CheckAVX2Support)
 CheckAVX2Support()
@@ -302,6 +292,10 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_compressors)
   add_dependencies(tests unit_range_subset)
   add_dependencies(tests unit_proxy)
+  add_dependencies(tests unit_range)
+  add_dependencies(tests unit_mgc_dict)
+
+  add_subdirectory(test/regression)
 endif()
 
 # Build tools

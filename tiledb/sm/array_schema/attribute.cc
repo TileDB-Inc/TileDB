@@ -36,7 +36,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -294,6 +294,10 @@ Status Attribute::set_filter_pipeline(const FilterPipeline* pipeline) {
       return LOG_STATUS(Status_AttributeError(
           "RLE filter cannot be combined with other filters when applied to "
           "variable length string attributes"));
+    } else if (pipeline->has_filter(FilterType::FILTER_DICTIONARY)) {
+      return LOG_STATUS(Status_AttributeError(
+          "Dictionary-encoding filter cannot be combined with other filters "
+          "when applied to variable length string attributes"));
     }
   }
 

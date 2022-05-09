@@ -554,8 +554,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
   // Check new size and number of chunks
@@ -674,8 +673,7 @@ TEST_CASE(
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   Tile::set_max_tile_chunk_size(80);
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
             .ok());
@@ -750,8 +748,7 @@ TEST_CASE(
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
 
   SECTION("- Single stage") {
@@ -924,8 +921,7 @@ TEST_CASE(
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
 
   SECTION("- Single stage") {
@@ -1061,8 +1057,7 @@ TEST_CASE(
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
 
   SECTION("- Single stage") {
@@ -1235,8 +1230,7 @@ TEST_CASE(
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
 
   SECTION("- Single stage") {
@@ -1372,8 +1366,7 @@ TEST_CASE(
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
   CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
@@ -1495,8 +1488,7 @@ TEST_CASE(
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   Tile::set_max_tile_chunk_size(80);
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
   CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
@@ -1586,8 +1578,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   schema.init();
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
 
   SECTION("- Simple") {
     CHECK(pipeline.add_filter(Add1InPlace()).ok());
@@ -1752,8 +1743,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   schema.init();
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
 
   SECTION("- Simple") {
     Tile::set_max_tile_chunk_size(80);
@@ -1869,8 +1859,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
 
   SECTION("- Single stage") {
@@ -2070,8 +2059,7 @@ TEST_CASE(
       91, 99, 275, 238, 425, 525, 1350, 825, 1122};
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
 
   SECTION("- Single stage") {
@@ -2226,8 +2214,7 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
   CHECK(pipeline.add_filter(AddNInPlace()).ok());
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
@@ -2353,8 +2340,7 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
   CHECK(pipeline.add_filter(AddNInPlace()).ok());
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
@@ -2443,8 +2429,7 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
   CHECK(pipeline.add_filter(AddNInPlace()).ok());
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
@@ -2563,8 +2548,7 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
       // Pos-delta would (correctly) return error after e.g. compression.
       []() { return new PositiveDeltaFilter(); }};
 
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   for (int i = 0; i < 100; i++) {
     // Construct a random pipeline
     FilterPipeline pipeline;
@@ -2637,8 +2621,7 @@ TEST_CASE(
 
   // MD5
   FilterPipeline md5_pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   ChecksumMD5Filter md5_filter;
   CHECK(md5_pipeline.add_filter(md5_filter).ok());
   CHECK(md5_pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp)
@@ -2699,8 +2682,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(BitWidthReductionFilter()).ok());
 
   SECTION("- Single stage") {
@@ -2955,8 +2937,7 @@ TEST_CASE(
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(BitWidthReductionFilter()).ok());
 
   SECTION("- Single stage") {
@@ -3214,8 +3195,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(PositiveDeltaFilter()).ok());
 
   SECTION("- Single stage") {
@@ -3371,8 +3351,7 @@ TEST_CASE(
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(PositiveDeltaFilter()).ok());
 
   SECTION("- Single stage") {
@@ -3507,8 +3486,7 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(BitshuffleFilter()).ok());
 
   SECTION("- Single stage") {
@@ -3634,8 +3612,7 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(BitshuffleFilter()).ok());
 
   SECTION("- Single stage") {
@@ -3717,8 +3694,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(ByteshuffleFilter()).ok());
 
   SECTION("- Single stage") {
@@ -3844,8 +3820,7 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
   }
 
   FilterPipeline pipeline;
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   CHECK(pipeline.add_filter(ByteshuffleFilter()).ok());
 
   SECTION("- Single stage") {
@@ -3928,8 +3903,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
 
   SECTION("- AES-256-GCM") {
     FilterPipeline pipeline;
-    ThreadPool tp;
-    CHECK(tp.init(4).ok());
+    ThreadPool tp(4);
     CHECK(pipeline.add_filter(EncryptionAES256GCMFilter()).ok());
 
     // No key set

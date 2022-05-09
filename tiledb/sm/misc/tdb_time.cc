@@ -31,7 +31,7 @@
  * This file defines a timestamp function
  */
 
-#include "time.h"
+#include "tdb_time.h"
 #ifdef _WIN32
 #include <sys/timeb.h>
 #include <sys/types.h>
