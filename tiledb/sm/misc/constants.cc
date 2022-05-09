@@ -125,6 +125,12 @@ const std::string coords = "__coords";
 /** Special name reserved for the timestamp attribute. */
 const std::string timestamps = "__timestamps";
 
+/** The size of a timestamp cell. */
+const uint64_t timestamp_size = sizeof(uint64_t);
+
+/** The type of a variable offset cell. */
+extern const Datatype timestamp_type = Datatype::UINT64;
+
 /** The default compressor for the coordinates. */
 Compressor coords_compression = Compressor::ZSTD;
 

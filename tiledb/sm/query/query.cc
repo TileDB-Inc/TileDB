@@ -1146,22 +1146,31 @@ void Query::clear_strategy() {
 }
 
 Status Query::disable_check_global_order() {
-  if (status_ != QueryStatus::UNINITIALIZED)
+  if (status_ != QueryStatus::UNINITIALIZED) {
     return logger_->status(Status_QueryError(
         "Cannot disable checking global order after initialization"));
+  }
 
-  if (type_ == QueryType::READ)
+  if (type_ == QueryType::READ) {
     return logger_->status(Status_QueryError(
         "Cannot disable checking global order; Applicable only to writes"));
+  }
 
   disable_check_global_order_ = true;
   return Status::Ok();
 }
 
 Status Query::set_consolidation_with_timestamps() {
-  if (status_ != QueryStatus::UNINITIALIZED)
+  if (status_ != QueryStatus::UNINITIALIZED) {
     return logger_->status(Status_QueryError(
-        "Cannot disable checking global order after initialization"));
+        "Cannot enable consolidation with timestamps after initialization"));
+  }
+
+  if (type_ != QueryType::READ) {
+    return logger_->status(Status_QueryError(
+        "Cannot enable consolidation with timestamps; Applicable only to "
+        "reads"));
+  }
 
   consolidation_with_timestamps_ = true;
   return Status::Ok();

@@ -242,7 +242,7 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
   }
 
   if (name == constants::timestamps) {
-    return sizeof(uint64_t);
+    return constants::timestamp_size;
   }
 
   // Attribute
@@ -535,7 +535,7 @@ Datatype ArraySchema::type(const std::string& name) const {
     return domain_->dimension_ptr(0)->type();
 
   if (name == constants::timestamps)
-    return Datatype::UINT64;
+    return constants::timestamp_type;
 
   // Attribute
   auto attr_it = attribute_map_.find(name);
