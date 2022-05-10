@@ -842,7 +842,8 @@ Status SparseGlobalOrderReader::copy_offsets_tiles(
       [&](uint64_t i, uint64_t range_thread_idx) {
         // For easy reference.
         auto& rcs = result_cell_slabs[i];
-        auto rt = (ResultTileWithBitmap<uint8_t>*)result_cell_slabs[i].tile_;
+        auto rt = static_cast<ResultTileWithBitmap<uint8_t>*>(
+            result_cell_slabs[i].tile_);
 
         // Get source buffers.
         const auto tile_tuple = rt->tile_tuple(name);
@@ -1001,7 +1002,8 @@ Status SparseGlobalOrderReader::copy_fixed_data_tiles(
       [&](uint64_t i, uint64_t range_thread_idx) {
         // For easy reference.
         auto& rcs = result_cell_slabs[i];
-        auto rt = (ResultTileWithBitmap<uint8_t>*)result_cell_slabs[i].tile_;
+        auto rt = static_cast<ResultTileWithBitmap<uint8_t>*>(
+            result_cell_slabs[i].tile_);
 
         // Get source buffers.
         const auto stores_zipped_coords = is_dim && rt->stores_zipped_coords();
@@ -1074,8 +1076,9 @@ Status SparseGlobalOrderReader::copy_timestamps_tiles(
       [&](uint64_t i, uint64_t range_thread_idx) {
         // For easy reference.
         auto& rcs = result_cell_slabs[i];
-        auto rt = (ResultTileWithBitmap<uint8_t>*)result_cell_slabs[i].tile_;
-        const uint64_t cell_size = sizeof(uint64_t);
+        auto rt = static_cast<ResultTileWithBitmap<uint8_t>*>(
+            result_cell_slabs[i].tile_);
+        const uint64_t cell_size = constants::timestamp_size;
 
         // Get source buffers.
         const auto tile_tuple = rt->tile_tuple(constants::timestamps);
@@ -1156,6 +1159,9 @@ SparseGlobalOrderReader::respect_copy_memory_budget(
               (ResultTileWithBitmap<uint8_t>*)result_cell_slabs[idx].tile_;
           auto id =
               std::pair<uint64_t, uint64_t>(rt->frag_idx(), rt->tile_idx());
+
+          // Timestamp attribute might not have tiles if this isn't a
+          // consolidated fragment with timestamps.
           const bool has_tile =
               !is_timestamps ||
               fragment_metadata_[rt->frag_idx()]->has_timestamps();

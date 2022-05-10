@@ -573,7 +573,7 @@ Status FragmentConsolidator::create_queries(
   *query_w =
       tdb_new(Query, storage_manager_, array_for_writes, *new_fragment_uri);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
-  RETURN_NOT_OK((*query_w)->disable_check_global_order());
+  RETURN_NOT_OK((*query_w)->disable_checks_consolidation());
   if (array_for_reads->array_schema_latest().dense())
     RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
 

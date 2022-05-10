@@ -75,7 +75,7 @@ GlobalOrderWriter::GlobalOrderWriter(
     Subarray& subarray,
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
-    bool disable_check_global_order,
+    bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
     URI fragment_uri)
     : WriterBase(
@@ -88,7 +88,7 @@ GlobalOrderWriter::GlobalOrderWriter(
           subarray,
           layout,
           written_fragment_info,
-          disable_check_global_order,
+          disable_checks_consolidation,
           coords_info,
           fragment_uri) {
 }

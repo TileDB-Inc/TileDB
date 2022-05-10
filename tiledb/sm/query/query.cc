@@ -80,7 +80,7 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     , coord_offsets_buffer_is_set_(false)
     , data_buffer_name_("")
     , offsets_buffer_name_("")
-    , disable_check_global_order_(false)
+    , disable_checks_consolidation_(false)
     , consolidation_with_timestamps_(false)
     , fragment_uri_(fragment_uri) {
   assert(array->is_open());
@@ -1000,7 +1000,6 @@ Status Query::create_strategy() {
           subarray_,
           layout_,
           written_fragment_info_,
-          disable_check_global_order_,
           coords_info_,
           fragment_uri_));
     } else if (layout_ == Layout::UNORDERED) {
@@ -1015,7 +1014,6 @@ Status Query::create_strategy() {
           subarray_,
           layout_,
           written_fragment_info_,
-          disable_check_global_order_,
           coords_info_,
           fragment_uri_));
     } else if (layout_ == Layout::GLOBAL_ORDER) {
@@ -1030,7 +1028,7 @@ Status Query::create_strategy() {
           subarray_,
           layout_,
           written_fragment_info_,
-          disable_check_global_order_,
+          disable_checks_consolidation_,
           coords_info_,
           fragment_uri_));
     } else {
@@ -1145,7 +1143,7 @@ void Query::clear_strategy() {
   strategy_ = nullptr;
 }
 
-Status Query::disable_check_global_order() {
+Status Query::disable_checks_consolidation() {
   if (status_ != QueryStatus::UNINITIALIZED) {
     return logger_->status(Status_QueryError(
         "Cannot disable checking global order after initialization"));
@@ -1153,10 +1151,10 @@ Status Query::disable_check_global_order() {
 
   if (type_ == QueryType::READ) {
     return logger_->status(Status_QueryError(
-        "Cannot disable checking global order; Applicable only to writes"));
+        "Cannot disable checks for consolidation; Applicable only to writes"));
   }
 
-  disable_check_global_order_ = true;
+  disable_checks_consolidation_ = true;
   return Status::Ok();
 }
 
