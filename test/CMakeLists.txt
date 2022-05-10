@@ -166,6 +166,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-gcs.cc
   src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
+  src/unit-hilbert.cc
   src/unit-lru_cache.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
@@ -186,8 +187,11 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-SubarrayPartitioner-sparse.cc
   src/unit-Tile.cc
   src/unit-TileDomain.cc
+  src/unit-uri.cc
   src/unit-ArrayDirectory.cc
+  src/unit-utils.cc
   src/unit-uuid.cc
+  src/unit-ValidityVector.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   )

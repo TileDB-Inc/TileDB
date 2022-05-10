@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file contains functions for parsing URIs for storage of an array.
+ * This file contains functions for parsing URIs within the storage of an array.
  */
 
 #ifndef TILEDB_PARSE_URI_H

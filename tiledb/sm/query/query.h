@@ -562,11 +562,6 @@ class Query {
   Status disable_check_global_order();
 
   /**
-   * Enables consolidation with timestamps.
-   */
-  Status set_consolidation_with_timestamps();
-
-  /**
    * Sets the config for the Query
    *
    * This function overrides the config for Query-level parameters only.
@@ -984,11 +979,6 @@ class Query {
    * in the global order. This supercedes the config.
    */
   bool disable_check_global_order_;
-
-  /**
-   * If `true`, it will enable consolidation with timestamps on the reader.
-   */
-  bool consolidation_with_timestamps_;
 
   /** The name of the new fragment to be created for writes. */
   URI fragment_uri_;

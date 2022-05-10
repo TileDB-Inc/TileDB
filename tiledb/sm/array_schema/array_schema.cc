@@ -241,10 +241,6 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
     return dim_num * coord_size;
   }
 
-  if (name == constants::timestamps) {
-    return constants::timestamp_size;
-  }
-
   // Attribute
   auto attr_it = attribute_map_.find(name);
   if (attr_it != attribute_map_.end()) {
@@ -267,7 +263,7 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
 
 unsigned int ArraySchema::cell_val_num(const std::string& name) const {
   // Special zipped coordinates
-  if (name == constants::coords || name == constants::timestamps)
+  if (name == constants::coords)
     return 1;
 
   // Attribute
@@ -344,7 +340,7 @@ Status ArraySchema::check_attributes(
 }
 
 const FilterPipeline& ArraySchema::filters(const std::string& name) const {
-  if (name == constants::coords || name == constants::timestamps)
+  if (name == constants::coords)
     return coords_filters();
 
   // Attribute
@@ -534,9 +530,6 @@ Datatype ArraySchema::type(const std::string& name) const {
   if (name == constants::coords)
     return domain_->dimension_ptr(0)->type();
 
-  if (name == constants::timestamps)
-    return constants::timestamp_type;
-
   // Attribute
   auto attr_it = attribute_map_.find(name);
   if (attr_it != attribute_map_.end())
@@ -550,7 +543,7 @@ Datatype ArraySchema::type(const std::string& name) const {
 
 bool ArraySchema::var_size(const std::string& name) const {
   // Special case for zipped coordinates
-  if (name == constants::coords || name == constants::timestamps)
+  if (name == constants::coords)
     return false;
 
   // Attribute

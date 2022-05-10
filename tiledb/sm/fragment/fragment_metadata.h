@@ -83,7 +83,6 @@ class FragmentMetadata {
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
    * @param dense Indicates whether the fragment is dense or sparse.
-   * @param has_timestamps Does the fragment contains timestamps.
    */
   FragmentMetadata(
       StorageManager* storage_manager,
@@ -91,8 +90,7 @@ class FragmentMetadata {
       const shared_ptr<const ArraySchema>& array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
-      bool dense = true,
-      bool has_timestamps = false);
+      bool dense = true);
 
   /** Destructor. */
   ~FragmentMetadata();
@@ -839,7 +837,7 @@ class FragmentMetadata {
   /**
    * Maps an attribute or dimension to an index used in the various vector
    * class members. Attributes are first, then TILEDB_COORDS, then the
-   * dimensions, then timestamp.
+   * dimensions.
    */
   std::unordered_map<std::string, unsigned> idx_map_;
 

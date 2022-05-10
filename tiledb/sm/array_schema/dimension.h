@@ -176,8 +176,7 @@ class Dimension {
   static uint64_t tile_idx(
       const T& v, const T& domain_low, const T& tile_extent) {
     typedef typename std::make_unsigned<T>::type unsigned_t;
-    return static_cast<unsigned_t>(v - domain_low) /
-           static_cast<unsigned_t>(tile_extent);
+    return ((unsigned_t)v - (unsigned_t)domain_low) / (unsigned_t)tile_extent;
   }
 
   /**
@@ -356,6 +355,14 @@ class Dimension {
   Status check_range(const Range& range) const;
 
   /**
+   * Adjust a range so that the upper/lower bounds are within the dimension's
+   * domain.
+   * @param range Query range object that might be mutated
+   * @return status if error
+   */
+  Status adjust_range_oob(Range* range) const;
+
+  /**
    * Performs correctness checks on the input range. Returns `true`
    * upon error and stores an error message to `err_msg`.
    *
@@ -434,6 +441,86 @@ class Dimension {
     }
 
     return true;
+  }
+
+  /**
+   * Takes a range from a query and might mutate it so the lower/upper values
+   * are within the domain of the dimension. If mutation occurs a warning is
+   * logged
+   *
+   * @tparam T datatype
+   * @param dim dimension object to get domain from
+   * @param range Query range objects to mutate
+   */
+  template <
+      typename T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  static void adjust_range_oob(const Dimension* dim, const Range* range) {
+    auto domain = (const T*)dim->domain().data();
+    auto r = (T*)range->data();
+
+    // Check out-of-bounds
+    if (r[0] < domain[0]) {
+      std::stringstream ss;
+      ss << "Range lower bound " << r[0] << " is out of domain bounds ["
+         << domain[0] << ", " << domain[1]
+         << "]. Adjusting range lower bound to be " << domain[0]
+         << " on dimension '" << dim->name() << "'";
+      LOG_WARN(ss.str());
+
+      r[0] = domain[0];
+    }
+
+    if (r[1] > domain[1]) {
+      std::stringstream ss;
+      ss << "Range upper bound " << r[1] << " is out of domain bounds ["
+         << domain[0] << ", " << domain[1]
+         << "]. Adjusting range upper bound to be " << domain[1]
+         << " on dimension '" << dim->name() << "'";
+      LOG_WARN(ss.str());
+
+      r[1] = domain[1];
+    }
+  }
+
+  /**
+   * Takes a range from a query and might mutate it so the lower/upper values
+   * are within the domain of the dimension. If mutation occurs a warning is
+   * logged
+   *
+   * @tparam T datatype
+   * @param dim dimension object to get domain from
+   * @param range Query range objects to mutate
+   */
+  template <
+      typename T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  static void adjust_range_oob(const Dimension* dim, const Range* range) {
+    auto domain = (const T*)dim->domain().data();
+    auto r = (T*)range->data();
+
+    // Check out-of-bounds
+    if (r[0] < domain[0]) {
+      std::stringstream ss;
+      ss << "Range lower bound " << r[0] << " is out of domain bounds ["
+         << domain[0] << ", " << domain[1]
+         << "]. Adjusting range lower bound to be " << domain[0]
+         << " on dimension '" << dim->name() << "'";
+      LOG_WARN(ss.str());
+
+      r[0] = domain[0];
+    }
+
+    if (r[1] > domain[1]) {
+      std::stringstream ss;
+      ss << "Range upper bound " << r[1] << " is out of domain bounds ["
+         << domain[0] << ", " << domain[1]
+         << "]. Adjusting range upper bound to be " << domain[1]
+         << " on dimension '" << dim->name() << "'";
+      LOG_WARN(ss.str());
+
+      r[1] = domain[1];
+    }
   }
 
   /** Returns true if the input range coincides with tile boundaries. */
@@ -782,6 +869,12 @@ class Dimension {
       check_range_func_;
 
   /**
+   * Stores the appropriate templated check_range() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const Dimension*, const Range*)> adjust_range_oob_func_;
+
+  /**
    * Stores the appropriate templated coincides_with_tiles() function based on
    * the dimension datatype.
    */
@@ -1008,6 +1101,9 @@ class Dimension {
 
   /** Sets the templated check_range() function. */
   void set_check_range_func();
+
+  /** Set the templated adjust_range_oob_func() function. */
+  void set_adjust_range_oob_func();
 
   /** Sets the templated coincides_with_tiles() function. */
   void set_coincides_with_tiles_func();

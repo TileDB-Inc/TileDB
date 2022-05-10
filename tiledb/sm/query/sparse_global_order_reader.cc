@@ -69,8 +69,7 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition,
-    bool consolidation_with_timestamps)
+    QueryCondition& condition)
     : SparseIndexReaderBase(
           stats,
           logger->clone("SparseGlobalOrderReader", ++logger_id_),
@@ -83,8 +82,7 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
           condition)
     , result_tiles_(array->fragment_metadata().size())
     , memory_used_for_coords_(array->fragment_metadata().size())
-    , memory_used_for_qc_tiles_(array->fragment_metadata().size())
-    , consolidation_with_timestamps_(consolidation_with_timestamps) {
+    , memory_used_for_qc_tiles_(array->fragment_metadata().size()) {
 }
 
 /* ****************************** */
@@ -142,11 +140,6 @@ Status SparseGlobalOrderReader::initialize_memory_budget() {
 
 Status SparseGlobalOrderReader::dowork() {
   auto timer_se = stats_->start_timer("dowork");
-
-  if (consolidation_with_timestamps_) {
-    return logger_->status(Status_SparseGlobalOrderReaderError(
-        "Consolidation with timestamps not yet implemented"));
-  }
 
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
@@ -1082,9 +1075,9 @@ SparseGlobalOrderReader::respect_copy_memory_budget(
             unordered_set<std::pair<uint64_t, uint64_t>, utils::hash::pair_hash>
                 accounted_tiles;
 
-        // For dimensions or query condition fields, tiles are already all
+        // For dimensions, when we have a subarray, tiles are already all
         // loaded in memory.
-        if (array_schema_.is_dim(name) ||
+        if ((subarray_.is_set() && array_schema_.is_dim(name)) ||
             condition_.field_names().count(name) != 0)
           return Status::Ok();
 

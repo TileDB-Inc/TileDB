@@ -26,21 +26,18 @@
 
 include(common NO_POLICY_SCOPE)
 
-add_library(query)
-target_link_libraries(query PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-
-if (TILEDB_TESTS)
-    add_executable(unit_query EXCLUDE_FROM_ALL)
+# Skeleton for future use
+if (FALSE AND TILEDB_TESTS)
+    add_executable(unit_query_writer EXCLUDE_FROM_ALL)
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_query PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_query PUBLIC query)
+    target_link_libraries(unit_query_writer PUBLIC Catch2::Catch2)
 
     # Sources for tests
-    target_sources(unit_query PUBLIC test/main.cc test/unit_validity_vector.cc)
+    target_sources(unit_query_writer PUBLIC test/unit_query_writer_main.cc)
 
     add_test(
-        NAME "unit_query"
-        COMMAND $<TARGET_FILE:unit_query>
+        NAME "unit_query_writer"
+        COMMAND $<TARGET_FILE:unit_query_writer>
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()

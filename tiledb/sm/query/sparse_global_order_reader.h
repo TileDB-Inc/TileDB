@@ -73,8 +73,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition,
-      bool consolidation_with_timestamps);
+      QueryCondition& condition);
 
   /** Destructor. */
   ~SparseGlobalOrderReader() = default;
@@ -155,9 +154,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
 
   /** Memory budget per fragment for qc tiles. */
   double per_fragment_qc_memory_;
-
-  /** Enables consolidation with timestamps or not. */
-  bool consolidation_with_timestamps_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

@@ -499,7 +499,7 @@ Status FilterPipeline::run_reverse_chunk_range(
       void* output_chunk_buffer =
           static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
       RETURN_NOT_OK(input_data.copy_to(output_chunk_buffer));
-      continue;
+      return Status::Ok();
     }
 
     // Apply the filters sequentially in reverse.
