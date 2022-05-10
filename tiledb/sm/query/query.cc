@@ -1146,7 +1146,7 @@ void Query::clear_strategy() {
 Status Query::disable_checks_consolidation() {
   if (status_ != QueryStatus::UNINITIALIZED) {
     return logger_->status(Status_QueryError(
-        "Cannot disable checking global order after initialization"));
+        "Cannot disable checks for consolidation after initialization"));
   }
 
   if (type_ == QueryType::READ) {

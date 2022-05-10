@@ -223,6 +223,12 @@ Status ReaderBase::check_validity_buffer_sizes() const {
   return Status::Ok();
 }
 
+bool ReaderBase::timestamps_not_present(
+    const std::string& name,
+    const std::shared_ptr<tiledb::sm::FragmentMetadata>& frag_md) const {
+  return name == constants::timestamps && !frag_md->has_timestamps();
+}
+
 Status ReaderBase::load_tile_offsets(
     Subarray& subarray, const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");
@@ -457,7 +463,7 @@ Status ReaderBase::read_tiles(
       }
 
       // If the fragment doesn't include timestamps
-      if (name == constants::timestamps && !fragment->has_timestamps()) {
+      if (timestamps_not_present(name, fragment)) {
         continue;
       }
 
@@ -722,7 +728,7 @@ ReaderBase::load_tile_chunk_data(
     }
 
     // If the fragment doesn't include timestamps
-    if (name == constants::timestamps && !fragment->has_timestamps()) {
+    if (timestamps_not_present(name, fragment)) {
       return {Status::Ok(), nullopt, nullopt, nullopt};
     }
 
@@ -780,7 +786,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
     }
 
     // If the fragment doesn't include timestamps
-    if (name == constants::timestamps && !fragment->has_timestamps()) {
+    if (timestamps_not_present(name, fragment)) {
       return Status::Ok();
     }
 
@@ -869,7 +875,7 @@ Status ReaderBase::post_process_unfiltered_tile(
     }
 
     // If the fragment doesn't include timestamps
-    if (name == constants::timestamps && !fragment->has_timestamps()) {
+    if (timestamps_not_present(name, fragment)) {
       return Status::Ok();
     }
 
@@ -1276,7 +1282,7 @@ Status ReaderBase::unfilter_tiles(
           }
 
           // If the fragment doesn't include timestamps
-          if (name == constants::timestamps && !fragment->has_timestamps()) {
+          if (timestamps_not_present(name, fragment)) {
             return Status::Ok();
           }
 
