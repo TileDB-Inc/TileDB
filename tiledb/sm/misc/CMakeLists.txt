@@ -142,3 +142,19 @@ target_include_directories(unit_mgc_dict
     ${CMAKE_CURRENT_BINARY_DIR}
    "${libmagic_INCLUDE_DIR}"
 )
+
+if (TILEDB_TESTS)
+    add_executable(unit_misc EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_misc PRIVATE math)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_misc PUBLIC Catch2::Catch2)
+
+    # Sources for tests
+    target_sources(unit_misc PUBLIC test/main.cc test/unit_math.cc test/unit_hilbert.cc)
+
+    add_test(
+        NAME "unit_misc"
+        COMMAND $<TARGET_FILE:unit_misc>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()
