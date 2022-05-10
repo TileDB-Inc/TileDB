@@ -100,8 +100,8 @@ shared_ptr<detail::RangeSetAndSupersetImpl> range_subset_internals(
       return create_range_subset_internals<std::string>(
           superset, coalesce_ranges);
     default:
-      LOG_ERROR("Unexpected dimension datatype " + datatype_str(datatype));
-      return nullptr;
+      throw std::invalid_argument(
+          "Unexpected dimension datatype " + datatype_str(datatype));
   }
 }
 

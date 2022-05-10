@@ -387,3 +387,8 @@ TEST_CASE("RangeSetAndSuperset::sort - STRING_ASCII") {
     result_range = range_subset[1];
   }
 }
+
+TEST_CASE("RangeSetAndSuperset test bad constructor args") {
+  Range range{};
+  REQUIRE_THROWS(RangeSetAndSuperset(Datatype::ANY, range, false, false));
+}
