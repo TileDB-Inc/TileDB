@@ -69,7 +69,8 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition)
+    QueryCondition& condition,
+    bool consolidation_with_timestamps)
     : SparseIndexReaderBase(
           stats,
           logger->clone("SparseGlobalOrderReader", ++logger_id_),
@@ -82,7 +83,8 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
           condition)
     , result_tiles_(array->fragment_metadata().size())
     , memory_used_for_coords_(array->fragment_metadata().size())
-    , memory_used_for_qc_tiles_(array->fragment_metadata().size()) {
+    , memory_used_for_qc_tiles_(array->fragment_metadata().size())
+    , consolidation_with_timestamps_(consolidation_with_timestamps) {
 }
 
 /* ****************************** */
@@ -140,6 +142,11 @@ Status SparseGlobalOrderReader::initialize_memory_budget() {
 
 Status SparseGlobalOrderReader::dowork() {
   auto timer_se = stats_->start_timer("dowork");
+
+  if (consolidation_with_timestamps_) {
+    return logger_->status(Status_SparseGlobalOrderReaderError(
+        "Consolidation with timestamps not yet implemented"));
+  }
 
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();

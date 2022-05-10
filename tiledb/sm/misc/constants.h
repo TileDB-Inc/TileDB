@@ -119,6 +119,15 @@ extern int coords_compression_level;
 /** Special name reserved for the coordinates attribute. */
 extern const std::string coords;
 
+/** Special name reserved for the timestamp attribute. */
+extern const std::string timestamps;
+
+/** The size of a timestamp cell. */
+extern const uint64_t timestamp_size;
+
+/** The type of a variable offset cell. */
+extern const Datatype timestamp_type;
+
 /** The special value for an empty int32. */
 extern const int empty_int32;
 

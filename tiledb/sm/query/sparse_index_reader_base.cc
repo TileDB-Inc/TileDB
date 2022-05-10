@@ -586,6 +586,12 @@ SparseIndexReaderBase::read_and_unfilter_attributes(
   uint64_t memory_used = 0;
   while (*buffer_idx < names.size()) {
     auto& name = names[*buffer_idx];
+
+    if (name == constants::timestamps) {
+      (*buffer_idx)++;
+      continue;
+    }
+
     auto attr_mem_usage = mem_usage_per_attr[*buffer_idx];
     if (memory_used + attr_mem_usage < memory_budget) {
       memory_used += attr_mem_usage;

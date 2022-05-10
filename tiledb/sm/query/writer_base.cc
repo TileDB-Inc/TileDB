@@ -628,6 +628,7 @@ Status WriterBase::create_fragment(
     uri = frag_uri.join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
+  const bool has_timestamps = buffers_.count(constants::timestamps) != 0;
   frag_meta = make_shared<FragmentMetadata>(
       HERE(),
       storage_manager_,
@@ -635,7 +636,8 @@ Status WriterBase::create_fragment(
       array_->array_schema_latest_ptr(),
       uri,
       timestamp_range,
-      dense);
+      dense,
+      has_timestamps);
 
   RETURN_NOT_OK((frag_meta)->init(subarray_.ndrange(0)));
   return storage_manager_->create_dir(uri);
