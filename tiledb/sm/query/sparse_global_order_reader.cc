@@ -1075,9 +1075,9 @@ SparseGlobalOrderReader::respect_copy_memory_budget(
             unordered_set<std::pair<uint64_t, uint64_t>, utils::hash::pair_hash>
                 accounted_tiles;
 
-        // For dimensions, when we have a subarray, tiles are already all
+        // For dimensions or query condition fields, tiles are already all
         // loaded in memory.
-        if ((subarray_.is_set() && array_schema_.is_dim(name)) ||
+        if (array_schema_.is_dim(name) ||
             condition_.field_names().count(name) != 0)
           return Status::Ok();
 
