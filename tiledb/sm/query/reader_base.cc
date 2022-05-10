@@ -223,6 +223,12 @@ Status ReaderBase::check_validity_buffer_sizes() const {
   return Status::Ok();
 }
 
+bool ReaderBase::timestamps_not_present(
+    const std::string& name,
+    const std::shared_ptr<tiledb::sm::FragmentMetadata>& frag_md) const {
+  return name == constants::timestamps && !frag_md->has_timestamps();
+}
+
 Status ReaderBase::load_tile_offsets(
     Subarray& subarray, const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");
@@ -438,20 +444,28 @@ Status ReaderBase::read_tiles(
       const uint32_t format_version = fragment->format_version();
 
       // Applicable for zipped coordinates only to versions < 5
-      if (name == constants::coords && format_version >= 5)
+      if (name == constants::coords && format_version >= 5) {
         continue;
+      }
 
       // Applicable to separate coordinates only to versions >= 5
       const auto& array_schema = fragment->array_schema();
       const bool is_dim = array_schema->is_dim(name);
-      if (is_dim && format_version < 5)
+      if (is_dim && format_version < 5) {
         continue;
+      }
 
       // If the fragment doesn't have the attribute, this is a schema
       // evolution field and will be treated with fill-in value instead of
       // reading from disk
-      if (!array_schema->is_field(name))
+      if (!array_schema->is_field(name)) {
         continue;
+      }
+
+      // If the fragment doesn't include timestamps
+      if (timestamps_not_present(name, fragment)) {
+        continue;
+      }
 
       const bool var_size = array_schema->var_size(name);
       const bool nullable = array_schema->is_nullable(name);
@@ -694,8 +708,8 @@ ReaderBase::load_tile_chunk_data(
   assert(tile_chunk_var_data);
   assert(tile_chunk_validity_data);
 
-  const auto format_version =
-      fragment_metadata_[tile->frag_idx()]->format_version();
+  auto& fragment = fragment_metadata_[tile->frag_idx()];
+  const auto format_version = fragment->format_version();
   uint64_t unfiltered_tile_size = 0, unfiltered_tile_var_size = 0,
            unfiltered_tile_validity_size = 0;
 
@@ -709,8 +723,14 @@ ReaderBase::load_tile_chunk_data(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0)
+        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
       return {Status::Ok(), nullopt, nullopt, nullopt};
+    }
+
+    // If the fragment doesn't include timestamps
+    if (timestamps_not_present(name, fragment)) {
+      return {Status::Ok(), nullopt, nullopt, nullopt};
+    }
 
     const auto t = &std::get<0>(*tile_tuple);
     const auto t_var = &std::get<1>(*tile_tuple);
@@ -761,8 +781,14 @@ Status ReaderBase::unfilter_tile_chunk_range(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0)
+        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
       return Status::Ok();
+    }
+
+    // If the fragment doesn't include timestamps
+    if (timestamps_not_present(name, fragment)) {
+      return Status::Ok();
+    }
 
     auto t = &std::get<0>(*tile_tuple);
     auto t_var = &std::get<1>(*tile_tuple);
@@ -844,8 +870,14 @@ Status ReaderBase::post_process_unfiltered_tile(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0)
+        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
       return Status::Ok();
+    }
+
+    // If the fragment doesn't include timestamps
+    if (timestamps_not_present(name, fragment)) {
+      return Status::Ok();
+    }
 
     auto t = &std::get<0>(*tile_tuple);
     auto t_var = &std::get<1>(*tile_tuple);
@@ -1245,8 +1277,14 @@ Status ReaderBase::unfilter_tiles(
           // Skip non-existent attributes/dimensions (e.g. coords in the
           // dense case).
           if (tile_tuple == nullptr ||
-              std::get<0>(*tile_tuple).filtered_buffer().size() == 0)
+              std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
             return Status::Ok();
+          }
+
+          // If the fragment doesn't include timestamps
+          if (timestamps_not_present(name, fragment)) {
+            return Status::Ok();
+          }
 
           auto& t = std::get<0>(*tile_tuple);
           auto& t_var = std::get<1>(*tile_tuple);
