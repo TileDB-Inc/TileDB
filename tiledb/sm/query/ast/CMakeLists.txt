@@ -33,6 +33,15 @@ include(common NO_POLICY_SCOPE)
 ################################################################
 
 
+set(TILEDB_TEST_SUPPORT_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/helpers.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/helpers.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/helpers-dimension.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/vfs_helpers.cc
+  )
+
+message("Test support source " ${TILEDB_TEST_SUPPORT_SOURCES})
+
 add_library(tiledb_test_support_lib_ EXCLUDE_FROM_ALL
   $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
   ${TILEDB_TEST_SUPPORT_SOURCES}
@@ -41,6 +50,10 @@ add_library(tiledb_test_support_lib_ EXCLUDE_FROM_ALL
 target_include_directories(tiledb_test_support_lib_
   PRIVATE
     $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../../tiledb/sm/c_api")
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../../tiledb/sm/query")
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../..")
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/../../..")
 )
 target_include_directories(
   tiledb_test_support_lib_ BEFORE PRIVATE
