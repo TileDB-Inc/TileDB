@@ -638,13 +638,13 @@ class StorageManager {
    * @param config The configuration parameters.
    * @return Status
    */
-  Status init(const Config* config);
+  Status init(const Config& config);
 
   /** Returns the thread pool for compute-bound tasks. */
-  ThreadPool* compute_tp();
+  ThreadPool* compute_tp() const;
 
   /** Returns the thread pool for io-bound tasks. */
-  ThreadPool* io_tp();
+  ThreadPool* io_tp() const;
 
   /**
    * If the storage manager was configured with a REST server, return the

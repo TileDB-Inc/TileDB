@@ -30,21 +30,45 @@
  * Tests the C API context object.
  */
 
+#include <string>
+#include <thread>
+
 #include "catch.hpp"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 
 TEST_CASE("C API: Test context", "[capi][context]") {
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  int rc = tiledb_config_alloc(&config, &error);
+  tiledb_config_t* config{nullptr};
+  tiledb_error_t* error{nullptr};
+  int rc{tiledb_config_alloc(&config, &error)};
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
+  // Check alloc and alloc_with_error on non-error case
+  // It is allowed to create a thread pool with concurrency level = 0
   rc = tiledb_config_set(config, "sm.compute_concurrency_level", "0", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
-  tiledb_ctx_t* ctx;
+  tiledb_ctx_t* ctx{nullptr};
+  rc = tiledb_ctx_alloc(config, &ctx);
+  CHECK(rc == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
+  CHECK(ctx == nullptr);
+
+  rc = tiledb_ctx_alloc_with_error(config, &ctx, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  tiledb_ctx_free(&ctx);
+  CHECK(ctx == nullptr);
+
+  // Now check with failure
+  std::string too_large{
+      std::to_string(256 * std::thread::hardware_concurrency())};
+  rc = tiledb_config_set(
+      config, "sm.compute_concurrency_level", too_large.c_str(), &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+
   rc = tiledb_ctx_alloc(config, &ctx);
   CHECK(rc == TILEDB_ERR);
   tiledb_ctx_free(&ctx);
@@ -60,8 +84,29 @@ TEST_CASE("C API: Test context", "[capi][context]") {
   CHECK(rc == TILEDB_OK);
   CHECK(
       std::string(err_msg) ==
-      "[TileDB::ThreadPool] Error: Unable to initialize a thread pool with a "
-      "concurrency level of 0.");
+      "Error: Internal TileDB uncaught exception; Error initializing thread "
+      "pool of "
+      "concurrency level " +
+          too_large + "; Requested size too large");
+
+  // Check another non-failure
+  // Set this to non-error value
+  rc = tiledb_config_set(
+      config,
+      "sm.compute_concurrency_level",
+      std::to_string(4).c_str(),
+      &error);
+
+  // Set deprecated config
+  rc = tiledb_config_set(
+      config, "sm.num_reader_threads", std::to_string(7).c_str(), &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+
+  rc = tiledb_ctx_alloc(config, &ctx);
+  CHECK(rc == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
+  CHECK(ctx == nullptr);
 
   tiledb_error_free(&error);
   tiledb_config_free(&config);

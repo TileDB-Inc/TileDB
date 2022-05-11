@@ -52,6 +52,12 @@ TEST_CASE("C++ API: Config", "[cppapi][config]") {
 
   auto readInvalidKey = [&config]() { std::string result2 = config["bar"]; };
   REQUIRE_THROWS_AS(readInvalidKey(), tiledb::TileDBError);
+
+  bool contains = config.contains("foo");
+  CHECK(contains == true);
+
+  contains = config.contains("bar");
+  CHECK(contains == false);
 }
 
 TEST_CASE("C++ API: Config iterator", "[cppapi][config]") {

@@ -73,7 +73,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition);
+      QueryCondition& condition,
+      bool consolidation_with_timestamps);
 
   /** Destructor. */
   ~SparseGlobalOrderReader() = default;
@@ -154,6 +155,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
 
   /** Memory budget per fragment for qc tiles. */
   double per_fragment_qc_memory_;
+
+  /** Enables consolidation with timestamps or not. */
+  bool consolidation_with_timestamps_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -327,6 +331,22 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const bool nullable,
       const unsigned dim_idx,
       const uint64_t cell_size,
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      const std::vector<uint64_t>& cell_offsets,
+      QueryBuffer& query_buffer);
+
+  /**
+   * Copy timestamps tiles.
+   *
+   * @param num_range_threads Total number of range threads.
+   * @param result_cell_slabs Result cell slabs to process.
+   * @param cell_offsets Cell offset per result tile.
+   * @param query_buffer Query buffer to operate on.
+   *
+   * @return Status.
+   */
+  Status copy_timestamps_tiles(
+      const uint64_t num_range_threads,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       const std::vector<uint64_t>& cell_offsets,
       QueryBuffer& query_buffer);

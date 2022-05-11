@@ -367,6 +367,11 @@ class Config {
    *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
    *    Only for `fragments` and `array_meta` consolidation mode. <br>
    *    **Default**: UINT64_MAX
+   * - `sm.consolidation.with_timestamps` <br>
+   *    **Experimental** <br>
+   *    Consolidation with timestamps will include, for each cells, the
+   *    timestamp at which the cell was written. <br>
+   *    **Default**: "false"
    * - `sm.memory_budget` <br>
    *    The memory budget for tiles of fixed-sized attributes (or offsets for
    *    var-sized attributes) to be fetched during reads.<br>
@@ -743,6 +748,19 @@ class Config {
       throw TileDBError("Config Error: Invalid parameter '" + param + "'");
 
     return val;
+  }
+
+  /**
+   * Check if a configuration parameter exists.
+   * @param param Name of configuration parameter
+   * @return true if the parameter exists, false otherwise
+   */
+  bool contains(const std::string_view& param) const {
+    const char* val;
+    tiledb_error_t* err;
+    tiledb_config_get(config_.get(), param.data(), &val, &err);
+
+    return val != nullptr;
   }
 
   /**

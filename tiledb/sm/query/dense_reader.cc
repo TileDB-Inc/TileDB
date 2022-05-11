@@ -186,7 +186,7 @@ void DenseReader::reset() {
 
 template <class OffType>
 Status DenseReader::dense_read() {
-  auto type = array_schema_.domain().dimension(0)->type();
+  auto type{array_schema_.domain().dimension_ptr(0)->type()};
   switch (type) {
     case Datatype::INT8:
       return dense_read<int8_t, OffType>();

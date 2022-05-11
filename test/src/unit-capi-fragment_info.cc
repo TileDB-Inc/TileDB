@@ -277,7 +277,7 @@ TEST_CASE(
   uint64_t size;
   rc = tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);
   CHECK(rc == TILEDB_OK);
-  CHECK(size == 3084);
+  CHECK(size == 3085);
 
   // Get dense / sparse
   int32_t dense;
@@ -514,7 +514,7 @@ TEST_CASE(
   uint64_t size;
   rc = tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);
   CHECK(rc == TILEDB_OK);
-  CHECK(size == 5382);
+  CHECK(size == 5383);
 
   // Get dense / sparse
   int32_t dense;
@@ -1351,16 +1351,16 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
       "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
       "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
-      "  > Size: 3084\n" + "  > Cell num: 10\n" +
+      "  > Size: 3085\n" + "  > Cell num: 10\n" +
       "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
       "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [1, 4]\n" + "  > Size: 3033\n" +
+      "  > Non-empty domain: [1, 4]\n" + "  > Size: 3034\n" +
       "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #3:\n" +
       "  > URI: " + written_frag_uri_3 + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [5, 6]\n" + "  > Size: 3081\n" +
+      "  > Non-empty domain: [5, 6]\n" + "  > Size: 3082\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [3, 3]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
@@ -1491,7 +1491,7 @@ TEST_CASE(
       "- To vacuum URIs:\n" + "  > " + written_frag_uri_1 + "\n  > " +
       written_frag_uri_2 + "\n  > " + written_frag_uri_3 + "\n" +
       "- Fragment #1:\n" + "  > URI: " + uri + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [1, 10]\n" + "  > Size: 3099\n" +
+      "  > Non-empty domain: [1, 10]\n" + "  > Size: 3100\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [1, 3]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
@@ -1575,7 +1575,7 @@ TEST_CASE(
       "- Unconsolidated metadata num: 1\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri + "\n" +
       "  > Type: sparse\n" + "  > Non-empty domain: [a, ddd]\n" +
-      "  > Size: 3330\n" + "  > Cell num: 4\n" +
+      "  > Size: 3331\n" + "  > Cell num: 4\n" +
       "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");

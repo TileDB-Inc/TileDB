@@ -38,7 +38,7 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_time.h"
 
 #include <fstream>
 #include <thread>
@@ -69,7 +69,7 @@ struct AzureFx {
   const std::string TEST_DIR = AZURE_CONTAINER.to_string() + "tiledb_test_dir/";
 
   tiledb::sm::Azure azure_;
-  ThreadPool thread_pool_;
+  ThreadPool thread_pool_{2};
 
   AzureFx() = default;
   ~AzureFx();
@@ -103,7 +103,8 @@ void AzureFx::init_azure(Config&& config, ConfMap settings) {
   // Set provided config settings for connection
   std::for_each(settings.begin(), settings.end(), set_conf);
   REQUIRE(config.set("vfs.azure.use_https", "false").ok());
-  REQUIRE(thread_pool_.init(2).ok());
+
+  // Initialize
   REQUIRE(azure_.init(config, &thread_pool_).ok());
 
   // Create container

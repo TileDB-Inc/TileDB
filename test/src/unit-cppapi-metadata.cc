@@ -37,7 +37,7 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_time.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"

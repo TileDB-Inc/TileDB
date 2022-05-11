@@ -40,7 +40,7 @@
 #include "tiledb/sm/group/group_member_v1.h"
 #include "tiledb/sm/group/group_v1.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/rest/rest_client.h"
 
@@ -205,7 +205,7 @@ Status Group::open(QueryType query_type) {
       }
     }
 
-    metadata_.reset(timestamp_start_, timestamp_end_);
+    metadata_.reset(timestamp_end_);
   }
 
   query_type_ = query_type;

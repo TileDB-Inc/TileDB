@@ -62,7 +62,6 @@ class UnorderedWriter : public WriterBase {
       Subarray& subarray,
       Layout layout,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
-      bool disable_check_global_order,
       Query::CoordsInfo& coords_info_,
       URI fragment_uri = URI(""));
 

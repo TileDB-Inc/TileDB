@@ -100,10 +100,81 @@ class DomainBufferDataRef : public detail::DomainBuffersTypes,
   }
 
   UntypedDatumView dimension_datum_view(unsigned int i) const override {
-    return {qb_[i]->dimension_datum_at(*domain_.dimension(i), k_).datum()};
+    return {qb_[i]->dimension_datum_at(*domain_.dimension_ptr(i), k_).datum()};
   }
 
   DomainBufferDataRef(const Domain& domain) = delete;
+};
+
+/**
+ * A container to store data for a single coordinate value across all
+ * dimensions.
+ */
+class SingleCoord {
+ public:
+  /**
+   * Default constructor is prohibited.
+   */
+  SingleCoord() = delete;
+
+  /**
+   * Constructor
+   *
+   * @param schema Array schema.
+   * @param coord Data ref to the coordinate.
+   */
+  SingleCoord(const ArraySchema& schema, const DomainBufferDataRef& coord)
+      : coords_(schema.dim_num())
+      , qb_(schema.dim_num())
+      , sizes_(schema.dim_num() + 1)
+      , single_offset_(1) {
+    sizes_[schema.dim_num()] = sizeof(uint64_t);
+    for (unsigned d = 0; d < coords_.size(); ++d) {
+      bool var_size = schema.dimension_ptr(d)->var_size();
+      auto dv = coord.dimension_datum_view(d);
+      sizes_[d] = dv.size();
+      coords_[d].resize(sizes_[d]);
+      memcpy(coords_[d].data(), dv.content(), sizes_[d]);
+
+      if (var_size) {
+        qb_[d].set_offsets_buffer(
+            &single_offset_[0], &sizes_[schema.dim_num()]);
+        qb_[d].set_data_var_buffer(coords_[d].data(), &sizes_[d]);
+      } else {
+        qb_[d].set_data_buffer(coords_[d].data(), &sizes_[d]);
+      }
+    }
+  }
+
+  /**
+   * Get the QueryBuffer object for a specific dimension.
+   *
+   * @param d Dimension index.
+   */
+  inline QueryBuffer* get_qb(const unsigned d) {
+    return &qb_[d];
+  }
+
+ private:
+  /**
+   * The coordinate data, per dimension.
+   */
+  std::vector<std::vector<uint8_t>> coords_;
+
+  /**
+   * Query buffer pointing to the data, per dimension.
+   */
+  std::vector<QueryBuffer> qb_;
+
+  /**
+   * Size of the data, per dimension.
+   */
+  std::vector<uint64_t> sizes_;
+
+  /**
+   * Used as the offsets buffer for a var sized attribute.
+   */
+  std::vector<uint64_t> single_offset_;
 };
 
 /**
@@ -142,8 +213,25 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
       : qb_(schema.dim_num()) {
     auto n_dimensions{schema.dim_num()};
     for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
-      const auto& name = schema.dimension(i)->name();
+      const auto& name{schema.dimension_ptr(i)->name()};
       qb_[i] = &buffers.at(name);
+    }
+  }
+
+  /**
+   * Constructor
+   *
+   * TODO: Change argument from `ArraySchema` to `Domain`. The current type is
+   * the result of code refactoring.
+   *
+   * @param schema the schema of an open array
+   * @param coord a single coordinate value
+   */
+  DomainBuffersView(const ArraySchema& schema, SingleCoord& coord)
+      : qb_(schema.dim_num()) {
+    auto n_dimensions{schema.dim_num()};
+    for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
+      qb_[i] = coord.get_qb(i);
     }
   }
 
@@ -198,7 +286,7 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
         size_t k) {
       // Construct datum in place with placement-new
       new (item) UntypedDatumView{
-          qb[i]->dimension_datum_at(*domain.dimension(i), k).datum()};
+          qb[i]->dimension_datum_at(*domain.dimension_ptr(i), k).datum()};
     }
   };
 

@@ -1,12 +1,11 @@
 /**
- * @file time.cc
+ * @file tiledb/sm/filesystem/test/main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,32 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file defines a timestamp function
+ * This file defines a test `main()`
  */
 
-#include "time.h"
-#ifdef _WIN32
-#include <sys/timeb.h>
-#include <sys/types.h>
-#else
-#include <sys/time.h>
-#endif
-#include <cstring>
-
-namespace tiledb::sm::utils::time {
-
-uint64_t timestamp_now_ms() {
-#ifdef _WIN32
-  struct _timeb tb;
-  memset(&tb, 0, sizeof(struct _timeb));
-  _ftime_s(&tb);
-  return static_cast<uint64_t>(tb.time * 1000L + tb.millitm);
-#else
-  struct timeval tp;
-  memset(&tp, 0, sizeof(struct timeval));
-  gettimeofday(&tp, nullptr);
-  return static_cast<uint64_t>(tp.tv_sec * 1000L + tp.tv_usec / 1000);
-#endif
-}
-
-}  // namespace tiledb::sm::utils::time
+#define CATCH_CONFIG_MAIN
+#include <catch.hpp>
