@@ -31,8 +31,8 @@
  */
 #include <iostream>
 
-#include "tiledb/common/common.h"
 #include "test/src/helpers.h"
+#include "tiledb/common/common.h"
 #include "tiledb/sm/query/ast/query_ast.h"
 
 #include "catch.hpp"
@@ -143,5 +143,10 @@ TEST_CASE(
       subtree_c->combine(x_neq_six, QueryConditionCombinationOp::AND);
   auto tree = subtree_a->combine(subtree_b, QueryConditionCombinationOp::OR);
 
-  std::cout << ast_node_to_str(tree) << std::endl;
+  REQUIRE(
+      ast_node_to_str(tree) ==
+      "(((x EQ 01 00 00 00 OR x EQ 02 00 00 00) AND (x EQ 03 00 00 00 OR x EQ "
+      "04 00 00 00)) OR (((x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 "
+      "00 00 00 OR x EQ 07 00 00 00)) OR x EQ 05 00 00 00) AND x NE 06 00 00 "
+      "00))");
 }
