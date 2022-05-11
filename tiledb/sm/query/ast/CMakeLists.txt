@@ -38,6 +38,7 @@ set(TILEDB_TEST_SUPPORT_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/helpers.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/helpers-dimension.h
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/vfs_helpers.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/serialization_wrappers.cc
   )
 
 message("Test support source " ${TILEDB_TEST_SUPPORT_SOURCES})
