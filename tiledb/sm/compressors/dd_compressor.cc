@@ -111,6 +111,10 @@ Status DoubleDelta::compress(
       return LOG_STATUS(Status_CompressionError(
           "Cannot compress tile with DoubleDelta; Float "
           "datatypes are not supported"));
+    case Datatype::BOOL:
+      return LOG_STATUS(Status_CompressionError(
+          "Cannot compress tile with DoubleDelta; Boolean "
+          "datatypes are not supported"));
   }
 
   assert(false);
@@ -178,6 +182,10 @@ Status DoubleDelta::decompress(
     case Datatype::FLOAT64:
       return LOG_STATUS(Status_CompressionError(
           "Cannot decompress tile with DoubleDelta; Float "
+          "datatypes are not supported"));
+    case Datatype::BOOL:
+      return LOG_STATUS(Status_CompressionError(
+          "Cannot decompress tile with DoubleDelta; Boolean "
           "datatypes are not supported"));
   }
 

@@ -1852,6 +1852,7 @@ std::string Dimension::domain_str() const {
 
     case Datatype::BLOB:
     case Datatype::CHAR:
+    case Datatype::BOOL:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
@@ -1950,6 +1951,7 @@ std::string Dimension::tile_extent_str() const {
 
     case Datatype::BLOB:
     case Datatype::CHAR:
+    case Datatype::BOOL:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:

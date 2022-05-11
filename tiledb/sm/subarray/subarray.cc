@@ -3012,6 +3012,7 @@ tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
       return non_overlapping_ranges_for_dim<char>(dim_idx);
     case Datatype::CHAR:
     case Datatype::BLOB:
+    case Datatype::BOOL:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:

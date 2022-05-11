@@ -387,6 +387,7 @@ Status FragmentMetadata::compute_fragment_min_max_sum_null_count() {
             case Datatype::INT64:
               compute_fragment_min_max_sum<int64_t>(name);
               break;
+            case Datatype::BOOL:
             case Datatype::UINT8:
               compute_fragment_min_max_sum<uint8_t>(name);
               break;
