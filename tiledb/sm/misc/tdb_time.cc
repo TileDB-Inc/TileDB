@@ -1,5 +1,5 @@
 /**
- * @file math.h
+ * @file time.cc
  *
  * @section LICENSE
  *
@@ -28,41 +28,32 @@
  *
  * @section DESCRIPTION
  *
- * This file contains useful (global) functions.
+ * This file defines a timestamp function
  */
 
-#ifndef TILEDB_UTILS_MATH_H
-#define TILEDB_UTILS_MATH_H
+#include "tdb_time.h"
+#ifdef _WIN32
+#include <sys/timeb.h>
+#include <sys/types.h>
+#else
+#include <sys/time.h>
+#endif
+#include <cstring>
 
-#include <cstdint>
+namespace tiledb::sm::utils::time {
 
-namespace tiledb::sm::utils::math {
+uint64_t timestamp_now_ms() {
+#ifdef _WIN32
+  struct _timeb tb;
+  memset(&tb, 0, sizeof(struct _timeb));
+  _ftime_s(&tb);
+  return static_cast<uint64_t>(tb.time * 1000L + tb.millitm);
+#else
+  struct timeval tp;
+  memset(&tp, 0, sizeof(struct timeval));
+  gettimeofday(&tp, nullptr);
+  return static_cast<uint64_t>(tp.tv_sec * 1000L + tp.tv_usec / 1000);
+#endif
+}
 
-/** Returns the value of x/y (integer division) rounded up. */
-uint64_t ceil(uint64_t x, uint64_t y);
-
-/** Returns log_b(x). */
-double log(double b, double x);
-
-/**
- * Computes a * b, but it checks for overflow. In case the product
- * overflows, it returns std::numeric_limits<T>::max().
- */
-template <class T>
-T safe_mul(T a, T b);
-
-/**
- * Returns the maximum power of 2 minus one that is smaller than
- * or equal to `value`.
- */
-uint64_t left_p2_m1(uint64_t value);
-
-/**
- * Returns the minimum power of 2 minus one that is larger than
- * or equal to `value`.
- */
-uint64_t right_p2_m1(uint64_t value);
-
-}  // namespace tiledb::sm::utils::math
-
-#endif  // TILEDB_UTILS_MATH_H
+}  // namespace tiledb::sm::utils::time

@@ -94,10 +94,12 @@ Status metadata_from_capnp(
 
     auto value_ptr = entry_reader.getValue();
     const void* value = (void*)value_ptr.begin();
-    if (value_ptr.size() != datatype_size(type) * value_num)
+    if (value_ptr.size() != datatype_size(type) * value_num) {
       return LOG_STATUS(Status_SerializationError(
           "Error deserializing array metadata; value size sanity check "
-          "failed."));
+          "failed for " +
+          key + "."));
+    }
 
     if (entry_reader.getDel()) {
       RETURN_NOT_OK(metadata->del(key.c_str()));

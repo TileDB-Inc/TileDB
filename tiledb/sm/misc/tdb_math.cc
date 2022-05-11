@@ -31,7 +31,7 @@
  * This file implements useful (global) functions.
  */
 
-#include "math.h"
+#include "tdb_math.h"
 #include <cmath>
 #include <limits>
 

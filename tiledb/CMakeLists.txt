@@ -135,13 +135,16 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer_list.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/api_argument_validator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_filestore.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_group.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cache/buffer_lru_cache.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dd_compressor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dict_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/gzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/lz4_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/rle_compressor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/util/gzip_wrappers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/zstd_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config_iter.cc
@@ -195,9 +198,10 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/math.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/mgc_dict.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/parse_argument.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/time.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/tdb_math.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/tdb_time.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/types.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
@@ -326,6 +330,32 @@ add_subdirectory(storage_format)
 add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_CORE_SOURCES}
     ${TILEDB_EXTERNALS_SOURCES}
+)
+
+############################################################
+# provide actions/target for preparation of magic.mgc data for embedding/build
+
+set(MGC_GZIPPED_BIN_PATH3 "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc/magic_mgc_gzipped.bin")
+set(MGC_GZIPPED_BIN_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc")
+
+add_custom_command(
+  OUTPUT "${MGC_GZIPPED_BIN_PATH3}"
+  DEPENDS "${MGC_GZIPPED_BIN_PATH3}.tar.bz2"
+  COMMAND ${CMAKE_COMMAND} -E tar x "${MGC_GZIPPED_BIN_PATH3}.tar.bz2"
+  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_DIRECTORY}"
+)
+add_custom_target(gen_mgc_unarch ALL
+  DEPENDS ${MGC_GZIPPED_BIN_PATH3}
+)
+add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_unarch)
+
+add_custom_target(
+  update-embedded-magic-data
+  COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_PATH3}"
+  COMMAND ${CMAKE_COMMAND} -E tar cvj "${MGC_GZIPPED_BIN_PATH3}.tar.bz2" "${MGC_GZIPPED_BIN_PATH3}"
+  DEPENDS "${libmagic_DICTIONARY}"
+  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_DIRECTORY}"
+  COMMENT "Re-generate ${MGC_GZIPPED_BIN_PATH3} for embedded magic.mgc support"
 )
 
 # Compile all core sources with PIC
@@ -533,6 +563,7 @@ find_package(LZ4_EP REQUIRED)
 find_package(Spdlog_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
+find_package(Magic_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
@@ -540,7 +571,9 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     spdlog::spdlog
     Zlib::Zlib
     Zstd::Zstd
+    libmagic
 )
+
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
@@ -811,6 +844,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
+  append_dep_lib(libmagic)
 endif()
 
 ############################################################
@@ -1017,6 +1051,8 @@ string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9]*)" _ ${ver})
 set(ver_patch ${CMAKE_MATCH_1})
 
 set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
+
+set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
 
 # PKG Config file
 configure_file(

@@ -40,6 +40,7 @@
 #include "tiledb/type/range/range.h"
 
 #include <optional>
+#include <string>
 #include <type_traits>
 #include <vector>
 
@@ -144,14 +145,14 @@ struct SortStrategy<std::string, std::string> {
   };
 };
 
-class RangeSetAndSupersetInternals {
+class RangeSetAndSupersetImpl {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Destructor. */
-  virtual ~RangeSetAndSupersetInternals() = default;
+  virtual ~RangeSetAndSupersetImpl() = default;
 
   /**
    * Adds a range to the range manager without performing any checkes. If a
@@ -161,7 +162,34 @@ class RangeSetAndSupersetInternals {
    refactor).
    * @param new_range The range to add.
    */
-  virtual Status add_range(std::vector<Range>& ranges, const Range& range) = 0;
+  virtual Status add_range(
+      std::vector<Range>& ranges, const Range& range) const = 0;
+
+  /**
+   * Performs correctness checks for a valid range.
+   *
+   * @param range The range to check.
+   **/
+  virtual void check_range_is_valid(const Range& range) const = 0;
+
+  /**
+   * Checks a range is a subset of the superset of this ``RangeSetAndSuperset``.
+   *
+   * @param range The range to check.
+   * @return Status of the subset check.
+   **/
+  virtual Status check_range_is_subset(const Range& range) const = 0;
+
+  /**
+   * Crops a range tot he superset of this ``RangeSetAndSuperset``.
+   *
+   * If the range is cropped, a string is returned with a warning for the
+   * logger.
+   *
+   * @param range The range to crop
+   * @return An optional string with a warning message if the range is cropped.
+   **/
+  virtual optional<std::string> crop_range_with_warning(Range& range) const = 0;
 
   /**
    * Sorts the ranges in the range manager.
@@ -169,21 +197,92 @@ class RangeSetAndSupersetInternals {
    * @param compute_tp The compute thread pool.
    */
   virtual Status sort_ranges(
-      ThreadPool* const compute_tp, std::vector<Range>& ranges) = 0;
+      ThreadPool* const compute_tp, std::vector<Range>& ranges) const = 0;
 };
 
 template <typename T, bool CoalesceAdds>
-class RangeSetAndSupersetInternalsImpl : public RangeSetAndSupersetInternals {
+class TypedRangeSetAndSupersetImpl : public RangeSetAndSupersetImpl {
  public:
+  TypedRangeSetAndSupersetImpl(const Range& superset)
+      : superset_(superset){};
+
   Status add_range(
-      std::vector<Range>& ranges, const Range& new_range) override {
+      std::vector<Range>& ranges, const Range& new_range) const override {
     return AddStrategy<T, CoalesceAdds>::add_range(ranges, new_range);
-  };
+  }
+
+  void check_range_is_valid(const Range& range) const override {
+    type::check_range_is_valid<T>(range);
+  }
+
+  Status check_range_is_subset(const Range& range) const override {
+    return type::check_range_is_subset<T>(superset_, range);
+  }
+
+  optional<std::string> crop_range_with_warning(Range& range) const override {
+    auto domain = (const T*)superset_.data();
+    auto r = (const T*)range.data();
+    if (r[0] < domain[0] || r[1] > domain[1]) {
+      std::string warn_message{
+          "Range [" + std::to_string(r[0]) + ", " + std::to_string(r[1]) +
+          "] is out of domain bounds [" + std::to_string(domain[0]) + ", " +
+          std::to_string(domain[1]) + "]"};
+      type::crop_range<T>(superset_, range);
+      warn_message += "; Adjusting range to [" + std::to_string(r[0]) + ", " +
+                      std::to_string(r[1]) + "]";
+      return warn_message;
+    }
+    return nullopt;
+  }
 
   Status sort_ranges(
-      ThreadPool* const compute_tp, std::vector<Range>& ranges) override {
+      ThreadPool* const compute_tp, std::vector<Range>& ranges) const override {
     return SortStrategy<T>::sort(compute_tp, ranges);
-  };
+  }
+
+ private:
+  /** Maximum possible range. */
+  Range superset_{};
+};
+
+/**
+ * Implementation for the RangeSetAndSuperset for string ranges. Assumes
+ * superset is always the full typeset.
+ */
+template <bool CoalesceAdds>
+class TypedRangeSetAndSupersetImpl<std::string, CoalesceAdds>
+    : public RangeSetAndSupersetImpl {
+ public:
+  TypedRangeSetAndSupersetImpl(const Range& superset)
+      : superset_(superset){};
+
+  Status add_range(
+      std::vector<Range>& ranges, const Range& new_range) const override {
+    return AddStrategy<std::string, CoalesceAdds>::add_range(ranges, new_range);
+  }
+
+  void check_range_is_valid(const Range&) const override {
+    // No checks for string ranges.
+  }
+
+  Status check_range_is_subset(const Range&) const override {
+    // Range is always necessarily a subset of the full typeset.
+    return Status::Ok();
+  }
+
+  optional<std::string> crop_range_with_warning(Range&) const override {
+    // No-op. Superset is always full typeset.
+    return nullopt;
+  }
+
+  Status sort_ranges(
+      ThreadPool* const compute_tp, std::vector<Range>& ranges) const override {
+    return SortStrategy<std::string>::sort(compute_tp, ranges);
+  }
+
+ private:
+  /** Maximum possible range. */
+  Range superset_{};
 };
 
 }  // namespace detail
@@ -244,6 +343,22 @@ class RangeSetAndSuperset {
   };
 
   /**
+   * Adds a range to the range set after checking validity.
+   *
+   * If the ranges are currently implicitly initialized, then they will be
+   * cleared before the new range is added.
+   *
+   * @param range The range to add.
+   * @param read_range_oob_err Flag for behavior when a range is out of bounds.
+   * If ``true``, an error is returned. If ``false``, the range is cropped and a
+   * warning message is returned.
+   * @return {error_status, warning_message} Returns a status with any errors
+   * and a warning message.
+   **/
+  tuple<Status, optional<std::string>> add_range(
+      Range& range, const bool read_range_oob_error = true);
+
+  /**
    * Adds a range to the range manager without performing any checkes.
    *
    * If the ranges are currently implicitly initialized, then they will be
@@ -259,7 +374,8 @@ class RangeSetAndSuperset {
   };
 
   /**
-   * Returns ``true`` if the current range is implicitly set to the full subset.
+   * Returns ``true`` if the current range is implicitly set to the full
+   *subset.
    **/
   inline bool is_implicitly_initialized() const {
     return is_implicitly_initialized_;
@@ -271,20 +387,16 @@ class RangeSetAndSuperset {
   };
 
   /**
-   * Returns ``false`` if the subset contains a range other than the default
-   * range.
-   *
-   * IMPORTANT: This method is different from the `is_set` method of the
-   * Subarray. The Subarray class only checks if any ranges are not default
-   * whereas this method considers the RangeSetAndSuperset to be unset if it is
-   * cleared.
+   * Returns ``true`` if the range subset was set after instantiation and
+   * ``false`` if the range subset was implicitly set at instantiation or is
+   * empty.
    **/
   inline bool is_explicitly_initialized() const {
     return !is_implicitly_initialized_ && !ranges_.empty();
   };
 
   /**
-   * Returns ``true`` if there is exactly one ranage with one element in the
+   * Returns ``true`` if there is exactly one range with one element in the
    * subset.
    */
   inline bool has_single_element() const {
@@ -304,9 +416,8 @@ class RangeSetAndSuperset {
   Status sort_ranges(ThreadPool* const compute_tp);
 
  private:
-  shared_ptr<detail::RangeSetAndSupersetInternals> impl_ = nullptr;
-  /** Maximum possible range. */
-  Range superset_ = Range();
+  /** Pointer to typed implementation details. */
+  shared_ptr<detail::RangeSetAndSupersetImpl> impl_ = nullptr;
 
   /**
    * If ``true``, the range contains the full domain for the dimension (the

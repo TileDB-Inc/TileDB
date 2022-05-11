@@ -41,9 +41,9 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_math.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
@@ -75,7 +75,7 @@ GlobalOrderWriter::GlobalOrderWriter(
     Subarray& subarray,
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
-    bool disable_check_global_order,
+    bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
     URI fragment_uri)
     : WriterBase(
@@ -88,7 +88,7 @@ GlobalOrderWriter::GlobalOrderWriter(
           subarray,
           layout,
           written_fragment_info,
-          disable_check_global_order,
+          disable_checks_consolidation,
           coords_info,
           fragment_uri) {
 }
@@ -157,7 +157,7 @@ Status GlobalOrderWriter::check_coord_dups() const {
   std::vector<const unsigned char*> buffs_var(dim_num);
   std::vector<uint64_t*> buffs_var_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_.dimension(d)->name();
+    const auto& dim_name{array_schema_.dimension_ptr(d)->name()};
     buffs[d] = (const unsigned char*)buffers_.find(dim_name)->second.buffer_;
     coord_sizes[d] = array_schema_.cell_size(dim_name);
     buffs_var[d] =
@@ -173,7 +173,7 @@ Status GlobalOrderWriter::check_coord_dups() const {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_.dimension(d);
+          auto dim{array_schema_.dimension_ptr(d)};
           if (!dim->var_size()) {  // Fixed-sized dimensions
             if (memcmp(
                     buffs[d] + i * coord_sizes[d],
@@ -231,16 +231,37 @@ Status GlobalOrderWriter::check_global_order() const {
     return Status::Ok();
 
   // Applicable only to sparse writes - exit if coordinates do not exist
-  if (!coords_info_.has_coords_ || coords_info_.coords_num_ < 2)
+  if (!coords_info_.has_coords_ || coords_info_.coords_num_ == 0)
     return Status::Ok();
 
   // Special case for Hilbert
   if (array_schema_.cell_order() == Layout::HILBERT)
     return check_global_order_hilbert();
 
-  // Check if all coordinates fall in the domain in parallel
+  // Make sure the last cell written by a previous write comes before the
+  // first cell of this write in the global order
   auto& domain{array_schema_.domain()};
   DomainBuffersView domain_buffs{array_schema_, buffers_};
+  if (global_write_state_->cells_written_.begin()->second > 0) {
+    DomainBuffersView last_cell_buffs{array_schema_,
+                                      *global_write_state_->last_cell_coords_};
+    auto left{last_cell_buffs.domain_ref_at(domain, 0)};
+    auto right{domain_buffs.domain_ref_at(domain, 0)};
+
+    auto tile_cmp = domain.tile_order_cmp(left, right);
+    auto fail = (tile_cmp > 0) ||
+                ((tile_cmp == 0) && domain.cell_order_cmp(left, right) > 0);
+    if (fail) {
+      std::stringstream ss;
+      ss << "Write failed; Coordinate " << coords_to_str(0);
+      ss << " comes before last written coordinate in the global order";
+      if (tile_cmp > 0)
+        ss << " due to writes across tiles";
+      return Status_WriterError(ss.str());
+    }
+  }
+
+  // Check if all coordinates are in global order in parallel
   auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
@@ -265,6 +286,12 @@ Status GlobalOrderWriter::check_global_order() const {
 
   RETURN_NOT_OK(status);
 
+  // Save the last cell's coordinates.
+  auto last_cell_coords{
+      domain_buffs.domain_ref_at(domain, coords_info_.coords_num_ - 1)};
+  global_write_state_->last_cell_coords_ =
+      SingleCoord(array_schema_, last_cell_coords);
+
   return Status::Ok();
 }
 
@@ -274,7 +301,18 @@ Status GlobalOrderWriter::check_global_order_hilbert() const {
   std::vector<uint64_t> hilbert_values(coords_info_.coords_num_);
   RETURN_NOT_OK(calculate_hilbert_values(domain_buffs, hilbert_values));
 
-  // Check if all coordinates fall in the domain in parallel
+  // Make sure the last cell written by a previous write comes before the
+  // first cell of this write in the hilbert order
+  if (global_write_state_->cells_written_.begin()->second > 0) {
+    if (global_write_state_->last_hilbert_value_ > hilbert_values[0]) {
+      std::stringstream ss;
+      ss << "Write failed; Coordinates " << coords_to_str(0);
+      ss << " comes before last written coordinate in the hilbert order";
+      return Status_WriterError(ss.str());
+    }
+  }
+
+  // Check if all coordinates are in hilbert order in parallel
   auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
@@ -284,13 +322,17 @@ Status GlobalOrderWriter::check_global_order_hilbert() const {
           std::stringstream ss;
           ss << "Write failed; Coordinates " << coords_to_str(i);
           ss << " succeed " << coords_to_str(i + 1);
-          ss << " in the global order";
+          ss << " in the hilbert order";
           return Status_WriterError(ss.str());
         }
         return Status::Ok();
       });
 
   RETURN_NOT_OK(status);
+
+  // Save the last hilbert value
+  global_write_state_->last_hilbert_value_ =
+      hilbert_values[coords_info_.coords_num_ - 1];
 
   return Status::Ok();
 }
@@ -360,7 +402,7 @@ Status GlobalOrderWriter::compute_coord_dups(
   std::vector<const unsigned char*> buffs_var(dim_num);
   std::vector<uint64_t*> buffs_var_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_.dimension(d)->name();
+    const auto& dim_name{array_schema_.dimension_ptr(d)->name()};
     buffs[d] = (const unsigned char*)buffers_.find(dim_name)->second.buffer_;
     coord_sizes[d] = array_schema_.cell_size(dim_name);
     buffs_var[d] =
@@ -377,7 +419,7 @@ Status GlobalOrderWriter::compute_coord_dups(
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_.dimension(d);
+          auto dim{array_schema_.dimension_ptr(d)};
           if (!dim->var_size()) {  // Fixed-sized dimensions
             if (memcmp(
                     buffs[d] + i * coord_sizes[d],
@@ -790,8 +832,9 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
         (*tiles)[1].swap(*last_tile_validity);
       }
       tile_idx += t;
-    } else {
-      assert(last_tile_cell_idx == 0);
+    } else if (last_tile_cell_idx != 0) {
+      return Status_WriterError(
+          "Last tile was not empty when it should have been");
     }
 
     // Write all remaining cells one by one
@@ -1005,8 +1048,9 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
         (*tiles)[2].swap(*last_tile_validity);
       }
       tile_idx += t;
-    } else {
-      assert(last_tile_cell_idx == 0);
+    } else if (last_tile_cell_idx != 0) {
+      return Status_WriterError(
+          "Last tile was not empty when it should have been");
     }
 
     // Write all remaining cells one by one

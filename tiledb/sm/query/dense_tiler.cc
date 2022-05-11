@@ -404,9 +404,9 @@ void DenseTiler<T>::calculate_first_sub_tile_coords() {
   // left cell)
   first_sub_tile_coords_.resize(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    T dom_start = *(const T*)domain.dimension(d)->domain().start_fixed();
-    T sub_start = *(const T*)subarray[d].start_fixed();
-    T tile_extent = *(const T*)domain.tile_extent(d).data();
+    T dom_start{*(const T*)domain.dimension_ptr(d)->domain().start_fixed()};
+    T sub_start{*(const T*)subarray[d].start_fixed()};
+    T tile_extent{*(const T*)domain.tile_extent(d).data()};
     first_sub_tile_coords_[d] =
         Dimension::tile_idx(sub_start, dom_start, tile_extent);
   }
@@ -425,7 +425,7 @@ void DenseTiler<T>::calculate_subarray_tile_coord_strides() {
   if (layout == Layout::ROW_MAJOR) {
     sub_tile_coord_strides_.push_back(1);
     for (auto d = dim_num - 2; d >= 0; --d) {
-      auto tile_num = domain.dimension(d + 1)->tile_num(subarray[d + 1]);
+      auto tile_num{domain.dimension_ptr(d + 1)->tile_num(subarray[d + 1])};
       sub_tile_coord_strides_.push_back(
           sub_tile_coord_strides_.back() * tile_num);
     }
@@ -434,7 +434,7 @@ void DenseTiler<T>::calculate_subarray_tile_coord_strides() {
   } else {  // COL_MAJOR
     sub_tile_coord_strides_.push_back(1);
     for (int32_t d = 1; d < dim_num; ++d) {
-      auto tile_num = domain.dimension(d - 1)->tile_num(subarray[d - 1]);
+      auto tile_num{domain.dimension_ptr(d - 1)->tile_num(subarray[d - 1])};
       sub_tile_coord_strides_.push_back(
           sub_tile_coord_strides_.back() * tile_num);
     }
@@ -546,7 +546,7 @@ std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
   // Calculate tile subarray based on the tile coordinates in the domain
   std::vector<std::array<T, 2>> ret(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dom_start = *(const T*)domain.dimension(d)->domain().start_fixed();
+    auto dom_start{*(const T*)domain.dimension_ptr(d)->domain().start_fixed()};
     auto tile_extent = *(const T*)domain.tile_extent(d).data();
     ret[d][0] = Dimension::tile_coord_low(
         tile_coords_in_dom[d], dom_start, tile_extent);

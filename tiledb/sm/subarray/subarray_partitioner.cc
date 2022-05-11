@@ -39,7 +39,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/math.h"
+#include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
 
@@ -902,7 +902,7 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
   // Compute splitting dimension and value
   const Range* r;
   for (auto d : dims) {
-    auto dim = array_schema.domain().dimension(d);
+    auto dim{array_schema.domain().dimension_ptr(d)};
     range.get_range(d, 0, &r);
     auto tiles_apart = dim->tile_num(*r) - 1;
     if (tiles_apart != 0) {
@@ -975,7 +975,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   // Compute splitting dimension and value
   const Range* r;
   for (auto d : dims) {
-    auto dim = array_schema.dimension(d);
+    auto dim{array_schema.dimension_ptr(d)};
     range.get_range(d, 0, &r);
     if (!r->unary()) {
       *splitting_dim = d;
@@ -1019,7 +1019,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range_hilbert(
       range_uint64[*splitting_dim], *splitting_dim, splitting_value);
 
   // Check for unsplittable again
-  auto dim = array_schema.dimension(*splitting_dim);
+  auto dim{array_schema.dimension_ptr(*splitting_dim)};
   const Range* r;
   range.get_range(*splitting_dim, 0, &r);
   if (dim->smaller_than(*splitting_value, *r)) {
@@ -1093,7 +1093,7 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
 
     // Check if we need to split single range
     partition.get_range(d, 0, &r);
-    auto dim = array_schema.dimension(d);
+    auto dim{array_schema.dimension_ptr(d)};
     if (!r->unary()) {
       *splitting_dim = d;
       dim->splitting_value(*r, splitting_value, unsplittable);
@@ -1380,7 +1380,7 @@ void SubarrayPartitioner::compute_range_uint64(
   // Calculate mapped range
   bool empty_start, empty_end;
   for (uint32_t d = 0; d < dim_num; ++d) {
-    auto dim = array_schema.dimension(d);
+    auto dim{array_schema.dimension_ptr(d)};
     auto var = dim->var_size();
     range.get_range(d, 0, &r);
     empty_start = var ? (r->start_size() == 0) : r->empty();
@@ -1537,6 +1537,6 @@ void SubarrayPartitioner::compute_splitting_value_hilbert(
   auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   *splitting_value =
-      array_schema.dimension(splitting_dim)
+      array_schema.dimension_ptr(splitting_dim)
           ->map_from_uint64(splitting_value_uint64, bits, max_bucket_val);
 }
