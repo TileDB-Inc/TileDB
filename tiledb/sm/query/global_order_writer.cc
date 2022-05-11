@@ -496,6 +496,12 @@ Status GlobalOrderWriter::finalize_global_write_state() {
     }
   }
 
+  // No cells written, clean up empty fragment.
+  if (cell_num == 0) {
+    clean_up(uri);
+    return Status::Ok();
+  }
+
   // Check if the total number of cells written is equal to the subarray size
   if (!coords_info_.has_coords_) {  // This implies a dense array
     auto expected_cell_num =
