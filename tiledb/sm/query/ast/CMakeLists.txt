@@ -41,6 +41,7 @@ set(TILEDB_TEST_SUPPORT_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/serialization_wrappers.cc
   )
 
+
 message("Test support source " ${TILEDB_TEST_SUPPORT_SOURCES})
 
 add_library(tiledb_test_support_lib_ EXCLUDE_FROM_ALL
