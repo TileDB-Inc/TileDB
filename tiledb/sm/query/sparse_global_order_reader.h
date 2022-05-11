@@ -332,6 +332,22 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       QueryBuffer& query_buffer);
 
   /**
+   * Copy timestamps tiles.
+   *
+   * @param num_range_threads Total number of range threads.
+   * @param result_cell_slabs Result cell slabs to process.
+   * @param cell_offsets Cell offset per result tile.
+   * @param query_buffer Query buffer to operate on.
+   *
+   * @return Status.
+   */
+  Status copy_timestamps_tiles(
+      const uint64_t num_range_threads,
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      const std::vector<uint64_t>& cell_offsets,
+      QueryBuffer& query_buffer);
+
+  /**
    * Make sure we respect memory budget for copy operation by making sure that,
    * for all attributes to be copied, the size of tiles in memory can fit into
    * the budget.

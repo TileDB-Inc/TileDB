@@ -197,6 +197,14 @@ class ReaderBase : public StrategyBase {
   Status check_validity_buffer_sizes() const;
 
   /**
+   * Skip read/unfilter operations for timestamps attribute and fragments
+   * without timestamps.
+   */
+  bool timestamps_not_present(
+      const std::string& name,
+      const std::shared_ptr<tiledb::sm::FragmentMetadata>& frag_md) const;
+
+  /**
    * Loads tile offsets for each attribute/dimension name into
    * their associated element in `fragment_metadata_`.
    *

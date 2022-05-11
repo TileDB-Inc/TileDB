@@ -222,6 +222,9 @@ class FragmentMetadata {
   /** Returns true if the metadata footer is consolidated. */
   bool has_consolidated_footer() const;
 
+  /** Returns true if the fragment has timestamps. */
+  bool has_timestamps() const;
+
   /**
    * Retrieves the overlap of all MBRs with the input ND range.
    */

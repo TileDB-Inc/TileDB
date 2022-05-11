@@ -706,6 +706,10 @@ bool FragmentMetadata::has_consolidated_footer() const {
   return has_consolidated_footer_;
 }
 
+bool FragmentMetadata::has_timestamps() const {
+  return has_timestamps_;
+}
+
 Status FragmentMetadata::get_tile_overlap(
     const NDRange& range,
     std::vector<bool>& is_default,

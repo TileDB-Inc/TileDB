@@ -107,7 +107,7 @@ class GlobalOrderWriter : public WriterBase {
       Subarray& subarray,
       Layout layout,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
-      bool disable_check_global_order,
+      bool disable_checks_consolidation,
       Query::CoordsInfo& coords_info_,
       URI fragment_uri = URI(""));
 
