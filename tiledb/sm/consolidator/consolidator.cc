@@ -62,6 +62,8 @@ shared_ptr<Consolidator> Consolidator::create(
           HERE(), config, storage_manager);
     case ConsolidationMode::COMMITS:
       return make_shared<CommitsConsolidator>(HERE(), storage_manager);
+    case ConsolidationMode::GROUP_META:
+      return make_shared<GroupMetaConsolidator>(HERE(), storage_manager);
     default:
       return nullptr;
   }
@@ -86,6 +88,8 @@ ConsolidationMode Consolidator::mode_from_config(
     return ConsolidationMode::ARRAY_META;
   else if (mode == "commits")
     return ConsolidationMode::COMMITS;
+  else if (mode == "group_meta")
+    return ConsolidationMode::GROUP_META;
 
   throw std::logic_error("Cannot consolidate; invalid configuration mode");
 }

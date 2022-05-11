@@ -57,7 +57,8 @@ enum class ConsolidationMode {
   FRAGMENT,       // Fragment mode.
   FRAGMENT_META,  // Fragment metadata mode.
   ARRAY_META,     // Array metadata mode.
-  COMMITS         // Commits mode.
+  COMMITS,        // Commits mode.
+  GROUP_META      // Group metadata mode.
 };
 
 /** Handles array consolidation. */
