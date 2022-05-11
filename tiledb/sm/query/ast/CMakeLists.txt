@@ -60,6 +60,13 @@ target_include_directories(
     ${TILEDB_CORE_INCLUDE_DIR}
     ${TILEDB_EXPORT_HEADER_DIR}
 )
+
+# We want tests to continue as normal even as the API is changing,
+# so don't warn for deprecations, since they'll be escalated to errors.
+if (NOT MSVC)
+  target_compile_options(tiledb_test_support_lib_ PRIVATE -Wno-deprecated-declarations)
+endif()
+
 target_link_libraries(tiledb_test_support_lib_
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
@@ -107,6 +114,12 @@ if (TILEDB_TESTS)
     target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/../../..")
 
     target_sources(unit_ast PUBLIC test/main.cc test/unit-query-ast.cc)
+
+    # We want tests to continue as normal even as the API is changing,
+    # so don't warn for deprecations, since they'll be escalated to errors.
+    if (NOT MSVC)
+      target_compile_options(unit_ast PRIVATE -Wno-deprecated-declarations)
+    endif()
 
     add_test(
         NAME "query_ast"
