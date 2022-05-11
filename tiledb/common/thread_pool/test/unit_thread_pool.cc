@@ -41,7 +41,14 @@
 
 size_t random_ms(size_t max = 3) {
   thread_local static std::mt19937 generator(
+#if defined(_MSC_VER)
+      // MSVC expects unsigned int, std::hash<...id>() not compatible with msvc
+      // mt19937
+      static_cast<unsigned int>(
+          std::hash<std::thread::id>()(std::this_thread::get_id())));
+#else
       std::hash<std::thread::id>()(std::this_thread::get_id()));
+#endif
   std::uniform_int_distribution<size_t> distribution(0, max);
   return distribution(generator);
 }
