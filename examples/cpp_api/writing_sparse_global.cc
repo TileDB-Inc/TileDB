@@ -82,7 +82,7 @@ void write_array() {
   query.submit();
 
   // Submit second query
-  std::vector<int> coords_rows_2 = {2};
+  std::vector<int> coords_rows_2 = {3};
   std::vector<int> coords_cols_2 = {3};
   std::vector<int> data_2 = {3};
   query.set_data_buffer("a", data_2)
