@@ -44,11 +44,6 @@ size_t random_ms(size_t max = 3) {
   thread_local static uint64_t generator_seed =
       std::hash<std::thread::id>()(std::this_thread::get_id());
   thread_local static std::mt19937_64 generator(generator_seed);
-  thread_local static bool reported_seed = false;
-  if (!reported_seed) {
-    std::cout << "random_ms(), generator_seed " << generator_seed << std::endl;
-    reported_seed = true;
-  }
   std::uniform_int_distribution<size_t> distribution(0, max);
   return distribution(generator);
 }
