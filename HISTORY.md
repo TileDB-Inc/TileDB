@@ -1,3 +1,12 @@
+# TileDB v2.8.3 Release Notes
+
+## Bug fixes
+
+* Group metadata doesn't get serialized [#3147](https://github.com/TileDB-Inc/TileDB/pull/3147)
+* All ranges tile overlap: skip computation for default dimensions. [#3080](https://github.com/TileDB-Inc/TileDB/pull/3080)
+* Filter pipeline: fixing empty pipeline, multi chunk, refactored queries. [#3149](https://github.com/TileDB-Inc/TileDB/pull/3149)
+* Unordered writer: fixing segfault for empty writes. [#3161](https://github.com/TileDB-Inc/TileDB/pull/3161)
+
 # TileDB v2.8.2 Release Notes
 
 ## Bug fixes
