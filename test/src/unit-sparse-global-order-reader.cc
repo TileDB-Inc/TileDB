@@ -33,6 +33,7 @@
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/query/sparse_global_order_reader.h"
 
 #ifdef _WIN32
@@ -43,7 +44,7 @@
 
 #include <catch.hpp>
 
-using namespace tiledb::sm;
+using namespace tiledb;
 using namespace tiledb::test;
 
 /* ********************************* */
@@ -449,7 +450,8 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Check the internal loop count against expected value.
-  auto stats = ((SparseGlobalOrderReader*)query->query_->strategy())->stats();
+  auto stats =
+      ((sm::SparseGlobalOrderReader*)query->query_->strategy())->stats();
   REQUIRE(stats != nullptr);
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
@@ -643,7 +645,8 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Check the internal loop count against expected value.
-  auto stats = ((SparseGlobalOrderReader*)query->query_->strategy())->stats();
+  auto stats =
+      ((sm::SparseGlobalOrderReader*)query->query_->strategy())->stats();
   REQUIRE(stats != nullptr);
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
@@ -801,4 +804,88 @@ TEST_CASE_METHOD(
   int data_c[] = {8, 8, 9, 9, 10, 10};
   CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
   CHECK(!std::memcmp(data_c, data_r, data_r_size));
+}
+
+TEST_CASE(
+    "Sparse global order reader: user buffer cannot fit single cell",
+    "[sparse-global-order][user-buffer][too-small][testtt]") {
+  std::string array_name = "test_sparse_global_order";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create array with var-sized attribute.
+  Domain dom(ctx);
+  dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 2));
+
+  Attribute attr(ctx, "a", TILEDB_STRING_ASCII);
+  attr.set_cell_val_num(TILEDB_VAR_NUM);
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.add_attribute(attr);
+  schema.set_tile_order(TILEDB_ROW_MAJOR);
+  schema.set_cell_order(TILEDB_ROW_MAJOR);
+  schema.set_domain(dom);
+  schema.set_allows_dups(true);
+
+  Array::create(array_name, schema);
+
+  // Write a fragment.
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+  std::vector<int64_t> d1 = {1, 2, 3};
+  std::string a1_data{
+      "astringofsize15"
+      "foo"
+      "bar"};
+  std::vector<uint64_t> a1_offsets{0, 15, 18};
+
+  query.set_data_buffer("d1", d1);
+  query.set_data_buffer("a", a1_data);
+  query.set_offsets_buffer("a", a1_offsets);
+  CHECK_NOTHROW(query.submit());
+
+  // Finalize is necessary in global writes, otherwise a no-op
+  query.finalize();
+
+  // Read using a buffer that can't fit a single result
+  Array array2(ctx, array_name, TILEDB_READ);
+  Query query2(ctx, array2, TILEDB_READ);
+
+  std::string attr_val;
+  // The first result is 15 bytes long so it won't fit in 10 byte user buffer
+  attr_val.resize(10);
+  std::vector<uint64_t> attr_off(sizeof(uint64_t));
+
+  query2.set_layout(TILEDB_GLOBAL_ORDER);
+  query2.set_data_buffer("a", (char*)attr_val.data(), attr_val.size());
+  query2.set_offsets_buffer("a", attr_off);
+
+  // The user buffer cannot fit a single result so it should error out
+  CHECK_THROWS(query2.submit());
+
+  array2.close();
+
+  // Check we hit the correct error.
+  tiledb_error_t* error = NULL;
+  auto rc = tiledb_ctx_get_last_error(ctx.ptr().get(), &error);
+  CHECK(rc == TILEDB_OK);
+
+  const char* msg;
+  rc = tiledb_error_message(error, &msg);
+  CHECK(rc == TILEDB_OK);
+
+  std::string error_str(msg);
+  CHECK(
+      error_str.find(
+          "Var size buffer cannot fit a single cell for var attribute") !=
+      std::string::npos);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
 }
