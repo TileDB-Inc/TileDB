@@ -131,32 +131,32 @@ TEMPLATE_TEST_CASE(
 
 TEMPLATE_TEST_CASE(
     "Test check_is_subset for floating-point types", "[range]", float, double) {
-  TestType superset_data[2]{-10.5, 3.33};
+  TestType superset_data[2]{-10.5f, 3.33f};
   Range superset{&superset_data[0], 2 * sizeof(TestType)};
   SECTION("Test full domain is a valid subset") {
     auto status = check_range_is_subset<TestType>(superset, superset);
     REQUIRE(status.ok());
   }
   SECTION("Test simple proper subset is a valid subset") {
-    TestType data[2]{-2.5, 2.5};
+    TestType data[2]{-2.5f, 2.5f};
     Range range{&data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(status.ok());
   }
   SECTION("Test a non-valid subset with lower bound less than superset") {
-    TestType data[2]{-20.5, 0.0};
+    TestType data[2]{-20.5f, 0.0f};
     Range range{&data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
   SECTION("Test a non-valid subset with upper bound more than superset") {
-    TestType data[2]{0.0, 20.5};
+    TestType data[2]{0.0f, 20.5f};
     Range range{&data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
   SECTION("Test a non-valid subset that is a proper superset") {
-    TestType data[2]{-20.0, 20.0};
+    TestType data[2]{-20.0f, 20.0f};
     Range range{&data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
