@@ -36,6 +36,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 #include <cassert>
 
@@ -43,9 +44,6 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-
-/** Cast from datatype to enumeration without knowing the underlying type. */
-using datatype_underlying_t = uint8_t;
 
 /** Defines a datatype. */
 enum class Datatype : uint8_t {
@@ -366,26 +364,21 @@ inline bool datatype_is_boolean(Datatype type) {
   return (type == Datatype::BOOL);
 }
 
-/* Return the underlying enumeration value given a Datatype. */
-inline datatype_underlying_t datatype_to_underlying(Datatype type) {
-  return static_cast<datatype_underlying_t>(type);
-}
-
-/** Returns Status::OK() if the input Datatype's enum is between 0 and 40. */
-inline Status is_datatype_valid(Datatype type) {
-  datatype_underlying_t datatype_enum{datatype_to_underlying(type)};
+/** Throws error if the input Datatype's enum is not between 0 and 40. */
+inline void ensure_datatype_is_valid(Datatype type) {
+  std::underlying_type_t<Datatype> datatype_enum{::stdx::to_underlying(type)};
   if (datatype_enum > 40)
-    return Status_Error("Invalid Datatype " + std::to_string(datatype_enum));
-
-  return Status::Ok();
+    throw std::runtime_error(
+        "Invalid Datatype " + std::to_string(datatype_enum));
 }
 
-/** Returns Status::OK() if the datatype string's enum is between 0 and 40. */
-inline Status is_datatype_str_valid(const std::string& datatype_str) {
+/** Throws error if the datatype string's enum is not between 0 and 40. */
+inline void is_datatype_str_valid(const std::string& datatype_str) {
   Datatype datatype_type;
-  RETURN_NOT_OK(datatype_enum(datatype_str, &datatype_type));
-
-  return is_datatype_valid(datatype_type);
+  Status st{datatype_enum(datatype_str, &datatype_type)};
+  if (!st.ok())
+    throw std::runtime_error("Invalid Datatype string" + datatype_str);
+  ensure_datatype_is_valid(datatype_type);
 }
 
 }  // namespace sm

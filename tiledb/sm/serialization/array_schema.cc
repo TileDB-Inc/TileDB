@@ -54,6 +54,7 @@
 #include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 #include <set>
 #include <string>
@@ -434,19 +435,19 @@ shared_ptr<Dimension> dimension_from_capnp(
   }
 
   // Validate the dim_type, satisfying precondition of tile_extent_from_capnp
-  st = is_datatype_valid(dim_type);
-  if (!st.ok())
-    throw std::runtime_error(
-        "[Deserialization::dimension_from_capnp] " +
-        std::to_string(datatype_to_underlying(dim_type)) +
-        " is not valid as a datatype.");
+  try {
+    ensure_datatype_is_valid(dim_type);
+  } catch (const std::exception& e) {
+    std::throw_with_nested(std::runtime_error(
+        "[Deserialization::dimension_from_capnp] " + std::string(e.what())));
+  }
 
   // Calculate size of coordinates and re-ensure dim_type is valid (size != 0)
   auto coord_size = datatype_size(dim_type);
   if (coord_size == 0) {
     throw std::logic_error(
         "[Deserialization::dimension_from_capnp] " +
-        std::to_string(datatype_to_underlying(dim_type)) +
+        std::to_string(std::underlying_type_t<Datatype>(dim_type)) +
         " is not valid as a datatype; datatype_size is 0.");
   }
 
