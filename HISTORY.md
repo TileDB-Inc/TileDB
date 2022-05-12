@@ -64,6 +64,8 @@
 ## Deprecations
 
 ## Bug fixes
+* [bug] Fix SC-17415: segfault due to underflow in for loop [#3143](https://github.com/TileDB-Inc/TileDB/pull/3143)
+* Unordered writer: fixing segfault for empty writes. [#3161](https://github.com/TileDB-Inc/TileDB/pull/3161)
 * Sparse global order reader: prevent dims from being unfiltered twice. [#3150](https://github.com/TileDB-Inc/TileDB/pull/3150)
 * Filter pipeline: fixing empty pipeline, multi chunk, refactored queries. [#3149](https://github.com/TileDB-Inc/TileDB/pull/3149)
 * compare nullptr, avoid catch2 comparison warning failure [#2970](https://github.com/TileDB-Inc/TileDB/pull/2970)
