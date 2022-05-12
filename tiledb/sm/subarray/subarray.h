@@ -68,6 +68,7 @@ namespace sm {
 class Array;
 class ArraySchema;
 class EncryptionKey;
+class FragIdx;
 class FragmentMetadata;
 class StorageManager;
 
@@ -439,7 +440,7 @@ class Subarray {
    */
   Status precompute_all_ranges_tile_overlap(
       ThreadPool* const compute_tp,
-      std::vector<std::pair<uint64_t, uint64_t>>& frag_tile_idx,
+      std::vector<FragIdx>& frag_tile_idx,
       std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
           result_tile_ranges);
 

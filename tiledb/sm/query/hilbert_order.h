@@ -43,9 +43,10 @@ uint64_t map_to_uint64(
     int bits,
     uint64_t max_bucket_val);
 
+template <class RCType>
 uint64_t map_to_uint64(
     const Dimension& dim,
-    const ResultCoords& coord,
+    const RCType& coord,
     uint32_t dim_idx,
     int bits,
     uint64_t max_bucket_val);

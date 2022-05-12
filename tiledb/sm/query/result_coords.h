@@ -45,11 +45,14 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class GlobalOrderResultTile;
+
 /**
  * Stores information about cell coordinates of a sparse fragment
  * that are in the result of a subarray query.
  */
-struct ResultCoords {
+template <class ResultTileType>
+struct ResultCoordsBase {
   /**
    * The result tile the coords belong to.
    *
@@ -57,43 +60,20 @@ struct ResultCoords {
    * sparse_read/dense_read, so the lifetime of this struct must not exceed
    * the scope of those functions.
    */
-  ResultTile* tile_;
+  ResultTileType* tile_;
   /** The position of the coordinates in the tile. */
   uint64_t pos_;
-  /** Whether this instance is "valid". */
-  bool valid_;
 
   /** Constructor. */
-  ResultCoords()
+  ResultCoordsBase()
       : tile_(nullptr)
-      , pos_(0)
-      , valid_(false) {
+      , pos_(0) {
   }
 
   /** Constructor. */
-  ResultCoords(ResultTile* tile, uint64_t pos)
+  ResultCoordsBase(ResultTileType* tile, uint64_t pos)
       : tile_(tile)
-      , pos_(pos)
-      , valid_(true) {
-  }
-
-  /** Moves to the next cell */
-  inline bool next() {
-    if (pos_ == tile_->cell_num() - 1)
-      return false;
-
-    pos_++;
-    return true;
-  }
-
-  /** Invalidate this instance. */
-  inline void invalidate() {
-    valid_ = false;
-  }
-
-  /** Return true if this instance is valid. */
-  inline bool valid() const {
-    return valid_;
+      , pos_(pos) {
   }
 
   /**
@@ -130,9 +110,129 @@ struct ResultCoords {
    * calling ResultCoords object and the input are the same across all
    * dimensions.
    */
-  bool same_coords(const ResultCoords& rc) const {
+  bool same_coords(const ResultCoordsBase& rc) const {
     return tile_->same_coords(*(rc.tile_), pos_, rc.pos_);
   }
+};
+
+struct ResultCoords : public ResultCoordsBase<ResultTile> {
+  /** Constructor. */
+  ResultCoords()
+      : ResultCoordsBase()
+      , valid_(false) {
+  }
+
+  /** Constructor. */
+  ResultCoords(ResultTile* tile, uint64_t pos)
+      : ResultCoordsBase(tile, pos)
+      , valid_(true) {
+  }
+
+  /** Invalidate this instance. */
+  inline void invalidate() {
+    valid_ = false;
+  }
+
+  /** Return true if this instance is valid. */
+  inline bool valid() const {
+    return valid_;
+  }
+
+  /** Whether this instance is "valid". */
+  bool valid_;
+};
+
+struct GlobalOrderResultCoords
+    : public ResultCoordsBase<GlobalOrderResultTile> {
+  /** Constructor. */
+  GlobalOrderResultCoords(GlobalOrderResultTile* tile, uint64_t pos)
+      : ResultCoordsBase(tile, pos)
+      , init_(false) {
+  }
+
+  /** Returns the next available cell in the tile. */
+  bool next_cell() {
+    pos_ += init_;
+    init_ = true;
+    if (pos_ != tile_->cell_num()) {
+      if (tile_->bitmap_.size() > 0) {
+        while (pos_ < tile_->cell_num()) {
+          if (tile_->bitmap_[pos_]) {
+            return true;
+          }
+          pos_++;
+        }
+      } else {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Get the maximum slab length that can be created (when there's no other
+   * fragments left).
+   */
+  uint64_t max_slab_length() {
+    uint64_t ret = 1;
+    auto has_bmp = tile_->bitmap_.size() > 0;
+    uint64_t next_pos = pos_ + 1;
+    if (has_bmp) {
+      // With bitmap, find the longest contiguous set of bits in the bitmap
+      // from the current position.
+      while (next_pos < tile_->cell_num() - 1 && tile_->bitmap_[next_pos]) {
+        next_pos++;
+        ret++;
+      }
+    } else {
+      // No bitmap, add all cells from current position.
+      ret = tile_->cell_num() - pos_;
+    }
+
+    return ret;
+  }
+
+  /**
+   * Get the maximum slab length that can be created using the next result
+   * coords in the queue.
+   */
+  template <class CompType>
+  uint64_t max_slab_length(
+      const GlobalOrderResultCoords& next, const CompType& cmp) {
+    uint64_t ret = 1;
+
+    // Store the original position and move to the next cell.
+    uint64_t orig_pos = pos_;
+    pos_++;
+
+    auto has_bmp = tile_->bitmap_.size() > 0;
+    if (has_bmp) {
+      // With bitmap, find the longest contiguous set of bits in the bitmap
+      // from the current position, with coordinares smaller than the next one
+      // in the queue.
+      while (pos_ < tile_->cell_num() - 1 && tile_->bitmap_[pos_] &&
+             !cmp(*this, next)) {
+        pos_++;
+        ret++;
+      }
+    } else {
+      // No bitmap, add all cells from current position, with coordinares
+      // smaller than the next one in the queue.
+      while (pos_ < tile_->cell_num() - 1 && !cmp(*this, next)) {
+        pos_++;
+        ret++;
+      }
+    }
+
+    // Restore the original position.
+    pos_ = orig_pos;
+    return ret;
+  }
+
+ private:
+  /** Initially set to false on first call to next_cell. */
+  bool init_;
 };
 
 }  // namespace sm

@@ -217,7 +217,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   auto fragment_num = fragment_metadata_.size();
 
   // Make sure there is enough space for tiles data.
-  read_state_.frag_tile_idx_.resize(fragment_num);
+  read_state_.frag_idx_.resize(fragment_num);
   all_tiles_loaded_.resize(fragment_num);
 
   // Calculate ranges of tiles in the subarray, if set.
@@ -233,7 +233,7 @@ Status SparseIndexReaderBase::load_initial_data() {
     // later.
     RETURN_NOT_OK(subarray_.precompute_all_ranges_tile_overlap(
         storage_manager_->compute_tp(),
-        read_state_.frag_tile_idx_,
+        read_state_.frag_idx_,
         &result_tile_ranges_));
 
     for (auto frag_result_tile_ranges : result_tile_ranges_) {
