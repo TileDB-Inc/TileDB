@@ -882,6 +882,28 @@ TILEDB_EXPORT int32_t tiledb_group_dump_str(
     char** dump_ascii,
     const uint8_t recursive) TILEDB_NOEXCEPT;
 
+/**
+ * Consolidates the group metadata into a single group metadata file.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_group_consolidate_metadata(
+ *     ctx, "tiledb:///groups/mygroup", nullptr);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param group_uri The name of the TileDB group whose metadata will
+ *     be consolidated.
+ * @param config Configuration parameters for the consolidation
+ *     (`nullptr` means default, which will use the config from `ctx`).
+ * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
+ */
+TILEDB_EXPORT int32_t tiledb_group_consolidate_metadata(
+    tiledb_ctx_t* ctx,
+    const char* group_uri,
+    tiledb_config_t* config) TILEDB_NOEXCEPT;
+
 /* ********************************* */
 /*                FILESTORE          */
 /* ********************************* */

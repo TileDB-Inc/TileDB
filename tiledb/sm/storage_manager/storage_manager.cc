@@ -2344,5 +2344,36 @@ Status StorageManager::set_default_tags() {
   return Status::Ok();
 }
 
+Status StorageManager::group_metadata_consolidate(
+    const char* group_name, const Config* config) {
+  // Check group URI
+  URI group_uri(group_name);
+  if (group_uri.is_invalid()) {
+    return logger_->status(Status_StorageManagerError(
+        "Cannot consolidate group metadata; Invalid URI"));
+  }
+  // Check if array exists
+  ObjectType obj_type;
+  RETURN_NOT_OK(object_type(group_uri, &obj_type));
+
+  if (obj_type != ObjectType::GROUP) {
+    return logger_->status(Status_StorageManagerError(
+        "Cannot consolidate group metadata; Group does not exist"));
+  }
+
+  // If 'config' is unset, use the 'config_' that was set during initialization
+  // of this StorageManager instance.
+  if (!config) {
+    config = &config_;
+  }
+
+  // Consolidate
+  // Encryption credentials are loaded by Group from config
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::GROUP_META, config, this);
+  return consolidator->consolidate(
+      group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+}
+
 }  // namespace sm
 }  // namespace tiledb
