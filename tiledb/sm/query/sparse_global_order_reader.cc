@@ -1303,10 +1303,6 @@ Status SparseGlobalOrderReader::process_slabs(
         // Adjust the offsets buffer and make sure all data fits.
         var_buffer_size = compute_var_size_offsets<OffType>(
             stats_, result_cell_slabs, cell_offsets, query_buffer);
-        if (result_cell_slabs.empty()) {
-          return Status_SparseGlobalOrderReaderError(
-              "Var size buffer cannot fit a single cell for var attribute");
-        }
 
         // Now copy the var size data.
         RETURN_NOT_OK(copy_var_data_tiles(

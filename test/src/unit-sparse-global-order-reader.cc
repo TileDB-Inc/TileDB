@@ -808,7 +808,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE(
     "Sparse global order reader: user buffer cannot fit single cell",
-    "[sparse-global-order][user-buffer][too-small][testtt]") {
+    "[sparse-global-order][user-buffer][too-small]") {
   std::string array_name = "test_sparse_global_order";
   Context ctx;
   VFS vfs(ctx);
@@ -861,29 +861,24 @@ TEST_CASE(
   attr_val.resize(10);
   std::vector<uint64_t> attr_off(sizeof(uint64_t));
 
-  query2.set_layout(TILEDB_GLOBAL_ORDER);
+  auto layout = GENERATE(TILEDB_GLOBAL_ORDER, TILEDB_UNORDERED);
+
+  query2.set_layout(layout);
   query2.set_data_buffer("a", (char*)attr_val.data(), attr_val.size());
   query2.set_offsets_buffer("a", attr_off);
 
-  // The user buffer cannot fit a single result so it should error out
-  CHECK_THROWS(query2.submit());
+  // The user buffer cannot fit a single result so it should return Incomplete
+  // with the right reason
+  auto st = query2.submit();
+  CHECK(st == Query::Status::INCOMPLETE);
+
+  tiledb_query_status_details_t details;
+  int rc = tiledb_query_get_status_details(
+      ctx.ptr().get(), query2.ptr().get(), &details);
+  CHECK(rc == TILEDB_OK);
+  CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
 
   array2.close();
-
-  // Check we hit the correct error.
-  tiledb_error_t* error = NULL;
-  auto rc = tiledb_ctx_get_last_error(ctx.ptr().get(), &error);
-  CHECK(rc == TILEDB_OK);
-
-  const char* msg;
-  rc = tiledb_error_message(error, &msg);
-  CHECK(rc == TILEDB_OK);
-
-  std::string error_str(msg);
-  CHECK(
-      error_str.find(
-          "Var size buffer cannot fit a single cell for var attribute") !=
-      std::string::npos);
 
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);

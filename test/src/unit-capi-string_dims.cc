@@ -151,7 +151,8 @@ struct StringDimsFx {
       std::vector<uint64_t>* d_off,
       std::string* d_val,
       std::vector<int32_t>* a,
-      tiledb_query_status_t* status);
+      tiledb_query_status_t* status,
+      tiledb_query_status_details_t* details);
   void read_array_2d(
       tiledb_ctx_t* ctx,
       tiledb_array_t* array,
@@ -964,7 +965,8 @@ void StringDimsFx::read_array_1d(
     std::vector<uint64_t>* d_off,
     std::string* d_val,
     std::vector<int32_t>* a,
-    tiledb_query_status_t* status) {
+    tiledb_query_status_t* status,
+    tiledb_query_status_details_t* details) {
   // Create query
   tiledb_query_t* query;
   int rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
@@ -1028,6 +1030,10 @@ void StringDimsFx::read_array_1d(
 
   // Get status
   rc = tiledb_query_get_status(ctx, query, status);
+  CHECK(rc == TILEDB_OK);
+
+  // Get details
+  rc = tiledb_query_get_status_details(ctx, query, details);
   CHECK(rc == TILEDB_OK);
 
   // Resize the result buffers
@@ -1802,8 +1808,18 @@ TEST_CASE_METHOD(
   r_d_val.resize(20);
   std::vector<int32_t> r_a(10);
   tiledb_query_status_t status;
+  tiledb_query_status_details_t details;
   read_array_1d(
-      ctx_, array, layout, "a", "ee", &r_d_off, &r_d_val, &r_a, &status);
+      ctx_,
+      array,
+      layout,
+      "a",
+      "ee",
+      &r_d_off,
+      &r_d_val,
+      &r_a,
+      &status,
+      &details);
   CHECK(status == TILEDB_COMPLETED);
   CHECK(r_d_val == "aabbccdddd");
   std::vector<uint64_t> c_d_off = {0, 2, 4, 6};
@@ -1816,7 +1832,16 @@ TEST_CASE_METHOD(
   r_d_val.resize(20);
   r_a.resize(10);
   read_array_1d(
-      ctx_, array, layout, "aab", "cc", &r_d_off, &r_d_val, &r_a, &status);
+      ctx_,
+      array,
+      layout,
+      "aab",
+      "cc",
+      &r_d_off,
+      &r_d_val,
+      &r_a,
+      &status,
+      &details);
   CHECK(status == TILEDB_COMPLETED);
   CHECK(r_d_val == "bbcc");
   c_d_off = {0, 2};
@@ -1829,24 +1854,44 @@ TEST_CASE_METHOD(
   r_d_val.resize(20);
   r_a.resize(10);
   read_array_1d(
-      ctx_, array, layout, "aa", "cc", &r_d_off, &r_d_val, &r_a, &status);
+      ctx_,
+      array,
+      layout,
+      "aa",
+      "cc",
+      &r_d_off,
+      &r_d_val,
+      &r_a,
+      &status,
+      &details);
   CHECK(status == TILEDB_INCOMPLETE);
   CHECK(r_d_val == "aabb");
   c_d_off = {0, 2};
   CHECK(r_d_off == c_d_off);
   c_a = {1, 2};
   CHECK(r_a == c_a);
+  CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
 
   // Read [aa, cc] - INCOMPLETE, no result
   r_d_off.resize(1);
   r_d_val.resize(1);
   r_a.resize(10);
   read_array_1d(
-      ctx_, array, layout, "aa", "bb", &r_d_off, &r_d_val, &r_a, &status);
+      ctx_,
+      array,
+      layout,
+      "aa",
+      "bb",
+      &r_d_off,
+      &r_d_val,
+      &r_a,
+      &status,
+      &details);
   CHECK(status == TILEDB_INCOMPLETE);
   CHECK(r_d_val.size() == 0);
   CHECK(r_d_off.size() == 0);
   CHECK(r_a.size() == 0);
+  CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -1946,8 +1991,18 @@ TEST_CASE_METHOD(
   r_d_val.resize(20);
   std::vector<int32_t> r_a(10);
   tiledb_query_status_t status;
+  tiledb_query_status_details_t details;
   read_array_1d(
-      ctx_, array, layout, "a", "ee", &r_d_off, &r_d_val, &r_a, &status);
+      ctx_,
+      array,
+      layout,
+      "a",
+      "ee",
+      &r_d_off,
+      &r_d_val,
+      &r_a,
+      &status,
+      &details);
   CHECK(status == TILEDB_COMPLETED);
   CHECK(r_d_val == "aaabbbccddddee");
   std::vector<uint64_t> c_d_off = {0, 1, 3, 4, 6, 8, 12};
@@ -1999,7 +2054,16 @@ TEST_CASE_METHOD(
   r_d_val.resize(20);
   r_a.resize(10);
   read_array_1d(
-      ctx_, array, layout, "a", "ee", &r_d_off, &r_d_val, &r_a, &status);
+      ctx_,
+      array,
+      layout,
+      "a",
+      "ee",
+      &r_d_off,
+      &r_d_val,
+      &r_a,
+      &status,
+      &details);
   CHECK(status == TILEDB_COMPLETED);
   CHECK(r_d_val == "aaabbbccddddee");
   CHECK(r_d_off == c_d_off);
@@ -2093,8 +2157,18 @@ TEST_CASE_METHOD(
   r_d_val.resize(20);
   std::vector<int32_t> r_a(10);
   tiledb_query_status_t status;
+  tiledb_query_status_details_t details;
   read_array_1d(
-      ctx_, array, layout, "a", "e", &r_d_off, &r_d_val, &r_a, &status);
+      ctx_,
+      array,
+      layout,
+      "a",
+      "e",
+      &r_d_off,
+      &r_d_val,
+      &r_a,
+      &status,
+      &details);
   CHECK(status == TILEDB_COMPLETED);
   CHECK(r_d_val == "aaccccdddd");
   std::vector<uint64_t> c_d_off = {0, 2, 4, 6};
@@ -2211,8 +2285,18 @@ TEST_CASE_METHOD(
   r_d_val.resize(20);
   std::vector<int32_t> r_a(10);
   tiledb_query_status_t status;
+  tiledb_query_status_details_t details;
   read_array_1d(
-      ctx, array, layout, "a", "e", &r_d_off, &r_d_val, &r_a, &status);
+      ctx,
+      array,
+      layout,
+      "a",
+      "e",
+      &r_d_off,
+      &r_d_val,
+      &r_a,
+      &status,
+      &details);
   CHECK(status == TILEDB_COMPLETED);
   CHECK(r_d_val == "aaccdddd");
   std::vector<uint64_t> c_d_off = {0, 2, 4};
@@ -2587,6 +2671,7 @@ TEST_CASE_METHOD(
   r_d_val.resize(20);
   std::vector<int32_t> r_a(10);
   tiledb_query_status_t status;
+  tiledb_query_status_details_t details;
   read_array_1d(
       ctx_,
       array,
@@ -2596,7 +2681,8 @@ TEST_CASE_METHOD(
       &r_d_off,
       &r_d_val,
       &r_a,
-      &status);
+      &status,
+      &details);
   CHECK(status == TILEDB_COMPLETED);
   CHECK(r_d_val == "ab");
   std::vector<uint64_t> c_d_off = {0, 1};
@@ -2716,6 +2802,7 @@ TEST_CASE_METHOD(
   r_d_val.resize(20);
   std::vector<int32_t> r_a(10);
   tiledb_query_status_t status;
+  tiledb_query_status_details_t details;
   read_array_1d(
       ctx_,
       array,
@@ -2725,7 +2812,8 @@ TEST_CASE_METHOD(
       &r_d_off,
       &r_d_val,
       &r_a,
-      &status);
+      &status,
+      &details);
   CHECK(status == TILEDB_COMPLETED);
   CHECK(r_d_val == "abcde");
   std::vector<uint64_t> c_d_off = {0, 1, 2, 3, 4};
