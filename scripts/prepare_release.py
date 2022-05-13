@@ -77,9 +77,9 @@ def find_prs(gh: Github, head: str, base: Optional[str] = None) -> Dict[int, str
             backport = re.match(r"^backport-(\d+)", pr.head.ref)
             if backport:
                 pr = repo.get_pull(int(backport.group(1)))
-            # If the reserved keyword "NO_HISTORY" is included anywhere in the PR body,
-            # ignore the PR
-            if "NO_HISTORY" not in pr.body:
+            # If the pr is open or the reserved keyword "NO_HISTORY" is included anywhere
+            # in the PR body, ignore the PR
+            if pr.state != "open" and "NO_HISTORY" not in pr.body:
                 prs[pr.number] = pr.body
 
     logging.info(
