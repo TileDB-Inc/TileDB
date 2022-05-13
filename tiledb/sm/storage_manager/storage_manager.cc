@@ -2204,7 +2204,8 @@ Status StorageManager::load_group_metadata(
   }
 
   // Copy the deserialized metadata into the original Metadata object
-  metadata->swap(deserialized_metadata.value().get());
+  *metadata = *(deserialized_metadata.value());
+  RETURN_NOT_OK(metadata->set_loaded_metadata_uris(group_metadata_to_load));
 
   return Status::Ok();
 }
