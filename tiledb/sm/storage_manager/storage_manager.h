@@ -994,7 +994,6 @@ class StorageManager {
    *
    * @param group_name The name of the group whose metadata will be
    *     consolidated.
-   *    key. For unencrypted groups, pass `nullptr`.
    * @param config Configuration parameters for the consolidation
    *     (`nullptr` means default, which will use the config associated with
    *      this instance).
@@ -1002,6 +1001,18 @@ class StorageManager {
    */
   Status group_metadata_consolidate(
       const char* group_name, const Config* config);
+
+  /**
+   * Vacuums the consolidated metadata files of a group.
+   *
+   * @param group_name The name of the group whose metadata will be
+   *     vacuumed.
+   * @param config Configuration parameters for vacuuming
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @return Status
+   */
+  Status group_metadata_vacuum(const char* group_name, const Config* config);
 
  private:
   /* ********************************* */

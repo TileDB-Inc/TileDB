@@ -2353,7 +2353,7 @@ Status StorageManager::group_metadata_consolidate(
     return logger_->status(Status_StorageManagerError(
         "Cannot consolidate group metadata; Invalid URI"));
   }
-  // Check if array exists
+  // Check if group exists
   ObjectType obj_type;
   RETURN_NOT_OK(object_type(group_uri, &obj_type));
 
@@ -2374,6 +2374,35 @@ Status StorageManager::group_metadata_consolidate(
       Consolidator::create(ConsolidationMode::GROUP_META, config, this);
   return consolidator->consolidate(
       group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+}
+
+Status StorageManager::group_metadata_vacuum(
+    const char* group_name, const Config* config) {
+  // Check group URI
+  URI group_uri(group_name);
+  if (group_uri.is_invalid()) {
+    return logger_->status(Status_StorageManagerError(
+        "Cannot vacuum group metadata; Invalid URI"));
+  }
+
+  // If 'config' is unset, use the 'config_' that was set during initialization
+  // of this StorageManager instance.
+  if (!config) {
+    config = &config_;
+  }
+
+  // Check if group exists
+  ObjectType obj_type;
+  RETURN_NOT_OK(object_type(group_uri, &obj_type));
+
+  if (obj_type != ObjectType::GROUP) {
+    return logger_->status(Status_StorageManagerError(
+        "Cannot vacuum group metadata; Group does not exist"));
+  }
+
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::GROUP_META, config, this);
+  return consolidator->vacuum(group_name);
 }
 
 }  // namespace sm

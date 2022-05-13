@@ -96,6 +96,7 @@ struct GroupFx {
       tiledb::sm::URI group_uri, std::vector<std::string>& files) const;
   void get_meta_vac_files(
       tiledb::sm::URI group_uri, std::vector<std::string>& files) const;
+  void vacuum(const char* group_uri, uint64_t start, uint64_t end) const;
 };
 
 GroupFx::GroupFx()
@@ -213,6 +214,28 @@ void GroupFx::consolidate(
   REQUIRE(err == nullptr);
 
   rc = tiledb_group_consolidate_metadata(ctx_, group_uri, cfg);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_config_free(&cfg);
+}
+
+void GroupFx::vacuum(
+    const char* group_uri, uint64_t start, uint64_t end) const {
+  int rc;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.vacuum.timestamp_start", std::to_string(start).c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.vacuum.timestamp_end", std::to_string(end).c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_group_vacuum_metadata(ctx_, group_uri, cfg);
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_config_free(&cfg);
@@ -621,7 +644,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     GroupFx,
-    "C API: Group, consolidation, vacuuming",
+    "C API: Group, consolidation",
     "[capi][group][metadata][consolidation]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
@@ -664,6 +687,71 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_fh_free(&fh);
   REQUIRE(rc == TILEDB_OK);
+
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    GroupFx, "C API: Group, vacuuming", "[capi][group][metadata][vacuuming]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  tiledb::sm::URI group_uri(temp_dir + "group");
+  REQUIRE(tiledb_group_create(ctx_, group_uri.c_str()) == TILEDB_OK);
+
+  auto start = tiledb::sm::utils::time::timestamp_now_ms();
+
+  write_group_metadata(group_uri.c_str());
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  auto start1 = tiledb::sm::utils::time::timestamp_now_ms();
+  write_group_metadata(group_uri.c_str());
+  write_group_metadata(group_uri.c_str());
+  auto end1 = tiledb::sm::utils::time::timestamp_now_ms();
+  consolidate(group_uri.c_str(), start1, end1);
+
+  auto start2 = tiledb::sm::utils::time::timestamp_now_ms();
+  write_group_metadata(group_uri.c_str());
+  write_group_metadata(group_uri.c_str());
+  auto end2 = tiledb::sm::utils::time::timestamp_now_ms();
+  consolidate(group_uri.c_str(), start2, end2);
+
+  auto end = tiledb::sm::utils::time::timestamp_now_ms();
+
+  std::vector<std::string> group_meta_vac_files;
+  get_meta_vac_files(group_uri, group_meta_vac_files);
+  CHECK(group_meta_vac_files.size() == 2);
+
+  std::vector<std::string> group_meta_files;
+  get_meta_files(group_uri, group_meta_files);
+  CHECK(group_meta_files.size() == 7);
+
+  vacuum(group_uri.c_str(), start1, end1);
+
+  get_meta_vac_files(group_uri, group_meta_vac_files);
+  CHECK(group_meta_vac_files.size() == 1);
+  get_meta_files(group_uri, group_meta_files);
+  CHECK(group_meta_files.size() == 5);
+
+  vacuum(group_uri.c_str(), start2, end2);
+
+  get_meta_vac_files(group_uri, group_meta_vac_files);
+  CHECK(group_meta_vac_files.size() == 0);
+  get_meta_files(group_uri, group_meta_files);
+  CHECK(group_meta_files.size() == 3);
+
+  consolidate(group_uri.c_str(), start, end);
+
+  get_meta_vac_files(group_uri, group_meta_vac_files);
+  CHECK(group_meta_vac_files.size() == 1);
+  get_meta_files(group_uri, group_meta_files);
+  CHECK(group_meta_files.size() == 4);
+
+  vacuum(group_uri.c_str(), start, end);
+
+  get_meta_vac_files(group_uri, group_meta_vac_files);
+  CHECK(group_meta_vac_files.size() == 0);
+  get_meta_files(group_uri, group_meta_files);
+  CHECK(group_meta_files.size() == 1);
 
   remove_temp_dir(temp_dir);
 }

@@ -643,6 +643,23 @@ int32_t tiledb_group_consolidate_metadata(
   return TILEDB_OK;
 }
 
+int32_t tiledb_group_vacuum_metadata(
+    tiledb_ctx_t* ctx, const char* group_uri, tiledb_config_t* config) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->group_metadata_vacuum(
+              group_uri,
+              (config == nullptr) ? &ctx->ctx_->storage_manager()->config() :
+                                    config->config_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::common::detail
 
 int32_t tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri)
@@ -856,5 +873,12 @@ TILEDB_EXPORT int32_t tiledb_group_consolidate_metadata(
     const char* group_uri,
     tiledb_config_t* config) TILEDB_NOEXCEPT {
   return api_entry<detail::tiledb_group_consolidate_metadata>(
+      ctx, group_uri, config);
+}
+TILEDB_EXPORT int32_t tiledb_group_vacuum_metadata(
+    tiledb_ctx_t* ctx,
+    const char* group_uri,
+    tiledb_config_t* config) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_vacuum_metadata>(
       ctx, group_uri, config);
 }
