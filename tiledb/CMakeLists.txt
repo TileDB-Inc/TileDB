@@ -334,27 +334,36 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 ############################################################
 # provide actions/target for preparation of magic.mgc data for embedding/build
 
-set(MGC_GZIPPED_BIN_PATH3 "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc/magic_mgc_gzipped.bin")
-set(MGC_GZIPPED_BIN_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc")
+#set(MGC_GZIPPED_BIN_PATH3 "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc/magic_mgc_gzipped.bin")
+set(MGC_GZIPPED_BIN_OUTPUT_DIRECTORY "${TILEDB_EP_BASE}/install/include")
+set(MGC_GZIPPED_BIN_OUTPUT_FILE "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}/magic_mgc_gzipped.bin")
+set(MGC_GZIPPED_BIN_INPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc")
+set(MGC_GZIPPED_BIN_INPUT_FILE "${MGC_GZIPPED_BIN_INPUT_DIRECTORY}/magic_mgc_gzipped.bin.tar.bz2")
 
 add_custom_command(
-  OUTPUT "${MGC_GZIPPED_BIN_PATH3}"
-  DEPENDS "${MGC_GZIPPED_BIN_PATH3}.tar.bz2"
-  COMMAND ${CMAKE_COMMAND} -E tar x "${MGC_GZIPPED_BIN_PATH3}.tar.bz2"
-  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_DIRECTORY}"
+  OUTPUT "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
+  DEPENDS "${MGC_GZIPPED_BIN_INPUT_FILE}"
+  COMMAND ${CMAKE_COMMAND} -E tar x "${MGC_GZIPPED_BIN_INPUT_FILE}"
+  #WORKING_DIRECTORY "${MGC_GZIPPED_BIN_DIRECTORY}"
+  #WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
+  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}"
 )
 add_custom_target(gen_mgc_unarch ALL
-  DEPENDS ${MGC_GZIPPED_BIN_PATH3}
+  DEPENDS ${MGC_GZIPPED_BIN_OUTPUT_FILE}
 )
 add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_unarch)
 
 add_custom_target(
   update-embedded-magic-data
-  COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_PATH3}"
-  COMMAND ${CMAKE_COMMAND} -E tar cvj "${MGC_GZIPPED_BIN_PATH3}.tar.bz2" "${MGC_GZIPPED_BIN_PATH3}"
+  # overwrites the 'input' file for subsequent push to repository
+  COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
+  #COMMAND ${CMAKE_COMMAND} -E tar cvj "${MGC_GZIPPED_BIN_INPUT_FILE}" "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
+  # need to work in 'local' directory with no prefix paths so no paths are included in archive
+  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}"
+  COMMAND ${CMAKE_COMMAND} -E tar cvj "magic_mgc_gzipped.bin.tar.bz2" "magic_mgc_gzipped.bin"
+  COMMAND ${CMAKE_COMMAND} -E copy "magic_mgc_gzipped.bin.tar.bz2" "${MGC_GZIPPED_BIN_INPUT_FILE}"
   DEPENDS "${libmagic_DICTIONARY}"
-  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_DIRECTORY}"
-  COMMENT "Re-generate ${MGC_GZIPPED_BIN_PATH3} for embedded magic.mgc support"
+  COMMENT "Re-generate ${MGC_GZIPPED_BIN_INPUT_FILE} for embedded magic.mgc support"
 )
 
 # Compile all core sources with PIC
