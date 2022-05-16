@@ -327,6 +327,67 @@ Status Subarray::add_point_ranges(
   return Status::Ok();
 }
 
+Status Subarray::add_ranges_list(
+    unsigned dim_idx, const void* start, uint64_t count) {
+  if (dim_idx >= this->array_->array_schema_latest().dim_num())
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add range; Invalid dimension index"));
+
+  if (count % 2) {
+    std::stringstream msg;
+    msg << "add_ranges_list: Invalid count " << count 
+      << ",count must be a multple of 2 ";
+    return LOG_STATUS(
+        Status_SubarrayError(msg.str().c_str()));
+  }
+
+  QueryType array_query_type;
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  if (array_query_type == tiledb::sm::QueryType::WRITE) {
+    if (!array_->array_schema_latest().dense()) {
+      return LOG_STATUS(Status_SubarrayError(
+          "Adding a subarray range to a write query is not "
+          "supported in sparse arrays"));
+    }
+    if (this->is_set(dim_idx))
+      return LOG_STATUS(
+          Status_SubarrayError("Cannot add range; Multi-range dense writes "
+                               "are not supported"));
+  }
+
+  if (start == nullptr)
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add ranges; Invalid start pointer"));
+
+  if (this->array_->array_schema_latest()
+          .domain()
+          .dimension_ptr(dim_idx)
+          ->var_size())
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add range; Range must be fixed-sized"));
+
+  // Prepare a temp range
+  std::vector<uint8_t> range;
+  auto coord_size =
+      this->array_->array_schema_latest().dimension_ptr(dim_idx)->coord_size();
+  range.resize(2 * coord_size);
+
+  for (size_t i = 0; i < count/2; i++) {
+    uint8_t* ptr = (uint8_t*)start + 2*coord_size * i;
+    // point ranges
+    std::memcpy(&range[0], ptr, coord_size);
+    std::memcpy(&range[coord_size], ptr+coord_size, coord_size);
+
+    // Add range
+    auto st = this->add_range(
+        dim_idx, Range(&range[0], 2 * coord_size), err_on_range_oob_);
+    if (!st.ok()) {
+      return LOG_STATUS(std::move(st));
+    }
+  }
+  return Status::Ok();
+}
+
 Status Subarray::add_range_by_name(
     const std::string& dim_name,
     const void* start,

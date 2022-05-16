@@ -272,6 +272,19 @@ class Subarray {
   Status add_point_ranges(unsigned dim_idx, const void* start, uint64_t count);
 
   /**
+   * @brief Set ranges from an array of ranges (paired { begin,end)
+   *
+   * @param dim_idx Dimension index
+   * @param start Pointer to start of the array
+   * @param count Number of pairs to add
+   * @return Status
+   * @note The pairs list is logically { {begin1,end1}, {begin2,end2}, ...} but
+   * because of typing considerations from the C api is simply presented as
+   * a linear list of individual items, though they should be multiple of 2
+   */
+  Status add_ranges_list(unsigned dim_idx, const void* start, uint64_t count);
+
+  /**
    * Adds a variable-sized range to the (read/write) query on the input
    * dimension by index, in the form of (start, end).
    */

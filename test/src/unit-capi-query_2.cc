@@ -3131,3 +3131,73 @@ TEST_CASE_METHOD(
 
   remove_array(array_name);
 }
+
+TEST_CASE_METHOD(
+    Query2Fx,
+    "C API: Test subarray, sparse, set point ranges list",
+    "[capi][query_2][sparse][ranges-list]") {
+  SECTION("- No serialization") {
+    serialize_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_ = true;
+  }
+  std::string array_name = "subarray_sparse_default_bulk_ranges";
+  remove_array(array_name);
+  const uint64_t local_DIM_DOMAIN[4] = {1, 12, 1, 12};
+  create_sparse_array(array_name, local_DIM_DOMAIN);
+
+  // Allocate subarray with an unopened array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  CHECK(rc == TILEDB_OK);
+
+  // Add ranges
+  // coalesces, having only 3 ranges... 
+  // uint64_t ranges[] = {1, 2, 3, 4, 6, 7, 9, 10};
+  uint64_t ranges[] = {1, 2, 4, 5, 7, 8, 10, 11};
+  rc = tiledb_query_add_ranges_list(ctx_, query, 0, ranges, 8);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_add_ranges_list(ctx_, query, 1, ranges, 8);
+  CHECK(rc == TILEDB_OK);
+
+  // Check that there are four ranges
+  uint64_t range_num;
+  rc = tiledb_query_get_range_num(ctx_, query, 0, &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 4);
+
+  // Check ranges
+  for (uint32_t dim_idx = 0; dim_idx < 1; dim_idx++) {
+    for (uint32_t idx = 0; idx < range_num; idx++) {
+      const void *start, *end, *stride;
+      rc = tiledb_query_get_range(
+          ctx_, query, dim_idx, idx, &start, &end, &stride);
+      CHECK(rc == TILEDB_OK);
+      CHECK(*(uint64_t*)start == ranges[idx*2]);
+      CHECK(*(uint64_t*)end == ranges[idx*2+1]);
+      CHECK(stride == nullptr);
+    }
+  }
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
+
+  remove_array(array_name);
+}

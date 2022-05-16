@@ -3310,6 +3310,24 @@ int32_t tiledb_query_add_point_ranges(
       ctx, &query_subarray, dim_idx, start, count);
 }
 
+int32_t tiledb_query_add_ranges_list(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    uint32_t dim_idx,
+    const void* start,
+    uint64_t count) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  tiledb_subarray_transient_local_t query_subarray(query);
+  tiledb_config_t local_cfg;
+  // Drop 'const'ness for local usage here
+  local_cfg.config_ = (tiledb::sm::Config*)query->query_->config();
+  tiledb_subarray_set_config(ctx, &query_subarray, &local_cfg);
+  return tiledb_subarray_add_ranges_list(
+      ctx, &query_subarray, dim_idx, start, count);
+}
+
 int32_t tiledb_query_add_range_by_name(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
@@ -3740,6 +3758,23 @@ int32_t tiledb_subarray_add_point_ranges(
 
   if (SAVE_ERROR_CATCH(
           ctx, subarray->subarray_->add_point_ranges(dim_idx, start, count)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_subarray_add_ranges_list(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    uint32_t dim_idx,
+    const void* start,
+    uint64_t count) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, subarray) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, subarray->subarray_->add_ranges_list(dim_idx, start, count)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -8644,6 +8679,16 @@ int32_t tiledb_query_add_point_ranges(
       ctx, query, dim_idx, start, count);
 }
 
+int32_t tiledb_query_add_ranges_list(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    uint32_t dim_idx,
+    const void* start,
+    uint64_t count) noexcept {
+  return api_entry<detail::tiledb_query_add_ranges_list>(
+      ctx, query, dim_idx, start, count);
+}
+
 int32_t tiledb_query_add_range_by_name(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
@@ -8891,6 +8936,16 @@ int32_t tiledb_subarray_add_point_ranges(
     const void* start,
     uint64_t count) noexcept {
   return api_entry<detail::tiledb_subarray_add_point_ranges>(
+      ctx, subarray, dim_idx, start, count);
+}
+
+int32_t tiledb_subarray_add_ranges_list(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    uint32_t dim_idx,
+    const void* start,
+    uint64_t count) noexcept {
+  return api_entry<detail::tiledb_subarray_add_ranges_list>(
       ctx, subarray, dim_idx, start, count);
 }
 
