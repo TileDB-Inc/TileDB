@@ -6,7 +6,6 @@
 
 ## New features
 
-* RLE compression support for var-length string dimensions [#2938](https://github.com/TileDB-Inc/TileDB/pull/2938)
 * Add virtual filesystem ls_with_sizes function [#2971](https://github.com/TileDB-Inc/TileDB/pull/2971)
 * Add new CMake build option for `TILEDB_EXPERIMENTAL_FEATURES` to compile time protect experimental features. [#2748](https://github.com/TileDB-Inc/TileDB/pull/2748)
 * Forwardport Group API [#3058](https://github.com/TileDB-Inc/TileDB/pull/3058)
@@ -20,18 +19,10 @@
 * Convert FilterPipeline deserialize function to static factory function [#2799](https://github.com/TileDB-Inc/TileDB/pull/2799)
 * Convert array metadata deserialize function to factory function [#2784](https://github.com/TileDB-Inc/TileDB/pull/2784)
 * A new thread pool with modern C++ compatible API and exception-safe behavior. [#2944](https://github.com/TileDB-Inc/TileDB/pull/2944)
-* Global order writer: fixing multi writes for var size attributes. [#2963](https://github.com/TileDB-Inc/TileDB/pull/2963)
 * Smart pointer conversion: ArraySchema Domain [#2948](https://github.com/TileDB-Inc/TileDB/pull/2948)
-* VFS: adding configuration for vfs.max_batch_size. [#2960](https://github.com/TileDB-Inc/TileDB/pull/2960)
 * Declare all C API functions `noexcept`. Put existing C API functions inside exception safety wrappers to meet the declaration change. [#2961](https://github.com/TileDB-Inc/TileDB/pull/2961)
 * Add support for compile-time assertion configuration [#2962](https://github.com/TileDB-Inc/TileDB/pull/2962)
 * Refactored tiledb::sm::serialization::attribute_from_capnp to be C41 compliant [#2937](https://github.com/TileDB-Inc/TileDB/pull/2937)
-* Support reading all consolidated fragment metadata files. [#2973](https://github.com/TileDB-Inc/TileDB/pull/2973)
-* Fixing build errors using MacOSX12.3.sdk. [#2981](https://github.com/TileDB-Inc/TileDB/pull/2981)
-* Fixing compute_results_count_sparse_string for multiple range threads. [#2983](https://github.com/TileDB-Inc/TileDB/pull/2983)
-* Global writes: fixing OOM on write continuation. [#2993](https://github.com/TileDB-Inc/TileDB/pull/2993)
-* Do not store offsets when RLE is used on string dimensions [#2969](https://github.com/TileDB-Inc/TileDB/pull/2969)
-* Dynamically infer bytesizes for run length and strings for strings RLE compression [#2984](https://github.com/TileDB-Inc/TileDB/pull/2984)
 * Smart pointer conversion: ArraySchema Dimension [#2926](https://github.com/TileDB-Inc/TileDB/pull/2926)
 * Refactored tiledb::sm::serialization::filter_pipeline_from_capnp to be C41 compliant [#2943](https://github.com/TileDB-Inc/TileDB/pull/2943)
 * Enable sparse global order reader by default. [#2997](https://github.com/TileDB-Inc/TileDB/pull/2997)
@@ -53,12 +44,8 @@
 * Move `Range` to new `tiledb::type` namespace [#3059](https://github.com/TileDB-Inc/TileDB/pull/3059)
 * Convert tdb shared to shared [#2965](https://github.com/TileDB-Inc/TileDB/pull/2965)
 * Add `StatusException`, an exception class to be thrown instead of returning `Status` [#3050](https://github.com/TileDB-Inc/TileDB/pull/3050)
-* Global writer: fixing write continuation for fixed sized attributes. [#3062](https://github.com/TileDB-Inc/TileDB/pull/3062)
 * Cherry-pick #3061 [#3064](https://github.com/TileDB-Inc/TileDB/pull/3064)
-* Add ability to store (optional) name with group member [#3068](https://github.com/TileDB-Inc/TileDB/pull/3068)
 * Typo fix in group.cc [#3078](https://github.com/TileDB-Inc/TileDB/pull/3078)
-* All ranges tile overlap: skip computation for default dimensions. [#3080](https://github.com/TileDB-Inc/TileDB/pull/3080)
-* Add golang annotation to capnp spec file [#3089](https://github.com/TileDB-Inc/TileDB/pull/3089)
 * Rename tiledb time.h/math.h to avoid possible conflicts with standard header files. [#3087](https://github.com/TileDB-Inc/TileDB/pull/3087)
 * Convert ArraySchema's deserialize to a factory function [#3012](https://github.com/TileDB-Inc/TileDB/pull/3012)
 * varying_size_datum_at: fixing comparison error. [#3127](https://github.com/TileDB-Inc/TileDB/pull/3127)
@@ -67,9 +54,7 @@
 ## Bug fixes
 
 * [bug] Fix SC-17415: segfault due to underflow in for loop [#3143](https://github.com/TileDB-Inc/TileDB/pull/3143)
-* Unordered writer: fixing segfault for empty writes. [#3161](https://github.com/TileDB-Inc/TileDB/pull/3161)
 * Sparse global order reader: prevent dims from being unfiltered twice. [#3150](https://github.com/TileDB-Inc/TileDB/pull/3150)
-* Filter pipeline: fixing empty pipeline, multi chunk, refactored queries. [#3149](https://github.com/TileDB-Inc/TileDB/pull/3149)
 * compare nullptr, avoid catch2 comparison warning failure [#2970](https://github.com/TileDB-Inc/TileDB/pull/2970)
 * Check that array is open before getting non_empty_domain [#2980](https://github.com/TileDB-Inc/TileDB/pull/2980)
 * Fix assertion failure in GCS, debug build [#3001](https://github.com/TileDB-Inc/TileDB/pull/3001)
@@ -77,13 +62,8 @@
 * Sparse unordered w/ dups reader: coord tiles management fix. [#3023](https://github.com/TileDB-Inc/TileDB/pull/3023)
 * Incorrect validity result count in REST query [#3015](https://github.com/TileDB-Inc/TileDB/pull/3015)
 * use different API approach to avoid possible file sharing violation [#3056](https://github.com/TileDB-Inc/TileDB/pull/3056)
-* `tiledb_serialize_array_metadata` should load metadata if its not loaded before serializing [#3065](https://github.com/TileDB-Inc/TileDB/pull/3065)
-* `tiledb_serialize_group_metadata` should load group metadata if its not loaded. [#3070](https://github.com/TileDB-Inc/TileDB/pull/3070)
 * avoid some potentially invalid vector references [#2932](https://github.com/TileDB-Inc/TileDB/pull/2932)
-* Sparse Index Reader Fix: Check For Empty Buffer [#3051](https://github.com/TileDB-Inc/TileDB/pull/3051)
 * Sparse Global Order Reader Fix: Decrement Total Cells [#3046](https://github.com/TileDB-Inc/TileDB/pull/3046)
-* Reset group metadata only based on end timestamp to ensure its always reset to now [#3091](https://github.com/TileDB-Inc/TileDB/pull/3091)
-* Sparse unordered w/ dups reader: fix incomplete reason for cloud reads. [#3104](https://github.com/TileDB-Inc/TileDB/pull/3104)
 
 ## API additions
 
@@ -158,8 +138,8 @@
 * Adding support to consolidate ok/wrt files. [#2933](https://github.com/TileDB-Inc/TileDB/pull/2933)
 * Tile medatada: treating TILEDB_CHAR as TILEDB_STRING_ASCII. [#2953](https://github.com/TileDB-Inc/TileDB/pull/2953)
 * Fragment metadata: treating TILEDB_CHAR as TILEDB_STRING_ASCII. [#2958](https://github.com/TileDB-Inc/TileDB/pull/2958)
+
 * Global order writer: fixing multi writes for var size attributes. [#2963](https://github.com/TileDB-Inc/TileDB/pull/2963)
-* Convert FilterPipeline deserialize function to static factory function [#2799](https://github.com/TileDB-Inc/TileDB/pull/2799)
 * VFS: adding configuration for vfs.max_batch_size. [#2960](https://github.com/TileDB-Inc/TileDB/pull/2960)
 * Fixing build errors using MacOSX12.3.sdk. [#2981](https://github.com/TileDB-Inc/TileDB/pull/2981)
 * Support reading all consolidated fragment metadata files. [#2973](https://github.com/TileDB-Inc/TileDB/pull/2973)
