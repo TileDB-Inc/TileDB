@@ -28,6 +28,7 @@
 #   - libmagic_INCLUDE_DIR, directory containing headers
 #   - libmagic_LIBRARIES, the Magic library path
 #   - libmagic_FOUND, whether Magic has been found
+#   - libmagic_DICTIONARY, whether magic.mgc has been found
 #   - The libmagic imported target
 
 # Include some common helper functions.
@@ -89,8 +90,7 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
     ExternalProject_Add(ep_magic
       PREFIX "externals"
       GIT_REPOSITORY "https://github.com/TileDB-Inc/file-windows.git"
-      #GIT_TAG "nplat-cmake-install-support"
-      GIT_TAG "117c8a6533adb135c2c9fd06342daa671a44cb34"
+      GIT_TAG "494060c2ea02494aabfbfc75e76d0af95c36156c"
       GIT_SUBMODULES_RECURSE TRUE
       UPDATE_COMMAND ""
       CMAKE_ARGS
@@ -109,12 +109,16 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
       -DTILEDB_LIBMAGIC_EP_BUILT=TRUE
     )
 
-    set(TILEDB_LIBMAGIC_DIR "${TILEDB_EP_INSTALL_PREFIX}")
-
   else()
     message(FATAL_ERROR "Unable to find Magic")
   endif()
 endif()
+
+find_file(libmagic_DICTIONARY magic.mgc
+  PATHS ${LIBMAGIC_PATHS}
+  PATH_SUFFIXES bin share
+  ${NO_DEFAULT_PATH}
+)
 
 if (libmagic_FOUND AND NOT TARGET libmagic)
   message(STATUS "Found Magic, adding imported target: ${libmagic_LIBRARIES}")

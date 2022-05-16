@@ -127,7 +127,6 @@ option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit test
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
 option(TILEDB_EXPERIMENTAL_FEATURES "If true, build and include experimental features" OFF)
-option(TILEDB_LEGACY_THREAD_POOL "Use legacy thread pool" OFF)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
@@ -255,15 +254,6 @@ endif()
 # Definitions for all targets
 add_definitions(-D_FILE_OFFSET_BITS=64)
 
-# Legacy thread pool
-if (TILEDB_LEGACY_THREAD_POOL)
-    message(STATUS "The TileDB library is compiled with LEGACY thread pool (${TILEDB_LEGACY_THREAD_POOL}).")
-    add_definitions(-DLEGACY_THREAD_POOL)
-else()
-    message(STATUS "The TileDB library is compiled with NEW thread pool (${TILEDB_LEGACY_THREAD_POOL}).")
-endif()
-
-
 # AVX2 flag
 include(CheckAVX2Support)
 CheckAVX2Support()
@@ -299,10 +289,12 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_buffer unit_datum unit_dynamic_memory)
   add_dependencies(tests unit_exception unit_interval unit_thread_pool)
   add_dependencies(tests unit_array_schema unit_filter_create unit_filter_pipeline unit_metadata)
-  add_dependencies(tests unit_compressors)
+  add_dependencies(tests unit_compressors unit_query unit_misc unit_vfs)
   add_dependencies(tests unit_range_subset)
   add_dependencies(tests unit_range)
   add_dependencies(tests unit_mgc_dict)
+
+  add_subdirectory(test/regression)
 endif()
 
 # Build tools

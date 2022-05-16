@@ -11,7 +11,7 @@ pr:
 
 variables:
   - name: MANYLINUX_IMAGE
-    value: quay.io/pypa/manylinux2010_x86_64:2021-11-07-28723f3
+    value: quay.io/pypa/manylinux2010_x86_64:2022-04-24-d28e73e
 
 stages:
   - stage: CI

@@ -64,7 +64,7 @@ class CellCmpBase {
 
   [[nodiscard]] int cell_order_cmp_RC(
       unsigned int d, const ResultCoords& a, const ResultCoords& b) const {
-    const auto& dim{*(domain_.dimension(d))};
+    const auto& dim{*(domain_.dimension_ptr(d))};
     auto v1{a.dimension_datum(dim, d)};
     auto v2{b.dimension_datum(dim, d)};
     return domain_.cell_order_cmp(d, v1, v2);
@@ -287,7 +287,7 @@ class GlobalCmp : protected CellCmpBase {
     if (tile_order_ == Layout::ROW_MAJOR) {
       for (unsigned d = 0; d < dim_num_; ++d) {
         // Not applicable to var-sized dimensions
-        if (domain_.dimension(d)->var_size())
+        if (domain_.dimension_ptr(d)->var_size())
           continue;
 
         auto res = domain_.tile_order_cmp(d, a.coord(d), b.coord(d));
@@ -300,9 +300,9 @@ class GlobalCmp : protected CellCmpBase {
       }
     } else {  // COL_MAJOR
       assert(tile_order_ == Layout::COL_MAJOR);
-      for (unsigned d = dim_num_ - 1;; --d) {
+      for (int32_t d = static_cast<int32_t>(dim_num_) - 1; d >= 0; d--) {
         // Not applicable to var-sized dimensions
-        if (domain_.dimension(d)->var_size())
+        if (domain_.dimension_ptr(d)->var_size())
           continue;
 
         auto res = domain_.tile_order_cmp(d, a.coord(d), b.coord(d));
@@ -312,9 +312,6 @@ class GlobalCmp : protected CellCmpBase {
         if (res == 1)
           return false;
         // else same tile on dimension d --> continue
-
-        if (d == 0)
-          break;
       }
     }
 
@@ -331,7 +328,7 @@ class GlobalCmp : protected CellCmpBase {
       }
     } else {  // COL_MAJOR
       assert(cell_order_ == Layout::COL_MAJOR);
-      for (unsigned d = dim_num_ - 1;; --d) {
+      for (int32_t d = static_cast<int32_t>(dim_num_) - 1; d >= 0; d--) {
         auto res = cell_order_cmp_RC(d, a, b);
 
         if (res == -1)
@@ -339,9 +336,6 @@ class GlobalCmp : protected CellCmpBase {
         if (res == 1)
           return false;
         // else same tile on dimension d --> continue
-
-        if (d == 0)
-          break;
       }
     }
 

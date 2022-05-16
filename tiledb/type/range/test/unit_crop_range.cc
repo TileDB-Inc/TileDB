@@ -128,7 +128,7 @@ TEMPLATE_TEST_CASE(
 
 TEMPLATE_TEST_CASE(
     "Test intersect_range for floating-point types", "[range]", float, double) {
-  TestType bounds[2]{-10.5, 3.33};
+  TestType bounds[2]{-10.5, 3.33f};
   SECTION("Test crop on bounds is a no-op") {
     test_crop_range<TestType>(bounds, bounds, bounds);
   }
@@ -143,7 +143,7 @@ TEMPLATE_TEST_CASE(
   }
   SECTION("Test crop upper bound") {
     TestType range[2]{0.0, 20.5};
-    TestType result[2]{0.0, 3.33};
+    TestType result[2]{0.0, 3.33f};
     test_crop_range<TestType>(bounds, range, result);
   }
   SECTION("Test crop both bounds") {

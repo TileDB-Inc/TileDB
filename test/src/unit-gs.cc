@@ -53,7 +53,7 @@ struct GSFx {
   const std::string TEST_DIR = GCS_BUCKET.to_string() + "tiledb_test_dir/";
 
   tiledb::sm::GCS gcs_;
-  ThreadPool thread_pool_;
+  ThreadPool thread_pool_{2};
 
   GSFx() = default;
   ~GSFx();
@@ -79,8 +79,6 @@ GSFx::~GSFx() {
 
 void GSFx::init_gcs(Config&& config) {
   REQUIRE(config.set("vfs.gcs.project_id", "TODO").ok());
-
-  REQUIRE(thread_pool_.init(2).ok());
   REQUIRE(gcs_.init(config, &thread_pool_).ok());
 
   // Create bucket

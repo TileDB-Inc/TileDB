@@ -116,6 +116,7 @@ int main(int argc, char* argv[]) {
   }
   std::cerr << "sizes input " << inbuf->size() << ", compressed "
             << out_buffer_ptr->size() << std::endl;
+  if (0)  // leave available for future possible diagnostic need
   {
     // save compressed data to allow examination from filesystem
     auto outgzip = fopen("magic-mgc.tdbgzip", "wb");

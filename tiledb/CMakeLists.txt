@@ -135,6 +135,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer_list.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/api_argument_validator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_filestore.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_group.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cache/buffer_lru_cache.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
@@ -330,39 +331,31 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_EXTERNALS_SOURCES}
 )
 
+############################################################
+# provide actions/target for preparation of magic.mgc data for embedding/build
 
-add_dependencies(TILEDB_CORE_OBJECTS tdb_gzip_embedded_data)
-add_dependencies(TILEDB_CORE_OBJECTS compressors)
+set(MGC_GZIPPED_BIN_PATH3 "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc/magic_mgc_gzipped.bin")
+set(MGC_GZIPPED_BIN_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc")
 
-set(MGC_GZIPPED_BIN_PATH "${CMAKE_CURRENT_BINARY_DIR}/magic_mgc_gzipped.bin")
-set(MGC_GZIPPED_BIN_PATH2 "${CMAKE_CURRENT_BINARY_DIR}/sm/misc/magic_mgc_gzipped.bin")
-
-
-if(WIN32)
-  if(MSVC)
-    set(tdb_gzip_embedded_data_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/${CMAKE_BUILD_TYPE}/tdb_gzip_embedded_data.exe")
-  else()
-    set(tdb_gzip_embedded_data_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/tdb_gzip_embedded_data.exe")
-  endif()
-else()
-  set(tdb_gzip_embedded_data_EXECUTABLE "${TILEDB_EP_BASE}/../tiledb/tiledb/sm/compressors/tdb_gzip_embedded_data")
-endif()
-
-set(MAGIC_MGC_DICT "${TILEDB_EP_BASE}/install/bin/magic.mgc")
-message(STATUS "MAGIC_MGC_DICT is ${MAGIC_MGC_DICT}")
-
-add_custom_command( 
-  OUTPUT "${MGC_GZIPPED_BIN_PATH}" #${CMAKE_CURRENT_BINARY_DIR}/mgc_gzipped.bin
-  DEPENDS "${MAGIC_MGC_DICT}"
-  COMMAND "${tdb_gzip_embedded_data_EXECUTABLE}" < "${MAGIC_MGC_DICT}" "${MGC_GZIPPED_BIN_PATH}"
-  # also put it where unit_mgc_dict build can find it
-  COMMAND ${CMAKE_COMMAND} -E copy "${MGC_GZIPPED_BIN_PATH}" "${MGC_GZIPPED_BIN_PATH2}"
+add_custom_command(
+  OUTPUT "${MGC_GZIPPED_BIN_PATH3}"
+  DEPENDS "${MGC_GZIPPED_BIN_PATH3}.tar.bz2"
+  COMMAND ${CMAKE_COMMAND} -E tar x "${MGC_GZIPPED_BIN_PATH3}.tar.bz2"
+  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_DIRECTORY}"
 )
-add_custom_target(gen_mgc_gzip ALL
-  DEPENDS ${MGC_GZIPPED_BIN_PATH}
+add_custom_target(gen_mgc_unarch ALL
+  DEPENDS ${MGC_GZIPPED_BIN_PATH3}
 )
-add_dependencies(gen_mgc_gzip tdb_gzip_embedded_data)
-add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_gzip)
+add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_unarch)
+
+add_custom_target(
+  update-embedded-magic-data
+  COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_PATH3}"
+  COMMAND ${CMAKE_COMMAND} -E tar cvj "${MGC_GZIPPED_BIN_PATH3}.tar.bz2" "${MGC_GZIPPED_BIN_PATH3}"
+  DEPENDS "${libmagic_DICTIONARY}"
+  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_DIRECTORY}"
+  COMMENT "Re-generate ${MGC_GZIPPED_BIN_PATH3} for embedded magic.mgc support"
+)
 
 # Compile all core sources with PIC
 set_property(TARGET TILEDB_CORE_OBJECTS PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -582,12 +575,6 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     libmagic
     WebP::webp
 )
-
-# GCC <9 need to link against libc++fs for c++17 filesystem library
-find_package(Filesystem REQUIRED COMPONENTS Final Experimental)
-if (NOT WIN32 OR NOT MSVC)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE std::filesystem)
-endif()
 
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB

@@ -132,7 +132,7 @@ ArraySchema::ArraySchema(
   // Create dimension map
   dim_map_.clear();
   for (unsigned d = 0; d < domain_->dim_num(); ++d) {
-    auto dim = domain_->dimension(d);
+    auto dim{domain_->dimension_ptr(d)};
     dim_map_[dim->name()] = dim;
   }
 
@@ -237,8 +237,12 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
   if (name == constants::coords) {
     auto dim_num = domain_->dim_num();
     assert(dim_num > 0);
-    auto coord_size = domain_->dimension(0)->coord_size();
+    auto coord_size{domain_->dimension_ptr(0)->coord_size()};
     return dim_num * coord_size;
+  }
+
+  if (name == constants::timestamps) {
+    return constants::timestamp_size;
   }
 
   // Attribute
@@ -263,7 +267,7 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
 
 unsigned int ArraySchema::cell_val_num(const std::string& name) const {
   // Special zipped coordinates
-  if (name == constants::coords)
+  if (name == constants::coords || name == constants::timestamps)
     return 1;
 
   // Attribute
@@ -302,7 +306,7 @@ Status ArraySchema::check() const {
   }
 
   if (array_type_ == ArrayType::DENSE) {
-    auto type = domain_->dimension(0)->type();
+    auto type{domain_->dimension_ptr(0)->type()};
     if (datatype_is_real(type)) {
       return LOG_STATUS(
           Status_ArraySchemaError("Array schema check failed; Dense arrays "
@@ -340,7 +344,7 @@ Status ArraySchema::check_attributes(
 }
 
 const FilterPipeline& ArraySchema::filters(const std::string& name) const {
-  if (name == constants::coords)
+  if (name == constants::coords || name == constants::timestamps)
     return coords_filters();
 
   // Attribute
@@ -363,12 +367,11 @@ bool ArraySchema::dense() const {
   return array_type_ == ArrayType::DENSE;
 }
 
-shared_ptr<const Dimension> ArraySchema::dimension(unsigned int i) const {
-  return domain_->dimension(i);
+const Dimension* ArraySchema::dimension_ptr(unsigned int i) const {
+  return domain_->dimension_ptr(i);
 }
 
-shared_ptr<const Dimension> ArraySchema::dimension(
-    const std::string& name) const {
+const Dimension* ArraySchema::dimension_ptr(const std::string& name) const {
   auto it = dim_map_.find(name);
   return it == dim_map_.end() ? nullptr : it->second;
 }
@@ -378,7 +381,7 @@ std::vector<std::string> ArraySchema::dim_names() const {
   std::vector<std::string> ret;
   ret.reserve(dim_num);
   for (uint32_t d = 0; d < dim_num; ++d)
-    ret.emplace_back(domain_->dimension(d)->name());
+    ret.emplace_back(domain_->dimension_ptr(d)->name());
 
   return ret;
 }
@@ -388,7 +391,7 @@ std::vector<Datatype> ArraySchema::dim_types() const {
   std::vector<Datatype> ret;
   ret.reserve(dim_num);
   for (uint32_t d = 0; d < dim_num; ++d)
-    ret.emplace_back(domain_->dimension(d)->type());
+    ret.emplace_back(domain_->dimension_ptr(d)->type());
 
   return ret;
 }
@@ -449,7 +452,7 @@ bool ArraySchema::is_attr(const std::string& name) const {
 }
 
 bool ArraySchema::is_dim(const std::string& name) const {
-  return this->dimension(name) != nullptr;
+  return this->dimension_ptr(name) != nullptr;
 }
 
 bool ArraySchema::is_field(const std::string& name) const {
@@ -529,7 +532,10 @@ Layout ArraySchema::tile_order() const {
 Datatype ArraySchema::type(const std::string& name) const {
   // Special zipped coordinates attribute
   if (name == constants::coords)
-    return domain_->dimension(0)->type();
+    return domain_->dimension_ptr(0)->type();
+
+  if (name == constants::timestamps)
+    return constants::timestamp_type;
 
   // Attribute
   auto attr_it = attribute_map_.find(name);
@@ -544,7 +550,7 @@ Datatype ArraySchema::type(const std::string& name) const {
 
 bool ArraySchema::var_size(const std::string& name) const {
   // Special case for zipped coordinates
-  if (name == constants::coords)
+  if (name == constants::coords || name == constants::timestamps)
     return false;
 
   // Attribute
@@ -748,7 +754,7 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
   }
 
   if (array_type == ArrayType::DENSE) {
-    auto type = domain.value()->dimension(0)->type();
+    auto type{domain.value()->dimension_ptr(0)->type()};
     if (datatype_is_real(type)) {
       throw StatusException(
           Status_ArraySchemaError("Array schema check failed; Dense arrays "
@@ -855,7 +861,7 @@ Status ArraySchema::set_domain(shared_ptr<Domain> domain) {
           Status_ArraySchemaError("Cannot set domain; In dense arrays, all "
                                   "dimensions must have the same datatype"));
 
-    auto type = domain->dimension(0)->type();
+    auto type{domain->dimension_ptr(0)->type()};
     if (!datatype_is_integer(type) && !datatype_is_datetime(type) &&
         !datatype_is_time(type)) {
       return LOG_STATUS(Status_ArraySchemaError(
@@ -876,7 +882,7 @@ Status ArraySchema::set_domain(shared_ptr<Domain> domain) {
   dim_map_.clear();
   auto dim_num = domain_->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = dimension(d);
+    auto dim{dimension_ptr(d)};
     dim_map_[dim->name()] = dim;
   }
 
@@ -939,7 +945,7 @@ bool ArraySchema::check_attribute_dimension_names() const {
   for (auto attr : attributes_)
     names.insert(attr->name());
   for (unsigned int i = 0; i < dim_num; ++i)
-    names.insert(domain_->dimension(i)->name());
+    names.insert(domain_->dimension_ptr(i)->name());
   return (names.size() == attributes_.size() + dim_num);
 }
 
@@ -963,7 +969,7 @@ Status ArraySchema::check_double_delta_compressor(
   // A dimension inherits the filters when it has no filters.
   auto dim_num = domain_->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = domain_->dimension(d);
+    auto dim{domain_->dimension_ptr(d)};
     const auto& dim_filters = dim->filters();
     auto dim_type = dim->type();
     if (datatype_is_real(dim_type) && dim_filters.empty())
@@ -988,7 +994,7 @@ Status ArraySchema::check_string_compressor(
   // with RLE or Dictionary-encoding
   auto dim_num = domain_->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = domain_->dimension(d);
+    auto dim{domain_->dimension_ptr(d)};
     const auto& dim_filters = dim->filters();
     // if it's a var-length string dimension and there is no specific filter
     // list already set for that dimension (then coords_filters_ will be used)

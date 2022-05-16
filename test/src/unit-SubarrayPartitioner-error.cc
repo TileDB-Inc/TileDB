@@ -129,8 +129,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {};
   Layout subarray_layout = Layout::GLOBAL_ORDER;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
+  ThreadPool tp(4);
   Config config;
   SubarrayPartitioner subarray_partitioner(
       &config,

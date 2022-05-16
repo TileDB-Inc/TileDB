@@ -254,7 +254,7 @@ bool ResultTile::same_coords(
     const ResultTile& rt, uint64_t pos_a, uint64_t pos_b) const {
   auto dim_num = coord_tiles_.size();
   for (unsigned d = 0; d < dim_num; ++d) {
-    if (!domain_->dimension(d)->var_size()) {  // Fixed-sized
+    if (!domain_->dimension_ptr(d)->var_size()) {  // Fixed-sized
       if (std::memcmp(coord(pos_a, d), rt.coord(pos_b, d), coord_size(d)) != 0)
         return false;
     } else {  // Var-sized
@@ -322,7 +322,7 @@ Status ResultTile::read(
     assert(name != constants::coords);
     int dim_offset = 0;
     for (uint32_t i = 0; i < domain_->dim_num(); ++i) {
-      if (domain_->dimension(i)->name() == name) {
+      if (domain_->dimension_ptr(i)->name() == name) {
         dim_offset = i;
         break;
       }
@@ -1078,7 +1078,7 @@ void ResultTile::set_compute_results_func() {
   compute_results_count_sparse_uint8_t_func_.resize(dim_num);
   compute_results_count_sparse_uint64_t_func_.resize(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = domain_->dimension(d);
+    auto dim{domain_->dimension_ptr(d)};
     switch (dim->type()) {
       case Datatype::INT32:
         compute_results_dense_func_[d] = compute_results_dense<int32_t>;

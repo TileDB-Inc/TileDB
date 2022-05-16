@@ -121,10 +121,8 @@ target_link_libraries(compile_uuid PRIVATE uuid)
 target_sources(compile_uuid PRIVATE test/compile_uuid_main.cc)
 
 # simple unit test of magic.mgc embedded data vs external data
-find_file(MAGIC_MGC_PATH magic.mgc REQUIRED
-  PATHS ${TILEDB_EP_BASE}/install/bin
-)
-if(MAGIC_MGC_PATH-NOTFOUND)
+find_package(Magic_EP REQUIRED)
+if(NOT EXISTS ${libmagic_DICTIONARY})
   message(FATAL_ERROR "Failed to find libmagic 'magic.mgc' file.")
 endif()
 add_executable(unit_mgc_dict EXCLUDE_FROM_ALL)
@@ -138,10 +136,25 @@ target_link_libraries(unit_mgc_dict PRIVATE
   libmagic
   )
 
-target_compile_options(unit_mgc_dict PRIVATE -DTILEDB_PATH_TO_MAGIC_MGC=\"${MAGIC_MGC_PATH}\")
-find_package(Magic_EP REQUIRED)
+target_compile_options(unit_mgc_dict PRIVATE -DTILEDB_PATH_TO_MAGIC_MGC=\"${libmagic_DICTIONARY}\")
 target_include_directories(unit_mgc_dict
   PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}
    "${libmagic_INCLUDE_DIR}"
 )
+
+if (TILEDB_TESTS)
+    add_executable(unit_misc EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_misc PRIVATE math)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_misc PUBLIC Catch2::Catch2)
+
+    # Sources for tests
+    target_sources(unit_misc PUBLIC test/main.cc test/unit_math.cc test/unit_hilbert.cc)
+
+    add_test(
+        NAME "unit_misc"
+        COMMAND $<TARGET_FILE:unit_misc>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()

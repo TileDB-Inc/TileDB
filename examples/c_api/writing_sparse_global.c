@@ -114,7 +114,7 @@ void write_array() {
   tiledb_query_submit(ctx, query);
 
   // Prepare data for second write
-  int coords_rows_2[] = {2};
+  int coords_rows_2[] = {3};
   int coords_cols_2[] = {3};
   uint64_t coords_size_2 = sizeof(coords_rows_2);
   int data_2[] = {3};

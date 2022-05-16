@@ -44,21 +44,21 @@ target_link_libraries(compressors PUBLIC Bzip2::Bzip2 LZ4::LZ4 Zlib::Zlib Zstd::
 add_executable(compile_compressors EXCLUDE_FROM_ALL)
 target_link_libraries(compile_compressors PRIVATE compressors)
 target_sources(compile_compressors PRIVATE
-        test/compile_compressors_main.cc $<TARGET_OBJECTS:compressors>
+        test/compile_compressors_main.cc
 )
 
 #
 # tiledb crude gzip archiver initially for embedding magic.mgc
 #
 add_executable(tdb_gzip_embedded_data)
-target_link_libraries(tdb_gzip_embedded_data PRIVATE compressors)
 target_sources(tdb_gzip_embedded_data PRIVATE
         util/tdb_gzip_embedded_data.cc 
-        $<TARGET_OBJECTS:compressors>
 )
+
 target_link_libraries(
     tdb_gzip_embedded_data PUBLIC 
-    filter # OBJECTS library
+    filter
+    compressors
     )
     
 #
@@ -87,6 +87,19 @@ target_include_directories(
     "${CMAKE_BINARY_DIR}/../externals/install/include"
 
     )
+
+target_include_directories(tdb_gzip_embedded_data PRIVATE
+        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>
+)
+# Link to Threads::Threads if library or flag needed to enable threading.
+find_package(Threads REQUIRED)
+if (TRUE) #(CMAKE_THREAD_LIBS_INIT)
+  target_link_libraries(tdb_gzip_embedded_data PRIVATE Threads::Threads)
+endif()
+# On Linux, must explicitly link -ldl for static linking to libzstd.
+if (NOT WIN32)
+  target_link_libraries(tdb_gzip_embedded_data PRIVATE dl)
+endif()
 
 if (TILEDB_TESTS)
     add_executable(unit_compressors EXCLUDE_FROM_ALL)

@@ -61,8 +61,6 @@ Dimension::Dimension(const std::string& name, Datatype type)
     , type_(type) {
   cell_val_num_ = (datatype_is_string(type)) ? constants::var_num : 1;
   set_ceil_to_tile_func();
-  set_check_range_func();
-  set_adjust_range_oob_func();
   set_coincides_with_tiles_func();
   set_compute_mbr_func();
   set_crop_range_func();
@@ -98,8 +96,6 @@ Dimension::Dimension(
     , tile_extent_(tile_extent)
     , type_(type) {
   set_ceil_to_tile_func();
-  set_check_range_func();
-  set_adjust_range_oob_func();
   set_coincides_with_tiles_func();
   set_compute_mbr_func();
   set_crop_range_func();
@@ -132,9 +128,7 @@ Dimension::Dimension(const Dimension* dim) {
   type_ = dim->type_;
 
   // Set fuctions
-  adjust_range_oob_func_ = dim->adjust_range_oob_func_;
   ceil_to_tile_func_ = dim->ceil_to_tile_func_;
-  check_range_func_ = dim->check_range_func_;
   coincides_with_tiles_func_ = dim->coincides_with_tiles_func_;
   compute_mbr_func_ = dim->compute_mbr_func_;
   compute_mbr_var_func_ = dim->compute_mbr_var_func_;
@@ -327,29 +321,6 @@ void Dimension::ceil_to_tile(
     const Range& r, uint64_t tile_num, ByteVecValue* v) const {
   assert(ceil_to_tile_func_ != nullptr);
   ceil_to_tile_func_(this, r, tile_num, v);
-}
-
-Status Dimension::check_range(const Range& range) const {
-  // Inapplicable to string domains
-  if (type_ == Datatype::STRING_ASCII)
-    return Status::Ok();
-
-  assert(check_range_func_ != nullptr);
-  std::string err_msg;
-  auto ret = check_range_func_(this, range, &err_msg);
-  if (!ret)
-    return LOG_STATUS(Status_DimensionError(err_msg));
-  return Status::Ok();
-}
-
-Status Dimension::adjust_range_oob(Range* range) const {
-  // Inapplicable to string domains
-  if (type_ == Datatype::STRING_ASCII)
-    return Status::Ok();
-
-  assert(adjust_range_oob_func_ != nullptr);
-  adjust_range_oob_func_(this, range);
-  return Status::Ok();
 }
 
 template <class T>
@@ -1142,10 +1113,7 @@ void Dimension::splitting_value<double>(
   assert(unsplittable != nullptr);
 
   auto r_t = (const double*)r.data();
-
-  // Cast `r_t` elements to `long double` to prevent overflow
-  // before dividing by 2.
-  const double sp = r_t[0] + ((long double)r_t[1] - (long double)r_t[0]) / 2;
+  const double sp = r_t[0] + (r_t[1] / 2 - r_t[0] / 2);
 
   v->assign_as<double>(sp);
   *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(double));
@@ -1753,8 +1721,8 @@ Status Dimension::check_tile_extent_upper_floor_internal(
   const uint64_t range = domain[1] - domain[0] + 1;
   const T_FLOOR upper_floor =
       ((range - 1) / (tile_extent)) * (tile_extent) + domain[0];
-  const T_FLOOR upper_floor_max =
-      std::numeric_limits<T_FLOOR>::max() - (tile_extent - 1);
+  const T_FLOOR upper_floor_max = std::numeric_limits<T_FLOOR>::max() -
+                                  (static_cast<T_FLOOR>(tile_extent) - 1);
   const T_FLOOR extent_max =
       static_cast<T_FLOOR>(std::numeric_limits<T_EXTENT>::max());
   const bool exceeds =
@@ -2151,130 +2119,6 @@ void Dimension::set_ceil_to_tile_func() {
       break;
     default:
       ceil_to_tile_func_ = nullptr;
-      break;
-  }
-}
-
-void Dimension::set_check_range_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      check_range_func_ = check_range<int32_t>;
-      break;
-    case Datatype::INT64:
-      check_range_func_ = check_range<int64_t>;
-      break;
-    case Datatype::INT8:
-      check_range_func_ = check_range<int8_t>;
-      break;
-    case Datatype::UINT8:
-      check_range_func_ = check_range<uint8_t>;
-      break;
-    case Datatype::INT16:
-      check_range_func_ = check_range<int16_t>;
-      break;
-    case Datatype::UINT16:
-      check_range_func_ = check_range<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      check_range_func_ = check_range<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      check_range_func_ = check_range<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      check_range_func_ = check_range<float>;
-      break;
-    case Datatype::FLOAT64:
-      check_range_func_ = check_range<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      check_range_func_ = check_range<int64_t>;
-      break;
-    default:
-      check_range_func_ = nullptr;
-      break;
-  }
-}
-
-void Dimension::set_adjust_range_oob_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      adjust_range_oob_func_ = adjust_range_oob<int32_t>;
-      break;
-    case Datatype::INT64:
-      adjust_range_oob_func_ = adjust_range_oob<int64_t>;
-      break;
-    case Datatype::INT8:
-      adjust_range_oob_func_ = adjust_range_oob<int8_t>;
-      break;
-    case Datatype::UINT8:
-      adjust_range_oob_func_ = adjust_range_oob<uint8_t>;
-      break;
-    case Datatype::INT16:
-      adjust_range_oob_func_ = adjust_range_oob<int16_t>;
-      break;
-    case Datatype::UINT16:
-      adjust_range_oob_func_ = adjust_range_oob<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      adjust_range_oob_func_ = adjust_range_oob<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      adjust_range_oob_func_ = adjust_range_oob<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      adjust_range_oob_func_ = adjust_range_oob<float>;
-      break;
-    case Datatype::FLOAT64:
-      adjust_range_oob_func_ = adjust_range_oob<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      adjust_range_oob_func_ = adjust_range_oob<int64_t>;
-      break;
-    default:
-      adjust_range_oob_func_ = nullptr;
       break;
   }
 }
