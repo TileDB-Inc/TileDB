@@ -49,9 +49,6 @@ class StorageManager;
 
 /** Handles array metadata consolidation. */
 class ArrayMetaConsolidator : public Consolidator {
-  // Declare Consolidator as friend so it can use the private constructor.
-  friend class Consolidator;
-
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -102,22 +99,6 @@ class ArrayMetaConsolidator : public Consolidator {
 
  private:
   /* ********************************* */
-  /*           TYPE DEFINITIONS        */
-  /* ********************************* */
-
-  /** Consolidation configuration parameters. */
-  struct ConsolidationConfig {
-    /** Start time for consolidation. */
-    uint64_t timestamp_start_;
-    /** End time for consolidation. */
-    uint64_t timestamp_end_;
-    /** Start time for vacuuming. */
-    uint64_t vacuum_timestamp_start_;
-    /** End time for vacuuming. */
-    uint64_t vacuum_timestamp_end_;
-  };
-
-  /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
@@ -129,7 +110,7 @@ class ArrayMetaConsolidator : public Consolidator {
   /* ********************************* */
 
   /** Consolidation configuration parameters. */
-  ConsolidationConfig config_;
+  Consolidator::ConsolidationConfigBase config_;
 };
 
 }  // namespace sm

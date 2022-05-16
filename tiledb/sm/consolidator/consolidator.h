@@ -140,6 +140,22 @@ class Consolidator {
   explicit Consolidator(StorageManager* storage_manager);
 
   /* ********************************* */
+  /*           TYPE DEFINITIONS        */
+  /* ********************************* */
+
+  /** Consolidation configuration parameters. */
+  struct ConsolidationConfigBase {
+    /** Start time for consolidation. */
+    uint64_t timestamp_start_;
+    /** End time for consolidation. */
+    uint64_t timestamp_end_;
+    /** Start time for vacuuming. */
+    uint64_t vacuum_timestamp_start_;
+    /** End time for vacuuming. */
+    uint64_t vacuum_timestamp_end_;
+  };
+
+  /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
 
