@@ -150,12 +150,12 @@ struct GlobalOrderResultCoords
       , init_(false) {
   }
 
-  /** Returns the next available cell in the tile. */
-  bool next_cell() {
+  /** Advance to the next available cell in the tile. */
+  bool advance_to_next_cell() {
     pos_ += init_;
     init_ = true;
     if (pos_ != tile_->cell_num()) {
-      if (tile_->bitmap_.size() > 0) {
+      if (tile_->has_bmp()) {
         while (pos_ < tile_->cell_num()) {
           if (tile_->bitmap_[pos_]) {
             return true;
@@ -176,12 +176,11 @@ struct GlobalOrderResultCoords
    */
   uint64_t max_slab_length() {
     uint64_t ret = 1;
-    auto has_bmp = tile_->bitmap_.size() > 0;
     uint64_t next_pos = pos_ + 1;
-    if (has_bmp) {
+    if (tile_->has_bmp()) {
       // With bitmap, find the longest contiguous set of bits in the bitmap
       // from the current position.
-      while (next_pos < tile_->cell_num() - 1 && tile_->bitmap_[next_pos]) {
+      while (next_pos < tile_->cell_num() && tile_->bitmap_[next_pos]) {
         next_pos++;
         ret++;
       }
@@ -206,12 +205,11 @@ struct GlobalOrderResultCoords
     uint64_t orig_pos = pos_;
     pos_++;
 
-    auto has_bmp = tile_->bitmap_.size() > 0;
-    if (has_bmp) {
+    if (tile_->has_bmp()) {
       // With bitmap, find the longest contiguous set of bits in the bitmap
       // from the current position, with coordinares smaller than the next one
       // in the queue.
-      while (pos_ < tile_->cell_num() - 1 && tile_->bitmap_[pos_] &&
+      while (pos_ < tile_->cell_num() && tile_->bitmap_[pos_] &&
              !cmp(*this, next)) {
         pos_++;
         ret++;

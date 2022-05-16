@@ -466,12 +466,11 @@ tuple<Status, optional<bool>> SparseGlobalOrderReader::add_next_cell_to_queue(
     GlobalOrderResultCoords& rc,
     std::vector<TileListIt>& result_tiles_it,
     TileMinHeap<CompType>& tile_queue) {
-  // Try the next cell in the same tile.
   auto frag_idx = rc.tile_->frag_idx();
-  bool found = rc.next_cell();
 
-  // If found, update the fragment index, add the cell to the queue and return.
-  if (found) {
+  // Try the next cell in the same tile.
+  if (rc.advance_to_next_cell()) {
+    // Update the fragment index, add the cell to the queue and return.
     std::unique_lock<std::mutex> ul(tile_queue_mutex_);
     read_state_.frag_idx_[frag_idx] = FragIdx(rc.tile_->tile_idx(), rc.pos_);
     tile_queue.emplace(std::move(rc));
@@ -483,7 +482,7 @@ tuple<Status, optional<bool>> SparseGlobalOrderReader::add_next_cell_to_queue(
   result_tiles_it[frag_idx]++;
 
   // Remove the tile from result tiles if it wasn't used at all.
-  if (!rc.tile_->used_) {
+  if (!rc.tile_->used()) {
     remove_result_tile(frag_idx, to_delete);
   }
 
@@ -491,10 +490,11 @@ tuple<Status, optional<bool>> SparseGlobalOrderReader::add_next_cell_to_queue(
   if (result_tiles_it[frag_idx] != result_tiles_[frag_idx].end()) {
     // Find a cell in the current result tile.
     GlobalOrderResultCoords rc(&*result_tiles_it[frag_idx], 0);
-    found = rc.next_cell();
 
     // All tiles should at least have one cell available.
-    assert(found == true);
+    if (!rc.advance_to_next_cell()) {
+      throw std::logic_error("All tiles should have at least one cell.");
+    }
 
     // Insert the cell in the queue.
     {
@@ -502,9 +502,7 @@ tuple<Status, optional<bool>> SparseGlobalOrderReader::add_next_cell_to_queue(
       tile_queue.emplace(std::move(rc));
     }
     read_state_.frag_idx_[frag_idx] = FragIdx(rc.tile_->tile_idx(), rc.pos_);
-  }
-
-  if (!found) {
+  } else {
     // Increment the tile index, which should clear all tiles in end_iteration.
     if (!result_tiles_[frag_idx].empty()) {
       read_state_.frag_idx_[frag_idx].tile_idx_++;
@@ -537,15 +535,15 @@ Status SparseGlobalOrderReader::compute_hilbert_values(
   // Parallelize on tiles.
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
-        auto tile = (GlobalOrderResultTile*)result_tiles[t];
+        auto tile = static_cast<GlobalOrderResultTile*>(result_tiles[t]);
         auto cell_num = tile->cell_num();
         auto rc = GlobalOrderResultCoords(tile, 0);
         std::vector<uint64_t> coords(dim_num);
 
-        tile->hilbert_values_.resize(cell_num);
+        tile->allocate_hilbert_vector();
         for (rc.pos_ = 0; rc.pos_ < cell_num; rc.pos_++) {
           // Process only values in bitmap.
-          if (tile->bitmap_.size() == 0 || tile->bitmap_[rc.pos_]) {
+          if (!tile->has_bmp() || tile->bitmap_[rc.pos_]) {
             // Compute Hilbert number for all dimensions first.
             for (uint32_t d = 0; d < dim_num; ++d) {
               auto dim{array_schema_.dimension_ptr(d)};
@@ -554,7 +552,7 @@ Status SparseGlobalOrderReader::compute_hilbert_values(
             }
 
             // Now we are ready to get the final number.
-            tile->hilbert_values_[rc.pos_] = h.coords_to_hilbert(&coords[0]);
+            tile->set_hilbert_value(rc.pos_, h.coords_to_hilbert(&coords[0]));
           }
         }
 
@@ -601,7 +599,10 @@ SparseGlobalOrderReader::merge_result_cell_slabs(
           auto&& [st, more_tiles] =
               add_next_cell_to_queue(rc, result_tiles_it, tile_queue);
           RETURN_NOT_OK(st);
-          need_more_tiles = *more_tiles;
+
+          if (*more_tiles) {
+            need_more_tiles = true;
+          }
         }
 
         return Status::Ok();
@@ -629,7 +630,7 @@ SparseGlobalOrderReader::merge_result_cell_slabs(
       // one slab for all the dups.
       auto tile = to_process_dup.tile_;
       if (allows_dups || consolidation_with_timestamps_) {
-        tile->used_ = true;
+        tile->set_used();
         result_cell_slabs.emplace_back(
             to_process_dup.tile_, to_process_dup.pos_, 1);
         num_cells--;
@@ -653,7 +654,7 @@ SparseGlobalOrderReader::merge_result_cell_slabs(
     const auto frag_idx = tile->frag_idx();
 
     // Flag the tile as used.
-    to_process.tile_->used_ = true;
+    to_process.tile_->set_used();
 
     // Compute the length of the cell slab.
     uint64_t length = std::numeric_limits<uint64_t>::max();

@@ -793,7 +793,7 @@ TEST_CASE_METHOD(
       read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
 
-  // Should read two tile (6 values).
+  // Should read (6 values).
   CHECK(24 == data_r_size);
   CHECK(24 == coords_r_size);
 

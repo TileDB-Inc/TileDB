@@ -551,7 +551,7 @@ Status SparseIndexReaderBase::apply_query_condition(
           }
 
           // Full overlap in bitmap calculation, make a bitmap.
-          if (rt->bitmap_.size() == 0) {
+          if (!rt->has_bmp()) {
             rt->bitmap_.resize(cell_num, 1);
             rt->bitmap_result_num_ = cell_num;
           }

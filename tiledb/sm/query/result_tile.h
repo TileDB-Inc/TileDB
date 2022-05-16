@@ -494,8 +494,8 @@ class ResultTileWithBitmap : public ResultTile {
   /* ********************************* */
 
   /**
-   * Returns the number of cells that are before a certain cell index in the
-   * bitmap.
+   * Returns the number of cells that are that are between two cell positions
+   * in the bitmap.
    *
    * @param start_pos Starting cell position in the bitmap.
    * @param end_pos End position in the bitmap.
@@ -514,7 +514,7 @@ class ResultTileWithBitmap : public ResultTile {
   }
 
   /**
-   * Returns cell index from a number of cells inside of the bitmap.
+   * Returns the position (index) inside of the bitmap given a number of cells.
    *
    * @param start_pos Starting cell position in the bitmap.
    * @param result_num Number of results to advance.
@@ -538,6 +538,11 @@ class ResultTileWithBitmap : public ResultTile {
     }
 
     return bitmap_.size() - 1;
+  }
+
+  /** Does this tile have a bitmap. */
+  inline bool has_bmp() {
+    return bitmap_.size() > 0;
   }
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
@@ -600,8 +605,34 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<uint8_t> {
     std::swap(hilbert_values_, tile.hilbert_values_);
   }
 
+  /** Returns if the tile was used by the merge or not. */
+  inline bool used() {
+    return used_;
+  }
+
+  /** Set the tile as used by the merge. */
+  inline void set_used() {
+    used_ = true;
+  }
+
+  /** Allocate space for the hilbert values vector. */
+  inline void allocate_hilbert_vector() {
+    hilbert_values_.resize(cell_num());
+  }
+
+  /** Get the hilbert value at an index. */
+  inline uint64_t hilbert_value(uint64_t i) {
+    return hilbert_values_[i];
+  }
+
+  /** Set a hilbert value. */
+  inline void set_hilbert_value(uint64_t i, uint64_t v) {
+    hilbert_values_[i] = v;
+  }
+
+ private:
   /* ********************************* */
-  /*         PUBLIC ATTRIBUTES         */
+  /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
   /** Hilbert values for this tile. */

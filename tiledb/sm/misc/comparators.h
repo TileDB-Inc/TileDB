@@ -153,8 +153,8 @@ class HilbertCmp : protected CellCmpBase {
   bool operator()(
       const GlobalOrderResultCoords& a,
       const GlobalOrderResultCoords& b) const {
-    auto hilbert_a = a.tile_->hilbert_values_[a.pos_];
-    auto hilbert_b = b.tile_->hilbert_values_[b.pos_];
+    auto hilbert_a = a.tile_->hilbert_value(a.pos_);
+    auto hilbert_b = b.tile_->hilbert_value(b.pos_);
     if (hilbert_a < hilbert_b)
       return true;
     else if (hilbert_a > hilbert_b)

@@ -550,7 +550,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
       fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
 
   // 0 sized bitmap means full tile, full tile copy done below.
-  if (rt->bitmap_.size() != 0) {
+  if (rt->has_bmp()) {
     // Process all cells. Last cell might be taken out for vectorization.
     uint64_t end = (src_max_pos == cell_num) ? src_max_pos - 1 : src_max_pos;
     for (uint64_t c = src_min_pos; c < end; c++) {
@@ -863,8 +863,8 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
   const auto src_buff = t->data_as<uint8_t>();
   const auto t_val = &std::get<2>(*tile_tuple);
 
-  // 0 sized bitmap means full tile, full tile copy done below.
-  if (rt->bitmap_.size() != 0) {
+  // Partial tile copy, full tile copy done below.
+  if (rt->has_bmp()) {
     // Copy values.
     if (!stores_zipped_coords) {
       // Go through bitmap, when there is a hole in cell contiguity, do a
@@ -1240,7 +1240,7 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
           new_result_tiles_size > 0 ? cell_offsets[new_result_tiles_size - 1] :
                                       0;
 
-      const bool has_bmp = last_tile->bitmap_.size() != 0;
+      const bool has_bmp = last_tile->has_bmp();
       const auto min_pos = new_result_tiles_size == 1 ? first_tile_min_pos : 0;
       for (uint64_t c = min_pos; c < last_tile_num_cells - 1; c++) {
         auto cell_count = has_bmp ? last_tile->bitmap_[c] : 1;
