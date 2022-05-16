@@ -128,8 +128,8 @@ int main(int argc, const char* argv[]) {
     fprintf(stderr, "No input file specified!\n");
     HelpShort();
     // Exercising this stripped executable in build, don't report error
-    return 0 ; 
-    //goto Error;
+    return 0;
+    // goto Error;
   }
 
   if (use_lossless_preset == 1) {
