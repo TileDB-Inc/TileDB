@@ -61,13 +61,17 @@ target_link_libraries(
     compressors
     )
     
+target_include_directories(tdb_gzip_embedded_data PRIVATE
+        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>
+)
+
 #
 # link test for some webp routines
 #
 find_package(Webp_EP REQUIRED)
 add_executable(link_webp_test1)
 if (WIN32)
-target_link_libraries(link_webp_test1 PRIVATE WebP::webp)
+  target_link_libraries(link_webp_test1 PRIVATE WebP::webp)
 else() #if (NOT WIN32)
   # On Linux, must explicitly link -lpthread -ldl in order for static linking
   # to libzstd or libcurl to work.
@@ -78,19 +82,18 @@ target_sources(
     PRIVATE
     test/link_webp_test1.cc
     )
-message(STATUS "compressors/cmakelists.txt, TILEDB_EXTERNALS_INCLUDE_DIRS is ${TILEDB_EXTERNALS_INCLUDE_DIRS}")
-message(STATUS "compressors/cmakelists.txt, CMAKE_BINARY_DIR is ${CMAKE_BINARY_DIR}")
 target_include_directories(
     link_webp_test1 
     PRIVATE
-    # "${TILEDB_EXTERNALS_INCLUDE_DIRS}"
     "${CMAKE_BINARY_DIR}/../externals/install/include"
-
+    )
+    
+add_custom_target(
+    exercise_link_webp_test
+    COMMAND "$<TARGET_FILE:link_webp_test1>"
+    DEPENDS "$<TARGET_FILE:link_webp_test1>"
     )
 
-target_include_directories(tdb_gzip_embedded_data PRIVATE
-        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>
-)
 # Link to Threads::Threads if library or flag needed to enable threading.
 find_package(Threads REQUIRED)
 if (TRUE) #(CMAKE_THREAD_LIBS_INIT)
