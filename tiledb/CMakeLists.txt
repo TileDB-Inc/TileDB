@@ -1059,7 +1059,6 @@ set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
 
 set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
 string(CONCAT PKGCONF_REQ_PRIV ${PKGCONF_REQ_PRIV} " webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux")
-#incorrect, string(CONCAT PKGCONF_REQ_PRIV ${PKGCONF_REQ_PRIV} " $<TARGET_PROPERTY:WebP::webp,INTERFACE_LINK_LIBRARIES>")
 
 # PKG Config file
 configure_file(

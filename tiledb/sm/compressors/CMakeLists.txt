@@ -96,9 +96,7 @@ add_custom_target(
 
 # Link to Threads::Threads if library or flag needed to enable threading.
 find_package(Threads REQUIRED)
-if (TRUE) #(CMAKE_THREAD_LIBS_INIT)
-  target_link_libraries(tdb_gzip_embedded_data PRIVATE Threads::Threads)
-endif()
+target_link_libraries(tdb_gzip_embedded_data PRIVATE Threads::Threads)
 # On Linux, must explicitly link -ldl for static linking to libzstd.
 if (NOT WIN32)
   target_link_libraries(tdb_gzip_embedded_data PRIVATE dl)
