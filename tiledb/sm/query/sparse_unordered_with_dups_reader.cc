@@ -1353,7 +1353,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
             query_buffer));
       }
 
-      auto var_buffer_size = 0;
+      uint64_t var_buffer_size = 0;
 
       if (var_sized) {
         auto first_tile_min_pos =
