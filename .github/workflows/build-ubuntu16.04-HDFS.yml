@@ -125,7 +125,13 @@ jobs:
             rm -rf ${TestAppDataDir}
             mkdir ${TestAppDataDir}
             cd ${TestAppDataDir}
-            echo $exampleexe; $exampleexe; 
+            echo $exampleexe
+            $exampleexe; 
+            status=$?
+            if (($status != 0)) then
+              echo "ERROR: $exampleexe exited with $status"
+              echo "::set-output name=TILEDB_CI_SUCCESS::0"
+            fi
           done
           cd ${TestAppDir}
           rm -rf ${TestAppDataDir}
@@ -139,7 +145,13 @@ jobs:
             rm -rf ${TestAppDataDir}
             mkdir ${TestAppDataDir}
             cd ${TestAppDataDir}
-            echo $exampleexe; $exampleexe; 
+            echo $exampleexe 
+            $exampleexe; 
+            status=$?
+            if (($status != 0)) then
+              echo "ERROR: $exampleexe exited with $status"
+              echo "::set-output name=TILEDB_CI_SUCCESS::0"
+            fi
           done
           cd ${TestAppDir}
           rm -rf ${TestAppDataDir}

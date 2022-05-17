@@ -292,21 +292,24 @@ jobs:
               Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
               New-Item -ItemType Directory -Path $TestAppDataDir > $nul
               Set-Location -path $TestAppDataDir
-              # $exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\$CMakeBuildType\quickstart_dense_c.exe"
               $exepath = $_.FullName
               write-host "Executing $exepath"
               & $exepath
-              if (!($?)) {
-              #$output = Invoke-Expressions $exepath
-              #if(! $output) {
-                #Write-Host "no output, Error ? running $exepath"
-                Write-Host "Error $LastExitCode running $exepath"
+              $status = $?
+              if ($status -ne 0) {
+                Write-Host "Error $status running $exepath"
+                Write-Host "::set-output name=TILEDB_CI_SUCCESS::0"
                 $host.SetShouldExit(1)
+              }  elseif ($LastExitCode -ne 0) {
+                Write-Host "C++ API example failed $LastExitCode,  $exepath."
+                Write-Host "::set-output name=TILEDB_CI_SUCCESS::0"
+                $host.SetShouldExit($LastExitCode)
               }
+
             } catch {
-              Write-Host "C API example failed $exepath."
-              Write-Host "Error:"
-              Write-Host $_
+              $status = $_
+              Write-Host "exception C API example failed, $status, $exepath."
+              Write-Host "::set-output name=TILEDB_CI_SUCCESS::0"
               $host.SetShouldExit(1)
             }
           }
@@ -322,28 +325,26 @@ jobs:
               Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
               New-Item -ItemType Directory -Path $TestAppDataDir > $nul
               Set-Location -path $TestAppDataDir
-              #$exepath = Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\$CMakeBuildType\quickstart_dense_cpp.exe"
               $exepath = $_.FullName
               write-host "Executing $exepath"
               & $exepath
-              if (!($?)) {
-              #$output = Invoke-Expressions $exepath
-              # the executable can fail to run and an exception -not- be thrown, check each item for some expected output
-              # and report if none found.
-              #if(! $output) {
-                #Write-Host "no output, Error ? running $exepath"
-                Write-Host "Error $LastExitCode running $exepath"
+              $status = $?
+              if ($status -ne 0) {
+                Write-Host "Error $status running $exepath"
+                Write-Host "::set-output name=TILEDB_CI_SUCCESS::0"
                 $host.SetShouldExit(1)
+              } elseif ($LastExitCode -ne 0) {
+                Write-Host "C++ API example failed $LastExitCode,  $exepath."
+                Write-Host "::set-output name=TILEDB_CI_SUCCESS::0"
+                $host.SetShouldExit($LastExitCode)
               }
             } catch {
-              Write-Host "C++ API example failed $exepath."
+              $status = $_
+              Write-Host "exception, C++ API example failed, $status, $exepath."
+              Write-Host "::set-output name=TILEDB_CI_SUCCESS::0"
               $host.SetShouldExit(1)
             }
 
-            if ($LastExitCode -ne 0) {
-              Write-Host "C++ API example failed."
-              $host.SetShouldExit($LastExitCode)
-            }
           }
           Set-Location -path $TestAppDir
           Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
