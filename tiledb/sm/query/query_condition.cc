@@ -549,6 +549,7 @@ void QueryCondition::apply_ast_node(
   const bool var_size = attribute->var_size();
   const bool nullable = attribute->nullable();
   switch (attribute->type()) {
+<<<<<<< HEAD
     case Datatype::INT8: {
       apply_ast_node<int8_t, CombinationOp>(
           node,
@@ -671,6 +672,43 @@ void QueryCondition::apply_ast_node(
           result_cell_bitmap);
     } break;
     case Datatype::CHAR: {
+=======
+    case Datatype::INT8:
+      return apply_clause<int8_t>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+    case Datatype::BOOL:
+    case Datatype::UINT8:
+      return apply_clause<uint8_t>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+    case Datatype::INT16:
+      return apply_clause<int16_t>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+    case Datatype::UINT16:
+      return apply_clause<uint16_t>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+    case Datatype::INT32:
+      return apply_clause<int32_t>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+    case Datatype::UINT32:
+      return apply_clause<uint32_t>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+    case Datatype::INT64:
+      return apply_clause<int64_t>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+    case Datatype::UINT64:
+      return apply_clause<uint64_t>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+    case Datatype::FLOAT32:
+      return apply_clause<float>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+    case Datatype::FLOAT64:
+      return apply_clause<double>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+    case Datatype::STRING_ASCII:
+      return apply_clause<char*>(
+          clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+    case Datatype::CHAR:
+>>>>>>> 95f8fe89a6fd0489b2b804b72faefd5ec671cb7b
       if (var_size) {
         apply_ast_node<char*, CombinationOp>(
             node,
@@ -1107,6 +1145,7 @@ void QueryCondition::apply_ast_node_dense(
           var_size,
           combination_op,
           result_buffer);
+    case Datatype::BOOL:
     case Datatype::UINT8:
       return apply_ast_node_dense<uint8_t, CombinationOp>(
           node,
@@ -1708,8 +1747,14 @@ void QueryCondition::apply_ast_node_sparse(
 
   switch (attribute->type()) {
     case Datatype::INT8:
+<<<<<<< HEAD
       return apply_ast_node_sparse<int8_t, BitmapType>(
           node, result_tile, var_size, combination_op, result_bitmap);
+=======
+      return apply_clause_sparse<int8_t, BitmapType>(
+          clause, result_tile, var_size, result_bitmap);
+    case Datatype::BOOL:
+>>>>>>> 95f8fe89a6fd0489b2b804b72faefd5ec671cb7b
     case Datatype::UINT8:
       return apply_ast_node_sparse<uint8_t, BitmapType>(
           node, result_tile, var_size, combination_op, result_bitmap);
