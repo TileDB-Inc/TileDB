@@ -99,6 +99,66 @@ class FragIdx {
   uint64_t cell_idx_;
 };
 
+class IgnoredTile {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+  IgnoredTile() = default;
+
+  IgnoredTile(uint64_t frag_idx, uint64_t tile_idx)
+      : idx_(frag_idx, tile_idx) {
+  }
+
+  /** Move constructor. */
+  IgnoredTile(IgnoredTile&& other) noexcept {
+    // Swap with the argument
+    swap(other);
+  }
+
+  /** Move-assign operator. */
+  IgnoredTile& operator=(IgnoredTile&& other) {
+    // Swap with the argument
+    swap(other);
+
+    return *this;
+  }
+
+  DISABLE_COPY_AND_COPY_ASSIGN(IgnoredTile);
+
+  /* ********************************* */
+  /*          PUBLIC METHODS           */
+  /* ********************************* */
+
+  const std::pair<uint64_t, uint64_t>& pair() const {
+    return idx_;
+  }
+
+  bool operator==(const IgnoredTile& v) const {
+    return idx_ == v.idx_;
+  }
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(IgnoredTile& other) {
+    std::swap(idx_, other.idx_);
+  }
+
+  /* ********************************* */
+  /*        PRIVATE ATTRIBUTES         */
+  /* ********************************* */
+
+  // FragIdx, TileIdx.
+  std::pair<uint64_t, uint64_t> idx_;
+};
+
+struct ignored_tile_hash {
+  size_t operator()(IgnoredTile const& v) const {
+    std::size_t h1 = std::hash<uint64_t>()(v.pair().first);
+    std::size_t h2 = std::hash<uint64_t>()(v.pair().second);
+    return h1 ^ h2;
+  }
+};
+
 /** Processes read queries. */
 class SparseIndexReaderBase : public ReaderBase {
  public:
@@ -231,6 +291,9 @@ class SparseIndexReaderBase : public ReaderBase {
   /* Are the users buffers full. */
   bool buffers_full_;
 
+  /** List of tiles to ignore. */
+  std::unordered_set<IgnoredTile, ignored_tile_hash> ignored_tiles_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -261,20 +324,25 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Load tile offsets and result tile ranges.
    *
+   * @param include_timestamps Include timestamps or not.
+   *
    * @return Status.
    */
-  Status load_initial_data();
+  Status load_initial_data(bool include_timestamps);
 
   /**
    * Read and unfilter coord tiles.
    *
    * @param include_coords Include coordinates or not.
+   * @param include_timestamps Include timestamps or not.
    * @param result_tiles The result tiles to process.
    *
    * @return Status.
    */
   Status read_and_unfilter_coords(
-      bool include_coords, const std::vector<ResultTile*>& result_tiles);
+      bool include_coords,
+      bool include_timestamps,
+      const std::vector<ResultTile*>& result_tiles);
 
   /**
    * Allocate a tile bitmap if required for this tile.

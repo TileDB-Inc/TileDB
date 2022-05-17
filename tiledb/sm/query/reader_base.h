@@ -39,6 +39,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
+#include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/result_cell_slab.h"
@@ -200,9 +201,21 @@ class ReaderBase : public StrategyBase {
    * Skip read/unfilter operations for timestamps attribute and fragments
    * without timestamps.
    */
-  bool timestamps_not_present(
+  inline bool timestamps_not_present(
       const std::string& name,
-      const std::shared_ptr<tiledb::sm::FragmentMetadata>& frag_md) const;
+      const std::shared_ptr<tiledb::sm::FragmentMetadata>& frag_md) const {
+    return name == constants::timestamps && !frag_md->has_timestamps();
+  }
+
+  /**
+   * Results the fragment timestamp for a result tile.
+   *
+   * @param rt Result tile.
+   * @return fragment timestamp.
+   */
+  inline uint64_t fragment_timestamp(ResultTile* rt) const {
+    return fragment_metadata_[rt->frag_idx()]->timestamp_range().first;
+  }
 
   /**
    * Loads tile offsets for each attribute/dimension name into

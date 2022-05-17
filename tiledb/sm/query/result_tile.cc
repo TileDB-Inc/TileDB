@@ -154,8 +154,14 @@ void ResultTile::erase_tile(const std::string& name) {
 
 void ResultTile::init_attr_tile(const std::string& name) {
   // Nothing to do for the special zipped coordinates tile
-  if (name == constants::coords)
+  if (name == constants::coords) {
     return;
+  }
+
+  if (name == constants::timestamps) {
+    timestamps_tile_ = TileTuple(Tile(), Tile(), Tile());
+    return;
+  }
 
   // Handle attributes
   for (auto& at : attr_tiles_) {
@@ -177,8 +183,14 @@ void ResultTile::init_coord_tile(const std::string& name, unsigned dim_idx) {
 
 ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   // Handle zipped coordinates tile
-  if (name == constants::coords)
+  if (name == constants::coords) {
     return &coords_tile_;
+  }
+
+  // Handle timestamps tile
+  if (name == constants::timestamps) {
+    return &*timestamps_tile_;
+  }
 
   // Handle attribute tile
   for (auto& at : attr_tiles_) {
@@ -264,6 +276,26 @@ bool ResultTile::same_coords(
   }
 
   return true;
+}
+
+bool ResultTile::same_coords(uint64_t pos_a, uint64_t pos_b) const {
+  auto dim_num = coord_tiles_.size();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    if (!domain_->dimension_ptr(d)->var_size()) {  // Fixed-sized
+      if (std::memcmp(coord(pos_a, d), coord(pos_b, d), coord_size(d)) != 0)
+        return false;
+    } else {  // Var-sized
+      if (coord_string(pos_a, d) != coord_string(pos_b, d))
+        return false;
+    }
+  }
+
+  return true;
+}
+
+uint64_t ResultTile::timestamp(uint64_t pos) {
+  const auto& tile = std::get<0>(*this->tile_tuple(constants::timestamps));
+  return tile.data_as<uint64_t>()[pos];
 }
 
 unsigned ResultTile::frag_idx() const {

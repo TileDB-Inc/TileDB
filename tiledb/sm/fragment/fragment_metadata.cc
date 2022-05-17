@@ -708,10 +708,6 @@ bool FragmentMetadata::has_consolidated_footer() const {
   return has_consolidated_footer_;
 }
 
-bool FragmentMetadata::has_timestamps() const {
-  return has_timestamps_;
-}
-
 Status FragmentMetadata::get_tile_overlap(
     const NDRange& range,
     std::vector<bool>& is_default,
@@ -1003,7 +999,8 @@ Status FragmentMetadata::store_v12_or_higher(
 
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
+             has_timestamps_;
   uint64_t offset = 0, nbytes;
 
   // Store R-Tree
@@ -2005,7 +2002,7 @@ uint64_t FragmentMetadata::footer_size_v7_v10() const {
 
 uint64_t FragmentMetadata::footer_size_v11_or_higher() const {
   auto dim_num = array_schema_->dim_num();
-  auto num = array_schema_->attribute_num() + dim_num + 1;
+  auto num = array_schema_->attribute_num() + dim_num + 1 + has_timestamps_;
   uint64_t domain_size = 0;
 
   if (non_empty_domain_.empty()) {
@@ -2449,7 +2446,8 @@ Status FragmentMetadata::load_file_sizes_v1_v4(ConstBuffer* buff) {
 // ...
 // file_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::load_file_sizes_v5_or_higher(ConstBuffer* buff) {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
+             has_timestamps_;
   file_sizes_.resize(num);
   Status st = buff->read(&file_sizes_[0], num * sizeof(uint64_t));
 
@@ -2490,7 +2488,8 @@ Status FragmentMetadata::load_file_var_sizes_v1_v4(ConstBuffer* buff) {
 // ...
 // file_var_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::load_file_var_sizes_v5_or_higher(ConstBuffer* buff) {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
+             has_timestamps_;
   file_var_sizes_.resize(num);
   Status st = buff->read(&file_var_sizes_[0], num * sizeof(uint64_t));
 
@@ -2506,7 +2505,8 @@ Status FragmentMetadata::load_file_validity_sizes(ConstBuffer* buff) {
   if (version_ <= 6)
     return Status::Ok();
 
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
+             has_timestamps_;
   file_validity_sizes_.resize(num);
   Status st = buff->read(&file_validity_sizes_[0], num * sizeof(uint64_t));
 
@@ -2539,6 +2539,11 @@ Status FragmentMetadata::load_has_timestamps(ConstBuffer* buff) {
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
         "Cannot load fragment metadata; Reading include timestamps failed"));
+  }
+
+  // Rebuild index map
+  if (has_timestamps_) {
+    build_idx_map();
   }
   return Status::Ok();
 }
@@ -3227,7 +3232,8 @@ Status FragmentMetadata::load_tile_null_count_values(
 Status FragmentMetadata::load_fragment_min_max_sum_null_count(
     ConstBuffer* buff) {
   Status st;
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
+             has_timestamps_;
 
   for (unsigned int i = 0; i < num; ++i) {
     // Get min.
@@ -3476,7 +3482,8 @@ Status FragmentMetadata::load_generic_tile_offsets_v12_or_higher(
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
   // Load offsets for tile offsets
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
+             has_timestamps_;
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
@@ -3721,7 +3728,8 @@ Status FragmentMetadata::load_footer(
 // ...
 // file_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::write_file_sizes(Buffer* buff) const {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
+             has_timestamps_;
   Status st = buff->write(&file_sizes_[0], num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
@@ -3736,7 +3744,8 @@ Status FragmentMetadata::write_file_sizes(Buffer* buff) const {
 // ...
 // file_var_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::write_file_var_sizes(Buffer* buff) const {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
+             has_timestamps_;
   Status st = buff->write(&file_var_sizes_[0], num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
@@ -3754,7 +3763,8 @@ Status FragmentMetadata::write_file_validity_sizes(Buffer* buff) const {
   if (version_ <= 6)
     return Status::Ok();
 
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
+             has_timestamps_;
   Status st = buff->write(&file_validity_sizes_[0], num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
@@ -3776,7 +3786,8 @@ Status FragmentMetadata::write_file_validity_sizes(Buffer* buff) const {
 // ...
 // tile_var_sizes_{attr_num+dim_num}(uint64_t)
 Status FragmentMetadata::write_generic_tile_offsets(Buffer* buff) const {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
+             has_timestamps_;
 
   // Write R-Tree offset
   auto st = buff->write(&gt_offsets_.rtree_, sizeof(uint64_t));
