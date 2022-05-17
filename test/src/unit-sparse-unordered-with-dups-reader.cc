@@ -620,7 +620,7 @@ CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments() {
       TILEDB_ROW_MAJOR,
       5);
 
-  // Open array for writing.
+  // Open array for reading.
   tiledb_array_t* array;
   auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
