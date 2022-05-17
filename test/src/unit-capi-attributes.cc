@@ -290,8 +290,8 @@ TEST_CASE_METHOD(
     create_dense_vector(array_name, attr_name, TILEDB_BLOB);
 
     // Prepare cell buffers
-    uint8_t buffer_a1[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    uint64_t buffer_a1_size = sizeof(buffer_a1);
+    uint8_t buffer_write[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    uint64_t buffer_write_size = sizeof(buffer_write);
 
     // Open array
     int64_t subarray[] = {1, 10};
@@ -310,7 +310,7 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_subarray(ctx_, query, subarray);
     CHECK(rc == TILEDB_OK);
     rc = tiledb_query_set_data_buffer(
-        ctx_, query, attr_name.c_str(), buffer_a1, &buffer_a1_size);
+        ctx_, query, attr_name.c_str(), buffer_write, &buffer_write_size);
     CHECK(rc == TILEDB_OK);
 
     rc = tiledb_query_submit(ctx_, query);
@@ -353,9 +353,111 @@ TEST_CASE_METHOD(
     tiledb_query_free(&query);
 
     // Check correctness
-    uint8_t buffer_read_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    CHECK(!std::memcmp(buffer_read, buffer_read_c, sizeof(buffer_read_c)));
-    CHECK(buffer_read_size == sizeof(buffer_read_c));
+    CHECK(!std::memcmp(buffer_read, buffer_write, buffer_write_size));
+    CHECK(buffer_read_size == buffer_write_size);
+
+    remove_temp_dir(temp_dir);
+  }
+}
+
+/**
+ * Note: TILEDB_BOOL is currently equivalent to TILEDB_UINT8.
+ *
+ * Future improvements on the bool Datatype could impact this test.
+ */
+TEST_CASE_METHOD(
+    Attributesfx,
+    "C API: Test attributes with tiledb_bool datatype",
+    "[capi][attributes][tiledb_bool]") {
+  for (const auto& fs : fs_vec_) {
+    std::string temp_dir = fs->temp_dir();
+    std::string array_name = temp_dir;
+    std::string attr_name = "attr";
+
+    // Create new TileDB context with file lock config disabled, rest the
+    // same.
+    tiledb_ctx_free(&ctx_);
+    tiledb_vfs_free(&vfs_);
+
+    tiledb_config_t* config = nullptr;
+    tiledb_error_t* error = nullptr;
+    REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+    REQUIRE(error == nullptr);
+
+    REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok());
+
+    tiledb_config_free(&config);
+
+    create_temp_dir(temp_dir);
+
+    create_dense_vector(array_name, attr_name, TILEDB_BOOL);
+
+    // Prepare cell buffers
+    uint8_t buffer_write[] = {0, 1, 1, 0, 0, 0, 1, 0, 1, 1};
+    uint64_t buffer_write_size = sizeof(buffer_write);
+
+    // Open array
+    int64_t subarray[] = {1, 10};
+    tiledb_array_t* array;
+    int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+    CHECK(rc == TILEDB_OK);
+
+    // Submit query
+    tiledb_query_t* query;
+    rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray(ctx_, query, subarray);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_data_buffer(
+        ctx_, query, attr_name.c_str(), buffer_write, &buffer_write_size);
+    CHECK(rc == TILEDB_OK);
+
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+
+    // Close array and clean up
+    rc = tiledb_array_close(ctx_, array);
+    CHECK(rc == TILEDB_OK);
+    tiledb_array_free(&array);
+    tiledb_query_free(&query);
+
+    int buffer_read[10];
+    uint64_t buffer_read_size = sizeof(buffer_read);
+
+    // Open array
+    rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+    CHECK(rc == TILEDB_OK);
+
+    // Submit query
+    rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray(ctx_, query, subarray);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_data_buffer(
+        ctx_, query, attr_name.c_str(), buffer_read, &buffer_read_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+
+    // Close array and clean up
+    rc = tiledb_array_close(ctx_, array);
+    CHECK(rc == TILEDB_OK);
+    tiledb_array_free(&array);
+    tiledb_query_free(&query);
+
+    // Check correctness
+    CHECK(!std::memcmp(buffer_read, buffer_write, buffer_write_size));
+    CHECK(buffer_read_size == buffer_write_size);
 
     remove_temp_dir(temp_dir);
   }

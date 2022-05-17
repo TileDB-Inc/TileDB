@@ -960,6 +960,7 @@ void Domain::set_tile_cell_order_cmp_funcs() {
         break;
       case Datatype::BLOB:
       case Datatype::CHAR:
+      case Datatype::BOOL:
       case Datatype::STRING_UTF8:
       case Datatype::STRING_UTF16:
       case Datatype::STRING_UTF32:

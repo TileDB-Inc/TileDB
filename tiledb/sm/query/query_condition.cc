@@ -608,6 +608,7 @@ QueryCondition::apply_clause(
     case Datatype::INT8:
       return apply_clause<int8_t>(
           clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+    case Datatype::BOOL:
     case Datatype::UINT8:
       return apply_clause<uint8_t>(
           clause, stride, var_size, nullable, fill_value, result_cell_slabs);
@@ -924,6 +925,7 @@ Status QueryCondition::apply_clause_dense(
           stride,
           var_size,
           result_buffer);
+    case Datatype::BOOL:
     case Datatype::UINT8:
       return apply_clause_dense<uint8_t>(
           clause,
@@ -1410,6 +1412,7 @@ Status QueryCondition::apply_clause_sparse(
     case Datatype::INT8:
       return apply_clause_sparse<int8_t, BitmapType>(
           clause, result_tile, var_size, result_bitmap);
+    case Datatype::BOOL:
     case Datatype::UINT8:
       return apply_clause_sparse<uint8_t, BitmapType>(
           clause, result_tile, var_size, result_bitmap);

@@ -299,6 +299,7 @@ TEST_CASE(
                 &buffers);
             break;
           }
+          case TILEDB_BOOL:
           case TILEDB_UINT8: {
             set_buffer_wrapper<uint8_t>(
                 query,
@@ -586,6 +587,7 @@ TEST_CASE(
             REQUIRE(static_cast<int8_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
+          case TILEDB_BOOL:
           case TILEDB_UINT8: {
             REQUIRE(static_cast<uint8_t*>(std::get<1>(buffer))[0] == 1);
             break;
@@ -790,6 +792,7 @@ TEST_CASE(
                 &buffers);
             break;
           }
+          case TILEDB_BOOL:
           case TILEDB_UINT8: {
             set_buffer_wrapper<uint8_t>(
                 query,
@@ -1113,6 +1116,7 @@ TEST_CASE(
             REQUIRE(static_cast<int8_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
+          case TILEDB_BOOL:
           case TILEDB_UINT8: {
             REQUIRE(static_cast<uint8_t*>(std::get<1>(buffer))[0] == 1);
             break;

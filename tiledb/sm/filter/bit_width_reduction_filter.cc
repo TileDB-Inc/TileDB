@@ -122,6 +122,7 @@ Status BitWidthReductionFilter::run_forward(
       return run_forward<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::BLOB:
+    case Datatype::BOOL:
     case Datatype::UINT8:
       return run_forward<uint8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
@@ -305,6 +306,7 @@ Status BitWidthReductionFilter::run_reverse(
       return run_reverse<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::BLOB:
+    case Datatype::BOOL:
     case Datatype::UINT8:
       return run_reverse<uint8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
