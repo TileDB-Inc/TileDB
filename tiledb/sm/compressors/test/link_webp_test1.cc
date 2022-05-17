@@ -123,6 +123,15 @@ int main(int argc, const char* argv[]) {
   if (argc == 1) {
     HelpShort();
   }
+  // add some non-determinism re in_file so compiler can't, seeing that
+  // in_file init'd to NULL with no chance of change, avoid generating
+  // code (vs2019 was not including any of that code)
+  // following the if (in_file == NULL) check below, tho if
+  // anyone calls program with argument program will likely fail on
+  // that input in its current state...
+  else {
+    in_file = argv[1];
+  }
 
   if (in_file == NULL) {
     fprintf(stderr, "No input file specified!\n");
