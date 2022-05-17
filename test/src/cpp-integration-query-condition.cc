@@ -233,11 +233,12 @@ static void perform_query(
 }
 
 struct TestParams {
-  TestParams(tiledb_array_type_t array_type, tiledb_layout_t layout, bool set_dups) 
-    : array_type_(array_type)
-    , layout_(layout)
-    , set_dups_(set_dups)
-  {}
+  TestParams(
+      tiledb_array_type_t array_type, tiledb_layout_t layout, bool set_dups)
+      : array_type_(array_type)
+      , layout_(layout)
+      , set_dups_(set_dups) {
+  }
 
   tiledb_array_type_t array_type_;
   tiledb_layout_t layout_;
@@ -276,7 +277,8 @@ TEST_CASE(
       TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
 
   // Setup by creating buffers to store all elements of the original array.
-  create_array(ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+  create_array(
+      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -388,12 +390,13 @@ TEST_CASE(
 
   // Generate test parameters.
   TestParams params = GENERATE(
-    TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
-    TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
-    TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
 
   // Setup by creating buffers to store all elements of the original array.
-  create_array(ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+  create_array(
+      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -403,7 +406,7 @@ TEST_CASE(
   // Define range.
   int range[] = {2, 3};
   query.add_range("rows", range[0], range[1])
-       .add_range("cols", range[0], range[1]);
+      .add_range("cols", range[0], range[1]);
 
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
@@ -503,12 +506,13 @@ TEST_CASE(
 
   // Generate test parameters.
   TestParams params = GENERATE(
-    TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
-    TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
-    TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
 
   // Setup by creating buffers to store all elements of the original array.
-  create_array(ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+  create_array(
+      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -519,8 +523,8 @@ TEST_CASE(
   int range[] = {2, 3};
   int range1[] = {7, 10};
   query.add_range("rows", range1[0], range1[1])
-       .add_range("cols", range[0], range[1]);
-  
+      .add_range("cols", range[0], range[1]);
+
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
   if (params.array_type_ == TILEDB_SPARSE) {
@@ -628,23 +632,24 @@ TEST_CASE(
 
   // Generate test parameters.
   TestParams params = GENERATE(
-    TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
-    TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
-    TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
 
   // Setup by creating buffers to store all elements of the original array.
-  create_array(ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+  create_array(
+      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array);
-  
+
   // Define range.
   int range[] = {2, 3};
   int range1[] = {7, 10};
   query.add_range("rows", range[0], range[1])
-       .add_range("cols", range1[0], range1[1]);
+      .add_range("cols", range1[0], range1[1]);
 
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
@@ -739,18 +744,19 @@ TEST_CASE(
 
   // Generate test parameters.
   TestParams params = GENERATE(
-    TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
-    TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
-    TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
 
   // Setup by creating buffers to store all elements of the original array.
-  create_array(ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+  create_array(
+      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array);
-  
+
   // Define range.
   int range[] = {7, 14};
   query.add_range("rows", range[0], range[1])
@@ -887,18 +893,19 @@ TEST_CASE(
 
   // Generate test parameters.
   TestParams params = GENERATE(
-    TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
-    TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
-    TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
 
   // Setup by creating buffers to store all elements of the original array.
-  create_array(ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+  create_array(
+      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array);
-  
+
   // Define range.
   int range[] = {7, 14};
   query.add_range("rows", range[0], range[1])
