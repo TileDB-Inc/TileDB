@@ -248,7 +248,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_point_ranges(
  * Adds point ranges to the given dimension index of the subarray
  * Effectively `add_range(x_i, x_i)` for `count` points in the
  * target array, but set in bulk to amortize expensive steps.
- * 
+ *
  * @param ctx The TileDB context.
  * @param dim_idx The index of the dimension to add the range to.
  * @param start The start of the ranges {begin,end} array.

@@ -3164,7 +3164,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Add ranges
-  // coalesces, having only 3 ranges... 
+  // coalesces, having only 3 ranges...
   // uint64_t ranges[] = {1, 2, 3, 4, 6, 7, 9, 10};
   uint64_t ranges[] = {1, 2, 4, 5, 7, 8, 10, 11};
   rc = tiledb_query_add_ranges_list(ctx_, query, 0, ranges, 8);
@@ -3185,8 +3185,8 @@ TEST_CASE_METHOD(
       rc = tiledb_query_get_range(
           ctx_, query, dim_idx, idx, &start, &end, &stride);
       CHECK(rc == TILEDB_OK);
-      CHECK(*(uint64_t*)start == ranges[idx*2]);
-      CHECK(*(uint64_t*)end == ranges[idx*2+1]);
+      CHECK(*(uint64_t*)start == ranges[idx * 2]);
+      CHECK(*(uint64_t*)end == ranges[idx * 2 + 1]);
       CHECK(stride == nullptr);
     }
   }

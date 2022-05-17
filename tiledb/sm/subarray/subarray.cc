@@ -335,10 +335,9 @@ Status Subarray::add_ranges_list(
 
   if (count % 2) {
     std::stringstream msg;
-    msg << "add_ranges_list: Invalid count " << count 
-      << ",count must be a multple of 2 ";
-    return LOG_STATUS(
-        Status_SubarrayError(msg.str().c_str()));
+    msg << "add_ranges_list: Invalid count " << count
+        << ",count must be a multple of 2 ";
+    return LOG_STATUS(Status_SubarrayError(msg.str().c_str()));
   }
 
   QueryType array_query_type;
@@ -372,11 +371,11 @@ Status Subarray::add_ranges_list(
       this->array_->array_schema_latest().dimension_ptr(dim_idx)->coord_size();
   range.resize(2 * coord_size);
 
-  for (size_t i = 0; i < count/2; i++) {
-    uint8_t* ptr = (uint8_t*)start + 2*coord_size * i;
+  for (size_t i = 0; i < count / 2; i++) {
+    uint8_t* ptr = (uint8_t*)start + 2 * coord_size * i;
     // point ranges
     std::memcpy(&range[0], ptr, coord_size);
-    std::memcpy(&range[coord_size], ptr+coord_size, coord_size);
+    std::memcpy(&range[coord_size], ptr + coord_size, coord_size);
 
     // Add range
     auto st = this->add_range(
