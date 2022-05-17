@@ -65,13 +65,12 @@ namespace sm {
 namespace {
 /** Returns the last Windows error message string. */
 std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
-  DWORD err = gle;
   LPVOID lpMsgBuf = nullptr;
   if (FormatMessage(
           FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
               FORMAT_MESSAGE_IGNORE_INSERTS,
           NULL,
-          err,
+          gle,
           MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
           (LPTSTR)&lpMsgBuf,
           0,
@@ -87,23 +86,21 @@ std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
 }
 
 std::string get_last_error_msg(
-    decltype(GetLastError()) gle, const TCHAR* func_desc = "") {
+    decltype(GetLastError()) gle, const char* func_desc) {
   std::string gle_desc = get_last_error_msg_desc(gle);
 
-  auto buf_len = gle_desc.length() + std::strlen(func_desc) + 50;
+  auto buf_len = gle_desc.length() + std::strlen(func_desc) + 60;
   auto deleter = [](char* p) { tdb_delete_array(p); };
   auto display_buf = shared_ptr<char>(tdb_new_array(char, buf_len), deleter);
   std::snprintf(
       display_buf.get(),
       buf_len,
-      "%s gle %lu (0x%08lx): %s",
+      "%s GetLastError %lu (0x%08lx): %s",
       func_desc,
       gle,
       gle,
       gle_desc.c_str());
-  std::string msg(display_buf.get());
-
-  return msg;
+  return {display_buf.get()};
 }
 std::string get_last_error_msg(const char* func_desc = "") {
   DWORD gle = GetLastError();
@@ -282,13 +279,13 @@ Status Win::file_size(const std::string& path, uint64_t* size) const {
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(Status_IOError(std::string(
-        "Failed to get file size for '" + path + +" (" +
+        "Failed to get file size for '" + path + "' (" +
         get_last_error_msg("CreateFile") + ")'")));
   }
   if (!GetFileSizeEx(file_h, &nbytes)) {
     CloseHandle(file_h);
     return LOG_STATUS(Status_IOError(std::string(
-        "Failed to get file size for '" + path + +" (" +
+        "Failed to get file size for '" + path +"' (" +
         get_last_error_msg("GetFileSizeEx") + ")'")));
   }
   *size = nbytes.QuadPart;
