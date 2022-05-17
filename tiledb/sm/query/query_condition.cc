@@ -734,7 +734,7 @@ void QueryCondition::apply_ast_node(
   return;
 }
 
-template <typename CombinationOp = std::logical_and<uint8_t>>
+template <typename CombinationOp>
 void QueryCondition::apply_tree(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
@@ -1265,7 +1265,7 @@ void QueryCondition::apply_ast_node_dense(
   }
 }
 
-template <typename CombinationOp = std::logical_and<uint8_t>>
+template <typename CombinationOp>
 void QueryCondition::apply_tree_dense(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
@@ -1777,9 +1777,7 @@ void QueryCondition::apply_ast_node_sparse(
   }
 }
 
-template <
-    typename BitmapType,
-    typename CombinationOp = std::logical_and<BitmapType>>
+template <typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_tree_sparse(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
