@@ -1912,7 +1912,7 @@ TEST_CASE(
     // Build a combined query for (((x = 1 || x = 2) && (x = 3 || x = 4)) ||
     // (((x
     // != 8 && x != 9 && (x = 6 || x = 7)) || x = 5) && x != 6))
-    std::vector<int> vals = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::vector<uint64_t> vals = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     std::vector<QueryCondition> qc_value_vector;
     for (int i = 0; i < 7; ++i) {
       QueryCondition qc;
@@ -1936,7 +1936,7 @@ TEST_CASE(
       qc_value_vector.push_back(qc);
     }
 
-    int x = 6;
+    uint64_t x = 6;
     QueryCondition x_neq_six;
     REQUIRE(
         x_neq_six
@@ -2011,53 +2011,53 @@ TEST_CASE(
 
   SECTION("Adding simple clauses to AND tree.") {
     // foo != 1 && foo != 3 && foo != 5 && foo != 7 && foo != 9
-    int val1 = 1;
+    uint64_t val1 = 1;
     QueryCondition query_condition1;
     REQUIRE(query_condition1
                 .init(
                     std::string(field_name),
                     &val1,
-                    sizeof(int),
+                    sizeof(val1),
                     QueryConditionOp::NE)
                 .ok());
 
-    int val2 = 3;
+    uint64_t val2 = 3;
     QueryCondition query_condition2;
     REQUIRE(query_condition2
                 .init(
                     std::string(field_name),
                     &val2,
-                    sizeof(int),
+                    sizeof(val2),
                     QueryConditionOp::NE)
                 .ok());
 
-    int val3 = 5;
+    uint64_t val3 = 5;
     QueryCondition query_condition3;
     REQUIRE(query_condition3
                 .init(
                     std::string(field_name),
                     &val3,
-                    sizeof(int),
+                    sizeof(val3),
                     QueryConditionOp::NE)
                 .ok());
 
-    int val4 = 7;
+    uint64_t val4 = 7;
     QueryCondition query_condition4;
     REQUIRE(query_condition4
                 .init(
                     std::string(field_name),
                     &val4,
-                    sizeof(int),
+                    sizeof(val4),
                     QueryConditionOp::NE)
                 .ok());
 
-    int val5 = 9;
+    uint64_t val5 = 9;
     QueryCondition query_condition5;
     REQUIRE(query_condition5
                 .init(
                     std::string(field_name),
                     &val5,
-                    sizeof(int),
+                    sizeof(val5),
                     QueryConditionOp::NE)
                 .ok());
 
@@ -2115,53 +2115,53 @@ TEST_CASE(
 
   SECTION("Adding simple clauses to OR tree.") {
     // foo = 0 || foo = 2 || foo = 4 || foo = 6 || foo = 8
-    int val1 = 0;
+    uint64_t val1 = 0;
     QueryCondition query_condition1;
     REQUIRE(query_condition1
                 .init(
                     std::string(field_name),
                     &val1,
-                    sizeof(int),
+                    sizeof(val1),
                     QueryConditionOp::EQ)
                 .ok());
 
-    int val2 = 2;
+    uint64_t val2 = 2;
     QueryCondition query_condition2;
     REQUIRE(query_condition2
                 .init(
                     std::string(field_name),
                     &val2,
-                    sizeof(int),
+                    sizeof(val2),
                     QueryConditionOp::EQ)
                 .ok());
 
-    int val3 = 4;
+    uint64_t val3 = 4;
     QueryCondition query_condition3;
     REQUIRE(query_condition3
                 .init(
                     std::string(field_name),
                     &val3,
-                    sizeof(int),
+                    sizeof(val3),
                     QueryConditionOp::EQ)
                 .ok());
 
-    int val4 = 6;
+    uint64_t val4 = 6;
     QueryCondition query_condition4;
     REQUIRE(query_condition4
                 .init(
                     std::string(field_name),
                     &val4,
-                    sizeof(int),
+                    sizeof(val4),
                     QueryConditionOp::EQ)
                 .ok());
 
-    int val5 = 8;
+    uint64_t val5 = 8;
     QueryCondition query_condition5;
     REQUIRE(query_condition5
                 .init(
                     std::string(field_name),
                     &val5,
-                    sizeof(int),
+                    sizeof(val5),
                     QueryConditionOp::EQ)
                 .ok());
 
@@ -3204,7 +3204,7 @@ TEST_CASE(
     // Build a combined query for (((x = 1 || x = 2) && (x = 3 || x = 4)) ||
     // (((x
     // != 8 && x != 9 && (x = 6 || x = 7)) || x = 5) && x != 6))
-    std::vector<int> vals = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::vector<uint64_t> vals = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     std::vector<QueryCondition> qc_value_vector;
     for (int i = 0; i < 7; ++i) {
       QueryCondition qc;
@@ -3228,7 +3228,7 @@ TEST_CASE(
       qc_value_vector.push_back(qc);
     }
 
-    int x = 6;
+    uint64_t x = 6;
     QueryCondition x_neq_six;
     REQUIRE(
         x_neq_six
@@ -3302,53 +3302,53 @@ TEST_CASE(
 
   SECTION("Adding simple clauses to AND tree.") {
     // foo != 1 && foo != 3 && foo != 5 && foo != 7 && foo != 9
-    int val1 = 1;
+    uint64_t val1 = 1;
     QueryCondition query_condition1;
     REQUIRE(query_condition1
                 .init(
                     std::string(field_name),
                     &val1,
-                    sizeof(int),
+                    sizeof(val1),
                     QueryConditionOp::NE)
                 .ok());
 
-    int val2 = 3;
+    uint64_t val2 = 3;
     QueryCondition query_condition2;
     REQUIRE(query_condition2
                 .init(
                     std::string(field_name),
                     &val2,
-                    sizeof(int),
+                    sizeof(val2),
                     QueryConditionOp::NE)
                 .ok());
 
-    int val3 = 5;
+    uint64_t val3 = 5;
     QueryCondition query_condition3;
     REQUIRE(query_condition3
                 .init(
                     std::string(field_name),
                     &val3,
-                    sizeof(int),
+                    sizeof(val3),
                     QueryConditionOp::NE)
                 .ok());
 
-    int val4 = 7;
+    uint64_t val4 = 7;
     QueryCondition query_condition4;
     REQUIRE(query_condition4
                 .init(
                     std::string(field_name),
                     &val4,
-                    sizeof(int),
+                    sizeof(val4),
                     QueryConditionOp::NE)
                 .ok());
 
-    int val5 = 9;
+    uint64_t val5 = 9;
     QueryCondition query_condition5;
     REQUIRE(query_condition5
                 .init(
                     std::string(field_name),
                     &val5,
-                    sizeof(int),
+                    sizeof(val5),
                     QueryConditionOp::NE)
                 .ok());
 
@@ -3400,53 +3400,53 @@ TEST_CASE(
 
   SECTION("Adding simple clauses to OR tree.") {
     // foo = 0 || foo = 2 || foo = 4 || foo = 6 || foo = 8
-    int val1 = 0;
+    uint64_t val1 = 0;
     QueryCondition query_condition1;
     REQUIRE(query_condition1
                 .init(
                     std::string(field_name),
                     &val1,
-                    sizeof(int),
+                    sizeof(val1),
                     QueryConditionOp::EQ)
                 .ok());
 
-    int val2 = 2;
+    uint64_t val2 = 2;
     QueryCondition query_condition2;
     REQUIRE(query_condition2
                 .init(
                     std::string(field_name),
                     &val2,
-                    sizeof(int),
+                    sizeof(val2),
                     QueryConditionOp::EQ)
                 .ok());
 
-    int val3 = 4;
+    uint64_t val3 = 4;
     QueryCondition query_condition3;
     REQUIRE(query_condition3
                 .init(
                     std::string(field_name),
                     &val3,
-                    sizeof(int),
+                    sizeof(val3),
                     QueryConditionOp::EQ)
                 .ok());
 
-    int val4 = 6;
+    uint64_t val4 = 6;
     QueryCondition query_condition4;
     REQUIRE(query_condition4
                 .init(
                     std::string(field_name),
                     &val4,
-                    sizeof(int),
+                    sizeof(val4),
                     QueryConditionOp::EQ)
                 .ok());
 
-    int val5 = 8;
+    uint64_t val5 = 8;
     QueryCondition query_condition5;
     REQUIRE(query_condition5
                 .init(
                     std::string(field_name),
                     &val5,
-                    sizeof(int),
+                    sizeof(val5),
                     QueryConditionOp::EQ)
                 .ok());
 
@@ -4499,7 +4499,7 @@ TEST_CASE(
     // Build a combined query for (((x = 1 || x = 2) && (x = 3 || x = 4)) ||
     // (((x
     // != 8 && x != 9 && (x = 6 || x = 7)) || x = 5) && x != 6))
-    std::vector<int> vals = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::vector<uint64_t> vals = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     std::vector<QueryCondition> qc_value_vector;
     for (int i = 0; i < 7; ++i) {
       QueryCondition qc;
@@ -4523,7 +4523,7 @@ TEST_CASE(
       qc_value_vector.push_back(qc);
     }
 
-    int x = 6;
+    uint64_t x = 6;
     QueryCondition x_neq_six;
     REQUIRE(
         x_neq_six
@@ -4599,53 +4599,53 @@ TEST_CASE(
 
   SECTION("Adding simple clauses to AND tree.") {
     // foo != 1 && foo != 3 && foo != 5 && foo != 7 && foo != 9
-    int val1 = 1;
+    uint64_t val1 = 1;
     QueryCondition query_condition1;
     REQUIRE(query_condition1
                 .init(
                     std::string(field_name),
                     &val1,
-                    sizeof(int),
+                    sizeof(val1),
                     QueryConditionOp::NE)
                 .ok());
 
-    int val2 = 3;
+    uint64_t val2 = 3;
     QueryCondition query_condition2;
     REQUIRE(query_condition2
                 .init(
                     std::string(field_name),
                     &val2,
-                    sizeof(int),
+                    sizeof(val2),
                     QueryConditionOp::NE)
                 .ok());
 
-    int val3 = 5;
+    uint64_t val3 = 5;
     QueryCondition query_condition3;
     REQUIRE(query_condition3
                 .init(
                     std::string(field_name),
                     &val3,
-                    sizeof(int),
+                    sizeof(val3),
                     QueryConditionOp::NE)
                 .ok());
 
-    int val4 = 7;
+    uint64_t val4 = 7;
     QueryCondition query_condition4;
     REQUIRE(query_condition4
                 .init(
                     std::string(field_name),
                     &val4,
-                    sizeof(int),
+                    sizeof(val4),
                     QueryConditionOp::NE)
                 .ok());
 
-    int val5 = 9;
+    uint64_t val5 = 9;
     QueryCondition query_condition5;
     REQUIRE(query_condition5
                 .init(
                     std::string(field_name),
                     &val5,
-                    sizeof(int),
+                    sizeof(val5),
                     QueryConditionOp::NE)
                 .ok());
 
@@ -4698,53 +4698,53 @@ TEST_CASE(
 
   SECTION("Adding simple clauses to OR tree.") {
     // foo = 0 || foo = 2 || foo = 4 || foo = 6 || foo = 8
-    int val1 = 0;
+    uint64_t val1 = 0;
     QueryCondition query_condition1;
     REQUIRE(query_condition1
                 .init(
                     std::string(field_name),
                     &val1,
-                    sizeof(int),
+                    sizeof(val1),
                     QueryConditionOp::EQ)
                 .ok());
 
-    int val2 = 2;
+    uint64_t val2 = 2;
     QueryCondition query_condition2;
     REQUIRE(query_condition2
                 .init(
                     std::string(field_name),
                     &val2,
-                    sizeof(int),
+                    sizeof(val2),
                     QueryConditionOp::EQ)
                 .ok());
 
-    int val3 = 4;
+    uint64_t val3 = 4;
     QueryCondition query_condition3;
     REQUIRE(query_condition3
                 .init(
                     std::string(field_name),
                     &val3,
-                    sizeof(int),
+                    sizeof(val3),
                     QueryConditionOp::EQ)
                 .ok());
 
-    int val4 = 6;
+    uint64_t val4 = 6;
     QueryCondition query_condition4;
     REQUIRE(query_condition4
                 .init(
                     std::string(field_name),
                     &val4,
-                    sizeof(int),
+                    sizeof(val4),
                     QueryConditionOp::EQ)
                 .ok());
 
-    int val5 = 8;
+    uint64_t val5 = 8;
     QueryCondition query_condition5;
     REQUIRE(query_condition5
                 .init(
                     std::string(field_name),
                     &val5,
-                    sizeof(int),
+                    sizeof(val5),
                     QueryConditionOp::EQ)
                 .ok());
 
