@@ -131,7 +131,7 @@ TEMPLATE_TEST_CASE(
 
 TEMPLATE_TEST_CASE(
     "Test check_is_subset for floating-point types", "[range]", float, double) {
-  TestType superset_data[2]{-10.5, 3.33};
+  TestType superset_data[2]{-10.5, 3.33f};
   Range superset{&superset_data[0], 2 * sizeof(TestType)};
   SECTION("Test full domain is a valid subset") {
     auto status = check_range_is_subset<TestType>(superset, superset);

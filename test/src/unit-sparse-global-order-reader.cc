@@ -63,7 +63,7 @@ struct CSparseGlobalOrderFx {
   std::string ratio_coords_;
   std::string ratio_query_condition_;
 
-  void create_default_array_1d();
+  void create_default_array_1d(bool allow_dups = false);
   void write_1d_fragment(
       int* coords, uint64_t* coords_size, int* data, uint64_t* data_size);
   int32_t read(
@@ -175,7 +175,7 @@ void CSparseGlobalOrderFx::update_config() {
   tiledb_config_free(&config);
 }
 
-void CSparseGlobalOrderFx::create_default_array_1d() {
+void CSparseGlobalOrderFx::create_default_array_1d(bool allow_dups) {
   int domain[] = {1, 20};
   int tile_extent = 2;
   create_array(
@@ -193,7 +193,7 @@ void CSparseGlobalOrderFx::create_default_array_1d() {
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       2,
-      false);
+      allow_dups);
 }
 
 void CSparseGlobalOrderFx::write_1d_fragment(
@@ -756,6 +756,49 @@ TEST_CASE_METHOD(
 
   int coords_c[] = {1, 2, 3, 4, 5, 6};
   int data_c[] = {1, 2, 3, 4, 5, 6};
+  CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
+  CHECK(!std::memcmp(data_c, data_r, data_r_size));
+}
+
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: merge with subarray and dups",
+    "[sparse-global-order][merge][subarray][dups]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d(true);
+
+  bool use_subarray = false;
+
+  int coords_1[] = {8, 9, 10, 11, 12, 13};
+  int data_1[] = {8, 9, 10, 11, 12, 13};
+
+  int coords_2[] = {8, 9, 10, 11, 12, 13};
+  int data_2[] = {8, 9, 10, 11, 12, 13};
+
+  uint64_t coords_size = sizeof(coords_1);
+  uint64_t data_size = sizeof(data_1);
+
+  // Create the aray.
+  write_1d_fragment(coords_1, &coords_size, data_1, &data_size);
+  write_1d_fragment(coords_2, &coords_size, data_2, &data_size);
+
+  // Read.
+  int coords_r[6];
+  int data_r[6];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+
+  auto rc =
+      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Should read (6 values).
+  CHECK(24 == data_r_size);
+  CHECK(24 == coords_r_size);
+
+  int coords_c[] = {8, 8, 9, 9, 10, 10};
+  int data_c[] = {8, 8, 9, 9, 10, 10};
   CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
   CHECK(!std::memcmp(data_c, data_r, data_r_size));
 }

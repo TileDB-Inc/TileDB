@@ -175,10 +175,11 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
   src/unit-resource-pool.cc
+  src/unit-result-coords.cc
+  src/unit-result-tile.cc
   src/unit-rtree.cc
   src/unit-s3-no-multipart.cc
   src/unit-s3.cc
-  src/unit-sparse-index-reader-base.cc
   src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc
   src/unit-status.cc
