@@ -344,8 +344,6 @@ add_custom_command(
   OUTPUT "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
   DEPENDS "${MGC_GZIPPED_BIN_INPUT_FILE}"
   COMMAND ${CMAKE_COMMAND} -E tar x "${MGC_GZIPPED_BIN_INPUT_FILE}"
-  #WORKING_DIRECTORY "${MGC_GZIPPED_BIN_DIRECTORY}"
-  #WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
   WORKING_DIRECTORY "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}"
 )
 add_custom_target(gen_mgc_unarch ALL
@@ -355,9 +353,7 @@ add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_unarch)
 
 add_custom_target(
   update-embedded-magic-data
-  # overwrites the 'input' file for subsequent push to repository
   COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
-  #COMMAND ${CMAKE_COMMAND} -E tar cvj "${MGC_GZIPPED_BIN_INPUT_FILE}" "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
   # need to work in 'local' directory with no prefix paths so no paths are included in archive
   WORKING_DIRECTORY "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}"
   COMMAND ${CMAKE_COMMAND} -E tar cvj "magic_mgc_gzipped.bin.tar.bz2" "magic_mgc_gzipped.bin"
