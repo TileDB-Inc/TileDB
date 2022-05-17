@@ -232,6 +232,18 @@ static void perform_query(
   query.submit();
 }
 
+struct TestParams {
+  TestParams(tiledb_array_type_t array_type, tiledb_layout_t layout, bool set_dups) 
+    : array_type_(array_type)
+    , layout_(layout)
+    , set_dups_(set_dups)
+  {}
+
+  tiledb_array_type_t array_type_;
+  tiledb_layout_t layout_;
+  bool set_dups_;
+};
+
 TEST_CASE(
     "Testing read query with basic QC, with no range.",
     "[query][query-condition]") {
@@ -257,29 +269,40 @@ TEST_CASE(
   std::vector<int> a_data_read_2(num_rows * num_rows);
   std::vector<float> b_data_read_2(num_rows * num_rows);
 
-  SECTION("Testing sparse array.") {
-    std::pair<bool, tiledb_layout_t> params = GENERATE(
-        std::make_pair(false, TILEDB_GLOBAL_ORDER),
-        std::make_pair(true, TILEDB_UNORDERED));
-    // Setup by creating buffers to store all elements of the original array.
-    create_array(ctx, TILEDB_SPARSE, params.first, a_data_read, b_data_read);
+  // Generate test parameters.
+  TestParams params = GENERATE(
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
 
-    // Create the query, which reads over the entire array with query condition
-    // (b < 4.0).
-    Array array2(ctx, array_name, TILEDB_READ);
-    Query query2(ctx, array2);
-    perform_query(a_data_read_2, b_data_read_2, qc, params.second, query2);
+  // Setup by creating buffers to store all elements of the original array.
+  create_array(ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
 
+  // Create the query, which reads over the entire array with query condition
+  // (b < 4.0).
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+
+  // Set a subarray for dense.
+  if (params.array_type_ == TILEDB_DENSE) {
+    int range[] = {1, num_rows};
+    query.add_range("rows", range[0], range[1])
+        .add_range("cols", range[0], range[1]);
+  }
+
+  // Perform query and validate.
+  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
+  if (params.array_type_ == TILEDB_SPARSE) {
     // Check the query for accuracy. The query results should contain 200
     // elements. Each of these elements should have the cell value 1 on
     // attribute a and should match the original value in the array that reads
     // all elements.
-    auto table2 = query2.result_buffer_elements();
-    REQUIRE(table2.size() == 2);
-    REQUIRE(table2["a"].first == 0);
-    REQUIRE(table2["a"].second == 200);
-    REQUIRE(table2["b"].first == 0);
-    REQUIRE(table2["b"].second == 200);
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 200);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 200);
 
     // The unordered query should return the results in global order. Therefore,
     // we iterate over each tile to collect our results.
@@ -300,36 +323,19 @@ TEST_CASE(
         }
       }
     }
-
-    query2.finalize();
-    array2.close();
-  }
-
-  SECTION("Testing dense array.") {
-    // Setup by creating buffers to store all elements of the original array.
-    create_array(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
-
-    // Create the query, which reads over the entire array with query condition
-    // (b < 4.0).
-    Array array2(ctx, array_name, TILEDB_READ);
-    Query query2(ctx, array2);
-    int range[] = {1, num_rows};
-    query2.add_range("rows", range[0], range[1])
-        .add_range("cols", range[0], range[1]);
-    perform_query(a_data_read_2, b_data_read_2, qc, TILEDB_ROW_MAJOR, query2);
-
+  } else {
     // Check the query for accuracy. The query results should contain 400
     // elements. Elements that meet the query conditioe should have the cell
     // value 1 on attribute a and should match the original value in the array
     // on attribute b. Elements that do not should have the fill value for both
     // attributes.
     size_t total_num_elements = static_cast<size_t>(num_rows * num_rows);
-    auto table2 = query2.result_buffer_elements();
-    REQUIRE(table2.size() == 2);
-    REQUIRE(table2["a"].first == 0);
-    REQUIRE(table2["a"].second == total_num_elements);
-    REQUIRE(table2["b"].first == 0);
-    REQUIRE(table2["b"].second == total_num_elements);
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == total_num_elements);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == total_num_elements);
 
     for (int i = 0; i < num_rows * num_rows; ++i) {
       if (i % 2 == 0) {
@@ -345,13 +351,14 @@ TEST_CASE(
             std::numeric_limits<float>::epsilon());
       }
     }
-
-    query2.finalize();
-    array2.close();
   }
 
-  if (vfs.is_dir(array_name))
+  query.finalize();
+  array.close();
+
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 }
 
 TEST_CASE(
@@ -379,32 +386,36 @@ TEST_CASE(
   std::vector<int> a_data_read_2(4);
   std::vector<float> b_data_read_2(4);
 
+  // Generate test parameters.
+  TestParams params = GENERATE(
+    TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
+    TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
+    TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
+
+  // Setup by creating buffers to store all elements of the original array.
+  create_array(ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+
+  // Create the query, which reads over the entire array with query condition
+  // (b < 4.0).
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+
   // Define range.
   int range[] = {2, 3};
+  query.add_range("rows", range[0], range[1])
+       .add_range("cols", range[0], range[1]);
 
-  SECTION("Testing sparse array.") {
-    // Setup by creating buffers to store all elements of the original array.
-    std::pair<bool, tiledb_layout_t> params = GENERATE(
-        std::make_pair(false, TILEDB_GLOBAL_ORDER),
-        std::make_pair(true, TILEDB_UNORDERED));
-    create_array(ctx, TILEDB_SPARSE, params.first, a_data_read, b_data_read);
-
-    // Create the query, which reads over the range rows[2,3], cols[2,3] with
-    // query condition (b < 4.0).
-    Array array2(ctx, array_name, TILEDB_READ);
-    Query query2(ctx, array2);
-    query2.add_range("rows", range[0], range[1])
-        .add_range("cols", range[0], range[1]);
-    perform_query(a_data_read_2, b_data_read_2, qc, params.second, query2);
-
+  // Perform query and validate.
+  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
+  if (params.array_type_ == TILEDB_SPARSE) {
     // Check the query for accuracy. The query results should contain 2
     // elements.
-    auto table2 = query2.result_buffer_elements();
-    REQUIRE(table2.size() == 2);
-    REQUIRE(table2["a"].first == 0);
-    REQUIRE(table2["a"].second == 2);
-    REQUIRE(table2["b"].first == 0);
-    REQUIRE(table2["b"].second == 2);
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 2);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 2);
 
     // Testing (2,3), which should be in the result buffer.
     int ind_0 = index_from_row_col(2, 3);
@@ -419,31 +430,16 @@ TEST_CASE(
     REQUIRE(
         fabs(b_data_read_2[1] - b_data_read[ind_1]) <
         std::numeric_limits<float>::epsilon());
-
-    query2.finalize();
-    array2.close();
-  }
-
-  SECTION("Testing dense array.") {
-    // Setup by creating buffers to store all elements of the original array.
-    create_array(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
-
-    // Create the query, which reads over the range rows[2,3], cols[2,3] with
-    // query condition (b < 4.0).
-    Array array2(ctx, array_name, TILEDB_READ);
-    Query query2(ctx, array2);
-    query2.add_range("rows", range[0], range[1])
-        .add_range("cols", range[0], range[1]);
-    perform_query(a_data_read_2, b_data_read_2, qc, TILEDB_ROW_MAJOR, query2);
-    auto table2 = query2.result_buffer_elements();
+  } else {
+    auto table = query.result_buffer_elements();
 
     // Check the query for accuracy. The query results should contain 4
     // elements.
-    REQUIRE(table2.size() == 2);
-    REQUIRE(table2["a"].first == 0);
-    REQUIRE(table2["a"].second == 4);
-    REQUIRE(table2["b"].first == 0);
-    REQUIRE(table2["b"].second == 4);
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 4);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 4);
 
     // Testing (2,2), which should be filtered out.
     REQUIRE(a_data_read_2[0] == a_fill_value);
@@ -470,10 +466,10 @@ TEST_CASE(
     REQUIRE(
         fabs(b_data_read_2[3] - b_data_read[ind_3]) <
         std::numeric_limits<float>::epsilon());
-
-    query2.finalize();
-    array2.close();
   }
+
+  query.finalize();
+  array.close();
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
@@ -505,33 +501,37 @@ TEST_CASE(
   std::vector<int> a_data_read_2(8);
   std::vector<float> b_data_read_2(8);
 
+  // Generate test parameters.
+  TestParams params = GENERATE(
+    TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
+    TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
+    TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
+
+  // Setup by creating buffers to store all elements of the original array.
+  create_array(ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+
+  // Create the query, which reads over the entire array with query condition
+  // (b < 4.0).
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+
   // Define range.
   int range[] = {2, 3};
   int range1[] = {7, 10};
-
-  SECTION("Testing sparse array.") {
-    // Setup by creating buffers to store all elements of the original array.
-    std::pair<bool, tiledb_layout_t> params = GENERATE(
-        std::make_pair(false, TILEDB_GLOBAL_ORDER),
-        std::make_pair(true, TILEDB_UNORDERED));
-    create_array(ctx, TILEDB_SPARSE, params.first, a_data_read, b_data_read);
-
-    // Create the query, which reads over the range rows[7,10], cols[2,3] with
-    // query condition (b < 4.0).
-    Array array2(ctx, array_name, TILEDB_READ);
-    Query query2(ctx, array2);
-    query2.add_range("rows", range1[0], range1[1])
-        .add_range("cols", range[0], range[1]);
-    perform_query(a_data_read_2, b_data_read_2, qc, params.second, query2);
-
+  query.add_range("rows", range1[0], range1[1])
+       .add_range("cols", range[0], range[1]);
+  
+  // Perform query and validate.
+  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
+  if (params.array_type_ == TILEDB_SPARSE) {
     // Check the query for accuracy. The query results should contain 2
     // elements.
-    auto table2 = query2.result_buffer_elements();
-    REQUIRE(table2.size() == 2);
-    REQUIRE(table2["a"].first == 0);
-    REQUIRE(table2["a"].second == 4);
-    REQUIRE(table2["b"].first == 0);
-    REQUIRE(table2["b"].second == 4);
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 4);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 4);
 
     // Testing (7,3), which should be in the result buffer.
     int ind_0 = index_from_row_col(7, 3);
@@ -560,31 +560,15 @@ TEST_CASE(
     REQUIRE(
         fabs(b_data_read_2[3] - b_data_read[ind_3]) <
         std::numeric_limits<float>::epsilon());
-
-    query2.finalize();
-    array2.close();
-  }
-
-  SECTION("Testing dense array.") {
-    // Setup by creating buffers to store all elements of the original array.
-    create_array(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
-
-    // Create the query, which reads over the range rows[7,10], cols[2,3] with
-    // query condition (b < 4.0).
-    Array array2(ctx, array_name, TILEDB_READ);
-    Query query2(ctx, array2);
-    query2.add_range("rows", range1[0], range1[1])
-        .add_range("cols", range[0], range[1]);
-    perform_query(a_data_read_2, b_data_read_2, qc, TILEDB_ROW_MAJOR, query2);
-
+  } else {
     // Check the query for accuracy. The query results should contain 8
     // elements.
-    auto table2 = query2.result_buffer_elements();
-    REQUIRE(table2.size() == 2);
-    REQUIRE(table2["a"].first == 0);
-    REQUIRE(table2["a"].second == 8);
-    REQUIRE(table2["b"].first == 0);
-    REQUIRE(table2["b"].second == 8);
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 8);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 8);
     for (int r = 7; r <= 10; ++r) {
       for (int c = 2; c <= 3; ++c) {
         int i = ((r - 7) * 2) + (c - 2);
@@ -607,10 +591,10 @@ TEST_CASE(
         }
       }
     }
-
-    query2.finalize();
-    array2.close();
   }
+
+  query.finalize();
+  array.close();
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
@@ -642,33 +626,37 @@ TEST_CASE(
   std::vector<int> a_data_read_2(8);
   std::vector<float> b_data_read_2(8);
 
+  // Generate test parameters.
+  TestParams params = GENERATE(
+    TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
+    TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
+    TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
+
+  // Setup by creating buffers to store all elements of the original array.
+  create_array(ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+
+  // Create the query, which reads over the entire array with query condition
+  // (b < 4.0).
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+  
   // Define range.
   int range[] = {2, 3};
   int range1[] = {7, 10};
+  query.add_range("rows", range[0], range[1])
+       .add_range("cols", range1[0], range1[1]);
 
-  SECTION("Testing sparse array.") {
-    // Setup by creating buffers to store all elements of the original array.
-    std::pair<bool, tiledb_layout_t> params = GENERATE(
-        std::make_pair(false, TILEDB_GLOBAL_ORDER),
-        std::make_pair(true, TILEDB_UNORDERED));
-    create_array(ctx, TILEDB_SPARSE, params.first, a_data_read, b_data_read);
-
-    // Create the query, which reads over the range rows[2,3], cols[7,10] with
-    // query condition (b < 4.0).
-    Array array2(ctx, array_name, TILEDB_READ);
-    Query query2(ctx, array2);
-    query2.add_range("rows", range[0], range[1])
-        .add_range("cols", range1[0], range1[1]);
-    perform_query(a_data_read_2, b_data_read_2, qc, params.second, query2);
-
+  // Perform query and validate.
+  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
+  if (params.array_type_ == TILEDB_SPARSE) {
     // Check the query for accuracy. The query results should contain 4
     // elements.
-    auto table2 = query2.result_buffer_elements();
-    REQUIRE(table2.size() == 2);
-    REQUIRE(table2["a"].first == 0);
-    REQUIRE(table2["a"].second == 4);
-    REQUIRE(table2["b"].first == 0);
-    REQUIRE(table2["b"].second == 4);
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 4);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 4);
 
     // Ensure that the same data is in each array (global order).
     int i = 0;
@@ -682,31 +670,15 @@ TEST_CASE(
         i += 1;
       }
     }
-
-    query2.finalize();
-    array2.close();
-  }
-
-  SECTION("Testing dense array.") {
-    // Setup by creating buffers to store all elements of the original array.
-    create_array(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
-
-    // Create the query, which reads over the range rows[2,3], cols[7,10] with
-    // query condition (b < 4.0).
-    Array array2(ctx, array_name, TILEDB_READ);
-    Query query2(ctx, array2);
-    query2.add_range("rows", range[0], range[1])
-        .add_range("cols", range1[0], range1[1]);
-    perform_query(a_data_read_2, b_data_read_2, qc, TILEDB_ROW_MAJOR, query2);
-
+  } else {
     // Check the query for accuracy. The query results should contain 8
     // elements.
-    auto table2 = query2.result_buffer_elements();
-    REQUIRE(table2.size() == 2);
-    REQUIRE(table2["a"].first == 0);
-    REQUIRE(table2["a"].second == 8);
-    REQUIRE(table2["b"].first == 0);
-    REQUIRE(table2["b"].second == 8);
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 8);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 8);
 
     for (int r = 2; r <= 3; ++r) {
       for (int c = 7; c <= 10; ++c) {
@@ -730,10 +702,10 @@ TEST_CASE(
         }
       }
     }
-
-    query2.finalize();
-    array2.close();
   }
+
+  query.finalize();
+  array.close();
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
@@ -765,32 +737,36 @@ TEST_CASE(
   std::vector<int> a_data_read_2(64);
   std::vector<float> b_data_read_2(64);
 
+  // Generate test parameters.
+  TestParams params = GENERATE(
+    TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
+    TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
+    TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
+
+  // Setup by creating buffers to store all elements of the original array.
+  create_array(ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+
+  // Create the query, which reads over the entire array with query condition
+  // (b < 4.0).
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+  
   // Define range.
   int range[] = {7, 14};
+  query.add_range("rows", range[0], range[1])
+      .add_range("cols", range[0], range[1]);
 
-  SECTION("Testing sparse array.") {
-    // Setup by creating buffers to store all elements of the original array.
-    std::pair<bool, tiledb_layout_t> params = GENERATE(
-        std::make_pair(false, TILEDB_GLOBAL_ORDER),
-        std::make_pair(true, TILEDB_UNORDERED));
-    create_array(ctx, TILEDB_SPARSE, params.first, a_data_read, b_data_read);
-
-    // Create the query, which reads over the range rows[7,14], cols[7,14] with
-    // query condition (b < 4.0).
-    Array array2(ctx, array_name, TILEDB_READ);
-    Query query2(ctx, array2);
-    query2.add_range("rows", range[0], range[1])
-        .add_range("cols", range[0], range[1]);
-    perform_query(a_data_read_2, b_data_read_2, qc, params.second, query2);
-
+  // Perform query and validate.
+  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
+  if (params.array_type_ == TILEDB_SPARSE) {
     // Check the query for accuracy. The query results should contain 32
     // elements.
-    auto table2 = query2.result_buffer_elements();
-    REQUIRE(table2.size() == 2);
-    REQUIRE(table2["a"].first == 0);
-    REQUIRE(table2["a"].second == 32);
-    REQUIRE(table2["b"].first == 0);
-    REQUIRE(table2["b"].second == 32);
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 32);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 32);
 
     int i = 0;
     std::vector<std::pair<int, int>> ranges_vec;
@@ -824,31 +800,15 @@ TEST_CASE(
         }
       }
     }
-
-    query2.finalize();
-    array2.close();
-  }
-
-  SECTION("Testing dense array.") {
-    // Setup by creating buffers to store all elements of the original array.
-    create_array(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
-
-    // Create the query, which reads over the range rows[7,14], cols[7,14] with
-    // query condition (b < 4.0).
-    Array array2(ctx, array_name, TILEDB_READ);
-    Query query2(ctx, array2);
-    query2.add_range("rows", range[0], range[1])
-        .add_range("cols", range[0], range[1]);
-    perform_query(a_data_read_2, b_data_read_2, qc, TILEDB_ROW_MAJOR, query2);
-
+  } else {
     // Check the query for accuracy. The query results should contain 64
     // elements.
-    auto table2 = query2.result_buffer_elements();
-    REQUIRE(table2.size() == 2);
-    REQUIRE(table2["a"].first == 0);
-    REQUIRE(table2["a"].second == 64);
-    REQUIRE(table2["b"].first == 0);
-    REQUIRE(table2["b"].second == 64);
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 64);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 64);
 
     for (int r = 7; r <= 14; ++r) {
       for (int c = 7; c <= 14; ++c) {
@@ -873,10 +833,10 @@ TEST_CASE(
         }
       }
     }
-
-    query2.finalize();
-    array2.close();
   }
+
+  query.finalize();
+  array.close();
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
@@ -925,32 +885,36 @@ TEST_CASE(
   std::vector<int> a_data_read_2(64);
   std::vector<float> b_data_read_2(64);
 
+  // Generate test parameters.
+  TestParams params = GENERATE(
+    TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false),
+    TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true),
+    TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false));
+
+  // Setup by creating buffers to store all elements of the original array.
+  create_array(ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+
+  // Create the query, which reads over the entire array with query condition
+  // (b < 4.0).
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+  
   // Define range.
   int range[] = {7, 14};
+  query.add_range("rows", range[0], range[1])
+      .add_range("cols", range[0], range[1]);
 
-  SECTION("Testing sparse array.") {
-    // Setup by creating buffers to store all elements of the original array.
-    std::pair<bool, tiledb_layout_t> params = GENERATE(
-        std::make_pair(false, TILEDB_GLOBAL_ORDER),
-        std::make_pair(true, TILEDB_UNORDERED));
-    create_array(ctx, TILEDB_SPARSE, params.first, a_data_read, b_data_read);
-
-    // Create the query, which reads over the range rows[7,14], cols[7,14] with
-    // query condition (b < 4.0f AND b <= 3.7f AND b >= 3.3f AND b != 3.4f).
-    Array array2(ctx, array_name, TILEDB_READ);
-    Query query2(ctx, array2);
-    query2.add_range("rows", range[0], range[1])
-        .add_range("cols", range[0], range[1]);
-    perform_query(a_data_read_2, b_data_read_2, qc, params.second, query2);
-
+  // Perform query and validate.
+  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
+  if (params.array_type_ == TILEDB_SPARSE) {
     // Check the query for accuracy. The query results should contain 8
     // elements.
-    auto table2 = query2.result_buffer_elements();
-    REQUIRE(table2.size() == 2);
-    REQUIRE(table2["a"].first == 0);
-    REQUIRE(table2["a"].second == 8);
-    REQUIRE(table2["b"].first == 0);
-    REQUIRE(table2["b"].second == 8);
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 8);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 8);
 
     int i = 0;
     std::vector<std::pair<int, int>> ranges_vec;
@@ -984,32 +948,15 @@ TEST_CASE(
         }
       }
     }
-
-    query2.finalize();
-    array2.close();
-  }
-
-  SECTION("Testing dense array.") {
-    // Setup by creating buffers to store all elements of the original array.
-    create_array(ctx, TILEDB_DENSE, false, a_data_read, b_data_read);
-
-    // Create the query, which reads over the range rows[7,14], cols[7,14] with
-    // query condition (b < 4.0f AND b <= 3.7f AND b >= 3.3f AND b != 3.4f).
-    Array array2(ctx, array_name, TILEDB_READ);
-    Query query2(ctx, array2);
-
-    query2.add_range("rows", range[0], range[1])
-        .add_range("cols", range[0], range[1]);
-    perform_query(a_data_read_2, b_data_read_2, qc, TILEDB_ROW_MAJOR, query2);
-
+  } else {
     // Check the query for accuracy. The query results should contain 64
     // elements.
-    auto table2 = query2.result_buffer_elements();
-    REQUIRE(table2.size() == 2);
-    REQUIRE(table2["a"].first == 0);
-    REQUIRE(table2["a"].second == 64);
-    REQUIRE(table2["b"].first == 0);
-    REQUIRE(table2["b"].second == 64);
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 64);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 64);
 
     for (int r = 7; r <= 14; ++r) {
       for (int c = 7; c <= 14; ++c) {
@@ -1035,10 +982,10 @@ TEST_CASE(
         }
       }
     }
-
-    query2.finalize();
-    array2.close();
   }
+
+  query.finalize();
+  array.close();
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
