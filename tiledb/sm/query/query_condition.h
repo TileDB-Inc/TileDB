@@ -421,7 +421,7 @@ class QueryCondition {
    * @param stride The stride between cells.
    * @return Filtered cell slabs.
    */
-  template <typename CombinationOp>
+  template <typename CombinationOp = std::logical_and<uint8_t>>
   void apply_tree(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
@@ -512,7 +512,7 @@ class QueryCondition {
    * @param result_buffer The buffer to use for results.
    * @return Void.
    */
-  template <typename CombinationOp>
+  template <typename CombinationOp = std::logical_and<uint8_t>>
   void apply_tree_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
@@ -588,7 +588,9 @@ class QueryCondition {
    * @param result_bitmap The bitmap to use for results.
    * @return Void.
    */
-  template <typename BitmapType, typename CombinationOp>
+  template <
+      typename BitmapType,
+      typename CombinationOp = std::logical_and<BitmapType>>
   void apply_tree_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
