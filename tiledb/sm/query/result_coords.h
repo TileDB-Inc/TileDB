@@ -178,6 +178,11 @@ struct GlobalOrderResultCoords
     uint64_t ret = 1;
     uint64_t next_pos = pos_ + 1;
     if (tile_->has_bmp()) {
+      // Current cell is not in the bitmap.
+      if (!tile_->bitmap_[pos_]) {
+        return 0;
+      }
+
       // With bitmap, find the longest contiguous set of bits in the bitmap
       // from the current position.
       while (next_pos < tile_->cell_num() && tile_->bitmap_[next_pos]) {
@@ -201,14 +206,19 @@ struct GlobalOrderResultCoords
       const GlobalOrderResultCoords& next, const CompType& cmp) {
     uint64_t ret = 1;
 
-    // Store the original position and move to the next cell.
+    // Store the original position.
     uint64_t orig_pos = pos_;
-    pos_++;
 
     if (tile_->has_bmp()) {
+      // Current cell is not in the bitmap.
+      if (!tile_->bitmap_[pos_]) {
+        return 0;
+      }
+
       // With bitmap, find the longest contiguous set of bits in the bitmap
       // from the current position, with coordinares smaller than the next one
       // in the queue.
+      pos_++;
       while (pos_ < tile_->cell_num() && tile_->bitmap_[pos_] &&
              !cmp(*this, next)) {
         pos_++;
@@ -217,6 +227,7 @@ struct GlobalOrderResultCoords
     } else {
       // No bitmap, add all cells from current position, with coordinares
       // smaller than the next one in the queue.
+      pos_++;
       while (pos_ < tile_->cell_num() - 1 && !cmp(*this, next)) {
         pos_++;
         ret++;
