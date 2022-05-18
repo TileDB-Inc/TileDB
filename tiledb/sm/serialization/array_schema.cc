@@ -54,7 +54,6 @@
 #include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
-#include "tiledb/stdx/utility/to_underlying.h"
 
 #include <set>
 #include <string>
@@ -393,8 +392,8 @@ ByteVecValue tile_extent_from_capnp(
     }
     default:
       throw std::logic_error(
-          "[Deserialization::tile_extent_from_capnp] Failed to deserialize "
-          "tile extent from capnp.");
+          "[Deserialization::tile_extent_from_capnp] Precondition violated; "
+          "Input Datatype is invalid.");
   }
   return tile_extent;
 }
@@ -411,7 +410,8 @@ Range range_from_capnp(
     Status st = utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer);
     if (!st.ok()) {
       throw std::runtime_error(
-          "[Deserialization::range_from_capnp] Failed to deserialize domain.");
+          "[Deserialization::range_from_capnp] Failed to copy " +
+          std::string(dimension_reader.getType().cStr()) + " typed Capnp List");
     }
     return Range{domain_buffer.data(), datatype_size(dim_type) * 2};
   } else {
@@ -438,8 +438,8 @@ shared_ptr<Dimension> dimension_from_capnp(
   try {
     ensure_datatype_is_valid(dim_type);
   } catch (const std::exception& e) {
-    std::throw_with_nested(std::runtime_error(
-        "[Deserialization::dimension_from_capnp] " + std::string(e.what())));
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::dimension_from_capnp] "));
   }
 
   // Calculate size of coordinates and re-ensure dim_type is valid (size != 0)
@@ -456,7 +456,7 @@ shared_ptr<Dimension> dimension_from_capnp(
 
   // Load domain
   // Note: If there is no domain in capnp, a default one is constructed.
-  Range domain = Range{range_from_capnp(dim_type, dimension_reader)};
+  Range domain{range_from_capnp(dim_type, dimension_reader)};
 
   // Load filters
   // Note: If there is no FilterPipeline in capnp, a default one is constructed.
