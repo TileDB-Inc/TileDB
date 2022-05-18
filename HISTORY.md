@@ -1,3 +1,12 @@
+# TileDB v2.9.1 Release Notes
+
+## Bug fixes
+
+* [Backport release-2.9] Sparse global order reader: refactor merge algorithm. (#3173) by @KiterLuc in https://github.com/TileDB-Inc/TileDB/pull/3182
+* [Backport release-2.9] Sparse unordered w/ dups reader: fixing overflow on int value. by @github-actions in https://github.com/TileDB-Inc/TileDB/pull/3184
+* [Backport release-2.9] Sparse global order reader: Check correct incomplete reason in case of too small user buffer by @github-actions in https://github.com/TileDB-Inc/TileDB/pull/3186
+* [Backport release-2.9] relocate magic_mgc_gzipped.bin for build by @github-actions in https://github.com/TileDB-Inc/TileDB/pull/3185
+
 # TileDB v2.9.0 Release Notes
 
 ## Disk Format
