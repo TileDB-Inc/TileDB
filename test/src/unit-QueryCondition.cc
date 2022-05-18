@@ -2113,6 +2113,468 @@ TEST_CASE(
     REQUIRE(result_cell_slabs[4].length_ == 1);
   }
 
+  SECTION("Basic AND condition.") {
+    // Build a combined query for `> 3 AND <= 6`.
+    uint64_t cmp_value_1 = 3;
+    QueryCondition query_condition_1;
+    REQUIRE(query_condition_1
+                .init(
+                    std::string(field_name),
+                    &cmp_value_1,
+                    sizeof(uint64_t),
+                    QueryConditionOp::GT)
+                .ok());
+    // Run Check for query_condition1
+    REQUIRE(query_condition_1.check(array_schema).ok());
+    uint64_t cmp_value_2 = 6;
+    QueryCondition query_condition_2;
+    REQUIRE(query_condition_2
+                .init(
+                    std::string(field_name),
+                    &cmp_value_2,
+                    sizeof(uint64_t),
+                    QueryConditionOp::LE)
+                .ok());
+    // Run Check for query_condition2
+    REQUIRE(query_condition_2.check(array_schema).ok());
+    QueryCondition query_condition_3;
+    REQUIRE(query_condition_1
+                .combine(
+                    query_condition_2,
+                    QueryConditionCombinationOp::AND,
+                    &query_condition_3)
+                .ok());
+
+    ResultCellSlab result_cell_slab(&result_tile, 0, cells);
+    std::vector<ResultCellSlab> result_cell_slabs;
+    result_cell_slabs.emplace_back(std::move(result_cell_slab));
+
+    REQUIRE(query_condition_3.apply(array_schema, result_cell_slabs, 1).ok());
+
+    // Check that the cell slab now contains cell indexes 4, 5, and 6.
+    REQUIRE(result_cell_slabs.size() == 1);
+    REQUIRE(result_cell_slabs[0].start_ == 4);
+    REQUIRE(result_cell_slabs[0].length_ == 3);
+  }
+
+  SECTION("Basic OR condition.") {
+    // Build a combined query for `> 6 OR <= 3`.
+    uint64_t cmp_value_1 = 6;
+    QueryCondition query_condition_1;
+    REQUIRE(query_condition_1
+                .init(
+                    std::string(field_name),
+                    &cmp_value_1,
+                    sizeof(uint64_t),
+                    QueryConditionOp::GT)
+                .ok());
+    // Run Check for query_condition1
+    REQUIRE(query_condition_1.check(array_schema).ok());
+    uint64_t cmp_value_2 = 3;
+    QueryCondition query_condition_2;
+    REQUIRE(query_condition_2
+                .init(
+                    std::string(field_name),
+                    &cmp_value_2,
+                    sizeof(uint64_t),
+                    QueryConditionOp::LE)
+                .ok());
+    // Run Check for query_condition2
+    REQUIRE(query_condition_2.check(array_schema).ok());
+    QueryCondition query_condition_3;
+    REQUIRE(query_condition_1
+                .combine(
+                    query_condition_2,
+                    QueryConditionCombinationOp::OR,
+                    &query_condition_3)
+                .ok());
+
+    ResultCellSlab result_cell_slab(&result_tile, 0, cells);
+    std::vector<ResultCellSlab> result_cell_slabs;
+    result_cell_slabs.emplace_back(std::move(result_cell_slab));
+
+    REQUIRE(query_condition_3.apply(array_schema, result_cell_slabs, 1).ok());
+
+    // Check that the cell slab now contains cell indexes 0, 1, 2, 3, and 7, 8,
+    // 9
+    REQUIRE(result_cell_slabs.size() == 2);
+    REQUIRE(result_cell_slabs[0].start_ == 0);
+    REQUIRE(result_cell_slabs[0].length_ == 4);
+    REQUIRE(result_cell_slabs[1].start_ == 7);
+    REQUIRE(result_cell_slabs[1].length_ == 3);
+  }
+
+  SECTION("OR of 2 AND ASTs.") {
+    // Build a combined query for `(>= 3 AND <= 6) OR (> 5 AND < 9)`.
+    uint64_t cmp_value_1 = 3;
+    QueryCondition query_condition_1;
+    REQUIRE(query_condition_1
+                .init(
+                    std::string(field_name),
+                    &cmp_value_1,
+                    sizeof(uint64_t),
+                    QueryConditionOp::GE)
+                .ok());
+    // Run Check for query_condition1
+    REQUIRE(query_condition_1.check(array_schema).ok());
+    uint64_t cmp_value_2 = 6;
+    QueryCondition query_condition_2;
+    REQUIRE(query_condition_2
+                .init(
+                    std::string(field_name),
+                    &cmp_value_2,
+                    sizeof(uint64_t),
+                    QueryConditionOp::LE)
+                .ok());
+    // Run Check for query_condition2
+    REQUIRE(query_condition_2.check(array_schema).ok());
+
+    QueryCondition combined_and;
+    REQUIRE(query_condition_1
+                .combine(
+                    query_condition_2,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and)
+                .ok());
+
+    uint64_t cmp_value_3 = 5;
+    QueryCondition query_condition_3;
+    REQUIRE(query_condition_3
+                .init(
+                    std::string(field_name),
+                    &cmp_value_3,
+                    sizeof(uint64_t),
+                    QueryConditionOp::GT)
+                .ok());
+    // Run Check for query_condition3
+    REQUIRE(query_condition_3.check(array_schema).ok());
+    uint64_t cmp_value_4 = 9;
+    QueryCondition query_condition_4;
+    REQUIRE(query_condition_4
+                .init(
+                    std::string(field_name),
+                    &cmp_value_4,
+                    sizeof(uint64_t),
+                    QueryConditionOp::LT)
+                .ok());
+    // Run Check for query_condition2
+    REQUIRE(query_condition_4.check(array_schema).ok());
+    QueryCondition combined_and1;
+    REQUIRE(query_condition_3
+                .combine(
+                    query_condition_4,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and1)
+                .ok());
+
+    QueryCondition combined_or;
+    REQUIRE(
+        combined_and
+            .combine(
+                combined_and1, QueryConditionCombinationOp::OR, &combined_or)
+            .ok());
+
+    ResultCellSlab result_cell_slab(&result_tile, 0, cells);
+    std::vector<ResultCellSlab> result_cell_slabs;
+    result_cell_slabs.emplace_back(std::move(result_cell_slab));
+
+    REQUIRE(combined_or.apply(array_schema, result_cell_slabs, 1).ok());
+
+    // Check that the cell slab now contains cell indexes 3, 4, 5, 6, 7, 8.
+    REQUIRE(result_cell_slabs.size() == 1);
+    REQUIRE(result_cell_slabs[0].start_ == 3);
+    REQUIRE(result_cell_slabs[0].length_ == 6);
+  }
+
+  SECTION("AND of 2 OR ASTs.") {
+    // Build a combined query for `(< 3 OR >= 8) AND (<= 4 OR = 9)`.
+    uint64_t cmp_value_1 = 3;
+    QueryCondition query_condition_1;
+    REQUIRE(query_condition_1
+                .init(
+                    std::string(field_name),
+                    &cmp_value_1,
+                    sizeof(uint64_t),
+                    QueryConditionOp::LT)
+                .ok());
+    // Run Check for query_condition1
+    REQUIRE(query_condition_1.check(array_schema).ok());
+    uint64_t cmp_value_2 = 8;
+    QueryCondition query_condition_2;
+    REQUIRE(query_condition_2
+                .init(
+                    std::string(field_name),
+                    &cmp_value_2,
+                    sizeof(uint64_t),
+                    QueryConditionOp::GE)
+                .ok());
+    // Run Check for query_condition2
+    REQUIRE(query_condition_2.check(array_schema).ok());
+
+    QueryCondition combined_or;
+    REQUIRE(query_condition_1
+                .combine(
+                    query_condition_2,
+                    QueryConditionCombinationOp::OR,
+                    &combined_or)
+                .ok());
+
+    uint64_t cmp_value_3 = 4;
+    QueryCondition query_condition_3;
+    REQUIRE(query_condition_3
+                .init(
+                    std::string(field_name),
+                    &cmp_value_3,
+                    sizeof(uint64_t),
+                    QueryConditionOp::LT)
+                .ok());
+    // Run Check for query_condition3
+    REQUIRE(query_condition_3.check(array_schema).ok());
+    uint64_t cmp_value_4 = 9;
+    QueryCondition query_condition_4;
+    REQUIRE(query_condition_4
+                .init(
+                    std::string(field_name),
+                    &cmp_value_4,
+                    sizeof(uint64_t),
+                    QueryConditionOp::EQ)
+                .ok());
+    // Run Check for query_condition2
+    REQUIRE(query_condition_4.check(array_schema).ok());
+    QueryCondition combined_or1;
+    REQUIRE(query_condition_3
+                .combine(
+                    query_condition_4,
+                    QueryConditionCombinationOp::OR,
+                    &combined_or1)
+                .ok());
+
+    QueryCondition combined_and;
+    REQUIRE(
+        combined_or
+            .combine(
+                combined_or1, QueryConditionCombinationOp::AND, &combined_and)
+            .ok());
+
+    ResultCellSlab result_cell_slab(&result_tile, 0, cells);
+    std::vector<ResultCellSlab> result_cell_slabs;
+    result_cell_slabs.emplace_back(std::move(result_cell_slab));
+
+    REQUIRE(combined_and.apply(array_schema, result_cell_slabs, 1).ok());
+
+    // Check that the cell slab now contains cell indexes 0, 1, 2, 9.
+    REQUIRE(result_cell_slabs.size() == 2);
+    REQUIRE(result_cell_slabs[0].start_ == 0);
+    REQUIRE(result_cell_slabs[0].length_ == 3);
+    REQUIRE(result_cell_slabs[1].start_ == 9);
+    REQUIRE(result_cell_slabs[1].length_ == 1);
+  }
+
+  SECTION("Complex tree with depth > 2.") {
+    // Build a combined query for (((x = 1 || x = 2) && (x = 3 || x = 4)) ||
+    // (((x
+    // != 8 && x != 9 && (x = 6 || x = 7)) || x = 5) && x != 6))
+    std::vector<uint64_t> vals = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::vector<QueryCondition> qc_value_vector;
+    for (int i = 0; i < 7; ++i) {
+      QueryCondition qc;
+      REQUIRE(qc.init(
+                    std::string(field_name),
+                    &vals[i],
+                    sizeof(vals[i]),
+                    QueryConditionOp::EQ)
+                  .ok());
+      qc_value_vector.push_back(qc);
+    }
+
+    for (int i = 7; i < 9; ++i) {
+      QueryCondition qc;
+      REQUIRE(qc.init(
+                    std::string(field_name),
+                    &vals[i],
+                    sizeof(vals[i]),
+                    QueryConditionOp::NE)
+                  .ok());
+      qc_value_vector.push_back(qc);
+    }
+
+    uint64_t x = 6;
+    QueryCondition x_neq_six;
+    REQUIRE(
+        x_neq_six
+            .init(std::string(field_name), &x, sizeof(x), QueryConditionOp::NE)
+            .ok());
+    QueryCondition one_or_two;
+    REQUIRE(qc_value_vector[0]
+                .combine(
+                    qc_value_vector[1],
+                    QueryConditionCombinationOp::OR,
+                    &one_or_two)
+                .ok());
+    QueryCondition three_or_four;
+    REQUIRE(qc_value_vector[2]
+                .combine(
+                    qc_value_vector[3],
+                    QueryConditionCombinationOp::OR,
+                    &three_or_four)
+                .ok());
+    QueryCondition six_or_seven;
+    REQUIRE(qc_value_vector[5]
+                .combine(
+                    qc_value_vector[6],
+                    QueryConditionCombinationOp::OR,
+                    &six_or_seven)
+                .ok());
+    QueryCondition eight_and_nine;
+    REQUIRE(qc_value_vector[7]
+                .combine(
+                    qc_value_vector[8],
+                    QueryConditionCombinationOp::AND,
+                    &eight_and_nine)
+                .ok());
+    QueryCondition subtree_a;
+    REQUIRE(one_or_two
+                .combine(
+                    three_or_four, QueryConditionCombinationOp::AND, &subtree_a)
+                .ok());
+    QueryCondition subtree_d;
+    REQUIRE(
+        eight_and_nine
+            .combine(six_or_seven, QueryConditionCombinationOp::AND, &subtree_d)
+            .ok());
+    QueryCondition subtree_c;
+    REQUIRE(
+        subtree_d
+            .combine(
+                qc_value_vector[4], QueryConditionCombinationOp::OR, &subtree_c)
+            .ok());
+    QueryCondition subtree_b;
+    REQUIRE(
+        subtree_c
+            .combine(x_neq_six, QueryConditionCombinationOp::AND, &subtree_b)
+            .ok());
+    QueryCondition qc;
+    REQUIRE(subtree_a.combine(subtree_b, QueryConditionCombinationOp::OR, &qc)
+                .ok());
+
+    ResultCellSlab result_cell_slab(&result_tile, 0, cells);
+    std::vector<ResultCellSlab> result_cell_slabs;
+    result_cell_slabs.emplace_back(std::move(result_cell_slab));
+
+    REQUIRE(qc.apply(array_schema, result_cell_slabs, 1).ok());
+
+    // Check that the cell slab now contains cell indexes 5, 7.
+    REQUIRE(result_cell_slabs.size() == 2);
+    REQUIRE(result_cell_slabs[0].start_ == 5);
+    REQUIRE(result_cell_slabs[0].length_ == 1);
+    REQUIRE(result_cell_slabs[1].start_ == 7);
+    REQUIRE(result_cell_slabs[1].length_ == 1);
+  }
+
+  SECTION("Adding simple clauses to AND tree.") {
+    // foo != 1 && foo != 3 && foo != 5 && foo != 7 && foo != 9
+    uint64_t val1 = 1;
+    QueryCondition query_condition1;
+    REQUIRE(query_condition1
+                .init(
+                    std::string(field_name),
+                    &val1,
+                    sizeof(val1),
+                    QueryConditionOp::NE)
+                .ok());
+
+    uint64_t val2 = 3;
+    QueryCondition query_condition2;
+    REQUIRE(query_condition2
+                .init(
+                    std::string(field_name),
+                    &val2,
+                    sizeof(val2),
+                    QueryConditionOp::NE)
+                .ok());
+
+    uint64_t val3 = 5;
+    QueryCondition query_condition3;
+    REQUIRE(query_condition3
+                .init(
+                    std::string(field_name),
+                    &val3,
+                    sizeof(val3),
+                    QueryConditionOp::NE)
+                .ok());
+
+    uint64_t val4 = 7;
+    QueryCondition query_condition4;
+    REQUIRE(query_condition4
+                .init(
+                    std::string(field_name),
+                    &val4,
+                    sizeof(val4),
+                    QueryConditionOp::NE)
+                .ok());
+
+    uint64_t val5 = 9;
+    QueryCondition query_condition5;
+    REQUIRE(query_condition5
+                .init(
+                    std::string(field_name),
+                    &val5,
+                    sizeof(val5),
+                    QueryConditionOp::NE)
+                .ok());
+
+    QueryCondition combined_and1;
+    REQUIRE(query_condition1
+                .combine(
+                    query_condition2,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and1)
+                .ok());
+
+    QueryCondition combined_and2;
+    REQUIRE(combined_and1
+                .combine(
+                    query_condition3,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and2)
+                .ok());
+
+    QueryCondition combined_and3;
+    REQUIRE(combined_and2
+                .combine(
+                    query_condition4,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and3)
+                .ok());
+
+    QueryCondition combined_and4;
+    REQUIRE(combined_and3
+                .combine(
+                    query_condition5,
+                    QueryConditionCombinationOp::AND,
+                    &combined_and4)
+                .ok());
+
+    ResultCellSlab result_cell_slab(&result_tile, 0, cells);
+    std::vector<ResultCellSlab> result_cell_slabs;
+    result_cell_slabs.emplace_back(std::move(result_cell_slab));
+
+    REQUIRE(combined_and4.apply(array_schema, result_cell_slabs, 1).ok());
+
+    // Check that the cell slab now contains cell indexes 0, 2, 4, 6, 8.
+    REQUIRE(result_cell_slabs.size() == 5);
+    REQUIRE(result_cell_slabs[0].start_ == 0);
+    REQUIRE(result_cell_slabs[0].length_ == 1);
+    REQUIRE(result_cell_slabs[1].start_ == 2);
+    REQUIRE(result_cell_slabs[1].length_ == 1);
+    REQUIRE(result_cell_slabs[2].start_ == 4);
+    REQUIRE(result_cell_slabs[2].length_ == 1);
+    REQUIRE(result_cell_slabs[3].start_ == 6);
+    REQUIRE(result_cell_slabs[3].length_ == 1);
+    REQUIRE(result_cell_slabs[4].start_ == 8);
+    REQUIRE(result_cell_slabs[4].length_ == 1);
+  }
+
   SECTION("Adding simple clauses to OR tree.") {
     // foo = 0 || foo = 2 || foo = 4 || foo = 6 || foo = 8
     uint64_t val1 = 0;
@@ -3543,8 +4005,13 @@ TEST_CASE(
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
-  REQUIRE(array_schema.set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(
+      domain
+          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+          .ok());
+  REQUIRE(
+      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+          .ok());
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);

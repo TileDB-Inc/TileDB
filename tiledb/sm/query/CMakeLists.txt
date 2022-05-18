@@ -25,7 +25,6 @@
 #
 
 include(common NO_POLICY_SCOPE)
-
 add_subdirectory(ast)
 add_library(query)
 target_link_libraries(query PUBLIC baseline $<TARGET_OBJECTS:baseline>)
