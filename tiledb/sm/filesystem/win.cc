@@ -38,7 +38,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/math.h"
+#include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "uri.h"
 

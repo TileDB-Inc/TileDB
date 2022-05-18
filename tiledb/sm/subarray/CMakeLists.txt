@@ -42,6 +42,7 @@ add_executable(compile_range_subset EXCLUDE_FROM_ALL)
 target_link_libraries(compile_range_subset PRIVATE range_subset)
 target_sources(compile_range_subset PRIVATE test/compile_range_subset_main.cc)
 
+
 if (TILEDB_TESTS)
     add_subdirectory(test)
 endif()

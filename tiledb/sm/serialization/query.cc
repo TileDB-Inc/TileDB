@@ -141,7 +141,7 @@ Status subarray_to_capnp(
   const uint32_t dim_num = subarray->dim_num();
   auto ranges_builder = builder->initRanges(dim_num);
   for (uint32_t i = 0; i < dim_num; i++) {
-    const auto datatype = schema.dimension(i)->type();
+    const auto datatype{schema.dimension_ptr(i)->type()};
     auto range_builder = ranges_builder[i];
     const auto& ranges = subarray->ranges_for_dim(i);
     range_builder.setType(datatype_str(datatype));
@@ -499,10 +499,10 @@ Status index_read_state_to_capnp(
       read_state->done_adding_result_tiles_);
 
   auto frag_tile_idx_builder =
-      read_state_builder.initFragTileIdx(read_state->frag_tile_idx_.size());
-  for (size_t i = 0; i < read_state->frag_tile_idx_.size(); ++i) {
-    frag_tile_idx_builder[i].setTileIdx(read_state->frag_tile_idx_[i].first);
-    frag_tile_idx_builder[i].setCellIdx(read_state->frag_tile_idx_[i].second);
+      read_state_builder.initFragTileIdx(read_state->frag_idx_.size());
+  for (size_t i = 0; i < read_state->frag_idx_.size(); ++i) {
+    frag_tile_idx_builder[i].setTileIdx(read_state->frag_idx_[i].tile_idx_);
+    frag_tile_idx_builder[i].setCellIdx(read_state->frag_idx_[i].cell_idx_);
   }
 
   return Status::Ok();
@@ -568,12 +568,12 @@ Status index_read_state_from_capnp(
       read_state_reader.getDoneAddingResultTiles();
 
   assert(read_state_reader.hasFragTileIdx());
-  read_state->frag_tile_idx_.clear();
+  read_state->frag_idx_.clear();
   for (const auto rcs : read_state_reader.getFragTileIdx()) {
     auto tile_idx = rcs.getTileIdx();
     auto cell_idx = rcs.getCellIdx();
 
-    read_state->frag_tile_idx_.emplace_back(tile_idx, cell_idx);
+    read_state->frag_idx_.emplace_back(tile_idx, cell_idx);
   }
 
   return Status::Ok();

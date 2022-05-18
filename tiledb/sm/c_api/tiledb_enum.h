@@ -144,6 +144,8 @@
     TILEDB_DATATYPE_ENUM(TIME_AS) = 39,
     /** std::byte */
     TILEDB_DATATYPE_ENUM(BLOB) = 40,
+    /** Boolean */
+    TILEDB_DATATYPE_ENUM(BOOL) = 41,
 #endif
 
 #ifdef TILEDB_ARRAY_TYPE_ENUM
@@ -281,4 +283,13 @@
     TILEDB_VFS_MODE_ENUM(VFS_WRITE) = 1,
     /** Append mode */
     TILEDB_VFS_MODE_ENUM(VFS_APPEND) = 2,
+#endif
+
+#ifdef TILEDB_MIME_TYPE_ENUM
+    /** Unspecified MIME type*/
+    TILEDB_MIME_TYPE_ENUM(MIME_AUTODETECT) = 0,
+    /** image/tiff*/
+    TILEDB_MIME_TYPE_ENUM(MIME_TIFF) = 1,
+    /** application/pdf*/
+    TILEDB_MIME_TYPE_ENUM(MIME_PDF) = 2,
 #endif

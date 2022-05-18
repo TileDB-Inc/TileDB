@@ -38,8 +38,8 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/gcs.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/misc/math.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_math.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <sstream>
@@ -54,7 +54,7 @@ struct GCSFx {
   const std::string TEST_DIR = GCS_BUCKET.to_string() + "tiledb_test_dir/";
 
   tiledb::sm::GCS gcs_;
-  ThreadPool thread_pool_;
+  ThreadPool thread_pool_{2};
 
   GCSFx() = default;
   ~GCSFx();
@@ -80,8 +80,6 @@ GCSFx::~GCSFx() {
 
 void GCSFx::init_gcs(Config&& config) {
   REQUIRE(config.set("vfs.gcs.project_id", "TODO").ok());
-
-  REQUIRE(thread_pool_.init(2).ok());
   REQUIRE(gcs_.init(config, &thread_pool_).ok());
 
   // Create bucket

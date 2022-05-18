@@ -75,7 +75,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       Subarray& subarray,
       Layout layout,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
-      bool disable_check_global_order,
+      bool disable_checks_consolidation,
       Query::CoordsInfo& coords_info_,
       URI fragment_uri = URI(""));
 
@@ -140,9 +140,9 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
 
   /**
    * If `true`, it will not check if the written coordinates are
-   * in the global order. This supercedes the config.
+   * in the global order or have duplicates. This supercedes the config.
    */
-  bool disable_check_global_order_;
+  bool disable_checks_consolidation_;
 
   /** Keeps track of the coords data. */
   Query::CoordsInfo& coords_info_;

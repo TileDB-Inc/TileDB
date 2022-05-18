@@ -41,9 +41,9 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_math.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
@@ -75,7 +75,6 @@ UnorderedWriter::UnorderedWriter(
     Subarray& subarray,
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
-    bool disable_check_global_order,
     Query::CoordsInfo& coords_info,
     URI fragment_uri)
     : WriterBase(
@@ -88,7 +87,7 @@ UnorderedWriter::UnorderedWriter(
           subarray,
           layout,
           written_fragment_info,
-          disable_check_global_order,
+          false,
           coords_info,
           fragment_uri) {
 }
@@ -154,7 +153,7 @@ Status UnorderedWriter::check_coord_dups(
   std::vector<const unsigned char*> buffs_var(dim_num);
   std::vector<uint64_t*> buffs_var_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_.dimension(d)->name();
+    const auto& dim_name{array_schema_.dimension_ptr(d)->name()};
     buffs[d] = (const unsigned char*)buffers_.find(dim_name)->second.buffer_;
     coord_sizes[d] = array_schema_.cell_size(dim_name);
     buffs_var[d] =
@@ -170,7 +169,7 @@ Status UnorderedWriter::check_coord_dups(
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_.dimension(d);
+          auto dim{array_schema_.dimension_ptr(d)};
           if (!dim->var_size()) {  // Fixed-sized dimensions
             if (memcmp(
                     buffs[d] + cell_pos[i] * coord_sizes[d],
@@ -252,7 +251,7 @@ Status UnorderedWriter::compute_coord_dups(
   std::vector<const unsigned char*> buffs_var(dim_num);
   std::vector<uint64_t*> buffs_var_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_.dimension(d)->name();
+    const auto& dim_name{array_schema_.dimension_ptr(d)->name()};
     buffs[d] = (const unsigned char*)buffers_.find(dim_name)->second.buffer_;
     coord_sizes[d] = array_schema_.cell_size(dim_name);
     buffs_var[d] =
@@ -269,7 +268,7 @@ Status UnorderedWriter::compute_coord_dups(
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_.dimension(d);
+          auto dim{array_schema_.dimension_ptr(d)};
           if (!dim->var_size()) {  // Fixed-sized dimensions
             if (memcmp(
                     buffs[d] + cell_pos[i] * coord_sizes[d],
@@ -558,7 +557,9 @@ Status UnorderedWriter::prepare_tiles_var(
     }
   }
 
-  (*tiles)[tile_idx + 1].final_size(offset);
+  if (cell_num > 0) {
+    (*tiles)[tile_idx + 1].final_size(offset);
+  }
 
   uint64_t last_tile_cell_num = (cell_num - dups_num) % capacity;
   if (last_tile_cell_num != 0) {
@@ -636,8 +637,10 @@ Status UnorderedWriter::unordered_write() {
   coord_dups.clear();
 
   // No tiles
-  if (tiles.empty() || tiles.begin()->second.empty())
+  if (tiles.empty() || tiles.begin()->second.empty()) {
+    clean_up(uri);
     return Status::Ok();
+  }
 
   // Set the number of tiles in the metadata
   auto it = tiles.begin();

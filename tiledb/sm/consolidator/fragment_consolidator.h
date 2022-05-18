@@ -135,6 +135,10 @@ class FragmentConsolidator : public Consolidator {
   /** Consolidation configuration parameters. */
   struct ConsolidationConfig {
     /**
+     * Include timestamps in the consolidated fragment or not.
+     */
+    bool with_timestamps_;
+    /**
      * The factor by which the size of the dense fragment resulting
      * from consolidating a set of fragments (containing at least one
      * dense fragment) can be amplified. This is important when

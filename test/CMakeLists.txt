@@ -120,12 +120,14 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-config.cc
   src/unit-capi-context.cc
   src/unit-capi-consolidation.cc
+  src/unit-capi-consolidation-with-timestamps.cc
   src/unit-capi-dense_array.cc
   src/unit-capi-dense_array_2.cc
   src/unit-capi-dense_neg.cc
   src/unit-capi-dense_vector.cc
   src/unit-capi-enum_values.cc
   src/unit-capi-error.cc
+  src/unit-capi-filestore.cc
   src/unit-capi-fill_values.cc
   src/unit-capi-filter.cc
   src/unit-capi-fragment_info.cc
@@ -161,10 +163,10 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
+  src/unit-global-order.cc
   src/unit-gcs.cc
   src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
-  src/unit-hilbert.cc
   src/unit-lru_cache.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
@@ -173,10 +175,11 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
   src/unit-resource-pool.cc
+  src/unit-result-coords.cc
+  src/unit-result-tile.cc
   src/unit-rtree.cc
   src/unit-s3-no-multipart.cc
   src/unit-s3.cc
-  src/unit-sparse-index-reader-base.cc
   src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc
   src/unit-status.cc
@@ -186,11 +189,8 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-SubarrayPartitioner-sparse.cc
   src/unit-Tile.cc
   src/unit-TileDomain.cc
-  src/unit-uri.cc
   src/unit-ArrayDirectory.cc
-  src/unit-utils.cc
   src/unit-uuid.cc
-  src/unit-ValidityVector.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   )
@@ -212,6 +212,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-nullable.cc
     src/unit-cppapi-query.cc
+    src/cpp-integration-query-condition.cc
     src/unit-cppapi-schema.cc
     src/unit-cppapi-string-dims.cc
     src/unit-cppapi-subarray.cc

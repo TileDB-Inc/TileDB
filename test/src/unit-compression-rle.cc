@@ -297,7 +297,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Compression-RLE: Test bytesize computation",
-    "[compression][rle][rle-strings][ypatia]") {
+    "[compression][rle][rle-strings]") {
   REQUIRE_THROWS_AS(RLE::compute_bytesize(0), std::logic_error);
   CHECK(RLE::compute_bytesize(1) == 1);
   CHECK(RLE::compute_bytesize(0xff) == 1);

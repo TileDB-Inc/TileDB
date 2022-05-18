@@ -37,6 +37,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/query/domain_buffer.h"
 #include "tiledb/sm/query/writer_base.h"
 
 using namespace tiledb::common;
@@ -83,6 +84,12 @@ class GlobalOrderWriter : public WriterBase {
 
     /** The fragment metadata that the writer will focus on. */
     shared_ptr<FragmentMetadata> frag_meta_;
+
+    /** The last cell written. */
+    std::optional<SingleCoord> last_cell_coords_;
+
+    /** The last hilbert value written. */
+    uint64_t last_hilbert_value_;
   };
 
   /* ********************************* */
@@ -100,7 +107,7 @@ class GlobalOrderWriter : public WriterBase {
       Subarray& subarray,
       Layout layout,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
-      bool disable_check_global_order,
+      bool disable_checks_consolidation,
       Query::CoordsInfo& coords_info_,
       URI fragment_uri = URI(""));
 

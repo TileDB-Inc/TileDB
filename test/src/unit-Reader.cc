@@ -111,7 +111,7 @@ TEST_CASE_METHOD(
   std::unordered_map<std::string, tiledb::sm::QueryBuffer> buffers;
   Subarray subarray;
   QueryCondition condition;
-  ThreadPool tp_cpu, tp_io;
+  ThreadPool tp_cpu(4), tp_io(4);
   StorageManager storage_manager(
       &tp_cpu, &tp_io, &g_helper_stats, g_helper_logger());
   Array array(URI("my_array"), &storage_manager);

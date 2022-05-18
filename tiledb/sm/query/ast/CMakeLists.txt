@@ -26,6 +26,62 @@
 #
 include(common NO_POLICY_SCOPE)
 
+################################################################
+#
+# This is temporary until test_support is widely deployed
+#
+################################################################
+
+
+set(TILEDB_TEST_SUPPORT_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/helpers.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/helpers.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/helpers-dimension.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/vfs_helpers.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/src/serialization_wrappers.cc
+  )
+
+
+message("Test support source " ${TILEDB_TEST_SUPPORT_SOURCES})
+
+add_library(tiledb_test_support_lib_ EXCLUDE_FROM_ALL
+  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+  ${TILEDB_TEST_SUPPORT_SOURCES}
+)
+
+target_include_directories(tiledb_test_support_lib_
+  PRIVATE
+    $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../../tiledb/sm/c_api")
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../../tiledb/sm/query")
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../..")
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/../../..")
+)
+target_include_directories(
+  tiledb_test_support_lib_ BEFORE PRIVATE
+    ${TILEDB_CORE_INCLUDE_DIR}
+    ${TILEDB_EXPORT_HEADER_DIR}
+)
+
+# We want tests to continue as normal even as the API is changing,
+# so don't warn for deprecations, since they'll be escalated to errors.
+if (NOT MSVC)
+  target_compile_options(tiledb_test_support_lib_ PRIVATE -Wno-deprecated-declarations)
+endif()
+
+target_link_libraries(tiledb_test_support_lib_
+  PUBLIC
+    TILEDB_CORE_OBJECTS_ILIB
+    Catch2::Catch2
+)
+################################################################
+#
+# End temporary
+#
+################################################################
+
+
+
 #
 # Test-compile of object library ensures link-completeness
 #
@@ -39,11 +95,33 @@ target_sources(compile_ast PRIVATE
 if (TILEDB_TESTS)
     add_executable(unit_ast EXCLUDE_FROM_ALL)
     target_link_libraries(unit_ast PRIVATE query_ast)
+
+    # Also temporary
+    target_link_libraries(unit_ast
+      PUBLIC
+        TILEDB_CORE_OBJECTS_ILIB
+        tiledb_test_support_lib_
+    )
+
+
     find_package(Catch_EP REQUIRED)
+
     target_link_libraries(unit_ast PUBLIC Catch2::Catch2)
 
+    # Temporary -- this is a horrible hack
     # Sources for tests
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../../tiledb/sm/c_api")
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../../tiledb/sm/query")
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../..")
+    target_include_directories(unit_ast PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/../../..")
+
     target_sources(unit_ast PUBLIC test/main.cc test/unit-query-ast.cc)
+
+    # We want tests to continue as normal even as the API is changing,
+    # so don't warn for deprecations, since they'll be escalated to errors.
+    if (NOT MSVC)
+      target_compile_options(unit_ast PRIVATE -Wno-deprecated-declarations)
+    endif()
 
     add_test(
         NAME "query_ast"

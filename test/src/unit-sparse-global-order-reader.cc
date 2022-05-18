@@ -33,6 +33,7 @@
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/query/sparse_global_order_reader.h"
 
 #ifdef _WIN32
@@ -43,7 +44,7 @@
 
 #include <catch.hpp>
 
-using namespace tiledb::sm;
+using namespace tiledb;
 using namespace tiledb::test;
 
 /* ********************************* */
@@ -63,7 +64,7 @@ struct CSparseGlobalOrderFx {
   std::string ratio_coords_;
   std::string ratio_query_condition_;
 
-  void create_default_array_1d();
+  void create_default_array_1d(bool allow_dups = false);
   void write_1d_fragment(
       int* coords, uint64_t* coords_size, int* data, uint64_t* data_size);
   int32_t read(
@@ -175,7 +176,7 @@ void CSparseGlobalOrderFx::update_config() {
   tiledb_config_free(&config);
 }
 
-void CSparseGlobalOrderFx::create_default_array_1d() {
+void CSparseGlobalOrderFx::create_default_array_1d(bool allow_dups) {
   int domain[] = {1, 20};
   int tile_extent = 2;
   create_array(
@@ -193,7 +194,7 @@ void CSparseGlobalOrderFx::create_default_array_1d() {
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       2,
-      false);
+      allow_dups);
 }
 
 void CSparseGlobalOrderFx::write_1d_fragment(
@@ -449,7 +450,8 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Check the internal loop count against expected value.
-  auto stats = ((SparseGlobalOrderReader*)query->query_->strategy())->stats();
+  auto stats =
+      ((sm::SparseGlobalOrderReader*)query->query_->strategy())->stats();
   REQUIRE(stats != nullptr);
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
@@ -643,7 +645,8 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Check the internal loop count against expected value.
-  auto stats = ((SparseGlobalOrderReader*)query->query_->strategy())->stats();
+  auto stats =
+      ((sm::SparseGlobalOrderReader*)query->query_->strategy())->stats();
   REQUIRE(stats != nullptr);
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
@@ -758,4 +761,126 @@ TEST_CASE_METHOD(
   int data_c[] = {1, 2, 3, 4, 5, 6};
   CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
   CHECK(!std::memcmp(data_c, data_r, data_r_size));
+}
+
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: merge with subarray and dups",
+    "[sparse-global-order][merge][subarray][dups]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d(true);
+
+  bool use_subarray = false;
+
+  int coords_1[] = {8, 9, 10, 11, 12, 13};
+  int data_1[] = {8, 9, 10, 11, 12, 13};
+
+  int coords_2[] = {8, 9, 10, 11, 12, 13};
+  int data_2[] = {8, 9, 10, 11, 12, 13};
+
+  uint64_t coords_size = sizeof(coords_1);
+  uint64_t data_size = sizeof(data_1);
+
+  // Create the aray.
+  write_1d_fragment(coords_1, &coords_size, data_1, &data_size);
+  write_1d_fragment(coords_2, &coords_size, data_2, &data_size);
+
+  // Read.
+  int coords_r[6];
+  int data_r[6];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+
+  auto rc =
+      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Should read (6 values).
+  CHECK(24 == data_r_size);
+  CHECK(24 == coords_r_size);
+
+  int coords_c[] = {8, 8, 9, 9, 10, 10};
+  int data_c[] = {8, 8, 9, 9, 10, 10};
+  CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
+  CHECK(!std::memcmp(data_c, data_r, data_r_size));
+}
+
+TEST_CASE(
+    "Sparse global order reader: user buffer cannot fit single cell",
+    "[sparse-global-order][user-buffer][too-small]") {
+  std::string array_name = "test_sparse_global_order";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create array with var-sized attribute.
+  Domain dom(ctx);
+  dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 2));
+
+  Attribute attr(ctx, "a", TILEDB_STRING_ASCII);
+  attr.set_cell_val_num(TILEDB_VAR_NUM);
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.add_attribute(attr);
+  schema.set_tile_order(TILEDB_ROW_MAJOR);
+  schema.set_cell_order(TILEDB_ROW_MAJOR);
+  schema.set_domain(dom);
+  schema.set_allows_dups(true);
+
+  Array::create(array_name, schema);
+
+  // Write a fragment.
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+  std::vector<int64_t> d1 = {1, 2, 3};
+  std::string a1_data{
+      "astringofsize15"
+      "foo"
+      "bar"};
+  std::vector<uint64_t> a1_offsets{0, 15, 18};
+
+  query.set_data_buffer("d1", d1);
+  query.set_data_buffer("a", a1_data);
+  query.set_offsets_buffer("a", a1_offsets);
+  CHECK_NOTHROW(query.submit());
+
+  // Finalize is necessary in global writes, otherwise a no-op
+  query.finalize();
+
+  // Read using a buffer that can't fit a single result
+  Array array2(ctx, array_name, TILEDB_READ);
+  Query query2(ctx, array2, TILEDB_READ);
+
+  std::string attr_val;
+  // The first result is 15 bytes long so it won't fit in 10 byte user buffer
+  attr_val.resize(10);
+  std::vector<uint64_t> attr_off(sizeof(uint64_t));
+
+  auto layout = GENERATE(TILEDB_GLOBAL_ORDER, TILEDB_UNORDERED);
+
+  query2.set_layout(layout);
+  query2.set_data_buffer("a", (char*)attr_val.data(), attr_val.size());
+  query2.set_offsets_buffer("a", attr_off);
+
+  // The user buffer cannot fit a single result so it should return Incomplete
+  // with the right reason
+  auto st = query2.submit();
+  CHECK(st == Query::Status::INCOMPLETE);
+
+  tiledb_query_status_details_t details;
+  int rc = tiledb_query_get_status_details(
+      ctx.ptr().get(), query2.ptr().get(), &details);
+  CHECK(rc == TILEDB_OK);
+  CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
+
+  array2.close();
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
 }

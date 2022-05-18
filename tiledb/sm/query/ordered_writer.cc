@@ -41,9 +41,9 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_math.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
@@ -75,7 +75,6 @@ OrderedWriter::OrderedWriter(
     Subarray& subarray,
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
-    bool disable_check_global_order,
     Query::CoordsInfo& coords_info,
     URI fragment_uri)
     : WriterBase(
@@ -88,7 +87,7 @@ OrderedWriter::OrderedWriter(
           subarray,
           layout,
           written_fragment_info,
-          disable_check_global_order,
+          false,
           coords_info,
           fragment_uri) {
 }
@@ -135,7 +134,7 @@ Status OrderedWriter::ordered_write() {
   assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
   assert(array_schema_.dense());
 
-  auto type = array_schema_.domain().dimension(0)->type();
+  auto type{array_schema_.domain().dimension_ptr(0)->type()};
   switch (type) {
     case Datatype::INT8:
       return ordered_write<int8_t>();

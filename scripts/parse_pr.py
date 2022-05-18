@@ -17,6 +17,7 @@ type_mapping = {
     "API": "## API additions",
     "C_API": "### C API",
     "CPP_API": "### C++ API",
+    "TEST": "## Test only changes",
 }
 
 

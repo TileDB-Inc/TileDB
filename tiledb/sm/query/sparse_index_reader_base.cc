@@ -217,7 +217,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   auto fragment_num = fragment_metadata_.size();
 
   // Make sure there is enough space for tiles data.
-  read_state_.frag_tile_idx_.resize(fragment_num);
+  read_state_.frag_idx_.resize(fragment_num);
   all_tiles_loaded_.resize(fragment_num);
 
   // Calculate ranges of tiles in the subarray, if set.
@@ -233,7 +233,7 @@ Status SparseIndexReaderBase::load_initial_data() {
     // later.
     RETURN_NOT_OK(subarray_.precompute_all_ranges_tile_overlap(
         storage_manager_->compute_tp(),
-        read_state_.frag_tile_idx_,
+        read_state_.frag_idx_,
         &result_tile_ranges_));
 
     for (auto frag_result_tile_ranges : result_tile_ranges_) {
@@ -263,7 +263,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   is_dim_var_size_.reserve(dim_num);
   std::vector<std::string> var_size_to_load;
   for (unsigned d = 0; d < dim_num; ++d) {
-    dim_names_.emplace_back(array_schema_.dimension(d)->name());
+    dim_names_.emplace_back(array_schema_.dimension_ptr(d)->name());
     is_dim_var_size_.emplace_back(array_schema_.var_size(dim_names_[d]));
     if (is_dim_var_size_[d])
       var_size_to_load.emplace_back(dim_names_[d]);
@@ -433,7 +433,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           // Compute the list of range index to process.
           std::vector<uint64_t> relevant_ranges;
           relevant_ranges.reserve(ranges_for_dim.size());
-          domain.dimension(dim_idx)->relevant_ranges(
+          domain.dimension_ptr(dim_idx)->relevant_ranges(
               ranges_for_dim, mbr[dim_idx], relevant_ranges);
 
           // For non overlapping ranges, if we have full overlap on any range
@@ -441,7 +441,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           const bool is_uint8_t = std::is_same<BitmapType, uint8_t>::value;
           if (is_uint8_t) {
             std::vector<bool> covered_bitmap =
-                domain.dimension(dim_idx)->covered_vec(
+                domain.dimension_ptr(dim_idx)->covered_vec(
                     ranges_for_dim, mbr[dim_idx], relevant_ranges);
 
             // See if any range is covered.
@@ -551,7 +551,7 @@ Status SparseIndexReaderBase::apply_query_condition(
           }
 
           // Full overlap in bitmap calculation, make a bitmap.
-          if (rt->bitmap_.size() == 0) {
+          if (!rt->has_bmp()) {
             rt->bitmap_.resize(cell_num, 1);
             rt->bitmap_result_num_ = cell_num;
           }
@@ -586,6 +586,7 @@ SparseIndexReaderBase::read_and_unfilter_attributes(
   uint64_t memory_used = 0;
   while (*buffer_idx < names.size()) {
     auto& name = names[*buffer_idx];
+
     auto attr_mem_usage = mem_usage_per_attr[*buffer_idx];
     if (memory_used + attr_mem_usage < memory_budget) {
       memory_used += attr_mem_usage;

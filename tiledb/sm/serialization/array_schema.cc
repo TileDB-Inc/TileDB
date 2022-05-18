@@ -418,7 +418,7 @@ Status domain_to_capnp(
     return LOG_STATUS(
         Status_SerializationError("Error serializing domain; domain is null."));
 
-  domainBuilder->setType(datatype_str(domain->dimension(0)->type()));
+  domainBuilder->setType(datatype_str(domain->dimension_ptr(0)->type()));
   domainBuilder->setTileOrder(layout_str(domain->tile_order()));
   domainBuilder->setCellOrder(layout_str(domain->cell_order()));
 
@@ -426,7 +426,7 @@ Status domain_to_capnp(
   auto dimensions_builder = domainBuilder->initDimensions(ndims);
   for (unsigned i = 0; i < ndims; i++) {
     auto dim_builder = dimensions_builder[i];
-    RETURN_NOT_OK(dimension_to_capnp(domain->dimension(i).get(), &dim_builder));
+    RETURN_NOT_OK(dimension_to_capnp(domain->dimension_ptr(i), &dim_builder));
   }
 
   return Status::Ok();
@@ -954,7 +954,9 @@ Status nonempty_domain_deserialize(
           RETURN_NOT_OK(utils::deserialize_subarray(
               reader.getNonEmptyDomain(), schema, &subarray));
           std::memcpy(
-              nonempty_domain, subarray, 2 * schema.dimension(0)->coord_size());
+              nonempty_domain,
+              subarray,
+              2 * schema.dimension_ptr(0)->coord_size());
           tdb_free(subarray);
         }
 
@@ -975,7 +977,9 @@ Status nonempty_domain_deserialize(
           RETURN_NOT_OK(utils::deserialize_subarray(
               reader.getNonEmptyDomain(), schema, &subarray));
           std::memcpy(
-              nonempty_domain, subarray, 2 * schema.dimension(0)->coord_size());
+              nonempty_domain,
+              subarray,
+              2 * schema.dimension_ptr(0)->coord_size());
           tdb_free(subarray);
         }
 

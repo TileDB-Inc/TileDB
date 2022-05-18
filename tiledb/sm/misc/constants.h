@@ -119,6 +119,15 @@ extern int coords_compression_level;
 /** Special name reserved for the coordinates attribute. */
 extern const std::string coords;
 
+/** Special name reserved for the timestamp attribute. */
+extern const std::string timestamps;
+
+/** The size of a timestamp cell. */
+extern const uint64_t timestamp_size;
+
+/** The type of a variable offset cell. */
+extern const Datatype timestamp_type;
+
 /** The special value for an empty int32. */
 extern const int empty_int32;
 
@@ -133,6 +142,9 @@ extern const double empty_float64;
 
 /** The special value for an empty char. */
 extern const char empty_char;
+
+/** The special value for an empty bool. */
+extern const uint8_t empty_bool;
 
 /** The special value for an empty int8. */
 extern const int8_t empty_int8;
@@ -365,6 +377,9 @@ extern const std::string char_str;
 
 /** The string representation for type blob. */
 extern const std::string blob_str;
+
+/** The string representation for type bool. */
+extern const std::string bool_str;
 
 /** The string representation for type int8. */
 extern const std::string int8_str;
@@ -599,6 +614,40 @@ extern const std::array<std::string, 6> cert_files_linux;
 
 /** Delimiter for lists passed as config parameter */
 extern const std::string config_delimiter;
+
+/** String describing MIME_AUTODETECT. */
+extern const std::string mime_autodetect_str;
+
+/** String describing MIME_TIFF. */
+extern const std::string mime_tiff_str;
+
+/** String describing MIME_PDF. */
+extern const std::string mime_pdf_str;
+
+/** The default tile extent used in filestore arrays. */
+extern const uint64_t filestore_default_tile_extent;
+
+/** Name of the single dimension used in filestore arrays. */
+extern const std::string filestore_dimension_name;
+
+/** Name of the single attribute used in filestore arrays. */
+extern const std::string filestore_attribute_name;
+
+/** Name of the metadata key used in filestore arrays for current size. */
+extern const std::string filestore_metadata_size_key;
+
+/** Name of the metadata key used in filestore arrays for mime type. */
+extern const std::string filestore_metadata_mime_type_key;
+
+/** Name of the metadata key used in filestore arrays for mime encoding. */
+extern const std::string filestore_metadata_mime_encoding_key;
+
+/** Name of the metadata key used in filestore arrays for original filename. */
+extern const std::string filestore_metadata_original_filename_key;
+
+/** Name of the metadata key used in filestore arrays for filename extension. */
+extern const std::string filestore_metadata_file_extension_key;
+
 }  // namespace constants
 
 }  // namespace sm

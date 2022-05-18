@@ -39,7 +39,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
-#include "tiledb/sm/misc/math.h"
+#include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/type/range/range.h"
 
@@ -72,6 +72,19 @@ Domain::Domain(
     , dimensions_(dimensions)
     , dim_num_((unsigned int)dimensions.size())
     , tile_order_(tile_order) {
+  /*
+   * Verify that the input vector has no non-null elements in order to meet the
+   * class invariant. Initialize the dimensions mirror.
+   */
+  dimension_ptrs_.reserve(dimensions_.size());
+  for (const auto& dim : dimensions_) {
+    auto p{dim.get()};
+    if (p == nullptr) {
+      throw std::invalid_argument("May not have null dimensions in a domain");
+    }
+    dimension_ptrs_.emplace_back(p);
+  }
+
   // Compute number of cells per tile
   compute_cell_num_per_tile();
 
@@ -87,9 +100,15 @@ Domain::Domain(const Domain* domain) {
   cell_order_cmp_func_2_ = domain->cell_order_cmp_func_2_;
   tile_order_cmp_func_ = domain->tile_order_cmp_func_;
 
-  dimensions_.reserve(domain->dimensions_.size());
-  for (const auto& dim : domain->dimensions_)
-    dimensions_.emplace_back(tdb_new(Dimension, dim.get()));
+  const auto n_dimensions{domain->dimensions_.size()};
+  dimensions_.reserve(n_dimensions);
+  for (const auto& dim : domain->dimensions_) {
+    dimensions_.emplace_back(dim);
+  }
+  dimension_ptrs_.reserve(n_dimensions);
+  for (const auto dim_ptr : domain->dimension_ptrs_) {
+    dimension_ptrs_.emplace_back(dim_ptr);
+  }
 
   tile_order_ = domain->tile_order_;
 }
@@ -97,23 +116,25 @@ Domain::Domain(const Domain* domain) {
 Domain::Domain(Domain&& rhs)
     : cell_num_per_tile_(rhs.cell_num_per_tile_)
     , cell_order_(rhs.cell_order_)
-    , dimensions_(std::move(rhs.dimensions_))
+    , dimensions_(move(rhs.dimensions_))
+    , dimension_ptrs_(move(rhs.dimension_ptrs_))
     , dim_num_(rhs.dim_num_)
     , tile_order_(rhs.tile_order_)
-    , cell_order_cmp_func_(std::move(rhs.cell_order_cmp_func_))
-    , cell_order_cmp_func_2_(std::move(rhs.cell_order_cmp_func_2_))
-    , tile_order_cmp_func_(std::move(rhs.tile_order_cmp_func_)) {
+    , cell_order_cmp_func_(move(rhs.cell_order_cmp_func_))
+    , cell_order_cmp_func_2_(move(rhs.cell_order_cmp_func_2_))
+    , tile_order_cmp_func_(move(rhs.tile_order_cmp_func_)) {
 }
 
 Domain& Domain::operator=(Domain&& rhs) {
   cell_num_per_tile_ = rhs.cell_num_per_tile_;
   cell_order_ = rhs.cell_order_;
   dim_num_ = rhs.dim_num_;
-  cell_order_cmp_func_ = std::move(rhs.cell_order_cmp_func_);
-  tile_order_cmp_func_ = std::move(rhs.tile_order_cmp_func_);
-  dimensions_ = std::move(rhs.dimensions_);
+  cell_order_cmp_func_ = move(rhs.cell_order_cmp_func_);
+  tile_order_cmp_func_ = move(rhs.tile_order_cmp_func_);
+  dimensions_ = move(rhs.dimensions_);
+  dimension_ptrs_ = move(rhs.dimension_ptrs_);
   tile_order_ = rhs.tile_order_;
-  cell_order_cmp_func_2_ = std::move(rhs.cell_order_cmp_func_2_);
+  cell_order_cmp_func_2_ = move(rhs.cell_order_cmp_func_2_);
 
   return *this;
 }
@@ -131,14 +152,19 @@ Layout Domain::tile_order() const {
 }
 
 Status Domain::add_dimension(shared_ptr<Dimension> dim) {
+  auto p{dim.get()};
+  if (p == nullptr) {
+    // Class invariant prohibits null dimensions in a domain.
+    throw std::invalid_argument("May not add null dimensions to a domain");
+  }
   dimensions_.emplace_back(dim);
+  dimension_ptrs_.emplace_back(p);
   ++dim_num_;
-
   return Status::Ok();
 }
 
 bool Domain::all_dims_fixed() const {
-  for (const auto& dim : dimensions_) {
+  for (const auto dim : dimension_ptrs_) {
     if (dim->var_size())
       return false;
   }
@@ -147,7 +173,7 @@ bool Domain::all_dims_fixed() const {
 }
 
 bool Domain::all_dims_int() const {
-  for (const auto& dim : dimensions_) {
+  for (const auto dim : dimension_ptrs_) {
     if (!datatype_is_integer(dim->type()))
       return false;
   }
@@ -156,7 +182,7 @@ bool Domain::all_dims_int() const {
 }
 
 bool Domain::all_dims_string() const {
-  for (const auto& dim : dimensions_) {
+  for (const auto dim : dimension_ptrs_) {
     if (!datatype_is_string(dim->type()))
       return false;
   }
@@ -165,7 +191,7 @@ bool Domain::all_dims_string() const {
 }
 
 bool Domain::all_dims_real() const {
-  for (const auto& dim : dimensions_) {
+  for (const auto dim : dimension_ptrs_) {
     if (!datatype_is_real(dim->type()))
       return false;
   }
@@ -174,12 +200,12 @@ bool Domain::all_dims_real() const {
 }
 
 bool Domain::all_dims_same_type() const {
-  if (dim_num_ == 0)
+  if (dim_num_ <= 1)
     return true;
 
-  auto type = dimensions_[0]->type();
+  auto type = dimension_ptrs_[0]->type();
   for (unsigned d = 1; d < dim_num_; ++d) {
-    if (dimensions_[d]->type() != type)
+    if (dimension_ptrs_[d]->type() != type)
       return false;
   }
 
@@ -237,7 +263,7 @@ int Domain::cell_order_cmp_impl(
 int Domain::cell_order_cmp(
     unsigned dim_idx, UntypedDatumView a, UntypedDatumView b) const {
   // Handle variable-sized dimensions
-  if (dimensions_[dim_idx]->var_size()) {
+  if (dimension_ptrs_[dim_idx]->var_size()) {
     std::string_view s_a{static_cast<const char*>(a.content()), a.size()};
     std::string_view s_b{static_cast<const char*>(b.content()), b.size()};
 
@@ -270,9 +296,8 @@ int Domain::cell_order_cmp(
     const type::DomainDataRef& left, const type::DomainDataRef& right) const {
   if (cell_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
-      auto dim = dimension(d);
       auto res = cell_order_cmp_func_[d](
-          dim.get(),
+          dimension_ptr(d),
           left.dimension_datum_view(d),
           right.dimension_datum_view(d));
 
@@ -282,9 +307,8 @@ int Domain::cell_order_cmp(
     }
   } else {  // COL_MAJOR
     for (unsigned d = dim_num_ - 1;; --d) {
-      auto dim = dimension(d);
       auto res = cell_order_cmp_func_[d](
-          dim.get(),
+          dimension_ptr(d),
           left.dimension_datum_view(d),
           right.dimension_datum_view(d));
 
@@ -302,7 +326,7 @@ int Domain::cell_order_cmp(
 
 void Domain::crop_ndrange(NDRange* ndrange) const {
   for (unsigned d = 0; d < dim_num_; ++d)
-    dimensions_[d]->crop_range(&(*ndrange)[d]);
+    dimension_ptrs_[d]->crop_range(&(*ndrange)[d]);
 }
 
 tuple<Status, optional<shared_ptr<Domain>>> Domain::deserialize(
@@ -341,26 +365,20 @@ tuple<Status, optional<shared_ptr<Domain>>> Domain::deserialize(
 
 const Range& Domain::domain(unsigned i) const {
   assert(i < dim_num_);
-  return dimensions_[i]->domain();
+  return dimension_ptrs_[i]->domain();
 }
 
 NDRange Domain::domain() const {
   NDRange ret(dim_num_);
   for (unsigned d = 0; d < dim_num_; ++d)
-    ret[d] = dimensions_[d]->domain();
+    ret[d] = dimension_ptrs_[d]->domain();
 
   return ret;
 }
 
-shared_ptr<const Dimension> Domain::dimension(unsigned int i) const {
-  if (i > dim_num_)
-    return nullptr;
-  return dimensions_[i];
-}
-
-shared_ptr<const Dimension> Domain::dimension(const std::string& name) const {
+const Dimension* Domain::dimension_ptr(const std::string& name) const {
   for (unsigned int i = 0; i < dim_num_; i++) {
-    const auto& dim = dimensions_[i];
+    const auto dim = dimension_ptrs_[i];
     if (dim->name() == name) {
       return dim;
     }
@@ -372,7 +390,7 @@ void Domain::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  for (const auto& dim : dimensions_) {
+  for (const auto dim : dimension_ptrs_) {
     fprintf(out, "\n");
     dim->dump(out);
   }
@@ -389,7 +407,7 @@ void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
 
   // Expand r2 along all dimensions
   for (unsigned d = 0; d < dim_num_; ++d) {
-    const auto& dim = dimensions_[d];
+    const auto dim = dimension_ptrs_[d];
     if (!dim->var_size())
       dim->expand_range(r1[d], &(*r2)[d]);
     else
@@ -399,10 +417,11 @@ void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
 
 void Domain::expand_to_tiles(NDRange* ndrange) const {
   for (unsigned d = 0; d < dim_num_; ++d) {
-    const auto& dim = dimensions_[d];
+    const auto dim = dimension_ptrs_[d];
     // Applicable only to fixed-sized dimensions
-    if (!dim->var_size())
-      dimensions_[d]->expand_to_tile(&(*ndrange)[d]);
+    if (!dim->var_size()) {
+      dim->expand_to_tile(&(*ndrange)[d]);
+    }
   }
 }
 
@@ -518,7 +537,7 @@ void Domain::get_tile_subarray(
 Status Domain::has_dimension(const std::string& name, bool* has_dim) const {
   *has_dim = false;
 
-  for (const auto& dim : dimensions_) {
+  for (const auto dim : dimension_ptrs_) {
     if (name == dim->name()) {
       *has_dim = true;
       break;
@@ -531,7 +550,7 @@ Status Domain::has_dimension(const std::string& name, bool* has_dim) const {
 Status Domain::get_dimension_index(
     const std::string& name, unsigned* dim_idx) const {
   for (unsigned d = 0; d < dim_num_; ++d) {
-    if (dimensions_[d]->name() == name) {
+    if (dimension_ptrs_[d]->name() == name) {
       *dim_idx = d;
       return Status::Ok();
     }
@@ -614,7 +633,7 @@ uint64_t Domain::stride(Layout subarray_layout) const {
 
 const ByteVecValue& Domain::tile_extent(unsigned i) const {
   assert(i < dim_num_);
-  return dimensions_[i]->tile_extent();
+  return dimension_ptrs_[i]->tile_extent();
 }
 
 std::vector<ByteVecValue> Domain::tile_extents() const {
@@ -628,7 +647,7 @@ std::vector<ByteVecValue> Domain::tile_extents() const {
 uint64_t Domain::tile_num(const NDRange& ndrange) const {
   uint64_t ret = 1;
   for (unsigned d = 0; d < dim_num_; ++d)
-    ret *= dimensions_[d]->tile_num(ndrange[d]);
+    ret *= dimension_ptrs_[d]->tile_num(ndrange[d]);
 
   return ret;
 }
@@ -637,7 +656,7 @@ uint64_t Domain::cell_num(const NDRange& ndrange) const {
   assert(!ndrange.empty());
   uint64_t cell_num = 1, range;
   for (unsigned d = 0; d < dim_num_; ++d) {
-    range = dimensions_[d]->domain_range(ndrange[d]);
+    range = dimension_ptrs_[d]->domain_range(ndrange[d]);
     if (range == std::numeric_limits<uint64_t>::max())  // Overflow
       return range;
 
@@ -654,7 +673,7 @@ bool Domain::covered(const NDRange& r1, const NDRange& r2) const {
   assert(r2.size() == dim_num_);
 
   for (unsigned d = 0; d < dim_num_; ++d) {
-    if (!dimensions_[d]->covered(r1[d], r2[d]))
+    if (!dimension_ptrs_[d]->covered(r1[d], r2[d]))
       return false;
   }
 
@@ -666,7 +685,7 @@ bool Domain::overlap(const NDRange& r1, const NDRange& r2) const {
   assert(r2.size() == dim_num_);
 
   for (unsigned d = 0; d < dim_num_; ++d) {
-    if (!dimensions_[d]->overlap(r1[d], r2[d]))
+    if (!dimension_ptrs_[d]->overlap(r1[d], r2[d]))
       return false;
   }
 
@@ -685,10 +704,10 @@ double Domain::overlap_ratio(
     if (r1_default[d])
       continue;
 
-    if (!dimensions_[d]->overlap(r1[d], r2[d]))
+    if (!dimension_ptrs_[d]->overlap(r1[d], r2[d]))
       return 0.0;
 
-    ratio *= dimensions_[d]->overlap_ratio(r1[d], r2[d]);
+    ratio *= dimension_ptrs_[d]->overlap_ratio(r1[d], r2[d]);
 
     // If ratio goes to 0, then the subarray overlap is much smaller than the
     // volume of the MBR. Since we have already guaranteed that there is an
@@ -724,14 +743,14 @@ int Domain::tile_order_cmp(
     const type::DomainDataRef& left, const type::DomainDataRef& right) const {
   if (tile_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
-      auto dim = dimension(d);
+      auto dim{dimension_ptr(d)};
 
       // Inapplicable to var-sized dimensions or absent tile extents
       if (dim->var_size() || !dim->tile_extent())
         continue;
 
       auto res = tile_order_cmp_func_[d](
-          dim.get(),
+          dim,
           left.dimension_datum_view(d).content(),
           right.dimension_datum_view(d).content());
 
@@ -741,12 +760,12 @@ int Domain::tile_order_cmp(
     }
   } else {  // COL_MAJOR
     for (unsigned d = dim_num_ - 1;; --d) {
-      auto dim = dimension(d);
+      auto dim{dimension_ptr(d)};
 
       // Inapplicable to var-sized dimensions or absent tile extents
       if (!dim->var_size() && dim->tile_extent()) {
         auto res = tile_order_cmp_func_[d](
-            dim.get(),
+            dim,
             left.dimension_datum_view(d).content(),
             right.dimension_datum_view(d).content());
 
@@ -764,9 +783,8 @@ int Domain::tile_order_cmp(
 }
 
 int Domain::tile_order_cmp(
-    unsigned dim_idx, const void* coord_a, const void* coord_b) const {
-  auto dim = dimension(dim_idx);
-  return tile_order_cmp_func_[dim_idx](dim.get(), coord_a, coord_b);
+    unsigned d, const void* coord_a, const void* coord_b) const {
+  return tile_order_cmp_func_[d](dimension_ptr(d), coord_a, coord_b);
 }
 
 /* ****************************** */
@@ -779,7 +797,7 @@ void Domain::compute_cell_num_per_tile() {
     return;
 
   // Invoke the proper templated function
-  auto type = dimensions_[0]->type();
+  auto type{dimension_ptrs_[0]->type()};
   switch (type) {
     case Datatype::INT32:
       compute_cell_num_per_tile<int>();
@@ -857,7 +875,7 @@ void Domain::set_tile_cell_order_cmp_funcs() {
   cell_order_cmp_func_.resize(dim_num_);
   cell_order_cmp_func_2_.resize(dim_num_);
   for (unsigned d = 0; d < dim_num_; ++d) {
-    auto type = dimensions_[d]->type();
+    auto type{dimension_ptrs_[d]->type()};
     switch (type) {
       case Datatype::INT32:
         tile_order_cmp_func_[d] = tile_order_cmp_impl<int32_t>;
@@ -942,6 +960,7 @@ void Domain::set_tile_cell_order_cmp_funcs() {
         break;
       case Datatype::BLOB:
       case Datatype::CHAR:
+      case Datatype::BOOL:
       case Datatype::STRING_UTF8:
       case Datatype::STRING_UTF16:
       case Datatype::STRING_UTF32:
