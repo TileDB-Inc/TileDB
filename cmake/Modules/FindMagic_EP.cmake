@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2018-2021 TileDB, Inc.
+# Copyright (c) 2018-2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -37,11 +37,16 @@ include(TileDBCommon)
 # Search the path set during the superbuild for the EP.
 set(LIBMAGIC_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
-if(TILEDB_LIBMAGIC_EP_BUILT)
+# Try the builtin find module unless built w/ EP superbuild
+if ((NOT TILEDB_FORCE_ALL_DEPS) AND (NOT TILEDB_LIBMAGIC_EP_BUILT))
+  find_package(Magic ${TILEDB_DEPS_NO_DEFAULT_PATH})
+endif()
+
+if (NOT MAGIC_FOUND AND TILEDB_LIBMAGIC_EP_BUILT)
   find_package(libmagic PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
-if (TILEDB_LIBMAGIC_EP_BUILT)
+if (NOT MAGIC_FOUND AND TILEDB_LIBMAGIC_EP_BUILT)
   find_path(libmagic_INCLUDE_DIR
     NAMES magic.h
     PATHS ${LIBMAGIC_PATHS}
@@ -73,8 +78,8 @@ if (TILEDB_LIBMAGIC_EP_BUILT)
   )
 endif()
 
-# if not yet built add it as an external project
-if(NOT TILEDB_LIBMAGIC_EP_BUILT)
+# if not yet built add it is used as an external project
+if (NOT MAGIC_FOUND AND NOT TILEDB_LIBMAGIC_EP_BUILT)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Magic as an external project")
 
@@ -127,6 +132,9 @@ if (libmagic_FOUND AND NOT TARGET libmagic)
     IMPORTED_LOCATION "${libmagic_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${libmagic_INCLUDE_DIR}"
   )
+  ## see comment in FindMagic.cmake: we need to set this here
+  ## NB not currently used in CMakeLists.txt
+  set(libmagic_LibraryName "libmagic")
 endif()
 
 # If we built a static EP, install it if required.
