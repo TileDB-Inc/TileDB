@@ -1387,20 +1387,21 @@ Status QueryCondition::apply_clause_sparse(
     const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
 
     // Null values can only be specified for equality operators.
+    const auto cell_num = result_tile.cell_num();
     if (clause.condition_value_ == nullptr) {
       if (clause.op_ == QueryConditionOp::NE) {
-        for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+        for (uint64_t c = 0; c < cell_num; c++) {
           result_bitmap[c] *= buffer_validity[c] != 0;
         }
       } else {
-        for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+        for (uint64_t c = 0; c < cell_num; c++) {
           result_bitmap[c] *= buffer_validity[c] == 0;
         }
       }
       return Status::Ok();
     } else {
       // Turn off bitmap values for null cells.
-      for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+      for (uint64_t c = 0; c < cell_num; c++) {
         result_bitmap[c] *= buffer_validity[c] != 0;
       }
     }
