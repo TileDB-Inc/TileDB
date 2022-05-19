@@ -684,6 +684,12 @@ Status StorageManager::array_create(
       array_uri.join_path(constants::array_fragment_meta_dir_name);
   RETURN_NOT_OK(vfs_->create_dir(array_fragment_metadata_uri));
 
+  if (is_experimental_build) {
+    URI array_dimension_labels_uri =
+        array_uri.join_path(constants::array_dimension_labels_dir_name);
+    RETURN_NOT_OK(vfs_->create_dir(array_dimension_labels_uri));
+  }
+
   // Get encryption key from config
   Status st;
   if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {

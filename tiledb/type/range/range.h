@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/sm/enums/datatype.h"
 
 #include <cmath>
 #include <cstring>
@@ -130,6 +131,13 @@ class Range {
   /** Returns the pointer to the range flattened bytes. */
   inline const void* data() const {
     return range_.empty() ? nullptr : range_.data();
+  }
+
+  /** Returns the pointer to the range as flattend bytes of the requested type.
+   */
+  template <typename T>
+  inline const T* typed_data() const {
+    return range_.empty() ? nullptr : (T*)range_.data();
   }
 
   /** Returns a pointer to the start of the range. */
@@ -348,6 +356,13 @@ void crop_range(const Range& bounds, Range& range) {
   range_data[0] = std::max(bounds_data[0], range_data[0]);
   range_data[1] = std::min(bounds_data[1], range_data[1]);
 };
+
+/**
+ * Returns a string representation of the range.
+ *
+ * @param range The range to get a string representation of.
+ */
+std::string range_str(const Range& range, const tiledb::sm::Datatype type);
 
 }  // namespace tiledb::type
 

@@ -65,9 +65,7 @@ DimensionLabelSchema::DimensionLabelSchema(
     : label_order_(label_order)
     , indexed_array_schema_(make_shared<ArraySchema>(HERE(), ArrayType::DENSE))
     , labelled_array_schema_(
-          make_shared<ArraySchema>(HERE(), ArrayType::SPARSE))
-    , label_attr_id_(0)
-    , index_attr_id_(0) {
+          make_shared<ArraySchema>(HERE(), ArrayType::SPARSE)) {
   // Set-up indexed array
   if (!(datatype_is_integer(index_type) || datatype_is_datetime(index_type) ||
         datatype_is_time(index_type)))
@@ -99,36 +97,31 @@ DimensionLabelSchema::DimensionLabelSchema(
 DimensionLabelSchema::DimensionLabelSchema(
     LabelOrder label_order,
     shared_ptr<ArraySchema> indexed_array_schema,
-    shared_ptr<ArraySchema> labelled_array_schema,
-    const attribute_size_type label_attr_id,
-    const attribute_size_type index_attr_id)
+    shared_ptr<ArraySchema> labelled_array_schema)
     : label_order_(label_order)
     , indexed_array_schema_(indexed_array_schema)
-    , labelled_array_schema_(labelled_array_schema)
-    , label_attr_id_(label_attr_id)
-    , index_attr_id_(index_attr_id) {
-  // Check arrays are one dimensional
-  if (labelled_array_schema->dim_num() != 1)
-    throw std::invalid_argument(
-        "Invalid dimension label schema; Labelled array must be one "
-        "dimensional");
+    , labelled_array_schema_(labelled_array_schema) {
+  // Check arrays have one dimension and one attribute
   if (indexed_array_schema->dim_num() != 1)
     throw std::invalid_argument(
         "Invalid dimension label schema; Indexed array must be one "
-        "dimensional");
-  // Check index and label attribute exist
-  if (label_attr_id_ >= indexed_array_schema->attribute_num())
+        "dimensional.");
+  if (indexed_array_schema->attribute_num() != 1)
     throw std::invalid_argument(
-        "Invalid dimension label schema; No label attribute " +
-        std::to_string(index_attr_id_));
-  if (index_attr_id_ >= labelled_array_schema->attribute_num())
+        "Invalid dimension label schema; Indexed array must have exactly one "
+        "attribute.");
+  if (labelled_array_schema->dim_num() != 1)
     throw std::invalid_argument(
-        "Invalid dimension label schema; No index attribute " +
-        std::to_string(label_attr_id_));
+        "Invalid dimension label schema; Labelled array must be one "
+        "dimensional.");
+  if (labelled_array_schema->attribute_num() != 1)
+    throw std::invalid_argument(
+        "Invalid dimension label schema; Labelled array must have exactly one "
+        "attribute.");
   // Check the types are consistent between the two arrays
   auto [is_ok, msg] = have_compatible_types(
       labelled_array_schema_->dimension_ptr(0),
-      indexed_array_schema_->attribute(label_attr_id_));
+      indexed_array_schema_->attribute(0));
   if (!is_ok)
     throw std::invalid_argument(
         "Invalid dimension label schema; Incompatible definitions of the "
@@ -137,7 +130,7 @@ DimensionLabelSchema::DimensionLabelSchema(
         msg.value());
   std::tie(is_ok, msg) = have_compatible_types(
       indexed_array_schema_->dimension_ptr(0),
-      labelled_array_schema_->attribute(index_attr_id_));
+      labelled_array_schema_->attribute(0));
   if (!is_ok)
     throw std::invalid_argument(
         "Invalid dimension label schema; Incompatible definitions of the "
@@ -146,8 +139,17 @@ DimensionLabelSchema::DimensionLabelSchema(
         msg.value());
 }
 
+DimensionLabelSchema::DimensionLabelSchema(
+    const DimensionLabelSchema* dim_label) {
+  label_order_ = dim_label->label_order_;
+  indexed_array_schema_ =
+      make_shared<ArraySchema>(HERE(), *dim_label->indexed_array_schema_);
+  labelled_array_schema_ =
+      make_shared<ArraySchema>(HERE(), *dim_label->labelled_array_schema_);
+}
+
 const Attribute* DimensionLabelSchema::index_attribute() const {
-  return labelled_array_schema_->attribute(index_attr_id_);
+  return labelled_array_schema_->attribute(0);
 }
 
 const Dimension* DimensionLabelSchema::index_dimension() const {
@@ -162,7 +164,7 @@ bool DimensionLabelSchema::is_compatible_label(const Dimension* dim) const {
 }
 
 const Attribute* DimensionLabelSchema::label_attribute() const {
-  return indexed_array_schema_->attribute(label_attr_id_);
+  return indexed_array_schema_->attribute(0);
 }
 
 const Dimension* DimensionLabelSchema::label_dimension() const {

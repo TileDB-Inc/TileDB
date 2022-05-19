@@ -30,8 +30,8 @@
  * Defines the array schema class
  */
 
-#ifndef TILEDB_dimension_label_schema_H
-#define TILEDB_dimension_label_schema_H
+#ifndef TILEDB_DIMENSION_LABEL_SCHEMA_H
+#define TILEDB_DIMENSION_LABEL_SCHEMA_H
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/enums/label_order.h"
@@ -110,28 +110,31 @@ class DimensionLabelSchema {
    * on the dimension.
    * @param labelled_array_schema Array schema for the array with labels defined
    * on the dimension.
-   * @param label_attr_id The integer ID for the label attribute on the indexed
-   * array.
-   * @param index_attr_id The integer ID for the index attribute on the labelled
-   * array.
    */
   DimensionLabelSchema(
       LabelOrder label_order,
       shared_ptr<ArraySchema> indexed_array_schema,
-      shared_ptr<ArraySchema> labelled_array_schema,
-      const attribute_size_type label_attr_id = 0,
-      const attribute_size_type index_attr_id = 0);
+      shared_ptr<ArraySchema> labelled_array_schema);
 
-  /** Returns the index attribute from the labelled array. */
-  inline attribute_size_type index_attribute_id() const {
-    return index_attr_id_;
-  }
+  /**
+   * Constructor.
+   *
+   * Performs a deep copy of an existing dimension label.
+   *
+   * @param dim_label The dimension label schema to clone.
+   */
+  explicit DimensionLabelSchema(const DimensionLabelSchema* dim_label);
 
   /** Returns the index attribute from the labelled array. */
   const Attribute* index_attribute() const;
 
   /** Returns the index dimension from the indexed array. */
   const Dimension* index_dimension() const;
+
+  /** Returns the indexed array schema. */
+  inline const shared_ptr<ArraySchema> indexed_array_schema() const {
+    return indexed_array_schema_;
+  }
 
   /**
    * Checks if this dimension label is compatible as a dimension label for a
@@ -148,14 +151,14 @@ class DimensionLabelSchema {
   /** Returns the label dimension from the labelled array. */
   const Dimension* label_dimension() const;
 
-  /** Returns the index of the label attribute in the indexed array. */
-  inline attribute_size_type label_attribute_id() const {
-    return label_attr_id_;
-  }
-
   /** Returns the label order type of this dimension label. */
   inline LabelOrder label_order() const {
     return label_order_;
+  }
+
+  /** Returns the indexed array schema. */
+  inline const shared_ptr<ArraySchema> labelled_array_schema() const {
+    return labelled_array_schema_;
   }
 
  private:
@@ -167,12 +170,6 @@ class DimensionLabelSchema {
 
   /** Schema for the array with labels defined on the dimension. */
   shared_ptr<ArraySchema> labelled_array_schema_;
-
-  /** The integer ID of the label attribute on the indexed array. */
-  attribute_size_type label_attr_id_;
-
-  /** The integer ID of the index attribute on the labelled array. */
-  attribute_size_type index_attr_id_;
 };
 
 }  // namespace tiledb::sm
