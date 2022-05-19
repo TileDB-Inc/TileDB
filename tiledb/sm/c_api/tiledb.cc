@@ -3262,12 +3262,9 @@ int32_t tiledb_query_get_array(
     return TILEDB_OOM;
   }
 
-  // Allocate an array object, copied from the query's array.
-  (*array)->array_ =
-      new (std::nothrow) tiledb::sm::Array(*query->query_->array());
+  // Allocate an array object, taken from the query's array.
+  (*array)->array_ = query->query_->array_shared();
   if ((*array)->array_ == nullptr) {
-    delete *array;
-    *array = nullptr;
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation "
         "error");
@@ -3594,15 +3591,18 @@ int32_t tiledb_query_get_subarray_t(
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
-  tiledb_array_t tdb_array;
-  // Drop 'const'ness leaving 'Array *' knowing use here is local/temporary
-  // and being passed into tiledb_subarray_alloc() which is not modifying it
-  tdb_array.array_ =
-      const_cast<tiledb::sm::Array*>(query->query_->subarray()->array());
-  if (tiledb_subarray_alloc(ctx, &tdb_array, subarray) != TILEDB_OK) {
-    return TILEDB_ERR;
+
+  *subarray = new (std::nothrow) tiledb_subarray_t;
+  if (*subarray == nullptr) {
+    auto st = Status_Error("Failed to allocate TileDB subarray object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
   }
-  *(*subarray)->subarray_ = *query->query_->subarray();
+
+  (*subarray)->subarray_ =
+      const_cast<tiledb::sm::Subarray*>(query->query_->subarray());
+
   return TILEDB_OK;
 }
 
@@ -3641,7 +3641,7 @@ int32_t tiledb_subarray_alloc(
   // Create a new subarray object
   try {
     (*subarray)->subarray_ = new (std::nothrow) tiledb::sm::Subarray(
-        array->array_,
+        array->array_.get(),
         (tiledb::sm::stats::Stats*)nullptr,
         ctx->ctx_->storage_manager()->logger(),
         true,
@@ -3677,7 +3677,7 @@ int32_t tiledb_subarray_set_config(
 
 void tiledb_subarray_free(tiledb_subarray_t** subarray) {
   if (subarray != nullptr && *subarray != nullptr) {
-    delete (*subarray)->subarray_;
+    (*subarray)->subarray_ = nullptr;
     delete (*subarray);
     *subarray = nullptr;
   }
@@ -4119,10 +4119,8 @@ int32_t tiledb_array_alloc(
 
   // Allocate an array object
   (*array)->array_ =
-      new (std::nothrow) tiledb::sm::Array(uri, ctx->ctx_->storage_manager());
+      make_shared<tiledb::sm::Array>(HERE(), uri, ctx->ctx_->storage_manager());
   if ((*array)->array_ == nullptr) {
-    delete *array;
-    *array = nullptr;
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation "
         "error");
@@ -4361,7 +4359,6 @@ int32_t tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
 
 void tiledb_array_free(tiledb_array_t** array) {
   if (array != nullptr && *array != nullptr) {
-    delete (*array)->array_;
     delete *array;
     *array = nullptr;
   }
@@ -4643,7 +4640,7 @@ int32_t tiledb_array_get_non_empty_domain(
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->ctx_->storage_manager()->array_get_non_empty_domain(
-              array->array_, domain, &is_empty_b)))
+              array->array_.get(), domain, &is_empty_b)))
     return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
@@ -4665,7 +4662,7 @@ int32_t tiledb_array_get_non_empty_domain_from_index(
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->ctx_->storage_manager()->array_get_non_empty_domain_from_index(
-              array->array_, idx, domain, &is_empty_b)))
+              array->array_.get(), idx, domain, &is_empty_b)))
     return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
@@ -4687,7 +4684,7 @@ int32_t tiledb_array_get_non_empty_domain_from_name(
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->ctx_->storage_manager()->array_get_non_empty_domain_from_name(
-              array->array_, name, domain, &is_empty_b)))
+              array->array_.get(), name, domain, &is_empty_b)))
     return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
@@ -4711,7 +4708,7 @@ int32_t tiledb_array_get_non_empty_domain_var_size_from_index(
           ctx,
           ctx->ctx_->storage_manager()
               ->array_get_non_empty_domain_var_size_from_index(
-                  array->array_, idx, start_size, end_size, &is_empty_b)))
+                  array->array_.get(), idx, start_size, end_size, &is_empty_b)))
     return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
@@ -4735,7 +4732,11 @@ int32_t tiledb_array_get_non_empty_domain_var_size_from_name(
           ctx,
           ctx->ctx_->storage_manager()
               ->array_get_non_empty_domain_var_size_from_name(
-                  array->array_, name, start_size, end_size, &is_empty_b)))
+                  array->array_.get(),
+                  name,
+                  start_size,
+                  end_size,
+                  &is_empty_b)))
     return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
@@ -4759,7 +4760,7 @@ int32_t tiledb_array_get_non_empty_domain_var_from_index(
           ctx,
           ctx->ctx_->storage_manager()
               ->array_get_non_empty_domain_var_from_index(
-                  array->array_, idx, start, end, &is_empty_b)))
+                  array->array_.get(), idx, start, end, &is_empty_b)))
     return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
@@ -4783,7 +4784,7 @@ int32_t tiledb_array_get_non_empty_domain_var_from_name(
           ctx,
           ctx->ctx_->storage_manager()
               ->array_get_non_empty_domain_var_from_name(
-                  array->array_, name, start, end, &is_empty_b)))
+                  array->array_.get(), name, start, end, &is_empty_b)))
     return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
@@ -4797,7 +4798,7 @@ int32_t tiledb_array_get_uri(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *array_uri = array->array_->array_uri().c_str();
+  *array_uri = array->array_.get()->array_uri().c_str();
 
   return TILEDB_OK;
 }
@@ -5867,7 +5868,7 @@ int32_t tiledb_serialize_array(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_serialize(
-              array->array_,
+              array->array_.get(),
               (tiledb::sm::SerializationType)serialize_type,
               (*buffer)->buffer_,
               client_side))) {
@@ -5914,10 +5915,8 @@ int32_t tiledb_deserialize_array(
 
   // Allocate an array object
   (*array)->array_ =
-      new (std::nothrow) tiledb::sm::Array(uri, ctx->ctx_->storage_manager());
+      make_shared<tiledb::sm::Array>(HERE(), uri, ctx->ctx_->storage_manager());
   if ((*array)->array_ == nullptr) {
-    delete *array;
-    *array = nullptr;
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation "
         "error");
@@ -5929,7 +5928,7 @@ int32_t tiledb_deserialize_array(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_deserialize(
-              (*array)->array_,
+              (*array)->array_.get(),
               (tiledb::sm::SerializationType)serialize_type,
               *buffer->buffer_))) {
     delete *array;
@@ -6154,7 +6153,7 @@ int32_t tiledb_serialize_array_nonempty_domain(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::nonempty_domain_serialize(
-              array->array_,
+              array->array_.get(),
               nonempty_domain,
               is_empty,
               (tiledb::sm::SerializationType)serialize_type,
@@ -6187,7 +6186,7 @@ int32_t tiledb_deserialize_array_nonempty_domain(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::nonempty_domain_deserialize(
-              array->array_,
+              array->array_.get(),
               *buffer->buffer_,
               (tiledb::sm::SerializationType)serialize_type,
               nonempty_domain,
@@ -6220,7 +6219,7 @@ int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::nonempty_domain_serialize(
-              array->array_,
+              array->array_.get(),
               (tiledb::sm::SerializationType)serialize_type,
               (*buffer)->buffer_))) {
     detail::tiledb_buffer_free(buffer);
@@ -6248,7 +6247,7 @@ int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::nonempty_domain_deserialize(
-              array->array_,
+              array->array_.get(),
               *buffer->buffer_,
               (tiledb::sm::SerializationType)serialize_type)))
     return TILEDB_ERR;
@@ -6275,7 +6274,7 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::max_buffer_sizes_serialize(
-              array->array_,
+              array->array_.get(),
               subarray,
               (tiledb::sm::SerializationType)serialize_type,
               (*buffer)->buffer_))) {

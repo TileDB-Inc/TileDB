@@ -138,7 +138,7 @@ class Query {
    */
   Query(
       StorageManager* storage_manager,
-      Array* array,
+      shared_ptr<Array> array,
       URI fragment_uri = URI(""));
 
   /** Destructor. */
@@ -339,6 +339,9 @@ class Query {
    */
   Status get_written_fragment_timestamp_range(
       uint32_t idx, uint64_t* t1, uint64_t* t2) const;
+
+  /** Returns the array's smart pointer. */
+  shared_ptr<Array> array_shared();
 
   /** Returns the array. */
   const Array* array() const;
@@ -894,7 +897,12 @@ class Query {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array the query is associated with. */
+  /** A smart pointer to the array the query is associated with.
+   * Ensures that the Array object exists as long as the Query object exists. */
+  shared_ptr<Array> array_shared_;
+
+  /** The array the query is associated with.
+   * Cached copy of array_shared_.get(). */
   Array* array_;
 
   /** The array schema. */

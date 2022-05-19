@@ -52,7 +52,7 @@
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 struct tiledb_array_t {
-  tiledb::sm::Array* array_ = nullptr;
+  shared_ptr<tiledb::sm::Array> array_;
 };
 
 struct tiledb_subarray_t {

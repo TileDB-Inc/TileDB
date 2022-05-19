@@ -74,13 +74,15 @@ Status FragmentConsolidator::consolidate(
   auto timer_se = stats_->start_timer("consolidate_frags");
 
   // Open array for reading
-  Array array_for_reads(URI(array_name), storage_manager_);
-  RETURN_NOT_OK(array_for_reads.open_without_fragments(
+  shared_ptr<Array> array_for_reads{
+      make_shared<Array>(HERE(), URI(array_name), storage_manager_)};
+  RETURN_NOT_OK(array_for_reads->open_without_fragments(
       encryption_type, encryption_key, key_length));
 
   // Open array for writing
-  Array array_for_writes(array_for_reads.array_uri(), storage_manager_);
-  RETURN_NOT_OK(array_for_writes.open(
+  shared_ptr<Array> array_for_writes{make_shared<Array>(
+      HERE(), array_for_reads->array_uri(), storage_manager_)};
+  RETURN_NOT_OK(array_for_writes->open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
   // Disable consolidation with timestamps on older arrays.
@@ -102,10 +104,10 @@ Status FragmentConsolidator::consolidate(
       encryption_type,
       encryption_key,
       key_length,
-      array_for_reads.array_schema_latest().dense());
+      array_for_reads->array_schema_latest().dense());
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
+    array_for_reads->close();
+    array_for_writes->close();
     return st;
   }
 
@@ -119,13 +121,13 @@ Status FragmentConsolidator::consolidate(
     // Find the next fragments to be consolidated
     NDRange union_non_empty_domains;
     st = compute_next_to_consolidate(
-        array_for_reads.array_schema_latest(),
+        array_for_reads->array_schema_latest(),
         fragment_info,
         &to_consolidate,
         &union_non_empty_domains);
     if (!st.ok()) {
-      array_for_reads.close();
-      array_for_writes.close();
+      array_for_reads->close();
+      array_for_writes->close();
       return st;
     }
 
@@ -135,15 +137,15 @@ Status FragmentConsolidator::consolidate(
 
     // Consolidate the selected fragments
     URI new_fragment_uri;
-    st = consolidate(
+    st = consolidate_internal(
         array_for_reads,
         array_for_writes,
         to_consolidate,
         union_non_empty_domains,
         &new_fragment_uri);
     if (!st.ok()) {
-      array_for_reads.close();
-      array_for_writes.close();
+      array_for_reads->close();
+      array_for_writes->close();
       return st;
     }
 
@@ -152,8 +154,8 @@ Status FragmentConsolidator::consolidate(
     // consolidated.
     st = fragment_info.load_and_replace(new_fragment_uri, to_consolidate);
     if (!st.ok()) {
-      array_for_reads.close();
-      array_for_writes.close();
+      array_for_reads->close();
+      array_for_writes->close();
       return st;
     }
 
@@ -162,8 +164,8 @@ Status FragmentConsolidator::consolidate(
 
   } while (step < config_.steps_);
 
-  RETURN_NOT_OK_ELSE(array_for_reads.close(), array_for_writes.close());
-  RETURN_NOT_OK(array_for_writes.close());
+  RETURN_NOT_OK_ELSE(array_for_reads->close(), array_for_writes->close());
+  RETURN_NOT_OK(array_for_writes->close());
 
   stats_->add_counter("consolidate_step_num", step);
 
@@ -179,13 +181,15 @@ Status FragmentConsolidator::consolidate_fragments(
   auto timer_se = stats_->start_timer("consolidate_frags");
 
   // Open array for reading
-  Array array_for_reads(URI(array_name), storage_manager_);
-  RETURN_NOT_OK(array_for_reads.open_without_fragments(
+  shared_ptr<Array> array_for_reads{
+      make_shared<Array>(HERE(), URI(array_name), storage_manager_)};
+  RETURN_NOT_OK(array_for_reads->open_without_fragments(
       encryption_type, encryption_key, key_length));
 
   // Open array for writing
-  Array array_for_writes(array_for_reads.array_uri(), storage_manager_);
-  RETURN_NOT_OK(array_for_writes.open(
+  shared_ptr<Array> array_for_writes{make_shared<Array>(
+      HERE(), array_for_reads->array_uri(), storage_manager_)};
+  RETURN_NOT_OK(array_for_writes->open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
   // Disable consolidation with timestamps on older arrays.
@@ -208,8 +212,8 @@ Status FragmentConsolidator::consolidate_fragments(
       key_length,
       false);
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
+    array_for_reads->close();
+    array_for_writes->close();
     return st;
   }
 
@@ -223,7 +227,7 @@ Status FragmentConsolidator::consolidate_fragments(
   // Make sure all fragments to consolidate are present
   // Compute union of non empty domains as we go
   uint64_t count = 0;
-  auto& domain{array_for_reads.array_schema_latest().domain()};
+  auto& domain{array_for_reads->array_schema_latest().domain()};
   std::vector<TimestampedURI> to_consolidate;
   to_consolidate.reserve(fragment_uris.size());
   auto& frag_info_vec = fragment_info.single_fragment_info_vec();
@@ -245,15 +249,15 @@ Status FragmentConsolidator::consolidate_fragments(
 
   // Consolidate the selected fragments
   URI new_fragment_uri;
-  st = consolidate(
+  st = consolidate_internal(
       array_for_reads,
       array_for_writes,
       to_consolidate,
       union_non_empty_domains,
       &new_fragment_uri);
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
+    array_for_reads->close();
+    array_for_writes->close();
     return st;
   }
 
@@ -262,13 +266,13 @@ Status FragmentConsolidator::consolidate_fragments(
   // consolidated.
   st = fragment_info.load_and_replace(new_fragment_uri, to_consolidate);
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
+    array_for_reads->close();
+    array_for_writes->close();
     return st;
   }
 
-  RETURN_NOT_OK_ELSE(array_for_reads.close(), array_for_writes.close());
-  RETURN_NOT_OK(array_for_writes.close());
+  RETURN_NOT_OK_ELSE(array_for_reads->close(), array_for_writes->close());
+  RETURN_NOT_OK(array_for_writes->close());
 
   return Status::Ok();
 }
@@ -385,22 +389,22 @@ bool FragmentConsolidator::are_consolidatable(
   return (double(union_cell_num) / sum_cell_num) <= config_.amplification_;
 }
 
-Status FragmentConsolidator::consolidate(
-    Array& array_for_reads,
-    Array& array_for_writes,
+Status FragmentConsolidator::consolidate_internal(
+    shared_ptr<Array> array_for_reads,
+    shared_ptr<Array> array_for_writes,
     const std::vector<TimestampedURI>& to_consolidate,
     const NDRange& union_non_empty_domains,
     URI* new_fragment_uri) {
   auto timer_se = stats_->start_timer("consolidate_main");
 
-  RETURN_NOT_OK(array_for_reads.load_fragments(to_consolidate));
+  RETURN_NOT_OK(array_for_reads->load_fragments(to_consolidate));
 
-  if (array_for_reads.is_empty()) {
+  if (array_for_reads->is_empty()) {
     return Status::Ok();
   }
 
   // Get schema
-  const auto& array_schema = array_for_reads.array_schema_latest();
+  const auto& array_schema = array_for_reads->array_schema_latest();
 
   // Prepare buffers
   std::vector<ByteVec> buffers;
@@ -411,8 +415,8 @@ Status FragmentConsolidator::consolidate(
   auto query_r = (Query*)nullptr;
   auto query_w = (Query*)nullptr;
   auto st = create_queries(
-      &array_for_reads,
-      &array_for_writes,
+      array_for_reads,
+      array_for_writes,
       union_non_empty_domains,
       &query_r,
       &query_w,
@@ -425,7 +429,7 @@ Status FragmentConsolidator::consolidate(
 
   // Get the vacuum URI
   auto&& [st_vac_uri, vac_uri] =
-      array_for_reads.array_directory().get_vaccum_uri(*new_fragment_uri);
+      array_for_reads->array_directory().get_vaccum_uri(*new_fragment_uri);
   if (!st_vac_uri.ok()) {
     tdb_delete(query_r);
     tdb_delete(query_w);
@@ -541,8 +545,8 @@ Status FragmentConsolidator::create_buffers(
 }
 
 Status FragmentConsolidator::create_queries(
-    Array* array_for_reads,
-    Array* array_for_writes,
+    shared_ptr<Array> array_for_reads,
+    shared_ptr<Array> array_for_writes,
     const NDRange& subarray,
     Query** query_r,
     Query** query_w,
