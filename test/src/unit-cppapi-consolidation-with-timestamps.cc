@@ -83,6 +83,7 @@ ConsolidationWithTimestampsFx::ConsolidationWithTimestampsFx()
   config.set("sm.consolidation.with_timestamps", "true");
   ctx_ = Context(config);
   sm_ = ctx_.ptr().get()->ctx_->storage_manager();
+  vfs_ = VFS(ctx_);
 }
 
 ConsolidationWithTimestampsFx::~ConsolidationWithTimestampsFx() {
