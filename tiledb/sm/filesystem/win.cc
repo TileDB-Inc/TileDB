@@ -37,7 +37,7 @@
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
-#include "tiledb/sm/common/scoped_executor.h"
+#include "tiledb/common/scoped_executor.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/math.h"
@@ -163,7 +163,7 @@ Status Win::touch(const std::string& filename) const {
       CREATE_NEW,
       FILE_ATTRIBUTE_NORMAL,
       nullptr);
-  auto closefileonexit = [&]() { if(h != INVALID_HANDLE_VALUE) CloseHandle(file_h); };
+  auto closefileonexit = [&]() { if(file_h != INVALID_HANDLE_VALUE) CloseHandle(file_h); };
   tiledb::common::ScopedExecutor onexit1(closefileonexit);
   if (file_h == INVALID_HANDLE_VALUE) {
     auto gle = GetLastError();
