@@ -65,38 +65,40 @@ target_include_directories(tdb_gzip_embedded_data PRIVATE
         $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>
 )
 
-#
-# link test for some webp routines
-#
-find_package(Webp_EP REQUIRED)
-add_executable(link_webp_test1)
-if (WIN32)
-  target_link_libraries(link_webp_test1 PRIVATE WebP::webp)
-else() #if (NOT WIN32)
-  # On Linux, must explicitly link -lpthread -ldl in order for static linking
-  # to libzstd or libcurl to work.
-  target_link_libraries(link_webp_test1 WebP::webp pthread dl)
+if (TRUE) #(TILEDB_BUILDING_WEBP)
+  #
+  # perform webp build and link test for some webp routines
+  #
+  find_package(Webp_EP REQUIRED)
+  add_executable(link_webp_test1)
+  if (WIN32)
+    target_link_libraries(link_webp_test1 PRIVATE WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux)
+  else() #if (NOT WIN32)
+    # On Linux, must explicitly link -lpthread -ldl in order for static linking
+    # to libzstd or libcurl to work.
+    target_link_libraries(link_webp_test1 WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux pthread dl)
+  endif()
+  target_sources(
+      link_webp_test1 
+      PRIVATE
+      test/link_webp_test1.cc
+      )
+      
+  add_custom_target(
+      exercise_link_webp_test
+      COMMAND "$<TARGET_FILE:link_webp_test1>"
+      DEPENDS "$<TARGET_FILE:link_webp_test1>"
+      )
+      
+  add_dependencies(compressors exercise_link_webp_test)
 endif()
-target_sources(
-    link_webp_test1 
-    PRIVATE
-    test/link_webp_test1.cc
-    )
-target_include_directories(
-    link_webp_test1 
-    PRIVATE
-    "${CMAKE_BINARY_DIR}/../externals/install/include"
-    )
-    
-add_custom_target(
-    exercise_link_webp_test
-    COMMAND "$<TARGET_FILE:link_webp_test1>"
-    DEPENDS "$<TARGET_FILE:link_webp_test1>"
-    )
 
 # Link to Threads::Threads if library or flag needed to enable threading.
 find_package(Threads REQUIRED)
-target_link_libraries(tdb_gzip_embedded_data PRIVATE Threads::Threads)
+
+if (CMAKE_THREAD_LIBS_INIT)
+  target_link_libraries(tdb_gzip_embedded_data PRIVATE Threads::Threads)
+endif()
 # On Linux, must explicitly link -ldl for static linking to libzstd.
 if (NOT WIN32)
   target_link_libraries(tdb_gzip_embedded_data PRIVATE dl)

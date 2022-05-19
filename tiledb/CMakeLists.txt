@@ -357,8 +357,6 @@ add_custom_target(
   COMMENT "Re-generate ${MGC_GZIPPED_BIN_PATH3} for embedded magic.mgc support"
 )
 
-add_dependencies(TILEDB_CORE_OBJECTS exercise_link_webp_test)
-
 # Compile all core sources with PIC
 set_property(TARGET TILEDB_CORE_OBJECTS PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -566,7 +564,6 @@ find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
 find_package(Magic_EP REQUIRED)
 find_package(Webp_EP REQUIRED)
-#find_package(WebP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
