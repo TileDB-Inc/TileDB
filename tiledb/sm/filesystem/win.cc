@@ -91,7 +91,8 @@ std::string get_last_error_msg(
 
   auto buf_len = gle_desc.length() + std::strlen(func_desc) + 60;
   auto deleter = [](char* p) { tdb_delete_array(p); };
-  auto display_buf = shared_ptr<char>(tdb_new_array(char, buf_len), deleter);
+  auto display_buf = std::unique_ptr<char, decltype(deleter)>(
+      tdb_new_array(char, buf_len), deleter);
   std::snprintf(
       display_buf.get(),
       buf_len,
@@ -285,7 +286,7 @@ Status Win::file_size(const std::string& path, uint64_t* size) const {
   if (!GetFileSizeEx(file_h, &nbytes)) {
     CloseHandle(file_h);
     return LOG_STATUS(Status_IOError(std::string(
-        "Failed to get file size for '" + path +"' (" +
+        "Failed to get file size for '" + path + "' (" +
         get_last_error_msg("GetFileSizeEx") + ")'")));
   }
   *size = nbytes.QuadPart;
