@@ -54,6 +54,7 @@ ArrayDirectory::ArrayDirectory(
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
+    bool timestamps_config,
     ArrayDirectoryMode mode)
     : uri_(uri.add_trailing_slash())
     , vfs_(vfs)
@@ -61,7 +62,8 @@ ArrayDirectory::ArrayDirectory(
     , timestamp_start_(timestamp_start)
     , timestamp_end_(timestamp_end)
     , mode_(mode)
-    , loaded_(false) {
+    , loaded_(false)
+    , timestamps_config_(timestamps_config) {
   auto st = load();
   if (!st.ok()) {
     throw std::logic_error(st.message());
@@ -668,6 +670,31 @@ std::vector<URI> ArrayDirectory::compute_fragment_meta_uris(
   return ret;
 }
 
+bool ArrayDirectory::timestamps_overlap(
+    const uint64_t start,
+    const uint64_t end,
+    const bool consolidation_with_timestamps) const {
+  if (start > end) {
+    throw std::logic_error(
+        "Error checking if fragment timestamps overlap: start timestamp cannot "
+        "be after end timestamp");
+  }
+
+  if (!consolidation_with_timestamps) {
+    // True if the fragment falls fully within start and end times
+    auto full_overlap = start >= timestamp_start_ && end <= timestamp_end_;
+    return full_overlap;
+  } else {
+    // When consolidation has timestamps, true if there is even partial overlap
+    auto partial_overlap =
+        ((start >= timestamp_start_ && start <= timestamp_end_) ||
+         (end >= timestamp_start_ && end <= timestamp_end_));
+    return partial_overlap;
+  }
+
+  return false;
+}
+
 tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
 ArrayDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
   // Get vacuum URIs
@@ -681,13 +708,23 @@ ArrayDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
         nullopt,
         nullopt);
 
+    auto name = uris[i].remove_trailing_slash().last_path_part();
+    uint32_t version;
+    RETURN_NOT_OK_TUPLE(
+        utils::parse::get_fragment_version(name, &version), nullopt, nullopt);
+
+    auto t1 = timestamp_range.first;
+    auto t2 = timestamp_range.second;
+    auto use_partial_coverage =
+        timestamps_config_ && mode_ == ArrayDirectoryMode::READ;
+    auto consolidation_with_timestamps =
+        use_partial_coverage && version >= 14 && version != UINT32_MAX;
     if (is_vacuum_file(uris[i])) {
-      if (timestamp_range.first >= timestamp_start_ &&
-          timestamp_range.second <= timestamp_end_)
+      if (timestamps_overlap(t1, t2, consolidation_with_timestamps)) {
         vac_files.emplace_back(uris[i]);
+      }
     } else {
-      if (timestamp_range.first < timestamp_start_ ||
-          timestamp_range.second > timestamp_end_) {
+      if (!timestamps_overlap(t1, t2, consolidation_with_timestamps)) {
         non_vac_uris_set.emplace(uris[i].to_string());
       } else {
         uris_map[uris[i].to_string()] = i;
@@ -765,16 +802,23 @@ ArrayDirectory::compute_filtered_uris(
     if (is_vacuum_file(uri))
       continue;
 
-    // Add only URIs whose first timestamp is greater than or equal to the
-    // timestamp_start and whose second timestamp is smaller than or equal to
-    // the timestamp_end
+    auto name = uri.remove_trailing_slash().last_path_part();
+    uint32_t version;
+    RETURN_NOT_OK_TUPLE(
+        utils::parse::get_fragment_version(name, &version), nullopt);
+
     std::pair<uint64_t, uint64_t> timestamp_range;
     RETURN_NOT_OK_TUPLE(
         utils::parse::get_timestamp_range(uri, &timestamp_range), nullopt);
     auto t1 = timestamp_range.first;
     auto t2 = timestamp_range.second;
-    if (t1 >= timestamp_start_ && t2 <= timestamp_end_)
+    auto use_partial_coverage =
+        timestamps_config_ && mode_ == ArrayDirectoryMode::READ;
+    auto consolidation_with_timestamps =
+        use_partial_coverage && version >= 14 && version != UINT32_MAX;
+    if (timestamps_overlap(t1, t2, consolidation_with_timestamps)) {
       filtered_uris.emplace_back(uri, timestamp_range);
+    }
   }
 
   // Sort the names based on the timestamps

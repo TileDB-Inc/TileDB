@@ -89,6 +89,7 @@ class ArrayDirectory {
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
+      bool timestamps_config_,
       ArrayDirectoryMode mode = ArrayDirectoryMode::READ);
 
   /** Destructor. */
@@ -251,6 +252,9 @@ class ArrayDirectory {
   /** True if `load` has been run. */
   bool loaded_;
 
+  /** True if consolidation with timestamps is enabled in config */
+  bool timestamps_config_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -369,6 +373,22 @@ class ArrayDirectory {
    */
   Status compute_array_schema_uris(
       const std::vector<URI>& array_schema_dir_uris);
+
+  /**
+   * Checks if a fragment overlaps with the array directory timestamp
+   * range. Overlap is partial or full depending on the consolidation
+   * type (with timestamps or not).
+   *
+   * @param start Start timestamp of a given fragment.
+   * @param end End timestamp of a given fragment.
+   * @param consolidation_with_timestamps True if consolidation includes
+   * timestamps, false otherwise.
+   * @return True if there is overlap, false otherwise.
+   */
+  bool timestamps_overlap(
+      const uint64_t start,
+      const uint64_t end,
+      const bool consolidation_with_timestamps) const;
 
   /** Returns true if the input URI is a vacuum file. */
   bool is_vacuum_file(const URI& uri) const;

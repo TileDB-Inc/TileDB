@@ -277,6 +277,7 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
         URI(array_name),
         config_.vacuum_timestamp_start_,
         config_.vacuum_timestamp_end_,
+        config_.with_timestamps_,
         ArrayDirectoryMode::VACUUM_FRAGMENTS);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));

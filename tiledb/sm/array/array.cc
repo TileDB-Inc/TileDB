@@ -175,6 +175,11 @@ Status Array::open_without_fragments(
     RETURN_NOT_OK(st);
     array_schema_latest_ = array_schema_latest.value();
   } else {
+    bool found = false;
+    bool with_timestamps = false;
+    RETURN_NOT_OK(config_.get<bool>(
+        "sm.consolidation.with_timestamps", &with_timestamps, &found));
+    assert(found);
     try {
       array_dir_ = ArrayDirectory(
           storage_manager_->vfs(),
@@ -182,6 +187,7 @@ Status Array::open_without_fragments(
           array_uri_,
           0,
           UINT64_MAX,
+          with_timestamps,
           ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
@@ -302,6 +308,12 @@ Status Array::open(
     }
   }
 
+  bool found = false;
+  bool with_timestamps = false;
+  RETURN_NOT_OK(config_.get<bool>(
+      "sm.consolidation.with_timestamps", &with_timestamps, &found));
+  assert(found);
+
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -318,7 +330,8 @@ Status Array::open(
           storage_manager_->compute_tp(),
           array_uri_,
           timestamp_start_,
-          timestamp_end_opened_at_);
+          timestamp_end_opened_at_,
+          with_timestamps);
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
@@ -337,7 +350,8 @@ Status Array::open(
           storage_manager_->compute_tp(),
           array_uri_,
           timestamp_start_,
-          timestamp_end_opened_at_);
+          timestamp_end_opened_at_,
+          with_timestamps);
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
@@ -602,12 +616,18 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   }
 
   try {
+    bool found = false;
+    bool with_timestamps = false;
+    RETURN_NOT_OK(config_.get<bool>(
+        "sm.consolidation.with_timestamps", &with_timestamps, &found));
+    assert(found);
     array_dir_ = ArrayDirectory(
         storage_manager_->vfs(),
         storage_manager_->compute_tp(),
         array_uri_,
         timestamp_start_,
-        timestamp_end_opened_at_);
+        timestamp_end_opened_at_,
+        with_timestamps);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
