@@ -1,5 +1,5 @@
 /**
- * @file compile_array_schema_main.cc
+ * @file   api_exception_safety_experimental.h
  *
  * @section LICENSE
  *
@@ -24,13 +24,30 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file declares argument validator functions used in the c-api
+ * implementation for experimental features.
  */
 
-#include "../array_schema.h"
-#include "../dimension_label_schema.h"
+#ifndef TILEDB_CAPI_HELPERS_EXPERIMENTAL_H
+#define TILEDB_CAPI_HELPERS_EXPERIMENTAL_H
 
-int main() {
-  (void)sizeof(tiledb::sm::ArraySchema);
-  (void)sizeof(tiledb::sm::DimensionLabelSchema);
-  return 0;
+#include "tiledb/sm/c_api/api_argument_validator.h"
+#include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
+
+inline int32_t sanity_check(
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_label_schema_t* dim_label_schema) {
+  if (dim_label_schema == nullptr ||
+      dim_label_schema->dim_label_schema_ == nullptr) {
+    auto st = Status_Error("Invalid TileDB dimension label schema object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
 }
+
+#endif

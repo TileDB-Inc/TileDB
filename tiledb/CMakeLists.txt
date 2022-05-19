@@ -76,6 +76,12 @@ if (TILEDB_SERIALIZATION)
   )
 endif()
 
+if (TILEDB_EXPERIMENTAL_FEATURES)
+  list(APPEND TILEDB_PUBLIC_HEADERS
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/experimental/tiledb_dimension_label.h
+  )
+endif()
+
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb
@@ -128,9 +134,11 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array_directory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema_evolution.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension_label_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/attribute.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/domain.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/dimension_label/dimension_label.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer_list.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/api_argument_validator.cc
@@ -252,6 +260,12 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/parse_uri.cc
 )
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
+
+if (TILEDB_EXPERIMENTAL_FEATURES)
+  list(APPEND TILEDB_CORE_SOURCES
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/experimental/tiledb_dimension_label.cc)
+endif()
+
 
 #openssl3 md5 deprecation mitigation
 if(MSVC)
@@ -1057,7 +1071,7 @@ if (TILEDB_VERSION)
     FILES "${TILEDB_PROJECT_CONFIG_VERSION_FILE}"
     DESTINATION "${CONFIG_INSTALL_DIR}"
   )
-endif() 
+endif()
 
 # Install targets file to <prefix>/lib/cmake/TileDB/TileDBTargets.cmake
 install(

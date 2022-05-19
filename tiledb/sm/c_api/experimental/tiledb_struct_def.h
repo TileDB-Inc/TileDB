@@ -1,5 +1,5 @@
 /**
- * @file compile_array_schema_main.cc
+ * @file   tiledb_struct_def.h
  *
  * @section LICENSE
  *
@@ -24,13 +24,20 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file contains the TileDB C API struct object definitions for
+ * experimental structs.
  */
 
-#include "../array_schema.h"
-#include "../dimension_label_schema.h"
+#ifndef TILEDB_C_API_STRUCT_DEF_EXPERIMENTAL_H
+#define TILEDB_C_API_STRUCT_DEF_EXPERIMENTAL_H
 
-int main() {
-  (void)sizeof(tiledb::sm::ArraySchema);
-  (void)sizeof(tiledb::sm::DimensionLabelSchema);
-  return 0;
-}
+#include "tiledb/sm/array_schema/dimension_label_schema.h"
+
+struct tiledb_dimension_label_schema_t {
+  shared_ptr<tiledb::sm::DimensionLabelSchema> dim_label_schema_;
+};
+
+#endif
