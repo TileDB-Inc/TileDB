@@ -36,6 +36,17 @@
 #ifndef TILEDB_COMMON_COMMON_STD_H
 #define TILEDB_COMMON_COMMON_STD_H
 
+#include <cstdint>
+
+/**
+ * Size type for anything in external storage.
+ *
+ * Note that on some platforms `storage_size_t` may be larger than `size_t`. It
+ * should not be assumed that anything in external storage will fit in memory
+ * (even virtual memory).
+ */
+using storage_size_t = uint64_t;
+
 /*
  * Value manipulation
  */
