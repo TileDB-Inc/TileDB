@@ -74,13 +74,13 @@ Status FragmentConsolidator::consolidate(
   auto timer_se = stats_->start_timer("consolidate_frags");
 
   // Open array for reading
-  shared_ptr<Array> array_for_reads{
+  auto array_for_reads{
       make_shared<Array>(HERE(), URI(array_name), storage_manager_)};
   RETURN_NOT_OK(array_for_reads->open_without_fragments(
       encryption_type, encryption_key, key_length));
 
   // Open array for writing
-  shared_ptr<Array> array_for_writes{make_shared<Array>(
+  auto array_for_writes{make_shared<Array>(
       HERE(), array_for_reads->array_uri(), storage_manager_)};
   RETURN_NOT_OK(array_for_writes->open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
@@ -181,13 +181,13 @@ Status FragmentConsolidator::consolidate_fragments(
   auto timer_se = stats_->start_timer("consolidate_frags");
 
   // Open array for reading
-  shared_ptr<Array> array_for_reads{
+  auto array_for_reads{
       make_shared<Array>(HERE(), URI(array_name), storage_manager_)};
   RETURN_NOT_OK(array_for_reads->open_without_fragments(
       encryption_type, encryption_key, key_length));
 
   // Open array for writing
-  shared_ptr<Array> array_for_writes{make_shared<Array>(
+  auto array_for_writes{make_shared<Array>(
       HERE(), array_for_reads->array_uri(), storage_manager_)};
   RETURN_NOT_OK(array_for_writes->open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));

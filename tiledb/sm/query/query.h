@@ -341,7 +341,9 @@ class Query {
       uint32_t idx, uint64_t* t1, uint64_t* t2) const;
 
   /** Returns the array's smart pointer. */
-  shared_ptr<Array> array_shared();
+  inline shared_ptr<Array> array_shared() {
+    return array_shared_;
+  }
 
   /** Returns the array. */
   const Array* array() const;

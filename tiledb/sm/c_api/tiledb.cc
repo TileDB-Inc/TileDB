@@ -4118,15 +4118,15 @@ int32_t tiledb_array_alloc(
   }
 
   // Allocate an array object
-  (*array)->array_ =
-      make_shared<tiledb::sm::Array>(HERE(), uri, ctx->ctx_->storage_manager());
-  if ((*array)->array_ == nullptr) {
+  try {
+    (*array)->array_ = make_shared<tiledb::sm::Array>(
+        HERE(), uri, ctx->ctx_->storage_manager());
+  } catch (...) {
     auto st = Status_Error(
-        "Failed to create TileDB array object; Memory allocation "
-        "error");
+        "Failed to create TileDB array object; Memory allocation error");
     LOG_STATUS(st);
     save_error(ctx, st);
-    return TILEDB_OOM;
+    return TILEDB_ERR;
   }
 
   // Success
@@ -5914,15 +5914,16 @@ int32_t tiledb_deserialize_array(
   }
 
   // Allocate an array object
-  (*array)->array_ =
-      make_shared<tiledb::sm::Array>(HERE(), uri, ctx->ctx_->storage_manager());
-  if ((*array)->array_ == nullptr) {
+  try {
+    (*array)->array_ = make_shared<tiledb::sm::Array>(
+        HERE(), uri, ctx->ctx_->storage_manager());
+  } catch (...) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation "
         "error");
     LOG_STATUS(st);
     save_error(ctx, st);
-    return TILEDB_OOM;
+    return TILEDB_ERR;
   }
 
   if (SAVE_ERROR_CATCH(

@@ -90,9 +90,9 @@ Query::Query(
   assert(st.ok());
 
   if (type_ == QueryType::WRITE) {
-    subarray_ = Subarray(array.get(), stats_, logger_);
+    subarray_ = Subarray(array_, stats_, logger_);
   } else {
-    subarray_ = Subarray(array.get(), Layout::ROW_MAJOR, stats_, logger_);
+    subarray_ = Subarray(array_, Layout::ROW_MAJOR, stats_, logger_);
   }
 
   fragment_metadata_ = array->fragment_metadata();
@@ -553,10 +553,6 @@ Status Query::get_written_fragment_timestamp_range(
   *t2 = written_fragment_info_[idx].timestamp_range_.second;
 
   return Status::Ok();
-}
-
-shared_ptr<Array> Query::array_shared() {
-  return array_shared_;
 }
 
 const Array* Query::array() const {
