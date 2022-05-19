@@ -37,6 +37,7 @@
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/sm/common/scoped_executor.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/math.h"
@@ -55,6 +56,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <string_view>
 
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
@@ -86,24 +88,23 @@ std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
 }
 
 std::string get_last_error_msg(
-    decltype(GetLastError()) gle, const char* func_desc) {
+    decltype(GetLastError()) gle, const std::string_view func_desc) {
   std::string gle_desc = get_last_error_msg_desc(gle);
 
-  auto buf_len = gle_desc.length() + std::strlen(func_desc) + 60;
+  auto buf_len = gle_desc.length() + func_desc.size() + 60;
   auto deleter = [](char* p) { tdb_delete_array(p); };
-  auto display_buf = std::unique_ptr<char, decltype(deleter)>(
-      tdb_new_array(char, buf_len), deleter);
+  auto display_buf = std::make_unique<char[]>(buf_len);
   std::snprintf(
       display_buf.get(),
       buf_len,
       "%s GetLastError %lu (0x%08lx): %s",
-      func_desc,
+      func_desc.data(),
       gle,
       gle,
       gle_desc.c_str());
   return {display_buf.get()};
 }
-std::string get_last_error_msg(const char* func_desc = "") {
+std::string get_last_error_msg(const std::string_view func_desc) {
   DWORD gle = GetLastError();
   return get_last_error_msg(gle, func_desc);
 }
@@ -162,8 +163,10 @@ Status Win::touch(const std::string& filename) const {
       CREATE_NEW,
       FILE_ATTRIBUTE_NORMAL,
       nullptr);
-  if (auto gle = GetLastError();
-      file_h == INVALID_HANDLE_VALUE || CloseHandle(file_h) == 0) {
+  auto closefileonexit = [&]() { if(h != INVALID_HANDLE_VALUE) CloseHandle(file_h); };
+  tiledb::common::ScopedExecutor onexit1(closefileonexit);
+  if (file_h == INVALID_HANDLE_VALUE) {
+    auto gle = GetLastError();
     return LOG_STATUS(Status_IOError(
         std::string("Failed to create file '") + filename + " (" +
         get_last_error_msg(gle, "CreateFile") + ")'"));
@@ -468,7 +471,7 @@ Status Win::sync(const std::string& path) const {
       NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(Status_IOError(
-        "Cannot sync file '" + path + "'; File opening error" +
+        "Cannot sync file '" + path + "'; File opening error " +
         get_last_error_msg("CreateFile")));
   }
 
