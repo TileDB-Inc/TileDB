@@ -39,20 +39,25 @@ set(LIBMAGIC_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
 # Try the builtin find module unless built w/ EP superbuild
 if ((NOT TILEDB_FORCE_ALL_DEPS) AND (NOT TILEDB_LIBMAGIC_EP_BUILT))
+  message(STATUS "** Looking for Magic")
   find_package(Magic ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
 if (NOT MAGIC_FOUND AND TILEDB_LIBMAGIC_EP_BUILT)
+  message(STATUS "** Looking for libmagic")
   find_package(libmagic PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
 if (NOT MAGIC_FOUND AND TILEDB_LIBMAGIC_EP_BUILT)
+  message(STATUS "** Looking for include")
+  message(STATUS "** Paths: ${LIBMAGIC_PATHS}")
   find_path(libmagic_INCLUDE_DIR
     NAMES magic.h
     PATHS ${LIBMAGIC_PATHS}
     PATH_SUFFIXES include
     ${NO_DEFAULT_PATH}
   )
+  message(STATUS "** Dir: ${libmagic_INCLUDE_DIR}")
 
   if (NOT libmagic_INCLUDE_DIR)
     find_path(libmagic_INCLUDE_DIR
@@ -82,6 +87,8 @@ endif()
 if (NOT MAGIC_FOUND AND NOT TILEDB_LIBMAGIC_EP_BUILT)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Magic as an external project")
+
+    set(libmagic_LibraryName "libmagic")
 
     if (WIN32)
       set(CFLAGS_DEF "")

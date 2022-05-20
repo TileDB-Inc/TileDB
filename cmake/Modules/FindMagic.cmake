@@ -43,6 +43,12 @@ if (NOT TILEDB_LIBMAGIC_EP_BUILT)
     ## NB not currently used in CMakeLists.txt
     set(libmagic_LibraryName "magic")
   endif()
+
+  ## this finds the system one
   find_file(libmagic_DICTIONARY "magic.mgc" PATHS "/usr/lib/file")
+
+endif()
+if (TILEDB_LIBMAGIC_EP_BUILT)
+  set(libmagic_INCLUDE_DIR "${TILEDB_EP_BASE}/install/include/")
 endif()
 ##message(STATUS "End FindMagic.cmake")
