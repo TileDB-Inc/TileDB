@@ -81,6 +81,8 @@ class ArrayDirectory {
    *     were created within timestamp range
    *    [`timestamp_start`, `timestamp_end`] will be considered when
    *     fetching URIs.
+   * @param consolidation_with_timestamps_config Ture if consolidation with
+   * timestamps is enabled in config, false if not enabled or not relevant
    * @param mode The mode to load the array directory in.
    */
   ArrayDirectory(
@@ -89,7 +91,7 @@ class ArrayDirectory {
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
-      bool timestamps_config_,
+      bool consolidation_with_timestamps_config,
       ArrayDirectoryMode mode = ArrayDirectoryMode::READ);
 
   /** Destructor. */
@@ -253,7 +255,7 @@ class ArrayDirectory {
   bool loaded_;
 
   /** True if consolidation with timestamps is enabled in config */
-  bool timestamps_config_;
+  bool consolidation_with_timestamps_config_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -379,15 +381,13 @@ class ArrayDirectory {
    * range. Overlap is partial or full depending on the consolidation
    * type (with timestamps or not).
    *
-   * @param start Start timestamp of a given fragment.
-   * @param end End timestamp of a given fragment.
+   * @param fragment_timestamp_range Timestamp range of a given fragment.
    * @param consolidation_with_timestamps True if consolidation includes
    * timestamps, false otherwise.
    * @return True if there is overlap, false otherwise.
    */
   bool timestamps_overlap(
-      const uint64_t start,
-      const uint64_t end,
+      const std::pair<uint64_t, uint64_t> fragment_timestamp_range,
       const bool consolidation_with_timestamps) const;
 
   /** Returns true if the input URI is a vacuum file. */
@@ -414,6 +414,14 @@ class ArrayDirectory {
       const std::unordered_set<std::string>& ok_uris_set,
       const std::unordered_set<std::string>& consolidated_uris_set,
       int32_t* is_fragment) const;
+
+  /**
+   * Checks if consolidation with timestamps is supported for a fragment
+   *
+   * @param uri The fragment URI to be checked.
+   * @return True if supported, false otherwise
+   */
+  bool consolidation_with_timestamps_supported(const URI& uri) const;
 };
 
 }  // namespace sm

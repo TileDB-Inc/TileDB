@@ -838,9 +838,11 @@ Status FragmentInfo::load(
   auto timestamp_start = compute_anterior ? 0 : timestamp_start_;
   ArrayDirectory array_dir;
   bool found = false;
-  bool with_timestamps = false;
+  bool consolidation_with_timestamps = false;
   RETURN_NOT_OK(config_.get<bool>(
-      "sm.consolidation.with_timestamps", &with_timestamps, &found));
+      "sm.consolidation.with_timestamps",
+      &consolidation_with_timestamps,
+      &found));
   assert(found);
   try {
     array_dir = ArrayDirectory(
@@ -849,7 +851,7 @@ Status FragmentInfo::load(
         array_uri_,
         timestamp_start,
         timestamp_end_,
-        with_timestamps);
+        consolidation_with_timestamps);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }

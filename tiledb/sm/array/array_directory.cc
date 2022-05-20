@@ -54,7 +54,7 @@ ArrayDirectory::ArrayDirectory(
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
-    bool timestamps_config,
+    bool consolidation_with_timestamps_config,
     ArrayDirectoryMode mode)
     : uri_(uri.add_trailing_slash())
     , vfs_(vfs)
@@ -63,7 +63,8 @@ ArrayDirectory::ArrayDirectory(
     , timestamp_end_(timestamp_end)
     , mode_(mode)
     , loaded_(false)
-    , timestamps_config_(timestamps_config) {
+    , consolidation_with_timestamps_config_(
+          consolidation_with_timestamps_config) {
   auto st = load();
   if (!st.ok()) {
     throw std::logic_error(st.message());
@@ -671,28 +672,25 @@ std::vector<URI> ArrayDirectory::compute_fragment_meta_uris(
 }
 
 bool ArrayDirectory::timestamps_overlap(
-    const uint64_t start,
-    const uint64_t end,
+    const std::pair<uint64_t, uint64_t> fragment_timestamp_range,
     const bool consolidation_with_timestamps) const {
-  if (start > end) {
-    throw std::logic_error(
-        "Error checking if fragment timestamps overlap: start timestamp cannot "
-        "be after end timestamp");
-  }
+  auto fragment_timestamp_start = fragment_timestamp_range.first;
+  auto fragment_timestamp_end = fragment_timestamp_range.second;
 
   if (!consolidation_with_timestamps) {
     // True if the fragment falls fully within start and end times
-    auto full_overlap = start >= timestamp_start_ && end <= timestamp_end_;
+    auto full_overlap = fragment_timestamp_start >= timestamp_start_ &&
+                        fragment_timestamp_end <= timestamp_end_;
     return full_overlap;
   } else {
     // When consolidation has timestamps, true if there is even partial overlap
     auto partial_overlap =
-        ((start >= timestamp_start_ && start <= timestamp_end_) ||
-         (end >= timestamp_start_ && end <= timestamp_end_));
+        ((fragment_timestamp_start >= timestamp_start_ &&
+          fragment_timestamp_start <= timestamp_end_) ||
+         (fragment_timestamp_end >= timestamp_start_ &&
+          fragment_timestamp_end <= timestamp_end_));
     return partial_overlap;
   }
-
-  return false;
 }
 
 tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
@@ -702,29 +700,22 @@ ArrayDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
   std::unordered_set<std::string> non_vac_uris_set;
   std::unordered_map<std::string, size_t> uris_map;
   for (size_t i = 0; i < uris.size(); ++i) {
-    std::pair<uint64_t, uint64_t> timestamp_range;
+    // Get the start and end timestamp for this fragment
+    std::pair<uint64_t, uint64_t> fragment_timestamp_range;
     RETURN_NOT_OK_TUPLE(
-        utils::parse::get_timestamp_range(uris[i], &timestamp_range),
+        utils::parse::get_timestamp_range(uris[i], &fragment_timestamp_range),
         nullopt,
         nullopt);
-
-    auto name = uris[i].remove_trailing_slash().last_path_part();
-    uint32_t version;
-    RETURN_NOT_OK_TUPLE(
-        utils::parse::get_fragment_version(name, &version), nullopt, nullopt);
-
-    auto t1 = timestamp_range.first;
-    auto t2 = timestamp_range.second;
-    auto use_partial_coverage =
-        timestamps_config_ && mode_ == ArrayDirectoryMode::READ;
-    auto consolidation_with_timestamps =
-        use_partial_coverage && version >= 14 && version != UINT32_MAX;
     if (is_vacuum_file(uris[i])) {
-      if (timestamps_overlap(t1, t2, consolidation_with_timestamps)) {
+      if (timestamps_overlap(
+              fragment_timestamp_range,
+              consolidation_with_timestamps_supported(uris[i]))) {
         vac_files.emplace_back(uris[i]);
       }
     } else {
-      if (!timestamps_overlap(t1, t2, consolidation_with_timestamps)) {
+      if (!timestamps_overlap(
+              fragment_timestamp_range,
+              consolidation_with_timestamps_supported(uris[i]))) {
         non_vac_uris_set.emplace(uris[i].to_string());
       } else {
         uris_map[uris[i].to_string()] = i;
@@ -802,22 +793,15 @@ ArrayDirectory::compute_filtered_uris(
     if (is_vacuum_file(uri))
       continue;
 
-    auto name = uri.remove_trailing_slash().last_path_part();
-    uint32_t version;
+    // Get the start and end timestamp for this fragment
+    std::pair<uint64_t, uint64_t> fragment_timestamp_range;
     RETURN_NOT_OK_TUPLE(
-        utils::parse::get_fragment_version(name, &version), nullopt);
-
-    std::pair<uint64_t, uint64_t> timestamp_range;
-    RETURN_NOT_OK_TUPLE(
-        utils::parse::get_timestamp_range(uri, &timestamp_range), nullopt);
-    auto t1 = timestamp_range.first;
-    auto t2 = timestamp_range.second;
-    auto use_partial_coverage =
-        timestamps_config_ && mode_ == ArrayDirectoryMode::READ;
-    auto consolidation_with_timestamps =
-        use_partial_coverage && version >= 14 && version != UINT32_MAX;
-    if (timestamps_overlap(t1, t2, consolidation_with_timestamps)) {
-      filtered_uris.emplace_back(uri, timestamp_range);
+        utils::parse::get_timestamp_range(uri, &fragment_timestamp_range),
+        nullopt);
+    if (timestamps_overlap(
+            fragment_timestamp_range,
+            consolidation_with_timestamps_supported(uri))) {
+      filtered_uris.emplace_back(uri, fragment_timestamp_range);
     }
   }
 
@@ -909,5 +893,19 @@ Status ArrayDirectory::is_fragment(
   return Status::Ok();
 }
 
+bool ArrayDirectory::consolidation_with_timestamps_supported(
+    const URI& uri) const {
+  // Get the fragment version from the uri
+  uint32_t version;
+  auto name = uri.remove_trailing_slash().last_path_part();
+  utils::parse::get_fragment_version(name, &version);
+
+  // get_fragment_version returns UINT32_MAX for versions <= 2 so we should
+  // explicitly exclude this case when checking if consolidation with timestamps
+  // is supported on a fragment
+  return consolidation_with_timestamps_config_ &&
+         mode_ == ArrayDirectoryMode::READ && version >= 14 &&
+         version != UINT32_MAX;
+}
 }  // namespace sm
 }  // namespace tiledb

@@ -57,6 +57,7 @@ struct ConsolidationWithTimestampsFx {
 
   // Functions
   void create_sparse_array(bool allows_dups = false);
+  void create_sparse_array_v11();
   void write_sparse(
       std::vector<int> a1,
       std::vector<uint64_t> dim1,
@@ -121,6 +122,18 @@ void ConsolidationWithTimestampsFx::create_sparse_array(bool allows_dups) {
   Array::create(SPARSE_ARRAY_NAME, schema);
 }
 
+void ConsolidationWithTimestampsFx::create_sparse_array_v11() {
+  // Get the v11 sparse array.
+  std::string v11_arrays_dir =
+      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/sparse_array_v11";
+  REQUIRE(
+      tiledb_vfs_copy_dir(
+          ctx_.ptr().get(),
+          vfs_.ptr().get(),
+          v11_arrays_dir.c_str(),
+          SPARSE_ARRAY_NAME) == TILEDB_OK);
+}
+
 void ConsolidationWithTimestampsFx::write_sparse(
     std::vector<int> a1,
     std::vector<uint64_t> dim1,
@@ -146,27 +159,12 @@ void ConsolidationWithTimestampsFx::write_sparse(
 
 void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
   // Prepare cell buffers
-  std::vector<int> buffer_a1{0, 1, 2, 3, 4, 5, 6, 7};
-  std::vector<uint64_t> buffer_a2{0, 1, 3, 6, 10, 11, 13, 16};
-  std::string buffer_var_a2("abbcccddddeffggghhhh");
-  std::vector<float> buffer_a3{0.1f,
-                               0.2f,
-                               1.1f,
-                               1.2f,
-                               2.1f,
-                               2.2f,
-                               3.1f,
-                               3.2f,
-                               4.1f,
-                               4.2f,
-                               5.1f,
-                               5.2f,
-                               6.1f,
-                               6.2f,
-                               7.1f,
-                               7.2f};
-  std::vector<uint64_t> buffer_coords_dim1{1, 1, 1, 2, 3, 4, 3, 3};
-  std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3, 1, 2, 3, 4};
+  std::vector<int> buffer_a1{0, 1, 2, 3};
+  std::vector<uint64_t> buffer_a2{0, 1, 3, 6};
+  std::string buffer_var_a2("abbcccdddd");
+  std::vector<float> buffer_a3{0.1f, 0.2f, 1.1f, 1.2f, 2.1f, 2.2f, 3.1f, 3.2f};
+  std::vector<uint64_t> buffer_coords_dim1{1, 1, 1, 2};
+  std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3};
 
   // Open array
   Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, timestamp);
@@ -306,45 +304,13 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
-    "CPP API: Test consolidation with timestamps, global read",
-    "[cppapi][consolidation-with-timestamps][global-read]") {
-  remove_sparse_array();
-  create_sparse_array();
-
-  // Write first fragment.
-  write_sparse(
-      {0, 1, 2, 3, 4, 5, 6, 7},
-      {1, 1, 1, 2, 3, 4, 3, 3},
-      {1, 2, 4, 3, 1, 2, 3, 4},
-      1);
-
-  // Write second fragment.
-  write_sparse({8, 9, 10, 11}, {2, 2, 3, 3}, {2, 3, 2, 3}, 2);
-
-  // Consolidate.
-  consolidate_sparse();
-
-  std::vector<int> a1(12);
-  std::vector<uint64_t> dim1(12);
-  std::vector<uint64_t> dim2(12);
-  read_sparse(a1, dim1, dim2, TILEDB_GLOBAL_ORDER, 3);
-
-  remove_sparse_array();
-}
-
-TEST_CASE_METHOD(
-    ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, check directory contents",
     "[cppapi][consolidation-with-timestamps][sparse-unordered-with-dups]") {
   remove_sparse_array();
   create_sparse_array(true);
 
   // Write first fragment.
-  write_sparse(
-      {0, 1, 2, 3, 4, 5, 6, 7},
-      {1, 1, 1, 2, 3, 4, 3, 3},
-      {1, 2, 4, 3, 1, 2, 3, 4},
-      1);
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
   // Write second fragment.
   write_sparse({8, 9, 10, 11}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
@@ -405,23 +371,14 @@ TEST_CASE_METHOD(
   remove_sparse_array();
 }
 
+#ifndef _WIN32
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, check directory contents of "
     "old array",
     "[cppapi][consolidation-with-timestamps][sparse-unordered-with-dups]") {
   remove_sparse_array();
-
-  // Get the v11 sparse array.
-  std::string v11_arrays_dir =
-      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/sparse_array_v11";
-  REQUIRE(
-      tiledb_vfs_copy_dir(
-          ctx_.ptr().get(),
-          vfs_.ptr().get(),
-          v11_arrays_dir.c_str(),
-          SPARSE_ARRAY_NAME) == TILEDB_OK);
-
+  create_sparse_array_v11();
   // Write first fragment.
   write_sparse_v11(1);
 
@@ -433,15 +390,54 @@ TEST_CASE_METHOD(
 
   sm::URI array_uri(SPARSE_ARRAY_NAME);
   ThreadPool tp(2);
-  sm::ArrayDirectory array_dir(sm_->vfs(), &tp, array_uri, 0, 2, true);
 
-  // Check that only the first fragment that was written is visible on an old
-  // array
+  // Partial coverage of lower timestamp
+  sm::ArrayDirectory array_dir(sm_->vfs(), &tp, array_uri, 0, 2, true);
+  // Check that only the first fragment is visible on an old array
   auto fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
   auto ts_range = fragments[0].timestamp_range_;
   CHECK(ts_range.first == 1);
   CHECK(ts_range.second == 1);
+
+  // Partial coverage of upper timestamp
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 2, 10, true);
+  // Check that only the second fragment is visible on an old array
+  fragments = array_dir.fragment_uris();
+  CHECK(fragments.size() == 1);
+  ts_range = fragments[0].timestamp_range_;
+  CHECK(ts_range.first == 3);
+  CHECK(ts_range.second == 3);
+
+  // Full coverage
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 5, true);
+  // Check that only the consolidated fragment is visible
+  fragments = array_dir.fragment_uris();
+  CHECK(fragments.size() == 1);
+  ts_range = fragments[0].timestamp_range_;
+  CHECK(ts_range.first == 1);
+  CHECK(ts_range.second == 3);
+
+  // Boundary case
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 3, 5, true);
+  // Check that only the second fragment is visible
+  fragments = array_dir.fragment_uris();
+  CHECK(fragments.size() == 1);
+  ts_range = fragments[0].timestamp_range_;
+  CHECK(ts_range.first == 3);
+  CHECK(ts_range.second == 3);
+
+  // No coverage - later read
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 4, 5, true);
+  // Check that no fragment is visible
+  fragments = array_dir.fragment_uris();
+  CHECK(fragments.size() == 0);
+
+  // No coverage - earlier read
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 0, true);
+  // Check that no fragment is visible
+  fragments = array_dir.fragment_uris();
+  CHECK(fragments.size() == 0);
 
   remove_sparse_array();
 }

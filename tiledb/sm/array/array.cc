@@ -175,11 +175,6 @@ Status Array::open_without_fragments(
     RETURN_NOT_OK(st);
     array_schema_latest_ = array_schema_latest.value();
   } else {
-    bool found = false;
-    bool with_timestamps = false;
-    RETURN_NOT_OK(config_.get<bool>(
-        "sm.consolidation.with_timestamps", &with_timestamps, &found));
-    assert(found);
     try {
       array_dir_ = ArrayDirectory(
           storage_manager_->vfs(),
@@ -187,7 +182,7 @@ Status Array::open_without_fragments(
           array_uri_,
           0,
           UINT64_MAX,
-          with_timestamps,
+          consolidation_with_timestamps_config_enabled(),
           ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
@@ -307,13 +302,6 @@ Status Array::open(
       timestamp_end_opened_at_ = 0;
     }
   }
-
-  bool found = false;
-  bool with_timestamps = false;
-  RETURN_NOT_OK(config_.get<bool>(
-      "sm.consolidation.with_timestamps", &with_timestamps, &found));
-  assert(found);
-
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -331,7 +319,7 @@ Status Array::open(
           array_uri_,
           timestamp_start_,
           timestamp_end_opened_at_,
-          with_timestamps);
+          consolidation_with_timestamps_config_enabled());
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
@@ -351,7 +339,7 @@ Status Array::open(
           array_uri_,
           timestamp_start_,
           timestamp_end_opened_at_,
-          with_timestamps);
+          consolidation_with_timestamps_config_enabled());
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
@@ -617,9 +605,11 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
 
   try {
     bool found = false;
-    bool with_timestamps = false;
+    bool consolidation_with_timestamps = false;
     RETURN_NOT_OK(config_.get<bool>(
-        "sm.consolidation.with_timestamps", &with_timestamps, &found));
+        "sm.consolidation.with_timestamps",
+        &consolidation_with_timestamps,
+        &found));
     assert(found);
     array_dir_ = ArrayDirectory(
         storage_manager_->vfs(),
@@ -627,7 +617,7 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
         array_uri_,
         timestamp_start_,
         timestamp_end_opened_at_,
-        with_timestamps);
+        consolidation_with_timestamps);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
@@ -1061,6 +1051,21 @@ Status Array::compute_non_empty_domain() {
   }
   non_empty_domain_computed_ = true;
   return Status::Ok();
+}
+
+bool Array::consolidation_with_timestamps_config_enabled() const {
+  auto found = false;
+  auto consolidation_with_timestamps = false;
+  auto status = config_.get<bool>(
+      "sm.consolidation.with_timestamps",
+      &consolidation_with_timestamps,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get with_timestamps configuration option from config");
+  }
+
+  return consolidation_with_timestamps;
 }
 }  // namespace sm
 }  // namespace tiledb
