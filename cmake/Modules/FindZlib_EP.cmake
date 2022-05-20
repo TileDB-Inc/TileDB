@@ -83,7 +83,8 @@ if (NOT ZLIB_FOUND)
 
     ExternalProject_Add(ep_zlib
       PREFIX "externals"
-      URL "http://iweb.dl.sourceforge.net/project/libpng/zlib/1.2.11/zlib1211.zip"
+      #URL "http://iweb.dl.sourceforge.net/project/libpng/zlib/1.2.11/zlib1211.zip"
+      URL "https://downloads.sourceforge.net/project/libpng/zlib/1.2.11/zlib1211.zip"
            # https://www.zlib.net/zlib1212.zip
       URL "https://www.zlib.net/fossils/zlib1211.zip"
       URL "https://ftp.osuosl.org/pub/libpng/src/zlib/zlib1211.zip"
