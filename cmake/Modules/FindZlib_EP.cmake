@@ -84,7 +84,7 @@ if (NOT ZLIB_FOUND)
     ExternalProject_Add(ep_zlib
       PREFIX "externals"
       URL "https://downloads.sourceforge.net/project/libpng/zlib/1.2.11/zlib1211.zip"
-      URL_HASH SHA1=b8d230cc5effe6dffa2807e0e342245b0683f2df
+      URL_HASH SHA1=bccd93ad3cee39c3d08eee68d45b3e11910299f2
       DOWNLOAD_NAME "zlib1211.zip"
       CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
