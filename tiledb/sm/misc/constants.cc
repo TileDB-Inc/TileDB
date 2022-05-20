@@ -158,6 +158,9 @@ const char empty_char = std::numeric_limits<char>::min();
 /** The special value for an empty blob. */
 constexpr std::byte empty_blob{0};
 
+/** The special value for an empty bool. */
+const uint8_t empty_bool = 0;
+
 /** The special value for an empty int8. */
 const int8_t empty_int8 = std::numeric_limits<int8_t>::min();
 
@@ -390,6 +393,9 @@ const std::string char_str = "CHAR";
 
 /** The string representation for type blob. */
 const std::string blob_str = "BLOB";
+
+/** The string representation for type bool. */
+const std::string bool_str = "BOOL";
 
 /** The string representation for type int8. */
 const std::string int8_str = "INT8";
@@ -649,6 +655,8 @@ const void* fill_value(Datatype type) {
   switch (type) {
     case Datatype::BLOB:
       return &constants::empty_blob;
+    case Datatype::BOOL:
+      return &constants::empty_bool;
     case Datatype::INT8:
       return &constants::empty_int8;
     case Datatype::UINT8:

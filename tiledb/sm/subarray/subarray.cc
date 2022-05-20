@@ -52,6 +52,7 @@
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/sparse_index_reader_base.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -2383,7 +2384,7 @@ Status Subarray::precompute_tile_overlap(
 
 Status Subarray::precompute_all_ranges_tile_overlap(
     ThreadPool* const compute_tp,
-    std::vector<std::pair<uint64_t, uint64_t>>& frag_tile_idx,
+    std::vector<FragIdx>& frag_tile_idx,
     std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
         result_tile_ranges) {
   auto timer_se = stats_->start_timer("read_compute_simple_tile_overlap");
@@ -2465,7 +2466,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
         // contiguity, push a new result tile range.
         uint64_t end = tile_bitmaps[0].size() - 1;
         uint64_t length = 0;
-        int64_t min = static_cast<int64_t>(frag_tile_idx[f].first);
+        int64_t min = static_cast<int64_t>(frag_tile_idx[f].tile_idx_);
         for (int64_t t = tile_bitmaps[0].size() - 1; t >= min; t--) {
           bool comb = true;
           for (unsigned d = 0; d < dim_num; d++) {
@@ -3016,6 +3017,7 @@ tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
       return non_overlapping_ranges_for_dim<char>(dim_idx);
     case Datatype::CHAR:
     case Datatype::BLOB:
+    case Datatype::BOOL:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:

@@ -1,5 +1,5 @@
 /**
- * @file unit-sparse-index-reader-base.cc
+ * @file unit-result-tile.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests for the sparse index reader base class.
+ * Tests for the ResultTile classes.
  */
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -99,9 +99,6 @@ TEST_CASE(
   tile.bitmap_[6] = 0;
   CHECK(tile.result_num_between_pos(2, 10) == 7);
   CHECK(tile.pos_with_given_result_sum(2, 8) == 10);
-
-  rc = tiledb_array_schema_check(ctx, array_schema);
-  REQUIRE(rc == TILEDB_OK);
 
   tiledb_ctx_free(&ctx);
 }

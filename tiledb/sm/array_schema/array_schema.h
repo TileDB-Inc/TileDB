@@ -63,6 +63,21 @@ enum class Layout : uint8_t;
 /** Specifies the array schema. */
 class ArraySchema {
  public:
+  /**
+   * Size type for the number of dimensions of an array and for dimension
+   * indices.
+   *
+   * Note: This should be the same as `Domain::dimension_size_type`. We're
+   * not including `domain.h`, otherwise we'd use that definition here.
+   */
+  using dimension_size_type = unsigned int;
+
+  /**
+   * Size type for the number of attributes of an array and for attribute
+   * indices.
+   */
+  using attribute_size_type = unsigned int;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -133,7 +148,7 @@ class ArraySchema {
    * Returns a constant pointer to the selected attribute (nullptr if it
    * does not exist).
    */
-  const Attribute* attribute(unsigned int id) const;
+  const Attribute* attribute(attribute_size_type id) const;
 
   /**
    * Returns a constant pointer to the selected attribute (nullptr if it
@@ -142,7 +157,7 @@ class ArraySchema {
   const Attribute* attribute(const std::string& name) const;
 
   /** Returns the number of attributes. */
-  unsigned int attribute_num() const;
+  attribute_size_type attribute_num() const;
 
   /** Returns the attributes. */
   const std::vector<shared_ptr<const Attribute>>& attributes() const;
@@ -194,7 +209,7 @@ class ArraySchema {
   bool dense() const;
 
   /** Returns the i-th dimension. */
-  const Dimension* dimension_ptr(unsigned int i) const;
+  const Dimension* dimension_ptr(dimension_size_type i) const;
 
   /**
    * Returns a constant pointer to the selected dimension (nullptr if it
@@ -209,7 +224,7 @@ class ArraySchema {
   std::vector<Datatype> dim_types() const;
 
   /** Returns the number of dimensions. */
-  unsigned int dim_num() const;
+  dimension_size_type dim_num() const;
 
   /** Dumps the array schema in ASCII format in the selected output. */
   void dump(FILE* out) const;

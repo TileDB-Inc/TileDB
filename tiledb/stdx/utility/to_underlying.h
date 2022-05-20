@@ -1,11 +1,11 @@
 /**
- * @file query_status_details.h
+ * @file to_underlying.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,27 +27,32 @@
  *
  * @section DESCRIPTION
  *
- * This defines the tiledb QueryStatusDetailsReason enum that maps to
- * tiledb_query_status_details_t C-api enum.
+ * This file contains an implementation of C++23 `std::to_underlying`.
+ *
+ * @section REFERENCE
+ *
+ * https://en.cppreference.com/w/cpp/utility/to_underlying
  */
 
-#ifndef TILEDB_QUERY_STATUS_DETAILS_H
-#define TILEDB_QUERY_STATUS_DETAILS_H
+#ifndef TILEDB_TO_UNDERLYING_H
+#define TILEDB_TO_UNDERLYING_H
 
-#include "tiledb/common/status.h"
-#include "tiledb/sm/misc/constants.h"
+#include <type_traits>
 
-namespace tiledb {
-namespace sm {
+namespace stdx {
 
-/** Defines the query statuses. */
-enum class QueryStatusDetailsReason : uint8_t {
-#define TILEDB_QUERY_STATUS_DETAILS_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
-#undef TILEDB_QUERY_STATUS_DETAILS_ENUM
-};
+/**
+ * Anticipatory implementation of C++23 `std::to_underlying`.
+ *
+ * Later versions will support `std::to_underlying` with header `<utility>`.
+ * This function allows a user to get the underlying type of the provided
+ * enumeration.
+ */
+template <class Enum>
+constexpr std::underlying_type_t<Enum> to_underlying(Enum e) noexcept {
+  return static_cast<std::underlying_type_t<Enum>>(e);
+}
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace stdx
 
-#endif  // TILEDB_QUERY_STATUS_DETAILS_H
+#endif  // TILEDB_TO_UNDERLYING_H

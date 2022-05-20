@@ -83,6 +83,7 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
   REQUIRE(TILEDB_STRING_UCS4 == 16);
   REQUIRE(TILEDB_ANY == 17);
   REQUIRE(TILEDB_BLOB == 40);
+  REQUIRE(TILEDB_BOOL == 41);
 
   /** Array type */
   REQUIRE(TILEDB_DENSE == 0);
@@ -224,6 +225,12 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   REQUIRE(
       (tiledb_datatype_from_str("BLOB", &datatype) == TILEDB_OK &&
        datatype == TILEDB_BLOB));
+  REQUIRE(
+      (tiledb_datatype_to_str(TILEDB_BOOL, &c_str) == TILEDB_OK &&
+       std::string(c_str) == "BOOL"));
+  REQUIRE(
+      (tiledb_datatype_from_str("BOOL", &datatype) == TILEDB_OK &&
+       datatype == TILEDB_BOOL));
   REQUIRE(
       (tiledb_datatype_to_str(TILEDB_INT8, &c_str) == TILEDB_OK &&
        std::string(c_str) == "INT8"));
