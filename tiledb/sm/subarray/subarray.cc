@@ -1462,15 +1462,6 @@ uint64_t Subarray::range_idx(const std::vector<uint64_t>& range_coords) const {
   return ret;
 }
 
-template <class T>
-void Subarray::get_original_range_coords(
-    const T* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const {
-  auto dim_num = this->dim_num();
-  for (unsigned i = 0; i < dim_num; ++i)
-    original_range_coords->at(i) = original_range_idx_[i][range_coords[i]];
-}
-
 uint64_t Subarray::range_num() const {
   if (range_subset_.empty())
     return 0;
@@ -1530,10 +1521,6 @@ NDRange Subarray::ndrange(const std::vector<uint64_t>& range_coords) const {
   for (unsigned d = 0; d < dim_num; ++d)
     ret.emplace_back(range_subset_[d][range_coords[d]]);
   return ret;
-}
-
-const std::vector<Range>& Subarray::ranges_for_dim(uint32_t dim_idx) const {
-  return range_subset_[dim_idx].ranges();
 }
 
 Status Subarray::set_ranges_for_dim(
@@ -3122,37 +3109,6 @@ template Subarray Subarray::crop_to_tile<float>(
     const float* tile_coords, Layout layout) const;
 template Subarray Subarray::crop_to_tile<double>(
     const double* tile_coords, Layout layout) const;
-
-template void Subarray::get_original_range_coords<int8_t>(
-    const int8_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<uint8_t>(
-    const uint8_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<int16_t>(
-    const int16_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<uint16_t>(
-    const uint16_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<int32_t>(
-    const int32_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<uint32_t>(
-    const uint32_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<int64_t>(
-    const int64_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<uint64_t>(
-    const uint64_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<float>(
-    const float* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<double>(
-    const double* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
 
 }  // namespace sm
 }  // namespace tiledb
