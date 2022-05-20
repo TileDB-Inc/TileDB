@@ -84,7 +84,9 @@ if (NOT ZLIB_FOUND)
     ExternalProject_Add(ep_zlib
       PREFIX "externals"
       URL "http://iweb.dl.sourceforge.net/project/libpng/zlib/1.2.11/zlib1211.zip"
-      URL "https://www.zlib.net/zlib1211.zip"
+           # https://www.zlib.net/zlib1212.zip
+      URL "https://www.zlib.net/fossils/zlib1211.zip"
+      URL "https://ftp.osuosl.org/pub/libpng/src/zlib/zlib1211.zip"
       #following uncertain, from https://ja.osdn.net/projects/sfnet_libpng/downloads/zlib/1.2.11/zlib1211.zip/
       #URL "https://ja.osdn.net/frs/g_redir.php?m=jaist&f=libpng%2Fzlib%2F1.2.11%2Fzlib1211.zip"
       URL_HASH SHA1=bccd93ad3cee39c3d08eee68d45b3e11910299f2
