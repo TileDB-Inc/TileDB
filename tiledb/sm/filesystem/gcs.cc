@@ -40,12 +40,13 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/unique_rwlock.h"
 #include "tiledb/sm/filesystem/gcs.h"
 #include "tiledb/sm/global_state/global_state.h"
-#include "tiledb/sm/misc/math.h"
+#include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb::common;
@@ -141,8 +142,7 @@ Status GCS::init_client() const {
   // Creates the client using the credentials file pointed to by the
   // env variable GOOGLE_APPLICATION_CREDENTIALS
   try {
-    std::shared_ptr<google::cloud::storage::oauth2::Credentials> creds =
-        nullptr;
+    shared_ptr<google::cloud::storage::oauth2::Credentials> creds = nullptr;
     if (getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
       creds = google::cloud::storage::oauth2::CreateAnonymousCredentials();
     } else {

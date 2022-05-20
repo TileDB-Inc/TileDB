@@ -34,6 +34,7 @@
 #ifndef TILEDB_SINGLE_FRAGMENT_INFO_H
 #define TILEDB_SINGLE_FRAGMENT_INFO_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -70,7 +71,7 @@ class SingleFragmentInfo {
       uint64_t fragment_size,
       const NDRange& non_empty_domain,
       const NDRange& expanded_non_empty_domain,
-      tdb_shared_ptr<FragmentMetadata> meta)
+      shared_ptr<FragmentMetadata> meta)
       : uri_(uri)
       , version_(meta->format_version())
       , sparse_(sparse)
@@ -176,7 +177,7 @@ class SingleFragmentInfo {
   }
 
   /** Returns a pointer to the fragment's metadata. */
-  tdb_shared_ptr<FragmentMetadata> meta() const {
+  shared_ptr<FragmentMetadata> meta() const {
     return meta_;
   }
 
@@ -308,7 +309,7 @@ class SingleFragmentInfo {
   std::string array_schema_name_;
 
   /** The fragment metadata. **/
-  tdb_shared_ptr<FragmentMetadata> meta_;
+  shared_ptr<FragmentMetadata> meta_;
 
   /**
    * Returns a deep copy of this FragmentInfo.

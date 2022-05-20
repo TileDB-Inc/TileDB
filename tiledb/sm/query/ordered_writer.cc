@@ -41,9 +41,9 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_math.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
@@ -67,7 +67,7 @@ namespace sm {
 
 OrderedWriter::OrderedWriter(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -75,7 +75,6 @@ OrderedWriter::OrderedWriter(
     Subarray& subarray,
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
-    bool disable_check_global_order,
     Query::CoordsInfo& coords_info,
     URI fragment_uri)
     : WriterBase(
@@ -88,7 +87,7 @@ OrderedWriter::OrderedWriter(
           subarray,
           layout,
           written_fragment_info,
-          disable_check_global_order,
+          false,
           coords_info,
           fragment_uri) {
 }
@@ -135,7 +134,7 @@ Status OrderedWriter::ordered_write() {
   assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
   assert(array_schema_.dense());
 
-  auto type = array_schema_.domain().dimension(0)->type();
+  auto type{array_schema_.domain().dimension_ptr(0)->type()};
   switch (type) {
     case Datatype::INT8:
       return ordered_write<int8_t>();
@@ -189,7 +188,7 @@ Status OrderedWriter::ordered_write() {
   auto timer_se = stats_->start_timer("filter_tile");
 
   // Create new fragment
-  auto frag_meta = tdb::make_shared<FragmentMetadata>(HERE());
+  auto frag_meta = make_shared<FragmentMetadata>(HERE());
   RETURN_CANCEL_OR_ERROR(create_fragment(true, frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 
@@ -315,7 +314,7 @@ template <class T>
 Status OrderedWriter::prepare_filter_and_write_tiles(
     const std::string& name,
     std::vector<std::vector<WriterTile>>& tile_batches,
-    tdb_shared_ptr<FragmentMetadata> frag_meta,
+    shared_ptr<FragmentMetadata> frag_meta,
     DenseTiler<T>* dense_tiler,
     uint64_t thread_num) {
   auto timer_se = stats_->start_timer("prepare_filter_and_write_tiles");

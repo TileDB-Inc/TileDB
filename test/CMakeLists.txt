@@ -107,9 +107,9 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/helpers.h
   src/helpers.cc
   src/helpers-dimension.h
+  src/serialization_wrappers.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
-  src/unit-buffer.cc
   src/unit-bufferlist.cc
   src/unit-capi-any.cc
   src/unit-capi-array.cc
@@ -120,15 +120,18 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-config.cc
   src/unit-capi-context.cc
   src/unit-capi-consolidation.cc
+  src/unit-capi-consolidation-with-timestamps.cc
   src/unit-capi-dense_array.cc
   src/unit-capi-dense_array_2.cc
   src/unit-capi-dense_neg.cc
   src/unit-capi-dense_vector.cc
   src/unit-capi-enum_values.cc
   src/unit-capi-error.cc
+  src/unit-capi-filestore.cc
   src/unit-capi-fill_values.cc
   src/unit-capi-filter.cc
   src/unit-capi-fragment_info.cc
+  src/unit-capi-group.cc
   src/unit-capi-incomplete.cc
   src/unit-capi-incomplete-2.cc
   src/unit-capi-metadata.cc
@@ -160,10 +163,10 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
+  src/unit-global-order.cc
   src/unit-gcs.cc
   src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
-  src/unit-hilbert.cc
   src/unit-lru_cache.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
@@ -171,10 +174,11 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
   src/unit-resource-pool.cc
+  src/unit-result-coords.cc
+  src/unit-result-tile.cc
   src/unit-rtree.cc
   src/unit-s3-no-multipart.cc
   src/unit-s3.cc
-  src/unit-sparse-index-reader-base.cc
   src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc
   src/unit-status.cc
@@ -184,11 +188,8 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-SubarrayPartitioner-sparse.cc
   src/unit-Tile.cc
   src/unit-TileDomain.cc
-  src/unit-uri.cc
   src/unit-ArrayDirectory.cc
-  src/unit-utils.cc
   src/unit-uuid.cc
-  src/unit-ValidityVector.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   )
@@ -205,10 +206,12 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-fragment_info.cc
+    src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-nullable.cc
     src/unit-cppapi-query.cc
+    src/cpp-integration-query-condition.cc
     src/unit-cppapi-schema.cc
     src/unit-cppapi-string-dims.cc
     src/unit-cppapi-subarray.cc
@@ -386,20 +389,6 @@ add_custom_target(
   check COMMAND ${CMAKE_CTEST_COMMAND} -V -C ${CMAKE_BUILD_TYPE}
   DEPENDS tiledb_unit
 )
-
-include(CMakePrintHelpers)
-cmake_print_properties(
-  TARGETS tiledb_unit
-  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
-  )
-cmake_print_properties(
-  TARGETS tiledb_test_support_lib
-  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
-  )
-cmake_print_properties(
-  TARGETS Catch2::Catch2
-  PROPERTIES INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES
-  )
 
 # CI tests
 add_subdirectory(ci)

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
@@ -100,7 +101,8 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
   auto subarray = subarray_->ndrange(0);  // Guaranteed to be unary
   std::vector<std::array<T, 2>> sub(dim_num);
   for (int32_t d = 0; d < dim_num; ++d)
-    sub[d] = {*(const T*)subarray[d].start(), *(const T*)subarray[d].end()};
+    sub[d] = {*(const T*)subarray[d].start_fixed(),
+              *(const T*)subarray[d].end_fixed()};
   auto tile_layout = array_schema_.cell_order();
   auto sub_layout = subarray_->layout();
 
@@ -402,9 +404,9 @@ void DenseTiler<T>::calculate_first_sub_tile_coords() {
   // left cell)
   first_sub_tile_coords_.resize(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    T dom_start = *(const T*)domain.dimension(d)->domain().start();
-    T sub_start = *(const T*)subarray[d].start();
-    T tile_extent = *(const T*)domain.tile_extent(d).data();
+    T dom_start{*(const T*)domain.dimension_ptr(d)->domain().start_fixed()};
+    T sub_start{*(const T*)subarray[d].start_fixed()};
+    T tile_extent{*(const T*)domain.tile_extent(d).data()};
     first_sub_tile_coords_[d] =
         Dimension::tile_idx(sub_start, dom_start, tile_extent);
   }
@@ -423,7 +425,7 @@ void DenseTiler<T>::calculate_subarray_tile_coord_strides() {
   if (layout == Layout::ROW_MAJOR) {
     sub_tile_coord_strides_.push_back(1);
     for (auto d = dim_num - 2; d >= 0; --d) {
-      auto tile_num = domain.dimension(d + 1)->tile_num(subarray[d + 1]);
+      auto tile_num{domain.dimension_ptr(d + 1)->tile_num(subarray[d + 1])};
       sub_tile_coord_strides_.push_back(
           sub_tile_coord_strides_.back() * tile_num);
     }
@@ -432,7 +434,7 @@ void DenseTiler<T>::calculate_subarray_tile_coord_strides() {
   } else {  // COL_MAJOR
     sub_tile_coord_strides_.push_back(1);
     for (int32_t d = 1; d < dim_num; ++d) {
-      auto tile_num = domain.dimension(d - 1)->tile_num(subarray[d - 1]);
+      auto tile_num{domain.dimension_ptr(d - 1)->tile_num(subarray[d - 1])};
       sub_tile_coord_strides_.push_back(
           sub_tile_coord_strides_.back() * tile_num);
     }
@@ -479,8 +481,8 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
     sub_strides_el_[dim_num - 1] = 1;
     if (dim_num > 1) {
       for (auto d = dim_num - 2; d >= 0; --d) {
-        auto sub_range_start = *(const T*)subarray[d + 1].start();
-        auto sub_range_end = *(const T*)subarray[d + 1].end();
+        auto sub_range_start = *(const T*)subarray[d + 1].start_fixed();
+        auto sub_range_end = *(const T*)subarray[d + 1].end_fixed();
         auto sub_extent = sub_range_end - sub_range_start + 1;
         sub_strides_el_[d] = sub_strides_el_[d + 1] * sub_extent;
       }
@@ -489,8 +491,8 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
     sub_strides_el_[0] = 1;
     if (dim_num > 1) {
       for (auto d = 1; d < dim_num; ++d) {
-        auto sub_range_start = *(const T*)subarray[d - 1].start();
-        auto sub_range_end = *(const T*)subarray[d - 1].end();
+        auto sub_range_start = *(const T*)subarray[d - 1].start_fixed();
+        auto sub_range_end = *(const T*)subarray[d - 1].end_fixed();
         auto sub_extent = sub_range_end - sub_range_start + 1;
         sub_strides_el_[d] = sub_strides_el_[d - 1] * sub_extent;
       }
@@ -544,7 +546,7 @@ std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
   // Calculate tile subarray based on the tile coordinates in the domain
   std::vector<std::array<T, 2>> ret(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dom_start = *(const T*)domain.dimension(d)->domain().start();
+    auto dom_start{*(const T*)domain.dimension_ptr(d)->domain().start_fixed()};
     auto tile_extent = *(const T*)domain.tile_extent(d).data();
     ret[d][0] = Dimension::tile_coord_low(
         tile_coords_in_dom[d], dom_start, tile_extent);

@@ -458,6 +458,7 @@ void TileMetadataGenerator::process_tile(
       case Datatype::INT64:
         process_tile<int64_t>(tile, tile_validity);
         break;
+      case Datatype::BOOL:
       case Datatype::UINT8:
         process_tile<uint8_t>(tile, tile_validity);
         break;

@@ -45,3 +45,4 @@ cd $GITHUB_WORKSPACE/build
 ls -la
 
 make -j4 -C tiledb tiledb_unit
+make -j4 -C tiledb tiledb_regression

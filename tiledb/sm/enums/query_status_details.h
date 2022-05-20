@@ -1,5 +1,5 @@
 /**
- * @file query_status.h
+ * @file query_status_details.h
  *
  * @section LICENSE
  *
@@ -27,8 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This defines the tiledb QueryStatus enum that maps to tiledb_query_status_t
- * C-api enum.
+ * This defines the tiledb QueryStatusDetailsReason enum that maps to
+ * tiledb_query_status_details_t C-api enum.
  */
 
 #ifndef TILEDB_QUERY_STATUS_DETAILS_H

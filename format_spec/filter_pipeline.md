@@ -1,4 +1,6 @@
-# Filter Pipeline
+---
+title: Filter Pipeline
+---
 
 ## Main Structure
 
@@ -34,7 +36,7 @@ The filter options are configuration parameters for the filters that do not chan
 
 ### Main Compressor Options
 
-For the compression filters \(any of the filter types `TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DOUBLE_DELTA}`\) the filter options have internal format:
+For the compression filters \(any of the filter types `TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DOUBLE_DELTA,DICTIONARY}`\) the filter options have internal format:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |

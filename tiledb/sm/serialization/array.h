@@ -76,21 +76,23 @@ Status array_from_capnp(const capnp::Array::Reader& array_reader, Array* array);
  * Convert Cap'n Proto message to Array Metadata
  *
  * @param array_metadata_reader cap'n proto class
- * @param array array to put metadata into
+ * @param metadata metadata deserialize
  * @return Status
  */
-Status array_metadata_from_capnp(
-    const capnp::ArrayMetadata::Reader& array_metadata_reader, Array* array);
+Status metadata_from_capnp(
+    const capnp::ArrayMetadata::Reader& array_metadata_reader,
+    Metadata* metadata);
 
 /**
  * Convert Array Metadata to Cap'n Proto message
  *
  * @param array_metadata_reader cap'n proto class
- * @param array array to put metadata into
+ * @param metadata metadata to serialize
  * @return Status
  */
-Status array_metadata_to_capnp(
-    Array* array, capnp::ArrayMetadata::Builder* array_metadata_builder);
+Status metadata_to_capnp(
+    const Metadata* metadata,
+    capnp::ArrayMetadata::Builder* array_metadata_builder);
 #endif
 
 Status array_serialize(
@@ -104,11 +106,13 @@ Status array_deserialize(
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
 
-Status array_metadata_serialize(
-    Array* array, SerializationType serialize_type, Buffer* serialized_buffer);
+Status metadata_serialize(
+    Metadata* metadata,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
 
-Status array_metadata_deserialize(
-    Array* array,
+Status metadata_deserialize(
+    Metadata* metadata,
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
 

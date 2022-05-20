@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,6 +41,7 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/metadata/metadata.h"
@@ -350,7 +351,7 @@ class Array {
    * fetch the underlying Metadata object to set the values we are loading from
    * REST. A lock should already by taken before load_metadata is called.
    */
-  Metadata* metadata();
+  Metadata* unsafe_metadata();
 
   /** Returns the non-empty domain of the opened array.
    *  If the non_empty_domain has not been computed or loaded

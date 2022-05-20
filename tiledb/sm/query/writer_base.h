@@ -35,9 +35,9 @@
 
 #include <atomic>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
-#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/dense_tiler.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query.h"
@@ -52,6 +52,7 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class DomainBuffersView;
 class FragmentMetadata;
 class TileMetadataGenerator;
 class StorageManager;
@@ -66,7 +67,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /** Constructor. */
   WriterBase(
       stats::Stats* stats,
-      tdb_shared_ptr<Logger> logger,
+      shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -74,7 +75,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       Subarray& subarray,
       Layout layout,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
-      bool disable_check_global_order,
+      bool disable_checks_consolidation,
       Query::CoordsInfo& coords_info_,
       URI fragment_uri = URI(""));
 
@@ -139,9 +140,9 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
 
   /**
    * If `true`, it will not check if the written coordinates are
-   * in the global order. This supercedes the config.
+   * in the global order or have duplicates. This supercedes the config.
    */
-  bool disable_check_global_order_;
+  bool disable_checks_consolidation_;
 
   /** Keeps track of the coords data. */
   Query::CoordsInfo& coords_info_;
@@ -197,11 +198,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /** Adss a fragment to `written_fragment_info_`. */
   Status add_written_fragment_info(const URI& uri);
 
-  /** Calculates the hilbert values of the input coordinate buffers. */
-  Status calculate_hilbert_values(
-      const std::vector<const QueryBuffer*>& buffs,
-      std::vector<uint64_t>* hilbert_values) const;
-
   /** Correctness checks for buffer sizes. */
   Status check_buffer_sizes() const;
 
@@ -230,7 +226,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   void clear_coord_buffers();
 
   /** Closes all attribute files, flushing their state to storage. */
-  Status close_files(tdb_shared_ptr<FragmentMetadata> meta) const;
+  Status close_files(shared_ptr<FragmentMetadata> meta) const;
 
   /**
    * Computes the coordinates metadata (e.g., MBRs).
@@ -242,7 +238,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status compute_coords_metadata(
       const std::unordered_map<std::string, std::vector<WriterTile>>& tiles,
-      tdb_shared_ptr<FragmentMetadata> meta) const;
+      shared_ptr<FragmentMetadata> meta) const;
 
   /**
    * Computes the tiles metadata (min/max/sum/null count).
@@ -270,7 +266,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @return Status
    */
   Status create_fragment(
-      bool dense, tdb_shared_ptr<FragmentMetadata>& frag_meta) const;
+      bool dense, shared_ptr<FragmentMetadata>& frag_meta) const;
 
   /**
    * Runs the input coordinate and attribute tiles through their
@@ -472,7 +468,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @return Status
    */
   Status write_all_tiles(
-      tdb_shared_ptr<FragmentMetadata> frag_meta,
+      shared_ptr<FragmentMetadata> frag_meta,
       std::unordered_map<std::string, std::vector<WriterTile>>* tiles);
 
   /**
@@ -489,10 +485,44 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status write_tiles(
       const std::string& name,
-      tdb_shared_ptr<FragmentMetadata> frag_meta,
+      shared_ptr<FragmentMetadata> frag_meta,
       uint64_t start_tile_id,
       std::vector<WriterTile>* tiles,
       bool close_files = true);
+
+  /**
+   * Invoked on error. It removes the directory of the input URI and
+   * resets the global write state.
+   */
+  void clean_up(const URI& uri);
+
+  /** Calculates the hilbert values of the input coordinate buffers.
+   *
+   * @param[in] domain_buffers QueryBuffers for which to calculate values
+   * @param[out] hilbert_values Output values written into caller-defined vector
+   */
+  Status calculate_hilbert_values(
+      const DomainBuffersView& domain_buffers,
+      std::vector<uint64_t>& hilbert_values) const;
+
+  /**
+   * Prepares, filters and writes dense tiles for the given attribute.
+   *
+   * @tparam T The array domain datatype.
+   * @param name The attribute name.
+   * @param tile_batches The attribute tile batches.
+   * @param frag_meta The metadata of the new fragment.
+   * @param dense_tiler The dense tiler that will prepare the tiles.
+   * @param thread_num The number of threads to be used for the function.
+   * @param stats Statistics to gather in the function.
+   */
+  template <class T>
+  Status prepare_filter_and_write_tiles(
+      const std::string& name,
+      std::vector<std::vector<WriterTile>>& tile_batches,
+      tdb_shared_ptr<FragmentMetadata> frag_meta,
+      DenseTiler<T>* dense_tiler,
+      uint64_t thread_num);
 };
 
 }  // namespace sm

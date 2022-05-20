@@ -44,6 +44,7 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_info.h"
+#include "tiledb/sm/group/group.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/storage_manager/context.h"
@@ -129,6 +130,10 @@ struct tiledb_vfs_fh_t {
 
 struct tiledb_fragment_info_t {
   tiledb::sm::FragmentInfo* fragment_info_ = nullptr;
+};
+
+struct tiledb_group_t {
+  tdb_unique_ptr<tiledb::sm::Group> group_ = nullptr;
 };
 
 #endif

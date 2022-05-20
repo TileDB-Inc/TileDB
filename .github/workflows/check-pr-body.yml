@@ -7,6 +7,8 @@ on:
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
+      - 'doc/source/conf.py'
+      - 'tiledb/sm/c_api/tiledb_version.h'
 
 jobs:
   check_pr_body:

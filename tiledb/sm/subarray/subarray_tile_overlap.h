@@ -48,10 +48,10 @@
 #ifndef TILEDB_SUBARRAY_TILE_OVERLAP_H
 #define TILEDB_SUBARRAY_TILE_OVERLAP_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/sm/misc/tile_overlap.h"
-#include "tiledb/sm/misc/types.h"
 
 #include <iostream>
 
@@ -193,7 +193,7 @@ class SubarrayTileOverlap final {
    * The indexed TileOverlap instances. This is a shared pointer because
    * it is shared between copies.
    */
-  tdb_shared_ptr<TileOverlapIndex> tile_overlap_idx_;
+  shared_ptr<TileOverlapIndex> tile_overlap_idx_;
 
   /** The real inclusive start range index. */
   uint64_t range_idx_start_;

@@ -229,7 +229,7 @@ Status FilterPipeline::filter_chunks_forward(
 
     // Save the finished chunk (last stage's output). This is safe to do
     // because when the local FilterStorage goes out of scope, it will not
-    // free the buffers saved here as their tdb_shared_ptr counters will not
+    // free the buffers saved here as their shared_ptr counters will not
     // be zero. However, as the output may have been a view on the input, we
     // do need to save both here to prevent the input buffer from being
     // freed.
@@ -499,7 +499,7 @@ Status FilterPipeline::run_reverse_chunk_range(
       void* output_chunk_buffer =
           static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
       RETURN_NOT_OK(input_data.copy_to(output_chunk_buffer));
-      return Status::Ok();
+      continue;
     }
 
     // Apply the filters sequentially in reverse.
@@ -731,19 +731,25 @@ Status FilterPipeline::append_encryption_filter(
 }
 
 bool FilterPipeline::skip_offsets_filtering(
-    Datatype type, const uint32_t version) const {
-  if (version >= 12 && type == Datatype::STRING_ASCII) {
-    if (has_filter(FilterType::FILTER_RLE)) {
-      return true;
-    }
+    const Datatype type, const uint32_t version) const {
+  if (version >= 12 && type == Datatype::STRING_ASCII &&
+      has_filter(FilterType::FILTER_RLE)) {
+    return true;
+  } else if (
+      version >= 13 && type == Datatype::STRING_ASCII &&
+      has_filter(FilterType::FILTER_DICTIONARY)) {
+    return true;
   }
 
   return false;
 }
 
-bool FilterPipeline::use_tile_chunking(bool is_var, Datatype type) const {
+bool FilterPipeline::use_tile_chunking(
+    const bool is_var, const uint32_t version, const Datatype type) const {
   if (is_var && type == Datatype::STRING_ASCII) {
-    if (has_filter(FilterType::FILTER_RLE)) {
+    if (version >= 12 && has_filter(FilterType::FILTER_RLE)) {
+      return false;
+    } else if (version >= 13 && has_filter(FilterType::FILTER_DICTIONARY)) {
       return false;
     }
   }

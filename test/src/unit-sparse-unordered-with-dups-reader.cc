@@ -31,6 +31,7 @@
  */
 
 #include "test/src/helpers.h"
+#include "tiledb/common/common.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query_buffer.h"
@@ -420,7 +421,7 @@ struct CSparseUnorderedWithDupsVarDataFx {
   void write_2d_fragment();
   void read_and_check_data(bool set_subarray);
 
-  tuple<tiledb_array_t*, std::vector<tdb_shared_ptr<FragmentMetadata>>>
+  tuple<tiledb_array_t*, std::vector<shared_ptr<FragmentMetadata>>>
   open_default_array_1d_with_fragments();
 
   CSparseUnorderedWithDupsVarDataFx();
@@ -598,7 +599,7 @@ void CSparseUnorderedWithDupsVarDataFx::read_and_check_data(bool set_subarray) {
   tiledb_query_free(&query);
 }
 
-tuple<tiledb_array_t*, std::vector<tdb_shared_ptr<FragmentMetadata>>>
+tuple<tiledb_array_t*, std::vector<shared_ptr<FragmentMetadata>>>
 CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments() {
   int64_t domain[] = {1, 10};
   int64_t tile_extent = 5;
@@ -619,23 +620,22 @@ CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments() {
       TILEDB_ROW_MAJOR,
       5);
 
-  // Open array for writing.
+  // Open array for reading.
   tiledb_array_t* array;
   auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragments;
-  tdb_shared_ptr<FragmentMetadata> fragment =
-      tdb::make_shared<FragmentMetadata>(
-          HERE(),
-          nullptr,
-          nullptr,
-          array->array_->array_schema_latest_ptr(),
-          URI(),
-          std::make_pair<uint64_t, uint64_t>(0, 0),
-          true);
+  std::vector<shared_ptr<FragmentMetadata>> fragments;
+  shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+      HERE(),
+      nullptr,
+      nullptr,
+      array->array_->array_schema_latest_ptr(),
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
   fragments.emplace_back(std::move(fragment));
 
   return {array, std::move(fragments)};

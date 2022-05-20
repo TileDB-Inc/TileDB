@@ -26,8 +26,4 @@
  * THE SOFTWARE.
  */
 
-#ifdef LEGACY_THREAD_POOL
-#include "tiledb/common/thread_pool/legacy_thread_pool.h"
-#else
 #include "tiledb/common/thread_pool/thread_pool.h"
-#endif

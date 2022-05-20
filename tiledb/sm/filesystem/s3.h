@@ -34,6 +34,7 @@
 #define TILEDB_S3_H
 
 #ifdef HAVE_S3
+#include "tiledb/common/common.h"
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
@@ -613,7 +614,7 @@ class S3 {
   mutable tdb_unique_ptr<Aws::Client::ClientConfiguration> client_config_;
 
   /** The executor used by 'client_'. */
-  mutable std::shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
+  mutable shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
 
   /** The size of the file buffers used in multipart uploads. */
   uint64_t file_buffer_size_;

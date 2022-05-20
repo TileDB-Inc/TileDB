@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,6 +47,7 @@
 #include "tiledb/sm/enums/query_status_details.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/query/iquery_strategy.h"
+#include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -555,10 +556,15 @@ class Query {
   void clear_strategy();
 
   /**
-   * Disables checking the global order. Applicable only to writes.
-   * This option will supercede the config.
+   * Disables checking the global order and coordinate duplicates. Applicable
+   * only to writes. This option will supercede the config.
    */
-  Status disable_check_global_order();
+  Status disable_checks_consolidation();
+
+  /**
+   * Enables consolidation with timestamps.
+   */
+  Status set_consolidation_with_timestamps();
 
   /**
    * Sets the config for the Query
@@ -975,9 +981,14 @@ class Query {
 
   /**
    * If `true`, it will not check if the written coordinates are
-   * in the global order. This supercedes the config.
+   * in the global order or have duplicates. This supercedes the config.
    */
-  bool disable_check_global_order_;
+  bool disable_checks_consolidation_;
+
+  /**
+   * If `true`, it will enable consolidation with timestamps on the reader.
+   */
+  bool consolidation_with_timestamps_;
 
   /** The name of the new fragment to be created for writes. */
   URI fragment_uri_;

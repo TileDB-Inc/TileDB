@@ -59,13 +59,12 @@ static bool ends_with(const std::string& value, const std::string& suffix) {
 struct WinFx {
   const std::string TEMP_DIR = Win::current_dir() + "/";
   Win win_;
-  ThreadPool thread_pool_;
+  ThreadPool thread_pool_{4};
   Config vfs_config_;
 
   WinFx() {
     // Make sure parallel reads/writes are tested.
     vfs_config_.set("vfs.min_parallel_size", "100");
-    REQUIRE(thread_pool_.init(4).ok());
     REQUIRE(win_.init(vfs_config_, &thread_pool_).ok());
 
     if (path_exists(TEMP_DIR + "tiledb_test_dir"))

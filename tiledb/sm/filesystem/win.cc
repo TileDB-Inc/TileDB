@@ -40,7 +40,7 @@
 #include "tiledb/common/scoped_executor.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/math.h"
+#include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "uri.h"
 
@@ -361,9 +361,10 @@ tuple<Status, optional<std::vector<directory_entry>>> Win::ls_with_sizes(
       if (is_dir(file_path)) {
         entries.emplace_back(file_path, 0);
       } else {
-        uint64_t size;
-        RETURN_NOT_OK_TUPLE(file_size(file_path, &size), nullopt);
-        entries.emplace_back(file_path, size);
+        ULARGE_INTEGER size;
+        size.LowPart = find_data.nFileSizeLow;
+        size.HighPart = find_data.nFileSizeHigh;
+        entries.emplace_back(file_path, size.QuadPart);
       }
     }
 

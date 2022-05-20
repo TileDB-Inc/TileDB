@@ -56,4 +56,13 @@ using tiledb::common::allocator;
 using tiledb::common::make_shared;
 // using tiledb::common::make_unique;
 
+/*
+ * Exception
+ *
+ * The exception header also put `class Status` in scope.
+ */
+#include "exception/exception.h"
+using tiledb::common::StatusException;
+using tiledb::common::throw_if_not_ok;
+
 #endif  // TILEDB_COMMON_COMMON_H

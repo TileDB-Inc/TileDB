@@ -35,6 +35,7 @@
 
 #include <queue>
 #include "strategy_base.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
@@ -107,7 +108,7 @@ class ReaderBase : public StrategyBase {
   /** Constructor. */
   ReaderBase(
       stats::Stats* stats,
-      tdb_shared_ptr<Logger> logger,
+      shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -145,7 +146,7 @@ class ReaderBase : public StrategyBase {
    */
   template <class T>
   static void compute_result_space_tiles(
-      const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       const std::vector<std::vector<uint8_t>>& tile_coords,
       const TileDomain<T>& array_tile_domain,
       const std::vector<TileDomain<T>>& frag_tile_domains,
@@ -160,7 +161,7 @@ class ReaderBase : public StrategyBase {
   QueryCondition& condition_;
 
   /** The fragment metadata that the reader will focus on. */
-  std::vector<tdb_shared_ptr<FragmentMetadata>> fragment_metadata_;
+  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
@@ -194,6 +195,14 @@ class ReaderBase : public StrategyBase {
 
   /** Correctness checks validity buffer sizes in `buffers_`. */
   Status check_validity_buffer_sizes() const;
+
+  /**
+   * Skip read/unfilter operations for timestamps attribute and fragments
+   * without timestamps.
+   */
+  bool timestamps_not_present(
+      const std::string& name,
+      const std::shared_ptr<tiledb::sm::FragmentMetadata>& frag_md) const;
 
   /**
    * Loads tile offsets for each attribute/dimension name into

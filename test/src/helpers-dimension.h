@@ -31,7 +31,7 @@
  */
 
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/misc/types.h"
+#include "tiledb/type/range/range.h"
 
 #ifndef TILEDB_HELPERS_DIMENSION_H
 #define TILEDB_HELPERS_DIMENSION_H
@@ -46,7 +46,7 @@ namespace test {
  * @tparam T
  */
 template <class T>
-class TypedRange : public tiledb::sm::Range {
+class TypedRange : public tiledb::type::Range {
  public:
   /**
    * Construct a Range from a single interval.

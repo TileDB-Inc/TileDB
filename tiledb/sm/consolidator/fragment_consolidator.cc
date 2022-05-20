@@ -36,6 +36,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -159,6 +160,103 @@ Status FragmentConsolidator::consolidate(
   RETURN_NOT_OK(array_for_writes.close());
 
   stats_->add_counter("consolidate_step_num", step);
+
+  return Status::Ok();
+}
+
+Status FragmentConsolidator::consolidate_fragments(
+    const char* array_name,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length,
+    const std::vector<std::string>& fragment_uris) {
+  auto timer_se = stats_->start_timer("consolidate_frags");
+
+  // Open array for reading
+  Array array_for_reads(URI(array_name), storage_manager_);
+  RETURN_NOT_OK(array_for_reads.open_without_fragments(
+      encryption_type, encryption_key, key_length));
+
+  // Open array for writing
+  Array array_for_writes(array_for_reads.array_uri(), storage_manager_);
+  RETURN_NOT_OK(array_for_writes.open(
+      QueryType::WRITE, encryption_type, encryption_key, key_length));
+
+  // Check if there is anything to consolidate
+  if (fragment_uris.size() <= 1)
+    return Status::Ok();
+
+  // Get all fragment info
+  FragmentInfo fragment_info(URI(array_name), storage_manager_);
+  auto st = fragment_info.load(
+      0,
+      utils::time::timestamp_now_ms(),
+      encryption_type,
+      encryption_key,
+      key_length,
+      false);
+  if (!st.ok()) {
+    array_for_reads.close();
+    array_for_writes.close();
+    return st;
+  }
+
+  // Make a set of the uris to consolidate
+  NDRange union_non_empty_domains;
+  std::unordered_set<std::string> to_consolidate_set;
+  for (auto& uri : fragment_uris) {
+    to_consolidate_set.emplace(uri);
+  }
+
+  // Make sure all fragments to consolidate are present
+  // Compute union of non empty domains as we go
+  uint64_t count = 0;
+  auto& domain{array_for_reads.array_schema_latest().domain()};
+  std::vector<TimestampedURI> to_consolidate;
+  to_consolidate.reserve(fragment_uris.size());
+  auto& frag_info_vec = fragment_info.single_fragment_info_vec();
+  for (auto& frag_info : frag_info_vec) {
+    auto uri = frag_info.uri().last_path_part();
+    if (to_consolidate_set.count(uri) != 0) {
+      count++;
+      domain.expand_ndrange(
+          frag_info.non_empty_domain(), &union_non_empty_domains);
+      domain.expand_to_tiles(&union_non_empty_domains);
+      to_consolidate.emplace_back(frag_info.uri(), frag_info.timestamp_range());
+    }
+  }
+
+  if (count != fragment_uris.size()) {
+    return logger_->status(Status_ConsolidatorError(
+        "Cannot consolidate; Not all fragments could be found"));
+  }
+
+  // Consolidate the selected fragments
+  URI new_fragment_uri;
+  st = consolidate(
+      array_for_reads,
+      array_for_writes,
+      to_consolidate,
+      union_non_empty_domains,
+      &new_fragment_uri);
+  if (!st.ok()) {
+    array_for_reads.close();
+    array_for_writes.close();
+    return st;
+  }
+
+  // Load info of the consolidated fragment and add it
+  // to the fragment info, replacing the fragments that it
+  // consolidated.
+  st = fragment_info.load_and_replace(new_fragment_uri, to_consolidate);
+  if (!st.ok()) {
+    array_for_reads.close();
+    array_for_writes.close();
+    return st;
+  }
+
+  RETURN_NOT_OK_ELSE(array_for_reads.close(), array_for_writes.close());
+  RETURN_NOT_OK(array_for_writes.close());
 
   return Status::Ok();
 }
@@ -409,7 +507,10 @@ Status FragmentConsolidator::create_buffers(
   }
   if (sparse) {
     for (unsigned i = 0; i < dim_num; ++i)
-      buffer_num += (domain.dimension(i)->var_size()) ? 2 : 1;
+      buffer_num += (domain.dimension_ptr(i)->var_size()) ? 2 : 1;
+  }
+  if (config_.with_timestamps_ && sparse) {
+    buffer_num++;
   }
 
   // Create buffers
@@ -435,6 +536,8 @@ Status FragmentConsolidator::create_queries(
     URI* new_fragment_uri) {
   auto timer_se = stats_->start_timer("consolidate_create_queries");
 
+  const auto dense = array_for_reads->array_schema_latest().dense();
+
   // Note: it is safe to use `set_subarray_safe` for `subarray` below
   // because the subarray is calculated by the TileDB algorithm (it
   // is not a user input prone to errors).
@@ -444,9 +547,14 @@ Status FragmentConsolidator::create_queries(
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
 
   // Refactored reader optimizes for no subarray.
-  if (!config_.use_refactored_reader_ ||
-      array_for_reads->array_schema_latest().dense())
+  if (!config_.use_refactored_reader_ || dense) {
     RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
+  }
+
+  // Enable consolidation with timestamps on the reader, if applicable.
+  if (config_.with_timestamps_ && !dense) {
+    (*query_r)->set_consolidation_with_timestamps();
+  }
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
   auto first = (*query_r)->first_fragment_uri();
@@ -465,7 +573,7 @@ Status FragmentConsolidator::create_queries(
   *query_w =
       tdb_new(Query, storage_manager_, array_for_writes, *new_fragment_uri);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
-  RETURN_NOT_OK((*query_w)->disable_check_global_order());
+  RETURN_NOT_OK((*query_w)->disable_checks_consolidation());
   if (array_for_reads->array_schema_latest().dense())
     RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
 
@@ -639,7 +747,7 @@ Status FragmentConsolidator::set_query_buffers(
   }
   if (!dense) {
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = array_schema.dimension(d);
+      auto dim{array_schema.dimension_ptr(d)};
       auto dim_name = dim->name();
       if (!dim->var_size()) {
         RETURN_NOT_OK(query->set_data_buffer(
@@ -655,6 +763,14 @@ Status FragmentConsolidator::set_query_buffers(
         bid += 2;
       }
     }
+  }
+
+  if (config_.with_timestamps_ && !dense) {
+    RETURN_NOT_OK(query->set_data_buffer(
+        constants::timestamps,
+        (void*)&(*buffers)[bid][0],
+        &(*buffer_sizes)[bid]));
+    ++bid;
   }
 
   return Status::Ok();
@@ -697,6 +813,10 @@ Status FragmentConsolidator::set_config(const Config* config) {
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
   assert(found);
+  config_.with_timestamps_ = false;
+  RETURN_NOT_OK(merged_config.get<bool>(
+      "sm.consolidation.with_timestamps", &config_.with_timestamps_, &found));
+  assert(found);
   std::string reader =
       merged_config.get("sm.query.sparse_global_order.reader", &found);
   assert(found);
@@ -721,6 +841,10 @@ Status FragmentConsolidator::set_config(const Config* config) {
     return logger_->status(
         Status_ConsolidatorError("Invalid configuration; Amplification config "
                                  "parameter must be non-negative"));
+  if (config_.with_timestamps_ && !config_.use_refactored_reader_)
+    return logger_->status(
+        Status_ConsolidatorError("Invalid configuration; Consolidation with "
+                                 "timestamps requires refactored reader"));
 
   return Status::Ok();
 }

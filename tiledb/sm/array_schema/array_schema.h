@@ -63,6 +63,21 @@ enum class Layout : uint8_t;
 /** Specifies the array schema. */
 class ArraySchema {
  public:
+  /**
+   * Size type for the number of dimensions of an array and for dimension
+   * indices.
+   *
+   * Note: This should be the same as `Domain::dimension_size_type`. We're
+   * not including `domain.h`, otherwise we'd use that definition here.
+   */
+  using dimension_size_type = unsigned int;
+
+  /**
+   * Size type for the number of attributes of an array and for attribute
+   * indices.
+   */
+  using attribute_size_type = unsigned int;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -72,6 +87,36 @@ class ArraySchema {
 
   /** Constructor. */
   ArraySchema(ArrayType array_type);
+
+  /** Constructor.
+   * @param uri The URI of the array schema file.
+   * @param version The format version of this array schema.
+   * @param array_type The array type.
+   * @param allows_dups True if the (sparse) array allows coordinate duplicates.
+   * @param domain The array domain.
+   * @param cell_order The cell order.
+   * @param tile_order The tile order.
+   * @param capacity The tile capacity for the case of sparse fragments.
+   * @param attributes The array attributes.
+   * @param cell_var_offsets_filters
+   *    The filter pipeline run on offset tiles for var-length attributes.
+   * @param cell_validity_filters
+   *    The filter pipeline run on validity tiles for nullable attributes.
+   * @param coords_filters The filter pipeline run on coordinate tiles.
+   **/
+  ArraySchema(
+      URI uri,
+      uint32_t version,
+      ArrayType array_type,
+      bool allows_dups,
+      shared_ptr<Domain> domain,
+      Layout cell_order,
+      Layout tile_order,
+      uint64_t capacity,
+      std::vector<shared_ptr<const Attribute>> attributes,
+      FilterPipeline cell_var_offsets_filters,
+      FilterPipeline cell_validity_filters,
+      FilterPipeline coords_filters);
 
   /**
    * Constructor. Clones the input.
@@ -103,7 +148,7 @@ class ArraySchema {
    * Returns a constant pointer to the selected attribute (nullptr if it
    * does not exist).
    */
-  const Attribute* attribute(unsigned int id) const;
+  const Attribute* attribute(attribute_size_type id) const;
 
   /**
    * Returns a constant pointer to the selected attribute (nullptr if it
@@ -112,7 +157,7 @@ class ArraySchema {
   const Attribute* attribute(const std::string& name) const;
 
   /** Returns the number of attributes. */
-  unsigned int attribute_num() const;
+  attribute_size_type attribute_num() const;
 
   /** Returns the attributes. */
   const std::vector<shared_ptr<const Attribute>>& attributes() const;
@@ -164,13 +209,13 @@ class ArraySchema {
   bool dense() const;
 
   /** Returns the i-th dimension. */
-  shared_ptr<const Dimension> dimension(unsigned int i) const;
+  const Dimension* dimension_ptr(dimension_size_type i) const;
 
   /**
    * Returns a constant pointer to the selected dimension (nullptr if it
    * does not exist).
    */
-  shared_ptr<const Dimension> dimension(const std::string& name) const;
+  const Dimension* dimension_ptr(const std::string& name) const;
 
   /** Returns the dimension names. */
   std::vector<std::string> dim_names() const;
@@ -179,7 +224,7 @@ class ArraySchema {
   std::vector<Datatype> dim_types() const;
 
   /** Returns the number of dimensions. */
-  unsigned int dim_num() const;
+  dimension_size_type dim_num() const;
 
   /** Dumps the array schema in ASCII format in the selected output. */
   void dump(FILE* out) const;
@@ -255,9 +300,10 @@ class ArraySchema {
    * It assigns values to the members of the object from the input buffer.
    *
    * @param buff The binary representation of the object to read from.
-   * @return Status
+   * @param uri An optional uri object.
+   * @return A new ArraySchema.
    */
-  Status deserialize(ConstBuffer* buff);
+  static ArraySchema deserialize(ConstBuffer* buff, const URI& uri);
 
   /** Returns the array domain. */
   inline const Domain& domain() const {
@@ -327,17 +373,8 @@ class ArraySchema {
   /** Returns the array schema uri. */
   const URI& uri() const;
 
-  /** Set schema URI, along with parsing out timestamp ranges and name. */
-  void set_uri(const URI& uri);
-
-  /** Get schema URI with return status. */
-  Status get_uri(URI* uri) const;
-
   /** Returns the schema name. If it is not set, will build it. */
   const std::string& name() const;
-
-  /** Returns the schema name. If it is not set, will returns error status. */
-  Status get_name(std::string* name) const;
 
   /** Set the schema name. */
   void set_name(const std::string& name);
@@ -353,17 +390,59 @@ class ArraySchema {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The URI of the array schema file. */
+  URI uri_;
+
+  /** An array name attached to the schema object. */
+  URI array_uri_;
+
+  /** The format version of this array schema. */
+  uint32_t version_;
+
+  /**
+   * The timestamp the array schema was written.
+   * This is used to determine the array schema file name.
+   * The two timestamps are identical.
+   * It is stored as a pair to keep the usage consistent with metadata
+   */
+  std::pair<uint64_t, uint64_t> timestamp_range_;
+
+  /** The file name of array schema in the format of timestamp_timestamp_uuid */
+  std::string name_;
+
+  /** The array type. */
+  ArrayType array_type_;
+
   /**
    * True if the array allows coordinate duplicates. Applicable only
    * to sparse arrays.
    */
   bool allows_dups_;
 
-  /** An array name attached to the schema object. */
-  URI array_uri_;
+  /** The array domain. */
+  shared_ptr<Domain> domain_;
 
-  /** The array type. */
-  ArrayType array_type_;
+  /** It maps each dimension name to the corresponding dimension object. */
+  std::unordered_map<std::string, const Dimension*> dim_map_;
+
+  /**
+   * The cell order. It can be one of the following:
+   *    - TILEDB_ROW_MAJOR
+   *    - TILEDB_COL_MAJOR
+   */
+  Layout cell_order_;
+
+  /**
+   * The tile order. It can be one of the following:
+   *    - TILEDB_ROW_MAJOR
+   *    - TILEDB_COL_MAJOR
+   */
+  Layout tile_order_;
+
+  /**
+   * The tile capacity for the case of sparse fragments.
+   */
+  uint64_t capacity_;
 
   /** It maps each attribute name to the corresponding attribute object.
    * Lifespan is maintained by the shared_ptr in attributes_. */
@@ -372,17 +451,6 @@ class ArraySchema {
   /** The array attributes.
    * Maintains lifespan for elements in both attributes_ and attribute_map_. */
   std::vector<shared_ptr<const Attribute>> attributes_;
-  /**
-   * The tile capacity for the case of sparse fragments.
-   */
-  uint64_t capacity_;
-
-  /**
-   * The cell order. It can be one of the following:
-   *    - TILEDB_ROW_MAJOR
-   *    - TILEDB_COL_MAJOR
-   */
-  Layout cell_order_;
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;
@@ -393,38 +461,8 @@ class ArraySchema {
   /** The filter pipeline run on coordinate tiles. */
   FilterPipeline coords_filters_;
 
-  /** It maps each dimension name to the corresponding dimension object. */
-  std::unordered_map<std::string, shared_ptr<const Dimension>> dim_map_;
-
-  /** The array domain. */
-  shared_ptr<Domain> domain_;
-
-  /**
-   * The tile order. It can be one of the following:
-   *    - TILEDB_ROW_MAJOR
-   *    - TILEDB_COL_MAJOR
-   */
-  Layout tile_order_;
-
-  /** The format version of this array schema. */
-  uint32_t version_;
-
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
-
-  /**
-   * The timestamp the array schema was written.
-   * This is used to determine the array schema file name.
-   * The two timestamps are identical.
-   * It is stored as a pair to keep the usage consistent with metadata
-   */
-  std::pair<uint64_t, uint64_t> timestamp_range_;
-
-  /** The URI of the array schema file. */
-  URI uri_;
-
-  /** The file name of array schema in the format of timestamp_timestamp_uuid */
-  std::string name_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -444,10 +482,10 @@ class ArraySchema {
       const FilterPipeline& coords_filters) const;
 
   /**
-   * Returns error if RLE is used for string dimensions but it is not the only
-   * filter in the filter list.
+   * Returns error if RLE or Dictionary encoding is used for string
+   * dimensions but it is not the only filter in the filter list.
    */
-  Status check_rle_compressor(const FilterPipeline& coords_filters) const;
+  Status check_string_compressor(const FilterPipeline& coords_filters) const;
 
   /** Clears all members. Use with caution! */
   void clear();

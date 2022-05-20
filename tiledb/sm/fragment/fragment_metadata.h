@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,6 +34,7 @@
 #ifndef TILEDB_FRAGMENT_METADATA_H
 #define TILEDB_FRAGMENT_METADATA_H
 
+#include <deque>
 #include <mutex>
 #include <unordered_map>
 #include <vector>
@@ -45,6 +46,11 @@
 #include "tiledb/sm/rtree/rtree.h"
 
 using namespace tiledb::common;
+using namespace tiledb::type;
+
+namespace tiledb::type {
+class Range;
+}
 
 namespace tiledb {
 namespace sm {
@@ -77,6 +83,7 @@ class FragmentMetadata {
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
    * @param dense Indicates whether the fragment is dense or sparse.
+   * @param has_timestamps Does the fragment contains timestamps.
    */
   FragmentMetadata(
       StorageManager* storage_manager,
@@ -84,7 +91,8 @@ class FragmentMetadata {
       const shared_ptr<const ArraySchema>& array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
-      bool dense = true);
+      bool dense = true,
+      bool has_timestamps = false);
 
   /** Destructor. */
   ~FragmentMetadata();
@@ -215,6 +223,9 @@ class FragmentMetadata {
 
   /** Returns true if the metadata footer is consolidated. */
   bool has_consolidated_footer() const;
+
+  /** Returns true if the fragment has timestamps. */
+  bool has_timestamps() const;
 
   /**
    * Retrieves the overlap of all MBRs with the input ND range.
@@ -831,7 +842,7 @@ class FragmentMetadata {
   /**
    * Maps an attribute or dimension to an index used in the various vector
    * class members. Attributes are first, then TILEDB_COORDS, then the
-   * dimensions.
+   * dimensions, then timestamp.
    */
   std::unordered_map<std::string, unsigned> idx_map_;
 
@@ -872,6 +883,9 @@ class FragmentMetadata {
 
   /** Number of cells in the last tile (meaningful only in the sparse case). */
   uint64_t last_tile_cell_num_;
+
+  /** True if the fragment has timestamps, and false otherwise. */
+  bool has_timestamps_;
 
   /** Number of sparse tiles. */
   uint64_t sparse_tile_num_;
@@ -1197,6 +1211,14 @@ class FragmentMetadata {
   Status load_last_tile_cell_num(ConstBuffer* buff);
 
   /**
+   * Loads the `has_timestamps_` field from the buffer.
+   *
+   * @param buff Metadata buffer.
+   * @return Status
+   */
+  Status load_has_timestamps(ConstBuffer* buff);
+
+  /**
    * Loads the MBRs from the fragment metadata buffer.
    *
    * @param buff Metadata buffer.
@@ -1346,6 +1368,11 @@ class FragmentMetadata {
    * Writes the cell number of the last tile to the fragment metadata buffer.
    */
   Status write_last_tile_cell_num(Buffer* buff) const;
+
+  /**
+   * Writes the `has_timestamps_` field to the fragment metadata buffer.
+   */
+  Status write_has_timestamps(Buffer* buff) const;
 
   /**
    * Writes the R-tree to storage.

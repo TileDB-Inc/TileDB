@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -122,6 +122,15 @@ int cell_validity_compression_level = -1;
 /** Special name reserved for the coordinates attribute. */
 const std::string coords = "__coords";
 
+/** Special name reserved for the timestamp attribute. */
+const std::string timestamps = "__timestamps";
+
+/** The size of a timestamp cell. */
+const uint64_t timestamp_size = sizeof(uint64_t);
+
+/** The type of a variable offset cell. */
+extern const Datatype timestamp_type = Datatype::UINT64;
+
 /** The default compressor for the coordinates. */
 Compressor coords_compression = Compressor::ZSTD;
 
@@ -148,6 +157,9 @@ const char empty_char = std::numeric_limits<char>::min();
 
 /** The special value for an empty blob. */
 constexpr std::byte empty_blob{0};
+
+/** The special value for an empty bool. */
+const uint8_t empty_bool = 0;
 
 /** The special value for an empty int8. */
 const int8_t empty_int8 = std::numeric_limits<int8_t>::min();
@@ -223,6 +235,12 @@ uint64_t generic_tile_cell_size = sizeof(char);
 
 /** The group file name. */
 const std::string group_filename = "__tiledb_group.tdb";
+
+/** The group details directory name. */
+const std::string group_detail_dir_name = "__group";
+
+/** The group metadata directory name. */
+const std::string group_metadata_dir_name = "__meta";
 
 /** The maximum number of bytes written in a single I/O. */
 const uint64_t max_write_bytes = std::numeric_limits<int>::max();
@@ -343,6 +361,9 @@ const std::string filter_checksum_md5_str = "CHECKSUM_MD5";
 /** String describing FILTER_CHECKSUM_SHA256. */
 const std::string filter_checksum_sha256_str = "CHECKSUM_SHA256";
 
+/** String describing FILTER_DICTIONARY. */
+const std::string filter_dictionary_str = "DICTIONARY_ENCODING";
+
 /** The string representation for FilterOption type compression_level. */
 const std::string filter_option_compression_level_str = "COMPRESSION_LEVEL";
 
@@ -372,6 +393,9 @@ const std::string char_str = "CHAR";
 
 /** The string representation for type blob. */
 const std::string blob_str = "BLOB";
+
+/** The string representation for type bool. */
+const std::string bool_str = "BOOL";
 
 /** The string representation for type int8. */
 const std::string int8_str = "INT8";
@@ -546,7 +570,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization format version number. */
-const uint32_t format_version = 12;
+const uint32_t format_version = 14;
 
 /** The lowest version supported for back compat writes. */
 const uint32_t back_compat_writes_min_format_version = 7;
@@ -593,10 +617,46 @@ const unsigned concurrent_attr_reads = 2;
 /** The redirection header key in REST response. */
 extern const std::string redirection_header_key = "location";
 
+/** String describing MIME_AUTODETECT. */
+const std::string mime_autodetect_str = "AUTODETECT";
+
+/** String describing MIME_TIFF. */
+const std::string mime_tiff_str = "image/tiff";
+
+/** String describing MIME_PDF. */
+const std::string mime_pdf_str = "application/pdf";
+
+/** The default tile extent used in filestore arrays. */
+const uint64_t filestore_default_tile_extent = 1024;
+
+/** Name of the single dimension used in filestore arrays. */
+const std::string filestore_dimension_name = "position";
+
+/** Name of the single attribute used in filestore arrays. */
+const std::string filestore_attribute_name = "contents";
+
+/** Name of the metadata key used in filestore arrays for current size. */
+const std::string filestore_metadata_size_key = "file_size";
+
+/** Name of the metadata key used in filestore arrays for mime type. */
+const std::string filestore_metadata_mime_type_key = "mime_type";
+
+/** Name of the metadata key used in filestore arrays for mime encoding. */
+const std::string filestore_metadata_mime_encoding_key = "mime_encoding";
+
+/** Name of the metadata key used in filestore arrays for original filename. */
+const std::string filestore_metadata_original_filename_key =
+    "original_file_name";
+
+/** Name of the metadata key used in filestore arrays for filename extension. */
+const std::string filestore_metadata_file_extension_key = "file_extension";
+
 const void* fill_value(Datatype type) {
   switch (type) {
     case Datatype::BLOB:
       return &constants::empty_blob;
+    case Datatype::BOOL:
+      return &constants::empty_bool;
     case Datatype::INT8:
       return &constants::empty_int8;
     case Datatype::UINT8:

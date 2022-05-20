@@ -1,4 +1,6 @@
-# Consolidated Fragment Metadata File
+---
+title: Consolidated Fragment Metadata File
+---
 
 A consolidated fragment metadata file has name `<timestamped_name>.meta` and is located here:
 

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -59,7 +59,7 @@ class StrategyBase {
   /** Constructor. */
   StrategyBase(
       stats::Stats* stats,
-      tdb_shared_ptr<Logger> logger,
+      shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -104,7 +104,7 @@ class StrategyBase {
   stats::Stats* stats_;
 
   /** The class logger. */
-  tdb_shared_ptr<Logger> logger_;
+  shared_ptr<Logger> logger_;
 
   /** The array. */
   const Array* array_;
