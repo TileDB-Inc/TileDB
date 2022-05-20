@@ -294,7 +294,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_range)
   add_dependencies(tests unit_mgc_dict)
   if (TRUE) #(TILEDB_BUILDING_WEBP)
-    add_dependencies(tests exercise_link_webp_test)
+    add_dependencies(tests link_webp_test1)
   endif()
 
   add_subdirectory(test/regression)

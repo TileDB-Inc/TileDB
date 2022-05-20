@@ -85,8 +85,8 @@ static const char* const kErrorMessages[VP8_ENC_ERROR_LAST] = {
 
 //------------------------------------------------------------------------------
 
-uint64_t reference_a_value(uint64_t v){
-  return v+1;
+uint64_t reference_a_value(uint64_t v) {
+  return v + 1;
 }
 
 #ifdef _MSC_VER
@@ -98,17 +98,15 @@ uint64_t reference_a_value(uint64_t v){
 
 extern "C" int WebPGetDemuxVersion(void);
 extern "C" int WebPGetMuxVersion(void);
-extern "C" void* WebPSafeMalloc(uint64_t nmemb, size_t size);
-extern "C" void WebPSafeFree(void* const ptr);
-extern "C" VP8StatusCode WebPAllocateDecBuffer(int width, int height,
-                                    const WebPDecoderOptions* const options,
-                                    WebPDecBuffer* const buffer);
+extern "C" VP8StatusCode WebPAllocateDecBuffer(
+    int width,
+    int height,
+    const WebPDecoderOptions* const options,
+    WebPDecBuffer* const buffer);
 extern "C" void WebPFreeDecBuffer(WebPDecBuffer* const buffer);
-//extern "C" void VP8TBufferInit(VP8TBuffer* const b, int page_size);
-//extern "C" void VP8TBufferClear(VP8TBuffer* const b);   // de-allocate pages memory
 typedef void VP8LDecoder;
 extern "C" VP8LDecoder* VP8LNew(void);
-extern "C" void VP8LClear(VP8LDecoder *);
+extern "C" void VP8LClear(VP8LDecoder*);
 
 int main(int argc, const char* argv[]) {
   (void)argv;
@@ -138,46 +136,37 @@ int main(int argc, const char* argv[]) {
       !WebPConfigInit(&config)) {
     fprintf(stderr, "Error! Version mismatch!\n");
   }
-  { // webpdecoder
-    // *** turns out, there is -NO- symbol in webpdecoder that is not also in webp!
-    // left here anyway, in case libraries are ever de-dupped.
+  {  // webpdecoder
+    // *** turns out, there is -NO- symbol in webpdecoder that is not also in
+    // webp! left here anyway, in case libraries are ever de-dupped.
     const int dec_version = WebPGetDecoderVersion();
-    //VP8LDecoder* VP8LNew(void);
     auto vp8l_dec = VP8LNew();
-    //void VP8LClear(VP8LDecoder* const dec);
     VP8LClear(vp8l_dec);
 
     VP8StatusCode status;
     WebPDecoderOptions webpdecoptions;
     WebPDecBuffer webpdec_buffer;
-    status = WebPAllocateDecBuffer(512, 512, &webpdecoptions,
-                                   &webpdec_buffer);
+    status = WebPAllocateDecBuffer(512, 512, &webpdecoptions, &webpdec_buffer);
     if (status == VP8_STATUS_OK) {
       WebPFreeDecBuffer(&webpdec_buffer);
     }
-    
-    // webpencoder
-    //const int enc_version = WebPGetEncoderVersion();
-    //void VP8TBufferInit(VP8TBuffer* const b, int page_size);
-    //void VP8TBufferClear(VP8TBuffer* const b);   // de-allocate pages memory
-    //VP8TBuffer vp8_buf;
-    //VP8TBufferInit(&vp8_buf, 1024);
-    //VP8TBufferClear(&vp8_buf);
-    
+
     // webpdemux
     const int demux_version = WebPGetDemuxVersion();
     // webpmux
     const int mux_version = WebPGetMuxVersion();
 
     // webp
+    // in testing, even when WebP::webp was -not- added as link item, this
+    // library was still being placed in link_webp_test project.
     auto enc_version = WebPGetEncoderVersion();
-    
-    reference_a_value(dec_version+demux_version+mux_version+enc_version);
-    //printf("%" PRNI64 "u", dec_version+demux_version+mux_version+enc_version);
+
+    reference_a_value(dec_version + demux_version + mux_version + enc_version);
   }
 
   if (argc == 1) {
     HelpShort();
+    return 0;
   }
   // add some non-determinism re in_file so compiler can't, seeing that
   // in_file init'd to NULL with no chance of change, avoid generating

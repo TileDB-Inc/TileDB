@@ -84,13 +84,11 @@ if (TRUE) #(TILEDB_BUILDING_WEBP)
       test/link_webp_test1.cc
       )
       
-  add_custom_target(
-      exercise_link_webp_test
-      COMMAND "$<TARGET_FILE:link_webp_test1>"
-      DEPENDS "$<TARGET_FILE:link_webp_test1>"
-      )
-      
-  add_dependencies(compressors exercise_link_webp_test)
+  add_test(NAME "test_tiledb_webp" 
+    COMMAND "$<TARGET_FILE:link_webp_test1>" 
+    # DEPENDS "$<TARGET_FILE:link_webp_test1>"
+    WORKING_DIRECTORY  ${CMAKE_CURRENT_SOURCE_DIR}
+  )
 endif()
 
 # Link to Threads::Threads if library or flag needed to enable threading.
