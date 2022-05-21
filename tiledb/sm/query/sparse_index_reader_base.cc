@@ -329,7 +329,7 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
   if (include_timestamps) {
     std::vector<std::string> timestamps_names = {constants::timestamps};
     RETURN_CANCEL_OR_ERROR(
-        read_coordinate_tiles(timestamps_names, result_tiles, true));
+        read_attribute_tiles(timestamps_names, result_tiles, true));
     RETURN_CANCEL_OR_ERROR(
         unfilter_tiles(constants::timestamps, result_tiles, true));
   }

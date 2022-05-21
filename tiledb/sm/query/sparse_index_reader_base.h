@@ -107,7 +107,8 @@ class IgnoredTile {
   IgnoredTile() = default;
 
   IgnoredTile(uint64_t frag_idx, uint64_t tile_idx)
-      : idx_(frag_idx, tile_idx) {
+      : frag_idx_(frag_idx)
+      , tile_idx_(tile_idx) {
   }
 
   /** Move constructor. */
@@ -130,31 +131,39 @@ class IgnoredTile {
   /*          PUBLIC METHODS           */
   /* ********************************* */
 
-  const std::pair<uint64_t, uint64_t>& pair() const {
-    return idx_;
+  inline uint64_t frag_idx() const {
+    return frag_idx_;
+  }
+
+  inline uint64_t tile_idx() const {
+    return tile_idx_;
   }
 
   bool operator==(const IgnoredTile& v) const {
-    return idx_ == v.idx_;
+    return frag_idx_ == v.frag_idx_ && tile_idx_ == v.tile_idx_;
   }
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
   void swap(IgnoredTile& other) {
-    std::swap(idx_, other.idx_);
+    std::swap(frag_idx_, other.frag_idx_);
+    std::swap(tile_idx_, other.tile_idx_);
   }
 
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  // FragIdx, TileIdx.
-  std::pair<uint64_t, uint64_t> idx_;
+  // Frag index.
+  uint64_t frag_idx_;
+
+  // Tile index.
+  uint64_t tile_idx_;
 };
 
 struct ignored_tile_hash {
   size_t operator()(IgnoredTile const& v) const {
-    std::size_t h1 = std::hash<uint64_t>()(v.pair().first);
-    std::size_t h2 = std::hash<uint64_t>()(v.pair().second);
+    std::size_t h1 = std::hash<uint64_t>()(v.frag_idx());
+    std::size_t h2 = std::hash<uint64_t>()(v.tile_idx());
     return h1 ^ h2;
   }
 };

@@ -208,7 +208,7 @@ class ReaderBase : public StrategyBase {
   }
 
   /**
-   * Results the fragment timestamp for a result tile.
+   * Returns the fragment timestamp for a result tile.
    *
    * @param rt Result tile.
    * @return fragment timestamp.

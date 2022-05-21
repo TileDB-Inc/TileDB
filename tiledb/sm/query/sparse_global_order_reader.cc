@@ -205,7 +205,7 @@ Status SparseGlobalOrderReader::dowork() {
       // Apply query condition.
       RETURN_NOT_OK(apply_query_condition<uint8_t>(tmp_result_tiles));
 
-      // Run deduplication for fragments with timestamps, if required.
+      // Run deduplication for tiles with timestamps, if required.
       RETURN_NOT_OK(dedup_tiles_with_timestamps(tmp_result_tiles));
 
       // Clear result tiles that are not necessary anymore.
