@@ -65,28 +65,27 @@ target_include_directories(tdb_gzip_embedded_data PRIVATE
         $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>
 )
 
-if (TRUE) #(TILEDB_BUILDING_WEBP)
+if (TILEDB_WEBP)
   #
   # perform webp build and link test for some webp routines
   #
   find_package(Webp_EP REQUIRED)
-  add_executable(link_webp_test1)
+  add_executable(unit_link_webp)
   if (WIN32)
-    target_link_libraries(link_webp_test1 PRIVATE WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux)
+    target_link_libraries(unit_link_webp PRIVATE WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux)
   else() #if (NOT WIN32)
     # On Linux, must explicitly link -lpthread -ldl in order for static linking
     # to libzstd or libcurl to work.
-    target_link_libraries(link_webp_test1 WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux pthread dl)
+    target_link_libraries(unit_link_webp WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux pthread dl)
   endif()
   target_sources(
-      link_webp_test1 
+      unit_link_webp
       PRIVATE
       test/link_webp_test1.cc
       )
       
-  add_test(NAME "test_tiledb_webp" 
-    COMMAND "$<TARGET_FILE:link_webp_test1>" 
-    # DEPENDS "$<TARGET_FILE:link_webp_test1>"
+  add_test(NAME "unit_link_webp" 
+    COMMAND "$<TARGET_FILE:unit_link_webp>" 
     WORKING_DIRECTORY  ${CMAKE_CURRENT_SOURCE_DIR}
   )
 endif()
