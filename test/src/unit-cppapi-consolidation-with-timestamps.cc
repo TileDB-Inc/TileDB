@@ -441,3 +441,4 @@ TEST_CASE_METHOD(
 
   remove_sparse_array();
 }
+#endif
