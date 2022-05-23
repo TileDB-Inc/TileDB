@@ -496,7 +496,6 @@ Status domain_to_capnp(
     return LOG_STATUS(
         Status_SerializationError("Error serializing domain; domain is null."));
 
-  domainBuilder->setType(datatype_str(domain->dimension_ptr(0)->type()));
   domainBuilder->setTileOrder(layout_str(domain->tile_order()));
   domainBuilder->setCellOrder(layout_str(domain->cell_order()));
 
@@ -515,36 +514,47 @@ shared_ptr<Domain> domain_from_capnp(
     const capnp::Domain::Reader& domain_reader) {
   Status st;
 
-  // Deserialize datatype
-  Datatype datatype = Datatype::ANY;
-  st = datatype_enum(domain_reader.getType(), &datatype);
+  // Deserialize and validate cell order
+  Layout cell_order = Layout::ROW_MAJOR;
+  st = layout_enum(domain_reader.getCellOrder().cStr(), &cell_order);
   if (!st.ok()) {
     throw std::runtime_error(
         "[Deserialization::domain_from_capnp] " +
-        std::string(domain_reader.getType().cStr()) +
-        " is not a valid datatype identifer.");
+        std::string(domain_reader.getCellOrder().cStr()) +
+        " is not a valid cell order identifer.");
+  }
+  try {
+    ensure_cell_order_is_valid(std::underlying_type_t<Layout>(cell_order));
+  } catch (std::exception& e) {
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::domain_from_capnp] "));
   }
 
-  // Validate the datatype
+  // Deserialize and validate tile order
+  Layout tile_order = Layout::ROW_MAJOR;
+  st = layout_enum(domain_reader.getTileOrder().cStr(), &tile_order);
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[Deserialization::domain_from_capnp] " +
+        std::string(domain_reader.getTileOrder().cStr()) +
+        " is not a valid tile order identifer.");
+  }
   try {
-    ensure_datatype_is_valid(datatype);
-  } catch (const std::exception& e) {
+    ensure_tile_order_is_valid(std::underlying_type_t<Layout>(tile_order));
+  } catch (std::exception& e) {
     std::throw_with_nested(
         std::runtime_error("[Deserialization::domain_from_capnp] "));
   }
 
   // Deserialize dimensions
   // Note: Security validation delegated to invoked API
-  auto dimensions = domain_reader.getDimensions();
   std::vector<shared_ptr<Dimension>> dims;
-  unsigned dim_num = 0;
+  auto dimensions = domain_reader.getDimensions();
   for (auto dimension : dimensions) {
-    shared_ptr<Dimension> dim{dimension_from_capnp(dimension)};
-    dims.emplace_back(dim);
-    ++dim_num;
+    dims.emplace_back(dimension_from_capnp(dimension));
   }
 
-  return make_shared<Domain>(HERE(), dims, dim_num);
+  return make_shared<Domain>(HERE(), cell_order, dims, tile_order);
 }
 
 Status array_schema_to_capnp(

@@ -81,13 +81,6 @@ class Domain {
       const std::vector<shared_ptr<Dimension>> dimensions,
       Layout tile_order);
 
-  /** Constructor.
-   *
-   * @param dimensions The dimensions of the domain.
-   * @param dim_num The number of dimensions.
-   */
-  Domain(std::vector<shared_ptr<Dimension>> dimensions, unsigned dim_num);
-
   /**
    * Constructor that clones the input domain.
    *

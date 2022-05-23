@@ -92,23 +92,6 @@ Domain::Domain(
   set_tile_cell_order_cmp_funcs();
 }
 
-Domain::Domain(std::vector<shared_ptr<Dimension>> dimensions, unsigned dim_num)
-    : dimensions_(dimensions)
-    , dim_num_(dim_num) {
-  /*
-   * Verify that the input vector has no non-null elements in order to meet the
-   * class invariant. Initialize the dimensions mirror.
-   */
-  dimension_ptrs_.reserve(dimensions_.size());
-  for (const auto& dim : dimensions_) {
-    auto p{dim.get()};
-    if (p == nullptr) {
-      throw std::invalid_argument("May not have null dimensions in a domain");
-    }
-    dimension_ptrs_.emplace_back(p);
-  }
-}
-
 Domain::Domain(const Domain* domain) {
   cell_num_per_tile_ = domain->cell_num_per_tile_;
   cell_order_ = domain->cell_order_;

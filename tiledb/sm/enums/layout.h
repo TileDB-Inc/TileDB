@@ -87,18 +87,18 @@ inline Status layout_enum(const std::string& layout_str, Layout* layout) {
   return Status::Ok();
 }
 
-inline Status tile_order_is_valid(uint8_t layout_enum) {
+/* Throws error if tile order's enumeration is not 0 or 1. */
+inline void ensure_tile_order_is_valid(uint8_t layout_enum) {
   if (layout_enum != 0 && layout_enum != 1)
-    return Status_Error("[Tile order] Invalid Layout enum.");
-
-  return Status::Ok();
+    throw std::runtime_error(
+        "[Tile order] Invalid Layout enum " + std::to_string(layout_enum));
 }
 
-inline Status cell_order_is_valid(uint8_t layout_enum) {
+/* Throws error if cell order's enumeration is greater than 4. */
+inline void ensure_cell_order_is_valid(uint8_t layout_enum) {
   if (layout_enum > 4)
-    return Status_Error("[Cell order] Invalid Layout enum.");
-
-  return Status::Ok();
+    throw std::runtime_error(
+        "[Cell order] Invalid Layout enum " + std::to_string(layout_enum));
 }
 
 }  // namespace sm
