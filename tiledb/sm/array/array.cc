@@ -604,20 +604,13 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   }
 
   try {
-    bool found = false;
-    bool consolidation_with_timestamps = false;
-    RETURN_NOT_OK(config_.get<bool>(
-        "sm.consolidation.with_timestamps",
-        &consolidation_with_timestamps,
-        &found));
-    assert(found);
     array_dir_ = ArrayDirectory(
         storage_manager_->vfs(),
         storage_manager_->compute_tp(),
         array_uri_,
         timestamp_start_,
         timestamp_end_opened_at_,
-        consolidation_with_timestamps);
+        consolidation_with_timestamps_config_enabled());
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
