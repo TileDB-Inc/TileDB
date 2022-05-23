@@ -125,13 +125,18 @@ class ASTNodeVal : public ASTNode {
   /** Returns a deep copy of the node. */
   tdb_unique_ptr<ASTNode> clone() const override;
 
+  /** Returns a set of field names from all the value nodes in the AST. */
   void get_field_names(
       std::unordered_set<std::string>& field_name_set) const override;
 
+  /** Returns true is the AST is previously supported by previous versions of
+   * TileDB. */
   bool is_or_supported() const override;
 
+  /** Returns whether a tree is a valid QC AST according to the array schema. */
   Status check_node_validity(const ArraySchema& array_schema) const override;
 
+  /** Combines AST node with rhs being passed in. */
   tdb_unique_ptr<ASTNode> combine(
       const tdb_unique_ptr<ASTNode>& rhs,
       const QueryConditionCombinationOp& combination_op) override;
@@ -183,13 +188,18 @@ class ASTNodeExpr : public ASTNode {
   /** Returns a deep copy of the node. */
   tdb_unique_ptr<ASTNode> clone() const override;
 
+   /** Returns a set of field names from all the value nodes in the AST. */
   void get_field_names(
       std::unordered_set<std::string>& field_name_set) const override;
 
+  /** Returns true is the AST is previously supported by previous versions of
+   * TileDB. */
   bool is_or_supported() const override;
 
+  /** Returns whether a tree is a valid QC AST according to the array schema. */
   Status check_node_validity(const ArraySchema& array_schema) const override;
 
+  /** Combines AST node with rhs being passed in. */
   tdb_unique_ptr<ASTNode> combine(
       const tdb_unique_ptr<ASTNode>& rhs,
       const QueryConditionCombinationOp& combination_op) override;
