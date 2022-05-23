@@ -115,7 +115,7 @@ while test $# != 0; do
     --disable-cpp-api) tiledb_cpp_api="OFF";;
     --disable-stats) tiledb_stats="OFF";;
     --disable-avx2) tiledb_disable_avx2="-DCOMPILER_SUPPORTS_AVX2=FALSE";;
-    ) tiledb_disable_deprecation_warnings="ON";;
+    --disable-deprecation-warnings) tiledb_disable_deprecation_warnings="ON";;
     --enable-assertions) tiledb_assertions="ON";;
     --enable-debug) build_type="Debug";;
     --enable-release-symbols) build_type="RelWithDebInfo";;

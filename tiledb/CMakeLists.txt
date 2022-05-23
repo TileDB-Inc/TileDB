@@ -260,6 +260,7 @@ endif()
 # Adding deprecation flag
 if (TILEDB_DISABLE_DEPRECATION_WARNINGS)
   add_definitions(-DTILEDB_NO_API_DEPRECATION_WARNINGS)
+  target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -Wno-deprecated)
 endif()
 
 if (TILEDB_SERIALIZATION)
@@ -394,6 +395,11 @@ if (WIN32 AND TILEDB_STATIC)
     PRIVATE
       -DTILEDB_STATIC_DEFINE
   )
+
+  if (TILEDB_DISABLE_DEPRECATION_WARNINGS)
+    add_definitions(-DTILEDB_NO_API_DEPRECATION_WARNINGS)
+    target_compile_definitions(TILEDB_CORE_OBJECTS_STATIC PRIVATE -Wno-deprecated)
+  endif()
 endif()
 
 if (TILEDB_CPP_API)
