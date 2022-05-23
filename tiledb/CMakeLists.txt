@@ -257,6 +257,11 @@ else()
   set_source_files_properties(${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
 endif()
 
+# Adding deprecation flag
+if (TILEDB_DISABLE_DEPRECATION_WARNINGS)
+  add_definitions(-DTILEDB_NO_API_DEPRECATION_WARNINGS)
+endif()
+
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_CORE_SOURCES
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/curl.cc
