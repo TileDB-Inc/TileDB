@@ -725,7 +725,7 @@ void FragmentMetadata::compute_tile_bitmap(
 
 Status FragmentMetadata::init(const NDRange& non_empty_domain) {
   // For easy reference
-  auto num = num_dims_and_attrs_v14_and_higher();
+  auto num = num_dims_and_attrs();
   auto& domain{array_schema_->domain()};
 
   // Sanity check
@@ -850,7 +850,7 @@ Status FragmentMetadata::store_v7_v10(const EncryptionKey& encryption_key) {
 
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
-  auto num = num_dims_and_attrs_v1_v13();
+  auto num = num_dims_and_attrs();
   uint64_t offset = 0, nbytes;
 
   // Store R-Tree
@@ -907,7 +907,7 @@ Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
 
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
-  auto num = num_dims_and_attrs_v1_v13();
+  auto num = num_dims_and_attrs();
   uint64_t offset = 0, nbytes;
 
   // Store R-Tree
@@ -998,7 +998,7 @@ Status FragmentMetadata::store_v12_or_higher(
 
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
-  auto num = num_dims_and_attrs_v14_and_higher();
+  auto num = num_dims_and_attrs();
   uint64_t offset = 0, nbytes;
 
   // Store R-Tree
@@ -1916,7 +1916,7 @@ uint64_t FragmentMetadata::footer_size_v3_v4() const {
 
 uint64_t FragmentMetadata::footer_size_v5_v6() const {
   auto dim_num = array_schema_->dim_num();
-  auto num = num_dims_and_attrs_v1_v13();
+  auto num = num_dims_and_attrs();
   size_t domain_size = 0;
 
   if (non_empty_domain_.empty()) {
@@ -1957,7 +1957,7 @@ uint64_t FragmentMetadata::footer_size_v5_v6() const {
 
 uint64_t FragmentMetadata::footer_size_v7_v10() const {
   auto dim_num = array_schema_->dim_num();
-  auto num = num_dims_and_attrs_v1_v13();
+  auto num = num_dims_and_attrs();
   uint64_t domain_size = 0;
 
   if (non_empty_domain_.empty()) {
@@ -2000,7 +2000,7 @@ uint64_t FragmentMetadata::footer_size_v7_v10() const {
 
 uint64_t FragmentMetadata::footer_size_v11_or_higher() const {
   auto dim_num = array_schema_->dim_num();
-  auto num = num_dims_and_attrs_v14_and_higher();
+  auto num = num_dims_and_attrs();
   uint64_t domain_size = 0;
 
   if (non_empty_domain_.empty()) {
@@ -2444,7 +2444,7 @@ Status FragmentMetadata::load_file_sizes_v1_v4(ConstBuffer* buff) {
 // ...
 // file_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::load_file_sizes_v5_or_higher(ConstBuffer* buff) {
-  auto num = num_dims_and_attrs_v14_and_higher();
+  auto num = num_dims_and_attrs();
   file_sizes_.resize(num);
   Status st = buff->read(&file_sizes_[0], num * sizeof(uint64_t));
 
@@ -2485,7 +2485,7 @@ Status FragmentMetadata::load_file_var_sizes_v1_v4(ConstBuffer* buff) {
 // ...
 // file_var_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::load_file_var_sizes_v5_or_higher(ConstBuffer* buff) {
-  auto num = num_dims_and_attrs_v14_and_higher();
+  auto num = num_dims_and_attrs();
   file_var_sizes_.resize(num);
   Status st = buff->read(&file_var_sizes_[0], num * sizeof(uint64_t));
 
@@ -2501,7 +2501,7 @@ Status FragmentMetadata::load_file_validity_sizes(ConstBuffer* buff) {
   if (version_ <= 6)
     return Status::Ok();
 
-  auto num = num_dims_and_attrs_v14_and_higher();
+  auto num = num_dims_and_attrs();
   file_validity_sizes_.resize(num);
   Status st = buff->read(&file_validity_sizes_[0], num * sizeof(uint64_t));
 
@@ -3227,7 +3227,7 @@ Status FragmentMetadata::load_tile_null_count_values(
 Status FragmentMetadata::load_fragment_min_max_sum_null_count(
     ConstBuffer* buff) {
   Status st;
-  auto num = num_dims_and_attrs_v14_and_higher();
+  auto num = num_dims_and_attrs();
 
   for (unsigned int i = 0; i < num; ++i) {
     // Get min.
@@ -3349,7 +3349,7 @@ Status FragmentMetadata::load_generic_tile_offsets_v5_v6(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
   // Load offsets for tile offsets
-  auto num = num_dims_and_attrs_v1_v13();
+  auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
@@ -3377,7 +3377,7 @@ Status FragmentMetadata::load_generic_tile_offsets_v7_v10(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
   // Load offsets for tile offsets
-  auto num = num_dims_and_attrs_v1_v13();
+  auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
@@ -3412,7 +3412,7 @@ Status FragmentMetadata::load_generic_tile_offsets_v11(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
   // Load offsets for tile offsets
-  auto num = num_dims_and_attrs_v1_v13();
+  auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
@@ -3476,7 +3476,7 @@ Status FragmentMetadata::load_generic_tile_offsets_v12_or_higher(
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
   // Load offsets for tile offsets
-  auto num = num_dims_and_attrs_v14_and_higher();
+  auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
@@ -3721,7 +3721,7 @@ Status FragmentMetadata::load_footer(
 // ...
 // file_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::write_file_sizes(Buffer* buff) const {
-  auto num = num_dims_and_attrs_v14_and_higher();
+  auto num = num_dims_and_attrs();
   Status st = buff->write(&file_sizes_[0], num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
@@ -3736,7 +3736,7 @@ Status FragmentMetadata::write_file_sizes(Buffer* buff) const {
 // ...
 // file_var_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::write_file_var_sizes(Buffer* buff) const {
-  auto num = num_dims_and_attrs_v14_and_higher();
+  auto num = num_dims_and_attrs();
   Status st = buff->write(&file_var_sizes_[0], num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
@@ -3754,7 +3754,7 @@ Status FragmentMetadata::write_file_validity_sizes(Buffer* buff) const {
   if (version_ <= 6)
     return Status::Ok();
 
-  auto num = num_dims_and_attrs_v14_and_higher();
+  auto num = num_dims_and_attrs();
   Status st = buff->write(&file_validity_sizes_[0], num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
@@ -3776,7 +3776,7 @@ Status FragmentMetadata::write_file_validity_sizes(Buffer* buff) const {
 // ...
 // tile_var_sizes_{attr_num+dim_num}(uint64_t)
 Status FragmentMetadata::write_generic_tile_offsets(Buffer* buff) const {
-  auto num = num_dims_and_attrs_v14_and_higher();
+  auto num = num_dims_and_attrs();
 
   // Write R-Tree offset
   auto st = buff->write(&gt_offsets_.rtree_, sizeof(uint64_t));

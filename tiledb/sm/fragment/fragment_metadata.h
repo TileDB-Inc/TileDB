@@ -108,16 +108,9 @@ class FragmentMetadata {
   /* ********************************* */
 
   /**
-   * Returns the number of dimensions and attributes for version 1-13.
+   * Returns the number of dimensions and attributes.
    */
-  inline uint64_t num_dims_and_attrs_v1_v13() const {
-    return array_schema_->attribute_num() + array_schema_->dim_num() + 1;
-  }
-
-  /**
-   * Returns the number of dimensions and attributes for version > 13.
-   */
-  inline uint64_t num_dims_and_attrs_v14_and_higher() const {
+  inline uint64_t num_dims_and_attrs() const {
     return array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
            has_timestamps_;
   }

@@ -82,6 +82,7 @@ ConsolidationWithTimestampsFx::ConsolidationWithTimestampsFx()
     : vfs_(ctx_) {
   Config config;
   config.set("sm.consolidation.with_timestamps", "true");
+  config.set("sm.consolidation.buffer_size", "1000");
   ctx_ = Context(config);
   sm_ = ctx_.ptr().get()->ctx_->storage_manager();
   vfs_ = VFS(ctx_);
@@ -564,6 +565,9 @@ TEST_CASE_METHOD(
     a[0] = i + 1;
     write_sparse(a, {1}, {1}, i + 1);
   }
+
+  // Consolidate.
+  consolidate_sparse();
 
   // Will only allow to load two tiles out of 3.
   Config cfg;

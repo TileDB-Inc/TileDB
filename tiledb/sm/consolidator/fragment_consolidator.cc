@@ -83,6 +83,12 @@ Status FragmentConsolidator::consolidate(
   RETURN_NOT_OK(array_for_writes.open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
+  // Disable consolidation with timestamps on older arrays.
+  if (array_for_reads.array_schema_latest().write_version() <
+      constants::consolidation_with_timestamps_min_version) {
+    config_.with_timestamps_ = false;
+  }
+
   // Get fragment info
   // For dense arrays, we need to pass the last parameter to the
   // `load` function to indicate that all fragment metadata
@@ -181,6 +187,12 @@ Status FragmentConsolidator::consolidate_fragments(
   Array array_for_writes(array_for_reads.array_uri(), storage_manager_);
   RETURN_NOT_OK(array_for_writes.open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
+
+  // Disable consolidation with timestamps on older arrays.
+  if (array_for_reads.array_schema_latest().write_version() <
+      constants::consolidation_with_timestamps_min_version) {
+    config_.with_timestamps_ = false;
+  }
 
   // Check if there is anything to consolidate
   if (fragment_uris.size() <= 1)
