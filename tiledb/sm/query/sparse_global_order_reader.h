@@ -247,7 +247,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @return true if the result coords is the last cell of a consolidated
    * fragment with timestamps.
    */
-  inline bool is_last_cell_of_consolidated_fragment(
+  inline bool last_in_memory_cell_of_consolidated_fragment(
       const unsigned int frag_idx, const GlobalOrderResultCoords& rc) const {
     return !all_tiles_loaded_[frag_idx] &&
            fragment_metadata_[frag_idx]->has_timestamps() &&

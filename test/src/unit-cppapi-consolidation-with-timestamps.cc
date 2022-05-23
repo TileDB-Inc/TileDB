@@ -374,6 +374,8 @@ TEST_CASE_METHOD(
   // Check that no fragment is visible
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 0);
+
+  remove_sparse_array();
 }
 
 TEST_CASE_METHOD(
@@ -513,7 +515,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
-    "CPP API: Test consolidation with timestamps, global read, same cells "
+    "CPP API: Test consolidation with timestamps, global read, same coords "
     "across tiles",
     "[cppapi][consolidation-with-timestamps][global-read][across-tiles]") {
   remove_sparse_array();

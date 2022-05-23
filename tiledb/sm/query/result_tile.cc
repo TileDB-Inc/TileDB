@@ -280,18 +280,7 @@ bool ResultTile::same_coords(
 }
 
 bool ResultTile::same_coords(uint64_t pos_a, uint64_t pos_b) const {
-  auto dim_num = coord_tiles_.size();
-  for (unsigned d = 0; d < dim_num; ++d) {
-    if (!domain_->dimension_ptr(d)->var_size()) {  // Fixed-sized
-      if (std::memcmp(coord(pos_a, d), coord(pos_b, d), coord_size(d)) != 0)
-        return false;
-    } else {  // Var-sized
-      if (coord_string(pos_a, d) != coord_string(pos_b, d))
-        return false;
-    }
-  }
-
-  return true;
+  return same_coords(*this, pos_a, pos_b);
 }
 
 uint64_t ResultTile::timestamp(uint64_t pos) {

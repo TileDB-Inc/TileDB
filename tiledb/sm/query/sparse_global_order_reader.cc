@@ -655,7 +655,7 @@ tuple<Status, optional<bool>> SparseGlobalOrderReader::add_next_cell_to_queue(
     // For arrays with no duplicates and when not in consolidation mode, we
     // cannot use the last cell of a fragment with timestamps if not all tiles
     // are loaded.
-    if (!dups && is_last_cell_of_consolidated_fragment(frag_idx, rc)) {
+    if (!dups && last_in_memory_cell_of_consolidated_fragment(frag_idx, rc)) {
       return {Status::Ok(), true};
     }
 
@@ -692,7 +692,7 @@ tuple<Status, optional<bool>> SparseGlobalOrderReader::add_next_cell_to_queue(
     // For arrays with no duplicates and when not in consolidation mode, we
     // cannot use the last cell of a fragment with timestamps if not all tiles
     // are loaded.
-    if (!dups && is_last_cell_of_consolidated_fragment(frag_idx, rc)) {
+    if (!dups && last_in_memory_cell_of_consolidated_fragment(frag_idx, rc)) {
       return {Status::Ok(), true};
     }
 
