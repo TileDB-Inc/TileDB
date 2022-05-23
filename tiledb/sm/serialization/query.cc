@@ -613,6 +613,7 @@ Status dense_read_state_from_capnp(
 static Status condition_ast_to_capnp(
     const tdb_unique_ptr<ASTNode>& node, capnp::ASTNode::Builder* ast_builder) {
   if (!node->is_expr()) {
+    // Store the field name.
     ast_builder->setIsExpression(false);
     ast_builder->setFieldName(node->get_field_name());
 
@@ -626,7 +627,9 @@ static Status condition_ast_to_capnp(
     // Store the condition value vector of bytes.
     ast_builder->setValue(capnpValue.asPtr());
 
+    // Store the name of the query condition op.
     const std::string op_str = query_condition_op_str(node->get_op());
+    ensure_qc_op_string_is_valid(op_str);
     ast_builder->setOp(op_str);
   } else {
     ast_builder->setIsExpression(true);
@@ -638,6 +641,7 @@ static Status condition_ast_to_capnp(
     }
     const std::string op_str =
         query_condition_combination_op_str(node->get_combination_op());
+    ensure_qc_combo_op_string_is_valid(op_str);
     ast_builder->setCombinationOp(op_str);
   }
   return Status::Ok();
@@ -659,6 +663,7 @@ static void clause_to_capnp(
   clause_builder->setValue(capnpValue.asPtr());
 
   const std::string op_str = query_condition_op_str(node->get_op());
+  ensure_qc_op_string_is_valid(op_str);
   clause_builder->setOp(op_str);
 }
 
@@ -687,8 +692,10 @@ Status condition_to_capnp(
         auto combination_ops_builder =
             condition_builder->initClauseCombinationOps(clauses_vec.size() - 1);
         for (size_t i = 0; i < clauses_vec.size() - 1; ++i) {
+          // Setting and validating the combination op str.
           const std::string op_str = query_condition_combination_op_str(
               QueryConditionCombinationOp::AND);
+          ensure_qc_combo_op_string_is_valid(op_str);
           combination_ops_builder.set(i, op_str);
         }
       }

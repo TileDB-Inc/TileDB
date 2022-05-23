@@ -38,6 +38,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 using namespace tiledb::common;
 
@@ -92,6 +93,24 @@ inline Status query_condition_op_enum(
     return Status_Error("Invalid QueryConditionOp " + query_condition_op_str);
   }
   return Status::Ok();
+}
+
+inline void ensure_qc_op_is_valid(QueryConditionOp query_condition_op) {
+  auto qc_op_enum{::stdx::to_underlying(query_condition_op)};
+  if (qc_op_enum > 5) {
+    throw std::runtime_error(
+        "Invalid Query Condition Op " + std::to_string(qc_op_enum));
+  }
+}
+
+inline void ensure_qc_op_string_is_valid(const std::string &qc_op_str) {
+  QueryConditionOp qc_op;
+  Status st{query_condition_op_enum(qc_op_str, &qc_op)};
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "Invalid Query Condition Op string \"" + qc_op_str + "\"");
+  }
+  ensure_qc_op_is_valid(qc_op);
 }
 
 }  // namespace sm
