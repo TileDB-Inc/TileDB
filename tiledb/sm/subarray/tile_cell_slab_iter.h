@@ -108,6 +108,9 @@ class TileCellSlabIter {
   /** Destructor. */
   ~TileCellSlabIter() = default;
 
+  DISABLE_COPY_AND_COPY_ASSIGN(TileCellSlabIter);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(TileCellSlabIter);
+
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
