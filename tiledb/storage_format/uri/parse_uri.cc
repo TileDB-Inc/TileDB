@@ -69,6 +69,12 @@ Status get_timestamp_range(
         (long long int*)&timestamp_range->second);
   }
 
+  if (timestamp_range->first > timestamp_range->second) {
+    throw std::logic_error(
+        "Error retrieving timestamp range from URI; start timestamp cannot "
+        "be after end timestamp");
+  }
+
   return Status::Ok();
 }
 

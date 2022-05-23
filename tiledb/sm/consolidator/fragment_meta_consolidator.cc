@@ -191,7 +191,8 @@ Status FragmentMetaConsolidator::vacuum(const char* array_name) {
   auto compute_tp = storage_manager_->compute_tp();
   ArrayDirectory array_dir;
   try {
-    array_dir = ArrayDirectory(vfs, compute_tp, URI(array_name), 0, UINT64_MAX);
+    array_dir =
+        ArrayDirectory(vfs, compute_tp, URI(array_name), 0, UINT64_MAX, false);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
