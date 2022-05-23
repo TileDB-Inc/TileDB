@@ -57,6 +57,7 @@ struct tiledb_array_t {
 
 struct tiledb_subarray_t {
   tiledb::sm::Subarray* subarray_ = nullptr;
+  bool is_allocated_ = false;
 };
 
 struct tiledb_buffer_t {

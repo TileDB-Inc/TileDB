@@ -3264,14 +3264,6 @@ int32_t tiledb_query_get_array(
 
   // Allocate an array object, taken from the query's array.
   (*array)->array_ = query->query_->array_shared();
-  if ((*array)->array_ == nullptr) {
-    auto st = Status_Error(
-        "Failed to create TileDB array object; Memory allocation "
-        "error");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
 
   return TILEDB_OK;
 }
@@ -3646,6 +3638,7 @@ int32_t tiledb_subarray_alloc(
         ctx->ctx_->storage_manager()->logger(),
         true,
         ctx->ctx_->storage_manager());
+    (*subarray)->is_allocated_ = true;
   } catch (...) {
   }
   if ((*subarray)->subarray_ == nullptr) {
@@ -3677,7 +3670,12 @@ int32_t tiledb_subarray_set_config(
 
 void tiledb_subarray_free(tiledb_subarray_t** subarray) {
   if (subarray != nullptr && *subarray != nullptr) {
-    (*subarray)->subarray_ = nullptr;
+    if ((*subarray)->is_allocated_) {
+      delete (*subarray)->subarray_;
+    } else {
+      (*subarray)->subarray_ = nullptr;
+    }
+
     delete (*subarray);
     *subarray = nullptr;
   }
