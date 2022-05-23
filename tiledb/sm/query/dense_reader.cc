@@ -615,7 +615,7 @@ DenseReader::apply_query_condition(
               // clause.
               auto&& [overlaps, start, end] = cell_slab_overlaps_range(
                   dim_num,
-                  frag_domains[i].second,
+                  frag_domains[i].domain(),
                   iter.cell_slab_coords(),
                   iter.cell_slab_length());
               if (overlaps) {
@@ -627,10 +627,10 @@ DenseReader::apply_query_condition(
                 }
 
                 RETURN_NOT_OK(condition_.apply_dense(
-                    *(fragment_metadata_[frag_domains[i].first]
+                    *(fragment_metadata_[frag_domains[i].fid()]
                           ->array_schema()
                           .get()),
-                    it->second.result_tile(frag_domains[i].first),
+                    it->second.result_tile(frag_domains[i].fid()),
                     start,
                     end - start + 1,
                     iter.pos_in_tile(),
@@ -921,7 +921,7 @@ Status DenseReader::copy_fixed_tiles(
   std::vector<ResultTile::TileTuple*> tile_tuples(frag_domains.size());
   for (uint32_t fd = 0; fd < frag_domains.size(); ++fd) {
     tile_tuples[fd] =
-        result_space_tile.result_tile(frag_domains[fd].first)->tile_tuple(name);
+        result_space_tile.result_tile(frag_domains[fd].fid())->tile_tuple(name);
     assert(tile_tuples[fd] != nullptr);
   }
 
@@ -953,7 +953,7 @@ Status DenseReader::copy_fixed_tiles(
       // If the cell slab overlaps this fragment domain range, copy data.
       auto&& [overlaps, start, end] = cell_slab_overlaps_range(
           dim_num,
-          frag_domains[fd].second,
+          frag_domains[fd].domain(),
           iter.cell_slab_coords(),
           iter.cell_slab_length());
       if (overlaps) {
@@ -1109,7 +1109,7 @@ Status DenseReader::copy_offset_tiles(
   std::vector<ResultTile::TileTuple*> tile_tuples(frag_domains.size());
   for (uint32_t fd = 0; fd < frag_domains.size(); ++fd) {
     tile_tuples[fd] =
-        result_space_tile.result_tile(frag_domains[fd].first)->tile_tuple(name);
+        result_space_tile.result_tile(frag_domains[fd].fid())->tile_tuple(name);
     assert(tile_tuples[fd] != nullptr);
   }
 
@@ -1144,7 +1144,7 @@ Status DenseReader::copy_offset_tiles(
       // If the cell slab overlaps this fragment domain range, copy data.
       auto&& [overlaps, start, end] = cell_slab_overlaps_range(
           dim_num,
-          frag_domains[fd].second,
+          frag_domains[fd].domain(),
           iter.cell_slab_coords(),
           iter.cell_slab_length());
       if (overlaps) {
