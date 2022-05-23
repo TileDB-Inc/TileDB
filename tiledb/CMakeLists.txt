@@ -568,7 +568,6 @@ find_package(Spdlog_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
 find_package(Magic_EP REQUIRED)
-find_package(Webp_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
@@ -577,8 +576,14 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Zlib::Zlib
     Zstd::Zstd
     libmagic
-    WebP::webp
 )
+if(TILEDB_WEBP)
+  find_package(Webp_EP REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+    WebP::webp
+  )
+endif()
 
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
