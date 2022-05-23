@@ -35,28 +35,84 @@
 #define TILEDB_API_EXCEPTION_SAFETY_H
 
 #include <stdexcept>
+#include "api_argument_validator.h"
 #include "tiledb.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 
 struct CAPIEntryPointBase {
+  /**
+   * Action on bad_alloc, without context.
+   */
   static void action(const std::bad_alloc& e) {
     auto cst = tiledb::common::Status_Error(
-        std::string("Internal TileDB uncaught std::bad_alloc exception; ") +
-        e.what());
+        std::string("Out of memory, caught std::bad_alloc; ") + e.what());
     (void)LOG_STATUS(cst);
   }
 
+  /**
+   * Action on bad_alloc, with context.
+   */
+  static void action(tiledb_ctx_t* ctx, const std::bad_alloc& e) {
+    auto cst = tiledb::common::Status_Error(
+        std::string("Out of memory, caught std::bad_alloc; ") + e.what());
+    (void)LOG_STATUS(cst);
+    save_error(ctx, cst);
+  }
+
+  /**
+   * Action on standard library exception, without context
+   */
   static void action(const std::exception& e) {
     auto cst = tiledb::common::Status_Error(
         std::string("Internal TileDB uncaught exception; ") + e.what());
     (void)LOG_STATUS(cst);
   }
 
+  /**
+   * Action on standard library exception, with context
+   */
+  static void action(tiledb_ctx_t* ctx, const std::exception& e) {
+    auto cst = tiledb::common::Status_Error(
+        std::string("Internal TileDB uncaught exception; ") + e.what());
+    (void)LOG_STATUS(cst);
+    save_error(ctx, cst);
+  }
+
+  /**
+   * Action on status exception, without context
+   */
+  static void action(const StatusException& e) {
+    auto cst{e.extract_status()};
+    (void)LOG_STATUS(cst);
+  }
+
+  /**
+   * Action on status exception, with context
+   */
+  static void action(tiledb_ctx_t* ctx, const StatusException& e) {
+    auto cst{e.extract_status()};
+    (void)LOG_STATUS(cst);
+    save_error(ctx, cst);
+  }
+
+  /**
+   * Action on unknown exception, without context
+   */
   static void action() {
     auto cst = tiledb::common::Status_Error(
         std::string("Internal TileDB uncaught unknown exception!"));
     (void)LOG_STATUS(cst);
+  }
+
+  /**
+   * Action on unknown exception, with context
+   */
+  static void action(tiledb_ctx_t* ctx) {
+    auto cst = tiledb::common::Status_Error(
+        std::string("Internal TileDB uncaught unknown exception!"));
+    (void)LOG_STATUS(cst);
+    save_error(ctx, cst);
   }
 };
 
@@ -74,33 +130,15 @@ struct CAPIEntryPoint<f> : CAPIEntryPointBase {
     } catch (const std::bad_alloc& e) {
       action(e);
       return TILEDB_OOM;
+    } catch (const StatusException& e) {
+      action(e);
+      return TILEDB_ERR;
     } catch (const std::exception& e) {
       action(e);
       return TILEDB_ERR;
     } catch (...) {
       action();
       return TILEDB_ERR;
-    }
-  }
-};
-
-/**
- * Specialization of `CAPIEntryPoint` for return type `bool`
- */
-template <class... Args, bool (*f)(Args...)>
-struct CAPIEntryPoint<f> : CAPIEntryPointBase {
-  static bool function(Args... args) {
-    try {
-      return f(args...);
-    } catch (const std::bad_alloc& e) {
-      action(e);
-      return false;
-    } catch (const std::exception& e) {
-      action(e);
-      return false;
-    } catch (...) {
-      action();
-      return false;
     }
   }
 };
@@ -115,10 +153,64 @@ struct CAPIEntryPoint<f> : CAPIEntryPointBase {
       f(args...);
     } catch (const std::bad_alloc& e) {
       action(e);
+    } catch (const StatusException& e) {
+      action(e);
     } catch (const std::exception& e) {
       action(e);
     } catch (...) {
       action();
+    }
+  }
+};
+
+/**
+ * Argument specialization of `CAPIEntryPoint` for standard API call.
+ *
+ * A standard API call has the standard return type `capi_return_t` and a
+ * context as its first argument. This function checks the validity of the
+ * context so that the wrapped function does not have to.
+ */
+template <class... Args, capi_return_t (*f)(tiledb_ctx_t*, Args...)>
+struct CAPIEntryPoint<f> : CAPIEntryPointBase {
+  static capi_return_t function(tiledb_ctx_t* ctx, Args... args) {
+    /*
+     * Validate context, first pass.
+     * Note that the actions here are the generic ones without a context.
+     */
+    try {
+      tiledb::api::ensure_context_is_valid_enough_for_errors(ctx);
+    } catch (const std::bad_alloc& e) {
+      action(e);
+      return TILEDB_OOM;
+    } catch (const StatusException& e) {
+      action(e);
+      return TILEDB_INVALID_CONTEXT;
+    } catch (const std::exception& e) {
+      action(e);
+      return TILEDB_INVALID_CONTEXT;
+    } catch (...) {
+      action();
+      return TILEDB_INVALID_CONTEXT;
+    }
+    /*
+     * Validate context, second pass. Execute wrapped function.
+     * Note that the actions here all have context arguments.
+     */
+    try {
+      tiledb::api::ensure_context_is_fully_valid(ctx);
+      return f(ctx, args...);
+    } catch (const std::bad_alloc& e) {
+      action(ctx, e);
+      return TILEDB_OOM;
+    } catch (const StatusException& e) {
+      action(ctx, e);
+      return TILEDB_ERR;
+    } catch (const std::exception& e) {
+      action(ctx, e);
+      return TILEDB_ERR;
+    } catch (...) {
+      action(ctx);
+      return TILEDB_ERR;
     }
   }
 };
@@ -146,6 +238,8 @@ struct CAPIEntryPointVoid<f> : CAPIEntryPointBase {
     try {
       f(args...);
     } catch (const std::bad_alloc& e) {
+      action(e);
+    } catch (const StatusException& e) {
       action(e);
     } catch (const std::exception& e) {
       action(e);

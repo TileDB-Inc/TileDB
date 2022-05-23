@@ -34,6 +34,7 @@
 #ifndef TILEDB_CAPI_HELPERS_H
 #define TILEDB_CAPI_HELPERS_H
 
+#include "tiledb/common/exception/exception.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/filter_type.h"
@@ -46,6 +47,117 @@
 bool save_error(tiledb_ctx_t* ctx, const Status& st);
 
 bool create_error(tiledb_error_t** error, const Status& st);
+
+namespace tiledb::api {
+
+class CAPIStatusException : public StatusException {
+ public:
+  explicit CAPIStatusException(const std::string& message)
+      : StatusException("C API", message) {
+  }
+};
+
+/*
+ * Validation functions
+ *
+ * Some functions are only declared here. Others are defined here and declared
+ * as inline:
+ *
+ * * Inline validation functions should do simple tests only. Anything more than
+ *   that should be a function call.
+ * * Validation should rely on exception handling in the API wrapper.
+ */
+
+/**
+ * Ensures the context is sufficient for `save_error` to be called on it.
+ *
+ * Intended to be called only by the API wrapper function. Wrapped functions
+ * should rely on the wrapper to validate contexts.
+ *
+ * @param ctx A context of unknown validity
+ * @throw StatusException
+ */
+inline void ensure_context_is_valid_enough_for_errors(tiledb_ctx_t* ctx) {
+  if (ctx == nullptr) {
+    throw CAPIStatusException("Null context pointer");
+  }
+  if (ctx->ctx_ == nullptr) {
+    throw CAPIStatusException("Empty context structure");
+  }
+}
+
+/**
+ * Ensure the context is valid.
+ *
+ * Intended to be called only by the API wrapper function. Wrapped functions
+ * should rely on the wrapper to validate contexts.
+ *
+ * TRANSITIONAL: The context constructor should throw if it doesn't have a valid
+ * storage manager object. Until that class is fully C.41-compliant, we'll leave
+ * this validation check in place.
+ *
+ * @pre `ensure_context_is_valid_enough_for_errors` would return successfully
+ *
+ * @param ctx A partially-validated context
+ * @throw StatusException
+ */
+inline void ensure_context_is_fully_valid(tiledb_ctx_t* ctx) {
+  if (ctx->ctx_->storage_manager() == nullptr) {
+    throw CAPIStatusException("Context is missing its storage manager");
+  }
+}
+
+/**
+ * Validates a context and a pointer to a new object.
+ *
+ * Logs and saves any error encountered, if possible.
+ *
+ * @param ctx Context
+ * @param p Output pointer
+ * @return true iff context is valid and pointer is not null
+ */
+inline void ensure_output_pointer_is_valid(void* p) {
+  if (p == nullptr) {
+    throw CAPIStatusException("Invalid output pointer for new object");
+  }
+}
+
+/**
+ * Action to take when an input pointer is invalid.
+ *
+ * @pre `ctx` is valid
+ *
+ * @param ctx Context
+ * @param type_name API name of object typew
+ */
+inline void action_invalid_object(const std::string& type_name) {
+  throw CAPIStatusException(std::string("Invalid TileDB object: ") + type_name);
+}
+
+/**
+ * Returns after successfully validating a filter list.
+ *
+ * @param filter_list Possibly-valid pointer to filter list
+ */
+inline void ensure_filter_is_valid(const tiledb_filter_t* filter) {
+  if (filter == nullptr) {
+    action_invalid_object("filter");
+  }
+}
+
+/**
+ * Returns after successfully validating a filter list.
+ *
+ * @param filter_list Possibly-valid pointer to filter list
+ */
+inline void ensure_filter_list_is_valid(
+    const tiledb_filter_list_t* filter_list) {
+  if (filter_list == nullptr) {
+    action_invalid_object("filter list");
+  }
+}
+
+}  // namespace tiledb::api
 
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
   if (array == nullptr || array->array_ == nullptr) {

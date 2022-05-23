@@ -61,6 +61,9 @@ void LOG_ERROR(const std::string& msg);
 /** Logs a status. */
 Status LOG_STATUS(const Status& st);
 
+/** Logs a status exception. */
+void LOG_STATUS(const StatusException& st);
+
 /** Logs trace. */
 void LOG_TRACE(const std::stringstream& msg);
 

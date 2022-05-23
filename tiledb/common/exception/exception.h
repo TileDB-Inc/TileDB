@@ -156,6 +156,16 @@ class StatusException : public std::exception {
    * @return pointer to internal string containing the text
    */
   virtual const char* what() const noexcept override;
+
+  /**
+   * Extract a `Status` object from this exception.
+   *
+   * The lifespan of the status must be shorter than that of this exception from
+   * which it is extracted.
+   */
+  Status extract_status() const {
+    return {origin_, message_};
+  }
 };
 
 /**
