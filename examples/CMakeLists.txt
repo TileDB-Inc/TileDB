@@ -40,6 +40,7 @@ else()
 endif()
 
 if (TILEDB_NO_API_DEPRECATION_WARNINGS)
+  add_compile_options(-Wno-deprecated)
   add_compile_options(-Wno-deprecated-declarations)
 endif()
 
