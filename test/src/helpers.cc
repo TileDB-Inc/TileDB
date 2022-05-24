@@ -1200,10 +1200,10 @@ std::string get_commit_dir(std::string array_dir) {
 }
 
 template <class T>
-void check_counts(T* vals, uint64_t num, std::vector<uint64_t> expected) {
+void check_counts(span<T> vals, std::vector<uint64_t> expected) {
   auto expected_size = static_cast<T>(expected.size());
   std::vector<uint64_t> counts(expected.size());
-  for (uint64_t i = 0; i < num; i++) {
+  for (uint64_t i = 0; i < vals.size(); i++) {
     CHECK(vals[i] >= 0);
     CHECK(vals[i] < expected_size);
 
@@ -1586,9 +1586,9 @@ template void read_array<double>(
     const QueryBuffers& buffers);
 
 template void check_counts<int32_t>(
-    int32_t* vals, uint64_t num, std::vector<uint64_t> expected);
+    span<int32_t> vals, std::vector<uint64_t> expected);
 template void check_counts<uint64_t>(
-    uint64_t* vals, uint64_t num, std::vector<uint64_t> expected);
+    span<uint64_t> vals, std::vector<uint64_t> expected);
 
 }  // End of namespace test
 

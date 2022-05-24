@@ -382,9 +382,9 @@ TEST_CASE(
     array_r.close();
 
     // Check results
-    check_counts(r_buff_a.data(), num, {0, 2, 2, 1, 1});
-    check_counts(r_buff_d1.data(), num, {0, 3, 0, 0, 2, 1});
-    check_counts(r_buff_d2.data(), num, {0, 1, 2, 2, 1});
+    check_counts(span(r_buff_a.data(), num), {0, 2, 2, 1, 1});
+    check_counts(span(r_buff_d1.data(), num), {0, 3, 0, 0, 2, 1});
+    check_counts(span(r_buff_d2.data(), num), {0, 1, 2, 2, 1});
   }
 
   // Remove array

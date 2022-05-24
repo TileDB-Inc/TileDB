@@ -198,7 +198,7 @@ struct GlobalOrderResultCoords
 
       // With bitmap, find the longest contiguous set of bits in the bitmap
       // from the current position.
-      while (next_pos < cell_num && base::tile_->bitmap_[next_pos]) {
+      while (next_pos < cell_num && base::tile_->bitmap_[next_pos] == 1) {
         next_pos++;
         ret++;
       }
@@ -240,7 +240,8 @@ struct GlobalOrderResultCoords
       // from the current position, with coordinares smaller than the next one
       // in the queue.
       base::pos_++;
-      while (base::pos_ < cell_num && base::tile_->bitmap_[base::pos_] && !cmp(*this, next)) {
+      while (base::pos_ < cell_num && base::tile_->bitmap_[base::pos_] &&
+             !cmp(*this, next)) {
         base::pos_++;
         ret++;
       }

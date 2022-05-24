@@ -3278,10 +3278,10 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(status == TILEDB_COMPLETED);
 
-  check_counts(a1, 7, {0, 2, 2, 0, 0, 1, 1, 1});
+  check_counts(span(a1, 7), {0, 2, 2, 0, 0, 1, 1, 1});
   CHECK(a1_size == 7 * sizeof(int));
-  check_counts(coords_dim1, 7, {0, 4, 0, 2, 1});
-  check_counts(coords_dim2, 7, {0, 0, 3, 1, 3});
+  check_counts(span(coords_dim1, 7), {0, 4, 0, 2, 1});
+  check_counts(span(coords_dim2, 7), {0, 0, 3, 1, 3});
   CHECK(coords_size == 7 * sizeof(uint64_t));
 
   // Close array
@@ -3360,10 +3360,10 @@ TEST_CASE_METHOD(
 
   if (use_refactored_sparse_global_order_reader()) {
     CHECK(a1_size == 3 * sizeof(int));
-    check_counts(a1, 3, {0, 1, 1, 0, 0, 1});
+    check_counts(span(a1, 3), {0, 1, 1, 0, 0, 1});
     CHECK(coords_size == 3 * sizeof(uint64_t));
-    check_counts(coords_dim1, 3, {0, 2, 0, 0, 1});
-    check_counts(coords_dim2, 3, {0, 0, 2, 0, 1});
+    check_counts(span(coords_dim1, 3), {0, 2, 0, 0, 1});
+    check_counts(span(coords_dim2, 3), {0, 0, 2, 0, 1});
   } else {
     CHECK(a1_size == 2 * sizeof(int));
     CHECK(a1[0] == 1);
@@ -3383,10 +3383,10 @@ TEST_CASE_METHOD(
 
   if (use_refactored_sparse_global_order_reader()) {
     CHECK(a1_size == 2 * sizeof(int));
-    check_counts(a1, 2, {0, 0, 0, 0, 0, 0, 1, 1});
+    check_counts(span(a1, 2), {0, 0, 0, 0, 0, 0, 1, 1});
     CHECK(coords_size == 2 * sizeof(uint64_t));
-    check_counts(coords_dim1, 2, {0, 0, 0, 2});
-    check_counts(coords_dim2, 2, {0, 0, 0, 1, 1});
+    check_counts(span(coords_dim1, 2), {0, 0, 0, 2});
+    check_counts(span(coords_dim2, 2), {0, 0, 0, 1, 1});
   } else {
     CHECK(a1_size == 3 * sizeof(int));
     CHECK(a1[0] == 5);
@@ -3476,10 +3476,10 @@ TEST_CASE_METHOD(
   REQUIRE(status == TILEDB_COMPLETED);
 
   CHECK(a1_size == 5 * sizeof(int));
-  check_counts(a1, 5, {0, 1, 1, 0, 0, 1, 1, 1});
+  check_counts(span(a1, 5), {0, 1, 1, 0, 0, 1, 1, 1});
   CHECK(coords_size == 5 * sizeof(uint64_t));
-  check_counts(coords_dim1, 5, {0, 2, 0, 2, 1});
-  check_counts(coords_dim2, 5, {0, 0, 2, 1, 2});
+  check_counts(span(coords_dim1, 5), {0, 2, 0, 2, 1});
+  check_counts(span(coords_dim2, 5), {0, 0, 2, 1, 2});
 
   // Close array
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);

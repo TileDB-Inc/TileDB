@@ -251,7 +251,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * fragment with timestamps.
    */
   inline bool last_in_memory_cell_of_consolidated_fragment(
-      const unsigned int frag_idx, const GlobalOrderResultCoords<BitmapType>& rc) const {
+      const unsigned int frag_idx,
+      const GlobalOrderResultCoords<BitmapType>& rc) const {
     return !all_tiles_loaded_[frag_idx] &&
            fragment_metadata_[frag_idx]->has_timestamps() &&
            rc.tile_->tile_idx() == last_cells_[frag_idx].tile_idx_ &&
