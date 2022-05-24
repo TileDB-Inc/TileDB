@@ -257,12 +257,6 @@ else()
   set_source_files_properties(${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
 endif()
 
-# Adding deprecation flag
-if (TILEDB_NO_API_DEPRECATION_WARNINGS)
-  add_definitions(-DTILEDB_NO_API_DEPRECATION_WARNINGS)
-  target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -Wno-deprecated)
-endif()
-
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_CORE_SOURCES
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/curl.cc
@@ -336,6 +330,13 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_CORE_SOURCES}
     ${TILEDB_EXTERNALS_SOURCES}
 )
+
+############################################################
+# Adding deprecation flag
+if (TILEDB_NO_API_DEPRECATION_WARNINGS)
+  add_definitions(-DTILEDB_NO_API_DEPRECATION_WARNINGS)
+  target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -Wno-deprecated)
+endif()
 
 ############################################################
 # provide actions/target for preparation of magic.mgc data for embedding/build
