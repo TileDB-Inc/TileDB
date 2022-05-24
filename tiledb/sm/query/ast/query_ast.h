@@ -92,8 +92,8 @@ class ASTNode {
 
 /** Represents a simple terminal/predicate **/
 class ASTNodeVal : public ASTNode {
-  /** Value constructor. */
  public:
+  /** Value constructor. */
   ASTNodeVal(
       const std::string& field_name,
       const void* const condition_value,
