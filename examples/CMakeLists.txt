@@ -39,6 +39,10 @@ else()
   add_compile_options(-Wno-deprecated-declarations)
 endif()
 
+if (TILEDB_NO_API_DEPRECATION_WARNINGS)
+  add_compile_options(-Wno-deprecated-declarations)
+endif()
+
 # The examples pretend as if they use an installed TileDB, e.g.
 # '#include <tiledb/tiledb.h>'. So just create a 'tiledb' directory for the
 # headers and copy them over from the core source tree.
