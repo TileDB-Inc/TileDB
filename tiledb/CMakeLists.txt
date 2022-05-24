@@ -576,6 +576,8 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Zlib::Zlib
     Zstd::Zstd
     libmagic
+    pcre2-8
+    pcre2-posix
 )
 
 if (NOT WIN32)
@@ -849,6 +851,8 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
   append_dep_lib(libmagic)
+  append_dep_lib(pcre2-8)
+  append_dep_lib(pcre2-posix)
 endif()
 
 ############################################################
