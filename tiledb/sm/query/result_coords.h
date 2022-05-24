@@ -191,9 +191,10 @@ struct GlobalOrderResultCoords
 
       // For overlapping ranges, if there's more than one cell in the bitmap,
       // return 1.
-      if (std::is_same<BitmapType, uint64_t>::value &&
-          base::tile_->bitmap_[base::pos_] != 1) {
-        return 1;
+      if constexpr (std::is_same<BitmapType, uint64_t>::value) {
+        if (base::tile_->bitmap_[base::pos_] != 1) {
+          return 1;
+        }
       }
 
       // With bitmap, find the longest contiguous set of bits in the bitmap
@@ -231,9 +232,10 @@ struct GlobalOrderResultCoords
 
       // For overlapping ranges, if there's more than one cell in the bitmap,
       // return 1.
-      if (std::is_same<BitmapType, uint64_t>::value &&
-          base::tile_->bitmap_[base::pos_] != 1) {
-        return 1;
+      if constexpr (std::is_same<BitmapType, uint64_t>::value) {
+        if (base::tile_->bitmap_[base::pos_] != 1) {
+          return 1;
+        }
       }
 
       // With bitmap, find the longest contiguous set of bits in the bitmap
