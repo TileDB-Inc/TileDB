@@ -55,8 +55,11 @@ namespace sm {
 
 class ASTNode {
  public:
-  /** Returns true if it is an expression node (and false if it's a value
-   * node). */
+  /**
+   * @brief ASTNode class method used for casing between value and expression
+   * nodes.
+   * @return Returns true if the ASTNode is an expression node.
+   */
   virtual bool is_expr() const = 0;
   /** Returns a deep copy of the node. */
   virtual tdb_unique_ptr<ASTNode> clone() const = 0;
@@ -188,7 +191,7 @@ class ASTNodeExpr : public ASTNode {
   /** Returns a deep copy of the node. */
   tdb_unique_ptr<ASTNode> clone() const override;
 
-   /** Returns a set of field names from all the value nodes in the AST. */
+  /** Returns a set of field names from all the value nodes in the AST. */
   void get_field_names(
       std::unordered_set<std::string>& field_name_set) const override;
 
