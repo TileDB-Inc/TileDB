@@ -1199,6 +1199,24 @@ std::string get_commit_dir(std::string array_dir) {
   return array_dir + "/" + tiledb::sm::constants::array_commits_dir_name;
 }
 
+template <class T>
+void check_counts(T* vals, uint64_t num, std::vector<uint64_t> expected) {
+  auto expected_size = static_cast<T>(expected.size());
+  std::vector<uint64_t> counts(expected.size());
+  for (uint64_t i = 0; i < num; i++) {
+    CHECK(vals[i] >= 0);
+    CHECK(vals[i] < expected_size);
+
+    if (vals[i] >= 0 && vals[i] < expected_size) {
+      counts[vals[i]]++;
+    }
+  }
+
+  for (uint64_t i = 0; i < expected.size(); i++) {
+    CHECK(counts[i] == expected[i]);
+  }
+}
+
 template void check_subarray<int8_t>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<int8_t>& ranges);
 template void check_subarray<uint8_t>(
@@ -1566,6 +1584,11 @@ template void read_array<double>(
     const SubarrayRanges<double>& ranges,
     tiledb_layout_t layout,
     const QueryBuffers& buffers);
+
+template void check_counts<int32_t>(
+    int32_t* vals, uint64_t num, std::vector<uint64_t> expected);
+template void check_counts<uint64_t>(
+    uint64_t* vals, uint64_t num, std::vector<uint64_t> expected);
 
 }  // End of namespace test
 

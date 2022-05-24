@@ -377,16 +377,14 @@ TEST_CASE(
     CHECK_NOTHROW(query_r.submit());
     CHECK(query_r.query_status() == tiledb::Query::Status::COMPLETE);
     // check number of results
-    CHECK(query_r.result_buffer_elements()["a"].second == 6);
+    uint64_t num = query_r.result_buffer_elements()["a"].second;
+    CHECK(num == 6);
     array_r.close();
 
     // Check results
-    std::vector<int32_t> c_buff_a = {2, 3, 1, 2, 4, 1, 0};
-    std::vector<int32_t> c_buff_d1 = {1, 1, 4, 1, 5, 4, 0};
-    std::vector<int32_t> c_buff_d2 = {3, 1, 2, 3, 4, 2, 0};
-    CHECK(r_buff_a == c_buff_a);
-    CHECK(r_buff_d1 == c_buff_d1);
-    CHECK(r_buff_d2 == c_buff_d2);
+    check_counts(r_buff_a.data(), num, {0, 2, 2, 1, 1});
+    check_counts(r_buff_d1.data(), num, {0, 3, 0, 0, 2, 1});
+    check_counts(r_buff_d2.data(), num, {0, 1, 2, 2, 1});
   }
 
   // Remove array

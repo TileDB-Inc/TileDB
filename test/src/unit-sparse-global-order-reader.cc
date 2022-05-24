@@ -451,7 +451,8 @@ TEST_CASE_METHOD(
 
   // Check the internal loop count against expected value.
   auto stats =
-      ((sm::SparseGlobalOrderReader*)query->query_->strategy())->stats();
+      ((sm::SparseGlobalOrderReader<uint8_t>*)query->query_->strategy())
+          ->stats();
   REQUIRE(stats != nullptr);
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
@@ -646,7 +647,8 @@ TEST_CASE_METHOD(
 
   // Check the internal loop count against expected value.
   auto stats =
-      ((sm::SparseGlobalOrderReader*)query->query_->strategy())->stats();
+      ((sm::SparseGlobalOrderReader<uint8_t>*)query->query_->strategy())
+          ->stats();
   REQUIRE(stats != nullptr);
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);

@@ -926,16 +926,29 @@ TEST_CASE(
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);
   auto result_elts = query.result_buffer_elements();
   auto result_num = result_elts["rows"].second;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'l');
+
+  if (use_refactored_sparse_global_order_reader()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'l');
+    REQUIRE(data[1] == 'l');
+  } else {
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'l');
+  }
 
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::COMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts["rows"].second;
-  REQUIRE(result_num == 2);
-  REQUIRE(data[0] == 'l');
-  REQUIRE(data[1] == 'm');
+
+  if (use_refactored_sparse_global_order_reader()) {
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'm');
+  } else {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'l');
+    REQUIRE(data[1] == 'm');
+  }
 
   // Close array.
   array.close();
@@ -1013,17 +1026,30 @@ TEST_CASE(
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);
   auto result_elts = query.result_buffer_elements();
   auto result_num = result_elts["rows"].second;
-  REQUIRE(result_num == 1);
-  REQUIRE(data[0] == 'l');
+
+  if (use_refactored_sparse_global_order_reader()) {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'l');
+    REQUIRE(data[1] == 'l');
+  } else {
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'l');
+  }
 
   query.set_subarray(subarray);
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::COMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts["rows"].second;
-  REQUIRE(result_num == 2);
-  REQUIRE(data[0] == 'l');
-  REQUIRE(data[1] == 'm');
+
+  if (use_refactored_sparse_global_order_reader()) {
+    REQUIRE(result_num == 1);
+    REQUIRE(data[0] == 'm');
+  } else {
+    REQUIRE(result_num == 2);
+    REQUIRE(data[0] == 'l');
+    REQUIRE(data[1] == 'm');
+  }
 
   // Close array.
   array.close();
