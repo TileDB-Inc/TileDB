@@ -966,15 +966,10 @@ void ResultTile::compute_results_count_sparse(
               range_indexes.end(),
               c,
               [&](const uint64_t& index, const T& value) {
-                return ((const T*)ranges[index].start_fixed())[0] < value;
+                return ((const T*)ranges[index].start_fixed())[0] <= value;
               });
 
-          // If the upper bound isn't the end add +1 to the index.
-          uint64_t offset = 0;
-          if (it2 != range_indexes.end())
-            offset = 1;
-          uint64_t end_range_idx =
-              std::distance(it, it2) + start_range_idx + offset;
+          uint64_t end_range_idx = std::distance(it, it2) + start_range_idx;
 
           // Iterate through all relevant ranges and compute the count for this
           // dim.

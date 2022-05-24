@@ -782,35 +782,34 @@ void Dimension::relevant_ranges<char>(
       });
 
   // If we have no ranges just exit early
-  if (it == ranges.end())
+  if (it == ranges.end()) {
     return;
+  }
 
   // Set start index
-  const uint64_t start_range_idx = std::distance(ranges.begin(), it);
+  const uint64_t start_range = std::distance(ranges.begin(), it);
 
-  // Binary search to find the last range containing the start mbr.
+  // Find upper bound to end comparisons. Finding this early allows avoiding the
+  // conditional exit in the for loop below
   auto it2 = std::lower_bound(
       it,
       ranges.end(),
       mbr_end,
       [&](const Range& a, const std::string_view& value) {
-        return a.start_str() < value;
+        return a.start_str() <= value;
       });
 
-  // If the upper bound isn't the end add +1 to the index
-  uint64_t offset = 0;
-  if (it2 != ranges.end())
-    offset = 1;
-  const uint64_t end_range_idx =
-      std::distance(it, it2) + start_range_idx + offset;
+  // Set end index
+  const uint64_t end_range = std::distance(it, it2) + start_range;
 
   // Loop over only potential relevant ranges
-  for (uint64_t r = start_range_idx; r < end_range_idx; ++r) {
+  for (uint64_t r = start_range; r < end_range; ++r) {
     const auto& r1_start = ranges[r].start_str();
     const auto& r1_end = ranges[r].end_str();
 
-    if (r1_start <= mbr_end && mbr_start <= r1_end)
+    if (r1_start <= mbr_end && mbr_start <= r1_end) {
       relevant_ranges.emplace_back(r);
+    }
   }
 }
 
@@ -832,30 +831,30 @@ void Dimension::relevant_ranges(
         return ((const T*)a.start_fixed())[1] < value;
       });
 
-  if (it == ranges.end())
+  if (it == ranges.end()) {
     return;
+  }
 
+  // Set start index
   const uint64_t start_range = std::distance(ranges.begin(), it);
 
   // Find upper bound to end comparisons. Finding this early allows avoiding the
   // conditional exit in the for loop below
   auto it2 = std::lower_bound(
       it, ranges.end(), mbr_end, [&](const Range& a, const T value) {
-        return ((const T*)a.start_fixed())[0] < value;
+        return ((const T*)a.start_fixed())[0] <= value;
       });
 
-  // If the upper bound isn't the end add +1 to the index
-  uint64_t offset = 0;
-  if (it2 != ranges.end())
-    offset = 1;
-  const uint64_t end_range = std::distance(it, it2) + start_range + offset;
+  // Set end index
+  const uint64_t end_range = std::distance(it, it2) + start_range;
 
   // Loop over only potential relevant ranges
   for (uint64_t r = start_range; r < end_range; ++r) {
     const auto d1 = (const T*)ranges[r].start_fixed();
 
-    if ((d1[0] <= mbr_end && d1[1] >= mbr_start))
+    if ((d1[0] <= mbr_end && d1[1] >= mbr_start)) {
       relevant_ranges.emplace_back(r);
+    }
   }
 }
 
