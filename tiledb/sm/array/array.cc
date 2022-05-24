@@ -339,7 +339,8 @@ Status Array::open(
           array_uri_,
           timestamp_start_,
           timestamp_end_opened_at_,
-          consolidation_with_timestamps_config_enabled());
+          consolidation_with_timestamps_config_enabled(),
+          ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
@@ -610,7 +611,9 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
         array_uri_,
         timestamp_start_,
         timestamp_end_opened_at_,
-        consolidation_with_timestamps_config_enabled());
+        consolidation_with_timestamps_config_enabled(),
+        query_type_ == QueryType::READ ? ArrayDirectoryMode::READ :
+                                         ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
