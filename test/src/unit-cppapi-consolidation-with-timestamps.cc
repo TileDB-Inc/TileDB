@@ -35,6 +35,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/query/sparse_global_order_reader.h"
 
 using namespace tiledb;
 using namespace tiledb::test;
@@ -66,12 +67,11 @@ struct ConsolidationWithTimestampsFx {
   void write_sparse_v11(uint64_t timestamp);
   void consolidate_sparse();
   void check_timestamps_file(std::vector<uint64_t> expected);
-  void read_sparse(
+  void read_sparse_global_order(
       std::vector<int>& a1,
       std::vector<uint64_t>& dim1,
       std::vector<uint64_t>& dim2,
-      tiledb_layout_t layout,
-      uint64_t timestamp);
+      std::string& stats);
 
   void remove_sparse_array();
   void remove_array(const std::string& array_name);
@@ -82,6 +82,7 @@ ConsolidationWithTimestampsFx::ConsolidationWithTimestampsFx()
     : vfs_(ctx_) {
   Config config;
   config.set("sm.consolidation.with_timestamps", "true");
+  config.set("sm.consolidation.buffer_size", "1000");
   ctx_ = Context(config);
   sm_ = ctx_.ptr().get()->ctx_->storage_manager();
   vfs_ = VFS(ctx_);
@@ -232,29 +233,35 @@ void ConsolidationWithTimestampsFx::check_timestamps_file(
   is.read((char*)written.data(), unfiltered_size);
 
   for (uint64_t i = 0; i < expected.size(); i++) {
-    REQUIRE(expected[i] == written[i]);
+    if (expected[i] == std::numeric_limits<uint64_t>::max()) {
+      CHECK((written[i] == 1 || written[i] == 2));
+    } else {
+      CHECK(expected[i] == written[i]);
+    }
   }
 }
 
-void ConsolidationWithTimestampsFx::read_sparse(
+void ConsolidationWithTimestampsFx::read_sparse_global_order(
     std::vector<int>& a1,
     std::vector<uint64_t>& dim1,
     std::vector<uint64_t>& dim2,
-    tiledb_layout_t layout,
-    uint64_t timestamp) {
+    std::string& stats) {
   // Open array
-  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
+  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ);
 
   // Create query
   Query query(ctx_, array, TILEDB_READ);
-  query.set_layout(layout);
+  query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_data_buffer("a1", a1);
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
-  query.set_config(ctx_.config());
 
   // Submit/finalize the query
   query.submit();
+  CHECK(query.query_status() == Query::Status::COMPLETE);
+
+  // Get the query stats.
+  stats = query.stats();
 
   // Close array
   array.close();
@@ -297,7 +304,8 @@ TEST_CASE_METHOD(
   consolidate_sparse();
 
   // Check t.tdb file.
-  check_timestamps_file({1, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1});
+  const uint64_t X = std::numeric_limits<uint64_t>::max();
+  check_timestamps_file({1, 1, 2, 1, X, X, 1, 2, 1, X, X, 1});
 
   remove_sparse_array();
 }
@@ -367,6 +375,38 @@ TEST_CASE_METHOD(
   // Check that no fragment is visible
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 0);
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, global read",
+    "[cppapi][consolidation-with-timestamps][global-read]") {
+  remove_sparse_array();
+  create_sparse_array();
+
+  // Write first fragment.
+  write_sparse(
+      {0, 1, 2, 3, 4, 5, 6, 7},
+      {1, 1, 1, 2, 3, 4, 3, 3},
+      {1, 2, 4, 3, 1, 2, 3, 4},
+      1);
+
+  // Write second fragment.
+  write_sparse({8, 9, 10, 11}, {2, 2, 3, 3}, {2, 3, 2, 3}, 2);
+  std::string stats;
+  std::vector<int> a1(10);
+  std::vector<uint64_t> dim1(10);
+  std::vector<uint64_t> dim2(10);
+  read_sparse_global_order(a1, dim1, dim2, stats);
+
+  std::vector<int> c_a1 = {0, 1, 8, 2, 9, 4, 10, 5, 11, 7};
+  std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 3, 3, 4, 3, 3};
+  std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 1, 2, 2, 3, 4};
+  CHECK(!memcmp(c_a1.data(), a1.data(), sizeof(c_a1)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
 
   remove_sparse_array();
 }
@@ -442,3 +482,169 @@ TEST_CASE_METHOD(
   remove_sparse_array();
 }
 #endif
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, global read, all cells same "
+    "coords",
+    "[cppapi][consolidation-with-timestamps][global-read][same-coords]") {
+  remove_sparse_array();
+  create_sparse_array();
+
+  // Write fragments.
+  for (uint64_t i = 0; i < 50; i++) {
+    std::vector<int> a(1);
+    a[0] = i + 1;
+    write_sparse(a, {1}, {1}, i + 1);
+  }
+
+  // Consolidate.
+  consolidate_sparse();
+
+  std::string stats;
+  std::vector<int> a1(1);
+  std::vector<uint64_t> dim1(1);
+  std::vector<uint64_t> dim2(1);
+  read_sparse_global_order(a1, dim1, dim2, stats);
+
+  CHECK(a1[0] == 50);
+  CHECK(dim1[0] == 1);
+  CHECK(dim2[0] == 1);
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, global read, same coords "
+    "across tiles",
+    "[cppapi][consolidation-with-timestamps][global-read][across-tiles]") {
+  remove_sparse_array();
+  create_sparse_array();
+
+  // Write fragments.
+  // We write 8 cells per fragments for 6 fragments. Then it gets consolidated
+  // into one. So we'll get in order 6xcell1, 6xcell2... total 48 cells. Tile
+  // capacity is 20 so we'll end up with 3 tiles. First break in the tiles will
+  // be in the middle of cell3, second will be in the middle of the cells7.
+  for (uint64_t i = 0; i < 6; i++) {
+    write_sparse(
+        {1, 2, 3, 4, 5, 6, 7, 8},
+        {1, 1, 2, 2, 1, 1, 2, 2},
+        {1, 2, 1, 2, 3, 4, 3, 4},
+        i + 1);
+  }
+
+  // Consolidate.
+  consolidate_sparse();
+
+  std::string stats;
+  std::vector<int> a1(8);
+  std::vector<uint64_t> dim1(8);
+  std::vector<uint64_t> dim2(8);
+  read_sparse_global_order(a1, dim1, dim2, stats);
+
+  std::vector<int> c_a1 = {1, 2, 3, 4, 5, 6, 7, 8};
+  std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2};
+  std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4};
+  CHECK(!memcmp(c_a1.data(), a1.data(), sizeof(c_a1)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, global read, all cells same "
+    "coords, with memory budget",
+    "[cppapi][consolidation-with-timestamps][global-read][same-coords][mem-"
+    "budget]") {
+  remove_sparse_array();
+  create_sparse_array();
+
+  // Write fragments.
+  for (uint64_t i = 0; i < 50; i++) {
+    std::vector<int> a(1);
+    a[0] = i + 1;
+    write_sparse(a, {1}, {1}, i + 1);
+  }
+
+  // Consolidate.
+  consolidate_sparse();
+
+  // Will only allow to load two tiles out of 3.
+  Config cfg;
+  cfg.set("sm.mem.total_budget", "10000");
+  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.35");
+  ctx_ = Context(cfg);
+
+  std::string stats;
+  std::vector<int> a1(1);
+  std::vector<uint64_t> dim1(1);
+  std::vector<uint64_t> dim2(1);
+  read_sparse_global_order(a1, dim1, dim2, stats);
+
+  CHECK(a1[0] == 50);
+  CHECK(dim1[0] == 1);
+  CHECK(dim2[0] == 1);
+
+  // Make sure there was an internal loop on the reader.
+  CHECK(
+      stats.find("\"Context.StorageManager.Query.Reader.loop_num\": 2") !=
+      std::string::npos);
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, global read, same cells "
+    "across tiles, with memory budget",
+    "[cppapi][consolidation-with-timestamps][global-read][across-tiles][mem-"
+    "budget]") {
+  remove_sparse_array();
+  create_sparse_array();
+
+  // Write fragments.
+  // We write 8 cells per fragments for 6 fragments. Then it gets consolidated
+  // into one. So we'll get in order 6xcell1, 6xcell2... total 48 cells. Tile
+  // capacity is 20 so we'll end up with 3 tiles. First break in the tiles will
+  // be in the middle of cell3, second will be in the middle of the cells7.
+  for (uint64_t i = 0; i < 6; i++) {
+    write_sparse(
+        {1, 2, 3, 4, 5, 6, 7, 8},
+        {1, 1, 2, 2, 1, 1, 2, 2},
+        {1, 2, 1, 2, 3, 4, 3, 4},
+        i + 1);
+  }
+
+  // Consolidate.
+  consolidate_sparse();
+
+  // Will only allow to load two tiles out of 3.
+  Config cfg;
+  cfg.set("sm.mem.total_budget", "10000");
+  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.35");
+  ctx_ = Context(cfg);
+
+  std::string stats;
+  std::vector<int> a1(8);
+  std::vector<uint64_t> dim1(8);
+  std::vector<uint64_t> dim2(8);
+  read_sparse_global_order(a1, dim1, dim2, stats);
+
+  std::vector<int> c_a1 = {1, 2, 3, 4, 5, 6, 7, 8};
+  std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2};
+  std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4};
+  CHECK(!memcmp(c_a1.data(), a1.data(), sizeof(c_a1)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+
+  // Make sure there was an internal loop on the reader.
+  CHECK(
+      stats.find("\"Context.StorageManager.Query.Reader.loop_num\": 2") !=
+      std::string::npos);
+
+  remove_sparse_array();
+}

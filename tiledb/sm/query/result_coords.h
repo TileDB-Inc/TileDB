@@ -154,9 +154,10 @@ struct GlobalOrderResultCoords
   bool advance_to_next_cell() {
     pos_ += init_;
     init_ = true;
-    if (pos_ != tile_->cell_num()) {
+    uint64_t cell_num = tile_->cell_num();
+    if (pos_ != cell_num) {
       if (tile_->has_bmp()) {
-        while (pos_ < tile_->cell_num()) {
+        while (pos_ < cell_num) {
           if (tile_->bitmap_[pos_]) {
             return true;
           }
@@ -176,6 +177,7 @@ struct GlobalOrderResultCoords
    */
   uint64_t max_slab_length() {
     uint64_t ret = 1;
+    uint64_t cell_num = tile_->cell_num();
     uint64_t next_pos = pos_ + 1;
     if (tile_->has_bmp()) {
       // Current cell is not in the bitmap.
@@ -185,13 +187,13 @@ struct GlobalOrderResultCoords
 
       // With bitmap, find the longest contiguous set of bits in the bitmap
       // from the current position.
-      while (next_pos < tile_->cell_num() && tile_->bitmap_[next_pos]) {
+      while (next_pos < cell_num && tile_->bitmap_[next_pos]) {
         next_pos++;
         ret++;
       }
     } else {
       // No bitmap, add all cells from current position.
-      ret = tile_->cell_num() - pos_;
+      ret = cell_num - pos_;
     }
 
     return ret;
@@ -205,6 +207,7 @@ struct GlobalOrderResultCoords
   uint64_t max_slab_length(
       const GlobalOrderResultCoords& next, const CompType& cmp) {
     uint64_t ret = 1;
+    uint64_t cell_num = tile_->cell_num();
 
     // Store the original position.
     uint64_t orig_pos = pos_;
@@ -219,8 +222,7 @@ struct GlobalOrderResultCoords
       // from the current position, with coordinares smaller than the next one
       // in the queue.
       pos_++;
-      while (pos_ < tile_->cell_num() && tile_->bitmap_[pos_] &&
-             !cmp(*this, next)) {
+      while (pos_ < cell_num && tile_->bitmap_[pos_] && !cmp(*this, next)) {
         pos_++;
         ret++;
       }
@@ -228,7 +230,7 @@ struct GlobalOrderResultCoords
       // No bitmap, add all cells from current position, with coordinares
       // smaller than the next one in the queue.
       pos_++;
-      while (pos_ < tile_->cell_num() - 1 && !cmp(*this, next)) {
+      while (pos_ < cell_num - 1 && !cmp(*this, next)) {
         pos_++;
         ret++;
       }

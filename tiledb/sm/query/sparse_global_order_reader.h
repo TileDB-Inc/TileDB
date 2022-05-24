@@ -162,6 +162,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** Mutex to protect the tile queue. */
   std::mutex tile_queue_mutex_;
 
+  /** Stores last cell for fragments consolidated with timestamps. */
+  std::vector<FragIdx> last_cells_;
+
   /* ********************************* */
   /*       PRIVATE DECLARATIONS        */
   /* ********************************* */
@@ -208,6 +211,25 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   tuple<Status, optional<bool>> create_result_tiles();
 
   /**
+   * Process tiles with timestamps to deduplicate entries.
+   *
+   * @param result_tiles Result tiles to process.
+   *
+   * @return Status.
+   */
+  Status dedup_tiles_with_timestamps(std::vector<ResultTile*>& result_tiles);
+
+  /**
+   * Process fragments with timestamps to deduplicate entries.
+   * This removes cells across tiles.
+   *
+   * @param result_tiles Result tiles to process.
+   *
+   * @return Status.
+   */
+  Status dedup_fragments_with_timestamps();
+
+  /**
    * Populate a result cell slab to process.
    *
    * @return Status, result_cell_slab.
@@ -216,9 +238,28 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   compute_result_cell_slab();
 
   /**
+   * Is the result coord the last cell of a consolidated fragment with
+   * timestamps.
+   *
+   * @param frag_idx Fragment index for the result coords.
+   * @param rc Result coords.
+   *
+   * @return true if the result coords is the last cell of a consolidated
+   * fragment with timestamps.
+   */
+  inline bool last_in_memory_cell_of_consolidated_fragment(
+      const unsigned int frag_idx, const GlobalOrderResultCoords& rc) const {
+    return !all_tiles_loaded_[frag_idx] &&
+           fragment_metadata_[frag_idx]->has_timestamps() &&
+           rc.tile_->tile_idx() == last_cells_[frag_idx].tile_idx_ &&
+           rc.pos_ == last_cells_[frag_idx].cell_idx_;
+  }
+
+  /**
    * Add a cell (for a specific fragment) to the queue of cells currently being
    * processed.
    *
+   * @param dups Are we returning dups or not.
    * @param rc Current result coords for the fragment.
    * @param result_tiles_it Iterator, per frag, in the list of retult tiles.
    * @param tile_queue Queue of one result coords, per fragment, sorted.
@@ -227,6 +268,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    */
   template <class CompType>
   tuple<Status, optional<bool>> add_next_cell_to_queue(
+      bool dups,
       GlobalOrderResultCoords& rc,
       std::vector<TileListIt>& result_tiles_it,
       TileMinHeap<CompType>& tile_queue);
@@ -239,6 +281,15 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @return Status.
    */
   Status compute_hilbert_values(std::vector<ResultTile*>& result_tiles);
+
+  /**
+   * Get the timestamp value for a result coords.
+   *
+   * @param rc Result coords.
+   *
+   * @return timestamp.
+   */
+  uint64_t get_timestamp(const GlobalOrderResultCoords& rc) const;
 
   /**
    * Compute the result cell slabs once tiles are loaded.

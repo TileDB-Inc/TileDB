@@ -223,12 +223,6 @@ Status ReaderBase::check_validity_buffer_sizes() const {
   return Status::Ok();
 }
 
-bool ReaderBase::timestamps_not_present(
-    const std::string& name,
-    const std::shared_ptr<tiledb::sm::FragmentMetadata>& frag_md) const {
-  return name == constants::timestamps && !frag_md->has_timestamps();
-}
-
 Status ReaderBase::load_tile_offsets(
     Subarray& subarray, const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");
@@ -255,18 +249,26 @@ Status ReaderBase::load_tile_offsets(
         const auto& schema = fragment->array_schema();
         for (const auto& name : names) {
           // Applicable for zipped coordinates only to versions < 5
-          if (name == constants::coords && format_version >= 5)
+          if (name == constants::coords && format_version >= 5) {
             continue;
+          }
 
           // Applicable to separate coordinates only to versions >= 5
           const auto is_dim = schema->is_dim(name);
-          if (is_dim && format_version < 5)
+          if (is_dim && format_version < 5) {
             continue;
+          }
 
           // Not a member of array schema, this field was added in array schema
           // evolution, ignore for this fragment's tile offsets
-          if (!schema->is_field(name))
+          if (!schema->is_field(name)) {
             continue;
+          }
+
+          // If the fragment doesn't include timestamps
+          if (timestamps_not_present(name, fragment)) {
+            continue;
+          }
 
           filtered_names.emplace_back(name);
         }
