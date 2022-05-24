@@ -523,6 +523,10 @@ TEST_CASE_METHOD(
   create_sparse_array();
 
   // Write fragments.
+  // We write 8 cells per fragments for 6 fragments. Then it gets consolidated
+  // into one. So we'll get in order 6xcell1, 6xcell2... total 48 cells. Tile
+  // capacity is 20 so we'll end up with 3 tiles. First break in the tiles will
+  // be in the middle of cell3, second will be in the middle of the cells7.
   for (uint64_t i = 0; i < 6; i++) {
     write_sparse(
         {1, 2, 3, 4, 5, 6, 7, 8},
@@ -603,6 +607,10 @@ TEST_CASE_METHOD(
   create_sparse_array();
 
   // Write fragments.
+  // We write 8 cells per fragments for 6 fragments. Then it gets consolidated
+  // into one. So we'll get in order 6xcell1, 6xcell2... total 48 cells. Tile
+  // capacity is 20 so we'll end up with 3 tiles. First break in the tiles will
+  // be in the middle of cell3, second will be in the middle of the cells7.
   for (uint64_t i = 0; i < 6; i++) {
     write_sparse(
         {1, 2, 3, 4, 5, 6, 7, 8},
