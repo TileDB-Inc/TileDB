@@ -198,7 +198,8 @@ class SparseIndexReaderBase : public ReaderBase {
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition);
+      QueryCondition& condition,
+      bool consolidation_with_timestamps);
 
   /** Destructor. */
   ~SparseIndexReaderBase() = default;
@@ -323,12 +324,19 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param dim_num Number of dimensions.
    * @param f Fragment index.
    * @param t Tile index.
+   * @param discard_partial_timestamps True if we want to exclude timestamps
+   * tiles for fragments that have full timestamp coverage of the array open
+   * start/end times
    *
    * @return Status, tiles_size, tiles_size_qc.
    */
   template <class BitmapType>
   tuple<Status, optional<std::pair<uint64_t, uint64_t>>> get_coord_tiles_size(
-      bool include_coords, unsigned dim_num, unsigned f, uint64_t t);
+      bool include_coords,
+      unsigned dim_num,
+      unsigned f,
+      uint64_t t,
+      bool discard_partial_timestamps = false);
 
   /**
    * Load tile offsets and result tile ranges.

@@ -1056,7 +1056,8 @@ Status Query::create_strategy() {
             buffers_,
             subarray_,
             layout_,
-            condition_));
+            condition_,
+            consolidation_with_timestamps_));
       } else {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseUnorderedWithDupsReader<uint64_t>,
@@ -1068,7 +1069,8 @@ Status Query::create_strategy() {
             buffers_,
             subarray_,
             layout_,
-            condition_));
+            condition_,
+            consolidation_with_timestamps_));
       }
     } else if (
         use_refactored_sparse_global_order_reader() &&

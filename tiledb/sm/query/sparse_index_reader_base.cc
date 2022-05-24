@@ -63,7 +63,8 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition)
+    QueryCondition& condition,
+    bool consolidation_with_timestamps)
     : ReaderBase(
           stats,
           logger,
@@ -84,7 +85,9 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_query_condition_(0.25)
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
-    , buffers_full_(false) {
+    , buffers_full_(false)
+    , consolidation_with_timestamps_(consolidation_with_timestamps)
+    , load_timestamps_(false) {
   read_state_.done_adding_result_tiles_ = false;
 }
 
@@ -159,7 +162,11 @@ uint64_t SparseIndexReaderBase::cells_copied(
 template <class BitmapType>
 tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size(
-    bool include_coords, unsigned dim_num, unsigned f, uint64_t t) {
+    bool include_coords,
+    unsigned dim_num,
+    unsigned f,
+    uint64_t t,
+    bool discard_partial_timestamps) {
   uint64_t tiles_size = 0;
 
   // Add the coordinate tiles size.
@@ -182,6 +189,12 @@ SparseIndexReaderBase::get_coord_tiles_size(
   // Add the tile bitmap size if there is a subarray.
   if (subarray_.is_set())
     tiles_size += fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
+
+  if (consolidation_with_timestamps_ && load_timestamps_ &&
+      fragment_metadata_[f]->has_timestamps() && !discard_partial_timestamps) {
+    tiles_size +=
+        fragment_metadata_[f]->cell_num(t) * constants::timestamp_size;
+  }
 
   // Compute query condition tile sizes.
   uint64_t tiles_size_qc = 0;
@@ -729,10 +742,10 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
 // Explicit template instantiations
 template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size<uint64_t>(
-    bool, unsigned, unsigned, uint64_t);
+    bool, unsigned, unsigned, uint64_t, bool);
 template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size<uint8_t>(
-    bool, unsigned, unsigned, uint64_t);
+    bool, unsigned, unsigned, uint64_t, bool);
 template Status SparseIndexReaderBase::apply_query_condition<uint64_t>(
     std::vector<ResultTile*>&);
 template Status SparseIndexReaderBase::apply_query_condition<uint8_t>(

@@ -74,7 +74,8 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition);
+      QueryCondition& condition,
+      bool consolidation_with_timestamps);
 
   /** Destructor. */
   ~SparseUnorderedWithDupsReader() = default;
