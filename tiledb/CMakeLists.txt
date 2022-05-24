@@ -577,6 +577,13 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Zstd::Zstd
     libmagic
 )
+if(TILEDB_WEBP)
+  find_package(Webp_EP REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+    WebP::webp
+  )
+endif()
 
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -849,6 +856,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
   append_dep_lib(libmagic)
+  append_dep_lib(WebP::webp)
 endif()
 
 ############################################################
@@ -1057,6 +1065,7 @@ set(ver_patch ${CMAKE_MATCH_1})
 set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
 
 set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
+string(CONCAT PKGCONF_REQ_PRIV ${PKGCONF_REQ_PRIV} " webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux")
 
 # PKG Config file
 configure_file(
