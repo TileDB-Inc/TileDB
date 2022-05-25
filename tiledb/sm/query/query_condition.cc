@@ -786,8 +786,7 @@ void QueryCondition::apply_tree(
         } else if constexpr (std::is_same_v<
                                  CombinationOp,
                                  std::logical_or<uint8_t>>) {
-          std::vector<uint8_t> combination_op_bitmap(
-              result_cell_bitmap_size, 1);
+          std::vector<uint8_t> combination_op_bitmap(result_bitmap_size, 1);
 
           for (const auto& child : node->get_children()) {
             apply_tree(
@@ -798,7 +797,7 @@ void QueryCondition::apply_tree(
                 std::logical_and<uint8_t>(),
                 combination_op_bitmap);
           }
-          for (size_t c = 0; c < result_cell_bitmap_size; ++c) {
+          for (size_t c = 0; c < result_bitmap_size; ++c) {
             result_cell_bitmap[c] |= combination_op_bitmap[c];
           }
         }
@@ -810,8 +809,7 @@ void QueryCondition::apply_tree(
          *                        = a /\ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
-        std::vector<uint8_t> combination_op_bitmap(
-            result_cell_bitmap_size, 0);
+        std::vector<uint8_t> combination_op_bitmap(result_bitmap_size, 0);
 
         for (const auto& child : node->get_children()) {
           apply_tree(
@@ -823,7 +821,7 @@ void QueryCondition::apply_tree(
               combination_op_bitmap);
         }
 
-        for (size_t c = 0; c < result_cell_bitmap_size; ++c) {
+        for (size_t c = 0; c < result_bitmap_size; ++c) {
           result_cell_bitmap[c] *= combination_op_bitmap[c];
         }
       } break;
@@ -1681,16 +1679,15 @@ void QueryCondition::apply_ast_node_sparse(
   const bool nullable = attribute->nullable();
 
   // Process the validity buffer now.
-
   if (nullable) {
     const auto tile_tuple = result_tile.tile_tuple(node->get_field_name());
     const auto& tile_validity = std::get<2>(*tile_tuple);
     const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
 
     // Null values can only be specified for equality operators.
+    const auto cell_num = result_tile.cell_num();
     if (node->get_condition_value_view().content() == nullptr) {
       if (node->get_op() == QueryConditionOp::NE) {
-        const auto cell_num = result_tile.cell_num();
         for (uint64_t c = 0; c < cell_num; c++) {
           result_bitmap[c] *= buffer_validity[c] != 0;
         }
@@ -1825,8 +1822,7 @@ void QueryCondition::apply_tree_sparse(
         } else if constexpr (std::is_same_v<
                                  CombinationOp,
                                  std::logical_or<BitmapType>>) {
-          std::vector<BitmapType> combination_op_bitmap(
-              result_bitmap_size, 1);
+          std::vector<BitmapType> combination_op_bitmap(result_bitmap_size, 1);
 
           for (const auto& child : node->get_children()) {
             apply_tree_sparse<BitmapType>(
