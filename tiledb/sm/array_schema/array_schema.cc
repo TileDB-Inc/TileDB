@@ -658,9 +658,11 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
   if (!st.ok())
     throw std::runtime_error(
         "[ArraySchema::deserialize] Failed to load tile order.");
-  if (!tile_order_is_valid(tile_order_loaded).ok())
-    throw StatusException(Status_ArraySchemaError(
-        "[ArraySchema::deserialize] Invalid tile order."));
+  try {
+    ensure_tile_order_is_valid(tile_order_loaded);
+  } catch (std::exception& e) {
+    std::throw_with_nested(std::runtime_error("[ArraySchema::deserialize] "));
+  }
   Layout tile_order = Layout(tile_order_loaded);
 
   // Load cell order
@@ -669,9 +671,11 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
   if (!st.ok())
     throw std::runtime_error(
         "[ArraySchema::deserialize] Failed to load cell order.");
-  if (!cell_order_is_valid(cell_order_loaded).ok())
-    throw StatusException(Status_ArraySchemaError(
-        "[ArraySchema::deserialize] Invalid cell order."));
+  try {
+    ensure_cell_order_is_valid(cell_order_loaded);
+  } catch (std::exception& e) {
+    std::throw_with_nested(std::runtime_error("[ArraySchema::deserialize] "));
+  }
   Layout cell_order = Layout(cell_order_loaded);
 
   // Load capacity
