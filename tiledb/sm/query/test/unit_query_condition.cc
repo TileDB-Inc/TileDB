@@ -1419,12 +1419,12 @@ void test_apply_tile<char*>(
                   0)
               .ok());
 
-  char* values = static_cast<char*>(malloc(sizeof(char) * 2 * cells));
+  std::vector<char> values(2 * cells);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values, 0, 2 * cells * sizeof(char)).ok());
+  REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
 
   if (var_size) {
     Tile* const tile_offsets = &std::get<0>(*tile_tuple);
@@ -1437,14 +1437,14 @@ void test_apply_tile<char*>(
                     0)
                 .ok());
 
-    uint64_t* offsets =
-        static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+    std::vector<uint64_t> offsets(cells);
     uint64_t offset = 0;
     for (uint64_t i = 0; i < cells; ++i) {
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(tile_offsets->write(offsets, 0, cells * sizeof(uint64_t)).ok());
+    REQUIRE(
+        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
   }
 
   if (nullable) {
@@ -1458,17 +1458,20 @@ void test_apply_tile<char*>(
                     0)
                 .ok());
 
-    uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * cells));
+    std::vector<uint8_t> validity(cells);
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(tile_validity->write(validity, 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
   }
 
   test_apply_operators<char*>(
-      field_name, cells, array_schema, result_tile, values);
-
-  free(values);
+      field_name,
+      cells,
+      array_schema,
+      result_tile,
+      static_cast<void*>(values.data()));
 }
 
 /**
@@ -1488,15 +1491,18 @@ void test_apply_tile(
       tile->init_unfiltered(
               constants::format_version, type, cells * sizeof(T), sizeof(T), 0)
           .ok());
-  T* values = static_cast<T*>(malloc(sizeof(T) * cells));
+  std::vector<T> values(cells);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values, 0, cells * sizeof(T)).ok());
+  REQUIRE(tile->write(values.data(), 0, cells * sizeof(T)).ok());
 
-  test_apply_operators<T>(field_name, cells, array_schema, result_tile, values);
-
-  free(values);
+  test_apply_operators<T>(
+      field_name,
+      cells,
+      array_schema,
+      result_tile,
+      static_cast<void*>(values.data()));
 }
 
 /**
@@ -1671,9 +1677,7 @@ TEST_CASE(
                   0)
               .ok());
 
-  char* values = static_cast<char*>(malloc(
-      sizeof(char) * 2 *
-      (cells - 2)));  // static_cast<char*>(malloc(sizeof(char) * 2 * cells));
+  std::vector<char> values(2 * (cells - 2));
 
   // Empty strings are at idx 8 and 9
   for (uint64_t i = 0; i < (cells - 2); ++i) {
@@ -1681,7 +1685,7 @@ TEST_CASE(
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values, 0, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
 
   if (var_size) {
     Tile* const tile_offsets = &std::get<0>(*tile_tuple);
@@ -1694,8 +1698,7 @@ TEST_CASE(
                     0)
                 .ok());
 
-    uint64_t* offsets =
-        static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+    std::vector<uint64_t> offsets(cells);
     uint64_t offset = 0;
     for (uint64_t i = 0; i < cells - 2; ++i) {
       offsets[i] = offset;
@@ -1703,9 +1706,8 @@ TEST_CASE(
     }
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
-    REQUIRE(tile_offsets->write(offsets, 0, cells * sizeof(uint64_t)).ok());
-
-    free(offsets);
+    REQUIRE(
+        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
   }
 
   if (nullable) {
@@ -1719,13 +1721,12 @@ TEST_CASE(
                     0)
                 .ok());
 
-    uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * cells));
+    std::vector<uint8_t> validity(cells);
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(tile_validity->write(validity, 0, cells * sizeof(uint8_t)).ok());
-
-    free(validity);
+    REQUIRE(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
   }
 
   // Empty string or null string as condition value
@@ -1785,8 +1786,6 @@ TEST_CASE(
       ++expected_iter;
     }
   }
-
-  free(values);
 }
 
 /**
@@ -2092,12 +2091,12 @@ void test_apply_tile_dense<char*>(
                   0)
               .ok());
 
-  char* values = static_cast<char*>(malloc(sizeof(char) * 2 * cells));
+  std::vector<char> values(2 * cells);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values, 0, 2 * cells * sizeof(char)).ok());
+  REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
 
   if (var_size) {
     Tile* const tile_offsets = &std::get<0>(*tile_tuple);
@@ -2110,14 +2109,14 @@ void test_apply_tile_dense<char*>(
                     0)
                 .ok());
 
-    uint64_t* offsets =
-        static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+    std::vector<uint64_t> offsets(cells);
     uint64_t offset = 0;
     for (uint64_t i = 0; i < cells; ++i) {
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(tile_offsets->write(offsets, 0, cells * sizeof(uint64_t)).ok());
+    REQUIRE(
+        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
   }
 
   if (nullable) {
@@ -2131,17 +2130,20 @@ void test_apply_tile_dense<char*>(
                     0)
                 .ok());
 
-    uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * cells));
+    std::vector<uint8_t> validity(cells);
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(tile_validity->write(validity, 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
   }
 
   test_apply_operators_dense<char*>(
-      field_name, cells, array_schema, result_tile, values);
-
-  free(values);
+      field_name,
+      cells,
+      array_schema,
+      result_tile,
+      static_cast<void*>(values.data()));
 }
 
 /**
@@ -2161,16 +2163,18 @@ void test_apply_tile_dense(
       tile->init_unfiltered(
               constants::format_version, type, cells * sizeof(T), sizeof(T), 0)
           .ok());
-  T* values = static_cast<T*>(malloc(sizeof(T) * cells));
+  std::vector<T> values(cells);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values, 0, cells * sizeof(T)).ok());
+  REQUIRE(tile->write(values.data(), 0, cells * sizeof(T)).ok());
 
   test_apply_operators_dense<T>(
-      field_name, cells, array_schema, result_tile, values);
-
-  free(values);
+      field_name,
+      cells,
+      array_schema,
+      result_tile,
+      static_cast<void*>(values.data()));
 }
 
 /**
@@ -2358,17 +2362,14 @@ TEST_CASE(
                   0)
               .ok());
 
-  char* values = static_cast<char*>(malloc(
-      sizeof(char) * 2 *
-      (cells - 2)));  // static_cast<char*>(malloc(sizeof(char) * 2 * cells));
-
+  std::vector<char> values(2 * (cells - 2));
   // Empty strings are at idx 8 and 9
   for (uint64_t i = 0; i < (cells - 2); ++i) {
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values, 0, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
 
   if (var_size) {
     Tile* const tile_offsets = &std::get<0>(*tile_tuple);
@@ -2381,8 +2382,7 @@ TEST_CASE(
                     0)
                 .ok());
 
-    uint64_t* offsets =
-        static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+    std::vector<uint64_t> offsets(cells);
     uint64_t offset = 0;
     for (uint64_t i = 0; i < cells - 2; ++i) {
       offsets[i] = offset;
@@ -2390,9 +2390,8 @@ TEST_CASE(
     }
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
-    REQUIRE(tile_offsets->write(offsets, 0, cells * sizeof(uint64_t)).ok());
-
-    free(offsets);
+    REQUIRE(
+        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
   }
 
   if (nullable) {
@@ -2406,13 +2405,12 @@ TEST_CASE(
                     0)
                 .ok());
 
-    uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * cells));
+    std::vector<uint8_t> validity(cells);
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(tile_validity->write(validity, 0, cells * sizeof(uint8_t)).ok());
-
-    free(validity);
+    REQUIRE(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
   }
 
   // Empty string or null string as condition value
@@ -2471,8 +2469,6 @@ TEST_CASE(
       ++expected_iter;
     }
   }
-
-  free(values);
 }
 
 /**
@@ -2781,12 +2777,12 @@ void test_apply_tile_sparse<char*>(
                   0)
               .ok());
 
-  char* values = static_cast<char*>(malloc(sizeof(char) * 2 * cells));
+  std::vector<char> values(cells * 2);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values, 0, 2 * cells * sizeof(char)).ok());
+  REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
 
   if (var_size) {
     Tile* const tile_offsets = &std::get<0>(*tile_tuple);
@@ -2799,14 +2795,14 @@ void test_apply_tile_sparse<char*>(
                     0)
                 .ok());
 
-    uint64_t* offsets =
-        static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+    std::vector<uint64_t> offsets(cells);
     uint64_t offset = 0;
     for (uint64_t i = 0; i < cells; ++i) {
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(tile_offsets->write(offsets, 0, cells * sizeof(uint64_t)).ok());
+    REQUIRE(
+        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
   }
 
   if (nullable) {
@@ -2820,17 +2816,20 @@ void test_apply_tile_sparse<char*>(
                     0)
                 .ok());
 
-    uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * cells));
+    std::vector<uint8_t> validity(cells);
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(tile_validity->write(validity, 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
   }
 
   test_apply_operators_sparse<char*>(
-      field_name, cells, array_schema, result_tile, values);
-
-  free(values);
+      field_name,
+      cells,
+      array_schema,
+      result_tile,
+      static_cast<void*>(values.data()));
 }
 
 /**
@@ -2850,16 +2849,19 @@ void test_apply_tile_sparse(
       tile->init_unfiltered(
               constants::format_version, type, cells * sizeof(T), sizeof(T), 0)
           .ok());
-  T* values = static_cast<T*>(malloc(sizeof(T) * cells));
+
+  std::vector<T> values(cells);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values, 0, cells * sizeof(T)).ok());
+  REQUIRE(tile->write(values.data(), 0, cells * sizeof(T)).ok());
 
   test_apply_operators_sparse<T>(
-      field_name, cells, array_schema, result_tile, values);
-
-  free(values);
+      field_name,
+      cells,
+      array_schema,
+      result_tile,
+      static_cast<void*>(values.data()));
 }
 
 /**
@@ -2989,6 +2991,12 @@ TEST_CASE(
   test_apply_sparse<char*>(Datatype::STRING_ASCII, false, true);
 }
 
+/**
+ * @brief Test parameters structure that contains the query condition
+ * object, and the expected results of running the query condition on
+ * an size 10 array containing {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}.
+ *
+ */
 struct TestParams {
   QueryCondition qc_;
   uint64_t cell_count_;
@@ -3007,12 +3015,20 @@ struct TestParams {
   }
 };
 
-void validate_qc(
+/**
+ * @brief Validate QueryCondition::apply by calling it and verifying
+ * the results against the expected results.
+ *
+ * @param tp TestParams object that contains the query condition object
+ * and the expected results.
+ * @param cells The number of cells in the array we're running the query on.
+ * @param array_schema The array schema of the array we're running the query on.
+ */
+void validate_qc_apply(
     TestParams& tp,
     uint64_t cells,
     const ArraySchema& array_schema,
     ResultTile& result_tile) {
-  // Test QueryCondition::apply.
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
@@ -3023,8 +3039,23 @@ void validate_qc(
     CHECK(result_cell_slabs[i].start_ == tp.expected_slabs_[i].start_);
     CHECK(result_cell_slabs[i].length_ == tp.expected_slabs_[i].length_);
   }
+}
 
-  // Test QueryCondition::apply_sparse.
+/**
+ * @brief Validate QueryCondition::apply_sparse by calling it and verifying
+ * the results against the expected results.
+ *
+ * @param tp TestParams object that contains the query condition object
+ * and the expected results.
+ * @param cells The number of cells in the array we're running the query on.
+ * @param array_schema The array schema of the array we're running the query on.
+ * @param result_tile The result tile that contains the array data.
+ */
+void validate_qc_apply_sparse(
+    TestParams& tp,
+    uint64_t cells,
+    const ArraySchema& array_schema,
+    ResultTile& result_tile) {
   uint64_t cell_count = 0;
   std::vector<uint8_t> sparse_result_bitmap(cells, 1);
   REQUIRE(tp.qc_
@@ -3035,8 +3066,23 @@ void validate_qc(
   for (uint64_t i = 0; i < cells; ++i) {
     CHECK(sparse_result_bitmap[i] == tp.expected_bitmap_[i]);
   }
+}
 
-  // Test QueryCondition::apply_dense.
+/**
+ * @brief Validate QueryCondition::apply_dense by calling it and verifying
+ * the results against the expected results.
+ *
+ * @param tp TestParams object that contains the query condition object
+ * and the expected results.
+ * @param cells The number of cells in the array we're running the query on.
+ * @param array_schema The array schema of the array we're running the query on.
+ * @param result_tile The result tile that contains the array data.
+ */
+void validate_qc_apply_dense(
+    TestParams& tp,
+    uint64_t cells,
+    const ArraySchema& array_schema,
+    ResultTile& result_tile) {
   std::vector<uint8_t> dense_result_bitmap(cells, 1);
   REQUIRE(tp.qc_
               .apply_dense(
@@ -3053,6 +3099,14 @@ void validate_qc(
   }
 }
 
+/**
+ * @brief Function that takes a selection of QueryConditions, with their
+ * expected results, and combines them together.
+ *
+ * @param field_name The field name of the query condition.
+ * @param result_tile The result tile of the array we're running the query on.
+ * @param tp_vec The vector that stores the test parameter structs.
+ */
 void populate_test_params_vector(
     const std::string& field_name,
     ResultTile* result_tile,
@@ -3628,19 +3682,33 @@ TEST_CASE(
                   sizeof(uint64_t),
                   0)
               .ok());
-  uint64_t* values = static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+
+  std::vector<uint64_t> values(cells);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = i;
   }
-  REQUIRE(tile->write(values, 0, cells * sizeof(uint64_t)).ok());
+  REQUIRE(tile->write(values.data(), 0, cells * sizeof(uint64_t)).ok());
 
   std::vector<TestParams> tp_vec;
   populate_test_params_vector(field_name, &result_tile, tp_vec);
-  for (auto& elem : tp_vec) {
-    validate_qc(elem, cells, array_schema, result_tile);
+
+  SECTION("Validate apply.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply(elem, cells, array_schema, result_tile);
+    }
   }
 
-  free(values);
+  SECTION("Validate apply_sparse.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply_sparse(elem, cells, array_schema, result_tile);
+    }
+  }
+
+  SECTION("Validate apply_dense.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply_dense(elem, cells, array_schema, result_tile);
+    }
+  }
 }
 
 TEST_CASE(
@@ -3697,17 +3765,14 @@ TEST_CASE(
                   0)
               .ok());
 
-  char* values = static_cast<char*>(malloc(
-      sizeof(char) * 2 *
-      (cells - 2)));  // static_cast<char*>(malloc(sizeof(char) * 2 * cells));
-
+  std::vector<char> values(2 * (cells - 2));
   // Empty strings are at idx 8 and 9
   for (uint64_t i = 0; i < (cells - 2); ++i) {
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values, 0, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
 
   if (var_size) {
     Tile* const tile_offsets = &std::get<0>(*tile_tuple);
@@ -3720,8 +3785,7 @@ TEST_CASE(
                     0)
                 .ok());
 
-    uint64_t* offsets =
-        static_cast<uint64_t*>(malloc(sizeof(uint64_t) * cells));
+    std::vector<uint64_t> offsets(cells);
     uint64_t offset = 0;
     for (uint64_t i = 0; i < cells - 2; ++i) {
       offsets[i] = offset;
@@ -3729,9 +3793,8 @@ TEST_CASE(
     }
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
-    REQUIRE(tile_offsets->write(offsets, 0, cells * sizeof(uint64_t)).ok());
-
-    free(offsets);
+    REQUIRE(
+        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
   }
 
   if (nullable) {
@@ -3745,13 +3808,12 @@ TEST_CASE(
                     0)
                 .ok());
 
-    uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * cells));
+    std::vector<uint8_t> validity(cells);
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(tile_validity->write(validity, 0, cells * sizeof(uint8_t)).ok());
-
-    free(validity);
+    REQUIRE(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
   }
 
   // Empty string or null string as condition value
@@ -3812,6 +3874,4 @@ TEST_CASE(
       ++expected_iter;
     }
   }
-
-  free(values);
 }
