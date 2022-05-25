@@ -133,7 +133,7 @@ class FragmentConsolidator : public Consolidator {
   /* ********************************* */
 
   /** Consolidation configuration parameters. */
-  struct ConsolidationConfig {
+  struct ConsolidationConfig : Consolidator::ConsolidationConfigBase {
     /**
      * Include timestamps in the consolidated fragment or not.
      */
@@ -164,16 +164,8 @@ class FragmentConsolidator : public Consolidator {
      * consolidation.
      */
     float size_ratio_;
-    /** Start time for consolidation. */
-    uint64_t timestamp_start_;
-    /** End time for consolidation. */
-    uint64_t timestamp_end_;
     /** Is the refactored reader in use or not */
     bool use_refactored_reader_;
-    /** Start time for vacuuming. */
-    uint64_t vacuum_timestamp_start_;
-    /** End time for vacuuming. */
-    uint64_t vacuum_timestamp_end_;
   };
 
   /* ********************************* */
