@@ -36,12 +36,11 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-/** Returns true is the node is an expression node. */
+
 bool ASTNodeVal::is_expr() const {
   return false;
 }
 
-/** Returns a deep copy of the node. */
 tdb_unique_ptr<ASTNode> ASTNodeVal::clone() const {
   return tdb_unique_ptr<ASTNode>(tdb_new(
       ASTNodeVal,
@@ -162,7 +161,6 @@ tdb_unique_ptr<ASTNode> ASTNodeVal::combine(
       tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
 }
 
-/** Value node getter methods */
 const std::string& ASTNodeVal::get_field_name() const {
   return field_name_;
 }
@@ -173,7 +171,6 @@ const QueryConditionOp& ASTNodeVal::get_op() const {
   return op_;
 }
 
-/** Expression node getter methods */
 const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeVal::get_children() const {
   throw std::runtime_error(
       "ASTNodeVal::get_children: Cannot get children from an AST value node.");
@@ -184,12 +181,10 @@ const QueryConditionCombinationOp& ASTNodeVal::get_combination_op() const {
       "value node.");
 }
 
-/** Returns true is the node is an expression node. */
 bool ASTNodeExpr::is_expr() const {
   return true;
 }
 
-/** Returns a deep copy of the node. */
 tdb_unique_ptr<ASTNode> ASTNodeExpr::clone() const {
   std::vector<tdb_unique_ptr<ASTNode>> nodes_copy;
   for (const auto& node : nodes_) {
@@ -256,7 +251,6 @@ tdb_unique_ptr<ASTNode> ASTNodeExpr::combine(
       tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
 }
 
-/** Value node getter methods */
 const std::string& ASTNodeExpr::get_field_name() const {
   throw std::runtime_error(
       "ASTNodeExpr::get_field_name: Cannot get field name from an AST "
@@ -272,7 +266,6 @@ const QueryConditionOp& ASTNodeExpr::get_op() const {
       "ASTNodeExpr::get_op: Cannot get op from an AST expression node.");
 }
 
-/** Expression node getter methods */
 const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeExpr::get_children() const {
   return nodes_;
 }

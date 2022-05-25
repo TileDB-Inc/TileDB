@@ -41,6 +41,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/rtree/rtree.h"
@@ -105,6 +106,14 @@ class FragmentMetadata {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /**
+   * Returns the number of dimensions and attributes.
+   */
+  inline uint64_t num_dims_and_attrs() const {
+    return array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
+           has_timestamps_;
+  }
 
   /** Returns the number of cells in the fragment. */
   uint64_t cell_num() const;
@@ -225,7 +234,9 @@ class FragmentMetadata {
   bool has_consolidated_footer() const;
 
   /** Returns true if the fragment has timestamps. */
-  bool has_timestamps() const;
+  inline bool has_timestamps() const {
+    return has_timestamps_;
+  }
 
   /**
    * Retrieves the overlap of all MBRs with the input ND range.

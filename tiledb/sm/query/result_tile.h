@@ -165,8 +165,23 @@ class ResultTile {
   /**
    * Returns true if the coordinates at position `pos_a` and `pos_b` are
    * the same.
+   *
+   * This checks for two cells in different tiles.
    */
   bool same_coords(const ResultTile& rt, uint64_t pos_a, uint64_t pos_b) const;
+
+  /**
+   * Returns true if the coordinates at position `pos_a` and `pos_b` are
+   * the same.
+   *
+   * This checks for two cells in the same tile.
+   */
+  bool same_coords(uint64_t pos_a, uint64_t pos_b) const;
+
+  /**
+   * Returns the timestamp of the cell at position `pos`.
+   */
+  uint64_t timestamp(uint64_t pos);
 
   /** Returns the fragment id that this result tile belongs to. */
   unsigned frag_idx() const;
@@ -348,6 +363,9 @@ class ResultTile {
 
   /** Attribute names to tiles based on attribute ordering from array schema. */
   std::vector<std::pair<std::string, optional<TileTuple>>> attr_tiles_;
+
+  /** The timestamp attribute tile. */
+  optional<TileTuple> timestamps_tile_;
 
   /** The zipped coordinates tile. */
   TileTuple coords_tile_;
@@ -628,6 +646,26 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<uint8_t> {
   /** Set a hilbert value. */
   inline void set_hilbert_value(uint64_t i, uint64_t v) {
     hilbert_values_[i] = v;
+  }
+
+  /** Return first cell index in bitmap. */
+  uint64_t first_cell_in_bitmap() {
+    uint64_t ret = 0;
+    while (!bitmap_[ret]) {
+      ret++;
+    }
+
+    return ret;
+  }
+
+  /** Return first cell index in bitmap. */
+  uint64_t last_cell_in_bitmap() {
+    uint64_t ret = bitmap_.size() - 1;
+    while (!bitmap_[ret]) {
+      ret--;
+    }
+
+    return ret;
   }
 
  private:

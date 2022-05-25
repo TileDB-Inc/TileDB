@@ -728,7 +728,10 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, consolidation",
     "[cppapi][hilbert][consolidation]") {
-  Context ctx;
+  Config cfg;
+  cfg["sm.consolidation.buffer_size"] = "10000";
+
+  Context ctx(cfg);
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
 
@@ -1107,7 +1110,10 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, int32, negative, consolidation",
     "[cppapi][hilbert][2d][int32][negative][consolidation]") {
-  Context ctx;
+  Config cfg;
+  cfg["sm.consolidation.buffer_size"] = "10000";
+
+  Context ctx(cfg);
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
 
@@ -1548,7 +1554,10 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, float32, consolidation",
     "[cppapi][hilbert][2d][float32][consolidation]") {
-  Context ctx;
+  Config cfg;
+  cfg["sm.consolidation.buffer_size"] = "10000";
+
+  Context ctx(cfg);
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
 

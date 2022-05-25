@@ -35,8 +35,21 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_query PUBLIC Catch2::Catch2)
     target_link_libraries(unit_query PUBLIC query)
 
+    # Also temporary
+    target_link_libraries(unit_query
+      PUBLIC
+        TILEDB_CORE_OBJECTS_ILIB
+        tiledb_test_support_lib_
+    )
+
     # Sources for tests
-    target_sources(unit_query PUBLIC test/main.cc test/unit_validity_vector.cc)
+    target_sources(unit_query PUBLIC test/main.cc test/unit_validity_vector.cc test/unit_query_condition.cc)
+
+    # We want tests to continue as normal even as the API is changing,
+    # so don't warn for deprecations, since they'll be escalated to errors.
+    if (NOT MSVC)
+      target_compile_options(unit_query PRIVATE -Wno-deprecated-declarations)
+    endif()
 
     add_test(
         NAME "unit_query"

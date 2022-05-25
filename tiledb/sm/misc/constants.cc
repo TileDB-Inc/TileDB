@@ -575,6 +575,9 @@ const uint32_t format_version = 14;
 /** The lowest version supported for back compat writes. */
 const uint32_t back_compat_writes_min_format_version = 7;
 
+/** The lowest version supported for consolidation with timestamps. */
+const uint32_t consolidation_with_timestamps_min_version = 14;
+
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;
 

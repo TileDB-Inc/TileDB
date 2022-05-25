@@ -131,7 +131,7 @@ ArraySchema::ArraySchema(
 
   // Create dimension map
   dim_map_.clear();
-  for (unsigned d = 0; d < domain_->dim_num(); ++d) {
+  for (dimension_size_type d = 0; d < domain_->dim_num(); ++d) {
     auto dim{domain_->dimension_ptr(d)};
     dim_map_[dim->name()] = dim;
   }
@@ -204,7 +204,7 @@ const URI& ArraySchema::array_uri() const {
   return array_uri_;
 }
 
-const Attribute* ArraySchema::attribute(unsigned int id) const {
+const Attribute* ArraySchema::attribute(attribute_size_type id) const {
   if (id < attributes_.size())
     return attributes_[id].get();
   return nullptr;
@@ -215,8 +215,8 @@ const Attribute* ArraySchema::attribute(const std::string& name) const {
   return it == attribute_map_.end() ? nullptr : it->second;
 }
 
-unsigned int ArraySchema::attribute_num() const {
-  return (unsigned)attributes_.size();
+ArraySchema::attribute_size_type ArraySchema::attribute_num() const {
+  return static_cast<attribute_size_type>(attributes_.size());
 }
 
 const std::vector<shared_ptr<const Attribute>>& ArraySchema::attributes()
@@ -367,7 +367,7 @@ bool ArraySchema::dense() const {
   return array_type_ == ArrayType::DENSE;
 }
 
-const Dimension* ArraySchema::dimension_ptr(unsigned int i) const {
+const Dimension* ArraySchema::dimension_ptr(dimension_size_type i) const {
   return domain_->dimension_ptr(i);
 }
 
@@ -396,7 +396,7 @@ std::vector<Datatype> ArraySchema::dim_types() const {
   return ret;
 }
 
-unsigned int ArraySchema::dim_num() const {
+ArraySchema::dimension_size_type ArraySchema::dim_num() const {
   return domain_->dim_num();
 }
 
@@ -456,7 +456,8 @@ bool ArraySchema::is_dim(const std::string& name) const {
 }
 
 bool ArraySchema::is_field(const std::string& name) const {
-  return is_attr(name) || is_dim(name) || name == constants::coords;
+  return is_attr(name) || is_dim(name) || name == constants::coords ||
+         name == constants::timestamps;
 }
 
 bool ArraySchema::is_nullable(const std::string& name) const {
@@ -881,7 +882,7 @@ Status ArraySchema::set_domain(shared_ptr<Domain> domain) {
   // Create dimension map
   dim_map_.clear();
   auto dim_num = domain_->dim_num();
-  for (unsigned d = 0; d < dim_num; ++d) {
+  for (dimension_size_type d = 0; d < dim_num; ++d) {
     auto dim{dimension_ptr(d)};
     dim_map_[dim->name()] = dim;
   }
@@ -944,7 +945,7 @@ bool ArraySchema::check_attribute_dimension_names() const {
   auto dim_num = this->dim_num();
   for (auto attr : attributes_)
     names.insert(attr->name());
-  for (unsigned int i = 0; i < dim_num; ++i)
+  for (dimension_size_type i = 0; i < dim_num; ++i)
     names.insert(domain_->dimension_ptr(i)->name());
   return (names.size() == attributes_.size() + dim_num);
 }
@@ -968,7 +969,7 @@ Status ArraySchema::check_double_delta_compressor(
   // Error if any real dimension inherits the coord filters with DOUBLE DELTA.
   // A dimension inherits the filters when it has no filters.
   auto dim_num = domain_->dim_num();
-  for (unsigned d = 0; d < dim_num; ++d) {
+  for (dimension_size_type d = 0; d < dim_num; ++d) {
     auto dim{domain_->dimension_ptr(d)};
     const auto& dim_filters = dim->filters();
     auto dim_type = dim->type();
@@ -993,7 +994,7 @@ Status ArraySchema::check_string_compressor(
   // Error if there are also other filters set for a string dimension together
   // with RLE or Dictionary-encoding
   auto dim_num = domain_->dim_num();
-  for (unsigned d = 0; d < dim_num; ++d) {
+  for (dimension_size_type d = 0; d < dim_num; ++d) {
     auto dim{domain_->dimension_ptr(d)};
     const auto& dim_filters = dim->filters();
     // if it's a var-length string dimension and there is no specific filter

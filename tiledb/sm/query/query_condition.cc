@@ -749,6 +749,7 @@ void QueryCondition::apply_tree(
         combination_op,
         result_cell_bitmap);
   } else {
+    const auto result_bitmap_size = result_cell_bitmap.size();
     switch (node->get_combination_op()) {
         /*
          * cl(q; a) means evaluate a clause (which may be compound) with query q
@@ -783,8 +784,7 @@ void QueryCondition::apply_tree(
         } else if constexpr (std::is_same_v<
                                  CombinationOp,
                                  std::logical_or<uint8_t>>) {
-          std::vector<uint8_t> combination_op_bitmap(
-              result_cell_bitmap.size(), 1);
+          std::vector<uint8_t> combination_op_bitmap(result_bitmap_size, 1);
 
           for (const auto& child : node->get_children()) {
             apply_tree(
@@ -795,7 +795,7 @@ void QueryCondition::apply_tree(
                 std::logical_and<uint8_t>(),
                 combination_op_bitmap);
           }
-          for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
+          for (size_t c = 0; c < result_bitmap_size; ++c) {
             result_cell_bitmap[c] |= combination_op_bitmap[c];
           }
         }
@@ -807,8 +807,7 @@ void QueryCondition::apply_tree(
          *                        = a /\ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
-        std::vector<uint8_t> combination_op_bitmap(
-            result_cell_bitmap.size(), 0);
+        std::vector<uint8_t> combination_op_bitmap(result_bitmap_size, 0);
 
         for (const auto& child : node->get_children()) {
           apply_tree(
@@ -820,8 +819,7 @@ void QueryCondition::apply_tree(
               combination_op_bitmap);
         }
 
-        /// TODO: We have not tested for optimization of & versus *.
-        for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
+        for (size_t c = 0; c < result_bitmap_size; ++c) {
           result_cell_bitmap[c] *= combination_op_bitmap[c];
         }
       } break;
@@ -1285,6 +1283,7 @@ void QueryCondition::apply_tree_dense(
         combination_op,
         result_buffer);
   } else {
+    const auto result_buffer_size = result_buffer.size();
     switch (node->get_combination_op()) {
         /*
          * cl(q; a) means evaluate a clause (which may be compound) with query q
@@ -1321,9 +1320,9 @@ void QueryCondition::apply_tree_dense(
         } else if constexpr (std::is_same_v<
                                  CombinationOp,
                                  std::logical_or<uint8_t>>) {
-          std::vector<uint8_t> combination_op_bitmap(result_buffer.size(), 1);
+          std::vector<uint8_t> combination_op_bitmap(result_buffer_size, 1);
           span<uint8_t> combination_op_span(
-              combination_op_bitmap.data(), result_buffer.size());
+              combination_op_bitmap.data(), result_buffer_size);
 
           for (const auto& child : node->get_children()) {
             apply_tree_dense(
@@ -1336,7 +1335,7 @@ void QueryCondition::apply_tree_dense(
                 std::logical_and<uint8_t>(),
                 combination_op_span);
           }
-          for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
+          for (size_t c = 0; c < result_buffer_size; ++c) {
             result_buffer[c] |= combination_op_bitmap[c];
           }
         }
@@ -1347,9 +1346,9 @@ void QueryCondition::apply_tree_dense(
          *                        = a /\ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
-        std::vector<uint8_t> combination_op_bitmap(result_buffer.size(), 0);
+        std::vector<uint8_t> combination_op_bitmap(result_buffer_size, 0);
         span<uint8_t> combination_op_span(
-            combination_op_bitmap.data(), result_buffer.size());
+            combination_op_bitmap.data(), result_buffer_size);
         for (const auto& child : node->get_children()) {
           apply_tree_dense(
               child,
@@ -1362,8 +1361,7 @@ void QueryCondition::apply_tree_dense(
               combination_op_span);
         }
 
-        /// TODO: We have not tested for optimization of & versus *.
-        for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
+        for (size_t c = 0; c < result_buffer_size; ++c) {
           result_buffer[c] *= combination_op_bitmap[c];
         }
       } break;
@@ -1679,27 +1677,27 @@ void QueryCondition::apply_ast_node_sparse(
   const bool nullable = attribute->nullable();
 
   // Process the validity buffer now.
-
   if (nullable) {
     const auto tile_tuple = result_tile.tile_tuple(node->get_field_name());
     const auto& tile_validity = std::get<2>(*tile_tuple);
     const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
 
     // Null values can only be specified for equality operators.
+    const auto cell_num = result_tile.cell_num();
     if (node->get_condition_value_view().content() == nullptr) {
       if (node->get_op() == QueryConditionOp::NE) {
-        for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+        for (uint64_t c = 0; c < cell_num; c++) {
           result_bitmap[c] *= buffer_validity[c] != 0;
         }
       } else {
-        for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+        for (uint64_t c = 0; c < cell_num; c++) {
           result_bitmap[c] *= buffer_validity[c] == 0;
         }
       }
       return;
     } else {
       // Turn off bitmap values for null cells.
-      for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+      for (uint64_t c = 0; c < cell_num; c++) {
         result_bitmap[c] *= buffer_validity[c] != 0;
       }
     }
@@ -1787,6 +1785,7 @@ void QueryCondition::apply_tree_sparse(
     apply_ast_node_sparse<BitmapType>(
         node, array_schema, result_tile, combination_op, result_bitmap);
   } else {
+    const auto result_bitmap_size = result_bitmap.size();
     switch (node->get_combination_op()) {
         /*
          * cl(q; a) means evaluate a clause (which may be compound) with query q
@@ -1821,8 +1820,7 @@ void QueryCondition::apply_tree_sparse(
         } else if constexpr (std::is_same_v<
                                  CombinationOp,
                                  std::logical_or<BitmapType>>) {
-          std::vector<BitmapType> combination_op_bitmap(
-              result_bitmap.size(), 1);
+          std::vector<BitmapType> combination_op_bitmap(result_bitmap_size, 1);
 
           for (const auto& child : node->get_children()) {
             apply_tree_sparse<BitmapType>(
@@ -1832,7 +1830,7 @@ void QueryCondition::apply_tree_sparse(
                 std::logical_and<BitmapType>(),
                 combination_op_bitmap);
           }
-          for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
+          for (size_t c = 0; c < result_bitmap_size; ++c) {
             result_bitmap[c] |= combination_op_bitmap[c];
           }
         }
@@ -1844,7 +1842,7 @@ void QueryCondition::apply_tree_sparse(
          *                        = a /\ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
-        std::vector<BitmapType> combination_op_bitmap(result_bitmap.size(), 0);
+        std::vector<BitmapType> combination_op_bitmap(result_bitmap_size, 0);
 
         for (const auto& child : node->get_children()) {
           apply_tree_sparse<BitmapType>(
@@ -1855,8 +1853,7 @@ void QueryCondition::apply_tree_sparse(
               combination_op_bitmap);
         }
 
-        /// TODO: We have not tested for optimization of & versus *.
-        for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
+        for (size_t c = 0; c < result_bitmap_size; ++c) {
           result_bitmap[c] *= combination_op_bitmap[c];
         }
       } break;

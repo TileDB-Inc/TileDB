@@ -36,6 +36,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 #include <cassert>
 
@@ -51,7 +52,12 @@ enum class Datatype : uint8_t {
 #undef TILEDB_DATATYPE_ENUM
 };
 
-/** Returns the datatype size. */
+/**
+ *  Returns the datatype size.
+ *
+ *  This function also serves as a datatype validation function;
+ *  If 0 is returned, the input Datatype is invalid.
+ */
 inline uint64_t datatype_size(Datatype type) noexcept {
   switch (type) {
     case Datatype::INT32:
@@ -356,6 +362,30 @@ inline bool datatype_is_time(Datatype type) {
 /** Returns true if the input datatype is a boolean type. */
 inline bool datatype_is_boolean(Datatype type) {
   return (type == Datatype::BOOL);
+}
+
+/** Throws error if the input Datatype's enum is not between 0 and 40. */
+inline void ensure_datatype_is_valid(Datatype type) {
+  auto datatype_enum{::stdx::to_underlying(type)};
+  if (datatype_enum > 40) {
+    throw std::runtime_error(
+        "Invalid Datatype " + std::to_string(datatype_enum));
+  }
+}
+
+/** Throws error if:
+ *
+ * the datatype string is not valid as a datatype.
+ * the datatype string's enum is not between 0 and 40.
+ **/
+inline void ensure_datatype_str_is_valid(const std::string& datatype_str) {
+  Datatype datatype_type;
+  Status st{datatype_enum(datatype_str, &datatype_type)};
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "Invalid Datatype string \"" + datatype_str + "\"");
+  }
+  ensure_datatype_is_valid(datatype_type);
 }
 
 }  // namespace sm
