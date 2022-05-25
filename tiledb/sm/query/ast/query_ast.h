@@ -53,47 +53,140 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+/**
+ * @brief The ASTNode class is an abstract class that contains virtual
+ * methods used by both the value and expression node implementation
+ * classes. ASTNodes are used to represent a QueryCondition in AST form.
+ */
 class ASTNode {
  public:
   /**
    * @brief ASTNode class method used for casing between value and expression
    * nodes.
-   * @return Returns true if the ASTNode is an expression node.
+   *
+   * @return True if the ASTNode is an expression node.
    */
   virtual bool is_expr() const = 0;
-  /** Returns a deep copy of the node. */
+
+  /**
+   * @brief ASTNode class method used in the QueryCondition copy constructor
+   *        ASTNode::combine, and testing that returns a copy of the caller
+   * node.
+   *
+   * @return tdb_unique_ptr<ASTNode> A deep copy of the ASTNode.
+   */
   virtual tdb_unique_ptr<ASTNode> clone() const = 0;
-  /** Returns a set of field names from all the value nodes in the AST. */
+
+  /**
+   * @brief Gets the set of field names from all the value nodes in the ASTNode.
+   *
+   * @param field_name_set The set variable the function populates.
+   * @return std::unordered_set<std::string>& Set of the field names in the
+   * node.
+   */
   virtual void get_field_names(
       std::unordered_set<std::string>& field_name_set) const = 0;
-  /** Returns true is the AST is previously supported by previous versions of
-   * TileDB. */
+  /**
+   * @brief Returns true if the AST is previously supported by previous versions
+   * of TileDB. This means that the AST should only have AND combination ops,
+   * and should not be a layered tree. Used in query condition serialization.
+   *
+   * @return True if the AST is previously supported by previous versions of
+   * TileDB.
+   */
   virtual bool is_or_supported() const = 0;
-  /** Returns whether a tree is a valid QC AST according to the array schema. */
+
+  /**
+   * @brief Checks whether the node is valid based on the array schema of the
+   * array that the query condition that contains this AST node will execute a
+   * query on.
+   *
+   * @param array_schema The array schema that represents the array being
+   * queried on.
+   * @return Status OK if successful.
+   */
   virtual Status check_node_validity(const ArraySchema& array_schema) const = 0;
-  /** Combines AST node with rhs being passed in. */
+
+  /**
+   * @brief Combines two ASTNodes (the caller node and rhs) with the combination
+   * op and returns the result.
+   *
+   * @param rhs The ASTNode we are combining the caller node with.
+   * @param combination_op The combination op.
+   * @return tdb_unique_ptr<ASTNode> The combined node.
+   */
   virtual tdb_unique_ptr<ASTNode> combine(
       const tdb_unique_ptr<ASTNode>& rhs,
       const QueryConditionCombinationOp& combination_op) = 0;
 
-  /** Value node getter methods */
+  /**
+   * @brief Get the field name object.
+   * This is an AST value node getter method.
+   * It should throw an exception if called on an expression node.
+   *
+   * @return const std::string& The field name.
+   */
   virtual const std::string& get_field_name() const = 0;
+
+  /**
+   * @brief Get the condition value view object.
+   * This is an AST value node getter method.
+   * It should throw an exception if called on an expression node.
+   *
+   * @return const UntypedDatumView& The condition value view object,
+   * representing the value to compare to.
+   */
   virtual const UntypedDatumView& get_condition_value_view() const = 0;
+
+  /**
+   * @brief Get the comparison op.
+   * This is an AST value node getter method.
+   * It should throw an exception if called on an expression node.
+   *
+   * @return const QueryConditionOp& The comparison op.
+   */
   virtual const QueryConditionOp& get_op() const = 0;
 
-  /** Expression node getter methods */
+  /**
+   * @brief Get the vector of children nodes.
+   * This is an AST expression node getter method.
+   * It should throw an exception if called on an value node.
+   *
+   * @return const std::vector<tdb_unique_ptr<ASTNode>>& The list of children
+   * for this node.
+   */
   virtual const std::vector<tdb_unique_ptr<ASTNode>>& get_children() const = 0;
+
+  /**
+   * @brief Get the combination op.
+   * This is an AST expression node getter method.
+   * It should throw an exception if called on an value node.
+   *
+   * @return const QueryConditionCombinationOp& The combination op.
+   */
   virtual const QueryConditionCombinationOp& get_combination_op() const = 0;
 
-  /** Default virtual destructor. */
+  /**
+   * @brief Default virtual destructor.
+   */
   virtual ~ASTNode() {
   }
 };
 
-/** Represents a simple terminal/predicate **/
+/**
+ * @brief The ASTNodeVal class can be used to represent a simple predicate.
+ */
 class ASTNodeVal : public ASTNode {
  public:
-  /** Value constructor. */
+  /**
+   * @brief Construct a new ASTNodeVal object.
+   *
+   * @param field_name The name of the field this operation applies to.
+   * @param condition_value  The value to compare to.
+   * @param condition_value_size The byte size of condition_value.
+   * @param op The relational operation between the value of the field
+   *     and `condition_value`.
+   */
   ASTNodeVal(
       const std::string& field_name,
       const void* const condition_value,
@@ -113,7 +206,9 @@ class ASTNodeVal : public ASTNode {
     }
   };
 
-  /** Default destructor. */
+  /**
+   * @brief Default destructor of ASTNodeVal.
+   */
   ~ASTNodeVal() {
   }
 
@@ -122,35 +217,111 @@ class ASTNodeVal : public ASTNode {
   DISABLE_COPY_ASSIGN(ASTNodeVal);
   DISABLE_MOVE_ASSIGN(ASTNodeVal);
 
-  /** Returns true if it is an expression node. */
+  /**
+   * @brief ASTNode class method used for casing between value and expression
+   * nodes.
+   *
+   * @return True if the ASTNode is an expression node.
+   */
   bool is_expr() const override;
 
-  /** Returns a deep copy of the node. */
+  /**
+   * @brief ASTNode class method used in the QueryCondition copy constructor
+   *        ASTNode::combine, and testing that returns a copy of the caller
+   * node.
+   *
+   * @return tdb_unique_ptr<ASTNode> A deep copy of the ASTNode.
+   */
   tdb_unique_ptr<ASTNode> clone() const override;
 
-  /** Returns a set of field names from all the value nodes in the AST. */
+  /**
+   * @brief Gets the set of field names from all the value nodes in the ASTNode.
+   *
+   * @param field_name_set The set variable the function populates.
+   * @return std::unordered_set<std::string>& Set of the field names in the
+   * node.
+   */
   void get_field_names(
       std::unordered_set<std::string>& field_name_set) const override;
 
-  /** Returns true is the AST is previously supported by previous versions of
-   * TileDB. */
+  /**
+   * @brief Returns true if the AST is previously supported by previous versions
+   * of TileDB. This means that the AST should only have AND combination ops,
+   * and should not be a layered tree. Used in query condition serialization.
+   *
+   * @return True if the AST is previously supported by previous versions of
+   * TileDB.
+   */
   bool is_or_supported() const override;
 
-  /** Returns whether a tree is a valid QC AST according to the array schema. */
+  /**
+   * @brief Checks whether the node is valid based on the array schema of the
+   * array that the query condition that contains this AST node will execute a
+   * query on.
+   *
+   * @param array_schema The array schema that represents the array being
+   * queried on.
+   * @return Status OK if successful.
+   */
   Status check_node_validity(const ArraySchema& array_schema) const override;
 
-  /** Combines AST node with rhs being passed in. */
+  /**
+   * @brief Combines two ASTNodes (the caller node and rhs) with the combination
+   * op and returns the result.
+   *
+   * @param rhs The ASTNode we are combining the caller node with.
+   * @param combination_op The combination op.
+   * @return tdb_unique_ptr<ASTNode> The combined node.
+   */
   tdb_unique_ptr<ASTNode> combine(
       const tdb_unique_ptr<ASTNode>& rhs,
       const QueryConditionCombinationOp& combination_op) override;
 
-  /** Value node getter methods */
+  /**
+   * @brief Get the field name object.
+   * This is an AST value node getter method.
+   * It should throw an exception if called on an expression node.
+   *
+   * @return const std::string& The field name.
+   */
   const std::string& get_field_name() const override;
+
+  /**
+   * @brief Get the condition value view object.
+   * This is an AST value node getter method.
+   * It should throw an exception if called on an expression node.
+   *
+   * @return const UntypedDatumView& The condition value view object,
+   * representing the value to compare to.
+   */
   const UntypedDatumView& get_condition_value_view() const override;
+
+  /**
+   * @brief Get the comparison op.
+   * This is an AST value node getter method.
+   * It should throw an exception if called on an expression node.
+   *
+   * @return const QueryConditionOp& The comparison op.
+   */
   const QueryConditionOp& get_op() const override;
 
-  /** Expression node getter methods */
+  /**
+   * @brief Get the vector of children nodes.
+   * This is an AST expression node getter method.
+   * It should throw an exception if called on an value node.
+   *
+   * @return const std::vector<tdb_unique_ptr<ASTNode>>& The list of children
+   * for this node.
+   */
   const std::vector<tdb_unique_ptr<ASTNode>>& get_children() const override;
+
+  /**
+   * @brief Get the combination op.
+   * This is an AST expression node getter method.
+   * It should throw an exception if called on an value node.
+   *
+   * @return const QueryConditionCombinationOp& The combination op.
+   */
   const QueryConditionCombinationOp& get_combination_op() const override;
 
  private:
@@ -167,8 +338,17 @@ class ASTNodeVal : public ASTNode {
   QueryConditionOp op_;
 };
 
+/**
+ * @brief The ASTNodeExpr class can be used to represent a complex predicate.
+ */
 class ASTNodeExpr : public ASTNode {
  public:
+  /**
+   * @brief Expression node constructor.
+   *
+   * @param nodes A list of the children of this node.
+   * @param c_op The logical operation to combine the nodes' children.
+   */
   ASTNodeExpr(
       std::vector<tdb_unique_ptr<ASTNode>> nodes,
       const QueryConditionCombinationOp c_op)
@@ -176,7 +356,9 @@ class ASTNodeExpr : public ASTNode {
       , combination_op_(c_op) {
   }
 
-  /** Default destructor. */
+  /**
+   * @brief Default destructor of ASTNodeExpr.
+   */
   ~ASTNodeExpr() {
   }
 
@@ -185,35 +367,111 @@ class ASTNodeExpr : public ASTNode {
   DISABLE_COPY_ASSIGN(ASTNodeExpr);
   DISABLE_MOVE_ASSIGN(ASTNodeExpr);
 
-  /** Returns true if it is an expression node. */
+  /**
+   * @brief ASTNode class method used for casing between value and expression
+   * nodes.
+   *
+   * @return True if the ASTNode is an expression node.
+   */
   bool is_expr() const override;
 
-  /** Returns a deep copy of the node. */
+  /**
+   * @brief ASTNode class method used in the QueryCondition copy constructor
+   *        ASTNode::combine, and testing that returns a copy of the caller
+   * node.
+   *
+   * @return tdb_unique_ptr<ASTNode> A deep copy of the ASTNode.
+   */
   tdb_unique_ptr<ASTNode> clone() const override;
 
-  /** Returns a set of field names from all the value nodes in the AST. */
+  /**
+   * @brief Gets the set of field names from all the value nodes in the ASTNode.
+   *
+   * @param field_name_set The set variable the function populates.
+   * @return std::unordered_set<std::string>& Set of the field names in the
+   * node.
+   */
   void get_field_names(
       std::unordered_set<std::string>& field_name_set) const override;
 
-  /** Returns true is the AST is previously supported by previous versions of
-   * TileDB. */
+  /**
+   * @brief Returns true if the AST is previously supported by previous versions
+   * of TileDB. This means that the AST should only have AND combination ops,
+   * and should not be a layered tree. Used in query condition serialization.
+   *
+   * @return True if the AST is previously supported by previous versions of
+   * TileDB.
+   */
   bool is_or_supported() const override;
 
-  /** Returns whether a tree is a valid QC AST according to the array schema. */
+  /**
+   * @brief Checks whether the node is valid based on the array schema of the
+   * array that the query condition that contains this AST node will execute a
+   * query on.
+   *
+   * @param array_schema The array schema that represents the array being
+   * queried on.
+   * @return Status OK if successful.
+   */
   Status check_node_validity(const ArraySchema& array_schema) const override;
 
-  /** Combines AST node with rhs being passed in. */
+  /**
+   * @brief Combines two ASTNodes (the caller node and rhs) with the combination
+   * op and returns the result.
+   *
+   * @param rhs The ASTNode we are combining the caller node with.
+   * @param combination_op The combination op.
+   * @return tdb_unique_ptr<ASTNode> The combined node.
+   */
   tdb_unique_ptr<ASTNode> combine(
       const tdb_unique_ptr<ASTNode>& rhs,
       const QueryConditionCombinationOp& combination_op) override;
 
-  /** Value node getter methods */
+  /**
+   * @brief Get the field name object.
+   * This is an AST value node getter method.
+   * It should throw an exception if called on an expression node.
+   *
+   * @return const std::string& The field name.
+   */
   const std::string& get_field_name() const override;
+
+  /**
+   * @brief Get the condition value view object.
+   * This is an AST value node getter method.
+   * It should throw an exception if called on an expression node.
+   *
+   * @return const UntypedDatumView& The condition value view object,
+   * representing the value to compare to.
+   */
   const UntypedDatumView& get_condition_value_view() const override;
+
+  /**
+   * @brief Get the comparison op.
+   * This is an AST value node getter method.
+   * It should throw an exception if called on an expression node.
+   *
+   * @return const QueryConditionOp& The comparison op.
+   */
   const QueryConditionOp& get_op() const override;
 
-  /** Expression node getter methods */
+  /**
+   * @brief Get the vector of children nodes.
+   * This is an AST expression node getter method.
+   * It should throw an exception if called on an value node.
+   *
+   * @return const std::vector<tdb_unique_ptr<ASTNode>>& The list of children
+   * for this node.
+   */
   const std::vector<tdb_unique_ptr<ASTNode>>& get_children() const override;
+
+  /**
+   * @brief Get the combination op.
+   * This is an AST expression node getter method.
+   * It should throw an exception if called on an value node.
+   *
+   * @return const QueryConditionCombinationOp& The combination op.
+   */
   const QueryConditionCombinationOp& get_combination_op() const override;
 
  private:

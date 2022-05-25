@@ -171,7 +171,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
   src/unit-bytevecvalue.cc
-  src/unit-QueryCondition.cc
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
   src/unit-resource-pool.cc

@@ -822,7 +822,6 @@ void QueryCondition::apply_tree(
               combination_op_bitmap);
         }
 
-        /// TODO: We have not tested for optimization of & versus *.
         for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
           result_cell_bitmap[c] *= combination_op_bitmap[c];
         }
@@ -1364,7 +1363,6 @@ void QueryCondition::apply_tree_dense(
               combination_op_span);
         }
 
-        /// TODO: We have not tested for optimization of & versus *.
         for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
           result_buffer[c] *= combination_op_bitmap[c];
         }
@@ -1857,7 +1855,6 @@ void QueryCondition::apply_tree_sparse(
               combination_op_bitmap);
         }
 
-        /// TODO: We have not tested for optimization of & versus *.
         for (size_t c = 0; c < combination_op_bitmap.size(); ++c) {
           result_bitmap[c] *= combination_op_bitmap[c];
         }
