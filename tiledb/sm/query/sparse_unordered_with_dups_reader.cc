@@ -67,8 +67,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition,
-    bool consolidation_with_timestamps)
+    QueryCondition& condition)
     : SparseIndexReaderBase(
           stats,
           logger->clone("SparseUnorderedWithDupsReader", ++logger_id_),
@@ -78,8 +77,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           buffers,
           subarray,
           layout,
-          condition,
-          consolidation_with_timestamps) {
+          condition) {
 }
 
 /* ****************************** */
@@ -180,9 +178,6 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   std::vector<tuple<>> buffers;
   for (auto& buffer : buffers_) {
     names.emplace_back(buffer.first);
-    if (buffer.first == constants::timestamps) {
-      load_timestamps_ = true;
-    }
   }
 
   buffers_full_ = false;
@@ -1523,8 +1518,7 @@ template SparseUnorderedWithDupsReader<uint8_t>::SparseUnorderedWithDupsReader(
     std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,
-    QueryCondition&,
-    bool);
+    QueryCondition&);
 template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
     stats::Stats*,
     shared_ptr<Logger>,
@@ -1534,8 +1528,7 @@ template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
     std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,
-    QueryCondition&,
-    bool);
+    QueryCondition&);
 
 }  // namespace sm
 }  // namespace tiledb

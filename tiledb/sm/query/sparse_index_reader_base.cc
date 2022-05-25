@@ -63,8 +63,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition,
-    bool consolidation_with_timestamps)
+    QueryCondition& condition)
     : ReaderBase(
           stats,
           logger,
@@ -86,8 +85,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
     , buffers_full_(false)
-    , consolidation_with_timestamps_(consolidation_with_timestamps)
-    , load_timestamps_(false) {
+    , user_requested_timestamps_(false) {
   read_state_.done_adding_result_tiles_ = false;
 }
 
@@ -162,11 +160,7 @@ uint64_t SparseIndexReaderBase::cells_copied(
 template <class BitmapType>
 tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size(
-    bool include_coords,
-    unsigned dim_num,
-    unsigned f,
-    uint64_t t,
-    bool discard_partial_timestamps) {
+    bool include_coords, unsigned dim_num, unsigned f, uint64_t t) {
   uint64_t tiles_size = 0;
 
   // Add the coordinate tiles size.
@@ -190,8 +184,7 @@ SparseIndexReaderBase::get_coord_tiles_size(
   if (subarray_.is_set())
     tiles_size += fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
 
-  if (consolidation_with_timestamps_ && load_timestamps_ &&
-      fragment_metadata_[f]->has_timestamps() && !discard_partial_timestamps) {
+  if (include_timestamps(f)) {
     tiles_size +=
         fragment_metadata_[f]->cell_num(t) * constants::timestamp_size;
   }
@@ -294,6 +287,10 @@ Status SparseIndexReaderBase::load_initial_data(bool include_timestamps) {
 
     if (array_schema_.var_size(name))
       var_size_to_load.emplace_back(name);
+
+    if (name == constants::timestamps) {
+      user_requested_timestamps_ = true;
+    }
   }
 
   // Add timestamps if required.
@@ -739,13 +736,24 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
   }
 }
 
+bool SparseIndexReaderBase::include_timestamps(const unsigned f) {
+  auto fragment_timestamps = fragment_metadata_[f]->timestamp_range();
+  auto partial_overlap =
+      (array_->timestamp_start() > fragment_timestamps.first) ||
+      (array_->timestamp_end() < fragment_timestamps.second);
+
+  return fragment_metadata_[f]->has_timestamps() &&
+         (user_requested_timestamps_ || partial_overlap ||
+          !array_schema_.allows_dups());
+}
+
 // Explicit template instantiations
 template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size<uint64_t>(
-    bool, unsigned, unsigned, uint64_t, bool);
+    bool, unsigned, unsigned, uint64_t);
 template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size<uint8_t>(
-    bool, unsigned, unsigned, uint64_t, bool);
+    bool, unsigned, unsigned, uint64_t);
 template Status SparseIndexReaderBase::apply_query_condition<uint64_t>(
     std::vector<ResultTile*>&);
 template Status SparseIndexReaderBase::apply_query_condition<uint8_t>(

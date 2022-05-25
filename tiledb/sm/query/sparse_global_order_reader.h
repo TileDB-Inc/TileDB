@@ -156,6 +156,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** Memory budget per fragment for qc tiles. */
   double per_fragment_qc_memory_;
 
+  /** Enables consolidation with timestamps or not. */
+  bool consolidation_with_timestamps_;
+
   /** Mutex to protect the tile queue. */
   std::mutex tile_queue_mutex_;
 

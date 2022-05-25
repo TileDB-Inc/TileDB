@@ -198,8 +198,7 @@ class SparseIndexReaderBase : public ReaderBase {
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition,
-      bool consolidation_with_timestamps);
+      QueryCondition& condition);
 
   /** Destructor. */
   ~SparseIndexReaderBase() = default;
@@ -304,6 +303,9 @@ class SparseIndexReaderBase : public ReaderBase {
   /** List of tiles to ignore. */
   std::unordered_set<IgnoredTile, ignored_tile_hash> ignored_tiles_;
 
+  /** If the user requested timestamps attribute in the query */
+  bool user_requested_timestamps_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -324,19 +326,12 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param dim_num Number of dimensions.
    * @param f Fragment index.
    * @param t Tile index.
-   * @param discard_partial_timestamps True if we want to exclude timestamps
-   * tiles for fragments that have full timestamp coverage of the array open
-   * start/end times
    *
    * @return Status, tiles_size, tiles_size_qc.
    */
   template <class BitmapType>
   tuple<Status, optional<std::pair<uint64_t, uint64_t>>> get_coord_tiles_size(
-      bool include_coords,
-      unsigned dim_num,
-      unsigned f,
-      uint64_t t,
-      bool discard_partial_timestamps = false);
+      bool include_coords, unsigned dim_num, unsigned f, uint64_t t);
 
   /**
    * Load tile offsets and result tile ranges.
@@ -435,6 +430,15 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param f Fragment index.
    */
   void remove_result_tile_range(uint64_t f);
+
+  /**
+   * Checks if timestamps should be loaded for a fragment
+
+   * @param f Fragment index.
+   * @return True if timestamps should be included, false if they are not
+   needed.
+   */
+  bool include_timestamps(const unsigned f);
 };
 
 }  // namespace sm

@@ -82,8 +82,7 @@ SparseGlobalOrderReader::SparseGlobalOrderReader(
           buffers,
           subarray,
           layout,
-          condition,
-          consolidation_with_timestamps)
+          condition)
     , result_tiles_(array->fragment_metadata().size())
     , memory_used_for_coords_(array->fragment_metadata().size())
     , memory_used_for_qc_tiles_(array->fragment_metadata().size())
@@ -174,9 +173,6 @@ Status SparseGlobalOrderReader::dowork() {
   std::vector<tuple<>> buffers;
   for (auto& buffer : buffers_) {
     names.emplace_back(buffer.first);
-    if (buffer.first == constants::timestamps) {
-      load_timestamps_ = true;
-    }
   }
 
   buffers_full_ = false;
