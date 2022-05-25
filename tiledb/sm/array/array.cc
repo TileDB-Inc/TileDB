@@ -182,6 +182,7 @@ Status Array::open_without_fragments(
           array_uri_,
           0,
           UINT64_MAX,
+          consolidation_with_timestamps_config_enabled(),
           ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
@@ -301,7 +302,6 @@ Status Array::open(
       timestamp_end_opened_at_ = 0;
     }
   }
-
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -318,7 +318,8 @@ Status Array::open(
           storage_manager_->compute_tp(),
           array_uri_,
           timestamp_start_,
-          timestamp_end_opened_at_);
+          timestamp_end_opened_at_,
+          consolidation_with_timestamps_config_enabled());
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
@@ -337,7 +338,9 @@ Status Array::open(
           storage_manager_->compute_tp(),
           array_uri_,
           timestamp_start_,
-          timestamp_end_opened_at_);
+          timestamp_end_opened_at_,
+          consolidation_with_timestamps_config_enabled(),
+          ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
@@ -607,7 +610,10 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
         storage_manager_->compute_tp(),
         array_uri_,
         timestamp_start_,
-        timestamp_end_opened_at_);
+        timestamp_end_opened_at_,
+        consolidation_with_timestamps_config_enabled(),
+        query_type_ == QueryType::READ ? ArrayDirectoryMode::READ :
+                                         ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
@@ -1041,6 +1047,21 @@ Status Array::compute_non_empty_domain() {
   }
   non_empty_domain_computed_ = true;
   return Status::Ok();
+}
+
+bool Array::consolidation_with_timestamps_config_enabled() const {
+  auto found = false;
+  auto consolidation_with_timestamps = false;
+  auto status = config_.get<bool>(
+      "sm.consolidation.with_timestamps",
+      &consolidation_with_timestamps,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get with_timestamps configuration option from config");
+  }
+
+  return consolidation_with_timestamps;
 }
 }  // namespace sm
 }  // namespace tiledb

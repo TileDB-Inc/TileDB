@@ -173,9 +173,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const uint64_t cell_num,
       std::vector<void*>& var_data);
 
-  /** Read attributes into the users buffers. */
+  /** Copy attributes into the users buffers. */
   template <class DimType, class OffType>
-  Status read_attributes(
+  Status copy_attributes(
       const std::vector<std::string>& fixed_names,
       const std::vector<std::string>& var_names,
       const Subarray& subarray,

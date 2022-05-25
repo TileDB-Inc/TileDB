@@ -197,7 +197,7 @@ SparseIndexReaderBase::get_coord_tiles_size(
   return {Status::Ok(), std::make_pair(tiles_size, tiles_size_qc)};
 }
 
-Status SparseIndexReaderBase::load_initial_data() {
+Status SparseIndexReaderBase::load_initial_data(bool include_timestamps) {
   if (initial_data_loaded_)
     return Status::Ok();
 
@@ -283,6 +283,11 @@ Status SparseIndexReaderBase::load_initial_data() {
       var_size_to_load.emplace_back(name);
   }
 
+  // Add timestamps if required.
+  if (include_timestamps) {
+    attr_tile_offsets_to_load.emplace_back(constants::timestamps);
+  }
+
   // Load tile offsets and var sizes for attributes.
   RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(subarray_, var_size_to_load));
   RETURN_CANCEL_OR_ERROR(
@@ -294,7 +299,9 @@ Status SparseIndexReaderBase::load_initial_data() {
 }
 
 Status SparseIndexReaderBase::read_and_unfilter_coords(
-    bool include_coords, const std::vector<ResultTile*>& result_tiles) {
+    bool include_coords,
+    bool include_timestamps,
+    const std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("read_and_unfilter_coords");
 
   // Not including coords or no query condition, exit.
@@ -317,6 +324,14 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
     for (const auto& dim_name : dim_names_) {
       RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, result_tiles, true));
     }
+  }
+
+  if (include_timestamps) {
+    std::vector<std::string> timestamps_names = {constants::timestamps};
+    RETURN_CANCEL_OR_ERROR(
+        read_attribute_tiles(timestamps_names, result_tiles, true));
+    RETURN_CANCEL_OR_ERROR(
+        unfilter_tiles(constants::timestamps, result_tiles, true));
   }
 
   if (!condition_.empty()) {

@@ -62,6 +62,12 @@ enum class Layout : uint8_t;
 /** Defines an array domain, which consists of dimensions. */
 class Domain {
  public:
+  /**
+   * Size type for the number of dimensions of an array and for dimension
+   * indices.
+   */
+  using dimension_size_type = unsigned int;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -202,7 +208,7 @@ class Domain {
   Layout tile_order() const;
 
   /** Returns the number of dimensions. */
-  inline unsigned int dim_num() const {
+  inline dimension_size_type dim_num() const {
     return dim_num_;
   }
 
@@ -222,7 +228,7 @@ class Domain {
    * @param i index of the dimension within the domain
    * @return non-null pointer to the dimension
    */
-  inline const Dimension* dimension_ptr(unsigned int i) const {
+  inline const Dimension* dimension_ptr(dimension_size_type i) const {
     if (i > dim_num_) {
       throw std::invalid_argument("invalid dimension index");
     }

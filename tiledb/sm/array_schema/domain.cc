@@ -70,7 +70,7 @@ Domain::Domain(
     Layout tile_order)
     : cell_order_(cell_order)
     , dimensions_(dimensions)
-    , dim_num_((unsigned int)dimensions.size())
+    , dim_num_(static_cast<dimension_size_type>(dimensions.size()))
     , tile_order_(tile_order) {
   /*
    * Verify that the input vector has no non-null elements in order to meet the
@@ -377,7 +377,7 @@ NDRange Domain::domain() const {
 }
 
 const Dimension* Domain::dimension_ptr(const std::string& name) const {
-  for (unsigned int i = 0; i < dim_num_; i++) {
+  for (dimension_size_type i = 0; i < dim_num_; i++) {
     const auto dim = dimension_ptrs_[i];
     if (dim->name() == name) {
       return dim;
@@ -976,7 +976,7 @@ void Domain::set_tile_cell_order_cmp_funcs() {
 
 template <class T>
 void Domain::get_next_tile_coords_col(const T* domain, T* tile_coords) const {
-  unsigned int i = 0;
+  dimension_size_type i = 0;
   ++tile_coords[i];
 
   while (i < dim_num_ - 1 && tile_coords[i] > domain[2 * i + 1]) {
@@ -988,7 +988,7 @@ void Domain::get_next_tile_coords_col(const T* domain, T* tile_coords) const {
 template <class T>
 void Domain::get_next_tile_coords_col(
     const T* domain, T* tile_coords, bool* in) const {
-  unsigned int i = 0;
+  dimension_size_type i = 0;
   ++tile_coords[i];
 
   while (i < dim_num_ - 1 && tile_coords[i] > domain[2 * i + 1]) {
@@ -1001,7 +1001,7 @@ void Domain::get_next_tile_coords_col(
 
 template <class T>
 void Domain::get_next_tile_coords_row(const T* domain, T* tile_coords) const {
-  unsigned int i = dim_num_ - 1;
+  dimension_size_type i = dim_num_ - 1;
   ++tile_coords[i];
 
   while (i > 0 && tile_coords[i] > domain[2 * i + 1]) {
@@ -1013,7 +1013,7 @@ void Domain::get_next_tile_coords_row(const T* domain, T* tile_coords) const {
 template <class T>
 void Domain::get_next_tile_coords_row(
     const T* domain, T* tile_coords, bool* in) const {
-  unsigned int i = dim_num_ - 1;
+  dimension_size_type i = dim_num_ - 1;
   ++tile_coords[i];
 
   while (i > 0 && tile_coords[i] > domain[2 * i + 1]) {
@@ -1068,7 +1068,7 @@ uint64_t Domain::get_tile_pos_row(const T* domain, const T* tile_coords) const {
 
   // Calculate position
   uint64_t pos = 0;
-  for (unsigned int i = 0; i < dim_num_; ++i)
+  for (dimension_size_type i = 0; i < dim_num_; ++i)
     pos += tile_coords[i] * tile_offsets[i];
 
   // Return

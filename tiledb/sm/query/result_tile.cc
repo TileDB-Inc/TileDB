@@ -89,6 +89,7 @@ void ResultTile::swap(ResultTile& tile) {
   std::swap(frag_idx_, tile.frag_idx_);
   std::swap(tile_idx_, tile.tile_idx_);
   std::swap(attr_tiles_, tile.attr_tiles_);
+  std::swap(timestamps_tile_, tile.timestamps_tile_);
   std::swap(coords_tile_, tile.coords_tile_);
   std::swap(coord_tiles_, tile.coord_tiles_);
   std::swap(compute_results_dense_func_, tile.compute_results_dense_func_);
@@ -154,8 +155,14 @@ void ResultTile::erase_tile(const std::string& name) {
 
 void ResultTile::init_attr_tile(const std::string& name) {
   // Nothing to do for the special zipped coordinates tile
-  if (name == constants::coords)
+  if (name == constants::coords) {
     return;
+  }
+
+  if (name == constants::timestamps) {
+    timestamps_tile_ = TileTuple(Tile(), Tile(), Tile());
+    return;
+  }
 
   // Handle attributes
   for (auto& at : attr_tiles_) {
@@ -177,8 +184,14 @@ void ResultTile::init_coord_tile(const std::string& name, unsigned dim_idx) {
 
 ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   // Handle zipped coordinates tile
-  if (name == constants::coords)
+  if (name == constants::coords) {
     return &coords_tile_;
+  }
+
+  // Handle timestamps tile
+  if (name == constants::timestamps) {
+    return &*timestamps_tile_;
+  }
 
   // Handle attribute tile
   for (auto& at : attr_tiles_) {
@@ -264,6 +277,15 @@ bool ResultTile::same_coords(
   }
 
   return true;
+}
+
+bool ResultTile::same_coords(uint64_t pos_a, uint64_t pos_b) const {
+  return same_coords(*this, pos_a, pos_b);
+}
+
+uint64_t ResultTile::timestamp(uint64_t pos) {
+  const auto& tile = std::get<0>(*this->tile_tuple(constants::timestamps));
+  return tile.data_as<uint64_t>()[pos];
 }
 
 unsigned ResultTile::frag_idx() const {
