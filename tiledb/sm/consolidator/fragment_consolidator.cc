@@ -86,7 +86,7 @@ Status FragmentConsolidator::consolidate(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
   // Disable consolidation with timestamps on older arrays.
-  if (array_for_reads.array_schema_latest().write_version() <
+  if (array_for_reads->array_schema_latest().write_version() <
       constants::consolidation_with_timestamps_min_version) {
     config_.with_timestamps_ = false;
   }
@@ -193,7 +193,7 @@ Status FragmentConsolidator::consolidate_fragments(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
   // Disable consolidation with timestamps on older arrays.
-  if (array_for_reads.array_schema_latest().write_version() <
+  if (array_for_reads->array_schema_latest().write_version() <
       constants::consolidation_with_timestamps_min_version) {
     config_.with_timestamps_ = false;
   }
