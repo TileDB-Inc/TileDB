@@ -5915,13 +5915,13 @@ int32_t tiledb_deserialize_array(
   try {
     (*array)->array_ = make_shared<tiledb::sm::Array>(
         HERE(), uri, ctx->ctx_->storage_manager());
-  } catch (...) {
+  } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation "
         "error");
     LOG_STATUS(st);
     save_error(ctx, st);
-    return TILEDB_ERR;
+    return TILEDB_OOM;
   }
 
   if (SAVE_ERROR_CATCH(
