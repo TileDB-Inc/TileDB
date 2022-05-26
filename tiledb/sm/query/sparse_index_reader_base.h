@@ -303,6 +303,9 @@ class SparseIndexReaderBase : public ReaderBase {
   /** List of tiles to ignore. */
   std::unordered_set<IgnoredTile, ignored_tile_hash> ignored_tiles_;
 
+  /** If the user requested timestamps attribute in the query */
+  bool user_requested_timestamps_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -427,6 +430,15 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param f Fragment index.
    */
   void remove_result_tile_range(uint64_t f);
+
+  /**
+   * Checks if timestamps should be loaded for a fragment
+   *
+   * @param f Fragment index.
+   * @return True if timestamps should be included, false if they are not
+   * needed.
+   */
+  bool include_timestamps(const unsigned f);
 };
 
 }  // namespace sm
