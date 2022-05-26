@@ -67,11 +67,13 @@ struct ConsolidationWithTimestampsFx {
   void write_sparse_v11(uint64_t timestamp);
   void consolidate_sparse();
   void check_timestamps_file(std::vector<uint64_t> expected);
-  void read_sparse_global_order(
+  void read_sparse(
       std::vector<int>& a1,
       std::vector<uint64_t>& dim1,
       std::vector<uint64_t>& dim2,
-      std::string& stats);
+      std::string& stats,
+      tiledb_layout_t layout,
+      uint64_t timestamp);
 
   void remove_sparse_array();
   void remove_array(const std::string& array_name);
@@ -81,7 +83,7 @@ struct ConsolidationWithTimestampsFx {
 ConsolidationWithTimestampsFx::ConsolidationWithTimestampsFx()
     : vfs_(ctx_) {
   Config config;
-  config.set("sm.consolidation.with_timestamps", "true");
+  config.set("sm.consolidation.with_timestamps", "false");
   config.set("sm.consolidation.buffer_size", "1000");
   ctx_ = Context(config);
   sm_ = ctx_.ptr().get()->ctx_->storage_manager();
@@ -241,17 +243,19 @@ void ConsolidationWithTimestampsFx::check_timestamps_file(
   }
 }
 
-void ConsolidationWithTimestampsFx::read_sparse_global_order(
+void ConsolidationWithTimestampsFx::read_sparse(
     std::vector<int>& a1,
     std::vector<uint64_t>& dim1,
     std::vector<uint64_t>& dim2,
-    std::string& stats) {
+    std::string& stats,
+    tiledb_layout_t layout,
+    uint64_t timestamp) {
   // Open array
-  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ);
+  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
 
   // Create query
   Query query(ctx_, array, TILEDB_READ);
-  query.set_layout(TILEDB_GLOBAL_ORDER);
+  query.set_layout(layout);
   query.set_data_buffer("a1", a1);
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
@@ -395,11 +399,15 @@ TEST_CASE_METHOD(
 
   // Write second fragment.
   write_sparse({8, 9, 10, 11}, {2, 2, 3, 3}, {2, 3, 2, 3}, 2);
+
+  // Consolidate.
+  consolidate_sparse();
+
   std::string stats;
   std::vector<int> a1(10);
   std::vector<uint64_t> dim1(10);
   std::vector<uint64_t> dim2(10);
-  read_sparse_global_order(a1, dim1, dim2, stats);
+  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 3);
 
   std::vector<int> c_a1 = {0, 1, 8, 2, 9, 4, 10, 5, 11, 7};
   std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 3, 3, 4, 3, 3};
@@ -505,7 +513,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1(1);
   std::vector<uint64_t> dim1(1);
   std::vector<uint64_t> dim2(1);
-  read_sparse_global_order(a1, dim1, dim2, stats);
+  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 51);
 
   CHECK(a1[0] == 50);
   CHECK(dim1[0] == 1);
@@ -542,7 +550,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1(8);
   std::vector<uint64_t> dim1(8);
   std::vector<uint64_t> dim2(8);
-  read_sparse_global_order(a1, dim1, dim2, stats);
+  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 7);
 
   std::vector<int> c_a1 = {1, 2, 3, 4, 5, 6, 7, 8};
   std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2};
@@ -583,7 +591,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1(1);
   std::vector<uint64_t> dim1(1);
   std::vector<uint64_t> dim2(1);
-  read_sparse_global_order(a1, dim1, dim2, stats);
+  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 51);
 
   CHECK(a1[0] == 50);
   CHECK(dim1[0] == 1);
@@ -632,7 +640,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1(8);
   std::vector<uint64_t> dim1(8);
   std::vector<uint64_t> dim2(8);
-  read_sparse_global_order(a1, dim1, dim2, stats);
+  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 7);
 
   std::vector<int> c_a1 = {1, 2, 3, 4, 5, 6, 7, 8};
   std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2};
@@ -645,6 +653,165 @@ TEST_CASE_METHOD(
   CHECK(
       stats.find("\"Context.StorageManager.Query.Reader.loop_num\": 2") !=
       std::string::npos);
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, partial read with dups",
+    "[cppapi][consolidation-with-timestamps][partial-read][dups][testtt]") {
+  remove_sparse_array();
+  // enable duplicates
+  create_sparse_array(true);
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+
+  // Write second fragment.
+  write_sparse({8, 9, 10, 11}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
+
+  // Consolidate.
+  consolidate_sparse();
+  // TODO: shouldn't we also vacuum before validating?
+
+  // TODO: How to validate unordered read results?
+  tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
+  std::string stats;
+  std::vector<int> a1(10);
+  std::vector<uint64_t> dim1(10);
+  std::vector<uint64_t> dim2(10);
+  read_sparse(a1, dim1, dim2, stats, layout, 4);
+
+  std::vector<int> c_a1_opt1 = {0, 1, 8, 2, 3, 9, 10, 11};
+  std::vector<int> c_a1_opt2 = {0, 1, 8, 2, 9, 3, 10, 11};
+  std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 2, 3, 3};
+  std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 3, 2, 3};
+  CHECK(
+      (!memcmp(c_a1_opt1.data(), a1.data(), sizeof(c_a1_opt1)) ||
+       !memcmp(c_a1_opt2.data(), a1.data(), sizeof(c_a1_opt2))));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+
+  // TODO: This part is now failing, when task is implemented it should pass
+  read_sparse(a1, dim1, dim2, stats, layout, 2);
+
+  std::vector<int> pc_a1 = {0, 1, 2, 3};
+  std::vector<uint64_t> pc_dim1 = {1, 1, 1, 2};
+  std::vector<uint64_t> pc_dim2 = {1, 2, 4, 3};
+  CHECK(!memcmp(pc_a1.data(), a1.data(), sizeof(pc_a1)));
+  CHECK(!memcmp(pc_dim1.data(), dim1.data(), sizeof(pc_dim1)));
+  CHECK(!memcmp(pc_dim2.data(), dim2.data(), sizeof(pc_dim2)));
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, partial read without dups",
+    "[cppapi][consolidation-with-timestamps][partial-read][no-dups][testtt]") {
+  remove_sparse_array();
+  // no duplicates
+  create_sparse_array();
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+
+  // Write second fragment.
+  write_sparse({8, 9, 10, 11}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
+
+  // Consolidate.
+  consolidate_sparse();
+  // TODO: shouldn't we also vacuum before validating?
+
+  std::string stats;
+  std::vector<int> a1(10);
+  std::vector<uint64_t> dim1(10);
+  std::vector<uint64_t> dim2(10);
+  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 4);
+
+  std::vector<int> c_a1 = {0, 1, 8, 2, 9, 10, 11};
+  std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 3, 3};
+  std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 2, 3};
+  CHECK(!memcmp(c_a1.data(), a1.data(), sizeof(c_a1)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+
+  // TODO: This part is now failing, when task is implemented it should pass
+  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 2);
+
+  std::vector<int> pc_a1 = {0, 1, 2, 3};
+  std::vector<uint64_t> pc_dim1 = {1, 1, 1, 2};
+  std::vector<uint64_t> pc_dim2 = {1, 2, 4, 3};
+  CHECK(!memcmp(pc_a1.data(), a1.data(), sizeof(pc_a1)));
+  CHECK(!memcmp(pc_dim1.data(), dim1.data(), sizeof(pc_dim1)));
+  CHECK(!memcmp(pc_dim2.data(), dim2.data(), sizeof(pc_dim2)));
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, full and partial read with "
+    "dups",
+    "[cppapi][consolidation-with-timestamps][partial-read][dups][testtt]") {
+  remove_sparse_array();
+  // enable duplicates
+  create_sparse_array(true);
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+  // Write second fragment.
+  write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3);
+
+  // Consolidate.
+  consolidate_sparse();
+
+  // Write third fragment.
+  write_sparse({8, 9, 10, 11}, {2, 1, 3, 4}, {1, 3, 1, 1}, 4);
+  // Write fourth fragment.
+  write_sparse({12, 13, 14, 15}, {4, 3, 3, 4}, {2, 3, 4, 4}, 6);
+
+  // Consolidate.
+  consolidate_sparse();
+
+  // TODO: How to validate unordered read results?
+  tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
+  // TODO: shouldn't we also vacuum before validating
+
+  std::string stats;
+  // TODO: why 15 in user buffer not enough?
+  std::vector<int> a1(16);
+  std::vector<uint64_t> dim1(16);
+  std::vector<uint64_t> dim2(16);
+  // Read in the end
+  read_sparse(a1, dim1, dim2, stats, layout, 7);
+
+  std::vector<int> c_a1_opt1 = {
+      0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 13, 14, 15};
+  std::vector<int> c_a1_opt2 = {
+      0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 7, 14, 15};
+  std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4};
+  std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 4};
+  CHECK(
+      (!memcmp(c_a1_opt1.data(), a1.data(), sizeof(c_a1_opt1)) ||
+       !memcmp(c_a1_opt2.data(), a1.data(), sizeof(c_a1_opt2))));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+
+  // TODO: This part is now failing, when task is implemented it should pass
+  // Read with full coverage on first 2 consolidated, partial coverage on second
+  // 2 consolidated
+  read_sparse(a1, dim1, dim2, stats, layout, 5);
+
+  std::vector<int> pc_a1 = {0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 7};
+  std::vector<uint64_t> pc_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 3};
+  std::vector<uint64_t> pc_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 3};
+  CHECK(!memcmp(pc_a1.data(), a1.data(), sizeof(pc_a1)));
+  CHECK(!memcmp(pc_dim1.data(), dim1.data(), sizeof(pc_dim1)));
+  CHECK(!memcmp(pc_dim2.data(), dim2.data(), sizeof(pc_dim2)));
 
   remove_sparse_array();
 }
