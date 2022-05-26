@@ -3549,7 +3549,7 @@ int32_t tiledb_subarray_alloc(
   // Create a buffer struct
   *subarray = new (std::nothrow) tiledb_subarray_t;
   if (*subarray == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB subarray object");
+    auto st = Status_Error("Failed to allocate TileDB subarray wrapper");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;
@@ -3567,13 +3567,17 @@ int32_t tiledb_subarray_alloc(
         ctx->ctx_->storage_manager());
     (*subarray)->is_allocated_ = true;
   } catch (...) {
+    auto st = Status_Error("Failed to construct TileDB subarray object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
   }
   if ((*subarray)->subarray_ == nullptr) {
     delete *subarray;
     auto st = Status_Error("Failed to allocate TileDB subarray object");
     LOG_STATUS(st);
     save_error(ctx, st);
-    return TILEDB_OOM;
+    return TILEDB_ERR;
   }
 
   // Success
