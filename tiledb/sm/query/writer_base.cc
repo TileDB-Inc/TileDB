@@ -475,7 +475,7 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
 }
 
 Status WriterBase::compute_coords_metadata(
-    const std::unordered_map<std::string, std::vector<WriterTile>>& tiles,
+    const std::unordered_map<std::string, WriterTileVector>& tiles,
     shared_ptr<FragmentMetadata> meta) const {
   auto timer_se = stats_->start_timer("compute_coord_meta");
 
@@ -489,10 +489,7 @@ Status WriterBase::compute_coords_metadata(
 
   // Compute number of tiles. Assumes all attributes and
   // and dimensions have the same number of tiles
-  auto it = tiles.begin();
-  const uint64_t t = 1 + (array_schema_.var_size(it->first) ? 1 : 0) +
-                     (array_schema_.is_nullable(it->first) ? 1 : 0);
-  auto tile_num = it->second.size() / t;
+  auto tile_num = tiles.begin()->second.size();
   auto dim_num = array_schema_.dim_num();
 
   // Compute MBRs
@@ -506,10 +503,12 @@ Status WriterBase::compute_coords_metadata(
           auto tiles_it = tiles.find(dim_name);
           assert(tiles_it != tiles.end());
           if (!dim->var_size())
-            dim->compute_mbr(tiles_it->second[i], &mbr[d]);
+            dim->compute_mbr(tiles_it->second[i].fixed_tile(), &mbr[d]);
           else
             dim->compute_mbr_var(
-                tiles_it->second[2 * i], tiles_it->second[2 * i + 1], &mbr[d]);
+                tiles_it->second[i].offset_tile(),
+                tiles_it->second[i].var_tile(),
+                &mbr[d]);
         }
 
         meta->set_mbr(i, mbr);
@@ -521,16 +520,16 @@ Status WriterBase::compute_coords_metadata(
   // Set last tile cell number
   auto dim_0{array_schema_.dimension_ptr(0)};
   const auto& dim_tiles = tiles.find(dim_0->name())->second;
-  const auto& last_tile_pos =
-      (!dim_0->var_size()) ? dim_tiles.size() - 1 : dim_tiles.size() - 2;
-  meta->set_last_tile_cell_num(dim_tiles[last_tile_pos].cell_num());
+  const auto& last_tile_pos = dim_tiles.size() - 1;
+  auto cell_num = dim_tiles[last_tile_pos].cell_num();
+  meta->set_last_tile_cell_num(cell_num);
 
   return Status::Ok();
 }
 
 Status WriterBase::compute_tiles_metadata(
     uint64_t tile_num,
-    std::unordered_map<std::string, std::vector<WriterTile>>& tiles) const {
+    std::unordered_map<std::string, WriterTileVector>& tiles) const {
   auto attr_num = buffers_.size();
   auto compute_tp = storage_manager_->compute_tp();
 
@@ -547,15 +546,15 @@ Status WriterBase::compute_tiles_metadata(
       const auto nullable = array_schema_.is_nullable(attr);
       const auto cell_size = array_schema_.cell_size(attr);
       const auto cell_val_num = array_schema_.cell_val_num(attr);
-      const uint64_t tile_num_mult = 1 + var_size + nullable;
       TileMetadataGenerator md_generator(
           type, is_dim, var_size, cell_size, cell_val_num);
       for (uint64_t t = 0; t < tile_num; t++) {
-        auto tile = &attr_tiles[t * tile_num_mult];
+        auto tile = var_size ? &attr_tiles[t].offset_tile() :
+                               &attr_tiles[t].fixed_tile();
         md_generator.process_tile(
             tile,
-            var_size ? &attr_tiles[t * tile_num_mult + 1] : nullptr,
-            nullable ? &attr_tiles[t * tile_num_mult + var_size + 1] : nullptr);
+            var_size ? &attr_tiles[t].var_tile() : nullptr,
+            nullable ? &attr_tiles[t].validity_tile() : nullptr);
         tile->set_metadata(md_generator.metadata());
       }
 
@@ -572,15 +571,15 @@ Status WriterBase::compute_tiles_metadata(
       const auto nullable = array_schema_.is_nullable(attr);
       const auto cell_size = array_schema_.cell_size(attr);
       const auto cell_val_num = array_schema_.cell_val_num(attr);
-      const uint64_t tile_num_mult = 1 + var_size + nullable;
       auto st = parallel_for(compute_tp, 0, tile_num, [&](uint64_t t) {
         TileMetadataGenerator md_generator(
             type, is_dim, var_size, cell_size, cell_val_num);
-        auto tile = &attr_tiles[t * tile_num_mult];
+        auto tile = var_size ? &attr_tiles[t].offset_tile() :
+                               &attr_tiles[t].fixed_tile();
         md_generator.process_tile(
             tile,
-            var_size ? &attr_tiles[t * tile_num_mult + 1] : nullptr,
-            nullable ? &attr_tiles[t * tile_num_mult + var_size + 1] : nullptr);
+            var_size ? &attr_tiles[t].var_tile() : nullptr,
+            nullable ? &attr_tiles[t].validity_tile() : nullptr);
         tile->set_metadata(md_generator.metadata());
 
         return Status::Ok();
@@ -646,7 +645,7 @@ Status WriterBase::create_fragment(
 }
 
 Status WriterBase::filter_tiles(
-    std::unordered_map<std::string, std::vector<WriterTile>>* tiles) {
+    std::unordered_map<std::string, WriterTileVector>* tiles) {
   auto timer_se = stats_->start_timer("filter_tiles");
 
   // Coordinates
@@ -666,43 +665,25 @@ Status WriterBase::filter_tiles(
 }
 
 Status WriterBase::filter_tiles(
-    const std::string& name, std::vector<WriterTile>* tiles) {
+    const std::string& name, WriterTileVector* tiles) {
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
-  const size_t tile_step = 1 + nullable + var_size;
 
   // Filter all tiles
   auto tile_num = tiles->size();
 
-  // Make sure we have the correct number of tiles.
-  if (tile_num % tile_step != 0) {
-    return logger_->status(
-        Status_WriterError("Incorrect number of tiles in filter_tiles"));
-  }
-
-  // Reserve a vector for offsets tiles, they need to be processed after var
-  // data tiles as the processing of var data tiles depends on offset tiles.
+  // Process all tiles, minus offsets, they get processed separately.
   std::vector<std::tuple<WriterTile*, WriterTile*, bool, bool>> args;
-  std::vector<std::tuple<WriterTile*, WriterTile*, bool, bool>> args_offsets;
-  if (var_size) {
-    args_offsets.reserve(tile_num / tile_step);
-    args.reserve(tile_num - tile_num / tile_step);
-  } else {
-    args.reserve(tile_num);
-  }
-
-  for (size_t tile_idx = 0; tile_idx < tile_num; tile_idx += tile_step) {
+  args.reserve(tile_num * (1 + nullable));
+  for (auto& tile : *tiles) {
     if (var_size) {
-      args_offsets.emplace_back(&(*tiles)[tile_idx], nullptr, true, false);
-      args.emplace_back(
-          &(*tiles)[tile_idx + 1], &(*tiles)[tile_idx], false, false);
+      args.emplace_back(&tile.var_tile(), &tile.offset_tile(), false, false);
     } else {
-      args.emplace_back(&(*tiles)[tile_idx], nullptr, false, false);
+      args.emplace_back(&tile.fixed_tile(), nullptr, false, false);
     }
 
     if (nullable) {
-      args.emplace_back(
-          &(*tiles)[tile_idx + var_size + 1], nullptr, false, true);
+      args.emplace_back(&tile.validity_tile(), nullptr, false, true);
     }
   }
 
@@ -720,14 +701,10 @@ Status WriterBase::filter_tiles(
   // Process offsets for var size.
   if (var_size) {
     auto status = parallel_for(
-        storage_manager_->compute_tp(),
-        0,
-        args_offsets.size(),
-        [&](uint64_t i) {
-          const auto& [tile, offset_tile, contains_offsets, is_nullable] =
-              args_offsets[i];
-          RETURN_NOT_OK(filter_tile(
-              name, tile, offset_tile, contains_offsets, is_nullable));
+        storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+          auto tile = (*tiles)[i];
+          RETURN_NOT_OK(
+              filter_tile(name, &tile.offset_tile(), nullptr, true, false));
           return Status::Ok();
         });
     RETURN_NOT_OK(status);
@@ -909,29 +886,29 @@ Status WriterBase::init_tile_nullable(
 }
 
 Status WriterBase::init_tiles(
-    const std::string& name,
-    uint64_t tile_num,
-    std::vector<WriterTile>* tiles) const {
+    const std::string& name, uint64_t tile_num, WriterTileVector* tiles) const {
   // Initialize tiles
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
-  const size_t t =
-      1 + static_cast<size_t>(var_size) + static_cast<size_t>(nullable);
-  const size_t tiles_len = t * tile_num;
-  tiles->resize(tiles_len);
-  for (size_t i = 0; i < tiles_len; i += t) {
+  tiles->resize(tile_num);
+  for (auto& tile : *tiles) {
     if (!var_size) {
-      if (nullable)
-        RETURN_NOT_OK(
-            init_tile_nullable(name, &((*tiles)[i]), &((*tiles)[i + 1])));
-      else
-        RETURN_NOT_OK(init_tile(name, &((*tiles)[i])));
-    } else {
-      if (nullable)
+      if (nullable) {
         RETURN_NOT_OK(init_tile_nullable(
-            name, &((*tiles)[i]), &((*tiles)[i + 1]), &((*tiles)[i + 2])));
-      else
-        RETURN_NOT_OK(init_tile(name, &((*tiles)[i]), &((*tiles)[i + 1])));
+            name, &tile.fixed_tile(), &tile.validity_tile()));
+      } else {
+        RETURN_NOT_OK(init_tile(name, &tile.fixed_tile()));
+      }
+    } else {
+      if (nullable) {
+        RETURN_NOT_OK(init_tile_nullable(
+            name,
+            &tile.offset_tile(),
+            &tile.var_tile(),
+            &tile.validity_tile()));
+      } else {
+        RETURN_NOT_OK(init_tile(name, &tile.offset_tile(), &tile.var_tile()));
+      }
     }
   }
 
@@ -1038,7 +1015,7 @@ Status WriterBase::split_coords_buffer() {
 
 Status WriterBase::write_all_tiles(
     shared_ptr<FragmentMetadata> frag_meta,
-    std::unordered_map<std::string, std::vector<WriterTile>>* const tiles) {
+    std::unordered_map<std::string, WriterTileVector>* const tiles) {
   auto timer_se = stats_->start_timer("tiles");
 
   assert(!tiles->empty());
@@ -1056,12 +1033,11 @@ Status WriterBase::write_all_tiles(
           array_schema_.var_size(attr)) {
         frag_meta->convert_tile_min_max_var_sizes_to_offsets(attr);
 
-        const auto nullable = array_schema_.is_nullable(attr);
-        const uint64_t tile_num_mult = 1 + var_size + nullable;
-        for (uint64_t i = 0; i < tiles.size(); i += tile_num_mult) {
-          auto tile_idx = i / tile_num_mult;
-          frag_meta->set_tile_min_var(attr, tile_idx, tiles[i].min());
-          frag_meta->set_tile_max_var(attr, tile_idx, tiles[i].max());
+        uint64_t idx = 0;
+        for (auto& tile : tiles) {
+          frag_meta->set_tile_min_var(attr, idx, tile.offset_tile().min());
+          frag_meta->set_tile_max_var(attr, idx, tile.offset_tile().max());
+          idx++;
         }
       }
       return Status::Ok();
@@ -1080,7 +1056,7 @@ Status WriterBase::write_tiles(
     const std::string& name,
     shared_ptr<FragmentMetadata> frag_meta,
     uint64_t start_tile_id,
-    std::vector<WriterTile>* const tiles,
+    WriterTileVector* const tiles,
     bool close_files) {
   auto timer_se = stats_->start_timer("tiles");
 
@@ -1118,23 +1094,22 @@ Status WriterBase::write_tiles(
 
   // Write tiles
   for (size_t i = 0, tile_id = start_tile_id; i < tile_num; ++i, ++tile_id) {
-    WriterTile* tile = &(*tiles)[i];
+    auto tile = (*tiles)[i];
+    auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
     RETURN_NOT_OK(storage_manager_->write(
-        *uri, tile->filtered_buffer().data(), tile->filtered_buffer().size()));
-    frag_meta->set_tile_offset(name, tile_id, tile->filtered_buffer().size());
+        *uri, t.filtered_buffer().data(), t.filtered_buffer().size()));
+    frag_meta->set_tile_offset(name, tile_id, t.filtered_buffer().size());
 
-    auto&& [min, min_size, max, max_size, sum, null_count] = tile->metadata();
+    auto&& [min, min_size, max, max_size, sum, null_count] = t.metadata();
     if (var_size) {
-      ++i;
-
-      tile = &(*tiles)[i];
+      auto& t_var = tile.var_tile();
       RETURN_NOT_OK(storage_manager_->write(
           *var_uri,
-          tile->filtered_buffer().data(),
-          tile->filtered_buffer().size()));
+          t_var.filtered_buffer().data(),
+          t_var.filtered_buffer().size()));
       frag_meta->set_tile_var_offset(
-          name, tile_id, tile->filtered_buffer().size());
-      frag_meta->set_tile_var_size(name, tile_id, tile->pre_filtered_size());
+          name, tile_id, t_var.filtered_buffer().size());
+      frag_meta->set_tile_var_size(name, tile_id, t_var.pre_filtered_size());
       if (has_min_max_md && null_count != frag_meta->cell_num(tile_id)) {
         frag_meta->set_tile_min_var_size(name, tile_id, min_size);
         frag_meta->set_tile_max_var_size(name, tile_id, max_size);
@@ -1151,15 +1126,13 @@ Status WriterBase::write_tiles(
     }
 
     if (nullable) {
-      ++i;
-
-      tile = &(*tiles)[i];
+      auto& t_val = tile.validity_tile();
       RETURN_NOT_OK(storage_manager_->write(
           *validity_uri,
-          tile->filtered_buffer().data(),
-          tile->filtered_buffer().size()));
+          t_val.filtered_buffer().data(),
+          t_val.filtered_buffer().size()));
       frag_meta->set_tile_validity_offset(
-          name, tile_id, tile->filtered_buffer().size());
+          name, tile_id, t_val.filtered_buffer().size());
       frag_meta->set_tile_null_count(name, tile_id, null_count);
     }
   }
