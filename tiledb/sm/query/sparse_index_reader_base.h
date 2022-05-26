@@ -433,10 +433,10 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /**
    * Checks if timestamps should be loaded for a fragment
-
+   *
    * @param f Fragment index.
    * @return True if timestamps should be included, false if they are not
-   needed.
+   * needed.
    */
   bool include_timestamps(const unsigned f);
 };
