@@ -93,7 +93,8 @@ inline Status query_condition_combination_op_enum(
   return Status::Ok();
 }
 
-inline void ensure_qc_combo_op_is_valid(QueryConditionCombinationOp query_condition_combo_op) {
+inline void ensure_qc_combo_op_is_valid(
+    QueryConditionCombinationOp query_condition_combo_op) {
   auto qc_combo_op_enum{::stdx::to_underlying(query_condition_combo_op)};
   if (qc_combo_op_enum > 2) {
     throw std::runtime_error(
@@ -101,7 +102,8 @@ inline void ensure_qc_combo_op_is_valid(QueryConditionCombinationOp query_condit
   }
 }
 
-inline void ensure_qc_combo_op_string_is_valid(const std::string &qc_combo_op_str) {
+inline void ensure_qc_combo_op_string_is_valid(
+    const std::string& qc_combo_op_str) {
   QueryConditionCombinationOp qc_combo_op;
   Status st{query_condition_combination_op_enum(qc_combo_op_str, &qc_combo_op)};
   if (!st.ok()) {

@@ -103,7 +103,7 @@ inline void ensure_qc_op_is_valid(QueryConditionOp query_condition_op) {
   }
 }
 
-inline void ensure_qc_op_string_is_valid(const std::string &qc_op_str) {
+inline void ensure_qc_op_string_is_valid(const std::string& qc_op_str) {
   QueryConditionOp qc_op;
   Status st{query_condition_op_enum(qc_op_str, &qc_op)};
   if (!st.ok()) {

@@ -31,6 +31,8 @@
  * This file defines serialization for the Query class
  */
 
+#include <sstream>
+
 // clang-format off
 #ifdef TILEDB_SERIALIZATION
 #include <capnp/compat/json.h>
@@ -610,12 +612,57 @@ Status dense_read_state_from_capnp(
   return Status::Ok();
 }
 
+/**
+ * @brief Validation function for the field name of an AST node.
+ *
+ * @param field_name Query Condition AST node field name.
+ */
+void ensure_qc_field_name_is_valid(const std::string& field_name) {
+  if (field_name == "") {
+    throw std::runtime_error(
+        "Invalid Query Condition field name " + field_name);
+  }
+}
+
+/**
+ * @brief Validation function for the condition value of an AST node.
+ *
+ * @param data Query Condition AST node condition value byte vector start.
+ * @param size The number of bytes in the byte vector.
+ */
+void ensure_qc_condition_value_is_valid(const void* data, size_t size) {
+  if (size != 0 && data == nullptr) {
+    // Getting the address of data in string form.
+    std::ostringstream address;
+    address << data;
+    std::string address_name = address.str();
+    throw std::runtime_error(
+        "Invalid Query Condition condition value " + address_name +
+        " with size " + std::to_string(size));
+  }
+}
+
+/**
+ * @brief Validation function for the capnp representation of the
+ * condition value of an AST node.
+ *
+ * @param vec The vector representing the Query Condition AST node
+ * condition vector.
+ */
+void ensure_qc_capnp_condition_value_is_valid(const kj::Vector<uint8_t>& vec) {
+  ensure_qc_condition_value_is_valid(vec.begin(), vec.size());
+}
+
 static Status condition_ast_to_capnp(
     const tdb_unique_ptr<ASTNode>& node, capnp::ASTNode::Builder* ast_builder) {
   if (!node->is_expr()) {
-    // Store the field name.
+    // Store the boolean expression tag.
     ast_builder->setIsExpression(false);
-    ast_builder->setFieldName(node->get_field_name());
+
+    // Validate and store the field name.
+    const std::string field_name = node->get_field_name();
+    ensure_qc_field_name_is_valid(field_name);
+    ast_builder->setFieldName(field_name);
 
     // Copy the condition value into a capnp vector of bytes.
     const UntypedDatumView& value = node->get_condition_value_view();
@@ -624,21 +671,29 @@ static Status condition_ast_to_capnp(
         const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.content())),
         value.size()));
 
-    // Store the condition value vector of bytes.
+    // Validate and store the condition value vector of bytes.
+    ensure_qc_capnp_condition_value_is_valid(capnpValue);
     ast_builder->setValue(capnpValue.asPtr());
 
-    // Store the name of the query condition op.
+    // Validate and store the query condition op.
     const std::string op_str = query_condition_op_str(node->get_op());
     ensure_qc_op_string_is_valid(op_str);
     ast_builder->setOp(op_str);
   } else {
+    // Store the boolean expression tag.
     ast_builder->setIsExpression(true);
+
+    // We assume that the serialized values of the child nodes are validated
+    // properly.
     auto children_builder =
         ast_builder->initChildren(node->get_children().size());
+
     for (size_t i = 0; i < node->get_children().size(); ++i) {
       auto child_builder = children_builder[i];
       condition_ast_to_capnp(node->get_children()[i], &child_builder);
     }
+
+    // Validate and store the query condition combination op.
     const std::string op_str =
         query_condition_combination_op_str(node->get_combination_op());
     ensure_qc_combo_op_string_is_valid(op_str);
@@ -650,7 +705,10 @@ static Status condition_ast_to_capnp(
 static void clause_to_capnp(
     const tdb_unique_ptr<ASTNode>& node,
     capnp::ConditionClause::Builder* clause_builder) {
-  clause_builder->setFieldName(node->get_field_name());
+  // Validate and store the field name.
+  std::string field_name = node->get_field_name();
+  ensure_qc_field_name_is_valid(field_name);
+  clause_builder->setFieldName(field_name);
 
   // Copy the condition value into a capnp vector of bytes.
   const UntypedDatumView& value = node->get_condition_value_view();
@@ -659,9 +717,11 @@ static void clause_to_capnp(
       const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.content())),
       value.size()));
 
-  // Store the condition value vector of bytes.
+  // Validate and store the condition value vector of bytes.
+  ensure_qc_capnp_condition_value_is_valid(capnpValue);
   clause_builder->setValue(capnpValue.asPtr());
 
+  // Validate and store the query condition op.
   const std::string op_str = query_condition_op_str(node->get_op());
   ensure_qc_op_string_is_valid(op_str);
   clause_builder->setOp(op_str);
@@ -672,13 +732,17 @@ Status condition_to_capnp(
     capnp::Condition::Builder* condition_builder) {
   const tdb_unique_ptr<ASTNode>& ast = condition.ast();
   assert(!condition.empty());
+
+  // Validate and store the query condition AST.
   auto ast_builder = condition_builder->initTree();
   RETURN_NOT_OK(condition_ast_to_capnp(ast, &ast_builder));
 
   // For backwards compatability, we should also set the clauses and combination
-  // ops vectors when the current query condition
+  // ops vectors when the current query condition.
   if (!ast->is_or_supported()) {
     if (ast->is_expr()) {
+      // We assume that the serialized values of the clauses are validated
+      // properly.
       const std::vector<tdb_unique_ptr<ASTNode>>& clauses_vec =
           ast->get_children();
       auto clauses_builder = condition_builder->initClauses(clauses_vec.size());
@@ -687,12 +751,11 @@ Status condition_to_capnp(
         clause_to_capnp(clauses_vec[i], &clause_builder);
       }
 
-      // Serialize the combination ops.
+      // Validating and storing the combination op vector.
       if (clauses_vec.size() > 1) {
         auto combination_ops_builder =
             condition_builder->initClauseCombinationOps(clauses_vec.size() - 1);
         for (size_t i = 0; i < clauses_vec.size() - 1; ++i) {
-          // Setting and validating the combination op str.
           const std::string op_str = query_condition_combination_op_str(
               QueryConditionCombinationOp::AND);
           ensure_qc_combo_op_string_is_valid(op_str);
@@ -700,6 +763,7 @@ Status condition_to_capnp(
         }
       }
     } else {
+      // We assume the serialized value of the clause is verified properly.
       auto clauses_builder = condition_builder->initClauses(1);
       auto clause_builder = clauses_builder[0];
       clause_to_capnp(ast, &clause_builder);
@@ -814,24 +878,31 @@ Status dense_reader_to_capnp(
 tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
     const capnp::ASTNode::Reader& ast_reader) {
   if (!ast_reader.getIsExpression()) {
+    // Getting and validating the field name.
     std::string field_name = ast_reader.getFieldName();
-    auto condition_value = ast_reader.getValue();
+    ensure_qc_field_name_is_valid(field_name);
 
+    // Getting and validating the condition value.
+    auto condition_value = ast_reader.getValue();
+    const void* data =
+        static_cast<const void*>(condition_value.asBytes().begin());
+    size_t size = condition_value.size();
+    ensure_qc_condition_value_is_valid(data, size);
+
+    // Getting and validating the query condition operator.
     QueryConditionOp op = QueryConditionOp::LT;
     Status s = query_condition_op_enum(ast_reader.getOp(), &op);
     if (!s.ok()) {
       throw std::runtime_error(
           "condition_ast_from_capnp: query_condition_op_enum failed.");
     }
+    ensure_qc_op_is_valid(op);
 
-    return tdb_unique_ptr<ASTNode>(tdb_new(
-        ASTNodeVal,
-        field_name,
-        condition_value.asBytes().begin(),
-        condition_value.size(),
-        op));
+    return tdb_unique_ptr<ASTNode>(
+        tdb_new(ASTNodeVal, field_name, data, size, op));
   }
 
+  // Getting and validating the query condition combination operator.
   std::string combination_op_str = ast_reader.getCombinationOp();
   QueryConditionCombinationOp combination_op = QueryConditionCombinationOp::AND;
   Status s =
@@ -841,6 +912,10 @@ tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
         "condition_ast_from_capnp: query_condition_combination_op_enum "
         "failed.");
   }
+  ensure_qc_combo_op_is_valid(combination_op);
+
+  // We assume that the deserialized values of the child nodes are validated
+  // properly.
   std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
   for (const auto child : ast_reader.getChildren()) {
     ast_nodes.push_back(condition_ast_from_capnp(child));
@@ -853,21 +928,34 @@ Status condition_from_capnp(
     const capnp::Condition::Reader& condition_reader,
     QueryCondition* const condition) {
   if (condition_reader.hasClauses()) {  // coming from older API
+    // Accumulating the AST value nodes from the clause list.
     std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
     for (const auto clause : condition_reader.getClauses()) {
+      // Getting and validating the field name.
       std::string field_name = clause.getFieldName();
+      ensure_qc_field_name_is_valid(field_name);
+
+      // Getting and validating the condition value.
       auto condition_value = clause.getValue();
+      const void* data =
+          static_cast<const void*>(condition_value.asBytes().begin());
+      size_t size = condition_value.size();
+      ensure_qc_condition_value_is_valid(data, size);
 
+      // Getting and validating the query condition operator.
       QueryConditionOp op = QueryConditionOp::LT;
-      RETURN_NOT_OK(query_condition_op_enum(clause.getOp(), &op));
+      Status s = query_condition_op_enum(clause.getOp(), &op);
+      if (!s.ok()) {
+        throw std::runtime_error(
+            "condition_ast_from_capnp: query_condition_op_enum failed.");
+      }
+      ensure_qc_op_is_valid(op);
 
-      ast_nodes.push_back(tdb_unique_ptr<ASTNode>(tdb_new(
-          ASTNodeVal,
-          field_name,
-          condition_value.asBytes().begin(),
-          condition_value.size(),
-          op)));
+      ast_nodes.push_back(tdb_unique_ptr<ASTNode>(
+          tdb_new(ASTNodeVal, field_name, data, size, op)));
     }
+
+    // Constructing the tree from the list of AST nodes.
     assert(ast_nodes.size() > 0);
     if (ast_nodes.size() == 1) {
       condition->set_ast(std::move(ast_nodes[0]));
@@ -877,6 +965,8 @@ Status condition_from_capnp(
       condition->set_ast(std::move(tree_ptr));
     }
   } else if (condition_reader.hasTree()) {
+    // Constructing the query condition from the AST representation.
+    // We assume that the deserialized values of the AST are validated properly.
     auto ast_reader = condition_reader.getTree();
     condition->set_ast(condition_ast_from_capnp(ast_reader));
   }
