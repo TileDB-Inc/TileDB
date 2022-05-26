@@ -56,287 +56,8 @@ class DomainBuffersView;
 class FragmentMetadata;
 class TileMetadataGenerator;
 class StorageManager;
-class WriterTileVector;
 
-/**
- * Element of the WriterTileVector, used to access fixed, offset, var and
- * validity tiles.
- */
-struct WriterTileElement {
-  // Only WriterTileVector can construct this and call iterator operations.
-  friend class WriterTileVector;
-
-  /* ********************************* */
-  /*                 API               */
-  /* ********************************* */
-
-  /** Returns the fixed tile. */
-  inline WriterTile& fixed_tile() {
-    assert(!var_size_);
-    return first_tile_[0];
-  }
-
-  /** Returns the fixed tile. */
-  inline const WriterTile& fixed_tile() const {
-    assert(!var_size_);
-    return first_tile_[0];
-  }
-
-  /** Returns the offset tile. */
-  inline WriterTile& offset_tile() {
-    assert(var_size_);
-    return first_tile_[0];
-  }
-
-  /** Returns the offset tile. */
-  inline const WriterTile& offset_tile() const {
-    assert(var_size_);
-    return first_tile_[0];
-  }
-
-  /** Returns the var tile. */
-  inline WriterTile& var_tile() {
-    assert(var_size_);
-    return first_tile_[1];
-  }
-
-  /** Returns the var tile. */
-  inline const WriterTile& var_tile() const {
-    assert(var_size_);
-    return first_tile_[var_size_];
-  }
-
-  /** Returns the validity tile. */
-  inline WriterTile& validity_tile() {
-    assert(nullable_);
-    return first_tile_[var_size_ + 1];
-  }
-
-  /** Returns the validity tile. */
-  inline const WriterTile& validity_tile() const {
-    assert(nullable_);
-    return first_tile_[var_size_ + 1];
-  }
-
-  /** Returns the cell number. */
-  inline uint64_t cell_num() const {
-    if (var_size_) {
-      return var_tile().cell_num();
-    } else {
-      return fixed_tile().cell_num();
-    }
-  }
-
-  /* Equality operator. */
-  friend bool operator==(
-      const WriterTileElement& a, const WriterTileElement& b) {
-    return a.first_tile_ == b.first_tile_;
-  };
-
-  /* Non-equality operator. */
-  friend bool operator!=(
-      const WriterTileElement& a, const WriterTileElement& b) {
-    return a.first_tile_ != b.first_tile_;
-  };
-
- private:
-  /* ********************************* */
-  /*            CONSTRUCTOR            */
-  /* ********************************* */
-
-  WriterTileElement(
-      WriterTile* first_tile, const bool var_size, const bool nullable)
-      : first_tile_(first_tile)
-      , var_size_(var_size)
-      , nullable_(nullable) {
-  }
-
-  /* ********************************* */
-  /*         ITERATOR METHODS          */
-  /* ********************************* */
-
-  WriterTileElement& operator++() {
-    first_tile_ += 1 + var_size_ + nullable_;
-    return *this;
-  }
-
-  WriterTileElement operator++(int) {
-    WriterTileElement tmp = *this;
-    ++(*this);
-    return tmp;
-  }
-
-  /* ********************************* */
-  /*        PRIVATE ATTRIBUTES         */
-  /* ********************************* */
-
-  /** Pointer to the first tiles. */
-  WriterTile* first_tile_;
-
-  /** Is this tile var size. */
-  const bool var_size_;
-
-  /** Is this tile nullable. */
-  const bool nullable_;
-};
-
-/**
- * WriterTileVector, used to store tiles and provide access through iterators
- * and index accessors.
- */
-class WriterTileVector {
- public:
-  /** Basic forward iterator. */
-  struct Iterator {
-    // Only WriterTileVector can construct this. */
-    friend class WriterTileVector;
-
-    using iterator_category = std::forward_iterator_tag;
-    using difference_type = std::ptrdiff_t;
-    using value_type = WriterTileElement;
-    using pointer = WriterTileElement*;
-    using reference = WriterTileElement&;
-
-    /* ********************************* */
-    /*             OPERATORS             */
-    /* ********************************* */
-
-    /* Reference operator. */
-    reference operator*() {
-      return el_;
-    }
-
-    /* Dereference operator. */
-    pointer operator->() {
-      return &el_;
-    }
-
-    /* Pre-increment operator. */
-    Iterator& operator++() {
-      el_++;
-      return *this;
-    }
-
-    /* Post-increment operator. */
-    Iterator operator++(int) {
-      Iterator tmp = *this;
-      ++(*this);
-      return tmp;
-    }
-
-   private:
-    /* ********************************* */
-    /*            CONSTRUCTOR            */
-    /* ********************************* */
-
-    Iterator(WriterTile* first_tile, const bool var_size, const bool nullable)
-        : el_(first_tile, var_size, nullable) {
-    }
-
-    /* ********************************* */
-    /*         PRIVATE OPERATORS         */
-    /* ********************************* */
-
-    /* Equality operator. */
-    friend bool operator==(const Iterator& a, const Iterator& b) {
-      return a.el_ == b.el_;
-    };
-
-    /* Non-equality operator. */
-    friend bool operator!=(const Iterator& a, const Iterator& b) {
-      return a.el_ != b.el_;
-    };
-
-    /* ********************************* */
-    /*        PRIVATE ATTRIBUTES         */
-    /* ********************************* */
-
-    /** The current element of the iterator. */
-    WriterTileElement el_;
-  };
-
-  /* ********************************* */
-  /*           CONSTRUCTORs            */
-  /* ********************************* */
-
-  /** Default constructor. */
-  WriterTileVector()
-      : incr_(0)
-      , var_size_(false)
-      , nullable_(false) {
-  }
-
-  /** Constructor for empty vector. */
-  WriterTileVector(const ArraySchema& schema, const std::string& name)
-      : incr_(1 + schema.var_size(name) + schema.is_nullable(name))
-      , var_size_(schema.var_size(name))
-      , nullable_(schema.is_nullable(name)) {
-  }
-
-  /** Constructor with non-empty vector. */
-  WriterTileVector(
-      const ArraySchema& schema, const std::string& name, uint64_t num)
-      : WriterTileVector(schema, name) {
-    resize(num);
-  }
-
-  /* ********************************* */
-  /*                 API               */
-  /* ********************************* */
-
-  /** Resize the vector for a certain number of tiles. */
-  void resize(uint64_t num) {
-    if (incr_ == 0) {
-      throw std::logic_error(
-          "Cannot resize a default constructed WriterTileVector");
-    }
-
-    // Internally allocate data for fixed, var and validity tiles.
-    tiles_.resize(num * incr_);
-  }
-
-  /** Returns true if the vector is empty. */
-  bool empty() const {
-    return tiles_.size() == 0;
-  }
-
-  /** Returns the number of tiles. */
-  size_t size() const {
-    return tiles_.size() / incr_;
-  }
-
-  /** Begin iterator. */
-  Iterator begin() {
-    return Iterator(tiles_.data(), var_size_, nullable_);
-  }
-
-  /** End iterator. */
-  Iterator end() {
-    return Iterator(tiles_.data() + tiles_.size(), var_size_, nullable_);
-  }
-
-  /** Index operator. */
-  WriterTileElement operator[](uint64_t idx) {
-    return WriterTileElement(&tiles_[idx * incr_], var_size_, nullable_);
-  }
-
-  /** Constant index operator. */
-  const WriterTileElement operator[](uint64_t idx) const {
-    // const_cast is safe here because the returned object will be const.
-    return WriterTileElement(
-        const_cast<WriterTile*>(&tiles_[idx * incr_]), var_size_, nullable_);
-  }
-
- private:
-  /* ********************************* */
-  /*        PRIVATE ATTRIBUTES         */
-  /* ********************************* */
-
-  std::vector<WriterTile> tiles_;
-  const uint64_t incr_;
-  const bool var_size_;
-  const bool nullable_;
-};
+using WriterTileVector = std::vector<WriterTile>;
 
 /** Processes write queries. */
 class WriterBase : public StrategyBase, public IQueryStrategy {
@@ -581,8 +302,8 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status filter_tile(
       const std::string& name,
-      WriterTile* tile,
-      WriterTile* offsets_tile,
+      Tile* tile,
+      Tile* offsets_tile,
       bool offsets,
       bool nullable);
 
@@ -611,7 +332,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param tile The tile to be initialized.
    * @return Status
    */
-  Status init_tile(const std::string& name, WriterTile* tile) const;
+  Status init_tile(const std::string& name, Tile* tile) const;
 
   /**
    * Initializes a var-sized tile.
@@ -621,8 +342,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param tile_var The var-sized data tile to be initialized.
    * @return Status
    */
-  Status init_tile(
-      const std::string& name, WriterTile* tile, WriterTile* tile_var) const;
+  Status init_tile(const std::string& name, Tile* tile, Tile* tile_var) const;
 
   /**
    * Initializes a fixed-sized, nullable tile.
@@ -633,9 +353,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @return Status
    */
   Status init_tile_nullable(
-      const std::string& name,
-      WriterTile* tile,
-      WriterTile* tile_validity) const;
+      const std::string& name, Tile* tile, Tile* tile_validity) const;
 
   /**
    * Initializes a var-sized, nullable tile.
@@ -648,9 +366,9 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status init_tile_nullable(
       const std::string& name,
-      WriterTile* tile,
-      WriterTile* tile_var,
-      WriterTile* tile_validity) const;
+      Tile* tile,
+      Tile* tile_var,
+      Tile* tile_validity) const;
 
   /**
    * Initializes the tiles for writing for the input attribute/dimension.

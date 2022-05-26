@@ -333,7 +333,7 @@ Status UnorderedWriter::prepare_tiles(
   tiles->clear();
   for (const auto& it : buffers_) {
     const auto& name = it.first;
-    (*tiles).emplace(name, WriterTileVector(array_schema_, name));
+    (*tiles).emplace(name, WriterTileVector());
   }
 
   // Prepare tiles for all attributes and coordinates
@@ -387,7 +387,7 @@ Status UnorderedWriter::prepare_tiles_fixed(
       coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
 
   // Initialize tiles
-  tiles->resize(tile_num);
+  tiles->resize(tile_num, WriterTile(false, nullable, cell_size));
   for (auto& tile : *tiles) {
     if (!nullable)
       RETURN_NOT_OK(init_tile(name, &tile.fixed_tile()));
@@ -437,12 +437,7 @@ Status UnorderedWriter::prepare_tiles_fixed(
 
   uint64_t last_tile_cell_num = (cell_num - dups_num) % capacity;
   if (last_tile_cell_num != 0) {
-    tile_it->fixed_tile().final_size(last_tile_cell_num * cell_size);
-
-    if (nullable) {
-      tile_it->validity_tile().final_size(
-          last_tile_cell_num * constants::cell_validity_size);
-    }
+    tile_it->final_size(last_tile_cell_num);
   }
 
   return Status::Ok();
@@ -456,6 +451,7 @@ Status UnorderedWriter::prepare_tiles_var(
   // For easy reference
   auto it = buffers_.find(name);
   auto nullable = array_schema_.is_nullable(name);
+  auto cell_size = array_schema_.cell_size(name);
   auto buffer = it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
   auto buffer_validity = (uint8_t*)it->second.validity_vector_.buffer();
@@ -470,7 +466,7 @@ Status UnorderedWriter::prepare_tiles_var(
                                array_schema_.domain().cell_num_per_tile();
 
   // Initialize tiles
-  tiles->resize(tile_num);
+  tiles->resize(tile_num, WriterTile(true, nullable, cell_size));
   for (auto& tile : *tiles) {
     if (!nullable)
       RETURN_NOT_OK(init_tile(name, &tile.offset_tile(), &tile.var_tile()));
@@ -486,7 +482,7 @@ Status UnorderedWriter::prepare_tiles_var(
   if (dups_num == 0) {
     for (uint64_t i = 0; i < cell_num; ++i, ++cell_idx) {
       if (cell_idx == cell_num_per_tile) {
-        tile_it->var_tile().final_size(offset);
+        tile_it->var_tile().set_size(offset);
         cell_idx = 0;
         offset = 0;
         tile_it++;
@@ -522,7 +518,7 @@ Status UnorderedWriter::prepare_tiles_var(
         continue;
 
       if (cell_idx == cell_num_per_tile) {
-        tile_it->var_tile().final_size(offset);
+        tile_it->var_tile().set_size(offset);
         cell_idx = 0;
         offset = 0;
         tile_it++;
@@ -557,18 +553,12 @@ Status UnorderedWriter::prepare_tiles_var(
   }
 
   if (cell_num > 0) {
-    tile_it->var_tile().final_size(offset);
+    tile_it->var_tile().set_size(offset);
   }
 
   uint64_t last_tile_cell_num = (cell_num - dups_num) % capacity;
   if (last_tile_cell_num != 0) {
-    tile_it->offset_tile().final_size(
-        last_tile_cell_num * constants::cell_var_offset_size);
-
-    if (nullable) {
-      tile_it->validity_tile().final_size(
-          last_tile_cell_num * constants::cell_validity_size);
-    }
+    tile_it->final_size(last_tile_cell_num);
   }
 
   return Status::Ok();

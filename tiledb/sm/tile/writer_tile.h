@@ -44,7 +44,7 @@ namespace sm {
 /**
  * Handles tile information, with added data used by writer.
  */
-class WriterTile : public Tile {
+class WriterTile {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -52,31 +52,78 @@ class WriterTile : public Tile {
 
   WriterTile();
 
+  WriterTile(bool var_size, bool nullable, uint64_t cell_size);
+
+  /** Copy constructor. */
+  WriterTile(const WriterTile& tile);
+
+  /** Copy-assign operator. */
+  WriterTile& operator=(const WriterTile& tile);
+
   /** Move constructor. */
   WriterTile(WriterTile&& tile);
 
   /** Move-assign operator. */
   WriterTile& operator=(WriterTile&& tile);
 
-  DISABLE_COPY_AND_COPY_ASSIGN(WriterTile);
-
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
-  /**
-   * Returns the pre-filtered size of the tile data in the buffer.
-   *
-   * @return Pre-filtered size.
-   */
-  uint64_t pre_filtered_size() const;
+  /** Returns the fixed tile. */
+  inline Tile& fixed_tile() {
+    assert(!var_size_);
+    return fixed_tile_;
+  }
+
+  /** Returns the fixed tile. */
+  inline const Tile& fixed_tile() const {
+    assert(!var_size_);
+    return fixed_tile_;
+  }
+
+  /** Returns the offset tile. */
+  inline Tile& offset_tile() {
+    assert(var_size_);
+    return fixed_tile_;
+  }
+
+  /** Returns the offset tile. */
+  inline const Tile& offset_tile() const {
+    assert(var_size_);
+    return fixed_tile_;
+  }
+
+  /** Returns the var tile. */
+  inline Tile& var_tile() {
+    assert(var_size_);
+    return var_tile_;
+  }
+
+  /** Returns the var tile. */
+  inline const Tile& var_tile() const {
+    assert(var_size_);
+    return var_tile_;
+  }
+
+  /** Returns the validity tile. */
+  inline Tile& validity_tile() {
+    assert(nullable_);
+    return validity_tile_;
+  }
+
+  /** Returns the validity tile. */
+  inline const Tile& validity_tile() const {
+    assert(nullable_);
+    return validity_tile_;
+  }
 
   /**
-   * Sets the pre-filtered size value to the given value.
+   * Returns the var pre-filtered size of the tile data in the buffer.
    *
-   * @param pre_filtered_size Pre-filtered size.
+   * @return Var pre-filtered size.
    */
-  void set_pre_filtered_size(uint64_t pre_filtered_size);
+  uint64_t var_pre_filtered_size() const;
 
   /**
    * Returns the tile minimum value.
@@ -112,15 +159,6 @@ class WriterTile : public Tile {
                     uint64_t,
                     const ByteVec*,
                     uint64_t>& md);
-  /**
-   * Write method used for var data. Resizes the internal buffer if needed.
-   *
-   * @param data Pointer to the data to write.
-   * @param offset Offset to write into the tile buffer.
-   * @param nbytes Number of bytes to write.
-   * @return Status.
-   */
-  Status write_var(const void* data, uint64_t offset, uint64_t nbytes);
 
   /**
    * Sets the final size of a written tile.
@@ -128,7 +166,24 @@ class WriterTile : public Tile {
    * @param size Final size.
    */
   inline void final_size(uint64_t size) {
-    size_ = size;
+    if (var_size_) {
+      fixed_tile_.set_size(size * constants::cell_var_offset_size);
+    } else {
+      fixed_tile_.set_size(size * cell_size_);
+    }
+
+    if (nullable_) {
+      validity_tile_.set_size(size * constants::cell_validity_size);
+    }
+  }
+
+  /**
+   * Returns the cell number.
+   *
+   * @return Cell number.
+   */
+  inline uint64_t cell_num() const {
+    return fixed_tile_.cell_num();
   }
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
@@ -139,8 +194,26 @@ class WriterTile : public Tile {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The size in bytes of the tile data before it has been filtered. */
-  uint64_t pre_filtered_size_;
+  /** Fixed data tile. */
+  Tile fixed_tile_;
+
+  /** Var data tile. */
+  Tile var_tile_;
+
+  /** Validity data tile. */
+  Tile validity_tile_;
+
+  /** Indicates if this writer tile is var size. */
+  bool var_size_;
+
+  /** Indicates if this writer tile is nullable. */
+  bool nullable_;
+
+  /** Cell size for this attribute. */
+  uint64_t cell_size_;
+
+  /** The size in bytes of the var tile data before it has been filtered. */
+  uint64_t var_pre_filtered_size_;
 
   /** Minimum value for this tile. */
   ByteVec min_;

@@ -554,7 +554,7 @@ Status WriterBase::compute_tiles_metadata(
             t,
             var_size ? &tile.var_tile() : nullptr,
             nullable ? &tile.validity_tile() : nullptr);
-        t->set_metadata(md_generator.metadata());
+        tile.set_metadata(md_generator.metadata());
       }
 
       return Status::Ok();
@@ -579,7 +579,7 @@ Status WriterBase::compute_tiles_metadata(
             tile,
             var_size ? &attr_tiles[t].var_tile() : nullptr,
             nullable ? &attr_tiles[t].validity_tile() : nullptr);
-        tile->set_metadata(md_generator.metadata());
+        attr_tiles[t].set_metadata(md_generator.metadata());
 
         return Status::Ok();
       });
@@ -672,7 +672,7 @@ Status WriterBase::filter_tiles(
   auto tile_num = tiles->size();
 
   // Process all tiles, minus offsets, they get processed separately.
-  std::vector<std::tuple<WriterTile*, WriterTile*, bool, bool>> args;
+  std::vector<std::tuple<Tile*, Tile*, bool, bool>> args;
   args.reserve(tile_num * (1 + nullable));
   for (auto& tile : *tiles) {
     if (var_size) {
@@ -701,7 +701,7 @@ Status WriterBase::filter_tiles(
   if (var_size) {
     auto status = parallel_for(
         storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
-          auto tile = (*tiles)[i];
+          auto& tile = (*tiles)[i];
           RETURN_NOT_OK(
               filter_tile(name, &tile.offset_tile(), nullptr, true, false));
           return Status::Ok();
@@ -714,13 +714,11 @@ Status WriterBase::filter_tiles(
 
 Status WriterBase::filter_tile(
     const std::string& name,
-    WriterTile* const tile,
-    WriterTile* const offsets_tile,
+    Tile* const tile,
+    Tile* const offsets_tile,
     const bool offsets,
     const bool nullable) {
   auto timer_se = stats_->start_timer("filter_tile");
-
-  const auto orig_size = tile->size();
 
   // Get a copy of the appropriate filter pipeline.
   FilterPipeline filters;
@@ -742,7 +740,6 @@ Status WriterBase::filter_tile(
     uint64_t nchunks = 0;
     memcpy(tile->filtered_buffer().data(), &nchunks, sizeof(uint64_t));
     tile->clear_data();
-    tile->set_pre_filtered_size(orig_size);
     return Status::Ok();
   }
 
@@ -763,8 +760,6 @@ Status WriterBase::filter_tile(
       use_chunking));
   assert(tile->filtered());
 
-  tile->set_pre_filtered_size(orig_size);
-
   return Status::Ok();
 }
 
@@ -784,7 +779,7 @@ bool WriterBase::has_sum_metadata(
   return TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num);
 }
 
-Status WriterBase::init_tile(const std::string& name, WriterTile* tile) const {
+Status WriterBase::init_tile(const std::string& name, Tile* tile) const {
   // For easy reference
   auto cell_size = array_schema_.cell_size(name);
   auto type = array_schema_.type(name);
@@ -802,7 +797,7 @@ Status WriterBase::init_tile(const std::string& name, WriterTile* tile) const {
 }
 
 Status WriterBase::init_tile(
-    const std::string& name, WriterTile* tile, WriterTile* tile_var) const {
+    const std::string& name, Tile* tile, Tile* tile_var) const {
   // For easy reference
   auto type = array_schema_.type(name);
   auto& domain{array_schema_.domain()};
@@ -824,9 +819,7 @@ Status WriterBase::init_tile(
 }
 
 Status WriterBase::init_tile_nullable(
-    const std::string& name,
-    WriterTile* tile,
-    WriterTile* tile_validity) const {
+    const std::string& name, Tile* tile, Tile* tile_validity) const {
   // For easy reference
   auto cell_size = array_schema_.cell_size(name);
   auto type = array_schema_.type(name);
@@ -854,9 +847,9 @@ Status WriterBase::init_tile_nullable(
 
 Status WriterBase::init_tile_nullable(
     const std::string& name,
-    WriterTile* tile,
-    WriterTile* tile_var,
-    WriterTile* tile_validity) const {
+    Tile* tile,
+    Tile* tile_var,
+    Tile* tile_validity) const {
   // For easy reference
   auto type = array_schema_.type(name);
   auto& domain{array_schema_.domain()};
@@ -889,7 +882,8 @@ Status WriterBase::init_tiles(
   // Initialize tiles
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
-  tiles->resize(tile_num);
+  const uint64_t cell_size = array_schema_.cell_size(name);
+  tiles->resize(tile_num, WriterTile(var_size, nullable, cell_size));
   for (auto& tile : *tiles) {
     if (!var_size) {
       if (nullable) {
@@ -1034,8 +1028,8 @@ Status WriterBase::write_all_tiles(
 
         uint64_t idx = 0;
         for (auto& tile : tiles) {
-          frag_meta->set_tile_min_var(attr, idx, tile.offset_tile().min());
-          frag_meta->set_tile_max_var(attr, idx, tile.offset_tile().max());
+          frag_meta->set_tile_min_var(attr, idx, tile.min());
+          frag_meta->set_tile_max_var(attr, idx, tile.max());
           idx++;
         }
       }
@@ -1093,13 +1087,13 @@ Status WriterBase::write_tiles(
 
   // Write tiles
   for (size_t i = 0, tile_id = start_tile_id; i < tile_num; ++i, ++tile_id) {
-    auto tile = (*tiles)[i];
+    auto& tile = (*tiles)[i];
     auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
     RETURN_NOT_OK(storage_manager_->write(
         *uri, t.filtered_buffer().data(), t.filtered_buffer().size()));
     frag_meta->set_tile_offset(name, tile_id, t.filtered_buffer().size());
 
-    auto&& [min, min_size, max, max_size, sum, null_count] = t.metadata();
+    auto&& [min, min_size, max, max_size, sum, null_count] = tile.metadata();
     if (var_size) {
       auto& t_var = tile.var_tile();
       RETURN_NOT_OK(storage_manager_->write(
@@ -1108,7 +1102,7 @@ Status WriterBase::write_tiles(
           t_var.filtered_buffer().size()));
       frag_meta->set_tile_var_offset(
           name, tile_id, t_var.filtered_buffer().size());
-      frag_meta->set_tile_var_size(name, tile_id, t_var.pre_filtered_size());
+      frag_meta->set_tile_var_size(name, tile_id, tile.var_pre_filtered_size());
       if (has_min_max_md && null_count != frag_meta->cell_num(tile_id)) {
         frag_meta->set_tile_min_var_size(name, tile_id, min_size);
         frag_meta->set_tile_max_var_size(name, tile_id, max_size);

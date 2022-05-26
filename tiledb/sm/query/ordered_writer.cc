@@ -250,8 +250,8 @@ Status OrderedWriter::ordered_write() {
         for (auto& batch : attr_tile_batches) {
           uint64_t idx = 0;
           for (auto& tile : batch) {
-            frag_meta->set_tile_min_var(attr, idx, tile.offset_tile().min());
-            frag_meta->set_tile_max_var(attr, idx, tile.offset_tile().max());
+            frag_meta->set_tile_min_var(attr, idx, tile.min());
+            frag_meta->set_tile_max_var(attr, idx, tile.max());
             idx++;
           }
         }
@@ -273,10 +273,8 @@ Status OrderedWriter::ordered_write() {
               auto& batch = tiles[attr][b];
               auto idx = b * thread_num;
               for (auto& tile : batch) {
-                frag_meta->set_tile_min_var(
-                    attr, idx, tile.offset_tile().min());
-                frag_meta->set_tile_max_var(
-                    attr, idx, tile.offset_tile().max());
+                frag_meta->set_tile_min_var(attr, idx, tile.min());
+                frag_meta->set_tile_max_var(attr, idx, tile.max());
                 idx++;
               }
               return Status::Ok();
@@ -338,16 +336,15 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   // Process batches
   uint64_t frag_tile_id = 0;
   bool close_files = false;
-  tile_batches.reserve(batch_num);
+  tile_batches.resize(batch_num);
   for (uint64_t b = 0; b < batch_num; ++b) {
-    tile_batches.emplace_back(array_schema_, name);
     auto batch_size = (b == batch_num - 1) ? last_batch_size : thread_num;
     assert(batch_size > 0);
-    tile_batches[b].resize(batch_size);
+    tile_batches[b].resize(batch_size, WriterTile(var, nullable, cell_size));
     auto st = parallel_for(
         storage_manager_->compute_tp(), 0, batch_size, [&](uint64_t i) {
           // Prepare and filter tiles
-          auto writer_tile = tile_batches[b][i];
+          auto& writer_tile = tile_batches[b][i];
           TileMetadataGenerator md_generator(
               type, is_dim, var, cell_size, cell_val_num);
 
@@ -361,7 +358,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
             auto tile = &writer_tile.fixed_tile();
             RETURN_NOT_OK(dense_tiler->get_tile(frag_tile_id + i, name, tile));
             md_generator.process_tile(tile, nullptr, tile_val);
-            tile->set_metadata(md_generator.metadata());
+            writer_tile.set_metadata(md_generator.metadata());
             RETURN_NOT_OK(filter_tile(name, tile, nullptr, false, false));
           } else {
             auto tile = &writer_tile.offset_tile();
@@ -369,7 +366,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
             RETURN_NOT_OK(dense_tiler->get_tile_var(
                 frag_tile_id + i, name, tile, tile_var));
             md_generator.process_tile(tile, tile_var, tile_val);
-            tile->set_metadata(md_generator.metadata());
+            writer_tile.set_metadata(md_generator.metadata());
             RETURN_NOT_OK(filter_tile(name, tile_var, tile, false, false));
             RETURN_NOT_OK(filter_tile(name, tile, nullptr, true, false));
           }

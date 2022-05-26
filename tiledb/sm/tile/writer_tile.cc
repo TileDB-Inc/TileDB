@@ -42,11 +42,38 @@ namespace sm {
 /* ****************************** */
 
 WriterTile::WriterTile()
-    : Tile()
-    , pre_filtered_size_(0)
+    : var_size_(false)
+    , nullable_(false)
+    , cell_size_(0)
+    , var_pre_filtered_size_(0)
     , min_size_(0)
     , max_size_(0)
     , null_count_(0) {
+}
+
+WriterTile::WriterTile(bool var_size, bool nullable, uint64_t cell_size)
+    : var_size_(var_size)
+    , nullable_(nullable)
+    , cell_size_(cell_size)
+    , var_pre_filtered_size_(0)
+    , min_size_(0)
+    , max_size_(0)
+    , null_count_(0) {
+}
+
+WriterTile::WriterTile(const WriterTile& tile) {
+  this->var_size_ = tile.var_size_;
+  this->nullable_ = tile.nullable_;
+  this->cell_size_ = tile.cell_size_;
+}
+
+WriterTile& WriterTile::operator=(const WriterTile& tile) {
+  // Call copy constructor
+  WriterTile copy(tile);
+
+  // Swap with the temporary copy
+  swap(copy);
+  return *this;
 }
 
 WriterTile::WriterTile(WriterTile&& tile)
@@ -66,12 +93,8 @@ WriterTile& WriterTile::operator=(WriterTile&& tile) {
 /*               API              */
 /* ****************************** */
 
-uint64_t WriterTile::pre_filtered_size() const {
-  return pre_filtered_size_;
-}
-
-void WriterTile::set_pre_filtered_size(uint64_t pre_filtered_size) {
-  pre_filtered_size_ = pre_filtered_size;
+uint64_t WriterTile::var_pre_filtered_size() const {
+  return var_pre_filtered_size_;
 }
 
 void* WriterTile::min() const {
@@ -111,31 +134,20 @@ void WriterTile::set_metadata(const tuple<
 
   sum_ = *sum;
   null_count_ = null_count;
-}
 
-Status WriterTile::write_var(
-    const void* data, uint64_t offset, uint64_t nbytes) {
-  if (size_ - offset < nbytes) {
-    auto new_alloc_size = size_ == 0 ? offset + nbytes : size_;
-    while (new_alloc_size < offset + nbytes)
-      new_alloc_size *= 2;
-
-    auto new_data =
-        static_cast<char*>(tdb_realloc(data_.release(), new_alloc_size));
-    if (new_data == nullptr) {
-      return LOG_STATUS(Status_TileError(
-          "Cannot reallocate buffer; Memory allocation failed"));
-    }
-    data_.reset(new_data);
-    size_ = new_alloc_size;
+  if (var_size_) {
+    var_pre_filtered_size_ = var_tile_.size();
   }
-
-  return write(data, offset, nbytes);
 }
 
 void WriterTile::swap(WriterTile& tile) {
-  Tile::swap(tile);
-  std::swap(pre_filtered_size_, tile.pre_filtered_size_);
+  fixed_tile_.swap(tile.fixed_tile_);
+  var_tile_.swap(tile.var_tile_);
+  validity_tile_.swap(tile.validity_tile_);
+  std::swap(var_size_, tile.var_size_);
+  std::swap(nullable_, tile.nullable_);
+  std::swap(cell_size_, tile.cell_size_);
+  std::swap(var_pre_filtered_size_, tile.var_pre_filtered_size_);
   std::swap(min_, tile.min_);
   std::swap(min_size_, tile.min_size_);
   std::swap(max_, tile.max_);
