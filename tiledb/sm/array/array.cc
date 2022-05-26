@@ -81,28 +81,6 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , non_empty_domain_computed_(false) {
 }
 
-Array::Array(const Array& rhs)
-    : array_schema_latest_(rhs.array_schema_latest_)
-    , array_uri_(rhs.array_uri_)
-    , array_dir_(rhs.array_dir_)
-    , array_uri_serialized_(rhs.array_uri_serialized_)
-    , encryption_key_(rhs.encryption_key_)
-    , fragment_metadata_(rhs.fragment_metadata_)
-    , is_open_(rhs.is_open_.load())
-    , query_type_(rhs.query_type_)
-    , timestamp_start_(rhs.timestamp_start_)
-    , timestamp_end_(rhs.timestamp_end_)
-    , timestamp_end_opened_at_(rhs.timestamp_end_opened_at_)
-    , storage_manager_(rhs.storage_manager_)
-    , config_(rhs.config_)
-    , last_max_buffer_sizes_(rhs.last_max_buffer_sizes_)
-    , remote_(rhs.remote_)
-    , metadata_(rhs.metadata_)
-    , metadata_loaded_(rhs.metadata_loaded_)
-    , non_empty_domain_computed_(rhs.non_empty_domain_computed_)
-    , non_empty_domain_(rhs.non_empty_domain_) {
-}
-
 /* ********************************* */
 /*                API                */
 /* ********************************* */
