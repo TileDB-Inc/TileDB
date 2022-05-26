@@ -2104,6 +2104,8 @@ tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_details(
   auto timer_se = stats_->start_timer("sm_load_group_details");
   const URI& latest_group_uri = group_directory->latest_group_details_uri();
   if (latest_group_uri.is_invalid()) {
+    // Returning ok because not having the latest group details means the group
+    // has just been created and no members have been added yet.
     return {Status::Ok(), std::nullopt};
   }
   return load_group_from_uri(
@@ -2130,6 +2132,8 @@ StorageManager::group_open_for_reads(Group* group) {
     return {Status::Ok(), group_deserialized.value()->members()};
   }
 
+  // Return ok because having no members is acceptable if the group has never
+  // been written to.
   return {Status::Ok(), std::nullopt};
 }
 
@@ -2153,6 +2157,8 @@ StorageManager::group_open_for_writes(Group* group) {
     return {Status::Ok(), group_deserialized.value()->members()};
   }
 
+  // Return ok because having no members is acceptable if the group has never
+  // been written to.
   return {Status::Ok(), std::nullopt};
 }
 
