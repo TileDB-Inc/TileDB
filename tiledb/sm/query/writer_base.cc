@@ -548,14 +548,13 @@ Status WriterBase::compute_tiles_metadata(
       const auto cell_val_num = array_schema_.cell_val_num(attr);
       TileMetadataGenerator md_generator(
           type, is_dim, var_size, cell_size, cell_val_num);
-      for (uint64_t t = 0; t < tile_num; t++) {
-        auto tile = var_size ? &attr_tiles[t].offset_tile() :
-                               &attr_tiles[t].fixed_tile();
+      for (auto& tile : attr_tiles) {
+        auto t = var_size ? &tile.offset_tile() : &tile.fixed_tile();
         md_generator.process_tile(
-            tile,
-            var_size ? &attr_tiles[t].var_tile() : nullptr,
-            nullable ? &attr_tiles[t].validity_tile() : nullptr);
-        tile->set_metadata(md_generator.metadata());
+            t,
+            var_size ? &tile.var_tile() : nullptr,
+            nullable ? &tile.validity_tile() : nullptr);
+        t->set_metadata(md_generator.metadata());
       }
 
       return Status::Ok();

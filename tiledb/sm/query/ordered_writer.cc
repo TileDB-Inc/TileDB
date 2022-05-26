@@ -271,11 +271,13 @@ Status OrderedWriter::ordered_write() {
             compute_tp, 0, attr_tile_batches.size(), [&](uint64_t b) {
               const auto& attr = buff.first;
               auto& batch = tiles[attr][b];
-              for (uint64_t i = 0; i < batch.size(); i++) {
+              auto idx = b * thread_num;
+              for (auto& tile : batch) {
                 frag_meta->set_tile_min_var(
-                    attr, i, batch[i].offset_tile().min());
+                    attr, idx, tile.offset_tile().min());
                 frag_meta->set_tile_max_var(
-                    attr, i, batch[i].offset_tile().max());
+                    attr, idx, tile.offset_tile().max());
+                idx++;
               }
               return Status::Ok();
             });
