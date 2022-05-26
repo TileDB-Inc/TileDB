@@ -74,11 +74,12 @@ inline Status array_type_enum(
   return Status::Ok();
 }
 
-inline Status array_type_is_valid(uint8_t array_type_enum) {
-  if (array_type_enum != 0 && array_type_enum != 1)
-    return Status_Error("Invalid ArrayType enum.");
-
-  return Status::Ok();
+/** Throws error if the input ArrayType's enum is not 0 or 1. */
+inline void ensure_array_type_is_valid(uint8_t array_type_enum) {
+  if (array_type_enum != 0 && array_type_enum != 1) {
+    throw std::runtime_error(
+        "Invalid ArrayType " + std::to_string(array_type_enum));
+  }
 }
 
 }  // namespace sm

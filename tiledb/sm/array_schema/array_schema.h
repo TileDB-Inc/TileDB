@@ -91,6 +91,8 @@ class ArraySchema {
   /** Constructor.
    * @param uri The URI of the array schema file.
    * @param version The format version of this array schema.
+   * @param timestamp_range The timestamp the array schema was written.
+   * @param name The file name of the schema in timestamp_timestamp_uuid format.
    * @param array_type The array type.
    * @param allows_dups True if the (sparse) array allows coordinate duplicates.
    * @param domain The array domain.
@@ -107,6 +109,8 @@ class ArraySchema {
   ArraySchema(
       URI uri,
       uint32_t version,
+      std::pair<uint64_t, uint64_t> timestamp_range,
+      std::string name,
       ArrayType array_type,
       bool allows_dups,
       shared_ptr<Domain> domain,
@@ -300,7 +304,7 @@ class ArraySchema {
    * It assigns values to the members of the object from the input buffer.
    *
    * @param buff The binary representation of the object to read from.
-   * @param uri An optional uri object.
+   * @param uri A uri object.
    * @return A new ArraySchema.
    */
   static ArraySchema deserialize(ConstBuffer* buff, const URI& uri);

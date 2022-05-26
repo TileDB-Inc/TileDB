@@ -619,88 +619,181 @@ Status array_schema_to_capnp(
   return Status::Ok();
 }
 
-Status array_schema_from_capnp(
-    const capnp::ArraySchema::Reader& schema_reader,
-    tdb_unique_ptr<ArraySchema>* array_schema) {
+// #TODO Add security validation on incoming URI
+shared_ptr<ArraySchema> array_schema_from_capnp(
+    const capnp::ArraySchema::Reader& schema_reader, const URI& uri) {
+  Status st;
+
+  // Deserialize and validate array_type
   ArrayType array_type = ArrayType::DENSE;
-  RETURN_NOT_OK(array_type_enum(schema_reader.getArrayType(), &array_type));
-  array_schema->reset(tdb_new(ArraySchema, array_type));
+  st = array_type_enum(schema_reader.getArrayType(), &array_type);
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[Deserialization::array_schema_from_capnp] " +
+        std::string(schema_reader.getArrayType().cStr()) +
+        " is not a valid ArrayType identifer.");
+  }
+  try {
+    ensure_array_type_is_valid(std::underlying_type_t<ArrayType>(array_type));
+  } catch (std::exception& e) {
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::array_schema_from_capnp] "));
+  }
 
-  Layout layout = Layout::ROW_MAJOR;
-  RETURN_NOT_OK(layout_enum(schema_reader.getTileOrder().cStr(), &layout));
-  (*array_schema)->set_tile_order(layout);
-  RETURN_NOT_OK(layout_enum(schema_reader.getCellOrder().cStr(), &layout));
+  // Deserialize and validate tile_order
+  Layout tile_order = Layout::ROW_MAJOR;
+  st = layout_enum(schema_reader.getTileOrder().cStr(), &tile_order);
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[Deserialization::array_schema_from_capnp] " +
+        std::string(schema_reader.getTileOrder().cStr()) +
+        " is not a valid tile order identifer.");
+  }
+  try {
+    ensure_tile_order_is_valid(std::underlying_type_t<Layout>(tile_order));
+  } catch (std::exception& e) {
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::array_schema_from_capnp] "));
+  }
 
-  if (schema_reader.hasUri())
-    (*array_schema)->set_array_uri(URI(schema_reader.getUri().cStr()));
+  // Deserialize and validate cell_order
+  Layout cell_order = Layout::ROW_MAJOR;
+  st = layout_enum(schema_reader.getCellOrder().cStr(), &cell_order);
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[Deserialization::array_schema_from_capnp] " +
+        std::string(schema_reader.getCellOrder().cStr()) +
+        " is not a valid cell order identifer.");
+  }
+  try {
+    ensure_cell_order_is_valid(std::underlying_type_t<Layout>(cell_order));
+  } catch (std::exception& e) {
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::array_schema_from_capnp] "));
+  }
 
-  (*array_schema)->set_cell_order(layout);
-  (*array_schema)->set_capacity(schema_reader.getCapacity());
-  (*array_schema)->set_allows_dups(schema_reader.getAllowsDuplicates());
+  // Deserialize URI
+  // #TODO Add security validation
+  URI uri_deserialized = URI();
+  if (schema_reader.hasUri()) {
+    uri_deserialized = URI(schema_reader.getUri().cStr());
+  } else {
+    uri_deserialized = uri;
+  }
+
+  // Deserialize capacity
+  // #TODO Add security validation
+  uint64_t capacity = schema_reader.getCapacity();
+
+  // Deserialize allows_dups
+  // Note: No security validation is possible.
+  bool allows_dups = schema_reader.getAllowsDuplicates();
+
   // Pre 1.8 TileDB serialized the version as the library version
   // This would have been a list of size 3, so only set the version
   // if the list size is 1, meaning tiledb 1.8 or later
+  // #TODO Add security validation
+  uint32_t version = constants::format_version;
   if (schema_reader.hasVersion() && schema_reader.getVersion().size() == 1) {
-    (*array_schema)->set_version(schema_reader.getVersion()[0]);
+    version = schema_reader.getVersion()[0];
   }
 
+  // Deserialize domain
+  // Note: Security validation delegated to invoked API
   auto domain_reader = schema_reader.getDomain();
   auto domain{domain_from_capnp(domain_reader)};
-  RETURN_NOT_OK((*array_schema)->set_domain(domain));
 
   // Set coords filter pipelines
+  // Note: Security validation delegated to invoked API
+  // #TODO Add security validation
+  FilterPipeline coords_filters;
   if (schema_reader.hasCoordsFilterPipeline()) {
     auto reader = schema_reader.getCoordsFilterPipeline();
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
-    RETURN_NOT_OK(st_fp);
-    RETURN_NOT_OK(
-        (*array_schema)->set_coords_filter_pipeline(filters.value().get()));
+    if (!st_fp.ok()) {
+      throw std::runtime_error(
+          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+          "coords filters.");
+    }
+    coords_filters = *filters.value().get();
   }
 
   // Set offsets filter pipelines
+  // Note: Security validation delegated to invoked API
+  // #TODO Add security validation
+  FilterPipeline cell_var_offsets_filters;
   if (schema_reader.hasOffsetFilterPipeline()) {
     auto reader = schema_reader.getOffsetFilterPipeline();
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
-    RETURN_NOT_OK(st_fp);
-    RETURN_NOT_OK(
-        (*array_schema)
-            ->set_cell_var_offsets_filter_pipeline(filters.value().get()));
+    if (!st_fp.ok()) {
+      throw std::runtime_error(
+          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+          "offset filters.");
+    }
+    cell_var_offsets_filters = *filters.value().get();
   }
 
   // Set validity filter pipelines
+  // Note: Security validation delegated to invoked API
+  // #TODO Add security validation
+  FilterPipeline cell_validity_filters;
   if (schema_reader.hasValidityFilterPipeline()) {
     auto reader = schema_reader.getValidityFilterPipeline();
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
-    RETURN_NOT_OK(st_fp);
-    RETURN_NOT_OK(
-        (*array_schema)
-            ->set_cell_validity_filter_pipeline(filters.value().get()));
+    if (!st_fp.ok()) {
+      throw std::runtime_error(
+          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+          "validity filters.");
+    }
+    cell_validity_filters = *filters.value().get();
   }
 
   // Set attributes
+  // Note: Security validation delegated to invoked API
+  // #TODO Add security validation
   auto attributes_reader = schema_reader.getAttributes();
+  std::vector<shared_ptr<const Attribute>> attributes;
   for (auto attr_reader : attributes_reader) {
     auto&& [st_attr, attr]{attribute_from_capnp(attr_reader)};
-    RETURN_NOT_OK(st_attr);
-    RETURN_NOT_OK((*array_schema)->add_attribute(attr.value()));
+    if (!st_attr.ok()) {
+      throw std::runtime_error(
+          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+          "attributes.");
+    }
+    attributes.emplace_back(attr.value());
   }
 
   // Set the range if we have two values
+  // #TODO Add security validation
+  std::pair<uint64_t, uint64_t> timestamp_range;
   if (schema_reader.hasTimestampRange() &&
       schema_reader.getTimestampRange().size() >= 2) {
-    const auto& timestamp_range = schema_reader.getTimestampRange();
-    (*array_schema)
-        ->set_timestamp_range(
-            std::make_pair(timestamp_range[0], timestamp_range[1]));
+    const auto& range = schema_reader.getTimestampRange();
+    timestamp_range = std::make_pair(range[0], range[1]);
   }
 
+  // Deserialize the name
+  // #TODO Add security validation
+  std::string name;
   if (schema_reader.hasName())
-    (*array_schema)->set_name(schema_reader.getName().cStr());
+    name = schema_reader.getName().cStr();
 
-  // Initialize
-  RETURN_NOT_OK((*array_schema)->init());
-
-  return Status::Ok();
+  return make_shared<ArraySchema>(
+      HERE(),
+      uri_deserialized,
+      version,
+      timestamp_range,
+      name,
+      array_type,
+      allows_dups,
+      make_shared<Domain>(HERE(), domain.get()),
+      cell_order,
+      tile_order,
+      capacity,
+      attributes,
+      cell_var_offsets_filters,
+      cell_validity_filters,
+      coords_filters);
 }
 
 Status array_schema_serialize(
@@ -762,8 +855,7 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
   shared_ptr<ArraySchema> array_schema;
 
   try {
-    tdb_unique_ptr<ArraySchema> decoded_array_schema = nullptr;
-
+    shared_ptr<ArraySchema> decoded_array_schema;
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
@@ -775,9 +867,8 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
             array_schema_builder);
         capnp::ArraySchema::Reader array_schema_reader =
             array_schema_builder.asReader();
-        RETURN_NOT_OK_TUPLE(
-            array_schema_from_capnp(array_schema_reader, &decoded_array_schema),
-            nullopt);
+        decoded_array_schema =
+            array_schema_from_capnp(array_schema_reader, URI());
         break;
       }
       case SerializationType::CAPNP: {
@@ -788,9 +879,8 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
             serialized_buffer.size() / sizeof(::capnp::word)));
         capnp::ArraySchema::Reader array_schema_reader =
             reader.getRoot<capnp::ArraySchema>();
-        RETURN_NOT_OK_TUPLE(
-            array_schema_from_capnp(array_schema_reader, &decoded_array_schema),
-            nullopt);
+        decoded_array_schema =
+            array_schema_from_capnp(array_schema_reader, URI());
         break;
       }
       default: {
@@ -808,7 +898,7 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
               "Error serializing array schema; deserialized schema is null")),
           nullopt};
 
-    array_schema = std::move(decoded_array_schema);
+    array_schema = decoded_array_schema;
   } catch (kj::Exception& e) {
     return {LOG_STATUS(Status_SerializationError(
                 "Error deserializing array schema; kj::Exception: " +
