@@ -287,8 +287,8 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
         vfs,
         compute_tp,
         URI(array_name),
-        config_.vacuum_timestamp_start_,
-        config_.vacuum_timestamp_end_,
+        0,
+        std::numeric_limits<uint64_t>::max(),
         config_.with_timestamps_,
         ArrayDirectoryMode::VACUUM_FRAGMENTS);
   } catch (const std::logic_error& le) {
@@ -834,12 +834,6 @@ Status FragmentConsolidator::set_config(const Config* config) {
       merged_config.get("sm.query.sparse_global_order.reader", &found);
   assert(found);
   config_.use_refactored_reader_ = reader.compare("refactored") == 0;
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
-      "sm.vacuum.timestamp_start", &config_.vacuum_timestamp_start_, &found));
-  assert(found);
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
-      "sm.vacuum.timestamp_end", &config_.vacuum_timestamp_end_, &found));
-  assert(found);
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)
