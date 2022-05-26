@@ -104,7 +104,7 @@ inline void ensure_qc_combo_op_is_valid(
 
 inline void ensure_qc_combo_op_string_is_valid(
     const std::string& qc_combo_op_str) {
-  QueryConditionCombinationOp qc_combo_op;
+  QueryConditionCombinationOp qc_combo_op = QueryConditionCombinationOp::AND;
   Status st{query_condition_combination_op_enum(qc_combo_op_str, &qc_combo_op)};
   if (!st.ok()) {
     throw std::runtime_error(
