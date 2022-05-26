@@ -7,7 +7,7 @@
 
 using namespace tiledb;
 
-TEST_CASE("C++ API: Truncated values (ch12024)", "[cppapi][sparse][!shouldfail]") {
+TEST_CASE("C++ API: Truncated values (ch12024)", "[cppapi][sparse]") {
   const std::string array_name_1d = "cpp_unit_array_1d";
   Context ctx;
   VFS vfs(ctx);
