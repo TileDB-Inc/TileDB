@@ -40,13 +40,10 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb_serialization.h"
 
-#include <iomanip>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -694,28 +691,6 @@ std::string get_fragment_dir(std::string array_dir);
  * Gets the commit directory from the array directory.
  */
 std::string get_commit_dir(std::string array_dir);
-
-/**
- * Returns the byte string given a pointer and a size.
- */
-std::string ptr_to_hex_str(const void* data, size_t size);
-
-/**
- * Returns the byte string representation of a ByteVecValue.
- */
-std::string bbv_to_hex_str(const sm::ByteVecValue& b);
-
-/**
- * Returns the string representation of an Query AST node.
- */
-std::string ast_node_to_str(const tdb_unique_ptr<sm::ASTNode>& node);
-
-/**
- * Returns true if two ASTNodes are equivalent representations.
- */
-bool ast_equal(
-    const tdb_unique_ptr<sm::ASTNode>& lhs,
-    const tdb_unique_ptr<sm::ASTNode>& rhs);
 
 }  // End of namespace test
 

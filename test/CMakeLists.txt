@@ -97,6 +97,8 @@ list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_
 
 # Gather the test source files
 set(TILEDB_TEST_SUPPORT_SOURCES
+  src/ast_helpers.h
+  src/ast_helpers.cc
   src/helpers.h
   src/helpers.cc
   src/helpers-dimension.h

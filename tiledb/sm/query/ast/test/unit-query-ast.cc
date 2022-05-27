@@ -29,9 +29,11 @@
  *
  * Tests the `ASTNode`, `ASTNodeVal` and `ASTNodeExpr` classes.
  */
-#include <iostream>
 
-#include "test/src/helpers.h"
+#include <string>
+#include <vector>
+
+#include "test/src/ast_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/query/ast/query_ast.h"
 
@@ -40,147 +42,341 @@
 using namespace tiledb::sm;
 using namespace tiledb::test;
 
-TEST_CASE("ASTNode Constructors", "[QueryCondition][ast][constructor]") {
-  // ASTNodeVal constructor
-  std::string field_name = "x";
-  int val = 5;
+template <class T>
+tdb_unique_ptr<ASTNode> test_value_node(
+    std::string field_name,
+    T* val,
+    QueryConditionOp op,
+    const std::string& expected_result) {
+  // Test validity of construction of value node.
   auto node_val = tdb_unique_ptr<ASTNode>(
-      tdb_new(ASTNodeVal, field_name, &val, sizeof(val), QueryConditionOp::LT));
-  CHECK(ast_node_to_str(node_val) == "x LT 05 00 00 00");
+      tdb_new(ASTNodeVal, field_name, val, sizeof(T), op));
+  CHECK(ast_node_to_str(node_val) == expected_result);
 
-  // ASTNodeVal constructor
-  std::string field_name1 = "y";
+  // Test ASTNode::clone on the constructed node.
+  auto node_val_clone = node_val->clone();
+  CHECK(ast_node_to_str(node_val_clone) == expected_result);
+
+  return node_val;
+}
+
+tdb_unique_ptr<ASTNode> test_expression_node(
+    const tdb_unique_ptr<ASTNode>& lhs,
+    const tdb_unique_ptr<ASTNode>& rhs,
+    QueryConditionCombinationOp op,
+    const std::string& expected_result) {
+  // Test validity of construction of expression node.
+  auto combined_node = lhs->combine(rhs, op);
+  CHECK(ast_node_to_str(combined_node) == expected_result);
+
+  // Test ASTNode::clone on the constructed node.
+  auto combined_node_clone = combined_node->clone();
+  CHECK(ast_node_to_str(combined_node_clone) == expected_result);
+
+  return combined_node;
+}
+
+TEST_CASE("ASTNode Constructors, basic", "[QueryCondition][ast][constructor") {
+  int val = 48;
+  auto node_val =
+      test_value_node("c", &val, QueryConditionOp::LE, "c LE 30 00 00 00");
+}
+
+TEST_CASE(
+    "ASTNode Constructors, basic AND combine",
+    "[QueryCondition][ast][constructor]") {
+  // Testing (x < 5).
+  int val = 5;
+  auto node_val =
+      test_value_node("x", &val, QueryConditionOp::LT, "x LT 05 00 00 00");
+
+  // Testing (y > 3).
   int val1 = 3;
-  auto node_val1 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal, field_name1, &val1, sizeof(val1), QueryConditionOp::GT));
-  CHECK(ast_node_to_str(node_val1) == "y GT 03 00 00 00");
+  auto node_val1 =
+      test_value_node("y", &val1, QueryConditionOp::GT, "y GT 03 00 00 00");
 
-  // ASTNodeExpr constructor
-  auto combined_node =
-      node_val->combine(node_val1, QueryConditionCombinationOp::AND);
-  CHECK(
-      ast_node_to_str(combined_node) ==
+  // Testing (x < 5 AND y > 3).
+  auto combined_node = test_expression_node(
+      node_val,
+      node_val1,
+      QueryConditionCombinationOp::AND,
+      "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
+}
+
+TEST_CASE(
+    "ASTNode Constructors, basic OR combine",
+    "[QueryCondition][ast][constructor]") {
+  // Testing (x < 5).
+  int val = 5;
+  auto node_val =
+      test_value_node("x", &val, QueryConditionOp::LT, "x LT 05 00 00 00");
+
+  // Testing (y > 3).
+  int val1 = 3;
+  auto node_val1 =
+      test_value_node("y", &val1, QueryConditionOp::GT, "y GT 03 00 00 00");
+
+  // Testing (x < 5 OR y > 3).
+  auto combined_node = test_expression_node(
+      node_val,
+      node_val1,
+      QueryConditionCombinationOp::OR,
+      "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
+}
+
+TEST_CASE(
+    "ASTNode Constructors, tree structure, AND of 2 OR ASTs",
+    "[QueryCondition][ast][constructor]") {
+  std::vector<int> vals = {1, 2, 3, 4};
+
+  // Testing a <= 1, b < 2, c >= 3, and d > 4.
+  auto node_val =
+      test_value_node("a", &vals[0], QueryConditionOp::LE, "a LE 01 00 00 00");
+  auto node_val1 =
+      test_value_node("b", &vals[1], QueryConditionOp::LT, "b LT 02 00 00 00");
+  auto node_val2 =
+      test_value_node("c", &vals[2], QueryConditionOp::GE, "c GE 03 00 00 00");
+  auto node_val3 =
+      test_value_node("d", &vals[3], QueryConditionOp::GT, "d GT 04 00 00 00");
+
+  // Testing (a <= 1 OR b < 2).
+  auto node_expr = test_expression_node(
+      node_val,
+      node_val1,
+      QueryConditionCombinationOp::OR,
+      "(a LE 01 00 00 00 OR b LT 02 00 00 00)");
+
+  // Testing (c >= 3 OR d > 4).
+  auto node_expr1 = test_expression_node(
+      node_val2,
+      node_val3,
+      QueryConditionCombinationOp::OR,
+      "(c GE 03 00 00 00 OR d GT 04 00 00 00)");
+
+  // Testing ((a <= 1 OR b < 2) AND (c >= 3 OR d > 4)).
+  auto node_combine = test_expression_node(
+      node_expr,
+      node_expr1,
+      QueryConditionCombinationOp::AND,
+      "((a LE 01 00 00 00 OR b LT 02 00 00 00) AND (c GE 03 00 00 00 OR d GT "
+      "04 00 00 00))");
+}
+
+TEST_CASE(
+    "ASTNode Constructors, tree structure, OR of 2 AND ASTs",
+    "[QueryCondition][ast][constructor]") {
+  std::vector<int> vals = {1, 2, 3, 4};
+
+  // Testing a <= 1, b < 2, c >= 3, and d > 4.
+  auto node_val =
+      test_value_node("a", &vals[0], QueryConditionOp::LE, "a LE 01 00 00 00");
+  auto node_val1 =
+      test_value_node("b", &vals[1], QueryConditionOp::LT, "b LT 02 00 00 00");
+  auto node_val2 =
+      test_value_node("c", &vals[2], QueryConditionOp::GE, "c GE 03 00 00 00");
+  auto node_val3 =
+      test_value_node("d", &vals[3], QueryConditionOp::GT, "d GT 04 00 00 00");
+
+  // Testing (a <= 1 AND b < 2).
+  auto node_expr = test_expression_node(
+      node_val,
+      node_val1,
+      QueryConditionCombinationOp::AND,
+      "(a LE 01 00 00 00 AND b LT 02 00 00 00)");
+
+  // Testing (c >= 3 AND d > 4).
+  auto node_expr1 = test_expression_node(
+      node_val2,
+      node_val3,
+      QueryConditionCombinationOp::AND,
+      "(c GE 03 00 00 00 AND d GT 04 00 00 00)");
+
+  // Testing ((a <= 1 AND b < 2) OR (c >= 3 AND d > 4)).
+  auto node_combine = test_expression_node(
+      node_expr,
+      node_expr1,
+      QueryConditionCombinationOp::OR,
+      "((a LE 01 00 00 00 AND b LT 02 00 00 00) OR (c GE 03 00 00 00 AND d GT "
+      "04 00 00 00))");
+}
+
+TEST_CASE(
+    "ASTNode Constructors, tree structure, AND of 2 AND ASTs",
+    "[QueryCondition][ast][constructor]") {
+  std::vector<int> vals = {1, 2, 3, 4};
+
+  // Testing a <= 1, b < 2, c >= 3, and d > 4.
+  auto node_val =
+      test_value_node("a", &vals[0], QueryConditionOp::LE, "a LE 01 00 00 00");
+  auto node_val1 =
+      test_value_node("b", &vals[1], QueryConditionOp::LT, "b LT 02 00 00 00");
+  auto node_val2 =
+      test_value_node("c", &vals[2], QueryConditionOp::GE, "c GE 03 00 00 00");
+  auto node_val3 =
+      test_value_node("d", &vals[3], QueryConditionOp::GT, "d GT 04 00 00 00");
+
+  // Testing (a <= 1 AND b < 2).
+  auto node_expr = test_expression_node(
+      node_val,
+      node_val1,
+      QueryConditionCombinationOp::AND,
+      "(a LE 01 00 00 00 AND b LT 02 00 00 00)");
+
+  // Testing (c >= 3 AND d > 4).
+  auto node_expr1 = test_expression_node(
+      node_val2,
+      node_val3,
+      QueryConditionCombinationOp::AND,
+      "(c GE 03 00 00 00 AND d GT 04 00 00 00)");
+
+  // Testing (a <= 1 AND b < 2 AND c >= 3 AND d > 4).
+  auto node_combine = test_expression_node(
+      node_expr,
+      node_expr1,
+      QueryConditionCombinationOp::AND,
+      "(a LE 01 00 00 00 AND b LT 02 00 00 00 AND c GE 03 00 00 00 AND d GT 04 "
+      "00 00 00)");
+}
+
+TEST_CASE(
+    "ASTNode Constructors, tree structure, OR of 2 OR ASTs",
+    "[QueryCondition][ast][constructor]") {
+  std::vector<int> vals = {1, 2, 3, 4};
+
+  // Testing a <= 1, b < 2, c >= 3, and d > 4.
+  auto node_val =
+      test_value_node("a", &vals[0], QueryConditionOp::LE, "a LE 01 00 00 00");
+  auto node_val1 =
+      test_value_node("b", &vals[1], QueryConditionOp::LT, "b LT 02 00 00 00");
+  auto node_val2 =
+      test_value_node("c", &vals[2], QueryConditionOp::GE, "c GE 03 00 00 00");
+  auto node_val3 =
+      test_value_node("d", &vals[3], QueryConditionOp::GT, "d GT 04 00 00 00");
+
+  // Testing (a <= 1 OR b < 2).
+  auto node_expr = test_expression_node(
+      node_val,
+      node_val1,
+      QueryConditionCombinationOp::OR,
+      "(a LE 01 00 00 00 OR b LT 02 00 00 00)");
+
+  // Testing (c >= 3 OR d > 4).
+  auto node_expr1 = test_expression_node(
+      node_val2,
+      node_val3,
+      QueryConditionCombinationOp::OR,
+      "(c GE 03 00 00 00 OR d GT 04 00 00 00)");
+
+  // Testing (a <= 1 OR b < 2 OR c >= 3 OR d > 4).
+  auto node_combine = test_expression_node(
+      node_expr,
+      node_expr1,
+      QueryConditionCombinationOp::OR,
+      "(a LE 01 00 00 00 OR b LT 02 00 00 00 OR c GE 03 00 00 00 OR d GT 04 00 "
+      "00 00)");
+}
+
+TEST_CASE(
+    "ASTNode Constructors, complex tree",
+    "[QueryCondition][ast][constructor]") {
+  // Testing (x < 5).
+  int val = 5;
+  auto node_val =
+      test_value_node("x", &val, QueryConditionOp::LT, "x LT 05 00 00 00");
+
+  // Testing (y > 3).
+  int val1 = 3;
+  auto node_val1 =
+      test_value_node("y", &val1, QueryConditionOp::GT, "y GT 03 00 00 00");
+
+  // Testing (x < 5 AND y > 3).
+  auto combined_node = test_expression_node(
+      node_val,
+      node_val1,
+      QueryConditionCombinationOp::AND,
       "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
 
-  // ASTNodeVal constructor
-  std::string field_name2 = "a";
+  // Testing (a = 23).
   int val2 = 23;
-  auto node_val2 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal, field_name2, &val2, sizeof(val2), QueryConditionOp::EQ));
-  CHECK(ast_node_to_str(node_val2) == "a EQ 17 00 00 00");
+  auto node_val2 =
+      test_value_node("a", &val2, QueryConditionOp::EQ, "a EQ 17 00 00 00");
 
-  // ASTNodeVal constructor
-  std::string field_name3 = "b";
+  // Testing (b != 2);
   int val3 = 2;
-  auto node_val3 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal, field_name3, &val3, sizeof(val3), QueryConditionOp::NE));
-  CHECK(ast_node_to_str(node_val3) == "b NE 02 00 00 00");
+  auto node_val3 =
+      test_value_node("b", &val3, QueryConditionOp::NE, "b NE 02 00 00 00");
 
-  std::string field_name4 = "c";
+  // Testing (c <= 8).
   int val4 = 8;
-  auto node_val4 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal, field_name4, &val4, sizeof(val4), QueryConditionOp::LE));
-  CHECK(ast_node_to_str(node_val4) == "c LE 08 00 00 00");
+  auto node_val4 =
+      test_value_node("c", &val4, QueryConditionOp::LE, "c LE 08 00 00 00");
 
-  auto combined_node_inter1 =
-      node_val2->combine(node_val3, QueryConditionCombinationOp::OR);
-  auto combined_node1 =
-      combined_node_inter1->combine(node_val4, QueryConditionCombinationOp::OR);
-  CHECK(
-      ast_node_to_str(combined_node1) ==
+  // Testing (a = 23 OR b != 2 OR c <= 8).
+  auto combined_node_inter1 = test_expression_node(
+      node_val2,
+      node_val3,
+      QueryConditionCombinationOp::OR,
+      "(a EQ 17 00 00 00 OR b NE 02 00 00 00)");
+  auto combined_node1 = test_expression_node(
+      combined_node_inter1,
+      node_val4,
+      QueryConditionCombinationOp::OR,
       "(a EQ 17 00 00 00 OR b NE 02 00 00 00 OR c LE 08 00 00 00)");
 
-  auto combined_node2 =
-      combined_node->combine(combined_node1, QueryConditionCombinationOp::OR);
-  CHECK(
-      ast_node_to_str(combined_node2) ==
-      "((x LT 05 00 00 00 AND y GT 03 00 00 00) OR a EQ 17 00 00 00 OR b NE "
-      "02 00 00 00 OR c LE 08 00 00 00)");
-
-  auto clone_combined_node2 = combined_node2->clone();
-  CHECK(
-      ast_node_to_str(clone_combined_node2) ==
-      "((x LT 05 00 00 00 AND y GT 03 00 00 00) OR a EQ 17 00 00 00 OR b NE "
-      "02 00 00 00 OR c LE 08 00 00 00)");
+  // Testing ((x < 5 AND y > 3) OR a = 23 OR b != 2 OR c <= 8).
+  test_expression_node(
+      combined_node,
+      combined_node1,
+      QueryConditionCombinationOp::OR,
+      "((x LT 05 00 00 00 AND y GT 03 00 00 00) OR a EQ 17 00 00 00 OR b NE 02 "
+      "00 00 00 OR c LE 08 00 00 00)");
 }
 
 TEST_CASE(
     "ASTNode Constructors, adding simple clauses to an AND tree",
     "[QueryCondition][ast][constructor]") {
-  // foo != 1 && foo != 3 && foo != 5 && foo != 7 && foo != 9
-  std::string field_name1 = "foo";
-  int val1 = 1;
-  auto query_condition1 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal,
-      std::string(field_name1),
-      &val1,
-      sizeof(int),
-      QueryConditionOp::NE));
-  CHECK(ast_node_to_str(query_condition1) == "foo NE 01 00 00 00");
+  std::vector<int> vals = {1, 3, 5, 7, 9};
+  std::vector<std::string> expected_strs = {"foo NE 01 00 00 00",
+                                            "foo NE 03 00 00 00",
+                                            "foo NE 05 00 00 00",
+                                            "foo NE 07 00 00 00",
+                                            "foo NE 09 00 00 00"};
+  std::vector<tdb_unique_ptr<ASTNode>> ast_val_nodes;
 
-  std::string field_name2 = "foo";
-  int val2 = 3;
-  auto query_condition2 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal,
-      std::string(field_name2),
-      &val2,
-      sizeof(int),
-      QueryConditionOp::NE));
-  CHECK(ast_node_to_str(query_condition2) == "foo NE 03 00 00 00");
+  // Creating the value nodes foo != 1, foo != 3, foo != 5, foo != 7, and foo
+  // != 9.
+  for (size_t i = 0; i < vals.size(); ++i) {
+    ast_val_nodes.push_back(test_value_node(
+        "foo", &vals[i], QueryConditionOp::NE, expected_strs[i]));
+  }
 
-  std::string field_name3 = "foo";
-  int val3 = 5;
-  auto query_condition3 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal,
-      std::string(field_name3),
-      &val3,
-      sizeof(int),
-      QueryConditionOp::NE));
-  CHECK(ast_node_to_str(query_condition3) == "foo NE 05 00 00 00");
-
-  std::string field_name4 = "foo";
-  int val4 = 7;
-  auto query_condition4 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal,
-      std::string(field_name4),
-      &val4,
-      sizeof(int),
-      QueryConditionOp::NE));
-  CHECK(ast_node_to_str(query_condition4) == "foo NE 07 00 00 00");
-
-  std::string field_name5 = "foo";
-  int val5 = 9;
-  auto query_condition5 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal,
-      std::string(field_name5),
-      &val5,
-      sizeof(int),
-      QueryConditionOp::NE));
-  CHECK(ast_node_to_str(query_condition5) == "foo NE 09 00 00 00");
-
-  auto combined_and1 = query_condition1->combine(
-      query_condition2, QueryConditionCombinationOp::AND);
-  CHECK(
-      ast_node_to_str(combined_and1) ==
+  // Testing (foo != 1 AND foo != 3).
+  auto combined_and1 = test_expression_node(
+      ast_val_nodes[0],
+      ast_val_nodes[1],
+      QueryConditionCombinationOp::AND,
       "(foo NE 01 00 00 00 AND foo NE 03 00 00 00)");
 
-  auto combined_and2 = combined_and1->combine(
-      query_condition3, QueryConditionCombinationOp::AND);
-  CHECK(
-      ast_node_to_str(combined_and2) ==
+  // Testing (foo != 1 AND foo != 3 AND foo ! 5).
+  auto combined_and2 = test_expression_node(
+      combined_and1,
+      ast_val_nodes[2],
+      QueryConditionCombinationOp::AND,
       "(foo NE 01 00 00 00 AND foo NE 03 00 00 00 AND foo NE 05 00 00 00)");
 
-  auto combined_and3 = combined_and2->combine(
-      query_condition4, QueryConditionCombinationOp::AND);
-  CHECK(
-      ast_node_to_str(combined_and3) ==
+  // Testing (foo != 1 AND foo != 3 AND foo ! 5 AND foo != 7).
+  auto combined_and3 = test_expression_node(
+      combined_and2,
+      ast_val_nodes[3],
+      QueryConditionCombinationOp::AND,
       "(foo NE 01 00 00 00 AND foo NE 03 00 00 00 AND foo NE 05 00 00 00 AND "
       "foo NE 07 00 00 00)");
 
-  auto combined_and4 = combined_and3->combine(
-      query_condition5, QueryConditionCombinationOp::AND);
-  CHECK(
-      ast_node_to_str(combined_and4) ==
+  // Testing (foo != 1 AND foo != 3 AND foo ! 5 AND foo != 7 AND foo != 9).
+  auto combined_and4 = test_expression_node(
+      combined_and3,
+      ast_val_nodes[4],
+      QueryConditionCombinationOp::AND,
       "(foo NE 01 00 00 00 AND foo NE 03 00 00 00 AND foo NE 05 00 00 00 AND "
       "foo NE 07 00 00 00 AND foo NE 09 00 00 00)");
 }
@@ -188,78 +384,47 @@ TEST_CASE(
 TEST_CASE(
     "ASTNode Constructors, adding simple clauses to an OR tree",
     "[QueryCondition][ast][constructor]") {
-  // foo = 0 || foo = 2 || foo = 4 || foo = 6 || foo = 8
-  std::string field_name1 = "foo";
-  int val1 = 0;
-  auto query_condition1 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal,
-      std::string(field_name1),
-      &val1,
-      sizeof(int),
-      QueryConditionOp::EQ));
-  CHECK(ast_node_to_str(query_condition1) == "foo EQ 00 00 00 00");
+  std::vector<int> vals = {0, 2, 4, 6, 8};
+  std::vector<std::string> expected_strs = {"foo EQ 00 00 00 00",
+                                            "foo EQ 02 00 00 00",
+                                            "foo EQ 04 00 00 00",
+                                            "foo EQ 06 00 00 00",
+                                            "foo EQ 08 00 00 00"};
+  std::vector<tdb_unique_ptr<ASTNode>> ast_val_nodes;
 
-  std::string field_name2 = "foo";
-  int val2 = 2;
-  auto query_condition2 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal,
-      std::string(field_name2),
-      &val2,
-      sizeof(int),
-      QueryConditionOp::EQ));
-  CHECK(ast_node_to_str(query_condition2) == "foo EQ 02 00 00 00");
+  // Creating the value nodes foo = 0, foo = 2, foo = 4, foo = 6, and foo = 8.
+  for (size_t i = 0; i < vals.size(); ++i) {
+    ast_val_nodes.push_back(test_value_node(
+        "foo", &vals[i], QueryConditionOp::EQ, expected_strs[i]));
+  }
 
-  std::string field_name3 = "foo";
-  int val3 = 4;
-  auto query_condition3 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal,
-      std::string(field_name3),
-      &val3,
-      sizeof(int),
-      QueryConditionOp::EQ));
-  CHECK(ast_node_to_str(query_condition3) == "foo EQ 04 00 00 00");
-
-  std::string field_name4 = "foo";
-  int val4 = 6;
-  auto query_condition4 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal,
-      std::string(field_name4),
-      &val4,
-      sizeof(int),
-      QueryConditionOp::EQ));
-  CHECK(ast_node_to_str(query_condition4) == "foo EQ 06 00 00 00");
-
-  std::string field_name5 = "foo";
-  int val5 = 8;
-  auto query_condition5 = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal,
-      std::string(field_name5),
-      &val5,
-      sizeof(int),
-      QueryConditionOp::EQ));
-  CHECK(ast_node_to_str(query_condition5) == "foo EQ 08 00 00 00");
-
-  auto combined_or1 = query_condition1->combine(
-      query_condition2, QueryConditionCombinationOp::OR);
-  CHECK(
-      ast_node_to_str(combined_or1) ==
+  // Testing (foo = 0 OR foo = 2).
+  auto combined_or1 = test_expression_node(
+      ast_val_nodes[0],
+      ast_val_nodes[1],
+      QueryConditionCombinationOp::OR,
       "(foo EQ 00 00 00 00 OR foo EQ 02 00 00 00)");
 
-  auto combined_or2 =
-      combined_or1->combine(query_condition3, QueryConditionCombinationOp::OR);
-  CHECK(
-      ast_node_to_str(combined_or2) ==
+  // Testing (foo = 0 OR foo = 2 OR foo = 4).
+  auto combined_or2 = test_expression_node(
+      combined_or1,
+      ast_val_nodes[2],
+      QueryConditionCombinationOp::OR,
       "(foo EQ 00 00 00 00 OR foo EQ 02 00 00 00 OR foo EQ 04 00 00 00)");
-  auto combined_or3 =
-      combined_or2->combine(query_condition4, QueryConditionCombinationOp::OR);
-  CHECK(
-      ast_node_to_str(combined_or3) ==
+
+  // Testing (foo = 0 OR foo = 2 OR foo = 4 OR foo = 6).
+  auto combined_or3 = test_expression_node(
+      combined_or2,
+      ast_val_nodes[3],
+      QueryConditionCombinationOp::OR,
       "(foo EQ 00 00 00 00 OR foo EQ 02 00 00 00 OR foo EQ 04 00 00 00 OR foo "
       "EQ 06 00 00 00)");
-  auto combined_or4 =
-      combined_or3->combine(query_condition5, QueryConditionCombinationOp::OR);
-  CHECK(
-      ast_node_to_str(combined_or4) ==
+
+  // Testing (foo = 0 OR foo = 2 OR foo = 4 OR foo = 6 OR foo = 8).
+  auto combined_or4 = test_expression_node(
+      combined_or3,
+      ast_val_nodes[4],
+      QueryConditionCombinationOp::OR,
       "(foo EQ 00 00 00 00 OR foo EQ 02 00 00 00 OR foo EQ 04 00 00 00 OR foo "
       "EQ 06 00 00 00 OR foo EQ 08 00 00 00)");
 }
@@ -270,85 +435,73 @@ TEST_CASE(
   std::vector<int> vals = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   std::vector<tdb_unique_ptr<ASTNode>> ast_value_vector;
   for (size_t i = 0; i < 7; ++i) {
-    auto node_val = tdb_unique_ptr<ASTNode>(tdb_new(
-        ASTNodeVal, "x", &vals[i], sizeof(vals[i]), QueryConditionOp::EQ));
-    CHECK(
-        ast_node_to_str(node_val) ==
-        "x EQ 0" + std::to_string(vals[i]) + " 00 00 00");
-    ast_value_vector.push_back(std::move(node_val));
+    ast_value_vector.push_back(test_value_node(
+        "x",
+        &vals[i],
+        QueryConditionOp::EQ,
+        "x EQ 0" + std::to_string(vals[i]) + " 00 00 00"));
   }
 
   for (size_t i = 7; i < vals.size(); ++i) {
-    auto node_val = tdb_unique_ptr<ASTNode>(tdb_new(
-        ASTNodeVal, "x", &vals[i], sizeof(vals[i]), QueryConditionOp::NE));
-    CHECK(
-        ast_node_to_str(node_val) ==
-        "x NE 0" + std::to_string(vals[i]) + " 00 00 00");
-    ast_value_vector.push_back(std::move(node_val));
+    ast_value_vector.push_back(test_value_node(
+        "x",
+        &vals[i],
+        QueryConditionOp::NE,
+        "x NE 0" + std::to_string(vals[i]) + " 00 00 00"));
   }
 
-  int x = 6;
-  auto x_neq_six = tdb_unique_ptr<ASTNode>(
-      tdb_new(ASTNodeVal, "x", &x, sizeof(x), QueryConditionOp::NE));
-  CHECK(ast_node_to_str(x_neq_six) == "x NE 06 00 00 00");
-
-  auto one_or_two = ast_value_vector[0]->combine(
-      ast_value_vector[1]->clone(), QueryConditionCombinationOp::OR);
-  CHECK(
-      ast_node_to_str(one_or_two) == "(x EQ 01 00 00 00 OR x EQ 02 00 00 00)");
-
-  auto three_or_four = ast_value_vector[2]->combine(
-      ast_value_vector[3]->clone(), QueryConditionCombinationOp::OR);
-  CHECK(
-      ast_node_to_str(three_or_four) ==
+  auto x_neq_six =
+      test_value_node("x", &vals[5], QueryConditionOp::NE, "x NE 06 00 00 00");
+  auto one_or_two = test_expression_node(
+      ast_value_vector[0],
+      ast_value_vector[1],
+      QueryConditionCombinationOp::OR,
+      "(x EQ 01 00 00 00 OR x EQ 02 00 00 00)");
+  auto three_or_four = test_expression_node(
+      ast_value_vector[2],
+      ast_value_vector[3],
+      QueryConditionCombinationOp::OR,
       "(x EQ 03 00 00 00 OR x EQ 04 00 00 00)");
-
-  auto six_or_seven = ast_value_vector[5]->combine(
-      ast_value_vector[6]->clone(), QueryConditionCombinationOp::OR);
-
-  CHECK(
-      ast_node_to_str(six_or_seven) ==
+  auto six_or_seven = test_expression_node(
+      ast_value_vector[5],
+      ast_value_vector[6],
+      QueryConditionCombinationOp::OR,
       "(x EQ 06 00 00 00 OR x EQ 07 00 00 00)");
-
-  auto eight_and_nine = ast_value_vector[7]->combine(
-      ast_value_vector[8]->clone(), QueryConditionCombinationOp::AND);
-  CHECK(
-      ast_node_to_str(eight_and_nine) ==
+  auto eight_and_nine = test_expression_node(
+      ast_value_vector[7],
+      ast_value_vector[8],
+      QueryConditionCombinationOp::AND,
       "(x NE 08 00 00 00 AND x NE 09 00 00 00)");
 
-  auto subtree_a =
-      one_or_two->combine(three_or_four, QueryConditionCombinationOp::AND);
-  CHECK(
-      ast_node_to_str(subtree_a) ==
+  auto subtree_a = test_expression_node(
+      one_or_two,
+      three_or_four,
+      QueryConditionCombinationOp::AND,
       "((x EQ 01 00 00 00 OR x EQ 02 00 00 00) AND (x EQ 03 00 00 00 OR x EQ "
       "04 00 00 00))");
-
-  auto subtree_d =
-      eight_and_nine->combine(six_or_seven, QueryConditionCombinationOp::AND);
-  CHECK(
-      ast_node_to_str(subtree_d) ==
+  auto subtree_d = test_expression_node(
+      eight_and_nine,
+      six_or_seven,
+      QueryConditionCombinationOp::AND,
       "(x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 00 00 00 OR x EQ 07 "
       "00 00 00))");
-
-  auto subtree_c = subtree_d->combine(
-      ast_value_vector[4]->clone(), QueryConditionCombinationOp::OR);
-
-  CHECK(
-      ast_node_to_str(subtree_c) ==
+  auto subtree_c = test_expression_node(
+      subtree_d,
+      ast_value_vector[4],
+      QueryConditionCombinationOp::OR,
       "((x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 00 00 00 OR x EQ "
       "07 00 00 00)) OR x EQ 05 00 00 00)");
-
-  auto subtree_b =
-      subtree_c->combine(x_neq_six, QueryConditionCombinationOp::AND);
-  CHECK(
-      ast_node_to_str(subtree_b) ==
+  auto subtree_b = test_expression_node(
+      subtree_c,
+      x_neq_six,
+      QueryConditionCombinationOp::AND,
       "(((x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 00 00 00 OR x EQ "
       "07 00 00 00)) OR x EQ 05 00 00 00) AND x NE 06 00 00 00)");
 
-  auto tree = subtree_a->combine(subtree_b, QueryConditionCombinationOp::OR);
-
-  CHECK(
-      ast_node_to_str(tree) ==
+  auto tree = test_expression_node(
+      subtree_a,
+      subtree_b,
+      QueryConditionCombinationOp::OR,
       "(((x EQ 01 00 00 00 OR x EQ 02 00 00 00) AND (x EQ 03 00 00 00 OR x EQ "
       "04 00 00 00)) OR (((x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 "
       "00 00 00 OR x EQ 07 00 00 00)) OR x EQ 05 00 00 00) AND x NE 06 00 00 "
