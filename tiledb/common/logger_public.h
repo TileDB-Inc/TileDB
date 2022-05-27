@@ -36,7 +36,7 @@
 #ifndef TILEDB_LOGGER_PUBLIC_H
 #define TILEDB_LOGGER_PUBLIC_H
 
-#include "tiledb/common/status.h"
+#include "tiledb/common/exception/exception.h"
 
 namespace tiledb {
 namespace common {
