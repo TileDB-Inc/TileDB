@@ -274,7 +274,10 @@ Status DenseReader::dense_read() {
 
   // Compute subarrays for each tile.
   const auto& tile_coords = subarray.tile_coords();
-  std::vector<Subarray> tile_subarrays(tile_coords.size());
+  DynamicArray<Subarray> tile_subarrays{
+      tile_coords.size(),
+      tdb::allocator<Subarray>{},
+      Tag<DynamicArray<Subarray>::NullInitializer>{}};
   const auto& layout =
       layout_ == Layout::GLOBAL_ORDER ? array_schema_.cell_order() : layout_;
   auto status = parallel_for(
@@ -282,9 +285,8 @@ Status DenseReader::dense_read() {
       0,
       tile_subarrays.size(),
       [&](uint64_t t) {
-        tile_subarrays[t] =
-            subarray.crop_to_tile((const DimType*)&tile_coords[t][0], layout);
-
+        subarray.crop_to_tile(
+            &tile_subarrays[t], (const DimType*)&tile_coords[t][0], layout);
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
@@ -297,9 +299,9 @@ Status DenseReader::dense_read() {
     tile_offsets.reserve(tile_coords.size());
 
     uint64_t tile_offset = 0;
-    for (auto& tile_subarray : tile_subarrays) {
+    for (uint64_t i = 0; i < tile_subarrays.size(); i++) {
       tile_offsets.emplace_back(tile_offset);
-      tile_offset += tile_subarray.cell_num();
+      tile_offset += tile_subarrays[i].cell_num();
     }
   } else {
     for (uint32_t d = 0; d < dim_num; d++) {
@@ -535,7 +537,7 @@ DenseReader::apply_query_condition(
     Subarray& subarray,
     const std::vector<DimType>& tile_extents,
     std::vector<ResultTile*>& result_tiles,
-    std::vector<Subarray>& tile_subarrays,
+    DynamicArray<Subarray>& tile_subarrays,
     std::vector<uint64_t>& tile_offsets,
     const std::vector<RangeInfo<DimType>>& range_info,
     std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
@@ -697,7 +699,7 @@ Status DenseReader::copy_attribute(
     const std::string& name,
     const std::vector<DimType>& tile_extents,
     const Subarray& subarray,
-    const std::vector<Subarray>& tile_subarrays,
+    const DynamicArray<Subarray>& tile_subarrays,
     const std::vector<uint64_t>& tile_offsets,
     const std::vector<RangeInfo<DimType>>& range_info,
     std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,

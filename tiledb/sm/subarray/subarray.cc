@@ -618,38 +618,17 @@ template <class T>
 Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
   // TBD: is it ok that Subarray log id will increase as if it's a new subarray?
   Subarray ret(array_, layout, stats_->parent(), logger_, false);
-
-  T new_range[2];
-  bool overlaps;
-
-  // Get tile subarray based on the input coordinates
-  const auto& array_schema = array_->array_schema_latest();
-  std::vector<T> tile_subarray(2 * dim_num());
-  array_schema.domain().get_tile_subarray(tile_coords, &tile_subarray[0]);
-
-  // Compute cropped subarray
-  for (unsigned d = 0; d < dim_num(); ++d) {
-    auto r_size{2 * array_schema.dimension_ptr(d)->coord_size()};
-    uint64_t i = 0;
-    for (size_t r = 0; r < range_subset_[d].num_ranges(); ++r) {
-      const auto& range = range_subset_[d][r];
-      utils::geometry::overlap(
-          (const T*)range.data(),
-          &tile_subarray[2 * d],
-          1,
-          new_range,
-          &overlaps);
-
-      if (overlaps) {
-        ret.add_range_unsafe(d, Range(new_range, r_size));
-        ret.original_range_idx_.resize(dim_num());
-        ret.original_range_idx_[d].resize(i + 1);
-        ret.original_range_idx_[d][i++] = r;
-      }
-    }
-  }
+  crop_to_tile_impl(tile_coords, ret);
 
   return ret;
+}
+
+template <class T>
+void Subarray::crop_to_tile(
+    Subarray* ret, const T* tile_coords, Layout layout) const {
+  new (ret) Subarray(array_, layout, stats_->parent(), logger_, false);
+  Subarray(array_, layout, stats_->parent(), logger_, false);
+  crop_to_tile_impl(tile_coords, *ret);
 }
 
 uint32_t Subarray::dim_num() const {
@@ -3046,6 +3025,39 @@ tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
   ;
 }
 
+template <class T>
+void Subarray::crop_to_tile_impl(const T* tile_coords, Subarray& ret) const {
+  T new_range[2];
+  bool overlaps;
+
+  // Get tile subarray based on the input coordinates
+  const auto& array_schema = array_->array_schema_latest();
+  std::vector<T> tile_subarray(2 * dim_num());
+  array_schema.domain().get_tile_subarray(tile_coords, &tile_subarray[0]);
+
+  // Compute cropped subarray
+  for (unsigned d = 0; d < dim_num(); ++d) {
+    auto r_size{2 * array_schema.dimension_ptr(d)->coord_size()};
+    uint64_t i = 0;
+    for (size_t r = 0; r < range_subset_[d].num_ranges(); ++r) {
+      const auto& range = range_subset_[d][r];
+      utils::geometry::overlap(
+          (const T*)range.data(),
+          &tile_subarray[2 * d],
+          1,
+          new_range,
+          &overlaps);
+
+      if (overlaps) {
+        ret.add_range_unsafe(d, Range(new_range, r_size));
+        ret.original_range_idx_.resize(dim_num());
+        ret.original_range_idx_[d].resize(i + 1);
+        ret.original_range_idx_[d][i++] = r;
+      }
+    }
+  }
+}
+
 // Explicit instantiations
 template Status Subarray::compute_tile_coords<int8_t>();
 template Status Subarray::compute_tile_coords<uint8_t>();
@@ -3109,6 +3121,27 @@ template Subarray Subarray::crop_to_tile<float>(
     const float* tile_coords, Layout layout) const;
 template Subarray Subarray::crop_to_tile<double>(
     const double* tile_coords, Layout layout) const;
+
+template void Subarray::crop_to_tile<int8_t>(
+    Subarray* ret, const int8_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<uint8_t>(
+    Subarray* ret, const uint8_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<int16_t>(
+    Subarray* ret, const int16_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<uint16_t>(
+    Subarray* ret, const uint16_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<int32_t>(
+    Subarray* ret, const int32_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<uint32_t>(
+    Subarray* ret, const uint32_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<int64_t>(
+    Subarray* ret, const int64_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<uint64_t>(
+    Subarray* ret, const uint64_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<float>(
+    Subarray* ret, const float* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<double>(
+    Subarray* ret, const double* tile_coords, Layout layout) const;
 
 }  // namespace sm
 }  // namespace tiledb

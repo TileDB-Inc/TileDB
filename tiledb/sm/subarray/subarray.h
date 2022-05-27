@@ -488,6 +488,14 @@ class Subarray {
   template <class T>
   Subarray crop_to_tile(const T* tile_coords, Layout layout) const;
 
+  /**
+   * Returns a cropped version of the subarray, constrained in the
+   * tile with the input coordinates. The new subarray will have
+   * the input `layout`.
+   */
+  template <class T>
+  void crop_to_tile(Subarray* ret, const T* tile_coords, Layout layout) const;
+
   /** Returns the number of dimensions of the subarray. */
   uint32_t dim_num() const;
 
@@ -1295,6 +1303,14 @@ class Subarray {
    */
   tuple<Status, optional<bool>> non_overlapping_ranges_for_dim(
       const uint64_t dim_idx);
+
+  /**
+   * Returns a cropped version of the subarray, constrained in the
+   * tile with the input coordinates. The new subarray will have
+   * the input `layout`.
+   */
+  template <class T>
+  void crop_to_tile_impl(const T* tile_coords, Subarray& ret) const;
 };
 
 }  // namespace sm

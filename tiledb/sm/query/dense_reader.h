@@ -39,6 +39,7 @@
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/dynamic_array.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
@@ -150,7 +151,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       Subarray& subarray,
       const std::vector<DimType>& tile_extents,
       std::vector<ResultTile*>& result_tiles,
-      std::vector<Subarray>& tile_subarrays,
+      DynamicArray<Subarray>& tile_subarrays,
       std::vector<uint64_t>& tile_offsets,
       const std::vector<RangeInfo<DimType>>& range_info,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
@@ -170,7 +171,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::string& name,
       const std::vector<DimType>& tile_extents,
       const Subarray& subarray,
-      const std::vector<Subarray>& tile_subarrays,
+      const DynamicArray<Subarray>& tile_subarrays,
       const std::vector<uint64_t>& tile_offsets,
       const std::vector<RangeInfo<DimType>>& range_info,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
