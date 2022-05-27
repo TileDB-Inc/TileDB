@@ -84,7 +84,8 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_query_condition_(0.25)
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
-    , buffers_full_(false) {
+    , buffers_full_(false)
+    , user_requested_timestamps_(false) {
   read_state_.done_adding_result_tiles_ = false;
 }
 
@@ -182,6 +183,11 @@ SparseIndexReaderBase::get_coord_tiles_size(
   // Add the tile bitmap size if there is a subarray.
   if (subarray_.is_set())
     tiles_size += fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
+
+  if (include_timestamps(f)) {
+    tiles_size +=
+        fragment_metadata_[f]->cell_num(t) * constants::timestamp_size;
+  }
 
   // Compute query condition tile sizes.
   uint64_t tiles_size_qc = 0;
@@ -281,6 +287,10 @@ Status SparseIndexReaderBase::load_initial_data(bool include_timestamps) {
 
     if (array_schema_.var_size(name))
       var_size_to_load.emplace_back(name);
+
+    if (name == constants::timestamps) {
+      user_requested_timestamps_ = true;
+    }
   }
 
   // Add timestamps if required.
@@ -724,6 +734,17 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
     std::unique_lock<std::mutex> lck(mem_budget_mtx_);
     memory_used_result_tile_ranges_ -= sizeof(std::pair<uint64_t, uint64_t>);
   }
+}
+
+bool SparseIndexReaderBase::include_timestamps(const unsigned f) {
+  auto fragment_timestamps = fragment_metadata_[f]->timestamp_range();
+  auto partial_overlap =
+      (array_->timestamp_start() > fragment_timestamps.first) ||
+      (array_->timestamp_end() < fragment_timestamps.second);
+
+  return fragment_metadata_[f]->has_timestamps() &&
+         (user_requested_timestamps_ || partial_overlap ||
+          !array_schema_.allows_dups());
 }
 
 // Explicit template instantiations

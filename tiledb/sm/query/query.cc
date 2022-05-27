@@ -66,8 +66,10 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
-    : array_(array)
+Query::Query(
+    StorageManager* storage_manager, shared_ptr<Array> array, URI fragment_uri)
+    : array_shared_(array)
+    , array_(array_shared_.get())
     , array_schema_(array->array_schema_latest_ptr())
     , layout_(Layout::ROW_MAJOR)
     , storage_manager_(storage_manager)
@@ -88,9 +90,9 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
   assert(st.ok());
 
   if (type_ == QueryType::WRITE) {
-    subarray_ = Subarray(array, stats_, logger_);
+    subarray_ = Subarray(array_, stats_, logger_);
   } else {
-    subarray_ = Subarray(array, Layout::ROW_MAJOR, stats_, logger_);
+    subarray_ = Subarray(array_, Layout::ROW_MAJOR, stats_, logger_);
   }
 
   fragment_metadata_ = array->fragment_metadata();

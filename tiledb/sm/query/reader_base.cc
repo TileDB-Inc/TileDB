@@ -726,12 +726,12 @@ ReaderBase::load_tile_chunk_data(
     // dense case).
     if (tile_tuple == nullptr ||
         std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
-      return {Status::Ok(), nullopt, nullopt, nullopt};
+      return {Status::Ok(), 0, 0, 0};
     }
 
     // If the fragment doesn't include timestamps
     if (timestamps_not_present(name, fragment)) {
-      return {Status::Ok(), nullopt, nullopt, nullopt};
+      return {Status::Ok(), 0, 0, 0};
     }
 
     const auto t = &std::get<0>(*tile_tuple);
