@@ -1199,65 +1199,6 @@ std::string get_commit_dir(std::string array_dir) {
   return array_dir + "/" + tiledb::sm::constants::array_commits_dir_name;
 }
 
-std::string ptr_to_hex_str(const void* data, size_t size) {
-  const char* c_data = (char*)(data);
-  std::stringstream ss;
-  for (size_t i = 0; i < size; ++i) {
-    ss << std::setfill('0') << std::setw(2) << std::hex
-       << (0xff & (unsigned int)c_data[i]);
-    if (i != size - 1) {
-      ss << " ";
-    }
-  }
-  return ss.str();
-}
-
-std::string bbv_to_hex_str(const sm::ByteVecValue& b) {
-  std::stringstream ss;
-  for (size_t i = 0; i < b.size(); i++) {
-    if (b.data()[i] < 16) {
-      ss << "0";
-    }
-    ss << std::hex << +b.data()[i];
-    if (i != b.size() - 1) {
-      ss << " ";
-    }
-  }
-  return ss.str();
-}
-
-std::string ast_node_to_str(const tdb_unique_ptr<sm::ASTNode>& node) {
-  if (node == nullptr)
-    return "";
-  std::string result_str;
-  if (!node->is_expr()) {
-    result_str = node->get_field_name() + " " +
-                 query_condition_op_str(node->get_op()) + " ";
-    if (node->get_condition_value_view().content()) {
-      result_str += ptr_to_hex_str(
-          node->get_condition_value_view().content(),
-          node->get_condition_value_view().size());
-    } else {
-      result_str += "null";
-    }
-    return result_str;
-  } else {
-    result_str = "(";
-    const auto& nodes = node->get_children();
-    for (size_t i = 0; i < nodes.size(); i++) {
-      result_str += ast_node_to_str(nodes[i]);
-      if (i != nodes.size() - 1) {
-        result_str += " ";
-        result_str +=
-            query_condition_combination_op_str(node->get_combination_op());
-        result_str += " ";
-      }
-    }
-    result_str += ")";
-    return result_str;
-  }
-}
-
 template void check_subarray<int8_t>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<int8_t>& ranges);
 template void check_subarray<uint8_t>(

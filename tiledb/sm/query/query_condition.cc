@@ -152,7 +152,7 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LT> {
   }
 };
 
-/** Partial template specialization for `char*` and `QueryConditionOp::LE. */
+/** Full template specialization for `char*` and `QueryConditionOp::LE. */
 template <>
 struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LE> {
   static inline bool cmp(
@@ -172,7 +172,7 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LE> {
   }
 };
 
-/** Partial template specialization for `char*` and `QueryConditionOp::GT`. */
+/** Full template specialization for `char*` and `QueryConditionOp::GT`. */
 template <>
 struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GT> {
   static inline bool cmp(
@@ -192,7 +192,7 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GT> {
   }
 };
 
-/** Partial template specialization for `char*` and `QueryConditionOp::GE`. */
+/** Full template specialization for `char*` and `QueryConditionOp::GE`. */
 template <>
 struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GE> {
   static inline bool cmp(
@@ -212,7 +212,7 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GE> {
   }
 };
 
-/** Partial template specialization for `char*` and `QueryConditionOp::EQ`. */
+/** Full template specialization for `char*` and `QueryConditionOp::EQ`. */
 template <>
 struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::EQ> {
   static inline bool cmp(
@@ -236,7 +236,7 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::EQ> {
   }
 };
 
-/** Partial template specialization for `char*` and `QueryConditionOp::NE`. */
+/** Full template specialization for `char*` and `QueryConditionOp::NE`. */
 template <>
 struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::NE> {
   static inline bool cmp(

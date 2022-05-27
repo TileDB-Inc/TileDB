@@ -25,25 +25,21 @@
 #
 
 include(common NO_POLICY_SCOPE)
-add_subdirectory(ast)
-add_library(query)
-target_link_libraries(query PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 if (TILEDB_TESTS)
+    add_subdirectory(ast)
     add_executable(unit_query EXCLUDE_FROM_ALL)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_query PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_query PUBLIC query)
-
-    # Also temporary
-    target_link_libraries(unit_query
-      PUBLIC
-        TILEDB_CORE_OBJECTS_ILIB
-        tiledb_test_support_lib_
-    )
 
     # Sources for tests
     target_sources(unit_query PUBLIC test/main.cc test/unit_validity_vector.cc test/unit_query_condition.cc)
+
+    # The dependencies can't yet be factored into separate object libraries
+    target_link_libraries(unit_query PUBLIC TILEDB_CORE_OBJECTS)
+    target_link_libraries(unit_query PUBLIC TILEDB_CORE_OBJECTS_ILIB)
+
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_query PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_query PUBLIC ast_test_support_lib)
 
     # We want tests to continue as normal even as the API is changing,
     # so don't warn for deprecations, since they'll be escalated to errors.
@@ -57,3 +53,4 @@ if (TILEDB_TESTS)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
+o

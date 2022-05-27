@@ -33,6 +33,7 @@
 #include <cstring>
 #include <numeric>
 
+#include "test/src/ast_helpers.h"
 #include "test/src/helpers.h"
 #include "tiledb/sm/misc/types.h"
 

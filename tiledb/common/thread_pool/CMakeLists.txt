@@ -44,7 +44,6 @@ add_executable(compile_thread_pool EXCLUDE_FROM_ALL)
 target_link_libraries(compile_thread_pool PRIVATE thread_pool)
 target_sources(compile_thread_pool PRIVATE test/compile_thread_pool_main.cc)
 
-
 if (TILEDB_TESTS)
     add_executable(unit_thread_pool EXCLUDE_FROM_ALL)
     target_link_libraries(unit_thread_pool PUBLIC thread_pool)
