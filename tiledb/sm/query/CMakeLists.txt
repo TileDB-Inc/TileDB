@@ -53,4 +53,3 @@ if (TILEDB_TESTS)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
-o

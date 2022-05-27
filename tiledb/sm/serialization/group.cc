@@ -39,6 +39,7 @@
 #endif
 // clang-format on
 
+#include "tiledb/sm/group/group.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -48,7 +49,6 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/group/group.h"
 #include "tiledb/sm/group/group_member_v1.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array.h"
