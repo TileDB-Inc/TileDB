@@ -225,6 +225,7 @@ void check_save_to_file() {
 #else
   ss << "config.logging_level 0\n";
 #endif
+  ss << "filestore.buffer_size 1024\n";
   ss << "rest.curl.verbose false\n";
   ss << "rest.http_compressor any\n";
   ss << "rest.retry_count 25\n";
@@ -550,6 +551,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["config.env_var_prefix"] = "TILEDB_";
   all_param_values["config.logging_level"] = "2";
   all_param_values["config.logging_format"] = "JSON";
+  all_param_values["filestore.buffer_size"] = "1024";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";
