@@ -83,7 +83,7 @@ struct ConsolidationWithTimestampsFx {
 ConsolidationWithTimestampsFx::ConsolidationWithTimestampsFx()
     : vfs_(ctx_) {
   Config config;
-  config.set("sm.consolidation.with_timestamps", "false");
+  config.set("sm.consolidation.with_timestamps", "true");
   config.set("sm.consolidation.buffer_size", "1000");
   ctx_ = Context(config);
   sm_ = ctx_.ptr().get()->ctx_->storage_manager();
@@ -412,9 +412,9 @@ TEST_CASE_METHOD(
   std::vector<int> c_a1 = {0, 1, 8, 2, 9, 4, 10, 5, 11, 7};
   std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 3, 3, 4, 3, 3};
   std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 1, 2, 2, 3, 4};
-  CHECK(!memcmp(c_a1.data(), a1.data(), sizeof(c_a1)));
-  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
-  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+  CHECK(!memcmp(c_a1.data(), a1.data(), c_a1.size() * sizeof(int)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
 
   remove_sparse_array();
 }
@@ -555,9 +555,9 @@ TEST_CASE_METHOD(
   std::vector<int> c_a1 = {1, 2, 3, 4, 5, 6, 7, 8};
   std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2};
   std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4};
-  CHECK(!memcmp(c_a1.data(), a1.data(), sizeof(c_a1)));
-  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
-  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+  CHECK(!memcmp(c_a1.data(), a1.data(), c_a1.size() * sizeof(int)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
 
   remove_sparse_array();
 }
@@ -615,7 +615,7 @@ TEST_CASE_METHOD(
   create_sparse_array();
 
   // Write fragments.
-  // We write 8 cells per fragments for 6 fragments. Then it gets consolidated
+  // We write 8 cells per fragment for 6 fragments. Then it gets consolidated
   // into one. So we'll get in order 6xcell1, 6xcell2... total 48 cells. Tile
   // capacity is 20 so we'll end up with 3 tiles. First break in the tiles will
   // be in the middle of cell3, second will be in the middle of the cells7.
@@ -637,17 +637,17 @@ TEST_CASE_METHOD(
   ctx_ = Context(cfg);
 
   std::string stats;
-  std::vector<int> a1(8);
-  std::vector<uint64_t> dim1(8);
-  std::vector<uint64_t> dim2(8);
+  std::vector<int> a1(9);
+  std::vector<uint64_t> dim1(9);
+  std::vector<uint64_t> dim2(9);
   read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 7);
 
   std::vector<int> c_a1 = {1, 2, 3, 4, 5, 6, 7, 8};
   std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2};
   std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4};
-  CHECK(!memcmp(c_a1.data(), a1.data(), sizeof(c_a1)));
-  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
-  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+  CHECK(!memcmp(c_a1.data(), a1.data(), c_a1.size() * sizeof(int)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
 
   // Make sure there was an internal loop on the reader.
   CHECK(
@@ -660,7 +660,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, partial read with dups",
-    "[cppapi][consolidation-with-timestamps][partial-read][dups][testtt]") {
+    "[cppapi][consolidation-with-timestamps][partial-read][dups]") {
   remove_sparse_array();
   // enable duplicates
   create_sparse_array(true);
@@ -673,15 +673,14 @@ TEST_CASE_METHOD(
 
   // Consolidate.
   consolidate_sparse();
-  // TODO: shouldn't we also vacuum before validating?
 
-  // TODO: How to validate unordered read results?
   tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
 
   std::string stats;
   std::vector<int> a1(10);
   std::vector<uint64_t> dim1(10);
   std::vector<uint64_t> dim2(10);
+  // Read after both writes - should see everything
   read_sparse(a1, dim1, dim2, stats, layout, 4);
 
   std::vector<int> c_a1_opt1 = {0, 1, 8, 2, 3, 9, 10, 11};
@@ -689,20 +688,26 @@ TEST_CASE_METHOD(
   std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 2, 3, 3};
   std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 3, 2, 3};
   CHECK(
-      (!memcmp(c_a1_opt1.data(), a1.data(), sizeof(c_a1_opt1)) ||
-       !memcmp(c_a1_opt2.data(), a1.data(), sizeof(c_a1_opt2))));
-  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
-  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+      (!memcmp(c_a1_opt1.data(), a1.data(), c_a1_opt1.size() * sizeof(int)) ||
+       !memcmp(c_a1_opt2.data(), a1.data(), c_a1_opt2.size() * sizeof(int))));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
 
-  // TODO: This part is now failing, when task is implemented it should pass
-  read_sparse(a1, dim1, dim2, stats, layout, 2);
+  std::vector<int> a(10);
+  std::vector<uint64_t> dima1(10);
+  std::vector<uint64_t> dima2(10);
 
-  std::vector<int> pc_a1 = {0, 1, 2, 3};
-  std::vector<uint64_t> pc_dim1 = {1, 1, 1, 2};
-  std::vector<uint64_t> pc_dim2 = {1, 2, 4, 3};
-  CHECK(!memcmp(pc_a1.data(), a1.data(), sizeof(pc_a1)));
-  CHECK(!memcmp(pc_dim1.data(), dim1.data(), sizeof(pc_dim1)));
-  CHECK(!memcmp(pc_dim2.data(), dim2.data(), sizeof(pc_dim2)));
+  // Read between writes - should see only first write
+  read_sparse(a, dima1, dima2, stats, layout, 2);
+
+  std::vector<int> pc_a = {0, 1, 2, 3};
+  std::vector<uint64_t> pc_dima1 = {1, 1, 1, 2};
+  std::vector<uint64_t> pc_dima2 = {1, 2, 4, 3};
+  CHECK(!memcmp(pc_a.data(), a.data(), pc_a.size() * sizeof(int)));
+  CHECK(!memcmp(
+      pc_dima1.data(), dima1.data(), pc_dima1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(
+      pc_dima2.data(), dima2.data(), pc_dima2.size() * sizeof(uint64_t)));
 
   remove_sparse_array();
 }
@@ -710,7 +715,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, partial read without dups",
-    "[cppapi][consolidation-with-timestamps][partial-read][no-dups][testtt]") {
+    "[cppapi][consolidation-with-timestamps][partial-read][no-dups]") {
   remove_sparse_array();
   // no duplicates
   create_sparse_array();
@@ -723,7 +728,6 @@ TEST_CASE_METHOD(
 
   // Consolidate.
   consolidate_sparse();
-  // TODO: shouldn't we also vacuum before validating?
 
   std::string stats;
   std::vector<int> a1(10);
@@ -738,15 +742,19 @@ TEST_CASE_METHOD(
   CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
   CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
 
-  // TODO: This part is now failing, when task is implemented it should pass
-  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 2);
+  std::vector<int> a(10, 0);
+  std::vector<uint64_t> dima1(10);
+  std::vector<uint64_t> dima2(10);
+  read_sparse(a, dima1, dima2, stats, TILEDB_GLOBAL_ORDER, 2);
 
-  std::vector<int> pc_a1 = {0, 1, 2, 3};
-  std::vector<uint64_t> pc_dim1 = {1, 1, 1, 2};
-  std::vector<uint64_t> pc_dim2 = {1, 2, 4, 3};
-  CHECK(!memcmp(pc_a1.data(), a1.data(), sizeof(pc_a1)));
-  CHECK(!memcmp(pc_dim1.data(), dim1.data(), sizeof(pc_dim1)));
-  CHECK(!memcmp(pc_dim2.data(), dim2.data(), sizeof(pc_dim2)));
+  std::vector<int> pc_a = {0, 1, 2, 3};
+  std::vector<uint64_t> pc_dima1 = {1, 1, 1, 2};
+  std::vector<uint64_t> pc_dima2 = {1, 2, 4, 3};
+  CHECK(!memcmp(pc_a.data(), a.data(), pc_a.size() * sizeof(int)));
+  CHECK(!memcmp(
+      pc_dima1.data(), dima1.data(), pc_dima1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(
+      pc_dima2.data(), dima2.data(), pc_dima2.size() * sizeof(uint64_t)));
 
   remove_sparse_array();
 }
@@ -755,7 +763,7 @@ TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, full and partial read with "
     "dups",
-    "[cppapi][consolidation-with-timestamps][partial-read][dups][testtt]") {
+    "[cppapi][consolidation-with-timestamps][partial-read][dups]") {
   remove_sparse_array();
   // enable duplicates
   create_sparse_array(true);
@@ -776,42 +784,47 @@ TEST_CASE_METHOD(
   // Consolidate.
   consolidate_sparse();
 
-  // TODO: How to validate unordered read results?
   tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
 
-  // TODO: shouldn't we also vacuum before validating
-
   std::string stats;
-  // TODO: why 15 in user buffer not enough?
+  // TBD: why 15 in user buffer not enough?
   std::vector<int> a1(16);
   std::vector<uint64_t> dim1(16);
   std::vector<uint64_t> dim2(16);
-  // Read in the end
+
+  // Read after both writes - should see everything
   read_sparse(a1, dim1, dim2, stats, layout, 7);
 
   std::vector<int> c_a1_opt1 = {
-      0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 13, 14, 15};
+      0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 7, 13, 14, 15};
   std::vector<int> c_a1_opt2 = {
-      0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 7, 14, 15};
-  std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4};
-  std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 4};
+      0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 13, 7, 14, 15};
+  std::vector<uint64_t> c_dim1 = {
+      1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 3, 4};
+  std::vector<uint64_t> c_dim2 = {
+      1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 3, 4, 4};
   CHECK(
-      (!memcmp(c_a1_opt1.data(), a1.data(), sizeof(c_a1_opt1)) ||
-       !memcmp(c_a1_opt2.data(), a1.data(), sizeof(c_a1_opt2))));
-  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
-  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+      (!memcmp(c_a1_opt1.data(), a1.data(), c_a1_opt1.size() * sizeof(int)) ||
+       !memcmp(c_a1_opt2.data(), a1.data(), c_a1_opt2.size() * sizeof(int))));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
 
-  // TODO: This part is now failing, when task is implemented it should pass
   // Read with full coverage on first 2 consolidated, partial coverage on second
   // 2 consolidated
-  read_sparse(a1, dim1, dim2, stats, layout, 5);
+  std::vector<int> a(16);
+  std::vector<uint64_t> dima1(16);
+  std::vector<uint64_t> dima2(16);
 
-  std::vector<int> pc_a1 = {0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 7};
-  std::vector<uint64_t> pc_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 3};
-  std::vector<uint64_t> pc_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 3};
-  CHECK(!memcmp(pc_a1.data(), a1.data(), sizeof(pc_a1)));
-  CHECK(!memcmp(pc_dim1.data(), dim1.data(), sizeof(pc_dim1)));
-  CHECK(!memcmp(pc_dim2.data(), dim2.data(), sizeof(pc_dim2)));
+  read_sparse(a, dima1, dima2, stats, layout, 5);
+
+  std::vector<int> pc_a = {0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 7};
+  std::vector<uint64_t> pc_dima1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 3};
+  std::vector<uint64_t> pc_dima2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 3};
+  CHECK(!memcmp(pc_a.data(), a.data(), pc_a.size() * sizeof(int)));
+  CHECK(!memcmp(
+      pc_dima1.data(), dima1.data(), pc_dima1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(
+      pc_dima2.data(), dima2.data(), pc_dima2.size() * sizeof(uint64_t)));
 
   remove_sparse_array();
 }

@@ -232,6 +232,15 @@ class ReaderBase : public StrategyBase {
       Subarray& subarray, const std::vector<std::string>& names);
 
   /**
+   * Checks if at least one fragment overlaps partially with the
+   * time at which the read is taking place.
+   *
+   * @param subarray The subarray of this read operation.
+   * @return True if at least one fragment partially overlaps.
+   */
+  bool partial_consolidated_fragment_overlap(Subarray& subarray) const;
+
+  /**
    * Loads tile var sizes for each attribute/dimension name into
    * their associated element in `fragment_metadata_`.
    *

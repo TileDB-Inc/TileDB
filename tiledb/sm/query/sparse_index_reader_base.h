@@ -306,6 +306,10 @@ class SparseIndexReaderBase : public ReaderBase {
   /** If the user requested timestamps attribute in the query */
   bool user_requested_timestamps_;
 
+  /** The condition to apply on timestamps when there is partial time overlap
+   * with at least one fragment */
+  QueryCondition partial_overlap_condition_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -432,13 +436,20 @@ class SparseIndexReaderBase : public ReaderBase {
   void remove_result_tile_range(uint64_t f);
 
   /**
-   * Checks if timestamps should be loaded for a fragment
+   * Checks if timestamps should be loaded for a fragment.
    *
    * @param f Fragment index.
-   * @return True if timestamps should be included, false if they are not
+   * @return True if timestamps should be included, false if they are not.
    * needed.
    */
   bool include_timestamps(const unsigned f);
+
+  /**
+   * Checks if consolidation with timestamps is enabled in config.
+   *
+   * @return True if consolidation with timestamps is enabled, false if not.
+   */
+  bool consolidation_with_timestamps_config_enabled() const;
 };
 
 }  // namespace sm

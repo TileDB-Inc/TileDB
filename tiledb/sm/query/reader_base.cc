@@ -224,6 +224,34 @@ Status ReaderBase::check_validity_buffer_sizes() const {
   return Status::Ok();
 }
 
+bool ReaderBase::partial_consolidated_fragment_overlap(
+    Subarray& subarray) const {
+  // Fetch relevant fragments so we check only intersecting fragments
+  const auto relevant_fragments = subarray.relevant_fragments();
+  bool all_frag = !subarray.is_set();
+
+  bool partial_overlap = false;
+  for (size_t i = 0;
+       i < (all_frag ? fragment_metadata_.size() : relevant_fragments->size());
+       i++) {
+    auto frag_idx = all_frag ? i : relevant_fragments->at(i);
+    auto& fragment = fragment_metadata_[frag_idx];
+    auto fragment_timestamps = fragment->timestamp_range();
+
+    if (fragment->has_timestamps()) {
+      partial_overlap |=
+          (array_->timestamp_end_opened_at() >= fragment_timestamps.first) &&
+          (array_->timestamp_end_opened_at() < fragment_timestamps.second);
+    }
+
+    if (partial_overlap) {
+      break;
+    }
+  }
+
+  return partial_overlap;
+}
+
 Status ReaderBase::load_tile_offsets(
     Subarray& subarray, const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");

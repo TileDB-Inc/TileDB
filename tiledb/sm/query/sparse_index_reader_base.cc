@@ -35,6 +35,8 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/enums/query_condition_combination_op.h"
+#include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -204,21 +206,29 @@ SparseIndexReaderBase::get_coord_tiles_size(
   return {Status::Ok(), std::make_pair(tiles_size, tiles_size_qc)};
 }
 
+bool SparseIndexReaderBase::consolidation_with_timestamps_config_enabled()
+    const {
+  auto found = false;
+  auto consolidation_with_timestamps = false;
+  auto status = config_.get<bool>(
+      "sm.consolidation.with_timestamps",
+      &consolidation_with_timestamps,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get with_timestamps configuration option from config");
+  }
+
+  return consolidation_with_timestamps;
+}
+
+// TBD: check if include_timestamps is needed anymore
 Status SparseIndexReaderBase::load_initial_data(bool include_timestamps) {
   if (initial_data_loaded_)
     return Status::Ok();
 
   auto timer_se = stats_->start_timer("load_initial_data");
   read_state_.done_adding_result_tiles_ = false;
-
-  // Make a list of dim/attr that will be loaded for query condition.
-  if (!initial_data_loaded_) {
-    if (!condition_.empty()) {
-      for (auto& name : condition_.field_names()) {
-        qc_loaded_names_.emplace_back(name);
-      }
-    }
-  }
 
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
@@ -294,9 +304,34 @@ Status SparseIndexReaderBase::load_initial_data(bool include_timestamps) {
     }
   }
 
-  // Add timestamps if required.
-  if (include_timestamps) {
+  auto load_timestamps = consolidation_with_timestamps_config_enabled() &&
+                         partial_consolidated_fragment_overlap(subarray_);
+
+  // Add timestamps if required. If the user has requested timestamps the
+  // special attribute will already be in the list, so don't include it again
+  if ((include_timestamps || load_timestamps) && !user_requested_timestamps_) {
     attr_tile_offsets_to_load.emplace_back(constants::timestamps);
+  }
+
+  if (load_timestamps) {
+    auto open_timestamp = array_->timestamp_end_opened_at();
+    RETURN_CANCEL_OR_ERROR(partial_overlap_condition_.init(
+        std::string(constants::timestamps),
+        &open_timestamp,
+        sizeof(uint64_t),
+        QueryConditionOp::LT));
+  }
+
+  // Make a list of dim/attr that will be loaded for query condition.
+  if (!initial_data_loaded_) {
+    if (!condition_.empty()) {
+      for (auto& name : condition_.field_names()) {
+        qc_loaded_names_.emplace_back(name);
+      }
+    }
+    if (!partial_overlap_condition_.empty()) {
+      qc_loaded_names_.emplace_back(constants::timestamps);
+    }
   }
 
   // Load tile offsets and var sizes for attributes.
@@ -316,7 +351,8 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
   auto timer_se = stats_->start_timer("read_and_unfilter_coords");
 
   // Not including coords or no query condition, exit.
-  if (!include_coords && condition_.empty())
+  if (!include_coords && condition_.empty() &&
+      partial_overlap_condition_.empty())
     return Status::Ok();
 
   if (subarray_.is_set() || include_coords) {
@@ -335,15 +371,15 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
     }
   }
 
-  if (include_timestamps) {
+  if (include_timestamps || !partial_overlap_condition_.empty()) {
     std::vector<std::string> timestamps_names = {constants::timestamps};
     RETURN_CANCEL_OR_ERROR(
         read_attribute_tiles(timestamps_names, result_tiles));
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::timestamps, result_tiles));
   }
 
-  if (!condition_.empty()) {
-    // Read and unfilter tiles for querty condition.
+  if (!condition_.empty() || !partial_overlap_condition_.empty()) {
+    // Read and unfilter tiles for query condition.
     RETURN_CANCEL_OR_ERROR(
         read_attribute_tiles(qc_loaded_names_, result_tiles));
 
@@ -560,7 +596,7 @@ Status SparseIndexReaderBase::apply_query_condition(
     std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("apply_query_condition");
 
-  if (!condition_.empty()) {
+  if (!condition_.empty() || !partial_overlap_condition_.empty()) {
     // Process all tiles in parallel.
     auto status = parallel_for(
         storage_manager_->compute_tp(),
@@ -569,9 +605,9 @@ Status SparseIndexReaderBase::apply_query_condition(
         [&](uint64_t t) {
           // For easy reference.
           auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[t];
+          const auto frag_meta = fragment_metadata_[rt->frag_idx()];
 
-          auto cell_num =
-              fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+          auto cell_num = frag_meta->cell_num(rt->tile_idx());
 
           // Set num_cells if no subarray as it's used to filter below.
           if (!subarray_.is_set()) {
@@ -585,11 +621,26 @@ Status SparseIndexReaderBase::apply_query_condition(
           }
 
           // Compute the result of the query condition for this tile.
-          RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
-              *(fragment_metadata_[rt->frag_idx()]->array_schema().get()),
-              *rt,
-              rt->bitmap_,
-              &rt->bitmap_result_num_));
+          if (!condition_.empty()) {
+            RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
+                *(frag_meta->array_schema().get()),
+                *rt,
+                rt->bitmap_,
+                &rt->bitmap_result_num_));
+          }
+
+          // If timestamps are present and fragment is partially included,
+          // filter out fragments based on time by applying the query condition
+          auto full_overlap = array_->timestamp_end_opened_at() >=
+                              frag_meta->timestamp_range().second;
+          if (frag_meta->has_timestamps() &&
+              !partial_overlap_condition_.empty() && !full_overlap) {
+            RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<BitmapType>(
+                *(frag_meta->array_schema().get()),
+                *rt,
+                rt->bitmap_,
+                &rt->bitmap_result_num_));
+          }
 
           return Status::Ok();
         });
