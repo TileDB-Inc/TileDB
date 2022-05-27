@@ -96,7 +96,7 @@ struct GroupFx {
       tiledb::sm::URI group_uri, std::vector<std::string>& files) const;
   void get_meta_vac_files(
       tiledb::sm::URI group_uri, std::vector<std::string>& files) const;
-  void vacuum(const char* group_uri, uint64_t start, uint64_t end) const;
+  void vacuum(const char* group_uri) const;
 };
 
 GroupFx::GroupFx()
@@ -219,25 +219,14 @@ void GroupFx::consolidate(
   tiledb_config_free(&cfg);
 }
 
-void GroupFx::vacuum(
-    const char* group_uri, uint64_t start, uint64_t end) const {
+void GroupFx::vacuum(const char* group_uri) const {
   int rc;
   tiledb_config_t* cfg;
   tiledb_error_t* err = nullptr;
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
-  rc = tiledb_config_set(
-      cfg, "sm.vacuum.timestamp_start", std::to_string(start).c_str(), &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-  rc = tiledb_config_set(
-      cfg, "sm.vacuum.timestamp_end", std::to_string(end).c_str(), &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
   rc = tiledb_group_vacuum_metadata(ctx_, group_uri, cfg);
   REQUIRE(rc == TILEDB_OK);
-
   tiledb_config_free(&cfg);
 }
 
@@ -725,14 +714,7 @@ TEST_CASE_METHOD(
   get_meta_files(group_uri, group_meta_files);
   CHECK(group_meta_files.size() == 7);
 
-  vacuum(group_uri.c_str(), start1, end1);
-
-  get_meta_vac_files(group_uri, group_meta_vac_files);
-  CHECK(group_meta_vac_files.size() == 1);
-  get_meta_files(group_uri, group_meta_files);
-  CHECK(group_meta_files.size() == 5);
-
-  vacuum(group_uri.c_str(), start2, end2);
+  vacuum(group_uri.c_str());
 
   get_meta_vac_files(group_uri, group_meta_vac_files);
   CHECK(group_meta_vac_files.size() == 0);
@@ -746,7 +728,7 @@ TEST_CASE_METHOD(
   get_meta_files(group_uri, group_meta_files);
   CHECK(group_meta_files.size() == 4);
 
-  vacuum(group_uri.c_str(), start, end);
+  vacuum(group_uri.c_str());
 
   get_meta_vac_files(group_uri, group_meta_vac_files);
   CHECK(group_meta_vac_files.size() == 0);
