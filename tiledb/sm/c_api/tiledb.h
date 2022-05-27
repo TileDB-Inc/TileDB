@@ -1428,7 +1428,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Specifies the size in bytes of the internal buffers used in the filestore
  *    API. The size should be bigger than the minimum tile size filestore
  *    currently supports, that is currently 1024bytes. <br>
- *    **Default**: 1024
+ *    **Default**: 100MB
  *
  * **Example:**
  *

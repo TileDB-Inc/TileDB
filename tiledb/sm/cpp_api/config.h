@@ -716,7 +716,7 @@ class Config {
    *    Specifies the size in bytes of the internal buffers used in the
    * filestore API. The size should be bigger than the minimum tile size
    * filestore currently supports, that is currently 1024bytes. <br>
-   *    **Default**: 1024
+   *    **Default**: 100MB
    */
   Config& set(const std::string& param, const std::string& value) {
     tiledb_error_t* err;
