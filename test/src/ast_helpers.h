@@ -56,7 +56,9 @@ std::string ast_node_to_str(const tdb_unique_ptr<tiledb::sm::ASTNode>& node);
 /**
  * Returns whether two ASTs are syntactically equal.
  */
-bool ast_equal(const tdb_unique_ptr<tiledb::sm::ASTNode>& lhs, const tdb_unique_ptr<tiledb::sm::ASTNode>& rhs);
+bool ast_equal(
+    const tdb_unique_ptr<tiledb::sm::ASTNode>& lhs,
+    const tdb_unique_ptr<tiledb::sm::ASTNode>& rhs);
 
 }  // namespace tiledb::test
 #endif  //  TILEDB_AST_HELPERS_H
