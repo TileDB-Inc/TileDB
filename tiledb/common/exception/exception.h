@@ -49,12 +49,12 @@ class StatusException : public std::exception {
   /**
    * Vicinity where exception originated
    */
-  const std::string origin_;
+  std::string origin_;
 
   /**
    * Specific error message
    */
-  const std::string message_;
+  std::string message_;
 
   /**
    * Text returned by `what()`
@@ -144,11 +144,11 @@ class StatusException : public std::exception {
   /// Default move constructor
   StatusException(StatusException&&) = default;
 
-  /// Deleted copy assignment
-  StatusException& operator=(const StatusException&) = delete;
+  /// Default copy assignment
+  StatusException& operator=(const StatusException&) = default;
 
-  /// Deleted move assignment
-  StatusException& operator=(StatusException&&) = delete;
+  /// Default move assignment
+  StatusException& operator=(StatusException&&) = default;
 
   /**
    * Explanatory text about the exception.

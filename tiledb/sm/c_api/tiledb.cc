@@ -935,10 +935,10 @@ int32_t tiledb_ctx_get_last_error(tiledb_ctx_t* ctx, tiledb_error_t** err) {
   if (ctx == nullptr || ctx->ctx_ == nullptr)
     return TILEDB_ERR;
 
-  Status last_error = ctx->ctx_->last_error();
+  auto last_error{ctx->ctx_->last_error()};
 
   // No last error
-  if (last_error.ok()) {
+  if (!last_error.has_value()) {
     *err = nullptr;
     return TILEDB_OK;
   }
@@ -949,7 +949,7 @@ int32_t tiledb_ctx_get_last_error(tiledb_ctx_t* ctx, tiledb_error_t** err) {
     return TILEDB_OOM;
 
   // Set error message
-  (*err)->errmsg_ = last_error.to_string();
+  (*err)->errmsg_ = last_error.value();
 
   // Success
   return TILEDB_OK;
