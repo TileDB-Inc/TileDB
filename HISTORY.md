@@ -1,3 +1,8 @@
+# TileDB v2.9.2 Release Notes
+
+## Bug fixes
+* Update Zlib Download URL [#3200](https://github.com/TileDB-Inc/TileDB/pull/3200)
+
 # TileDB v2.9.1 Release Notes
 
 ## Bug fixes
