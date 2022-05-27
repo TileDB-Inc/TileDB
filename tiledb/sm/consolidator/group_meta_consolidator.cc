@@ -1,5 +1,5 @@
 /**
- * @file   array_meta_consolidator.cc
+ * @file   group_meta_consolidator.cc
  *
  * @section LICENSE
  *
@@ -27,13 +27,15 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the ArrayMetaConsolidator class.
+ * This file implements the GroupMetaConsolidator class.
  */
 
-#include "tiledb/sm/consolidator/array_meta_consolidator.h"
+#include "tiledb/sm/consolidator/group_meta_consolidator.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/group/group.h"
+#include "tiledb/sm/group/group_v1.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -47,7 +49,7 @@ namespace sm {
 /*          CONSTRUCTOR           */
 /* ****************************** */
 
-ArrayMetaConsolidator::ArrayMetaConsolidator(
+GroupMetaConsolidator::GroupMetaConsolidator(
     const Config* config, StorageManager* storage_manager)
     : Consolidator(storage_manager) {
   auto st = set_config(config);
@@ -60,46 +62,42 @@ ArrayMetaConsolidator::ArrayMetaConsolidator(
 /*               API              */
 /* ****************************** */
 
-Status ArrayMetaConsolidator::consolidate(
-    const char* array_name,
+Status GroupMetaConsolidator::consolidate(
+    const char* group_name,
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer_se = stats_->start_timer("consolidate_array_meta");
+  (void)encryption_type;
+  (void)encryption_key;
+  (void)key_length;
+  auto timer_se = stats_->start_timer("consolidate_group_meta");
 
-  // Open array for reading
-  auto array_uri = URI(array_name);
-  Array array_for_reads(array_uri, storage_manager_);
-  RETURN_NOT_OK(array_for_reads.open(
-      QueryType::READ,
-      config_.timestamp_start_,
-      config_.timestamp_end_,
-      encryption_type,
-      encryption_key,
-      key_length));
+  // Open group for reading
+  auto group_uri = URI(group_name);
+  GroupV1 group_for_reads(group_uri, storage_manager_);
+  RETURN_NOT_OK(group_for_reads.open(
+      QueryType::READ, config_.timestamp_start_, config_.timestamp_end_));
 
-  // Open array for writing
-  Array array_for_writes(array_uri, storage_manager_);
+  // Open group for writing
+  GroupV1 group_for_writes(group_uri, storage_manager_);
   RETURN_NOT_OK_ELSE(
-      array_for_writes.open(
-          QueryType::WRITE, encryption_type, encryption_key, key_length),
-      array_for_reads.close());
+      group_for_writes.open(QueryType::WRITE), group_for_reads.close());
 
-  // Swap the in-memory metadata between the two arrays.
-  // After that, the array for writes will store the (consolidated by
-  // the way metadata loading works) metadata of the array for reads
+  // Swap the in-memory metadata between the two groups.
+  // After that, the group for writes will store the (consolidated by
+  // the way metadata loading works) metadata of the group for reads
   Metadata* metadata_r;
-  auto st = array_for_reads.metadata(&metadata_r);
+  auto st = group_for_reads.metadata(&metadata_r);
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
+    group_for_reads.close();
+    group_for_writes.close();
     return st;
   }
   Metadata* metadata_w;
-  st = array_for_writes.metadata(&metadata_w);
+  st = group_for_writes.metadata(&metadata_w);
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
+    group_for_reads.close();
+    group_for_writes.close();
     return st;
   }
   metadata_r->swap(metadata_w);
@@ -108,25 +106,25 @@ Status ArrayMetaConsolidator::consolidate(
   const auto to_vacuum = metadata_w->loaded_metadata_uris();
 
   // Generate new name for consolidated metadata
-  st = metadata_w->generate_uri(array_uri);
+  st = metadata_w->generate_uri(group_uri);
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
+    group_for_reads.close();
+    group_for_writes.close();
     return st;
   }
 
   // Get the new URI name
   URI new_uri;
-  st = metadata_w->get_uri(array_uri, &new_uri);
+  st = metadata_w->get_uri(group_uri, &new_uri);
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
+    group_for_reads.close();
+    group_for_writes.close();
     return st;
   }
 
-  // Close arrays
-  RETURN_NOT_OK_ELSE(array_for_reads.close(), array_for_writes.close());
-  RETURN_NOT_OK(array_for_writes.close());
+  // Close groups
+  RETURN_NOT_OK_ELSE(group_for_reads.close(), group_for_writes.close());
+  RETURN_NOT_OK(group_for_writes.close());
 
   // Write vacuum file
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
@@ -143,34 +141,33 @@ Status ArrayMetaConsolidator::consolidate(
   return Status::Ok();
 }
 
-Status ArrayMetaConsolidator::vacuum(const char* array_name) {
-  if (array_name == nullptr)
+Status GroupMetaConsolidator::vacuum(const char* group_name) {
+  if (group_name == nullptr)
     return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum array metadata; Array name cannot be null"));
+        "Cannot vacuum group metadata; Group name cannot be null"));
 
-  // Get the array metadata URIs and vacuum file URIs to be vacuum
+  // Get the group metadata URIs and vacuum file URIs to be vacuumed
   auto vfs = storage_manager_->vfs();
   auto compute_tp = storage_manager_->compute_tp();
-  ArrayDirectory array_dir;
+  GroupDirectory group_dir;
   try {
-    array_dir = ArrayDirectory(
+    group_dir = GroupDirectory(
         vfs,
         compute_tp,
-        URI(array_name),
+        URI(group_name),
         0,
-        std::numeric_limits<uint64_t>::max(),
-        false);
+        std::numeric_limits<uint64_t>::max());
   } catch (const std::logic_error& le) {
-    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+    return LOG_STATUS(Status_GroupDirectoryError(le.what()));
   }
 
-  const auto& array_meta_uris_to_vacuum = array_dir.array_meta_uris_to_vacuum();
-  const auto& vac_uris_to_vacuum = array_dir.array_meta_vac_uris_to_vacuum();
+  const auto& group_meta_uris_to_vacuum = group_dir.group_meta_uris_to_vacuum();
+  const auto& vac_uris_to_vacuum = group_dir.group_meta_vac_uris_to_vacuum();
 
-  // Delete the array metadata files
+  // Delete the group metadata files
   auto status = parallel_for(
-      compute_tp, 0, array_meta_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_file(array_meta_uris_to_vacuum[i]));
+      compute_tp, 0, group_meta_uris_to_vacuum.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs->remove_file(group_meta_uris_to_vacuum[i]));
 
         return Status::Ok();
       });
@@ -191,7 +188,7 @@ Status ArrayMetaConsolidator::vacuum(const char* array_name) {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status ArrayMetaConsolidator::set_config(const Config* config) {
+Status GroupMetaConsolidator::set_config(const Config* config) {
   // Set the consolidation config for ease of use
   Config merged_config = storage_manager_->config();
   if (config) {

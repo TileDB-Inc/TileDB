@@ -311,18 +311,6 @@ class Config {
    *    `fragment_meta` (remove only consolidated fragment metadata), or
    *    `array_meta` (remove consolidated array metadata files). <br>
    *    **Default**: fragments
-   * - `sm.vacuum.timestamp_start` <br>
-   *    **Experimental** <br>
-   *    When set, an array will be vacuumed between this value and
-   *    `sm.vacuum.timestamp_end` (inclusive). <br>
-   *    Only for `fragments` and `array_meta` vacuum mode. <br>
-   *    **Default**: 0
-   * - `sm.vacuum.timestamp_end` <br>
-   *    **Experimental** <br>
-   *    When set, an array will be vacuumed between `sm.vacuum.timestamp_start`
-   *    and this value (inclusive). <br>
-   *    Only for `fragments` and `array_meta` vacuum mode. <br>
-   *    **Default**: UINT64_MAX
    * - `sm.consolidation_mode` <br>
    *    The consolidation mode, one of `fragments` (consolidate all fragments),
    *    `fragment_meta` (consolidate only fragment metadata footers to a single

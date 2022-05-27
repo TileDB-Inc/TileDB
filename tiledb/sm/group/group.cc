@@ -64,7 +64,8 @@ Group::Group(
     , changes_applied_(false) {
 }
 
-Status Group::open(QueryType query_type) {
+Status Group::open(
+    QueryType query_type, uint64_t timestamp_start, uint64_t timestamp_end) {
   // Checks
   if (is_open_)
     return Status_GroupError("Cannot open group; Group already open");
@@ -74,6 +75,18 @@ Status Group::open(QueryType query_type) {
     if (!is_group)
       return Status_GroupError("Cannot open group; Group does not exist");
   }
+
+  if (timestamp_end == UINT64_MAX) {
+    if (query_type == QueryType::READ) {
+      timestamp_end = utils::time::timestamp_now_ms();
+    } else {
+      assert(query_type == QueryType::WRITE);
+      timestamp_end = 0;
+    }
+  }
+
+  timestamp_start_ = timestamp_start;
+  timestamp_end_ = timestamp_end;
 
   // Get encryption key from config
   std::string encryption_key_from_cfg;
@@ -120,22 +133,6 @@ Status Group::open(QueryType query_type) {
   metadata_.clear();
   metadata_loaded_ = false;
 
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.group.timestamp_start", &timestamp_start_, &found));
-  assert(found);
-  RETURN_NOT_OK(
-      config_.get<uint64_t>("sm.group.timestamp_end", &timestamp_end_, &found));
-  assert(found);
-
-  if (timestamp_end_ == UINT64_MAX) {
-    if (query_type == QueryType::READ) {
-      timestamp_end_ = utils::time::timestamp_now_ms();
-    } else {
-      assert(query_type == QueryType::WRITE);
-      timestamp_end_ = 0;
-    }
-  }
-
   // Make sure to reset any values
   changes_applied_ = false;
   members_to_remove_.clear();
@@ -155,8 +152,8 @@ Status Group::open(QueryType query_type) {
           storage_manager_->vfs(),
           storage_manager_->compute_tp(),
           group_uri_,
-          timestamp_start_,
-          timestamp_end_);
+          timestamp_start,
+          timestamp_end);
     } catch (const std::logic_error& le) {
       return Status_GroupDirectoryError(le.what());
     }
@@ -182,9 +179,9 @@ Status Group::open(QueryType query_type) {
           storage_manager_->vfs(),
           storage_manager_->compute_tp(),
           group_uri_,
-          timestamp_start_,
-          (timestamp_end_ != 0) ? timestamp_end_ :
-                                  utils::time::timestamp_now_ms());
+          timestamp_start,
+          (timestamp_end != 0) ? timestamp_end :
+                                 utils::time::timestamp_now_ms());
     } catch (const std::logic_error& le) {
       return Status_GroupDirectoryError(le.what());
     }
@@ -205,13 +202,25 @@ Status Group::open(QueryType query_type) {
       }
     }
 
-    metadata_.reset(timestamp_end_);
+    metadata_.reset(timestamp_end);
   }
 
   query_type_ = query_type;
   is_open_ = true;
 
   return Status::Ok();
+}
+
+Status Group::open(QueryType query_type) {
+  bool found = false;
+  RETURN_NOT_OK(config_.get<uint64_t>(
+      "sm.group.timestamp_start", &timestamp_start_, &found));
+  assert(found);
+  RETURN_NOT_OK(
+      config_.get<uint64_t>("sm.group.timestamp_end", &timestamp_end_, &found));
+  assert(found);
+
+  return Group::open(query_type, timestamp_start_, timestamp_end_);
 }
 
 Status Group::close() {

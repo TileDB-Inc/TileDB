@@ -1,5 +1,5 @@
 /**
- * @file   array_meta_consolidator.h
+ * @file   group_meta_consolidator.h
  *
  * @section LICENSE
  *
@@ -27,17 +27,15 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class ArrayMetaConsolidator.
+ * This file defines class GroupMetaConsolidator.
  */
 
-#ifndef TILEDB_ARRAY_META_CONSOLIDATOR_H
-#define TILEDB_ARRAY_META_CONSOLIDATOR_H
+#ifndef TILEDB_GROUP_META_CONSOLIDATOR
+#define TILEDB_GROUP_META_CONSOLIDATOR
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 
 using namespace tiledb::common;
@@ -47,8 +45,8 @@ namespace sm {
 
 class StorageManager;
 
-/** Handles array metadata consolidation. */
-class ArrayMetaConsolidator : public Consolidator {
+/** Handles group metadata consolidation. */
+class GroupMetaConsolidator : public Consolidator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -60,14 +58,14 @@ class ArrayMetaConsolidator : public Consolidator {
    * @param config Config.
    * @param storage_manager Storage manager.
    */
-  explicit ArrayMetaConsolidator(
+  explicit GroupMetaConsolidator(
       const Config* config, StorageManager* storage_manager);
 
   /** Destructor. */
-  ~ArrayMetaConsolidator() = default;
+  ~GroupMetaConsolidator() = default;
 
-  DISABLE_COPY_AND_COPY_ASSIGN(ArrayMetaConsolidator);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(ArrayMetaConsolidator);
+  DISABLE_COPY_AND_COPY_ASSIGN(GroupMetaConsolidator);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(GroupMetaConsolidator);
 
   /* ********************************* */
   /*                API                */
@@ -76,15 +74,15 @@ class ArrayMetaConsolidator : public Consolidator {
   /**
    * Performs the consolidation operation.
    *
-   * @param array_name URI of array to consolidate.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param group_name URI of group to consolidate.
+   * @param encryption_type The encryption type of the group
+   * @param encryption_key If the group is encrypted, the private encryption
+   *    key. For unencrypted groups, pass `nullptr`.
    * @param key_length The length in bytes of the encryption key.
    * @return Status
    */
   Status consolidate(
-      const char* array_name,
+      const char* group_name,
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length);
@@ -92,10 +90,10 @@ class ArrayMetaConsolidator : public Consolidator {
   /**
    * Performs the vacuuming operation.
    *
-   * @param array_name URI of array to consolidate.
+   * @param group_name URI of group to consolidate.
    * @return Status
    */
-  Status vacuum(const char* array_name);
+  Status vacuum(const char* group_name);
 
  private:
   /* ********************************* */
@@ -116,4 +114,4 @@ class ArrayMetaConsolidator : public Consolidator {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_ARRAY_META_CONSOLIDATOR_H
+#endif  // TILEDB_GROUP_META_CONSOLIDATOR

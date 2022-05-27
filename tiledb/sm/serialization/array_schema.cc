@@ -496,7 +496,6 @@ Status domain_to_capnp(
     return LOG_STATUS(
         Status_SerializationError("Error serializing domain; domain is null."));
 
-  domainBuilder->setType(datatype_str(domain->dimension_ptr(0)->type()));
   domainBuilder->setTileOrder(layout_str(domain->tile_order()));
   domainBuilder->setCellOrder(layout_str(domain->cell_order()));
 
@@ -510,20 +509,52 @@ Status domain_to_capnp(
   return Status::Ok();
 }
 
-Status domain_from_capnp(
-    const capnp::Domain::Reader& domain_reader,
-    tdb_unique_ptr<Domain>* domain) {
-  Datatype datatype = Datatype::ANY;
-  RETURN_NOT_OK(datatype_enum(domain_reader.getType(), &datatype));
-  domain->reset(tdb_new(Domain));
+/* Deserialize a domain from a cap'n proto object. */
+shared_ptr<Domain> domain_from_capnp(
+    const capnp::Domain::Reader& domain_reader) {
+  Status st;
 
-  auto dimensions = domain_reader.getDimensions();
-  for (auto dimension : dimensions) {
-    auto dim = dimension_from_capnp(dimension);
-    RETURN_NOT_OK((*domain)->add_dimension(dim));
+  // Deserialize and validate cell order
+  Layout cell_order = Layout::ROW_MAJOR;
+  st = layout_enum(domain_reader.getCellOrder().cStr(), &cell_order);
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[Deserialization::domain_from_capnp] " +
+        std::string(domain_reader.getCellOrder().cStr()) +
+        " is not a valid cell order identifer.");
+  }
+  try {
+    ensure_cell_order_is_valid(std::underlying_type_t<Layout>(cell_order));
+  } catch (std::exception& e) {
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::domain_from_capnp] "));
   }
 
-  return Status::Ok();
+  // Deserialize and validate tile order
+  Layout tile_order = Layout::ROW_MAJOR;
+  st = layout_enum(domain_reader.getTileOrder().cStr(), &tile_order);
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[Deserialization::domain_from_capnp] " +
+        std::string(domain_reader.getTileOrder().cStr()) +
+        " is not a valid tile order identifer.");
+  }
+  try {
+    ensure_tile_order_is_valid(std::underlying_type_t<Layout>(tile_order));
+  } catch (std::exception& e) {
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::domain_from_capnp] "));
+  }
+
+  // Deserialize dimensions
+  // Note: Security validation delegated to invoked API
+  std::vector<shared_ptr<Dimension>> dims;
+  auto dimensions = domain_reader.getDimensions();
+  for (auto dimension : dimensions) {
+    dims.emplace_back(dimension_from_capnp(dimension));
+  }
+
+  return make_shared<Domain>(HERE(), cell_order, dims, tile_order);
 }
 
 Status array_schema_to_capnp(
@@ -614,10 +645,8 @@ Status array_schema_from_capnp(
   }
 
   auto domain_reader = schema_reader.getDomain();
-  tdb_unique_ptr<Domain> domain;
-  RETURN_NOT_OK(domain_from_capnp(domain_reader, &domain));
-  RETURN_NOT_OK(
-      (*array_schema)->set_domain(make_shared<Domain>(HERE(), domain.get())));
+  auto domain{domain_from_capnp(domain_reader)};
+  RETURN_NOT_OK((*array_schema)->set_domain(domain));
 
   // Set coords filter pipelines
   if (schema_reader.hasCoordsFilterPipeline()) {

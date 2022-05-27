@@ -84,7 +84,8 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_query_condition_(0.25)
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
-    , buffers_full_(false) {
+    , buffers_full_(false)
+    , user_requested_timestamps_(false) {
   read_state_.done_adding_result_tiles_ = false;
 }
 
@@ -182,6 +183,11 @@ SparseIndexReaderBase::get_coord_tiles_size(
   // Add the tile bitmap size if there is a subarray.
   if (subarray_.is_set())
     tiles_size += fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
+
+  if (include_timestamps(f)) {
+    tiles_size +=
+        fragment_metadata_[f]->cell_num(t) * constants::timestamp_size;
+  }
 
   // Compute query condition tile sizes.
   uint64_t tiles_size_qc = 0;
@@ -281,6 +287,10 @@ Status SparseIndexReaderBase::load_initial_data(bool include_timestamps) {
 
     if (array_schema_.var_size(name))
       var_size_to_load.emplace_back(name);
+
+    if (name == constants::timestamps) {
+      user_requested_timestamps_ = true;
+    }
   }
 
   // Add timestamps if required.
@@ -419,8 +429,9 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
           return Status::Ok();
 
         // Allocate the bitmap if not preallocated.
-        if (num_range_threads == 1)
+        if (num_range_threads == 1) {
           RETURN_NOT_OK(allocate_tile_bitmap(rt));
+        }
 
         // Prevent processing past the end of the cells in case there are more
         // threads than cells.
@@ -453,8 +464,8 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
 
           // For non overlapping ranges, if we have full overlap on any range
           // there is no need to compute bitmaps.
-          const bool is_uint8_t = std::is_same<BitmapType, uint8_t>::value;
-          if (is_uint8_t) {
+          const bool non_overlapping = std::is_same<BitmapType, uint8_t>::value;
+          if (non_overlapping) {
             std::vector<bool> covered_bitmap =
                 domain.dimension_ptr(dim_idx)->covered_vec(
                     ranges_for_dim, mbr[dim_idx], relevant_ranges);
@@ -491,8 +502,9 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
 
         // Only compute bitmap cells here if we are processing a single cell
         // range. If not, it will be done below.
-        if (num_range_threads == 1)
+        if (num_range_threads == 1) {
           RETURN_NOT_OK(count_tile_bitmap_cells(rt));
+        }
 
         return Status::Ok();
       });
@@ -533,10 +545,13 @@ Status SparseIndexReaderBase::count_tile_bitmap_cells(
     rt->bitmap_result_num_ += rt->bitmap_[c];
   }
 
-  // Clear the bitmap, which will also signal the copy operation to copy the
-  // whole tile.
-  if (rt->bitmap_result_num_ == cell_num) {
-    rt->bitmap_.resize(0);
+  const bool non_overlapping = std::is_same<BitmapType, uint8_t>::value;
+  if (non_overlapping) {
+    // Clear the bitmap, which will also signal the copy operation to copy the
+    // whole tile.
+    if (rt->bitmap_result_num_ == cell_num) {
+      rt->bitmap_.resize(0);
+    }
   }
 
   return Status::Ok();
@@ -719,6 +734,17 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
     std::unique_lock<std::mutex> lck(mem_budget_mtx_);
     memory_used_result_tile_ranges_ -= sizeof(std::pair<uint64_t, uint64_t>);
   }
+}
+
+bool SparseIndexReaderBase::include_timestamps(const unsigned f) {
+  auto fragment_timestamps = fragment_metadata_[f]->timestamp_range();
+  auto partial_overlap =
+      (array_->timestamp_start() > fragment_timestamps.first) ||
+      (array_->timestamp_end() < fragment_timestamps.second);
+
+  return fragment_metadata_[f]->has_timestamps() &&
+         (user_requested_timestamps_ || partial_overlap ||
+          !array_schema_.allows_dups());
 }
 
 // Explicit template instantiations

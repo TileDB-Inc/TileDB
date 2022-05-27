@@ -2204,7 +2204,8 @@ Status StorageManager::load_group_metadata(
   }
 
   // Copy the deserialized metadata into the original Metadata object
-  metadata->swap(deserialized_metadata.value().get());
+  *metadata = *(deserialized_metadata.value());
+  RETURN_NOT_OK(metadata->set_loaded_metadata_uris(group_metadata_to_load));
 
   return Status::Ok();
 }
@@ -2342,6 +2343,66 @@ Status StorageManager::set_default_tags() {
   RETURN_NOT_OK(set_tag("x-tiledb-api-language", "c"));
 
   return Status::Ok();
+}
+
+Status StorageManager::group_metadata_consolidate(
+    const char* group_name, const Config* config) {
+  // Check group URI
+  URI group_uri(group_name);
+  if (group_uri.is_invalid()) {
+    return logger_->status(Status_StorageManagerError(
+        "Cannot consolidate group metadata; Invalid URI"));
+  }
+  // Check if group exists
+  ObjectType obj_type;
+  RETURN_NOT_OK(object_type(group_uri, &obj_type));
+
+  if (obj_type != ObjectType::GROUP) {
+    return logger_->status(Status_StorageManagerError(
+        "Cannot consolidate group metadata; Group does not exist"));
+  }
+
+  // If 'config' is unset, use the 'config_' that was set during initialization
+  // of this StorageManager instance.
+  if (!config) {
+    config = &config_;
+  }
+
+  // Consolidate
+  // Encryption credentials are loaded by Group from config
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::GROUP_META, config, this);
+  return consolidator->consolidate(
+      group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+}
+
+Status StorageManager::group_metadata_vacuum(
+    const char* group_name, const Config* config) {
+  // Check group URI
+  URI group_uri(group_name);
+  if (group_uri.is_invalid()) {
+    return logger_->status(Status_StorageManagerError(
+        "Cannot vacuum group metadata; Invalid URI"));
+  }
+
+  // If 'config' is unset, use the 'config_' that was set during initialization
+  // of this StorageManager instance.
+  if (!config) {
+    config = &config_;
+  }
+
+  // Check if group exists
+  ObjectType obj_type;
+  RETURN_NOT_OK(object_type(group_uri, &obj_type));
+
+  if (obj_type != ObjectType::GROUP) {
+    return logger_->status(Status_StorageManagerError(
+        "Cannot vacuum group metadata; Group does not exist"));
+  }
+
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::GROUP_META, config, this);
+  return consolidator->vacuum(group_name);
 }
 
 }  // namespace sm
