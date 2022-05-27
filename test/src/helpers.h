@@ -40,12 +40,10 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb_serialization.h"
 
-#include <iomanip>
 #include <mutex>
 #include <sstream>
 #include <string>
