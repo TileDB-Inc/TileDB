@@ -202,12 +202,8 @@ Status Posix::touch(const std::string& filename) const {
 }
 
 std::string Posix::current_dir() {
-  std::string dir;
-  char* path = getcwd(nullptr, 0);
-  if (path != nullptr) {
-    dir = path;
-    free(path);
-  }
+  static std::unique_ptr<char, decltype(&free)> cwd_(getcwd(nullptr, 0), free);
+  std::string dir = cwd_.get();
   return dir;
 }
 
