@@ -164,6 +164,9 @@ class ReaderBase : public StrategyBase {
   /** The fragment metadata that the reader will focus on. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
 
+  /** Disable the tile cache or not. */
+  bool disable_cache_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -307,13 +310,11 @@ class ReaderBase : public StrategyBase {
    * @param names The attribute names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
-   * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
   Status read_attribute_tiles(
       const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles,
-      const bool disable_cache = false) const;
+      const std::vector<ResultTile*>& result_tiles) const;
 
   /**
    * Concurrently executes across each name in `names` and each result tile
@@ -325,13 +326,11 @@ class ReaderBase : public StrategyBase {
    * @param names The coordinate/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
-   * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
   Status read_coordinate_tiles(
       const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles,
-      const bool disable_cache = false) const;
+      const std::vector<ResultTile*>& result_tiles) const;
 
   /**
    * Retrieves the tiles on a list of attribute or dimension and stores it
@@ -343,13 +342,11 @@ class ReaderBase : public StrategyBase {
    * @param names The attribute/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
-   * @param disable_cache Disable the tile cache or not.
    * @return Status
    */
   Status read_tiles(
       const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles,
-      const bool disable_cache = false) const;
+      const std::vector<ResultTile*>& result_tiles) const;
 
   /**
    * Filters the tiles on a particular attribute/dimension from all input
@@ -466,13 +463,11 @@ class ReaderBase : public StrategyBase {
    *
    * @param name Attribute/dimension whose tiles will be unfiltered.
    * @param result_tiles Vector containing the tiles to be unfiltered.
-   * @param disable_cache Disable the filtered buffers cache or not.
    * @return Status
    */
   Status unfilter_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>& result_tiles,
-      const bool disable_cache = false) const;
+      const std::vector<ResultTile*>& result_tiles) const;
 
   /**
    * Runs the input fixed-sized tile for the input attribute or dimension

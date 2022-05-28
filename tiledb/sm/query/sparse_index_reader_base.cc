@@ -87,6 +87,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , buffers_full_(false)
     , user_requested_timestamps_(false) {
   read_state_.done_adding_result_tiles_ = false;
+  disable_cache_ = true;
 }
 
 /* ****************************** */
@@ -323,34 +324,31 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
     // this will ignore fragments with a version >= 5.
     std::vector<std::string> zipped_coords_names = {constants::coords};
     RETURN_CANCEL_OR_ERROR(
-        read_coordinate_tiles(zipped_coords_names, result_tiles, true));
-    RETURN_CANCEL_OR_ERROR(
-        unfilter_tiles(constants::coords, result_tiles, true));
+        read_coordinate_tiles(zipped_coords_names, result_tiles));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, result_tiles));
 
     // Read and unfilter unzipped coordinate tiles. Note that
     // this will ignore fragments with a version < 5.
-    RETURN_CANCEL_OR_ERROR(
-        read_coordinate_tiles(dim_names_, result_tiles, true));
+    RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names_, result_tiles));
     for (const auto& dim_name : dim_names_) {
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, result_tiles, true));
+      RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, result_tiles));
     }
   }
 
   if (include_timestamps) {
     std::vector<std::string> timestamps_names = {constants::timestamps};
     RETURN_CANCEL_OR_ERROR(
-        read_attribute_tiles(timestamps_names, result_tiles, true));
-    RETURN_CANCEL_OR_ERROR(
-        unfilter_tiles(constants::timestamps, result_tiles, true));
+        read_attribute_tiles(timestamps_names, result_tiles));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::timestamps, result_tiles));
   }
 
   if (!condition_.empty()) {
     // Read and unfilter tiles for querty condition.
     RETURN_CANCEL_OR_ERROR(
-        read_attribute_tiles(qc_loaded_names_, result_tiles, true));
+        read_attribute_tiles(qc_loaded_names_, result_tiles));
 
     for (const auto& name : qc_loaded_names_) {
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles, true));
+      RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
     }
   }
 
@@ -634,10 +632,10 @@ SparseIndexReaderBase::read_and_unfilter_attributes(
 
   // Read and unfilter tiles.
   RETURN_NOT_OK_TUPLE(
-      read_attribute_tiles(names_to_read, result_tiles, true), nullopt);
+      read_attribute_tiles(names_to_read, result_tiles), nullopt);
 
   for (auto& name : names_to_read)
-    RETURN_NOT_OK_TUPLE(unfilter_tiles(name, result_tiles, true), nullopt);
+    RETURN_NOT_OK_TUPLE(unfilter_tiles(name, result_tiles), nullopt);
 
   return {Status::Ok(), std::move(index_to_copy)};
 }
