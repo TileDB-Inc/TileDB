@@ -74,6 +74,14 @@ struct ConsolidationWithTimestampsFx {
       std::string& stats,
       tiledb_layout_t layout,
       uint64_t timestamp);
+  void reopen_sparse(
+      std::vector<int>& a1,
+      std::vector<uint64_t>& dim1,
+      std::vector<uint64_t>& dim2,
+      std::string& stats,
+      tiledb_layout_t layout,
+      uint64_t start_time,
+      uint64_t end_time);
 
   void remove_sparse_array();
   void remove_array(const std::string& array_name);
@@ -252,6 +260,38 @@ void ConsolidationWithTimestampsFx::read_sparse(
     uint64_t timestamp) {
   // Open array
   Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
+
+  // Create query
+  Query query(ctx_, array, TILEDB_READ);
+  query.set_layout(layout);
+  query.set_data_buffer("a1", a1);
+  query.set_data_buffer("d1", dim1);
+  query.set_data_buffer("d2", dim2);
+
+  // Submit/finalize the query
+  query.submit();
+  CHECK(query.query_status() == Query::Status::COMPLETE);
+
+  // Get the query stats.
+  stats = query.stats();
+
+  // Close array
+  array.close();
+}
+
+void ConsolidationWithTimestampsFx::reopen_sparse(
+    std::vector<int>& a1,
+    std::vector<uint64_t>& dim1,
+    std::vector<uint64_t>& dim2,
+    std::string& stats,
+    tiledb_layout_t layout,
+    uint64_t start_time,
+    uint64_t end_time) {
+  // Re-open array
+  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ);
+  array.set_open_timestamp_start(start_time);
+  array.set_open_timestamp_end(end_time);
+  array.reopen();
 
   // Create query
   Query query(ctx_, array, TILEDB_READ);
@@ -835,7 +875,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, reopen",
-    "[cppapi][consolidation-with-timestamps][partial-read][dups][testtt]") {
+    "[cppapi][consolidation-with-timestamps][partial-read][dups]") {
   remove_sparse_array();
   // enable duplicates
   create_sparse_array(true);
@@ -859,27 +899,7 @@ TEST_CASE_METHOD(
 
   SECTION("Read in the middle") {
     // Read between 2 and 4
-    Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ);
-    array.set_open_timestamp_start(2);
-    array.set_open_timestamp_end(4);
-    array.reopen();
-
-    // Create query
-    Query query(ctx_, array, TILEDB_READ);
-    query.set_layout(layout);
-    query.set_data_buffer("a1", a);
-    query.set_data_buffer("d1", dim1);
-    query.set_data_buffer("d2", dim2);
-
-    // Submit/finalize the query
-    query.submit();
-    CHECK(query.query_status() == Query::Status::COMPLETE);
-
-    // Get the query stats.
-    stats = query.stats();
-
-    // Close array
-    array.close();
+    reopen_sparse(a, dim1, dim2, stats, layout, 2, 4);
 
     // Expect to read only what was written at time 3
     std::vector<int> c_a = {4, 5, 6, 7};
@@ -893,28 +913,7 @@ TEST_CASE_METHOD(
   }
 
   SECTION("Read the last 2 writes only") {
-    // Read between 2 and 6, that should include the last 2 writes
-    Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ);
-    array.set_open_timestamp_start(2);
-    array.set_open_timestamp_end(6);
-    array.reopen();
-
-    // Create query
-    Query query(ctx_, array, TILEDB_READ);
-    query.set_layout(layout);
-    query.set_data_buffer("a1", a);
-    query.set_data_buffer("d1", dim1);
-    query.set_data_buffer("d2", dim2);
-
-    // Submit/finalize the query
-    query.submit();
-    CHECK(query.query_status() == Query::Status::COMPLETE);
-
-    // Get the query stats.
-    stats = query.stats();
-
-    // Close array
-    array.close();
+    reopen_sparse(a, dim1, dim2, stats, layout, 2, 6);
 
     write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
     // Write third  fragment.
@@ -932,28 +931,7 @@ TEST_CASE_METHOD(
   }
 
   SECTION("Read the first 2 writes only") {
-    // Read between 1 and 3, that should include the first 2 writes
-    Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ);
-    array.set_open_timestamp_start(0);
-    array.set_open_timestamp_end(4);
-    array.reopen();
-
-    // Create query
-    Query query(ctx_, array, TILEDB_READ);
-    query.set_layout(layout);
-    query.set_data_buffer("a1", a);
-    query.set_data_buffer("d1", dim1);
-    query.set_data_buffer("d2", dim2);
-
-    // Submit/finalize the query
-    query.submit();
-    CHECK(query.query_status() == Query::Status::COMPLETE);
-
-    // Get the query stats.
-    stats = query.stats();
-
-    // Close array
-    array.close();
+    reopen_sparse(a, dim1, dim2, stats, layout, 0, 4);
 
     // Expect to read what the first 2 writes wrote
     std::vector<int> c_a_opt1 = {0, 1, 4, 2, 5, 3, 6, 7};

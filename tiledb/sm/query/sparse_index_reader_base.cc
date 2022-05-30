@@ -212,6 +212,15 @@ Status SparseIndexReaderBase::load_initial_data() {
   auto timer_se = stats_->start_timer("load_initial_data");
   read_state_.done_adding_result_tiles_ = false;
 
+  // Make a list of dim/attr that will be loaded for query condition.
+  if (!initial_data_loaded_) {
+    if (!condition_.empty()) {
+      for (auto& name : condition_.field_names()) {
+        qc_loaded_names_.emplace_back(name);
+      }
+    }
+  }
+
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
 
@@ -298,15 +307,6 @@ Status SparseIndexReaderBase::load_initial_data() {
     }
 
     RETURN_CANCEL_OR_ERROR(add_partial_overlap_condition());
-  }
-
-  // Make a list of dim/attr that will be loaded for query condition.
-  if (!initial_data_loaded_) {
-    if (!condition_.empty()) {
-      for (auto& name : condition_.field_names()) {
-        qc_loaded_names_.emplace_back(name);
-      }
-    }
   }
 
   // Load tile offsets and var sizes for attributes.
