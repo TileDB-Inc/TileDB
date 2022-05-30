@@ -306,9 +306,11 @@ class SparseIndexReaderBase : public ReaderBase {
   /** If the user requested timestamps attribute in the query */
   bool user_requested_timestamps_;
 
-  /** The condition to apply on timestamps when there is partial time overlap
-   * with at least one fragment */
-  QueryCondition partial_overlap_condition_;
+  /**
+   * If the special timestamps attribute should be loaded to memory for
+   * this query
+   */
+  bool use_timestamps_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
@@ -340,25 +342,20 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Load tile offsets and result tile ranges.
    *
-   * @param include_timestamps Include timestamps or not.
-   *
    * @return Status.
    */
-  Status load_initial_data(bool include_timestamps);
+  Status load_initial_data();
 
   /**
    * Read and unfilter coord tiles.
    *
    * @param include_coords Include coordinates or not.
-   * @param include_timestamps Include timestamps or not.
    * @param result_tiles The result tiles to process.
    *
    * @return Status.
    */
   Status read_and_unfilter_coords(
-      bool include_coords,
-      bool include_timestamps,
-      const std::vector<ResultTile*>& result_tiles);
+      bool include_coords, const std::vector<ResultTile*>& result_tiles);
 
   /**
    * Allocate a tile bitmap if required for this tile.
@@ -443,13 +440,6 @@ class SparseIndexReaderBase : public ReaderBase {
    * needed.
    */
   bool include_timestamps(const unsigned f);
-
-  /**
-   * Checks if consolidation with timestamps is enabled in config.
-   *
-   * @return True if consolidation with timestamps is enabled, false if not.
-   */
-  bool consolidation_with_timestamps_config_enabled() const;
 };
 
 }  // namespace sm

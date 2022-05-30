@@ -1373,6 +1373,7 @@ Status QueryCondition::apply_clause_sparse(
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap) const {
   bool var_size = false, nullable = false;
+  // initialize to timestamps type
   Datatype type = Datatype::UINT64;
   if (clause.field_name_ != constants::timestamps) {
     const auto attribute = array_schema.attribute(clause.field_name_);

@@ -36,6 +36,8 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/sm/enums/query_condition_combination_op.h"
+#include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -224,32 +226,47 @@ Status ReaderBase::check_validity_buffer_sizes() const {
   return Status::Ok();
 }
 
-bool ReaderBase::partial_consolidated_fragment_overlap(
-    Subarray& subarray) const {
+bool ReaderBase::partial_consolidated_fragment_overlap() const {
   // Fetch relevant fragments so we check only intersecting fragments
-  const auto relevant_fragments = subarray.relevant_fragments();
-  bool all_frag = !subarray.is_set();
-
-  bool partial_overlap = false;
+  const auto relevant_fragments = subarray_.relevant_fragments();
+  bool all_frag = !subarray_.is_set();
   for (size_t i = 0;
        i < (all_frag ? fragment_metadata_.size() : relevant_fragments->size());
        i++) {
     auto frag_idx = all_frag ? i : relevant_fragments->at(i);
     auto& fragment = fragment_metadata_[frag_idx];
-    auto fragment_timestamps = fragment->timestamp_range();
-
-    if (fragment->has_timestamps()) {
-      partial_overlap |=
-          (array_->timestamp_end_opened_at() >= fragment_timestamps.first) &&
-          (array_->timestamp_end_opened_at() < fragment_timestamps.second);
-    }
-
-    if (partial_overlap) {
-      break;
+    if (fragment->has_timestamps() &&
+        fragment->partial_time_overlap(
+            array_->timestamp_start(), array_->timestamp_end_opened_at())) {
+      return true;
     }
   }
 
-  return partial_overlap;
+  return false;
+}
+
+Status ReaderBase::add_partial_overlap_condition() {
+  // add one query condition for start time, one for end time and combine them
+  QueryCondition timestamps_qc_start;
+  auto ts_start = array_->timestamp_start();
+  RETURN_NOT_OK(timestamps_qc_start.init(
+      std::string(constants::timestamps),
+      &ts_start,
+      sizeof(uint64_t),
+      QueryConditionOp::GE));
+  QueryCondition timestamps_qc_end;
+  auto ts_end = array_->timestamp_end_opened_at();
+  RETURN_NOT_OK(timestamps_qc_end.init(
+      std::string(constants::timestamps),
+      &ts_end,
+      sizeof(uint64_t),
+      QueryConditionOp::LE));
+  RETURN_NOT_OK(timestamps_qc_start.combine(
+      timestamps_qc_end,
+      QueryConditionCombinationOp::AND,
+      &partial_overlap_condition_));
+
+  return Status::Ok();
 }
 
 Status ReaderBase::load_tile_offsets(

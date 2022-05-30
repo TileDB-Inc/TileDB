@@ -788,6 +788,27 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key);
 
   /**
+   * Checks if the fragment overlaps partially (not fully) with a given
+   * array open - end time.
+   *
+   * @param array_start_timestamps Array open time
+   * @param array_end_timestamp Array end time
+   *
+   * @return True if there is partial overlap, false if there is full or no
+   * overlap
+   */
+  inline bool partial_time_overlap(
+      uint64_t array_start_timestamp, uint64_t array_end_timestamp) const {
+    auto fragment_timestamp_start = timestamp_range_.first;
+    auto fragment_timestamp_end = timestamp_range_.second;
+
+    return (array_start_timestamp > fragment_timestamp_start &&
+            array_start_timestamp <= fragment_timestamp_end) ||
+           (array_end_timestamp < fragment_timestamp_end &&
+            array_end_timestamp >= fragment_timestamp_start);
+  }
+
+  /**
    * Returns ArraySchema
    *
    * @return

@@ -35,8 +35,6 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/enums/query_condition_combination_op.h"
-#include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -87,7 +85,8 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
     , buffers_full_(false)
-    , user_requested_timestamps_(false) {
+    , user_requested_timestamps_(false)
+    , use_timestamps_(false) {
   read_state_.done_adding_result_tiles_ = false;
   disable_cache_ = true;
 }
@@ -206,24 +205,7 @@ SparseIndexReaderBase::get_coord_tiles_size(
   return {Status::Ok(), std::make_pair(tiles_size, tiles_size_qc)};
 }
 
-bool SparseIndexReaderBase::consolidation_with_timestamps_config_enabled()
-    const {
-  auto found = false;
-  auto consolidation_with_timestamps = false;
-  auto status = config_.get<bool>(
-      "sm.consolidation.with_timestamps",
-      &consolidation_with_timestamps,
-      &found);
-  if (!status.ok() || !found) {
-    throw std::runtime_error(
-        "Cannot get with_timestamps configuration option from config");
-  }
-
-  return consolidation_with_timestamps;
-}
-
-// TBD: check if include_timestamps is needed anymore
-Status SparseIndexReaderBase::load_initial_data(bool include_timestamps) {
+Status SparseIndexReaderBase::load_initial_data() {
   if (initial_data_loaded_)
     return Status::Ok();
 
@@ -304,22 +286,18 @@ Status SparseIndexReaderBase::load_initial_data(bool include_timestamps) {
     }
   }
 
-  auto load_timestamps = consolidation_with_timestamps_config_enabled() &&
-                         partial_consolidated_fragment_overlap(subarray_);
+  use_timestamps_ = partial_consolidated_fragment_overlap() ||
+                    !array_schema_.allows_dups() || user_requested_timestamps_;
 
-  // Add timestamps if required. If the user has requested timestamps the
-  // special attribute will already be in the list, so don't include it again
-  if ((include_timestamps || load_timestamps) && !user_requested_timestamps_) {
-    attr_tile_offsets_to_load.emplace_back(constants::timestamps);
-  }
+  // Add timestamps and filter by timestamps condition if required. If the user
+  // has requested timestamps the special attribute will already be in the list,
+  // so don't include it again
+  if (use_timestamps_) {
+    if (!user_requested_timestamps_) {
+      attr_tile_offsets_to_load.emplace_back(constants::timestamps);
+    }
 
-  if (load_timestamps) {
-    auto open_timestamp = array_->timestamp_end_opened_at();
-    RETURN_CANCEL_OR_ERROR(partial_overlap_condition_.init(
-        std::string(constants::timestamps),
-        &open_timestamp,
-        sizeof(uint64_t),
-        QueryConditionOp::LT));
+    RETURN_CANCEL_OR_ERROR(add_partial_overlap_condition());
   }
 
   // Make a list of dim/attr that will be loaded for query condition.
@@ -328,9 +306,6 @@ Status SparseIndexReaderBase::load_initial_data(bool include_timestamps) {
       for (auto& name : condition_.field_names()) {
         qc_loaded_names_.emplace_back(name);
       }
-    }
-    if (!partial_overlap_condition_.empty()) {
-      qc_loaded_names_.emplace_back(constants::timestamps);
     }
   }
 
@@ -345,14 +320,11 @@ Status SparseIndexReaderBase::load_initial_data(bool include_timestamps) {
 }
 
 Status SparseIndexReaderBase::read_and_unfilter_coords(
-    bool include_coords,
-    bool include_timestamps,
-    const std::vector<ResultTile*>& result_tiles) {
+    bool include_coords, const std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("read_and_unfilter_coords");
 
   // Not including coords or no query condition, exit.
-  if (!include_coords && condition_.empty() &&
-      partial_overlap_condition_.empty())
+  if (!include_coords && condition_.empty() && !use_timestamps_)
     return Status::Ok();
 
   if (subarray_.is_set() || include_coords) {
@@ -371,14 +343,14 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
     }
   }
 
-  if (include_timestamps || !partial_overlap_condition_.empty()) {
+  if (use_timestamps_) {
     std::vector<std::string> timestamps_names = {constants::timestamps};
     RETURN_CANCEL_OR_ERROR(
         read_attribute_tiles(timestamps_names, result_tiles));
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::timestamps, result_tiles));
   }
 
-  if (!condition_.empty() || !partial_overlap_condition_.empty()) {
+  if (!condition_.empty()) {
     // Read and unfilter tiles for query condition.
     RETURN_CANCEL_OR_ERROR(
         read_attribute_tiles(qc_loaded_names_, result_tiles));
@@ -596,7 +568,7 @@ Status SparseIndexReaderBase::apply_query_condition(
     std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("apply_query_condition");
 
-  if (!condition_.empty() || !partial_overlap_condition_.empty()) {
+  if (!condition_.empty() || use_timestamps_) {
     // Process all tiles in parallel.
     auto status = parallel_for(
         storage_manager_->compute_tp(),
@@ -630,11 +602,11 @@ Status SparseIndexReaderBase::apply_query_condition(
           }
 
           // If timestamps are present and fragment is partially included,
-          // filter out fragments based on time by applying the query condition
-          auto full_overlap = array_->timestamp_end_opened_at() >=
-                              frag_meta->timestamp_range().second;
+          // filter out tiles based on time by applying the query condition
           if (frag_meta->has_timestamps() &&
-              !partial_overlap_condition_.empty() && !full_overlap) {
+              frag_meta->partial_time_overlap(
+                  array_->timestamp_start(),
+                  array_->timestamp_end_opened_at())) {
             RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<BitmapType>(
                 *(frag_meta->array_schema().get()),
                 *rt,
@@ -786,13 +758,10 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
 }
 
 bool SparseIndexReaderBase::include_timestamps(const unsigned f) {
-  auto fragment_timestamps = fragment_metadata_[f]->timestamp_range();
-  auto partial_overlap =
-      (array_->timestamp_start() > fragment_timestamps.first) ||
-      (array_->timestamp_end() < fragment_timestamps.second);
-
   return fragment_metadata_[f]->has_timestamps() &&
-         (user_requested_timestamps_ || partial_overlap ||
+         (user_requested_timestamps_ ||
+          fragment_metadata_[f]->partial_time_overlap(
+              array_->timestamp_start(), array_->timestamp_end_opened_at()) ||
           !array_schema_.allows_dups());
 }
 

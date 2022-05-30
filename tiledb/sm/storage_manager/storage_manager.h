@@ -1187,6 +1187,9 @@ class StorageManager {
 
   /** Sets default tag values on this StorageManager. */
   Status set_default_tags();
+
+  inline bool partial_time_overlap(
+      uint64_t array_start_timestamp, uint64_t array_end_timestamp) const;
 };
 
 }  // namespace sm
