@@ -164,7 +164,7 @@ Status SparseGlobalOrderReader::dowork() {
   }
 
   // Load initial data, if not loaded already.
-  RETURN_NOT_OK(load_initial_data(true));
+  RETURN_NOT_OK(load_initial_data());
 
   // Attributes names to process.
   std::vector<std::string> names;
@@ -197,7 +197,7 @@ Status SparseGlobalOrderReader::dowork() {
       }
 
       // Read and unfilter coords.
-      RETURN_NOT_OK(read_and_unfilter_coords(true, true, tmp_result_tiles));
+      RETURN_NOT_OK(read_and_unfilter_coords(true, tmp_result_tiles));
 
       // Compute the tile bitmaps.
       RETURN_NOT_OK(compute_tile_bitmaps<uint8_t>(tmp_result_tiles));

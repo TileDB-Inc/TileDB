@@ -167,6 +167,12 @@ class ReaderBase : public StrategyBase {
   /** Disable the tile cache or not. */
   bool disable_cache_;
 
+  /**
+   * The condition to apply on results when there is partial time overlap
+   * with at least one fragment
+   * */
+  QueryCondition partial_overlap_condition_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -230,6 +236,21 @@ class ReaderBase : public StrategyBase {
    */
   Status load_tile_offsets(
       Subarray& subarray, const std::vector<std::string>& names);
+
+  /**
+   * Checks if at least one fragment overlaps partially with the
+   * time at which the read is taking place.
+   *
+   * @return True if at least one fragment partially overlaps.
+   */
+  bool partial_consolidated_fragment_overlap() const;
+
+  /**
+   * Add a condition for partial time overlap based on array open and
+   * end times, to be used to filter out results on fragments that have
+   * been consolidated with timestamps
+   */
+  Status add_partial_overlap_condition();
 
   /**
    * Loads tile var sizes for each attribute/dimension name into

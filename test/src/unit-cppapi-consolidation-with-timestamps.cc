@@ -67,11 +67,21 @@ struct ConsolidationWithTimestampsFx {
   void write_sparse_v11(uint64_t timestamp);
   void consolidate_sparse();
   void check_timestamps_file(std::vector<uint64_t> expected);
-  void read_sparse_global_order(
+  void read_sparse(
       std::vector<int>& a1,
       std::vector<uint64_t>& dim1,
       std::vector<uint64_t>& dim2,
-      std::string& stats);
+      std::string& stats,
+      tiledb_layout_t layout,
+      uint64_t timestamp);
+  void reopen_sparse(
+      std::vector<int>& a1,
+      std::vector<uint64_t>& dim1,
+      std::vector<uint64_t>& dim2,
+      std::string& stats,
+      tiledb_layout_t layout,
+      uint64_t start_time,
+      uint64_t end_time);
 
   void remove_sparse_array();
   void remove_array(const std::string& array_name);
@@ -241,17 +251,51 @@ void ConsolidationWithTimestampsFx::check_timestamps_file(
   }
 }
 
-void ConsolidationWithTimestampsFx::read_sparse_global_order(
+void ConsolidationWithTimestampsFx::read_sparse(
     std::vector<int>& a1,
     std::vector<uint64_t>& dim1,
     std::vector<uint64_t>& dim2,
-    std::string& stats) {
+    std::string& stats,
+    tiledb_layout_t layout,
+    uint64_t timestamp) {
   // Open array
-  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ);
+  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
 
   // Create query
   Query query(ctx_, array, TILEDB_READ);
-  query.set_layout(TILEDB_GLOBAL_ORDER);
+  query.set_layout(layout);
+  query.set_data_buffer("a1", a1);
+  query.set_data_buffer("d1", dim1);
+  query.set_data_buffer("d2", dim2);
+
+  // Submit/finalize the query
+  query.submit();
+  CHECK(query.query_status() == Query::Status::COMPLETE);
+
+  // Get the query stats.
+  stats = query.stats();
+
+  // Close array
+  array.close();
+}
+
+void ConsolidationWithTimestampsFx::reopen_sparse(
+    std::vector<int>& a1,
+    std::vector<uint64_t>& dim1,
+    std::vector<uint64_t>& dim2,
+    std::string& stats,
+    tiledb_layout_t layout,
+    uint64_t start_time,
+    uint64_t end_time) {
+  // Re-open array
+  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ);
+  array.set_open_timestamp_start(start_time);
+  array.set_open_timestamp_end(end_time);
+  array.reopen();
+
+  // Create query
+  Query query(ctx_, array, TILEDB_READ);
+  query.set_layout(layout);
   query.set_data_buffer("a1", a1);
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
@@ -395,18 +439,22 @@ TEST_CASE_METHOD(
 
   // Write second fragment.
   write_sparse({8, 9, 10, 11}, {2, 2, 3, 3}, {2, 3, 2, 3}, 2);
+
+  // Consolidate.
+  consolidate_sparse();
+
   std::string stats;
   std::vector<int> a1(10);
   std::vector<uint64_t> dim1(10);
   std::vector<uint64_t> dim2(10);
-  read_sparse_global_order(a1, dim1, dim2, stats);
+  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 3);
 
   std::vector<int> c_a1 = {0, 1, 8, 2, 9, 4, 10, 5, 11, 7};
   std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 3, 3, 4, 3, 3};
   std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 1, 2, 2, 3, 4};
-  CHECK(!memcmp(c_a1.data(), a1.data(), sizeof(c_a1)));
-  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
-  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+  CHECK(!memcmp(c_a1.data(), a1.data(), c_a1.size() * sizeof(int)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
 
   remove_sparse_array();
 }
@@ -505,7 +553,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1(1);
   std::vector<uint64_t> dim1(1);
   std::vector<uint64_t> dim2(1);
-  read_sparse_global_order(a1, dim1, dim2, stats);
+  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 51);
 
   CHECK(a1[0] == 50);
   CHECK(dim1[0] == 1);
@@ -542,14 +590,14 @@ TEST_CASE_METHOD(
   std::vector<int> a1(8);
   std::vector<uint64_t> dim1(8);
   std::vector<uint64_t> dim2(8);
-  read_sparse_global_order(a1, dim1, dim2, stats);
+  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 7);
 
   std::vector<int> c_a1 = {1, 2, 3, 4, 5, 6, 7, 8};
   std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2};
   std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4};
-  CHECK(!memcmp(c_a1.data(), a1.data(), sizeof(c_a1)));
-  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
-  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+  CHECK(!memcmp(c_a1.data(), a1.data(), c_a1.size() * sizeof(int)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
 
   remove_sparse_array();
 }
@@ -583,7 +631,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1(1);
   std::vector<uint64_t> dim1(1);
   std::vector<uint64_t> dim2(1);
-  read_sparse_global_order(a1, dim1, dim2, stats);
+  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 51);
 
   CHECK(a1[0] == 50);
   CHECK(dim1[0] == 1);
@@ -607,7 +655,7 @@ TEST_CASE_METHOD(
   create_sparse_array();
 
   // Write fragments.
-  // We write 8 cells per fragments for 6 fragments. Then it gets consolidated
+  // We write 8 cells per fragment for 6 fragments. Then it gets consolidated
   // into one. So we'll get in order 6xcell1, 6xcell2... total 48 cells. Tile
   // capacity is 20 so we'll end up with 3 tiles. First break in the tiles will
   // be in the middle of cell3, second will be in the middle of the cells7.
@@ -629,22 +677,275 @@ TEST_CASE_METHOD(
   ctx_ = Context(cfg);
 
   std::string stats;
-  std::vector<int> a1(8);
-  std::vector<uint64_t> dim1(8);
-  std::vector<uint64_t> dim2(8);
-  read_sparse_global_order(a1, dim1, dim2, stats);
+  std::vector<int> a1(9);
+  std::vector<uint64_t> dim1(9);
+  std::vector<uint64_t> dim2(9);
+  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 7);
 
   std::vector<int> c_a1 = {1, 2, 3, 4, 5, 6, 7, 8};
   std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2};
   std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4};
-  CHECK(!memcmp(c_a1.data(), a1.data(), sizeof(c_a1)));
-  CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
-  CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+  CHECK(!memcmp(c_a1.data(), a1.data(), c_a1.size() * sizeof(int)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
 
   // Make sure there was an internal loop on the reader.
   CHECK(
       stats.find("\"Context.StorageManager.Query.Reader.loop_num\": 2") !=
       std::string::npos);
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, partial read with dups",
+    "[cppapi][consolidation-with-timestamps][partial-read][dups]") {
+  remove_sparse_array();
+  // enable duplicates
+  create_sparse_array(true);
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+
+  // Write second fragment.
+  write_sparse({8, 9, 10, 11}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
+
+  // Consolidate.
+  consolidate_sparse();
+
+  tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
+  std::string stats;
+  std::vector<int> a(10);
+  std::vector<uint64_t> dim1(10);
+  std::vector<uint64_t> dim2(10);
+  SECTION("Read after all writes") {
+    // Read after both writes - should see everything
+    read_sparse(a, dim1, dim2, stats, layout, 4);
+
+    std::vector<int> c_a_opt1 = {0, 1, 8, 2, 3, 9, 10, 11};
+    std::vector<int> c_a_opt2 = {0, 1, 8, 2, 9, 3, 10, 11};
+    std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 2, 3, 3};
+    std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 3, 2, 3};
+    CHECK(
+        (!memcmp(c_a_opt1.data(), a.data(), c_a_opt1.size() * sizeof(int)) ||
+         !memcmp(c_a_opt2.data(), a.data(), c_a_opt2.size() * sizeof(int))));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+  }
+
+  SECTION("Read between the 2 writes") {
+    // Should see only first write
+    read_sparse(a, dim1, dim2, stats, layout, 2);
+
+    std::vector<int> c_a = {0, 1, 2, 3};
+    std::vector<uint64_t> c_dim1 = {1, 1, 1, 2};
+    std::vector<uint64_t> c_dim2 = {1, 2, 4, 3};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+  }
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, partial read without dups",
+    "[cppapi][consolidation-with-timestamps][partial-read][no-dups]") {
+  remove_sparse_array();
+  // no duplicates
+  create_sparse_array();
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+
+  // Write second fragment.
+  write_sparse({8, 9, 10, 11}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
+
+  // Consolidate.
+  consolidate_sparse();
+
+  std::string stats;
+  std::vector<int> a(10);
+  std::vector<uint64_t> dim1(10);
+  std::vector<uint64_t> dim2(10);
+  SECTION("Read after all writes") {
+    read_sparse(a, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 4);
+
+    std::vector<int> c_a = {0, 1, 8, 2, 9, 10, 11};
+    std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 3, 3};
+    std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 2, 3};
+    CHECK(!memcmp(c_a.data(), a.data(), sizeof(c_a)));
+    CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
+    CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+  }
+
+  SECTION("Read between the 2 writes") {
+    read_sparse(a, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 2);
+
+    std::vector<int> c_a = {0, 1, 2, 3};
+    std::vector<uint64_t> c_dim1 = {1, 1, 1, 2};
+    std::vector<uint64_t> c_dim2 = {1, 2, 4, 3};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+  }
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, full and partial read with "
+    "dups",
+    "[cppapi][consolidation-with-timestamps][partial-read][dups]") {
+  remove_sparse_array();
+  // enable duplicates
+  create_sparse_array(true);
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+  // Write second fragment.
+  write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3);
+
+  // Consolidate.
+  consolidate_sparse();
+
+  // Write third fragment.
+  write_sparse({8, 9, 10, 11}, {2, 1, 3, 4}, {1, 3, 1, 1}, 4);
+  // Write fourth fragment.
+  write_sparse({12, 13, 14, 15}, {4, 3, 3, 4}, {2, 3, 4, 4}, 6);
+
+  // Consolidate.
+  consolidate_sparse();
+
+  tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
+  std::string stats;
+  // TBD: why 15 in user buffer not enough?
+  std::vector<int> a(16);
+  std::vector<uint64_t> dim1(16);
+  std::vector<uint64_t> dim2(16);
+
+  SECTION("Read after all writes") {
+    // Read after both writes - should see everything
+    read_sparse(a, dim1, dim2, stats, layout, 7);
+    std::vector<int> c_a_opt1 = {
+        0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 7, 13, 14, 15};
+    std::vector<int> c_a_opt2 = {
+        0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 13, 7, 14, 15};
+    std::vector<uint64_t> c_dim1 = {
+        1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 3, 4};
+    std::vector<uint64_t> c_dim2 = {
+        1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 3, 4, 4};
+    CHECK(
+        (!memcmp(c_a_opt1.data(), a.data(), c_a_opt1.size() * sizeof(int)) ||
+         !memcmp(c_a_opt2.data(), a.data(), c_a_opt2.size() * sizeof(int))));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+  }
+
+  // Read with full coverage on first 2 consolidated, partial coverage on second
+  // 2 consolidated
+  SECTION("Read between the 2 writes") {
+    read_sparse(a, dim1, dim2, stats, layout, 5);
+
+    std::vector<int> c_a = {0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 7};
+    std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 3};
+    std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 3};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+  }
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, reopen",
+    "[cppapi][consolidation-with-timestamps][partial-read][dups]") {
+  remove_sparse_array();
+  // enable duplicates
+  create_sparse_array(true);
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+  // Write second fragment.
+  write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
+  // Write third  fragment.
+  write_sparse({8, 9, 10, 11}, {1, 2, 3, 4}, {3, 4, 1, 1}, 5);
+
+  // Consolidate.
+  consolidate_sparse();
+
+  tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
+  std::string stats;
+  std::vector<int> a(16);
+  std::vector<uint64_t> dim1(16);
+  std::vector<uint64_t> dim2(16);
+
+  SECTION("Read in the middle") {
+    // Read between 2 and 4
+    reopen_sparse(a, dim1, dim2, stats, layout, 2, 4);
+
+    // Expect to read only what was written at time 3
+    std::vector<int> c_a = {4, 5, 6, 7};
+    std::vector<uint64_t> c_dim1 = {2, 2, 3, 3};
+    std::vector<uint64_t> c_dim2 = {2, 3, 2, 3};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+  }
+
+  SECTION("Read the last 2 writes only") {
+    reopen_sparse(a, dim1, dim2, stats, layout, 2, 6);
+
+    write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
+    // Write third  fragment.
+    write_sparse({8, 9, 10, 11}, {1, 2, 3, 4}, {3, 4, 1, 1}, 5);
+
+    // Expect to read what the last 2 writes wrote
+    std::vector<int> c_a = {4, 8, 5, 9, 10, 6, 11, 7};
+    std::vector<uint64_t> c_dim1 = {2, 1, 2, 2, 3, 3, 4, 3};
+    std::vector<uint64_t> c_dim2 = {2, 3, 3, 4, 1, 2, 1, 3};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+  }
+
+  SECTION("Read the first 2 writes only") {
+    reopen_sparse(a, dim1, dim2, stats, layout, 0, 4);
+
+    // Expect to read what the first 2 writes wrote
+    std::vector<int> c_a_opt1 = {0, 1, 4, 2, 5, 3, 6, 7};
+    std::vector<int> c_a_opt2 = {0, 1, 4, 2, 3, 5, 6, 7};
+    std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 2, 3, 3};
+    std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 3, 2, 3};
+    CHECK(
+        (!memcmp(c_a_opt1.data(), a.data(), c_a_opt1.size() * sizeof(int)) ||
+         !memcmp(c_a_opt2.data(), a.data(), c_a_opt2.size() * sizeof(int))));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+  }
 
   remove_sparse_array();
 }
