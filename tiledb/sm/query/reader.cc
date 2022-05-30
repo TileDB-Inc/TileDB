@@ -1343,8 +1343,7 @@ Status Reader::process_tiles(
 
     // Read the tiles for the names in `inner_names`. Each attribute
     // name will be read concurrently.
-    RETURN_CANCEL_OR_ERROR(
-        read_attribute_tiles(inner_names, result_tiles, false));
+    RETURN_CANCEL_OR_ERROR(read_attribute_tiles(inner_names, result_tiles));
 
     // Copy the cells into the associated `buffers_`, and then clear the cells
     // from the tiles. The cell copies are not thread safe. Clearing tiles are
@@ -1353,7 +1352,7 @@ Status Reader::process_tiles(
     for (const auto& inner_name : inner_names) {
       const ProcessTileFlags flags = names.at(inner_name);
 
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(inner_name, result_tiles, false));
+      RETURN_CANCEL_OR_ERROR(unfilter_tiles(inner_name, result_tiles));
 
       if (flags & ProcessTileFlag::COPY) {
         if (!array_schema_.var_size(inner_name)) {
