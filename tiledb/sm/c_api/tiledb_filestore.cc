@@ -63,6 +63,8 @@ bool libmagic_file_is_compressed(void* data, uint64_t size);
 Status read_file_header(
     const VFS& vfs, const char* uri, std::vector<char>& header);
 std::pair<std::string, std::string> strip_file_extension(const char* file_uri);
+std::pair<Status, optional<uint64_t>> get_buffer_size_from_config(
+    const Context& context, uint64_t tile_extent);
 
 TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
     tiledb_ctx_t* ctx,
@@ -243,9 +245,16 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
   std::istream input(&fb);
 
   uint64_t tile_extent = compute_tile_extent_based_on_file_size(file_size);
+  auto&& [st3, buffer_size] = get_buffer_size_from_config(context, tile_extent);
+  if (!st3.ok()) {
+    LOG_STATUS(st3);
+    save_error(ctx, st3);
+    return TILEDB_ERR;
+  }
+
   Query query(context, array);
   query.set_layout(TILEDB_GLOBAL_ORDER);
-  std::vector<std::byte> buffer(tile_extent);
+  std::vector<std::byte> buffer(*buffer_size);
 
   Subarray subarray(context, array);
   // We need to get the right end boundary of the last space tile.
@@ -260,27 +269,29 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
   subarray.add_range(0, static_cast<uint64_t>(0), last_space_tile_boundary);
   query.set_subarray(subarray);
 
-  while (input.read(reinterpret_cast<char*>(buffer.data()), tile_extent)) {
+  while (input.read(reinterpret_cast<char*>(buffer.data()), *buffer_size)) {
     query.set_data_buffer(
         tiledb::sm::constants::filestore_attribute_name,
         buffer.data(),
-        buffer.size());
+        *buffer_size);
     query.submit();
   }
 
-  // If the end of the file was reached, but less than tile_extent bytes
+  // If the end of the file was reached, but less than buffer_size bytes
   // were read, write the read bytes into the array.
   // Check input.gcount() to guard against the case when file_size is
-  // a multiple of tile_extent, thus eof gets set but there are no more
+  // a multiple of buffer_size, thus eof gets set but there are no more
   // bytes to read
   if (input.eof() && input.gcount() > 0) {
     size_t read_bytes = input.gcount();
     // Initialize the remaining empty cells to 0
-    std::memset(buffer.data() + read_bytes, 0, buffer.size() - read_bytes);
+    std::memset(buffer.data() + read_bytes, 0, *buffer_size - read_bytes);
+    uint64_t last_tile_size = last_space_tile_boundary -
+                              file_size / (*buffer_size) * (*buffer_size) + 1;
     query.set_data_buffer(
         tiledb::sm::constants::filestore_attribute_name,
         buffer.data(),
-        buffer.size());
+        last_tile_size);
     query.submit();
   } else if (!input.eof()) {
     // Something must have gone wrong whilst reading the file
@@ -338,10 +349,16 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
 
   uint64_t file_size = *static_cast<const uint64_t*>(size);
   uint64_t tile_extent = compute_tile_extent_based_on_file_size(file_size);
+  auto&& [st3, buffer_size] = get_buffer_size_from_config(context, tile_extent);
+  if (!st3.ok()) {
+    LOG_STATUS(st3);
+    save_error(ctx, st3);
+    return TILEDB_ERR;
+  }
 
-  std::vector<std::byte> data(tile_extent);
+  std::vector<std::byte> data(*buffer_size);
   uint64_t start_range = 0;
-  uint64_t end_range = std::min(file_size, tile_extent) - 1;
+  uint64_t end_range = std::min(file_size, *buffer_size) - 1;
   do {
     uint64_t write_size = end_range - start_range + 1;
     Subarray subarray(context, array);
@@ -373,7 +390,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
     output.write(reinterpret_cast<char*>(data.data()), write_size);
 
     start_range = end_range + 1;
-    end_range = std::min(file_size - 1, end_range + tile_extent);
+    end_range = std::min(file_size - 1, end_range + *buffer_size);
   } while (start_range <= end_range);
 
   output.flush();
@@ -644,6 +661,29 @@ std::pair<std::string, std::string> strip_file_extension(const char* file_uri) {
   auto fname_pos = uri.find_last_of('/') + 1;
 
   return {uri.substr(fname_pos, ext_pos - fname_pos), ext};
+}
+
+std::pair<Status, optional<uint64_t>> get_buffer_size_from_config(
+    const Context& context, uint64_t tile_extent) {
+  bool found = false;
+  uint64_t buffer_size;
+  auto st = context.config().ptr()->config_->get<uint64_t>(
+      "filestore.buffer_size", &buffer_size, &found);
+
+  RETURN_NOT_OK_TUPLE(st, nullopt);
+  assert(found);
+
+  if (buffer_size < tile_extent) {
+    auto st = Status_Error(
+        "The buffer size configured via filestore.buffer_size"
+        "is smaller than current " +
+        std::to_string(tile_extent) + " tile extent");
+    return {st, nullopt};
+  }
+  // Round the buffer size down to the nearest tile
+  buffer_size = buffer_size / tile_extent * tile_extent;
+
+  return {Status::Ok(), buffer_size};
 }
 
 }  // namespace tiledb::common::detail

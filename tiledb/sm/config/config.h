@@ -492,6 +492,12 @@ class Config {
   /** S3 default object canned ACL */
   static const std::string VFS_S3_OBJECT_CANNED_ACL;
 
+  /**
+   * Specifies the size in bytes of the internal buffers used in the filestore
+   * API. The size should be bigger than the minimum tile size filestore
+   * currently supports, that is currently 1024bytes. */
+  static const std::string FILESTORE_BUFFER_SIZE;
+
   /* ****************************** */
   /*        OTHER CONSTANTS         */
   /* ****************************** */
