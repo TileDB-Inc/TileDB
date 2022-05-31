@@ -57,6 +57,7 @@ struct ConsolidationWithTimestampsFx {
   ~ConsolidationWithTimestampsFx();
 
   // Functions
+  void set_legacy();
   void create_sparse_array(bool allows_dups = false);
   void create_sparse_array_v11();
   void write_sparse(
@@ -99,6 +100,18 @@ ConsolidationWithTimestampsFx::ConsolidationWithTimestampsFx()
 }
 
 ConsolidationWithTimestampsFx::~ConsolidationWithTimestampsFx() {
+}
+
+void ConsolidationWithTimestampsFx::set_legacy() {
+  Config config;
+  config.set("sm.consolidation.with_timestamps", "true");
+  config.set("sm.consolidation.buffer_size", "1000");
+  config.set("sm.query.sparse_global_order.reader", "legacy");
+  config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
+
+  ctx_ = Context(config);
+  sm_ = ctx_.ptr().get()->ctx_->storage_manager();
+  vfs_ = VFS(ctx_);
 }
 
 void ConsolidationWithTimestampsFx::create_sparse_array(bool allows_dups) {
@@ -443,10 +456,18 @@ TEST_CASE_METHOD(
   // Consolidate.
   consolidate_sparse();
 
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  uint64_t buffer_size = 10;
+  if (legacy) {
+    buffer_size = 100;
+    set_legacy();
+  }
+
   std::string stats;
-  std::vector<int> a1(10);
-  std::vector<uint64_t> dim1(10);
-  std::vector<uint64_t> dim2(10);
+  std::vector<int> a1(buffer_size);
+  std::vector<uint64_t> dim1(buffer_size);
+  std::vector<uint64_t> dim2(buffer_size);
   read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 3);
 
   std::vector<int> c_a1 = {0, 1, 8, 2, 9, 4, 10, 5, 11, 7};
@@ -549,10 +570,18 @@ TEST_CASE_METHOD(
   // Consolidate.
   consolidate_sparse();
 
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  uint64_t buffer_size = 1;
+  if (legacy) {
+    set_legacy();
+    buffer_size = 100;
+  }
+
   std::string stats;
-  std::vector<int> a1(1);
-  std::vector<uint64_t> dim1(1);
-  std::vector<uint64_t> dim2(1);
+  std::vector<int> a1(buffer_size);
+  std::vector<uint64_t> dim1(buffer_size);
+  std::vector<uint64_t> dim2(buffer_size);
   read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 51);
 
   CHECK(a1[0] == 50);
@@ -586,10 +615,18 @@ TEST_CASE_METHOD(
   // Consolidate.
   consolidate_sparse();
 
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  uint64_t buffer_size = 8;
+  if (legacy) {
+    set_legacy();
+    buffer_size = 100;
+  }
+
   std::string stats;
-  std::vector<int> a1(8);
-  std::vector<uint64_t> dim1(8);
-  std::vector<uint64_t> dim2(8);
+  std::vector<int> a1(buffer_size);
+  std::vector<uint64_t> dim1(buffer_size);
+  std::vector<uint64_t> dim2(buffer_size);
   read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 7);
 
   std::vector<int> c_a1 = {1, 2, 3, 4, 5, 6, 7, 8};
@@ -716,6 +753,12 @@ TEST_CASE_METHOD(
 
   tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
 
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  if (legacy) {
+    set_legacy();
+  }
+
   std::string stats;
   std::vector<int> a(10);
   std::vector<uint64_t> dim1(10);
@@ -770,6 +813,12 @@ TEST_CASE_METHOD(
 
   // Consolidate.
   consolidate_sparse();
+
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  if (legacy) {
+    set_legacy();
+  }
 
   std::string stats;
   std::vector<int> a(10);
@@ -828,6 +877,12 @@ TEST_CASE_METHOD(
   consolidate_sparse();
 
   tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  if (legacy) {
+    set_legacy();
+  }
 
   std::string stats;
   // TBD: why 15 in user buffer not enough?
@@ -892,6 +947,12 @@ TEST_CASE_METHOD(
 
   tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
 
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  if (legacy) {
+    set_legacy();
+  }
+
   std::string stats;
   std::vector<int> a(16);
   std::vector<uint64_t> dim1(16);
@@ -914,10 +975,6 @@ TEST_CASE_METHOD(
 
   SECTION("Read the last 2 writes only") {
     reopen_sparse(a, dim1, dim2, stats, layout, 2, 6);
-
-    write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
-    // Write third  fragment.
-    write_sparse({8, 9, 10, 11}, {1, 2, 3, 4}, {3, 4, 1, 1}, 5);
 
     // Expect to read what the last 2 writes wrote
     std::vector<int> c_a = {4, 8, 5, 9, 10, 6, 11, 7};
