@@ -303,8 +303,10 @@ Status SparseIndexReaderBase::load_initial_data() {
     RETURN_CANCEL_OR_ERROR(add_partial_overlap_condition());
   }
 
-  // Load tile offsets for timestamps, ir required.
-  if (use_timestamps_) {
+  // Add timestamps and filter by timestamps condition if required. If the user
+  // has requested timestamps the special attribute will already be in the list,
+  // so don't include it again
+  if (use_timestamps_ && !user_requested_timestamps_) {
     attr_tile_offsets_to_load.emplace_back(constants::timestamps);
   }
 

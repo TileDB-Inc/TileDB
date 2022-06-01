@@ -179,6 +179,15 @@ Status Reader::complete_read_loop() {
   return Status::Ok();
 }
 
+uint64_t Reader::get_timestamp(const ResultCoords& rc) const {
+  const auto f = rc.tile_->frag_idx();
+  if (fragment_metadata_[f]->has_timestamps()) {
+    return rc.tile_->timestamp(rc.pos_);
+  } else {
+    return fragment_timestamp(rc.tile_);
+  }
+}
+
 Status Reader::dowork() {
   // Check that the query condition is valid.
   RETURN_NOT_OK(condition_.check(array_schema_));
@@ -1555,7 +1564,7 @@ Status Reader::compute_result_coords(
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles));
   }
 
-  // Rand and unfilter timestamps, if required.
+  // Read and unfilter timestamps, if required.
   if (use_timestamps_) {
     std::vector<std::string> timestamps = {constants::timestamps};
     RETURN_CANCEL_OR_ERROR(

@@ -703,14 +703,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    *
    * @return timestamp.
    */
-  uint64_t get_timestamp(const ResultCoords& rc) const {
-    const auto f = rc.tile_->frag_idx();
-    if (fragment_metadata_[f]->has_timestamps()) {
-      return rc.tile_->timestamp(rc.pos_);
-    } else {
-      return fragment_timestamp(rc.tile_);
-    }
-  }
+  uint64_t get_timestamp(const ResultCoords& rc) const;
 };
 
 }  // namespace sm
