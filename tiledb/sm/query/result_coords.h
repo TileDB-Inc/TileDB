@@ -191,7 +191,8 @@ struct GlobalOrderResultCoords
 
       // For overlapping ranges, if there's more than one cell in the bitmap,
       // return 1.
-      if constexpr (std::is_same<BitmapType, uint64_t>::value) {
+      const bool overlapping_ranges = std::is_same<BitmapType, uint64_t>::value;
+      if constexpr (overlapping_ranges) {
         if (base::tile_->bitmap_[base::pos_] != 1) {
           return 1;
         }
@@ -232,7 +233,8 @@ struct GlobalOrderResultCoords
 
       // For overlapping ranges, if there's more than one cell in the bitmap,
       // return 1.
-      if constexpr (std::is_same<BitmapType, uint64_t>::value) {
+      const bool overlapping_ranges = std::is_same<BitmapType, uint64_t>::value;
+      if constexpr (overlapping_ranges) {
         if (base::tile_->bitmap_[base::pos_] != 1) {
           return 1;
         }
