@@ -21,7 +21,7 @@ static const char* schema_str = R"rstr(
 
 TEST_CASE(
     "Capnp serialization: Filter pipeline default construction (sc-18250)",
-    "[serialization][!shouldfail]") {
+    "[serialization]") {
   int32_t status;
   tiledb_ctx_t* ctx;
   tiledb_buffer_t* buf;
@@ -37,10 +37,7 @@ TEST_CASE(
       tiledb_buffer_set_data(ctx, buf, (void*)schema_str, sizeof(schema_str));
   REQUIRE(status == TILEDB_OK);
 
-  // cannot actually run this, because it segfaults
-  // status = tiledb_deserialize_array_schema(ctx, buf,
-  // tiledb_serialization_type_t(0), 0, &schema); REQUIRE(status == TILEDB_OK);
-
-  (void)schema;
-  REQUIRE(false);
+  status = tiledb_deserialize_array_schema(
+      ctx, buf, tiledb_serialization_type_t(0), 0, &schema);
+  REQUIRE(status == TILEDB_OK);
 }
