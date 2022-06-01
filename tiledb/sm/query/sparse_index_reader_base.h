@@ -333,25 +333,20 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Load tile offsets and result tile ranges.
    *
-   * @param include_timestamps Include timestamps or not.
-   *
    * @return Status.
    */
-  Status load_initial_data(bool include_timestamps);
+  Status load_initial_data();
 
   /**
    * Read and unfilter coord tiles.
    *
    * @param include_coords Include coordinates or not.
-   * @param include_timestamps Include timestamps or not.
    * @param result_tiles The result tiles to process.
    *
    * @return Status.
    */
   Status read_and_unfilter_coords(
-      bool include_coords,
-      bool include_timestamps,
-      const std::vector<ResultTile*>& result_tiles);
+      bool include_coords, const std::vector<ResultTile*>& result_tiles);
 
   /**
    * Allocate a tile bitmap if required for this tile.

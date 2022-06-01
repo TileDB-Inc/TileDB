@@ -86,6 +86,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_array_data_(0.1)
     , buffers_full_(false) {
   read_state_.done_adding_result_tiles_ = false;
+  disable_cache_ = true;
 }
 
 /* ****************************** */
@@ -183,6 +184,11 @@ SparseIndexReaderBase::get_coord_tiles_size(
   if (subarray_.is_set())
     tiles_size += fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
 
+  if (include_timestamps(f)) {
+    tiles_size +=
+        fragment_metadata_[f]->cell_num(t) * constants::timestamp_size;
+  }
+
   // Compute query condition tile sizes.
   uint64_t tiles_size_qc = 0;
   if (!qc_loaded_names_.empty()) {
@@ -197,7 +203,7 @@ SparseIndexReaderBase::get_coord_tiles_size(
   return {Status::Ok(), std::make_pair(tiles_size, tiles_size_qc)};
 }
 
-Status SparseIndexReaderBase::load_initial_data(bool include_timestamps) {
+Status SparseIndexReaderBase::load_initial_data() {
   if (initial_data_loaded_)
     return Status::Ok();
 
@@ -281,10 +287,26 @@ Status SparseIndexReaderBase::load_initial_data(bool include_timestamps) {
 
     if (array_schema_.var_size(name))
       var_size_to_load.emplace_back(name);
+
+    if (name == constants::timestamps) {
+      user_requested_timestamps_ = true;
+    }
   }
 
-  // Add timestamps if required.
-  if (include_timestamps) {
+  const bool partial_consol_fragment_overlap =
+      partial_consolidated_fragment_overlap();
+  use_timestamps_ = partial_consol_fragment_overlap ||
+                    !array_schema_.allows_dups() || user_requested_timestamps_;
+
+  // Add partial overlap condition, if required.
+  if (partial_consol_fragment_overlap) {
+    RETURN_CANCEL_OR_ERROR(add_partial_overlap_condition());
+  }
+
+  // Add timestamps and filter by timestamps condition if required. If the user
+  // has requested timestamps the special attribute will already be in the list,
+  // so don't include it again
+  if (use_timestamps_ && !user_requested_timestamps_) {
     attr_tile_offsets_to_load.emplace_back(constants::timestamps);
   }
 
@@ -299,13 +321,11 @@ Status SparseIndexReaderBase::load_initial_data(bool include_timestamps) {
 }
 
 Status SparseIndexReaderBase::read_and_unfilter_coords(
-    bool include_coords,
-    bool include_timestamps,
-    const std::vector<ResultTile*>& result_tiles) {
+    bool include_coords, const std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("read_and_unfilter_coords");
 
   // Not including coords or no query condition, exit.
-  if (!include_coords && condition_.empty())
+  if (!include_coords && condition_.empty() && !use_timestamps_)
     return Status::Ok();
 
   if (subarray_.is_set() || include_coords) {
@@ -313,34 +333,31 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
     // this will ignore fragments with a version >= 5.
     std::vector<std::string> zipped_coords_names = {constants::coords};
     RETURN_CANCEL_OR_ERROR(
-        read_coordinate_tiles(zipped_coords_names, result_tiles, true));
-    RETURN_CANCEL_OR_ERROR(
-        unfilter_tiles(constants::coords, result_tiles, true));
+        read_coordinate_tiles(zipped_coords_names, result_tiles));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, result_tiles));
 
     // Read and unfilter unzipped coordinate tiles. Note that
     // this will ignore fragments with a version < 5.
-    RETURN_CANCEL_OR_ERROR(
-        read_coordinate_tiles(dim_names_, result_tiles, true));
+    RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names_, result_tiles));
     for (const auto& dim_name : dim_names_) {
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, result_tiles, true));
+      RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, result_tiles));
     }
   }
 
-  if (include_timestamps) {
+  if (use_timestamps_) {
     std::vector<std::string> timestamps_names = {constants::timestamps};
     RETURN_CANCEL_OR_ERROR(
-        read_attribute_tiles(timestamps_names, result_tiles, true));
-    RETURN_CANCEL_OR_ERROR(
-        unfilter_tiles(constants::timestamps, result_tiles, true));
+        read_attribute_tiles(timestamps_names, result_tiles));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::timestamps, result_tiles));
   }
 
   if (!condition_.empty()) {
-    // Read and unfilter tiles for querty condition.
+    // Read and unfilter tiles for query condition.
     RETURN_CANCEL_OR_ERROR(
-        read_attribute_tiles(qc_loaded_names_, result_tiles, true));
+        read_attribute_tiles(qc_loaded_names_, result_tiles));
 
     for (const auto& name : qc_loaded_names_) {
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles, true));
+      RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
     }
   }
 
@@ -552,7 +569,7 @@ Status SparseIndexReaderBase::apply_query_condition(
     std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("apply_query_condition");
 
-  if (!condition_.empty()) {
+  if (!condition_.empty() || use_timestamps_) {
     // Process all tiles in parallel.
     auto status = parallel_for(
         storage_manager_->compute_tp(),
@@ -561,9 +578,9 @@ Status SparseIndexReaderBase::apply_query_condition(
         [&](uint64_t t) {
           // For easy reference.
           auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[t];
+          const auto frag_meta = fragment_metadata_[rt->frag_idx()];
 
-          auto cell_num =
-              fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+          auto cell_num = frag_meta->cell_num(rt->tile_idx());
 
           // Set num_cells if no subarray as it's used to filter below.
           if (!subarray_.is_set()) {
@@ -577,11 +594,26 @@ Status SparseIndexReaderBase::apply_query_condition(
           }
 
           // Compute the result of the query condition for this tile.
-          RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
-              *(fragment_metadata_[rt->frag_idx()]->array_schema().get()),
-              *rt,
-              rt->bitmap_,
-              &rt->bitmap_result_num_));
+          if (!condition_.empty()) {
+            RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
+                *(frag_meta->array_schema().get()),
+                *rt,
+                rt->bitmap_,
+                &rt->bitmap_result_num_));
+          }
+
+          // If timestamps are present and fragment is partially included,
+          // filter out tiles based on time by applying the query condition
+          if (frag_meta->has_timestamps() &&
+              frag_meta->partial_time_overlap(
+                  array_->timestamp_start(),
+                  array_->timestamp_end_opened_at())) {
+            RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<BitmapType>(
+                *(frag_meta->array_schema().get()),
+                *rt,
+                rt->bitmap_,
+                &rt->bitmap_result_num_));
+          }
 
           return Status::Ok();
         });
@@ -624,10 +656,10 @@ SparseIndexReaderBase::read_and_unfilter_attributes(
 
   // Read and unfilter tiles.
   RETURN_NOT_OK_TUPLE(
-      read_attribute_tiles(names_to_read, result_tiles, true), nullopt);
+      read_attribute_tiles(names_to_read, result_tiles), nullopt);
 
   for (auto& name : names_to_read)
-    RETURN_NOT_OK_TUPLE(unfilter_tiles(name, result_tiles, true), nullopt);
+    RETURN_NOT_OK_TUPLE(unfilter_tiles(name, result_tiles), nullopt);
 
   return {Status::Ok(), std::move(index_to_copy)};
 }

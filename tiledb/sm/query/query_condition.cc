@@ -1372,17 +1372,22 @@ Status QueryCondition::apply_clause_sparse(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap) const {
-  const auto attribute = array_schema.attribute(clause.field_name_);
-  if (!attribute) {
-    return Status_QueryConditionError(
-        "Unknown attribute " + clause.field_name_);
+  bool var_size = false, nullable = false;
+  // initialize to timestamps type
+  Datatype type = Datatype::UINT64;
+  if (clause.field_name_ != constants::timestamps) {
+    const auto attribute = array_schema.attribute(clause.field_name_);
+    if (!attribute) {
+      return Status_QueryConditionError(
+          "Unknown attribute " + clause.field_name_);
+    }
+
+    var_size = attribute->var_size();
+    nullable = attribute->nullable();
+    type = attribute->type();
   }
 
-  const bool var_size = attribute->var_size();
-  const bool nullable = attribute->nullable();
-
   // Process the validity buffer now.
-
   if (nullable) {
     const auto tile_tuple = result_tile.tile_tuple(clause.field_name_);
     const auto& tile_validity = std::get<2>(*tile_tuple);
@@ -1409,7 +1414,7 @@ Status QueryCondition::apply_clause_sparse(
     }
   }
 
-  switch (attribute->type()) {
+  switch (type) {
     case Datatype::INT8:
       return apply_clause_sparse<int8_t, BitmapType>(
           clause, result_tile, var_size, result_bitmap);
@@ -1496,7 +1501,10 @@ Status QueryCondition::apply_sparse(
         apply_clause_sparse(clause, array_schema, result_tile, result_bitmap));
   }
 
-  *cell_count = std::accumulate(result_bitmap.begin(), result_bitmap.end(), 0);
+  if (cell_count != nullptr) {
+    *cell_count =
+        std::accumulate(result_bitmap.begin(), result_bitmap.end(), 0);
+  }
 
   return Status::Ok();
 }

@@ -164,7 +164,7 @@ Status SparseGlobalOrderReader::dowork() {
   }
 
   // Load initial data, if not loaded already.
-  RETURN_NOT_OK(load_initial_data(true));
+  RETURN_NOT_OK(load_initial_data());
 
   // Attributes names to process.
   std::vector<std::string> names;
@@ -197,7 +197,7 @@ Status SparseGlobalOrderReader::dowork() {
       }
 
       // Read and unfilter coords.
-      RETURN_NOT_OK(read_and_unfilter_coords(true, true, tmp_result_tiles));
+      RETURN_NOT_OK(read_and_unfilter_coords(true, tmp_result_tiles));
 
       // Compute the tile bitmaps.
       RETURN_NOT_OK(compute_tile_bitmaps<uint8_t>(tmp_result_tiles));
@@ -883,13 +883,20 @@ SparseGlobalOrderReader::merge_result_cell_slabs(
     // Make sure we don't merge more cells than the buffers.
     length = std::min(length, num_cells);
 
+    // Update the position in the result coord.
+    to_process.pos_ += length - 1;
+
+    // Make sure we don't process the last loaded cell of a consolidated
+    // with timestamps fragment if there are more tiles for that fragment.
+    if (last_in_memory_cell_of_consolidated_fragment(frag_idx, to_process)) {
+      length--;
+      to_process.pos_--;
+    }
+
     // Generate the result cell slabs.
     result_cell_slabs.emplace_back(tile, start, length);
     read_state_.frag_idx_[frag_idx] = FragIdx(tile_idx, start + length);
     num_cells -= length;
-
-    // Update the position in the result coord.
-    to_process.pos_ += length - 1;
 
     // Put the next cell in the queue.
     auto&& [st, more_tiles] =

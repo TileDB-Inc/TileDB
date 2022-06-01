@@ -169,7 +169,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   }
 
   // Load initial data, if not loaded already.
-  RETURN_NOT_OK(load_initial_data(false));
+  RETURN_NOT_OK(load_initial_data());
 
   // Attributes names to process.
   std::vector<std::string> names;
@@ -207,8 +207,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
 
     if (!result_tiles_created.empty()) {
       // Read and unfilter coords.
-      RETURN_NOT_OK(read_and_unfilter_coords(
-          subarray_.is_set(), false, result_tiles_created));
+      RETURN_NOT_OK(
+          read_and_unfilter_coords(subarray_.is_set(), result_tiles_created));
 
       // Compute the tile bitmaps.
       RETURN_NOT_OK(compute_tile_bitmaps<BitmapType>(result_tiles_created));
