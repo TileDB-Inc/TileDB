@@ -539,15 +539,10 @@ bool Dimension::oob(
     // Account for precision in floating point types. Arbitrarily set
     // the precision to up to 2 decimal places.
     if (dim->type_ == Datatype::FLOAT32 || dim->type_ == Datatype::FLOAT64) {
-      ss << std::setprecision(2) << std::fixed << *coord_t
-         << " is out of domain bounds [";
-      ss << std::setprecision(2) << std::fixed << domain[0] << ", ";
-      ss << std::setprecision(2) << std::fixed << domain[1];
-    } else {
-      ss << *coord_t << " is out of domain bounds [" << domain[0] << ", "
-         << domain[1];
+       ss << std::setprecision(std::numeric_limits<T>::digits10 + 1);
     }
-    ss << "] on dimension '" << dim->name() << "'";
+    ss << *coord_t << " is out of domain bounds [" << domain[0] << ", "
+        << domain[1] << "] on dimension '" << dim->name() << "'";
     *err_msg = ss.str();
     return true;
   }
