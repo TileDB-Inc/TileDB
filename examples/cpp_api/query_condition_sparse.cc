@@ -163,7 +163,7 @@ void write_array(Context& ctx) {
  * @param ctx The context.
  * @param qc The query condition to execute the query with.
  */
-void read_array_with_qc(Context& ctx, QueryCondition qc) {
+void read_array_with_qc(Context& ctx, std::optional<QueryCondition> qc) {
   // Create data buffers to read the values into.
   std::vector<int> a_data(num_elems);
   std::vector<uint8_t> a_data_validity(num_elems);
@@ -186,8 +186,10 @@ void read_array_with_qc(Context& ctx, QueryCondition qc) {
       .set_data_buffer("b", b_data)
       .set_offsets_buffer("b", b_data_offsets)
       .set_data_buffer("c", c_data)
-      .set_data_buffer("d", d_data)
-      .set_condition(qc);
+      .set_data_buffer("d", d_data);
+  if (qc) {
+    query.set_condition(qc.value());
+  }
   query.submit();
 
   // Collect the results of the read query. The number of elements
@@ -231,6 +233,11 @@ int main() {
   // Create and write data to the array.
   create_array(ctx);
   write_array(ctx);
+
+  // Printing the entire array.
+  std::cout << "Printing the entire array...\n";
+  read_array_with_qc(ctx, std::nullopt);
+  std::cout << "\n";
 
   // Execute a read query with query condition `a = null`.
   std::cout << "Running read query with query condition `a = null`...\n";
