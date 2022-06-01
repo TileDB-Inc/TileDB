@@ -1501,7 +1501,10 @@ Status QueryCondition::apply_sparse(
         apply_clause_sparse(clause, array_schema, result_tile, result_bitmap));
   }
 
-  *cell_count = std::accumulate(result_bitmap.begin(), result_bitmap.end(), 0);
+  if (cell_count != nullptr) {
+    *cell_count =
+        std::accumulate(result_bitmap.begin(), result_bitmap.end(), 0);
+  }
 
   return Status::Ok();
 }

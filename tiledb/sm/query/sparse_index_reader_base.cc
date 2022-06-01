@@ -84,9 +84,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_query_condition_(0.25)
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
-    , buffers_full_(false)
-    , user_requested_timestamps_(false)
-    , use_timestamps_(false) {
+    , buffers_full_(false) {
   read_state_.done_adding_result_tiles_ = false;
   disable_cache_ = true;
 }
@@ -295,18 +293,21 @@ Status SparseIndexReaderBase::load_initial_data() {
     }
   }
 
-  use_timestamps_ = partial_consolidated_fragment_overlap() ||
+  const bool partial_consol_fragment_overlap =
+      partial_consolidated_fragment_overlap();
+  use_timestamps_ = partial_consol_fragment_overlap ||
                     !array_schema_.allows_dups() || user_requested_timestamps_;
+
+  // Add partial overlap condition, if required.
+  if (partial_consol_fragment_overlap) {
+    RETURN_CANCEL_OR_ERROR(add_partial_overlap_condition());
+  }
 
   // Add timestamps and filter by timestamps condition if required. If the user
   // has requested timestamps the special attribute will already be in the list,
   // so don't include it again
-  if (use_timestamps_) {
-    if (!user_requested_timestamps_) {
-      attr_tile_offsets_to_load.emplace_back(constants::timestamps);
-    }
-
-    RETURN_CANCEL_OR_ERROR(add_partial_overlap_condition());
+  if (use_timestamps_ && !user_requested_timestamps_) {
+    attr_tile_offsets_to_load.emplace_back(constants::timestamps);
   }
 
   // Load tile offsets and var sizes for attributes.
@@ -755,14 +756,6 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
     std::unique_lock<std::mutex> lck(mem_budget_mtx_);
     memory_used_result_tile_ranges_ -= sizeof(std::pair<uint64_t, uint64_t>);
   }
-}
-
-bool SparseIndexReaderBase::include_timestamps(const unsigned f) {
-  return fragment_metadata_[f]->has_timestamps() &&
-         (user_requested_timestamps_ ||
-          fragment_metadata_[f]->partial_time_overlap(
-              array_->timestamp_start(), array_->timestamp_end_opened_at()) ||
-          !array_schema_.allows_dups());
 }
 
 // Explicit template instantiations

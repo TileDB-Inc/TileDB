@@ -75,7 +75,9 @@ ReaderBase::ReaderBase(
           subarray,
           layout)
     , condition_(condition)
-    , disable_cache_(false) {
+    , disable_cache_(false)
+    , user_requested_timestamps_(false)
+    , use_timestamps_(false) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
 }
@@ -269,6 +271,14 @@ Status ReaderBase::add_partial_overlap_condition() {
   return Status::Ok();
 }
 
+bool ReaderBase::include_timestamps(const unsigned f) const {
+  return fragment_metadata_[f]->has_timestamps() &&
+         (user_requested_timestamps_ ||
+          fragment_metadata_[f]->partial_time_overlap(
+              array_->timestamp_start(), array_->timestamp_end_opened_at()) ||
+          !array_schema_.allows_dups());
+}
+
 Status ReaderBase::load_tile_offsets(
     Subarray& subarray, const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");
@@ -312,7 +322,7 @@ Status ReaderBase::load_tile_offsets(
           }
 
           // If the fragment doesn't include timestamps
-          if (timestamps_not_present(name, fragment)) {
+          if (timestamps_not_present(name, frag_idx)) {
             continue;
           }
 
@@ -508,7 +518,7 @@ Status ReaderBase::read_tiles(
       }
 
       // If the fragment doesn't include timestamps
-      if (timestamps_not_present(name, fragment)) {
+      if (timestamps_not_present(name, tile->frag_idx())) {
         continue;
       }
 
@@ -773,7 +783,7 @@ ReaderBase::load_tile_chunk_data(
     }
 
     // If the fragment doesn't include timestamps
-    if (timestamps_not_present(name, fragment)) {
+    if (timestamps_not_present(name, tile->frag_idx())) {
       return {Status::Ok(), 0, 0, 0};
     }
 
@@ -831,7 +841,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
     }
 
     // If the fragment doesn't include timestamps
-    if (timestamps_not_present(name, fragment)) {
+    if (timestamps_not_present(name, tile->frag_idx())) {
       return Status::Ok();
     }
 
@@ -920,7 +930,7 @@ Status ReaderBase::post_process_unfiltered_tile(
     }
 
     // If the fragment doesn't include timestamps
-    if (timestamps_not_present(name, fragment)) {
+    if (timestamps_not_present(name, tile->frag_idx())) {
       return Status::Ok();
     }
 
@@ -1326,7 +1336,7 @@ Status ReaderBase::unfilter_tiles(
           }
 
           // If the fragment doesn't include timestamps
-          if (timestamps_not_present(name, fragment)) {
+          if (timestamps_not_present(name, tile->frag_idx())) {
             return Status::Ok();
           }
 
