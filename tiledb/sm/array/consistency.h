@@ -42,33 +42,39 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Array;
-class ConsistencyController;
 class ConsistencySentry;
-class WhiteboxConsistencyController;
-
-using entry_type = std::multimap<const URI, Array&>::const_iterator;
 
 /**
  * Tracks the open arrays on disk, considering that a given
  * URI can have multiple open arrays.
+ *
+ * Intended to act as a singleton global.
+ * There is only one (global) copy of this class used in practice.
  */
 class ConsistencyController {
   /**
-   * WhiteboxConsistencyController makes available internals of
-   * ConsistencyController for testing.
+   * Makes available the private APIs of ConsistencyController for array
+   * registration and deregistration.
+   */
+  friend class ConsistencySentry;
+  /**
+   * Makes available internals of ConsistencyController for testing.
    */
   friend class WhiteboxConsistencyController;
 
  public:
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
+  using entry_type = std::multimap<const URI, Array&>::const_iterator;
 
-  /** Constructor. */
+  /**
+   * Constructor.
+   *
+   * Default constructed as the initial state of the singleton Controller with
+   * no registered arrays.
+   * Note: nothing can be registered in the singleton until an array is opened.
+   */
   ConsistencyController() = default;
 
   /** Copy Constructor is deleted. */
@@ -86,21 +92,15 @@ class ConsistencyController {
   /** Destructor. */
   ~ConsistencyController() = default;
 
-  /* ********************************* */
-  /*                API                */
-  /* ********************************* */
-
-  /** Create the sentry object for the Array. */
+  /**
+   * Register the given Array as open.
+   *
+   * @return Sentry object whose lifespan is the same as the registration.
+   */
   ConsistencySentry make_sentry(const URI uri, Array& array);
 
-  /** Returns the iterator to the multimap after adding an entry. */
-  entry_type register_array(const URI uri, Array& array);
-
-  /** Takes an entry out of the multimap. */
-  void deregister_array(entry_type entry);
-
   /** Returns true if the array is open, i.e. registered in the multimap. */
-  bool contains(const URI uri);
+  bool is_open(const URI uri);
 
   /**
    * Returns true if the given URIs have the same "prefix" and could
@@ -109,50 +109,84 @@ class ConsistencyController {
    *
    * Note: The order of the arguments does not matter;
    * the API is checking for working tree intersection.
-   *
-   **/
+   */
   bool is_element_of(const URI uri, const URI intersecting_uri);
 
  private:
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
+  /**
+   * Wrapper around a multimap registration operation.
+   *
+   * Note: this function is private and can only be called by the
+   * ConsistencySentry constructor.
+   *
+   * @pre the given URI is the root directory of the Array and is not empty.
+   */
+  entry_type register_array(const URI uri, Array& array);
+
+  /**
+   * Wrapper around a multimap deregistration operation.
+   *
+   * Note: this function is private and can only be called by the
+   * ConsistencySentry destructor.
+   *
+   * Note: entry_type is passed as a value that is explictly deleted from the
+   * registration multimap upon ConsistencySentry destruction only.
+   */
+  void deregister_array(entry_type entry);
+
+  /** Returns the size of the array registry. */
+  size_t registry_size();
 
   /** The open array registry. */
   std::multimap<const URI, Array&> array_registry_;
 
-  /** Mutex for sentry class. */
+  /**
+   * Mutex that protects atomicity between the existence of a
+   * ConsistencySentry object and the multimap's registration.
+   */
   std::mutex mtx_;
 };
 
 /**
- * Sentry class for ConsistencyController
+ * Sentry class for ConsistencyController.
+ *
+ * @invariant The ConsistencyController::entry_type must not be empty.
+ * @pre invariant exception:
+ * the entry_type may be empty ONLY in an rvalue during move construction.
  */
 class ConsistencySentry {
  public:
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
-
   /** Constructor. */
-  ConsistencySentry(ConsistencyController& registry, entry_type entry);
+  ConsistencySentry(
+      ConsistencyController& registry, ConsistencyController::entry_type entry);
+
+  /** Move constructor. */
+  ConsistencySentry(ConsistencySentry&& x);
+
+  /** Copy assignment is deleted. */
+  ConsistencySentry& operator=(const ConsistencySentry&) = delete;
+
+  /** Move assignment is deleted. */
+  ConsistencySentry& operator=(ConsistencySentry&&) = delete;
 
   /** Destructor. */
   ~ConsistencySentry();
 
  private:
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
+  /**
+   * The ConsistencyController instance.
+   *
+   * @pre This MUST reference the same member that created the Sentry object.
+   */
+  ConsistencyController& parent_;
 
-  /** The ConsistencyController instance. */
-  ConsistencyController& array_controller_registry_;
-
-  /** The map iterator. */
-  entry_type entry_;
+  /**
+   * An entry within the registry structure of the parent
+   * ConsistencyController object.
+   */
+  ConsistencyController::entry_type entry_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_CONSISTENCY_H

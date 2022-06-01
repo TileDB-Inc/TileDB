@@ -36,45 +36,50 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-
-/* ********************************* */
-/*     CONSTRUCTORS & DESTRUCTORS    */
-/* ********************************* */
+namespace tiledb::sm {
 
 ConsistencySentry::ConsistencySentry(
-    ConsistencyController& registry, entry_type entry)
-    : array_controller_registry_(registry)
+    ConsistencyController& registry, ConsistencyController::entry_type entry)
+    : parent_(registry)
     , entry_(entry) {
 }
 
-ConsistencySentry::~ConsistencySentry() {
-  array_controller_registry_.deregister_array(entry_);
+ConsistencySentry::ConsistencySentry(ConsistencySentry&& x)
+    : parent_(x.parent_)
+    , entry_(x.entry_) {
+  x.entry_ = parent_.array_registry_.end();
 }
 
-/* ********************************* */
-/*                API                */
-/* ********************************* */
+ConsistencySentry::~ConsistencySentry() {
+  if (entry_ != parent_.array_registry_.end()) {
+    parent_.deregister_array(entry_);
+  }
+}
 
 ConsistencySentry ConsistencyController::make_sentry(
     const URI uri, Array& array) {
   return ConsistencySentry{*this, register_array(uri, array)};
 }
 
-entry_type ConsistencyController::register_array(const URI uri, Array& array) {
+ConsistencyController::entry_type ConsistencyController::register_array(
+    const URI uri, Array& array) {
+  if (uri.empty()) {
+    throw std::runtime_error(
+        "[ConsistencyController::register_array] URI cannot be empty.");
+  }
   std::lock_guard<std::mutex> lock(mtx_);
   entry_type iter = array_registry_.insert({uri, array});
 
   return iter;
 }
 
-void ConsistencyController::deregister_array(entry_type entry) {
+void ConsistencyController::deregister_array(
+    ConsistencyController::entry_type entry) {
   std::lock_guard<std::mutex> lock(mtx_);
   array_registry_.erase(entry);
 }
 
-bool ConsistencyController::contains(const URI uri) {
+bool ConsistencyController::is_open(const URI uri) {
   for (entry_type iter = array_registry_.begin(); iter != array_registry_.end();
        iter++) {
     if (iter->first == uri)
@@ -101,5 +106,8 @@ bool ConsistencyController::is_element_of(
   return (prefix == intersecting_prefix);
 }
 
-}  // namespace sm
-}  // namespace tiledb
+size_t ConsistencyController::registry_size() {
+  return array_registry_.size();
+}
+
+}  // namespace tiledb::sm

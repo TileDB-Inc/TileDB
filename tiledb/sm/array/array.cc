@@ -72,7 +72,7 @@ ConsistencyController& controller() {
 Array::Array(
     const URI& array_uri,
     StorageManager* storage_manager,
-    ConsistencyController& ctrlr)
+    ConsistencyController& cc)
     : array_schema_latest_(nullptr)
     , array_uri_(array_uri)
     , array_dir_()
@@ -87,7 +87,8 @@ Array::Array(
     , remote_(array_uri.is_tiledb())
     , metadata_loaded_(false)
     , non_empty_domain_computed_(false)
-    , array_sentry_registry_(ctrlr.make_sentry(array_uri_, *this)) {
+    , consistency_controller_(cc)
+    , consistency_sentry_(nullopt) {
 }
 
 /* ********************************* */
@@ -175,7 +176,7 @@ Status Array::open_without_fragments(
     array_schemas_all_ = array_schemas.value();
   }
 
-  is_open_ = true;
+  set_array_open();
   query_type_ = QueryType::READ;
 
   return Status::Ok();
@@ -343,9 +344,21 @@ Status Array::open(
   }
 
   query_type_ = query_type;
-  is_open_ = true;
+  set_array_open();
 
   return Status::Ok();
+}
+
+void Array::set_array_open() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  is_open_ = true;
+
+  /**
+   * Note: there is no danger in passing *this here;
+   * only the pointer value is used and nothing is called on the Array objects.
+   */
+  consistency_sentry_.emplace(
+      consistency_controller_.make_sentry(array_uri_, *this));
 }
 
 Status Array::close() {
@@ -395,9 +408,15 @@ Status Array::close() {
   array_schemas_all_.clear();
   metadata_.clear();
   metadata_loaded_ = false;
-  is_open_ = false;
+  set_array_closed();
 
   return Status::Ok();
+}
+
+void Array::set_array_closed() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  is_open_ = false;
+  consistency_sentry_.reset();
 }
 
 bool Array::is_empty() const {

@@ -77,7 +77,7 @@ class Array {
   Array(
       const URI& array_uri,
       StorageManager* storage_manager,
-      ConsistencyController& ctrlr = controller());
+      ConsistencyController& cc = controller());
 
   /** Destructor. */
   ~Array() = default;
@@ -180,8 +180,14 @@ class Array {
       const void* encryption_key,
       uint32_t key_length);
 
+  /** Sets the array state as open. */
+  void set_array_open();
+
   /** Closes the array and frees all memory. */
   Status close();
+
+  /** Sets the array state as closed. */
+  void set_array_closed();
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
@@ -477,8 +483,17 @@ class Array {
   /** Memory tracker for the array. */
   MemoryTracker memory_tracker_;
 
-  /** The map of currently open arrays. */
-  ConsistencySentry array_sentry_registry_;
+  /** A reference to the free ConsistencyController object. */
+  ConsistencyController& consistency_controller_;
+
+  /** Lifespan maintenance of an open array in the ConsistencyController. */
+  std::optional<ConsistencySentry> consistency_sentry_;
+
+  /**
+   * Mutex that protects atomicity between the existence of the
+   * ConsistencySentry registration and the is_open_ flag.
+   */
+  std::mutex mtx_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
