@@ -244,6 +244,11 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
   }
   std::istream input(&fb);
 
+  // tiledb:// uri hack
+  // We need to special case on tiledb uris until we implement
+  // serialization for global order writes. Until then, we write
+  // timestamped fragments in row-major order.
+  bool is_tiledb_uri = array.ptr()->array_->is_remote();
   uint64_t tile_extent = compute_tile_extent_based_on_file_size(file_size);
   auto&& [st3, buffer_size] = get_buffer_size_from_config(context, tile_extent);
   if (!st3.ok()) {
@@ -269,12 +274,31 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
   subarray.add_range(0, static_cast<uint64_t>(0), last_space_tile_boundary);
   query.set_subarray(subarray);
 
-  while (input.read(reinterpret_cast<char*>(buffer.data()), *buffer_size)) {
+  auto tiledb_cloud_fix = [&](uint64_t start, uint64_t end, uint64_t nbytes) {
+    Query query(context, array);
+    query.set_layout(TILEDB_ROW_MAJOR);
+    Subarray subarray(context, array);
+    subarray.add_range(0, start, end);
+    query.set_subarray(subarray);
     query.set_data_buffer(
-        tiledb::sm::constants::filestore_attribute_name,
-        buffer.data(),
-        *buffer_size);
+        tiledb::sm::constants::filestore_attribute_name, buffer.data(), nbytes);
     query.submit();
+  };
+
+  uint64_t start_range = 0;
+  uint64_t end_range = tile_extent - 1;
+  while (input.read(reinterpret_cast<char*>(buffer.data()), *buffer_size)) {
+    if (is_tiledb_uri) {
+      tiledb_cloud_fix(start_range, end_range, buffer.size());
+      start_range += tile_extent;
+      end_range += tile_extent;
+    } else {
+      query.set_data_buffer(
+          tiledb::sm::constants::filestore_attribute_name,
+          buffer.data(),
+          *buffer_size);
+      query.submit();
+    }
   }
 
   // If the end of the file was reached, but less than buffer_size bytes
@@ -288,11 +312,15 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
     std::memset(buffer.data() + read_bytes, 0, *buffer_size - read_bytes);
     uint64_t last_tile_size = last_space_tile_boundary -
                               file_size / (*buffer_size) * (*buffer_size) + 1;
-    query.set_data_buffer(
-        tiledb::sm::constants::filestore_attribute_name,
-        buffer.data(),
-        last_tile_size);
-    query.submit();
+    if (is_tiledb_uri) {
+      tiledb_cloud_fix(start_range, start_range + read_bytes - 1, read_bytes);
+    } else {
+      query.set_data_buffer(
+          tiledb::sm::constants::filestore_attribute_name,
+          buffer.data(),
+          last_tile_size);
+      query.submit();
+    }
   } else if (!input.eof()) {
     // Something must have gone wrong whilst reading the file
     auto st = Status_Error("Error whilst reading the file");
@@ -302,8 +330,10 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
     return TILEDB_ERR;
   }
 
-  // Dump the fragment on disk
-  query.finalize();
+  if (!is_tiledb_uri) {
+    // Dump the fragment on disk
+    query.finalize();
+  }
   fb.close();
 
   return TILEDB_OK;
