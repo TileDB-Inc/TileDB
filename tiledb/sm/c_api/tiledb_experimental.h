@@ -1084,12 +1084,12 @@ TILEDB_EXPORT int32_t tiledb_mime_type_to_str(
  */
 TILEDB_EXPORT int32_t tiledb_mime_type_from_str(
     const char* str, tiledb_mime_type_t* mime_type) TILEDB_NOEXCEPT;
-    
+
 /**
  * Retrieves the number of cells written to the fragments by the user.
  *
  * Contributions from each fragment to the total are as described in following.
- * 
+ *
  * In the case of sparse fragments, this is the number of non-empty
  * cells in the fragment.
  *
@@ -1098,10 +1098,10 @@ TILEDB_EXPORT int32_t tiledb_mime_type_from_str(
  * are counted in the returned number of cells. In other words,
  * the cell number is derived from the number of *integral* tiles
  * written in the file.
- * 
+ *
  * note: The count returned is the cumulative total of cells
- * written to all fragments in the current fragment_info entity, 
- * i.e. count may effectively include multiples for any cells that 
+ * written to all fragments in the current fragment_info entity,
+ * i.e. count may effectively include multiples for any cells that
  * may be overlapping across the various fragments.
  *
  * **Example:**

@@ -218,8 +218,8 @@ TEST_CASE(
   CHECK(fragment_num == 1);
 
   uint64_t frag0_cell_num_after_first_write;
-  rc =
-      tiledb_fragment_info_get_cell_num(ctx, fragment_info, 0, &frag0_cell_num_after_first_write);
+  rc = tiledb_fragment_info_get_cell_num(
+      ctx, fragment_info, 0, &frag0_cell_num_after_first_write);
   CHECK(rc == TILEDB_OK);
   CHECK(frag0_cell_num_after_first_write == 10);
   uint64_t total_cell_num_after_first_write;
@@ -334,16 +334,19 @@ TEST_CASE(
 
   // Get number of cells
   uint64_t frag0_cell_num;
-  rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 0, &frag0_cell_num);
+  rc =
+      tiledb_fragment_info_get_cell_num(ctx, fragment_info, 0, &frag0_cell_num);
   CHECK(rc == TILEDB_OK);
   CHECK(frag0_cell_num == 10);
   CHECK(frag0_cell_num == frag0_cell_num_after_first_write);
   uint64_t frag1_cell_num;
-  rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 1, &frag1_cell_num);
+  rc =
+      tiledb_fragment_info_get_cell_num(ctx, fragment_info, 1, &frag1_cell_num);
   CHECK(rc == TILEDB_OK);
   CHECK(frag1_cell_num == 10);
   uint64_t frag2_cell_num;
-  rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 2, &frag2_cell_num);
+  rc =
+      tiledb_fragment_info_get_cell_num(ctx, fragment_info, 2, &frag2_cell_num);
   CHECK(rc == TILEDB_OK);
   CHECK(frag2_cell_num == 10);
 
@@ -351,7 +354,9 @@ TEST_CASE(
   rc = tiledb_fragment_info_get_total_cell_num(
       ctx, fragment_info, &total_cell_num_after_third_write);
   CHECK(rc == TILEDB_OK);
-  CHECK(total_cell_num_after_third_write == frag0_cell_num + frag1_cell_num + frag2_cell_num);
+  CHECK(
+      total_cell_num_after_third_write ==
+      frag0_cell_num + frag1_cell_num + frag2_cell_num);
 
   // Get version
   uint32_t version;

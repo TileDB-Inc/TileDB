@@ -180,7 +180,6 @@ Status FragmentInfo::get_total_cell_num(uint64_t* cell_num) const {
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Cell number argument cannot be null"));
 
-
   // Return simple summation of cell counts in each fragment present without
   // any consideration of cells that may be overlapping, i.e. the count
   // returned will be >= the actual unique number of cells represented within
@@ -188,10 +187,10 @@ Status FragmentInfo::get_total_cell_num(uint64_t* cell_num) const {
 
   uint64_t cum_cell_num = 0;
   uint64_t endi = single_fragment_info_vec_.size();
-  for(auto fid = 0ul ; fid < endi; ++fid) {
+  for (auto fid = 0ul; fid < endi; ++fid) {
     cum_cell_num += single_fragment_info_vec_[fid].cell_num();
   }
-  
+
   *cell_num = cum_cell_num;
 
   return Status::Ok();
