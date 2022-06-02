@@ -1671,7 +1671,7 @@ void QueryCondition::apply_ast_node_sparse(
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   bool var_size = false, nullable = false;
-  
+
   // Initialize to timestamps type.
   Datatype type = Datatype::UINT64;
   std::string node_field_name = node->get_field_name();
