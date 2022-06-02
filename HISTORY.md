@@ -1,3 +1,12 @@
+# TileDB v2.9.3 Release Notes
+
+## Improvements
+* Make filestore api get configurable buffer sizes [#3223](https://github.com/TileDB-Inc/TileDB/pull/3223)
+* Special case tiledb cloud uris to use row_major writes 3232]([https://github.com/TileDB-Inc/TileDB/pull/3232)
+
+### C++ API
+* Apply TILEDB_NO_API_DEPRECATION_WARNINGS to C++ API [#3236](https://github.com/TileDB-Inc/TileDB/pull/3236)
+
 # TileDB v2.9.2 Release Notes
 
 ## Bug fixes
