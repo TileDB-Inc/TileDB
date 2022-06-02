@@ -803,10 +803,12 @@ class FragmentMetadata {
     const auto fragment_timestamp_start = timestamp_range_.first;
     const auto fragment_timestamp_end = timestamp_range_.second;
 
-    return (array_start_timestamp > fragment_timestamp_start &&
-            array_start_timestamp <= fragment_timestamp_end) ||
-           (array_end_timestamp < fragment_timestamp_end &&
-            array_end_timestamp >= fragment_timestamp_start);
+    auto no_overlap = (array_end_timestamp < fragment_timestamp_start) ||
+                      (array_start_timestamp > fragment_timestamp_end);
+    auto full_fragment_overlap =
+        (fragment_timestamp_start >= array_start_timestamp) &&
+        (fragment_timestamp_end <= array_end_timestamp);
+    return !no_overlap && !full_fragment_overlap;
   }
 
   /**

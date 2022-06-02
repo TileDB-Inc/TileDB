@@ -685,11 +685,8 @@ bool ArrayDirectory::timestamps_overlap(
   } else {
     // When consolidated fragment has timestamps, true if there is even partial
     // overlap
-    auto partial_overlap =
-        ((fragment_timestamp_start >= timestamp_start_ &&
-          fragment_timestamp_start <= timestamp_end_) ||
-         (fragment_timestamp_end >= timestamp_start_ &&
-          fragment_timestamp_end <= timestamp_end_));
+    auto partial_overlap = (fragment_timestamp_start <= timestamp_end_) &&
+                           (timestamp_start_ <= fragment_timestamp_end);
     return partial_overlap;
   }
 }
