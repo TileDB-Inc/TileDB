@@ -178,7 +178,7 @@ TEST_CASE(
     "QueryCondition: Test AST construction, basic",
     "[QueryCondition][ast][api]") {
   std::string field_name = "x";
-  int val = 5;
+  int val = 0x12345678;
   QueryCondition query_condition;
   REQUIRE(
       query_condition
@@ -187,7 +187,7 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 05 00 00 00");
+      "x LT 78 56 34 12");
 }
 
 TEST_CASE(
@@ -195,7 +195,7 @@ TEST_CASE(
     "[QueryCondition][ast][api]") {
   // AND combine.
   std::string field_name = "x";
-  int val = 5;
+  int val = 0xabcdef12;
   QueryCondition query_condition;
   REQUIRE(
       query_condition
@@ -204,10 +204,10 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 05 00 00 00");
+      "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
-  int val1 = 3;
+  int val1 = 0x33333333;
   QueryCondition query_condition1;
   REQUIRE(query_condition1
               .init(
@@ -218,7 +218,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 03 00 00 00");
+      "y GT 33 33 33 33");
 
   QueryCondition combined_and;
   REQUIRE(
@@ -228,15 +228,15 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
+      "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
 }
 
 TEST_CASE(
     "Query Condition: Test AST construction, basic OR combine",
     "[QueryCondition][ast][api]") {
-  // OR combine
+  // OR combine.
   std::string field_name = "x";
-  int val = 5;
+  int val = 0xabcdef12;
   QueryCondition query_condition;
   REQUIRE(
       query_condition
@@ -245,10 +245,10 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 05 00 00 00");
+      "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
-  int val1 = 3;
+  int val1 = 0x33333333;
   QueryCondition query_condition1;
   REQUIRE(query_condition1
               .init(
@@ -259,7 +259,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 03 00 00 00");
+      "y GT 33 33 33 33");
 
   QueryCondition combined_or;
   REQUIRE(
@@ -269,7 +269,7 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
+      "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
 }
 
 TEST_CASE(
@@ -277,7 +277,7 @@ TEST_CASE(
     "[QueryCondition][ast][api]") {
   // First OR compound AST.
   std::string field_name = "x";
-  int val = 5;
+  int val = 0xabcdef12;
   QueryCondition query_condition;
   REQUIRE(
       query_condition
@@ -286,10 +286,10 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 05 00 00 00");
+      "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
-  int val1 = 3;
+  int val1 = 0x33333333;
   QueryCondition query_condition1;
   REQUIRE(query_condition1
               .init(
@@ -300,7 +300,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 03 00 00 00");
+      "y GT 33 33 33 33");
 
   QueryCondition combined_or;
   REQUIRE(
@@ -310,11 +310,11 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
+      "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
 
   // Second OR compound AST.
   std::string field_name2 = "a";
-  int val2 = 9;
+  int val2 = 0x12121212;
   QueryCondition query_condition2;
   REQUIRE(query_condition2
               .init(
@@ -325,10 +325,10 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "a EQ 09 00 00 00");
+      "a EQ 12 12 12 12");
 
   std::string field_name3 = "b";
-  int val3 = 1;
+  int val3 = 0x34343434;
   QueryCondition query_condition3;
   REQUIRE(query_condition3
               .init(
@@ -339,7 +339,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "b NE 01 00 00 00");
+      "b NE 34 34 34 34");
 
   QueryCondition combined_or1;
   REQUIRE(
@@ -349,7 +349,7 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_or1.ast()) ==
-      "(a EQ 09 00 00 00 OR b NE 01 00 00 00)");
+      "(a EQ 12 12 12 12 OR b NE 34 34 34 34)");
 
   QueryCondition combined_and;
   REQUIRE(combined_or
@@ -358,8 +358,8 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "((x LT 05 00 00 00 OR y GT 03 00 00 00) AND (a EQ 09 00 00 00 OR b NE "
-      "01 00 00 00))");
+      "((x LT 12 ef cd ab OR y GT 33 33 33 33) AND (a EQ 12 12 12 12 OR b NE "
+      "34 34 34 34))");
 }
 
 TEST_CASE(
@@ -367,7 +367,7 @@ TEST_CASE(
     "[QueryCondition][ast][api]") {
   // First AND compound AST.
   std::string field_name = "x";
-  int val = 5;
+  int val = 0xabcdef12;
   QueryCondition query_condition;
   REQUIRE(
       query_condition
@@ -376,10 +376,10 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 05 00 00 00");
+      "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
-  int val1 = 3;
+  int val1 = 0x33333333;
   QueryCondition query_condition1;
   REQUIRE(query_condition1
               .init(
@@ -390,7 +390,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 03 00 00 00");
+      "y GT 33 33 33 33");
 
   QueryCondition combined_and;
   REQUIRE(
@@ -400,11 +400,11 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
+      "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
 
   // Second AND compound AST.
   std::string field_name2 = "a";
-  int val2 = 9;
+  int val2 = 0x12121212;
   QueryCondition query_condition2;
   REQUIRE(query_condition2
               .init(
@@ -415,10 +415,10 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "a EQ 09 00 00 00");
+      "a EQ 12 12 12 12");
 
   std::string field_name3 = "b";
-  int val3 = 1;
+  int val3 = 0x34343434;
   QueryCondition query_condition3;
   REQUIRE(query_condition3
               .init(
@@ -429,7 +429,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "b NE 01 00 00 00");
+      "b NE 34 34 34 34");
 
   QueryCondition combined_and1;
   REQUIRE(query_condition2
@@ -440,7 +440,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_and1.ast()) ==
-      "(a EQ 09 00 00 00 AND b NE 01 00 00 00)");
+      "(a EQ 12 12 12 12 AND b NE 34 34 34 34)");
 
   QueryCondition combined_or;
   REQUIRE(
@@ -449,8 +449,8 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "((x LT 05 00 00 00 AND y GT 03 00 00 00) OR (a EQ 09 00 00 00 AND b "
-      "NE 01 00 00 00))");
+      "((x LT 12 ef cd ab AND y GT 33 33 33 33) OR (a EQ 12 12 12 12 AND b NE "
+      "34 34 34 34))");
 }
 
 TEST_CASE(
@@ -459,7 +459,7 @@ TEST_CASE(
     "[QueryCondition][ast][api]") {
   // First OR compound AST.
   std::string field_name = "x";
-  int val = 5;
+  int val = 0xabcdef12;
   QueryCondition query_condition;
   REQUIRE(
       query_condition
@@ -468,10 +468,10 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 05 00 00 00");
+      "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
-  int val1 = 3;
+  int val1 = 0x33333333;
   QueryCondition query_condition1;
   REQUIRE(query_condition1
               .init(
@@ -482,7 +482,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 03 00 00 00");
+      "y GT 33 33 33 33");
 
   QueryCondition combined_or;
   REQUIRE(
@@ -492,11 +492,11 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "(x LT 05 00 00 00 OR y GT 03 00 00 00)");
+      "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
 
   // Second OR compound AST.
   std::string field_name2 = "a";
-  int val2 = 9;
+  int val2 = 0x12121212;
   QueryCondition query_condition2;
   REQUIRE(query_condition2
               .init(
@@ -507,10 +507,10 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "a EQ 09 00 00 00");
+      "a EQ 12 12 12 12");
 
   std::string field_name3 = "b";
-  int val3 = 1;
+  int val3 = 0x34343434;
   QueryCondition query_condition3;
   REQUIRE(query_condition3
               .init(
@@ -521,7 +521,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "b NE 01 00 00 00");
+      "b NE 34 34 34 34");
 
   QueryCondition combined_or1;
   REQUIRE(
@@ -531,7 +531,7 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_or1.ast()) ==
-      "(a EQ 09 00 00 00 OR b NE 01 00 00 00)");
+      "(a EQ 12 12 12 12 OR b NE 34 34 34 34)");
 
   QueryCondition combined_or2;
   REQUIRE(
@@ -540,18 +540,17 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_or2.ast()) ==
-      "(x LT 05 00 00 00 OR y GT 03 00 00 00 OR a EQ 09 00 00 00 OR b NE 01 "
-      "00 00 00)");
+      "(x LT 12 ef cd ab OR y GT 33 33 33 33 OR a EQ 12 12 12 12 OR b NE 34 34 "
+      "34 34)");
 }
 
 TEST_CASE(
     "Query Condition: Test AST construction, tree structure with same "
     "combining operator, AND of 2 AND ASTs",
     "[QueryCondition][ast][api]") {
-  // AND of 2 AND ASTs.
   // First AND compound AST.
   std::string field_name = "x";
-  int val = 5;
+  int val = 0xabcdef12;
   QueryCondition query_condition;
   REQUIRE(
       query_condition
@@ -560,10 +559,10 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 05 00 00 00");
+      "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
-  int val1 = 3;
+  int val1 = 0x33333333;
   QueryCondition query_condition1;
   REQUIRE(query_condition1
               .init(
@@ -574,7 +573,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 03 00 00 00");
+      "y GT 33 33 33 33");
 
   QueryCondition combined_and;
   REQUIRE(
@@ -584,11 +583,11 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "(x LT 05 00 00 00 AND y GT 03 00 00 00)");
+      "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
 
   // Second AND compound AST.
   std::string field_name2 = "a";
-  int val2 = 9;
+  int val2 = 0x12121212;
   QueryCondition query_condition2;
   REQUIRE(query_condition2
               .init(
@@ -599,10 +598,10 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "a EQ 09 00 00 00");
+      "a EQ 12 12 12 12");
 
   std::string field_name3 = "b";
-  int val3 = 1;
+  int val3 = 0x34343434;
   QueryCondition query_condition3;
   REQUIRE(query_condition3
               .init(
@@ -613,7 +612,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "b NE 01 00 00 00");
+      "b NE 34 34 34 34");
 
   QueryCondition combined_and1;
   REQUIRE(query_condition2
@@ -624,7 +623,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_and1.ast()) ==
-      "(a EQ 09 00 00 00 AND b NE 01 00 00 00)");
+      "(a EQ 12 12 12 12 AND b NE 34 34 34 34)");
 
   QueryCondition combined_and2;
   REQUIRE(
@@ -634,16 +633,17 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_and2.ast()) ==
-      "(x LT 05 00 00 00 AND y GT 03 00 00 00 AND a EQ 09 00 00 00 AND b NE "
-      "01 00 00 00)");
+      "(x LT 12 ef cd ab AND y GT 33 33 33 33 AND a EQ 12 12 12 12 AND b NE 34 "
+      "34 34 34)");
 }
 
 TEST_CASE(
     "Query Condition: Test AST construction, adding simple clauses to AND tree",
     "[QueryCondition][ast][api]") {
-  // foo != 1 && foo != 3 && foo != 5 && foo != 7 && foo != 9
+  // foo != 0xaaaaaaaa && foo != 0xbbbbbbbb && foo != 0xcccccccc && foo !=
+  // 0xdddddddd && foo != 0xeeeeeeee
   std::string field_name1 = "foo";
-  int val1 = 1;
+  int val1 = 0xaaaaaaaa;
   QueryCondition query_condition1;
   REQUIRE(query_condition1
               .init(
@@ -654,10 +654,10 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "foo NE 01 00 00 00");
+      "foo NE aa aa aa aa");
 
   std::string field_name2 = "foo";
-  int val2 = 3;
+  int val2 = 0xbbbbbbbb;
   QueryCondition query_condition2;
   REQUIRE(query_condition2
               .init(
@@ -668,10 +668,10 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "foo NE 03 00 00 00");
+      "foo NE bb bb bb bb");
 
   std::string field_name3 = "foo";
-  int val3 = 5;
+  int val3 = 0xcccccccc;
   QueryCondition query_condition3;
   REQUIRE(query_condition3
               .init(
@@ -682,10 +682,10 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "foo NE 05 00 00 00");
+      "foo NE cc cc cc cc");
 
   std::string field_name4 = "foo";
-  int val4 = 7;
+  int val4 = 0xdddddddd;
   QueryCondition query_condition4;
   REQUIRE(query_condition4
               .init(
@@ -696,10 +696,10 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition4.ast()) ==
-      "foo NE 07 00 00 00");
+      "foo NE dd dd dd dd");
 
   std::string field_name5 = "foo";
-  int val5 = 9;
+  int val5 = 0xeeeeeeee;
   QueryCondition query_condition5;
   REQUIRE(query_condition5
               .init(
@@ -710,7 +710,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition5.ast()) ==
-      "foo NE 09 00 00 00");
+      "foo NE ee ee ee ee");
 
   QueryCondition combined_and1;
   REQUIRE(query_condition1
@@ -721,7 +721,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_and1.ast()) ==
-      "(foo NE 01 00 00 00 AND foo NE 03 00 00 00)");
+      "(foo NE aa aa aa aa AND foo NE bb bb bb bb)");
   QueryCondition combined_and2;
   REQUIRE(combined_and1
               .combine(
@@ -731,7 +731,7 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_and2.ast()) ==
-      "(foo NE 01 00 00 00 AND foo NE 03 00 00 00 AND foo NE 05 00 00 00)");
+      "(foo NE aa aa aa aa AND foo NE bb bb bb bb AND foo NE cc cc cc cc)");
   QueryCondition combined_and3;
   REQUIRE(combined_and2
               .combine(
@@ -741,8 +741,8 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_and3.ast()) ==
-      "(foo NE 01 00 00 00 AND foo NE 03 00 00 00 AND foo NE 05 00 00 00 AND "
-      "foo NE 07 00 00 00)");
+      "(foo NE aa aa aa aa AND foo NE bb bb bb bb AND foo NE cc cc cc cc AND "
+      "foo NE dd dd dd dd)");
   QueryCondition combined_and4;
   REQUIRE(combined_and3
               .combine(
@@ -752,83 +752,84 @@ TEST_CASE(
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_and4.ast()) ==
-      "(foo NE 01 00 00 00 AND foo NE 03 00 00 00 AND foo NE 05 00 00 00 AND "
-      "foo NE 07 00 00 00 AND foo NE 09 00 00 00)");
+      "(foo NE aa aa aa aa AND foo NE bb bb bb bb AND foo NE cc cc cc cc AND "
+      "foo NE dd dd dd dd AND foo NE ee ee ee ee)");
 }
 
 TEST_CASE(
     "Query Condition: Test AST construction, adding simple clauses to OR tree",
     "[QueryCondition][ast][api]") {
-  // foo = 0 || foo = 2 || foo = 4 || foo = 6 || foo = 8s
+  // foo != 0xaaaaaaaa OR foo != 0xbbbbbbbb OR foo != 0xcccccccc OR foo !=
+  // 0xdddddddd OR foo != 0xeeeeeeee
   std::string field_name1 = "foo";
-  int val1 = 0;
+  int val1 = 0xaaaaaaaa;
   QueryCondition query_condition1;
   REQUIRE(query_condition1
               .init(
                   std::string(field_name1),
                   &val1,
                   sizeof(int),
-                  QueryConditionOp::EQ)
+                  QueryConditionOp::NE)
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "foo EQ 00 00 00 00");
+      "foo NE aa aa aa aa");
 
   std::string field_name2 = "foo";
-  int val2 = 2;
+  int val2 = 0xbbbbbbbb;
   QueryCondition query_condition2;
   REQUIRE(query_condition2
               .init(
                   std::string(field_name2),
                   &val2,
                   sizeof(int),
-                  QueryConditionOp::EQ)
+                  QueryConditionOp::NE)
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "foo EQ 02 00 00 00");
+      "foo NE bb bb bb bb");
 
   std::string field_name3 = "foo";
-  int val3 = 4;
+  int val3 = 0xcccccccc;
   QueryCondition query_condition3;
   REQUIRE(query_condition3
               .init(
                   std::string(field_name3),
                   &val3,
                   sizeof(int),
-                  QueryConditionOp::EQ)
+                  QueryConditionOp::NE)
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "foo EQ 04 00 00 00");
+      "foo NE cc cc cc cc");
 
   std::string field_name4 = "foo";
-  int val4 = 6;
+  int val4 = 0xdddddddd;
   QueryCondition query_condition4;
   REQUIRE(query_condition4
               .init(
                   std::string(field_name4),
                   &val4,
                   sizeof(int),
-                  QueryConditionOp::EQ)
+                  QueryConditionOp::NE)
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition4.ast()) ==
-      "foo EQ 06 00 00 00");
+      "foo NE dd dd dd dd");
 
   std::string field_name5 = "foo";
-  int val5 = 8;
+  int val5 = 0xeeeeeeee;
   QueryCondition query_condition5;
   REQUIRE(query_condition5
               .init(
                   std::string(field_name5),
                   &val5,
                   sizeof(int),
-                  QueryConditionOp::EQ)
+                  QueryConditionOp::NE)
               .ok());
   CHECK(
       tiledb::test::ast_node_to_str(query_condition5.ast()) ==
-      "foo EQ 08 00 00 00");
+      "foo NE ee ee ee ee");
 
   QueryCondition combined_or1;
   REQUIRE(
@@ -838,7 +839,7 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_or1.ast()) ==
-      "(foo EQ 00 00 00 00 OR foo EQ 02 00 00 00)");
+      "(foo NE aa aa aa aa OR foo NE bb bb bb bb)");
   QueryCondition combined_or2;
   REQUIRE(
       combined_or1
@@ -847,7 +848,7 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_or2.ast()) ==
-      "(foo EQ 00 00 00 00 OR foo EQ 02 00 00 00 OR foo EQ 04 00 00 00)");
+      "(foo NE aa aa aa aa OR foo NE bb bb bb bb OR foo NE cc cc cc cc)");
   QueryCondition combined_or3;
   REQUIRE(
       combined_or2
@@ -856,8 +857,8 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_or3.ast()) ==
-      "(foo EQ 00 00 00 00 OR foo EQ 02 00 00 00 OR foo EQ 04 00 00 00 OR foo "
-      "EQ 06 00 00 00)");
+      "(foo NE aa aa aa aa OR foo NE bb bb bb bb OR foo NE cc cc cc cc OR "
+      "foo NE dd dd dd dd)");
   QueryCondition combined_or4;
   REQUIRE(
       combined_or3
@@ -866,9 +867,8 @@ TEST_CASE(
           .ok());
   CHECK(
       tiledb::test::ast_node_to_str(combined_or4.ast()) ==
-      "(foo EQ 00 00 00 00 OR foo EQ 02 00 00 00 OR foo EQ 04 00 00 00 OR foo "
-      "EQ 06 00 00 00 OR foo "
-      "EQ 08 00 00 00)");
+      "(foo NE aa aa aa aa OR foo NE bb bb bb bb OR foo NE cc cc cc cc OR "
+      "foo NE dd dd dd dd OR foo NE ee ee ee ee)");
 }
 
 TEST_CASE(
