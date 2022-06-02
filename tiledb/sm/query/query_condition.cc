@@ -1670,13 +1670,21 @@ void QueryCondition::apply_ast_node_sparse(
     ResultTile& result_tile,
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
-  const auto attribute = array_schema.attribute(node->get_field_name());
-  if (!attribute) {
-    throw std::runtime_error("Unknown attribute " + node->get_field_name());
-  }
+  bool var_size = false, nullable = false;
+  
+  // Initialize to timestamps type.
+  Datatype type = Datatype::UINT64;
+  std::string node_field_name = node->get_field_name();
+  if (node_field_name != constants::timestamps) {
+    const auto attribute = array_schema.attribute(node_field_name);
+    if (!attribute) {
+      throw std::runtime_error("Unknown attribute " + node_field_name));
+    }
 
-  const bool var_size = attribute->var_size();
-  const bool nullable = attribute->nullable();
+    var_size = attribute->var_size();
+    nullable = attribute->nullable();
+    type = attribute->type();
+  }
 
   // Process the validity buffer now.
   if (nullable) {
@@ -1705,7 +1713,7 @@ void QueryCondition::apply_ast_node_sparse(
     }
   }
 
-  switch (attribute->type()) {
+  switch (type) {
     case Datatype::INT8:
       return apply_ast_node_sparse<int8_t, BitmapType>(
           node, result_tile, var_size, combination_op, result_bitmap);
