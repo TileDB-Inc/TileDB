@@ -1891,7 +1891,10 @@ Status QueryCondition::apply_sparse(
       result_tile,
       std::logical_and<BitmapType>(),
       result_bitmap);
-  *cell_count = std::accumulate(result_bitmap.begin(), result_bitmap.end(), 0);
+  if (cell_count != nullptr) {
+    *cell_count =
+        std::accumulate(result_bitmap.begin(), result_bitmap.end(), 0);
+  }
 
   return Status::Ok();
 }
@@ -1961,7 +1964,7 @@ static void ast_get_clauses(
 
 std::vector<QueryCondition::Clause> QueryCondition::clauses() const {
   /// TODO: remove this function after implementing serialization PR.
-  if (tree_ && !tree_->is_or_supported()) {
+  if (tree_ && !tree_->is_backwards_compatible()) {
     throw std::runtime_error(
         "From QueryCondition::clauses(): OR serialization not supported.");
   }
@@ -1974,7 +1977,7 @@ std::vector<QueryCondition::Clause> QueryCondition::clauses() const {
 
 std::vector<QueryConditionCombinationOp> QueryCondition::combination_ops()
     const {
-  if (tree_ && !tree_->is_or_supported()) {
+  if (tree_ && !tree_->is_backwards_compatible()) {
     throw std::runtime_error(
         "From QueryCondition::combination_ops(): OR serialization not "
         "supported.");

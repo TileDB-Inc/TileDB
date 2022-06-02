@@ -94,7 +94,7 @@ class ASTNode {
    * @return True if the AST is previously supported by previous versions of
    * TileDB.
    */
-  virtual bool is_or_supported() const = 0;
+  virtual bool is_backwards_compatible() const = 0;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
@@ -252,7 +252,7 @@ class ASTNodeVal : public ASTNode {
    * @return True if the AST is previously supported by previous versions of
    * TileDB.
    */
-  bool is_or_supported() const override;
+  bool is_backwards_compatible() const override;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
@@ -402,7 +402,7 @@ class ASTNodeExpr : public ASTNode {
    * @return True if the AST is previously supported by previous versions of
    * TileDB.
    */
-  bool is_or_supported() const override;
+  bool is_backwards_compatible() const override;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
