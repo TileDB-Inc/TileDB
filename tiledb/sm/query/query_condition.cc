@@ -1678,7 +1678,7 @@ void QueryCondition::apply_ast_node_sparse(
   if (node_field_name != constants::timestamps) {
     const auto attribute = array_schema.attribute(node_field_name);
     if (!attribute) {
-      throw std::runtime_error("Unknown attribute " + node_field_name));
+      throw std::runtime_error("Unknown attribute " + node_field_name);
     }
 
     var_size = attribute->var_size();
