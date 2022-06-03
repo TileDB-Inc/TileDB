@@ -71,9 +71,9 @@ void print_elem(std::optional<int> a, std::string b, int32_t c, float d) {
  * The bounds on the index will be 0 through 9, inclusive.
  *
  * The array has four attributes. The four attributes are
- *  - "a" (type const char*)
+ *  - "a" (type int)
  *  - "b" (type std::string)
- *  -  "c" (type int32_t)
+ *  - "c" (type int32_t)
  *  - "d" (type float)
  *
  * @param ctx The context.
@@ -84,7 +84,7 @@ void create_array(Context& ctx) {
   domain.add_dimension(
       Dimension::create<int32_t>(ctx, "index", {{0, num_elems - 1}}));
 
-  // The array will be sparse.
+  // The array will be dense.
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR}});
 
@@ -102,7 +102,7 @@ void create_array(Context& ctx) {
 }
 
 /**
- * @brief Execute a write on array query_condition_sparse array
+ * @brief Execute a write on array query_condition_dense array
  * which then stores the following data in the array. The table
  * is organized by dimension/attribute.
  *
