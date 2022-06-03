@@ -1,4 +1,6 @@
 #include <stdio.h>
 #include <tiledb/tiledb.h>
 
-whee
+int main() {
+    return 0;
+}

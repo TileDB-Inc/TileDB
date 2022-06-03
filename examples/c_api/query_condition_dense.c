@@ -33,12 +33,13 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <tiledb/tiledb.h>
 
 
 // Name of array.
-std::string array_name("query_condition_dense_array");
+const char *array_name = "query_condition_dense_array";
 int32_t num_elems = 10;
 
 /**
@@ -50,10 +51,9 @@ int32_t num_elems = 10;
  */
 void print_elem(int *a, char *b) {
   if (a == NULL) {
-    std::cout << "{null, " << b << ", " << c << ", " << d << "}\n";
+    printf("{null, %s}\n", b);
   } else {
-    std::cout << "{" << a.value() << ", " << b << ", " << c << ", " << d
-              << "}\n";
+    printf("{%d, %s}\n", *a, b);
   }
 }
 
@@ -62,21 +62,27 @@ void print_elem(int *a, char *b) {
  * The array will be 1D with size 1 with dimension "index".
  * The bounds on the index will be 0 through 9, inclusive.
  *
- * The array has four attributes. The four attributes are
- *  - "a" (type const char*)
+ * The array has two attributes. The two attributes are
+ *  - "a" (type int)
  *  - "b" (type std::string)
- *  -  "c" (type int32_t)
- *  - "d" (type float)
  *
  * @param ctx The context.
  */
-void create_array(Context& ctx) {
-  // Creating the domain and the dimensions.
-  Domain domain(ctx);
-  domain.add_dimension(
-      Dimension::create<int32_t>(ctx, "index", {{0, num_elems - 1}}));
+void create_array(tiledb_ctx_t *ctx) {
+  // Creating the dimension and the domain.
+  tiledb_dimension_t *dimension;
+  int dim_domain[] = {0, num_elems - 1};
+  int tile_extents[] = {1};
+  tiledb_dimension_alloc(ctx, "index", TILEDB_INT32, &dim_domain[0], &tile_extents[0], &dimension);
 
-  // The array will be sparse.
+  tiledb_domain_t* domain;
+  tiledb_domain_alloc(ctx, &domain);
+  tiledb_domain_add_dimension(ctx, domain, dimension);
+
+  tiledb_array_schema_t *schema;
+  tiledb_array_schema_alloc(ctx, TILEDB_SPARSE, &schema);
+
+  // The array will be dense.
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR}});
 
@@ -98,22 +104,23 @@ void create_array(Context& ctx) {
  * which then stores the following data in the array. The table
  * is organized by dimension/attribute.
  *
- * index |  a   |   b   | c |  d
- * -------------------------------
- *   0   | null | alice | 0 | 4.1
- *   1   | 2    | bob   | 0 | 3.4
- *   2   | null | craig | 0 | 5.6
- *   3   | 4    | dave  | 0 | 3.7
- *   4   | null | erin  | 0 | 2.3
- *   5   | 6    | frank | 0 | 1.7
- *   6   | null | grace | 1 | 3.8
- *   7   | 8    | heidi | 2 | 4.9
- *   8   | null | ivan  | 3 | 3.2
- *   9   | 10   | judy  | 4 | 3.1
+ * index |  a   |   b   
+ * ---------------------
+ *   0   | null | alice
+ *   1   | 2    | bob 
+ *   2   | null | craig
+ *   3   | 4    | dave
+ *   4   | null | erin
+ *   5   | 6    | frank
+ *   6   | null | grace
+ *   7   | 8    | heidi
+ *   8   | null | ivan
+ *   9   | 10   | judy
  *
  * @param ctx The context.
  */
-void write_array(Context& ctx) {
+void write_array(tiledb_ctx_t *ctx) {
+  /*
   // Create data buffers that store the values to be written in.
   std::vector<int32_t> a_data = {0, 2, 0, 4, 0, 6, 0, 8, 0, 10};
   std::vector<uint8_t> a_data_validity = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
@@ -151,6 +158,7 @@ void write_array(Context& ctx) {
   query_w.submit();
   query_w.finalize();
   array_w.close();
+  */
 }
 
 /**
@@ -159,7 +167,8 @@ void write_array(Context& ctx) {
  * @param ctx The context.
  * @param qc The query condition to execute the query with.
  */
-void read_array_with_qc(Context& ctx, std::optional<QueryCondition> qc) {
+void read_array_with_qc(tiledb_ctx_t *ctx, tiledb_query_condition_t *qc) {
+  /*
   // Create data buffers to read the values into.
   std::vector<int> a_data(num_elems);
   std::vector<uint8_t> a_data_validity(num_elems);
@@ -223,71 +232,62 @@ void read_array_with_qc(Context& ctx, std::optional<QueryCondition> qc) {
 
   query.finalize();
   array.close();
+  */
 }
 
 int main() {
   // Create the context.
-  Context ctx;
-  VFS vfs(ctx);
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_alloc(NULL, &ctx);
+
+  tiledb_vfs_t* vfs;
+  tiledb_vfs_alloc(ctx, NULL, &vfs);
+
+  int32_t is_dir = 0;
+  tiledb_vfs_is_dir(ctx, vfs, array_name, &is_dir);
+  if (is_dir) {
+    tiledb_vfs_remove_dir(ctx, vfs, array_name);
+  }
 
   // Create and write data to the array.
   create_array(ctx);
   write_array(ctx);
 
   // Printing the entire array.
-  std::cout << "Printing the entire array...\n";
-  read_array_with_qc(ctx, std::nullopt);
-  std::cout << "\n";
+  printf("Printing the entire array...\n");
+  read_array_with_qc(ctx, NULL);
+  printf("\n");
 
   // Execute a read query with query condition `a = null`.
-  std::cout << "Running read query with query condition `a = null`...\n";
-  QueryCondition qc(ctx);
-  qc.init("a", nullptr, 0, TILEDB_EQ);
+  printf("Running read query with query condition `a = null`...\n");
+  tiledb_query_condition_t *qc;
+  tiledb_query_condition_alloc(ctx, &qc);
+  tiledb_query_condition_init(ctx, qc, "a", NULL, 0, TILEDB_EQ);
   read_array_with_qc(ctx, qc);
-  std::cout << "\n";
+  printf("\n");
 
   // Execute a read query with query condition `b < "eve"`.
-  std::cout << "Running read query with query condition `b < \"eve\"`...\n";
-  QueryCondition qc1(ctx);
-  qc1.init("b", "eve", TILEDB_LT);
+  printf("Running read query with query condition `b < \"eve\"`...\n");
+  tiledb_query_condition_t *qc1;
+  tiledb_query_condition_alloc(ctx, &qc1);
+  const char *eve = "eve";
+  tiledb_query_condition_init(ctx, qc1, "b", eve, strlen(eve), TILEDB_LT);
   read_array_with_qc(ctx, qc1);
-  std::cout << "\n";
+  printf("\n");
 
-  // Execute a read query with query condition `c >= 1`.
-  std::cout << "Running read query with query condition `c >= 1`...\n";
-  QueryCondition qc2(ctx);
-  int val = 1;
-  qc2.init("c", &val, sizeof(int), TILEDB_GE);
+  // Execute a read query with query condition `a != null AND b < \"eve\"`.
+  printf("Running read query with query condition a != null AND b < \"eve\"`...\n");
+  tiledb_query_condition_t *qc2;
+  tiledb_query_condition_alloc(ctx, &qc2);
+  tiledb_query_condition_combine(ctx, qc, qc1, TILEDB_AND, &qc2);
   read_array_with_qc(ctx, qc2);
-  std::cout << "\n";
+  printf("\n");
 
-  // Execute a read query with query condition `3.0f <= d AND d <= 4.0f`.
-  std::cout << "Running read query with query condition `3.0f <= d AND d <= "
-               "4.0f`...\n";
-  QueryCondition qc3(ctx);
-  float arr[] = {3.0f, 4.0f};
-  qc3.init("d", &arr[0], sizeof(float), TILEDB_GE);
-  QueryCondition qc4(ctx);
-  qc4.init("d", &arr[1], sizeof(float), TILEDB_LE);
-  QueryCondition qc5 = qc3.combine(qc4, TILEDB_AND);
-  read_array_with_qc(ctx, qc5);
-  std::cout << "\n";
-
-  // Execute a read query with query condition `3.0f <= d AND d <= 4.0f AND a !=
-  // null AND b < \"eve\"`.
-  std::cout << "Running read query with query condition `3.0f <= d AND d <= "
-               "4.0f AND a != null AND b < \"eve\"`...\n";
-  QueryCondition qc6(ctx);
-  qc6.init("a", nullptr, 0, TILEDB_NE);
-  qc = qc5.combine(qc6, TILEDB_AND);
-  qc = qc.combine(qc1, TILEDB_AND);
-  read_array_with_qc(ctx, qc);
-  std::cout << "\n";
-
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
+  is_dir = 0;
+  tiledb_vfs_is_dir(ctx, vfs, array_name, &is_dir);
+  if (is_dir) {
+    tiledb_vfs_remove_dir(ctx, vfs, array_name);
+  }
 
   return 0;
 }
