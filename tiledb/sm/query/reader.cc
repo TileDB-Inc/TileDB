@@ -179,6 +179,15 @@ Status Reader::complete_read_loop() {
   return Status::Ok();
 }
 
+uint64_t Reader::get_timestamp(const ResultCoords& rc) const {
+  const auto f = rc.tile_->frag_idx();
+  if (fragment_metadata_[f]->has_timestamps()) {
+    return rc.tile_->timestamp(rc.pos_);
+  } else {
+    return fragment_timestamp(rc.tile_);
+  }
+}
+
 Status Reader::dowork() {
   // Check that the query condition is valid.
   RETURN_NOT_OK(condition_.check(array_schema_));
@@ -375,6 +384,15 @@ Status Reader::compute_range_result_coords(
             &result_bitmap,
             cell_order));
       }
+    }
+
+    // Apply partial overlap condition, if required.
+    const auto frag_meta = fragment_metadata_[tile->frag_idx()];
+    const bool partial_overlap = frag_meta->partial_time_overlap(
+        array_->timestamp_start(), array_->timestamp_end_opened_at());
+    if (frag_meta->has_timestamps() && partial_overlap) {
+      RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
+          *(frag_meta->array_schema().get()), *tile, result_bitmap, nullptr));
     }
 
     // Gather results
@@ -614,8 +632,9 @@ Status Reader::compute_sparse_result_tiles(
                 f, t, *(fragment_metadata_[f]->array_schema()).get());
             (*result_tile_map)[pair] = result_tiles.size() - 1;
           }
-          // Always check range for multiple fragments
-          if (f > first_fragment[r])
+          // Always check range for multiple fragments or fragments with
+          // timestamps.
+          if (f > first_fragment[r] || fragment_metadata_[f]->has_timestamps())
             (*single_fragment)[r] = false;
           else
             first_fragment[r] = f;
@@ -633,8 +652,9 @@ Status Reader::compute_sparse_result_tiles(
               f, t, *(fragment_metadata_[f]->array_schema()).get());
           (*result_tile_map)[pair] = result_tiles.size() - 1;
         }
-        // Always check range for multiple fragments
-        if (f > first_fragment[r])
+        // Always check range for multiple fragments or fragments with
+        // timestamps.
+        if (f > first_fragment[r] || fragment_metadata_[f]->has_timestamps())
           (*single_fragment)[r] = false;
         else
           first_fragment[r] = f;
@@ -1343,8 +1363,7 @@ Status Reader::process_tiles(
 
     // Read the tiles for the names in `inner_names`. Each attribute
     // name will be read concurrently.
-    RETURN_CANCEL_OR_ERROR(
-        read_attribute_tiles(inner_names, result_tiles, false));
+    RETURN_CANCEL_OR_ERROR(read_attribute_tiles(inner_names, result_tiles));
 
     // Copy the cells into the associated `buffers_`, and then clear the cells
     // from the tiles. The cell copies are not thread safe. Clearing tiles are
@@ -1353,7 +1372,7 @@ Status Reader::process_tiles(
     for (const auto& inner_name : inner_names) {
       const ProcessTileFlags flags = names.at(inner_name);
 
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(inner_name, result_tiles, false));
+      RETURN_CANCEL_OR_ERROR(unfilter_tiles(inner_name, result_tiles));
 
       if (flags & ProcessTileFlag::COPY) {
         if (!array_schema_.var_size(inner_name)) {
@@ -1545,6 +1564,17 @@ Status Reader::compute_result_coords(
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles));
   }
 
+  // Read and unfilter timestamps, if required.
+  if (use_timestamps_) {
+    std::vector<std::string> timestamps = {constants::timestamps};
+    RETURN_CANCEL_OR_ERROR(
+        load_tile_offsets(read_state_.partitioner_.subarray(), timestamps));
+
+    RETURN_CANCEL_OR_ERROR(read_attribute_tiles(timestamps, tmp_result_tiles));
+    RETURN_CANCEL_OR_ERROR(
+        unfilter_tiles(constants::timestamps, tmp_result_tiles));
+  }
+
   // Compute the read coordinates for all fragments for each subarray range.
   std::vector<std::vector<ResultCoords>> range_result_coords;
   RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
@@ -1570,7 +1600,7 @@ Status Reader::dedup_result_coords(
   while (it != coords_end) {
     auto next_it = skip_invalid_elements(std::next(it), coords_end);
     if (next_it != coords_end && it->same_coords(*next_it)) {
-      if (it->tile_->frag_idx() < next_it->tile_->frag_idx()) {
+      if (get_timestamp(*it) < get_timestamp(*next_it)) {
         it->invalidate();
         it = skip_invalid_elements(++it, coords_end);
       } else {
@@ -1693,10 +1723,29 @@ Status Reader::dense_read() {
 }
 
 Status Reader::get_all_result_coords(
-    ResultTile* tile, std::vector<ResultCoords>& result_coords) const {
+    ResultTile* tile, std::vector<ResultCoords>& result_coords) {
   auto coords_num = tile->cell_num();
-  for (uint64_t i = 0; i < coords_num; ++i)
-    result_coords.emplace_back(tile, i);
+
+  // Apply partial overlap condition, if required.
+  const auto frag_meta = fragment_metadata_[tile->frag_idx()];
+  const bool partial_overlap = frag_meta->partial_time_overlap(
+      array_->timestamp_start(), array_->timestamp_end_opened_at());
+  if (fragment_metadata_[tile->frag_idx()]->has_timestamps() &&
+      partial_overlap) {
+    std::vector<uint8_t> result_bitmap(coords_num, 1);
+    RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
+        *(frag_meta->array_schema().get()), *tile, result_bitmap, nullptr));
+
+    for (uint64_t i = 0; i < coords_num; ++i) {
+      if (result_bitmap[i]) {
+        result_coords.emplace_back(tile, i);
+      }
+    }
+  } else {
+    for (uint64_t i = 0; i < coords_num; ++i) {
+      result_coords.emplace_back(tile, i);
+    }
+  }
 
   return Status::Ok();
 }
@@ -1847,6 +1896,18 @@ Status Reader::sparse_read() {
   // sparse fragments
   std::vector<ResultCoords> result_coords;
   std::vector<ResultTile> sparse_result_tiles;
+
+  // Set timestamps variables
+  user_requested_timestamps_ = buffers_.count(constants::timestamps) != 0;
+  const bool partial_consol_fragment_overlap =
+      partial_consolidated_fragment_overlap();
+  use_timestamps_ = partial_consol_fragment_overlap ||
+                    !array_schema_.allows_dups() || user_requested_timestamps_;
+
+  // Add partial overlap condition for timestamps, if required.
+  if (partial_consol_fragment_overlap) {
+    RETURN_NOT_OK(add_partial_overlap_condition());
+  }
 
   RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
   std::vector<ResultTile*> result_tiles;

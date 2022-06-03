@@ -114,6 +114,13 @@ Status DenseReader::init() {
   // Check the validity buffer sizes.
   RETURN_NOT_OK(check_validity_buffer_sizes());
 
+  bool found = false;
+  uint64_t tile_cache_size = 0;
+  RETURN_NOT_OK(
+      config_.get<uint64_t>("sm.tile_cache_size", &tile_cache_size, &found));
+  assert(found);
+  disable_cache_ = tile_cache_size == 0;
+
   return Status::Ok();
 }
 

@@ -231,13 +231,15 @@ tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
   // Set nullable.
   const bool nullable = attribute_reader.getNullable();
 
-  // FIlter pipelines
-  shared_ptr<FilterPipeline> filters;
+  // Filter pipelines
+  shared_ptr<FilterPipeline> filters{};
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
     auto&& [st_fp, f]{filter_pipeline_from_capnp(filter_pipeline_reader)};
     RETURN_NOT_OK_TUPLE(st_fp, nullopt);
     filters = f.value();
+  } else {
+    filters = make_shared<FilterPipeline>(HERE());
   }
 
   // Fill value
@@ -470,6 +472,8 @@ shared_ptr<Dimension> dimension_from_capnp(
           "filter pipeline.");
     }
     filters = f.value();
+  } else {
+    filters = make_shared<FilterPipeline>(HERE());
   }
 
   // Load tile extent

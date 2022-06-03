@@ -183,6 +183,7 @@ const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
 const std::string Config::VFS_HDFS_NAME_NODE_URI = "";
 const std::string Config::VFS_HDFS_USERNAME = "";
+const std::string Config::FILESTORE_BUFFER_SIZE = "104857600";
 /* ****************************** */
 /*        PRIVATE CONSTANTS       */
 /* ****************************** */
@@ -356,6 +357,7 @@ Config::Config() {
   param_values_["vfs.hdfs.username"] = VFS_HDFS_USERNAME;
   param_values_["vfs.hdfs.kerb_ticket_cache_path"] =
       VFS_HDFS_KERB_TICKET_CACHE_PATH;
+  param_values_["filestore.buffer_size"] = FILESTORE_BUFFER_SIZE;
 }
 
 Config::~Config() = default;
@@ -761,6 +763,8 @@ Status Config::unset(const std::string& param) {
   } else if (param == "vfs.hdfs.kerb_ticket_cache_path") {
     param_values_["vfs.hdfs.kerb_ticket_cache_path"] =
         VFS_HDFS_KERB_TICKET_CACHE_PATH;
+  } else if (param == "filestore.buffer_size") {
+    param_values_["filestore.buffer_size"] = FILESTORE_BUFFER_SIZE;
   } else {
     param_values_.erase(param);
   }

@@ -55,8 +55,8 @@ void ASTNodeVal::get_field_names(
   field_name_set.insert(field_name_);
 }
 
-bool ASTNodeVal::is_or_supported() const {
-  return false;
+bool ASTNodeVal::is_backwards_compatible() const {
+  return true;
 }
 
 Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
@@ -201,7 +201,7 @@ void ASTNodeExpr::get_field_names(
   }
 }
 
-bool ASTNodeExpr::is_or_supported() const {
+bool ASTNodeExpr::is_backwards_compatible() const {
   if (combination_op_ != QueryConditionCombinationOp::AND) {
     return true;
   }
