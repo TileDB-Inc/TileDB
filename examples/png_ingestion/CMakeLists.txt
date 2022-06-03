@@ -40,7 +40,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #   $ cmake -DCMAKE_PREFIX_PATH=/path/to/TileDB-installation ..
 # or you can hardcode it here e.g.
 #   list(APPEND CMAKE_PREFIX_PATH "/path/to/TileDB-installation")
-find_package(TileDB REQUIRED)
+find_package(TileDB 
+  ${TILEDB_VERSION} 
+  REQUIRED
+  )
 
 # Set up the example program.
 add_executable(tiledb_png "src/main.cc")
