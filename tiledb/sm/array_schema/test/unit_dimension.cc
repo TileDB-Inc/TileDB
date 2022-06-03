@@ -354,3 +354,17 @@ TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
     check_relevant_ranges(relevant_ranges, expected[i]);
   }
 }
+
+TEST_CASE("Dimension::oob format") {
+  Dimension d("X", Datatype::FLOAT64);
+  double d_dom[2]{-682.73999, 929.42999};
+  d.set_domain(Range(&d_dom, sizeof(d_dom)));
+  double x{-682.75};
+  std::string error{};
+  bool b{Dimension::oob<double>(&d, &x, &error)};
+  REQUIRE(b);
+  CHECK(
+      error ==
+      "Coordinate -682.75 is out of domain bounds [-682.73999, 929.42999] on "
+      "dimension 'X'");
+}
