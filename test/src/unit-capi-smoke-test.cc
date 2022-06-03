@@ -1204,10 +1204,10 @@ void SmokeTestFx::smoke_test(
       for (uint64_t i = 0; i < total_cells; ++i) {
         const bool expected = test_query_condition->cmp(&a_write_buffer[i]) &&
                               a_write_buffer_validity[i];
+        REQUIRE((combination_op == TILEDB_AND || combination_op == TILEDB_OR));
         if (combination_op == TILEDB_AND) {
           expected_a_values_read[i] = expected_a_values_read[i] && expected;
         } else {
-          REQUIRE(combination_op == TILEDB_OR);
           expected_a_values_read[i] = expected_a_values_read[i] || expected;
         }
       }
@@ -1216,12 +1216,12 @@ void SmokeTestFx::smoke_test(
       for (uint64_t i = 0; i < total_cells; ++i) {
         const bool expected =
             test_query_condition->cmp(&c_write_buffer[(i * 2)]);
+        REQUIRE((combination_op == TILEDB_AND || combination_op == TILEDB_OR));
         if (combination_op == TILEDB_AND) {
           expected_c_values_read[string(&c_write_buffer[i * 2], 2)] =
               expected_c_values_read[string(&c_write_buffer[i * 2], 2)] &&
               expected;
         } else {
-          REQUIRE(combination_op == TILEDB_OR);
           expected_c_values_read[string(&c_write_buffer[i * 2], 2)] =
               expected_c_values_read[string(&c_write_buffer[i * 2], 2)] ||
               expected;
