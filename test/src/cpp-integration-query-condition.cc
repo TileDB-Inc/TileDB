@@ -45,7 +45,7 @@ using namespace tiledb;
 int num_rows = 20;
 int a_fill_value = -1;
 float b_fill_value = 0.0;
-const std::string array_name = "cpp_unit_array";
+const std::string array_name = "cpp_integration_query_condition_array";
 
 inline int index_from_row_col(int r, int c) {
   return ((r - 1) * num_rows) + (c - 1);
@@ -993,6 +993,75 @@ TEST_CASE(
 
   query.finalize();
   array.close();
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "Testing dense query condition with overlapping fragment domains",
+    "[query][query-condition][dense][overlapping-fd]") {
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create a simple 1D vector with domain 1-10 and one attribute.
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "d", {{1, 10}}, 5));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  Attribute attr = Attribute::create<int>(ctx, "a");
+
+  int fill_value = -1;
+  attr.set_fill_value(&fill_value, sizeof(int));
+  schema.add_attribute(attr);
+  Array::create(array_name, schema);
+
+  // Open array for write.
+  Array array(ctx, array_name, TILEDB_WRITE);
+
+  // Write all values as 3 in the array.
+  std::vector<int> vals = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+  Query query_w(ctx, array, TILEDB_WRITE);
+  int range[] = {1, 10};
+  query_w.add_range("d", range[0], range[1]);
+  query_w.set_layout(TILEDB_ROW_MAJOR);
+  query_w.set_buffer("a", vals);
+  REQUIRE(query_w.submit() == Query::Status::COMPLETE);
+
+  // Write values from 3-6 as 7 in the array.
+  std::vector<int> vals2 = {7, 7, 7, 7};
+  Query query_w2(ctx, array, TILEDB_WRITE);
+  int range2[] = {3, 6};
+  query_w2.add_range("d", range2[0], range2[1]);
+  query_w2.set_layout(TILEDB_ROW_MAJOR);
+  query_w2.set_buffer("a", vals2);
+  REQUIRE(query_w2.submit() == Query::Status::COMPLETE);
+
+  array.close();
+
+  // Open the array for read.
+  Array array_r(ctx, array_name, TILEDB_READ);
+
+  // Query the data with query condition a > 4.
+  QueryCondition qc(ctx);
+  int val1 = 4;
+  qc.init("a", &val1, sizeof(float), TILEDB_GT);
+
+  std::vector<int> vals_read(10);
+  Query query_r(ctx, array_r, TILEDB_READ);
+  query_r.add_range("d", range[0], range[1]);
+  query_r.set_layout(TILEDB_ROW_MAJOR);
+  query_r.set_buffer("a", vals_read);
+  query_r.set_condition(qc);
+  REQUIRE(query_r.submit() == Query::Status::COMPLETE);
+
+  std::vector<int> c_vals_read = {-1, -1, 7, 7, 7, 7, -1, -1, -1, -1};
+  CHECK(0 == memcmp(vals_read.data(), c_vals_read.data(), 10));
+
+  array_r.close();
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);

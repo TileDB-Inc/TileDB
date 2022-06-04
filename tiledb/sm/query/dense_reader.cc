@@ -563,7 +563,9 @@ DenseReader::apply_query_condition(
                 it->second,
                 cell_slab.coords_.data());
 
-            for (int32_t i = (int32_t)frag_domains.size() - 1; i >= 0; --i) {
+            for (int32_t i = static_cast<int32_t>(frag_domains.size()) - 1;
+                 i >= 0;
+                 --i) {
               // If the cell slab overlaps this fragment domain range, apply
               // clause.
               auto&& [overlaps, start, end] = cell_slab_overlaps_range(
@@ -572,6 +574,13 @@ DenseReader::apply_query_condition(
                   cell_slab.coords_.data(),
                   cell_slab.length_);
               if (overlaps) {
+                // Re-initialize the bitmap to 1 in case of overlapping domains.
+                if (i != static_cast<int32_t>(frag_domains.size()) - 1) {
+                  for (uint64_t c = start; c <= end; c++) {
+                    dest_ptr[c] = 1;
+                  }
+                }
+
                 RETURN_NOT_OK(condition_.apply_dense(
                     *(fragment_metadata_[frag_domains[i].first]
                           ->array_schema()
