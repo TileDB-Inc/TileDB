@@ -144,6 +144,18 @@ target_link_libraries(compile_encryption_filters PRIVATE encryption_filters)
 target_sources(compile_encryption_filters PRIVATE test/compile_encryption_filters_main.cc)
 
 #
+# `float_scaling_filters` object library
+#
+add_library(float_scaling_filters OBJECT float_scaling_filter.cc)
+target_link_libraries(float_scaling_filters PUBLIC filter $<TARGET_OBJECTS:filter>)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_float_scale_filters EXCLUDE_FROM_ALL)
+target_link_libraries(compile_float_scale_filters PRIVATE float_scaling_filters)
+target_sources(compile_float_scale_filters PRIVATE test/compile_float_scaling_filter_main.cc)
+
+#
 # `all_filters` object library
 #
 add_library(all_filters OBJECT
@@ -155,6 +167,7 @@ target_link_libraries(all_filters PUBLIC byteshuffle_filter $<TARGET_OBJECTS:byt
 target_link_libraries(all_filters PUBLIC checksum_filters $<TARGET_OBJECTS:checksum_filters>)
 target_link_libraries(all_filters PUBLIC compression_filter $<TARGET_OBJECTS:compression_filter>)
 target_link_libraries(all_filters PUBLIC encryption_filters $<TARGET_OBJECTS:encryption_filters>)
+target_link_libraries(all_filters PUBLIC float_scaling_filters $<TARGET_OBJECTS:float_scaling_filters>)
 #
 # Test-compile of object library ensures link-completeness
 #

@@ -40,6 +40,7 @@
 #include "compression_filter.h"
 #include "encryption_aes256gcm_filter.h"
 #include "filter.h"
+#include "float_scaling_filter.h"
 #include "noop_filter.h"
 #include "positive_delta_filter.h"
 #include "tiledb/common/logger_public.h"
@@ -73,6 +74,8 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
       return tdb_new(tiledb::sm::ChecksumMD5Filter);
     case tiledb::sm::FilterType::FILTER_CHECKSUM_SHA256:
       return tdb_new(tiledb::sm::ChecksumSHA256Filter);
+    case tiledb::sm::FilterType::FILTER_SCALE_FLOAT:
+      return tdb_new(tiledb::sm::FloatScalingFilter);
     default:
       assert(false);
       return nullptr;
