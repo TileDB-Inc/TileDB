@@ -38,7 +38,6 @@
 #include <stdbool.h>
 #include <tiledb/tiledb.h>
 
-
 // Name of array.
 const char *array_name = "query_condition_dense_array";
 int32_t num_elems = 10;
@@ -58,9 +57,9 @@ float d_fill_value = 0.0;
  */
 void print_elem(int *a, char *b_start, int b_len, int32_t c, float d) {
   if (a == NULL) {
-    printf("{null, %.*s, %d, %f}\n", b_len, b_start, c, d);
+    printf("{null, %.*s, %d, %.1f}\n", b_len, b_start, c, d);
   } else {
-    printf("{%d, %.*s, %d, %f}\n", *a, b_len, b_start, c, d);
+    printf("{%d, %.*s, %d, %.1f}\n", *a, b_len, b_start, c, d);
   }
 }
 
@@ -196,8 +195,7 @@ void read_array_with_qc(tiledb_ctx_t *ctx, tiledb_query_condition_t *qc) {
   uint8_t a_data_validity[num_elems];
   uint64_t a_validity_size = sizeof(a_data_validity);
 
-  // We initialize the string b_data to contain 45 characters because
-  // that is the combined size of all strings in attribute b.
+  // We initialize the buffer b_data to contain 256 characters.
   char b_data[256];
   memset(b_data, 0, 256);
   uint64_t b_size = sizeof(b_data);
@@ -233,10 +231,10 @@ void read_array_with_qc(tiledb_ctx_t *ctx, tiledb_query_condition_t *qc) {
   tiledb_query_submit(ctx, query);
 
   // Collect the results of the read query. The number of elements
-  // the filtered array contains is in num_elements_result.
-  // The length of the filtered substring of all the data is in
-  // b_data, and all the offsets for filtered individual elements
-  // are in  b_data_offsets.
+  // the filtered array contains is in num_elems, since the array
+  // is dense. The length of the filtered substring of all the 
+  // data is in b_data, and all the offsets for filtered 
+  // individual elements are in b_data_offsets.
 
   // Here we print all the elements that are returned by the query.
   for (int i = 0; i < num_elems; ++i) {
@@ -344,12 +342,13 @@ int main() {
   printf("\n");
 
   // Cleanup.
-  tiledb_ctx_free(&ctx);
   is_dir = 0;
   tiledb_vfs_is_dir(ctx, vfs, array_name, &is_dir);
   if (is_dir) {
     tiledb_vfs_remove_dir(ctx, vfs, array_name);
   }
+
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }
