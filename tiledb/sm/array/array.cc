@@ -176,8 +176,10 @@ Status Array::open_without_fragments(
     array_schemas_all_ = array_schemas.value();
   }
 
-  set_array_open();
+  /* Note: query_type_ MUST be set before calling set_array_open()
+    because it will be examined by the ConsistencyController. */
   query_type_ = QueryType::READ;
+  set_array_open();
 
   return Status::Ok();
 }
@@ -343,6 +345,8 @@ Status Array::open(
     metadata_.reset(timestamp_end_opened_at_);
   }
 
+  /* Note: query_type_ MUST be set before calling set_array_open()
+    because it will be examined by the ConsistencyController. */
   query_type_ = query_type;
   set_array_open();
 
