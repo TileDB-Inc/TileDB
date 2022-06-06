@@ -187,7 +187,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-SubarrayPartitioner-sparse.cc
   src/unit-Tile.cc
   src/unit-TileDomain.cc
-  src/unit-ArrayDirectory.cc
   src/unit-uuid.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
