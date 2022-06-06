@@ -25,7 +25,7 @@
 #
 
 include(common NO_POLICY_SCOPE)
-
+find_package(Catch_EP REQUIRED)
 #
 # `array` object library
 #
@@ -34,6 +34,7 @@ target_link_libraries(array PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(array PUBLIC vfs $<TARGET_OBJECTS:vfs>)
 target_link_libraries(array PUBLIC uri_format $<TARGET_OBJECTS:uri_format>)
 target_link_libraries(array PUBLIC uuid $<TARGET_OBJECTS:uuid>)
+#target_link_libraries(array PUBLIC Catch2::Catch2)
 #
 # Test-compile of object library ensures link-completeness
 #
@@ -56,3 +57,24 @@ if (TILEDB_TESTS)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
+
+# Consistency tests
+add_executable(
+  unit_consistency EXCLUDE_FROM_ALL
+  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+
+target_link_libraries(unit_consistency
+  PUBLIC
+    Catch2::Catch2
+    TILEDB_CORE_OBJECTS_ILIB)
+
+target_sources(unit_consistency PUBLIC
+  test/main.cc
+  test/unit_consistency.cc
+)
+
+add_test(
+  NAME "unit_consistency"
+  COMMAND $<TARGET_FILE:unit_consistency>
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
