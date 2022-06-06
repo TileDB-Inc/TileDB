@@ -75,7 +75,7 @@ GlobalOrderWriter::GlobalOrderWriter(
     Subarray& subarray,
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
-    bool disable_check_global_order,
+    bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
     URI fragment_uri)
     : WriterBase(
@@ -88,7 +88,7 @@ GlobalOrderWriter::GlobalOrderWriter(
           subarray,
           layout,
           written_fragment_info,
-          disable_check_global_order,
+          disable_checks_consolidation,
           coords_info,
           fragment_uri) {
 }
@@ -494,6 +494,12 @@ Status GlobalOrderWriter::finalize_global_write_state() {
           "Failed to finalize global write state; Different "
           "number of cells written across attributes and coordinates"));
     }
+  }
+
+  // No cells written, clean up empty fragment.
+  if (cell_num == 0) {
+    clean_up(uri);
+    return Status::Ok();
   }
 
   // Check if the total number of cells written is equal to the subarray size

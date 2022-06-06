@@ -38,6 +38,63 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
+using Datatype = tiledb::sm::Datatype;
+
+template <class T>
+struct type_to_datatype {
+  static Datatype datatype;
+};
+
+template <>
+struct type_to_datatype<int8_t> {
+  static constexpr Datatype datatype = Datatype::INT8;
+};
+
+template <>
+struct type_to_datatype<int16_t> {
+  static constexpr Datatype datatype = Datatype::INT16;
+};
+
+template <>
+struct type_to_datatype<int32_t> {
+  static constexpr Datatype datatype = Datatype::INT32;
+};
+
+template <>
+struct type_to_datatype<int64_t> {
+  static constexpr Datatype datatype = Datatype::INT64;
+};
+
+template <>
+struct type_to_datatype<uint8_t> {
+  static constexpr Datatype datatype = Datatype::UINT8;
+};
+
+template <>
+struct type_to_datatype<uint16_t> {
+  static constexpr Datatype datatype = Datatype::UINT16;
+};
+
+template <>
+struct type_to_datatype<uint32_t> {
+  static constexpr Datatype datatype = Datatype::UINT32;
+};
+
+template <>
+struct type_to_datatype<uint64_t> {
+  static constexpr Datatype datatype = Datatype::UINT64;
+};
+
+template <>
+struct type_to_datatype<float> {
+  static constexpr Datatype datatype = Datatype::FLOAT32;
+};
+
+template <>
+struct type_to_datatype<double> {
+  static constexpr Datatype datatype = Datatype::FLOAT64;
+};
+
 template <class T, int n>
 inline T& dim_buffer_offset(void* p) {
   return *static_cast<T*>(static_cast<void*>(static_cast<char*>(p) + n));
@@ -129,4 +186,185 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
   CHECK(dim.value()->type() == type);
   CHECK(dim.value()->cell_val_num() == constants::var_num);
   CHECK(dim.value()->var_size() == true);
+}
+
+typedef tuple<
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t,
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t>
+    IntegralTypes;
+TEMPLATE_LIST_TEST_CASE(
+    "test max tile extent for integer values",
+    "[dimension][integral][max][tile_extent]",
+    IntegralTypes) {
+  typedef TestType T;
+  T min = std::numeric_limits<T>::min() + std::is_signed<T>::value;
+  T max = std::numeric_limits<T>::max() - !std::is_signed<T>::value;
+
+  typedef typename std::make_unsigned<T>::type tile_extent_t;
+  T max_extent = (tile_extent_t)max - (tile_extent_t)min + 1;
+
+  auto tile_idx = Dimension::tile_idx(max, min, max_extent);
+
+  CHECK(Dimension::tile_coord_low(tile_idx, min, max_extent) == min);
+  CHECK(Dimension::tile_coord_high(tile_idx, min, max_extent) == max);
+
+  CHECK(Dimension::round_to_tile(min, min, max_extent) == min);
+  CHECK(Dimension::round_to_tile(max, min, max_extent) == min);
+}
+
+TEMPLATE_LIST_TEST_CASE(
+    "test min tile extent for integer values",
+    "[dimension][integral][min][tile_extent]",
+    IntegralTypes) {
+  typedef TestType T;
+  T min = std::numeric_limits<T>::min();
+  T max = std::numeric_limits<T>::max();
+
+  T min_extent = 1;
+
+  auto tile_idx = Dimension::tile_idx(max, min, min_extent);
+
+  CHECK(Dimension::tile_coord_low(0, min, min_extent) == min);
+  CHECK(Dimension::tile_coord_high(tile_idx, min, min_extent) == max);
+
+  CHECK(Dimension::round_to_tile(min, min, min_extent) == min);
+  CHECK(Dimension::round_to_tile(max, min, min_extent) == max);
+}
+
+typedef tuple<int8_t, int16_t, int32_t, int64_t> SignedIntegralTypes;
+TEMPLATE_LIST_TEST_CASE(
+    "test tile_idx signed",
+    "[dimension][integral][signed][tile_idx]",
+    SignedIntegralTypes) {
+  typedef TestType T;
+  for (T tile_extent = 5; tile_extent < 10; tile_extent++) {
+    for (T domain_low = -50; domain_low < 50; domain_low++) {
+      for (T val = domain_low; val < domain_low + 50; val++) {
+        uint64_t idx = static_cast<int64_t>(val - domain_low) /
+                       static_cast<int64_t>(tile_extent);
+        CHECK(Dimension::tile_idx(val, domain_low, tile_extent) == idx);
+      }
+    }
+  }
+}
+
+typedef tuple<uint8_t, uint16_t, uint32_t, uint64_t> UnsignedIntegralTypes;
+TEMPLATE_LIST_TEST_CASE(
+    "test tile_idx unsigned",
+    "[dimension][integral][unsigned][tile_idx]",
+    UnsignedIntegralTypes) {
+  typedef TestType T;
+  for (T tile_extent = 5; tile_extent < 10; tile_extent++) {
+    for (T domain_low = 0; domain_low < 100; domain_low++) {
+      for (T val = domain_low; val < domain_low + 100; val++) {
+        uint64_t idx = static_cast<uint64_t>(val - domain_low) /
+                       static_cast<uint64_t>(tile_extent);
+        CHECK(Dimension::tile_idx(val, domain_low, tile_extent) == idx);
+      }
+    }
+  }
+}
+
+void check_relevant_ranges(
+    std::vector<uint64_t>& relevant_ranges, std::vector<uint64_t>& expected) {
+  CHECK(relevant_ranges.size() == expected.size());
+  for (uint64_t r = 0; r < expected.size(); r++) {
+    CHECK(relevant_ranges[r] == expected[r]);
+  }
+}
+
+typedef tuple<
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t,
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t>
+    FixedTypes;
+TEMPLATE_LIST_TEST_CASE(
+    "test relevant_ranges", "[dimension][relevant_ranges][fixed]", FixedTypes) {
+  typedef TestType T;
+  auto tiledb_type = type_to_datatype<T>().datatype;
+  Dimension dim{"", tiledb_type};
+
+  std::vector<T> range_data = {
+      1, 1, 1, 1, 2, 2, 3, 4, 5, 6, 5, 7, 8, 9, 50, 56};
+  NDRange ranges;
+  for (uint64_t r = 0; r < range_data.size() / 2; r++) {
+    ranges.emplace_back(&range_data[r * 2], 2 * sizeof(T));
+  }
+
+  // Test data.
+  std::vector<std::vector<T>> mbr_data = {{1, 1}, {2, 6}, {7, 8}};
+  std::vector<std::vector<uint64_t>> expected = {{0, 1}, {2, 3, 4, 5}, {5, 6}};
+
+  // Compute and check relevant ranges.
+  for (uint64_t i = 0; i < mbr_data.size(); i++) {
+    Range mbr(mbr_data[i].data(), 2 * sizeof(T));
+
+    std::vector<uint64_t> relevant_ranges;
+    dim.relevant_ranges(ranges, mbr, relevant_ranges);
+    check_relevant_ranges(relevant_ranges, expected[i]);
+  }
+}
+
+TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
+  Dimension dim{"", Datatype::STRING_ASCII};
+
+  std::vector<char> range_data = {'a',
+                                  'a',
+                                  'a',
+                                  'a',
+                                  'b',
+                                  'b',
+                                  'c',
+                                  'd',
+                                  'e',
+                                  'f',
+                                  'e',
+                                  'g',
+                                  'h',
+                                  'i',
+                                  'y',
+                                  'z'};
+  NDRange ranges;
+  for (uint64_t r = 0; r < range_data.size() / 2; r++) {
+    ranges.emplace_back(&range_data[r * 2], 2, 1);
+  }
+
+  // Test data.
+  std::vector<std::vector<char>> mbr_data = {
+      {'a', 'a'}, {'b', 'f'}, {'g', 'h'}};
+  std::vector<std::vector<uint64_t>> expected = {{0, 1}, {2, 3, 4, 5}, {5, 6}};
+
+  // Compute and check relevant ranges.
+  for (uint64_t i = 0; i < mbr_data.size(); i++) {
+    Range mbr(mbr_data[i].data(), 2, 1);
+
+    std::vector<uint64_t> relevant_ranges;
+    dim.relevant_ranges(ranges, mbr, relevant_ranges);
+    check_relevant_ranges(relevant_ranges, expected[i]);
+  }
+}
+
+TEST_CASE("Dimension::oob format") {
+  Dimension d("X", Datatype::FLOAT64);
+  double d_dom[2]{-682.73999, 929.42999};
+  d.set_domain(Range(&d_dom, sizeof(d_dom)));
+  double x{-682.75};
+  std::string error{};
+  bool b{Dimension::oob<double>(&d, &x, &error)};
+  REQUIRE(b);
+  CHECK(
+      error ==
+      "Coordinate -682.75 is out of domain bounds [-682.73999, 929.42999] on "
+      "dimension 'X'");
 }

@@ -608,6 +608,7 @@ QueryCondition::apply_clause(
     case Datatype::INT8:
       return apply_clause<int8_t>(
           clause, stride, var_size, nullable, fill_value, result_cell_slabs);
+    case Datatype::BOOL:
     case Datatype::UINT8:
       return apply_clause<uint8_t>(
           clause, stride, var_size, nullable, fill_value, result_cell_slabs);
@@ -924,6 +925,7 @@ Status QueryCondition::apply_clause_dense(
           stride,
           var_size,
           result_buffer);
+    case Datatype::BOOL:
     case Datatype::UINT8:
       return apply_clause_dense<uint8_t>(
           clause,
@@ -1370,46 +1372,53 @@ Status QueryCondition::apply_clause_sparse(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap) const {
-  const auto attribute = array_schema.attribute(clause.field_name_);
-  if (!attribute) {
-    return Status_QueryConditionError(
-        "Unknown attribute " + clause.field_name_);
+  bool var_size = false, nullable = false;
+  // initialize to timestamps type
+  Datatype type = Datatype::UINT64;
+  if (clause.field_name_ != constants::timestamps) {
+    const auto attribute = array_schema.attribute(clause.field_name_);
+    if (!attribute) {
+      return Status_QueryConditionError(
+          "Unknown attribute " + clause.field_name_);
+    }
+
+    var_size = attribute->var_size();
+    nullable = attribute->nullable();
+    type = attribute->type();
   }
 
-  const bool var_size = attribute->var_size();
-  const bool nullable = attribute->nullable();
-
   // Process the validity buffer now.
-
   if (nullable) {
     const auto tile_tuple = result_tile.tile_tuple(clause.field_name_);
     const auto& tile_validity = std::get<2>(*tile_tuple);
     const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
 
     // Null values can only be specified for equality operators.
+    const auto cell_num = result_tile.cell_num();
     if (clause.condition_value_ == nullptr) {
       if (clause.op_ == QueryConditionOp::NE) {
-        for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+        for (uint64_t c = 0; c < cell_num; c++) {
           result_bitmap[c] *= buffer_validity[c] != 0;
         }
       } else {
-        for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+        for (uint64_t c = 0; c < cell_num; c++) {
           result_bitmap[c] *= buffer_validity[c] == 0;
         }
       }
       return Status::Ok();
     } else {
       // Turn off bitmap values for null cells.
-      for (uint64_t c = 0; c < result_tile.cell_num(); c++) {
+      for (uint64_t c = 0; c < cell_num; c++) {
         result_bitmap[c] *= buffer_validity[c] != 0;
       }
     }
   }
 
-  switch (attribute->type()) {
+  switch (type) {
     case Datatype::INT8:
       return apply_clause_sparse<int8_t, BitmapType>(
           clause, result_tile, var_size, result_bitmap);
+    case Datatype::BOOL:
     case Datatype::UINT8:
       return apply_clause_sparse<uint8_t, BitmapType>(
           clause, result_tile, var_size, result_bitmap);
@@ -1492,7 +1501,10 @@ Status QueryCondition::apply_sparse(
         apply_clause_sparse(clause, array_schema, result_tile, result_bitmap));
   }
 
-  *cell_count = std::accumulate(result_bitmap.begin(), result_bitmap.end(), 0);
+  if (cell_count != nullptr) {
+    *cell_count =
+        std::accumulate(result_bitmap.begin(), result_bitmap.end(), 0);
+  }
 
   return Status::Ok();
 }

@@ -52,6 +52,7 @@
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/sparse_index_reader_base.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -173,11 +174,15 @@ Status Subarray::add_range(
   }
 
   // Restrict the range to the dimension domain and add.
-  auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
-  if (!read_range_oob_error)
-    RETURN_NOT_OK(dim->adjust_range_oob(&range));
-  RETURN_NOT_OK(dim->check_range(range));
-  range_subset_[dim_idx].add_range_unrestricted(range);
+  auto dim_name = array_->array_schema_latest().dimension_ptr(dim_idx)->name();
+  auto&& [error_status, oob_warning] =
+      range_subset_[dim_idx].add_range(range, read_range_oob_error);
+  if (!error_status.ok())
+    return logger_->status(Status_SubarrayError(
+        "Cannot add range to dimension '" + dim_name + "'; " +
+        error_status.message()));
+  if (oob_warning.has_value())
+    LOG_WARN(oob_warning.value() + " on dimension '" + dim_name + "'");
 
   // Update is default.
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
@@ -1846,7 +1851,10 @@ tuple<Status, optional<bool>> Subarray::non_overlapping_ranges(
       array_->array_schema_latest().dim_num(),
       [&](uint64_t dim_idx) {
         auto&& [status, nor]{non_overlapping_ranges_for_dim(dim_idx)};
-        non_overlapping_ranges = *nor;
+
+        if (!*nor) {
+          non_overlapping_ranges = false;
+        }
 
         return status;
       });
@@ -2379,7 +2387,7 @@ Status Subarray::precompute_tile_overlap(
 
 Status Subarray::precompute_all_ranges_tile_overlap(
     ThreadPool* const compute_tp,
-    std::vector<std::pair<uint64_t, uint64_t>>& frag_tile_idx,
+    std::vector<FragIdx>& frag_tile_idx,
     std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
         result_tile_ranges) {
   auto timer_se = stats_->start_timer("read_compute_simple_tile_overlap");
@@ -2461,7 +2469,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
         // contiguity, push a new result tile range.
         uint64_t end = tile_bitmaps[0].size() - 1;
         uint64_t length = 0;
-        int64_t min = static_cast<int64_t>(frag_tile_idx[f].first);
+        int64_t min = static_cast<int64_t>(frag_tile_idx[f].tile_idx_);
         for (int64_t t = tile_bitmaps[0].size() - 1; t >= min; t--) {
           bool comb = true;
           for (unsigned d = 0; d < dim_num; d++) {
@@ -3012,6 +3020,7 @@ tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
       return non_overlapping_ranges_for_dim<char>(dim_idx);
     case Datatype::CHAR:
     case Datatype::BLOB:
+    case Datatype::BOOL:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:

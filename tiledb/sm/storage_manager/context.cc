@@ -115,8 +115,8 @@ Status Context::init(const Config& config) {
 Status Context::get_config_thread_count(
     const Config& config, uint64_t& config_thread_count_ret) {
   // The "sm.num_async_threads", "sm.num_reader_threads",
-  // "sm.num_writer_threads", and "sm.num_vfs_threads" have
-  // been removed. If they are set, we will log an error message.
+  // "sm.num_tbb_threads", "sm.num_writer_threads", and "sm.num_vfs_threads"
+  // have been removed. If they are set, we will log an error message.
   // To error on the side of maintaining high-performance for
   // existing users, we will take the maximum thread count
   // among all of these configurations and set them to the new
@@ -171,9 +171,13 @@ Status Context::get_config_thread_count(
   int num_tbb_threads{0};
   RETURN_NOT_OK(
       config.get<int>("sm.num_tbb_threads", &num_tbb_threads, &found));
-  if (found && num_tbb_threads > 0)
+  if (found) {
     config_thread_count =
         std::max(config_thread_count, static_cast<uint64_t>(num_tbb_threads));
+    logger_->status(Status_StorageManagerError(
+        "Config parameter \"sm.num_tbb_threads\" has been removed; use "
+        "config parameter \"sm.io_concurrency_level\"."));
+  }
 
   config_thread_count_ret = static_cast<size_t>(config_thread_count);
 
@@ -205,7 +209,7 @@ size_t Context::get_compute_thread_count(const Config& config) {
 size_t Context::get_io_thread_count(const Config& config) {
   uint64_t config_thread_count{0};
   if (!get_config_thread_count(config, config_thread_count).ok()) {
-    throw std::logic_error("Cannot get conig thread count");
+    throw std::logic_error("Cannot get config thread count");
   }
 
   bool found = false;

@@ -165,8 +165,23 @@ class ResultTile {
   /**
    * Returns true if the coordinates at position `pos_a` and `pos_b` are
    * the same.
+   *
+   * This checks for two cells in different tiles.
    */
   bool same_coords(const ResultTile& rt, uint64_t pos_a, uint64_t pos_b) const;
+
+  /**
+   * Returns true if the coordinates at position `pos_a` and `pos_b` are
+   * the same.
+   *
+   * This checks for two cells in the same tile.
+   */
+  bool same_coords(uint64_t pos_a, uint64_t pos_b) const;
+
+  /**
+   * Returns the timestamp of the cell at position `pos`.
+   */
+  uint64_t timestamp(uint64_t pos);
 
   /** Returns the fragment id that this result tile belongs to. */
   unsigned frag_idx() const;
@@ -349,6 +364,9 @@ class ResultTile {
   /** Attribute names to tiles based on attribute ordering from array schema. */
   std::vector<std::pair<std::string, optional<TileTuple>>> attr_tiles_;
 
+  /** The timestamp attribute tile. */
+  optional<TileTuple> timestamps_tile_;
+
   /** The zipped coordinates tile. */
   TileTuple coords_tile_;
 
@@ -454,6 +472,212 @@ class ResultTile {
       const char* const buff_str,
       const std::string_view& range_start,
       const std::string_view& range_end);
+};
+
+/** Result tile with bitmap. */
+template <class BitmapType>
+class ResultTileWithBitmap : public ResultTile {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+  ResultTileWithBitmap() = default;
+
+  ResultTileWithBitmap(
+      unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
+      : ResultTile(frag_idx, tile_idx, array_schema)
+      , bitmap_result_num_(std::numeric_limits<uint64_t>::max())
+      , coords_loaded_(false) {
+  }
+
+  /** Move constructor. */
+  ResultTileWithBitmap(ResultTileWithBitmap<BitmapType>&& other) noexcept {
+    // Swap with the argument
+    swap(other);
+  }
+
+  /** Move-assign operator. */
+  ResultTileWithBitmap<BitmapType>& operator=(
+      ResultTileWithBitmap<BitmapType>&& other) {
+    // Swap with the argument
+    swap(other);
+
+    return *this;
+  }
+
+  DISABLE_COPY_AND_COPY_ASSIGN(ResultTileWithBitmap);
+
+  /* ********************************* */
+  /*          PUBLIC METHODS           */
+  /* ********************************* */
+
+  /**
+   * Returns the number of cells that are that are between two cell positions
+   * in the bitmap.
+   *
+   * @param start_pos Starting cell position in the bitmap.
+   * @param end_pos End position in the bitmap.
+   *
+   * @return Result number between the positions.
+   */
+  uint64_t result_num_between_pos(uint64_t start_pos, uint64_t end_pos) const {
+    if (bitmap_.size() == 0)
+      return end_pos - start_pos;
+
+    uint64_t result_num = 0;
+    for (uint64_t c = start_pos; c < end_pos; c++)
+      result_num += bitmap_[c];
+
+    return result_num;
+  }
+
+  /**
+   * Returns the position (index) inside of the bitmap given a number of cells.
+   *
+   * @param start_pos Starting cell position in the bitmap.
+   * @param result_num Number of results to advance.
+   *
+   * @return Cell position found, or maximum position.
+   */
+  uint64_t pos_with_given_result_sum(
+      uint64_t start_pos, uint64_t result_num) const {
+    assert(
+        bitmap_result_num_ != std::numeric_limits<uint64_t>::max() &&
+        result_num != 0);
+    if (bitmap_.size() == 0)
+      return start_pos + result_num - 1;
+
+    uint64_t sum = 0;
+    for (uint64_t c = start_pos; c < bitmap_.size(); c++) {
+      sum += bitmap_[c];
+      if (sum == result_num) {
+        return c;
+      }
+    }
+
+    return bitmap_.size() - 1;
+  }
+
+  /** Does this tile have a bitmap. */
+  inline bool has_bmp() {
+    return bitmap_.size() > 0;
+  }
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(ResultTileWithBitmap<BitmapType>& tile) {
+    ResultTile::swap(tile);
+    std::swap(bitmap_, tile.bitmap_);
+    std::swap(bitmap_result_num_, tile.bitmap_result_num_);
+    std::swap(coords_loaded_, tile.coords_loaded_);
+  }
+
+  /* ********************************* */
+  /*         PUBLIC ATTRIBUTES         */
+  /* ********************************* */
+
+  /** Bitmap for this tile. */
+  std::vector<BitmapType> bitmap_;
+
+  /** Number of cells in this bitmap. */
+  uint64_t bitmap_result_num_;
+
+  /** Were the coordinates loaded for this tile. */
+  bool coords_loaded_;
+};
+
+/** Global order result tile. */
+class GlobalOrderResultTile : public ResultTileWithBitmap<uint8_t> {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+  GlobalOrderResultTile(
+      unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
+      : ResultTileWithBitmap<uint8_t>(frag_idx, tile_idx, array_schema)
+      , used_(false) {
+  }
+
+  /** Move constructor. */
+  GlobalOrderResultTile(GlobalOrderResultTile&& other) noexcept {
+    // Swap with the argument
+    swap(other);
+  }
+
+  /** Move-assign operator. */
+  GlobalOrderResultTile& operator=(GlobalOrderResultTile&& other) {
+    // Swap with the argument
+    swap(other);
+
+    return *this;
+  }
+
+  DISABLE_COPY_AND_COPY_ASSIGN(GlobalOrderResultTile);
+
+  /* ********************************* */
+  /*          PUBLIC METHODS           */
+  /* ********************************* */
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(GlobalOrderResultTile& tile) {
+    ResultTileWithBitmap<uint8_t>::swap(tile);
+    std::swap(hilbert_values_, tile.hilbert_values_);
+  }
+
+  /** Returns if the tile was used by the merge or not. */
+  inline bool used() {
+    return used_;
+  }
+
+  /** Set the tile as used by the merge. */
+  inline void set_used() {
+    used_ = true;
+  }
+
+  /** Allocate space for the hilbert values vector. */
+  inline void allocate_hilbert_vector() {
+    hilbert_values_.resize(cell_num());
+  }
+
+  /** Get the hilbert value at an index. */
+  inline uint64_t hilbert_value(uint64_t i) {
+    return hilbert_values_[i];
+  }
+
+  /** Set a hilbert value. */
+  inline void set_hilbert_value(uint64_t i, uint64_t v) {
+    hilbert_values_[i] = v;
+  }
+
+  /** Return first cell index in bitmap. */
+  uint64_t first_cell_in_bitmap() {
+    uint64_t ret = 0;
+    while (!bitmap_[ret]) {
+      ret++;
+    }
+
+    return ret;
+  }
+
+  /** Return first cell index in bitmap. */
+  uint64_t last_cell_in_bitmap() {
+    uint64_t ret = bitmap_.size() - 1;
+    while (!bitmap_[ret]) {
+      ret--;
+    }
+
+    return ret;
+  }
+
+ private:
+  /* ********************************* */
+  /*        PRIVATE ATTRIBUTES         */
+  /* ********************************* */
+
+  /** Hilbert values for this tile. */
+  std::vector<uint64_t> hilbert_values_;
+
+  /** Was the tile used in the merge. */
+  bool used_;
 };
 
 }  // namespace sm

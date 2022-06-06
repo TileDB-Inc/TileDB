@@ -50,122 +50,123 @@ class MemoryTracker;
 class StorageManager;
 class Subarray;
 
-/** Result tile with bitmap. */
-template <class BitmapType>
-class ResultTileWithBitmap : public ResultTile {
+class FragIdx {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
-  ResultTileWithBitmap(
-      unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
-      : ResultTile(frag_idx, tile_idx, array_schema)
-      , bitmap_result_num_(std::numeric_limits<uint64_t>::max())
-      , coords_loaded_(false) {
+  FragIdx() = default;
+
+  FragIdx(uint64_t tile_idx, uint64_t cell_idx)
+      : tile_idx_(tile_idx)
+      , cell_idx_(cell_idx) {
   }
 
   /** Move constructor. */
-  ResultTileWithBitmap(ResultTileWithBitmap<BitmapType>&& other) noexcept {
+  FragIdx(FragIdx&& other) noexcept {
     // Swap with the argument
     swap(other);
   }
 
   /** Move-assign operator. */
-  ResultTileWithBitmap<BitmapType>& operator=(
-      ResultTileWithBitmap<BitmapType>&& other) {
+  FragIdx& operator=(FragIdx&& other) {
     // Swap with the argument
     swap(other);
 
     return *this;
   }
 
-  DISABLE_COPY_AND_COPY_ASSIGN(ResultTileWithBitmap);
+  DISABLE_COPY_AND_COPY_ASSIGN(FragIdx);
 
   /* ********************************* */
   /*          PUBLIC METHODS           */
   /* ********************************* */
 
-  /**
-   * Returns the number of cells that are before a certain cell index in the
-   * bitmap.
-   *
-   * @param start_pos Starting cell position in the bitmap.
-   * @param end_pos End position in the bitmap.
-   *
-   * @return Result number between the positions.
-   */
-  uint64_t result_num_between_pos(uint64_t start_pos, uint64_t end_pos) const {
-    if (bitmap_.size() == 0)
-      return end_pos - start_pos;
-
-    uint64_t result_num = 0;
-    for (uint64_t c = start_pos; c < end_pos; c++)
-      result_num += bitmap_[c];
-
-    return result_num;
-  }
-
-  /**
-   * Returns cell index from a number of cells inside of the bitmap.
-   *
-   * @param start_pos Starting cell position in the bitmap.
-   * @param result_num Number of results to advance.
-   *
-   * @return Cell position found, or maximum position.
-   */
-  uint64_t pos_with_given_result_sum(
-      uint64_t start_pos, uint64_t result_num) const {
-    assert(
-        bitmap_result_num_ != std::numeric_limits<uint64_t>::max() &&
-        result_num != 0);
-    if (bitmap_.size() == 0)
-      return start_pos + result_num - 1;
-
-    uint64_t sum = 0;
-    for (uint64_t c = start_pos; c < bitmap_.size(); c++) {
-      sum += bitmap_[c];
-      if (sum == result_num) {
-        return c;
-      }
-    }
-
-    return bitmap_.size() - 1;
-  }
-
   /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(ResultTileWithBitmap<BitmapType>& tile) {
-    ResultTile::swap(tile);
-    std::swap(bitmap_, tile.bitmap_);
-    std::swap(bitmap_result_num_, tile.bitmap_result_num_);
-    std::swap(coords_loaded_, tile.coords_loaded_);
-    std::swap(hilbert_values_, tile.hilbert_values_);
+  void swap(FragIdx& frag_tile_idx) {
+    std::swap(tile_idx_, frag_tile_idx.tile_idx_);
+    std::swap(cell_idx_, frag_tile_idx.cell_idx_);
   }
 
   /* ********************************* */
   /*         PUBLIC ATTRIBUTES         */
   /* ********************************* */
 
-  /** Bitmap for this tile. */
-  std::vector<BitmapType> bitmap_;
+  /** Tile index. */
+  uint64_t tile_idx_;
 
-  /** Number of cells in this bitmap. */
-  uint64_t bitmap_result_num_;
-
-  /** Was the query condition processed for this tile. */
-  bool coords_loaded_;
-
-  /** Hilbert values for this tile. */
-  std::vector<uint64_t> hilbert_values_;
+  /** Cell index. */
+  uint64_t cell_idx_;
 };
 
-/**
- * Result tile list per fragments. For sparse global order reader, this will
- * be the list of tiles loaded per fragments. For the unordered with duplicates
- * reader, all tiles will be in fragment 0.
- */
-template <typename BitmapType>
-using ResultTileListPerFragment =
-    std::vector<std::list<ResultTileWithBitmap<BitmapType>>>;
+class IgnoredTile {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+  IgnoredTile() = default;
+
+  IgnoredTile(uint64_t frag_idx, uint64_t tile_idx)
+      : frag_idx_(frag_idx)
+      , tile_idx_(tile_idx) {
+  }
+
+  /** Move constructor. */
+  IgnoredTile(IgnoredTile&& other) noexcept {
+    // Swap with the argument
+    swap(other);
+  }
+
+  /** Move-assign operator. */
+  IgnoredTile& operator=(IgnoredTile&& other) {
+    // Swap with the argument
+    swap(other);
+
+    return *this;
+  }
+
+  DISABLE_COPY_AND_COPY_ASSIGN(IgnoredTile);
+
+  /* ********************************* */
+  /*          PUBLIC METHODS           */
+  /* ********************************* */
+
+  inline uint64_t frag_idx() const {
+    return frag_idx_;
+  }
+
+  inline uint64_t tile_idx() const {
+    return tile_idx_;
+  }
+
+  bool operator==(const IgnoredTile& v) const {
+    return frag_idx_ == v.frag_idx_ && tile_idx_ == v.tile_idx_;
+  }
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(IgnoredTile& other) {
+    std::swap(frag_idx_, other.frag_idx_);
+    std::swap(tile_idx_, other.tile_idx_);
+  }
+
+  /* ********************************* */
+  /*        PRIVATE ATTRIBUTES         */
+  /* ********************************* */
+
+  // Frag index.
+  uint64_t frag_idx_;
+
+  // Tile index.
+  uint64_t tile_idx_;
+};
+
+struct ignored_tile_hash {
+  size_t operator()(IgnoredTile const& v) const {
+    std::size_t h1 = std::hash<uint64_t>()(v.frag_idx());
+    std::size_t h2 = std::hash<uint64_t>()(v.tile_idx());
+    return h1 ^ h2;
+  }
+};
 
 /** Processes read queries. */
 class SparseIndexReaderBase : public ReaderBase {
@@ -177,7 +178,7 @@ class SparseIndexReaderBase : public ReaderBase {
   /** The state for a read sparse global order query. */
   struct ReadState {
     /** The tile index inside of each fragments. */
-    std::vector<std::pair<uint64_t, uint64_t>> frag_tile_idx_;
+    std::vector<FragIdx> frag_idx_;
 
     /** Is the reader done with the query. */
     bool done_adding_result_tiles_;
@@ -298,6 +299,9 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /* Are the users buffers full. */
   bool buffers_full_;
+
+  /** List of tiles to ignore. */
+  std::unordered_set<IgnoredTile, ignored_tile_hash> ignored_tiles_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */

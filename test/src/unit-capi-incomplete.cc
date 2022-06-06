@@ -1131,6 +1131,11 @@ void IncompleteFx::check_sparse_unsplittable_overflow() {
   CHECK(status == TILEDB_INCOMPLETE);
   CHECK(buffer_sizes[0] == 0);
 
+  tiledb_query_status_details_t details;
+  rc = tiledb_query_get_status_details(ctx_, query, &details);
+  CHECK(rc == TILEDB_OK);
+  CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
+
   // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);

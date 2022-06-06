@@ -75,7 +75,6 @@ UnorderedWriter::UnorderedWriter(
     Subarray& subarray,
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
-    bool disable_check_global_order,
     Query::CoordsInfo& coords_info,
     URI fragment_uri)
     : WriterBase(
@@ -88,7 +87,7 @@ UnorderedWriter::UnorderedWriter(
           subarray,
           layout,
           written_fragment_info,
-          disable_check_global_order,
+          false,
           coords_info,
           fragment_uri) {
 }
@@ -558,7 +557,9 @@ Status UnorderedWriter::prepare_tiles_var(
     }
   }
 
-  (*tiles)[tile_idx + 1].final_size(offset);
+  if (cell_num > 0) {
+    (*tiles)[tile_idx + 1].final_size(offset);
+  }
 
   uint64_t last_tile_cell_num = (cell_num - dups_num) % capacity;
   if (last_tile_cell_num != 0) {
@@ -636,8 +637,10 @@ Status UnorderedWriter::unordered_write() {
   coord_dups.clear();
 
   // No tiles
-  if (tiles.empty() || tiles.begin()->second.empty())
+  if (tiles.empty() || tiles.begin()->second.empty()) {
+    clean_up(uri);
     return Status::Ok();
+  }
 
   // Set the number of tiles in the metadata
   auto it = tiles.begin();

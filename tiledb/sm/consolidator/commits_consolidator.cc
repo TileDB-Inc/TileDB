@@ -87,6 +87,7 @@ Status CommitsConsolidator::consolidate(
         URI(array_name),
         0,
         utils::time::timestamp_now_ms(),
+        false,
         ArrayDirectoryMode::COMMITS);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
@@ -132,6 +133,7 @@ Status CommitsConsolidator::vacuum(const char* array_name) {
         URI(array_name),
         0,
         utils::time::timestamp_now_ms(),
+        false,
         ArrayDirectoryMode::COMMITS);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));

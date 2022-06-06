@@ -76,7 +76,7 @@ WriterBase::WriterBase(
     Subarray& subarray,
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
-    bool disable_check_global_order,
+    bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
     URI fragment_uri)
     : StrategyBase(
@@ -88,7 +88,7 @@ WriterBase::WriterBase(
           buffers,
           subarray,
           layout)
-    , disable_check_global_order_(disable_check_global_order)
+    , disable_checks_consolidation_(disable_checks_consolidation)
     , coords_info_(coords_info)
     , check_coord_dups_(false)
     , check_coord_oob_(false)
@@ -211,10 +211,12 @@ Status WriterBase::init() {
   RETURN_NOT_OK(config_.get("sm.check_global_order", &check_global_order));
   RETURN_NOT_OK(config_.get("sm.dedup_coords", &dedup_coords));
   assert(check_coord_dups != nullptr && dedup_coords != nullptr);
-  check_coord_dups_ = !strcmp(check_coord_dups, "true");
+  check_coord_dups_ =
+      disable_checks_consolidation_ ? false : !strcmp(check_coord_dups, "true");
   check_coord_oob_ = !strcmp(check_coord_oob, "true");
-  check_global_order_ =
-      disable_check_global_order_ ? false : !strcmp(check_global_order, "true");
+  check_global_order_ = disable_checks_consolidation_ ?
+                            false :
+                            !strcmp(check_global_order, "true");
   dedup_coords_ = !strcmp(dedup_coords, "true");
   bool found = false;
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
@@ -628,6 +630,7 @@ Status WriterBase::create_fragment(
     uri = frag_uri.join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
+  const bool has_timestamps = buffers_.count(constants::timestamps) != 0;
   frag_meta = make_shared<FragmentMetadata>(
       HERE(),
       storage_manager_,
@@ -635,7 +638,8 @@ Status WriterBase::create_fragment(
       array_->array_schema_latest_ptr(),
       uri,
       timestamp_range,
-      dense);
+      dense,
+      has_timestamps);
 
   RETURN_NOT_OK((frag_meta)->init(subarray_.ndrange(0)));
   return storage_manager_->create_dir(uri);

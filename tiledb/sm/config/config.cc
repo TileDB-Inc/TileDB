@@ -183,6 +183,7 @@ const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
 const std::string Config::VFS_HDFS_NAME_NODE_URI = "";
 const std::string Config::VFS_HDFS_USERNAME = "";
+const std::string Config::FILESTORE_BUFFER_SIZE = "104857600";
 /* ****************************** */
 /*        PRIVATE CONSTANTS       */
 /* ****************************** */
@@ -283,8 +284,6 @@ Config::Config() {
   param_values_["sm.consolidation.with_timestamps"] =
       SM_CONSOLIDATION_WITH_TIMESTAMPS;
   param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
-  param_values_["sm.vacuum.timestamp_start"] = SM_VACUUM_TIMESTAMP_START;
-  param_values_["sm.vacuum.timestamp_end"] = SM_VACUUM_TIMESTAMP_END;
   param_values_["sm.var_offsets.bitsize"] = SM_OFFSETS_BITSIZE;
   param_values_["sm.var_offsets.extra_element"] = SM_OFFSETS_EXTRA_ELEMENT;
   param_values_["sm.var_offsets.mode"] = SM_OFFSETS_FORMAT_MODE;
@@ -358,6 +357,7 @@ Config::Config() {
   param_values_["vfs.hdfs.username"] = VFS_HDFS_USERNAME;
   param_values_["vfs.hdfs.kerb_ticket_cache_path"] =
       VFS_HDFS_KERB_TICKET_CACHE_PATH;
+  param_values_["filestore.buffer_size"] = FILESTORE_BUFFER_SIZE;
 }
 
 Config::~Config() = default;
@@ -625,10 +625,6 @@ Status Config::unset(const std::string& param) {
         SM_CONSOLIDATION_WITH_TIMESTAMPS;
   } else if (param == "sm.vacuum.mode") {
     param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
-  } else if (param == "sm.vacuum.timestamp_start") {
-    param_values_["sm.vacuum.timestamp_start"] = SM_VACUUM_TIMESTAMP_START;
-  } else if (param == "sm.vacuum.timestamp_end") {
-    param_values_["sm.vacuum.timestamp_end"] = SM_VACUUM_TIMESTAMP_END;
   } else if (param == "sm.var_offsets.bitsize") {
     param_values_["sm.var_offsets.bitsize"] = SM_OFFSETS_BITSIZE;
   } else if (param == "sm.var_offsets.extra_element") {
@@ -767,6 +763,8 @@ Status Config::unset(const std::string& param) {
   } else if (param == "vfs.hdfs.kerb_ticket_cache_path") {
     param_values_["vfs.hdfs.kerb_ticket_cache_path"] =
         VFS_HDFS_KERB_TICKET_CACHE_PATH;
+  } else if (param == "filestore.buffer_size") {
+    param_values_["filestore.buffer_size"] = FILESTORE_BUFFER_SIZE;
   } else {
     param_values_.erase(param);
   }

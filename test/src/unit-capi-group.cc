@@ -42,9 +42,11 @@
 #endif
 
 #include "serialization_wrappers.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
@@ -88,6 +90,13 @@ struct GroupFx {
       tiledb_group_t* group) const;
   void set_group_timestamp(
       tiledb_group_t* group, const uint64_t& timestamp) const;
+  void write_group_metadata(const char* group_uri) const;
+  void consolidate(const char* group_uri, uint64_t start, uint64_t end) const;
+  void get_meta_files(
+      tiledb::sm::URI group_uri, std::vector<std::string>& files) const;
+  void get_meta_vac_files(
+      tiledb::sm::URI group_uri, std::vector<std::string>& files) const;
+  void vacuum(const char* group_uri) const;
 };
 
 GroupFx::GroupFx()
@@ -103,6 +112,20 @@ GroupFx::~GroupFx() {
   REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
+}
+
+void GroupFx::write_group_metadata(const char* group_uri) const {
+  tiledb_group_t* group;
+  REQUIRE(tiledb_group_alloc(ctx_, group_uri, &group) == TILEDB_OK);
+  REQUIRE(tiledb_group_open(ctx_, group, TILEDB_WRITE) == TILEDB_OK);
+
+  int32_t v = 123;
+  CHECK(
+      tiledb_group_put_metadata(
+          ctx_, group, "cons_test", TILEDB_INT32, 1, &v) == TILEDB_OK);
+
+  REQUIRE(tiledb_group_close(ctx_, group) == TILEDB_OK);
+  tiledb_group_free(&group);
 }
 
 void GroupFx::set_group_timestamp(
@@ -123,6 +146,88 @@ void GroupFx::set_group_timestamp(
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_config_free(&config);
+}
+
+static int get_group_meta_files_cb(const char* path, void* data) {
+  auto vec = static_cast<std::vector<std::string>*>(data);
+  if (!tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::vacuum_file_suffix))
+    vec->emplace_back(path);
+
+  return 1;
+}
+
+static int get_group_meta_vac_files_cb(const char* path, void* data) {
+  auto vec = static_cast<std::vector<std::string>*>(data);
+  if (tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::vacuum_file_suffix))
+    vec->emplace_back(path);
+
+  return 1;
+}
+
+void GroupFx::get_meta_files(
+    tiledb::sm::URI group_uri, std::vector<std::string>& files) const {
+  files.clear();
+  int rc = tiledb_vfs_ls(
+      ctx_,
+      vfs_,
+      group_uri.add_trailing_slash()
+          .join_path(tiledb::sm::constants::group_metadata_dir_name)
+          .c_str(),
+      &get_group_meta_files_cb,
+      &files);
+  CHECK(rc == TILEDB_OK);
+}
+
+void GroupFx::get_meta_vac_files(
+    tiledb::sm::URI group_uri, std::vector<std::string>& files) const {
+  files.clear();
+  int rc = tiledb_vfs_ls(
+      ctx_,
+      vfs_,
+      group_uri.add_trailing_slash()
+          .join_path(tiledb::sm::constants::group_metadata_dir_name)
+          .c_str(),
+      &get_group_meta_vac_files_cb,
+      &files);
+  CHECK(rc == TILEDB_OK);
+}
+
+void GroupFx::consolidate(
+    const char* group_uri, uint64_t start, uint64_t end) const {
+  int rc;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg,
+      "sm.consolidation.timestamp_start",
+      std::to_string(start).c_str(),
+      &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(
+      cfg, "sm.consolidation.timestamp_end", std::to_string(end).c_str(), &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_group_consolidate_metadata(ctx_, group_uri, cfg);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_config_free(&cfg);
+}
+
+void GroupFx::vacuum(const char* group_uri) const {
+  int rc;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_group_vacuum_metadata(ctx_, group_uri, cfg);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_config_free(&cfg);
 }
 
 std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> GroupFx::read_group(
@@ -523,6 +628,113 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_group_free(&group1);
   tiledb_group_free(&group2);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    GroupFx,
+    "C API: Group, consolidation",
+    "[capi][group][metadata][consolidation]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  tiledb::sm::URI group_uri(temp_dir + "group");
+  REQUIRE(tiledb_group_create(ctx_, group_uri.c_str()) == TILEDB_OK);
+
+  write_group_metadata(group_uri.c_str());
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  auto start = tiledb::sm::utils::time::timestamp_now_ms();
+  write_group_metadata(group_uri.c_str());
+  write_group_metadata(group_uri.c_str());
+  auto end = tiledb::sm::utils::time::timestamp_now_ms();
+  consolidate(group_uri.c_str(), start, end);
+
+  std::vector<std::string> group_meta_vac_files;
+  get_meta_vac_files(group_uri, group_meta_vac_files);
+  CHECK(group_meta_vac_files.size() == 1);
+
+  std::vector<std::string> group_meta_files;
+  get_meta_files(group_uri, group_meta_files);
+  CHECK(group_meta_files.size() == 4);
+
+  uint64_t file_size = 0;
+  int rc = tiledb_vfs_file_size(
+      ctx_, vfs_, group_meta_vac_files[0].c_str(), &file_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Make sure we only have two files to vaccum
+  tiledb_vfs_fh_t* fh;
+  std::string vac_file;
+  vac_file.resize(file_size);
+  rc = tiledb_vfs_open(
+      ctx_, vfs_, group_meta_vac_files[0].c_str(), TILEDB_VFS_READ, &fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_read(ctx_, fh, 0, vac_file.data(), file_size);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(std::count(vac_file.begin(), vac_file.end(), '\n') == 2);
+  rc = tiledb_vfs_close(ctx_, fh);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_vfs_fh_free(&fh);
+  REQUIRE(rc == TILEDB_OK);
+
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    GroupFx, "C API: Group, vacuuming", "[capi][group][metadata][vacuuming]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  tiledb::sm::URI group_uri(temp_dir + "group");
+  REQUIRE(tiledb_group_create(ctx_, group_uri.c_str()) == TILEDB_OK);
+
+  auto start = tiledb::sm::utils::time::timestamp_now_ms();
+
+  write_group_metadata(group_uri.c_str());
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  auto start1 = tiledb::sm::utils::time::timestamp_now_ms();
+  write_group_metadata(group_uri.c_str());
+  write_group_metadata(group_uri.c_str());
+  auto end1 = tiledb::sm::utils::time::timestamp_now_ms();
+  consolidate(group_uri.c_str(), start1, end1);
+
+  auto start2 = tiledb::sm::utils::time::timestamp_now_ms();
+  write_group_metadata(group_uri.c_str());
+  write_group_metadata(group_uri.c_str());
+  auto end2 = tiledb::sm::utils::time::timestamp_now_ms();
+  consolidate(group_uri.c_str(), start2, end2);
+
+  auto end = tiledb::sm::utils::time::timestamp_now_ms();
+
+  std::vector<std::string> group_meta_vac_files;
+  get_meta_vac_files(group_uri, group_meta_vac_files);
+  CHECK(group_meta_vac_files.size() == 2);
+
+  std::vector<std::string> group_meta_files;
+  get_meta_files(group_uri, group_meta_files);
+  CHECK(group_meta_files.size() == 7);
+
+  vacuum(group_uri.c_str());
+
+  get_meta_vac_files(group_uri, group_meta_vac_files);
+  CHECK(group_meta_vac_files.size() == 0);
+  get_meta_files(group_uri, group_meta_files);
+  CHECK(group_meta_files.size() == 3);
+
+  consolidate(group_uri.c_str(), start, end);
+
+  get_meta_vac_files(group_uri, group_meta_vac_files);
+  CHECK(group_meta_vac_files.size() == 1);
+  get_meta_files(group_uri, group_meta_files);
+  CHECK(group_meta_files.size() == 4);
+
+  vacuum(group_uri.c_str());
+
+  get_meta_vac_files(group_uri, group_meta_vac_files);
+  CHECK(group_meta_vac_files.size() == 0);
+  get_meta_files(group_uri, group_meta_files);
+  CHECK(group_meta_files.size() == 1);
+
   remove_temp_dir(temp_dir);
 }
 

@@ -70,11 +70,11 @@ class Array {
   /** Constructor. */
   Array(const URI& array_uri, StorageManager* storage_manager);
 
-  /** Copy constructor. */
-  Array(const Array& rhs);
-
   /** Destructor. */
   ~Array() = default;
+
+  DISABLE_COPY_AND_COPY_ASSIGN(Array);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Array);
 
   /* ********************************* */
   /*                API                */
@@ -514,6 +514,9 @@ class Array {
 
   /** Computes the non-empty domain of the array. */
   Status compute_non_empty_domain();
+
+  /** Checks if consolidation with timestamps is enabled in config. */
+  bool consolidation_with_timestamps_config_enabled() const;
 };
 
 }  // namespace sm

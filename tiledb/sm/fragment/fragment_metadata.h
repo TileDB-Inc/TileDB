@@ -41,6 +41,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/rtree/rtree.h"
@@ -83,6 +84,7 @@ class FragmentMetadata {
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
    * @param dense Indicates whether the fragment is dense or sparse.
+   * @param has_timestamps Does the fragment contains timestamps.
    */
   FragmentMetadata(
       StorageManager* storage_manager,
@@ -90,7 +92,8 @@ class FragmentMetadata {
       const shared_ptr<const ArraySchema>& array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
-      bool dense = true);
+      bool dense = true,
+      bool has_timestamps = false);
 
   /** Destructor. */
   ~FragmentMetadata();
@@ -103,6 +106,14 @@ class FragmentMetadata {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /**
+   * Returns the number of dimensions and attributes.
+   */
+  inline uint64_t num_dims_and_attrs() const {
+    return array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
+           has_timestamps_;
+  }
 
   /** Returns the number of cells in the fragment. */
   uint64_t cell_num() const;
@@ -221,6 +232,11 @@ class FragmentMetadata {
 
   /** Returns true if the metadata footer is consolidated. */
   bool has_consolidated_footer() const;
+
+  /** Returns true if the fragment has timestamps. */
+  inline bool has_timestamps() const {
+    return has_timestamps_;
+  }
 
   /**
    * Retrieves the overlap of all MBRs with the input ND range.
@@ -772,6 +788,28 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key);
 
   /**
+   * Checks if the fragment overlaps partially (not fully) with a given
+   * array open - end time.
+   *
+   * @param array_start_timestamp Array open time
+   * @param array_end_timestamp Array end time
+   *
+   * @return True if there is partial overlap, false if there is full or no
+   * overlap
+   */
+  inline bool partial_time_overlap(
+      const uint64_t array_start_timestamp,
+      const uint64_t array_end_timestamp) const {
+    const auto fragment_timestamp_start = timestamp_range_.first;
+    const auto fragment_timestamp_end = timestamp_range_.second;
+
+    return (array_start_timestamp > fragment_timestamp_start &&
+            array_start_timestamp <= fragment_timestamp_end) ||
+           (array_end_timestamp < fragment_timestamp_end &&
+            array_end_timestamp >= fragment_timestamp_start);
+  }
+
+  /**
    * Returns ArraySchema
    *
    * @return
@@ -837,7 +875,7 @@ class FragmentMetadata {
   /**
    * Maps an attribute or dimension to an index used in the various vector
    * class members. Attributes are first, then TILEDB_COORDS, then the
-   * dimensions.
+   * dimensions, then timestamp.
    */
   std::unordered_map<std::string, unsigned> idx_map_;
 
@@ -878,6 +916,9 @@ class FragmentMetadata {
 
   /** Number of cells in the last tile (meaningful only in the sparse case). */
   uint64_t last_tile_cell_num_;
+
+  /** True if the fragment has timestamps, and false otherwise. */
+  bool has_timestamps_;
 
   /** Number of sparse tiles. */
   uint64_t sparse_tile_num_;
@@ -1203,6 +1244,14 @@ class FragmentMetadata {
   Status load_last_tile_cell_num(ConstBuffer* buff);
 
   /**
+   * Loads the `has_timestamps_` field from the buffer.
+   *
+   * @param buff Metadata buffer.
+   * @return Status
+   */
+  Status load_has_timestamps(ConstBuffer* buff);
+
+  /**
    * Loads the MBRs from the fragment metadata buffer.
    *
    * @param buff Metadata buffer.
@@ -1352,6 +1401,11 @@ class FragmentMetadata {
    * Writes the cell number of the last tile to the fragment metadata buffer.
    */
   Status write_last_tile_cell_num(Buffer* buff) const;
+
+  /**
+   * Writes the `has_timestamps_` field to the fragment metadata buffer.
+   */
+  Status write_has_timestamps(Buffer* buff) const;
 
   /**
    * Writes the R-tree to storage.

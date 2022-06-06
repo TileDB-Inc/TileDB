@@ -1025,18 +1025,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    `fragment_meta` (remove only consolidated fragment metadata), or
  *    `array_meta` (remove consolidated array metadata files). <br>
  *    **Default**: fragments
- * - `sm.vacuum.timestamp_start` <br>
- *    **Experimental** <br>
- *    When set, an array will be vacuumed between this value and
- *    `sm.vacuum.timestamp_end` (inclusive). <br>
- *    Only for `fragments` and `array_meta` vacuum mode. <br>
- *    **Default**: 0
- * - `sm.vacuum.timestamp_end` <br>
- *    **Experimental** <br>
- *    When set, an array will be vacuumed between `sm.vacuum.timestamp_start`
- *    and this value (inclusive). <br>
- *    Only for `fragments` and `array_meta` vacuum mode. <br>
- *    **Default**: UINT64_MAX
  * - `sm.consolidation_mode` <br>
  *    The consolidation mode, one of `fragments` (consolidate all fragments),
  *    `fragment_meta` (consolidate only fragment metadata footers to a single
@@ -1436,6 +1424,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * Set curl to run in verbose mode for REST requests <br>
  * curl will print to stdout with this option
  *    **Default**: false
+ * - `filestore.buffer_size` <br>
+ *    Specifies the size in bytes of the internal buffers used in the filestore
+ *    API. The size should be bigger than the minimum tile size filestore
+ *    currently supports, that is currently 1024bytes. <br>
+ *    **Default**: 100MB
  *
  * **Example:**
  *

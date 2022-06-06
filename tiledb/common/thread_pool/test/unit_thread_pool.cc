@@ -32,6 +32,7 @@
 
 #include "unit_thread_pool.h"
 
+#include <stdint.h>
 #include <atomic>
 #include <catch.hpp>
 #include <iostream>
@@ -40,8 +41,9 @@
 #include "tiledb/sm/misc/cancelable_tasks.h"
 
 size_t random_ms(size_t max = 3) {
-  thread_local static std::mt19937 generator(
-      std::hash<std::thread::id>()(std::this_thread::get_id()));
+  thread_local static uint64_t generator_seed =
+      std::hash<std::thread::id>()(std::this_thread::get_id());
+  thread_local static std::mt19937_64 generator(generator_seed);
   std::uniform_int_distribution<size_t> distribution(0, max);
   return distribution(generator);
 }

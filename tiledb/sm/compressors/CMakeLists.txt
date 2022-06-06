@@ -60,13 +60,40 @@ target_link_libraries(
     filter
     compressors
     )
-
+    
 target_include_directories(tdb_gzip_embedded_data PRIVATE
         $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>
 )
+
+if (TILEDB_WEBP)
+  #
+  # perform webp build and link test for some webp routines
+  #
+  find_package(Webp_EP REQUIRED)
+  add_executable(unit_link_webp)
+  if (WIN32)
+    target_link_libraries(unit_link_webp PRIVATE WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux)
+  else() #if (NOT WIN32)
+    # On Linux, must explicitly link -lpthread -ldl in order for static linking
+    # to libzstd or libcurl to work.
+    target_link_libraries(unit_link_webp WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux pthread dl)
+  endif()
+  target_sources(
+      unit_link_webp
+      PRIVATE
+      test/link_webp_test1.cc
+      )
+      
+  add_test(NAME "unit_link_webp" 
+    COMMAND "$<TARGET_FILE:unit_link_webp>" 
+    WORKING_DIRECTORY  ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+endif()
+
 # Link to Threads::Threads if library or flag needed to enable threading.
 find_package(Threads REQUIRED)
-if (TRUE) #(CMAKE_THREAD_LIBS_INIT)
+
+if (CMAKE_THREAD_LIBS_INIT)
   target_link_libraries(tdb_gzip_embedded_data PRIVATE Threads::Threads)
 endif()
 # On Linux, must explicitly link -ldl for static linking to libzstd.

@@ -72,6 +72,19 @@ class Group {
    */
   Status open(QueryType query_type);
 
+  /**
+   * Opens the group.
+   *
+   * @param query_type The query type.
+   * @param timestamp_start The start timestamp at which to open the group
+   * @param timestamp_end The end timestamp at which to open the group
+   * @param query_type The query type. This should always be READ. It
+   * @return Status
+   *
+   */
+  Status open(
+      QueryType query_type, uint64_t timestamp_start, uint64_t timestamp_end);
+
   /** Closes the group and frees all memory. */
   Status close();
 

@@ -36,6 +36,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 #include <cassert>
 
@@ -51,7 +52,12 @@ enum class Datatype : uint8_t {
 #undef TILEDB_DATATYPE_ENUM
 };
 
-/** Returns the datatype size. */
+/**
+ *  Returns the datatype size.
+ *
+ *  This function also serves as a datatype validation function;
+ *  If 0 is returned, the input Datatype is invalid.
+ */
 inline uint64_t datatype_size(Datatype type) noexcept {
   switch (type) {
     case Datatype::INT32:
@@ -66,6 +72,8 @@ inline uint64_t datatype_size(Datatype type) noexcept {
       return sizeof(char);
     case Datatype::BLOB:
       return sizeof(std::byte);
+    case Datatype::BOOL:
+      return sizeof(uint8_t);
     case Datatype::INT8:
       return sizeof(int8_t);
     case Datatype::UINT8:
@@ -136,6 +144,8 @@ inline const std::string& datatype_str(Datatype type) {
       return constants::char_str;
     case Datatype::BLOB:
       return constants::blob_str;
+    case Datatype::BOOL:
+      return constants::bool_str;
     case Datatype::INT8:
       return constants::int8_str;
     case Datatype::UINT8:
@@ -226,6 +236,8 @@ inline Status datatype_enum(
     *datatype = Datatype::CHAR;
   else if (datatype_str == constants::blob_str)
     *datatype = Datatype::BLOB;
+  else if (datatype_str == constants::bool_str)
+    *datatype = Datatype::BOOL;
   else if (datatype_str == constants::int8_str)
     *datatype = Datatype::INT8;
   else if (datatype_str == constants::uint8_str)
@@ -313,11 +325,11 @@ inline bool datatype_is_string(Datatype type) {
 /** Returns true if the input datatype is an integer type. */
 inline bool datatype_is_integer(Datatype type) {
   return (
-      type == Datatype::BLOB || type == Datatype::INT8 ||
-      type == Datatype::UINT8 || type == Datatype::INT16 ||
-      type == Datatype::UINT16 || type == Datatype::INT32 ||
-      type == Datatype::UINT32 || type == Datatype::INT64 ||
-      type == Datatype::UINT64);
+      type == Datatype::BLOB || type == Datatype::BOOL ||
+      type == Datatype::INT8 || type == Datatype::UINT8 ||
+      type == Datatype::INT16 || type == Datatype::UINT16 ||
+      type == Datatype::INT32 || type == Datatype::UINT32 ||
+      type == Datatype::INT64 || type == Datatype::UINT64);
 }
 
 /** Returns true if the input datatype is a real type. */
@@ -345,6 +357,35 @@ inline bool datatype_is_time(Datatype type) {
       type == Datatype::TIME_US || type == Datatype::TIME_NS ||
       type == Datatype::TIME_PS || type == Datatype::TIME_FS ||
       type == Datatype::TIME_AS);
+}
+
+/** Returns true if the input datatype is a boolean type. */
+inline bool datatype_is_boolean(Datatype type) {
+  return (type == Datatype::BOOL);
+}
+
+/** Throws error if the input Datatype's enum is not between 0 and 40. */
+inline void ensure_datatype_is_valid(Datatype type) {
+  auto datatype_enum{::stdx::to_underlying(type)};
+  if (datatype_enum > 40) {
+    throw std::runtime_error(
+        "Invalid Datatype " + std::to_string(datatype_enum));
+  }
+}
+
+/** Throws error if:
+ *
+ * the datatype string is not valid as a datatype.
+ * the datatype string's enum is not between 0 and 40.
+ **/
+inline void ensure_datatype_str_is_valid(const std::string& datatype_str) {
+  Datatype datatype_type;
+  Status st{datatype_enum(datatype_str, &datatype_type)};
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "Invalid Datatype string \"" + datatype_str + "\"");
+  }
+  ensure_datatype_is_valid(datatype_type);
 }
 
 }  // namespace sm

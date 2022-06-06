@@ -168,7 +168,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** Result tiles currently loaded. */
-  ResultTileListPerFragment<BitmapType> result_tiles_;
+  std::list<ResultTileWithBitmap<BitmapType>> result_tiles_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

@@ -75,7 +75,6 @@ OrderedWriter::OrderedWriter(
     Subarray& subarray,
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
-    bool disable_check_global_order,
     Query::CoordsInfo& coords_info,
     URI fragment_uri)
     : WriterBase(
@@ -88,7 +87,7 @@ OrderedWriter::OrderedWriter(
           subarray,
           layout,
           written_fragment_info,
-          disable_check_global_order,
+          false,
           coords_info,
           fragment_uri) {
 }

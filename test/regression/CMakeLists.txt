@@ -28,8 +28,13 @@
 find_package(Catch_EP REQUIRED)
 
 set(SOURCES
+  targets/sc-12024.cc
   targets/sc-15387.cc
 )
+
+if (TILEDB_SERIALIZATION)
+  list(APPEND SOURCES targets/sc-18250.cc)
+endif()
 
 add_executable(tiledb_regression
   EXCLUDE_FROM_ALL

@@ -119,6 +119,15 @@ extern int coords_compression_level;
 /** Special name reserved for the coordinates attribute. */
 extern const std::string coords;
 
+/** Special name reserved for the timestamp attribute. */
+extern const std::string timestamps;
+
+/** The size of a timestamp cell. */
+extern const uint64_t timestamp_size;
+
+/** The type of a variable offset cell. */
+extern const Datatype timestamp_type;
+
 /** The special value for an empty int32. */
 extern const int empty_int32;
 
@@ -133,6 +142,9 @@ extern const double empty_float64;
 
 /** The special value for an empty char. */
 extern const char empty_char;
+
+/** The special value for an empty bool. */
+extern const uint8_t empty_bool;
 
 /** The special value for an empty int8. */
 extern const int8_t empty_int8;
@@ -366,6 +378,9 @@ extern const std::string char_str;
 /** The string representation for type blob. */
 extern const std::string blob_str;
 
+/** The string representation for type bool. */
+extern const std::string bool_str;
+
 /** The string representation for type int8. */
 extern const std::string int8_str;
 
@@ -542,6 +557,9 @@ extern const uint32_t format_version;
 
 /** The lowest version supported for back compat writes. */
 extern const uint32_t back_compat_writes_min_format_version;
+
+/** The lowest version supported for consolidation with timestamps. */
+extern const uint32_t consolidation_with_timestamps_min_version;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;

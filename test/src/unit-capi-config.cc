@@ -225,6 +225,7 @@ void check_save_to_file() {
 #else
   ss << "config.logging_level 0\n";
 #endif
+  ss << "filestore.buffer_size 104857600\n";
   ss << "rest.curl.verbose false\n";
   ss << "rest.http_compressor any\n";
   ss << "rest.retry_count 25\n";
@@ -277,8 +278,6 @@ void check_save_to_file() {
   ss << "sm.skip_est_size_partitioning false\n";
   ss << "sm.tile_cache_size 10000000\n";
   ss << "sm.vacuum.mode fragments\n";
-  ss << "sm.vacuum.timestamp_end " << std::to_string(UINT64_MAX) << "\n";
-  ss << "sm.vacuum.timestamp_start 0\n";
   ss << "sm.var_offsets.bitsize 64\n";
   ss << "sm.var_offsets.extra_element false\n";
   ss << "sm.var_offsets.mode bytes\n";
@@ -552,6 +551,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["config.env_var_prefix"] = "TILEDB_";
   all_param_values["config.logging_level"] = "2";
   all_param_values["config.logging_format"] = "JSON";
+  all_param_values["filestore.buffer_size"] = "104857600";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";
@@ -612,8 +612,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.consolidation.mode"] = "fragments";
   all_param_values["sm.read_range_oob"] = "warn";
   all_param_values["sm.vacuum.mode"] = "fragments";
-  all_param_values["sm.vacuum.timestamp_start"] = "0";
-  all_param_values["sm.vacuum.timestamp_end"] = std::to_string(UINT64_MAX);
   all_param_values["sm.var_offsets.bitsize"] = "32";
   all_param_values["sm.var_offsets.extra_element"] = "true";
   all_param_values["sm.var_offsets.mode"] = "elements";

@@ -66,8 +66,10 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
-    : array_(array)
+Query::Query(
+    StorageManager* storage_manager, shared_ptr<Array> array, URI fragment_uri)
+    : array_shared_(array)
+    , array_(array_shared_.get())
     , array_schema_(array->array_schema_latest_ptr())
     , layout_(Layout::ROW_MAJOR)
     , storage_manager_(storage_manager)
@@ -80,16 +82,17 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     , coord_offsets_buffer_is_set_(false)
     , data_buffer_name_("")
     , offsets_buffer_name_("")
-    , disable_check_global_order_(false)
+    , disable_checks_consolidation_(false)
+    , consolidation_with_timestamps_(false)
     , fragment_uri_(fragment_uri) {
   assert(array->is_open());
   auto st = array->get_query_type(&type_);
   assert(st.ok());
 
   if (type_ == QueryType::WRITE) {
-    subarray_ = Subarray(array, stats_, logger_);
+    subarray_ = Subarray(array_, stats_, logger_);
   } else {
-    subarray_ = Subarray(array, Layout::ROW_MAJOR, stats_, logger_);
+    subarray_ = Subarray(array_, Layout::ROW_MAJOR, stats_, logger_);
   }
 
   fragment_metadata_ = array->fragment_metadata();
@@ -999,7 +1002,6 @@ Status Query::create_strategy() {
           subarray_,
           layout_,
           written_fragment_info_,
-          disable_check_global_order_,
           coords_info_,
           fragment_uri_));
     } else if (layout_ == Layout::UNORDERED) {
@@ -1014,7 +1016,6 @@ Status Query::create_strategy() {
           subarray_,
           layout_,
           written_fragment_info_,
-          disable_check_global_order_,
           coords_info_,
           fragment_uri_));
     } else if (layout_ == Layout::GLOBAL_ORDER) {
@@ -1029,7 +1030,7 @@ Status Query::create_strategy() {
           subarray_,
           layout_,
           written_fragment_info_,
-          disable_check_global_order_,
+          disable_checks_consolidation_,
           coords_info_,
           fragment_uri_));
     } else {
@@ -1088,7 +1089,8 @@ Status Query::create_strategy() {
           buffers_,
           subarray_,
           layout_,
-          condition_));
+          condition_,
+          consolidation_with_timestamps_));
     } else if (use_refactored_dense_reader() && array_schema_->dense()) {
       bool all_dense = true;
       for (auto& frag_md : fragment_metadata_)
@@ -1143,16 +1145,34 @@ void Query::clear_strategy() {
   strategy_ = nullptr;
 }
 
-Status Query::disable_check_global_order() {
-  if (status_ != QueryStatus::UNINITIALIZED)
+Status Query::disable_checks_consolidation() {
+  if (status_ != QueryStatus::UNINITIALIZED) {
     return logger_->status(Status_QueryError(
-        "Cannot disable checking global order after initialization"));
+        "Cannot disable checks for consolidation after initialization"));
+  }
 
-  if (type_ == QueryType::READ)
+  if (type_ == QueryType::READ) {
     return logger_->status(Status_QueryError(
-        "Cannot disable checking global order; Applicable only to writes"));
+        "Cannot disable checks for consolidation; Applicable only to writes"));
+  }
 
-  disable_check_global_order_ = true;
+  disable_checks_consolidation_ = true;
+  return Status::Ok();
+}
+
+Status Query::set_consolidation_with_timestamps() {
+  if (status_ != QueryStatus::UNINITIALIZED) {
+    return logger_->status(Status_QueryError(
+        "Cannot enable consolidation with timestamps after initialization"));
+  }
+
+  if (type_ != QueryType::READ) {
+    return logger_->status(Status_QueryError(
+        "Cannot enable consolidation with timestamps; Applicable only to "
+        "reads"));
+  }
+
+  consolidation_with_timestamps_ = true;
   return Status::Ok();
 }
 
@@ -1172,6 +1192,8 @@ Status Query::check_buffer_names() {
 
     // All attributes/dimensions must be provided
     auto expected_num = array_schema_->attribute_num();
+    expected_num += static_cast<decltype(expected_num)>(
+        buffers_.count(constants::timestamps));
     expected_num += (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
                      coord_offsets_buffer_is_set_) ?
                         array_schema_->dim_num() :
@@ -1333,7 +1355,8 @@ Status Query::set_data_buffer(
   const bool is_attr = array_schema_->is_attr(name);
 
   // Check that attribute/dimension exists
-  if (name != constants::coords && !is_dim && !is_attr)
+  if (name != constants::coords && name != constants::timestamps && !is_dim &&
+      !is_attr)
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));

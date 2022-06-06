@@ -81,28 +81,6 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , non_empty_domain_computed_(false) {
 }
 
-Array::Array(const Array& rhs)
-    : array_schema_latest_(rhs.array_schema_latest_)
-    , array_uri_(rhs.array_uri_)
-    , array_dir_(rhs.array_dir_)
-    , array_uri_serialized_(rhs.array_uri_serialized_)
-    , encryption_key_(rhs.encryption_key_)
-    , fragment_metadata_(rhs.fragment_metadata_)
-    , is_open_(rhs.is_open_.load())
-    , query_type_(rhs.query_type_)
-    , timestamp_start_(rhs.timestamp_start_)
-    , timestamp_end_(rhs.timestamp_end_)
-    , timestamp_end_opened_at_(rhs.timestamp_end_opened_at_)
-    , storage_manager_(rhs.storage_manager_)
-    , config_(rhs.config_)
-    , last_max_buffer_sizes_(rhs.last_max_buffer_sizes_)
-    , remote_(rhs.remote_)
-    , metadata_(rhs.metadata_)
-    , metadata_loaded_(rhs.metadata_loaded_)
-    , non_empty_domain_computed_(rhs.non_empty_domain_computed_)
-    , non_empty_domain_(rhs.non_empty_domain_) {
-}
-
 /* ********************************* */
 /*                API                */
 /* ********************************* */
@@ -182,6 +160,7 @@ Status Array::open_without_fragments(
           array_uri_,
           0,
           UINT64_MAX,
+          consolidation_with_timestamps_config_enabled(),
           ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
@@ -301,7 +280,6 @@ Status Array::open(
       timestamp_end_opened_at_ = 0;
     }
   }
-
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -318,7 +296,8 @@ Status Array::open(
           storage_manager_->compute_tp(),
           array_uri_,
           timestamp_start_,
-          timestamp_end_opened_at_);
+          timestamp_end_opened_at_,
+          consolidation_with_timestamps_config_enabled());
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
@@ -337,7 +316,9 @@ Status Array::open(
           storage_manager_->compute_tp(),
           array_uri_,
           timestamp_start_,
-          timestamp_end_opened_at_);
+          timestamp_end_opened_at_,
+          consolidation_with_timestamps_config_enabled(),
+          ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
@@ -607,7 +588,10 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
         storage_manager_->compute_tp(),
         array_uri_,
         timestamp_start_,
-        timestamp_end_opened_at_);
+        timestamp_end_opened_at_,
+        consolidation_with_timestamps_config_enabled(),
+        query_type_ == QueryType::READ ? ArrayDirectoryMode::READ :
+                                         ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
@@ -1041,6 +1025,21 @@ Status Array::compute_non_empty_domain() {
   }
   non_empty_domain_computed_ = true;
   return Status::Ok();
+}
+
+bool Array::consolidation_with_timestamps_config_enabled() const {
+  auto found = false;
+  auto consolidation_with_timestamps = false;
+  auto status = config_.get<bool>(
+      "sm.consolidation.with_timestamps",
+      &consolidation_with_timestamps,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get with_timestamps configuration option from config");
+  }
+
+  return consolidation_with_timestamps;
 }
 }  // namespace sm
 }  // namespace tiledb
