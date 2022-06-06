@@ -40,7 +40,6 @@
 
 // Name of array.
 const char* array_name = "query_condition_sparse_array";
-int32_t num_elems = 10;
 
 /**
  * @brief Function to print the values of all the attributes for one
@@ -75,7 +74,7 @@ void print_elem(int* a, char* b_start, int b_len, int32_t c, float d) {
 void create_array(tiledb_ctx_t* ctx) {
   // Creating the dimension and the domain.
   tiledb_dimension_t* dimension;
-  int dim_domain[] = {0, num_elems - 1};
+  int dim_domain[] = {0, 9};
   int tile_extents[] = {1};
   tiledb_dimension_alloc(
       ctx, "index", TILEDB_INT32, &dim_domain[0], &tile_extents[0], &dimension);
@@ -190,9 +189,9 @@ void write_array(tiledb_ctx_t* ctx) {
  */
 void read_array_with_qc(tiledb_ctx_t* ctx, tiledb_query_condition_t* qc) {
   // Create data buffers to read the values into.
-  int a_data[num_elems];
+  int a_data[10];
   uint64_t a_size = sizeof(a_data);
-  uint8_t a_data_validity[num_elems];
+  uint8_t a_data_validity[10];
   uint64_t a_validity_size = sizeof(a_data_validity);
 
   // We initialize the string b_data to contain 45 characters because
@@ -200,12 +199,12 @@ void read_array_with_qc(tiledb_ctx_t* ctx, tiledb_query_condition_t* qc) {
   char b_data[256];
   memset(b_data, 0, 256);
   uint64_t b_size = sizeof(b_data);
-  uint64_t b_data_offsets[num_elems];
+  uint64_t b_data_offsets[10];
   uint64_t b_offsets_size = sizeof(b_data_offsets);
 
-  int32_t c_data[num_elems];
+  int32_t c_data[10];
   uint64_t c_size = sizeof(c_data);
-  float d_data[num_elems];
+  float d_data[10];
   uint64_t d_size = sizeof(d_data);
 
   tiledb_array_t* array;

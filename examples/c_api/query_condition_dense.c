@@ -193,21 +193,21 @@ void write_array(tiledb_ctx_t* ctx) {
  */
 void read_array_with_qc(tiledb_ctx_t* ctx, tiledb_query_condition_t* qc) {
   // Create data buffers to read the values into.
-  int a_data[num_elems];
+  int a_data[10];
   uint64_t a_size = sizeof(a_data);
-  uint8_t a_data_validity[num_elems];
+  uint8_t a_data_validity[10];
   uint64_t a_validity_size = sizeof(a_data_validity);
 
   // We initialize the buffer b_data to contain 256 characters.
   char b_data[256];
   memset(b_data, 0, 256);
   uint64_t b_size = sizeof(b_data);
-  uint64_t b_data_offsets[num_elems];
+  uint64_t b_data_offsets[10];
   uint64_t b_offsets_size = sizeof(b_data_offsets);
 
-  int32_t c_data[num_elems];
+  int32_t c_data[10];
   uint64_t c_size = sizeof(c_data);
-  float d_data[num_elems];
+  float d_data[10];
   uint64_t d_size = sizeof(d_data);
 
   tiledb_array_t* array;
