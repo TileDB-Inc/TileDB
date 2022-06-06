@@ -124,7 +124,7 @@ jobs:
             echo $exampleexe
             $exampleexe; 
             status=$?
-            if (($status != 0)) then
+            if (($status != 0)); then
               echo "ERROR: $exampleexe exited with $status"
               echo "::set-output name=TILEDB_CI_SUCCESS::0"
             fi
@@ -144,7 +144,7 @@ jobs:
             echo $exampleexe 
             $exampleexe; 
             status=$?
-            if (($status != 0)) then
+            if (($status != 0)); then
               echo "ERROR: $exampleexe exited with $status"
               echo "::set-output name=TILEDB_CI_SUCCESS::0"
             fi
