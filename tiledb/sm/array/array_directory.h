@@ -54,11 +54,19 @@ enum class ArrayDirectoryMode {
   VACUUM_FRAGMENTS  // Used when opening the array for fragment vacuuming.
 };
 
+// Forward declaration
+class WhiteboxArrayDirectory;
+
 /**
  * Manages the various URIs inside an array directory, considering
  * various versions of the on-disk TileDB format.
  */
 class ArrayDirectory {
+  /**
+   * Friends with its whitebox testing class.
+   */
+  friend class WhiteboxArrayDirectory;
+
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
