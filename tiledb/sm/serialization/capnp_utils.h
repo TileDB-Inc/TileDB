@@ -133,6 +133,7 @@ Status set_capnp_array_ptr(
     case tiledb::sm::Datatype::STRING_ASCII:
     case tiledb::sm::Datatype::STRING_UTF8:
     case tiledb::sm::Datatype::BLOB:
+    case tiledb::sm::Datatype::BOOL:
     case tiledb::sm::Datatype::UINT8:
       builder.setUint8(kj::arrayPtr(static_cast<const uint8_t*>(ptr), size));
       break;
@@ -213,6 +214,7 @@ Status set_capnp_scalar(
       builder.setInt8(*static_cast<const int8_t*>(value));
       break;
     case tiledb::sm::Datatype::BLOB:
+    case tiledb::sm::Datatype::BOOL:
     case tiledb::sm::Datatype::UINT8:
       builder.setUint8(*static_cast<const uint8_t*>(value));
       break;
@@ -321,6 +323,7 @@ Status copy_capnp_list(
         RETURN_NOT_OK(copy_capnp_list<int8_t>(reader.getInt8(), buffer));
       break;
     case tiledb::sm::Datatype::BLOB:
+    case tiledb::sm::Datatype::BOOL:
     case tiledb::sm::Datatype::UINT8:
       if (reader.hasUint8())
         RETURN_NOT_OK(copy_capnp_list<uint8_t>(reader.getUint8(), buffer));
@@ -491,11 +494,11 @@ Status serialize_subarray(
   // Check coords type
   auto dim_num = array_schema.dim_num();
   uint64_t subarray_size = 0;
-  Datatype first_dimension_datatype = array_schema.dimension(0)->type();
+  Datatype first_dimension_datatype{array_schema.dimension_ptr(0)->type()};
   // If all the dimensions are the same datatype, then we will store the
   // subarray in a type array for <=1.7 compatibility
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dimension = array_schema.dimension(d);
+    auto dimension{array_schema.dimension_ptr(d)};
     const auto coords_type = dimension->type();
 
     if (coords_type != first_dimension_datatype) {
@@ -538,9 +541,9 @@ Status deserialize_subarray(
   // Check coords type
   auto dim_num = array_schema.dim_num();
   uint64_t subarray_size = 0;
-  Datatype first_dimension_datatype = array_schema.dimension(0)->type();
+  Datatype first_dimension_datatype{array_schema.dimension_ptr(0)->type()};
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dimension = array_schema.dimension(d);
+    auto dimension{array_schema.dimension_ptr(d)};
     const auto coords_type = dimension->type();
 
     if (coords_type != first_dimension_datatype) {

@@ -97,6 +97,29 @@ class FragmentConsolidator : public Consolidator {
       uint32_t key_length);
 
   /**
+   * Consolidates only the fragments of the input array using a list of
+   * fragments. Note that this might change ordering of fragments and
+   * currently does no checks for non-empty domains. It must be used
+   * carefully.
+   *
+   * @param array_name URI of array to consolidate.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @param fragment_uris The list of the fragments to consolidate.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default).
+   * @return Status
+   */
+  Status consolidate_fragments(
+      const char* array_name,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      const std::vector<std::string>& fragment_uris);
+
+  /**
    * Performs the vacuuming operation.
    *
    * @param array_name URI of array to consolidate.
@@ -110,7 +133,11 @@ class FragmentConsolidator : public Consolidator {
   /* ********************************* */
 
   /** Consolidation configuration parameters. */
-  struct ConsolidationConfig {
+  struct ConsolidationConfig : Consolidator::ConsolidationConfigBase {
+    /**
+     * Include timestamps in the consolidated fragment or not.
+     */
+    bool with_timestamps_;
     /**
      * The factor by which the size of the dense fragment resulting
      * from consolidating a set of fragments (containing at least one
@@ -137,16 +164,8 @@ class FragmentConsolidator : public Consolidator {
      * consolidation.
      */
     float size_ratio_;
-    /** Start time for consolidation. */
-    uint64_t timestamp_start_;
-    /** End time for consolidation. */
-    uint64_t timestamp_end_;
     /** Is the refactored reader in use or not */
     bool use_refactored_reader_;
-    /** Start time for vacuuming. */
-    uint64_t vacuum_timestamp_start_;
-    /** End time for vacuuming. */
-    uint64_t vacuum_timestamp_end_;
   };
 
   /* ********************************* */
@@ -175,7 +194,7 @@ class FragmentConsolidator : public Consolidator {
    *     consolidated based on the above definition.
    */
   bool are_consolidatable(
-      shared_ptr<const Domain> domain,
+      const Domain& domain,
       const FragmentInfo& fragment_info,
       size_t start,
       size_t end,
@@ -196,9 +215,9 @@ class FragmentConsolidator : public Consolidator {
    *     consolidating the `to_consolidate` fragments.
    * @return Status
    */
-  Status consolidate(
-      Array& array_for_reads,
-      Array& array_for_writes,
+  Status consolidate_internal(
+      shared_ptr<Array> array_for_reads,
+      shared_ptr<Array> array_for_writes,
       const std::vector<TimestampedURI>& to_consolidate,
       const NDRange& union_non_empty_domains,
       URI* new_fragment_uri);
@@ -250,8 +269,8 @@ class FragmentConsolidator : public Consolidator {
    * @return Status
    */
   Status create_queries(
-      Array* array_for_reads,
-      Array* array_for_writes,
+      shared_ptr<Array> array_for_reads,
+      shared_ptr<Array> array_for_writes,
       const NDRange& subarray,
       Query** query_r,
       Query** query_w,

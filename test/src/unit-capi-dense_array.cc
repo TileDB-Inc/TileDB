@@ -43,7 +43,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/serialization/query.h"
 
 #include <array>
@@ -676,34 +676,31 @@ void DenseArrayFx::write_dense_array_by_tiles(
     const int64_t domain_size_1,
     const int64_t tile_extent_0,
     const int64_t tile_extent_1) {
-  // Error code
-  int rc;
-
   // Other initializations
-  auto buffer = generate_2D_buffer(domain_size_0, domain_size_1);
-  int64_t cell_num_in_tile = tile_extent_0 * tile_extent_1;
-  auto buffer_a1 = new int[cell_num_in_tile];
+  auto buffer{generate_2D_buffer(domain_size_0, domain_size_1)};
+  int64_t cell_num_in_tile{tile_extent_0 * tile_extent_1};
+  auto buffer_a1{new int[cell_num_in_tile]};
   for (int64_t i = 0; i < cell_num_in_tile; ++i)
     buffer_a1[i] = 0;
-  void* buffers[2];
-  buffers[0] = buffer_a1;
-  uint64_t buffer_sizes[2];
-  int64_t index = 0L;
-  uint64_t buffer_size = 0L;
+  void* buffers[2]{buffer_a1, nullptr};
+
+  uint64_t buffer_sizes[2]{0UL, 0UL};
+  int64_t index{0L};
+  uint64_t buffer_size{0L};
 
   const char* attributes[] = {ATTR_NAME};
 
   // Open array
-  tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  tiledb_array_t* array{nullptr};
+  auto rc{tiledb_array_alloc(ctx_, array_name.c_str(), &array)};
   CHECK(rc == TILEDB_OK);
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
-    tiledb_config_t* cfg;
-    tiledb_error_t* err = nullptr;
+    tiledb_config_t* cfg{nullptr};
+    tiledb_error_t* err{nullptr};
     REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
     REQUIRE(err == nullptr);
-    std::string encryption_type_string =
-        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
+    std::string encryption_type_string{
+        encryption_type_str((tiledb::sm::EncryptionType)encryption_type)};
     REQUIRE(
         tiledb_config_set(
             cfg, "sm.encryption_type", encryption_type_string.c_str(), &err) ==
@@ -721,7 +718,7 @@ void DenseArrayFx::write_dense_array_by_tiles(
   CHECK(rc == TILEDB_OK);
 
   // Create query
-  tiledb_query_t* query;
+  tiledb_query_t* query{nullptr};
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
@@ -739,7 +736,7 @@ void DenseArrayFx::write_dense_array_by_tiles(
       int64_t tile_cols = ((j + tile_extent_1) < domain_size_1) ?
                               tile_extent_1 :
                               (domain_size_1 - j);
-      int64_t k = 0, l = 0;
+      int64_t k{0L}, l{0L};
       for (k = 0; k < tile_rows; ++k) {
         for (l = 0; l < tile_cols; ++l) {
           index = uint64_t(k * tile_cols + l);
@@ -747,9 +744,18 @@ void DenseArrayFx::write_dense_array_by_tiles(
         }
       }
       buffer_size = k * l * sizeof(int);
-      buffer_sizes[0] = {buffer_size};
+      buffer_sizes[0] = buffer_size;
 
-      rc = submit_query_wrapper(array_name, query);
+      auto rc{submit_query_wrapper(array_name, query)};
+
+      const char* msg = "unset";
+      tiledb_error_t* err{nullptr};
+      tiledb_ctx_get_last_error(ctx_, &err);
+      if (err != nullptr) {
+        tiledb_error_message(err, &msg);
+      }
+      INFO(msg);
+
       REQUIRE(rc == TILEDB_OK);
     }
   }
@@ -4711,7 +4717,7 @@ TEST_CASE_METHOD(
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  std::string array_name = temp_dir + "default-dim";
+  std::string array_name = temp_dir + "unary-range";
   create_temp_dir(temp_dir);
 
   // Create and write dense array
@@ -4966,7 +4972,7 @@ TEST_CASE_METHOD(
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  std::string array_name = temp_dir + "dense_read_large";
+  std::string array_name = temp_dir + "dense_read_multi_index_simple";
   create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);
@@ -5023,7 +5029,7 @@ TEST_CASE_METHOD(
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  std::string array_name = temp_dir + "dense_read_large";
+  std::string array_name = temp_dir + "dense_read_multi_index_complex";
   create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);
@@ -5097,7 +5103,7 @@ TEST_CASE_METHOD(
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  std::string array_name = temp_dir + "dense_read_large";
+  std::string array_name = temp_dir + "dense_read_multi_index_cross_tile";
   create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);
@@ -5154,7 +5160,7 @@ TEST_CASE_METHOD(
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  std::string array_name = temp_dir + "dense_read_large";
+  std::string array_name = temp_dir + "dense_read_multi_out_of_order";
   create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);
@@ -5173,20 +5179,20 @@ TEST_CASE_METHOD(
 
   // clang-format off
   uint64_t c_a1_cm[] = {
-    503, 603, 1003, 1103, 1203, 1303, 1403, 1503, 1603, 
-    504, 604, 1004, 1104, 1204, 1304, 1404, 1504, 1604
+    1003, 1103, 1203, 1303, 1403, 1503, 1603, 503, 603,
+    1004, 1104, 1204, 1304, 1404, 1504, 1604, 504, 604
   };
 
   uint64_t c_a1_rm[] = {
-    503, 504,
-    603, 604,
     1003, 1004,
     1103, 1104,
     1203, 1204,
     1303, 1304,
     1403, 1404,
     1503, 1504, 
-    1603, 1604
+    1603, 1604,
+    503, 504,
+    603, 604
   };
   // clang-format on
   if (layout == TILEDB_ROW_MAJOR) {
@@ -5194,6 +5200,48 @@ TEST_CASE_METHOD(
   } else {
     CHECK(!memcmp(c_a1_cm, a1.data(), sizeof(c_a1_cm)));
   }
+
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, multi-index, out of order ranges, coalesce",
+    "[capi][dense][multi-index][out-of-order-ranges-2]") {
+  SECTION("- No serialization") {
+    serialize_query_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query_ = true;
+  }
+
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
+  std::string array_name = temp_dir + "dense_read_multi_index_coalesce";
+  create_temp_dir(temp_dir);
+
+  create_large_dense_array_1_attribute(array_name);
+
+  write_large_dense_array(array_name);
+
+  std::vector<TestRange> ranges;
+  ranges.emplace_back(0, 1, 1);
+  ranges.emplace_back(1, 1, 1);
+  ranges.emplace_back(1, 8, 8);
+  ranges.emplace_back(1, 2, 2);
+
+  tiledb_layout_t layout = GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+
+  std::vector<uint64_t> a1(3);
+  read_large_dense_array(array_name, layout, ranges, a1);
+
+  // clang-format off
+  uint64_t c_a1[] = {
+    101, 108, 102
+  };
+  // clang-format on
+
+  CHECK(!memcmp(c_a1, a1.data(), sizeof(c_a1)));
 
   remove_temp_dir(temp_dir);
 }

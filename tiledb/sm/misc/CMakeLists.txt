@@ -52,7 +52,7 @@ target_sources(compile_constants PRIVATE test/compile_constants_main.cc)
 #
 # `math` object library
 #
-add_library(math OBJECT math.cc)
+add_library(math OBJECT tdb_math.cc)
 #
 # Test-compile of object library ensures link-completeness
 #
@@ -64,6 +64,7 @@ target_sources(compile_math PRIVATE test/compile_math_main.cc)
 # `misc_types` object library
 #
 add_library(misc_types OBJECT types.cc)
+target_link_libraries(misc_types PUBLIC range $<TARGET_OBJECTS:range>)
 #
 # Test-compile of object library ensures link-completeness
 #
@@ -86,7 +87,7 @@ target_sources(compile_parse_argument PRIVATE test/compile_parse_argument_main.c
 #
 # `time` object library
 #
-add_library(time OBJECT time.cc)
+add_library(time OBJECT tdb_time.cc)
 #
 # Test-compile of object library ensures link-completeness
 #
@@ -118,3 +119,42 @@ endif()
 add_executable(compile_uuid EXCLUDE_FROM_ALL)
 target_link_libraries(compile_uuid PRIVATE uuid)
 target_sources(compile_uuid PRIVATE test/compile_uuid_main.cc)
+
+# simple unit test of magic.mgc embedded data vs external data
+find_package(Magic_EP REQUIRED)
+if(NOT EXISTS ${libmagic_DICTIONARY})
+  message(FATAL_ERROR "Failed to find libmagic 'magic.mgc' file.")
+endif()
+add_executable(unit_mgc_dict EXCLUDE_FROM_ALL)
+target_sources(unit_mgc_dict PRIVATE
+        test/unit_mgc_dict.cc 
+        mgc_dict.cc
+)
+target_link_libraries(unit_mgc_dict PRIVATE 
+  compressors
+  filter
+  libmagic
+  )
+
+target_compile_options(unit_mgc_dict PRIVATE -DTILEDB_PATH_TO_MAGIC_MGC=\"${libmagic_DICTIONARY}\")
+target_include_directories(unit_mgc_dict
+  PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}
+   "${libmagic_INCLUDE_DIR}"
+)
+
+if (TILEDB_TESTS)
+    add_executable(unit_misc EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_misc PRIVATE math)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_misc PUBLIC Catch2::Catch2)
+
+    # Sources for tests
+    target_sources(unit_misc PUBLIC test/main.cc test/unit_math.cc test/unit_hilbert.cc)
+
+    add_test(
+        NAME "unit_misc"
+        COMMAND $<TARGET_FILE:unit_misc>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()

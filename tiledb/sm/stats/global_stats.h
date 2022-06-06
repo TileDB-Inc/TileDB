@@ -45,6 +45,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/stats/timer_stat.h"
@@ -97,7 +98,7 @@ class GlobalStats {
    * will be aggregated and dumped with the other registered
    * stats.
    */
-  void register_stats(const tdb_shared_ptr<Stats>& stats);
+  void register_stats(const shared_ptr<Stats>& stats);
 
   /** Dump the current stats to the given file. */
   void dump(FILE* out) const;
@@ -135,7 +136,7 @@ class GlobalStats {
   mutable std::mutex mtx_;
 
   /** The aggregated stats. */
-  std::list<tdb_shared_ptr<stats::Stats>> registered_stats_;
+  std::list<shared_ptr<stats::Stats>> registered_stats_;
 
   /* ****************************** */
   /*       PRIVATE FUNCTIONS        */

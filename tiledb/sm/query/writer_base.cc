@@ -31,7 +31,6 @@
  */
 
 #include "tiledb/sm/query/writer_base.h"
-#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -43,10 +42,9 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/time.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/tdb_math.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
@@ -55,6 +53,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -69,7 +68,7 @@ namespace sm {
 
 WriterBase::WriterBase(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -77,7 +76,7 @@ WriterBase::WriterBase(
     Subarray& subarray,
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
-    bool disable_check_global_order,
+    bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
     URI fragment_uri)
     : StrategyBase(
@@ -89,7 +88,7 @@ WriterBase::WriterBase(
           buffers,
           subarray,
           layout)
-    , disable_check_global_order_(disable_check_global_order)
+    , disable_checks_consolidation_(disable_checks_consolidation)
     , coords_info_(coords_info)
     , check_coord_dups_(false)
     , check_coord_oob_(false)
@@ -212,10 +211,12 @@ Status WriterBase::init() {
   RETURN_NOT_OK(config_.get("sm.check_global_order", &check_global_order));
   RETURN_NOT_OK(config_.get("sm.dedup_coords", &dedup_coords));
   assert(check_coord_dups != nullptr && dedup_coords != nullptr);
-  check_coord_dups_ = !strcmp(check_coord_dups, "true");
+  check_coord_dups_ =
+      disable_checks_consolidation_ ? false : !strcmp(check_coord_dups, "true");
   check_coord_oob_ = !strcmp(check_coord_oob, "true");
-  check_global_order_ =
-      disable_check_global_order_ ? false : !strcmp(check_global_order, "true");
+  check_global_order_ = disable_checks_consolidation_ ?
+                            false :
+                            !strcmp(check_global_order, "true");
   dedup_coords_ = !strcmp(dedup_coords, "true");
   bool found = false;
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
@@ -270,15 +271,15 @@ Status WriterBase::add_written_fragment_info(const URI& uri) {
 }
 
 Status WriterBase::calculate_hilbert_values(
-    const std::vector<const QueryBuffer*>& buffs,
-    std::vector<uint64_t>* hilbert_values) const {
+    const DomainBuffersView& domain_buffers,
+    std::vector<uint64_t>& hilbert_values) const {
   auto dim_num = array_schema_.dim_num();
   Hilbert h(dim_num);
   auto bits = h.bits();
   auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   // Calculate Hilbert values in parallel
-  assert(hilbert_values->size() >= coords_info_.coords_num_);
+  assert(hilbert_values.size() >= coords_info_.coords_num_);
   auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
@@ -286,11 +287,11 @@ Status WriterBase::calculate_hilbert_values(
       [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_.dimension(d);
+          auto dim{array_schema_.dimension_ptr(d)};
           coords[d] = hilbert_order::map_to_uint64(
-              *dim, buffs[d], c, bits, max_bucket_val);
+              *dim, domain_buffers[d], c, bits, max_bucket_val);
         }
-        (*hilbert_values)[c] = h.coords_to_hilbert(&coords[0]);
+        hilbert_values[c] = h.coords_to_hilbert(&coords[0]);
 
         return Status::Ok();
       });
@@ -306,7 +307,7 @@ Status WriterBase::check_buffer_sizes() const {
       (layout_ != Layout::ROW_MAJOR && layout_ != Layout::COL_MAJOR))
     return Status::Ok();
 
-  auto cell_num = array_schema_.domain()->cell_num(subarray_.ndrange(0));
+  auto cell_num = array_schema_.domain().cell_num(subarray_.ndrange(0));
   uint64_t expected_cell_num = 0;
   for (const auto& it : buffers_) {
     const auto& attr = it.first;
@@ -360,7 +361,7 @@ Status WriterBase::check_coord_oob() const {
     return Status::Ok();
 
   // Exit if all dimensions are strings
-  if (array_schema_.domain()->all_dims_string())
+  if (array_schema_.domain().all_dims_string())
     return Status::Ok();
 
   // Prepare auxiliary vectors for better performance
@@ -368,7 +369,7 @@ Status WriterBase::check_coord_oob() const {
   std::vector<unsigned char*> buffs(dim_num);
   std::vector<uint64_t> coord_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_.dimension(d)->name();
+    const auto& dim_name{array_schema_.dimension_ptr(d)->name()};
     buffs[d] = (unsigned char*)buffers_.find(dim_name)->second.buffer_;
     coord_sizes[d] = array_schema_.cell_size(dim_name);
   }
@@ -381,7 +382,7 @@ Status WriterBase::check_coord_oob() const {
       0,
       dim_num,
       [&](uint64_t c, unsigned d) {
-        auto dim = array_schema_.dimension(d);
+        auto dim{array_schema_.dimension_ptr(d)};
         if (datatype_is_string(dim->type()))
           return Status::Ok();
         return dim->oob(buffs[d] + c * coord_sizes[d]);
@@ -435,7 +436,7 @@ std::vector<std::string> WriterBase::buffer_names() const {
   return ret;
 }
 
-Status WriterBase::close_files(tdb_shared_ptr<FragmentMetadata> meta) const {
+Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
   // Close attribute and dimension files
   const auto buffer_name = buffer_names();
 
@@ -475,7 +476,7 @@ Status WriterBase::close_files(tdb_shared_ptr<FragmentMetadata> meta) const {
 
 Status WriterBase::compute_coords_metadata(
     const std::unordered_map<std::string, std::vector<WriterTile>>& tiles,
-    tdb_shared_ptr<FragmentMetadata> meta) const {
+    shared_ptr<FragmentMetadata> meta) const {
   auto timer_se = stats_->start_timer("compute_coord_meta");
 
   // Applicable only if there are coordinates
@@ -500,7 +501,7 @@ Status WriterBase::compute_coords_metadata(
         NDRange mbr(dim_num);
         std::vector<const void*> data(dim_num);
         for (unsigned d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_.dimension(d);
+          auto dim{array_schema_.dimension_ptr(d)};
           const auto& dim_name = dim->name();
           auto tiles_it = tiles.find(dim_name);
           assert(tiles_it != tiles.end());
@@ -518,7 +519,7 @@ Status WriterBase::compute_coords_metadata(
   RETURN_NOT_OK(status);
 
   // Set last tile cell number
-  auto dim_0 = array_schema_.dimension(0);
+  auto dim_0{array_schema_.dimension_ptr(0)};
   const auto& dim_tiles = tiles.find(dim_0->name())->second;
   const auto& last_tile_pos =
       (!dim_0->var_size()) ? dim_tiles.size() - 1 : dim_tiles.size() - 2;
@@ -597,7 +598,7 @@ std::string WriterBase::coords_to_str(uint64_t i) const {
 
   ss << "(";
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = array_schema_.dimension(d);
+    auto dim{array_schema_.dimension_ptr(d)};
     const auto& dim_name = dim->name();
     ss << buffers_.find(dim_name)->second.dimension_datum_at(*dim, i);
     if (d < dim_num - 1)
@@ -609,7 +610,7 @@ std::string WriterBase::coords_to_str(uint64_t i) const {
 }
 
 Status WriterBase::create_fragment(
-    bool dense, tdb_shared_ptr<FragmentMetadata>& frag_meta) const {
+    bool dense, shared_ptr<FragmentMetadata>& frag_meta) const {
   URI uri;
   uint64_t timestamp = array_->timestamp_end_opened_at();
   if (!fragment_uri_.to_string().empty()) {
@@ -629,14 +630,16 @@ Status WriterBase::create_fragment(
     uri = frag_uri.join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
-  frag_meta = tdb::make_shared<FragmentMetadata>(
+  const bool has_timestamps = buffers_.count(constants::timestamps) != 0;
+  frag_meta = make_shared<FragmentMetadata>(
       HERE(),
       storage_manager_,
       nullptr,
       array_->array_schema_latest_ptr(),
       uri,
       timestamp_range,
-      dense);
+      dense,
+      has_timestamps);
 
   RETURN_NOT_OK((frag_meta)->init(subarray_.ndrange(0)));
   return storage_manager_->create_dir(uri);
@@ -772,8 +775,8 @@ Status WriterBase::filter_tile(
       &filters, array_->get_encryption_key()));
 
   // Check if chunk or tile level filtering/unfiltering is appropriate
-  bool use_chunking =
-      filters.use_tile_chunking(array_schema_.var_size(name), tile->type());
+  bool use_chunking = filters.use_tile_chunking(
+      array_schema_.var_size(name), array_schema_.version(), tile->type());
 
   assert(!tile->filtered());
   RETURN_NOT_OK(filters.run_forward(
@@ -809,10 +812,10 @@ Status WriterBase::init_tile(const std::string& name, WriterTile* tile) const {
   // For easy reference
   auto cell_size = array_schema_.cell_size(name);
   auto type = array_schema_.type(name);
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto capacity = array_schema_.capacity();
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   auto tile_size = cell_num_per_tile * cell_size;
 
   // Initialize
@@ -826,10 +829,10 @@ Status WriterBase::init_tile(
     const std::string& name, WriterTile* tile, WriterTile* tile_var) const {
   // For easy reference
   auto type = array_schema_.type(name);
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto capacity = array_schema_.capacity();
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
 
   // Initialize
@@ -851,10 +854,10 @@ Status WriterBase::init_tile_nullable(
   // For easy reference
   auto cell_size = array_schema_.cell_size(name);
   auto type = array_schema_.type(name);
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto capacity = array_schema_.capacity();
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
 
   // Initialize
   RETURN_NOT_OK(tile->init_unfiltered(
@@ -880,10 +883,10 @@ Status WriterBase::init_tile_nullable(
     WriterTile* tile_validity) const {
   // For easy reference
   auto type = array_schema_.type(name);
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
   auto capacity = array_schema_.capacity();
   auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain->cell_num_per_tile();
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
 
   // Initialize
@@ -995,15 +998,15 @@ Status WriterBase::split_coords_buffer() {
 
   // For easy reference
   auto dim_num = array_schema_.dim_num();
-  auto coord_size = array_schema_.domain()->dimension(0)->coord_size();
-  auto coords_size = dim_num * coord_size;
+  auto coords_size{dim_num *
+                   array_schema_.domain().dimension_ptr(0)->coord_size()};
   coords_info_.coords_num_ = *coords_info_.coords_buffer_size_ / coords_size;
 
   clear_coord_buffers();
 
   // New coord buffer allocations
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = array_schema_.dimension(d);
+    auto dim{array_schema_.dimension_ptr(d)};
     const auto& dim_name = dim->name();
     auto coord_buffer_size = coords_info_.coords_num_ * dim->coord_size();
     auto it = coord_buffer_sizes_.emplace(dim_name, coord_buffer_size);
@@ -1020,8 +1023,8 @@ Status WriterBase::split_coords_buffer() {
   // Split coordinates
   auto coord = (unsigned char*)nullptr;
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto coord_size = array_schema_.dimension(d)->coord_size();
-    const auto& dim_name = array_schema_.dimension(d)->name();
+    auto coord_size{array_schema_.dimension_ptr(d)->coord_size()};
+    const auto& dim_name{array_schema_.dimension_ptr(d)->name()};
     auto buff = (unsigned char*)(buffers_[dim_name].buffer_);
     for (uint64_t c = 0; c < coords_info_.coords_num_; ++c) {
       coord = &(((unsigned char*)coords_info_
@@ -1034,7 +1037,7 @@ Status WriterBase::split_coords_buffer() {
 }
 
 Status WriterBase::write_all_tiles(
-    tdb_shared_ptr<FragmentMetadata> frag_meta,
+    shared_ptr<FragmentMetadata> frag_meta,
     std::unordered_map<std::string, std::vector<WriterTile>>* const tiles) {
   auto timer_se = stats_->start_timer("tiles");
 
@@ -1075,7 +1078,7 @@ Status WriterBase::write_all_tiles(
 
 Status WriterBase::write_tiles(
     const std::string& name,
-    tdb_shared_ptr<FragmentMetadata> frag_meta,
+    shared_ptr<FragmentMetadata> frag_meta,
     uint64_t start_tile_id,
     std::vector<WriterTile>* const tiles,
     bool close_files) {

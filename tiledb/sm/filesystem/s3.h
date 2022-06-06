@@ -34,6 +34,7 @@
 #define TILEDB_S3_H
 
 #ifdef HAVE_S3
+#include "tiledb/common/common.h"
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
@@ -80,6 +81,11 @@
 using namespace tiledb::common;
 
 namespace tiledb {
+
+namespace common::filesystem {
+class directory_entry;
+}
+
 namespace sm {
 
 /**
@@ -213,6 +219,21 @@ class S3 {
   Status ls(
       const URI& prefix,
       std::vector<std::string>* paths,
+      const std::string& delimiter = "/",
+      int max_paths = -1) const;
+
+  /**
+   *
+   * Lists objects and object information that start with `prefix`.
+   *
+   * @param prefix The parent path to list sub-paths.
+   * @param delimiter The uri is truncated to the first delimiter
+   * @param max_paths The maximum number of paths to be retrieved
+   * @return A list of directory_entry objects
+   */
+  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  ls_with_sizes(
+      const URI& prefix,
       const std::string& delimiter = "/",
       int max_paths = -1) const;
 
@@ -593,7 +614,7 @@ class S3 {
   mutable tdb_unique_ptr<Aws::Client::ClientConfiguration> client_config_;
 
   /** The executor used by 'client_'. */
-  mutable std::shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
+  mutable shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
 
   /** The size of the file buffers used in multipart uploads. */
   uint64_t file_buffer_size_;

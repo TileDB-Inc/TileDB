@@ -5,9 +5,22 @@ on:
       - dev
       - release-*
       - refs/tags/*
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
+      - 'doc/source/conf.py'
+      - 'tiledb/sm/c_api/tiledb_version.h'
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
+      - 'doc/source/conf.py'
+      - 'tiledb/sm/c_api/tiledb_version.h'
+
 env:
   TILEDB_SERIALIZATION: ON # NOTE: currently defined directly inline
   CXX: g++
@@ -88,6 +101,7 @@ jobs:
           # Bypass Catch2 Framework stdout interception with awk on test output
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/regression/tiledb_regression -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
           # - bash: |
           pushd $GITHUB_WORKSPACE/examples/cmake_project

@@ -46,7 +46,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -69,7 +69,7 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , array_uri_(array_uri)
     , array_dir_()
     , array_uri_serialized_(array_uri)
-    , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
+    , encryption_key_(make_shared<EncryptionKey>(HERE()))
     , is_open_(false)
     , timestamp_start_(0)
     , timestamp_end_(UINT64_MAX)
@@ -79,28 +79,6 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , remote_(array_uri.is_tiledb())
     , metadata_loaded_(false)
     , non_empty_domain_computed_(false) {
-}
-
-Array::Array(const Array& rhs)
-    : array_schema_latest_(rhs.array_schema_latest_)
-    , array_uri_(rhs.array_uri_)
-    , array_dir_(rhs.array_dir_)
-    , array_uri_serialized_(rhs.array_uri_serialized_)
-    , encryption_key_(rhs.encryption_key_)
-    , fragment_metadata_(rhs.fragment_metadata_)
-    , is_open_(rhs.is_open_.load())
-    , query_type_(rhs.query_type_)
-    , timestamp_start_(rhs.timestamp_start_)
-    , timestamp_end_(rhs.timestamp_end_)
-    , timestamp_end_opened_at_(rhs.timestamp_end_opened_at_)
-    , storage_manager_(rhs.storage_manager_)
-    , config_(rhs.config_)
-    , last_max_buffer_sizes_(rhs.last_max_buffer_sizes_)
-    , remote_(rhs.remote_)
-    , metadata_(rhs.metadata_)
-    , metadata_loaded_(rhs.metadata_loaded_)
-    , non_empty_domain_computed_(rhs.non_empty_domain_computed_)
-    , non_empty_domain_(rhs.non_empty_domain_) {
 }
 
 /* ********************************* */
@@ -182,6 +160,7 @@ Status Array::open_without_fragments(
           array_uri_,
           0,
           UINT64_MAX,
+          consolidation_with_timestamps_config_enabled(),
           ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
@@ -301,7 +280,6 @@ Status Array::open(
       timestamp_end_opened_at_ = 0;
     }
   }
-
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -318,7 +296,8 @@ Status Array::open(
           storage_manager_->compute_tp(),
           array_uri_,
           timestamp_start_,
-          timestamp_end_opened_at_);
+          timestamp_end_opened_at_,
+          consolidation_with_timestamps_config_enabled());
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
@@ -337,7 +316,9 @@ Status Array::open(
           storage_manager_->compute_tp(),
           array_uri_,
           timestamp_start_,
-          timestamp_end_opened_at_);
+          timestamp_end_opened_at_,
+          consolidation_with_timestamps_config_enabled(),
+          ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
@@ -462,13 +443,13 @@ Status Array::get_max_buffer_size(
         "Cannot get max buffer size; Attribute/Dimension name is null"));
 
   // Not applicable to heterogeneous domains
-  if (!array_schema_latest_->domain()->all_dims_same_type())
+  if (!array_schema_latest_->domain().all_dims_same_type())
     return LOG_STATUS(
         Status_ArrayError("Cannot get max buffer size; Function not "
                           "applicable to heterogeneous domains"));
 
   // Not applicable to variable-sized dimensions
-  if (!array_schema_latest_->domain()->all_dims_fixed())
+  if (!array_schema_latest_->domain().all_dims_fixed())
     return LOG_STATUS(Status_ArrayError(
         "Cannot get max buffer size; Function not "
         "applicable to domains with variable-sized dimensions"));
@@ -521,13 +502,13 @@ Status Array::get_max_buffer_size(
         "Cannot get max buffer size; Attribute/Dimension name is null"));
 
   // Not applicable to heterogeneous domains
-  if (!array_schema_latest_->domain()->all_dims_same_type())
+  if (!array_schema_latest_->domain().all_dims_same_type())
     return LOG_STATUS(
         Status_ArrayError("Cannot get max buffer size; Function not "
                           "applicable to heterogeneous domains"));
 
   // Not applicable to variable-sized dimensions
-  if (!array_schema_latest_->domain()->all_dims_fixed())
+  if (!array_schema_latest_->domain().all_dims_fixed())
     return LOG_STATUS(Status_ArrayError(
         "Cannot get max buffer size; Function not "
         "applicable to domains with variable-sized dimensions"));
@@ -607,7 +588,10 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
         storage_manager_->compute_tp(),
         array_uri_,
         timestamp_start_,
-        timestamp_end_opened_at_);
+        timestamp_end_opened_at_,
+        consolidation_with_timestamps_config_enabled(),
+        query_type_ == QueryType::READ ? ArrayDirectoryMode::READ :
+                                         ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
@@ -818,7 +802,7 @@ Status Array::has_metadata_key(
   return Status::Ok();
 }
 
-Metadata* Array::metadata() {
+Metadata* Array::unsafe_metadata() {
   return &metadata_;
 }
 
@@ -860,14 +844,16 @@ void Array::clear_last_max_buffer_sizes() {
 
 Status Array::compute_max_buffer_sizes(const void* subarray) {
   // Applicable only to domains where all dimensions have the same type
-  if (!array_schema_latest_->domain()->all_dims_same_type())
+  if (!array_schema_latest_->domain().all_dims_same_type()) {
     return LOG_STATUS(
         Status_ArrayError("Cannot compute max buffer sizes; Inapplicable when "
                           "dimension domains have different types"));
+  }
 
   // Allocate space for max buffer sizes subarray
   auto dim_num = array_schema_latest_->dim_num();
-  auto coord_size = array_schema_latest_->domain()->dimension(0)->coord_size();
+  auto coord_size{
+      array_schema_latest_->domain().dimension_ptr(0)->coord_size()};
   auto subarray_size = 2 * dim_num * coord_size;
   last_max_buffer_sizes_subarray_.resize(subarray_size);
 
@@ -887,7 +873,7 @@ Status Array::compute_max_buffer_sizes(const void* subarray) {
         std::pair<uint64_t, uint64_t>(0, 0);
     for (unsigned d = 0; d < dim_num; ++d)
       last_max_buffer_sizes_
-          [array_schema_latest_->domain()->dimension(d)->name()] =
+          [array_schema_latest_->domain().dimension_ptr(d)->name()] =
               std::pair<uint64_t, uint64_t>(0, 0);
 
     RETURN_NOT_OK(compute_max_buffer_sizes(subarray, &last_max_buffer_sizes_));
@@ -929,14 +915,14 @@ Status Array::compute_max_buffer_sizes(
   auto sub_ptr = (const unsigned char*)subarray;
   uint64_t offset = 0;
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto r_size = 2 * array_schema_latest_->dimension(d)->coord_size();
+    auto r_size{2 * array_schema_latest_->dimension_ptr(d)->coord_size()};
     sub[d] = Range(&sub_ptr[offset], r_size);
     offset += r_size;
   }
 
   // Rectify bound for dense arrays
   if (array_schema_latest_->dense()) {
-    auto cell_num = array_schema_latest_->domain()->cell_num(sub);
+    auto cell_num = array_schema_latest_->domain().cell_num(sub);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {
@@ -955,8 +941,8 @@ Status Array::compute_max_buffer_sizes(
 
   // Rectify bound for sparse arrays with integer domain, without duplicates
   if (!array_schema_latest_->dense() && !array_schema_latest_->allows_dups() &&
-      array_schema_latest_->domain()->all_dims_int()) {
-    auto cell_num = array_schema_latest_->domain()->cell_num(sub);
+      array_schema_latest_->domain().all_dims_int()) {
+    auto cell_num = array_schema_latest_->domain().cell_num(sub);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {
@@ -1025,7 +1011,7 @@ Status Array::compute_non_empty_domain() {
       // corrupt for these cases we want to check to prevent any segfaults
       // later.
       if (!meta_dom.empty())
-        array_schema_latest_->domain()->expand_ndrange(
+        array_schema_latest_->domain().expand_ndrange(
             meta_dom, &non_empty_domain_);
       else {
         // If the fragment's non-empty domain is indeed empty, lets log it so
@@ -1039,6 +1025,21 @@ Status Array::compute_non_empty_domain() {
   }
   non_empty_domain_computed_ = true;
   return Status::Ok();
+}
+
+bool Array::consolidation_with_timestamps_config_enabled() const {
+  auto found = false;
+  auto consolidation_with_timestamps = false;
+  auto status = config_.get<bool>(
+      "sm.consolidation.with_timestamps",
+      &consolidation_with_timestamps,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get with_timestamps configuration option from config");
+  }
+
+  return consolidation_with_timestamps;
 }
 }  // namespace sm
 }  // namespace tiledb

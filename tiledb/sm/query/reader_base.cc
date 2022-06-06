@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,10 +36,13 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/sm/enums/query_condition_combination_op.h"
+#include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/subarray/cell_slab_iter.h"
@@ -54,7 +57,7 @@ namespace sm {
 
 ReaderBase::ReaderBase(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -71,7 +74,10 @@ ReaderBase::ReaderBase(
           buffers,
           subarray,
           layout)
-    , condition_(condition) {
+    , condition_(condition)
+    , disable_cache_(false)
+    , user_requested_timestamps_(false)
+    , use_timestamps_(false) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
 }
@@ -82,7 +88,7 @@ ReaderBase::ReaderBase(
 
 template <class T>
 void ReaderBase::compute_result_space_tiles(
-    const std::vector<tdb_shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<T>& array_tile_domain,
     const std::vector<TileDomain<T>>& frag_tile_domains,
@@ -222,6 +228,57 @@ Status ReaderBase::check_validity_buffer_sizes() const {
   return Status::Ok();
 }
 
+bool ReaderBase::partial_consolidated_fragment_overlap() const {
+  // Fetch relevant fragments so we check only intersecting fragments
+  const auto relevant_fragments = subarray_.relevant_fragments();
+  bool all_frag = !subarray_.is_set();
+  for (size_t i = 0;
+       i < (all_frag ? fragment_metadata_.size() : relevant_fragments->size());
+       i++) {
+    auto frag_idx = all_frag ? i : relevant_fragments->at(i);
+    auto& fragment = fragment_metadata_[frag_idx];
+    if (fragment->has_timestamps() &&
+        fragment->partial_time_overlap(
+            array_->timestamp_start(), array_->timestamp_end_opened_at())) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+Status ReaderBase::add_partial_overlap_condition() {
+  // add one query condition for start time, one for end time and combine them
+  QueryCondition timestamps_qc_start;
+  auto ts_start = array_->timestamp_start();
+  RETURN_NOT_OK(timestamps_qc_start.init(
+      std::string(constants::timestamps),
+      &ts_start,
+      sizeof(uint64_t),
+      QueryConditionOp::GE));
+  QueryCondition timestamps_qc_end;
+  auto ts_end = array_->timestamp_end_opened_at();
+  RETURN_NOT_OK(timestamps_qc_end.init(
+      std::string(constants::timestamps),
+      &ts_end,
+      sizeof(uint64_t),
+      QueryConditionOp::LE));
+  RETURN_NOT_OK(timestamps_qc_start.combine(
+      timestamps_qc_end,
+      QueryConditionCombinationOp::AND,
+      &partial_overlap_condition_));
+
+  return Status::Ok();
+}
+
+bool ReaderBase::include_timestamps(const unsigned f) const {
+  return fragment_metadata_[f]->has_timestamps() &&
+         (user_requested_timestamps_ ||
+          fragment_metadata_[f]->partial_time_overlap(
+              array_->timestamp_start(), array_->timestamp_end_opened_at()) ||
+          !array_schema_.allows_dups());
+}
+
 Status ReaderBase::load_tile_offsets(
     Subarray& subarray, const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");
@@ -248,18 +305,26 @@ Status ReaderBase::load_tile_offsets(
         const auto& schema = fragment->array_schema();
         for (const auto& name : names) {
           // Applicable for zipped coordinates only to versions < 5
-          if (name == constants::coords && format_version >= 5)
+          if (name == constants::coords && format_version >= 5) {
             continue;
+          }
 
           // Applicable to separate coordinates only to versions >= 5
           const auto is_dim = schema->is_dim(name);
-          if (is_dim && format_version < 5)
+          if (is_dim && format_version < 5) {
             continue;
+          }
 
           // Not a member of array schema, this field was added in array schema
           // evolution, ignore for this fragment's tile offsets
-          if (!schema->is_field(name))
+          if (!schema->is_field(name)) {
             continue;
+          }
+
+          // If the fragment doesn't include timestamps
+          if (timestamps_not_present(name, frag_idx)) {
+            continue;
+          }
 
           filtered_names.emplace_back(name);
         }
@@ -397,24 +462,21 @@ Status ReaderBase::init_tile_nullable(
 
 Status ReaderBase::read_attribute_tiles(
     const std::vector<std::string>& names,
-    const std::vector<ResultTile*>& result_tiles,
-    const bool disable_cache) const {
+    const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_attribute_tiles");
-  return read_tiles(names, result_tiles, disable_cache);
+  return read_tiles(names, result_tiles);
 }
 
 Status ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>& names,
-    const std::vector<ResultTile*>& result_tiles,
-    const bool disable_cache) const {
+    const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_coordinate_tiles");
-  return read_tiles(names, result_tiles, disable_cache);
+  return read_tiles(names, result_tiles);
 }
 
 Status ReaderBase::read_tiles(
     const std::vector<std::string>& names,
-    const std::vector<ResultTile*>& result_tiles,
-    const bool disable_cache) const {
+    const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_tiles");
 
   // Shortcut for empty tile vec
@@ -437,20 +499,28 @@ Status ReaderBase::read_tiles(
       const uint32_t format_version = fragment->format_version();
 
       // Applicable for zipped coordinates only to versions < 5
-      if (name == constants::coords && format_version >= 5)
+      if (name == constants::coords && format_version >= 5) {
         continue;
+      }
 
       // Applicable to separate coordinates only to versions >= 5
       const auto& array_schema = fragment->array_schema();
       const bool is_dim = array_schema->is_dim(name);
-      if (is_dim && format_version < 5)
+      if (is_dim && format_version < 5) {
         continue;
+      }
 
       // If the fragment doesn't have the attribute, this is a schema
       // evolution field and will be treated with fill-in value instead of
       // reading from disk
-      if (!array_schema->is_field(name))
+      if (!array_schema->is_field(name)) {
         continue;
+      }
+
+      // If the fragment doesn't include timestamps
+      if (timestamps_not_present(name, tile->frag_idx())) {
+        continue;
+      }
 
       const bool var_size = array_schema->var_size(name);
       const bool nullable = array_schema->is_nullable(name);
@@ -460,7 +530,7 @@ Status ReaderBase::read_tiles(
       if (is_dim) {
         const uint64_t dim_num = array_schema->dim_num();
         for (uint64_t d = 0; d < dim_num; ++d) {
-          if (array_schema->dimension(d)->name() == name) {
+          if (array_schema->dimension_ptr(d)->name() == name) {
             tile->init_coord_tile(name, d);
             break;
           }
@@ -503,7 +573,7 @@ Status ReaderBase::read_tiles(
 
       // Try the cache first.
       bool cache_hit = false;
-      if (!disable_cache) {
+      if (!disable_cache_) {
         RETURN_NOT_OK(storage_manager_->read_from_cache(
             *tile_attr_uri,
             tile_attr_offset,
@@ -536,7 +606,7 @@ Status ReaderBase::read_tiles(
         auto&& [st_2, tile_var_size] = fragment->tile_var_size(name, tile_idx);
         RETURN_NOT_OK(st_2);
 
-        if (!disable_cache) {
+        if (!disable_cache_) {
           RETURN_NOT_OK(storage_manager_->read_from_cache(
               *tile_attr_var_uri,
               tile_attr_var_offset,
@@ -570,7 +640,7 @@ Status ReaderBase::read_tiles(
         uint64_t tile_validity_size =
             fragment->cell_num(tile_idx) * constants::cell_validity_size;
 
-        if (!disable_cache) {
+        if (!disable_cache_) {
           RETURN_NOT_OK(storage_manager_->read_from_cache(
               *tile_validity_attr_uri,
               tile_attr_validity_offset,
@@ -693,8 +763,8 @@ ReaderBase::load_tile_chunk_data(
   assert(tile_chunk_var_data);
   assert(tile_chunk_validity_data);
 
-  const auto format_version =
-      fragment_metadata_[tile->frag_idx()]->format_version();
+  auto& fragment = fragment_metadata_[tile->frag_idx()];
+  const auto format_version = fragment->format_version();
   uint64_t unfiltered_tile_size = 0, unfiltered_tile_var_size = 0,
            unfiltered_tile_validity_size = 0;
 
@@ -708,8 +778,14 @@ ReaderBase::load_tile_chunk_data(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0)
-      return {Status::Ok(), nullopt, nullopt, nullopt};
+        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
+      return {Status::Ok(), 0, 0, 0};
+    }
+
+    // If the fragment doesn't include timestamps
+    if (timestamps_not_present(name, tile->frag_idx())) {
+      return {Status::Ok(), 0, 0, 0};
+    }
 
     const auto t = &std::get<0>(*tile_tuple);
     const auto t_var = &std::get<1>(*tile_tuple);
@@ -760,8 +836,14 @@ Status ReaderBase::unfilter_tile_chunk_range(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0)
+        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
       return Status::Ok();
+    }
+
+    // If the fragment doesn't include timestamps
+    if (timestamps_not_present(name, tile->frag_idx())) {
+      return Status::Ok();
+    }
 
     auto t = &std::get<0>(*tile_tuple);
     auto t_var = &std::get<1>(*tile_tuple);
@@ -843,8 +925,14 @@ Status ReaderBase::post_process_unfiltered_tile(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0)
+        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
       return Status::Ok();
+    }
+
+    // If the fragment doesn't include timestamps
+    if (timestamps_not_present(name, tile->frag_idx())) {
+      return Status::Ok();
+    }
 
     auto t = &std::get<0>(*tile_tuple);
     auto t_var = &std::get<1>(*tile_tuple);
@@ -1204,8 +1292,7 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
 
 Status ReaderBase::unfilter_tiles(
     const std::string& name,
-    const std::vector<ResultTile*>& result_tiles,
-    const bool disable_cache) const {
+    const std::vector<ResultTile*>& result_tiles) const {
   const auto stat_type = (array_schema_.is_attr(name)) ? "unfilter_attr_tiles" :
                                                          "unfilter_coord_tiles";
   const auto timer_se = stats_->start_timer(stat_type);
@@ -1216,13 +1303,14 @@ Status ReaderBase::unfilter_tiles(
   auto chunking = true;
   if (var_size) {
     auto filters = array_schema_.filters(name);
-    chunking = filters.use_tile_chunking(var_size, array_schema_.type(name));
+    chunking = filters.use_tile_chunking(
+        var_size, array_schema_.version(), array_schema_.type(name));
   }
 
   // The per tile cache is only used in readers where unfiltering
   // was done in parallel on tiles. The new readers parallelize both on
   // tiles and chunk ranges and don't benefit from using a tile cache.
-  if (disable_cache == true && chunking) {
+  if (disable_cache_ == true && chunking) {
     return unfilter_tiles_chunk_range(name, result_tiles);
   }
 
@@ -1243,14 +1331,20 @@ Status ReaderBase::unfilter_tiles(
           // Skip non-existent attributes/dimensions (e.g. coords in the
           // dense case).
           if (tile_tuple == nullptr ||
-              std::get<0>(*tile_tuple).filtered_buffer().size() == 0)
+              std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
             return Status::Ok();
+          }
+
+          // If the fragment doesn't include timestamps
+          if (timestamps_not_present(name, tile->frag_idx())) {
+            return Status::Ok();
+          }
 
           auto& t = std::get<0>(*tile_tuple);
           auto& t_var = std::get<1>(*tile_tuple);
           auto& t_validity = std::get<2>(*tile_tuple);
 
-          if (disable_cache == false) {
+          if (disable_cache_ == false) {
             logger_->info("using cache");
             // Get information about the tile in its fragment.
             auto&& [status, tile_attr_uri] = fragment->uri(name);
@@ -1262,14 +1356,14 @@ Status ReaderBase::unfilter_tiles(
                 fragment->file_offset(name, tile_idx, &tile_attr_offset));
 
             // Cache 't'.
-            if (t.filtered()) {
+            if (t.filtered() && !disable_cache_) {
               // Store the filtered buffer in the tile cache.
               RETURN_NOT_OK(storage_manager_->write_to_cache(
                   *tile_attr_uri, tile_attr_offset, t.filtered_buffer()));
             }
 
             // Cache 't_var'.
-            if (var_size && t_var.filtered()) {
+            if (var_size && t_var.filtered() && !disable_cache_) {
               auto&& [status, tile_attr_var_uri] = fragment->var_uri(name);
               RETURN_NOT_OK(status);
 
@@ -1285,7 +1379,7 @@ Status ReaderBase::unfilter_tiles(
             }
 
             // Cache 't_validity'.
-            if (nullable && t_validity.filtered()) {
+            if (nullable && t_validity.filtered() && !disable_cache_) {
               auto&& [status, tile_attr_validity_uri] =
                   fragment->validity_uri(name);
               RETURN_NOT_OK(status);
@@ -1479,8 +1573,8 @@ void ReaderBase::compute_result_space_tiles(
     const Subarray& partitioner_subarray,
     std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) const {
   // For easy reference
-  auto domain = array_schema_.domain()->domain();
-  auto tile_extents = array_schema_.domain()->tile_extents();
+  auto domain = array_schema_.domain().domain();
+  auto tile_extents = array_schema_.domain().tile_extents();
   auto tile_order = array_schema_.tile_order();
 
   // Compute fragment tile domains
@@ -1564,7 +1658,7 @@ tuple<Status, optional<bool>> ReaderBase::fill_dense_coords(
     dim_idx.emplace_back(dim_num);
   } else {
     for (unsigned d = 0; d < dim_num; ++d) {
-      const auto& dim = array_schema_.dimension(d);
+      const auto dim{array_schema_.dimension_ptr(d)};
       auto it = buffers_.find(dim->name());
       if (it != buffers_.end()) {
         buffers.emplace_back(&(it->second));
@@ -1635,8 +1729,7 @@ tuple<Status, optional<bool>> ReaderBase::fill_dense_coords_row_col(
     // Check for overflow
     for (size_t i = 0; i < buffers.size(); ++i) {
       auto idx = (dim_idx[i] == dim_num) ? 0 : dim_idx[i];
-      auto dim = array_schema_.domain()->dimension(idx);
-      auto coord_size = dim->coord_size();
+      auto coord_size{array_schema_.domain().dimension_ptr(idx)->coord_size()};
       coord_size = (dim_idx[i] == dim_num) ? coord_size * dim_num : coord_size;
       auto buff_size = *(buffers[i]->buffer_size_);
       auto offset = offsets[i];

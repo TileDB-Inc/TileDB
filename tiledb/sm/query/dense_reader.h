@@ -75,7 +75,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Constructor. */
   DenseReader(
       stats::Stats* stats,
-      tdb_shared_ptr<Logger> logger,
+      shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -173,9 +173,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const uint64_t cell_num,
       std::vector<void*>& var_data);
 
-  /** Read attributes into the users buffers. */
+  /** Copy attributes into the users buffers. */
   template <class DimType, class OffType>
-  Status read_attributes(
+  Status copy_attributes(
       const std::vector<std::string>& fixed_names,
       const std::vector<std::string>& var_names,
       const Subarray& subarray,
@@ -190,7 +190,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   uint64_t get_cell_pos_in_tile(
       const Layout& cell_order,
       const int32_t dim_num,
-      shared_ptr<const Domain> const domain,
+      const Domain& domain,
       const ResultSpaceTile<DimType>& result_space_tile,
       const DimType* const coords);
 

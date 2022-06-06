@@ -77,6 +77,9 @@ class Config {
   /** The default exponential delay factor for retrying a http request. */
   static const std::string REST_RETRY_DELAY_FACTOR;
 
+  /** The default for Curl's verbose mode used by REST. */
+  static const std::string REST_CURL_VERBOSE;
+
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 
@@ -245,19 +248,23 @@ class Config {
    *     - "fragment_meta": only the fragment metadata will be consolidated
    *     - "array_meta": only the array metadata will be consolidated
    *     - "commits": only the commit files will be consolidated
-
    */
   static const std::string SM_CONSOLIDATION_MODE;
 
   /**
    * An array will consolidate between this value and timestamp_end.
-   * */
+   */
   static const std::string SM_CONSOLIDATION_TIMESTAMP_START;
 
   /**
    * An array will consolidate between timestamp_start and this value.
-   *  */
+   */
   static const std::string SM_CONSOLIDATION_TIMESTAMP_END;
+
+  /**
+   * Enable or disable consolidation with timestamps.
+   */
+  static const std::string SM_CONSOLIDATION_WITH_TIMESTAMPS;
 
   /**
    * The vacuum mode. It can be one of:
@@ -270,7 +277,7 @@ class Config {
 
   /**
    * An array will vacuum between this value and timestamp_end.
-   * */
+   */
   static const std::string SM_VACUUM_TIMESTAMP_START;
 
   /**
@@ -302,6 +309,16 @@ class Config {
    * The maximum estimated size of the internal tile overlap structure.
    */
   static const std::string SM_MAX_TILE_OVERLAP_SIZE;
+
+  /**
+   * A group will open between this value and timestamp_end.
+   */
+  static const std::string SM_GROUP_TIMESTAMP_START;
+
+  /**
+   * An group will open between timestamp_start and this value.
+   *  */
+  static const std::string SM_GROUP_TIMESTAMP_END;
 
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
@@ -478,6 +495,12 @@ class Config {
 
   /** S3 default object canned ACL */
   static const std::string VFS_S3_OBJECT_CANNED_ACL;
+
+  /**
+   * Specifies the size in bytes of the internal buffers used in the filestore
+   * API. The size should be bigger than the minimum tile size filestore
+   * currently supports, that is currently 1024bytes. */
+  static const std::string FILESTORE_BUFFER_SIZE;
 
   /* ****************************** */
   /*        OTHER CONSTANTS         */

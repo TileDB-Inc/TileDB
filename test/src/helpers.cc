@@ -32,6 +32,7 @@
 
 #include "helpers.h"
 #include "catch.hpp"
+#include "serialization_wrappers.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -121,9 +122,8 @@ bool use_refactored_sparse_unordered_with_dups_reader() {
   return use_refactored_readers;
 }
 
-tdb_shared_ptr<Logger> g_helper_logger(void) {
-  static tdb_shared_ptr<Logger> g_helper_logger =
-      make_shared<Logger>(HERE(), "");
+shared_ptr<Logger> g_helper_logger(void) {
+  static shared_ptr<Logger> g_helper_logger = make_shared<Logger>(HERE(), "");
   return g_helper_logger;
 }
 
@@ -186,7 +186,7 @@ void check_subarray(
 
   // Check ranges
   uint64_t dim_range_num = 0;
-  const sm::Range* range;
+  const type::Range* range;
   for (unsigned i = 0; i < dim_num; ++i) {
     CHECK(subarray.get_range_num(i, &dim_range_num).ok());
     CHECK(dim_range_num == ranges[i].size() / 2);
@@ -264,9 +264,9 @@ void check_subarray_equiv(
 
   // Check ranges
   uint64_t dim_range_num1 = 0;
-  const sm::Range* range1;
+  const type::Range* range1;
   uint64_t dim_range_num2 = 0;
-  const sm::Range* range2;
+  const type::Range* range2;
   if (dim_num1 == dim_num2) {
     for (unsigned i = 0; i < dim_num1; ++i) {
       CHECK(subarray1.get_range_num(i, &dim_range_num1).ok());
@@ -313,9 +313,9 @@ bool subarray_equiv(
 
   // Check ranges
   uint64_t dim_range_num1 = 0;
-  const sm::Range* range1;
+  const type::Range* range1;
   uint64_t dim_range_num2 = 0;
-  const sm::Range* range2;
+  const type::Range* range2;
   if (dim_num1 == dim_num2) {
     for (unsigned i = 0; i < dim_num1; ++i) {
       equiv_state &= (subarray1.get_range_num(i, &dim_range_num1).ok());
@@ -340,69 +340,6 @@ bool subarray_equiv(
 void close_array(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   int rc = tiledb_array_close(ctx, array);
   CHECK(rc == TILEDB_OK);
-}
-
-int array_create_wrapper(
-    tiledb_ctx_t* ctx,
-    const std::string& path,
-    tiledb_array_schema_t* array_schema,
-    bool serialize_array_schema) {
-#ifndef TILEDB_SERIALIZATION
-  return tiledb_array_create(ctx, path.c_str(), array_schema);
-#endif
-
-  if (!serialize_array_schema) {
-    return tiledb_array_create(ctx, path.c_str(), array_schema);
-  }
-
-  // Serialize the array
-  tiledb_buffer_t* buff;
-  REQUIRE(
-      tiledb_serialize_array_schema(
-          ctx,
-          array_schema,
-          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          1,
-          &buff) == TILEDB_OK);
-
-  // Load array schema from the rest server
-  tiledb_array_schema_t* new_array_schema = nullptr;
-  REQUIRE(
-      tiledb_deserialize_array_schema(
-          ctx,
-          buff,
-          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          0,
-          &new_array_schema) == TILEDB_OK);
-
-  // Create array from new schema
-  int rc = tiledb_array_create(ctx, path.c_str(), new_array_schema);
-
-  // Serialize the new array schema and deserialize into the original array
-  // schema.
-  tiledb_buffer_t* buff2;
-  REQUIRE(
-      tiledb_serialize_array_schema(
-          ctx,
-          new_array_schema,
-          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          0,
-          &buff2) == TILEDB_OK);
-  REQUIRE(
-      tiledb_deserialize_array_schema(
-          ctx,
-          buff2,
-          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          1,
-          &array_schema) == TILEDB_OK);
-
-  // Clean up.
-  tiledb_array_schema_free(&array_schema);
-  tiledb_array_schema_free(&new_array_schema);
-  tiledb_buffer_free(&buff);
-  tiledb_buffer_free(&buff2);
-
-  return rc;
 }
 
 void create_array(
@@ -491,7 +428,7 @@ void create_array(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  rc = array_create_wrapper(
+  rc = tiledb_array_create_serialization_wrapper(
       ctx, array_name, array_schema, serialize_array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -713,19 +650,19 @@ void create_dir(const std::string& path, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 
 template <class T>
 void create_subarray(
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges) {
   tiledb::sm::Subarray ret(
-      array, layout, &g_helper_stats, g_helper_logger(), coalesce_ranges);
+      array.get(), layout, &g_helper_stats, g_helper_logger(), coalesce_ranges);
 
   auto dim_num = (unsigned)ranges.size();
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim_range_num = ranges[d].size() / 2;
     for (size_t j = 0; j < dim_range_num; ++j) {
-      sm::Range range(&ranges[d][2 * j], 2 * sizeof(T));
+      type::Range range(&ranges[d][2 * j], 2 * sizeof(T));
       ret.add_range(d, std::move(range), true);
     }
   }
@@ -736,7 +673,7 @@ void create_subarray(
 template <class T>
 void create_subarray(
     tiledb_ctx_t* ctx,
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
@@ -1326,61 +1263,61 @@ template bool subarray_equiv<double>(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
 
 template void create_subarray<int8_t>(
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<int8_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges);
 template void create_subarray<uint8_t>(
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<uint8_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges);
 template void create_subarray<int16_t>(
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<int16_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges);
 template void create_subarray<uint16_t>(
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<uint16_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges);
 template void create_subarray<int32_t>(
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<int32_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges);
 template void create_subarray<uint32_t>(
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<uint32_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges);
 template void create_subarray<int64_t>(
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<int64_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges);
 template void create_subarray<uint64_t>(
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<uint64_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges);
 template void create_subarray<float>(
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<float>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges);
 template void create_subarray<double>(
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<double>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
@@ -1388,70 +1325,70 @@ template void create_subarray<double>(
 
 template void create_subarray<int8_t>(
     tiledb_ctx_t* ctx,
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<int8_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
     bool coalesce_ranges);
 template void create_subarray<uint8_t>(
     tiledb_ctx_t* ctx,
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<uint8_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
     bool coalesce_ranges);
 template void create_subarray<int16_t>(
     tiledb_ctx_t* ctx,
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<int16_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
     bool coalesce_ranges);
 template void create_subarray<uint16_t>(
     tiledb_ctx_t* ctx,
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<uint16_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
     bool coalesce_ranges);
 template void create_subarray<int32_t>(
     tiledb_ctx_t* ctx,
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<int32_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
     bool coalesce_ranges);
 template void create_subarray<uint32_t>(
     tiledb_ctx_t* ctx,
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<uint32_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
     bool coalesce_ranges);
 template void create_subarray<int64_t>(
     tiledb_ctx_t* ctx,
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<int64_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
     bool coalesce_ranges);
 template void create_subarray<uint64_t>(
     tiledb_ctx_t* ctx,
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<uint64_t>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
     bool coalesce_ranges);
 template void create_subarray<float>(
     tiledb_ctx_t* ctx,
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<float>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
     bool coalesce_ranges);
 template void create_subarray<double>(
     tiledb_ctx_t* ctx,
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<double>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,

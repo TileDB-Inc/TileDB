@@ -35,7 +35,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/misc/math.h"
+#include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
@@ -58,7 +58,7 @@ RTree::RTree() {
   deserialized_buffer_size_ = 0;
 }
 
-RTree::RTree(shared_ptr<const Domain> domain, unsigned fanout)
+RTree::RTree(const Domain* domain, unsigned fanout)
     : domain_(domain)
     , fanout_(fanout) {
 }
@@ -126,10 +126,6 @@ uint64_t RTree::free_memory() {
 
 unsigned RTree::dim_num() const {
   return (domain_ == nullptr) ? 0 : domain_->dim_num();
-}
-
-shared_ptr<const Domain> RTree::domain() const {
-  return domain_;
 }
 
 unsigned RTree::fanout() const {
@@ -208,9 +204,9 @@ void RTree::compute_tile_bitmap(
     const auto& mbr = levels_[entry.level_][entry.mbr_idx_];
 
     // If there is overlap
-    if (domain_->dimension(d)->overlap(range, mbr[d])) {
+    if (domain_->dimension_ptr(d)->overlap(range, mbr[d])) {
       // If there is full overlap
-      if (domain_->dimension(d)->covered(mbr[d], range)) {
+      if (domain_->dimension_ptr(d)->covered(mbr[d], range)) {
         auto subtree_leaf_num = this->subtree_leaf_num(entry.level_);
         assert(subtree_leaf_num > 0);
         uint64_t start = entry.mbr_idx_ * subtree_leaf_num;
@@ -273,8 +269,7 @@ Status RTree::serialize(Buffer* buff) const {
     for (uint64_t m = 0; m < mbr_num; ++m) {
       for (unsigned d = 0; d < dim_num; ++d) {
         const auto& r = levels_[l][m][d];
-        auto dim = domain_->dimension(d);
-        if (!dim->var_size()) {  // Fixed-sized
+        if (!domain_->dimension_ptr(d)->var_size()) {  // Fixed-sized
           // Just write the plain range
           RETURN_NOT_OK(buff->write(r.data(), r.size()));
         } else {  // Var-sized
@@ -289,11 +284,6 @@ Status RTree::serialize(Buffer* buff) const {
     }
   }
 
-  return Status::Ok();
-}
-
-Status RTree::set_domain(shared_ptr<const Domain> domain) {
-  domain_ = domain;
   return Status::Ok();
 }
 
@@ -332,7 +322,7 @@ Status RTree::set_leaf_num(uint64_t num) {
 }
 
 Status RTree::deserialize(
-    ConstBuffer* cbuff, shared_ptr<const Domain> domain, uint32_t version) {
+    ConstBuffer* cbuff, const Domain* domain, uint32_t version) {
   if (version < 5)
     return deserialize_v1_v4(cbuff, domain);
   return deserialize_v5(cbuff, domain);
@@ -366,8 +356,7 @@ RTree RTree::clone() const {
   return clone;
 }
 
-Status RTree::deserialize_v1_v4(
-    ConstBuffer* cbuff, shared_ptr<const Domain> domain) {
+Status RTree::deserialize_v1_v4(ConstBuffer* cbuff, const Domain* domain) {
   // For backwards compatibility, they will be ignored
   unsigned dim_num_i;
   uint8_t type_i;
@@ -388,7 +377,7 @@ Status RTree::deserialize_v1_v4(
     for (uint64_t m = 0; m < mbr_num; ++m) {
       levels_[l][m].resize(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
-        auto r_size = 2 * domain->dimension(d)->coord_size();
+        auto r_size{2 * domain->dimension_ptr(d)->coord_size()};
         levels_[l][m][d].set_range(cbuff->cur_data(), r_size);
         cbuff->advance_offset(r_size);
       }
@@ -401,8 +390,7 @@ Status RTree::deserialize_v1_v4(
   return Status::Ok();
 }
 
-Status RTree::deserialize_v5(
-    ConstBuffer* cbuff, shared_ptr<const Domain> domain) {
+Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
   RETURN_NOT_OK(cbuff->read(&fanout_, sizeof(fanout_)));
   unsigned level_num;
 
@@ -423,7 +411,7 @@ Status RTree::deserialize_v5(
     for (uint64_t m = 0; m < mbr_num; ++m) {
       levels_[l][m].resize(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
-        auto dim = domain->dimension(d);
+        auto dim{domain->dimension_ptr(d)};
         if (!dim->var_size()) {  // Fixed-sized
           auto r_size = 2 * dim->coord_size();
           levels_[l][m][d].set_range(cbuff->cur_data(), r_size);

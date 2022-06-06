@@ -37,7 +37,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filesystem/uri.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/uuid.h"
 
 using namespace tiledb;
@@ -51,7 +51,7 @@ inline T& buffer_metadata(void* p) {
 
 TEST_CASE(
     "Metadata: Test metadata deserialization", "[metadata][deserialization]") {
-  std::vector<tdb_shared_ptr<Buffer>> metadata_buffs;
+  std::vector<shared_ptr<Buffer>> metadata_buffs;
 
   // key_1:a, value_1:100,200
   std::string key_1 = "key1";
@@ -134,5 +134,5 @@ TEST_CASE(
   meta.value()->get("key3", &type, &v_num, (const void**)(&v_3));
   CHECK(type == Datatype::STRING_ASCII);
   CHECK(v_num == value_3_size);
-  CHECK(std::string(v_3) == value_3);
+  CHECK(std::string(v_3, value_3_size) == value_3);
 }

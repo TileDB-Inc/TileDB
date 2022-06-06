@@ -33,6 +33,7 @@
 #ifdef HAVE_S3
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 
 #include <aws/core/utils/logging/AWSLogging.h>
 #include <aws/core/utils/logging/DefaultLogSystem.h>
@@ -48,7 +49,7 @@
 #include "tiledb/common/unique_rwlock.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/misc/math.h"
+#include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 
 #ifdef _WIN32
@@ -62,6 +63,8 @@
 
 #include "tiledb/sm/filesystem/s3.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+
+using tiledb::common::filesystem::directory_entry;
 
 namespace {
 
@@ -676,14 +679,27 @@ Status S3::ls(
     std::vector<std::string>* paths,
     const std::string& delimiter,
     int max_paths) const {
-  RETURN_NOT_OK(init_client());
+  auto&& [st, entries] = ls_with_sizes(prefix, delimiter, max_paths);
+  RETURN_NOT_OK(st);
+
+  for (auto& fs : *entries) {
+    paths->emplace_back(fs.path().native());
+  }
+
+  return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
+    const URI& prefix, const std::string& delimiter, int max_paths) const {
+  RETURN_NOT_OK_TUPLE(init_client(), nullopt);
 
   const auto prefix_dir = prefix.add_trailing_slash();
 
   auto prefix_str = prefix_dir.to_string();
   if (!prefix_dir.is_s3()) {
-    return LOG_STATUS(
+    auto st = LOG_STATUS(
         Status_S3Error(std::string("URI is not an S3 URI: " + prefix_str)));
+    return {st, nullopt};
   }
 
   Aws::Http::URI aws_uri = prefix_str.c_str();
@@ -696,35 +712,42 @@ Status S3::ls(
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     list_objects_request.SetRequestPayer(request_payer_);
 
+  std::vector<directory_entry> entries;
+
   bool is_done = false;
   while (!is_done) {
     // Not requesting more items than needed
     if (max_paths != -1)
       list_objects_request.SetMaxKeys(
-          max_paths - static_cast<int>(paths->size()));
+          max_paths - static_cast<int>(entries.size()));
     auto list_objects_outcome = client_->ListObjects(list_objects_request);
 
-    if (!list_objects_outcome.IsSuccess())
-      return LOG_STATUS(Status_S3Error(
+    if (!list_objects_outcome.IsSuccess()) {
+      auto st = LOG_STATUS(Status_S3Error(
           std::string("Error while listing with prefix '") + prefix_str +
           "' and delimiter '" + delimiter + "'" +
           outcome_error_message(list_objects_outcome)));
+      return {st, nullopt};
+    }
 
     for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
       std::string file(object.GetKey().c_str());
-      paths->push_back("s3://" + aws_auth + add_front_slash(file));
+      uint64_t size = object.GetSize();
+      entries.emplace_back("s3://" + aws_auth + add_front_slash(file), size);
     }
 
     for (const auto& object :
          list_objects_outcome.GetResult().GetCommonPrefixes()) {
       std::string file(object.GetPrefix().c_str());
-      paths->push_back(
-          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)));
+      // For "directories" it doesn't seem possible to get a shallow size in
+      // S3, so the size of such an entry will be 0 in S3.
+      entries.emplace_back(
+          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)), 0);
     }
 
     is_done =
         !list_objects_outcome.GetResult().GetIsTruncated() ||
-        (max_paths != -1 && paths->size() >= static_cast<size_t>(max_paths));
+        (max_paths != -1 && entries.size() >= static_cast<size_t>(max_paths));
     if (!is_done) {
       // The documentation states that "GetNextMarker" will be non-empty only
       // when the delimiter in the request is non-empty. When the delimiter is
@@ -742,7 +765,7 @@ Status S3::ls(
     }
   }
 
-  return Status::Ok();
+  return {Status::Ok(), entries};
 }
 
 Status S3::move_object(const URI& old_uri, const URI& new_uri) {
@@ -1059,8 +1082,7 @@ Status S3::init_client() const {
   client_config_ = tdb_unique_ptr<Aws::Client::ClientConfiguration>(
       tdb_new(Aws::Client::ClientConfiguration));
 
-  s3_tp_executor_ =
-      tdb::make_shared<S3ThreadPoolExecutor>(HERE(), vfs_thread_pool_);
+  s3_tp_executor_ = make_shared<S3ThreadPoolExecutor>(HERE(), vfs_thread_pool_);
 
   client_config_->executor = s3_tp_executor_;
 
@@ -1196,7 +1218,7 @@ Status S3::init_client() const {
       Aws::String session_token(
           !aws_session_token.empty() ? aws_session_token.c_str() : "");
       credentials_provider_ =
-          tdb::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
+          make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
               HERE(), access_key_id, secret_access_key, session_token);
       break;
     }
@@ -1213,7 +1235,7 @@ Status S3::init_client() const {
       Aws::String session_name(
           !aws_session_name.empty() ? aws_session_name.c_str() : "");
       credentials_provider_ =
-          tdb::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
+          make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
               HERE(),
               role_arn,
               session_name,
@@ -1238,13 +1260,13 @@ Status S3::init_client() const {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
 
     if (credentials_provider_ == nullptr) {
-      client_ = tdb::make_shared<Aws::S3::S3Client>(
+      client_ = make_shared<Aws::S3::S3Client>(
           HERE(),
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
           use_virtual_addressing_);
     } else {
-      client_ = tdb::make_shared<Aws::S3::S3Client>(
+      client_ = make_shared<Aws::S3::S3Client>(
           HERE(),
           credentials_provider_,
           *client_config_,
@@ -1477,7 +1499,7 @@ Status S3::flush_direct(const URI& uri) {
 
   Aws::S3::Model::PutObjectRequest put_object_request;
 
-  auto stream = std::shared_ptr<Aws::IOStream>(
+  auto stream = shared_ptr<Aws::IOStream>(
       new boost::interprocess::bufferstream((char*)buff->data(), buff->size()));
 
   put_object_request.SetBody(stream);
@@ -1658,7 +1680,7 @@ S3::MakeUploadPartCtx S3::make_upload_part_req(
     const uint64_t length,
     const Aws::String& upload_id,
     const int upload_part_num) {
-  auto stream = std::shared_ptr<Aws::IOStream>(
+  auto stream = shared_ptr<Aws::IOStream>(
       new boost::interprocess::bufferstream((char*)buffer, length));
 
   Aws::S3::Model::UploadPartRequest upload_part_request;

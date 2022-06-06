@@ -38,7 +38,7 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/s3.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_time.h"
 
 #include <fstream>
 #include <thread>
@@ -53,7 +53,7 @@ struct S3Fx {
       tiledb::sm::URI(S3_PREFIX + random_name("tiledb") + "/");
   const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
   tiledb::sm::S3 s3_;
-  ThreadPool thread_pool_;
+  ThreadPool thread_pool_{2};
 
   S3Fx();
   ~S3Fx();
@@ -70,7 +70,6 @@ S3Fx::S3Fx() {
   REQUIRE(config.set("vfs.s3.use_virtual_addressing", "false").ok());
   REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
-  REQUIRE(thread_pool_.init(2).ok());
   REQUIRE(s3_.init(&g_helper_stats, config, &thread_pool_).ok());
 
   // Create bucket
@@ -189,6 +188,23 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
   CHECK(is_dir);  // This is viewed as a dir
   CHECK(s3_.is_dir(URI(TEST_DIR + "dir"), &is_dir).ok());
   CHECK(is_dir);  // This is viewed as a dir
+
+  // ls_with_sizes
+  std::string s = "abcdef";
+  CHECK(s3_.write(URI(file3), s.data(), s.size()).ok());
+  CHECK(s3_.flush_object(URI(file3)).ok());
+
+  auto&& [status, rv] = s3_.ls_with_sizes(URI(dir));
+  auto children = *rv;
+  REQUIRE(status.ok());
+
+  REQUIRE(children.size() == 2);
+  CHECK(children[0].path().native() == file3);
+  CHECK(children[1].path().native() == subdir.substr(0, subdir.size() - 1));
+
+  CHECK(children[0].file_size() == s.size());
+  // Directories don't get a size
+  CHECK(children[1].file_size() == 0);
 
   // Move file
   CHECK(s3_.move_object(URI(file5), URI(file6)).ok());
@@ -353,8 +369,6 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use BucketCannedACL", "[s3]") {
   REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
 
-  REQUIRE(thread_pool_.init(2).ok());
-
   // function to try creating bucket with BucketCannedACL indicated
   // by string parameter.
   auto try_with_bucket_canned_acl = [&](const char* bucket_acl_to_try) {
@@ -395,7 +409,6 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
   REQUIRE(config.set("vfs.s3.use_virtual_addressing", "false").ok());
   REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
-  REQUIRE(thread_pool_.init(2).ok());
 
   // function exercising SetACL() for objects
   // using functionality cloned from file management test case.

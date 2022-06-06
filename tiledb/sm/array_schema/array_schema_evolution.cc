@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -82,7 +83,7 @@ ArraySchemaEvolution::evolve_schema(
             nullopt};
   }
 
-  auto schema = tdb::make_shared<ArraySchema>(HERE(), *(orig_schema.get()));
+  auto schema = make_shared<ArraySchema>(HERE(), *(orig_schema.get()));
 
   // Add attributes.
   for (auto& attr : attributes_to_add_map_) {
@@ -179,6 +180,12 @@ std::vector<std::string> ArraySchemaEvolution::attribute_names_to_drop() const {
 
 Status ArraySchemaEvolution::set_timestamp_range(
     const std::pair<uint64_t, uint64_t>& timestamp_range) {
+  if (timestamp_range.first != timestamp_range.second) {
+    throw std::runtime_error(std::string(
+        "Cannot set timestamp range; first element " +
+        std::to_string(timestamp_range.first) + " and second element " +
+        std::to_string(timestamp_range.second) + " are not equal!"));
+  }
   timestamp_range_ = timestamp_range;
   return Status::Ok();
 }

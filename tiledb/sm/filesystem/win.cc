@@ -33,12 +33,14 @@
 
 #include "win.h"
 #include "path_win.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/math.h"
+#include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
+#include "uri.h"
 
 #if !defined(NOMINMAX)
 #define NOMINMAX  // suppress definition of min/max macros in Windows headers
@@ -53,6 +55,7 @@
 #include <sstream>
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb {
 namespace sm {
@@ -264,9 +267,23 @@ bool Win::is_file(const std::string& path) const {
 }
 
 Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
+  auto&& [st, entries] = ls_with_sizes(URI(path));
+  RETURN_NOT_OK(st);
+
+  for (auto& fs : *entries) {
+    paths->emplace_back(fs.path().native());
+  }
+
+  return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<directory_entry>>> Win::ls_with_sizes(
+    const URI& uri) const {
+  auto path = uri.to_path();
   bool ends_with_slash = path.length() > 0 && path[path.length() - 1] == '\\';
   const std::string glob = path + (ends_with_slash ? "*" : "\\*");
   WIN32_FIND_DATA find_data;
+  std::vector<directory_entry> entries;
 
   // Get first file in directory.
   HANDLE find_h = FindFirstFileEx(
@@ -286,7 +303,14 @@ Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
         strcmp(find_data.cFileName, "..") != 0) {
       std::string file_path =
           path + (ends_with_slash ? "" : "\\") + find_data.cFileName;
-      paths->push_back(file_path);
+      if (is_dir(file_path)) {
+        entries.emplace_back(file_path, 0);
+      } else {
+        ULARGE_INTEGER size;
+        size.LowPart = find_data.nFileSizeLow;
+        size.HighPart = find_data.nFileSizeHigh;
+        entries.emplace_back(file_path, size.QuadPart);
+      }
     }
 
     // Next find result.
@@ -296,14 +320,15 @@ Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
   }
 
   FindClose(find_h);
-  return Status::Ok();
+  return {Status::Ok(), entries};
 
 err:
   if (find_h != INVALID_HANDLE_VALUE) {
     FindClose(find_h);
   }
   std::string errmsg("Failed to list directory \"" + path + "\"");
-  return LOG_STATUS(Status_IOError(errmsg));
+  auto st = LOG_STATUS(Status_IOError(errmsg));
+  return {st, nullopt};
 }
 
 Status Win::move_path(

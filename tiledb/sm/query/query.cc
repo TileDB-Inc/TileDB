@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/query.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
@@ -65,8 +66,10 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
-    : array_(array)
+Query::Query(
+    StorageManager* storage_manager, shared_ptr<Array> array, URI fragment_uri)
+    : array_shared_(array)
+    , array_(array_shared_.get())
     , array_schema_(array->array_schema_latest_ptr())
     , layout_(Layout::ROW_MAJOR)
     , storage_manager_(storage_manager)
@@ -79,16 +82,17 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     , coord_offsets_buffer_is_set_(false)
     , data_buffer_name_("")
     , offsets_buffer_name_("")
-    , disable_check_global_order_(false)
+    , disable_checks_consolidation_(false)
+    , consolidation_with_timestamps_(false)
     , fragment_uri_(fragment_uri) {
   assert(array->is_open());
   auto st = array->get_query_type(&type_);
   assert(st.ok());
 
   if (type_ == QueryType::WRITE) {
-    subarray_ = Subarray(array, stats_, logger_);
+    subarray_ = Subarray(array_, stats_, logger_);
   } else {
-    subarray_ = Subarray(array, Layout::ROW_MAJOR, stats_, logger_);
+    subarray_ = Subarray(array_, Layout::ROW_MAJOR, stats_, logger_);
   }
 
   fragment_metadata_ = array->fragment_metadata();
@@ -139,13 +143,13 @@ Status Query::add_range(
     return logger_->status(Status_QueryError(
         "Cannot add range; Setting range stride is currently unsupported"));
 
-  if (array_schema_->domain()->dimension(dim_idx)->var_size())
+  if (array_schema_->domain().dimension_ptr(dim_idx)->var_size())
     return logger_->status(
         Status_QueryError("Cannot add range; Range must be fixed-sized"));
 
   // Prepare a temp range
   std::vector<uint8_t> range;
-  auto coord_size = array_schema_->dimension(dim_idx)->coord_size();
+  auto coord_size{array_schema_->dimension_ptr(dim_idx)->coord_size()};
   range.resize(2 * coord_size);
   std::memcpy(&range[0], start, coord_size);
   std::memcpy(&range[coord_size], end, coord_size);
@@ -195,7 +199,7 @@ Status Query::add_range_var(
     return logger_->status(
         Status_QueryError("Cannot add range; Invalid range"));
 
-  if (!array_schema_->domain()->dimension(dim_idx)->var_size())
+  if (!array_schema_->domain().dimension_ptr(dim_idx)->var_size())
     return logger_->status(
         Status_QueryError("Cannot add range; Range must be variable-sized"));
 
@@ -285,7 +289,7 @@ Status Query::add_range_by_name(
     const void* stride) {
   unsigned dim_idx;
   RETURN_NOT_OK(
-      array_schema_->domain()->get_dimension_index(dim_name, &dim_idx));
+      array_schema_->domain().get_dimension_index(dim_name, &dim_idx));
 
   return add_range(dim_idx, start, end, stride);
 }
@@ -298,7 +302,7 @@ Status Query::add_range_var_by_name(
     uint64_t end_size) {
   unsigned dim_idx;
   RETURN_NOT_OK(
-      array_schema_->domain()->get_dimension_index(dim_name, &dim_idx));
+      array_schema_->domain().get_dimension_index(dim_name, &dim_idx));
 
   return add_range_var(dim_idx, start, start_size, end, end_size);
 }
@@ -307,7 +311,7 @@ Status Query::get_range_num_from_name(
     const std::string& dim_name, uint64_t* range_num) const {
   unsigned dim_idx;
   RETURN_NOT_OK(
-      array_schema_->domain()->get_dimension_index(dim_name, &dim_idx));
+      array_schema_->domain().get_dimension_index(dim_name, &dim_idx));
 
   return get_range_num(dim_idx, range_num);
 }
@@ -320,7 +324,7 @@ Status Query::get_range_from_name(
     const void** stride) const {
   unsigned dim_idx;
   RETURN_NOT_OK(
-      array_schema_->domain()->get_dimension_index(dim_name, &dim_idx));
+      array_schema_->domain().get_dimension_index(dim_name, &dim_idx));
 
   return get_range(dim_idx, range_idx, start, end, stride);
 }
@@ -332,7 +336,7 @@ Status Query::get_range_var_size_from_name(
     uint64_t* end_size) const {
   unsigned dim_idx;
   RETURN_NOT_OK(
-      array_schema_->domain()->get_dimension_index(dim_name, &dim_idx));
+      array_schema_->domain().get_dimension_index(dim_name, &dim_idx));
 
   return get_range_var_size(dim_idx, range_idx, start_size, end_size);
 }
@@ -344,7 +348,7 @@ Status Query::get_range_var_from_name(
     void* end) const {
   unsigned dim_idx;
   RETURN_NOT_OK(
-      array_schema_->domain()->get_dimension_index(dim_name, &dim_idx));
+      array_schema_->domain().get_dimension_index(dim_name, &dim_idx));
 
   return get_range_var(dim_idx, range_idx, start, end);
 }
@@ -360,12 +364,12 @@ Status Query::get_est_result_size(const char* name, uint64_t* size) {
         "Cannot get estimated result size; Name cannot be null"));
 
   if (name == constants::coords &&
-      !array_schema_->domain()->all_dims_same_type())
+      !array_schema_->domain().all_dims_same_type())
     return logger_->status(Status_QueryError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with heterogeneous domain"));
 
-  if (name == constants::coords && !array_schema_->domain()->all_dims_fixed())
+  if (name == constants::coords && !array_schema_->domain().all_dims_fixed())
     return logger_->status(Status_QueryError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with domains with variable-sized dimensions"));
@@ -621,7 +625,7 @@ Status Query::get_buffer(
   // Check attribute
   if (name != constants::coords) {
     if (array_schema_->attribute(name) == nullptr &&
-        array_schema_->dimension(name) == nullptr)
+        array_schema_->dimension_ptr(name) == nullptr)
       return logger_->status(Status_QueryError(
           std::string("Cannot get buffer; Invalid attribute/dimension name '") +
           name + "'"));
@@ -645,7 +649,7 @@ Status Query::get_buffer(
         Status_QueryError("Cannot get buffer; Coordinates are not var-sized"));
   }
   if (array_schema_->attribute(name) == nullptr &&
-      array_schema_->dimension(name) == nullptr)
+      array_schema_->dimension_ptr(name) == nullptr)
     return logger_->status(Status_QueryError(
         std::string("Cannot get buffer; Invalid attribute/dimension name '") +
         name + "'"));
@@ -680,7 +684,7 @@ Status Query::get_offsets_buffer(
         Status_QueryError("Cannot get buffer; Coordinates are not var-sized"));
   }
   if (array_schema_->attribute(name) == nullptr &&
-      array_schema_->dimension(name) == nullptr)
+      array_schema_->dimension_ptr(name) == nullptr)
     return logger_->status(Status_QueryError(
         std::string("Cannot get buffer; Invalid attribute/dimension name '") +
         name + "'"));
@@ -708,7 +712,7 @@ Status Query::get_data_buffer(
   // Check attribute
   if (name != constants::coords) {
     if (array_schema_->attribute(name) == nullptr &&
-        array_schema_->dimension(name) == nullptr)
+        array_schema_->dimension_ptr(name) == nullptr)
       return logger_->status(Status_QueryError(
           std::string("Cannot get buffer; Invalid attribute/dimension name '") +
           name + "'"));
@@ -998,7 +1002,6 @@ Status Query::create_strategy() {
           subarray_,
           layout_,
           written_fragment_info_,
-          disable_check_global_order_,
           coords_info_,
           fragment_uri_));
     } else if (layout_ == Layout::UNORDERED) {
@@ -1013,7 +1016,6 @@ Status Query::create_strategy() {
           subarray_,
           layout_,
           written_fragment_info_,
-          disable_check_global_order_,
           coords_info_,
           fragment_uri_));
     } else if (layout_ == Layout::GLOBAL_ORDER) {
@@ -1028,7 +1030,7 @@ Status Query::create_strategy() {
           subarray_,
           layout_,
           written_fragment_info_,
-          disable_check_global_order_,
+          disable_checks_consolidation_,
           coords_info_,
           fragment_uri_));
     } else {
@@ -1087,7 +1089,8 @@ Status Query::create_strategy() {
           buffers_,
           subarray_,
           layout_,
-          condition_));
+          condition_,
+          consolidation_with_timestamps_));
     } else if (use_refactored_dense_reader() && array_schema_->dense()) {
       bool all_dense = true;
       for (auto& frag_md : fragment_metadata_)
@@ -1142,16 +1145,34 @@ void Query::clear_strategy() {
   strategy_ = nullptr;
 }
 
-Status Query::disable_check_global_order() {
-  if (status_ != QueryStatus::UNINITIALIZED)
+Status Query::disable_checks_consolidation() {
+  if (status_ != QueryStatus::UNINITIALIZED) {
     return logger_->status(Status_QueryError(
-        "Cannot disable checking global order after initialization"));
+        "Cannot disable checks for consolidation after initialization"));
+  }
 
-  if (type_ == QueryType::READ)
+  if (type_ == QueryType::READ) {
     return logger_->status(Status_QueryError(
-        "Cannot disable checking global order; Applicable only to writes"));
+        "Cannot disable checks for consolidation; Applicable only to writes"));
+  }
 
-  disable_check_global_order_ = true;
+  disable_checks_consolidation_ = true;
+  return Status::Ok();
+}
+
+Status Query::set_consolidation_with_timestamps() {
+  if (status_ != QueryStatus::UNINITIALIZED) {
+    return logger_->status(Status_QueryError(
+        "Cannot enable consolidation with timestamps after initialization"));
+  }
+
+  if (type_ != QueryType::READ) {
+    return logger_->status(Status_QueryError(
+        "Cannot enable consolidation with timestamps; Applicable only to "
+        "reads"));
+  }
+
+  consolidation_with_timestamps_ = true;
   return Status::Ok();
 }
 
@@ -1171,6 +1192,8 @@ Status Query::check_buffer_names() {
 
     // All attributes/dimensions must be provided
     auto expected_num = array_schema_->attribute_num();
+    expected_num += static_cast<decltype(expected_num)>(
+        buffers_.count(constants::timestamps));
     expected_num += (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
                      coord_offsets_buffer_is_set_) ?
                         array_schema_->dim_num() :
@@ -1186,12 +1209,12 @@ Status Query::check_buffer_names() {
 
 Status Query::check_set_fixed_buffer(const std::string& name) {
   if (name == constants::coords &&
-      !array_schema_->domain()->all_dims_same_type())
+      !array_schema_->domain().all_dims_same_type())
     return logger_->status(Status_QueryError(
         "Cannot set buffer; Setting a buffer for zipped coordinates is not "
         "applicable to heterogeneous domains"));
 
-  if (name == constants::coords && !array_schema_->domain()->all_dims_fixed())
+  if (name == constants::coords && !array_schema_->domain().all_dims_fixed())
     return logger_->status(Status_QueryError(
         "Cannot set buffer; Setting a buffer for zipped coordinates is not "
         "applicable to domains with variable-sized dimensions"));
@@ -1332,7 +1355,8 @@ Status Query::set_data_buffer(
   const bool is_attr = array_schema_->is_attr(name);
 
   // Check that attribute/dimension exists
-  if (name != constants::coords && !is_dim && !is_attr)
+  if (name != constants::coords && name != constants::timestamps && !is_dim &&
+      !is_attr)
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));
@@ -1808,12 +1832,12 @@ void Query::set_status(QueryStatus status) {
 }
 
 Status Query::set_subarray(const void* subarray) {
-  if (!array_schema_->domain()->all_dims_same_type())
+  if (!array_schema_->domain().all_dims_same_type())
     return logger_->status(
         Status_QueryError("Cannot set subarray; Function not applicable to "
                           "heterogeneous domains"));
 
-  if (!array_schema_->domain()->all_dims_fixed())
+  if (!array_schema_->domain().all_dims_fixed())
     return logger_->status(
         Status_QueryError("Cannot set subarray; Function not applicable to "
                           "domains with variable-sized dimensions"));
@@ -1841,7 +1865,7 @@ Status Query::set_subarray(const void* subarray) {
     }
 
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto r_size = 2 * array_schema_->dimension(d)->coord_size();
+      auto r_size{2 * array_schema_->dimension_ptr(d)->coord_size()};
       Range range(&s_ptr[offset], r_size);
       RETURN_NOT_OK(sub.add_range(d, std::move(range), err_on_range_oob));
       offset += r_size;
@@ -2032,7 +2056,7 @@ stats::Stats* Query::stats() const {
   return stats_;
 }
 
-tdb_shared_ptr<Buffer> Query::rest_scratch() const {
+shared_ptr<Buffer> Query::rest_scratch() const {
   return rest_scratch_;
 }
 

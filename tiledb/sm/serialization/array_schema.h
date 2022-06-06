@@ -134,6 +134,7 @@ Status max_buffer_sizes_deserialize(
     SerializationType serialize_type,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes);
+
 }  // namespace serialization
 }  // namespace sm
 }  // namespace tiledb

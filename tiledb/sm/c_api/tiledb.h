@@ -207,6 +207,14 @@ typedef enum {
 #undef TILEDB_VFS_MODE_ENUM
 } tiledb_vfs_mode_t;
 
+/** MIME Type. */
+typedef enum {
+/** Helper macro for defining MimeType enums. */
+#define TILEDB_MIME_TYPE_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_MIME_TYPE_ENUM
+} tiledb_mime_type_t;
+
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */
@@ -595,6 +603,9 @@ typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
 
 /** A fragment info object. */
 typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
+
+/** An group object. */
+typedef struct tiledb_group_t tiledb_group_t;
 
 /* ********************************* */
 /*              ERROR                */
@@ -1014,18 +1025,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    `fragment_meta` (remove only consolidated fragment metadata), or
  *    `array_meta` (remove consolidated array metadata files). <br>
  *    **Default**: fragments
- * - `sm.vacuum.timestamp_start` <br>
- *    **Experimental** <br>
- *    When set, an array will be vacuumed between this value and
- *    `sm.vacuum.timestamp_end` (inclusive). <br>
- *    Only for `fragments` and `array_meta` vacuum mode. <br>
- *    **Default**: 0
- * - `sm.vacuum.timestamp_end` <br>
- *    **Experimental** <br>
- *    When set, an array will be vacuumed between `sm.vacuum.timestamp_start`
- *    and this value (inclusive). <br>
- *    Only for `fragments` and `array_meta` vacuum mode. <br>
- *    **Default**: UINT64_MAX
  * - `sm.consolidation_mode` <br>
  *    The consolidation mode, one of `fragments` (consolidate all fragments),
  *    `fragment_meta` (consolidate only fragment metadata footers to a single
@@ -1070,6 +1069,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
  *    Only for `fragments` and `array_meta` consolidation mode. <br>
  *    **Default**: UINT64_MAX
+ * - `sm.consolidation.with_timestamps` <br>
+ *    **Experimental** <br>
+ *    Consolidation with timestamps will include, for each cells, the
+ *    timestamp at which the cell was written. <br>
+ *    **Default**: "false"
  * - `sm.memory_budget` <br>
  *    The memory budget for tiles of fixed-sized attributes (or offsets for
  *    var-sized attributes) to be fetched during reads.<br>
@@ -1142,6 +1146,13 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    **Default**: 0.1
  *    The maximum byte size to read-ahead from the backend. <br>
  *    **Default**: 102400
+ * - `sm.group.timestamp_start` <br>
+ *    The start timestamp used for opening the group. <br>
+ *    **Default**: 0
+ * - `sm.group.timestamp_end` <br>
+ *    The end timestamp used for opening the group. <br>
+ *    Also used for the write timestamp if set. <br>
+ *    **Default**: UINT64_MAX
  * -  `vfs.read_ahead_cache_size` <br>
  *    The the total maximum size of the read-ahead cache, which is an LRU. <br>
  *    **Default**: 10485760
@@ -1409,6 +1420,15 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The delay factor to exponentially wait until further retries of a failed
  *    REST request <br>
  *    **Default**: 1.25
+ * - `rest.curl.verbose` <br>
+ * Set curl to run in verbose mode for REST requests <br>
+ * curl will print to stdout with this option
+ *    **Default**: false
+ * - `filestore.buffer_size` <br>
+ *    Specifies the size in bytes of the internal buffers used in the filestore
+ *    API. The size should be bigger than the minimum tile size filestore
+ *    currently supports, that is currently 1024bytes. <br>
+ *    **Default**: 100MB
  *
  * **Example:**
  *
@@ -1863,7 +1883,7 @@ TILEDB_EXPORT int32_t tiledb_ctx_set_tag(
  * @param group_uri The group URI.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
+TILEDB_DEPRECATED_EXPORT int32_t
 tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) TILEDB_NOEXCEPT;
 
 /* ********************************* */
@@ -2387,7 +2407,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_cell_size(
  * @param ctx The TileDB context.
  * @param attr The attribute.
  * @param out The output.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error./
  */
 TILEDB_EXPORT int32_t tiledb_attribute_dump(
     tiledb_ctx_t* ctx,
@@ -6331,9 +6351,6 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_create_with_key(
  * fragment files, fragment metadata files, or array metadata files into a
  * single file.
  *
- * You must first finalize all queries to the array before consolidation can
- * begin (as consolidation temporarily acquires an exclusive lock on the array).
- *
  * **Example:**
  *
  * @code{.c}
@@ -6360,9 +6377,6 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate(
  * Depending on the consoliation mode in the config, consolidates either the
  * fragment files, fragment metadata files, or array metadata files into a
  * single file.
- *
- * You must first finalize all queries to the array before consolidation can
- * begin (as consolidation temporarily acquires an exclusive lock on the array).
  *
  * **Example:**
  *
@@ -6822,9 +6836,6 @@ TILEDB_EXPORT int32_t tiledb_array_has_metadata_key(
 /**
  * Consolidates the array metadata into a single array metadata file.
  *
- * You must first finalize all queries to the array before consolidation can
- * begin (as consolidation temporarily acquires an exclusive lock on the array).
- *
  * **Example:**
  *
  * @code{.c}
@@ -6846,9 +6857,6 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata(
 
 /**
  * Consolidates the array metadata of an encrypted array into a single file.
- *
- * You must first finalize all queries to the array before consolidation can
- * begin (as consolidation temporarily acquires an exclusive lock on the array).
  *
  * **Example:**
  *

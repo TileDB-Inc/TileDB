@@ -142,6 +142,8 @@ class RLE {
    * decompress
    * @param output Decoded output as a series of strings in contiguous memory.
    * Memory is allocated and owned by the caller
+   * @param output_offsets Output offsets reconstructed from decoding the RLE
+   * compressed input. Memory is allocated and owned by the caller
    */
   template <class T, class P>
   static void decompress(
@@ -220,8 +222,8 @@ class RLE {
    */
   static Status decompress(
       const span<const std::byte> input,
-      uint64_t rle_len_size,
-      uint64_t string_len_size,
+      const uint8_t rle_len_size,
+      const uint8_t string_len_size,
       span<std::byte> output,
       span<uint64_t> output_offsets);
 

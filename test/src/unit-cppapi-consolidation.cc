@@ -206,7 +206,10 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test consolidation with timestamp and max domain",
     "[cppapi][consolidation][timestamp][maxdomain]") {
-  Context ctx;
+  Config cfg;
+  cfg["sm.consolidation.buffer_size"] = "10000";
+
+  Context ctx(cfg);
   VFS vfs(ctx);
   const std::string array_name = "consolidate_timestamp_max_domain";
 

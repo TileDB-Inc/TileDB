@@ -64,6 +64,11 @@ class blob_client;
 using namespace tiledb::common;
 
 namespace tiledb {
+
+namespace common::filesystem {
+class directory_entry;
+}
+
 namespace sm {
 
 class Azure {
@@ -183,6 +188,21 @@ class Azure {
   Status ls(
       const URI& uri,
       std::vector<std::string>* paths,
+      const std::string& delimiter = "/",
+      int max_paths = -1) const;
+
+  /**
+   *
+   * Lists objects and object information that start with `uri`.
+   *
+   * @param uri The prefix URI.
+   * @param delimiter The uri is truncated to the first delimiter
+   * @param max_paths The maximum number of paths to be retrieved
+   * @return A list of directory_entry objects
+   */
+  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  ls_with_sizes(
+      const URI& uri,
       const std::string& delimiter = "/",
       int max_paths = -1) const;
 

@@ -66,7 +66,7 @@ class RTree {
   RTree();
 
   /** Constructor. */
-  RTree(shared_ptr<const Domain> domain, unsigned fanout);
+  RTree(const Domain* domain, unsigned fanout);
 
   /** Destructor. */
   ~RTree();
@@ -97,7 +97,9 @@ class RTree {
   unsigned dim_num() const;
 
   /** Returns the domain. */
-  shared_ptr<const Domain> domain() const;
+  inline const Domain* domain() const {
+    return domain_;
+  }
 
   /** Returns the fanout. */
   unsigned fanout() const;
@@ -139,7 +141,10 @@ class RTree {
   /**
    * Sets the RTree domain.
    */
-  Status set_domain(shared_ptr<const Domain> domain);
+  inline Status set_domain(const Domain* domain) {
+    domain_ = domain;
+    return Status::Ok();
+  }
 
   /**
    * Sets an MBR as a leaf in the tree. The function will error out
@@ -168,7 +173,7 @@ class RTree {
    * It also sets the input domain, as that is not serialized.
    */
   Status deserialize(
-      ConstBuffer* cbuff, shared_ptr<const Domain> domain, uint32_t version);
+      ConstBuffer* cbuff, const Domain* domain, uint32_t version);
 
  private:
   /* ********************************* */
@@ -216,8 +221,13 @@ class RTree {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The domain. */
-  shared_ptr<const Domain> domain_;
+  /**
+   * The domain for which this R-tree provides an index.
+   *
+   * This member variable can be changed to `const Domain&` after this class is
+   * C.41-compliant and its default constructor removed.
+   */
+  const Domain* domain_;
 
   /** The fanout of the tree. */
   unsigned fanout_;
@@ -251,7 +261,7 @@ class RTree {
    *
    * Applicable to versions 1-4
    */
-  Status deserialize_v1_v4(ConstBuffer* cbuff, shared_ptr<const Domain> domain);
+  Status deserialize_v1_v4(ConstBuffer* cbuff, const Domain* domain);
 
   /**
    * Deserializes the contents of the object from the input buffer based
@@ -260,7 +270,7 @@ class RTree {
    *
    * Applicable to versions >= 5
    */
-  Status deserialize_v5(ConstBuffer* cbuff, shared_ptr<const Domain> domain);
+  Status deserialize_v5(ConstBuffer* cbuff, const Domain* domain);
 
   /**
    * Swaps the contents (all field values) of this RTree with the

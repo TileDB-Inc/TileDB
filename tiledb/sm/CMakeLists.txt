@@ -26,6 +26,7 @@
 
 include(common-root)
 
+add_subdirectory(array)
 add_subdirectory(array_schema)
 add_subdirectory(buffer)
 add_subdirectory(compressors)
@@ -33,6 +34,7 @@ add_subdirectory(config)
 add_subdirectory(crypto)
 add_subdirectory(filesystem)
 add_subdirectory(filter)
+add_subdirectory(group)
 add_subdirectory(metadata)
 add_subdirectory(misc)
 add_subdirectory(query)

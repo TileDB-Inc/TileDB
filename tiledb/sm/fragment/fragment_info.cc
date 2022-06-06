@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,14 +31,17 @@
  */
 
 #include "tiledb/sm/fragment/fragment_info.h"
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::sm;
 using namespace tiledb::common;
@@ -94,8 +97,8 @@ Status FragmentInfo::set_config(const Config& config) {
 }
 
 void FragmentInfo::expand_anterior_ndrange(
-    shared_ptr<const Domain> domain, const NDRange& range) {
-  domain->expand_ndrange(range, &anterior_ndrange_);
+    const Domain& domain, const NDRange& range) {
+  domain.expand_ndrange(range, &anterior_ndrange_);
 }
 
 void FragmentInfo::dump(FILE* out) const {
@@ -294,7 +297,7 @@ Status FragmentInfo::get_non_empty_domain(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -365,7 +368,7 @@ Status FragmentInfo::get_non_empty_domain_var_size(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -409,10 +412,10 @@ Status FragmentInfo::get_non_empty_domain_var(
         "Cannot get non-empty domain var; Dimension is fixed-sized"));
 
   assert(!non_empty_domain[did].empty());
-  std::memcpy(
-      start, non_empty_domain[did].start(), non_empty_domain[did].start_size());
-  std::memcpy(
-      end, non_empty_domain[did].end(), non_empty_domain[did].end_size());
+  auto start_str = non_empty_domain[did].start_str();
+  std::memcpy(start, start_str.data(), start_str.size());
+  auto end_str = non_empty_domain[did].end_str();
+  std::memcpy(end, end_str.data(), end_str.size());
 
   return Status::Ok();
 }
@@ -432,7 +435,7 @@ Status FragmentInfo::get_non_empty_domain_var(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -524,7 +527,7 @@ Status FragmentInfo::get_mbr(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -608,7 +611,7 @@ Status FragmentInfo::get_mbr_var_size(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -661,14 +664,10 @@ Status FragmentInfo::get_mbr_var(
         "Cannot get MBR var; Dimension is fixed-sized"));
 
   assert(!minimum_bounding_rectangle[did].empty());
-  std::memcpy(
-      start,
-      minimum_bounding_rectangle[did].start(),
-      minimum_bounding_rectangle[did].start_size());
-  std::memcpy(
-      end,
-      minimum_bounding_rectangle[did].end(),
-      minimum_bounding_rectangle[did].end_size());
+  auto start_str = minimum_bounding_rectangle[did].start_str();
+  std::memcpy(start, start_str.data(), start_str.size());
+  auto end_str = minimum_bounding_rectangle[did].end_str();
+  std::memcpy(end, end_str.data(), end_str.size());
 
   return Status::Ok();
 }
@@ -688,7 +687,7 @@ Status FragmentInfo::get_mbr_var(
   auto dim_num = array_schema->dim_num();
   uint32_t did;
   for (did = 0; did < dim_num; ++did) {
-    if (dim_name == array_schema->dimension(did)->name()) {
+    if (dim_name == array_schema->dimension_ptr(did)->name()) {
       break;
     }
   }
@@ -838,13 +837,21 @@ Status FragmentInfo::load(
   // Create an ArrayDirectory object and load
   auto timestamp_start = compute_anterior ? 0 : timestamp_start_;
   ArrayDirectory array_dir;
+  bool found = false;
+  bool consolidation_with_timestamps = false;
+  RETURN_NOT_OK(config_.get<bool>(
+      "sm.consolidation.with_timestamps",
+      &consolidation_with_timestamps,
+      &found));
+  assert(found);
   try {
     array_dir = ArrayDirectory(
         storage_manager_->vfs(),
         storage_manager_->compute_tp(),
         array_uri_,
         timestamp_start,
-        timestamp_end_);
+        timestamp_end_,
+        consolidation_with_timestamps);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
@@ -897,7 +904,7 @@ Status FragmentInfo::load(
       // compute expanded non-empty domain (only for dense fragments)
       auto expanded_non_empty_domain = non_empty_domain;
       if (!sparse)
-        array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
+        array_schema->domain().expand_to_tiles(&expanded_non_empty_domain);
 
       // Push new fragment info
       single_fragment_info_vec_.emplace_back(SingleFragmentInfo(
@@ -1010,7 +1017,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   }
 
   // Get fragment non-empty domain
-  auto meta = tdb::make_shared<FragmentMetadata>(
+  auto meta = make_shared<FragmentMetadata>(
       HERE(),
       storage_manager_,
       nullptr,
@@ -1034,7 +1041,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   const auto& non_empty_domain = meta->non_empty_domain();
   auto expanded_non_empty_domain = non_empty_domain;
   if (!sparse)
-    meta->array_schema()->domain()->expand_to_tiles(&expanded_non_empty_domain);
+    meta->array_schema()->domain().expand_to_tiles(&expanded_non_empty_domain);
 
   // Set fragment info
   ret = SingleFragmentInfo(

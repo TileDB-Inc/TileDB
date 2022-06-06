@@ -34,6 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
@@ -156,8 +157,9 @@ Status ArrayMetaConsolidator::vacuum(const char* array_name) {
         vfs,
         compute_tp,
         URI(array_name),
-        config_.vacuum_timestamp_start_,
-        config_.vacuum_timestamp_end_);
+        0,
+        std::numeric_limits<uint64_t>::max(),
+        false);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
@@ -201,12 +203,6 @@ Status ArrayMetaConsolidator::set_config(const Config* config) {
   assert(found);
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
-  assert(found);
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
-      "sm.vacuum.timestamp_start", &config_.vacuum_timestamp_start_, &found));
-  assert(found);
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
-      "sm.vacuum.timestamp_end", &config_.vacuum_timestamp_end_, &found));
   assert(found);
 
   return Status::Ok();

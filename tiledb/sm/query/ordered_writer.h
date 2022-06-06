@@ -35,6 +35,7 @@
 
 #include <atomic>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/query/writer_base.h"
 
@@ -53,7 +54,7 @@ class OrderedWriter : public WriterBase {
   /** Constructor. */
   OrderedWriter(
       stats::Stats* stats,
-      tdb_shared_ptr<Logger> logger,
+      shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -61,7 +62,6 @@ class OrderedWriter : public WriterBase {
       Subarray& subarray,
       Layout layout,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
-      bool disable_check_global_order,
       Query::CoordsInfo& coords_info_,
       URI fragment_uri = URI(""));
 
@@ -123,7 +123,7 @@ class OrderedWriter : public WriterBase {
   Status prepare_filter_and_write_tiles(
       const std::string& name,
       std::vector<std::vector<WriterTile>>& tile_batches,
-      tdb_shared_ptr<FragmentMetadata> frag_meta,
+      shared_ptr<FragmentMetadata> frag_meta,
       DenseTiler<T>* dense_tiler,
       uint64_t thread_num);
 };

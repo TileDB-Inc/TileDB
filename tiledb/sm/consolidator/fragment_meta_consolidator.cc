@@ -34,10 +34,13 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
+#include "tiledb/sm/tile/tile.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::common;
 
@@ -188,7 +191,8 @@ Status FragmentMetaConsolidator::vacuum(const char* array_name) {
   auto compute_tp = storage_manager_->compute_tp();
   ArrayDirectory array_dir;
   try {
-    array_dir = ArrayDirectory(vfs, compute_tp, URI(array_name), 0, UINT64_MAX);
+    array_dir =
+        ArrayDirectory(vfs, compute_tp, URI(array_name), 0, UINT64_MAX, false);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }

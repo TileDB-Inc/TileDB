@@ -34,7 +34,8 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -86,6 +87,7 @@ Status CommitsConsolidator::consolidate(
         URI(array_name),
         0,
         utils::time::timestamp_now_ms(),
+        false,
         ArrayDirectoryMode::COMMITS);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
@@ -131,6 +133,7 @@ Status CommitsConsolidator::vacuum(const char* array_name) {
         URI(array_name),
         0,
         utils::time::timestamp_now_ms(),
+        false,
         ArrayDirectoryMode::COMMITS);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));

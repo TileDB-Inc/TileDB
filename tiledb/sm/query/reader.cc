@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,7 @@
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
@@ -95,7 +96,7 @@ inline IterT skip_invalid_elements(IterT it, const IterT& end) {
 
 Reader::Reader(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -176,6 +177,15 @@ Status Reader::complete_read_loop() {
   }
 
   return Status::Ok();
+}
+
+uint64_t Reader::get_timestamp(const ResultCoords& rc) const {
+  const auto f = rc.tile_->frag_idx();
+  if (fragment_metadata_[f]->has_timestamps()) {
+    return rc.tile_->timestamp(rc.pos_);
+  } else {
+    return fragment_timestamp(rc.tile_);
+  }
 }
 
 Status Reader::dowork() {
@@ -374,6 +384,15 @@ Status Reader::compute_range_result_coords(
             &result_bitmap,
             cell_order));
       }
+    }
+
+    // Apply partial overlap condition, if required.
+    const auto frag_meta = fragment_metadata_[tile->frag_idx()];
+    const bool partial_overlap = frag_meta->partial_time_overlap(
+        array_->timestamp_start(), array_->timestamp_end_opened_at());
+    if (frag_meta->has_timestamps() && partial_overlap) {
+      RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
+          *(frag_meta->array_schema().get()), *tile, result_bitmap, nullptr));
     }
 
     // Gather results
@@ -613,8 +632,9 @@ Status Reader::compute_sparse_result_tiles(
                 f, t, *(fragment_metadata_[f]->array_schema()).get());
             (*result_tile_map)[pair] = result_tiles.size() - 1;
           }
-          // Always check range for multiple fragments
-          if (f > first_fragment[r])
+          // Always check range for multiple fragments or fragments with
+          // timestamps.
+          if (f > first_fragment[r] || fragment_metadata_[f]->has_timestamps())
             (*single_fragment)[r] = false;
           else
             first_fragment[r] = f;
@@ -632,8 +652,9 @@ Status Reader::compute_sparse_result_tiles(
               f, t, *(fragment_metadata_[f]->array_schema()).get());
           (*result_tile_map)[pair] = result_tiles.size() - 1;
         }
-        // Always check range for multiple fragments
-        if (f > first_fragment[r])
+        // Always check range for multiple fragments or fragments with
+        // timestamps.
+        if (f > first_fragment[r] || fragment_metadata_[f]->has_timestamps())
           (*single_fragment)[r] = false;
         else
           first_fragment[r] = f;
@@ -1342,8 +1363,7 @@ Status Reader::process_tiles(
 
     // Read the tiles for the names in `inner_names`. Each attribute
     // name will be read concurrently.
-    RETURN_CANCEL_OR_ERROR(
-        read_attribute_tiles(inner_names, result_tiles, false));
+    RETURN_CANCEL_OR_ERROR(read_attribute_tiles(inner_names, result_tiles));
 
     // Copy the cells into the associated `buffers_`, and then clear the cells
     // from the tiles. The cell copies are not thread safe. Clearing tiles are
@@ -1352,7 +1372,7 @@ Status Reader::process_tiles(
     for (const auto& inner_name : inner_names) {
       const ProcessTileFlags flags = names.at(inner_name);
 
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(inner_name, result_tiles, false));
+      RETURN_CANCEL_OR_ERROR(unfilter_tiles(inner_name, result_tiles));
 
       if (flags & ProcessTileFlag::COPY) {
         if (!array_schema_.var_size(inner_name)) {
@@ -1521,7 +1541,7 @@ Status Reader::compute_result_coords(
   std::vector<std::string> var_size_dim_names;
   dim_names.reserve(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& name = array_schema_.dimension(d)->name();
+    const auto& name{array_schema_.dimension_ptr(d)->name()};
     dim_names.emplace_back(name);
     if (array_schema_.var_size(name))
       var_size_dim_names.emplace_back(name);
@@ -1542,6 +1562,17 @@ Status Reader::compute_result_coords(
   RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names, tmp_result_tiles));
   for (const auto& dim_name : dim_names) {
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles));
+  }
+
+  // Read and unfilter timestamps, if required.
+  if (use_timestamps_) {
+    std::vector<std::string> timestamps = {constants::timestamps};
+    RETURN_CANCEL_OR_ERROR(
+        load_tile_offsets(read_state_.partitioner_.subarray(), timestamps));
+
+    RETURN_CANCEL_OR_ERROR(read_attribute_tiles(timestamps, tmp_result_tiles));
+    RETURN_CANCEL_OR_ERROR(
+        unfilter_tiles(constants::timestamps, tmp_result_tiles));
   }
 
   // Compute the read coordinates for all fragments for each subarray range.
@@ -1569,7 +1600,7 @@ Status Reader::dedup_result_coords(
   while (it != coords_end) {
     auto next_it = skip_invalid_elements(std::next(it), coords_end);
     if (next_it != coords_end && it->same_coords(*next_it)) {
-      if (it->tile_->frag_idx() < next_it->tile_->frag_idx()) {
+      if (get_timestamp(*it) < get_timestamp(*next_it)) {
         it->invalidate();
         it = skip_invalid_elements(++it, coords_end);
       } else {
@@ -1583,7 +1614,7 @@ Status Reader::dedup_result_coords(
 }
 
 Status Reader::dense_read() {
-  auto type = array_schema_.domain()->dimension(0)->type();
+  auto type{array_schema_.domain().dimension_ptr(0)->type()};
   switch (type) {
     case Datatype::INT8:
       return dense_read<int8_t>();
@@ -1661,7 +1692,7 @@ Status Reader::dense_read() {
       result_tiles,
       result_cell_slabs));
 
-  auto stride = array_schema_.domain()->stride<T>(subarray.layout());
+  auto stride = array_schema_.domain().stride<T>(subarray.layout());
   RETURN_NOT_OK(apply_query_condition(
       result_cell_slabs,
       result_tiles,
@@ -1692,10 +1723,29 @@ Status Reader::dense_read() {
 }
 
 Status Reader::get_all_result_coords(
-    ResultTile* tile, std::vector<ResultCoords>& result_coords) const {
+    ResultTile* tile, std::vector<ResultCoords>& result_coords) {
   auto coords_num = tile->cell_num();
-  for (uint64_t i = 0; i < coords_num; ++i)
-    result_coords.emplace_back(tile, i);
+
+  // Apply partial overlap condition, if required.
+  const auto frag_meta = fragment_metadata_[tile->frag_idx()];
+  const bool partial_overlap = frag_meta->partial_time_overlap(
+      array_->timestamp_start(), array_->timestamp_end_opened_at());
+  if (fragment_metadata_[tile->frag_idx()]->has_timestamps() &&
+      partial_overlap) {
+    std::vector<uint8_t> result_bitmap(coords_num, 1);
+    RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
+        *(frag_meta->array_schema().get()), *tile, result_bitmap, nullptr));
+
+    for (uint64_t i = 0; i < coords_num; ++i) {
+      if (result_bitmap[i]) {
+        result_coords.emplace_back(tile, i);
+      }
+    }
+  } else {
+    for (uint64_t i = 0; i < coords_num; ++i) {
+      result_coords.emplace_back(tile, i);
+    }
+  }
 
   return Status::Ok();
 }
@@ -1808,7 +1858,7 @@ Status Reader::sort_result_coords(
     size_t coords_num,
     Layout layout) const {
   auto timer_se = stats_->start_timer("sort_result_coords");
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
 
   if (layout == Layout::ROW_MAJOR) {
     parallel_sort(
@@ -1824,7 +1874,7 @@ Status Reader::sort_result_coords(
           storage_manager_->compute_tp(),
           hilbert_values.begin(),
           hilbert_values.end(),
-          HilbertCmp(domain, iter_begin));
+          HilbertCmpRCI(domain, iter_begin));
       RETURN_NOT_OK(reorganize_result_coords(iter_begin, &hilbert_values));
     } else {
       parallel_sort(
@@ -1846,6 +1896,18 @@ Status Reader::sparse_read() {
   // sparse fragments
   std::vector<ResultCoords> result_coords;
   std::vector<ResultTile> sparse_result_tiles;
+
+  // Set timestamps variables
+  user_requested_timestamps_ = buffers_.count(constants::timestamps) != 0;
+  const bool partial_consol_fragment_overlap =
+      partial_consolidated_fragment_overlap();
+  use_timestamps_ = partial_consol_fragment_overlap ||
+                    !array_schema_.allows_dups() || user_requested_timestamps_;
+
+  // Add partial overlap condition for timestamps, if required.
+  if (partial_consol_fragment_overlap) {
+    RETURN_NOT_OK(add_partial_overlap_condition());
+  }
 
   RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
   std::vector<ResultTile*> result_tiles;
@@ -1914,11 +1976,11 @@ bool Reader::sparse_tile_overwritten(
   const auto& mbr = fragment_metadata_[frag_idx]->mbr(tile_idx);
   assert(!mbr.empty());
   auto fragment_num = (unsigned)fragment_metadata_.size();
-  auto domain = array_schema_.domain();
+  auto& domain{array_schema_.domain()};
 
   for (unsigned f = frag_idx + 1; f < fragment_num; ++f) {
     if (fragment_metadata_[f]->dense() &&
-        domain->covered(mbr, fragment_metadata_[f]->non_empty_domain()))
+        domain.covered(mbr, fragment_metadata_[f]->non_empty_domain()))
       return true;
   }
 
@@ -1929,7 +1991,7 @@ void Reader::erase_coord_tiles(std::vector<ResultTile>& result_tiles) const {
   for (auto& tile : result_tiles) {
     auto dim_num = array_schema_.dim_num();
     for (unsigned d = 0; d < dim_num; ++d)
-      tile.erase_tile(array_schema_.dimension(d)->name());
+      tile.erase_tile(array_schema_.dimension_ptr(d)->name());
     tile.erase_tile(constants::coords);
   }
 }
@@ -1951,7 +2013,7 @@ void Reader::get_result_tile_stats(
     if (!fragment_metadata_[rt->frag_idx()]->dense())
       cell_num += rt->cell_num();
     else
-      cell_num += array_schema_.domain()->cell_num_per_tile();
+      cell_num += array_schema_.domain().cell_num_per_tile();
   }
   stats_->add_counter("cell_num", cell_num);
 }
@@ -1971,7 +2033,7 @@ Status Reader::calculate_hilbert_values(
       storage_manager_->compute_tp(), 0, coords_num, [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
-          auto dim = array_schema_.dimension(d);
+          auto dim{array_schema_.dimension_ptr(d)};
           coords[d] = hilbert_order::map_to_uint64(
               *dim, *(iter_begin + c), d, bits, max_bucket_val);
         }

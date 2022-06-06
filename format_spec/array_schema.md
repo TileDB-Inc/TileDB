@@ -1,4 +1,6 @@
-# Array Schema
+---
+title: Array Schema
+---
 
 ## Current Array Schema Version
 
@@ -18,8 +20,8 @@ my_array                            # array folder
 
 
 The array schema folder can contain:
-* Any number of [array schema files](#array-schema-file)
 
+* Any number of [array schema files](#array-schema-file)
 
 ## Previous Array Schema Version
 

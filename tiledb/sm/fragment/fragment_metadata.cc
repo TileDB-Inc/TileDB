@@ -51,6 +51,8 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
+#include "tiledb/type/range/range.h"
 
 #include <cassert>
 #include <iostream>
@@ -58,6 +60,7 @@
 #include <string>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
 
 namespace tiledb {
 namespace sm {
@@ -75,7 +78,8 @@ FragmentMetadata::FragmentMetadata(
     const shared_ptr<const ArraySchema>& array_schema,
     const URI& fragment_uri,
     const std::pair<uint64_t, uint64_t>& timestamp_range,
-    bool dense)
+    bool dense,
+    bool has_timestamps)
     : storage_manager_(storage_manager)
     , memory_tracker_(memory_tracker)
     , array_schema_(array_schema)
@@ -85,15 +89,16 @@ FragmentMetadata::FragmentMetadata(
     , fragment_uri_(fragment_uri)
     , has_consolidated_footer_(false)
     , last_tile_cell_num_(0)
+    , has_timestamps_(has_timestamps)
     , sparse_tile_num_(0)
     , meta_file_size_(0)
-    , rtree_(RTree(array_schema_->domain(), constants::rtree_fanout))
+    , rtree_(RTree(&array_schema_->domain(), constants::rtree_fanout))
     , tile_index_base_(0)
     , version_(array_schema_->write_version())
     , timestamp_range_(timestamp_range)
     , array_uri_(array_schema_->array_uri()) {
   build_idx_map();
-  array_schema_->get_name(&array_schema_name_);
+  array_schema_name_ = array_schema_->name();
 }
 
 FragmentMetadata::~FragmentMetadata() = default;
@@ -110,6 +115,7 @@ FragmentMetadata::FragmentMetadata(const FragmentMetadata& other) {
   meta_file_size_ = other.meta_file_size_;
   version_ = other.version_;
   tile_index_base_ = other.tile_index_base_;
+  has_timestamps_ = other.has_timestamps_;
   sparse_tile_num_ = other.sparse_tile_num_;
   footer_size_ = other.footer_size_;
   footer_offset_ = other.footer_offset_;
@@ -129,6 +135,7 @@ FragmentMetadata& FragmentMetadata::operator=(const FragmentMetadata& other) {
   meta_file_size_ = other.meta_file_size_;
   version_ = other.version_;
   tile_index_base_ = other.tile_index_base_;
+  has_timestamps_ = other.has_timestamps_;
   sparse_tile_num_ = other.sparse_tile_num_;
   footer_size_ = other.footer_size_;
   footer_offset_ = other.footer_offset_;
@@ -236,7 +243,9 @@ void FragmentMetadata::set_tile_min_var(
                   tile_min_var_buffer_[idx].size() - offset[0];
 
   // Copy var data
-  memcpy(&tile_min_var_buffer_[idx][offset[0]], min, size);
+  if (size) {  // avoid (potentially) illegal index ref's when size is zero
+    memcpy(&tile_min_var_buffer_[idx][offset[0]], min, size);
+  }
 }
 
 void FragmentMetadata::set_tile_max(
@@ -278,7 +287,9 @@ void FragmentMetadata::set_tile_max_var(
                   tile_max_var_buffer_[idx].size() - offset[0];
 
   // Copy var data
-  memcpy(&tile_max_var_buffer_[idx][offset[0]], max, size);
+  if (size) {  // avoid (potentially) illegal index ref's when size is zero
+    memcpy(&tile_max_var_buffer_[idx][offset[0]], max, size);
+  }
 }
 
 void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
@@ -380,6 +391,7 @@ Status FragmentMetadata::compute_fragment_min_max_sum_null_count() {
             case Datatype::INT64:
               compute_fragment_min_max_sum<int64_t>(name);
               break;
+            case Datatype::BOOL:
             case Datatype::UINT8:
               compute_fragment_min_max_sum<uint8_t>(name);
               break;
@@ -453,7 +465,7 @@ uint64_t FragmentMetadata::cell_num() const {
   auto tile_num = this->tile_num();
   assert(tile_num != 0);
   if (dense_) {  // Dense fragment
-    return tile_num * array_schema_->domain()->cell_num_per_tile();
+    return tile_num * array_schema_->domain().cell_num_per_tile();
   } else {  // Sparse fragment
     return (tile_num - 1) * array_schema_->capacity() + last_tile_cell_num();
   }
@@ -461,7 +473,7 @@ uint64_t FragmentMetadata::cell_num() const {
 
 uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
   if (dense_)
-    return array_schema_->domain()->cell_num_per_tile();
+    return array_schema_->domain().cell_num_per_tile();
 
   uint64_t tile_num = this->tile_num();
   if (tile_pos != tile_num - 1)
@@ -473,7 +485,7 @@ uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
 std::vector<Datatype> FragmentMetadata::dim_types() const {
   std::vector<Datatype> ret;
   for (uint32_t d = 0; d < array_schema_->dim_num(); d++) {
-    ret.emplace_back(array_schema_->dimension(d)->type());
+    ret.emplace_back(array_schema_->dimension_ptr(d)->type());
   }
 
   return ret;
@@ -494,7 +506,7 @@ Status FragmentMetadata::add_max_buffer_sizes(
   NDRange sub_nd(dim_num);
   uint64_t offset = 0;
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto r_size = 2 * array_schema_->dimension(d)->coord_size();
+    auto r_size{2 * array_schema_->dimension_ptr(d)->coord_size()};
     sub_nd[d].set_range(&sub_ptr[offset], r_size);
     offset += r_size;
   }
@@ -509,7 +521,7 @@ Status FragmentMetadata::add_max_buffer_sizes_dense(
         buffer_sizes) {
   // Note: applicable only to the dense case where all dimensions
   // have the same type
-  auto type = array_schema_->dimension(0)->type();
+  auto type{array_schema_->dimension_ptr(0)->type()};
   switch (type) {
     case Datatype::INT32:
       return add_max_buffer_sizes_dense<int32_t>(
@@ -713,9 +725,8 @@ void FragmentMetadata::compute_tile_bitmap(
 
 Status FragmentMetadata::init(const NDRange& non_empty_domain) {
   // For easy reference
-  auto dim_num = array_schema_->dim_num();
-  auto num = array_schema_->attribute_num() + dim_num + 1;
-  auto domain = array_schema_->domain();
+  auto num = num_dims_and_attrs();
+  auto& domain{array_schema_->domain()};
 
   // Sanity check
   assert(!non_empty_domain.empty());
@@ -731,11 +742,11 @@ Status FragmentMetadata::init(const NDRange& non_empty_domain) {
     // dense consolidation, as the consolidator may have expanded
     // the fragment domain beyond the array domain to include
     // integral space tiles
-    domain->crop_ndrange(&non_empty_domain_);
+    domain.crop_ndrange(&non_empty_domain_);
 
     // Set expanded domain
     domain_ = non_empty_domain_;
-    domain->expand_to_tiles(&domain_);
+    domain.expand_to_tiles(&domain_);
   }
 
   // Set last tile cell number
@@ -839,7 +850,7 @@ Status FragmentMetadata::store_v7_v10(const EncryptionKey& encryption_key) {
 
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   uint64_t offset = 0, nbytes;
 
   // Store R-Tree
@@ -896,7 +907,7 @@ Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
 
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   uint64_t offset = 0, nbytes;
 
   // Store R-Tree
@@ -987,7 +998,7 @@ Status FragmentMetadata::store_v12_or_higher(
 
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   uint64_t offset = 0, nbytes;
 
   // Store R-Tree
@@ -1128,10 +1139,6 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   return Status::Ok();
 }
 
-void FragmentMetadata::set_rtree_domain(shared_ptr<const Domain> domain) {
-  rtree_.set_domain(domain);
-}
-
 void FragmentMetadata::set_last_tile_cell_num(uint64_t cell_num) {
   last_tile_cell_num_ = cell_num;
 }
@@ -1142,7 +1149,7 @@ uint64_t FragmentMetadata::tile_index_base() const {
 
 uint64_t FragmentMetadata::tile_num() const {
   if (dense_)
-    return array_schema_->domain()->tile_num(domain_);
+    return array_schema_->domain().tile_num(domain_);
 
   return sparse_tile_num_;
 }
@@ -1209,7 +1216,7 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
   }
 
   for (unsigned i = 0; i < array_schema_->dim_num(); ++i) {
-    const std::string dim_name = array_schema_->dimension(i)->name();
+    const auto& dim_name{array_schema_->dimension_ptr(i)->name()};
     if (dim_name == name) {
       const unsigned dim_idx = idx - array_schema_->attribute_num() - 1;
       return {Status::Ok(), "d" + std::to_string(dim_idx)};
@@ -1218,6 +1225,10 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
 
   if (name == constants::coords) {
     return {Status::Ok(), name};
+  }
+
+  if (name == constants::timestamps) {
+    return {Status::Ok(), "t"};
   }
 
   auto err = "Unable to locate dimension/attribute " + name;
@@ -1767,6 +1778,11 @@ Status FragmentMetadata::write_footer(Buffer* buff) const {
   RETURN_NOT_OK(write_non_empty_domain(buff));
   RETURN_NOT_OK(write_sparse_tile_num(buff));
   RETURN_NOT_OK(write_last_tile_cell_num(buff));
+
+  if (version_ >= 14) {
+    RETURN_NOT_OK(write_has_timestamps(buff));
+  }
+
   RETURN_NOT_OK(write_file_sizes(buff));
   RETURN_NOT_OK(write_file_var_sizes(buff));
   RETURN_NOT_OK(write_file_validity_sizes(buff));
@@ -1801,7 +1817,7 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   }
 
   ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(rtree_.deserialize(&cbuff, array_schema_->domain(), version_));
+  RETURN_NOT_OK(rtree_.deserialize(&cbuff, &array_schema_->domain(), version_));
 
   loaded_metadata_.rtree_ = true;
 
@@ -1854,7 +1870,7 @@ Status FragmentMetadata::get_footer_offset_and_size(
   uint32_t f_version;
   auto name = fragment_uri_.remove_trailing_slash().last_path_part();
   RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
-  if (array_schema_->domain()->all_dims_fixed() && f_version < 5) {
+  if (array_schema_->domain().all_dims_fixed() && f_version < 5) {
     RETURN_NOT_OK(get_footer_size(f_version, size));
     *offset = meta_file_size_ - *size;
   } else {
@@ -1878,7 +1894,7 @@ uint64_t FragmentMetadata::footer_size_v3_v4() const {
   auto attribute_num = array_schema_->attribute_num();
   auto dim_num = array_schema_->dim_num();
   // v3 and v4 support only arrays where all dimensions have the same type
-  auto domain_size = 2 * dim_num * array_schema_->dimension(0)->coord_size();
+  auto domain_size{2 * dim_num * array_schema_->dimension_ptr(0)->coord_size()};
 
   // Get footer size
   uint64_t size = 0;
@@ -1900,7 +1916,7 @@ uint64_t FragmentMetadata::footer_size_v3_v4() const {
 
 uint64_t FragmentMetadata::footer_size_v5_v6() const {
   auto dim_num = array_schema_->dim_num();
-  auto num = array_schema_->attribute_num() + dim_num + 1;
+  auto num = num_dims_and_attrs();
   size_t domain_size = 0;
 
   if (non_empty_domain_.empty()) {
@@ -1909,14 +1925,15 @@ uint64_t FragmentMetadata::footer_size_v5_v6() const {
     // would not be empty. For reading the footer from storage, the footer
     // size is explicitly stored to and retrieved from storage, so this
     // function is not called then.
-    assert(array_schema_->domain()->all_dims_fixed());
+    assert(array_schema_->domain().all_dims_fixed());
     for (unsigned d = 0; d < dim_num; ++d)
-      domain_size += 2 * array_schema_->domain()->dimension(d)->coord_size();
+      domain_size += 2 * array_schema_->domain().dimension_ptr(d)->coord_size();
   } else {
     for (unsigned d = 0; d < dim_num; ++d) {
       domain_size += non_empty_domain_[d].size();
-      if (array_schema_->dimension(d)->var_size())
-        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized
+      if (array_schema_->dimension_ptr(d)->var_size()) {
+        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized}
+      }
     }
   }
 
@@ -1940,7 +1957,7 @@ uint64_t FragmentMetadata::footer_size_v5_v6() const {
 
 uint64_t FragmentMetadata::footer_size_v7_v10() const {
   auto dim_num = array_schema_->dim_num();
-  auto num = array_schema_->attribute_num() + dim_num + 1;
+  auto num = num_dims_and_attrs();
   uint64_t domain_size = 0;
 
   if (non_empty_domain_.empty()) {
@@ -1949,14 +1966,15 @@ uint64_t FragmentMetadata::footer_size_v7_v10() const {
     // would not be empty. For reading the footer from storage, the footer
     // size is explicitly stored to and retrieved from storage, so this
     // function is not called then.
-    assert(array_schema_->domain()->all_dims_fixed());
+    assert(array_schema_->domain().all_dims_fixed());
     for (unsigned d = 0; d < dim_num; ++d)
-      domain_size += 2 * array_schema_->domain()->dimension(d)->coord_size();
+      domain_size += 2 * array_schema_->domain().dimension_ptr(d)->coord_size();
   } else {
     for (unsigned d = 0; d < dim_num; ++d) {
       domain_size += non_empty_domain_[d].size();
-      if (array_schema_->dimension(d)->var_size())
-        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized
+      if (array_schema_->dimension_ptr(d)->var_size()) {
+        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized}
+      }
     }
   }
 
@@ -1982,7 +2000,7 @@ uint64_t FragmentMetadata::footer_size_v7_v10() const {
 
 uint64_t FragmentMetadata::footer_size_v11_or_higher() const {
   auto dim_num = array_schema_->dim_num();
-  auto num = array_schema_->attribute_num() + dim_num + 1;
+  auto num = num_dims_and_attrs();
   uint64_t domain_size = 0;
 
   if (non_empty_domain_.empty()) {
@@ -1991,14 +2009,15 @@ uint64_t FragmentMetadata::footer_size_v11_or_higher() const {
     // would not be empty. For reading the footer from storage, the footer
     // size is explicitly stored to and retrieved from storage, so this
     // function is not called then.
-    assert(array_schema_->domain()->all_dims_fixed());
+    assert(array_schema_->domain().all_dims_fixed());
     for (unsigned d = 0; d < dim_num; ++d)
-      domain_size += 2 * array_schema_->domain()->dimension(d)->coord_size();
+      domain_size += 2 * array_schema_->domain().dimension_ptr(d)->coord_size();
   } else {
     for (unsigned d = 0; d < dim_num; ++d) {
       domain_size += non_empty_domain_[d].size();
-      if (array_schema_->dimension(d)->var_size())
+      if (array_schema_->dimension_ptr(d)->var_size()) {
         domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized
+      }
     }
   }
 
@@ -2034,7 +2053,7 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
   auto dim_num = array_schema_->dim_num();
 
   // Temporary domain vector
-  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+  auto coord_size{array_schema_->domain().dimension_ptr(0)->coord_size()};
   auto temp_size = 2 * dim_num * coord_size;
   std::vector<uint8_t> temp(temp_size);
   uint8_t offset = 0;
@@ -2058,12 +2077,12 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
     tile_coords[i] = subarray_tile_domain[2 * i];
 
   // Walk through all tiles in subarray tile domain
-  auto domain = array_schema_->domain();
+  auto& domain{array_schema_->domain()};
   uint64_t tile_pos;
   do {
-    tile_pos = domain->get_tile_pos(metadata_domain, tile_coords);
+    tile_pos = domain.get_tile_pos(metadata_domain, tile_coords);
     tids.emplace_back(tile_pos);
-    domain->get_next_tile_coords(subarray_tile_domain, tile_coords);
+    domain.get_next_tile_coords(subarray_tile_domain, tile_coords);
   } while (utils::geometry::coords_in_rect(
       tile_coords, subarray_tile_domain, dim_num));
 
@@ -2082,7 +2101,7 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
   auto dim_num = array_schema_->dim_num();
 
   // Temporary domain vector
-  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+  auto coord_size{array_schema_->domain().dimension_ptr(0)->coord_size()};
   auto temp_size = 2 * dim_num * coord_size;
   std::vector<uint8_t> temp(temp_size);
   uint8_t offset = 0;
@@ -2111,17 +2130,17 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
     tile_coords[i] = subarray_tile_domain[2 * i];
 
   // Walk through all tiles in subarray tile domain
-  auto domain = array_schema_->domain();
+  auto& domain{array_schema_->domain()};
   uint64_t tile_pos;
   do {
-    domain->get_tile_subarray(metadata_domain, tile_coords, tile_subarray);
+    domain.get_tile_subarray(metadata_domain, tile_coords, tile_subarray);
     utils::geometry::overlap(
         subarray, tile_subarray, dim_num, tile_overlap, &overlap);
     assert(overlap);
     cov = utils::geometry::coverage(tile_overlap, tile_subarray, dim_num);
-    tile_pos = domain->get_tile_pos(metadata_domain, tile_coords);
+    tile_pos = domain.get_tile_pos(metadata_domain, tile_coords);
     tids.emplace_back(tile_pos, cov);
-    domain->get_next_tile_coords(subarray_tile_domain, tile_coords);
+    domain.get_next_tile_coords(subarray_tile_domain, tile_coords);
   } while (utils::geometry::coords_in_rect(
       tile_coords, subarray_tile_domain, dim_num));
 
@@ -2143,8 +2162,7 @@ void FragmentMetadata::get_subarray_tile_domain(
   // Calculate subarray in tile domain
   for (unsigned d = 0; d < dim_num; ++d) {
     auto domain = (const T*)domain_[d].data();
-    auto tile_extent =
-        *(const T*)array_schema_->domain()->tile_extent(d).data();
+    auto tile_extent = *(const T*)array_schema_->domain().tile_extent(d).data();
     auto overlap = std::max(subarray[2 * d], domain[0]);
     subarray_tile_domain[2 * d] =
         Dimension::tile_idx(overlap, domain[0], tile_extent);
@@ -2165,7 +2183,7 @@ Status FragmentMetadata::expand_non_empty_domain(const NDRange& mbr) {
   }
 
   // Expand existing non-empty domain
-  array_schema_->domain()->expand_ndrange(mbr, &non_empty_domain_);
+  array_schema_->domain().expand_ndrange(mbr, &non_empty_domain_);
 
   return Status::Ok();
 }
@@ -2384,8 +2402,8 @@ Status FragmentMetadata::load_bounding_coords(ConstBuffer* buff) {
 
   // Get bounding coordinates
   // Note: This version supports only dimensions domains with the same type
-  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
-  auto dim_num = array_schema_->domain()->dim_num();
+  auto coord_size{array_schema_->domain().dimension_ptr(0)->coord_size()};
+  auto dim_num = array_schema_->domain().dim_num();
   uint64_t bounding_coords_size = 2 * dim_num * coord_size;
   bounding_coords_.resize(bounding_coords_num);
   for (uint64_t i = 0; i < bounding_coords_num; ++i) {
@@ -2426,7 +2444,7 @@ Status FragmentMetadata::load_file_sizes_v1_v4(ConstBuffer* buff) {
 // ...
 // file_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::load_file_sizes_v5_or_higher(ConstBuffer* buff) {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   file_sizes_.resize(num);
   Status st = buff->read(&file_sizes_[0], num * sizeof(uint64_t));
 
@@ -2467,7 +2485,7 @@ Status FragmentMetadata::load_file_var_sizes_v1_v4(ConstBuffer* buff) {
 // ...
 // file_var_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::load_file_var_sizes_v5_or_higher(ConstBuffer* buff) {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   file_var_sizes_.resize(num);
   Status st = buff->read(&file_var_sizes_[0], num * sizeof(uint64_t));
 
@@ -2483,7 +2501,7 @@ Status FragmentMetadata::load_file_validity_sizes(ConstBuffer* buff) {
   if (version_ <= 6)
     return Status::Ok();
 
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   file_validity_sizes_.resize(num);
   Status st = buff->read(&file_validity_sizes_[0], num * sizeof(uint64_t));
 
@@ -2509,6 +2527,23 @@ Status FragmentMetadata::load_last_tile_cell_num(ConstBuffer* buff) {
 }
 
 // ===== FORMAT =====
+// has_timestamps (char)
+Status FragmentMetadata::load_has_timestamps(ConstBuffer* buff) {
+  // Get includes timestamps
+  Status st = buff->read(&has_timestamps_, sizeof(char));
+  if (!st.ok()) {
+    return LOG_STATUS(Status_FragmentMetadataError(
+        "Cannot load fragment metadata; Reading include timestamps failed"));
+  }
+
+  // Rebuild index map
+  if (has_timestamps_) {
+    build_idx_map();
+  }
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
 // mbr_num (uint64_t)
 // mbr_#1 (void*)
 // mbr_#2 (void*)
@@ -2520,12 +2555,12 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
 
   // Set leaf level
   rtree_.set_leaf_num(mbr_num);
-  auto domain = array_schema_->domain();
-  auto dim_num = domain->dim_num();
+  auto& domain{array_schema_->domain()};
+  auto dim_num = domain.dim_num();
   for (uint64_t m = 0; m < mbr_num; ++m) {
     NDRange mbr(dim_num);
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto r_size = 2 * domain->dimension(d)->coord_size();
+      auto r_size{2 * domain.dimension_ptr(d)->coord_size()};
       mbr[d].set_range(buff->cur_data(), r_size);
       buff->advance_offset(r_size);
     }
@@ -2566,7 +2601,7 @@ Status FragmentMetadata::load_non_empty_domain_v1_v2(ConstBuffer* buff) {
     non_empty_domain_.resize(dim_num);
     uint64_t offset = 0;
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto coord_size = array_schema_->dimension(d)->coord_size();
+      auto coord_size{array_schema_->dimension_ptr(d)->coord_size()};
       Range r(&temp[offset], 2 * coord_size);
       non_empty_domain_[d] = std::move(r);
       offset += 2 * coord_size;
@@ -2576,7 +2611,7 @@ Status FragmentMetadata::load_non_empty_domain_v1_v2(ConstBuffer* buff) {
   // Get expanded domain
   if (!non_empty_domain_.empty()) {
     domain_ = non_empty_domain_;
-    array_schema_->domain()->expand_to_tiles(&domain_);
+    array_schema_->domain().expand_to_tiles(&domain_);
   }
 
   return Status::Ok();
@@ -2594,14 +2629,14 @@ Status FragmentMetadata::load_non_empty_domain_v3_v4(ConstBuffer* buff) {
   if (!null_non_empty_domain) {
     auto dim_num = array_schema_->dim_num();
     // Note: These versions supports only dimensions domains with the same type
-    auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
-    auto domain_size = 2 * dim_num * coord_size;
+    auto coord_size_0{array_schema_->domain().dimension_ptr(0)->coord_size()};
+    auto domain_size = 2 * dim_num * coord_size_0;
     std::vector<uint8_t> temp(domain_size);
     RETURN_NOT_OK(buff->read(&temp[0], domain_size));
     non_empty_domain_.resize(dim_num);
     uint64_t offset = 0;
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto coord_size = array_schema_->dimension(d)->coord_size();
+      auto coord_size{array_schema_->dimension_ptr(d)->coord_size()};
       Range r(&temp[offset], 2 * coord_size);
       non_empty_domain_[d] = std::move(r);
       offset += 2 * coord_size;
@@ -2611,7 +2646,7 @@ Status FragmentMetadata::load_non_empty_domain_v3_v4(ConstBuffer* buff) {
   // Get expanded domain
   if (!non_empty_domain_.empty()) {
     domain_ = non_empty_domain_;
-    array_schema_->domain()->expand_to_tiles(&domain_);
+    array_schema_->domain().expand_to_tiles(&domain_);
   }
 
   return Status::Ok();
@@ -2626,12 +2661,12 @@ Status FragmentMetadata::load_non_empty_domain_v5_or_higher(ConstBuffer* buff) {
   char null_non_empty_domain = 0;
   RETURN_NOT_OK(buff->read(&null_non_empty_domain, sizeof(char)));
 
-  auto domain = array_schema_->domain();
+  auto& domain{array_schema_->domain()};
   if (null_non_empty_domain == 0) {
     auto dim_num = array_schema_->dim_num();
     non_empty_domain_.resize(dim_num);
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = domain->dimension(d);
+      auto dim{domain.dimension_ptr(d)};
       if (!dim->var_size()) {  // Fixed-sized
         auto r_size = 2 * dim->coord_size();
         non_empty_domain_[d].set_range(buff->cur_data(), r_size);
@@ -2649,7 +2684,7 @@ Status FragmentMetadata::load_non_empty_domain_v5_or_higher(ConstBuffer* buff) {
   // Get expanded domain
   if (!non_empty_domain_.empty()) {
     domain_ = non_empty_domain_;
-    array_schema_->domain()->expand_to_tiles(&domain_);
+    array_schema_->domain().expand_to_tiles(&domain_);
   }
 
   return Status::Ok();
@@ -3013,11 +3048,13 @@ Status FragmentMetadata::load_tile_min_values(unsigned idx, ConstBuffer* buff) {
           "Cannot load fragment metadata; Reading tile min buffer failed"));
     }
 
-    tile_min_var_buffer_[idx].resize(var_buffer_size);
-    st = buff->read(&tile_min_var_buffer_[idx][0], var_buffer_size);
-    if (!st.ok()) {
-      return LOG_STATUS(Status_FragmentMetadataError(
-          "Cannot load fragment metadata; Reading tile min buffer failed"));
+    if (var_buffer_size) {
+      tile_min_var_buffer_[idx].resize(var_buffer_size);
+      st = buff->read(&tile_min_var_buffer_[idx][0], var_buffer_size);
+      if (!st.ok()) {
+        return LOG_STATUS(Status_FragmentMetadataError(
+            "Cannot load fragment metadata; Reading tile min buffer failed"));
+      }
     }
   }
 
@@ -3073,11 +3110,14 @@ Status FragmentMetadata::load_tile_max_values(unsigned idx, ConstBuffer* buff) {
           "Cannot load fragment metadata; Reading tile max buffer failed"));
     }
 
-    tile_max_var_buffer_[idx].resize(var_buffer_size);
-    st = buff->read(&tile_max_var_buffer_[idx][0], var_buffer_size);
-    if (!st.ok()) {
-      return LOG_STATUS(Status_FragmentMetadataError(
-          "Cannot load fragment metadata; Reading tile max var buffer failed"));
+    if (var_buffer_size) {
+      tile_max_var_buffer_[idx].resize(var_buffer_size);
+      st = buff->read(&tile_max_var_buffer_[idx][0], var_buffer_size);
+      if (!st.ok()) {
+        return LOG_STATUS(
+            Status_FragmentMetadataError("Cannot load fragment metadata; "
+                                         "Reading tile max var buffer failed"));
+      }
     }
   }
 
@@ -3187,7 +3227,7 @@ Status FragmentMetadata::load_tile_null_count_values(
 Status FragmentMetadata::load_fragment_min_max_sum_null_count(
     ConstBuffer* buff) {
   Status st;
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
 
   for (unsigned int i = 0; i < num; ++i) {
     // Get min.
@@ -3309,7 +3349,7 @@ Status FragmentMetadata::load_generic_tile_offsets_v5_v6(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
   // Load offsets for tile offsets
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
@@ -3337,7 +3377,7 @@ Status FragmentMetadata::load_generic_tile_offsets_v7_v10(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
   // Load offsets for tile offsets
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
@@ -3372,7 +3412,7 @@ Status FragmentMetadata::load_generic_tile_offsets_v11(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
   // Load offsets for tile offsets
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
@@ -3436,7 +3476,7 @@ Status FragmentMetadata::load_generic_tile_offsets_v12_or_higher(
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
   // Load offsets for tile offsets
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
@@ -3586,12 +3626,12 @@ Status FragmentMetadata::load_footer(
   if (f_buff == nullptr) {
     has_consolidated_footer_ = false;
     RETURN_NOT_OK(read_file_footer(&buff, &footer_offset_, &footer_size_));
-    cbuff = tdb::make_shared<ConstBuffer>(HERE(), &buff);
+    cbuff = make_shared<ConstBuffer>(HERE(), &buff);
   } else {
     footer_size_ = 0;
     footer_offset_ = offset;
     has_consolidated_footer_ = true;
-    cbuff = tdb::make_shared<ConstBuffer>(HERE(), f_buff);
+    cbuff = make_shared<ConstBuffer>(HERE(), f_buff);
     cbuff->set_offset(offset);
   }
 
@@ -3625,11 +3665,16 @@ Status FragmentMetadata::load_footer(
   RETURN_NOT_OK(load_non_empty_domain(cbuff.get()));
   RETURN_NOT_OK(load_sparse_tile_num(cbuff.get()));
   RETURN_NOT_OK(load_last_tile_cell_num(cbuff.get()));
+
+  if (version_ >= 14) {
+    RETURN_NOT_OK(load_has_timestamps(cbuff.get()));
+  }
+
   RETURN_NOT_OK(load_file_sizes(cbuff.get()));
   RETURN_NOT_OK(load_file_var_sizes(cbuff.get()));
   RETURN_NOT_OK(load_file_validity_sizes(cbuff.get()));
 
-  unsigned num = array_schema_->attribute_num() + 1;
+  unsigned num = array_schema_->attribute_num() + 1 + has_timestamps_;
   num += (version_ >= 5) ? array_schema_->dim_num() : 0;
 
   tile_offsets_.resize(num);
@@ -3676,7 +3721,7 @@ Status FragmentMetadata::load_footer(
 // ...
 // file_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::write_file_sizes(Buffer* buff) const {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   Status st = buff->write(&file_sizes_[0], num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
@@ -3691,7 +3736,7 @@ Status FragmentMetadata::write_file_sizes(Buffer* buff) const {
 // ...
 // file_var_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::write_file_var_sizes(Buffer* buff) const {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   Status st = buff->write(&file_var_sizes_[0], num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
@@ -3709,7 +3754,7 @@ Status FragmentMetadata::write_file_validity_sizes(Buffer* buff) const {
   if (version_ <= 6)
     return Status::Ok();
 
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   Status st = buff->write(&file_validity_sizes_[0], num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
@@ -3731,7 +3776,7 @@ Status FragmentMetadata::write_file_validity_sizes(Buffer* buff) const {
 // ...
 // tile_var_sizes_{attr_num+dim_num}(uint64_t)
 Status FragmentMetadata::write_generic_tile_offsets(Buffer* buff) const {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
 
   // Write R-Tree offset
   auto st = buff->write(&gt_offsets_.rtree_, sizeof(uint64_t));
@@ -3852,9 +3897,9 @@ Status FragmentMetadata::write_array_schema_name(Buffer* buff) const {
 // ===== FORMAT =====
 // last_tile_cell_num(uint64_t)
 Status FragmentMetadata::write_last_tile_cell_num(Buffer* buff) const {
-  uint64_t cell_num_per_tile =
-      dense_ ? array_schema_->domain()->cell_num_per_tile() :
-               array_schema_->capacity();
+  uint64_t cell_num_per_tile = dense_ ?
+                                   array_schema_->domain().cell_num_per_tile() :
+                                   array_schema_->capacity();
 
   // Handle the case of zero
   uint64_t last_tile_cell_num =
@@ -3897,14 +3942,13 @@ Status FragmentMetadata::write_non_empty_domain(Buffer* buff) const {
   RETURN_NOT_OK(buff->write(&null_non_empty_domain, sizeof(char)));
 
   // Write domain size
-  uint64_t domain_size = 0;
-  auto domain = array_schema_->domain();
-  auto dim_num = domain->dim_num();
+  auto& domain = array_schema_->domain();
+  auto dim_num = domain.dim_num();
   if (non_empty_domain_.empty()) {
     // Applicable only to homogeneous domains with fixed-sized types
-    assert(domain->all_dims_fixed());
-    assert(domain->all_dims_same_type());
-    domain_size = 2 * dim_num * domain->dimension(0)->coord_size();
+    assert(domain.all_dims_fixed());
+    assert(domain.all_dims_same_type());
+    auto domain_size{2 * dim_num * domain.dimension_ptr(0)->coord_size()};
 
     // Write domain (dummy values)
     std::vector<uint8_t> d(domain_size, 0);
@@ -3912,7 +3956,7 @@ Status FragmentMetadata::write_non_empty_domain(Buffer* buff) const {
   } else {
     // Write non-empty domain
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = domain->dimension(d);
+      auto dim{domain.dimension_ptr(d)};
       const auto& r = non_empty_domain_[d];
       if (!dim->var_size()) {  // Fixed-sized
         RETURN_NOT_OK(buff->write(r.data(), r.size()));
@@ -4002,7 +4046,7 @@ Status FragmentMetadata::write_footer_to_file(Buffer* buff) const {
       fragment_metadata_uri, buff->data(), buff->size()));
 
   // Write the size in the end if there is at least one var-sized dimension
-  if (!array_schema_->domain()->all_dims_fixed() || version_ >= 10)
+  if (!array_schema_->domain().all_dims_fixed() || version_ >= 10)
     return storage_manager_->write(fragment_metadata_uri, &size, sizeof(size));
   return Status::Ok();
 }
@@ -4720,6 +4764,11 @@ Status FragmentMetadata::write_sparse_tile_num(Buffer* buff) const {
   return Status::Ok();
 }
 
+Status FragmentMetadata::write_has_timestamps(Buffer* buff) const {
+  RETURN_NOT_OK(buff->write(&has_timestamps_, sizeof(char)));
+  return Status::Ok();
+}
+
 Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
   (void)encryption_key;  // Not used for now, maybe in the future
 
@@ -4755,8 +4804,12 @@ void FragmentMetadata::build_idx_map() {
   }
   idx_map_[constants::coords] = array_schema_->attribute_num();
   for (unsigned i = 0; i < array_schema_->dim_num(); ++i) {
-    auto dim_name = array_schema_->dimension(i)->name();
+    const auto& dim_name{array_schema_->dimension_ptr(i)->name()};
     idx_map_[dim_name] = array_schema_->attribute_num() + 1 + i;
+  }
+  if (has_timestamps_) {
+    idx_map_[constants::timestamps] =
+        array_schema_->attribute_num() + 1 + array_schema_->dim_num();
   }
 }
 

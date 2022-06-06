@@ -1494,7 +1494,7 @@ void read_and_check_sparse_array_string_dim(
 
 TEST_CASE(
     "C++ API: Test filtering of string dimensions on sparse arrays",
-    "[cppapi][string-dims][rle-strings][sparse]") {
+    "[cppapi][string-dims][rle-strings][dict-strings][sparse]") {
   std::string array_name = "test_rle_string_dim";
 
   // Create data buffer to use
@@ -1522,8 +1522,9 @@ TEST_CASE(
   auto dim =
       Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr);
 
+  auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
   // Create compressor as a filter
-  Filter filter(ctx, TILEDB_FILTER_RLE);
+  Filter filter(ctx, f);
   // Create filter list
   FilterList filter_list(ctx);
   // Add compressor to filter list
@@ -1576,7 +1577,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test adding RLE filter of string dimensions",
-    "[cppapi][string-dims][rle-strings][sparse]") {
+    "[cppapi][string-dims][rle-strings][dict-strings][sparse]") {
   std::string array_name = "test_rle_string_dim";
 
   Context ctx;
@@ -1588,7 +1589,8 @@ TEST_CASE(
       tiledb::Dimension::create<int32_t>(ctx, "id", {{1, 100}}, 10);
 
   // Create filters
-  Filter rle_filter(ctx, TILEDB_FILTER_RLE);
+  auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
+  Filter rle_filter(ctx, f);
   Filter another_filter(ctx, TILEDB_FILTER_CHECKSUM_MD5);
 
   // Create filter list with RLE only

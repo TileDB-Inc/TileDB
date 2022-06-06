@@ -1,4 +1,6 @@
-# Fragment
+---
+title: Fragment
+---
 
 ## Main Structure
 
@@ -29,6 +31,7 @@ my_array                                    # array folder
 * `v` is the format version
 
 There can be any number of fragments in an array. The fragment folder contains:
+
 * A single [fragment metadata file](#fragment-metadata-file) named `__fragment_metadata.tdb`. 
 * Any number of [data files](#data-file). For each fixed-sized attribute `foo1` (or dimension `bar1`), there is a single data file `a0.tdb` (`d0.tdb`) containing the values along this attribute (dimension). For every var-sized attribute `foo2` (or dimensions `bar2`), there are two data files; `a1_var.tdb` (`d1_var.tdb`) containing the var-sized values of the attribute (dimension) and `a1.tdb` (`d1.tdb`) containing the starting offsets of each value in `a1_var.tdb` (`d1_var.rdb`). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, `foo3`, will have an additional file `a2_validity.tdb` that contains its validity vector.
 * The names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.
@@ -190,11 +193,14 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Version number | `uint32_t` | Format version number of the fragment |
+| Array schema name size | `uint64_t` | Size of the array schema name |
+| Array schema name | `string` | Array schema name |
 | Dense | `char` | Whether the array is dense |
 | Null non-empty domain | `char` | Indicates whether the non-empty domain is null or not |
 | Non-empty domain | [MBR](#mbr) | An MBR denoting the non-empty domain |
 | Number of sparse tiles | `uint64_t` | Number of sparse tiles |
 | Last tile cell num | `uint64_t` | For sparse arrays, the number of cells in the last tile in the fragment |
+| Includes timestamps | `char` | Whether the fragment includes timestamps or not |
 | File sizes | `uint64_t[]` | The size in bytes of each attribute/dimension file in the fragment. For var-length attributes/dimensions, this is the size of the offsets file. |
 | File var sizes | `uint64_t[]` | The size in bytes of each var-length attribute/dimension file in the fragment. |
 | File validity sizes | `uint64_t[]` | The size in bytes of each attribute/dimension validity vector file in the fragment. |

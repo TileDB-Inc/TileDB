@@ -37,8 +37,8 @@
 #include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
-#include "tiledb/sm/misc/math.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/tile.h"
@@ -49,6 +49,7 @@
 #include <unordered_map>
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb {
 namespace sm {
@@ -811,66 +812,100 @@ Status VFS::terminate() {
 }
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
-  if (!init_)
-    return LOG_STATUS(Status_VFSError("Cannot list; VFS not initialized"));
+  auto&& [st, entries] = ls_with_sizes(parent);
+  RETURN_NOT_OK(st);
+
+  for (auto& fs : *entries) {
+    uris->emplace_back(fs.path().native());
+  }
+
+  return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
+    const URI& parent) const {
+  if (!init_) {
+    auto st = LOG_STATUS(Status_VFSError("Cannot list; VFS not initialized"));
+    return {st, std::nullopt};
+  }
 
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
   // return an empty `uris` vector.
   if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure())) {
     bool flag = false;
-    RETURN_NOT_OK(is_dir(parent, &flag));
-    if (!flag)
-      return Status::Ok();
+    RETURN_NOT_OK_TUPLE(is_dir(parent, &flag), nullopt);
+
+    if (!flag) {
+      return {Status::Ok(), std::vector<directory_entry>()};
+    }
   }
 
-  std::vector<std::string> paths;
+  optional<std::vector<directory_entry>> entries;
   if (parent.is_file()) {
 #ifdef _WIN32
-    RETURN_NOT_OK(win_.ls(parent.to_path(), &paths));
+    Status st;
+    std::tie(st, entries) = win_.ls_with_sizes(parent);
 #else
-    RETURN_NOT_OK(posix_.ls(parent.to_path(), &paths));
+    Status st;
+    std::tie(st, entries) = posix_.ls_with_sizes(parent);
 #endif
-  } else if (parent.is_hdfs()) {
-#ifdef HAVE_HDFS
-    RETURN_NOT_OK(hdfs_->ls(parent, &paths));
-#else
-    return LOG_STATUS(Status_VFSError("TileDB was built without HDFS support"));
-#endif
+    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
-    RETURN_NOT_OK(s3_.ls(parent, &paths));
+    Status st;
+    std::tie(st, entries) = s3_.ls_with_sizes(parent);
 #else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    auto st =
+        LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
 #endif
+    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_azure()) {
 #ifdef HAVE_AZURE
-    RETURN_NOT_OK(azure_.ls(parent, &paths));
+    Status st;
+    std::tie(st, entries) = azure_.ls_with_sizes(parent);
 #else
-    return LOG_STATUS(
-        Status_VFSError("TileDB was built without Azure support"));
+    auto st =
+        LOG_STATUS(Status_VFSError("TileDB was built without Azure support"));
 #endif
+    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_gcs()) {
 #ifdef HAVE_GCS
-    RETURN_NOT_OK(gcs_.ls(parent, &paths));
+    Status st;
+    std::tie(st, entries) = gcs_.ls_with_sizes(parent);
 #else
-    return LOG_STATUS(Status_VFSError("TileDB was built without GCS support"));
+    auto st =
+        LOG_STATUS(Status_VFSError("TileDB was built without GCS support"));
 #endif
+    RETURN_NOT_OK_TUPLE(st, nullopt);
+  } else if (parent.is_hdfs()) {
+#ifdef HAVE_HDFS
+    Status st;
+    std::tie(st, entries) = hdfs_->ls_with_sizes(parent);
+#else
+    auto st =
+        LOG_STATUS(Status_VFSError("TileDB was built without HDFS support"));
+#endif
+    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_memfs()) {
-    RETURN_NOT_OK(memfs_.ls(parent.to_path(), &paths));
-    // URI class expects paths to be prepended
-    for (std::string& path : paths) {
-      path.insert(0, "mem://");
-    }
+    Status st;
+    std::tie(st, entries) =
+        memfs_.ls_with_sizes(URI("mem://" + parent.to_path()));
+    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else {
-    return LOG_STATUS(
+    auto st = LOG_STATUS(
         Status_VFSError("Unsupported URI scheme: " + parent.to_string()));
+    return {st, std::nullopt};
   }
-  parallel_sort(compute_tp_, paths.begin(), paths.end());
-  for (auto& path : paths) {
-    uris->emplace_back(path);
-  }
-  return Status::Ok();
+  parallel_sort(
+      compute_tp_,
+      entries->begin(),
+      entries->end(),
+      [](const directory_entry& l, const directory_entry& r) {
+        return l.path().native() < r.path().native();
+      });
+
+  return {Status::Ok(), entries};
 }
 
 Status VFS::move_file(const URI& old_uri, const URI& new_uri) {

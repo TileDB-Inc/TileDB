@@ -61,7 +61,7 @@ ReadCellSlabIter<T>::ReadCellSlabIter(
     , result_coords_pos_(result_coords_pos)
     , init_result_coords_pos_(result_coords_pos) {
   domain_ = (subarray != nullptr) ?
-                subarray->array()->array_schema_latest().domain() :
+                &subarray->array()->array_schema_latest().domain() :
                 nullptr;
   layout_ = (subarray != nullptr) ? subarray->layout() : Layout::ROW_MAJOR;
   cell_slab_iter_ = CellSlabIter<T>(subarray);

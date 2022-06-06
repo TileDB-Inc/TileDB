@@ -35,10 +35,10 @@
 
 #include <atomic>
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
@@ -66,7 +66,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   /** Constructor. */
   Reader(
       stats::Stats* stats,
-      tdb_shared_ptr<Logger> logger,
+      shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -604,7 +604,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @return Status
    */
   Status get_all_result_coords(
-      ResultTile* tile, std::vector<ResultCoords>& result_coords) const;
+      ResultTile* tile, std::vector<ResultCoords>& result_coords);
 
   /**
    * Returns `true` if a coordinate buffer for a separate dimension
@@ -695,6 +695,15 @@ class Reader : public ReaderBase, public IQueryStrategy {
 
   /** Perform necessary checks before exiting a read loop */
   Status complete_read_loop();
+
+  /**
+   * Get the timestamp value for a result coords.
+   *
+   * @param rc Result coords.
+   *
+   * @return timestamp.
+   */
+  uint64_t get_timestamp(const ResultCoords& rc) const;
 };
 
 }  // namespace sm

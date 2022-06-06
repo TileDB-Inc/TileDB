@@ -26,7 +26,7 @@
  * THE SOFTWARE.
  */
 
-#include "../time.h"
+#include "../tdb_time.h"
 
 int main() {
   (void)tiledb::sm::utils::time::timestamp_now_ms();

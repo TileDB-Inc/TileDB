@@ -53,6 +53,7 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/group/group.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -72,6 +73,7 @@ class Consolidator;
 class EncryptionKey;
 class FragmentMetadata;
 class FragmentInfo;
+class Group;
 class Metadata;
 class OpenArray;
 class MemoryTracker;
@@ -146,6 +148,65 @@ class StorageManager {
    * @return Status
    */
   Status array_close_for_writes(Array* array);
+
+  /**
+   * Closes an group opened for reads.
+   *
+   * @param group The group to be closed.
+   * @return Status
+   */
+  Status group_close_for_reads(tiledb::sm::Group* group);
+
+  /**
+   * Closes an group opened for writes.
+   *
+   * @param group The group to be closed.
+   * @return Status
+   */
+  Status group_close_for_writes(tiledb::sm::Group* group);
+
+  /**
+   * Loads the group metadata from persistent storage based on
+   * the input URI manager.
+   */
+  Status load_group_metadata(
+      const tdb_shared_ptr<GroupDirectory>& group_dir,
+      const EncryptionKey& encryption_key,
+      Metadata* metadata);
+
+  /**
+   * Load a group detail from URI
+   *
+   * @param group_uri group uri
+   * @param uri location to load
+   * @param encryption_key encryption key
+   * @return tuple Status and pointer to group deserialized
+   */
+  tuple<Status, optional<shared_ptr<Group>>> load_group_from_uri(
+      const URI& group_uri,
+      const URI& uri,
+      const EncryptionKey& encryption_key);
+
+  /**
+   * Load group details based on group directory
+   *
+   * @param group_directory
+   * @param encryption_key encryption key
+   *
+   * @return tuple Status and pointer to group deserialized
+   */
+  tuple<Status, optional<shared_ptr<Group>>> load_group_details(
+      const shared_ptr<GroupDirectory>& group_directory,
+      const EncryptionKey& encryption_key);
+
+  /**
+   * Store the group details
+   *
+   * @param group to serialize and store
+   * @param encryption_key encryption key for at-rest encryption
+   * @return status
+   */
+  Status store_group_detail(Group* group, const EncryptionKey& encryption_key);
 
   /**
    * Returns the array schemas and fragment metadata for the given array.
@@ -232,6 +293,31 @@ class StorageManager {
   array_open_for_writes(Array* array);
 
   /**
+   * Opens an group for reads.
+   *
+   * @param group The group to be opened.
+   * @return tuple of Status, latest GroupSchema and map of all group schemas
+   *        Status Ok on success, else error
+   */
+  std::tuple<
+      Status,
+      std::optional<
+          const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>>>
+  group_open_for_reads(Group* group);
+
+  /** Opens an group for writes.
+   *
+   * @param group The group to open.
+   * @return tuple of Status, latest GroupSchema and map of all group schemas
+   *        Status Ok on success, else error
+   */
+  std::tuple<
+      Status,
+      std::optional<
+          const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>>>
+  group_open_for_writes(Group* group);
+
+  /**
    * Load fragments for an already open array.
    *
    * @param array The open array.
@@ -280,6 +366,28 @@ class StorageManager {
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length,
+      const Config* config);
+
+  /**
+   * Consolidates the fragments of an array into a single one.
+   *
+   * @param array_name The name of the array to be consolidated.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @param fragment_uris URIs of the fragments to consolidate.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @return Status
+   */
+  Status fragments_consolidate(
+      const char* array_name,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      const std::vector<std::string> fragment_uris,
       const Config* config);
 
   /**
@@ -530,13 +638,13 @@ class StorageManager {
    * @param config The configuration parameters.
    * @return Status
    */
-  Status init(const Config* config);
+  Status init(const Config& config);
 
   /** Returns the thread pool for compute-bound tasks. */
-  ThreadPool* compute_tp();
+  ThreadPool* compute_tp() const;
 
   /** Returns the thread pool for io-bound tasks. */
-  ThreadPool* io_tp();
+  ThreadPool* io_tp() const;
 
   /**
    * If the storage manager was configured with a REST server, return the
@@ -822,17 +930,15 @@ class StorageManager {
       const EncryptionKey& encryption_key);
 
   /**
-   * Stores the array metadata into persistent storage.
+   * Stores the metadata into persistent storage.
    *
-   * @param array_uri The array URI.
+   * @param uri The object URI.
    * @param encryption_key The encryption key to use.
-   * @param array_metadata The array metadata.
+   * @param metadata The  metadata.
    * @return Status
    */
-  Status store_array_metadata(
-      const URI& array_uri,
-      const EncryptionKey& encryption_key,
-      Metadata* array_metadata);
+  Status store_metadata(
+      const URI& uri, const EncryptionKey& encryption_key, Metadata* metadata);
 
   /** Closes a file, flushing its contents to persistent storage. */
   Status close_file(const URI& uri);
@@ -882,6 +988,31 @@ class StorageManager {
 
   /** Returns the internal logger object. */
   shared_ptr<Logger> logger() const;
+
+  /**
+   * Consolidates the metadata of a group into a single file.
+   *
+   * @param group_name The name of the group whose metadata will be
+   *     consolidated.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @return Status
+   */
+  Status group_metadata_consolidate(
+      const char* group_name, const Config* config);
+
+  /**
+   * Vacuums the consolidated metadata files of a group.
+   *
+   * @param group_name The name of the group whose metadata will be
+   *     vacuumed.
+   * @param config Configuration parameters for vacuuming
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @return Status
+   */
+  Status group_metadata_vacuum(const char* group_name, const Config* config);
 
  private:
   /* ********************************* */
@@ -945,6 +1076,12 @@ class StorageManager {
 
   /** Mutex for managing open arrays. */
   std::mutex open_arrays_mtx_;
+
+  /** Keeps track of which groups are open. */
+  std::set<Group*> open_groups_;
+
+  /** Mutex for managing open groups. */
+  std::mutex open_groups_mtx_;
 
   /** Count of the number of queries currently in progress. */
   uint64_t queries_in_progress_;

@@ -55,17 +55,14 @@ class Context {
   /* ********************************* */
 
   /** Constructor. */
-  Context();
+  Context(const Config& = Config());
 
   /** Destructor. */
-  ~Context();
+  ~Context() = default;
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /** Initializes the context with the input config. */
-  Status init(Config* config);
 
   /** Returns the last error status. */
   Status last_error();
@@ -73,7 +70,7 @@ class Context {
   /** Saves the input status. */
   void save_error(const Status& st);
 
-  /** Returns the storage manager. */
+  /** Returns a pointer to the underlying storage manager. */
   StorageManager* storage_manager() const;
 
   /** Returns the thread pool for compute-bound tasks. */
@@ -96,8 +93,8 @@ class Context {
   /** A mutex for thread-safety. */
   std::mutex mtx_;
 
-  /** The storage manager. */
-  StorageManager* storage_manager_;
+  /** The class logger. */
+  shared_ptr<Logger> logger_;
 
   /** The thread pool for compute-bound tasks. */
   mutable ThreadPool compute_tp_;
@@ -108,8 +105,8 @@ class Context {
   /** The class stats. */
   shared_ptr<stats::Stats> stats_;
 
-  /** The class logger. */
-  shared_ptr<Logger> logger_;
+  /** The storage manager. */
+  tdb_unique_ptr<StorageManager> storage_manager_;
 
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
@@ -118,12 +115,41 @@ class Context {
   /* ********************************* */
 
   /**
-   * Initializes the thread pools.
-   *
-   * @param config The configuration parameters.
-   * @return Status
+   * Initializes the context with the input config. Called only from
+   * constructor.
    */
-  Status init_thread_pools(Config* config);
+  Status init(const Config& config);
+
+  /**
+   * Get maximum number of threads to use in thread pools, based on config
+   * parameters.
+   *
+   * @param config The Config to look up max thread information from.
+   * @param max_thread_count (out) Variable to store max thread count.
+   * @return Status of request.
+   */
+  Status get_config_thread_count(
+      const Config& config, uint64_t& max_thread_count);
+
+  /**
+   * Get number of threads to use in compute thread pool, based on config
+   * parameters.  Will return the max of the configured value and the max thread
+   * count returned by get_max_thread_count()
+   *
+   * @param config The Config to look up the compute thread information from.
+   * @return Compute thread count.
+   */
+  size_t get_compute_thread_count(const Config& config);
+
+  /**
+   * Get number of threads to use in io thread pool, based on config
+   * parameters.  Will return the max of the configured value and the max thread
+   * count returned by get_max_thread_count()
+   *
+   * @param config The Config to look up the io thread information from.
+   * @return IO thread count.
+   */
+  size_t get_io_thread_count(const Config& config);
 
   /**
    * Initializes global and local logger.
@@ -131,7 +157,7 @@ class Context {
    * @param config The configuration parameters.
    * @return Status
    */
-  Status init_loggers(Config* const config);
+  Status init_loggers(const Config& config);
 };
 
 }  // namespace sm

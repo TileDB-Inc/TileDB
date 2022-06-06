@@ -35,12 +35,15 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"
 #include "tiledb/sm/misc/utils.h"
+#include "uri.h"
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb {
 namespace sm {
@@ -81,9 +84,8 @@ class MemFilesystem::FSNode {
   virtual bool is_dir() const = 0;
 
   /** Lists the contents of a node */
-  virtual Status ls(
-      const std::string& full_path,
-      std::vector<std::string>* children) const = 0;
+  virtual tuple<Status, optional<std::vector<directory_entry>>> ls(
+      const std::string& full_path) const = 0;
 
   /** Indicates if a given node is a child of this node */
   virtual bool has_child(const std::string& child) const = 0;
@@ -155,17 +157,15 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
   }
 
   /** Returns the full path to this file */
-  Status ls(
-      const std::string& full_path,
-      std::vector<std::string>* const children) const override {
+  tuple<Status, optional<std::vector<directory_entry>>> ls(
+      const std::string& full_path) const override {
     assert(!mutex_.try_lock());
-    assert(children);
 
     (void)full_path;
-    (void)children;
 
-    return LOG_STATUS(Status_MemFSError(
+    auto st = LOG_STATUS(Status_MemFSError(
         std::string("Cannot get children, the path is a file")));
+    return {st, nullopt};
   }
 
   bool has_child(const std::string& child) const override {
@@ -282,21 +282,24 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
     return true;
   }
 
-  Status ls(
-      const std::string& full_path,
-      std::vector<std::string>* const children) const override {
+  tuple<Status, optional<std::vector<directory_entry>>> ls(
+      const std::string& full_path) const override {
     assert(!mutex_.try_lock());
 
-    std::vector<std::string> names;
+    std::vector<directory_entry> names;
     names.reserve(children_.size());
     for (const auto& child : children_) {
-      names.emplace_back(full_path + child.first);
+      std::unique_lock<std::mutex> lock(child.second->mutex_);
+      if (child.second->is_dir()) {
+        names.emplace_back("mem://" + full_path + child.first, 0);
+      } else {
+        uint64_t size;
+        RETURN_NOT_OK_TUPLE(child.second->get_size(&size), nullopt);
+        names.emplace_back("mem://" + full_path + child.first, size);
+      }
     }
 
-    std::sort(names.begin(), names.end());
-    *children = names;
-
-    return Status::Ok();
+    return {Status::Ok(), names};
   }
 
   bool has_child(const std::string& child) const override {
@@ -388,8 +391,20 @@ bool MemFilesystem::is_file(const std::string& path) const {
 Status MemFilesystem::ls(
     const std::string& path, std::vector<std::string>* const paths) const {
   assert(paths);
+  auto&& [st, entries] = ls_with_sizes(URI("mem://" + path));
+  RETURN_NOT_OK(st);
 
-  std::vector<std::string> tokens = tokenize(path);
+  for (auto& fs : *entries) {
+    paths->emplace_back(fs.path().native());
+  }
+
+  return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<directory_entry>>>
+MemFilesystem::ls_with_sizes(const URI& path) const {
+  auto abspath = path.to_path();
+  std::vector<std::string> tokens = tokenize(abspath);
 
   FSNode* cur = root_.get();
   std::unique_lock<std::mutex> cur_lock(cur->mutex_);
@@ -400,8 +415,9 @@ Status MemFilesystem::ls(
     dir = dir + token + "/";
 
     if (cur->children_.count(token) != 1) {
-      return LOG_STATUS(Status_MemFSError(
-          std::string("Unable to list on non-existent path ") + path));
+      auto st = LOG_STATUS(Status_MemFSError(
+          std::string("Unable to list on non-existent path ") + abspath));
+      return {st, nullopt};
     }
 
     cur = cur->children_[token].get();
@@ -410,9 +426,12 @@ Status MemFilesystem::ls(
 
   assert(cur_lock.owns_lock());
   assert(cur_lock.mutex() == &cur->mutex_);
-  RETURN_NOT_OK(cur->ls(dir, paths));
+  auto&& [st, entries] = cur->ls(dir);
+  if (!st.ok()) {
+    return {st, nullopt};
+  }
 
-  return Status::Ok();
+  return {Status::Ok(), entries};
 }
 
 Status MemFilesystem::move(

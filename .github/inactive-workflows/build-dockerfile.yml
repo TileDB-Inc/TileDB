@@ -1,6 +1,13 @@
 name: Build-Dockerfile
 
-on: pull_request
+on:
+  pull_request:
+    paths-ignore:
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
+      - 'doc/source/conf.py'
+      - 'tiledb/sm/c_api/tiledb_version.h'
 
 jobs:
   build-dockerfile:

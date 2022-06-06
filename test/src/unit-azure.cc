@@ -33,11 +33,12 @@
 #ifdef HAVE_AZURE
 
 #include "catch.hpp"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/misc/time.h"
+#include "tiledb/sm/misc/tdb_time.h"
 
 #include <fstream>
 #include <thread>
@@ -68,7 +69,7 @@ struct AzureFx {
   const std::string TEST_DIR = AZURE_CONTAINER.to_string() + "tiledb_test_dir/";
 
   tiledb::sm::Azure azure_;
-  ThreadPool thread_pool_;
+  ThreadPool thread_pool_{2};
 
   AzureFx() = default;
   ~AzureFx();
@@ -102,7 +103,8 @@ void AzureFx::init_azure(Config&& config, ConfMap settings) {
   // Set provided config settings for connection
   std::for_each(settings.begin(), settings.end(), set_conf);
   REQUIRE(config.set("vfs.azure.use_https", "false").ok());
-  REQUIRE(thread_pool_.init(2).ok());
+
+  // Initialize
   REQUIRE(azure_.init(config, &thread_pool_).ok());
 
   // Create container
@@ -210,6 +212,23 @@ TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file management", "[azure]") {
   REQUIRE(is_dir);  // This is viewed as a dir
   REQUIRE(azure_.is_dir(URI(TEST_DIR + "dir"), &is_dir).ok());
   REQUIRE(is_dir);  // This is viewed as a dir
+
+  // ls_with_sizes
+  std::string s = "abcdef";
+  CHECK(azure_.write(URI(file3), s.data(), s.size()).ok());
+  REQUIRE(azure_.flush_blob(URI(file3)).ok());
+
+  auto&& [status, rv] = azure_.ls_with_sizes(URI(dir));
+  auto children = *rv;
+  REQUIRE(status.ok());
+
+  REQUIRE(children.size() == 2);
+  CHECK(children[0].path().native() == file3);
+  CHECK(children[1].path().native() == subdir.substr(0, subdir.size() - 1));
+
+  CHECK(children[0].file_size() == s.size());
+  // Directories don't get a size
+  CHECK(children[1].file_size() == 0);
 
   // Move file
   REQUIRE(azure_.move_object(URI(file5), URI(file6)).ok());

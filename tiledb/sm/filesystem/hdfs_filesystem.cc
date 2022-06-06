@@ -41,6 +41,7 @@
 #ifdef HAVE_HDFS
 
 #include "hdfs_filesystem.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/config/config.h"
@@ -57,6 +58,7 @@
 #include <sstream>
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb {
 namespace sm {
@@ -522,26 +524,46 @@ Status HDFS::sync(const URI& uri) {
 }
 
 Status HDFS::ls(const URI& uri, std::vector<std::string>* paths) {
+  auto&& [st, entries] = ls_with_sizes(uri);
+  RETURN_NOT_OK(st);
+
+  for (auto& fs : *entries) {
+    paths->emplace_back(fs.path().native());
+  }
+
+  return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<directory_entry>>> HDFS::ls_with_sizes(
+    const URI& uri) {
   hdfsFS fs = nullptr;
-  RETURN_NOT_OK(connect(&fs));
+  RETURN_NOT_OK_TUPLE(connect(&fs), nullopt);
+
   int numEntries = 0;
   hdfsFileInfo* fileList =
       libhdfs_->hdfsListDirectory(fs, uri.to_path().c_str(), &numEntries);
   if (fileList == NULL) {
     if (errno) {
-      return LOG_STATUS(Status_HDFSError(
+      auto st = LOG_STATUS(Status_HDFSError(
           std::string("Cannot list files in ") + uri.to_string()));
+      return {st, nullopt};
     }
   }
+
+  std::vector<directory_entry> entries;
   for (int i = 0; i < numEntries; ++i) {
     auto path = std::string(fileList[i].mName);
     if (!utils::parse::starts_with(path, "hdfs://")) {
       path = std::string("hdfs://") + path;
     }
-    paths->push_back(path);
+    if (fileList[i].mKind == kObjectKindDirectory) {
+      entries.emplace_back(path, 0);
+    } else {
+      entries.emplace_back(path, fileList[i].mSize);
+    }
   }
   libhdfs_->hdfsFreeFileInfo(fileList, numEntries);
-  return Status::Ok();
+  return {Status::Ok(), entries};
 }
 
 Status HDFS::file_size(const URI& uri, uint64_t* nbytes) {

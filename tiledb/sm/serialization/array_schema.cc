@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -56,6 +56,7 @@
 #include "tiledb/sm/serialization/array_schema.h"
 
 #include <set>
+#include <string>
 
 using namespace tiledb::common;
 
@@ -104,7 +105,8 @@ Status filter_pipeline_to_capnp(
       case FilterType::FILTER_LZ4:
       case FilterType::FILTER_RLE:
       case FilterType::FILTER_BZIP2:
-      case FilterType::FILTER_DOUBLE_DELTA: {
+      case FilterType::FILTER_DOUBLE_DELTA:
+      case FilterType::FILTER_DICTIONARY: {
         int32_t level;
         RETURN_NOT_OK(
             filter->get_option(FilterOption::COMPRESSION_LEVEL, &level));
@@ -145,7 +147,8 @@ static tuple<Status, optional<shared_ptr<Filter>>> filter_constructor(
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
-    case FilterType::FILTER_DOUBLE_DELTA: {
+    case FilterType::FILTER_DOUBLE_DELTA:
+    case FilterType::FILTER_DICTIONARY: {
       auto data = reader.getData();
       int32_t level = data.getInt32();
       return {
@@ -228,13 +231,15 @@ tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
   // Set nullable.
   const bool nullable = attribute_reader.getNullable();
 
-  // FIlter pipelines
-  shared_ptr<FilterPipeline> filters;
+  // Filter pipelines
+  shared_ptr<FilterPipeline> filters{};
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
     auto&& [st_fp, f]{filter_pipeline_from_capnp(filter_pipeline_reader)};
     RETURN_NOT_OK_TUPLE(st_fp, nullopt);
     filters = f.value();
+  } else {
+    filters = make_shared<FilterPipeline>(HERE());
   }
 
   // Fill value
@@ -304,110 +309,189 @@ Status dimension_to_capnp(
   return Status::Ok();
 }
 
-Status dimension_from_capnp(
-    const capnp::Dimension::Reader& dimension_reader,
-    tdb_unique_ptr<Dimension>* dimension) {
-  Datatype dim_type = Datatype::ANY;
-  RETURN_NOT_OK(datatype_enum(dimension_reader.getType().cStr(), &dim_type));
-  dimension->reset(tdb_new(Dimension, dimension_reader.getName(), dim_type));
+/**
+ * Deserialize a tile extent from a cap'n proto object.
+ *
+ * @pre dim_type is valid.
+ */
+ByteVecValue tile_extent_from_capnp(
+    const capnp::Dimension::TileExtent::Reader tile_extent_reader,
+    Datatype dim_type) {
+  auto coord_size = datatype_size(dim_type);
+  ByteVecValue tile_extent(coord_size);
+  switch (dim_type) {
+    case Datatype::INT8: {
+      auto val = tile_extent_reader.getInt8();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::UINT8: {
+      auto val = tile_extent_reader.getUint8();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::INT16: {
+      auto val = tile_extent_reader.getInt16();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::UINT16: {
+      auto val = tile_extent_reader.getUint16();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::INT32: {
+      auto val = tile_extent_reader.getInt32();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::UINT32: {
+      auto val = tile_extent_reader.getUint32();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+    case Datatype::INT64: {
+      auto val = tile_extent_reader.getInt64();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::UINT64: {
+      auto val = tile_extent_reader.getUint64();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::FLOAT32: {
+      auto val = tile_extent_reader.getFloat32();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    case Datatype::FLOAT64: {
+      auto val = tile_extent_reader.getFloat64();
+      std::memcpy(tile_extent.data(), &val, coord_size);
+      break;
+    }
+    default:
+      throw std::logic_error(
+          "[Deserialization::tile_extent_from_capnp] Precondition violated; "
+          "Input Datatype is invalid.");
+  }
+  return tile_extent;
+}
 
+/** Deserialize a range from a cap'n proto object.
+ *
+ * @pre dim_type is valid.
+ */
+Range range_from_capnp(
+    Datatype dim_type, const capnp::Dimension::Reader& dimension_reader) {
   if (dimension_reader.hasDomain()) {
     auto domain_reader = dimension_reader.getDomain();
     Buffer domain_buffer;
-    RETURN_NOT_OK(
-        utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer));
-    RETURN_NOT_OK((*dimension)->set_domain_unsafe(domain_buffer.data()));
+    Status st = utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer);
+    if (!st.ok()) {
+      throw std::runtime_error(
+          "[Deserialization::range_from_capnp] Failed to copy " +
+          std::string(dimension_reader.getType().cStr()) + " typed Capnp List");
+    }
+    return Range{domain_buffer.data(), datatype_size(dim_type) * 2};
+  } else {
+    return Range{};
+  }
+}
+
+/** Deserialize a dimension from a cap'n proto object. */
+shared_ptr<Dimension> dimension_from_capnp(
+    const capnp::Dimension::Reader& dimension_reader) {
+  Status st;
+
+  // Deserialize datatype
+  Datatype dim_type;
+  st = datatype_enum(dimension_reader.getType().cStr(), &dim_type);
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[Deserialization::dimension_from_capnp] " +
+        std::string(dimension_reader.getType().cStr()) +
+        " is not a valid datatype identifer.");
   }
 
+  // Validate the dim_type, satisfying precondition of tile_extent_from_capnp
+  try {
+    ensure_datatype_is_valid(dim_type);
+  } catch (const std::exception& e) {
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::dimension_from_capnp] "));
+  }
+
+  // Calculate size of coordinates and re-ensure dim_type is valid (size != 0)
+  auto coord_size = datatype_size(dim_type);
+  if (coord_size == 0) {
+    throw std::logic_error(
+        "[Deserialization::dimension_from_capnp] " +
+        std::to_string(std::underlying_type_t<Datatype>(dim_type)) +
+        " is not valid as a datatype; datatype_size is 0.");
+  }
+
+  // Calculate cell_val_num
+  uint32_t cell_val_num = datatype_is_string(dim_type) ? constants::var_num : 1;
+
+  // Load domain
+  // Note: If there is no domain in capnp, a default one is constructed.
+  Range domain{range_from_capnp(dim_type, dimension_reader)};
+
+  // Load filters
+  // Note: If there is no FilterPipeline in capnp, a default one is constructed.
+  shared_ptr<FilterPipeline> filters{};
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
-    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
-    RETURN_NOT_OK(st_fp);
-    RETURN_NOT_OK((*dimension)->set_filter_pipeline(filters.value().get()));
+    auto&& [st_fp, f]{filter_pipeline_from_capnp(reader)};
+    if (!st_fp.ok()) {
+      throw std::runtime_error(
+          "[Deserialization::dimension_from_capnp] Failed to deserialize "
+          "filter pipeline.");
+    }
+    filters = f.value();
+  } else {
+    filters = make_shared<FilterPipeline>(HERE());
   }
 
+  // Load tile extent
+  // Note: If there is no tile extent in capnp, a default one is constructed.
+  ByteVecValue tile_extent{};
   if (!dimension_reader.getNullTileExtent()) {
     auto tile_extent_reader = dimension_reader.getTileExtent();
-    switch (dim_type) {
-      case Datatype::INT8: {
-        auto val = tile_extent_reader.getInt8();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
-        break;
-      }
-      case Datatype::UINT8: {
-        auto val = tile_extent_reader.getUint8();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
-        break;
-      }
-      case Datatype::INT16: {
-        auto val = tile_extent_reader.getInt16();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
-        break;
-      }
-      case Datatype::UINT16: {
-        auto val = tile_extent_reader.getUint16();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
-        break;
-      }
-      case Datatype::INT32: {
-        auto val = tile_extent_reader.getInt32();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
-        break;
-      }
-      case Datatype::UINT32: {
-        auto val = tile_extent_reader.getUint32();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
-        break;
-      }
-      case Datatype::DATETIME_YEAR:
-      case Datatype::DATETIME_MONTH:
-      case Datatype::DATETIME_WEEK:
-      case Datatype::DATETIME_DAY:
-      case Datatype::DATETIME_HR:
-      case Datatype::DATETIME_MIN:
-      case Datatype::DATETIME_SEC:
-      case Datatype::DATETIME_MS:
-      case Datatype::DATETIME_US:
-      case Datatype::DATETIME_NS:
-      case Datatype::DATETIME_PS:
-      case Datatype::DATETIME_FS:
-      case Datatype::DATETIME_AS:
-      case Datatype::TIME_HR:
-      case Datatype::TIME_MIN:
-      case Datatype::TIME_SEC:
-      case Datatype::TIME_MS:
-      case Datatype::TIME_US:
-      case Datatype::TIME_NS:
-      case Datatype::TIME_PS:
-      case Datatype::TIME_FS:
-      case Datatype::TIME_AS:
-      case Datatype::INT64: {
-        auto val = tile_extent_reader.getInt64();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
-        break;
-      }
-      case Datatype::UINT64: {
-        auto val = tile_extent_reader.getUint64();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
-        break;
-      }
-      case Datatype::FLOAT32: {
-        auto val = tile_extent_reader.getFloat32();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
-        break;
-      }
-      case Datatype::FLOAT64: {
-        auto val = tile_extent_reader.getFloat64();
-        RETURN_NOT_OK((*dimension)->set_tile_extent(&val));
-        break;
-      }
-      default:
-        return LOG_STATUS(Status_SerializationError(
-            "Error deserializing dimension; unknown datatype."));
-    }
+    tile_extent = tile_extent_from_capnp(tile_extent_reader, dim_type);
   }
 
-  return Status::Ok();
+  return make_shared<Dimension>(
+      HERE(),
+      dimension_reader.getName(),
+      dim_type,
+      cell_val_num,
+      domain,
+      *(filters.get()),
+      tile_extent);
 }
 
 Status domain_to_capnp(
@@ -416,7 +500,6 @@ Status domain_to_capnp(
     return LOG_STATUS(
         Status_SerializationError("Error serializing domain; domain is null."));
 
-  domainBuilder->setType(datatype_str(domain->dimension(0)->type()));
   domainBuilder->setTileOrder(layout_str(domain->tile_order()));
   domainBuilder->setCellOrder(layout_str(domain->cell_order()));
 
@@ -424,27 +507,58 @@ Status domain_to_capnp(
   auto dimensions_builder = domainBuilder->initDimensions(ndims);
   for (unsigned i = 0; i < ndims; i++) {
     auto dim_builder = dimensions_builder[i];
-    RETURN_NOT_OK(dimension_to_capnp(domain->dimension(i).get(), &dim_builder));
+    RETURN_NOT_OK(dimension_to_capnp(domain->dimension_ptr(i), &dim_builder));
   }
 
   return Status::Ok();
 }
 
-Status domain_from_capnp(
-    const capnp::Domain::Reader& domain_reader,
-    tdb_unique_ptr<Domain>* domain) {
-  Datatype datatype = Datatype::ANY;
-  RETURN_NOT_OK(datatype_enum(domain_reader.getType(), &datatype));
-  domain->reset(tdb_new(Domain));
+/* Deserialize a domain from a cap'n proto object. */
+shared_ptr<Domain> domain_from_capnp(
+    const capnp::Domain::Reader& domain_reader) {
+  Status st;
 
-  auto dimensions = domain_reader.getDimensions();
-  for (auto dimension : dimensions) {
-    tdb_unique_ptr<Dimension> dim;
-    RETURN_NOT_OK(dimension_from_capnp(dimension, &dim));
-    RETURN_NOT_OK((*domain)->add_dimension(move(dim)));
+  // Deserialize and validate cell order
+  Layout cell_order = Layout::ROW_MAJOR;
+  st = layout_enum(domain_reader.getCellOrder().cStr(), &cell_order);
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[Deserialization::domain_from_capnp] " +
+        std::string(domain_reader.getCellOrder().cStr()) +
+        " is not a valid cell order identifer.");
+  }
+  try {
+    ensure_cell_order_is_valid(std::underlying_type_t<Layout>(cell_order));
+  } catch (std::exception& e) {
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::domain_from_capnp] "));
   }
 
-  return Status::Ok();
+  // Deserialize and validate tile order
+  Layout tile_order = Layout::ROW_MAJOR;
+  st = layout_enum(domain_reader.getTileOrder().cStr(), &tile_order);
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[Deserialization::domain_from_capnp] " +
+        std::string(domain_reader.getTileOrder().cStr()) +
+        " is not a valid tile order identifer.");
+  }
+  try {
+    ensure_tile_order_is_valid(std::underlying_type_t<Layout>(tile_order));
+  } catch (std::exception& e) {
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::domain_from_capnp] "));
+  }
+
+  // Deserialize dimensions
+  // Note: Security validation delegated to invoked API
+  std::vector<shared_ptr<Dimension>> dims;
+  auto dimensions = domain_reader.getDimensions();
+  for (auto dimension : dimensions) {
+    dims.emplace_back(dimension_from_capnp(dimension));
+  }
+
+  return make_shared<Domain>(HERE(), cell_order, dims, tile_order);
 }
 
 Status array_schema_to_capnp(
@@ -489,7 +603,7 @@ Status array_schema_to_capnp(
 
   // Domain
   auto domain_builder = array_schema_builder->initDomain();
-  RETURN_NOT_OK(domain_to_capnp(array_schema.domain().get(), &domain_builder));
+  RETURN_NOT_OK(domain_to_capnp(&array_schema.domain(), &domain_builder));
 
   // Attributes
   const unsigned num_attrs = array_schema.attribute_num();
@@ -535,10 +649,8 @@ Status array_schema_from_capnp(
   }
 
   auto domain_reader = schema_reader.getDomain();
-  tdb_unique_ptr<Domain> domain;
-  RETURN_NOT_OK(domain_from_capnp(domain_reader, &domain));
-  RETURN_NOT_OK(
-      (*array_schema)->set_domain(make_shared<Domain>(HERE(), domain.get())));
+  auto domain{domain_from_capnp(domain_reader)};
+  RETURN_NOT_OK((*array_schema)->set_domain(domain));
 
   // Set coords filter pipelines
   if (schema_reader.hasCoordsFilterPipeline()) {
@@ -952,7 +1064,9 @@ Status nonempty_domain_deserialize(
           RETURN_NOT_OK(utils::deserialize_subarray(
               reader.getNonEmptyDomain(), schema, &subarray));
           std::memcpy(
-              nonempty_domain, subarray, 2 * schema.dimension(0)->coord_size());
+              nonempty_domain,
+              subarray,
+              2 * schema.dimension_ptr(0)->coord_size());
           tdb_free(subarray);
         }
 
@@ -973,7 +1087,9 @@ Status nonempty_domain_deserialize(
           RETURN_NOT_OK(utils::deserialize_subarray(
               reader.getNonEmptyDomain(), schema, &subarray));
           std::memcpy(
-              nonempty_domain, subarray, 2 * schema.dimension(0)->coord_size());
+              nonempty_domain,
+              subarray,
+              2 * schema.dimension_ptr(0)->coord_size());
           tdb_free(subarray);
         }
 

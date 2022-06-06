@@ -181,6 +181,13 @@ struct tiledb_to_type<TILEDB_BLOB> {
 };
 
 template <>
+struct tiledb_to_type<TILEDB_BOOL> {
+  using type = uint8_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_BOOL;
+  static constexpr const char* name = "BOOL";
+};
+
+template <>
 struct tiledb_to_type<TILEDB_INT8> {
   using type = int8_t;
   static const tiledb_datatype_t tiledb_type = TILEDB_INT8;

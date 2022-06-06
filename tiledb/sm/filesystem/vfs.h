@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -277,6 +278,15 @@ class VFS {
    * @return Status
    */
   Status ls(const URI& parent, std::vector<URI>* uris) const;
+
+  /**
+   * Retrieves all the entries contained in the parent.
+   *
+   * @param parent The target directory to list.
+   * @return All entries that are contained in the parent
+   */
+  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  ls_with_sizes(const URI& parent) const;
 
   /**
    * Renames a file.

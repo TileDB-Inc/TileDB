@@ -35,6 +35,7 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/type/range/range.h"
 
 #include <bitset>
 #include <cassert>
@@ -42,6 +43,7 @@
 #include <iostream>
 
 using namespace tiledb::common;
+using namespace tiledb::type;
 
 tiledb::common::blank<tiledb::sm::Dimension>::blank()
     : tiledb::sm::Dimension{"", tiledb::sm::Datatype::INT32} {
@@ -59,8 +61,6 @@ Dimension::Dimension(const std::string& name, Datatype type)
     , type_(type) {
   cell_val_num_ = (datatype_is_string(type)) ? constants::var_num : 1;
   set_ceil_to_tile_func();
-  set_check_range_func();
-  set_adjust_range_oob_func();
   set_coincides_with_tiles_func();
   set_compute_mbr_func();
   set_crop_range_func();
@@ -96,8 +96,6 @@ Dimension::Dimension(
     , tile_extent_(tile_extent)
     , type_(type) {
   set_ceil_to_tile_func();
-  set_check_range_func();
-  set_adjust_range_oob_func();
   set_coincides_with_tiles_func();
   set_compute_mbr_func();
   set_crop_range_func();
@@ -130,9 +128,7 @@ Dimension::Dimension(const Dimension* dim) {
   type_ = dim->type_;
 
   // Set fuctions
-  adjust_range_oob_func_ = dim->adjust_range_oob_func_;
   ceil_to_tile_func_ = dim->ceil_to_tile_func_;
-  check_range_func_ = dim->check_range_func_;
   coincides_with_tiles_func_ = dim->coincides_with_tiles_func_;
   compute_mbr_func_ = dim->compute_mbr_func_;
   compute_mbr_var_func_ = dim->compute_mbr_var_func_;
@@ -325,29 +321,6 @@ void Dimension::ceil_to_tile(
     const Range& r, uint64_t tile_num, ByteVecValue* v) const {
   assert(ceil_to_tile_func_ != nullptr);
   ceil_to_tile_func_(this, r, tile_num, v);
-}
-
-Status Dimension::check_range(const Range& range) const {
-  // Inapplicable to string domains
-  if (type_ == Datatype::STRING_ASCII)
-    return Status::Ok();
-
-  assert(check_range_func_ != nullptr);
-  std::string err_msg;
-  auto ret = check_range_func_(this, range, &err_msg);
-  if (!ret)
-    return LOG_STATUS(Status_DimensionError(err_msg));
-  return Status::Ok();
-}
-
-Status Dimension::adjust_range_oob(Range* range) const {
-  // Inapplicable to string domains
-  if (type_ == Datatype::STRING_ASCII)
-    return Status::Ok();
-
-  assert(adjust_range_oob_func_ != nullptr);
-  adjust_range_oob_func_(this, range);
-  return Status::Ok();
 }
 
 template <class T>
@@ -562,8 +535,14 @@ bool Dimension::oob(
   auto coord_t = (const T*)coord;
   if (*coord_t < domain[0] || *coord_t > domain[1]) {
     std::stringstream ss;
-    ss << "Coordinate " << *coord_t << " is out of domain bounds [" << domain[0]
-       << ", " << domain[1] << "] on dimension '" << dim->name() << "'";
+    ss << "Coordinate ";
+    // Account for precision in floating point types. Arbitrarily set
+    // the precision to up to 2 decimal places.
+    if (dim->type_ == Datatype::FLOAT32 || dim->type_ == Datatype::FLOAT64) {
+      ss << std::setprecision(std::numeric_limits<T>::digits10 + 1);
+    }
+    ss << *coord_t << " is out of domain bounds [" << domain[0] << ", "
+       << domain[1] << "] on dimension '" << dim->name() << "'";
     *err_msg = ss.str();
     return true;
   }
@@ -809,35 +788,34 @@ void Dimension::relevant_ranges<char>(
       });
 
   // If we have no ranges just exit early
-  if (it == ranges.end())
+  if (it == ranges.end()) {
     return;
+  }
 
   // Set start index
-  const uint64_t start_range_idx = std::distance(ranges.begin(), it);
+  const uint64_t start_range = std::distance(ranges.begin(), it);
 
-  // Binary search to find the last range containing the start mbr.
+  // Find upper bound to end comparisons. Finding this early allows avoiding the
+  // conditional exit in the for loop below
   auto it2 = std::lower_bound(
       it,
       ranges.end(),
       mbr_end,
       [&](const Range& a, const std::string_view& value) {
-        return a.start_str() < value;
+        return a.start_str() <= value;
       });
 
-  // If the upper bound isn't the end add +1 to the index
-  uint64_t offset = 0;
-  if (it2 != ranges.end())
-    offset = 1;
-  const uint64_t end_range_idx =
-      std::distance(it, it2) + start_range_idx + offset;
+  // Set end index
+  const uint64_t end_range = std::distance(it, it2) + start_range;
 
   // Loop over only potential relevant ranges
-  for (uint64_t r = start_range_idx; r < end_range_idx; ++r) {
+  for (uint64_t r = start_range; r < end_range; ++r) {
     const auto& r1_start = ranges[r].start_str();
     const auto& r1_end = ranges[r].end_str();
 
-    if (r1_start <= mbr_end && mbr_start <= r1_end)
+    if (r1_start <= mbr_end && mbr_start <= r1_end) {
       relevant_ranges.emplace_back(r);
+    }
   }
 }
 
@@ -846,7 +824,7 @@ void Dimension::relevant_ranges(
     const NDRange& ranges,
     const Range& mbr,
     std::vector<uint64_t>& relevant_ranges) {
-  const auto mbr_data = (const T*)mbr.start();
+  const auto mbr_data = (const T*)mbr.start_fixed();
   const auto mbr_start = mbr_data[0];
   const auto mbr_end = mbr_data[1];
 
@@ -856,33 +834,33 @@ void Dimension::relevant_ranges(
       ranges.end(),
       mbr_start,
       [&](const Range& a, const T value) {
-        return ((const T*)a.start())[1] < value;
+        return ((const T*)a.start_fixed())[1] < value;
       });
 
-  if (it == ranges.end())
+  if (it == ranges.end()) {
     return;
+  }
 
+  // Set start index
   const uint64_t start_range = std::distance(ranges.begin(), it);
 
   // Find upper bound to end comparisons. Finding this early allows avoiding the
   // conditional exit in the for loop below
   auto it2 = std::lower_bound(
       it, ranges.end(), mbr_end, [&](const Range& a, const T value) {
-        return ((const T*)a.start())[0] < value;
+        return ((const T*)a.start_fixed())[0] <= value;
       });
 
-  // If the upper bound isn't the end add +1 to the index
-  uint64_t offset = 0;
-  if (it2 != ranges.end())
-    offset = 1;
-  const uint64_t end_range = std::distance(it, it2) + start_range + offset;
+  // Set end index
+  const uint64_t end_range = std::distance(it, it2) + start_range;
 
   // Loop over only potential relevant ranges
   for (uint64_t r = start_range; r < end_range; ++r) {
-    const auto d1 = (const T*)ranges[r].start();
+    const auto d1 = (const T*)ranges[r].start_fixed();
 
-    if ((d1[0] <= mbr_end && d1[1] >= mbr_start))
+    if ((d1[0] <= mbr_end && d1[1] >= mbr_start)) {
       relevant_ranges.emplace_back(r);
+    }
   }
 }
 
@@ -920,13 +898,13 @@ std::vector<bool> Dimension::covered_vec(
     const NDRange& ranges,
     const Range& mbr,
     const std::vector<uint64_t>& relevant_ranges) {
-  auto d1 = (const T*)mbr.start();
+  auto d1 = (const T*)mbr.start_fixed();
 
   std::vector<bool> covered;
   covered.resize(relevant_ranges.size());
   for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
     auto r = relevant_ranges[i];
-    auto d2 = (const T*)ranges[r].start();
+    auto d2 = (const T*)ranges[r].start_fixed();
 
     covered[i] = d1[0] >= d2[0] && d1[1] <= d2[1];
   }
@@ -1140,10 +1118,7 @@ void Dimension::splitting_value<double>(
   assert(unsplittable != nullptr);
 
   auto r_t = (const double*)r.data();
-
-  // Cast `r_t` elements to `long double` to prevent overflow
-  // before dividing by 2.
-  const double sp = r_t[0] + ((long double)r_t[1] - (long double)r_t[0]) / 2;
+  const double sp = r_t[0] + (r_t[1] / 2 - r_t[0] / 2);
 
   v->assign_as<double>(sp);
   *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(double));
@@ -1206,8 +1181,8 @@ uint64_t Dimension::map_to_uint64_2(
   assert(coord != nullptr);
   assert(!dim->domain().empty());
 
-  double dom_start_T = *(const T*)dim->domain().start();
-  double dom_end_T = *(const T*)dim->domain().end();
+  double dom_start_T = *(const T*)dim->domain().start_fixed();
+  double dom_end_T = *(const T*)dim->domain().end_fixed();
   auto dom_range_T = dom_end_T - dom_start_T;
   auto norm_coord_T = *(const T*)coord - dom_start_T;
   return (norm_coord_T / dom_range_T) * max_bucket_val;
@@ -1256,10 +1231,10 @@ ByteVecValue Dimension::map_from_uint64(
 
   // Add domain start
   auto value_T = static_cast<T>(value);
-  value_T += *(const T*)dim->domain().start();
+  value_T += *(const T*)dim->domain().start_fixed();
 
-  auto dom_start_T = *(const T*)dim->domain().start();
-  auto dom_end_T = *(const T*)dim->domain().end();
+  auto dom_start_T = *(const T*)dim->domain().start_fixed();
+  auto dom_end_T = *(const T*)dim->domain().end_fixed();
   double dom_range_T = dom_end_T - dom_start_T;
 
   // Essentially take the largest value in the bucket
@@ -1320,7 +1295,7 @@ bool Dimension::smaller_than(
   assert(value);
 
   auto value_T = *(const T*)(value.data());
-  auto range_start_T = *(const T*)range.start();
+  auto range_start_T = *(const T*)range.start_fixed();
   return value_T < range_start_T;
 }
 
@@ -1435,6 +1410,10 @@ Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
       return LOG_STATUS(Status_DimensionError(
           "RLE filter cannot be combined with other filters when applied to "
           "variable length string dimensions"));
+    } else if (pipeline->has_filter(FilterType::FILTER_DICTIONARY)) {
+      return LOG_STATUS(Status_AttributeError(
+          "Dictionary-encoding filter cannot be combined with other filters "
+          "when applied to variable length string dimensions"));
     }
   }
 
@@ -1747,8 +1726,8 @@ Status Dimension::check_tile_extent_upper_floor_internal(
   const uint64_t range = domain[1] - domain[0] + 1;
   const T_FLOOR upper_floor =
       ((range - 1) / (tile_extent)) * (tile_extent) + domain[0];
-  const T_FLOOR upper_floor_max =
-      std::numeric_limits<T_FLOOR>::max() - (tile_extent - 1);
+  const T_FLOOR upper_floor_max = std::numeric_limits<T_FLOOR>::max() -
+                                  (static_cast<T_FLOOR>(tile_extent) - 1);
   const T_FLOOR extent_max =
       static_cast<T_FLOOR>(std::numeric_limits<T_EXTENT>::max());
   const bool exceeds =
@@ -1849,6 +1828,7 @@ std::string Dimension::domain_str() const {
 
     case Datatype::BLOB:
     case Datatype::CHAR:
+    case Datatype::BOOL:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
@@ -1947,6 +1927,7 @@ std::string Dimension::tile_extent_str() const {
 
     case Datatype::BLOB:
     case Datatype::CHAR:
+    case Datatype::BOOL:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
@@ -2145,130 +2126,6 @@ void Dimension::set_ceil_to_tile_func() {
       break;
     default:
       ceil_to_tile_func_ = nullptr;
-      break;
-  }
-}
-
-void Dimension::set_check_range_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      check_range_func_ = check_range<int32_t>;
-      break;
-    case Datatype::INT64:
-      check_range_func_ = check_range<int64_t>;
-      break;
-    case Datatype::INT8:
-      check_range_func_ = check_range<int8_t>;
-      break;
-    case Datatype::UINT8:
-      check_range_func_ = check_range<uint8_t>;
-      break;
-    case Datatype::INT16:
-      check_range_func_ = check_range<int16_t>;
-      break;
-    case Datatype::UINT16:
-      check_range_func_ = check_range<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      check_range_func_ = check_range<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      check_range_func_ = check_range<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      check_range_func_ = check_range<float>;
-      break;
-    case Datatype::FLOAT64:
-      check_range_func_ = check_range<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      check_range_func_ = check_range<int64_t>;
-      break;
-    default:
-      check_range_func_ = nullptr;
-      break;
-  }
-}
-
-void Dimension::set_adjust_range_oob_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      adjust_range_oob_func_ = adjust_range_oob<int32_t>;
-      break;
-    case Datatype::INT64:
-      adjust_range_oob_func_ = adjust_range_oob<int64_t>;
-      break;
-    case Datatype::INT8:
-      adjust_range_oob_func_ = adjust_range_oob<int8_t>;
-      break;
-    case Datatype::UINT8:
-      adjust_range_oob_func_ = adjust_range_oob<uint8_t>;
-      break;
-    case Datatype::INT16:
-      adjust_range_oob_func_ = adjust_range_oob<int16_t>;
-      break;
-    case Datatype::UINT16:
-      adjust_range_oob_func_ = adjust_range_oob<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      adjust_range_oob_func_ = adjust_range_oob<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      adjust_range_oob_func_ = adjust_range_oob<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      adjust_range_oob_func_ = adjust_range_oob<float>;
-      break;
-    case Datatype::FLOAT64:
-      adjust_range_oob_func_ = adjust_range_oob<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      adjust_range_oob_func_ = adjust_range_oob<int64_t>;
-      break;
-    default:
-      adjust_range_oob_func_ = nullptr;
       break;
   }
 }

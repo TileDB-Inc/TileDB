@@ -59,7 +59,7 @@ namespace sm {
 
 DenseReader::DenseReader(
     stats::Stats* stats,
-    tdb_shared_ptr<Logger> logger,
+    shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -113,6 +113,13 @@ Status DenseReader::init() {
 
   // Check the validity buffer sizes.
   RETURN_NOT_OK(check_validity_buffer_sizes());
+
+  bool found = false;
+  uint64_t tile_cache_size = 0;
+  RETURN_NOT_OK(
+      config_.get<uint64_t>("sm.tile_cache_size", &tile_cache_size, &found));
+  assert(found);
+  disable_cache_ = tile_cache_size == 0;
 
   return Status::Ok();
 }
@@ -186,7 +193,7 @@ void DenseReader::reset() {
 
 template <class OffType>
 Status DenseReader::dense_read() {
-  auto type = array_schema_.domain()->dimension(0)->type();
+  auto type{array_schema_.domain().dimension_ptr(0)->type()};
   switch (type) {
     case Datatype::INT8:
       return dense_read<int8_t, OffType>();
@@ -368,7 +375,7 @@ Status DenseReader::dense_read() {
   RETURN_CANCEL_OR_ERROR(st);
 
   // Copy attribute data to users buffers.
-  status = read_attributes<DimType, OffType>(
+  status = copy_attributes<DimType, OffType>(
       fixed_names,
       var_names,
       subarray,
@@ -402,9 +409,6 @@ Status DenseReader::init_read_state() {
                            "state; Multi-range "
                            "subarrays do not "
                            "support global order"));
-
-  // Make sure ranges are sorted.
-  RETURN_NOT_OK(subarray_.sort_ranges(storage_manager_->compute_tp()));
 
   // Get config values.
   bool found = false;
@@ -502,14 +506,15 @@ DenseReader::apply_query_condition(
     std::vector<uint64_t>& tile_offsets,
     const std::vector<RangeInfo>& range_info,
     std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles) {
+  auto timer_se = stats_->start_timer("apply_query_condition");
   std::vector<uint8_t> qc_result;
   if (!condition_.clauses().empty()) {
     // For easy reference.
     const auto& tile_coords = subarray.tile_coords();
     const auto cell_num = subarray.cell_num();
     const auto dim_num = array_schema_.dim_num();
-    auto stride = array_schema_.domain()->stride<DimType>(layout_);
-    const auto domain = array_schema_.domain();
+    auto stride = array_schema_.domain().stride<DimType>(layout_);
+    const auto& domain{array_schema_.domain()};
     const auto cell_order = array_schema_.cell_order();
     const auto global_order = layout_ == Layout::GLOBAL_ORDER;
 
@@ -634,7 +639,7 @@ uint64_t DenseReader::fix_offsets_buffer(
 }
 
 template <class DimType, class OffType>
-Status DenseReader::read_attributes(
+Status DenseReader::copy_attributes(
     const std::vector<std::string>& fixed_names,
     const std::vector<std::string>& var_names,
     const Subarray& subarray,
@@ -643,6 +648,8 @@ Status DenseReader::read_attributes(
     const std::vector<RangeInfo>& range_info,
     std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
     const std::vector<uint8_t>& qc_result) {
+  auto timer_se = stats_->start_timer("copy_attributes");
+
   // For easy reference
   const auto& tile_coords = subarray.tile_coords();
   const auto cell_num = subarray.cell_num();
@@ -686,79 +693,94 @@ Status DenseReader::read_attributes(
     }
 
     // Process offsets in parallel.
-    auto status = parallel_for(
-        storage_manager_->compute_tp(), 0, tile_coords.size(), [&](uint64_t t) {
-          // Find out result space tile and tile subarray.
-          const DimType* tc = (DimType*)&tile_coords[t][0];
-          auto it = result_space_tiles.find(tc);
-          assert(it != result_space_tiles.end());
+    {
+      auto timer_se = stats_->start_timer("copy_offset_tiles");
+      auto status = parallel_for(
+          storage_manager_->compute_tp(),
+          0,
+          tile_coords.size(),
+          [&](uint64_t t) {
+            // Find out result space tile and tile subarray.
+            const DimType* tc = (DimType*)&tile_coords[t][0];
+            auto it = result_space_tiles.find(tc);
+            assert(it != result_space_tiles.end());
 
-          // Copy the tile offsets.
-          return copy_offset_tiles<DimType, OffType>(
-              var_names,
-              dst_off_bufs,
-              dst_val_bufs,
-              attributes,
-              data_type_sizes,
-              it->second,
-              subarray,
-              tile_subarrays[t],
-              global_order ? tile_offsets[t] : 0,
-              var_data,
-              range_info,
-              qc_result);
-        });
-    RETURN_NOT_OK(status);
+            // Copy the tile offsets.
+            return copy_offset_tiles<DimType, OffType>(
+                var_names,
+                dst_off_bufs,
+                dst_val_bufs,
+                attributes,
+                data_type_sizes,
+                it->second,
+                subarray,
+                tile_subarrays[t],
+                global_order ? tile_offsets[t] : 0,
+                var_data,
+                range_info,
+                qc_result);
+          });
+      RETURN_NOT_OK(status);
+    }
 
     // We have the cell lengths in the users buffer, convert to offsets.
     std::vector<uint64_t> var_buffer_sizes(var_names.size());
-    status = parallel_for(
-        storage_manager_->compute_tp(), 0, var_names.size(), [&](uint64_t n) {
-          const auto& name = var_names[n];
-          const bool nullable = array_schema_.is_nullable(name);
-          var_buffer_sizes[n] = fix_offsets_buffer<OffType>(
-              name, nullable, cell_num, var_data[n]);
+    {
+      auto timer_se = stats_->start_timer("fix_offset_tiles");
+      auto status = parallel_for(
+          storage_manager_->compute_tp(), 0, var_names.size(), [&](uint64_t n) {
+            const auto& name = var_names[n];
+            const bool nullable = array_schema_.is_nullable(name);
+            var_buffer_sizes[n] = fix_offsets_buffer<OffType>(
+                name, nullable, cell_num, var_data[n]);
 
-          // Make sure the user var buffer is big enough.
-          uint64_t required_var_size = var_buffer_sizes[n];
-          if (elements_mode_)
-            required_var_size *= datatype_size(array_schema_.type(name));
+            // Make sure the user var buffer is big enough.
+            uint64_t required_var_size = var_buffer_sizes[n];
+            if (elements_mode_)
+              required_var_size *= datatype_size(array_schema_.type(name));
 
-          // Exit early in case of overflow.
-          if (read_state_.overflowed_ ||
-              required_var_size > *buffers_[name].buffer_var_size_) {
-            read_state_.overflowed_ = true;
+            // Exit early in case of overflow.
+            if (read_state_.overflowed_ ||
+                required_var_size > *buffers_[name].buffer_var_size_) {
+              read_state_.overflowed_ = true;
+              return Status::Ok();
+            }
+
+            *buffers_[name].buffer_var_size_ = required_var_size;
             return Status::Ok();
-          }
-
-          *buffers_[name].buffer_var_size_ = required_var_size;
-          return Status::Ok();
-        });
-    RETURN_NOT_OK(status);
+          });
+      RETURN_NOT_OK(status);
+    }
 
     if (read_state_.overflowed_) {
       return Status::Ok();
     }
 
-    // Process var data in parallel.
-    status = parallel_for(
-        storage_manager_->compute_tp(), 0, tile_coords.size(), [&](uint64_t t) {
-          return copy_var_tiles<DimType, OffType>(
-              var_names,
-              dst_var_bufs,
-              dst_off_bufs,
-              data_type_sizes,
-              subarray,
-              tile_subarrays[t],
-              global_order ? tile_offsets[t] : 0,
-              var_data,
-              range_info,
-              t == tile_coords.size() - 1,
-              var_buffer_sizes);
+    {
+      auto timer_se = stats_->start_timer("copy_var_tiles");
+      // Process var data in parallel.
+      auto status = parallel_for(
+          storage_manager_->compute_tp(),
+          0,
+          tile_coords.size(),
+          [&](uint64_t t) {
+            return copy_var_tiles<DimType, OffType>(
+                var_names,
+                dst_var_bufs,
+                dst_off_bufs,
+                data_type_sizes,
+                subarray,
+                tile_subarrays[t],
+                global_order ? tile_offsets[t] : 0,
+                var_data,
+                range_info,
+                t == tile_coords.size() - 1,
+                var_buffer_sizes);
 
-          return Status::Ok();
-        });
-    RETURN_NOT_OK(status);
+            return Status::Ok();
+          });
+      RETURN_NOT_OK(status);
+    }
   }
 
   if (!fixed_names.empty()) {
@@ -788,31 +810,37 @@ Status DenseReader::read_attributes(
       cell_sizes.push_back(array_schema_.cell_size(name));
     }
 
-    // Process values in parallel.
-    auto status = parallel_for(
-        storage_manager_->compute_tp(), 0, tile_coords.size(), [&](uint64_t t) {
-          // Find out result space tile and tile subarray.
-          const DimType* tc = (DimType*)&tile_coords[t][0];
-          auto it = result_space_tiles.find(tc);
-          assert(it != result_space_tiles.end());
+    {
+      auto timer_se = stats_->start_timer("copy_fixed_tiles");
+      // Process values in parallel.
+      auto status = parallel_for(
+          storage_manager_->compute_tp(),
+          0,
+          tile_coords.size(),
+          [&](uint64_t t) {
+            // Find out result space tile and tile subarray.
+            const DimType* tc = (DimType*)&tile_coords[t][0];
+            auto it = result_space_tiles.find(tc);
+            assert(it != result_space_tiles.end());
 
-          // Copy the tile fixed values.
-          RETURN_NOT_OK(copy_fixed_tiles(
-              fixed_names,
-              dst_bufs,
-              dst_val_bufs,
-              attributes,
-              cell_sizes,
-              it->second,
-              subarray,
-              tile_subarrays[t],
-              global_order ? tile_offsets[t] : 0,
-              range_info,
-              qc_result));
+            // Copy the tile fixed values.
+            RETURN_NOT_OK(copy_fixed_tiles(
+                fixed_names,
+                dst_bufs,
+                dst_val_bufs,
+                attributes,
+                cell_sizes,
+                it->second,
+                subarray,
+                tile_subarrays[t],
+                global_order ? tile_offsets[t] : 0,
+                range_info,
+                qc_result));
 
-          return Status::Ok();
-        });
-    RETURN_NOT_OK(status);
+            return Status::Ok();
+          });
+      RETURN_NOT_OK(status);
+    }
 
     // Set the output size for the fixed buffer.
     for (auto& name : fixed_names) {
@@ -833,7 +861,7 @@ template <class DimType>
 uint64_t DenseReader::get_cell_pos_in_tile(
     const Layout& cell_order,
     const int32_t dim_num,
-    shared_ptr<const Domain> const domain,
+    const Domain& domain,
     const ResultSpaceTile<DimType>& result_space_tile,
     const DimType* const coords) {
   uint64_t pos = 0;
@@ -843,12 +871,12 @@ uint64_t DenseReader::get_cell_pos_in_tile(
   if (cell_order == Layout::COL_MAJOR) {
     for (int32_t d = 0; d < dim_num; d++) {
       pos += mult * (coords[d] - start[d]);
-      mult *= *(const DimType*)domain->tile_extent(d).data();
+      mult *= *(const DimType*)domain.tile_extent(d).data();
     }
   } else {
     for (auto d = dim_num - 1; d >= 0; d--) {
       pos += mult * (coords[d] - start[d]);
-      mult *= *(const DimType*)domain->tile_extent(d).data();
+      mult *= *(const DimType*)domain.tile_extent(d).data();
     }
   }
 
@@ -903,7 +931,7 @@ uint64_t DenseReader::get_dest_cell_offset_row_col(
     for (int32_t d = 0; d < dim_num; d++) {
       auto r = converted_range_coords[d];
       auto min = *static_cast<const DimType*>(
-          subarray.ranges_for_dim((uint32_t)d)[r].start());
+          subarray.ranges_for_dim((uint32_t)d)[r].start_fixed());
       ret += range_info[d].multiplier_ *
              (coords[d] - min + range_info[d].cell_offsets_[r]);
     }
@@ -911,7 +939,7 @@ uint64_t DenseReader::get_dest_cell_offset_row_col(
     for (int32_t d = dim_num - 1; d >= 0; d--) {
       auto r = converted_range_coords[d];
       auto min = *static_cast<const DimType*>(
-          subarray.ranges_for_dim((uint32_t)d)[r].start());
+          subarray.ranges_for_dim((uint32_t)d)[r].start_fixed());
       ret += range_info[d].multiplier_ *
              (coords[d] - min + range_info[d].cell_offsets_[r]);
     }
@@ -935,9 +963,9 @@ Status DenseReader::copy_fixed_tiles(
     const std::vector<uint8_t>& qc_result) {
   // For easy reference
   const auto dim_num = array_schema_.dim_num();
-  const auto domain = array_schema_.domain();
+  const auto& domain{array_schema_.domain()};
   const auto cell_order = array_schema_.cell_order();
-  auto stride = array_schema_.domain()->stride<DimType>(layout_);
+  auto stride = array_schema_.domain().stride<DimType>(layout_);
   const auto& frag_domains = result_space_tile.frag_domains();
 
   if (stride == UINT64_MAX) {
@@ -1136,11 +1164,11 @@ Status DenseReader::copy_offset_tiles(
     const std::vector<RangeInfo>& range_info,
     const std::vector<uint8_t>& qc_result) {
   // For easy reference
-  const auto domain = array_schema_.domain();
+  const auto& domain{array_schema_.domain()};
   const auto dim_num = array_schema_.dim_num();
   const auto cell_order = array_schema_.cell_order();
-  const auto cell_num_per_tile = array_schema_.domain()->cell_num_per_tile();
-  auto stride = array_schema_.domain()->stride<DimType>(layout_);
+  const auto cell_num_per_tile = array_schema_.domain().cell_num_per_tile();
+  auto stride = array_schema_.domain().stride<DimType>(layout_);
   const auto& frag_domains = result_space_tile.frag_domains();
 
   if (stride == UINT64_MAX) {
@@ -1385,6 +1413,11 @@ Status DenseReader::add_extra_offset() {
   for (const auto& it : buffers_) {
     const auto& name = it.first;
     if (!array_schema_.var_size(name))
+      continue;
+
+    // Do not apply offset for empty results because we will
+    // write backwards and corrupt memory we don't own.
+    if (*it.second.buffer_size_ == 0)
       continue;
 
     auto buffer = static_cast<unsigned char*>(it.second.buffer_);
