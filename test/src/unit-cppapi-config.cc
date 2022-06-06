@@ -76,6 +76,10 @@ TEST_CASE("C++ API: Config Environment Variables", "[cppapi][config]") {
   setenv_local("TILEDB_FOO", "bar2");
   std::string result2 = config["foo"];
   CHECK(result2 == "bar2");
+  // in mingw build linkage order is apparently diff. from other environments and this
+  // test case runs before the capi-config tests cases, and if TILEDB_FOO is left
+  // in environment a test case there fails...
+  setenv_local("TILEDB_FOO", "");
 
   config["config.env_var_prefix"] = "TILEDB_TEST_";
   auto readInvalidKey2 = [&config]() { std::string result2 = config["foo"]; };
@@ -112,6 +116,11 @@ TEST_CASE(
   config[key] = value3;
   const std::string result3 = config[key];
   CHECK(result3 == value3);
+
+  // in mingw build linkage order is apparently diff. from other environments and this
+  // test case runs before the capi-config tests cases, and if TILEDB_SM_IO_CONCURRENCY_LEVEL
+  // is left in environment a test case there fails...
+  setenv_local("TILEDB_SM_IO_CONCURRENCY_LEVEL", "");
 }
 
 TEST_CASE("C++ API: Config Equality", "[cppapi][config]") {

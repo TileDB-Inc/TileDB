@@ -17,6 +17,12 @@ if (TILEDB_ASSERTIONS)
   )
 endif()
 
+target_compile_definitions(
+  test_assert
+  PRIVATE
+  -DTILEDB_PATH_TO_TRY_ASSERT="${CMAKE_CURRENT_BINARY_DIR}"
+)
+
 add_executable(
   try_assert
   try_assert.cc

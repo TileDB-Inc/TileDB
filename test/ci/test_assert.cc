@@ -44,7 +44,7 @@ constexpr int assert_exit_code = 6;
 #endif
 
 TEST_CASE("CI: Test assertions configuration", "[ci][assertions]") {
-  int retval = system("./try_assert");
+  int retval = system(TILEDB_PATH_TO_TRY_ASSERT "/try_assert");
 
 #ifdef TILEDB_ASSERTIONS
   REQUIRE(retval == assert_exit_code);

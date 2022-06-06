@@ -26,7 +26,7 @@
 # THE SOFTWARE.
 #
 
-if (WIN32)
+if (MSVC)
   # Disable MSVC warnings not present with gcc.
   #   C4204: non-constant aggregate initializer
   #   C4221: aggregate initializer with local variable

@@ -99,6 +99,10 @@ S3Fx::~S3Fx() {
     CHECK(is_empty);
   }
 
+  // Set back to zero to avoid causing problems for tests that may
+  // run after unit-s3 tests.
+  UnitTestConfig::instance().s3_fail_every_nth_upload_request.reset();
+      
   // Delete bucket
   CHECK(s3_.remove_bucket(S3_BUCKET).ok());
   s3_.disconnect();
