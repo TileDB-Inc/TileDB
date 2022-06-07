@@ -32,13 +32,12 @@ build() {
   fi
 
   export MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX="
-#    -DCMAKE_BUILD_TYPE=Release 
 
   ${MINGW_PREFIX}/bin/cmake.exe \
     -G"MSYS Makefiles" \
     -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
     -DBUILD_SHARED_LIBS=OFF \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_BUILD_TYPE=Release \
     -DTILEDB_STATIC=ON \
     -DTILEDB_S3=ON \
     -DCOMPILER_SUPPORTS_AVX2=OFF \
