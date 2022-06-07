@@ -286,12 +286,12 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
   };
 
   uint64_t start_range = 0;
-  uint64_t end_range = tile_extent - 1;
+  uint64_t end_range = *buffer_size - 1;
   while (input.read(reinterpret_cast<char*>(buffer.data()), *buffer_size)) {
     if (is_tiledb_uri) {
       tiledb_cloud_fix(start_range, end_range, buffer.size());
-      start_range += tile_extent;
-      end_range += tile_extent;
+      start_range += *buffer_size;
+      end_range += *buffer_size;
     } else {
       query.set_data_buffer(
           tiledb::sm::constants::filestore_attribute_name,
