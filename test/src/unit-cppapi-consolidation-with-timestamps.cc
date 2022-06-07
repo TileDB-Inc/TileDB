@@ -518,6 +518,10 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidation with timestamps, check directory contents of "
     "old array",
     "[cppapi][consolidation-with-timestamps][sparse-unordered-with-dups]") {
+  if constexpr (is_experimental_build) {
+    return;
+  }
+
   remove_sparse_array();
   create_sparse_array_v11();
   // Write first fragment.
