@@ -30,13 +30,14 @@
  * This file implements class FloatScalingFilter.
  */
 
-#include <cassert>
-
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/filter/filter_buffer.h"
-#include "tiledb/sm/filter/float_scaling_filter.h"
 #include "tiledb/sm/tile/tile.h"
+
+#include "tiledb/sm/filter/float_scaling_filter.h"
+
+#include <cassert>
 
 using namespace tiledb::common;
 
@@ -52,6 +53,12 @@ void FloatScalingFilter::dump(FILE* out) const {
       bit_width_,
       scale_,
       offset_);
+}
+
+Status FloatScalingFilter::serialize_impl(Buffer* buff) const {
+  Metadata buffer_struct = {scale_, offset_, bit_width_};
+  RETURN_NOT_OK(buff->write(&buffer_struct, sizeof(Metadata)));
+  return Status::Ok();
 }
 
 template <typename T, typename W>

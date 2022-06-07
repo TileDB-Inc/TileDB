@@ -167,6 +167,17 @@ tiledb::sm::FilterCreate::deserialize(
       return {Status::Ok(), make_shared<ChecksumMD5Filter>(HERE())};
     case FilterType::FILTER_CHECKSUM_SHA256:
       return {Status::Ok(), make_shared<ChecksumSHA256Filter>(HERE())};
+    case FilterType::FILTER_SCALE_FLOAT: {
+      FloatScalingFilter::Metadata metadata;
+      st = buff->read(&metadata, sizeof(FloatScalingFilter::Metadata));
+      if (!st.ok()) {
+        return {st, nullopt};
+      } else {
+        return {Status::Ok(),
+                make_shared<FloatScalingFilter>(
+                    HERE(), metadata.b, metadata.s, metadata.o)};
+      }
+    };
     default:
       assert(false);
       return {Status_FilterError("Deserialization error; unknown type"),

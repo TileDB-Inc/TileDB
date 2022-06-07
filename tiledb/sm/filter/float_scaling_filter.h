@@ -48,6 +48,12 @@ namespace sm {
  */
 class FloatScalingFilter : public Filter {
  public:
+  /** Struct used for serialization and deserialization from disk. */
+  struct Metadata {
+    double s;    // scale
+    double o;    // offset
+    uint64_t b;  // bit width
+  };
   /**
    * Constructor.
    */
@@ -64,6 +70,9 @@ class FloatScalingFilter : public Filter {
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
+
+  /** Serializes this filter's metadata to the given buffer. */
+  Status serialize_impl(Buffer* buff) const override;
 
   /**
    * Run forward.
