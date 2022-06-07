@@ -1047,7 +1047,7 @@ TEST_CASE(
   // Query the data with query condition a > 4.
   QueryCondition qc(ctx);
   int val1 = 4;
-  qc.init("a", &val1, sizeof(float), TILEDB_GT);
+  qc.init("a", &val1, sizeof(int), TILEDB_GT);
 
   std::vector<int> vals_read(10);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1058,7 +1058,7 @@ TEST_CASE(
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
 
   std::vector<int> c_vals_read = {-1, -1, 7, 7, 7, 7, -1, -1, -1, -1};
-  CHECK(0 == memcmp(vals_read.data(), c_vals_read.data(), 10));
+  CHECK(0 == memcmp(vals_read.data(), c_vals_read.data(), 10 * sizeof(int)));
 
   array_r.close();
 
