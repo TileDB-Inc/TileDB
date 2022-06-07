@@ -789,26 +789,25 @@ class FragmentMetadata {
 
   /**
    * Checks if the fragment overlaps partially (not fully) with a given
-   * array open - end time.
+   * array open - end time. Assumes overlapping fragment and array open - close
+   * times.
    *
    * @param array_start_timestamp Array open time
    * @param array_end_timestamp Array end time
    *
-   * @return True if there is partial overlap, false if there is full or no
-   * overlap
+   * @return True if there is partial overlap, false if there is full
    */
   inline bool partial_time_overlap(
       const uint64_t array_start_timestamp,
       const uint64_t array_end_timestamp) const {
     const auto fragment_timestamp_start = timestamp_range_.first;
     const auto fragment_timestamp_end = timestamp_range_.second;
-
-    auto no_overlap = (array_end_timestamp < fragment_timestamp_start) ||
-                      (array_start_timestamp > fragment_timestamp_end);
+    // This method assumes overlapping fragment and array times so checking that
+    // we don't have full overlap is sufficient for detecting partial overlap.
     auto full_fragment_overlap =
         (fragment_timestamp_start >= array_start_timestamp) &&
         (fragment_timestamp_end <= array_end_timestamp);
-    return !no_overlap && !full_fragment_overlap;
+    return !full_fragment_overlap;
   }
 
   /**

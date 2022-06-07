@@ -272,13 +272,13 @@ Status ReaderBase::add_partial_overlap_condition() {
 }
 
 bool ReaderBase::include_timestamps(const unsigned f) const {
-  auto has_ts = fragment_metadata_[f]->has_timestamps();
-  auto user_req_ts = user_requested_timestamps_;
+  auto frag_has_ts = fragment_metadata_[f]->has_timestamps();
   auto partial_overlap = fragment_metadata_[f]->partial_time_overlap(
       array_->timestamp_start(), array_->timestamp_end_opened_at());
   auto dups = array_schema_.allows_dups();
 
-  return has_ts && (user_req_ts || partial_overlap || !dups);
+  return frag_has_ts &&
+         (user_requested_timestamps_ || partial_overlap || !dups);
 }
 
 Status ReaderBase::load_tile_offsets(

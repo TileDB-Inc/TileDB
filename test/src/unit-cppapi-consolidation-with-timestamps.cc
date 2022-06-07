@@ -66,7 +66,7 @@ struct ConsolidationWithTimestampsFx {
       std::vector<uint64_t> dim2,
       uint64_t timestamp);
   void write_sparse_v11(uint64_t timestamp);
-  void consolidate_sparse();
+  void consolidate_sparse(bool vacuum = false);
   void check_timestamps_file(std::vector<uint64_t> expected);
   void read_sparse(
       std::vector<int>& a1,
@@ -214,9 +214,13 @@ void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
   array.close();
 }
 
-void ConsolidationWithTimestampsFx::consolidate_sparse() {
+void ConsolidationWithTimestampsFx::consolidate_sparse(bool vacuum) {
   auto config = ctx_.config();
   Array::consolidate(ctx_, SPARSE_ARRAY_NAME, &config);
+
+  if (vacuum) {
+    REQUIRE_NOTHROW(Array::vacuum(ctx_, SPARSE_ARRAY_NAME, &config));
+  }
 }
 
 void ConsolidationWithTimestampsFx::check_timestamps_file(
@@ -759,7 +763,8 @@ TEST_CASE_METHOD(
   write_sparse({8, 9, 10, 11}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
 
   // Consolidate.
-  consolidate_sparse();
+  bool vacuum = GENERATE(true, false);
+  consolidate_sparse(vacuum);
 
   tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
 
@@ -845,7 +850,8 @@ TEST_CASE_METHOD(
   write_sparse({8, 9, 10, 11}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
 
   // Consolidate.
-  consolidate_sparse();
+  bool vacuum = GENERATE(true, false);
+  consolidate_sparse(vacuum);
 
   // Test read for both refactored and legacy.
   bool legacy = GENERATE(true, false);
@@ -913,7 +919,8 @@ TEST_CASE_METHOD(
   write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3);
 
   // Consolidate.
-  consolidate_sparse();
+  bool vacuum = GENERATE(true, false);
+  consolidate_sparse(vacuum);
 
   // Write third fragment.
   write_sparse({8, 9, 10, 11}, {2, 1, 3, 4}, {1, 3, 1, 1}, 4);
@@ -921,7 +928,7 @@ TEST_CASE_METHOD(
   write_sparse({12, 13, 14, 15}, {4, 3, 3, 4}, {2, 3, 4, 4}, 6);
 
   // Consolidate.
-  consolidate_sparse();
+  consolidate_sparse(vacuum);
 
   tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
 
@@ -1013,15 +1020,216 @@ TEST_CASE_METHOD(
   write_sparse({8, 9, 10, 11}, {1, 2, 3, 4}, {3, 4, 1, 1}, 5);
 
   // Consolidate.
-  consolidate_sparse();
+  bool vacuum = GENERATE(true, false);
+  consolidate_sparse(vacuum);
 
   tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
-
   // Test read for both refactored and legacy.
   bool legacy = GENERATE(true, false);
   if (legacy) {
     set_legacy();
   }
+
+  std::string stats;
+  std::vector<int> a(16);
+  std::vector<uint64_t> dim1(16);
+  std::vector<uint64_t> dim2(16);
+  std::vector<uint64_t> timestamps(16);
+  auto timestamps_ptr =
+      GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
+
+  SECTION("Read in the middle") {
+    // Read between 2 and 4
+    reopen_sparse(a, dim1, dim2, stats, layout, 2, 4, timestamps_ptr);
+
+    // Expect to read only what was written at time 3
+    std::vector<int> c_a = {4, 5, 6, 7};
+    std::vector<uint64_t> c_dim1 = {2, 2, 3, 3};
+    std::vector<uint64_t> c_dim2 = {2, 3, 2, 3};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+    if (timestamps_ptr != nullptr) {
+      std::vector<uint64_t> exp_ts = {3, 3, 3, 3};
+      CHECK(!memcmp(
+          exp_ts.data(), timestamps.data(), exp_ts.size() * sizeof(uint64_t)));
+    }
+  }
+
+  SECTION("Read the last 2 writes only") {
+    reopen_sparse(a, dim1, dim2, stats, layout, 2, 6, timestamps_ptr);
+
+    // Expect to read what the last 2 writes wrote
+    std::vector<int> c_a = {4, 8, 5, 9, 10, 6, 11, 7};
+    std::vector<uint64_t> c_dim1 = {2, 1, 2, 2, 3, 3, 4, 3};
+    std::vector<uint64_t> c_dim2 = {2, 3, 3, 4, 1, 2, 1, 3};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+    if (timestamps_ptr != nullptr) {
+      std::vector<uint64_t> exp_ts = {3, 5, 3, 5, 5, 3, 5, 3};
+      CHECK(!memcmp(
+          exp_ts.data(), timestamps.data(), exp_ts.size() * sizeof(uint64_t)));
+    }
+  }
+
+  SECTION("Read the first 2 writes only") {
+    reopen_sparse(a, dim1, dim2, stats, layout, 0, 4, timestamps_ptr);
+
+    // Expect to read what the first 2 writes wrote
+    std::vector<int> c_a_opt1 = {0, 1, 4, 2, 5, 3, 6, 7};
+    std::vector<int> c_a_opt2 = {0, 1, 4, 2, 3, 5, 6, 7};
+    std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 2, 3, 3};
+    std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 3, 2, 3};
+    CHECK(
+        (!memcmp(c_a_opt1.data(), a.data(), c_a_opt1.size() * sizeof(int)) ||
+         !memcmp(c_a_opt2.data(), a.data(), c_a_opt2.size() * sizeof(int))));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+    if (timestamps_ptr != nullptr) {
+      std::vector<uint64_t> exp_ts_opt1 = {1, 1, 3, 1, 3, 1, 3, 3};
+      std::vector<uint64_t> exp_ts_opt2 = {1, 1, 3, 1, 1, 3, 3, 3};
+      CHECK(
+          (!memcmp(
+               exp_ts_opt1.data(),
+               timestamps.data(),
+               exp_ts_opt1.size() * sizeof(uint64_t)) ||
+           !memcmp(
+               exp_ts_opt2.data(),
+               timestamps.data(),
+               exp_ts_opt2.size() * sizeof(uint64_t))));
+    }
+  }
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test read timestamps of unconsolidated fragments, unordered "
+    "reader",
+    "[cppapi][consolidation-with-timestamps][read-timestamps][unordered-"
+    "reader]") {
+  remove_sparse_array();
+  // enable duplicates
+  create_sparse_array(true);
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+  // Write second fragment.
+  write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
+  // Write third  fragment.
+  write_sparse({8, 9, 10, 11}, {1, 2, 3, 4}, {3, 4, 1, 1}, 5);
+
+  tiledb_layout_t layout = TILEDB_UNORDERED;
+
+  /* FIXME: Testing for legacy is aborting
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  if (legacy) {
+    set_legacy();
+  } */
+
+  std::string stats;
+  std::vector<int> a(16);
+  std::vector<uint64_t> dim1(16);
+  std::vector<uint64_t> dim2(16);
+  std::vector<uint64_t> timestamps(16);
+  auto timestamps_ptr =
+      GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
+
+  SECTION("Read in the middle") {
+    // Read between 2 and 4
+    reopen_sparse(a, dim1, dim2, stats, layout, 2, 4, timestamps_ptr);
+
+    // Expect to read only what was written at time 3
+    std::vector<int> c_a = {4, 5, 6, 7};
+    std::vector<uint64_t> c_dim1 = {2, 2, 3, 3};
+    std::vector<uint64_t> c_dim2 = {2, 3, 2, 3};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+    if (timestamps_ptr != nullptr) {
+      std::vector<uint64_t> exp_ts = {3, 3, 3, 3};
+      CHECK(!memcmp(
+          exp_ts.data(), timestamps.data(), exp_ts.size() * sizeof(uint64_t)));
+    }
+  }
+
+  SECTION("Read the last 2 writes only") {
+    reopen_sparse(a, dim1, dim2, stats, layout, 2, 6, timestamps_ptr);
+
+    // Expect to read what the last 2 writes wrote
+    std::vector<int> c_a = {4, 5, 6, 7, 8, 9, 10, 11};
+    std::vector<uint64_t> c_dim1 = {2, 2, 3, 3, 1, 2, 3, 4};
+    std::vector<uint64_t> c_dim2 = {2, 3, 2, 3, 3, 4, 1, 1};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+    if (timestamps_ptr != nullptr) {
+      std::vector<uint64_t> exp_ts = {3, 3, 3, 3, 5, 5, 5, 5};
+      CHECK(!memcmp(
+          exp_ts.data(), timestamps.data(), exp_ts.size() * sizeof(uint64_t)));
+    }
+  }
+
+  SECTION("Read the first 2 writes only") {
+    reopen_sparse(a, dim1, dim2, stats, layout, 0, 4, timestamps_ptr);
+
+    // Expect to read what the first 2 writes wrote
+    std::vector<int> c_a = {0, 1, 2, 3, 4, 5, 6, 7};
+    std::vector<uint64_t> c_dim1 = {1, 1, 1, 2, 2, 2, 3, 3};
+    std::vector<uint64_t> c_dim2 = {1, 2, 4, 3, 2, 3, 2, 3};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+    if (timestamps_ptr != nullptr) {
+      std::vector<uint64_t> exp_ts = {1, 1, 1, 1, 3, 3, 3, 3};
+      CHECK(!memcmp(
+          exp_ts.data(), timestamps.data(), exp_ts.size() * sizeof(uint64_t)));
+    }
+  }
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test read timestamps of unconsolidated fragments, global order "
+    "reader",
+    "[cppapi][consolidation-with-timestamps][read-timestamps][global-order-"
+    "reader]") {
+  remove_sparse_array();
+  // enable duplicates
+  create_sparse_array(true);
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+  // Write second fragment.
+  write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
+  // Write third  fragment.
+  write_sparse({8, 9, 10, 11}, {1, 2, 3, 4}, {3, 4, 1, 1}, 5);
+
+  tiledb_layout_t layout = TILEDB_GLOBAL_ORDER;
+
+  /* FIXME: Testing for legacy is aborting
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  if (legacy) {
+    set_legacy();
+  } */
 
   std::string stats;
   std::vector<int> a(16);
