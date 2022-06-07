@@ -6737,6 +6737,10 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse, commits, mixed versions",
     "[capi][consolidation][commits][mixed-versions]") {
+  if constexpr (is_experimental_build) {
+    return;
+  }
+
   remove_sparse_array();
 
   // Get the v11 sparse array.
