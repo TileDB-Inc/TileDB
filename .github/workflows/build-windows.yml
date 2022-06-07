@@ -282,7 +282,7 @@ jobs:
           }
 
           if ($env:TILEDB_WEBP -eq "ON") {
-            $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\tiledb\sm\compressors\Release\unit_link_webp.exe"
+            $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\tiledb\sm\compressors\$CMakeBuildType\unit_link_webp.exe"
             Write-Host "cmds: '$cmds'"
             Invoke-Expression $cmds
 
