@@ -1013,7 +1013,6 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   Attribute attr = Attribute::create<int>(ctx, "a");
-
   int fill_value = -1;
   attr.set_fill_value(&fill_value, sizeof(int));
   schema.add_attribute(attr);
