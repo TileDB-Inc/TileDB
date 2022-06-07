@@ -3567,20 +3567,10 @@ int32_t tiledb_subarray_alloc(
         ctx->ctx_->storage_manager());
     (*subarray)->is_allocated_ = true;
   } catch (...) {
-    auto st = Status_Error("Failed to construct TileDB subarray object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  if ((*subarray)->subarray_ == nullptr) {
     delete *subarray;
-    auto st = Status_Error("Failed to allocate TileDB subarray object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
+    *subarray = nullptr;
   }
 
-  // Success
   return TILEDB_OK;
 }
 
