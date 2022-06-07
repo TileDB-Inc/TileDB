@@ -203,14 +203,14 @@ void ASTNodeExpr::get_field_names(
 
 bool ASTNodeExpr::is_backwards_compatible() const {
   if (combination_op_ != QueryConditionCombinationOp::AND) {
-    return true;
+    return false;
   }
   for (const auto& child : nodes_) {
     if (child->is_expr()) {
-      return true;
+      return false;
     }
   }
-  return false;
+  return true;
 }
 
 Status ASTNodeExpr::check_node_validity(const ArraySchema& array_schema) const {

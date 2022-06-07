@@ -30,6 +30,7 @@
  * Tests the `ASTNode`, `ASTNodeVal` and `ASTNodeExpr` classes.
  */
 
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -60,6 +61,26 @@ tdb_unique_ptr<ASTNode> test_value_node(
   return node_val;
 }
 
+tdb_unique_ptr<ASTNode> test_string_value_node(
+    std::string field_name,
+    char* val,
+    QueryConditionOp op,
+    const std::string& expected_result) {
+  if (val == nullptr) {
+    throw std::runtime_error("test_string_value_node: val cannot be null.");
+  }
+  // Test validity of construction of value node.
+  auto node_val = tdb_unique_ptr<ASTNode>(
+      tdb_new(ASTNodeVal, field_name, val, strlen(val), op));
+  CHECK(ast_node_to_str(node_val) == expected_result);
+
+  // Test ASTNode::clone on the constructed node.
+  auto node_val_clone = node_val->clone();
+  CHECK(ast_node_to_str(node_val_clone) == expected_result);
+
+  return node_val;
+}
+
 tdb_unique_ptr<ASTNode> test_expression_node(
     const tdb_unique_ptr<ASTNode>& lhs,
     const tdb_unique_ptr<ASTNode>& rhs,
@@ -76,10 +97,21 @@ tdb_unique_ptr<ASTNode> test_expression_node(
   return combined_node;
 }
 
-TEST_CASE("ASTNode Constructors, basic", "[QueryCondition][ast][constructor") {
+TEST_CASE("ASTNode Constructors, basic", "[QueryCondition][ast][constructor]") {
   int val = 0x12345678;
   auto node_val =
       test_value_node("c", &val, QueryConditionOp::LE, "c LE 78 56 34 12");
+}
+
+TEST_CASE(
+    "ASTNode Constructors, string", "[QueryCondition][ast][constructor]") {
+  // Test validity of construction of value node.
+  char value[] = "bar";
+  auto node_val = test_string_value_node(
+      "foo",
+      static_cast<char*>(value),
+      QueryConditionOp::LE,
+      "foo LE 62 61 72");
 }
 
 TEST_CASE(
@@ -122,6 +154,48 @@ TEST_CASE(
       node_val1,
       QueryConditionCombinationOp::OR,
       "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
+}
+
+TEST_CASE(
+    "ASTNode Constructors, basic AND combine, strings",
+    "[QueryCondition][ast][constructor]") {
+  // Testing (x < "eve").
+  char e[] = "eve";
+  auto node_val =
+      test_string_value_node("x", e, QueryConditionOp::LT, "x LT 65 76 65");
+
+  // Testing (x > "bob").
+  char b[] = "bob";
+  auto node_val1 =
+      test_string_value_node("x", b, QueryConditionOp::GT, "x GT 62 6f 62");
+
+  // Testing (x < "eve" AND x > "bob").
+  auto combined_node = test_expression_node(
+      node_val,
+      node_val1,
+      QueryConditionCombinationOp::AND,
+      "(x LT 65 76 65 AND x GT 62 6f 62)");
+}
+
+TEST_CASE(
+    "ASTNode Constructors, basic OR combine, strings",
+    "[QueryCondition][ast][constructor]") {
+  // Testing (x < "eve").
+  char e[] = "eve";
+  auto node_val =
+      test_string_value_node("x", e, QueryConditionOp::LT, "x LT 65 76 65");
+
+  // Testing (x > "bob").
+  char b[] = "bob";
+  auto node_val1 =
+      test_string_value_node("x", b, QueryConditionOp::GT, "x GT 62 6f 62");
+
+  // Testing (x < "eve" OR x > "bob").
+  auto combined_node = test_expression_node(
+      node_val,
+      node_val1,
+      QueryConditionCombinationOp::OR,
+      "(x LT 65 76 65 OR x GT 62 6f 62)");
 }
 
 TEST_CASE(
