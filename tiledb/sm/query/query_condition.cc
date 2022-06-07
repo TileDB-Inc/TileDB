@@ -920,27 +920,22 @@ void QueryCondition::apply_ast_node_dense(
       // Check the previous cell here, which breaks vectorization but as this
       // is string data requiring a strcmp which cannot be vectorized, this is
       // ok.
-      if (result_buffer[c] != 0) {
-        const uint64_t buffer_offset = buffer_offsets[start + c * stride];
-        const uint64_t next_cell_offset =
-            (start + c * stride + 1 < buffer_offsets_el) ?
-                buffer_offsets[start + c * stride + 1] :
-                buffer_size;
-        const uint64_t cell_size = next_cell_offset - buffer_offset;
+      const uint64_t buffer_offset = buffer_offsets[start + c * stride];
+      const uint64_t next_cell_offset =
+          (start + c * stride + 1 < buffer_offsets_el) ?
+              buffer_offsets[start + c * stride + 1] :
+              buffer_size;
+      const uint64_t cell_size = next_cell_offset - buffer_offset;
 
-        // Get the cell value.
-        const void* const cell_value = buffer + buffer_offset;
+      // Get the cell value.
+      const void* const cell_value = buffer + buffer_offset;
 
-        // Compare the cell value against the value in the value node.
-        const bool cmp = BinaryCmp<T, Op>::cmp(
-            cell_value,
-            cell_size,
-            condition_value_content,
-            condition_value_size);
+      // Compare the cell value against the value in the value node.
+      const bool cmp = BinaryCmp<T, Op>::cmp(
+          cell_value, cell_size, condition_value_content, condition_value_size);
 
-        // Set the value.
-        result_buffer[c] = combination_op(result_buffer[c], (uint8_t)cmp);
-      }
+      // Set the value.
+      result_buffer[c] = combination_op(result_buffer[c], (uint8_t)cmp);
     }
   } else {
     // Get the fixed size data buffers.
@@ -1582,25 +1577,20 @@ void QueryCondition::apply_ast_node_sparse(
       // Check the previous cell here, which breaks vectorization but as this
       // is string data requiring a strcmp which cannot be vectorized, this is
       // ok.
-      if (result_bitmap[c] != 0) {
-        const uint64_t buffer_offset = buffer_offsets[c];
-        const uint64_t next_cell_offset =
-            (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
-        const uint64_t cell_size = next_cell_offset - buffer_offset;
+      const uint64_t buffer_offset = buffer_offsets[c];
+      const uint64_t next_cell_offset =
+          (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
+      const uint64_t cell_size = next_cell_offset - buffer_offset;
 
-        // Get the cell value.
-        const void* const cell_value = buffer + buffer_offset;
+      // Get the cell value.
+      const void* const cell_value = buffer + buffer_offset;
 
-        // Compare the cell value against the value in the value node.
-        const bool cmp = BinaryCmp<T, Op>::cmp(
-            cell_value,
-            cell_size,
-            condition_value_content,
-            condition_value_size);
+      // Compare the cell value against the value in the value node.
+      const bool cmp = BinaryCmp<T, Op>::cmp(
+          cell_value, cell_size, condition_value_content, condition_value_size);
 
-        // Set the value.
-        result_bitmap[c] = combination_op(result_bitmap[c], cmp);
-      }
+      // Set the value.
+      result_bitmap[c] = combination_op(result_bitmap[c], cmp);
     }
   } else {
     // Get the fixed size data buffers.

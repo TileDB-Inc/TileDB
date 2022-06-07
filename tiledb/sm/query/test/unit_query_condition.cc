@@ -157,7 +157,8 @@ TEST_CASE(
   REQUIRE(query_condition2.field_names().count(field_name) == 1);
 }
 
-TEST_CASE("QueryCondition: Test char", "[QueryCondition][char_value]") {
+TEST_CASE(
+    "QueryCondition: Test char", "[QueryCondition][char_value][ast][api]") {
   std::string field_name = "foo";
   char value[] = "bar";
 
@@ -172,6 +173,9 @@ TEST_CASE("QueryCondition: Test char", "[QueryCondition][char_value]") {
   REQUIRE(!query_condition.empty());
   REQUIRE(!query_condition.field_names().empty());
   REQUIRE(query_condition.field_names().count(field_name) == 1);
+  REQUIRE(
+      tiledb::test::ast_node_to_str(query_condition.ast()) ==
+      "foo LT 62 61 72");
 }
 
 TEST_CASE(
@@ -193,7 +197,6 @@ TEST_CASE(
 TEST_CASE(
     "Query Condition: Test AST construction, basic AND combine",
     "[QueryCondition][ast][api]") {
-  // AND combine.
   std::string field_name = "x";
   int val = 0xabcdef12;
   QueryCondition query_condition;
@@ -270,6 +273,58 @@ TEST_CASE(
   CHECK(
       tiledb::test::ast_node_to_str(combined_or.ast()) ==
       "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
+}
+
+TEST_CASE(
+    "Query Condition: Test AST construction, basic AND combine, string",
+    "[QueryCondition][ast][api]") {
+  char e[] = "eve";
+  QueryCondition query_condition;
+  REQUIRE(query_condition.init("x", &e, strlen(e), QueryConditionOp::LT).ok());
+  CHECK(
+      tiledb::test::ast_node_to_str(query_condition.ast()) == "x LT 65 76 65");
+
+  char b[] = "bob";
+  QueryCondition query_condition1;
+  REQUIRE(query_condition1.init("x", &b, strlen(b), QueryConditionOp::GT).ok());
+  CHECK(
+      tiledb::test::ast_node_to_str(query_condition1.ast()) == "x GT 62 6f 62");
+
+  QueryCondition combined_and;
+  REQUIRE(
+      query_condition
+          .combine(
+              query_condition1, QueryConditionCombinationOp::AND, &combined_and)
+          .ok());
+  CHECK(
+      tiledb::test::ast_node_to_str(combined_and.ast()) ==
+      "(x LT 65 76 65 AND x GT 62 6f 62)");
+}
+
+TEST_CASE(
+    "Query Condition: Test AST construction, basic OR combine, string",
+    "[QueryCondition][ast][api]") {
+  char e[] = "eve";
+  QueryCondition query_condition;
+  REQUIRE(query_condition.init("x", &e, strlen(e), QueryConditionOp::LT).ok());
+  CHECK(
+      tiledb::test::ast_node_to_str(query_condition.ast()) == "x LT 65 76 65");
+
+  char b[] = "bob";
+  QueryCondition query_condition1;
+  REQUIRE(query_condition1.init("x", &b, strlen(b), QueryConditionOp::GT).ok());
+  CHECK(
+      tiledb::test::ast_node_to_str(query_condition1.ast()) == "x GT 62 6f 62");
+
+  QueryCondition combined_or;
+  REQUIRE(
+      query_condition
+          .combine(
+              query_condition1, QueryConditionCombinationOp::OR, &combined_or)
+          .ok());
+  CHECK(
+      tiledb::test::ast_node_to_str(combined_or.ast()) ==
+      "(x LT 65 76 65 OR x GT 62 6f 62)");
 }
 
 TEST_CASE(
@@ -3691,6 +3746,346 @@ TEST_CASE(
 
   std::vector<TestParams> tp_vec;
   populate_test_params_vector(field_name, &result_tile, tp_vec);
+
+  SECTION("Validate apply.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply(elem, cells, array_schema, result_tile);
+    }
+  }
+
+  SECTION("Validate apply_sparse.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply_sparse(elem, cells, array_schema, result_tile);
+    }
+  }
+
+  SECTION("Validate apply_dense.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply_dense(elem, cells, array_schema, result_tile);
+    }
+  }
+}
+
+/**
+ * @brief Function that takes a selection of QueryConditions, with their
+ * expected results, and combines them together. This function is
+ * exclusively for string query conditions.
+ *
+ * @param field_name The field name of the query condition.
+ * @param result_tile The result tile of the array we're running the query on.
+ * @param tp_vec The vector that stores the test parameter structs.
+ */
+void populate_string_test_params_vector(
+    const std::string& field_name,
+    ResultTile* result_tile,
+    std::vector<TestParams>& tp_vec) {
+  // Construct basic query condition "foo < "eve".
+  {
+    char e[] = "eve";
+    QueryCondition qc;
+    REQUIRE(
+        qc.init(std::string(field_name), &e, strlen(e), QueryConditionOp::LT)
+            .ok());
+    uint64_t cell_count = 5;
+    std::vector<uint8_t> expected_bitmap = {1, 1, 1, 1, 1, 0, 0, 0, 0, 0};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 5}};
+    TestParams tp(
+        std::move(qc),
+        cell_count,
+        std::move(expected_bitmap),
+        std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+  // Construct basic AND query condition `foo >= "bob" AND foo <= "eve"`.
+  {
+    char b[] = "bob";
+    char e[] = "eve";
+    QueryCondition qc1;
+    REQUIRE(
+        qc1.init(std::string(field_name), &e, strlen(e), QueryConditionOp::LE)
+            .ok());
+
+    QueryCondition qc2;
+    REQUIRE(
+        qc2.init(std::string(field_name), &b, strlen(b), QueryConditionOp::GE)
+            .ok());
+
+    QueryCondition qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::AND, &qc).ok());
+    uint64_t cell_count = 4;
+    std::vector<uint8_t> expected_bitmap = {0, 1, 1, 1, 1, 0, 0, 0, 0, 0};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 4}};
+    TestParams tp(
+        std::move(qc),
+        cell_count,
+        std::move(expected_bitmap),
+        std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct basic OR query condition `foo >= "eve" OR foo <= "bob"`.
+  {
+    char b[] = "bob";
+    char e[] = "eve";
+    QueryCondition qc1;
+    REQUIRE(
+        qc1.init(std::string(field_name), &e, strlen(e), QueryConditionOp::GE)
+            .ok());
+
+    QueryCondition qc2;
+    REQUIRE(
+        qc2.init(std::string(field_name), &b, strlen(b), QueryConditionOp::LE)
+            .ok());
+
+    QueryCondition qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
+
+    uint64_t cell_count = 7;
+    std::vector<uint8_t> expected_bitmap = {1, 1, 0, 0, 0, 1, 1, 1, 1, 1};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 2},
+                                                  {result_tile, 5, 5}};
+    TestParams tp(
+        std::move(qc),
+        cell_count,
+        std::move(expected_bitmap),
+        std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct query condition `(foo > "ask" AND foo <= "hi") OR (foo > "bye"
+  // AND foo < "just")`. (OR of 2 AND ASTs)
+  {
+    char a[] = "ask";
+    char b[] = "bye";
+    char h[] = "hi";
+    char j[] = "just";
+    QueryCondition qc1;
+    REQUIRE(
+        qc1.init(std::string(field_name), &a, strlen(a), QueryConditionOp::GT)
+            .ok());
+
+    QueryCondition qc2;
+    REQUIRE(
+        qc2.init(std::string(field_name), &h, strlen(h), QueryConditionOp::LE)
+            .ok());
+
+    QueryCondition qc3;
+    REQUIRE(
+        qc3.init(std::string(field_name), &b, strlen(b), QueryConditionOp::GT)
+            .ok());
+
+    QueryCondition qc4;
+    REQUIRE(
+        qc4.init(std::string(field_name), &j, strlen(j), QueryConditionOp::LT)
+            .ok());
+
+    QueryCondition qc5, qc6, qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::AND, &qc5).ok());
+    REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::AND, &qc6).ok());
+    REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::OR, &qc).ok());
+
+    uint64_t cell_count = 9;
+    std::vector<uint8_t> expected_bitmap = {0, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 9}};
+    TestParams tp(
+        std::move(qc),
+        cell_count,
+        std::move(expected_bitmap),
+        std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct query condition `(foo = "craig" OR foo == "heidi") AND (foo >
+  // "eve" OR foo < "bye")`. (AND of 2 OR ASTs)
+  {
+    char b[] = "bye";
+    char c[] = "craig";
+    char e[] = "eve";
+    char h[] = "heidi";
+    QueryCondition qc1;
+    REQUIRE(
+        qc1.init(std::string(field_name), &c, strlen(c), QueryConditionOp::EQ)
+            .ok());
+
+    QueryCondition qc2;
+    REQUIRE(
+        qc2.init(std::string(field_name), &h, strlen(h), QueryConditionOp::EQ)
+            .ok());
+
+    QueryCondition qc3;
+    REQUIRE(
+        qc3.init(std::string(field_name), &e, strlen(e), QueryConditionOp::GT)
+            .ok());
+
+    QueryCondition qc4;
+    REQUIRE(
+        qc4.init(std::string(field_name), &b, strlen(b), QueryConditionOp::LT)
+            .ok());
+
+    QueryCondition qc5, qc6, qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc5).ok());
+    REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::OR, &qc6).ok());
+    REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::AND, &qc).ok());
+
+    uint64_t cell_count = 1;
+    std::vector<uint8_t> expected_bitmap = {0, 0, 0, 0, 0, 0, 0, 1, 0, 0};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 7, 1}};
+    TestParams tp(
+        std::move(qc),
+        cell_count,
+        std::move(expected_bitmap),
+        std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  {
+    std::vector<std::string> vec = {"alice", "craig", "erin", "grace", "ivan"};
+    // Construct query condition `foo != "alice" && foo != "craig" && foo !=
+    // "erin" && foo != "grace" && foo != "ivan"`. (Adding simple clauses to AND
+    // tree)
+    {
+      std::vector<QueryCondition> val_nodes;
+      for (uint64_t i = 0; i < 5; ++i) {
+        QueryCondition temp;
+        REQUIRE(temp.init(
+                        std::string(field_name),
+                        vec[i].c_str(),
+                        vec[i].size(),
+                        QueryConditionOp::NE)
+                    .ok());
+        val_nodes.push_back(temp);
+      }
+
+      QueryCondition qc1, qc2, qc3, qc;
+      REQUIRE(val_nodes[0]
+                  .combine(val_nodes[1], QueryConditionCombinationOp::AND, &qc1)
+                  .ok());
+      REQUIRE(qc1.combine(val_nodes[2], QueryConditionCombinationOp::AND, &qc2)
+                  .ok());
+      REQUIRE(qc2.combine(val_nodes[3], QueryConditionCombinationOp::AND, &qc3)
+                  .ok());
+      REQUIRE(qc3.combine(val_nodes[4], QueryConditionCombinationOp::AND, &qc)
+                  .ok());
+
+      uint64_t cell_count = 5;
+      std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
+      std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
+                                                    {result_tile, 3, 1},
+                                                    {result_tile, 5, 1},
+                                                    {result_tile, 7, 1},
+                                                    {result_tile, 9, 1}};
+      TestParams tp(
+          std::move(qc),
+          cell_count,
+          std::move(expected_bitmap),
+          std::move(expected_slabs));
+      tp_vec.push_back(tp);
+    }
+
+    // Construct query condition `foo = "alice" || foo = "craig" || foo = "erin"
+    // || foo = "grace" || foo = "ivan"`. (Adding simple clauses to OR tree)
+    {
+      std::vector<QueryCondition> val_nodes;
+      for (uint64_t i = 0; i < 5; ++i) {
+        QueryCondition temp;
+        REQUIRE(temp.init(
+                        std::string(field_name),
+                        vec[i].c_str(),
+                        vec[i].size(),
+                        QueryConditionOp::EQ)
+                    .ok());
+        val_nodes.push_back(temp);
+      }
+
+      QueryCondition qc1, qc2, qc3, qc;
+      REQUIRE(val_nodes[0]
+                  .combine(val_nodes[1], QueryConditionCombinationOp::OR, &qc1)
+                  .ok());
+      REQUIRE(qc1.combine(val_nodes[2], QueryConditionCombinationOp::OR, &qc2)
+                  .ok());
+      REQUIRE(qc2.combine(val_nodes[3], QueryConditionCombinationOp::OR, &qc3)
+                  .ok());
+      REQUIRE(
+          qc3.combine(val_nodes[4], QueryConditionCombinationOp::OR, &qc).ok());
+
+      uint64_t cell_count = 5;
+      std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
+      std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
+                                                    {result_tile, 2, 1},
+                                                    {result_tile, 4, 1},
+                                                    {result_tile, 6, 1},
+                                                    {result_tile, 8, 1}};
+      TestParams tp(
+          std::move(qc),
+          cell_count,
+          std::move(expected_bitmap),
+          std::move(expected_slabs));
+      tp_vec.push_back(tp);
+    }
+  }
+}
+
+TEST_CASE(
+    "QueryCondition: Test combinations, string",
+    "[QueryCondition][combinations][string]") {
+  // Setup.
+  const std::string field_name = "foo";
+  const uint64_t cells = 10;
+  const Datatype type = Datatype::STRING_ASCII;
+
+  // Initialize the array schema.
+  ArraySchema array_schema;
+  Attribute attr(field_name, type);
+  REQUIRE(attr.set_nullable(false).ok());
+  REQUIRE(attr.set_cell_val_num(constants::var_num).ok());
+  REQUIRE(attr.set_fill_value("ac", 2 * sizeof(char)).ok());
+
+  REQUIRE(
+      array_schema.add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
+  Domain domain;
+  Dimension dim("dim1", Datatype::UINT32);
+  uint32_t bounds[2] = {1, cells};
+  Range range(bounds, 2 * sizeof(uint32_t));
+  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
+  REQUIRE(array_schema.set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+
+  // Initialize the result tile.
+  ResultTile result_tile(0, 0, array_schema);
+  result_tile.init_attr_tile(field_name);
+
+  ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
+  Tile* const tile = &std::get<1>(*tile_tuple);
+
+  std::string data = "alicebobcraigdaveerinfrankgraceheidiivanjudy";
+  std::vector<uint64_t> offsets = {0, 5, 8, 13, 17, 21, 26, 31, 36, 40};
+
+  REQUIRE(tile->init_unfiltered(
+                  constants::format_version,
+                  type,
+                  data.size(),
+                  constants::var_num,
+                  0)
+              .ok());
+
+  REQUIRE(tile->write(data.c_str(), 0, data.size()).ok());
+
+  // Write the tile offsets.
+  Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+  REQUIRE(tile_offsets
+              ->init_unfiltered(
+                  constants::format_version,
+                  constants::cell_var_offset_type,
+                  10 * constants::cell_var_offset_size,
+                  constants::cell_var_offset_size,
+                  0)
+              .ok());
+
+  REQUIRE(
+      tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+
+  std::vector<TestParams> tp_vec;
+  populate_string_test_params_vector(field_name, &result_tile, tp_vec);
 
   SECTION("Validate apply.") {
     for (auto& elem : tp_vec) {
