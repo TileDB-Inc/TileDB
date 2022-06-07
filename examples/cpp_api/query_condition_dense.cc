@@ -45,7 +45,7 @@ int32_t num_elems = 10;
 
 // Fill values.
 int c_fill_value = -1;
-int d_fill_value = 0.0;
+float d_fill_value = 0.0;
 
 /**
  * @brief Function to print the values of all the attributes for one
