@@ -81,7 +81,6 @@ if (NOT BZIP2_FOUND)
         PREFIX "externals"
         URL "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz"
         URL_HASH SHA1=bf7badf7e248e0ecf465d33c2f5aeec774209227
-        TIMEOUT 120
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         UPDATE_COMMAND ""
         PATCH_COMMAND
