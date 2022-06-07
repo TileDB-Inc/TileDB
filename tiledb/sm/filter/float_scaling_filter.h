@@ -106,6 +106,46 @@ class FloatScalingFilter : public Filter {
 
   /** Returns a new clone of this filter. */
   FloatScalingFilter* clone_impl() const override;
+
+  /**
+   * Run forward, templated on the size of the input type.
+   */
+  template <typename T>
+  Status run_forward(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
+
+  /**
+   * Run forward, templated on the size of the input type and bit width.
+   */
+  template <typename T, typename W>
+  Status run_forward(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
+
+  /**
+   * Run reverse, templated on the size of the input type.
+   */
+  template <typename T>
+  Status run_reverse(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
+
+  /**
+   * Run reverse, templated on the size of the input type and bit width.
+   */
+  template <typename T, typename W>
+  Status run_reverse(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
 };
 
 }  // namespace sm
