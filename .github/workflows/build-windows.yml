@@ -314,7 +314,7 @@ jobs:
               write-host "Executing $exepath"
               & $exepath
               $status = $?
-              if ($status -ne 0) {
+              if (-not $status) {
                 Write-Host "Error $status running $exepath"
                 Write-Host "::set-output name=TILEDB_CI_SUCCESS::0"
                 $host.SetShouldExit(1)
@@ -347,7 +347,7 @@ jobs:
               write-host "Executing $exepath"
               & $exepath
               $status = $?
-              if ($status -ne 0) {
+              if (-not $status) {
                 Write-Host "Error $status running $exepath"
                 Write-Host "::set-output name=TILEDB_CI_SUCCESS::0"
                 $host.SetShouldExit(1)
