@@ -292,7 +292,7 @@ Status FloatScalingFilter::get_option_impl(
 
 /** Returns a new clone of this filter. */
 FloatScalingFilter* FloatScalingFilter::clone_impl() const {
-  return new FloatScalingFilter(bit_width_, scale_, offset_);
+  return tdb_new(FloatScalingFilter, bit_width_, scale_, offset_);
 }
 
 }  // namespace sm
