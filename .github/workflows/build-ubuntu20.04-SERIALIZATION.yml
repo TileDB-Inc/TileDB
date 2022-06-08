@@ -1,4 +1,4 @@
-name: build-ubuntu-20.04-SERIALIZATION
+name: build-ubuntu-2X.04-SERIALIZATION
 on:
   push:
     branches:
@@ -31,11 +31,17 @@ jobs:
     runs-on: ${{matrix.os}}
     strategy:
       matrix:
-        os:
-          - ubuntu-20.04
+        os: [ubuntu-20.04, ubuntu-22.04]
+        include:
+          - os: ubuntu-22.04
+            cxx: g++-11
+            cc: gcc-11
+    env:
+      CXX: ${{ matrix.cxx }}
+      CC: ${{ matrix.cc }}
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 120
-    name: Build - ${{matrix.os}} - SERIALIZATION
+    name: Build - ${{matrix.os}} - SERIALIZATION ${{ matrix.cxx }}
     steps:
       - name: 'prep ubuntu for core dumps'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
