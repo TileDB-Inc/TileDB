@@ -739,7 +739,7 @@ Status condition_to_capnp(
 
   // For backwards compatability, we should also set the clauses and combination
   // ops vectors when the current query condition.
-  if (!ast->is_backwards_compatible()) {
+  if (ast->is_backwards_compatible()) {
     if (ast->is_expr()) {
       // We assume that the serialized values of the clauses are validated
       // properly.
