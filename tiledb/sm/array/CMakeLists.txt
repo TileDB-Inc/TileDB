@@ -1,9 +1,9 @@
 #
-# tiledb/sm/query/CMakeLists.txt
+# tiledb/sm/array/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021-2022 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,30 +26,33 @@
 
 include(common NO_POLICY_SCOPE)
 
+#
+# `array` object library
+#
+add_library(array OBJECT array_directory.cc)
+target_link_libraries(array PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(array PUBLIC vfs $<TARGET_OBJECTS:vfs>)
+target_link_libraries(array PUBLIC uri_format $<TARGET_OBJECTS:uri_format>)
+target_link_libraries(array PUBLIC uuid $<TARGET_OBJECTS:uuid>)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_array EXCLUDE_FROM_ALL)
+target_link_libraries(compile_array PRIVATE config)
+target_sources(compile_array PRIVATE test/compile_array_directory_main.cc)
+
 if (TILEDB_TESTS)
-    add_subdirectory(ast)
-    add_executable(unit_query EXCLUDE_FROM_ALL)
+    add_executable(unit_array EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_array PRIVATE array)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_array PUBLIC Catch2::Catch2)
 
     # Sources for tests
-    target_sources(unit_query PUBLIC test/main.cc test/unit_validity_vector.cc test/unit_query_condition.cc)
-
-    # The dependencies can't yet be factored into separate object libraries
-    target_link_libraries(unit_query PUBLIC TILEDB_CORE_OBJECTS)
-    target_link_libraries(unit_query PUBLIC TILEDB_CORE_OBJECTS_ILIB)
-
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_query PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_query PUBLIC ast_test_support_lib)
-
-    # We want tests to continue as normal even as the API is changing,
-    # so don't warn for deprecations, since they'll be escalated to errors.
-    if (NOT MSVC)
-      target_compile_options(unit_query PRIVATE -Wno-deprecated-declarations)
-    endif()
+    target_sources(unit_array PUBLIC test/main.cc test/unit_array_directory.cc)
 
     add_test(
-        NAME "unit_query"
-        COMMAND $<TARGET_FILE:unit_query>
+        NAME "unit_array"
+        COMMAND $<TARGET_FILE:unit_array>
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
