@@ -324,6 +324,7 @@ std::string to_str(const void* value, Datatype type) {
       break;
     case Datatype::BOOL:
       ss << *(const bool*)value;
+      break;
     default:
       assert(false);
   }
