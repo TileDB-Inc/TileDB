@@ -2094,8 +2094,8 @@ TEST_CASE_METHOD(
   // Close array and clean up
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_array_free(&array);
 
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &new_array);
   REQUIRE(rc == TILEDB_OK);

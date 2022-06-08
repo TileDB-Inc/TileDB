@@ -93,6 +93,12 @@ class Config {
   /** The default format for logging. */
   static const std::string CONFIG_LOGGING_DEFAULT_FORMAT;
 
+  /* Should Array Metadata be Preloaded on Array Open */
+  static const std::string SM_ARRAY_METADATA_PRELOAD;
+
+  /* Should Array Nonempty Domain be Preloaded on Array Open */
+  static const std::string SM_ARRAY_NONEMPTY_DOMAIN_PRELOAD;
+
   /**
    * The key for encrypted arrays.
    *  */

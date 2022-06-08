@@ -81,6 +81,18 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , non_empty_domain_computed_(false) {
 }
 
+Array::~Array() {
+  // If we launched a task to load metadata we need to make sure its completed
+  // before destruction
+  if (preload_metadata_future_.valid())
+    preload_metadata_future_.wait();
+
+  // If we launched a task to load non empty domain we need to make sure its
+  // completed before destruction
+  if (preload_non_empty_domain_future_.valid())
+    preload_non_empty_domain_future_.wait();
+}
+
 /* ********************************* */
 /*                API                */
 /* ********************************* */
@@ -281,6 +293,17 @@ Status Array::open(
     }
   }
   if (remote_) {
+    // Metadata can be fetched concurrently with the Array Schema for REST
+    // arrays
+    if (preload_metadata()) {
+      preload_metadata_future_ = storage_manager_->compute_tp()->execute(
+          [this]() { return load_metadata(); });
+    }
+    if (preload_non_empty_domain()) {
+      preload_non_empty_domain_future_ =
+          storage_manager_->compute_tp()->execute(
+              [this]() { return compute_non_empty_domain(); });
+    }
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
       return LOG_STATUS(Status_ArrayError(
@@ -336,6 +359,16 @@ Status Array::open(
   query_type_ = query_type;
   is_open_ = true;
 
+  // Check for preloading
+  if (preload_metadata()) {
+    preload_metadata_future_ = storage_manager_->compute_tp()->execute(
+        [this]() { return load_metadata(); });
+  }
+  if (preload_non_empty_domain()) {
+    preload_non_empty_domain_future_ = storage_manager_->compute_tp()->execute(
+        [this]() { return compute_non_empty_domain(); });
+  }
+
   return Status::Ok();
 }
 
@@ -346,6 +379,16 @@ Status Array::close() {
     // This keeps existing behavior from TileDB 2.6 and older
     return Status::Ok();
   }
+
+  // If we launched a task to load metadata we need to make sure its completed
+  // before destruction
+  if (preload_metadata_future_.valid())
+    preload_metadata_future_.wait();
+
+  // If we launched a task to load non empty domain we need to make sure its
+  // completed before destruction
+  if (preload_non_empty_domain_future_.valid())
+    preload_non_empty_domain_future_.wait();
 
   non_empty_domain_.clear();
   non_empty_domain_computed_ = false;
@@ -603,6 +646,15 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   array_schema_latest_ = array_schema_latest.value();
   array_schemas_all_ = array_schemas.value();
   fragment_metadata_ = fragment_metadata.value();
+
+  if (preload_metadata()) {
+    preload_metadata_future_ = storage_manager_->compute_tp()->execute(
+        [this]() { return load_metadata(); });
+  }
+  if (preload_non_empty_domain()) {
+    preload_non_empty_domain_future_ = storage_manager_->compute_tp()->execute(
+        [this]() { return compute_non_empty_domain(); });
+  }
 
   return Status::Ok();
 }
@@ -966,6 +1018,10 @@ Status Array::compute_max_buffer_sizes(
 }
 
 Status Array::load_metadata() {
+  std::lock_guard<std::mutex> lck(load_metadata_mtx_);
+  if (metadata_loaded_) {
+    return Status::Ok();
+  }
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -996,6 +1052,10 @@ Status Array::load_remote_non_empty_domain() {
 }
 
 Status Array::compute_non_empty_domain() {
+  std::lock_guard<std::mutex> lck(load_non_empty_domain_mtx_);
+  if (non_empty_domain_computed_) {
+    return Status::Ok();
+  }
   if (remote_) {
     RETURN_NOT_OK(load_remote_non_empty_domain());
   } else if (!fragment_metadata_.empty()) {
@@ -1041,5 +1101,42 @@ bool Array::consolidation_with_timestamps_config_enabled() const {
 
   return consolidation_with_timestamps;
 }
+
+bool Array::preload_metadata() const {
+  bool found = true;
+  std::string preload_metadata =
+      config_.get("sm.array.metadata.preload", &found);
+  assert(found);
+
+  std::transform(
+      preload_metadata.begin(),
+      preload_metadata.end(),
+      preload_metadata.begin(),
+      ::toupper);
+  if (preload_metadata == "ALWAYS" ||
+      preload_metadata == query_type_str(query_type_))
+    return true;
+
+  return false;
+}
+
+bool Array::preload_non_empty_domain() const {
+  bool found = true;
+  std::string preload_non_empty_domain =
+      config_.get("sm.array.nonempty_domain.preload", &found);
+  assert(found);
+
+  std::transform(
+      preload_non_empty_domain.begin(),
+      preload_non_empty_domain.end(),
+      preload_non_empty_domain.begin(),
+      ::toupper);
+  if (preload_non_empty_domain == "ALWAYS" ||
+      preload_non_empty_domain == query_type_str(query_type_))
+    return true;
+
+  return false;
+}
+
 }  // namespace sm
 }  // namespace tiledb

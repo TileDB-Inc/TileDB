@@ -1023,6 +1023,24 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *
  * **Parameters**
  *
+ * - `sm.array.metadata.preload` <br>
+ *    Controls if array metadata will be preloaded on array open in a background
+ *    thread <br>
+ *    Acceptable values are `reads`, `writes`, `always`, `never` <br>
+ *    `reads`: preload only when an array is opened for reads <br>
+ *    `writes`: preload only when an array is opened for writes <br>
+ *    `always`: always preload on array open <br>
+ *    `never`: do not preload on array open <br>
+ *    **Default**: reads
+ * - `sm.array.nonempty_domain.preload` <br>
+ *    Controls if the array nonempty domain will be preloaded on array open in a
+ *    background thread <br>
+ *    Acceptable values are `reads`, `writes`, `always`, `never` <br>
+ *    `reads`: preload only when an array is opened for reads <br>
+ *    `writes`: preload only when an array is opened for writes <br>
+ *    `always`: always preload on array open <br>
+ *    `never`: do not preload on array open <br>
+ *    **Default**: reads
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
  *    fragment writes. Note that ties during deduplication are broken

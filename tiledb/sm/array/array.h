@@ -71,7 +71,7 @@ class Array {
   Array(const URI& array_uri, StorageManager* storage_manager);
 
   /** Destructor. */
-  ~Array() = default;
+  ~Array();
 
   DISABLE_COPY_AND_COPY_ASSIGN(Array);
   DISABLE_MOVE_AND_MOVE_ASSIGN(Array);
@@ -468,6 +468,19 @@ class Array {
   /** Memory tracker for the array. */
   MemoryTracker memory_tracker_;
 
+  /** Future used to block destructor if we are preloading the metadata. */
+  std::future<Status> preload_metadata_future_;
+
+  /** Future used to block destructor if we are preloading the non empty domain.
+   */
+  std::future<Status> preload_non_empty_domain_future_;
+
+  /** Mutex to protect loading metadata. */
+  std::mutex load_metadata_mtx_;
+
+  /** Mutex to protect loading non empty domain. */
+  std::mutex load_non_empty_domain_mtx_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -517,6 +530,12 @@ class Array {
 
   /** Checks if consolidation with timestamps is enabled in config. */
   bool consolidation_with_timestamps_config_enabled() const;
+
+  /** Should metadata be preloaded on open? */
+  bool preload_metadata() const;
+
+  /** Should non empty domain be preloaded on open? */
+  bool preload_non_empty_domain() const;
 };
 
 }  // namespace sm

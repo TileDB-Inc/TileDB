@@ -65,6 +65,8 @@ const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::REST_CURL_VERBOSE = "false";
+const std::string Config::SM_ARRAY_METADATA_PRELOAD = "read";
+const std::string Config::SM_ARRAY_NONEMPTY_DOMAIN_PRELOAD = "read";
 const std::string Config::SM_ENCRYPTION_KEY = "";
 const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
 const std::string Config::SM_DEDUP_COORDS = "false";
@@ -226,6 +228,9 @@ Config::Config() {
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
+  param_values_["sm.array.metadata.preload"] = SM_ARRAY_METADATA_PRELOAD;
+  param_values_["sm.array.nonempty_domain.preload"] =
+      SM_ARRAY_NONEMPTY_DOMAIN_PRELOAD;
   param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   param_values_["sm.encryption_type"] = SM_ENCRYPTION_TYPE;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
@@ -525,6 +530,11 @@ Status Config::unset(const std::string& param) {
     param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   } else if (param == "config.logging_format") {
     param_values_["config.logging_foramt"] = CONFIG_LOGGING_DEFAULT_FORMAT;
+  } else if (param == "sm.array.metadata.preload") {
+    param_values_["sm.array.metadata.preload"] = SM_ARRAY_METADATA_PRELOAD;
+  } else if (param == "sm.array.nonempty_domain.preload") {
+    param_values_["sm.array.nonempty_domain.preload"] =
+        SM_ARRAY_NONEMPTY_DOMAIN_PRELOAD;
   } else if (param == "sm.encryption_key") {
     param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   } else if (param == "sm.encryption_type") {

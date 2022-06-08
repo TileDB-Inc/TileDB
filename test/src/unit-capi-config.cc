@@ -234,6 +234,8 @@ void check_save_to_file() {
   ss << "rest.retry_initial_delay_ms 500\n";
   ss << "rest.server_address https://api.tiledb.com\n";
   ss << "rest.server_serialization_format CAPNP\n";
+  ss << "sm.array.metadata.preload read\n";
+  ss << "sm.array.nonempty_domain.preload read\n";
   ss << "sm.check_coord_dups true\n";
   ss << "sm.check_coord_oob true\n";
   ss << "sm.check_global_order true\n";
@@ -560,6 +562,8 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.retry_initial_delay_ms"] = "500";
   all_param_values["rest.retry_http_codes"] = "503";
   all_param_values["rest.curl.verbose"] = "false";
+  all_param_values["sm.array.metadata.preload"] = "read";
+  all_param_values["sm.array.nonempty_domain.preload"] = "read";
   all_param_values["sm.encryption_key"] = "";
   all_param_values["sm.encryption_type"] = "NO_ENCRYPTION";
   all_param_values["sm.dedup_coords"] = "false";
