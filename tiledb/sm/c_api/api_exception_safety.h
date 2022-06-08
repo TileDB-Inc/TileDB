@@ -163,15 +163,29 @@ struct CAPIEntryPoint<f> : CAPIEntryPointBase {
   }
 };
 
+template <auto f>
+constexpr auto api_entry = CAPIEntryPoint<f>::function;
+
 /**
- * Argument specialization of `CAPIEntryPoint` for standard API call.
+ * A version of `CAPIEntryPoint` for `void` return functions.
+ *
+ * Apparently similar to void return (see below) certain compilers are failing
+ * to distinguish specializations. In this case the reported ambiguity is
+ * between a plain argument list and an argument list with the first item
+ * specified.
+ */
+template <auto f>
+struct CAPIEntryPointContext;
+
+/**
+ * Argument specialization of `CAPIEntryPointContext` for standard API call.
  *
  * A standard API call has the standard return type `capi_return_t` and a
  * context as its first argument. This function checks the validity of the
  * context so that the wrapped function does not have to.
  */
 template <class... Args, capi_return_t (*f)(tiledb_ctx_t*, Args...)>
-struct CAPIEntryPoint<f> : CAPIEntryPointBase {
+struct CAPIEntryPointContext<f> : CAPIEntryPointBase {
   static capi_return_t function(tiledb_ctx_t* ctx, Args... args) {
     /*
      * Validate context, first pass.
@@ -216,7 +230,7 @@ struct CAPIEntryPoint<f> : CAPIEntryPointBase {
 };
 
 template <auto f>
-constexpr auto api_entry = CAPIEntryPoint<f>::function;
+constexpr auto api_entry_context = CAPIEntryPointContext<f>::function;
 
 /**
  * A version of `CAPIEntryPoint` for `void` return functions.

@@ -7594,39 +7594,39 @@ int32_t tiledb_ctx_set_tag(
 /*              FILTER               */
 /* ********************************* */
 
-int32_t tiledb_filter_alloc(
+capi_return_t tiledb_filter_alloc(
     tiledb_ctx_t* ctx,
     tiledb_filter_type_t type,
     tiledb_filter_t** filter) noexcept {
-  return api_entry<detail::tiledb_filter_alloc>(ctx, type, filter);
+  return api_entry_context<detail::tiledb_filter_alloc>(ctx, type, filter);
 }
 
 void tiledb_filter_free(tiledb_filter_t** filter) noexcept {
   return api_entry_void<detail::tiledb_filter_free>(filter);
 }
 
-int32_t tiledb_filter_get_type(
+capi_return_t tiledb_filter_get_type(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_type_t* type) noexcept {
-  return api_entry<detail::tiledb_filter_get_type>(ctx, filter, type);
+  return api_entry_context<detail::tiledb_filter_get_type>(ctx, filter, type);
 }
 
-int32_t tiledb_filter_set_option(
+capi_return_t tiledb_filter_set_option(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_option_t option,
     const void* value) noexcept {
-  return api_entry<detail::tiledb_filter_set_option>(
+  return api_entry_context<detail::tiledb_filter_set_option>(
       ctx, filter, option, value);
 }
 
-int32_t tiledb_filter_get_option(
+capi_return_t tiledb_filter_get_option(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_option_t option,
     void* value) noexcept {
-  return api_entry<detail::tiledb_filter_get_option>(
+  return api_entry_context<detail::tiledb_filter_get_option>(
       ctx, filter, option, value);
 }
 
@@ -7634,53 +7634,53 @@ int32_t tiledb_filter_get_option(
 /*            FILTER LIST            */
 /* ********************************* */
 
-int32_t tiledb_filter_list_alloc(
+capi_return_t tiledb_filter_list_alloc(
     tiledb_ctx_t* ctx, tiledb_filter_list_t** filter_list) noexcept {
-  return api_entry<detail::tiledb_filter_list_alloc>(ctx, filter_list);
+  return api_entry_context<detail::tiledb_filter_list_alloc>(ctx, filter_list);
 }
 
 void tiledb_filter_list_free(tiledb_filter_list_t** filter_list) noexcept {
   return api_entry_void<detail::tiledb_filter_list_free>(filter_list);
 }
 
-int32_t tiledb_filter_list_add_filter(
+capi_return_t tiledb_filter_list_add_filter(
     tiledb_ctx_t* ctx,
     tiledb_filter_list_t* filter_list,
     tiledb_filter_t* filter) noexcept {
-  return api_entry<detail::tiledb_filter_list_add_filter>(
+  return api_entry_context<detail::tiledb_filter_list_add_filter>(
       ctx, filter_list, filter);
 }
 
-int32_t tiledb_filter_list_set_max_chunk_size(
+capi_return_t tiledb_filter_list_set_max_chunk_size(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t max_chunk_size) noexcept {
-  return api_entry<detail::tiledb_filter_list_set_max_chunk_size>(
+  return api_entry_context<detail::tiledb_filter_list_set_max_chunk_size>(
       ctx, filter_list, max_chunk_size);
 }
 
-int32_t tiledb_filter_list_get_nfilters(
+capi_return_t tiledb_filter_list_get_nfilters(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t* nfilters) noexcept {
-  return api_entry<detail::tiledb_filter_list_get_nfilters>(
+  return api_entry_context<detail::tiledb_filter_list_get_nfilters>(
       ctx, filter_list, nfilters);
 }
 
-int32_t tiledb_filter_list_get_filter_from_index(
+capi_return_t tiledb_filter_list_get_filter_from_index(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t index,
     tiledb_filter_t** filter) noexcept {
-  return api_entry<detail::tiledb_filter_list_get_filter_from_index>(
+  return api_entry_context<detail::tiledb_filter_list_get_filter_from_index>(
       ctx, filter_list, index, filter);
 }
 
-int32_t tiledb_filter_list_get_max_chunk_size(
+capi_return_t tiledb_filter_list_get_max_chunk_size(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t* max_chunk_size) noexcept {
-  return api_entry<detail::tiledb_filter_list_get_max_chunk_size>(
+  return api_entry_context<detail::tiledb_filter_list_get_max_chunk_size>(
       ctx, filter_list, max_chunk_size);
 }
 
