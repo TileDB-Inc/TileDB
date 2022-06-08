@@ -1244,7 +1244,7 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         // For dimensions, when we have a subarray, tiles are already all
         // loaded in memory.
         if ((subarray_.is_set() && array_schema_.is_dim(name)) ||
-            condition_.field_names().count(name) != 0)
+            condition_.field_names().count(name) != 0 || is_timestamps)
           return Status::Ok();
 
         // Get the size for all tiles.
@@ -1253,35 +1253,28 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
           // Size of the tile in memory.
           auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[idx];
 
-          // Timestamp attribute might not have tiles if this isn't a
-          // consolidated fragment with timestamps.
-          const bool has_tile =
-              !is_timestamps ||
-              fragment_metadata_[rt->frag_idx()]->has_timestamps();
-          if (has_tile) {
-            auto&& [st, tile_size] =
-                get_attribute_tile_size(name, rt->frag_idx(), rt->tile_idx());
-            RETURN_NOT_OK(st);
+          auto&& [st, tile_size] =
+              get_attribute_tile_size(name, rt->frag_idx(), rt->tile_idx());
+          RETURN_NOT_OK(st);
 
-            // Account for the pointers to the var data that is created in
-            // copy_tiles for var sized attributes.
-            if (var_sized) {
-              auto cell_num = rt->bitmap_result_num_ !=
-                                      std::numeric_limits<uint64_t>::max() ?
-                                  rt->bitmap_result_num_ :
-                                  fragment_metadata_[rt->frag_idx()]->cell_num(
-                                      rt->tile_idx());
-              *tile_size += sizeof(void*) * cell_num;
-            }
-
-            // Stop when we reach the budget.
-            if (*mem_usage + *tile_size > memory_budget) {
-              break;
-            }
-
-            // Adjust memory usage.
-            *mem_usage += *tile_size;
+          // Account for the pointers to the var data that is created in
+          // copy_tiles for var sized attributes.
+          if (var_sized) {
+            auto cell_num =
+                rt->bitmap_result_num_ != std::numeric_limits<uint64_t>::max() ?
+                    rt->bitmap_result_num_ :
+                    fragment_metadata_[rt->frag_idx()]->cell_num(
+                        rt->tile_idx());
+            *tile_size += sizeof(void*) * cell_num;
           }
+
+          // Stop when we reach the budget.
+          if (*mem_usage + *tile_size > memory_budget) {
+            break;
+          }
+
+          // Adjust memory usage.
+          *mem_usage += *tile_size;
         }
 
         // Save the minimum result tile index that we saw for all attributes.
