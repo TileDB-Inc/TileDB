@@ -318,6 +318,10 @@ std::string to_str(const void* value, Datatype type) {
     case Datatype::TIME_AS:
       ss << *(const int64_t*)value;
       break;
+    case Datatype::BLOB:
+      // For printing to string use unsigned int value
+      ss << *(const uint8_t*)value;
+      break;
     default:
       assert(false);
   }
