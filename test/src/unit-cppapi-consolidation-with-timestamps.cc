@@ -1129,7 +1129,7 @@ TEST_CASE_METHOD(
 
   tiledb_layout_t layout = TILEDB_UNORDERED;
 
-  /* FIXME: Testing for legacy is aborting
+  /* TODO: Testing for legacy as part of SC#18217
   // Test read for both refactored and legacy.
   bool legacy = GENERATE(true, false);
   if (legacy) {
@@ -1207,6 +1207,95 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
+    "CPP API: Test read timestamps, unordered reader, overlapping ranges",
+    "[cppapi][consolidation-with-timestamps][read-timestamps][unordered-"
+    "reader][overlapping-ranges][testtt]") {
+  remove_sparse_array();
+  // enable duplicates
+  create_sparse_array(true);
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+  // Write second fragment.
+  write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
+  // Write third  fragment.
+  write_sparse({8, 9, 10, 11}, {1, 2, 3, 4}, {3, 4, 1, 1}, 5);
+
+  // bool consolidate = GENERATE(true, false);
+  bool consolidate = true;
+  if (consolidate) {
+    consolidate_sparse();
+  }
+
+  std::string stats;
+  std::vector<int> a(16);
+  std::vector<uint64_t> dim1(16);
+  std::vector<uint64_t> dim2(16);
+  std::vector<uint64_t> timestamps(16);
+
+  // Open array
+  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ);
+  array.set_open_timestamp_start(0);
+  array.set_open_timestamp_end(4);
+  array.reopen();
+
+  // Create query
+  Query query(ctx_, array, TILEDB_READ);
+  query.set_layout(TILEDB_UNORDERED);
+  query.set_data_buffer("a1", a);
+  query.set_data_buffer("d1", dim1);
+  query.set_data_buffer("d2", dim2);
+  query.set_data_buffer(tiledb_timestamps(), timestamps);
+
+  // Add overlapping ranges
+  query.add_range<uint64_t>(1, 2, 3);
+  query.add_range<uint64_t>(1, 2, 3);
+
+  // Submit/finalize the query
+  query.submit();
+  CHECK(query.query_status() == Query::Status::COMPLETE);
+
+  // Expect to read what the first 2 writes wrote: each element will
+  // appear twice because of the identical overlapping ranges. The order
+  // of results varies if consolidated or not
+  if (!consolidate) {
+    // results in global order of fragments
+    std::vector<int> c_a = {1, 1, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3};
+    std::vector<uint64_t> c_dim2 = {2, 2, 3, 3, 2, 2, 3, 3, 2, 2, 3, 3};
+    std::vector<uint64_t> exp_ts = {1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+    CHECK(!memcmp(
+        exp_ts.data(), timestamps.data(), exp_ts.size() * sizeof(uint64_t)));
+  } else {
+    // result in cell global order in consolidated fragment
+    std::vector<int> c_a = {1, 1, 4, 4, 5, 5, 3, 3, 6, 6, 7, 7};
+    std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3};
+    std::vector<uint64_t> c_dim2 = {2, 2, 2, 2, 3, 3, 3, 3, 2, 2, 3, 3};
+    std::vector<uint64_t> exp_ts = {1, 1, 3, 3, 3, 3, 1, 1, 3, 3, 3, 3};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+    CHECK(!memcmp(
+        exp_ts.data(), timestamps.data(), exp_ts.size() * sizeof(uint64_t)));
+  }
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+  // Write second fragment.
+  write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 3, 2, 3}, 3);
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
     "CPP API: Test read timestamps of unconsolidated fragments, global order "
     "reader",
     "[cppapi][consolidation-with-timestamps][read-timestamps][global-order-"
@@ -1224,7 +1313,7 @@ TEST_CASE_METHOD(
 
   tiledb_layout_t layout = TILEDB_GLOBAL_ORDER;
 
-  /* FIXME: Testing for legacy is aborting
+  /* TODO: Testing for legacy as part of SC#18217
   // Test read for both refactored and legacy.
   bool legacy = GENERATE(true, false);
   if (legacy) {

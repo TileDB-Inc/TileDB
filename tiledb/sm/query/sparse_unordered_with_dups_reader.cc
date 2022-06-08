@@ -960,7 +960,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_timestamp_data_tile(
     for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
       for (uint64_t i = 0; i < rt->bitmap_[c]; i++) {
         memcpy(buffer, src_buff + c * cell_size, cell_size);
-        buffer++;
+        buffer += cell_size;
       }
     }
   } else {
@@ -969,7 +969,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_timestamp_data_tile(
     for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
       for (uint64_t i = 0; i < rt->bitmap_[c]; i++) {
         memcpy(buffer, &timestamp, cell_size);
-        buffer++;
+        buffer += cell_size;
       }
     }
   }
