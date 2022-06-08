@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -508,7 +508,7 @@ DenseReader::apply_query_condition(
     std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles) {
   auto timer_se = stats_->start_timer("apply_query_condition");
   std::vector<uint8_t> qc_result;
-  if (!condition_.clauses().empty()) {
+  if (!condition_.empty()) {
     // For easy reference.
     const auto& tile_coords = subarray.tile_coords();
     const auto cell_num = subarray.cell_num();
