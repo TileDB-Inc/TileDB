@@ -1209,7 +1209,7 @@ TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test read timestamps, unordered reader, overlapping ranges",
     "[cppapi][consolidation-with-timestamps][read-timestamps][unordered-"
-    "reader][overlapping-ranges][testtt]") {
+    "reader][overlapping-ranges]") {
   remove_sparse_array();
   // enable duplicates
   create_sparse_array(true);
@@ -1273,17 +1273,28 @@ TEST_CASE_METHOD(
         exp_ts.data(), timestamps.data(), exp_ts.size() * sizeof(uint64_t)));
   } else {
     // result in cell global order in consolidated fragment
-    std::vector<int> c_a = {1, 1, 4, 4, 5, 5, 3, 3, 6, 6, 7, 7};
+    std::vector<int> c_a_opt1 = {1, 1, 4, 4, 3, 3, 5, 5, 6, 6, 7, 7};
+    std::vector<int> c_a_opt2 = {1, 1, 4, 4, 5, 5, 3, 3, 6, 6, 7, 7};
     std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3};
     std::vector<uint64_t> c_dim2 = {2, 2, 2, 2, 3, 3, 3, 3, 2, 2, 3, 3};
-    std::vector<uint64_t> exp_ts = {1, 1, 3, 3, 3, 3, 1, 1, 3, 3, 3, 3};
-    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    std::vector<uint64_t> exp_ts_opt1 = {1, 1, 3, 3, 3, 3, 1, 1, 3, 3, 3, 3};
+    std::vector<uint64_t> exp_ts_opt2 = {1, 1, 3, 3, 1, 1, 3, 3, 3, 3, 3, 3};
+    CHECK(
+        (!memcmp(c_a_opt1.data(), a.data(), c_a_opt1.size() * sizeof(int)) ||
+         !memcmp(c_a_opt2.data(), a.data(), c_a_opt2.size() * sizeof(int))));
     CHECK(
         !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
     CHECK(
         !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
-    CHECK(!memcmp(
-        exp_ts.data(), timestamps.data(), exp_ts.size() * sizeof(uint64_t)));
+    CHECK(
+        (!memcmp(
+             exp_ts_opt1.data(),
+             timestamps.data(),
+             exp_ts_opt1.size() * sizeof(uint64_t)) ||
+         !memcmp(
+             exp_ts_opt2.data(),
+             timestamps.data(),
+             exp_ts_opt2.size() * sizeof(uint64_t))));
   }
 
   // Write first fragment.
