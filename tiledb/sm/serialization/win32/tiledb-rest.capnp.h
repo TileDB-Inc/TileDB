@@ -48,6 +48,7 @@ CAPNP_DECLARE_SCHEMA(f86b7bf97823250f);
 CAPNP_DECLARE_SCHEMA(fdd9e47288724221);
 CAPNP_DECLARE_SCHEMA(cbe1e7c13508aa2c);
 CAPNP_DECLARE_SCHEMA(dac6a7f675c57409);
+CAPNP_DECLARE_SCHEMA(afc739d5c01e6496);
 CAPNP_DECLARE_SCHEMA(eaf57cb9871fc06f);
 CAPNP_DECLARE_SCHEMA(e19754f813ccf79c);
 CAPNP_DECLARE_SCHEMA(def87cead82188e7);
@@ -705,6 +706,23 @@ struct ConditionClause {
   };
 };
 
+struct ASTNode {
+  ASTNode() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(afc739d5c01e6496, 1, 5)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
 struct Condition {
   Condition() = delete;
 
@@ -713,7 +731,7 @@ struct Condition {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(eaf57cb9871fc06f, 0, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(eaf57cb9871fc06f, 0, 3)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -5883,6 +5901,164 @@ class ConditionClause::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
+class ASTNode::Reader {
+ public:
+  typedef ASTNode Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool getIsExpression() const;
+
+  inline bool hasFieldName() const;
+  inline ::capnp::Text::Reader getFieldName() const;
+
+  inline bool hasValue() const;
+  inline ::capnp::Data::Reader getValue() const;
+
+  inline bool hasOp() const;
+  inline ::capnp::Text::Reader getOp() const;
+
+  inline bool hasChildren() const;
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::ASTNode,
+      ::capnp::Kind::STRUCT>::Reader
+  getChildren() const;
+
+  inline bool hasCombinationOp() const;
+  inline ::capnp::Text::Reader getCombinationOp() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class ASTNode::Builder {
+ public:
+  typedef ASTNode Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool getIsExpression();
+  inline void setIsExpression(bool value);
+
+  inline bool hasFieldName();
+  inline ::capnp::Text::Builder getFieldName();
+  inline void setFieldName(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initFieldName(unsigned int size);
+  inline void adoptFieldName(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownFieldName();
+
+  inline bool hasValue();
+  inline ::capnp::Data::Builder getValue();
+  inline void setValue(::capnp::Data::Reader value);
+  inline ::capnp::Data::Builder initValue(unsigned int size);
+  inline void adoptValue(::capnp::Orphan<::capnp::Data>&& value);
+  inline ::capnp::Orphan<::capnp::Data> disownValue();
+
+  inline bool hasOp();
+  inline ::capnp::Text::Builder getOp();
+  inline void setOp(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initOp(unsigned int size);
+  inline void adoptOp(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownOp();
+
+  inline bool hasChildren();
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::ASTNode,
+      ::capnp::Kind::STRUCT>::Builder
+  getChildren();
+  inline void setChildren(::capnp::List<
+                          ::tiledb::sm::serialization::capnp::ASTNode,
+                          ::capnp::Kind::STRUCT>::Reader value);
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::ASTNode,
+      ::capnp::Kind::STRUCT>::Builder
+  initChildren(unsigned int size);
+  inline void adoptChildren(::capnp::Orphan<::capnp::List<
+                                ::tiledb::sm::serialization::capnp::ASTNode,
+                                ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ASTNode,
+      ::capnp::Kind::STRUCT>>
+  disownChildren();
+
+  inline bool hasCombinationOp();
+  inline ::capnp::Text::Builder getCombinationOp();
+  inline void setCombinationOp(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initCombinationOp(unsigned int size);
+  inline void adoptCombinationOp(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownCombinationOp();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class ASTNode::Pipeline {
+ public:
+  typedef ASTNode Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 class Condition::Reader {
  public:
   typedef Condition Reads;
@@ -5911,6 +6087,9 @@ class Condition::Reader {
   inline bool hasClauseCombinationOps() const;
   inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
   getClauseCombinationOps() const;
+
+  inline bool hasTree() const;
+  inline ::tiledb::sm::serialization::capnp::ASTNode::Reader getTree() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -5987,6 +6166,16 @@ class Condition::Builder {
   inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
   disownClauseCombinationOps();
 
+  inline bool hasTree();
+  inline ::tiledb::sm::serialization::capnp::ASTNode::Builder getTree();
+  inline void setTree(
+      ::tiledb::sm::serialization::capnp::ASTNode::Reader value);
+  inline ::tiledb::sm::serialization::capnp::ASTNode::Builder initTree();
+  inline void adoptTree(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::ASTNode>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ASTNode>
+  disownTree();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -6007,6 +6196,8 @@ class Condition::Pipeline {
   inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {
   }
+
+  inline ::tiledb::sm::serialization::capnp::ASTNode::Pipeline getTree();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -14854,6 +15045,240 @@ inline ::capnp::Orphan<::capnp::Text> ConditionClause::Builder::disownOp() {
       _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
 }
 
+inline bool ASTNode::Reader::getIsExpression() const {
+  return _reader.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline bool ASTNode::Builder::getIsExpression() {
+  return _builder.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void ASTNode::Builder::setIsExpression(bool value) {
+  _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool ASTNode::Reader::hasFieldName() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ASTNode::Builder::hasFieldName() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader ASTNode::Reader::getFieldName() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder ASTNode::Builder::getFieldName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void ASTNode::Builder::setFieldName(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder ASTNode::Builder::initFieldName(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      size);
+}
+inline void ASTNode::Builder::adoptFieldName(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> ASTNode::Builder::disownFieldName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool ASTNode::Reader::hasValue() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ASTNode::Builder::hasValue() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Data::Reader ASTNode::Reader::getValue() const {
+  return ::capnp::_::PointerHelpers<::capnp::Data>::get(
+      _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::capnp::Data::Builder ASTNode::Builder::getValue() {
+  return ::capnp::_::PointerHelpers<::capnp::Data>::get(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void ASTNode::Builder::setValue(::capnp::Data::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Data>::set(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Data::Builder ASTNode::Builder::initValue(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Data>::init(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      size);
+}
+inline void ASTNode::Builder::adoptValue(
+    ::capnp::Orphan<::capnp::Data>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Data>::adopt(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Data> ASTNode::Builder::disownValue() {
+  return ::capnp::_::PointerHelpers<::capnp::Data>::disown(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool ASTNode::Reader::hasOp() const {
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ASTNode::Builder::hasOp() {
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader ASTNode::Reader::getOp() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder ASTNode::Builder::getOp() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void ASTNode::Builder::setOp(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder ASTNode::Builder::initOp(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      size);
+}
+inline void ASTNode::Builder::adoptOp(::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> ASTNode::Builder::disownOp() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
+inline bool ASTNode::Reader::hasChildren() const {
+  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ASTNode::Builder::hasChildren() {
+  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::ASTNode,
+    ::capnp::Kind::STRUCT>::Reader
+ASTNode::Reader::getChildren() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ASTNode,
+      ::capnp::Kind::STRUCT>>::get(_reader
+                                       .getPointerField(
+                                           ::capnp::bounded<3>() *
+                                           ::capnp::POINTERS));
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::ASTNode,
+    ::capnp::Kind::STRUCT>::Builder
+ASTNode::Builder::getChildren() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ASTNode,
+      ::capnp::Kind::STRUCT>>::get(_builder
+                                       .getPointerField(
+                                           ::capnp::bounded<3>() *
+                                           ::capnp::POINTERS));
+}
+inline void ASTNode::Builder::setChildren(
+    ::capnp::List<
+        ::tiledb::sm::serialization::capnp::ASTNode,
+        ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ASTNode,
+      ::capnp::Kind::STRUCT>>::
+      set(_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::ASTNode,
+    ::capnp::Kind::STRUCT>::Builder
+ASTNode::Builder::initChildren(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ASTNode,
+      ::capnp::Kind::STRUCT>>::
+      init(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          size);
+}
+inline void ASTNode::Builder::adoptChildren(
+    ::capnp::Orphan<::capnp::List<
+        ::tiledb::sm::serialization::capnp::ASTNode,
+        ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ASTNode,
+      ::capnp::Kind::STRUCT>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<
+    ::tiledb::sm::serialization::capnp::ASTNode,
+    ::capnp::Kind::STRUCT>>
+ASTNode::Builder::disownChildren() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ASTNode,
+      ::capnp::Kind::STRUCT>>::disown(_builder
+                                          .getPointerField(
+                                              ::capnp::bounded<3>() *
+                                              ::capnp::POINTERS));
+}
+
+inline bool ASTNode::Reader::hasCombinationOp() const {
+  return !_reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ASTNode::Builder::hasCombinationOp() {
+  return !_builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader ASTNode::Reader::getCombinationOp() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder ASTNode::Builder::getCombinationOp() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline void ASTNode::Builder::setCombinationOp(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder ASTNode::Builder::initCombinationOp(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      size);
+}
+inline void ASTNode::Builder::adoptCombinationOp(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> ASTNode::Builder::disownCombinationOp() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+
 inline bool Condition::Reader::hasClauses() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -14982,6 +15407,59 @@ Condition::Builder::disownClauseCombinationOps() {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
           _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool Condition::Reader::hasTree() const {
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Condition::Builder::hasTree() {
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::ASTNode::Reader
+Condition::Reader::getTree() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ASTNode>::get(
+          _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::ASTNode::Builder
+Condition::Builder::getTree() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ASTNode>::get(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::ASTNode::Pipeline
+Condition::Pipeline::getTree() {
+  return ::tiledb::sm::serialization::capnp::ASTNode::Pipeline(
+      _typeless.getPointerField(2));
+}
+#endif  // !CAPNP_LITE
+inline void Condition::Builder::setTree(
+    ::tiledb::sm::serialization::capnp::ASTNode::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::ASTNode>::set(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      value);
+}
+inline ::tiledb::sm::serialization::capnp::ASTNode::Builder
+Condition::Builder::initTree() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ASTNode>::init(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void Condition::Builder::adoptTree(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::ASTNode>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::ASTNode>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ASTNode>
+Condition::Builder::disownTree() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ASTNode>::disown(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
 }
 
 inline bool QueryReader::Reader::hasLayout() const {

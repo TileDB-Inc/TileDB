@@ -98,4 +98,45 @@ std::string ast_node_to_str(const tdb_unique_ptr<tiledb::sm::ASTNode>& node) {
     return result_str;
   }
 }
+
+bool ast_equal(
+    const tdb_unique_ptr<sm::ASTNode>& lhs,
+    const tdb_unique_ptr<sm::ASTNode>& rhs) {
+  if (!lhs->is_expr() && !rhs->is_expr()) {
+    if (lhs->get_field_name() != rhs->get_field_name())
+      return false;
+
+    const UntypedDatumView& lhs_view = lhs->get_condition_value_view();
+    const UntypedDatumView& rhs_view = rhs->get_condition_value_view();
+    if (lhs_view.size() != rhs_view.size())
+      return false;
+    const uint8_t* lhs_start = static_cast<const uint8_t*>(lhs_view.content());
+    const uint8_t* rhs_start = static_cast<const uint8_t*>(rhs_view.content());
+    for (size_t i = 0; i < lhs_view.size(); ++i) {
+      if (lhs_start[i] != rhs_start[i])
+        return false;
+    }
+
+    if (lhs->get_op() != rhs->get_op())
+      return false;
+
+    return true;
+  } else if (lhs->is_expr() && rhs->is_expr()) {
+    if (lhs->get_combination_op() != rhs->get_combination_op())
+      return false;
+    const auto& lhs_children = lhs->get_children();
+    const auto& rhs_children = rhs->get_children();
+
+    if (lhs_children.size() != rhs_children.size())
+      return false;
+
+    for (size_t i = 0; i < lhs_children.size(); ++i) {
+      if (!ast_equal(lhs_children[i], rhs_children[i]))
+        return false;
+    }
+    return true;
+  }
+
+  return false;
+}
 }  // namespace tiledb::test

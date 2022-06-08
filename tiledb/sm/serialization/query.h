@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,11 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/sm/query/query_condition.h"
+
+#ifdef TILEDB_SERIALIZATION
+#include "tiledb/sm/serialization/tiledb-rest.h"
+#endif
 
 using namespace tiledb::common;
 
@@ -186,6 +191,16 @@ Status query_est_result_size_deserialize(
     SerializationType serialize_type,
     bool clientside,
     const Buffer& serialized_buffer);
+
+#ifdef TILEDB_SERIALIZATION
+Status condition_from_capnp(
+    const capnp::Condition::Reader& condition_reader,
+    QueryCondition* const condition);
+
+Status condition_to_capnp(
+    const QueryCondition& condition,
+    capnp::Condition::Builder* condition_builder);
+#endif
 
 }  // namespace serialization
 }  // namespace sm
