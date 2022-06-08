@@ -49,8 +49,8 @@ void FloatScalingFilter::dump(FILE* out) const {
     out = stdout;
   fprintf(
       out,
-      "FloatScalingFilter: BIT_WIDTH=%llu, SCALE=%lf, OFFSET=%lf",
-      bit_width_,
+      "FloatScalingFilter: BIT_WIDTH=%u, SCALE=%lf, OFFSET=%lf",
+      static_cast<uint32_t>(bit_width_),
       scale_,
       offset_);
 }
