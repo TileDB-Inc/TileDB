@@ -49,7 +49,12 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
+#include "tiledb/sm/filter/bitshuffle_filter.h"
+#include "tiledb/sm/filter/byteshuffle_filter.h"
+#include "tiledb/sm/filter/checksum_md5_filter.h"
+#include "tiledb/sm/filter/checksum_sha256_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter_create.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/misc/constants.h"
@@ -113,7 +118,12 @@ Status filter_pipeline_to_capnp(
         data.setInt32(level);
         break;
       }
-      default:
+      case FilterType::FILTER_NONE:
+      case FilterType::FILTER_BITSHUFFLE:
+      case FilterType::FILTER_BYTESHUFFLE:
+      case FilterType::FILTER_CHECKSUM_MD5:
+      case FilterType::FILTER_CHECKSUM_SHA256:
+      case FilterType::INTERNAL_FILTER_AES_256_GCM:
         break;
     }
   }
@@ -154,12 +164,39 @@ static tuple<Status, optional<shared_ptr<Filter>>> filter_constructor(
           Status::Ok(),
           tiledb::common::make_shared<CompressionFilter>(HERE(), type, level)};
     }
+    case FilterType::FILTER_NONE:
+      break;
+    case FilterType::FILTER_BITSHUFFLE: {
+      return {Status::Ok(),
+              tiledb::common::make_shared<BitshuffleFilter>(HERE())};
+    }
+    case FilterType::FILTER_BYTESHUFFLE: {
+      return {Status::Ok(),
+              tiledb::common::make_shared<BitshuffleFilter>(HERE())};
+    }
+    case FilterType::FILTER_CHECKSUM_MD5: {
+      return {Status::Ok(),
+              tiledb::common::make_shared<ChecksumMD5Filter>(HERE())};
+    }
+    case FilterType::FILTER_CHECKSUM_SHA256: {
+      return {Status::Ok(),
+              tiledb::common::make_shared<ChecksumSHA256Filter>(HERE())};
+    }
+    case FilterType::INTERNAL_FILTER_AES_256_GCM: {
+      return {Status::Ok(),
+              tiledb::common::make_shared<EncryptionAES256GCMFilter>(HERE())};
+    }
     default: {
       throw std::logic_error(
           "Invalid data received from filter pipeline capnp reader, unknown "
           "type");
     }
   }
+  return {Status_SerializationError(
+              "Invalid data received from filter pipeline capnp reader, "
+              "unknown type " +
+              filter_type_str(type)),
+          std::nullopt};
 }
 
 tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
