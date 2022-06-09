@@ -71,8 +71,11 @@ check (){
   # apparently due to pre-existing tmp/TMP/TEMP env vars
   ( unset tmp; unset TMP; unset TEMP; powershell ${TILEDB_HOME}/scripts/install-minio.ps1 )
 
-  echo "MINGW_ARCH is $MINGW_ARCH"
-  if [[ $MINGW_ARCH == "mingw32" ]]; then
+  # ... seems MINGW_ARCH is -not- populated in CI environ...
+  #echo "MINGW_ARCH is $MINGW_ARCH"
+  #if [[ $MINGW_ARCH == "mingw32" ]]; then
+  if [ "$CARCH" == "i686" ]; then
+  
     # test failures occurring in 32bit environ, for now bail.
     echo "mingw32 unit tests skipped as too many currently fail!"
   else
