@@ -62,7 +62,58 @@ TEST_CASE(
     "[array-directory][timestamp-overlap]") {
   WhiteboxArrayDirectory wb_array_dir;
   ArrayDirectory array_dir;
-  std::pair<uint64_t, uint64_t> ts = std::pair<uint64_t, uint64_t>(0, 0);
-  wb_array_dir.set_open_timestamps(array_dir, 0, 0);
-  REQUIRE(wb_array_dir.timestamps_overlap(array_dir, ts, true));
+  wb_array_dir.set_open_timestamps(array_dir, 2, 4);
+
+  // Only full overlap should be included for regular fragments.
+
+  // Fragment before open timestamps.
+  CHECK(!wb_array_dir.timestamps_overlap(
+      array_dir, std::pair<uint64_t, uint64_t>(0, 0), false));
+
+  // Fragment after open timestamps.
+  CHECK(!wb_array_dir.timestamps_overlap(
+      array_dir, std::pair<uint64_t, uint64_t>(5, 5), false));
+
+  // Only begin included.
+  CHECK(!wb_array_dir.timestamps_overlap(
+      array_dir, std::pair<uint64_t, uint64_t>(3, 5), false));
+
+  // Only end included.
+  CHECK(!wb_array_dir.timestamps_overlap(
+      array_dir, std::pair<uint64_t, uint64_t>(1, 3), false));
+
+  // Begin and end not included.
+  CHECK(!wb_array_dir.timestamps_overlap(
+      array_dir, std::pair<uint64_t, uint64_t>(0, 5), false));
+
+  // Begin and end included.
+  CHECK(wb_array_dir.timestamps_overlap(
+      array_dir, std::pair<uint64_t, uint64_t>(2, 4), false));
+
+  // Partial overlap should be included for fragments consolidated with
+  // timestamps.
+
+  // Fragment before open timestamps.
+  CHECK(!wb_array_dir.timestamps_overlap(
+      array_dir, std::pair<uint64_t, uint64_t>(0, 0), true));
+
+  // Fragment after open timestamps.
+  CHECK(!wb_array_dir.timestamps_overlap(
+      array_dir, std::pair<uint64_t, uint64_t>(5, 5), true));
+
+  // Only begin included.
+  CHECK(wb_array_dir.timestamps_overlap(
+      array_dir, std::pair<uint64_t, uint64_t>(3, 5), true));
+
+  // Only end included.
+  CHECK(wb_array_dir.timestamps_overlap(
+      array_dir, std::pair<uint64_t, uint64_t>(1, 3), true));
+
+  // Begin and end not included.
+  CHECK(!wb_array_dir.timestamps_overlap(
+      array_dir, std::pair<uint64_t, uint64_t>(0, 5), false));
+
+  // Begin and end included.
+  CHECK(wb_array_dir.timestamps_overlap(
+      array_dir, std::pair<uint64_t, uint64_t>(2, 4), true));
 }
