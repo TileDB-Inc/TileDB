@@ -728,9 +728,8 @@ void ResultTile::compute_results_sparse(
 
 template <class BitmapType>
 void ResultTile::compute_results_count_sparse_string_range(
-    const std::vector<std::string_view> range_starts,
-    const std::vector<std::string_view> range_ends,
-    const std::vector<uint64_t>& range_indexes,
+    const std::vector<std::pair<std::string_view, std::string_view>>
+        cached_ranges,
     const char* buff_str,
     const uint64_t* buff_off,
     const uint64_t cell_num,
@@ -753,19 +752,20 @@ void ResultTile::compute_results_count_sparse_string_range(
 
     // Binary search to find the first range containing the cell.
     auto it = std::lower_bound(
-        range_indexes.begin(),
-        range_indexes.end(),
+        cached_ranges.begin(),
+        cached_ranges.end(),
         str,
-        [&](const uint64_t& index, const std::string_view& value) {
-          return range_ends[index] < value;
+        [&](const std::pair<std::string_view, std::string_view>& cached_range,
+            const std::string_view& value) {
+          return cached_range.second < value;
         });
 
     // If we didn't find a range we can set count to 0 and skip to next.
-    if (it == range_indexes.end()) {
+    if (it == cached_ranges.end()) {
       result_count[pos] = 0;
       continue;
     }
-    uint64_t start_range_idx = std::distance(range_indexes.begin(), it);
+    uint64_t start_range_idx = std::distance(cached_ranges.begin(), it);
 
     uint64_t end_range_idx = 0;
     if constexpr (non_overlapping) {
@@ -774,10 +774,11 @@ void ResultTile::compute_results_count_sparse_string_range(
       // Binary search to find the last range containing the cell.
       auto it2 = std::lower_bound(
           it,
-          range_indexes.end(),
+          cached_ranges.end(),
           str,
-          [&](const uint64_t& index, const std::string_view& value) {
-            return range_starts[index] <= value;
+          [&](const std::pair<std::string_view, std::string_view>& cached_range,
+              const std::string_view& value) {
+            return cached_range.first <= value;
           });
 
       end_range_idx = std::distance(it, it2) + start_range_idx;
@@ -787,8 +788,9 @@ void ResultTile::compute_results_count_sparse_string_range(
     // dim.
     uint64_t count = 0;
     for (uint64_t j = start_range_idx; j < end_range_idx; ++j) {
+      auto& range = cached_ranges[j];
       count += str_coord_intersects(
-          c_offset, c_size, buff_str, range_starts[j], range_ends[j]);
+          c_offset, c_size, buff_str, range.first, range.second);
     }
 
     // Multiply the past count by this dimension's count.
@@ -828,14 +830,11 @@ void ResultTile::compute_results_count_sparse_string(
   auto buff_str_size = coord_tile_str.size();
 
   // Cache start_str/end_str for all ranges.
-  std::vector<std::string_view> range_starts;
-  std::vector<std::string_view> range_ends;
-  range_starts.reserve(range_indexes.size());
-  range_ends.reserve(range_indexes.size());
+  std::vector<std::pair<std::string_view, std::string_view>> cached_ranges;
+  cached_ranges.reserve(range_indexes.size());
 
   for (auto& i : range_indexes) {
-    range_starts.emplace_back(ranges[i].start_str());
-    range_ends.emplace_back(ranges[i].end_str());
+    cached_ranges.emplace_back(ranges[i].start_str(), ranges[i].end_str());
   }
 
   // For row-major cell orders, the first dimension is sorted.
@@ -904,8 +903,8 @@ void ResultTile::compute_results_count_sparse_string(
               first_c_offset,
               first_c_size,
               buff_str,
-              range_starts[i],
-              range_ends[i]);
+              cached_ranges[i].first,
+              cached_ranges[i].second);
         }
 
         for (uint64_t pos = first_c_pos; pos < first_c_pos + c_partition_size;
@@ -915,9 +914,7 @@ void ResultTile::compute_results_count_sparse_string(
       } else {
         // Compute results
         compute_results_count_sparse_string_range(
-            range_starts,
-            range_ends,
-            range_indexes,
+            cached_ranges,
             buff_str,
             buff_off,
             cell_num,
@@ -973,9 +970,7 @@ void ResultTile::compute_results_count_sparse_string(
       // `r_count` values within this partition. We must check
       // each value for an intersection.
       compute_results_count_sparse_string_range(
-          range_starts,
-          range_ends,
-          range_indexes,
+          cached_ranges,
           buff_str,
           buff_off,
           cell_num,

@@ -284,9 +284,8 @@ class ResultTile {
    */
   template <class BitmapType>
   static void compute_results_count_sparse_string_range(
-      const std::vector<std::string_view> range_starts,
-      const std::vector<std::string_view> range_ends,
-      const std::vector<uint64_t>& range_indexes,
+      const std::vector<std::pair<std::string_view, std::string_view>>
+          cached_ranges,
       const char* buff_str,
       const uint64_t* buff_off,
       const uint64_t cell_num,
