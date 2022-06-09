@@ -46,6 +46,8 @@
 #include "tiledb/sm/stats/stats.h"
 #include "uri.h"
 
+TILEDB_DISABLE_WARNING_PUSH
+TILEDB_DISABLE_WARNING("-Wswitch-enum")
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/core/client/ClientConfiguration.h>
@@ -73,6 +75,8 @@
 #include <aws/s3/model/ListObjectsRequest.h>
 #include <aws/s3/model/PutObjectRequest.h>
 #include <aws/s3/model/UploadPartRequest.h>
+TILEDB_DISABLE_WARNING_POP
+
 #include <sys/types.h>
 #include <mutex>
 #include <string>
