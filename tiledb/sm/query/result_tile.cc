@@ -727,6 +727,76 @@ void ResultTile::compute_results_sparse(
 }
 
 template <class BitmapType>
+void ResultTile::compute_results_count_sparse_string_range(
+    const NDRange& ranges,
+    const std::vector<uint64_t>& range_indexes,
+    const char* buff_str,
+    const uint64_t* buff_off,
+    const uint64_t cell_num,
+    const uint64_t buff_str_size,
+    const uint64_t start,
+    const uint64_t end,
+    std::vector<BitmapType>& result_count) {
+  const bool non_overlapping = std::is_same<BitmapType, uint8_t>::value;
+
+  // Process all cells.
+  for (uint64_t pos = start; pos <= end; ++pos) {
+    if (result_count[pos] == 0)
+      continue;
+
+    uint64_t c_offset = buff_off[pos];
+    uint64_t c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
+                                             buff_str_size - c_offset;
+
+    std::string_view str(buff_str + c_offset, c_size);
+
+    // Binary search to find the first range containing the cell.
+    auto it = std::lower_bound(
+        range_indexes.begin(),
+        range_indexes.end(),
+        str,
+        [&](const uint64_t& index, const std::string_view& value) {
+          return ranges[index].end_str() < value;
+        });
+
+    // If we didn't find a range we can set count to 0 and skip to next.
+    if (it == range_indexes.end()) {
+      result_count[pos] = 0;
+      continue;
+    }
+    uint64_t start_range_idx = std::distance(range_indexes.begin(), it);
+
+    uint64_t end_range_idx = 0;
+    if constexpr (non_overlapping) {
+      end_range_idx = start_range_idx + 1;
+    } else {
+      // Binary search to find the last range containing the cell.
+      auto it2 = std::lower_bound(
+          it,
+          range_indexes.end(),
+          str,
+          [&](const uint64_t& index, const std::string_view& value) {
+            return ranges[index].start_str() <= value;
+          });
+
+      end_range_idx = std::distance(it, it2) + start_range_idx;
+    }
+
+    // Iterate through all relevant ranges and compute the count for this
+    // dim.
+    uint64_t count = 0;
+    for (uint64_t j = start_range_idx; j < end_range_idx; ++j) {
+      auto& range = ranges[j];
+      count += str_coord_intersects(
+          c_offset, c_size, buff_str, range.start_str(), range.end_str());
+    }
+
+    // Multiply the past count by this dimension's count.
+    result_count[pos] *= count;
+  }
+}
+
+template <class BitmapType>
 void ResultTile::compute_results_count_sparse_string(
     const ResultTile* result_tile,
     unsigned dim_idx,
@@ -834,20 +904,16 @@ void ResultTile::compute_results_count_sparse_string(
         }
       } else {
         // Compute results
-        uint64_t c_offset = 0, c_size = 0;
-        for (uint64_t pos = first_c_pos; pos <= last_c_pos; ++pos) {
-          c_offset = buff_off[pos];
-          c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
-                                          buff_str_size - c_offset;
-          uint64_t count = 0;
-          for (auto i : range_indexes) {
-            auto& range = ranges[i];
-            count += str_coord_intersects(
-                c_offset, c_size, buff_str, range.start_str(), range.end_str());
-          }
-
-          result_count[pos] = count;
-        }
+        compute_results_count_sparse_string_range(
+            ranges,
+            range_indexes,
+            buff_str,
+            buff_off,
+            cell_num,
+            buff_str_size,
+            first_c_pos,
+            last_c_pos,
+            result_count);
       }
     }
 
@@ -895,23 +961,16 @@ void ResultTile::compute_results_count_sparse_string(
       // Here, we know that there is at least one `1` value within the
       // `r_count` values within this partition. We must check
       // each value for an intersection.
-      uint64_t c_offset = 0, c_size = 0;
-      for (uint64_t pos = i; pos < i + partition_size; ++pos) {
-        if (result_count[pos] == 0)
-          continue;
-
-        c_offset = buff_off[pos];
-        c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
-                                        buff_str_size - c_offset;
-        uint64_t count = 0;
-        for (auto j : range_indexes) {
-          auto& range = ranges[j];
-          count += str_coord_intersects(
-              c_offset, c_size, buff_str, range.start_str(), range.end_str());
-        }
-
-        result_count[pos] *= count;
-      }
+      compute_results_count_sparse_string_range(
+          ranges,
+          range_indexes,
+          buff_str,
+          buff_off,
+          cell_num,
+          buff_str_size,
+          i,
+          i + partition_size - 1,
+          result_count);
     }
   }
 }
