@@ -45,6 +45,7 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+template <class BitmapType>
 class GlobalOrderResultTile;
 
 /**
@@ -142,26 +143,29 @@ struct ResultCoords : public ResultCoordsBase<ResultTile> {
   bool valid_;
 };
 
+template <class BitmapType>
 struct GlobalOrderResultCoords
-    : public ResultCoordsBase<GlobalOrderResultTile> {
+    : public ResultCoordsBase<GlobalOrderResultTile<BitmapType>> {
+  using base = ResultCoordsBase<GlobalOrderResultTile<BitmapType>>;
+
   /** Constructor. */
-  GlobalOrderResultCoords(GlobalOrderResultTile* tile, uint64_t pos)
-      : ResultCoordsBase(tile, pos)
+  GlobalOrderResultCoords(GlobalOrderResultTile<BitmapType>* tile, uint64_t pos)
+      : ResultCoordsBase<GlobalOrderResultTile<BitmapType>>(tile, pos)
       , init_(false) {
   }
 
   /** Advance to the next available cell in the tile. */
   bool advance_to_next_cell() {
-    pos_ += init_;
+    base::pos_ += init_;
     init_ = true;
-    uint64_t cell_num = tile_->cell_num();
-    if (pos_ != cell_num) {
-      if (tile_->has_bmp()) {
-        while (pos_ < cell_num) {
-          if (tile_->bitmap_[pos_]) {
+    uint64_t cell_num = base::tile_->cell_num();
+    if (base::pos_ != cell_num) {
+      if (base::tile_->has_bmp()) {
+        while (base::pos_ < cell_num) {
+          if (base::tile_->bitmap_[base::pos_]) {
             return true;
           }
-          pos_++;
+          base::pos_++;
         }
       } else {
         return true;
@@ -177,23 +181,32 @@ struct GlobalOrderResultCoords
    */
   uint64_t max_slab_length() {
     uint64_t ret = 1;
-    uint64_t cell_num = tile_->cell_num();
-    uint64_t next_pos = pos_ + 1;
-    if (tile_->has_bmp()) {
+    uint64_t cell_num = base::tile_->cell_num();
+    uint64_t next_pos = base::pos_ + 1;
+    if (base::tile_->has_bmp()) {
       // Current cell is not in the bitmap.
-      if (!tile_->bitmap_[pos_]) {
+      if (!base::tile_->bitmap_[base::pos_]) {
         return 0;
+      }
+
+      // For overlapping ranges, if there's more than one cell in the bitmap,
+      // return 1.
+      const bool overlapping_ranges = std::is_same<BitmapType, uint64_t>::value;
+      if constexpr (overlapping_ranges) {
+        if (base::tile_->bitmap_[base::pos_] != 1) {
+          return 1;
+        }
       }
 
       // With bitmap, find the longest contiguous set of bits in the bitmap
       // from the current position.
-      while (next_pos < cell_num && tile_->bitmap_[next_pos]) {
+      while (next_pos < cell_num && base::tile_->bitmap_[next_pos] == 1) {
         next_pos++;
         ret++;
       }
     } else {
       // No bitmap, add all cells from current position.
-      ret = cell_num - pos_;
+      ret = cell_num - base::pos_;
     }
 
     return ret;
@@ -207,37 +220,47 @@ struct GlobalOrderResultCoords
   uint64_t max_slab_length(
       const GlobalOrderResultCoords& next, const CompType& cmp) {
     uint64_t ret = 1;
-    uint64_t cell_num = tile_->cell_num();
+    uint64_t cell_num = base::tile_->cell_num();
 
     // Store the original position.
-    uint64_t orig_pos = pos_;
+    uint64_t orig_pos = base::pos_;
 
-    if (tile_->has_bmp()) {
+    if (base::tile_->has_bmp()) {
       // Current cell is not in the bitmap.
-      if (!tile_->bitmap_[pos_]) {
+      if (!base::tile_->bitmap_[base::pos_]) {
         return 0;
+      }
+
+      // For overlapping ranges, if there's more than one cell in the bitmap,
+      // return 1.
+      const bool overlapping_ranges = std::is_same<BitmapType, uint64_t>::value;
+      if constexpr (overlapping_ranges) {
+        if (base::tile_->bitmap_[base::pos_] != 1) {
+          return 1;
+        }
       }
 
       // With bitmap, find the longest contiguous set of bits in the bitmap
       // from the current position, with coordinares smaller than the next one
       // in the queue.
-      pos_++;
-      while (pos_ < cell_num && tile_->bitmap_[pos_] && !cmp(*this, next)) {
-        pos_++;
+      base::pos_++;
+      while (base::pos_ < cell_num && base::tile_->bitmap_[base::pos_] &&
+             !cmp(*this, next)) {
+        base::pos_++;
         ret++;
       }
     } else {
       // No bitmap, add all cells from current position, with coordinares
       // smaller than the next one in the queue.
-      pos_++;
-      while (pos_ < cell_num - 1 && !cmp(*this, next)) {
-        pos_++;
+      base::pos_++;
+      while (base::pos_ < cell_num - 1 && !cmp(*this, next)) {
+        base::pos_++;
         ret++;
       }
     }
 
     // Restore the original position.
-    pos_ = orig_pos;
+    base::pos_ = orig_pos;
     return ret;
   }
 

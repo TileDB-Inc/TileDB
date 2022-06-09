@@ -150,9 +150,10 @@ class HilbertCmp : protected CellCmpBase {
    * @param b The second coordinate.
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
+  template <class BitmapType>
   bool operator()(
-      const GlobalOrderResultCoords& a,
-      const GlobalOrderResultCoords& b) const {
+      const GlobalOrderResultCoords<BitmapType>& a,
+      const GlobalOrderResultCoords<BitmapType>& b) const {
     auto hilbert_a = a.tile_->hilbert_value(a.pos_);
     auto hilbert_b = b.tile_->hilbert_value(b.pos_);
     if (hilbert_a < hilbert_b)
