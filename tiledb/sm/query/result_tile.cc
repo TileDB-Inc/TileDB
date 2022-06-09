@@ -348,7 +348,7 @@ Status ResultTile::read(
         buff_offset += cell_size;
       }
     }
-  } else if (name == constants::timestamps) {
+  } else if (use_fragment_ts) {
     // Copy passed in fragment timestamp.
     auto buff = static_cast<unsigned char*>(buffer);
     for (uint64_t c = 0; c < len; c++) {
