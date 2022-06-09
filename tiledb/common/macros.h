@@ -56,4 +56,19 @@
   DISABLE_MOVE(C);                      \
   DISABLE_MOVE_ASSIGN(C)
 
+/** Disables warning for specific compiler
+ */
+#if defined(_MSC_VER)
+#define TILEDB_DISABLE_WARNING_PUSH __pragma(warning(push))
+#define TILEDB_DISABLE_WARNING_POP __pragma(warning(pop))
+#define TILEDB_DISABLE_WARNING(warningNumber) \
+  __pragma(warning(disable : warningNumber))
+#elif defined(__GNUC__) || defined(__clang__)
+#define TILEDB_DO_PRAGMA(X) _Pragma(#X)
+#define TILEDB_DISABLE_WARNING_PUSH TILEDB_DO_PRAGMA(GCC diagnostic push)
+#define TILEDB_DISABLE_WARNING_POP TILEDB_DO_PRAGMA(GCC diagnostic pop)
+#define TILEDB_DISABLE_WARNING(warningName) \
+  TILEDB_DO_PRAGMA(GCC diagnostic ignored #warningName)
+#endif
+
 #endif  // TILEDB_MACROS_H
