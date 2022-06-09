@@ -7357,6 +7357,10 @@ uint64_t tiledb_timestamp_now_ms() noexcept {
   }
 }
 
+const char* tiledb_timestamps() noexcept {
+  return tiledb::sm::constants::timestamps.c_str();
+}
+
 /* ****************************** */
 /*            VERSION             */
 /* ****************************** */

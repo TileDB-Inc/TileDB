@@ -1327,7 +1327,7 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
         // For dimensions or query condition fields, tiles are already all
         // loaded in memory.
         if (array_schema_.is_dim(name) ||
-            condition_.field_names().count(name) != 0)
+            condition_.field_names().count(name) != 0 || is_timestamps)
           return Status::Ok();
 
         // Get the size for all tiles.
@@ -1338,12 +1338,7 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
           auto id =
               std::pair<uint64_t, uint64_t>(rt->frag_idx(), rt->tile_idx());
 
-          // Timestamp attribute might not have tiles if this isn't a
-          // consolidated fragment with timestamps.
-          const bool has_tile =
-              !is_timestamps ||
-              fragment_metadata_[rt->frag_idx()]->has_timestamps();
-          if (accounted_tiles.count(id) == 0 && has_tile) {
+          if (accounted_tiles.count(id) == 0) {
             accounted_tiles.emplace(id);
 
             // Size of the tile in memory.

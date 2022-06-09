@@ -136,6 +136,11 @@ void ResultTile::erase_tile(const std::string& name) {
     return;
   }
 
+  if (name == constants::timestamps) {
+    timestamps_tile_ = TileTuple(Tile(), Tile(), Tile());
+    return;
+  }
+
   // Handle dimension tile
   for (auto& ct : coord_tiles_) {
     if (ct.first == name) {

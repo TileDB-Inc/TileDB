@@ -513,6 +513,9 @@ TILEDB_EXPORT uint64_t tiledb_datatype_size(tiledb_datatype_t type)
 /** Returns the current time in milliseconds. */
 TILEDB_EXPORT uint64_t tiledb_timestamp_now_ms(void) TILEDB_NOEXCEPT;
 
+/** Returns a special name indicating the timestamps attribute. */
+TILEDB_EXPORT const char* tiledb_timestamps(void) TILEDB_NOEXCEPT;
+
 /**
  * @name Constants wrapping special functions
  */
@@ -527,6 +530,8 @@ TILEDB_EXPORT uint64_t tiledb_timestamp_now_ms(void) TILEDB_NOEXCEPT;
 #define TILEDB_OFFSET_SIZE tiledb_offset_size()
 /** The current time in milliseconds. */
 #define TILEDB_TIMESTAMP_NOW_MS tiledb_timestamp_now_ms()
+/** A special name indicating the timestamps attribute. */
+#define TILEDB_TIMESTAMPS tiledb_timestamps()
 /**@}*/
 
 /* ****************************** */
