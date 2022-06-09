@@ -43,6 +43,7 @@
 
 #include <catch.hpp>
 #include <iostream>
+#include <optional>
 
 using namespace tiledb::sm;
 
@@ -3057,16 +3058,19 @@ struct TestParams {
   uint64_t cell_count_;
   std::vector<uint8_t> expected_bitmap_;
   std::vector<ResultCellSlab> expected_slabs_;
+  std::optional<std::vector<uint8_t>> expected_sparse_bitmap_;
 
   TestParams(
       QueryCondition&& qc,
       uint64_t cell_count,
       std::vector<uint8_t>&& expected_bitmap,
-      std::vector<ResultCellSlab>&& expected_slabs)
+      std::vector<ResultCellSlab>&& expected_slabs,
+      std::optional<std::vector<uint8_t>> expected_sparse_bitmap = std::nullopt)
       : qc_(std::move(qc))
       , cell_count_(cell_count)
       , expected_bitmap_(std::move(expected_bitmap))
-      , expected_slabs_(expected_slabs) {
+      , expected_slabs_(expected_slabs) 
+      , expected_sparse_bitmap_(std::move(expected_sparse_bitmap)){
   }
 };
 
@@ -3119,6 +3123,9 @@ void validate_qc_apply_sparse(
               .ok());
   CHECK(tp.cell_count_ == cell_count);
   for (uint64_t i = 0; i < cells; ++i) {
+    if (sparse_result_bitmap[i] != tp.expected_bitmap_[i]) {
+      std::cout << tiledb::test::ast_node_to_str(tp.qc_.ast()) << std::endl;
+    }
     CHECK(sparse_result_bitmap[i] == tp.expected_bitmap_[i]);
   }
 }
