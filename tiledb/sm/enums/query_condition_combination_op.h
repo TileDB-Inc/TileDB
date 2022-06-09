@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 using namespace tiledb::common;
 
@@ -90,6 +91,26 @@ inline Status query_condition_combination_op_enum(
         query_condition_combination_op_str);
   }
   return Status::Ok();
+}
+
+inline void ensure_qc_combo_op_is_valid(
+    QueryConditionCombinationOp query_condition_combo_op) {
+  auto qc_combo_op_enum{::stdx::to_underlying(query_condition_combo_op)};
+  if (qc_combo_op_enum > 2) {
+    throw std::runtime_error(
+        "Invalid Query Condition Op " + std::to_string(qc_combo_op_enum));
+  }
+}
+
+inline void ensure_qc_combo_op_string_is_valid(
+    const std::string& qc_combo_op_str) {
+  QueryConditionCombinationOp qc_combo_op = QueryConditionCombinationOp::AND;
+  Status st{query_condition_combination_op_enum(qc_combo_op_str, &qc_combo_op)};
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "Invalid Query Condition Op string \"" + qc_combo_op_str + "\"");
+  }
+  ensure_qc_combo_op_is_valid(qc_combo_op);
 }
 
 }  // namespace sm

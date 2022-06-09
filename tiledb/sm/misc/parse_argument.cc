@@ -322,6 +322,9 @@ std::string to_str(const void* value, Datatype type) {
       // For printing to string use unsigned int value
       ss << *(const uint8_t*)value;
       break;
+    case Datatype::BOOL:
+      ss << *(const bool*)value;
+      break;
     default:
       assert(false);
   }
