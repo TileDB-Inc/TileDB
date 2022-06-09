@@ -728,7 +728,8 @@ void ResultTile::compute_results_sparse(
 
 template <class BitmapType>
 void ResultTile::compute_results_count_sparse_string_range(
-    const NDRange& ranges,
+    const std::vector<std::string_view> range_starts,
+    const std::vector<std::string_view> range_ends,
     const std::vector<uint64_t>& range_indexes,
     const char* buff_str,
     const uint64_t* buff_off,
@@ -756,7 +757,7 @@ void ResultTile::compute_results_count_sparse_string_range(
         range_indexes.end(),
         str,
         [&](const uint64_t& index, const std::string_view& value) {
-          return ranges[index].end_str() < value;
+          return range_ends[index] < value;
         });
 
     // If we didn't find a range we can set count to 0 and skip to next.
@@ -776,7 +777,7 @@ void ResultTile::compute_results_count_sparse_string_range(
           range_indexes.end(),
           str,
           [&](const uint64_t& index, const std::string_view& value) {
-            return ranges[index].start_str() <= value;
+            return range_starts[index] <= value;
           });
 
       end_range_idx = std::distance(it, it2) + start_range_idx;
@@ -786,9 +787,8 @@ void ResultTile::compute_results_count_sparse_string_range(
     // dim.
     uint64_t count = 0;
     for (uint64_t j = start_range_idx; j < end_range_idx; ++j) {
-      auto& range = ranges[j];
       count += str_coord_intersects(
-          c_offset, c_size, buff_str, range.start_str(), range.end_str());
+          c_offset, c_size, buff_str, range_starts[j], range_ends[j]);
     }
 
     // Multiply the past count by this dimension's count.
@@ -826,6 +826,17 @@ void ResultTile::compute_results_count_sparse_string(
   const auto& coord_tile_str = std::get<1>(coord_tile);
   auto buff_str = static_cast<const char*>(coord_tile_str.data());
   auto buff_str_size = coord_tile_str.size();
+
+  // Cache start_str/end_str for all ranges.
+  std::vector<std::string_view> range_starts;
+  std::vector<std::string_view> range_ends;
+  range_starts.reserve(range_indexes.size());
+  range_ends.reserve(range_indexes.size());
+
+  for (auto& i : range_indexes) {
+    range_starts.emplace_back(ranges[i].start_str());
+    range_ends.emplace_back(ranges[i].end_str());
+  }
 
   // For row-major cell orders, the first dimension is sorted.
   // For col-major cell orders, the last dimension is sorted.
@@ -889,13 +900,12 @@ void ResultTile::compute_results_count_sparse_string(
           strncmp(first_c_coord, second_coord, first_c_size) == 0) {
         uint64_t count = 0;
         for (auto i : range_indexes) {
-          auto& range = ranges[i];
           count += str_coord_intersects(
               first_c_offset,
               first_c_size,
               buff_str,
-              range.start_str(),
-              range.end_str());
+              range_starts[i],
+              range_ends[i]);
         }
 
         for (uint64_t pos = first_c_pos; pos < first_c_pos + c_partition_size;
@@ -905,7 +915,8 @@ void ResultTile::compute_results_count_sparse_string(
       } else {
         // Compute results
         compute_results_count_sparse_string_range(
-            ranges,
+            range_starts,
+            range_ends,
             range_indexes,
             buff_str,
             buff_off,
@@ -962,7 +973,8 @@ void ResultTile::compute_results_count_sparse_string(
       // `r_count` values within this partition. We must check
       // each value for an intersection.
       compute_results_count_sparse_string_range(
-          ranges,
+          range_starts,
+          range_ends,
           range_indexes,
           buff_str,
           buff_off,
