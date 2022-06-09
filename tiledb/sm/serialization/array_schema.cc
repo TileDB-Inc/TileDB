@@ -274,6 +274,8 @@ tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
     auto&& [st_fp, f]{filter_pipeline_from_capnp(filter_pipeline_reader)};
     RETURN_NOT_OK_TUPLE(st_fp, nullopt);
     filters = f.value();
+  } else {
+    filters = make_shared<FilterPipeline>(HERE());
   }
 
   // Fill value
@@ -363,6 +365,10 @@ Status dimension_from_capnp(
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
     RETURN_NOT_OK(st_fp);
     RETURN_NOT_OK((*dimension)->set_filter_pipeline(filters.value().get()));
+  } else {
+    RETURN_NOT_OK(
+        (*dimension)
+            ->set_filter_pipeline(make_shared<FilterPipeline>(HERE()).get()));
   }
 
   if (!dimension_reader.getNullTileExtent()) {
