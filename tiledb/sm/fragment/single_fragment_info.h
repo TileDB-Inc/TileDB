@@ -253,9 +253,24 @@ class SingleFragmentInfo {
              << ((int64_t*)non_empty_domain_[d].data())[1] << "]";
           break;
         case Datatype::STRING_ASCII:
+        case Datatype::STRING_UTF8:
           ss << "[" << std::string(non_empty_domain_[d].start_str()) << ", "
              << std::string(non_empty_domain_[d].end_str()) << "]";
           break;
+        // Not supported for nonempty_domain
+        case Datatype::BLOB:
+        case Datatype::CHAR:
+        case Datatype::BOOL:
+        case Datatype::STRING_UTF16:
+        case Datatype::STRING_UTF32:
+        case Datatype::STRING_UCS2:
+        case Datatype::STRING_UCS4:
+        case Datatype::ANY:
+          ss << "["
+             << "unsupported"
+             << ", "
+             << "unsupported"
+             << "]";
         default:
           assert(false);
           break;

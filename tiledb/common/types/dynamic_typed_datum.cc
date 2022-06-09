@@ -49,6 +49,12 @@ std::ostream& operator<<(
     case Datatype::CHAR:
       os << *static_cast<const char*>(x.datum_.content());
       break;
+    case Datatype::BLOB:
+      os << *static_cast<const uint8_t*>(x.datum_.content());
+      break;
+    case Datatype::BOOL:
+      os << *static_cast<const bool*>(x.datum_.content());
+      break;
     case Datatype::INT8:
       os << *static_cast<const int8_t*>(x.datum_.content());
       break;

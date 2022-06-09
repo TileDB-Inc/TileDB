@@ -73,6 +73,8 @@ inline const std::string& filter_type_str(FilterType filter_type) {
       return constants::bzip2_str;
     case FilterType::FILTER_DOUBLE_DELTA:
       return constants::double_delta_str;
+    case FilterType::INTERNAL_FILTER_AES_256_GCM:
+      return constants::aes_256_gcm_str;
     case FilterType::FILTER_BIT_WIDTH_REDUCTION:
       return constants::filter_bit_width_reduction_str;
     case FilterType::FILTER_BITSHUFFLE:

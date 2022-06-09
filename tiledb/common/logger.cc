@@ -228,6 +228,7 @@ void Logger::set_format(Logger::Format fmt) {
       logger_->set_pattern(json_pattern);
       break;
     }
+    case Logger::Format::DEFAULT:
     default: {
       /*
        * Set up the default logging format
@@ -265,9 +266,11 @@ std::string Logger::add_tag(const std::string& tag, uint64_t id) {
                              fmt::format("{},\"{}\":\"{}\"", name_, tag, id);
       break;
     }
-    default:
+    case Logger::Format::DEFAULT:
+    default: {
       tags = name_.empty() ? fmt::format("{}: {}", tag, id) :
                              fmt::format("{}] [{}: {}", name_, tag, id);
+    }
   }
   return tags;
 }
