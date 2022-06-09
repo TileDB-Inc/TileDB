@@ -1,3 +1,13 @@
+# TileDB v2.9.4 Release Notes
+
+## Bug fixes
+
+* Fix File API failure when importing into TileDB Cloud array [#3246](https://github.com/TileDB-Inc/TileDB/pull/3246)
+* Fix printing of TILEDB_BLOB attributes in `Attribute::Dump` [#3250](https://github.com/TileDB-Inc/TileDB/pull/3250)
+* Add missing filters to switch case for Filter serialization [#3256](https://github.com/TileDB-Inc/TileDB/pull/3256)
+* Fix filterpipeline segfault on release-2.9 [#3261](https://github.com/TileDB-Inc/TileDB/pull/3261)
+
+
 # TileDB v2.9.3 Release Notes
 
 ## Improvements
