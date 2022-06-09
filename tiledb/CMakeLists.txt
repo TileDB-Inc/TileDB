@@ -405,6 +405,11 @@ endif()
 # Compile options/definitions
 ############################################################
 
+if (NOT MSVC)
+# Enable exhaustive enum check even with default case
+  target_compile_options(TILEDB_CORE_OBJECTS PRIVATE -Wswitch-enum)
+endif()
+
 if (SANITIZER)
   if (NOT CMAKE_BUILD_TYPE MATCHES "Debug")
     message(FATAL_ERROR "Sanitizers only enabled for Debug build")
