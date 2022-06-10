@@ -177,8 +177,8 @@ Status FragmentInfo::get_cell_num(uint32_t fid, uint64_t* cell_num) const {
 
 Status FragmentInfo::get_total_cell_num(uint64_t* cell_num) const {
   if (cell_num == nullptr)
-    return LOG_STATUS(Status_FragmentInfoError(
-        "Cell number argument cannot be null"));
+    return LOG_STATUS(
+        Status_FragmentInfoError("Cell number argument cannot be null"));
 
   // Return simple summation of cell counts in each fragment present without
   // any consideration of cells that may be overlapping, i.e. the count
