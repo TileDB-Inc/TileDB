@@ -3529,37 +3529,30 @@ int32_t tiledb_query_get_subarray_t(
 /*         SUBARRAY               */
 /* ****************************** */
 
-int32_t tiledb_subarray_alloc(
+capi_return_t tiledb_subarray_alloc(
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     tiledb_subarray_t** subarray) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
+  api::ensure_array_is_valid(array);
+  api::ensure_output_pointer_is_valid(subarray);
 
   // Error if array is not open
   if (!array->array_->is_open()) {
-    auto st = Status_Error("Cannot create subarray; array is not open");
-    *subarray = nullptr;
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
+    throw api::CAPIStatusException("Cannot create subarray; array is not open");
   }
 
   // Create a buffer struct
-  *subarray = new (std::nothrow) tiledb_subarray_t;
+  *subarray = new tiledb_subarray_t;
   if (*subarray == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB subarray wrapper");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
+    throw api::CAPIStatusException(
+        "Failed to allocate TileDB subarray wrapper");
   } else {
     (*subarray)->subarray_ = nullptr;
   }
 
   // Create a new subarray object
   try {
-    (*subarray)->subarray_ = new (std::nothrow) tiledb::sm::Subarray(
+    (*subarray)->subarray_ = new tiledb::sm::Subarray(
         array->array_.get(),
         (tiledb::sm::stats::Stats*)nullptr,
         ctx->ctx_->storage_manager()->logger(),
@@ -3569,6 +3562,7 @@ int32_t tiledb_subarray_alloc(
   } catch (...) {
     delete *subarray;
     *subarray = nullptr;
+    throw api::CAPIStatusException("Failed to create subarray");
   }
 
   return TILEDB_OK;

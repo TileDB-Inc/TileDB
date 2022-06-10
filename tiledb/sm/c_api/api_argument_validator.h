@@ -135,6 +135,17 @@ inline void action_invalid_object(const std::string& type_name) {
 }
 
 /**
+ * Returns after successfully validating an array.
+ *
+ * @param array Possibly-valid pointer to array
+ */
+inline void ensure_array_is_valid(const tiledb_array_t* array) {
+  if (array == nullptr) {
+    action_invalid_object("array");
+  }
+}
+
+/**
  * Returns after successfully validating a filter list.
  *
  * @param filter_list Possibly-valid pointer to filter list
