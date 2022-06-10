@@ -58,7 +58,7 @@ struct CResultCoordsFx {
   CResultCoordsFx();
   ~CResultCoordsFx();
 
-  GlobalOrderResultTile make_tile_with_num_cells(uint64_t num_cells);
+  GlobalOrderResultTile<uint8_t> make_tile_with_num_cells(uint64_t num_cells);
 };
 
 CResultCoordsFx::CResultCoordsFx() {
@@ -116,9 +116,9 @@ CResultCoordsFx::~CResultCoordsFx() {
   tiledb_vfs_free(&vfs_);
 }
 
-GlobalOrderResultTile CResultCoordsFx::make_tile_with_num_cells(
+GlobalOrderResultTile<uint8_t> CResultCoordsFx::make_tile_with_num_cells(
     uint64_t num_cells) {
-  GlobalOrderResultTile result_tile(
+  GlobalOrderResultTile<uint8_t> result_tile(
       0, 0, array_->array_->array_schema_latest());
   auto tile_tuple = result_tile.tile_tuple(constants::coords);
   Tile* const tile = &std::get<0>(*tile_tuple);
@@ -145,8 +145,8 @@ class Cmp {
   }
 
   bool operator()(
-      const GlobalOrderResultCoords& a,
-      const GlobalOrderResultCoords& b) const {
+      const GlobalOrderResultCoords<uint8_t>& a,
+      const GlobalOrderResultCoords<uint8_t>& b) const {
     if (a.pos_ == b.pos_) {
       return true;
     }

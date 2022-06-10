@@ -586,14 +586,15 @@ class ResultTileWithBitmap : public ResultTile {
 };
 
 /** Global order result tile. */
-class GlobalOrderResultTile : public ResultTileWithBitmap<uint8_t> {
+template <class BitmapType>
+class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
   GlobalOrderResultTile(
       unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
-      : ResultTileWithBitmap<uint8_t>(frag_idx, tile_idx, array_schema)
+      : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, array_schema)
       , used_(false) {
   }
 
@@ -635,7 +636,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<uint8_t> {
 
   /** Allocate space for the hilbert values vector. */
   inline void allocate_hilbert_vector() {
-    hilbert_values_.resize(cell_num());
+    hilbert_values_.resize(ResultTile::cell_num());
   }
 
   /** Get the hilbert value at an index. */
@@ -651,7 +652,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<uint8_t> {
   /** Return first cell index in bitmap. */
   uint64_t first_cell_in_bitmap() {
     uint64_t ret = 0;
-    while (!bitmap_[ret]) {
+    while (!ResultTileWithBitmap<BitmapType>::bitmap_[ret]) {
       ret++;
     }
 
@@ -660,8 +661,8 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<uint8_t> {
 
   /** Return first cell index in bitmap. */
   uint64_t last_cell_in_bitmap() {
-    uint64_t ret = bitmap_.size() - 1;
-    while (!bitmap_[ret]) {
+    uint64_t ret = ResultTileWithBitmap<BitmapType>::bitmap_.size() - 1;
+    while (!ResultTileWithBitmap<BitmapType>::bitmap_[ret]) {
       ret--;
     }
 

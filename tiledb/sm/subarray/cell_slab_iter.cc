@@ -99,11 +99,6 @@ CellSlab<T> CellSlabIter<T>::cell_slab() const {
 }
 
 template <class T>
-T* CellSlabIter<T>::range_coords() {
-  return range_coords_.data();
-}
-
-template <class T>
 bool CellSlabIter<T>::end() const {
   return end_;
 }

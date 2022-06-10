@@ -1075,22 +1075,41 @@ Status Query::create_strategy() {
     } else if (
         use_refactored_sparse_global_order_reader() &&
         !array_schema_->dense() &&
-        (layout_ == Layout::GLOBAL_ORDER ||
-         (layout_ == Layout::UNORDERED && subarray_.range_num() <= 1))) {
+        (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED)) {
       // Using the reader for unordered queries to do deduplication.
       use_default = false;
-      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-          SparseGlobalOrderReader,
-          stats_->create_child("Reader"),
-          logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          subarray_,
-          layout_,
-          condition_,
-          consolidation_with_timestamps_));
+
+      auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
+      RETURN_NOT_OK(st);
+
+      if (*non_overlapping_ranges || !subarray_.is_set() ||
+          subarray_.range_num() == 1) {
+        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+            SparseGlobalOrderReader<uint8_t>,
+            stats_->create_child("Reader"),
+            logger_,
+            storage_manager_,
+            array_,
+            config_,
+            buffers_,
+            subarray_,
+            layout_,
+            condition_,
+            consolidation_with_timestamps_));
+      } else {
+        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+            SparseGlobalOrderReader<uint64_t>,
+            stats_->create_child("Reader"),
+            logger_,
+            storage_manager_,
+            array_,
+            config_,
+            buffers_,
+            subarray_,
+            layout_,
+            condition_,
+            consolidation_with_timestamps_));
+      }
     } else if (use_refactored_dense_reader() && array_schema_->dense()) {
       bool all_dense = true;
       for (auto& frag_md : fragment_metadata_)

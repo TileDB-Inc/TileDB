@@ -33,7 +33,7 @@
 #ifndef TILEDB_CONTEXT_H
 #define TILEDB_CONTEXT_H
 
-#include "tiledb/common/status.h"
+#include "tiledb/common/exception/exception.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
@@ -65,10 +65,17 @@ class Context {
   /* ********************************* */
 
   /** Returns the last error status. */
-  Status last_error();
+  optional<std::string> last_error();
 
-  /** Saves the input status. */
+  /**
+   * Saves a `Status` as the last error.
+   */
   void save_error(const Status& st);
+
+  /**
+   * Saves a `StatusException` as the last error.
+   */
+  void save_error(const StatusException& st);
 
   /** Returns a pointer to the underlying storage manager. */
   StorageManager* storage_manager() const;
@@ -88,7 +95,7 @@ class Context {
   /* ********************************* */
 
   /** The last error occurred. */
-  Status last_error_;
+  optional<std::string> last_error_{nullopt};
 
   /** A mutex for thread-safety. */
   std::mutex mtx_;

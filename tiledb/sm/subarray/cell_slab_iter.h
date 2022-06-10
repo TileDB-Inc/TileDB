@@ -160,9 +160,6 @@ class CellSlabIter {
   /** Returns the current cell slab. */
   CellSlab<T> cell_slab() const;
 
-  /** Returns the current range coords. */
-  T* range_coords();
-
   /** Checks if the iterator has reached the end. */
   bool end() const;
 

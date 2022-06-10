@@ -943,6 +943,105 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
   return Status::Ok();
 }
 
+template <>
+Status SparseUnorderedWithDupsReader<uint64_t>::copy_timestamp_data_tile(
+    ResultTileWithBitmap<uint64_t>* rt,
+    const uint64_t src_min_pos,
+    const uint64_t src_max_pos,
+    uint8_t* buffer) {
+  // Get source buffers.
+  const auto tile_tuple = rt->tile_tuple(constants::timestamps);
+  const auto t = &std::get<0>(*tile_tuple);
+  const auto src_buff = t->data_as<uint8_t>();
+  const uint64_t cell_size = constants::timestamp_size;
+
+  if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
+    // Copy values.
+    for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+      for (uint64_t i = 0; i < rt->bitmap_[c]; i++) {
+        memcpy(buffer, src_buff + c * cell_size, cell_size);
+        buffer += cell_size;
+      }
+    }
+  } else {
+    // Copy fragment timestamp.
+    auto timestamp = fragment_timestamp(rt);
+    for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+      for (uint64_t i = 0; i < rt->bitmap_[c]; i++) {
+        memcpy(buffer, &timestamp, cell_size);
+        buffer += cell_size;
+      }
+    }
+  }
+  return Status::Ok();
+}
+
+template <>
+Status SparseUnorderedWithDupsReader<uint8_t>::copy_timestamp_data_tile(
+    ResultTileWithBitmap<uint8_t>* rt,
+    const uint64_t src_min_pos,
+    const uint64_t src_max_pos,
+    uint8_t* buffer) {
+  auto timer_se = stats_->start_timer("copy_timestamps_tiles");
+  // Get source buffers.
+  const auto tile_tuple = rt->tile_tuple(constants::timestamps);
+  const auto t = &std::get<0>(*tile_tuple);
+  const auto src_buff = t->data_as<uint8_t>();
+  const uint64_t cell_size = constants::timestamp_size;
+  auto frag_timestamp = fragment_timestamp(rt);
+
+  // Partial tile copy, full tile copy done below.
+  if (rt->has_bmp()) {
+    // Copy values.
+    // Go through bitmap, when there is a hole in cell contiguity, do a
+    // memcpy.
+    uint64_t length = 0;
+    uint64_t start = src_min_pos;
+    for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+      if (rt->bitmap_[c]) {
+        length++;
+      } else {
+        if (length != 0) {
+          if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
+            memcpy(buffer, src_buff + start * cell_size, length * cell_size);
+          } else {
+            std::vector<uint64_t> timestamps(length, frag_timestamp);
+            memcpy(buffer, timestamps.data(), length * cell_size);
+          }
+          buffer += length * cell_size;
+          length = 0;
+        }
+        start = c + 1;
+      }
+    }
+
+    // Do last memcpy.
+    if (length != 0) {
+      if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
+        memcpy(buffer, src_buff + start * cell_size, length * cell_size);
+      } else {
+        std::vector<uint64_t> timestamps(length, frag_timestamp);
+        memcpy(buffer, timestamps.data(), length * cell_size);
+      }
+      buffer += length * cell_size;
+    }
+  } else {  // Copy full tile.
+    if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
+      memcpy(
+          buffer,
+          src_buff + src_min_pos * cell_size,
+          (src_max_pos - src_min_pos) * cell_size);
+    } else {
+      std::vector<uint64_t> timestamps(
+          src_max_pos - src_min_pos, frag_timestamp);
+      memcpy(
+          buffer, timestamps.data(), (src_max_pos - src_min_pos) * cell_size);
+    }
+  }
+
+  return Status::Ok();
+}
+
 template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
     const std::string& name,
@@ -1006,18 +1105,26 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
           return Status::Ok();
         }
 
-        // Copy tile.
-        RETURN_NOT_OK(copy_fixed_data_tile(
-            name,
-            is_dim,
-            nullable,
-            dim_idx,
-            cell_size,
-            &*rt,
-            src_min_pos,
-            src_max_pos,
-            buffer + dest_cell_offset * cell_size,
-            val_buffer + dest_cell_offset));
+        if (name == constants::timestamps) {
+          RETURN_NOT_OK(copy_timestamp_data_tile(
+              &*rt,
+              src_min_pos,
+              src_max_pos,
+              buffer + dest_cell_offset * cell_size));
+        } else {
+          // Copy tile.
+          RETURN_NOT_OK(copy_fixed_data_tile(
+              name,
+              is_dim,
+              nullable,
+              dim_idx,
+              cell_size,
+              &*rt,
+              src_min_pos,
+              src_max_pos,
+              buffer + dest_cell_offset * cell_size,
+              val_buffer + dest_cell_offset));
+        }
 
         return Status::Ok();
       });
@@ -1132,18 +1239,20 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         const auto& name = names[i];
         const auto var_sized = array_schema_.var_size(name);
         auto mem_usage = &total_mem_usage_per_attr[i];
+        const bool is_timestamps = name == constants::timestamps;
 
         // For dimensions, when we have a subarray, tiles are already all
         // loaded in memory.
         if ((subarray_.is_set() && array_schema_.is_dim(name)) ||
-            condition_.field_names().count(name) != 0)
+            condition_.field_names().count(name) != 0 || is_timestamps)
           return Status::Ok();
 
-        // Get the size for this tile.
+        // Get the size for all tiles.
         uint64_t idx = 0;
         for (; idx < max_rt_idx; idx++) {
           // Size of the tile in memory.
           auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[idx];
+
           auto&& [st, tile_size] =
               get_attribute_tile_size(name, rt->frag_idx(), rt->tile_idx());
           RETURN_NOT_OK(st);

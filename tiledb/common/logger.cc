@@ -315,6 +315,11 @@ Status LOG_STATUS(const Status& st) {
   return st;
 }
 
+/** Logs a status. */
+void LOG_STATUS(const StatusException& se) {
+  global_logger().error(se.what());
+}
+
 /** Logs a trace. */
 void LOG_TRACE(const std::stringstream& msg) {
   global_logger().trace(msg);

@@ -1271,16 +1271,29 @@ Status query_to_capnp(
       }
     } else if (
         query.use_refactored_sparse_global_order_reader() && !schema.dense() &&
-        (layout == Layout::GLOBAL_ORDER ||
-         (layout == Layout::UNORDERED && query.subarray()->range_num() <= 1))) {
+        (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED)) {
       auto builder = query_builder->initReaderIndex();
-      auto reader = (SparseGlobalOrderReader*)query.strategy();
 
-      query_builder->setVarOffsetsMode(reader->offsets_mode());
-      query_builder->setVarOffsetsAddExtraElement(
-          reader->offsets_extra_element());
-      query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
-      RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+      auto&& [st, non_overlapping_ranges]{query.non_overlapping_ranges()};
+      RETURN_NOT_OK(st);
+
+      if (*non_overlapping_ranges) {
+        auto reader = (SparseGlobalOrderReader<uint8_t>*)query.strategy();
+
+        query_builder->setVarOffsetsMode(reader->offsets_mode());
+        query_builder->setVarOffsetsAddExtraElement(
+            reader->offsets_extra_element());
+        query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
+        RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+      } else {
+        auto reader = (SparseGlobalOrderReader<uint64_t>*)query.strategy();
+
+        query_builder->setVarOffsetsMode(reader->offsets_mode());
+        query_builder->setVarOffsetsAddExtraElement(
+            reader->offsets_extra_element());
+        query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
+        RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+      }
     } else if (
         query.use_refactored_dense_reader() && all_dense && schema.dense()) {
       auto builder = query_builder->initDenseReader();
@@ -1806,26 +1819,52 @@ Status query_from_capnp(
       query->clear_strategy();
       RETURN_NOT_OK(query->set_layout_unsafe(layout));
 
+      auto&& [st, non_overlapping_ranges]{query->non_overlapping_ranges()};
+      RETURN_NOT_OK(st);
+
       auto reader_reader = query_reader.getReaderIndex();
-      auto reader = (SparseGlobalOrderReader*)query->strategy();
 
-      if (query_reader.hasVarOffsetsMode()) {
+      if (*non_overlapping_ranges) {
+        auto reader = (SparseGlobalOrderReader<uint8_t>*)query->strategy();
+
+        if (query_reader.hasVarOffsetsMode()) {
+          RETURN_NOT_OK(
+              reader->set_offsets_mode(query_reader.getVarOffsetsMode()));
+        }
+
+        RETURN_NOT_OK(reader->set_offsets_extra_element(
+            query_reader.getVarOffsetsAddExtraElement()));
+
+        if (query_reader.getVarOffsetsBitsize() > 0) {
+          RETURN_NOT_OK(
+              reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
+        }
+
+        RETURN_NOT_OK(reader->initialize_memory_budget());
+
         RETURN_NOT_OK(
-            reader->set_offsets_mode(query_reader.getVarOffsetsMode()));
-      }
+            index_reader_from_capnp(schema, reader_reader, query, reader));
+      } else {
+        auto reader = (SparseGlobalOrderReader<uint64_t>*)query->strategy();
 
-      RETURN_NOT_OK(reader->set_offsets_extra_element(
-          query_reader.getVarOffsetsAddExtraElement()));
+        if (query_reader.hasVarOffsetsMode()) {
+          RETURN_NOT_OK(
+              reader->set_offsets_mode(query_reader.getVarOffsetsMode()));
+        }
 
-      if (query_reader.getVarOffsetsBitsize() > 0) {
+        RETURN_NOT_OK(reader->set_offsets_extra_element(
+            query_reader.getVarOffsetsAddExtraElement()));
+
+        if (query_reader.getVarOffsetsBitsize() > 0) {
+          RETURN_NOT_OK(
+              reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
+        }
+
+        RETURN_NOT_OK(reader->initialize_memory_budget());
+
         RETURN_NOT_OK(
-            reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
+            index_reader_from_capnp(schema, reader_reader, query, reader));
       }
-
-      RETURN_NOT_OK(reader->initialize_memory_budget());
-
-      RETURN_NOT_OK(
-          index_reader_from_capnp(schema, reader_reader, query, reader));
     } else if (
         query_reader.hasReaderIndex() && !schema.dense() &&
         layout == Layout::UNORDERED && schema.allows_dups()) {

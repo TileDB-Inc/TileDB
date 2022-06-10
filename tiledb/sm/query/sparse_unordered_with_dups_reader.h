@@ -354,6 +354,22 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       uint8_t* val_buffer);
 
   /**
+   * Copy timestamp data tile.
+   *
+   * @param rt Result tile currently in process.
+   * @param src_min_pos Minimum cell position to copy.
+   * @param src_max_pos Maximum cell position to copy.
+   * @param buffer Offsets buffer.
+   *
+   * @return Status.
+   */
+  Status copy_timestamp_data_tile(
+      ResultTileWithBitmap<BitmapType>* rt,
+      const uint64_t src_min_pos,
+      const uint64_t src_max_pos,
+      uint8_t* buffer);
+
+  /**
    * Copy fixed size data tiles.
    *
    * @param name Name of the dimension/attribute.
