@@ -94,7 +94,6 @@ struct ConsolidationWithTimestampsFx {
 ConsolidationWithTimestampsFx::ConsolidationWithTimestampsFx()
     : vfs_(ctx_) {
   Config config;
-  config.set("sm.consolidation.with_timestamps", "true");
   config.set("sm.consolidation.buffer_size", "1000");
   ctx_ = Context(config);
   sm_ = ctx_.ptr().get()->ctx_->storage_manager();
@@ -106,7 +105,6 @@ ConsolidationWithTimestampsFx::~ConsolidationWithTimestampsFx() {
 
 void ConsolidationWithTimestampsFx::set_legacy() {
   Config config;
-  config.set("sm.consolidation.with_timestamps", "true");
   config.set("sm.consolidation.buffer_size", "1000");
   config.set("sm.query.sparse_global_order.reader", "legacy");
   config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
@@ -400,7 +398,7 @@ TEST_CASE_METHOD(
   sm::URI array_uri(SPARSE_ARRAY_NAME);
   ThreadPool tp(2);
   // Partial coverage of lower timestamp
-  sm::ArrayDirectory array_dir(sm_->vfs(), &tp, array_uri, 0, 2, true);
+  sm::ArrayDirectory array_dir(sm_->vfs(), &tp, array_uri, 0, 2);
   // Check that only the consolidated fragment is visible
   auto fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
@@ -409,7 +407,7 @@ TEST_CASE_METHOD(
   CHECK(ts_range.second == 3);
 
   // Partial coverage of upper timestamp
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 2, 10, true);
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 2, 10);
   // Check that only the consolidated fragment is visible
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
@@ -418,7 +416,7 @@ TEST_CASE_METHOD(
   CHECK(ts_range.second == 3);
 
   // Full coverage
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 5, true);
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 5);
   // Check that only the consolidated fragment is visible
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
@@ -427,7 +425,7 @@ TEST_CASE_METHOD(
   CHECK(ts_range.second == 3);
 
   // Boundary case
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 3, 5, true);
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 3, 5);
   // Check that only the consolidated fragment is visible
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
@@ -436,13 +434,13 @@ TEST_CASE_METHOD(
   CHECK(ts_range.second == 3);
 
   // No coverage - later read
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 4, 5, true);
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 4, 5);
   // Check that no fragment is visible
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 0);
 
   // No coverage - earlier read
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 0, true);
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 0);
   // Check that no fragment is visible
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 0);
@@ -515,7 +513,7 @@ TEST_CASE_METHOD(
   ThreadPool tp(2);
 
   // Partial coverage of lower timestamp
-  sm::ArrayDirectory array_dir(sm_->vfs(), &tp, array_uri, 0, 2, true);
+  sm::ArrayDirectory array_dir(sm_->vfs(), &tp, array_uri, 0, 2);
   // Check that only the first fragment is visible on an old array
   auto fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
@@ -524,7 +522,7 @@ TEST_CASE_METHOD(
   CHECK(ts_range.second == 1);
 
   // Partial coverage of upper timestamp
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 2, 10, true);
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 2, 10);
   // Check that only the second fragment is visible on an old array
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
@@ -533,7 +531,7 @@ TEST_CASE_METHOD(
   CHECK(ts_range.second == 3);
 
   // Full coverage
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 5, true);
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 5);
   // Check that only the consolidated fragment is visible
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
@@ -542,7 +540,7 @@ TEST_CASE_METHOD(
   CHECK(ts_range.second == 3);
 
   // Boundary case
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 3, 5, true);
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 3, 5);
   // Check that only the second fragment is visible
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
@@ -551,13 +549,13 @@ TEST_CASE_METHOD(
   CHECK(ts_range.second == 3);
 
   // No coverage - later read
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 4, 5, true);
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 4, 5);
   // Check that no fragment is visible
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 0);
 
   // No coverage - earlier read
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 0, true);
+  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 0);
   // Check that no fragment is visible
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 0);

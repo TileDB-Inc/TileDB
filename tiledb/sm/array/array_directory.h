@@ -89,8 +89,6 @@ class ArrayDirectory {
    *     were created within timestamp range
    *    [`timestamp_start`, `timestamp_end`] will be considered when
    *     fetching URIs.
-   * @param consolidation_with_timestamps_config Ture if consolidation with
-   * timestamps is enabled in config, false if not enabled or not relevant
    * @param mode The mode to load the array directory in.
    */
   ArrayDirectory(
@@ -99,7 +97,6 @@ class ArrayDirectory {
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
-      bool consolidation_with_timestamps_config,
       ArrayDirectoryMode mode = ArrayDirectoryMode::READ);
 
   /** Destructor. */
@@ -261,9 +258,6 @@ class ArrayDirectory {
 
   /** True if `load` has been run. */
   bool loaded_;
-
-  /** True if consolidation with timestamps is enabled in config */
-  bool consolidation_with_timestamps_config_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

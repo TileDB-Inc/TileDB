@@ -293,7 +293,6 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
         URI(array_name),
         0,
         std::numeric_limits<uint64_t>::max(),
-        config_.with_timestamps_,
         ArrayDirectoryMode::VACUUM_FRAGMENTS);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
@@ -830,14 +829,11 @@ Status FragmentConsolidator::set_config(const Config* config) {
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
   assert(found);
-  config_.with_timestamps_ = false;
-  RETURN_NOT_OK(merged_config.get<bool>(
-      "sm.consolidation.with_timestamps", &config_.with_timestamps_, &found));
-  assert(found);
   std::string reader =
       merged_config.get("sm.query.sparse_global_order.reader", &found);
   assert(found);
   config_.use_refactored_reader_ = reader.compare("refactored") == 0;
+  config_.with_timestamps_ = true;
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)
@@ -852,10 +848,6 @@ Status FragmentConsolidator::set_config(const Config* config) {
     return logger_->status(
         Status_ConsolidatorError("Invalid configuration; Amplification config "
                                  "parameter must be non-negative"));
-  if (config_.with_timestamps_ && !config_.use_refactored_reader_)
-    return logger_->status(
-        Status_ConsolidatorError("Invalid configuration; Consolidation with "
-                                 "timestamps requires refactored reader"));
 
   return Status::Ok();
 }

@@ -54,7 +54,6 @@ ArrayDirectory::ArrayDirectory(
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
-    bool consolidation_with_timestamps_config,
     ArrayDirectoryMode mode)
     : uri_(uri.add_trailing_slash())
     , vfs_(vfs)
@@ -62,9 +61,7 @@ ArrayDirectory::ArrayDirectory(
     , timestamp_start_(timestamp_start)
     , timestamp_end_(timestamp_end)
     , mode_(mode)
-    , loaded_(false)
-    , consolidation_with_timestamps_config_(
-          consolidation_with_timestamps_config) {
+    , loaded_(false) {
   auto st = load();
   if (!st.ok()) {
     throw std::logic_error(st.message());
@@ -901,8 +898,8 @@ bool ArrayDirectory::consolidation_with_timestamps_supported(
   // get_fragment_version returns UINT32_MAX for versions <= 2 so we should
   // explicitly exclude this case when checking if consolidation with timestamps
   // is supported on a fragment
-  return consolidation_with_timestamps_config_ &&
-         mode_ == ArrayDirectoryMode::READ && version >= 14 &&
+  return mode_ == ArrayDirectoryMode::READ &&
+         version >= constants::consolidation_with_timestamps_min_version &&
          version != UINT32_MAX;
 }
 }  // namespace sm

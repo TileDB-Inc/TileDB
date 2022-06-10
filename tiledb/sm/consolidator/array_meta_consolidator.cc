@@ -158,8 +158,7 @@ Status ArrayMetaConsolidator::vacuum(const char* array_name) {
         compute_tp,
         URI(array_name),
         0,
-        std::numeric_limits<uint64_t>::max(),
-        false);
+        std::numeric_limits<uint64_t>::max());
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }

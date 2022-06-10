@@ -576,6 +576,8 @@ const uint32_t format_version = 14;
 const uint32_t back_compat_writes_min_format_version = 7;
 
 /** The lowest version supported for consolidation with timestamps. */
+
+// FIXME !!
 const uint32_t consolidation_with_timestamps_min_version = 14;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
