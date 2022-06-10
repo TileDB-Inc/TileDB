@@ -59,16 +59,28 @@
 /** Disables warning for specific compiler
  */
 #if defined(_MSC_VER)
-#define TILEDB_DISABLE_WARNING_PUSH __pragma(warning(push))
-#define TILEDB_DISABLE_WARNING_POP __pragma(warning(pop))
-#define TILEDB_DISABLE_WARNING(warningNumber) \
+
+#define TILEDB_MSVC_DISABLE_WARNING_PUSH __pragma(warning(push))
+#define TILEDB_MSVC_DISABLE_WARNING_POP __pragma(warning(pop))
+#define TILEDB_MSVC_DISABLE_WARNING(warningNumber) \
   __pragma(warning(disable : warningNumber))
+
+#define TILEDB_GCC_DISABLE_WARNING_PUSH
+#define TILEDB_GCC_DISABLE_WARNING_POP
+#define TILEDB_GCC_DISABLE_WARNING
+
 #elif defined(__GNUC__) || defined(__clang__)
+
 #define TILEDB_DO_PRAGMA(X) _Pragma(#X)
-#define TILEDB_DISABLE_WARNING_PUSH TILEDB_DO_PRAGMA(GCC diagnostic push)
-#define TILEDB_DISABLE_WARNING_POP TILEDB_DO_PRAGMA(GCC diagnostic pop)
-#define TILEDB_DISABLE_WARNING(warningName) \
+#define TILEDB_GCC_DISABLE_WARNING_PUSH TILEDB_DO_PRAGMA(GCC diagnostic push)
+#define TILEDB_GCC_DISABLE_WARNING_POP TILEDB_DO_PRAGMA(GCC diagnostic pop)
+#define TILEDB_GCC_DISABLE_WARNING(warningName) \
   TILEDB_DO_PRAGMA(GCC diagnostic ignored #warningName)
+
+#define TILEDB_MSVC_DISABLE_WARNING_PUSH
+#define TILEDB_MSVC_DISABLE_WARNING_POP
+#define TILEDB_MSVC_DISABLE_WARNING
+
 #endif
 
 #endif  // TILEDB_MACROS_H

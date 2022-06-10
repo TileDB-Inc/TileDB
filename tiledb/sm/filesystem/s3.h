@@ -46,8 +46,10 @@
 #include "tiledb/sm/stats/stats.h"
 #include "uri.h"
 
-TILEDB_DISABLE_WARNING_PUSH
-TILEDB_DISABLE_WARNING("-Wswitch-enum")
+TILEDB_GCC_DISABLE_WARNING_PUSH
+// clang-format off
+TILEDB_GCC_DISABLE_WARNING(-Wswitch-enum)
+// clang-format on
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/core/client/ClientConfiguration.h>
@@ -75,7 +77,7 @@ TILEDB_DISABLE_WARNING("-Wswitch-enum")
 #include <aws/s3/model/ListObjectsRequest.h>
 #include <aws/s3/model/PutObjectRequest.h>
 #include <aws/s3/model/UploadPartRequest.h>
-TILEDB_DISABLE_WARNING_POP
+TILEDB_GCC_DISABLE_WARNING_POP
 
 #include <sys/types.h>
 #include <mutex>
