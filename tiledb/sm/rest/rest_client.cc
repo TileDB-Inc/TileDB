@@ -775,6 +775,11 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
       returned_data, serialization_type_, true, nullptr, query, compute_tp_);
 }
 
+Status RestClient::submit_and_finalize_query_to_rest(
+    const URI& uri, Query* query) {
+  return Status::Ok();
+}
+
 Status RestClient::subarray_to_str(
     const ArraySchema& schema,
     const void* subarray,

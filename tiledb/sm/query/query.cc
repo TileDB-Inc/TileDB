@@ -677,6 +677,40 @@ Status Query::finalize() {
   return Status::Ok();
 }
 
+Status Query::submit_and_finalize() {
+  if (type_ != QueryType::WRITE || layout_ != Layout::GLOBAL_ORDER) {
+    return logger_->status(
+        Status_QueryError("Error in query submit_and_finalize; Call valid only "
+                          "in global_order writes."));
+  }
+
+  // Check attribute/dimensions buffers completeness before query submits
+  RETURN_NOT_OK(check_buffers_correctness());
+
+  if (array_->is_remote()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return logger_->status(
+          Status_QueryError("Error in query submit_and_finalize; remote array "
+                            "with no rest client."));
+
+    if (status_ == QueryStatus::UNINITIALIZED) {
+      RETURN_NOT_OK(create_strategy());
+      RETURN_NOT_OK(strategy_->init());
+    }
+    return rest_client->submit_and_finalize_query_to_rest(
+        array_->array_uri(), this);
+  }
+
+  RETURN_NOT_OK(init());
+  RETURN_NOT_OK(storage_manager_->query_submit(this));
+
+  RETURN_NOT_OK(strategy_->finalize());
+  status_ = QueryStatus::COMPLETED;
+
+  return Status::Ok();
+}
+
 Status Query::get_buffer(
     const char* name, void** buffer, uint64_t** buffer_size) const {
   // Check attribute

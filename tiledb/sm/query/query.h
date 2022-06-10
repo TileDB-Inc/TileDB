@@ -385,6 +385,12 @@ class Query {
   Status finalize();
 
   /**
+   * Submits and finalizes a query, flushing all internal state. Applicable
+   * only to global layout writes, returns an error otherwise.
+   */
+  Status submit_and_finalize();
+
+  /**
    * This is a deprecated API.
    * Retrieves the buffer of a fixed-sized attribute/dimension.
    *

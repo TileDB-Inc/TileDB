@@ -1216,14 +1216,6 @@ Status query_to_capnp(
         Status_SerializationError("Cannot serialize; Unsupported query type."));
   }
 
-  if (layout == Layout::GLOBAL_ORDER &&
-      (query_type == QueryType::WRITE ||
-       query_type == QueryType::MODIFY_EXCLUSIVE)) {
-    return LOG_STATUS(
-        Status_SerializationError("Cannot serialize; global order "
-                                  "serialization not supported for writes."));
-  }
-
   if (array == nullptr) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; array is null."));
@@ -1394,6 +1386,10 @@ Status query_from_capnp(
   bool force_legacy_reader =
       query_type == QueryType::READ && query_reader.hasReader();
   RETURN_NOT_OK(query->reset_strategy_with_layout(layout, force_legacy_reader));
+
+  // TODO: deserialize global_writer specific fields
+  if (layout == Layout::GLOBAL_ORDER && type == QueryType::WRITE) {
+  }
 
   // Deserialize array instance.
   RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));

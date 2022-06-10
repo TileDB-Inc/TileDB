@@ -2976,6 +2976,22 @@ int32_t tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_submit_and_finalize(
+    tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  // Trivial case
+  if (query == nullptr)
+    return TILEDB_OK;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, query->query_->submit_and_finalize()))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 void tiledb_query_free(tiledb_query_t** query) {
   if (query != nullptr && *query != nullptr) {
     delete (*query)->query_;
@@ -8445,6 +8461,11 @@ int32_t tiledb_query_set_condition(
 int32_t tiledb_query_finalize(
     tiledb_ctx_t* ctx, tiledb_query_t* query) noexcept {
   return api_entry<detail::tiledb_query_finalize>(ctx, query);
+}
+
+int32_t tiledb_query_submit_and_finalize(
+    tiledb_ctx_t* ctx, tiledb_query_t* query) noexcept {
+  return api_entry<detail::tiledb_query_submit_and_finalize>(ctx, query);
 }
 
 void tiledb_query_free(tiledb_query_t** query) noexcept {
