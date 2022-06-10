@@ -3541,16 +3541,8 @@ capi_return_t tiledb_subarray_alloc(
     throw api::CAPIStatusException("Cannot create subarray; array is not open");
   }
 
-  // Create a buffer struct
-  *subarray = new tiledb_subarray_t;
-  if (*subarray == nullptr) {
-    throw api::CAPIStatusException(
-        "Failed to allocate TileDB subarray wrapper");
-  } else {
-    (*subarray)->subarray_ = nullptr;
-  }
-
   // Create a new subarray object
+  *subarray = new tiledb_subarray_t;
   try {
     (*subarray)->subarray_ = new tiledb::sm::Subarray(
         array->array_.get(),
