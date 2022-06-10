@@ -67,6 +67,8 @@ struct ConsolidationWithTimestampsFx {
       uint64_t timestamp);
   void write_sparse_v11(uint64_t timestamp);
   void consolidate_sparse(bool vacuum = false);
+  void consolidate_sparse(
+      uint64_t start_time, uint64_t end_time, bool vacuum = false);
   void check_timestamps_file(std::vector<uint64_t> expected);
   void read_sparse(
       std::vector<int>& a1,
@@ -216,6 +218,18 @@ void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
 
 void ConsolidationWithTimestampsFx::consolidate_sparse(bool vacuum) {
   auto config = ctx_.config();
+  Array::consolidate(ctx_, SPARSE_ARRAY_NAME, &config);
+
+  if (vacuum) {
+    REQUIRE_NOTHROW(Array::vacuum(ctx_, SPARSE_ARRAY_NAME, &config));
+  }
+}
+
+void ConsolidationWithTimestampsFx::consolidate_sparse(
+    uint64_t start_time, uint64_t end_time, bool vacuum) {
+  auto config = ctx_.config();
+  config.set("sm.consolidation.timestamp_start", std::to_string(start_time));
+  config.set("sm.consolidation.timestamp_end", std::to_string(end_time));
   Array::consolidate(ctx_, SPARSE_ARRAY_NAME, &config);
 
   if (vacuum) {
@@ -928,7 +942,7 @@ TEST_CASE_METHOD(
   write_sparse({12, 13, 14, 15}, {4, 3, 3, 4}, {2, 3, 4, 4}, 6);
 
   // Consolidate.
-  consolidate_sparse(vacuum);
+  consolidate_sparse(3, 7, vacuum);
 
   tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
 
@@ -950,35 +964,60 @@ TEST_CASE_METHOD(
   SECTION("Read after all writes") {
     // Read after both writes - should see everything
     read_sparse(a, dim1, dim2, stats, layout, 7, timestamps_ptr);
-    std::vector<int> c_a_opt1 = {
-        0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 7, 13, 14, 15};
-    std::vector<int> c_a_opt2 = {
-        0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 13, 7, 14, 15};
-    std::vector<uint64_t> c_dim1 = {
-        1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 3, 4};
-    std::vector<uint64_t> c_dim2 = {
-        1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 3, 4, 4};
-    CHECK(
-        (!memcmp(c_a_opt1.data(), a.data(), c_a_opt1.size() * sizeof(int)) ||
-         !memcmp(c_a_opt2.data(), a.data(), c_a_opt2.size() * sizeof(int))));
-    CHECK(
-        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
-    CHECK(
-        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
-    if (timestamps_ptr != nullptr) {
-      std::vector<uint64_t> exp_ts_opt1 = {
-          1, 1, 4, 3, 4, 1, 1, 3, 4, 3, 4, 6, 3, 6, 6, 6};
-      std::vector<uint64_t> exp_ts_opt2 = {
-          1, 1, 4, 3, 4, 1, 1, 3, 4, 3, 4, 6, 6, 3, 6, 6};
+
+    if (layout == TILEDB_UNORDERED) {
+      // results in global order of fragments
+      std::vector<int> c_a = {
+          0, 1, 4, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+      std::vector<uint64_t> c_dim1 = {
+          1, 1, 2, 1, 2, 2, 3, 3, 2, 1, 3, 4, 4, 3, 3, 4};
+      std::vector<uint64_t> c_dim2 = {
+          1, 2, 2, 4, 3, 4, 2, 3, 1, 3, 1, 1, 2, 3, 4, 4};
+      CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+      CHECK(!memcmp(
+          c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+      CHECK(!memcmp(
+          c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+      if (timestamps_ptr != nullptr) {
+        std::vector<uint64_t> exp_ts = {
+            1, 1, 3, 1, 1, 3, 3, 3, 4, 4, 4, 4, 6, 6, 6, 6};
+        CHECK(!memcmp(
+            exp_ts.data(),
+            timestamps.data(),
+            exp_ts.size() * sizeof(uint64_t)));
+      }
+    } else {
+      // result in cell global order
+      std::vector<int> c_a_opt1 = {
+          0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 7, 13, 14, 15};
+      std::vector<int> c_a_opt2 = {
+          0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 13, 7, 14, 15};
+      std::vector<uint64_t> c_dim1 = {
+          1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 3, 4};
+      std::vector<uint64_t> c_dim2 = {
+          1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 3, 4, 4};
       CHECK(
-          (!memcmp(
-               exp_ts_opt1.data(),
-               timestamps.data(),
-               exp_ts_opt1.size() * sizeof(uint64_t)) ||
-           !memcmp(
-               exp_ts_opt2.data(),
-               timestamps.data(),
-               exp_ts_opt2.size() * sizeof(uint64_t))));
+          (!memcmp(c_a_opt1.data(), a.data(), c_a_opt1.size() * sizeof(int)) ||
+           !memcmp(c_a_opt2.data(), a.data(), c_a_opt2.size() * sizeof(int))));
+      CHECK(!memcmp(
+          c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+      CHECK(!memcmp(
+          c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+      if (timestamps_ptr != nullptr) {
+        std::vector<uint64_t> exp_ts_opt1 = {
+            1, 1, 4, 3, 4, 1, 1, 3, 4, 3, 4, 6, 3, 6, 6, 6};
+        std::vector<uint64_t> exp_ts_opt2 = {
+            1, 1, 4, 3, 4, 1, 1, 3, 4, 3, 4, 6, 6, 3, 6, 6};
+        CHECK(
+            (!memcmp(
+                 exp_ts_opt1.data(),
+                 timestamps.data(),
+                 exp_ts_opt1.size() * sizeof(uint64_t)) ||
+             !memcmp(
+                 exp_ts_opt2.data(),
+                 timestamps.data(),
+                 exp_ts_opt2.size() * sizeof(uint64_t))));
+      }
     }
   }
 
@@ -987,18 +1026,40 @@ TEST_CASE_METHOD(
   SECTION("Read between the 2 writes") {
     read_sparse(a, dim1, dim2, stats, layout, 5, timestamps_ptr);
 
-    std::vector<int> c_a = {0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 7};
-    std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 3};
-    std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 3};
-    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
-    CHECK(
-        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
-    CHECK(
-        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
-    if (timestamps_ptr != nullptr) {
-      std::vector<uint64_t> exp_ts = {1, 1, 4, 3, 4, 1, 1, 3, 4, 3, 4, 3};
+    if (layout == TILEDB_UNORDERED) {
+      // results in global order of fragments
+      std::vector<int> c_a = {0, 1, 4, 2, 3, 5, 6, 7, 8, 9, 10, 11};
+      std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 2, 3, 3, 2, 1, 3, 4};
+      std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 4, 2, 3, 1, 3, 1, 1};
+      CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
       CHECK(!memcmp(
-          exp_ts.data(), timestamps.data(), exp_ts.size() * sizeof(uint64_t)));
+          c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+      CHECK(!memcmp(
+          c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+      if (timestamps_ptr != nullptr) {
+        std::vector<uint64_t> exp_ts = {1, 1, 3, 1, 1, 3, 3, 3, 4, 4, 4, 4};
+        CHECK(!memcmp(
+            exp_ts.data(),
+            timestamps.data(),
+            exp_ts.size() * sizeof(uint64_t)));
+      }
+    } else {
+      // result in cell global order
+      std::vector<int> c_a = {0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 7};
+      std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 3};
+      std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 3};
+      CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+      CHECK(!memcmp(
+          c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+      CHECK(!memcmp(
+          c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+      if (timestamps_ptr != nullptr) {
+        std::vector<uint64_t> exp_ts = {1, 1, 4, 3, 4, 1, 1, 3, 4, 3, 4, 3};
+        CHECK(!memcmp(
+            exp_ts.data(),
+            timestamps.data(),
+            exp_ts.size() * sizeof(uint64_t)));
+      }
     }
   }
   remove_sparse_array();
@@ -1407,4 +1468,137 @@ TEST_CASE_METHOD(
   }
 
   remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, check number of tiles read",
+    "[cppapi][consolidation-with-timestamps][partial-read][stats]") {
+  remove_sparse_array();
+  // enable duplicates
+  create_sparse_array(true);
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+  // Write second fragment.
+  write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3);
+
+  // Consolidate first 2 fragments into 1:3
+  bool vacuum = GENERATE(true, false);
+  consolidate_sparse(vacuum);
+
+  // Write third fragment.
+  write_sparse({8, 9, 10, 11}, {2, 1, 3, 4}, {1, 3, 1, 1}, 5);
+  // Write fourth fragment.
+  write_sparse({12, 13, 14, 15}, {4, 3, 3, 4}, {2, 3, 4, 4}, 7);
+
+  // Consolidate last 2 fragments into 5:7
+  consolidate_sparse(4, 7, true);
+
+  std::string stats;
+  std::vector<int> a(16);
+  std::vector<uint64_t> dim1(16);
+  std::vector<uint64_t> dim2(16);
+  tiledb_layout_t layout = TILEDB_UNORDERED;
+
+  SECTION("Partial overlap or not") {
+    // Read one tile for dim1, dim2, attr a1 and timestamp = 4, since 0:2 array
+    // partially overlaps with the first 1:3 consolidated fragment
+    read_sparse(a, dim1, dim2, stats, layout, 2);
+    CHECK(
+        stats.find(
+            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 4") !=
+        std::string::npos);
+
+    // Same but skip timestamps: 4 - 1 = 3, since 0:4 array fully overlaps with
+    // the first 1:3 consolidated fragment, so no need to check timestamps for
+    // cells
+    read_sparse(a, dim1, dim2, stats, layout, 4);
+    CHECK(
+        stats.find(
+            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 3") !=
+        std::string::npos);
+
+    // Read 2 tiles for dim1, dim2, attr a1 and 1 for timestamps: 3 * 2 + 1 = 7
+    // , since 0:6 array fully overlaps with the first 1:3, but only partially
+    // overlaps with the second 5:7 consolidated fragment
+    read_sparse(a, dim1, dim2, stats, layout, 6);
+    CHECK(
+        stats.find(
+            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 7") !=
+        std::string::npos);
+
+    // Read 2 tiles for dim1, dim2, attr a1 and skip timestamps: 3 * 2, since
+    // 0:8 array fully overlaps with both consolidateded fragments 1:3 and 5:7
+    read_sparse(a, dim1, dim2, stats, layout, 8);
+    CHECK(
+        stats.find(
+            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 6") !=
+        std::string::npos);
+
+    // Read 2 tiles for dim1, dim2, attr a1 and timestamps: 4 * 2, since 3:5
+    // array partially overlaps with both consolidateded fragments 1:3 and 5:7
+    reopen_sparse(a, dim1, dim2, stats, layout, 3, 5);
+    CHECK(
+        stats.find(
+            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 8") !=
+        std::string::npos);
+  }
+
+  SECTION("User requested timestamps") {
+    std::vector<uint64_t> timestamps(16);
+    read_sparse(a, dim1, dim2, stats, layout, 4, &timestamps);
+    CHECK(
+        stats.find(
+            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 4") !=
+        std::string::npos);
+  }
+
+  SECTION("No duplicates") {
+    // set no dups
+    remove_sparse_array();
+    create_sparse_array(false);
+
+    // Write first fragment.
+    write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+    // Write second fragment.
+    write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3);
+
+    // Consolidate first 2 fragments into 1:3
+    consolidate_sparse(vacuum);
+
+    read_sparse(a, dim1, dim2, stats, layout, 4);
+    CHECK(
+        stats.find(
+            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 4") !=
+        std::string::npos);
+  }
+
+  SECTION("Fragment without timestamps") {
+    // set no dups
+    remove_sparse_array();
+    create_sparse_array(false);
+
+    // Write first fragment.
+    write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+    // Write second fragment.
+    write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3);
+
+    // read with partial overlap - expect no timestamps since fragment doesn't
+    // have any
+    read_sparse(a, dim1, dim2, stats, layout, 2);
+    CHECK(
+        stats.find(
+            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 3") !=
+        std::string::npos);
+
+    // request timestamps - expect no timestamps getting read since fragment
+    // doesn't have any
+    std::vector<uint64_t> timestamps(16);
+    read_sparse(a, dim1, dim2, stats, layout, 4, &timestamps);
+    CHECK(
+        stats.find(
+            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 6") !=
+        std::string::npos);
+  }
 }
