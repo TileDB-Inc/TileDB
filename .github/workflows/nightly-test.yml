@@ -3,7 +3,7 @@ name: TileDB Nightly Test Build
 on:
   schedule:
     # runs every day at 2:50 UTC
-    - cron: "15 16 * * *"
+    - cron: "50 02 * * *"
   workflow_dispatch:
 
 jobs:
@@ -28,20 +28,14 @@ jobs:
 
       - name: Configure TileDB CMake
         run: |
-          pwd
-          ls
           cmake -S . -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=Release
 
       - name: Build TileDB
         run: |
-          pwd
-          ls
           cmake --build build -j2 --config Release
 
       - name: Test TileDB
         run: |
-          pwd
-          ls
           cmake --build build --target check --config Release
 
   create_issue_on_fail:
