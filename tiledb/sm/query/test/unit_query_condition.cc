@@ -43,7 +43,6 @@
 
 #include <catch.hpp>
 #include <iostream>
-#include <optional>
 
 using namespace tiledb::sm;
 
@@ -3058,8 +3057,6 @@ struct TestParams {
   uint64_t cell_count_;
   std::vector<uint8_t> expected_bitmap_;
   std::vector<ResultCellSlab> expected_slabs_;
-  uint64_t sparse_cell_count_ = 0;
-  std::vector<uint64_t> expected_sparse_bitmap_;
 
   TestParams(
       QueryCondition&& qc,
