@@ -1209,7 +1209,7 @@ TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test read timestamps, unordered reader, overlapping ranges",
     "[cppapi][consolidation-with-timestamps][read-timestamps][unordered-"
-    "reader][overlapping-ranges][!shouldfail][SC-18541]") {
+    "reader][overlapping-ranges][SC-18541]") {
   remove_sparse_array();
   // enable duplicates
   create_sparse_array(true);
