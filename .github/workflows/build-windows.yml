@@ -329,6 +329,14 @@ jobs:
 
           .\Release\ExampleExe_static.exe
 
+          # Packaging test
+          cd $env:BUILD_SOURCESDIRECTORY\test\packaging
+          mkdir build
+          cd build
+          cmake -DCMAKE_PREFIX_PATH="$env:BUILD_SOURCESDIRECTORY\dist" ..
+          # The testing is in the test/packaging/CMakeLists.txt file, just invoked,
+          # there is no other code to be built in the produced projects.
+
       - name: 'process crashdumps'
         shell: cmd
         if: ${{ failure() == true && startsWith(matrix.os, 'windows-') == true }} # only run this job if the build step failed
