@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2018-2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -34,47 +34,47 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
-# Search the path set during the superbuild for the EP.
-set(LIBMAGIC_PATHS ${TILEDB_EP_INSTALL_PREFIX})
+# First check for a static version in the EP prefix.
+find_library(libmagic_LIBRARIES
+        NAMES
+        magic${CMAKE_STATIC_LIBRARY_SUFFIX}
+        libmagic${CMAKE_STATIC_LIBRARY_SUFFIX}
+        PATHS ${TILEDB_EP_INSTALL_PREFIX}
+        PATH_SUFFIXES lib
+        NO_DEFAULT_PATH
+)
 
-if(TILEDB_LIBMAGIC_EP_BUILT)
-  find_package(libmagic PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
-endif()
-
-if (TILEDB_LIBMAGIC_EP_BUILT)
+if (libmagic_LIBRARIES)
+  set(libmagic_STATIC_EP_FOUND TRUE)
   find_path(libmagic_INCLUDE_DIR
-    NAMES magic.h
-    PATHS ${LIBMAGIC_PATHS}
-    PATH_SUFFIXES include
-    ${NO_DEFAULT_PATH}
-  )
-
-  if (NOT libmagic_INCLUDE_DIR)
-    find_path(libmagic_INCLUDE_DIR
-      NAMES file/file.h
-      PATHS ${LIBMAGIC_PATHS}
-      PATH_SUFFIXES include
-      ${NO_DEFAULT_PATH}
-    )
-  endif()
-
-  # Link statically if installed with the EP.
+          NAMES magic.h
+          PATHS ${TILEDB_EP_INSTALL_PREFIX}
+          PATH_SUFFIXES include
+          NO_DEFAULT_PATH
+          )
+elseif(NOT TILEDB_FORCE_ALL_DEPS)
+  set(libmagic_STATIC_EP_FOUND FALSE)
+  # Static EP not found, search in system paths.
   find_library(libmagic_LIBRARIES
-    libmagic
-    PATHS ${LIBMAGIC_PATHS}
-    PATH_SUFFIXES lib a
-    #${TILEDB_DEPS_NO_DEFAULT_PATH}
-    ${NO_DEFAULT_PATH}
-  )
-
-  include(FindPackageHandleStandardArgs)
-  FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
-    REQUIRED_VARS libmagic_LIBRARIES libmagic_INCLUDE_DIR
-  )
+          NAMES
+          magic libmagic
+          PATH_SUFFIXES lib bin
+          ${TILEDB_DEPS_NO_DEFAULT_PATH}
+          )
+  find_path(libmagic_INCLUDE_DIR
+          NAMES magic.h
+          PATH_SUFFIXES include
+          ${TILEDB_DEPS_NO_DEFAULT_PATH}
+          )
 endif()
+
+include(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
+        REQUIRED_VARS libmagic_LIBRARIES libmagic_INCLUDE_DIR
+)
 
 # if not yet built add it as an external project
-if(NOT TILEDB_LIBMAGIC_EP_BUILT)
+if(NOT libmagic_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Magic as an external project")
 
@@ -115,11 +115,22 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
   endif()
 endif()
 
-find_file(libmagic_DICTIONARY magic.mgc
-  PATHS ${LIBMAGIC_PATHS}
-  PATH_SUFFIXES bin share
-  ${NO_DEFAULT_PATH}
-)
+if(TILEDB_LIBMAGIC_EP_BUILT)
+  find_file(libmagic_DICTIONARY magic.mgc
+          PATHS ${LIBMAGIC_PATHS}
+          PATH_SUFFIXES bin share misc
+          ${TILEDB_DEPS_NO_DEFAULT_PATH}
+          )
+else()
+  find_file(libmagic_DICTIONARY magic.mgc
+    PATH_SUFFIXES bin share misc share/misc
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
+endif()
+
+if(NOT TILEDB_SUPERBUILD AND NOT libmagic_DICTIONARY)
+  message(FATAL_ERROR "Unable to find libmagic dictionary")
+endif()
 
 if (libmagic_FOUND AND NOT TARGET libmagic)
   message(STATUS "Found Magic, adding imported target: ${libmagic_LIBRARIES}")

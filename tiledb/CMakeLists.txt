@@ -337,18 +337,22 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 ############################################################
 # provide actions/target for preparation of magic.mgc data for embedding/build
 
-#set(MGC_GZIPPED_BIN_PATH3 "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc/magic_mgc_gzipped.bin")
-set(MGC_GZIPPED_BIN_OUTPUT_DIRECTORY "${TILEDB_EP_BASE}/install/include")
+set(MGC_GZIPPED_BIN_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/sm/misc")
 set(MGC_GZIPPED_BIN_OUTPUT_FILE "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}/magic_mgc_gzipped.bin")
 set(MGC_GZIPPED_BIN_INPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc")
 set(MGC_GZIPPED_BIN_INPUT_FILE "${MGC_GZIPPED_BIN_INPUT_DIRECTORY}/magic_mgc_gzipped.bin.tar.bz2")
 
+# Create the output directory if it does not exist
+add_custom_target(create_magic_bin_output_directory ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY})
+
 add_custom_command(
   OUTPUT "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
-  DEPENDS "${MGC_GZIPPED_BIN_INPUT_FILE}"
+  DEPENDS "${MGC_GZIPPED_BIN_INPUT_FILE}" create_magic_bin_output_directory
   COMMAND ${CMAKE_COMMAND} -E tar x "${MGC_GZIPPED_BIN_INPUT_FILE}"
   WORKING_DIRECTORY "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}"
 )
+
 add_custom_target(gen_mgc_unarch ALL
   DEPENDS ${MGC_GZIPPED_BIN_OUTPUT_FILE}
 )
@@ -361,7 +365,7 @@ add_custom_target(
   WORKING_DIRECTORY "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}"
   COMMAND ${CMAKE_COMMAND} -E tar cvj "magic_mgc_gzipped.bin.tar.bz2" "magic_mgc_gzipped.bin"
   COMMAND ${CMAKE_COMMAND} -E copy "magic_mgc_gzipped.bin.tar.bz2" "${MGC_GZIPPED_BIN_INPUT_FILE}"
-  DEPENDS "${libmagic_DICTIONARY}"
+  DEPENDS "${libmagic_DICTIONARY}" create_magic_bin_output_directory
   COMMENT "Re-generate ${MGC_GZIPPED_BIN_INPUT_FILE} for embedded magic.mgc support"
 )
 
@@ -375,6 +379,8 @@ target_include_directories(TILEDB_CORE_OBJECTS
     "${TILEDB_EXTERNALS_INCLUDE_DIRS}"
 	# to pickup <build_dir>/tiledb for capnp gen'd files
     "${CMAKE_CURRENT_BINARY_DIR}/.."
+    # For libmagic binary data include
+    "${CMAKE_CURRENT_BINARY_DIR}/sm/misc"
 )
 
 # Build a separate copy of the object library for use with static TileDB
