@@ -306,16 +306,22 @@ Status ResultTile::read(
     void* buffer,
     uint64_t buffer_offset,
     uint64_t pos,
-    uint64_t len) {
+    uint64_t len,
+    const uint64_t timestamp_val) {
   buffer = static_cast<char*>(buffer) + buffer_offset;
 
   bool is_dim = false;
   RETURN_NOT_OK(domain_->has_dimension(name, &is_dim));
 
+  // Boolean value indicating we will copy the fragment timestamp value into
+  // the buffer for this tile.
+  const bool use_fragment_ts =
+      name == constants::timestamps && timestamp_val != UINT64_MAX;
+
   // Typical case
   // If asking for an attribute, or split dim buffers with split coordinates
   // or coordinates have been fetched as zipped
-  if ((!is_dim && name != constants::coords) ||
+  if ((!is_dim && name != constants::coords && !use_fragment_ts) ||
       (is_dim && !coord_tiles_[0].first.empty()) ||
       (name == constants::coords && !std::get<0>(coords_tile_).empty())) {
     const auto& tile = std::get<0>(*this->tile_tuple(name));
@@ -341,6 +347,13 @@ Status ResultTile::read(
             coord_tile.read(buff + buff_offset, tile_offset, cell_size));
         buff_offset += cell_size;
       }
+    }
+  } else if (use_fragment_ts) {
+    // Copy passed in fragment timestamp.
+    auto buff = static_cast<unsigned char*>(buffer);
+    for (uint64_t c = 0; c < len; c++) {
+      memcpy(buff, &timestamp_val, constants::timestamp_size);
+      buff += constants::timestamp_size;
     }
   } else {
     // Last case which is zipped coordinates but split buffers

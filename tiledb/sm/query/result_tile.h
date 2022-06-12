@@ -198,7 +198,8 @@ class ResultTile {
       void* buffer,
       uint64_t buffer_offset,
       uint64_t pos,
-      uint64_t len);
+      uint64_t len,
+      const uint64_t timestamp_val = UINT64_MAX);
 
   /**
    * Reads `len` coordinates the from the tile, starting at the beginning of

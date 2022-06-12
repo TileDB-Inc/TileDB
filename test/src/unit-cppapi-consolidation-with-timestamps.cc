@@ -1129,12 +1129,11 @@ TEST_CASE_METHOD(
 
   tiledb_layout_t layout = TILEDB_UNORDERED;
 
-  /* TODO: Testing for legacy as part of SC#18217
   // Test read for both refactored and legacy.
   bool legacy = GENERATE(true, false);
   if (legacy) {
     set_legacy();
-  } */
+  }
 
   std::string stats;
   std::vector<int> a(16);
@@ -1324,12 +1323,11 @@ TEST_CASE_METHOD(
 
   tiledb_layout_t layout = TILEDB_GLOBAL_ORDER;
 
-  /* TODO: Testing for legacy as part of SC#18217
   // Test read for both refactored and legacy.
   bool legacy = GENERATE(true, false);
   if (legacy) {
     set_legacy();
-  } */
+  }
 
   std::string stats;
   std::vector<int> a(16);
