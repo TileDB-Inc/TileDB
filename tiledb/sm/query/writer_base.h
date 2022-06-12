@@ -326,23 +326,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   bool has_sum_metadata(const std::string& name, const bool var_size);
 
   /**
-   * Initializes a tile.
-   *
-   * @param var_size Is it a var size tile.
-   * @param nullable Is is a nullable tile.
-   * @param cell_size Cell size.
-   * @param type Datatype of the tile.
-   * @param tile The tile to be initialized.
-   * @return Status
-   */
-  Status init_tile(
-      const bool var_size,
-      const bool nullable,
-      const uint64_t cell_size,
-      const Datatype type,
-      WriterTile& tile) const;
-
-  /**
    * Initializes the tiles for writing for the input attribute/dimension.
    *
    * @param name The attribute/dimension the tiles belong to.

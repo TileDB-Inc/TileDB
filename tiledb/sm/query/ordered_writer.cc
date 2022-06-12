@@ -229,10 +229,15 @@ Status OrderedWriter::ordered_write() {
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
       auto& attr_tile_batches = tiles[attr];
-      RETURN_NOT_OK_ELSE(
-          prepare_filter_and_write_tiles<T>(
-              attr, attr_tile_batches, frag_meta, &dense_tiler, thread_num),
-          storage_manager_->vfs()->remove_dir(uri));
+      try {
+        RETURN_NOT_OK_ELSE(
+            prepare_filter_and_write_tiles<T>(
+                attr, attr_tile_batches, frag_meta, &dense_tiler, thread_num),
+            storage_manager_->vfs()->remove_dir(uri));
+      } catch (const std::logic_error& le) {
+        storage_manager_->vfs()->remove_dir(uri);
+        return Status_WriterError(le.what());
+      }
     }
   }
 
@@ -340,7 +345,16 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   for (uint64_t b = 0; b < batch_num; ++b) {
     auto batch_size = (b == batch_num - 1) ? last_batch_size : thread_num;
     assert(batch_size > 0);
-    tile_batches[b].resize(batch_size, WriterTile(var, nullable, cell_size));
+    tile_batches[b].reserve(batch_size);
+    for (uint64_t i = 0; i < batch_size; i++) {
+      tile_batches[b].emplace_back(WriterTile(
+          array_schema_,
+          coords_info_.has_coords_,
+          var,
+          nullable,
+          cell_size,
+          type));
+    }
     auto st = parallel_for(
         storage_manager_->compute_tp(), 0, batch_size, [&](uint64_t i) {
           // Prepare and filter tiles

@@ -50,21 +50,21 @@ class WriterTile {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  WriterTile() = delete;
-
-  WriterTile(bool var_size, bool nullable, uint64_t cell_size);
-
-  /** Copy constructor. */
-  WriterTile(const WriterTile& tile);
-
-  /** Copy-assign operator. */
-  WriterTile& operator=(const WriterTile& tile);
+  WriterTile(
+      const ArraySchema& array_schema,
+      const bool has_coords,
+      const bool var_size,
+      const bool nullable,
+      const uint64_t cell_size,
+      const Datatype type);
 
   /** Move constructor. */
   WriterTile(WriterTile&& tile);
 
   /** Move-assign operator. */
   WriterTile& operator=(WriterTile&& tile);
+
+  DISABLE_COPY_AND_COPY_ASSIGN(WriterTile);
 
   /* ********************************* */
   /*                API                */
@@ -186,6 +186,11 @@ class WriterTile {
   void swap(WriterTile& tile);
 
  private:
+  /* ********************************* */
+  /*        PRIVATE CONSTRUCTOR        */
+  /* ********************************* */
+  WriterTile() = default;
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

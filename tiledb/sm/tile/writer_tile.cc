@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/array_schema/domain.h"
 
 using namespace tiledb::common;
 
@@ -41,7 +42,13 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-WriterTile::WriterTile(bool var_size, bool nullable, uint64_t cell_size)
+WriterTile::WriterTile(
+    const ArraySchema& array_schema,
+    const bool has_coords,
+    const bool var_size,
+    const bool nullable,
+    const uint64_t cell_size,
+    const Datatype type)
     : var_tile_(var_size ? std::optional<Tile>(Tile()) : std::nullopt)
     , validity_tile_(nullable ? std::optional<Tile>(Tile()) : std::nullopt)
     , cell_size_(cell_size)
@@ -49,31 +56,66 @@ WriterTile::WriterTile(bool var_size, bool nullable, uint64_t cell_size)
     , min_size_(0)
     , max_size_(0)
     , null_count_(0) {
-}
+  auto& domain{array_schema.domain()};
+  auto capacity = array_schema.capacity();
+  auto cell_num_per_tile = has_coords ? capacity : domain.cell_num_per_tile();
 
-WriterTile::WriterTile(const WriterTile& tile) {
-  this->var_tile_ =
-      tile.var_tile_.has_value() ? std::optional<Tile>(Tile()) : std::nullopt;
-  this->validity_tile_ = tile.validity_tile_.has_value() ?
-                             std::optional<Tile>(Tile()) :
-                             std::nullopt;
-  this->cell_size_ = tile.cell_size_;
-}
+  if (var_size) {
+    auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
 
-WriterTile& WriterTile::operator=(const WriterTile& tile) {
-  // Call copy constructor
-  WriterTile copy(tile);
+    // Initialize
+    if (!fixed_tile_
+             .init_unfiltered(
+                 array_schema.write_version(),
+                 constants::cell_var_offset_type,
+                 tile_size,
+                 constants::cell_var_offset_size,
+                 0)
+             .ok()) {
+      throw std::logic_error(
+          "Could not initialize offset tile in WriterTile constructor");
+    }
+    if (!var_tile_
+             ->init_unfiltered(
+                 array_schema.write_version(),
+                 type,
+                 tile_size,
+                 datatype_size(type),
+                 0)
+             .ok()) {
+      throw std::logic_error(
+          "Could not initialize var tile in WriterTile constructor");
+    }
+  } else {
+    auto tile_size = cell_num_per_tile * cell_size;
 
-  // Swap with the temporary copy
-  swap(copy);
-  return *this;
+    // Initialize
+    if (!fixed_tile_
+             .init_unfiltered(
+                 array_schema.write_version(), type, tile_size, cell_size, 0)
+             .ok()) {
+      throw std::logic_error(
+          "Could not initialize fixed tile in WriterTile constructor");
+    }
+  }
+
+  if (nullable) {
+    if (!validity_tile_
+             ->init_unfiltered(
+                 array_schema.write_version(),
+                 constants::cell_validity_type,
+                 cell_num_per_tile * constants::cell_validity_size,
+                 constants::cell_validity_size,
+                 0)
+             .ok()) {
+      throw std::logic_error(
+          "Could not initialize validity tile in WriterTile constructor");
+    }
+  }
 }
 
 WriterTile::WriterTile(WriterTile&& tile)
-    : WriterTile(
-          tile.var_tile_.has_value(),
-          tile.validity_tile_.has_value(),
-          tile.cell_size_) {
+    : WriterTile() {
   // Swap with the argument
   swap(tile);
 }

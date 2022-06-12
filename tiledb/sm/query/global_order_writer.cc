@@ -647,15 +647,21 @@ Status GlobalOrderWriter::init_global_write_state() {
     const auto nullable = array_schema_.is_nullable(name);
     const auto cell_size = array_schema_.cell_size(name);
     const auto type = array_schema_.type(name);
-    auto last_tile_vector = std::pair<std::string, WriterTileVector>(
-        name, WriterTileVector(1, WriterTile(var_size, nullable, cell_size)));
-    auto it_ret =
-        global_write_state_->last_tiles_.emplace(std::move(last_tile_vector));
-
-    auto& last_tile = it_ret.first->second[0];
-    RETURN_NOT_OK_ELSE(
-        init_tile(var_size, nullable, cell_size, type, last_tile),
-        clean_up(uri));
+    auto last_tile_vector =
+        std::pair<std::string, WriterTileVector>(name, WriterTileVector());
+    try {
+      last_tile_vector.second.emplace_back(WriterTile(
+          array_schema_,
+          coords_info_.has_coords_,
+          var_size,
+          nullable,
+          cell_size,
+          type));
+    } catch (const std::logic_error& le) {
+      clean_up(uri);
+      return Status_WriterError(le.what());
+    }
+    global_write_state_->last_tiles_.emplace(std::move(last_tile_vector));
 
     // Initialize cells written
     global_write_state_->cells_written_[name] = 0;
@@ -781,9 +787,15 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
       cell_num_per_tile;
 
   if (full_tile_num > 0) {
-    tiles->resize(full_tile_num, WriterTile(false, nullable, cell_size));
-    for (auto& tile : *tiles) {
-      RETURN_NOT_OK(init_tile(false, nullable, cell_size, type, tile));
+    tiles->reserve(full_tile_num);
+    for (uint64_t i = 0; i < full_tile_num; i++) {
+      tiles->emplace_back(WriterTile(
+          array_schema_,
+          coords_info_.has_coords_,
+          false,
+          nullable,
+          cell_size,
+          type));
     }
 
     // Handle last tile (it must be either full or empty)
@@ -987,9 +999,15 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
       cell_num_per_tile;
 
   if (full_tile_num > 0) {
-    tiles->resize(full_tile_num, WriterTile(true, nullable, cell_size));
-    for (auto& tile : *tiles) {
-      RETURN_NOT_OK(init_tile(true, nullable, cell_size, type, tile));
+    tiles->reserve(full_tile_num);
+    for (uint64_t i = 0; i < full_tile_num; i++) {
+      tiles->emplace_back(WriterTile(
+          array_schema_,
+          coords_info_.has_coords_,
+          true,
+          nullable,
+          cell_size,
+          type));
     }
 
     // Handle last tile (it must be either full or empty)

@@ -388,9 +388,15 @@ Status UnorderedWriter::prepare_tiles_fixed(
       coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
 
   // Initialize tiles
-  tiles->resize(tile_num, WriterTile(false, nullable, cell_size));
-  for (auto& tile : *tiles) {
-    RETURN_NOT_OK(init_tile(false, nullable, cell_size, type, tile));
+  tiles->reserve(tile_num);
+  for (uint64_t i = 0; i < tile_num; i++) {
+    tiles->emplace_back(WriterTile(
+        array_schema_,
+        coords_info_.has_coords_,
+        false,
+        nullable,
+        cell_size,
+        type));
   }
 
   // Write all cells one by one
@@ -464,9 +470,15 @@ Status UnorderedWriter::prepare_tiles_var(
                                array_schema_.domain().cell_num_per_tile();
 
   // Initialize tiles
-  tiles->resize(tile_num, WriterTile(true, nullable, cell_size));
-  for (auto& tile : *tiles) {
-    RETURN_NOT_OK(init_tile(true, nullable, cell_size, type, tile));
+  tiles->reserve(tile_num);
+  for (uint64_t i = 0; i < tile_num; i++) {
+    tiles->emplace_back(WriterTile(
+        array_schema_,
+        coords_info_.has_coords_,
+        true,
+        nullable,
+        cell_size,
+        type));
   }
 
   // Write all cells one by one
