@@ -50,7 +50,7 @@ class WriterTile {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  WriterTile();
+  WriterTile() = delete;
 
   WriterTile(bool var_size, bool nullable, uint64_t cell_size);
 

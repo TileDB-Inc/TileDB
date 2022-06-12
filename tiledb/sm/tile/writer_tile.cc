@@ -41,14 +41,6 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-WriterTile::WriterTile()
-    : cell_size_(0)
-    , var_pre_filtered_size_(0)
-    , min_size_(0)
-    , max_size_(0)
-    , null_count_(0) {
-}
-
 WriterTile::WriterTile(bool var_size, bool nullable, uint64_t cell_size)
     : var_tile_(var_size ? std::optional<Tile>(Tile()) : std::nullopt)
     , validity_tile_(nullable ? std::optional<Tile>(Tile()) : std::nullopt)
@@ -78,7 +70,10 @@ WriterTile& WriterTile::operator=(const WriterTile& tile) {
 }
 
 WriterTile::WriterTile(WriterTile&& tile)
-    : WriterTile() {
+    : WriterTile(
+          tile.var_tile_.has_value(),
+          tile.validity_tile_.has_value(),
+          tile.cell_size_) {
   // Swap with the argument
   swap(tile);
 }
