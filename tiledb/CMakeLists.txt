@@ -1046,6 +1046,18 @@ install(
   DESTINATION "${CONFIG_INSTALL_DIR}"
 )
 
+if (TILEDB_VERSION)
+  set(TILEDB_PROJECT_CONFIG_VERSION_FILE "${CMAKE_CURRENT_BINARY_DIR}/TileDBConfigVersion.cmake")
+  write_basic_package_version_file("${TILEDB_PROJECT_CONFIG_VERSION_FILE}"
+    VERSION "${TILEDB_VERSION}"
+    COMPATIBILITY SameMinorVersion
+  )
+  install(
+    FILES "${TILEDB_PROJECT_CONFIG_VERSION_FILE}"
+    DESTINATION "${CONFIG_INSTALL_DIR}"
+  )
+endif() 
+
 # Install targets file to <prefix>/lib/cmake/TileDB/TileDBTargets.cmake
 install(
   EXPORT "${TARGETS_EXPORT_NAME}"
