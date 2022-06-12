@@ -326,49 +326,21 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   bool has_sum_metadata(const std::string& name, const bool var_size);
 
   /**
-   * Initializes a fixed-sized tile.
+   * Initializes a tile.
    *
-   * @param name The attribute/dimension the tile belongs to.
+   * @param var_size Is it a var size tile.
+   * @param nullable Is is a nullable tile.
+   * @param cell_size Cell size.
+   * @param type Datatype of the tile.
    * @param tile The tile to be initialized.
    * @return Status
    */
-  Status init_tile(const std::string& name, Tile* tile) const;
-
-  /**
-   * Initializes a var-sized tile.
-   *
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The offsets tile to be initialized.
-   * @param tile_var The var-sized data tile to be initialized.
-   * @return Status
-   */
-  Status init_tile(const std::string& name, Tile* tile, Tile* tile_var) const;
-
-  /**
-   * Initializes a fixed-sized, nullable tile.
-   *
-   * @param name The attribute the tile belongs to.
-   * @param tile The tile to be initialized.
-   * @param tile_validity The validity tile to be initialized.
-   * @return Status
-   */
-  Status init_tile_nullable(
-      const std::string& name, Tile* tile, Tile* tile_validity) const;
-
-  /**
-   * Initializes a var-sized, nullable tile.
-   *
-   * @param name The attribute the tile belongs to.
-   * @param tile The offsets tile to be initialized.
-   * @param tile_var The var-sized data tile to be initialized.
-   * @param tile_validity The validity tile to be initialized.
-   * @return Status
-   */
-  Status init_tile_nullable(
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_var,
-      Tile* tile_validity) const;
+  Status init_tile(
+      const bool var_size,
+      const bool nullable,
+      const uint64_t cell_size,
+      const Datatype type,
+      WriterTile& tile) const;
 
   /**
    * Initializes the tiles for writing for the input attribute/dimension.

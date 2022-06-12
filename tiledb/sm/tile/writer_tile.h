@@ -72,50 +72,46 @@ class WriterTile {
 
   /** Returns the fixed tile. */
   inline Tile& fixed_tile() {
-    assert(!var_size_);
+    assert(!var_tile_.has_value());
     return fixed_tile_;
   }
 
   /** Returns the fixed tile. */
   inline const Tile& fixed_tile() const {
-    assert(!var_size_);
+    assert(!var_tile_.has_value());
     return fixed_tile_;
   }
 
   /** Returns the offset tile. */
   inline Tile& offset_tile() {
-    assert(var_size_);
+    assert(var_tile_.has_value());
     return fixed_tile_;
   }
 
   /** Returns the offset tile. */
   inline const Tile& offset_tile() const {
-    assert(var_size_);
+    assert(var_tile_.has_value());
     return fixed_tile_;
   }
 
   /** Returns the var tile. */
   inline Tile& var_tile() {
-    assert(var_size_);
-    return var_tile_;
+    return *var_tile_;
   }
 
   /** Returns the var tile. */
   inline const Tile& var_tile() const {
-    assert(var_size_);
-    return var_tile_;
+    return *var_tile_;
   }
 
   /** Returns the validity tile. */
   inline Tile& validity_tile() {
-    assert(nullable_);
-    return validity_tile_;
+    return *validity_tile_;
   }
 
   /** Returns the validity tile. */
   inline const Tile& validity_tile() const {
-    assert(nullable_);
-    return validity_tile_;
+    return *validity_tile_;
   }
 
   /**
@@ -166,14 +162,14 @@ class WriterTile {
    * @param size Final size.
    */
   inline void final_size(uint64_t size) {
-    if (var_size_) {
+    if (var_tile_.has_value()) {
       fixed_tile_.set_size(size * constants::cell_var_offset_size);
     } else {
       fixed_tile_.set_size(size * cell_size_);
     }
 
-    if (nullable_) {
-      validity_tile_.set_size(size * constants::cell_validity_size);
+    if (validity_tile_.has_value()) {
+      validity_tile_->set_size(size * constants::cell_validity_size);
     }
   }
 
@@ -198,16 +194,10 @@ class WriterTile {
   Tile fixed_tile_;
 
   /** Var data tile. */
-  Tile var_tile_;
+  std::optional<Tile> var_tile_;
 
   /** Validity data tile. */
-  Tile validity_tile_;
-
-  /** Indicates if this writer tile is var size. */
-  bool var_size_;
-
-  /** Indicates if this writer tile is nullable. */
-  bool nullable_;
+  std::optional<Tile> validity_tile_;
 
   /** Cell size for this attribute. */
   uint64_t cell_size_;

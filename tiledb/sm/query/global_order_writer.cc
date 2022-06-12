@@ -646,37 +646,16 @@ Status GlobalOrderWriter::init_global_write_state() {
     const auto var_size = array_schema_.var_size(name);
     const auto nullable = array_schema_.is_nullable(name);
     const auto cell_size = array_schema_.cell_size(name);
+    const auto type = array_schema_.type(name);
     auto last_tile_vector = std::pair<std::string, WriterTileVector>(
         name, WriterTileVector(1, WriterTile(var_size, nullable, cell_size)));
     auto it_ret =
         global_write_state_->last_tiles_.emplace(std::move(last_tile_vector));
 
     auto& last_tile = it_ret.first->second[0];
-    if (!var_size) {
-      if (!nullable) {
-        RETURN_NOT_OK_ELSE(
-            init_tile(name, &last_tile.fixed_tile()), clean_up(uri));
-      } else {
-        RETURN_NOT_OK_ELSE(
-            init_tile_nullable(
-                name, &last_tile.fixed_tile(), &last_tile.validity_tile()),
-            clean_up(uri));
-      }
-    } else {
-      if (!nullable) {
-        RETURN_NOT_OK_ELSE(
-            init_tile(name, &last_tile.offset_tile(), &last_tile.var_tile()),
-            clean_up(uri));
-      } else {
-        RETURN_NOT_OK_ELSE(
-            init_tile_nullable(
-                name,
-                &last_tile.offset_tile(),
-                &last_tile.var_tile(),
-                &last_tile.validity_tile()),
-            clean_up(uri));
-      }
-    }
+    RETURN_NOT_OK_ELSE(
+        init_tile(var_size, nullable, cell_size, type, last_tile),
+        clean_up(uri));
 
     // Initialize cells written
     global_write_state_->cells_written_[name] = 0;
@@ -736,6 +715,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
     WriterTileVector* tiles) const {
   // For easy reference
   auto nullable = array_schema_.is_nullable(name);
+  auto type = array_schema_.type(name);
   auto it = buffers_.find(name);
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
@@ -803,12 +783,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   if (full_tile_num > 0) {
     tiles->resize(full_tile_num, WriterTile(false, nullable, cell_size));
     for (auto& tile : *tiles) {
-      if (!nullable) {
-        RETURN_NOT_OK(init_tile(name, &tile.fixed_tile()));
-      } else {
-        RETURN_NOT_OK(init_tile_nullable(
-            name, &tile.fixed_tile(), &tile.validity_tile()));
-      }
+      RETURN_NOT_OK(init_tile(false, nullable, cell_size, type, tile));
     }
 
     // Handle last tile (it must be either full or empty)
@@ -910,6 +885,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   auto it = buffers_.find(name);
   auto nullable = array_schema_.is_nullable(name);
   auto cell_size = array_schema_.cell_size(name);
+  auto type = array_schema_.type(name);
   auto buffer = (uint64_t*)it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
   auto buffer_validity = (uint8_t*)it->second.validity_vector_.buffer();
@@ -1013,15 +989,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   if (full_tile_num > 0) {
     tiles->resize(full_tile_num, WriterTile(true, nullable, cell_size));
     for (auto& tile : *tiles) {
-      if (!nullable) {
-        RETURN_NOT_OK(init_tile(name, &tile.offset_tile(), &tile.var_tile()));
-      } else {
-        RETURN_NOT_OK(init_tile_nullable(
-            name,
-            &tile.offset_tile(),
-            &tile.var_tile(),
-            &tile.validity_tile()));
-      }
+      RETURN_NOT_OK(init_tile(true, nullable, cell_size, type, tile));
     }
 
     // Handle last tile (it must be either full or empty)

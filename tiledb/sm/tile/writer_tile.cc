@@ -42,9 +42,7 @@ namespace sm {
 /* ****************************** */
 
 WriterTile::WriterTile()
-    : var_size_(false)
-    , nullable_(false)
-    , cell_size_(0)
+    : cell_size_(0)
     , var_pre_filtered_size_(0)
     , min_size_(0)
     , max_size_(0)
@@ -52,8 +50,8 @@ WriterTile::WriterTile()
 }
 
 WriterTile::WriterTile(bool var_size, bool nullable, uint64_t cell_size)
-    : var_size_(var_size)
-    , nullable_(nullable)
+    : var_tile_(var_size ? std::optional<Tile>(Tile()) : std::nullopt)
+    , validity_tile_(nullable ? std::optional<Tile>(Tile()) : std::nullopt)
     , cell_size_(cell_size)
     , var_pre_filtered_size_(0)
     , min_size_(0)
@@ -62,8 +60,11 @@ WriterTile::WriterTile(bool var_size, bool nullable, uint64_t cell_size)
 }
 
 WriterTile::WriterTile(const WriterTile& tile) {
-  this->var_size_ = tile.var_size_;
-  this->nullable_ = tile.nullable_;
+  this->var_tile_ =
+      tile.var_tile_.has_value() ? std::optional<Tile>(Tile()) : std::nullopt;
+  this->validity_tile_ = tile.validity_tile_.has_value() ?
+                             std::optional<Tile>(Tile()) :
+                             std::nullopt;
   this->cell_size_ = tile.cell_size_;
 }
 
@@ -135,8 +136,8 @@ void WriterTile::set_metadata(const tuple<
   sum_ = *sum;
   null_count_ = null_count;
 
-  if (var_size_) {
-    var_pre_filtered_size_ = var_tile_.size();
+  if (var_tile_.has_value()) {
+    var_pre_filtered_size_ = var_tile_->size();
   }
 }
 
@@ -144,8 +145,6 @@ void WriterTile::swap(WriterTile& tile) {
   fixed_tile_.swap(tile.fixed_tile_);
   var_tile_.swap(tile.var_tile_);
   validity_tile_.swap(tile.validity_tile_);
-  std::swap(var_size_, tile.var_size_);
-  std::swap(nullable_, tile.nullable_);
   std::swap(cell_size_, tile.cell_size_);
   std::swap(var_pre_filtered_size_, tile.var_pre_filtered_size_);
   std::swap(min_, tile.min_);

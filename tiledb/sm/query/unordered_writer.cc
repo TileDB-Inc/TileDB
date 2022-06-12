@@ -374,6 +374,7 @@ Status UnorderedWriter::prepare_tiles_fixed(
 
   // For easy reference
   auto nullable = array_schema_.is_nullable(name);
+  auto type = array_schema_.type(name);
   auto buffer = (unsigned char*)buffers_.find(name)->second.buffer_;
   auto buffer_validity =
       (unsigned char*)buffers_.find(name)->second.validity_vector_.buffer();
@@ -389,11 +390,7 @@ Status UnorderedWriter::prepare_tiles_fixed(
   // Initialize tiles
   tiles->resize(tile_num, WriterTile(false, nullable, cell_size));
   for (auto& tile : *tiles) {
-    if (!nullable)
-      RETURN_NOT_OK(init_tile(name, &tile.fixed_tile()));
-    else
-      RETURN_NOT_OK(
-          init_tile_nullable(name, &tile.fixed_tile(), &tile.validity_tile()));
+    RETURN_NOT_OK(init_tile(false, nullable, cell_size, type, tile));
   }
 
   // Write all cells one by one
@@ -452,6 +449,7 @@ Status UnorderedWriter::prepare_tiles_var(
   auto it = buffers_.find(name);
   auto nullable = array_schema_.is_nullable(name);
   auto cell_size = array_schema_.cell_size(name);
+  auto type = array_schema_.type(name);
   auto buffer = it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
   auto buffer_validity = (uint8_t*)it->second.validity_vector_.buffer();
@@ -468,11 +466,7 @@ Status UnorderedWriter::prepare_tiles_var(
   // Initialize tiles
   tiles->resize(tile_num, WriterTile(true, nullable, cell_size));
   for (auto& tile : *tiles) {
-    if (!nullable)
-      RETURN_NOT_OK(init_tile(name, &tile.offset_tile(), &tile.var_tile()));
-    else
-      RETURN_NOT_OK(init_tile_nullable(
-          name, &tile.offset_tile(), &tile.var_tile(), &tile.validity_tile()));
+    RETURN_NOT_OK(init_tile(true, nullable, cell_size, type, tile));
   }
 
   // Write all cells one by one

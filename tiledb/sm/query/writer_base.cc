@@ -779,100 +779,50 @@ bool WriterBase::has_sum_metadata(
   return TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num);
 }
 
-Status WriterBase::init_tile(const std::string& name, Tile* tile) const {
-  // For easy reference
-  auto cell_size = array_schema_.cell_size(name);
-  auto type = array_schema_.type(name);
-  auto& domain{array_schema_.domain()};
-  auto capacity = array_schema_.capacity();
-  auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
-  auto tile_size = cell_num_per_tile * cell_size;
-
-  // Initialize
-  RETURN_NOT_OK(tile->init_unfiltered(
-      array_schema_.write_version(), type, tile_size, cell_size, 0));
-
-  return Status::Ok();
-}
-
 Status WriterBase::init_tile(
-    const std::string& name, Tile* tile, Tile* tile_var) const {
+    const bool var_size,
+    const bool nullable,
+    const uint64_t cell_size,
+    const Datatype type,
+    WriterTile& tile) const {
   // For easy reference
-  auto type = array_schema_.type(name);
-  auto& domain{array_schema_.domain()};
-  auto capacity = array_schema_.capacity();
-  auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
-  auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
-
-  // Initialize
-  RETURN_NOT_OK(tile->init_unfiltered(
-      array_schema_.write_version(),
-      constants::cell_var_offset_type,
-      tile_size,
-      constants::cell_var_offset_size,
-      0));
-  RETURN_NOT_OK(tile_var->init_unfiltered(
-      array_schema_.write_version(), type, tile_size, datatype_size(type), 0));
-  return Status::Ok();
-}
-
-Status WriterBase::init_tile_nullable(
-    const std::string& name, Tile* tile, Tile* tile_validity) const {
-  // For easy reference
-  auto cell_size = array_schema_.cell_size(name);
-  auto type = array_schema_.type(name);
   auto& domain{array_schema_.domain()};
   auto capacity = array_schema_.capacity();
   auto cell_num_per_tile =
       coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
 
-  // Initialize
-  RETURN_NOT_OK(tile->init_unfiltered(
-      array_schema_.write_version(),
-      type,
-      cell_num_per_tile * cell_size,
-      cell_size,
-      0));
-  RETURN_NOT_OK(tile_validity->init_unfiltered(
-      array_schema_.write_version(),
-      constants::cell_validity_type,
-      cell_num_per_tile * constants::cell_validity_size,
-      constants::cell_validity_size,
-      0));
+  if (var_size) {
+    auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
 
-  return Status::Ok();
-}
+    // Initialize
+    RETURN_NOT_OK(tile.offset_tile().init_unfiltered(
+        array_schema_.write_version(),
+        constants::cell_var_offset_type,
+        tile_size,
+        constants::cell_var_offset_size,
+        0));
+    RETURN_NOT_OK(tile.var_tile().init_unfiltered(
+        array_schema_.write_version(),
+        type,
+        tile_size,
+        datatype_size(type),
+        0));
+  } else {
+    auto tile_size = cell_num_per_tile * cell_size;
 
-Status WriterBase::init_tile_nullable(
-    const std::string& name,
-    Tile* tile,
-    Tile* tile_var,
-    Tile* tile_validity) const {
-  // For easy reference
-  auto type = array_schema_.type(name);
-  auto& domain{array_schema_.domain()};
-  auto capacity = array_schema_.capacity();
-  auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
-  auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
+    // Initialize
+    RETURN_NOT_OK(tile.fixed_tile().init_unfiltered(
+        array_schema_.write_version(), type, tile_size, cell_size, 0));
+  }
 
-  // Initialize
-  RETURN_NOT_OK(tile->init_unfiltered(
-      array_schema_.write_version(),
-      constants::cell_var_offset_type,
-      tile_size,
-      constants::cell_var_offset_size,
-      0));
-  RETURN_NOT_OK(tile_var->init_unfiltered(
-      array_schema_.write_version(), type, tile_size, datatype_size(type), 0));
-  RETURN_NOT_OK(tile_validity->init_unfiltered(
-      array_schema_.write_version(),
-      constants::cell_validity_type,
-      cell_num_per_tile * constants::cell_validity_size,
-      constants::cell_validity_size,
-      0));
+  if (nullable) {
+    RETURN_NOT_OK(tile.validity_tile().init_unfiltered(
+        array_schema_.write_version(),
+        constants::cell_validity_type,
+        cell_num_per_tile * constants::cell_validity_size,
+        constants::cell_validity_size,
+        0));
+  }
 
   return Status::Ok();
 }
@@ -883,26 +833,10 @@ Status WriterBase::init_tiles(
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
   const uint64_t cell_size = array_schema_.cell_size(name);
+  const auto type = array_schema_.type(name);
   tiles->resize(tile_num, WriterTile(var_size, nullable, cell_size));
   for (auto& tile : *tiles) {
-    if (!var_size) {
-      if (nullable) {
-        RETURN_NOT_OK(init_tile_nullable(
-            name, &tile.fixed_tile(), &tile.validity_tile()));
-      } else {
-        RETURN_NOT_OK(init_tile(name, &tile.fixed_tile()));
-      }
-    } else {
-      if (nullable) {
-        RETURN_NOT_OK(init_tile_nullable(
-            name,
-            &tile.offset_tile(),
-            &tile.var_tile(),
-            &tile.validity_tile()));
-      } else {
-        RETURN_NOT_OK(init_tile(name, &tile.offset_tile(), &tile.var_tile()));
-      }
-    }
+    RETURN_NOT_OK(init_tile(var_size, nullable, cell_size, type, tile));
   }
 
   return Status::Ok();
