@@ -31,14 +31,8 @@ jobs:
     runs-on: ${{matrix.os}}
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04]
-        include:
-          - os: ubuntu-22.04
-            cxx: g++-11
-            cc: gcc-11
-    env:
-      CXX: ${{ matrix.cxx }}
-      CC: ${{ matrix.cc }}
+        os:
+          - ubuntu-20.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 120
     name: Build - ${{matrix.os}} - SERIALIZATION ${{ matrix.cxx }}
