@@ -105,6 +105,21 @@ capi_status_t tiledb_status(capi_return_t x);
 /*               MACROS              */
 /* ********************************* */
 
+/**
+  * TILEDB_NOEXCEPT usage:
+  *
+  * 1. Header files that may appear in C programs (such as tiledb.h) must use
+  the macro because we require API entry points not to throw. We enforce that
+  with noexcept in C++ declarations but must omit that keyword in a C
+  declaration.
+    2. Definitions of C API entry point functions (which may not appear in C
+  headers) are compiled as C++ and should be declared noexcept. These functions
+  are wrapped versions of API implementation functions.
+    3. Implementation functions should not be declared noexcept. They have no
+  way of providing uniform error handling and should defer to the wrapper for
+  that.
+*/
+
 #ifdef __cplusplus
 #define TILEDB_NOEXCEPT noexcept
 #else
