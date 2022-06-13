@@ -129,6 +129,7 @@ Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  Status st;
   // Checks
   if (is_open_)
     return LOG_STATUS(Status_ArrayError(
@@ -138,48 +139,60 @@ Status Array::open_without_fragments(
         Status_ArrayError("Cannot open array without fragments; encrypted "
                           "remote arrays are not supported."));
 
-  // Copy the key bytes.
-  RETURN_NOT_OK(
-      encryption_key_->set_key(encryption_type, encryption_key, key_length));
-
-  metadata_.clear();
-  metadata_loaded_ = false;
-  non_empty_domain_computed_ = false;
-
-  if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      return LOG_STATUS(Status_ArrayError(
-          "Cannot open array; remote array with no REST client."));
-    auto&& [st, array_schema_latest] =
-        rest_client->get_array_schema_from_rest(array_uri_);
-    RETURN_NOT_OK(st);
-    array_schema_latest_ = array_schema_latest.value();
-  } else {
-    try {
-      array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
-          array_uri_,
-          0,
-          UINT64_MAX,
-          ArrayDirectoryMode::SCHEMA_ONLY);
-    } catch (const std::logic_error& le) {
-      return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-    }
-
-    auto&& [st, array_schema, array_schemas] =
-        storage_manager_->array_open_for_reads_without_fragments(this);
-    RETURN_NOT_OK(st);
-
-    array_schema_latest_ = array_schema.value();
-    array_schemas_all_ = array_schemas.value();
-  }
-
   /* Note: query_type_ MUST be set before calling set_array_open()
     because it will be examined by the ConsistencyController. */
   query_type_ = QueryType::READ;
-  set_array_open();
+
+  /* Note: the open status MUST be exception safe. If anything interrupts the
+   * opening process, it will throw and the array will be set as closed. */
+  try {
+    set_array_open();
+
+    // Copy the key bytes.
+    st = encryption_key_->set_key(encryption_type, encryption_key, key_length);
+    if (!st.ok())
+      throw StatusException(st);
+
+    metadata_.clear();
+    metadata_loaded_ = false;
+    non_empty_domain_computed_ = false;
+
+    if (remote_) {
+      auto rest_client = storage_manager_->rest_client();
+      if (rest_client == nullptr)
+        throw Status_ArrayError(
+            "Cannot open array; remote array with no REST client.");
+      auto&& [st, array_schema_latest] =
+          rest_client->get_array_schema_from_rest(array_uri_);
+      if (!st.ok())
+        throw StatusException(st);
+      array_schema_latest_ = array_schema_latest.value();
+    } else {
+      try {
+        array_dir_ = ArrayDirectory(
+            storage_manager_->vfs(),
+            storage_manager_->compute_tp(),
+            array_uri_,
+            0,
+            UINT64_MAX,
+            consolidation_with_timestamps_config_enabled(),
+            ArrayDirectoryMode::SCHEMA_ONLY);
+      } catch (const std::logic_error& le) {
+        throw Status_ArrayDirectoryError(le.what());
+      }
+
+      auto&& [st, array_schema, array_schemas] =
+          storage_manager_->array_open_for_reads_without_fragments(this);
+      if (!st.ok())
+        throw StatusException(st);
+
+      array_schema_latest_ = array_schema.value();
+      array_schemas_all_ = array_schemas.value();
+    }
+  } catch (std::exception& e) {
+    set_array_closed();
+    return LOG_STATUS(Status_ArrayError(e.what()));
+  }
 
   return Status::Ok();
 }
@@ -216,58 +229,79 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  Status st;
   // Checks
   if (is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot open array; Array already open"));
   }
 
-  // Get encryption key from config
-  std::string encryption_key_from_cfg;
-  if (!encryption_key) {
-    bool found = false;
-    encryption_key_from_cfg = config_.get("sm.encryption_key", &found);
-    assert(found);
-  }
+  /* Note: query_type_ MUST be set before calling set_array_open()
+    because it will be examined by the ConsistencyController. */
+  query_type_ = query_type;
 
-  if (!encryption_key_from_cfg.empty()) {
-    encryption_key = encryption_key_from_cfg.c_str();
-    std::string encryption_type_from_cfg;
-    bool found = false;
-    encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
-    assert(found);
-    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
-    RETURN_NOT_OK(st);
-    encryption_type = et.value();
+  /* Note: the open status MUST be exception safe. If anything interrupts the
+   * opening process, it will throw and the array will be set as closed. */
+  try {
+    set_array_open();
 
-    if (EncryptionKey::is_valid_key_length(
-            encryption_type,
-            static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-      const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-      if (unit_test_cfg.array_encryption_key_length.is_set()) {
-        key_length = unit_test_cfg.array_encryption_key_length.get();
-      } else {
-        key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-      }
-    } else {
-      encryption_key = nullptr;
-      key_length = 0;
+    // Get encryption key from config
+    std::string encryption_key_from_cfg;
+    if (!encryption_key) {
+      bool found = false;
+      encryption_key_from_cfg = config_.get("sm.encryption_key", &found);
+      assert(found);
     }
-  }
 
-  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
-    return LOG_STATUS(Status_ArrayError(
-        "Cannot open array; encrypted remote arrays are not supported."));
+    if (!encryption_key_from_cfg.empty()) {
+      encryption_key = encryption_key_from_cfg.c_str();
+      std::string encryption_type_from_cfg;
+      bool found = false;
+      encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
+      assert(found);
+      auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+      if (!st.ok())
+        throw StatusException(st);
+      encryption_type = et.value();
 
-  // Copy the key bytes.
-  RETURN_NOT_OK(
-      encryption_key_->set_key(encryption_type, encryption_key, key_length));
+      if (EncryptionKey::is_valid_key_length(
+              encryption_type,
+              static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
+        const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
+        if (unit_test_cfg.array_encryption_key_length.is_set()) {
+          key_length = unit_test_cfg.array_encryption_key_length.get();
+        } else {
+          key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
+        }
+      } else {
+        encryption_key = nullptr;
+        key_length = 0;
+      }
+    }
 
-  metadata_.clear();
-  metadata_loaded_ = false;
-  non_empty_domain_computed_ = false;
+    if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
+      throw Status_ArrayError(
+          "Cannot open array; encrypted remote arrays are not supported.");
 
-  timestamp_start_ = timestamp_start;
+    // Copy the key bytes.
+    st = encryption_key_->set_key(encryption_type, encryption_key, key_length);
+    if (!st.ok())
+      throw StatusException(st);
+
+    metadata_.clear();
+    metadata_loaded_ = false;
+    non_empty_domain_computed_ = false;
+    timestamp_start_ = timestamp_start;
+    timestamp_end_opened_at_ = timestamp_end;
+
+    if (timestamp_end_opened_at_ == UINT64_MAX) {
+      if (query_type == QueryType::READ) {
+        timestamp_end_opened_at_ = utils::time::timestamp_now_ms();
+      } else {
+        assert(query_type == QueryType::WRITE);
+        timestamp_end_opened_at_ = 0;
+      }
+    }
 
   timestamp_end_opened_at_ = timestamp_end;
   if (timestamp_end_opened_at_ == UINT64_MAX) {
@@ -304,24 +338,15 @@ Status Array::open(
       return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
     }
 
-    auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
-        storage_manager_->array_open_for_reads(this);
-    RETURN_NOT_OK(st);
-    // Set schemas
-    array_schema_latest_ = array_schema_latest.value();
-    array_schemas_all_ = array_schemas.value();
-    fragment_metadata_ = fragment_metadata.value();
-  } else {
-    try {
-      array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_,
-          ArrayDirectoryMode::SCHEMA_ONLY);
-    } catch (const std::logic_error& le) {
-      return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+      auto&& [st, array_schema_latest, array_schemas] =
+          storage_manager_->array_open_for_writes(this);
+      if (!st.ok())
+        throw StatusException(st);
+      // Set schemas
+      array_schema_latest_ = array_schema_latest.value();
+      array_schemas_all_ = array_schemas.value();
+
+      metadata_.reset(timestamp_end_opened_at_);
     }
 
     auto&& [st, array_schema_latest, array_schemas] =
@@ -343,26 +368,12 @@ Status Array::open(
     }
 
     metadata_.reset(timestamp_end_opened_at_);
+  } catch (std::exception& e) {
+    set_array_closed();
+    return LOG_STATUS(Status_ArrayError(e.what()));
   }
 
-  /* Note: query_type_ MUST be set before calling set_array_open()
-    because it will be examined by the ConsistencyController. */
-  query_type_ = query_type;
-  set_array_open();
-
   return Status::Ok();
-}
-
-void Array::set_array_open() {
-  std::lock_guard<std::mutex> lock(mtx_);
-  is_open_ = true;
-
-  /**
-   * Note: there is no danger in passing *this here;
-   * only the pointer value is used and nothing is called on the Array objects.
-   */
-  consistency_sentry_.emplace(
-      consistency_controller_.make_sentry(array_uri_, *this));
 }
 
 Status Array::close() {
@@ -415,12 +426,6 @@ Status Array::close() {
   set_array_closed();
 
   return Status::Ok();
-}
-
-void Array::set_array_closed() {
-  std::lock_guard<std::mutex> lock(mtx_);
-  is_open_ = false;
-  consistency_sentry_.reset();
 }
 
 bool Array::is_empty() const {
@@ -1110,5 +1115,37 @@ Status Array::compute_non_empty_domain() {
   return Status::Ok();
 }
 
+bool Array::consolidation_with_timestamps_config_enabled() const {
+  auto found = false;
+  auto consolidation_with_timestamps = false;
+  auto status = config_.get<bool>(
+      "sm.consolidation.with_timestamps",
+      &consolidation_with_timestamps,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get with_timestamps configuration option from config");
+  }
+
+  return consolidation_with_timestamps;
+}
+
+void Array::set_array_open() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  /**
+   * Note: there is no danger in passing *this here;
+   * only the pointer value is used and nothing is called on the Array objects.
+   */
+  consistency_sentry_.emplace(
+      consistency_controller_.make_sentry(array_uri_, *this));
+  is_open_ = true;
+}
+
+void Array::set_array_closed() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  /* Note: the Sentry object will also be released upon Array destruction. */
+  consistency_sentry_.reset();
+  is_open_ = false;
+}
 }  // namespace sm
 }  // namespace tiledb

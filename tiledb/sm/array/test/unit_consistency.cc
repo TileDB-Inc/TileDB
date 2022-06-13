@@ -64,12 +64,8 @@ TEST_CASE(
   // Try to register an empty URI
   const URI uri_empty = URI();
   Array* array = nullptr;
-  entry_type iter_empty;
-  try {
-    iter_empty = x.register_array(uri_empty, *array);
-  } catch (std::exception& e) {
-    std::cerr << e.what() << std::endl;
-  }
+
+  REQUIRE_THROWS_AS(x.register_array(uri_empty, *array), std::exception);
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri_empty) == false);
 
@@ -79,6 +75,7 @@ TEST_CASE(
 
   // Check registration
   REQUIRE(x.registry_size() == 1);
+  REQUIRE(x.is_open(uri, *array) == true);
   REQUIRE(x.is_open(uri) == true);
   REQUIRE(x.is_element_of(uri_empty, uri) == false);
 
@@ -90,16 +87,19 @@ TEST_CASE(
   // Deregister uri
   x.deregister_array(iter);
   REQUIRE(x.registry_size() == 0);
+  REQUIRE(x.is_open(uri, *array) == false);
   REQUIRE(x.is_open(uri) == false);
 
   // Re-register uri and check registry
   iter = x.register_array(uri, *array);
   REQUIRE(x.registry_size() == 1);
+  REQUIRE(x.is_open(uri, *array) == true);
   REQUIRE(x.is_open(uri) == true);
   REQUIRE(x.is_element_of(uri_empty, uri) == false);
 
   // Deregister
   x.deregister_array(iter);
+  REQUIRE(x.is_open(uri, *array) == false);
   REQUIRE(x.is_open(uri) == false);
   REQUIRE(x.registry_size() == 0);
 }
@@ -112,13 +112,9 @@ TEST_CASE(
   // Try to register an empty URI
   const URI uri_empty = URI();
   Array* array = nullptr;
-  try {
-    tiledb::sm::ConsistencySentry sentry_uri_empty =
-        x.make_sentry(uri_empty, *array);
-  } catch (std::exception& e) {
-    std::cerr << e.what() << std::endl;
-  }
+  REQUIRE_THROWS_AS(x.make_sentry(uri_empty, *array), std::exception);
   REQUIRE(x.registry_size() == 0);
+  REQUIRE(x.is_open(uri_empty, *array) == false);
   REQUIRE(x.is_open(uri_empty) == false);
 
   // Register a non-empty URI
@@ -127,7 +123,9 @@ TEST_CASE(
 
   // Check registration
   REQUIRE(x.registry_size() == 1);
+  REQUIRE(x.is_open(uri_empty, *array) == false);
   REQUIRE(x.is_open(uri_empty) == false);
+  REQUIRE(x.is_open(uri, *array) == true);
   REQUIRE(x.is_open(uri) == true);
   REQUIRE(x.is_element_of(uri_empty, uri) == false);
 }
@@ -140,10 +138,11 @@ TEST_CASE(
   REQUIRE(x.registry_size() == 0);
 
   // Register a URI
-  const URI uri = URI("whitebox_optional_sentry");
+  const URI uri = URI("whitebox_sentry");
   Array* array = nullptr;
   tiledb::sm::ConsistencySentry sentry = x.make_sentry(uri, *array);
   REQUIRE(x.registry_size() == 1);
+  REQUIRE(x.is_open(uri, *array) == true);
   REQUIRE(x.is_open(uri) == true);
 
   // Test move constructor
@@ -154,12 +153,15 @@ TEST_CASE(
       std::move(sentry_moved));
 
   REQUIRE(x.registry_size() == 1);
+  REQUIRE(x.is_open(uri, *array) == true);
   REQUIRE(x.is_open(uri) == true);
 
   // Create an optional Sentry
+  const URI uri_optional = URI("whitebox_optional_sentry");
   std::optional<tiledb::sm::ConsistencySentry> sentry_optional(
-      x.make_sentry(uri, *array));
+      x.make_sentry(uri_optional, *array));
   REQUIRE(x.registry_size() == 2);
+  REQUIRE(x.is_open(uri, *array) == true);
   REQUIRE(x.is_open(uri) == true);
 }
 
@@ -181,12 +183,14 @@ TEST_CASE(
   // Register array
   tdb_unique_ptr<Array> array = x.open_array(uri, &sm);
   REQUIRE(x.registry_size() == 1);
+  REQUIRE(x.is_open(uri, *array) == true);
   REQUIRE(x.is_open(uri) == true);
   REQUIRE(x.is_element_of(uri, uri) == true);
 
   // Deregister array
   array.get()->close();
   REQUIRE(x.registry_size() == 0);
+  REQUIRE(x.is_open(uri, *array) == false);
   REQUIRE(x.is_open(uri) == false);
 
   // Clean up

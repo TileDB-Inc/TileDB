@@ -100,6 +100,9 @@ class ConsistencyController {
   ConsistencySentry make_sentry(const URI uri, Array& array);
 
   /** Returns true if the array is open, i.e. registered in the multimap. */
+  bool is_open(const URI uri, Array& array);
+
+  /** Returns true if the array is open, i.e. registered in the multimap. */
   bool is_open(const URI uri);
 
   /**
@@ -129,7 +132,7 @@ class ConsistencyController {
    * Note: this function is private and can only be called by the
    * ConsistencySentry destructor.
    *
-   * Note: entry_type is passed as a value that is explictly deleted from the
+   * Note: entry_type is passed as a value that is explicitly deleted from the
    * registration multimap upon ConsistencySentry destruction only.
    */
   void deregister_array(entry_type entry);

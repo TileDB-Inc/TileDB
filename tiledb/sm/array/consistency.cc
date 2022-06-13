@@ -68,9 +68,7 @@ ConsistencyController::entry_type ConsistencyController::register_array(
         "[ConsistencyController::register_array] URI cannot be empty.");
   }
   std::lock_guard<std::mutex> lock(mtx_);
-  entry_type iter = array_registry_.insert({uri, array});
-
-  return iter;
+  return array_registry_.insert({uri, array});
 }
 
 void ConsistencyController::deregister_array(
@@ -79,10 +77,17 @@ void ConsistencyController::deregister_array(
   array_registry_.erase(entry);
 }
 
+bool ConsistencyController::is_open(const URI uri, Array& array) {
+  for (auto iter : array_registry_) {
+    if (iter.first == uri && (&iter.second) == &array)
+      return true;
+  }
+  return false;
+}
+
 bool ConsistencyController::is_open(const URI uri) {
-  for (entry_type iter = array_registry_.begin(); iter != array_registry_.end();
-       iter++) {
-    if (iter->first == uri)
+  for (auto iter : array_registry_) {
+    if (iter.first == uri)
       return true;
   }
   return false;
@@ -90,18 +95,13 @@ bool ConsistencyController::is_open(const URI uri) {
 
 bool ConsistencyController::is_element_of(
     const URI uri, const URI intersecting_uri) {
-  std::string prefix =
-      std::string(uri.c_str())
-          .substr(
-              0,
-              std::string(uri.c_str()).size() - (uri.last_path_part()).size());
+  std::string prefix = uri.to_string().substr(
+      0, std::string(uri.c_str()).size() - (uri.last_path_part()).size());
 
-  std::string intersecting_prefix =
-      std::string(intersecting_uri.c_str())
-          .substr(
-              0,
-              std::string(intersecting_uri.c_str()).size() -
-                  (intersecting_uri.last_path_part()).size());
+  std::string intersecting_prefix = intersecting_uri.to_string().substr(
+      0,
+      std::string(intersecting_uri.c_str()).size() -
+          (intersecting_uri.last_path_part()).size());
 
   return (prefix == intersecting_prefix);
 }

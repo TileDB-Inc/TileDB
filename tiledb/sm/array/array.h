@@ -180,14 +180,8 @@ class Array {
       const void* encryption_key,
       uint32_t key_length);
 
-  /** Sets the array state as open. */
-  void set_array_open();
-
   /** Closes the array and frees all memory. */
   Status close();
-
-  /** Sets the array state as closed. */
-  void set_array_closed();
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
@@ -541,6 +535,18 @@ class Array {
 
   /** Computes the non-empty domain of the array. */
   Status compute_non_empty_domain();
+
+  /** Checks if consolidation with timestamps is enabled in config. */
+  bool consolidation_with_timestamps_config_enabled() const;
+
+  /** Sets the array state as open. */
+  void set_array_open();
+
+  /** Sets the array state as closed.
+   *
+   * Note: the Sentry object will also be released upon Array destruction.
+   **/
+  void set_array_closed();
 };
 
 }  // namespace sm

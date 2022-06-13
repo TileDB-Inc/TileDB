@@ -1,5 +1,5 @@
 #
-# tiledb/sm/array/CMakeLists.txt
+# tiledb/sm/array/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,23 +24,35 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
+find_package(Catch_EP REQUIRED)
 
-#
-# `array` object library
-#
-add_library(array OBJECT array_directory.cc)
-target_link_libraries(array PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(array PUBLIC vfs $<TARGET_OBJECTS:vfs>)
-target_link_libraries(array PUBLIC uri_format $<TARGET_OBJECTS:uri_format>)
-target_link_libraries(array PUBLIC uuid $<TARGET_OBJECTS:uuid>)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_array EXCLUDE_FROM_ALL)
-target_link_libraries(compile_array PRIVATE config)
-target_sources(compile_array PRIVATE test/compile_array_directory_main.cc)
+# Array tests
+add_executable(unit_array EXCLUDE_FROM_ALL)
+target_link_libraries(unit_array PRIVATE array)
+target_link_libraries(unit_array PUBLIC Catch2::Catch2)
 
-if (TILEDB_TESTS)
-  add_subdirectory(test)
-endif()
+target_sources(unit_array PUBLIC main.cc unit_array_directory.cc)
+
+add_test(
+  NAME "unit_array"
+  COMMAND $<TARGET_FILE:unit_array>
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# Consistency tests
+add_executable(unit_consistency EXCLUDE_FROM_ALL
+  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+
+target_link_libraries(unit_consistency
+  PUBLIC
+    Catch2::Catch2
+    TILEDB_CORE_OBJECTS_ILIB
+)
+
+target_sources(unit_consistency PUBLIC main.cc unit_consistency.cc)
+
+add_test(
+  NAME "unit_consistency"
+  COMMAND $<TARGET_FILE:unit_consistency>
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
