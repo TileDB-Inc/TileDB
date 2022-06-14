@@ -176,6 +176,9 @@ TEST_CASE(
     // Get fragment num again
     auto fragment_num = fragment_info.fragment_num();
     CHECK(fragment_num == 1);
+
+    auto total_cell_num = fragment_info.total_cell_num();
+    CHECK(total_cell_num == 10);
   }
 
   // Write another dense fragment
@@ -253,12 +256,15 @@ TEST_CASE(
     CHECK(non_empty_dom == std::vector<uint64_t>{1, 7});
 
     // Get number of cells
-    auto cell_num = fragment_info.cell_num(0);
-    CHECK(cell_num == 10);
-    cell_num = fragment_info.cell_num(1);
-    CHECK(cell_num == 10);
-    cell_num = fragment_info.cell_num(2);
-    CHECK(cell_num == 10);
+    auto frag0_cell_num = fragment_info.cell_num(0);
+    CHECK(frag0_cell_num == 10);
+    auto frag1_cell_num = fragment_info.cell_num(1);
+    CHECK(frag1_cell_num == 10);
+    auto frag2_cell_num = fragment_info.cell_num(2);
+    CHECK(frag2_cell_num == 10);
+
+    auto total_cell_num = fragment_info.total_cell_num();
+    CHECK(total_cell_num == frag0_cell_num + frag1_cell_num + frag2_cell_num);
 
     // Get number of MBRs - should always be 0 since it's a dense array
     auto mbr_num = fragment_info.mbr_num(0);

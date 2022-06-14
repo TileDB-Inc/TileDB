@@ -175,6 +175,27 @@ Status FragmentInfo::get_cell_num(uint32_t fid, uint64_t* cell_num) const {
   return Status::Ok();
 }
 
+Status FragmentInfo::get_total_cell_num(uint64_t* cell_num) const {
+  if (cell_num == nullptr)
+    return LOG_STATUS(
+        Status_FragmentInfoError("Cell number argument cannot be null"));
+
+  // Return simple summation of cell counts in each fragment present without
+  // any consideration of cells that may be overlapping, i.e. the count
+  // returned will be >= the actual unique number of cells represented within
+  // the fragments.
+
+  uint64_t total_cell_num = 0;
+  uint64_t endi = single_fragment_info_vec_.size();
+  for (auto fid = 0ul; fid < endi; ++fid) {
+    total_cell_num += single_fragment_info_vec_[fid].cell_num();
+  }
+
+  *cell_num = total_cell_num;
+
+  return Status::Ok();
+}
+
 Status FragmentInfo::get_fragment_name(uint32_t fid, const char** name) const {
   if (name == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(

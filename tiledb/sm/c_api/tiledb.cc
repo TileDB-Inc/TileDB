@@ -6917,6 +6917,21 @@ int32_t tiledb_fragment_info_get_cell_num(
   return TILEDB_OK;
 }
 
+int32_t tiledb_fragment_info_get_total_cell_num(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint64_t* cell_num) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->get_total_cell_num(cell_num)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_fragment_info_get_version(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
@@ -10116,6 +10131,14 @@ int32_t tiledb_fragment_info_get_cell_num(
     uint64_t* cell_num) noexcept {
   return api_entry<detail::tiledb_fragment_info_get_cell_num>(
       ctx, fragment_info, fid, cell_num);
+}
+
+int32_t tiledb_fragment_info_get_total_cell_num(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint64_t* cell_num) noexcept {
+  return api_entry<detail::tiledb_fragment_info_get_total_cell_num>(
+      ctx, fragment_info, cell_num);
 }
 
 int32_t tiledb_fragment_info_get_version(
