@@ -34,6 +34,12 @@ build() {
   export MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX="
 
 #    -DCMAKE_BUILD_TYPE=Release \
+# tried the following to avoid, at least, the zstd SEGV application 
+# verifier aggravates, but several of the fetched libs failed to build in
+# this environment (mingw32, 32bit), perhaps
+# our find....cmake(s) have WIN32 where they should have some MSVC, or other
+# mistakes for gcc on win32...
+#    -DTILEDB_FORCE_ALL_DEPS=ON \
 
   ${MINGW_PREFIX}/bin/cmake.exe \
     -G"MSYS Makefiles" \
@@ -71,20 +77,42 @@ check (){
   # apparently due to pre-existing tmp/TMP/TEMP env vars
   ( unset tmp; unset TMP; unset TEMP; powershell ${TILEDB_HOME}/scripts/install-minio.ps1 )
 
-  # ... seems MINGW_ARCH is -not- populated in CI environ...
-  #echo "MINGW_ARCH is $MINGW_ARCH"
-  #if [[ $MINGW_ARCH == "mingw32" ]]; then
+  # always avoid the test that fails due to our 'non-standard' config options set above
+  exclude_tests="~\"C API: Test config iter\""
   if [ "$CARCH" == "i686" ]; then
-  
-    # test failures occurring in 32bit environ, for now bail.
-    echo "mingw32 unit tests skipped as too many currently fail!"
+    # test failures occurring in 32bit environ, for now avoid
+    echo "add unit tests skipped as too many currently fail with 32bit mingw!"
+    
+    exclude_tests="~\"CPP API: Test consolidation with timestamps\\, global read\\, all cells same coords\\, with memory budget\""
+    exclude_tests="${exclude_tests} ~\"CPP API: Test consolidation with timestamps\\, global read\\, same cells across tiles\\, with memory budget\""
+    exclude_tests="${exclude_tests} ~\"C++ API: Config Environment Variables Default Override\""
+    exclude_tests="${exclude_tests} ~\"C++ API: Write cell with large cell val num\""
+    exclude_tests="${exclude_tests} ~\"Compression-RLE: Test compression parameter calculation of strings\""
+    exclude_tests="${exclude_tests} ~\"C API: Test sparse array with string dimensions\\, 2d\""
+    exclude_tests="${exclude_tests} ~\"C API: Test sparse array\\, sorted reads\""
+    exclude_tests="${exclude_tests} ~\"C API: Test a dynamic range of arrays\""
+    exclude_tests="${exclude_tests} ~\"C API: Test fragment info\\, load and getters\""
+    exclude_tests="${exclude_tests} ~\"C API: Test fragment info\\, load from encrypted array\""
+    exclude_tests="${exclude_tests} ~\"C API: Test fragment info\\, dump\""
+    exclude_tests="${exclude_tests} ~\"C API: Test fragment info\\, dump after consolidation\""
+    exclude_tests="${exclude_tests} ~\"C API: Test fragment info\\, dump with string dimension\""
+    exclude_tests="${exclude_tests} ~\"C API: Test importing from a buffer\""
+    exclude_tests="${exclude_tests} ~\"C API: Test dense array\\, sorted reads\""
+    exclude_tests="${exclude_tests} ~\"C API: Test dense array\\, encrypted\""
+    exclude_tests="${exclude_tests} ~\"C API: Test context\""
+    exclude_tests="${exclude_tests} ~\"C API: Test config iter\""
+    exclude_tests="${exclude_tests} ~\"Backwards compatibility: Test reading 1.4.0 array with non-split coords\""
+    exclude_tests="${exclude_tests} ~\"Backwards compatibility: Write to an array of older version\""
+    exclude_tests="${exclude_tests} ~\"Backwards compatibility: Upgrades an array of older version and write/read it\""
   else
+    echo "no additional test exclusions"
 #    make -C tiledb/test tiledb_unit -j ${NUMBER_OF_PROCESSORS}
     # run all unit tests except
     # the config test that fails due to the config parameters set to non-default
     # values for s3/minio operability on windows.
-    ./tiledb/test/tiledb_unit.exe -d=yes ~"C API: Test config iter"
+    # ./tiledb/test/tiledb_unit.exe -d=yes ~"C API: Test config iter"
   fi
+  ./tiledb/test/tiledb_unit.exe -d=yes "${exclude_tests}"
   
   # add location of libtiledb.dll so examples can run
   export PATH=${PATH}:$(pwd)/tiledb/tiledb 
@@ -101,6 +129,10 @@ check (){
     mkdir ${TestAppDataDir}
     cd ${TestAppDataDir}
     echo $exampleexe; $exampleexe; 
+    status=$?
+    if (($status != 0)); then
+      echo "ERROR: $exampleexe exited with $status"
+    fi
   done
   cd ${TestAppDir}
   rm -rf ${TestAppDataDir}
@@ -116,6 +148,10 @@ check (){
     mkdir ${TestAppDataDir}
     cd ${TestAppDataDir}
     echo $exampleexe; $exampleexe; 
+    status=$?
+    if (($status != 0)); then
+      echo "ERROR: $exampleexe exited with $status"
+    fi
   done
   cd ${TestAppDir}
   rm -rf ${TestAppDataDir}
