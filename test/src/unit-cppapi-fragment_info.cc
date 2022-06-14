@@ -41,6 +41,8 @@ using namespace tiledb::test;
 
 const std::string array_name = "fragment_info_array_cpp";
 
+const bool bits32 = (sizeof(ptrdiff_t) == 4) ? true : false;
+
 TEST_CASE(
     "C++ API: Test fragment info, errors", "[cppapi][fragment_info][errors]") {
   // Create TileDB context
@@ -220,11 +222,25 @@ TEST_CASE(
 
     // Get fragment schema name
     auto schema_name = fragment_info.array_schema_name(1);
-    CHECK(schema_name.size() == 62);
+    unsigned chk_name_size ;
+    if constexpr (bits32) { // 32bit build
+      chk_name_size = 56;
+    }
+    else { //if constexpr (sizeof(ptrdiff_t) == 8) { // 64bit build
+      chk_name_size = 62;
+    }
+    CHECK(schema_name.size() == chk_name_size);
 
     // Get fragment size
     auto size = fragment_info.fragment_size(1);
-    CHECK(size == 3085);
+    // TBD: 32bit different, size == 3079 (0xc07)
+    unsigned chk_frag_info_size;
+    if constexpr ( bits32) {
+      chk_frag_info_size = 3079;
+    } else {
+      chk_frag_info_size = 3085;
+    }
+    CHECK(size == chk_frag_info_size);
 
     // Get dense / sparse
     auto dense = fragment_info.dense(0);
@@ -840,21 +856,27 @@ TEST_CASE(
 
     // Check dump
     const auto ver = std::to_string(tiledb::sm::constants::format_version);
+    unsigned sz_adj;
+    if constexpr (bits32) {
+      sz_adj = 6;
+    } else {
+      sz_adj = 0;
+    }
     std::string dump_str =
         std::string("- Fragment num: 3\n") +
         "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
         "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
         "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
-        "  > Size: 3085\n" + "  > Cell num: 10\n" +
+        "  > Size: " + std::to_string(3085-sz_adj) + "\n" + "  > Cell num: 10\n" +
         "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
         "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
         "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: dense\n" +
-        "  > Non-empty domain: [1, 4]\n" + "  > Size: 3034\n" +
+        "  > Non-empty domain: [1, 4]\n" + "  > Size: " + std::to_string(3034-sz_adj) + "\n" +
         "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
         "  > Format version: " + ver + "\n" +
         "  > Has consolidated metadata: no\n" + "- Fragment #3:\n" +
         "  > URI: " + written_frag_uri_3 + "\n" + "  > Type: dense\n" +
-        "  > Non-empty domain: [5, 6]\n" + "  > Size: 3082\n" +
+        "  > Non-empty domain: [5, 6]\n" + "  > Size: " + std::to_string(3082-sz_adj) + "\n" +
         "  > Cell num: 10\n" + "  > Timestamp range: [3, 3]\n" +
         "  > Format version: " + ver + "\n" +
         "  > Has consolidated metadata: no\n";
