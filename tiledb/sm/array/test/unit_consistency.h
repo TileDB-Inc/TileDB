@@ -75,10 +75,6 @@ class WhiteboxConsistencyController : public ConsistencyController {
     return ConsistencyController::make_sentry(uri, array);
   }
 
-  bool is_open(const URI uri, Array& array) {
-    return ConsistencyController::is_open(uri, array);
-  }
-
   bool is_open(const URI uri) {
     return ConsistencyController::is_open(uri);
   }

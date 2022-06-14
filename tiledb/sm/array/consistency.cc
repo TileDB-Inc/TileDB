@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -75,14 +75,6 @@ void ConsistencyController::deregister_array(
     ConsistencyController::entry_type entry) {
   std::lock_guard<std::mutex> lock(mtx_);
   array_registry_.erase(entry);
-}
-
-bool ConsistencyController::is_open(const URI uri, Array& array) {
-  for (auto iter : array_registry_) {
-    if (iter.first == uri && (&iter.second) == &array)
-      return true;
-  }
-  return false;
 }
 
 bool ConsistencyController::is_open(const URI uri) {

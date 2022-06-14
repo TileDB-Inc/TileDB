@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -100,9 +100,6 @@ class ConsistencyController {
   ConsistencySentry make_sentry(const URI uri, Array& array);
 
   /** Returns true if the array is open, i.e. registered in the multimap. */
-  bool is_open(const URI uri, Array& array);
-
-  /** Returns true if the array is open, i.e. registered in the multimap. */
   bool is_open(const URI uri);
 
   /**
@@ -119,7 +116,7 @@ class ConsistencyController {
   /**
    * Wrapper around a multimap registration operation.
    *
-   * Note: this function is private and can only be called by the
+   * Note: this function is private and should only be called by the
    * ConsistencySentry constructor.
    *
    * @pre the given URI is the root directory of the Array and is not empty.
@@ -129,7 +126,7 @@ class ConsistencyController {
   /**
    * Wrapper around a multimap deregistration operation.
    *
-   * Note: this function is private and can only be called by the
+   * Note: this function is private and should only be called by the
    * ConsistencySentry destructor.
    *
    * Note: entry_type is passed as a value that is explicitly deleted from the
