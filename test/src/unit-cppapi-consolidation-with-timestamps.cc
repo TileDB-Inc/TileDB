@@ -42,21 +42,21 @@ using namespace tiledb::test;
 
 /** Tests for C API consolidation with timestamps. */
 struct ConsolidationWithTimestampsFx {
-  // Constants
+  // Constants.
   const char* SPARSE_ARRAY_NAME = "test_consolidate_sparse_array";
   const char* SPARSE_ARRAY_FRAG_DIR =
       "test_consolidate_sparse_array/__fragments";
 
-  // TileDB context
+  // TileDB context.
   Context ctx_;
   VFS vfs_;
   sm::StorageManager* sm_;
 
-  // Constructors/destructors
+  // Constructors/destructors.
   ConsolidationWithTimestampsFx();
   ~ConsolidationWithTimestampsFx();
 
-  // Functions
+  // Functions.
   void set_legacy();
   void create_sparse_array(bool allows_dups = false);
   void create_sparse_array_v11();
@@ -119,19 +119,19 @@ void ConsolidationWithTimestampsFx::set_legacy() {
 }
 
 void ConsolidationWithTimestampsFx::create_sparse_array(bool allows_dups) {
-  // Create dimensions
+  // Create dimensions.
   auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 4}}, 2);
   auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 4}}, 2);
 
-  // Create domain
+  // Create domain.
   Domain domain(ctx_);
   domain.add_dimension(d1);
   domain.add_dimension(d2);
 
-  // Create attributes
+  // Create attributes.
   auto a1 = Attribute::create<int32_t>(ctx_, "a1");
 
-  // Create array schmea
+  // Create array schmea.
   ArraySchema schema(ctx_, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.set_capacity(20);
@@ -141,7 +141,7 @@ void ConsolidationWithTimestampsFx::create_sparse_array(bool allows_dups) {
     schema.set_allows_dups(true);
   }
 
-  // Set up filters
+  // Set up filters.
   Filter filter(ctx_, TILEDB_FILTER_NONE);
   FilterList filter_list(ctx_);
   filter_list.add_filter(filter);
@@ -167,26 +167,26 @@ void ConsolidationWithTimestampsFx::write_sparse(
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,
     uint64_t timestamp) {
-  // Open array
+  // Open array.
   Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, timestamp);
 
-  // Create query
+  // Create query.
   Query query(ctx_, array, TILEDB_WRITE);
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_data_buffer("a1", a1);
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
 
-  // Submit/finalize the query
+  // Submit/finalize the query.
   query.submit();
   query.finalize();
 
-  // Close array
+  // Close array.
   array.close();
 }
 
 void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
-  // Prepare cell buffers
+  // Prepare cell buffers.
   std::vector<int> buffer_a1{0, 1, 2, 3};
   std::vector<uint64_t> buffer_a2{0, 1, 3, 6};
   std::string buffer_var_a2("abbcccdddd");
@@ -194,10 +194,10 @@ void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
   std::vector<uint64_t> buffer_coords_dim1{1, 1, 1, 2};
   std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3};
 
-  // Open array
+  // Open array.
   Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, timestamp);
 
-  // Create query
+  // Create query.
   Query query(ctx_, array, TILEDB_WRITE);
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_data_buffer("a1", buffer_a1);
@@ -208,11 +208,11 @@ void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
   query.set_data_buffer("d1", buffer_coords_dim1);
   query.set_data_buffer("d2", buffer_coords_dim2);
 
-  // Submit/finalize the query
+  // Submit/finalize the query.
   query.submit();
   query.finalize();
 
-  // Close array
+  // Close array.
   array.close();
 }
 
@@ -292,10 +292,10 @@ void ConsolidationWithTimestampsFx::read_sparse(
     tiledb_layout_t layout,
     uint64_t timestamp,
     std::vector<uint64_t>* timestamps_ptr) {
-  // Open array
+  // Open array.
   Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
 
-  // Create query
+  // Create query.
   Query query(ctx_, array, TILEDB_READ);
   query.set_layout(layout);
   query.set_data_buffer("a1", a1);
@@ -305,14 +305,14 @@ void ConsolidationWithTimestampsFx::read_sparse(
     query.set_data_buffer(tiledb_timestamps(), *timestamps_ptr);
   }
 
-  // Submit/finalize the query
+  // Submit/finalize the query.
   query.submit();
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Get the query stats.
   stats = query.stats();
 
-  // Close array
+  // Close array.
   array.close();
 }
 
@@ -325,13 +325,13 @@ void ConsolidationWithTimestampsFx::reopen_sparse(
     uint64_t start_time,
     uint64_t end_time,
     std::vector<uint64_t>* timestamps_ptr) {
-  // Re-open array
+  // Re-open array.
   Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ);
   array.set_open_timestamp_start(start_time);
   array.set_open_timestamp_end(end_time);
   array.reopen();
 
-  // Create query
+  // Create query.
   Query query(ctx_, array, TILEDB_READ);
   query.set_layout(layout);
   query.set_data_buffer("a1", a1);
@@ -341,14 +341,14 @@ void ConsolidationWithTimestampsFx::reopen_sparse(
     query.set_data_buffer(tiledb_timestamps(), *timestamps_ptr);
   }
 
-  // Submit/finalize the query
+  // Submit/finalize the query.
   query.submit();
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Get the query stats.
   stats = query.stats();
 
-  // Close array
+  // Close array.
   array.close();
 }
 
@@ -413,51 +413,51 @@ TEST_CASE_METHOD(
 
   sm::URI array_uri(SPARSE_ARRAY_NAME);
   ThreadPool tp(2);
-  // Partial coverage of lower timestamp
+  // Partial coverage of lower timestamp.
   sm::ArrayDirectory array_dir(sm_->vfs(), &tp, array_uri, 0, 2, true);
-  // Check that only the consolidated fragment is visible
+  // Check that only the consolidated fragment is visible.
   auto fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
   auto ts_range = fragments[0].timestamp_range_;
   CHECK(ts_range.first == 1);
   CHECK(ts_range.second == 3);
 
-  // Partial coverage of upper timestamp
+  // Partial coverage of upper timestamp.
   array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 2, 10, true);
-  // Check that only the consolidated fragment is visible
+  // Check that only the consolidated fragment is visible.
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
   ts_range = fragments[0].timestamp_range_;
   CHECK(ts_range.first == 1);
   CHECK(ts_range.second == 3);
 
-  // Full coverage
+  // Full coverage.
   array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 5, true);
-  // Check that only the consolidated fragment is visible
+  // Check that only the consolidated fragment is visible.
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
   ts_range = fragments[0].timestamp_range_;
   CHECK(ts_range.first == 1);
   CHECK(ts_range.second == 3);
 
-  // Boundary case
+  // Boundary case.
   array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 3, 5, true);
-  // Check that only the consolidated fragment is visible
+  // Check that only the consolidated fragment is visible.
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
   ts_range = fragments[0].timestamp_range_;
   CHECK(ts_range.first == 1);
   CHECK(ts_range.second == 3);
 
-  // No coverage - later read
+  // No coverage - later read.
   array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 4, 5, true);
-  // Check that no fragment is visible
+  // Check that no fragment is visible.
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 0);
 
-  // No coverage - earlier read
+  // No coverage - earlier read.
   array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 0, true);
-  // Check that no fragment is visible
+  // Check that no fragment is visible.
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 0);
 
@@ -528,51 +528,51 @@ TEST_CASE_METHOD(
   sm::URI array_uri(SPARSE_ARRAY_NAME);
   ThreadPool tp(2);
 
-  // Partial coverage of lower timestamp
+  // Partial coverage of lower timestamp.
   sm::ArrayDirectory array_dir(sm_->vfs(), &tp, array_uri, 0, 2, true);
-  // Check that only the first fragment is visible on an old array
+  // Check that only the first fragment is visible on an old array.
   auto fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
   auto ts_range = fragments[0].timestamp_range_;
   CHECK(ts_range.first == 1);
   CHECK(ts_range.second == 1);
 
-  // Partial coverage of upper timestamp
+  // Partial coverage of upper timestamp.
   array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 2, 10, true);
-  // Check that only the second fragment is visible on an old array
+  // Check that only the second fragment is visible on an old array.
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
   ts_range = fragments[0].timestamp_range_;
   CHECK(ts_range.first == 3);
   CHECK(ts_range.second == 3);
 
-  // Full coverage
+  // Full coverage.
   array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 5, true);
-  // Check that only the consolidated fragment is visible
+  // Check that only the consolidated fragment is visible.
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
   ts_range = fragments[0].timestamp_range_;
   CHECK(ts_range.first == 1);
   CHECK(ts_range.second == 3);
 
-  // Boundary case
+  // Boundary case.
   array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 3, 5, true);
-  // Check that only the second fragment is visible
+  // Check that only the second fragment is visible.
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 1);
   ts_range = fragments[0].timestamp_range_;
   CHECK(ts_range.first == 3);
   CHECK(ts_range.second == 3);
 
-  // No coverage - later read
+  // No coverage - later read.
   array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 4, 5, true);
-  // Check that no fragment is visible
+  // Check that no fragment is visible.
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 0);
 
-  // No coverage - earlier read
+  // No coverage - earlier read.
   array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 0, true);
-  // Check that no fragment is visible
+  // Check that no fragment is visible.
   fragments = array_dir.fragment_uris();
   CHECK(fragments.size() == 0);
 
@@ -767,7 +767,7 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidation with timestamps, partial read with dups",
     "[cppapi][consolidation-with-timestamps][partial-read][dups]") {
   remove_sparse_array();
-  // enable duplicates
+  // Enable duplicates.
   create_sparse_array(true);
 
   // Write first fragment.
@@ -797,7 +797,7 @@ TEST_CASE_METHOD(
       GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
   SECTION("Read after all writes") {
-    // Read after both writes - should see everything
+    // Read after both writes - should see everything.
     read_sparse(a, dim1, dim2, stats, layout, 4, timestamps_ptr);
 
     std::vector<int> c_a_opt1 = {0, 1, 8, 2, 3, 9, 10, 11};
@@ -828,7 +828,7 @@ TEST_CASE_METHOD(
   }
 
   SECTION("Read between the 2 writes") {
-    // Should see only first write
+    // Should see only first write.
     read_sparse(a, dim1, dim2, stats, layout, 2, timestamps_ptr);
 
     std::vector<int> c_a = {0, 1, 2, 3};
@@ -854,7 +854,7 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidation with timestamps, partial read without dups",
     "[cppapi][consolidation-with-timestamps][partial-read][no-dups]") {
   remove_sparse_array();
-  // no duplicates
+  // No duplicates.
   create_sparse_array();
 
   // Write first fragment.
@@ -924,7 +924,7 @@ TEST_CASE_METHOD(
     "dups",
     "[cppapi][consolidation-with-timestamps][partial-read][dups]") {
   remove_sparse_array();
-  // enable duplicates
+  // Enable duplicates.
   create_sparse_array(true);
 
   // Write first fragment.
@@ -962,11 +962,11 @@ TEST_CASE_METHOD(
       GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
   SECTION("Read after all writes") {
-    // Read after both writes - should see everything
+    // Read after both writes - should see everything.
     read_sparse(a, dim1, dim2, stats, layout, 7, timestamps_ptr);
 
     if (layout == TILEDB_UNORDERED) {
-      // results in global order of fragments
+      // Results in global order of fragments.
       std::vector<int> c_a = {
           0, 1, 4, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
       std::vector<uint64_t> c_dim1 = {
@@ -987,7 +987,7 @@ TEST_CASE_METHOD(
             exp_ts.size() * sizeof(uint64_t)));
       }
     } else {
-      // result in cell global order
+      // result in cell global order.
       std::vector<int> c_a_opt1 = {
           0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 7, 13, 14, 15};
       std::vector<int> c_a_opt2 = {
@@ -1022,7 +1022,7 @@ TEST_CASE_METHOD(
   }
 
   // Read with full coverage on first 2 consolidated, partial coverage on second
-  // 2 consolidated
+  // 2 consolidated.
   SECTION("Read between the 2 writes") {
     read_sparse(a, dim1, dim2, stats, layout, 5, timestamps_ptr);
 
@@ -1044,7 +1044,7 @@ TEST_CASE_METHOD(
             exp_ts.size() * sizeof(uint64_t)));
       }
     } else {
-      // result in cell global order
+      // Result in cell global order.
       std::vector<int> c_a = {0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 7};
       std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 3};
       std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 3};
@@ -1070,7 +1070,7 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidation with timestamps, reopen",
     "[cppapi][consolidation-with-timestamps][partial-read][dups]") {
   remove_sparse_array();
-  // enable duplicates
+  // Enable duplicates.
   create_sparse_array(true);
 
   // Write first fragment.
@@ -1100,10 +1100,10 @@ TEST_CASE_METHOD(
       GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
   SECTION("Read in the middle") {
-    // Read between 2 and 4
+    // Read between 2 and 4.
     reopen_sparse(a, dim1, dim2, stats, layout, 2, 4, timestamps_ptr);
 
-    // Expect to read only what was written at time 3
+    // Expect to read only what was written at time 3.
     std::vector<int> c_a = {4, 5, 6, 7};
     std::vector<uint64_t> c_dim1 = {2, 2, 3, 3};
     std::vector<uint64_t> c_dim2 = {2, 3, 2, 3};
@@ -1122,7 +1122,7 @@ TEST_CASE_METHOD(
   SECTION("Read the last 2 writes only") {
     reopen_sparse(a, dim1, dim2, stats, layout, 2, 6, timestamps_ptr);
 
-    // Expect to read what the last 2 writes wrote
+    // Expect to read what the last 2 writes wrote.
     std::vector<int> c_a = {4, 8, 5, 9, 10, 6, 11, 7};
     std::vector<uint64_t> c_dim1 = {2, 1, 2, 2, 3, 3, 4, 3};
     std::vector<uint64_t> c_dim2 = {2, 3, 3, 4, 1, 2, 1, 3};
@@ -1141,7 +1141,7 @@ TEST_CASE_METHOD(
   SECTION("Read the first 2 writes only") {
     reopen_sparse(a, dim1, dim2, stats, layout, 0, 4, timestamps_ptr);
 
-    // Expect to read what the first 2 writes wrote
+    // Expect to read what the first 2 writes wrote.
     std::vector<int> c_a_opt1 = {0, 1, 4, 2, 5, 3, 6, 7};
     std::vector<int> c_a_opt2 = {0, 1, 4, 2, 3, 5, 6, 7};
     std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 2, 3, 3};
@@ -1178,7 +1178,7 @@ TEST_CASE_METHOD(
     "[cppapi][consolidation-with-timestamps][read-timestamps][unordered-"
     "reader]") {
   remove_sparse_array();
-  // enable duplicates
+  // Enable duplicates.
   create_sparse_array(true);
 
   // Write first fragment.
@@ -1208,7 +1208,7 @@ TEST_CASE_METHOD(
     // Read between 2 and 4
     reopen_sparse(a, dim1, dim2, stats, layout, 2, 4, timestamps_ptr);
 
-    // Expect to read only what was written at time 3
+    // Expect to read only what was written at time 3.
     std::vector<int> c_a = {4, 5, 6, 7};
     std::vector<uint64_t> c_dim1 = {2, 2, 3, 3};
     std::vector<uint64_t> c_dim2 = {2, 3, 2, 3};
@@ -1227,7 +1227,7 @@ TEST_CASE_METHOD(
   SECTION("Read the last 2 writes only") {
     reopen_sparse(a, dim1, dim2, stats, layout, 2, 6, timestamps_ptr);
 
-    // Expect to read what the last 2 writes wrote
+    // Expect to read what the last 2 writes wrote.
     std::vector<int> c_a = {4, 5, 6, 7, 8, 9, 10, 11};
     std::vector<uint64_t> c_dim1 = {2, 2, 3, 3, 1, 2, 3, 4};
     std::vector<uint64_t> c_dim2 = {2, 3, 2, 3, 3, 4, 1, 1};
@@ -1246,7 +1246,7 @@ TEST_CASE_METHOD(
   SECTION("Read the first 2 writes only") {
     reopen_sparse(a, dim1, dim2, stats, layout, 0, 4, timestamps_ptr);
 
-    // Expect to read what the first 2 writes wrote
+    // Expect to read what the first 2 writes wrote.
     std::vector<int> c_a = {0, 1, 2, 3, 4, 5, 6, 7};
     std::vector<uint64_t> c_dim1 = {1, 1, 1, 2, 2, 2, 3, 3};
     std::vector<uint64_t> c_dim2 = {1, 2, 4, 3, 2, 3, 2, 3};
@@ -1271,7 +1271,7 @@ TEST_CASE_METHOD(
     "[cppapi][consolidation-with-timestamps][read-timestamps][unordered-"
     "reader][overlapping-ranges][SC-18541]") {
   remove_sparse_array();
-  // enable duplicates
+  // Enable duplicates.
   create_sparse_array(true);
 
   // Write first fragment.
@@ -1317,9 +1317,9 @@ TEST_CASE_METHOD(
 
   // Expect to read what the first 2 writes wrote: each element will
   // appear twice because of the identical overlapping ranges. The order
-  // of results varies if consolidated or not
+  // of results varies if consolidated or not.
   if (!consolidate) {
-    // results in global order of fragments
+    // Results in global order of fragments
     std::vector<int> c_a = {1, 1, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7};
     std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3};
     std::vector<uint64_t> c_dim2 = {2, 2, 3, 3, 2, 2, 3, 3, 2, 2, 3, 3};
@@ -1332,7 +1332,7 @@ TEST_CASE_METHOD(
     CHECK(!memcmp(
         exp_ts.data(), timestamps.data(), exp_ts.size() * sizeof(uint64_t)));
   } else {
-    // result in cell global order in consolidated fragment
+    // Result in cell global order in consolidated fragment.
     std::vector<int> c_a_opt1 = {1, 1, 4, 4, 3, 3, 5, 5, 6, 6, 7, 7};
     std::vector<int> c_a_opt2 = {1, 1, 4, 4, 5, 5, 3, 3, 6, 6, 7, 7};
     std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3};
@@ -1372,7 +1372,7 @@ TEST_CASE_METHOD(
     "[cppapi][consolidation-with-timestamps][read-timestamps][global-order-"
     "reader]") {
   remove_sparse_array();
-  // enable duplicates
+  // Enable duplicates.
   create_sparse_array(true);
 
   // Write first fragment.
@@ -1399,10 +1399,10 @@ TEST_CASE_METHOD(
       GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
   SECTION("Read in the middle") {
-    // Read between 2 and 4
+    // Read between 2 and 4.
     reopen_sparse(a, dim1, dim2, stats, layout, 2, 4, timestamps_ptr);
 
-    // Expect to read only what was written at time 3
+    // Expect to read only what was written at time 3.
     std::vector<int> c_a = {4, 5, 6, 7};
     std::vector<uint64_t> c_dim1 = {2, 2, 3, 3};
     std::vector<uint64_t> c_dim2 = {2, 3, 2, 3};
@@ -1421,7 +1421,7 @@ TEST_CASE_METHOD(
   SECTION("Read the last 2 writes only") {
     reopen_sparse(a, dim1, dim2, stats, layout, 2, 6, timestamps_ptr);
 
-    // Expect to read what the last 2 writes wrote
+    // Expect to read what the last 2 writes wrote.
     std::vector<int> c_a = {4, 8, 5, 9, 10, 6, 11, 7};
     std::vector<uint64_t> c_dim1 = {2, 1, 2, 2, 3, 3, 4, 3};
     std::vector<uint64_t> c_dim2 = {2, 3, 3, 4, 1, 2, 1, 3};
@@ -1440,7 +1440,7 @@ TEST_CASE_METHOD(
   SECTION("Read the first 2 writes only") {
     reopen_sparse(a, dim1, dim2, stats, layout, 0, 4, timestamps_ptr);
 
-    // Expect to read what the first 2 writes wrote
+    // Expect to read what the first 2 writes wrote.
     std::vector<int> c_a_opt1 = {0, 1, 4, 2, 5, 3, 6, 7};
     std::vector<int> c_a_opt2 = {0, 1, 4, 2, 3, 5, 6, 7};
     std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 2, 3, 3};
@@ -1475,7 +1475,7 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidation with timestamps, check number of tiles read",
     "[cppapi][consolidation-with-timestamps][partial-read][stats]") {
   remove_sparse_array();
-  // enable duplicates
+  // Enable duplicates.
   create_sparse_array(true);
 
   // Write first fragment.
@@ -1492,7 +1492,7 @@ TEST_CASE_METHOD(
   // Write fourth fragment.
   write_sparse({12, 13, 14, 15}, {4, 3, 3, 4}, {2, 3, 4, 4}, 7);
 
-  // Consolidate last 2 fragments into 5:7
+  // Consolidate last 2 fragments into 5:7.
   consolidate_sparse(4, 7, true);
 
   std::string stats;
@@ -1503,7 +1503,7 @@ TEST_CASE_METHOD(
 
   SECTION("Partial overlap or not") {
     // Read one tile for dim1, dim2, attr a1 and timestamp = 4, since 0:2 array
-    // partially overlaps with the first 1:3 consolidated fragment
+    // partially overlaps with the first 1:3 consolidated fragment.
     read_sparse(a, dim1, dim2, stats, layout, 2);
     CHECK(
         stats.find(
@@ -1512,7 +1512,7 @@ TEST_CASE_METHOD(
 
     // Same but skip timestamps: 4 - 1 = 3, since 0:4 array fully overlaps with
     // the first 1:3 consolidated fragment, so no need to check timestamps for
-    // cells
+    // cells.
     read_sparse(a, dim1, dim2, stats, layout, 4);
     CHECK(
         stats.find(
@@ -1520,8 +1520,8 @@ TEST_CASE_METHOD(
         std::string::npos);
 
     // Read 2 tiles for dim1, dim2, attr a1 and 1 for timestamps: 3 * 2 + 1 = 7
-    // , since 0:6 array fully overlaps with the first 1:3, but only partially
-    // overlaps with the second 5:7 consolidated fragment
+    // since 0:6 array fully overlaps with the first 1:3, but only partially.
+    // overlaps with the second 5:7 consolidated fragment.
     read_sparse(a, dim1, dim2, stats, layout, 6);
     CHECK(
         stats.find(
@@ -1529,7 +1529,7 @@ TEST_CASE_METHOD(
         std::string::npos);
 
     // Read 2 tiles for dim1, dim2, attr a1 and skip timestamps: 3 * 2, since
-    // 0:8 array fully overlaps with both consolidateded fragments 1:3 and 5:7
+    // 0:8 array fully overlaps with both consolidateded fragments 1:3 and 5:7.
     read_sparse(a, dim1, dim2, stats, layout, 8);
     CHECK(
         stats.find(
@@ -1537,7 +1537,7 @@ TEST_CASE_METHOD(
         std::string::npos);
 
     // Read 2 tiles for dim1, dim2, attr a1 and timestamps: 4 * 2, since 3:5
-    // array partially overlaps with both consolidateded fragments 1:3 and 5:7
+    // array partially overlaps with both consolidateded fragments 1:3 and 5:7.
     reopen_sparse(a, dim1, dim2, stats, layout, 3, 5);
     CHECK(
         stats.find(
@@ -1555,7 +1555,7 @@ TEST_CASE_METHOD(
   }
 
   SECTION("No duplicates") {
-    // set no dups
+    // Set no dups.
     remove_sparse_array();
     create_sparse_array(false);
 
@@ -1564,9 +1564,8 @@ TEST_CASE_METHOD(
     // Write second fragment.
     write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3);
 
-    // Consolidate first 2 fragments into 1:3
+    // Consolidate first 2 fragments into 1:3.
     consolidate_sparse(vacuum);
-
     read_sparse(a, dim1, dim2, stats, layout, 4);
     CHECK(
         stats.find(
@@ -1575,7 +1574,7 @@ TEST_CASE_METHOD(
   }
 
   SECTION("Fragment without timestamps") {
-    // set no dups
+    // Set no dups.
     remove_sparse_array();
     create_sparse_array(false);
 
@@ -1584,16 +1583,16 @@ TEST_CASE_METHOD(
     // Write second fragment.
     write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3);
 
-    // read with partial overlap - expect no timestamps since fragment doesn't
-    // have any
+    // Read with partial overlap - expect no timestamps since fragment doesn't
+    // have any.
     read_sparse(a, dim1, dim2, stats, layout, 2);
     CHECK(
         stats.find(
             "\"Context.StorageManager.Query.Reader.num_tiles_read\": 3") !=
         std::string::npos);
 
-    // request timestamps - expect no timestamps getting read since fragment
-    // doesn't have any
+    // Request timestamps - expect no timestamps getting read since fragment
+    // doesn't have any.
     std::vector<uint64_t> timestamps(16);
     read_sparse(a, dim1, dim2, stats, layout, 4, &timestamps);
     CHECK(
