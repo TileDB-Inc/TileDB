@@ -262,11 +262,6 @@ class Config {
   static const std::string SM_CONSOLIDATION_TIMESTAMP_END;
 
   /**
-   * Enable or disable consolidation with timestamps.
-   */
-  static const std::string SM_CONSOLIDATION_WITH_TIMESTAMPS;
-
-  /**
    * The vacuum mode. It can be one of:
    *     - "fragments": only the fragments will be vacuumed
    *     - "fragment_meta": only the fragment metadata will be vacuumed

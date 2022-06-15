@@ -837,21 +837,13 @@ Status FragmentInfo::load(
   // Create an ArrayDirectory object and load
   auto timestamp_start = compute_anterior ? 0 : timestamp_start_;
   ArrayDirectory array_dir;
-  bool found = false;
-  bool consolidation_with_timestamps = false;
-  RETURN_NOT_OK(config_.get<bool>(
-      "sm.consolidation.with_timestamps",
-      &consolidation_with_timestamps,
-      &found));
-  assert(found);
   try {
     array_dir = ArrayDirectory(
         storage_manager_->vfs(),
         storage_manager_->compute_tp(),
         array_uri_,
         timestamp_start,
-        timestamp_end_,
-        consolidation_with_timestamps);
+        timestamp_end_);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
@@ -919,7 +911,8 @@ Status FragmentInfo::load(
   }
 
   // Get the URIs to vacuum
-  to_vacuum_ = array_dir.fragment_uris_to_vacuum();
+  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
+  to_vacuum_ = filtered_fragment_uris.fragment_uris_to_vacuum();
 
   // Get number of unconsolidated fragment metadata
   unconsolidated_metadata_num_ = 0;
