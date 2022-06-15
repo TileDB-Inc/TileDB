@@ -911,7 +911,8 @@ Status FragmentInfo::load(
   }
 
   // Get the URIs to vacuum
-  to_vacuum_ = array_dir.fragment_uris_to_vacuum();
+  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
+  to_vacuum_ = filtered_fragment_uris.fragment_uris_to_vacuum();
 
   // Get number of unconsolidated fragment metadata
   unconsolidated_metadata_num_ = 0;

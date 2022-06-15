@@ -190,8 +190,15 @@ StorageManager::load_array_schemas_and_fragment_metadata(
   auto timer_se =
       stats_->start_timer("sm_load_array_schemas_and_fragment_metadata");
 
+  // Load array schemas
+  auto&& [st_schemas, array_schema_latest, array_schemas_all] =
+      load_array_schemas(array_dir, enc_key);
+  RETURN_NOT_OK_TUPLE(st_schemas, std::nullopt, std::nullopt, std::nullopt);
+
+  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(
+      array_schema_latest.value().get()->dense());
   const auto& meta_uris = array_dir.fragment_meta_uris();
-  const auto& fragments_to_load = array_dir.fragment_uris();
+  const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
 
   // Get the consolidated fragment metadatas
   std::vector<Buffer> f_buffs(meta_uris.size());
@@ -215,11 +222,6 @@ StorageManager::load_array_schemas_and_fragment_metadata(
       }
     }
   }
-
-  // Load array schemas
-  auto&& [st_schemas, array_schema_latest, array_schemas_all] =
-      load_array_schemas(array_dir, enc_key);
-  RETURN_NOT_OK_TUPLE(st_schemas, std::nullopt, std::nullopt, std::nullopt);
 
   // Load the fragment metadata
   auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(

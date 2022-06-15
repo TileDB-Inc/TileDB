@@ -298,10 +298,15 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
-  const auto& fragment_uris_to_vacuum = array_dir.fragment_uris_to_vacuum();
-  const auto& commit_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
-  const auto& commit_uris_to_ignore = array_dir.commit_uris_to_ignore();
-  const auto& vac_uris_to_vacuum = array_dir.fragment_vac_uris_to_vacuum();
+  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
+  const auto& fragment_uris_to_vacuum =
+      filtered_fragment_uris.fragment_uris_to_vacuum();
+  const auto& commit_uris_to_vacuum =
+      filtered_fragment_uris.commit_uris_to_vacuum();
+  const auto& commit_uris_to_ignore =
+      filtered_fragment_uris.commit_uris_to_ignore();
+  const auto& vac_uris_to_vacuum =
+      filtered_fragment_uris.fragment_vac_uris_to_vacuum();
 
   if (commit_uris_to_ignore.size() > 0) {
     // Write an ignore file to ensure consolidated WRT files still work
