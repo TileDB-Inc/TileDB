@@ -107,7 +107,7 @@ TEST_CASE(
 
   Context ctx;
   Config config;
-  config["sm.consolidation.buffer_size"] = "4";
+  config["sm.consolidation.buffer_size"] = "8";
   REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK(tiledb::test::num_fragments(array_name) == 3);
   REQUIRE_NOTHROW(Array::vacuum(ctx, array_name, &config));
@@ -141,7 +141,7 @@ TEST_CASE(
 
   Context ctx;
   Config config;
-  config["sm.consolidation.buffer_size"] = "4";
+  config["sm.consolidation.buffer_size"] = "8";
   REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK(tiledb::test::num_fragments(array_name) == 3);
 
