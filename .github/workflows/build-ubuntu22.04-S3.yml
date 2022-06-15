@@ -1,4 +1,4 @@
-name: build-ubuntu-20.04-S3
+name: build-ubuntu-22.04-S3
 on:
   push:
     branches:
