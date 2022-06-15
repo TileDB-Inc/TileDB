@@ -2035,7 +2035,6 @@ int32_t tiledb_array_schema_load(
           uri,
           0,
           UINT64_MAX,
-          false,
           tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       auto st = Status_ArrayDirectoryError(le.what());
@@ -2140,7 +2139,6 @@ int32_t tiledb_array_schema_load_with_key(
           uri,
           0,
           UINT64_MAX,
-          false,
           tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       auto st = Status_ArrayDirectoryError(le.what());
@@ -4732,7 +4730,6 @@ int32_t tiledb_array_encryption_type(
         uri,
         0,
         UINT64_MAX,
-        false,
         tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     auto st = Status_ArrayDirectoryError(le.what());
@@ -4956,7 +4953,6 @@ int32_t tiledb_array_evolve(
         uri,
         0,
         UINT64_MAX,
-        false,
         tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     auto st = Status_ArrayDirectoryError(le.what());
@@ -5005,7 +5001,6 @@ int32_t tiledb_array_upgrade_version(
         uri,
         0,
         UINT64_MAX,
-        false,
         tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     auto st = Status_ArrayDirectoryError(le.what());
