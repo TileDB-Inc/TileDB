@@ -492,6 +492,8 @@ Status ReaderBase::read_tiles(
       URIHasher>
       all_regions;
 
+  uint64_t num_tiles_read = 0;
+
   // Run all tiles and attributes.
   for (auto name : names) {
     for (auto tile : result_tiles) {
@@ -523,6 +525,8 @@ Status ReaderBase::read_tiles(
       if (timestamps_not_present(name, tile->frag_idx())) {
         continue;
       }
+
+      num_tiles_read++;
 
       const bool var_size = array_schema->var_size(name);
       const bool nullable = array_schema->is_nullable(name);
@@ -666,6 +670,8 @@ Status ReaderBase::read_tiles(
       }
     }
   }
+
+  stats_->add_counter("num_tiles_read", num_tiles_read);
 
   // Do not use the read-ahead cache because tiles will be
   // cached in the tile cache.
