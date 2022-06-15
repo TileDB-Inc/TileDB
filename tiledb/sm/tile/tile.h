@@ -275,9 +275,9 @@ class Tile {
   /** Swaps the contents (all field values) of this tile with the given tile. */
   void swap(Tile& tile);
 
- protected:
+ private:
   /* ********************************* */
-  /*        PROTECTED ATTRIBUTES       */
+  /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
   /**
