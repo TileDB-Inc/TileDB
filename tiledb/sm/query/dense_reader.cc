@@ -274,10 +274,7 @@ Status DenseReader::dense_read() {
 
   // Compute subarrays for each tile.
   const auto& tile_coords = subarray.tile_coords();
-  DynamicArray<Subarray> tile_subarrays{
-      tile_coords.size(),
-      tdb::allocator<Subarray>{},
-      Tag<DynamicArray<Subarray>::NullInitializer>{}};
+  TileSubarrays tile_subarrays{tile_coords.size()};
   const auto& layout =
       layout_ == Layout::GLOBAL_ORDER ? array_schema_.cell_order() : layout_;
   auto status = parallel_for(
