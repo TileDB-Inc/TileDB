@@ -1503,7 +1503,7 @@ TEST_CASE_METHOD(
   write_sparse({12, 13, 14, 15}, {4, 3, 3, 4}, {2, 3, 4, 4}, 7);
 
   // Consolidate last 2 fragments into 5:7.
-  consolidate_sparse(4, 7, true);
+  consolidate_sparse(4, 7, vacuum);
 
   std::string stats;
   std::vector<int> a(16);
@@ -1609,5 +1609,82 @@ TEST_CASE_METHOD(
         stats.find(
             "\"Context.StorageManager.Query.Reader.num_tiles_read\": 6") !=
         std::string::npos);
+  }
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, consolidate consolidated"
+    " fragment with timestamps",
+    "[cppapi][consolidation-with-timestamps][frag-w-timestamps]") {
+  remove_sparse_array();
+
+  bool dups = GENERATE(true, false);
+
+  // Enable duplicates.
+  create_sparse_array(dups);
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+  // Write second fragment.
+  write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3);
+
+  // Consolidate first 2 fragments into 1:3
+  bool vacuum = GENERATE(true, false);
+  consolidate_sparse(vacuum);
+
+  // Write third fragment.
+  write_sparse({8, 9, 10, 11}, {2, 1, 3, 4}, {1, 3, 1, 1}, 5);
+  // Write fourth fragment.
+  write_sparse({12, 13, 14, 15}, {4, 3, 3, 4}, {2, 3, 4, 4}, 7);
+
+  // Consolidate last all fragments into 1:7.
+  consolidate_sparse(1, 7, vacuum);
+
+  std::string stats;
+  std::vector<int> a(16);
+  std::vector<uint64_t> dim1(16);
+  std::vector<uint64_t> dim2(16);
+  std::vector<uint64_t> timestamps(16);
+  tiledb_layout_t layout = TILEDB_UNORDERED;
+
+  // Read and validate.
+  read_sparse(a, dim1, dim2, stats, layout, 8, &timestamps);
+
+  // Cell [3, 3] is duplicated for values of a 7 and 13.
+  if (dups) {
+    std::vector<int> c_a_1 = {
+        0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 7, 13, 14, 15};
+    std::vector<int> c_a_2 = {
+        0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 13, 7, 14, 15};
+    std::vector<uint64_t> c_dim1 = {
+        1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 3, 4};
+    std::vector<uint64_t> c_dim2 = {
+        1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 3, 4, 4};
+    std::vector<uint64_t> c_ts = {
+        1, 1, 5, 3, 5, 1, 1, 3, 5, 3, 5, 7, 3, 7, 7, 7};
+    CHECK(
+        (!memcmp(c_a_1.data(), a.data(), c_a_1.size() * sizeof(int)) ||
+         !memcmp(c_a_2.data(), a.data(), c_a_2.size() * sizeof(int))));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+    CHECK(!memcmp(
+        c_ts.data(), timestamps.data(), c_ts.size() * sizeof(uint64_t)));
+  } else {
+    std::vector<int> c_a = {0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 13, 14, 15};
+    std::vector<uint64_t> c_dim1 = {
+        1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4};
+    std::vector<uint64_t> c_dim2 = {
+        1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 4};
+    std::vector<uint64_t> c_ts = {1, 1, 5, 3, 5, 1, 1, 3, 5, 3, 5, 7, 7, 7, 7};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+    CHECK(!memcmp(
+        c_ts.data(), timestamps.data(), c_ts.size() * sizeof(uint64_t)));
   }
 }
