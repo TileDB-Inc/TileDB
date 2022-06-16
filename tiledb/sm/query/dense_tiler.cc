@@ -190,7 +190,7 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
 
 template <class T>
 Status DenseTiler<T>::get_tile(
-    uint64_t id, const std::string& name, WriterTile* tile) {
+    uint64_t id, const std::string& name, Tile* tile) {
   auto timer_se = stats_->start_timer("get_tile");
 
   // Checks
@@ -226,7 +226,7 @@ Status DenseTiler<T>::get_tile(
 
 template <class T>
 Status DenseTiler<T>::get_tile_null(
-    uint64_t id, const std::string& name, WriterTile* tile) const {
+    uint64_t id, const std::string& name, Tile* tile) const {
   // Checks
   if (id >= tile_num_)
     return LOG_STATUS(
@@ -260,8 +260,8 @@ template <class T>
 Status DenseTiler<T>::get_tile_var(
     uint64_t id,
     const std::string& name,
-    WriterTile* tile_off,
-    WriterTile* tile_val) const {
+    Tile* tile_off,
+    Tile* tile_val) const {
   // Checks
   if (id >= tile_num_)
     return LOG_STATUS(
@@ -289,7 +289,7 @@ Status DenseTiler<T>::get_tile_var(
   std::vector<uint8_t> fill_var(sizeof(uint64_t), 0);
 
   // Initialize position tile
-  WriterTile tile_pos;
+  Tile tile_pos;
   RETURN_NOT_OK(tile_pos.init_unfiltered(
       constants::format_version,
       constants::cell_var_offset_type,
@@ -358,7 +358,7 @@ Status DenseTiler<T>::get_tile_var(
     }
   }
 
-  tile_val->final_size(offset);
+  tile_val->set_size(offset);
 
   return Status::Ok();
 }
@@ -559,7 +559,7 @@ std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
 
 template <class T>
 Status DenseTiler<T>::copy_tile(
-    uint64_t id, uint64_t cell_size, uint8_t* buff, WriterTile* tile) const {
+    uint64_t id, uint64_t cell_size, uint8_t* buff, Tile* tile) const {
   // Calculate copy plan
   const CopyPlan copy_plan = this->copy_plan(id);
 

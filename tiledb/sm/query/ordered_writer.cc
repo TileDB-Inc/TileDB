@@ -107,8 +107,9 @@ Status OrderedWriter::dowork() {
   // In case the user has provided a coordinates buffer
   RETURN_NOT_OK(split_coords_buffer());
 
-  if (check_coord_oob_)
+  if (check_coord_oob_) {
     RETURN_NOT_OK(check_coord_oob());
+  }
 
   RETURN_NOT_OK(ordered_write());
 
@@ -209,9 +210,9 @@ Status OrderedWriter::ordered_write() {
   auto attr_num = buffers_.size();
   auto compute_tp = storage_manager_->compute_tp();
   auto thread_num = compute_tp->concurrency_level();
-  std::unordered_map<std::string, std::vector<std::vector<WriterTile>>> tiles;
+  std::unordered_map<std::string, std::vector<WriterTileVector>> tiles;
   for (const auto& buff : buffers_) {
-    tiles.emplace(buff.first, std::vector<std::vector<WriterTile>>());
+    tiles.emplace(buff.first, std::vector<WriterTileVector>());
   }
 
   if (attr_num > tile_num) {  // Parallelize over attributes
@@ -228,10 +229,15 @@ Status OrderedWriter::ordered_write() {
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
       auto& attr_tile_batches = tiles[attr];
-      RETURN_NOT_OK_ELSE(
-          prepare_filter_and_write_tiles<T>(
-              attr, attr_tile_batches, frag_meta, &dense_tiler, thread_num),
-          storage_manager_->vfs()->remove_dir(uri));
+      try {
+        RETURN_NOT_OK_ELSE(
+            prepare_filter_and_write_tiles<T>(
+                attr, attr_tile_batches, frag_meta, &dense_tiler, thread_num),
+            storage_manager_->vfs()->remove_dir(uri));
+      } catch (const std::logic_error& le) {
+        storage_manager_->vfs()->remove_dir(uri);
+        return Status_WriterError(le.what());
+      }
     }
   }
 
@@ -245,14 +251,13 @@ Status OrderedWriter::ordered_write() {
       if (has_min_max_metadata(attr, var_size) &&
           array_schema_.var_size(attr)) {
         auto& attr_tile_batches = tiles[attr];
-        const uint64_t tile_num_mult =
-            1 + (var_size ? 1 : 0) + (array_schema_.is_nullable(attr) ? 1 : 0);
         frag_meta->convert_tile_min_max_var_sizes_to_offsets(attr);
         for (auto& batch : attr_tile_batches) {
-          for (uint64_t i = 0; i < batch.size(); i += tile_num_mult) {
-            auto idx = i / tile_num_mult;
-            frag_meta->set_tile_min_var(attr, idx, batch[i].min());
-            frag_meta->set_tile_max_var(attr, idx, batch[i].max());
+          uint64_t idx = 0;
+          for (auto& tile : batch) {
+            frag_meta->set_tile_min_var(attr, idx, tile.min());
+            frag_meta->set_tile_max_var(attr, idx, tile.max());
+            idx++;
           }
         }
       }
@@ -271,13 +276,11 @@ Status OrderedWriter::ordered_write() {
             compute_tp, 0, attr_tile_batches.size(), [&](uint64_t b) {
               const auto& attr = buff.first;
               auto& batch = tiles[attr][b];
-              const uint64_t tile_num_mult =
-                  1 + (var_size ? 1 : 0) +
-                  (array_schema_.is_nullable(attr) ? 1 : 0);
-              for (uint64_t i = 0; i < batch.size(); i += tile_num_mult) {
-                auto idx = b * thread_num + i / tile_num_mult;
-                frag_meta->set_tile_min_var(attr, idx, batch[i].min());
-                frag_meta->set_tile_max_var(attr, idx, batch[i].max());
+              auto idx = b * thread_num;
+              for (auto& tile : batch) {
+                frag_meta->set_tile_min_var(attr, idx, tile.min());
+                frag_meta->set_tile_max_var(attr, idx, tile.max());
+                idx++;
               }
               return Status::Ok();
             });
@@ -313,7 +316,7 @@ Status OrderedWriter::ordered_write() {
 template <class T>
 Status OrderedWriter::prepare_filter_and_write_tiles(
     const std::string& name,
-    std::vector<std::vector<WriterTile>>& tile_batches,
+    std::vector<WriterTileVector>& tile_batches,
     shared_ptr<FragmentMetadata> frag_meta,
     DenseTiler<T>* dense_tiler,
     uint64_t thread_num) {
@@ -342,34 +345,40 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   for (uint64_t b = 0; b < batch_num; ++b) {
     auto batch_size = (b == batch_num - 1) ? last_batch_size : thread_num;
     assert(batch_size > 0);
-    tile_batches[b].resize(batch_size * (1 + var + nullable));
-    std::vector<WriterTile> tiles(batch_size * (1 + var + nullable));
+    tile_batches[b].reserve(batch_size);
+    for (uint64_t i = 0; i < batch_size; i++) {
+      tile_batches[b].emplace_back(WriterTile(
+          array_schema_,
+          coords_info_.has_coords_,
+          var,
+          nullable,
+          cell_size,
+          type));
+    }
     auto st = parallel_for(
         storage_manager_->compute_tp(), 0, batch_size, [&](uint64_t i) {
           // Prepare and filter tiles
+          auto& writer_tile = tile_batches[b][i];
           TileMetadataGenerator md_generator(
               type, is_dim, var, cell_size, cell_val_num);
-          auto tiles_id = i * (1 + var + nullable);
 
-          auto tile = &tile_batches[b][tiles_id];
-          auto tile_val =
-              nullable ? &tile_batches[b][tiles_id + 1 + var] : nullptr;
+          auto tile_val = nullable ? &writer_tile.validity_tile() : nullptr;
           if (nullable) {
             RETURN_NOT_OK(
                 dense_tiler->get_tile_null(frag_tile_id + i, name, tile_val));
           }
 
           if (!var) {
+            auto tile = &writer_tile.fixed_tile();
             RETURN_NOT_OK(dense_tiler->get_tile(frag_tile_id + i, name, tile));
-            md_generator.process_tile(tile, nullptr, tile_val);
-            tile->set_metadata(md_generator.metadata());
+            md_generator.process_tile(writer_tile);
             RETURN_NOT_OK(filter_tile(name, tile, nullptr, false, false));
           } else {
-            auto tile_var = &tile_batches[b][tiles_id + 1];
+            auto tile = &writer_tile.offset_tile();
+            auto tile_var = &writer_tile.var_tile();
             RETURN_NOT_OK(dense_tiler->get_tile_var(
                 frag_tile_id + i, name, tile, tile_var));
-            md_generator.process_tile(tile, tile_var, tile_val);
-            tile->set_metadata(md_generator.metadata());
+            md_generator.process_tile(writer_tile);
             RETURN_NOT_OK(filter_tile(name, tile_var, tile, false, false));
             RETURN_NOT_OK(filter_tile(name, tile, nullptr, true, false));
           }
