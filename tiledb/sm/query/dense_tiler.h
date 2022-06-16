@@ -164,8 +164,7 @@ class DenseTiler {
   const CopyPlan copy_plan(uint64_t id) const;
 
   /**
-   * Retrieves the fixed-sized tile with the input id and for the input
-   * attribute.
+   * Retrieves the tile with the input id and for the input attribute.
    *
    * @param id The id of the tile within the subarray to be retrieved.
    *     The id is serialied in the tile order of the array domain.
@@ -174,39 +173,7 @@ class DenseTiler {
    *     be preallocated and initialized before passed to the function.
    * @return Status
    */
-  Status get_tile(uint64_t id, const std::string& name, Tile* tile);
-
-  /**
-   * Retrieves the validity tile with the input id and for the input
-   * attribute.
-   *
-   * @param id The id of the tile within the subarray to be retrieved.
-   *     The id is serialied in the tile order of the array domain.
-   * @param name The name of the attribute.
-   * @param tile The tile to be retrieved. This needs to
-   *     be preallocated and initialized before passed to the function.
-   * @return Status
-   */
-  Status get_tile_null(uint64_t id, const std::string& name, Tile* tile) const;
-
-  /**
-   * Retrieves the var-sized tile with the input id and for the input
-   * attribute.
-   *
-   * @param id The id of the tile to be retrieved. The id is serialied in the
-   *     tile order of the array domain.
-   * @param name The name of the attribute.
-   * @param tile_off The tile with the offsets to be retrieved. This needs to
-   *     be preallocated and initialized before passed to the function.
-   * @param tile_val The tile with the values to be retrieves. This needs to
-   *     be preallocated and initialized before passed to the function.
-   * @return Status
-   */
-  Status get_tile_var(
-      uint64_t id,
-      const std::string& name,
-      Tile* tile_off,
-      Tile* tile_var) const;
+  Status get_tile(uint64_t id, const std::string& name, WriterTile& tile);
 
   /**
    * Returns the number of tiles to be created. This is equal
@@ -351,7 +318,7 @@ class DenseTiler {
    * @return Status
    */
   Status copy_tile(
-      uint64_t id, uint64_t cell_size, uint8_t* buff, Tile* tile) const;
+      uint64_t id, uint64_t cell_size, uint8_t* buff, Tile& tile) const;
 };
 
 }  // namespace sm
