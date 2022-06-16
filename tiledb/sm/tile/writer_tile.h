@@ -195,7 +195,10 @@ class WriterTile {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** Fixed data tile. */
+  /**
+   * Fixed data tile. Contains offsets for var size attribute/dimension and
+   * the data itself in case of fixed sized attribute/dimension.
+   */
   Tile fixed_tile_;
 
   /** Var data tile. */
