@@ -94,6 +94,11 @@ class WriterTile {
     return fixed_tile_;
   }
 
+  /** Is the tile var_size. */
+  inline bool var_size() const {
+    return var_tile_.has_value();
+  }
+
   /** Returns the var tile. */
   inline Tile& var_tile() {
     return *var_tile_;
@@ -102,6 +107,11 @@ class WriterTile {
   /** Returns the var tile. */
   inline const Tile& var_tile() const {
     return *var_tile_;
+  }
+
+  /** Is the tile nullable. */
+  inline bool nullable() const {
+    return validity_tile_.has_value();
   }
 
   /** Returns the validity tile. */
@@ -119,42 +129,63 @@ class WriterTile {
    *
    * @return Var pre-filtered size.
    */
-  uint64_t var_pre_filtered_size() const;
+  inline uint64_t var_pre_filtered_size() const {
+    return var_pre_filtered_size_;
+  }
 
   /**
    * Returns the tile minimum value.
    *
    * @return tile minimum value.
    */
-  void* min() const;
+  inline const ByteVec& min() const {
+    return min_;
+  }
 
   /**
    * Returns the tile maximum value.
    *
    * @return tile maximum value.
    * */
-  void* max() const;
+  inline const ByteVec& max() const {
+    return max_;
+  }
 
   /**
-   * Returns the tile metadata.
+   * Returns the tile null count.
    *
-   * @return minimum, minimum size, maximum, maximum size, sum, null count.
+   * @return tile null count.
    */
-  tuple<const void*, uint64_t, const void*, uint64_t, const ByteVec*, uint64_t>
-  metadata() const;
+  inline uint64_t null_count() const {
+    return null_count_;
+  }
+
+  /**
+   * Returns the tile sum.
+   *
+   * @return tile sum.
+   */
+  inline const ByteVec& sum() const {
+    return sum_;
+  }
 
   /**
    * Sets the tile metadata.
    *
-   * @param md minimum, minimum size, maximum, maximum size, sum, null count.
+   * @param min Minimum.
+   * @param min_size Minimum size.
+   * @param max Maximum.
+   * @param max_size Maxmum size.
+   * @param sum Sum.
+   * @param null_count Null count.
    */
-  void set_metadata(const tuple<
-                    const void*,
-                    uint64_t,
-                    const void*,
-                    uint64_t,
-                    const ByteVec*,
-                    uint64_t>& md);
+  void set_metadata(
+      const void* min,
+      const uint64_t min_size,
+      const void* max,
+      const uint64_t max_size,
+      const ByteVec& sum,
+      const uint64_t null_count);
 
   /**
    * Sets the final size of a written tile.

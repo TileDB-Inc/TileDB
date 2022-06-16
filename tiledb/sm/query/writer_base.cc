@@ -543,18 +543,12 @@ Status WriterBase::compute_tiles_metadata(
       const auto type = array_schema_.type(attr);
       const auto is_dim = array_schema_.is_dim(attr);
       const auto var_size = array_schema_.var_size(attr);
-      const auto nullable = array_schema_.is_nullable(attr);
       const auto cell_size = array_schema_.cell_size(attr);
       const auto cell_val_num = array_schema_.cell_val_num(attr);
       TileMetadataGenerator md_generator(
           type, is_dim, var_size, cell_size, cell_val_num);
       for (auto& tile : attr_tiles) {
-        auto t = var_size ? &tile.offset_tile() : &tile.fixed_tile();
-        md_generator.process_tile(
-            t,
-            var_size ? &tile.var_tile() : nullptr,
-            nullable ? &tile.validity_tile() : nullptr);
-        tile.set_metadata(md_generator.metadata());
+        md_generator.process_tile(tile);
       }
 
       return Status::Ok();
@@ -567,19 +561,12 @@ Status WriterBase::compute_tiles_metadata(
       const auto type = array_schema_.type(attr);
       const auto is_dim = array_schema_.is_dim(attr);
       const auto var_size = array_schema_.var_size(attr);
-      const auto nullable = array_schema_.is_nullable(attr);
       const auto cell_size = array_schema_.cell_size(attr);
       const auto cell_val_num = array_schema_.cell_val_num(attr);
       auto st = parallel_for(compute_tp, 0, tile_num, [&](uint64_t t) {
         TileMetadataGenerator md_generator(
             type, is_dim, var_size, cell_size, cell_val_num);
-        auto tile = var_size ? &attr_tiles[t].offset_tile() :
-                               &attr_tiles[t].fixed_tile();
-        md_generator.process_tile(
-            tile,
-            var_size ? &attr_tiles[t].var_tile() : nullptr,
-            nullable ? &attr_tiles[t].validity_tile() : nullptr);
-        attr_tiles[t].set_metadata(md_generator.metadata());
+        md_generator.process_tile(attr_tiles[t]);
 
         return Status::Ok();
       });
@@ -984,8 +971,8 @@ Status WriterBase::write_tiles(
     RETURN_NOT_OK(storage_manager_->write(
         *uri, t.filtered_buffer().data(), t.filtered_buffer().size()));
     frag_meta->set_tile_offset(name, tile_id, t.filtered_buffer().size());
+    auto null_count = tile.null_count();
 
-    auto&& [min, min_size, max, max_size, sum, null_count] = tile.metadata();
     if (var_size) {
       auto& t_var = tile.var_tile();
       RETURN_NOT_OK(storage_manager_->write(
@@ -996,17 +983,17 @@ Status WriterBase::write_tiles(
           name, tile_id, t_var.filtered_buffer().size());
       frag_meta->set_tile_var_size(name, tile_id, tile.var_pre_filtered_size());
       if (has_min_max_md && null_count != frag_meta->cell_num(tile_id)) {
-        frag_meta->set_tile_min_var_size(name, tile_id, min_size);
-        frag_meta->set_tile_max_var_size(name, tile_id, max_size);
+        frag_meta->set_tile_min_var_size(name, tile_id, tile.min().size());
+        frag_meta->set_tile_max_var_size(name, tile_id, tile.max().size());
       }
     } else {
       if (has_min_max_md && null_count != frag_meta->cell_num(tile_id)) {
-        frag_meta->set_tile_min(name, tile_id, min, min_size);
-        frag_meta->set_tile_max(name, tile_id, max, max_size);
+        frag_meta->set_tile_min(name, tile_id, tile.min());
+        frag_meta->set_tile_max(name, tile_id, tile.max());
       }
 
       if (has_sum_md) {
-        frag_meta->set_tile_sum(name, tile_id, sum);
+        frag_meta->set_tile_sum(name, tile_id, tile.sum());
       }
     }
 

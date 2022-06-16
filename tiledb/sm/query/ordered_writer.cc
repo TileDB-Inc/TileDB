@@ -371,16 +371,14 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
           if (!var) {
             auto tile = &writer_tile.fixed_tile();
             RETURN_NOT_OK(dense_tiler->get_tile(frag_tile_id + i, name, tile));
-            md_generator.process_tile(tile, nullptr, tile_val);
-            writer_tile.set_metadata(md_generator.metadata());
+            md_generator.process_tile(writer_tile);
             RETURN_NOT_OK(filter_tile(name, tile, nullptr, false, false));
           } else {
             auto tile = &writer_tile.offset_tile();
             auto tile_var = &writer_tile.var_tile();
             RETURN_NOT_OK(dense_tiler->get_tile_var(
                 frag_tile_id + i, name, tile, tile_var));
-            md_generator.process_tile(tile, tile_var, tile_val);
-            writer_tile.set_metadata(md_generator.metadata());
+            md_generator.process_tile(writer_tile);
             RETURN_NOT_OK(filter_tile(name, tile_var, tile, false, false));
             RETURN_NOT_OK(filter_tile(name, tile, nullptr, true, false));
           }

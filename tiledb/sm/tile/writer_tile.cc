@@ -131,33 +131,13 @@ WriterTile& WriterTile::operator=(WriterTile&& tile) {
 /*               API              */
 /* ****************************** */
 
-uint64_t WriterTile::var_pre_filtered_size() const {
-  return var_pre_filtered_size_;
-}
-
-void* WriterTile::min() const {
-  return (void*)min_.data();
-}
-
-void* WriterTile::max() const {
-  return (void*)max_.data();
-}
-
-tuple<const void*, uint64_t, const void*, uint64_t, const ByteVec*, uint64_t>
-WriterTile::metadata() const {
-  return {min_.data(), min_size_, max_.data(), max_size_, &sum_, null_count_};
-}
-
-void WriterTile::set_metadata(const tuple<
-                              const void*,
-                              uint64_t,
-                              const void*,
-                              uint64_t,
-                              const ByteVec*,
-                              uint64_t>& md) {
-  const auto& [min, min_size, max, max_size, sum, null_count] = md;
-  assert(sum != nullptr);
-
+void WriterTile::set_metadata(
+    const void* min,
+    const uint64_t min_size,
+    const void* max,
+    const uint64_t max_size,
+    const ByteVec& sum,
+    const uint64_t null_count) {
   min_.resize(min_size);
   min_size_ = min_size;
   if (min != nullptr) {
@@ -170,7 +150,7 @@ void WriterTile::set_metadata(const tuple<
     memcpy(max_.data(), max, max_size);
   }
 
-  sum_ = *sum;
+  sum_ = sum;
   null_count_ = null_count;
 
   if (var_tile_.has_value()) {

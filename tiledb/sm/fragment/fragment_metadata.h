@@ -391,11 +391,9 @@ class FragmentMetadata {
    * @param name The attribute for which the min is set.
    * @param tid The index of the tile for which the min is set.
    * @param min The minimum.
-   * @param size The size.
    * @return void
    */
-  void set_tile_min(
-      const std::string& name, uint64_t tid, const void* min, uint64_t size);
+  void set_tile_min(const std::string& name, uint64_t tid, const ByteVec& min);
 
   /**
    * Sets a tile min size for the var input attribute.
@@ -416,7 +414,8 @@ class FragmentMetadata {
    * @param min The minimum.
    * @return void
    */
-  void set_tile_min_var(const std::string& name, uint64_t tid, const void* min);
+  void set_tile_min_var(
+      const std::string& name, uint64_t tid, const ByteVec& min);
 
   /**
    * Sets a tile max for the input attribute.
@@ -424,11 +423,9 @@ class FragmentMetadata {
    * @param name The attribute for which the max is set.
    * @param tid The index of the tile for which the max is set.
    * @param max The maximum.
-   * @param size The size.
    * @return void
    */
-  void set_tile_max(
-      const std::string& name, uint64_t tid, const void* max, uint64_t size);
+  void set_tile_max(const std::string& name, uint64_t tid, const ByteVec& max);
 
   /**
    * Sets a tile max for the var input attribute.
@@ -449,7 +446,8 @@ class FragmentMetadata {
    * @param max The maximum.
    * @return void
    */
-  void set_tile_max_var(const std::string& name, uint64_t tid, const void* max);
+  void set_tile_max_var(
+      const std::string& name, uint64_t tid, const ByteVec& max);
 
   /**
    * Converts min/max sizes to offsets.
@@ -467,7 +465,7 @@ class FragmentMetadata {
    * @param sum The sum.
    * @return void
    */
-  void set_tile_sum(const std::string& name, uint64_t tid, const ByteVec* sum);
+  void set_tile_sum(const std::string& name, uint64_t tid, const ByteVec& sum);
 
   /**
    * Sets a tile null count for the input attribute.
