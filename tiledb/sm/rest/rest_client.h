@@ -144,6 +144,17 @@ class RestClient {
           buffer_sizes);
 
   /**
+   * Get array's total_cell_num for loaded fragments from rest server.
+   *
+   * @param uri URI of array
+   * @param array Array to fetch count for
+   * @param cell_count to receive the returned value
+   * @return Status
+   */
+  tuple<Status, std::optional<uint64_t>> get_array_loaded_fragment_cell_num(
+      Array* array, uint64_t* cell_count);
+
+  /**
    * Gets the array's metadata from the REST server (and updates the in-memory
    * Metadata of the array to match the returned values).
    *

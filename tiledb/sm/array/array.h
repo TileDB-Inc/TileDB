@@ -365,6 +365,9 @@ class Array {
   /** Returns the memory tracker. */
   MemoryTracker* memory_tracker();
 
+  /** Retrieves the number of cells in all currently loaded fragments. */
+  Status loaded_fragment_cell_num(uint64_t* cell_num) const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

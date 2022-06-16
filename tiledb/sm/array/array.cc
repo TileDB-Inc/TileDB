@@ -832,6 +832,38 @@ MemoryTracker* Array::memory_tracker() {
   return &memory_tracker_;
 }
 
+Status Array::loaded_fragment_cell_num(uint64_t* cell_count) const {
+  if (cell_count == nullptr)
+    return LOG_STATUS(Status_FragmentInfoError(
+        "Cannot get cell count; Cell count argument cannot be null"));
+
+  if (remote_) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(Status_ArrayError(
+          "Cannot get cell count; remote array with no REST client."));
+    // TBD: Implement for rest
+    return LOG_STATUS(Status_ArrayError(
+        "Cannot get cell count; REST client functionality not available."));
+    // return rest_client->get_array_max_buffer_sizes(
+    //    array_uri_, *(array_schema_latest_.get()), subarray, buffer_sizes);
+    //    RETURN_NOT_OK(rest_client->get_array_loaded_fragment_cell_num(
+    //        this, cell_count));
+  }
+
+  // Return if there are no metadata
+  if (fragment_metadata_.empty())
+    return Status::Ok();
+
+  uint64_t loaded_frag_cell_count = 0;
+  for (auto& meta : fragment_metadata_)
+    loaded_frag_cell_count += meta->cell_num();
+
+  *cell_count = loaded_frag_cell_count;
+
+  return Status::Ok();
+}
+
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */

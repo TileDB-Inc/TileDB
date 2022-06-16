@@ -28,6 +28,11 @@
  * @section DESCRIPTION
  *
  * Tests the C++ API functions for manipulating fragment information.
+ *
+ * for expedience, some ...cell_num() Array functionality, for which this
+ * module already contains setup and comparison possibilities to the
+ * similar fragment_info information.
+ *
  */
 
 #include "test/src/helpers.h"
@@ -179,6 +184,13 @@ TEST_CASE(
 
     auto total_cell_num = fragment_info.total_cell_num();
     CHECK(total_cell_num == 10);
+
+    // test of Array related version of this functionality
+    Array array(ctx, array_name, TILEDB_READ);
+
+    uint64_t cell_count;
+    cell_count = array.total_cell_num();
+    CHECK(cell_count == total_cell_num);
   }
 
   // Write another dense fragment
@@ -265,6 +277,14 @@ TEST_CASE(
 
     auto total_cell_num = fragment_info.total_cell_num();
     CHECK(total_cell_num == frag0_cell_num + frag1_cell_num + frag2_cell_num);
+
+    {
+      Array array(ctx, array_name, TILEDB_READ);
+
+      uint64_t cell_count;
+      cell_count = array.total_cell_num();
+      CHECK(cell_count == total_cell_num);
+    }
 
     // Get number of MBRs - should always be 0 since it's a dense array
     auto mbr_num = fragment_info.mbr_num(0);

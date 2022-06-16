@@ -1502,6 +1502,15 @@ class Array {
     std::memcpy((void*)key->data(), key_c, key_len);
   }
 
+  /** Returns the total number of cells written in the loaded fragments. */
+  uint64_t total_cell_num() const {
+    auto& ctx = ctx_.get();
+    uint64_t count;
+    ctx.handle_error(tiledb_array_get_loaded_fragment_cell_num(
+        ctx.ptr().get(), array_.get(), &count));
+    return count;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

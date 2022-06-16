@@ -362,6 +362,53 @@ Status RestClient::get_array_max_buffer_sizes(
       schema, returned_data, serialization_type_, buffer_sizes);
 }
 
+tuple<Status, std::optional<uint64_t>>
+RestClient::get_array_loaded_fragment_cell_num(Array* array, uint64_t* count) {
+#if 0
+  if (array == nullptr)
+    return tuple<LOG_STATUS(
+        Status_RestError("Cannot get array cell num; array is null"), 0>);
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK(array->array_uri().get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  RETURN_NOT_OK_TUPLE(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),0);
+  const std::string url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) +
+                          "/loaded_fragment_cell_num?";
+
+  // Get the data
+  Buffer returned_data;
+  RETURN_NOT_OK_TUPLE(curlc.get_data(
+      stats_, url, serialization_type_, &returned_data, cache_key),0);
+
+  if (returned_data.data() == nullptr || returned_data.size() == 0)
+    return tuple<LOG_STATUS(
+        Status_RestError("Error getting array loaded fragment cell "
+                         "num from REST; server returned no data."),0>);
+
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  RETURN_NOT_OK_TUPLE(ensure_json_null_delimited_string(&returned_data),0);
+
+  // Deserialize data returned
+  //return serialization::nonempty_domain_deserialize(
+  //    array, returned_data, serialization_type_);
+  // TBD: implement method to retrieve/return count...
+  //return serialization::deserialize_loaded_fragment_cell_num(
+  //    array, returned_data, serialization_type_, count);
+#else
+  return tuple < LOG_STATUS(
+                     Status_RestError(
+                         "Error getting array loaded fragment cell "
+                         "num from REST; rest functionality not implemented."),
+                     0 >);
+  ;
+#endif
+}
+
 Status RestClient::get_array_metadata_from_rest(
     const URI& uri,
     uint64_t timestamp_start,

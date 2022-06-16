@@ -5027,6 +5027,18 @@ int32_t tiledb_array_upgrade_version(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_get_loaded_fragment_cell_num(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* cell_count) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, array->array_->loaded_fragment_cell_num(cell_count)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*         OBJECT MANAGEMENT      */
 /* ****************************** */
@@ -9351,6 +9363,12 @@ int32_t tiledb_array_upgrade_version(
     tiledb_config_t* config) noexcept {
   return api_entry<detail::tiledb_array_upgrade_version>(
       ctx, array_uri, config);
+}
+
+int32_t tiledb_array_get_loaded_fragment_cell_num(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* cell_count) noexcept {
+  return api_entry<detail::tiledb_array_get_loaded_fragment_cell_num>(
+      ctx, array, cell_count);
 }
 
 /* ****************************** */
