@@ -834,7 +834,7 @@ MemoryTracker* Array::memory_tracker() {
 
 Status Array::loaded_fragment_cell_num(uint64_t* cell_count) const {
   if (cell_count == nullptr)
-    return LOG_STATUS(Status_FragmentInfoError(
+    return LOG_STATUS(Status_ArrayError(
         "Cannot get cell count; Cell count argument cannot be null"));
 
   if (remote_) {
@@ -849,6 +849,21 @@ Status Array::loaded_fragment_cell_num(uint64_t* cell_count) const {
     //    array_uri_, *(array_schema_latest_.get()), subarray, buffer_sizes);
     //    RETURN_NOT_OK(rest_client->get_array_loaded_fragment_cell_num(
     //        this, cell_count));
+  }
+
+  if (!is_open_) {
+    std::stringstream msg;
+    msg << "Cannot get cell count; array \"" << array_uri_.to_path()
+        << "\" not open.";
+    return LOG_STATUS(
+        Status_ArrayError(msg.str().c_str()));
+  }
+
+  if (!metadata_loaded_) {
+    std::stringstream msg;
+    msg << "Cannot get cell count; array \"" << array_uri_.to_path()
+        << "\" metadata(fragments) not loaded.";
+    return LOG_STATUS(Status_ArrayError(msg.str().c_str()));
   }
 
   // Return if there are no metadata
