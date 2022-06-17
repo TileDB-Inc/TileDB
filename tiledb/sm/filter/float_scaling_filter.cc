@@ -38,6 +38,7 @@
 #include "tiledb/sm/filter/float_scaling_filter.h"
 
 #include <cassert>
+#include <iostream> // YEET
 
 using namespace tiledb::common;
 
@@ -67,6 +68,8 @@ Status FloatScalingFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
+
+  std::cout << "in run forward\n";    
   auto input_parts = input->buffers();
   uint32_t num_parts = input_parts.size();
   uint32_t metadata_size = sizeof(uint32_t) + num_parts * sizeof(uint32_t);
@@ -86,12 +89,14 @@ Status FloatScalingFilter::run_forward(
     const T* part_data = static_cast<const T*>(i.data());
     for (uint32_t j = 0; j < num_elems_in_part; ++j) {
       T elem = part_data[j];
+      std::cout << "part_data[j]: " << elem << std::endl;
       W converted_elem = static_cast<W>(
-          trunc((elem - static_cast<T>(offset_) / static_cast<T>(scale_))));
+          trunc((elem - static_cast<T>(offset_))/ static_cast<T>(scale_)));
       output->write(&converted_elem, sizeof(W));
       output->advance_offset(sizeof(W));
     }
   }
+  std::cout << "out of run_forward\n";
 
   return Status::Ok();
 }
