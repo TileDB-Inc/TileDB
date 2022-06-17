@@ -1,3 +1,9 @@
+# TileDB v2.9.5 Release Notes
+
+## Bug fixes
+
+* Fix a typo in the byteshuffle constructor for capnp serialization [#3284](https://github.com/TileDB-Inc/TileDB/pull/3284)
+
 # TileDB v2.9.4 Release Notes
 
 ## Bug fixes
