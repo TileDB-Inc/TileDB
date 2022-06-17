@@ -51,10 +51,12 @@
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_create.h"
+#include "tiledb/sm/filter/float_scaling_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
 
+#include <cstring>
 #include <set>
 #include <string>
 
@@ -114,6 +116,26 @@ Status filter_pipeline_to_capnp(
         data.setInt32(level);
         break;
       }
+      case FilterType::FILTER_SCALE_FLOAT: {
+        FloatScalingFilter::Metadata m;
+        double scale, offset;
+        uint64_t bit_width;
+        RETURN_NOT_OK(
+            filter->get_option(FilterOption::SCALE_FLOAT_BITWIDTH, &bit_width));
+        RETURN_NOT_OK(
+            filter->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale));
+        RETURN_NOT_OK(
+            filter->get_option(FilterOption::SCALE_FLOAT_OFFSET, &offset));
+        m.s = scale;
+        m.o = offset;
+        m.b = bit_width;
+        auto data = filter_builder.initData();
+        auto capnpValue = kj::Vector<uint8_t>();
+        capnpValue.addAll(kj::ArrayPtr<uint8_t>(
+            const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(&m)),
+            sizeof(FloatScalingFilter::Metadata)));
+        data.setBytes(capnpValue.asPtr());
+      }
       default:
         break;
     }
@@ -154,6 +176,18 @@ static tuple<Status, optional<shared_ptr<Filter>>> filter_constructor(
       return {
           Status::Ok(),
           tiledb::common::make_shared<CompressionFilter>(HERE(), type, level)};
+    }
+    case FilterType::FILTER_SCALE_FLOAT: {
+      auto data = reader.getData();
+      auto metadata_value = data.getBytes();
+      FloatScalingFilter::Metadata m;
+      memcpy(
+          &m,
+          metadata_value.asBytes().begin(),
+          sizeof(FloatScalingFilter::Metadata));
+      return {Status::Ok(),
+              tiledb::common::make_shared<FloatScalingFilter>(
+                  HERE(), m.b, m.s, m.o)};
     }
     default: {
       throw std::logic_error(
