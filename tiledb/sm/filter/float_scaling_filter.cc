@@ -38,7 +38,6 @@
 #include "tiledb/sm/filter/float_scaling_filter.h"
 
 #include <cassert>
-#include <iostream> // YEET
 
 using namespace tiledb::common;
 
@@ -68,8 +67,6 @@ Status FloatScalingFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-
-  std::cout << "in run forward\n";    
   auto input_parts = input->buffers();
   uint32_t num_parts = input_parts.size();
   uint32_t metadata_size = sizeof(uint32_t) + num_parts * sizeof(uint32_t);
@@ -79,24 +76,23 @@ Status FloatScalingFilter::run_forward(
 
   for (auto& i : input_parts) {
     uint32_t s = i.size();
-    RETURN_NOT_OK(output_metadata->write(&s, sizeof(uint32_t)));
-
     assert(s % sizeof(T) == 0);
     uint32_t num_elems_in_part = (s / sizeof(T));
     uint32_t new_size = num_elems_in_part * sizeof(W);
+    RETURN_NOT_OK(output_metadata->write(&new_size, sizeof(uint32_t)));
     RETURN_NOT_OK(output->prepend_buffer(new_size));
 
     const T* part_data = static_cast<const T*>(i.data());
     for (uint32_t j = 0; j < num_elems_in_part; ++j) {
       T elem = part_data[j];
-      std::cout << "part_data[j]: " << elem << std::endl;
       W converted_elem = static_cast<W>(
-          trunc((elem - static_cast<T>(offset_))/ static_cast<T>(scale_)));
-      output->write(&converted_elem, sizeof(W));
-      output->advance_offset(sizeof(W));
+          trunc((elem - static_cast<T>(offset_)) / static_cast<T>(scale_)));
+      RETURN_NOT_OK(output->write(&converted_elem, sizeof(W)));
+      if (j != num_elems_in_part - 1) {
+        output->advance_offset(sizeof(W));
+      }
     }
   }
-  std::cout << "out of run_forward\n";
 
   return Status::Ok();
 }
@@ -174,14 +170,12 @@ Status FloatScalingFilter::run_reverse(
     RETURN_NOT_OK(input->get_const_buffer(part_size, &part));
 
     uint32_t num_elems_in_part = part.size() / sizeof(W);
-    assert(num_elems_in_part * sizeof(T) == part_size);
-    output->prepend_buffer(part_size);
+    RETURN_NOT_OK(output->prepend_buffer(num_elems_in_part * sizeof(T)));
     const W* part_data = static_cast<const W*>(part.data());
     for (uint32_t j = 0; j < num_elems_in_part; ++j) {
       T elem = static_cast<T>(part_data[j]);
       T converted_elem = static_cast<T>(scale_ * elem + offset_);
-      output->write(&converted_elem, sizeof(T));
-      output->advance_offset(sizeof(T));
+      RETURN_NOT_OK(output->write(&converted_elem, sizeof(T)));
     }
   }
 

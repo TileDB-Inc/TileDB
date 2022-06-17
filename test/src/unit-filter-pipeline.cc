@@ -42,8 +42,8 @@
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/enums/filter_option.h"
+#include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/bitshuffle_filter.h"
 #include "tiledb/sm/filter/byteshuffle_filter.h"
@@ -52,13 +52,12 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
-#include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/filter/float_scaling_filter.h"
+#include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/tile/tile.h"
 
 #include <catch.hpp>
 #include <functional>
-#include <iostream>
 #include <random>
 
 using namespace tiledb;
@@ -3963,10 +3962,10 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
   }
 }
 
-template<typename FloatingType, typename IntType>
+template <typename FloatingType, typename IntType>
 void testing_float_scaling_filter() {
   tiledb::sm::Config config;
-  
+
   // Set up test data
   const uint64_t nelts = 100;
   const uint64_t tile_size = nelts * sizeof(FloatingType);
@@ -3975,7 +3974,7 @@ void testing_float_scaling_filter() {
 
   Tile tile;
   Datatype t = Datatype::FLOAT32;
-  switch(sizeof(FloatingType)) {
+  switch (sizeof(FloatingType)) {
     case 4: {
       t = Datatype::FLOAT32;
     } break;
@@ -3983,25 +3982,22 @@ void testing_float_scaling_filter() {
       t = Datatype::FLOAT64;
     } break;
     default: {
-      INFO("testing_float_scaling_filter: passed floating type with size of not 4 bytes or 8 bytes.");
+      INFO(
+          "testing_float_scaling_filter: passed floating type with size of not "
+          "4 bytes or 8 bytes.");
       CHECK(false);
     }
   }
 
   tile.init_unfiltered(
-      constants::format_version,
-      t,
-      tile_size,
-      cell_size,
-      dim_num);
+      constants::format_version, t, tile_size, cell_size, dim_num);
 
-  std::vector<IntType> int_result_vec;
   std::vector<FloatingType> float_result_vec;
   double scale = 2.53;
   double foffset = 0.31589;
   uint64_t bit_width = sizeof(IntType);
 
-  std::random_device rd; 
+  std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_real_distribution<FloatingType> dis(0.0, 213.0);
 
@@ -4009,33 +4005,33 @@ void testing_float_scaling_filter() {
     FloatingType f = dis(gen);
     CHECK(tile.write(&f, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
 
-    IntType val = static_cast<IntType>(
-          trunc((f - static_cast<FloatingType>(foffset)) / static_cast<FloatingType>(scale)));
-    int_result_vec.push_back(val);
+    IntType val = static_cast<IntType>(trunc(
+        (f - static_cast<FloatingType>(foffset)) /
+        static_cast<FloatingType>(scale)));
 
-    FloatingType val_float = static_cast<FloatingType>(scale * static_cast<FloatingType>(val) + foffset);
+    FloatingType val_float = static_cast<FloatingType>(
+        scale * static_cast<FloatingType>(val) + foffset);
     float_result_vec.push_back(val_float);
-
-    std::cout << "f: " << f << ", val: " << val << ", val_float: " << val_float << std::endl;
   }
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
   CHECK(pipeline.add_filter(FloatScalingFilter()).ok());
-  pipeline.get_filter<FloatScalingFilter>()->set_option(FilterOption::SCALE_FLOAT_BITWIDTH, &bit_width);
-  pipeline.get_filter<FloatScalingFilter>()->set_option(FilterOption::SCALE_FLOAT_FACTOR, &scale);
-  pipeline.get_filter<FloatScalingFilter>()->set_option(FilterOption::SCALE_FLOAT_OFFSET, &foffset);
-  
+  pipeline.get_filter<FloatScalingFilter>()->set_option(
+      FilterOption::SCALE_FLOAT_BITWIDTH, &bit_width);
+  pipeline.get_filter<FloatScalingFilter>()->set_option(
+      FilterOption::SCALE_FLOAT_FACTOR, &scale);
+  pipeline.get_filter<FloatScalingFilter>()->set_option(
+      FilterOption::SCALE_FLOAT_OFFSET, &foffset);
+
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
   // Check new size and number of chunks
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
   CHECK(tile.alloc_data(nelts * sizeof(FloatingType)).ok());
-  CHECK(
-      pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-          .ok());
-  CHECK(tile.filtered_buffer().size() == 0);
+  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
   for (uint64_t i = 0; i < nelts; i++) {
     FloatingType elt = 0.0f;
     CHECK(tile.read(&elt, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
@@ -4044,56 +4040,13 @@ void testing_float_scaling_filter() {
 }
 
 TEST_CASE("Filter: Test float scaling", "[filter][float-scaling]") {
+  testing_float_scaling_filter<float, int8_t>();
+  testing_float_scaling_filter<float, int16_t>();
+  testing_float_scaling_filter<float, int32_t>();
+  testing_float_scaling_filter<float, int64_t>();
+
+  testing_float_scaling_filter<double, int8_t>();
+  testing_float_scaling_filter<double, int16_t>();
+  testing_float_scaling_filter<double, int32_t>();
   testing_float_scaling_filter<double, int64_t>();
-  /*
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
-
-  FilterPipeline pipeline;
-  ThreadPool tp(4);
-  CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
-
-  // Check new size and number of chunks
-  CHECK(tile.size() == 0);
-
-  CHECK(
-      tile.filtered_buffer().size() ==
-      nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
-
-  uint64_t offset = 0;
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-      1);  // Number of chunks
-  offset += sizeof(uint64_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      nelts * sizeof(uint64_t));  // First chunk orig size
-  offset += sizeof(uint32_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      nelts * sizeof(uint64_t));  // First chunk filtered size
-  offset += sizeof(uint32_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      0);  // First chunk metadata size
-  offset += sizeof(uint32_t);
-
-  // Check all elements unchanged.
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == i);
-    offset += sizeof(uint64_t);
-  }
-
-  CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-  CHECK(tile.filtered_buffer().size() == 0);
-  for (uint64_t i = 0; i < nelts; i++) {
-    uint64_t elt = 0;
-    CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-    CHECK(elt == i);
-  }
-  */
 }
