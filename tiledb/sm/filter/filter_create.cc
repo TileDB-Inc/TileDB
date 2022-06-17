@@ -47,6 +47,7 @@
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
   switch (type) {
@@ -77,8 +78,9 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
     case tiledb::sm::FilterType::FILTER_SCALE_FLOAT:
       return tdb_new(tiledb::sm::FloatScalingFilter);
     default:
-      assert(false);
-      return nullptr;
+      throw StatusException(
+          "FilterCreate",
+          "Invalid filter type " + std::to_string(stdx::to_underlying(type)));
   }
 }
 

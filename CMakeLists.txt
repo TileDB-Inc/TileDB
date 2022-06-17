@@ -293,9 +293,13 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_compressors unit_query unit_misc unit_vfs unit_array)
   add_dependencies(tests unit_range_subset)
   add_dependencies(tests unit_range)
-  add_dependencies(tests unit_mgc_dict)
+
   if (TILEDB_WEBP)
     add_dependencies(tests unit_link_webp)
+  endif()
+
+  if (ENABLE_MAGIC_TEST)
+    add_dependencies(tests unit_mgc_dict)
   endif()
 
   add_subdirectory(test/regression)

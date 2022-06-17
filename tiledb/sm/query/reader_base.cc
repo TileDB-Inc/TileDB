@@ -272,11 +272,13 @@ Status ReaderBase::add_partial_overlap_condition() {
 }
 
 bool ReaderBase::include_timestamps(const unsigned f) const {
-  return fragment_metadata_[f]->has_timestamps() &&
-         (user_requested_timestamps_ ||
-          fragment_metadata_[f]->partial_time_overlap(
-              array_->timestamp_start(), array_->timestamp_end_opened_at()) ||
-          !array_schema_.allows_dups());
+  auto frag_has_ts = fragment_metadata_[f]->has_timestamps();
+  auto partial_overlap = fragment_metadata_[f]->partial_time_overlap(
+      array_->timestamp_start(), array_->timestamp_end_opened_at());
+  auto dups = array_schema_.allows_dups();
+
+  return frag_has_ts &&
+         (user_requested_timestamps_ || partial_overlap || !dups);
 }
 
 Status ReaderBase::load_tile_offsets(
@@ -490,6 +492,8 @@ Status ReaderBase::read_tiles(
       URIHasher>
       all_regions;
 
+  uint64_t num_tiles_read = 0;
+
   // Run all tiles and attributes.
   for (auto name : names) {
     for (auto tile : result_tiles) {
@@ -521,6 +525,8 @@ Status ReaderBase::read_tiles(
       if (timestamps_not_present(name, tile->frag_idx())) {
         continue;
       }
+
+      num_tiles_read++;
 
       const bool var_size = array_schema->var_size(name);
       const bool nullable = array_schema->is_nullable(name);
@@ -664,6 +670,8 @@ Status ReaderBase::read_tiles(
       }
     }
   }
+
+  stats_->add_counter("num_tiles_read", num_tiles_read);
 
   // Do not use the read-ahead cache because tiles will be
   // cached in the tile cache.

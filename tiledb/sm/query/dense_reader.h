@@ -39,10 +39,12 @@
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/dynamic_array.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/reader_base.h"
+#include "tiledb/sm/subarray/tile_cell_slab_iter.h"
 
 using namespace tiledb::common;
 
@@ -54,20 +56,32 @@ class StorageManager;
 
 /** Processes dense read queries. */
 class DenseReader : public ReaderBase, public IQueryStrategy {
- public:
-  /* ********************************* */
-  /*          TYPE DEFINITIONS         */
-  /* ********************************* */
+  /**
+   * TileSubarrays class to store tile subarrays inside of a dynamic array with
+   * custom destructor.
+   */
+  class TileSubarrays : public DynamicArray<Subarray> {
+   public:
+    TileSubarrays(uint64_t n)
+        : DynamicArray<Subarray>(
+              n,
+              tdb::allocator<Subarray>{},
+              Tag<DynamicArray<Subarray>::NullInitializer>{})
+        , n_(n) {
+    }
 
-  /** Range information, for a dimension, used for row/col reads. */
-  struct RangeInfo {
-    /** Cell offset, per range for this dimension. */
-    std::vector<uint64_t> cell_offsets_;
+    ~TileSubarrays() {
+      // Delete the tile subarrays.
+      for (uint64_t i = 0; i < n_; i++) {
+        (*this)[i].~Subarray();
+      }
+    }
 
-    /** Multiplier to be used in offset computation. */
-    uint64_t multiplier_;
+   private:
+    uint64_t n_;
   };
 
+ public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -160,10 +174,13 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   template <class DimType, class OffType>
   tuple<Status, optional<std::vector<uint8_t>>> apply_query_condition(
       Subarray& subarray,
-      std::vector<Subarray>& tile_subarrays,
+      const std::vector<DimType>& tile_extents,
+      std::vector<ResultTile*>& result_tiles,
+      DynamicArray<Subarray>& tile_subarrays,
       std::vector<uint64_t>& tile_offsets,
-      const std::vector<RangeInfo>& range_info,
-      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles);
+      const std::vector<RangeInfo<DimType>>& range_info,
+      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+      const uint64_t num_range_threads);
 
   /** Fix offsets buffer after reading all offsets. */
   template <class OffType>
@@ -173,26 +190,18 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const uint64_t cell_num,
       std::vector<void*>& var_data);
 
-  /** Copy attributes into the users buffers. */
+  /** Copy attribute into the users buffers. */
   template <class DimType, class OffType>
-  Status copy_attributes(
-      const std::vector<std::string>& fixed_names,
-      const std::vector<std::string>& var_names,
+  Status copy_attribute(
+      const std::string& name,
+      const std::vector<DimType>& tile_extents,
       const Subarray& subarray,
-      const std::vector<Subarray>& tile_subarrays,
+      const DynamicArray<Subarray>& tile_subarrays,
       const std::vector<uint64_t>& tile_offsets,
-      const std::vector<RangeInfo>& range_info,
+      const std::vector<RangeInfo<DimType>>& range_info,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
-      const std::vector<uint8_t>& qc_result);
-
-  /** Get the cell position within a tile. */
-  template <class DimType>
-  uint64_t get_cell_pos_in_tile(
-      const Layout& cell_order,
-      const int32_t dim_num,
-      const Domain& domain,
-      const ResultSpaceTile<DimType>& result_space_tile,
-      const DimType* const coords);
+      const std::vector<uint8_t>& qc_result,
+      const uint64_t num_range_threads);
 
   /**
    * Checks if a cell slab overlaps a fragment domain range and returns the
@@ -202,64 +211,53 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   tuple<bool, uint64_t, uint64_t> cell_slab_overlaps_range(
       const unsigned dim_num,
       const NDRange& ndrange,
-      const DimType* const coords,
+      const std::vector<DimType>& coords,
       const uint64_t length);
-
-  /** Get the cell offset in the output buffers to copy data to. */
-  template <class DimType>
-  uint64_t get_dest_cell_offset_row_col(
-      const int32_t dim_num,
-      const Subarray& subarray,
-      const Subarray& tile_subarray,
-      const DimType* const coords,
-      const DimType* const range_coords,
-      const std::vector<RangeInfo>& range_info);
 
   /** Copy fixed tiles to the output buffers. */
   template <class DimType>
   Status copy_fixed_tiles(
-      const std::vector<std::string>& names,
-      const std::vector<uint8_t*>& dst_bufs,
-      const std::vector<uint8_t*>& dst_val_bufs,
-      const std::vector<const Attribute*>& attributes,
-      const std::vector<uint64_t>& cell_sizes,
+      const std::string& name,
+      const std::vector<DimType>& tile_extents,
       ResultSpaceTile<DimType>& result_space_tile,
       const Subarray& subarray,
       const Subarray& tile_subarray,
       const uint64_t global_cell_offset,
-      const std::vector<RangeInfo>& range_info,
-      const std::vector<uint8_t>& qc_result);
+      const std::vector<RangeInfo<DimType>>& range_info,
+      const std::vector<uint8_t>& qc_result,
+      const uint64_t range_thread_idx,
+      const uint64_t num_range_threads);
 
   /** Copy a tile var offsets to the output buffers. */
   template <class DimType, class OffType>
   Status copy_offset_tiles(
-      const std::vector<std::string>& names,
-      const std::vector<uint8_t*>& dst_bufs,
-      const std::vector<uint8_t*>& dst_val_bufs,
-      const std::vector<const Attribute*>& attributes,
-      const std::vector<uint64_t>& data_type_sizes,
+      const std::string& name,
+      const std::vector<DimType>& tile_extents,
       ResultSpaceTile<DimType>& result_space_tile,
       const Subarray& subarray,
       const Subarray& tile_subarray,
       const uint64_t global_cell_offset,
-      std::vector<std::vector<void*>>& var_data,
-      const std::vector<RangeInfo>& range_info,
-      const std::vector<uint8_t>& qc_result);
+      std::vector<void*>& var_data,
+      const std::vector<RangeInfo<DimType>>& range_info,
+      const std::vector<uint8_t>& qc_result,
+      const uint64_t range_thread_idx,
+      const uint64_t num_range_threads);
 
   /** Copy a var tile to the output buffers. */
   template <class DimType, class OffType>
   Status copy_var_tiles(
-      const std::vector<std::string>& names,
-      const std::vector<uint8_t*>& dst_bufs,
-      const std::vector<uint8_t*>& offsets_bufs,
-      const std::vector<uint64_t>& data_type_sizes,
+      const std::string& name,
+      const std::vector<DimType>& tile_extents,
+      ResultSpaceTile<DimType>& result_space_tile,
       const Subarray& subarray,
       const Subarray& tile_subarray,
       const uint64_t global_cell_offset,
-      std::vector<std::vector<void*>>& var_data,
-      const std::vector<RangeInfo>& range_info,
+      std::vector<void*>& var_data,
+      const std::vector<RangeInfo<DimType>>& range_info,
       bool last_tile,
-      std::vector<uint64_t>& var_buffer_sizes);
+      uint64_t var_buffer_sizes,
+      const uint64_t range_thread_idx,
+      const uint64_t num_range_threads);
 
   /**
    * Adds an extra offset in the end of the offsets buffer indicating the

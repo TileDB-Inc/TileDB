@@ -391,11 +391,9 @@ class FragmentMetadata {
    * @param name The attribute for which the min is set.
    * @param tid The index of the tile for which the min is set.
    * @param min The minimum.
-   * @param size The size.
    * @return void
    */
-  void set_tile_min(
-      const std::string& name, uint64_t tid, const void* min, uint64_t size);
+  void set_tile_min(const std::string& name, uint64_t tid, const ByteVec& min);
 
   /**
    * Sets a tile min size for the var input attribute.
@@ -416,7 +414,8 @@ class FragmentMetadata {
    * @param min The minimum.
    * @return void
    */
-  void set_tile_min_var(const std::string& name, uint64_t tid, const void* min);
+  void set_tile_min_var(
+      const std::string& name, uint64_t tid, const ByteVec& min);
 
   /**
    * Sets a tile max for the input attribute.
@@ -424,11 +423,9 @@ class FragmentMetadata {
    * @param name The attribute for which the max is set.
    * @param tid The index of the tile for which the max is set.
    * @param max The maximum.
-   * @param size The size.
    * @return void
    */
-  void set_tile_max(
-      const std::string& name, uint64_t tid, const void* max, uint64_t size);
+  void set_tile_max(const std::string& name, uint64_t tid, const ByteVec& max);
 
   /**
    * Sets a tile max for the var input attribute.
@@ -449,7 +446,8 @@ class FragmentMetadata {
    * @param max The maximum.
    * @return void
    */
-  void set_tile_max_var(const std::string& name, uint64_t tid, const void* max);
+  void set_tile_max_var(
+      const std::string& name, uint64_t tid, const ByteVec& max);
 
   /**
    * Converts min/max sizes to offsets.
@@ -467,7 +465,7 @@ class FragmentMetadata {
    * @param sum The sum.
    * @return void
    */
-  void set_tile_sum(const std::string& name, uint64_t tid, const ByteVec* sum);
+  void set_tile_sum(const std::string& name, uint64_t tid, const ByteVec& sum);
 
   /**
    * Sets a tile null count for the input attribute.
@@ -789,24 +787,25 @@ class FragmentMetadata {
 
   /**
    * Checks if the fragment overlaps partially (not fully) with a given
-   * array open - end time.
+   * array open - end time. Assumes overlapping fragment and array open - close
+   * times.
    *
    * @param array_start_timestamp Array open time
    * @param array_end_timestamp Array end time
    *
-   * @return True if there is partial overlap, false if there is full or no
-   * overlap
+   * @return True if there is partial overlap, false if there is full
    */
   inline bool partial_time_overlap(
       const uint64_t array_start_timestamp,
       const uint64_t array_end_timestamp) const {
     const auto fragment_timestamp_start = timestamp_range_.first;
     const auto fragment_timestamp_end = timestamp_range_.second;
-
-    return (array_start_timestamp > fragment_timestamp_start &&
-            array_start_timestamp <= fragment_timestamp_end) ||
-           (array_end_timestamp < fragment_timestamp_end &&
-            array_end_timestamp >= fragment_timestamp_start);
+    // This method assumes overlapping fragment and array times so checking that
+    // we don't have full overlap is sufficient for detecting partial overlap.
+    auto full_fragment_overlap =
+        (fragment_timestamp_start >= array_start_timestamp) &&
+        (fragment_timestamp_end <= array_end_timestamp);
+    return !full_fragment_overlap;
   }
 
   /**

@@ -84,6 +84,10 @@
 
 using namespace tiledb::common;
 
+capi_status_t tiledb_status(capi_return_t x) {
+  return x;
+}
+
 /**
  * Helper class to aid shimming access from _query... routines in this module to
  * _subarray... routines deprecating them.
@@ -931,10 +935,10 @@ int32_t tiledb_ctx_get_last_error(tiledb_ctx_t* ctx, tiledb_error_t** err) {
   if (ctx == nullptr || ctx->ctx_ == nullptr)
     return TILEDB_ERR;
 
-  Status last_error = ctx->ctx_->last_error();
+  auto last_error{ctx->ctx_->last_error()};
 
   // No last error
-  if (last_error.ok()) {
+  if (!last_error.has_value()) {
     *err = nullptr;
     return TILEDB_OK;
   }
@@ -945,7 +949,7 @@ int32_t tiledb_ctx_get_last_error(tiledb_ctx_t* ctx, tiledb_error_t** err) {
     return TILEDB_OOM;
 
   // Set error message
-  (*err)->errmsg_ = last_error.to_string();
+  (*err)->errmsg_ = last_error.value();
 
   // Success
   return TILEDB_OK;
@@ -987,33 +991,18 @@ int32_t tiledb_ctx_set_tag(
 /*              FILTER               */
 /* ********************************* */
 
-int32_t tiledb_filter_alloc(
-    tiledb_ctx_t* ctx, tiledb_filter_type_t type, tiledb_filter_t** filter) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Create a filter struct
-  *filter = new (std::nothrow) tiledb_filter_t;
-  if (*filter == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB filter object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create a new Filter object of the given type
-  (*filter)->filter_ =
-      tiledb::sm::FilterCreate::make(static_cast<tiledb::sm::FilterType>(type));
-  if ((*filter)->filter_ == nullptr) {
+capi_return_t tiledb_filter_alloc(
+    tiledb_ctx_t*, tiledb_filter_type_t type, tiledb_filter_t** filter) {
+  api::ensure_output_pointer_is_valid(filter);
+  *filter = new tiledb_filter_t;
+  try {
+    (*filter)->filter_ = tiledb::sm::FilterCreate::make(
+        static_cast<tiledb::sm::FilterType>(type));
+  } catch (...) {
     delete *filter;
     *filter = nullptr;
-    auto st = Status_Error("Failed to allocate TileDB filter object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
+    throw;
   }
-
-  // Success
   return TILEDB_OK;
 }
 
@@ -1025,52 +1014,40 @@ void tiledb_filter_free(tiledb_filter_t** filter) {
   }
 }
 
-int32_t tiledb_filter_get_type(
-    tiledb_ctx_t* ctx, tiledb_filter_t* filter, tiledb_filter_type_t* type) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, filter) == TILEDB_ERR)
-    return TILEDB_ERR;
-
+capi_return_t tiledb_filter_get_type(
+    tiledb_ctx_t*, tiledb_filter_t* filter, tiledb_filter_type_t* type) {
+  api::ensure_filter_is_valid(filter);
+  api::ensure_output_pointer_is_valid(type);
   *type = static_cast<tiledb_filter_type_t>(filter->filter_->type());
-
   return TILEDB_OK;
 }
 
-int32_t tiledb_filter_set_option(
-    tiledb_ctx_t* ctx,
+capi_return_t tiledb_filter_set_option(
+    tiledb_ctx_t*,
     tiledb_filter_t* filter,
     tiledb_filter_option_t option,
     const void* value) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, filter) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          filter->filter_->set_option(
-              static_cast<tiledb::sm::FilterOption>(option), value)))
-    return TILEDB_ERR;
-
-  // Success
+  api::ensure_filter_is_valid(filter);
+  auto st{filter->filter_->set_option(
+      static_cast<tiledb::sm::FilterOption>(option), value)};
+  if (!st.ok()) {
+    throw StatusException(st);
+  }
   return TILEDB_OK;
 }
 
-int32_t tiledb_filter_get_option(
-    tiledb_ctx_t* ctx,
+capi_return_t tiledb_filter_get_option(
+    tiledb_ctx_t*,
     tiledb_filter_t* filter,
     tiledb_filter_option_t option,
     void* value) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, filter) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          filter->filter_->get_option(
-              static_cast<tiledb::sm::FilterOption>(option), value)))
-    return TILEDB_ERR;
-
-  // Success
+  api::ensure_filter_is_valid(filter);
+  api::ensure_output_pointer_is_valid(value);
+  auto st{filter->filter_->get_option(
+      static_cast<tiledb::sm::FilterOption>(option), value)};
+  if (!st.ok()) {
+    throw StatusException(st);
+  }
   return TILEDB_OK;
 }
 
@@ -1078,32 +1055,16 @@ int32_t tiledb_filter_get_option(
 /*            FILTER LIST            */
 /* ********************************* */
 
-int32_t tiledb_filter_list_alloc(
-    tiledb_ctx_t* ctx, tiledb_filter_list_t** filter_list) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Create a filter struct
-  *filter_list = new (std::nothrow) tiledb_filter_list_t;
-  if (*filter_list == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB filter list object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create a new FilterPipeline object
-  (*filter_list)->pipeline_ = new (std::nothrow) tiledb::sm::FilterPipeline();
-  if ((*filter_list)->pipeline_ == nullptr) {
+capi_return_t tiledb_filter_list_alloc(
+    tiledb_ctx_t*, tiledb_filter_list_t** filter_list) {
+  api::ensure_output_pointer_is_valid(filter_list);
+  *filter_list = new tiledb_filter_list_t;
+  try {
+    (*filter_list)->pipeline_ = new tiledb::sm::FilterPipeline();
+  } catch (...) {
     delete *filter_list;
     *filter_list = nullptr;
-    auto st = Status_Error("Failed to allocate TileDB filter list object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
   }
-
-  // Success
   return TILEDB_OK;
 }
 
@@ -1115,103 +1076,69 @@ void tiledb_filter_list_free(tiledb_filter_list_t** filter_list) {
   }
 }
 
-int32_t tiledb_filter_list_add_filter(
-    tiledb_ctx_t* ctx,
-    tiledb_filter_list_t* filter_list,
-    tiledb_filter_t* filter) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, filter_list) == TILEDB_ERR ||
-      sanity_check(ctx, filter) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (SAVE_ERROR_CATCH(
-          ctx, filter_list->pipeline_->add_filter(*filter->filter_)))
-    return TILEDB_ERR;
-
+capi_return_t tiledb_filter_list_add_filter(
+    tiledb_ctx_t*, tiledb_filter_list_t* filter_list, tiledb_filter_t* filter) {
+  api::ensure_filter_list_is_valid(filter_list);
+  api::ensure_filter_is_valid(filter);
+  auto st{filter_list->pipeline_->add_filter(*filter->filter_)};
+  if (!st.ok()) {
+    throw StatusException(st);
+  }
   return TILEDB_OK;
 }
 
-int32_t tiledb_filter_list_set_max_chunk_size(
-    tiledb_ctx_t* ctx,
+capi_return_t tiledb_filter_list_set_max_chunk_size(
+    tiledb_ctx_t*,
     const tiledb_filter_list_t* filter_list,
     uint32_t max_chunk_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, filter_list) == TILEDB_ERR)
-    return TILEDB_ERR;
-
+  api::ensure_filter_list_is_valid(filter_list);
   filter_list->pipeline_->set_max_chunk_size(max_chunk_size);
-
   return TILEDB_OK;
 }
 
-int32_t tiledb_filter_list_get_nfilters(
-    tiledb_ctx_t* ctx,
+capi_return_t tiledb_filter_list_get_nfilters(
+    tiledb_ctx_t*,
     const tiledb_filter_list_t* filter_list,
     uint32_t* nfilters) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, filter_list) == TILEDB_ERR)
-    return TILEDB_ERR;
-
+  api::ensure_filter_list_is_valid(filter_list);
+  api::ensure_output_pointer_is_valid(nfilters);
   *nfilters = filter_list->pipeline_->size();
-
   return TILEDB_OK;
 }
 
-int32_t tiledb_filter_list_get_filter_from_index(
-    tiledb_ctx_t* ctx,
+capi_return_t tiledb_filter_list_get_filter_from_index(
+    tiledb_ctx_t*,
     const tiledb_filter_list_t* filter_list,
     uint32_t index,
     tiledb_filter_t** filter) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, filter_list) == TILEDB_ERR)
-    return TILEDB_ERR;
+  api::ensure_filter_list_is_valid(filter_list);
+  api::ensure_output_pointer_is_valid(filter);
 
   uint32_t nfilters = filter_list->pipeline_->size();
-  if (nfilters == 0 && index == 0) {
-    *filter = nullptr;
-    return TILEDB_OK;
-  }
-
   if (index >= nfilters) {
-    auto st = Status_Error(
+    throw api::CAPIStatusException(
         "Filter " + std::to_string(index) + " out of bounds, filter list has " +
         std::to_string(nfilters) + " filters.");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
   }
 
   auto f = filter_list->pipeline_->get_filter(index);
   if (f == nullptr) {
-    auto st = Status_Error("Failed to retrieve filter at index");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
+    throw api::CAPIStatusException(
+        "Failed to retrieve filter at index " + std::to_string(index));
   }
-
-  *filter = new (std::nothrow) tiledb_filter_t;
-  if (*filter == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB filter object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
+  *filter = new tiledb_filter_t;
   (*filter)->filter_ = f->clone();
 
   return TILEDB_OK;
 }
 
-int32_t tiledb_filter_list_get_max_chunk_size(
-    tiledb_ctx_t* ctx,
+capi_return_t tiledb_filter_list_get_max_chunk_size(
+    tiledb_ctx_t*,
     const tiledb_filter_list_t* filter_list,
     uint32_t* max_chunk_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, filter_list) == TILEDB_ERR)
-    return TILEDB_ERR;
-
+  api::ensure_filter_list_is_valid(filter_list);
+  api::ensure_output_pointer_is_valid(max_chunk_size);
   *max_chunk_size = filter_list->pipeline_->max_chunk_size();
-
   return TILEDB_OK;
 }
 
@@ -2108,7 +2035,6 @@ int32_t tiledb_array_schema_load(
           uri,
           0,
           UINT64_MAX,
-          false,
           tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       auto st = Status_ArrayDirectoryError(le.what());
@@ -2213,7 +2139,6 @@ int32_t tiledb_array_schema_load_with_key(
           uri,
           0,
           UINT64_MAX,
-          false,
           tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       auto st = Status_ArrayDirectoryError(le.what());
@@ -3602,37 +3527,22 @@ int32_t tiledb_query_get_subarray_t(
 /*         SUBARRAY               */
 /* ****************************** */
 
-int32_t tiledb_subarray_alloc(
+capi_return_t tiledb_subarray_alloc(
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     tiledb_subarray_t** subarray) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
+  api::ensure_array_is_valid(array);
+  api::ensure_output_pointer_is_valid(subarray);
 
   // Error if array is not open
   if (!array->array_->is_open()) {
-    auto st = Status_Error("Cannot create subarray; array is not open");
-    *subarray = nullptr;
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Create a buffer struct
-  *subarray = new (std::nothrow) tiledb_subarray_t;
-  if (*subarray == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB subarray object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  } else {
-    (*subarray)->subarray_ = nullptr;
+    throw api::CAPIStatusException("Cannot create subarray; array is not open");
   }
 
   // Create a new subarray object
+  *subarray = new tiledb_subarray_t;
   try {
-    (*subarray)->subarray_ = new (std::nothrow) tiledb::sm::Subarray(
+    (*subarray)->subarray_ = new tiledb::sm::Subarray(
         array->array_.get(),
         (tiledb::sm::stats::Stats*)nullptr,
         ctx->ctx_->storage_manager()->logger(),
@@ -3640,16 +3550,11 @@ int32_t tiledb_subarray_alloc(
         ctx->ctx_->storage_manager());
     (*subarray)->is_allocated_ = true;
   } catch (...) {
-  }
-  if ((*subarray)->subarray_ == nullptr) {
     delete *subarray;
-    auto st = Status_Error("Failed to allocate TileDB subarray object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
+    *subarray = nullptr;
+    throw api::CAPIStatusException("Failed to create subarray");
   }
 
-  // Success
   return TILEDB_OK;
 }
 
@@ -4825,7 +4730,6 @@ int32_t tiledb_array_encryption_type(
         uri,
         0,
         UINT64_MAX,
-        false,
         tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     auto st = Status_ArrayDirectoryError(le.what());
@@ -5049,7 +4953,6 @@ int32_t tiledb_array_evolve(
         uri,
         0,
         UINT64_MAX,
-        false,
         tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     auto st = Status_ArrayDirectoryError(le.what());
@@ -5098,7 +5001,6 @@ int32_t tiledb_array_upgrade_version(
         uri,
         0,
         UINT64_MAX,
-        false,
         tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     auto st = Status_ArrayDirectoryError(le.what());
@@ -7010,6 +6912,21 @@ int32_t tiledb_fragment_info_get_cell_num(
   return TILEDB_OK;
 }
 
+int32_t tiledb_fragment_info_get_total_cell_num(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint64_t* cell_num) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->get_total_cell_num(cell_num)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_fragment_info_get_version(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
@@ -7357,6 +7274,10 @@ uint64_t tiledb_timestamp_now_ms() noexcept {
   }
 }
 
+const char* tiledb_timestamps() noexcept {
+  return tiledb::sm::constants::timestamps.c_str();
+}
+
 /* ****************************** */
 /*            VERSION             */
 /* ****************************** */
@@ -7667,39 +7588,39 @@ int32_t tiledb_ctx_set_tag(
 /*              FILTER               */
 /* ********************************* */
 
-int32_t tiledb_filter_alloc(
+capi_return_t tiledb_filter_alloc(
     tiledb_ctx_t* ctx,
     tiledb_filter_type_t type,
     tiledb_filter_t** filter) noexcept {
-  return api_entry<detail::tiledb_filter_alloc>(ctx, type, filter);
+  return api_entry_context<detail::tiledb_filter_alloc>(ctx, type, filter);
 }
 
 void tiledb_filter_free(tiledb_filter_t** filter) noexcept {
   return api_entry_void<detail::tiledb_filter_free>(filter);
 }
 
-int32_t tiledb_filter_get_type(
+capi_return_t tiledb_filter_get_type(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_type_t* type) noexcept {
-  return api_entry<detail::tiledb_filter_get_type>(ctx, filter, type);
+  return api_entry_context<detail::tiledb_filter_get_type>(ctx, filter, type);
 }
 
-int32_t tiledb_filter_set_option(
+capi_return_t tiledb_filter_set_option(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_option_t option,
     const void* value) noexcept {
-  return api_entry<detail::tiledb_filter_set_option>(
+  return api_entry_context<detail::tiledb_filter_set_option>(
       ctx, filter, option, value);
 }
 
-int32_t tiledb_filter_get_option(
+capi_return_t tiledb_filter_get_option(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_option_t option,
     void* value) noexcept {
-  return api_entry<detail::tiledb_filter_get_option>(
+  return api_entry_context<detail::tiledb_filter_get_option>(
       ctx, filter, option, value);
 }
 
@@ -7707,53 +7628,53 @@ int32_t tiledb_filter_get_option(
 /*            FILTER LIST            */
 /* ********************************* */
 
-int32_t tiledb_filter_list_alloc(
+capi_return_t tiledb_filter_list_alloc(
     tiledb_ctx_t* ctx, tiledb_filter_list_t** filter_list) noexcept {
-  return api_entry<detail::tiledb_filter_list_alloc>(ctx, filter_list);
+  return api_entry_context<detail::tiledb_filter_list_alloc>(ctx, filter_list);
 }
 
 void tiledb_filter_list_free(tiledb_filter_list_t** filter_list) noexcept {
   return api_entry_void<detail::tiledb_filter_list_free>(filter_list);
 }
 
-int32_t tiledb_filter_list_add_filter(
+capi_return_t tiledb_filter_list_add_filter(
     tiledb_ctx_t* ctx,
     tiledb_filter_list_t* filter_list,
     tiledb_filter_t* filter) noexcept {
-  return api_entry<detail::tiledb_filter_list_add_filter>(
+  return api_entry_context<detail::tiledb_filter_list_add_filter>(
       ctx, filter_list, filter);
 }
 
-int32_t tiledb_filter_list_set_max_chunk_size(
+capi_return_t tiledb_filter_list_set_max_chunk_size(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t max_chunk_size) noexcept {
-  return api_entry<detail::tiledb_filter_list_set_max_chunk_size>(
+  return api_entry_context<detail::tiledb_filter_list_set_max_chunk_size>(
       ctx, filter_list, max_chunk_size);
 }
 
-int32_t tiledb_filter_list_get_nfilters(
+capi_return_t tiledb_filter_list_get_nfilters(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t* nfilters) noexcept {
-  return api_entry<detail::tiledb_filter_list_get_nfilters>(
+  return api_entry_context<detail::tiledb_filter_list_get_nfilters>(
       ctx, filter_list, nfilters);
 }
 
-int32_t tiledb_filter_list_get_filter_from_index(
+capi_return_t tiledb_filter_list_get_filter_from_index(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t index,
     tiledb_filter_t** filter) noexcept {
-  return api_entry<detail::tiledb_filter_list_get_filter_from_index>(
+  return api_entry_context<detail::tiledb_filter_list_get_filter_from_index>(
       ctx, filter_list, index, filter);
 }
 
-int32_t tiledb_filter_list_get_max_chunk_size(
+capi_return_t tiledb_filter_list_get_max_chunk_size(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t* max_chunk_size) noexcept {
-  return api_entry<detail::tiledb_filter_list_get_max_chunk_size>(
+  return api_entry_context<detail::tiledb_filter_list_get_max_chunk_size>(
       ctx, filter_list, max_chunk_size);
 }
 
@@ -10205,6 +10126,14 @@ int32_t tiledb_fragment_info_get_cell_num(
     uint64_t* cell_num) noexcept {
   return api_entry<detail::tiledb_fragment_info_get_cell_num>(
       ctx, fragment_info, fid, cell_num);
+}
+
+int32_t tiledb_fragment_info_get_total_cell_num(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint64_t* cell_num) noexcept {
+  return api_entry<detail::tiledb_fragment_info_get_total_cell_num>(
+      ctx, fragment_info, cell_num);
 }
 
 int32_t tiledb_fragment_info_get_version(

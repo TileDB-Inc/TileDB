@@ -1,4 +1,4 @@
-name: build-ubuntu-20.04-S3
+name: build-ubuntu-22.04-S3
 on:
   push:
     branches:
@@ -25,7 +25,8 @@ env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
   TILEDB_STATIC: OFF
   TILEDB_TOOLS: ON
-  CXX: g++
+  CXX: g++-11
+  CC: gcc-11
 
 jobs:
   build:
@@ -33,7 +34,7 @@ jobs:
     strategy:
       matrix:
         os:
-          - ubuntu-20.04
+          - ubuntu-22.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
     name: Build - ${{matrix.os}} - S3

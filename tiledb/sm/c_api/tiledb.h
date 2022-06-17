@@ -53,9 +53,72 @@
 #include <stdint.h>
 #include <stdio.h>
 
+/**
+ * C API standard return type.
+ *
+ * The current code is mostly returning the same type, but not universally. A
+ * few API function return `void`, and they all have pointer arguments which
+ * are invalid if passed null. This definition anticipates two developments:
+ * 1. All API functions return the same type.
+ * 2. Changing the type from an integer to a structure that can return errors,
+ *    warnings, and other messages.
+ */
+typedef int32_t capi_return_t;
+
+/**
+ * C API return code
+ *
+ * The status codes denote broad categories of the success or failure of an API
+ * call. The single success code is TILEDB_OK. The general-purpose error code is
+ * TILEDB_ERR. A few special errors are also broken out.
+ */
+typedef int32_t capi_status_t;
+
+/**
+ * Extract a status code from a return value.
+ *
+ * At the present time, this is an identity function. It's defined in
+ * anticipation of converting `capi_return_t` to a `struct` that will contain
+ * a status code as well as a pointer to other information.
+ *
+ * @param x A status code returned from a C API call
+ */
+capi_status_t tiledb_status(capi_return_t x);
+
+/**
+ * @name Status codes
+ */
+/**@{*/
+/** Success */
+#define TILEDB_OK 0
+/** General error */
+#define TILEDB_ERR (-1)
+/** Out of memory */
+#define TILEDB_OOM (-2)
+/** Invalid context */
+#define TILEDB_INVALID_CONTEXT (-3)
+/** Default compression level */
+#define TILEDB_COMPRESSION_FILTER_DEFAULT_LEVEL (-30000)
+/**@}*/
+
 /* ********************************* */
 /*               MACROS              */
 /* ********************************* */
+
+/**
+  * TILEDB_NOEXCEPT usage:
+  *
+  * 1. Header files that may appear in C programs (such as tiledb.h) must use
+  the macro because we require API entry points not to throw. We enforce that
+  with noexcept in C++ declarations but must omit that keyword in a C
+  declaration.
+    2. Definitions of C API entry point functions (which may not appear in C
+  headers) are compiled as C++ and should be declared noexcept. These functions
+  are wrapped versions of API implementation functions.
+    3. Implementation functions should not be declared noexcept. They have no
+  way of providing uniform error handling and should defer to the wrapper for
+  that.
+*/
 
 #ifdef __cplusplus
 #define TILEDB_NOEXCEPT noexcept
@@ -469,20 +532,6 @@ TILEDB_EXPORT int32_t tiledb_vfs_mode_from_str(
 /* ****************************** */
 
 /**
- * @name Return codes
- */
-/**@{*/
-/** Success */
-#define TILEDB_OK 0
-/** General error */
-#define TILEDB_ERR (-1)
-/** Out of memory */
-#define TILEDB_OOM (-2)
-/** Default compression level */
-#define TILEDB_COMPRESSION_FILTER_DEFAULT_LEVEL (-30000)
-/**@}*/
-
-/**
  * Returns a special name indicating the coordinates attribute.
  *
  * The coordinate buffer has been deprecated. Set the coordinates for
@@ -513,6 +562,9 @@ TILEDB_EXPORT uint64_t tiledb_datatype_size(tiledb_datatype_t type)
 /** Returns the current time in milliseconds. */
 TILEDB_EXPORT uint64_t tiledb_timestamp_now_ms(void) TILEDB_NOEXCEPT;
 
+/** Returns a special name indicating the timestamps attribute. */
+TILEDB_EXPORT const char* tiledb_timestamps(void) TILEDB_NOEXCEPT;
+
 /**
  * @name Constants wrapping special functions
  */
@@ -527,6 +579,8 @@ TILEDB_EXPORT uint64_t tiledb_timestamp_now_ms(void) TILEDB_NOEXCEPT;
 #define TILEDB_OFFSET_SIZE tiledb_offset_size()
 /** The current time in milliseconds. */
 #define TILEDB_TIMESTAMP_NOW_MS tiledb_timestamp_now_ms()
+/** A special name indicating the timestamps attribute. */
+#define TILEDB_TIMESTAMPS tiledb_timestamps()
 /**@}*/
 
 /* ****************************** */
@@ -1069,11 +1123,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
  *    Only for `fragments` and `array_meta` consolidation mode. <br>
  *    **Default**: UINT64_MAX
- * - `sm.consolidation.with_timestamps` <br>
- *    **Experimental** <br>
- *    Consolidation with timestamps will include, for each cells, the
- *    timestamp at which the cell was written. <br>
- *    **Default**: "false"
  * - `sm.memory_budget` <br>
  *    The memory budget for tiles of fixed-sized attributes (or offsets for
  *    var-sized attributes) to be fetched during reads.<br>
@@ -1905,7 +1954,7 @@ tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) TILEDB_NOEXCEPT;
  * @param filter The TileDB filter to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_filter_alloc(
+TILEDB_EXPORT capi_return_t tiledb_filter_alloc(
     tiledb_ctx_t* ctx,
     tiledb_filter_type_t type,
     tiledb_filter_t** filter) TILEDB_NOEXCEPT;
@@ -1943,7 +1992,7 @@ TILEDB_EXPORT void tiledb_filter_free(tiledb_filter_t** filter) TILEDB_NOEXCEPT;
  * @param type The filter type to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_filter_get_type(
+TILEDB_EXPORT capi_return_t tiledb_filter_get_type(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_type_t* type) TILEDB_NOEXCEPT;
@@ -1968,7 +2017,7 @@ TILEDB_EXPORT int32_t tiledb_filter_get_type(
  * @param value Value of option to set.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_filter_set_option(
+TILEDB_EXPORT capi_return_t tiledb_filter_set_option(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_option_t option,
@@ -1999,7 +2048,7 @@ TILEDB_EXPORT int32_t tiledb_filter_set_option(
  * @param value Buffer that option value will be written to.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_filter_get_option(
+TILEDB_EXPORT capi_return_t tiledb_filter_get_option(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_option_t option,
@@ -2023,7 +2072,7 @@ TILEDB_EXPORT int32_t tiledb_filter_get_option(
  * @param filter_list The TileDB filter list to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_filter_list_alloc(
+TILEDB_EXPORT capi_return_t tiledb_filter_list_alloc(
     tiledb_ctx_t* ctx, tiledb_filter_list_t** filter_list) TILEDB_NOEXCEPT;
 
 /**
@@ -2065,7 +2114,7 @@ TILEDB_EXPORT void tiledb_filter_list_free(tiledb_filter_list_t** filter_list)
  * @param filter The filter to add.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_filter_list_add_filter(
+TILEDB_EXPORT capi_return_t tiledb_filter_list_add_filter(
     tiledb_ctx_t* ctx,
     tiledb_filter_list_t* filter_list,
     tiledb_filter_t* filter) TILEDB_NOEXCEPT;
@@ -2085,7 +2134,7 @@ TILEDB_EXPORT int32_t tiledb_filter_list_add_filter(
  * @param max_chunk_size The max chunk size value to set
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_filter_list_set_max_chunk_size(
+TILEDB_EXPORT capi_return_t tiledb_filter_list_set_max_chunk_size(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t max_chunk_size) TILEDB_NOEXCEPT;
@@ -2105,7 +2154,7 @@ TILEDB_EXPORT int32_t tiledb_filter_list_set_max_chunk_size(
  * @param nfilters The number of filters on the filter list
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_filter_list_get_nfilters(
+TILEDB_EXPORT capi_return_t tiledb_filter_list_get_nfilters(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t* nfilters) TILEDB_NOEXCEPT;
@@ -2129,7 +2178,7 @@ TILEDB_EXPORT int32_t tiledb_filter_list_get_nfilters(
  * @param filter The retrieved filter object.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_filter_list_get_filter_from_index(
+TILEDB_EXPORT capi_return_t tiledb_filter_list_get_filter_from_index(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t index,
@@ -2150,7 +2199,7 @@ TILEDB_EXPORT int32_t tiledb_filter_list_get_filter_from_index(
  * @param max_chunk_size The retrieved max chunk size value
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_filter_list_get_max_chunk_size(
+TILEDB_EXPORT capi_return_t tiledb_filter_list_get_max_chunk_size(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t* max_chunk_size) TILEDB_NOEXCEPT;

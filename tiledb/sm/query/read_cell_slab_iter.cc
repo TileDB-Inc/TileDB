@@ -299,7 +299,7 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs_dense(
   for (const auto& fd : frag_domains) {
     for (auto pit = to_process.begin(); pit != to_process.end();) {
       compute_cell_slab_overlap(
-          *pit, fd.second, &slab_overlap, &overlap_length, &overlap_type);
+          *pit, fd.domain(), &slab_overlap, &overlap_length, &overlap_type);
 
       // No overlap
       if (overlap_type == 0) {
@@ -310,7 +310,7 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs_dense(
       // Compute new result cell slab
       compute_cell_slab_start(
           &slab_overlap[0], result_space_tile->start_coords(), &start);
-      auto tile = result_space_tile->result_tile(fd.first);
+      auto tile = result_space_tile->result_tile(fd.fid());
       result_cell_slabs.emplace_back(tile, start, overlap_length);
 
       // If it is partial overlap, we need to create up to two new cell slabs

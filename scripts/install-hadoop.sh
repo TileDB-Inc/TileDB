@@ -27,7 +27,7 @@
 # Installs and configures HDFS.
 set -x
 
-HADOOP_VERSION="3.3.1"
+HADOOP_VERSION="3.3.3"
 
 die() {
   echo "$@" 1>&2 ; popd 2>/dev/null; exit 1

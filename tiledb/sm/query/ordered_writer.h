@@ -122,7 +122,7 @@ class OrderedWriter : public WriterBase {
   template <class T>
   Status prepare_filter_and_write_tiles(
       const std::string& name,
-      std::vector<std::vector<WriterTile>>& tile_batches,
+      std::vector<WriterTileVector>& tile_batches,
       shared_ptr<FragmentMetadata> frag_meta,
       DenseTiler<T>* dense_tiler,
       uint64_t thread_num);

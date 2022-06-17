@@ -128,12 +128,12 @@ class Range {
   }
 
   /** Returns the pointer to the range flattened bytes. */
-  const void* data() const {
+  inline const void* data() const {
     return range_.empty() ? nullptr : range_.data();
   }
 
   /** Returns a pointer to the start of the range. */
-  const void* start_fixed() const {
+  inline const void* start_fixed() const {
     assert(!var_size_);
     assert(range_.size() != 0);
     return range_.data();

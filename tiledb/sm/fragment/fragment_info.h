@@ -102,6 +102,9 @@ class FragmentInfo {
   /** Retrieves the number of cells in the fragment with the given index. */
   Status get_cell_num(uint32_t fid, uint64_t* cell_num) const;
 
+  /** Retrieves the number of cells in all currently loaded fragments. */
+  Status get_total_cell_num(uint64_t* cell_num) const;
+
   /** Retrieves the name of the fragment with the given index. */
   Status get_fragment_name(uint32_t fid, const char** name) const;
 

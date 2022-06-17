@@ -1,0 +1,53 @@
+name: TileDB Nightly Test Build
+
+on:
+  schedule:
+    # runs every day at 2:50 UTC
+    - cron: "50 02 * * *"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest, windows-2019]
+      fail-fast: false
+
+    permissions:
+      issues: write
+    env:
+      MACOSX_DEPLOYMENT_TARGET: 10.14
+
+    steps:
+      - name: Print env
+        run: printenv
+
+      - name: Checkout TileDB `dev`
+        uses: actions/checkout@v2
+
+      - name: Configure TileDB CMake
+        run: |
+          cmake -S . -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build TileDB
+        run: |
+          cmake --build build -j2 --config Release
+
+      - name: Test TileDB
+        run: |
+          cmake --build build --target check --config Release
+
+  create_issue_on_fail:
+    runs-on: ubuntu-latest
+    needs: test
+    if: failure() || cancelled()
+    steps:
+      - name: Checkout TileDB `dev`
+        uses: actions/checkout@v2
+      - name: Create Issue if Build Fails
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          filename: .github/workflows/nightly-failure-issue-template.md

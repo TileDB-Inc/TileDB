@@ -3121,6 +3121,17 @@ void validate_qc_apply_sparse(
   for (uint64_t i = 0; i < cells; ++i) {
     CHECK(sparse_result_bitmap[i] == tp.expected_bitmap_[i]);
   }
+
+  cell_count = 0;
+  std::vector<uint64_t> sparse_result_bitmap1(cells, 2);
+  REQUIRE(tp.qc_
+              .apply_sparse<uint64_t>(
+                  array_schema, result_tile, sparse_result_bitmap1, &cell_count)
+              .ok());
+  CHECK(tp.cell_count_ * 2 == cell_count);
+  for (uint64_t i = 0; i < cells; ++i) {
+    CHECK(sparse_result_bitmap1[i] == tp.expected_bitmap_[i] * 2);
+  }
 }
 
 /**
