@@ -173,7 +173,7 @@ static tuple<Status, optional<shared_ptr<Filter>>> filter_constructor(
     }
     case FilterType::FILTER_BYTESHUFFLE: {
       return {Status::Ok(),
-              tiledb::common::make_shared<BitshuffleFilter>(HERE())};
+              tiledb::common::make_shared<ByteshuffleFilter>(HERE())};
     }
     case FilterType::FILTER_CHECKSUM_MD5: {
       return {Status::Ok(),
