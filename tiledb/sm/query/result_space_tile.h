@@ -47,6 +47,32 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+/** Fragment domain structure (fragment id, fragment domain). */
+struct FragmentDomain {
+ public:
+  /** Delete default constructor. */
+  FragmentDomain() = delete;
+
+  /** Constructor. */
+  FragmentDomain(
+      unsigned fragment_id, const std::reference_wrapper<const NDRange>& domain)
+      : fragment_id_(fragment_id)
+      , domain_(domain) {
+  }
+
+  inline unsigned fid() const {
+    return fragment_id_;
+  }
+
+  inline const NDRange& domain() const {
+    return domain_;
+  }
+
+ private:
+  unsigned fragment_id_;
+  NDRange domain_;
+};
+
 /**
  * Stores information about a space tile covered by a subarray query.
  *
@@ -74,7 +100,7 @@ class ResultSpaceTile {
   ResultSpaceTile& operator=(ResultSpaceTile&&) = default;
 
   /** Returns the fragment domains. */
-  const std::vector<std::pair<unsigned, NDRange>>& frag_domains() const {
+  const std::vector<FragmentDomain>& frag_domains() const {
     return frag_domains_;
   }
 
@@ -117,8 +143,8 @@ class ResultSpaceTile {
     if (frag_domains_.size() != rst.frag_domains_.size())
       return false;
     for (size_t i = 0; i < frag_domains_.size(); ++i) {
-      if (!(frag_domains_[i].first == rst.frag_domains_[i].first &&
-            frag_domains_[i].second == rst.frag_domains_[i].second))
+      if (!(frag_domains_[i].fid() == rst.frag_domains_[i].fid() &&
+            frag_domains_[i].domain() == rst.frag_domains_[i].domain()))
         return false;
     }
 
@@ -131,12 +157,11 @@ class ResultSpaceTile {
   std::vector<T> start_coords_;
 
   /**
-   * A vector of pairs `(fragment id, fragment domain)`, sorted on
-   * fragment id in descending order. Note that only fragments
-   * with domains that intersect this space tile will be included
-   * in this vector.
+   * A vector of fragment domains, sorted on fragment id in descending order.
+   * Note that only fragments with domains that intersect this space tile will
+   * be included in this vector.
    */
-  std::vector<std::pair<unsigned, NDRange>> frag_domains_;
+  std::vector<FragmentDomain> frag_domains_;
 
   /**
    * The (dense) result tiles for this space tile, as a map

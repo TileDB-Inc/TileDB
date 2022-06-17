@@ -57,6 +57,8 @@ class FragmentMetadata;
 class TileMetadataGenerator;
 class StorageManager;
 
+using WriterTileVector = std::vector<WriterTile>;
+
 /** Processes write queries. */
 class WriterBase : public StrategyBase, public IQueryStrategy {
  public:
@@ -237,7 +239,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @return Status
    */
   Status compute_coords_metadata(
-      const std::unordered_map<std::string, std::vector<WriterTile>>& tiles,
+      const std::unordered_map<std::string, WriterTileVector>& tiles,
       shared_ptr<FragmentMetadata> meta) const;
 
   /**
@@ -250,7 +252,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status compute_tiles_metadata(
       uint64_t tile_num,
-      std::unordered_map<std::string, std::vector<WriterTile>>& tiles) const;
+      std::unordered_map<std::string, WriterTileVector>& tiles) const;
 
   /**
    * Returns the i-th coordinates in the coordinate buffers in string
@@ -273,8 +275,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * filter pipelines. The tile buffers are modified to contain the output
    * of the pipeline.
    */
-  Status filter_tiles(
-      std::unordered_map<std::string, std::vector<WriterTile>>* tiles);
+  Status filter_tiles(std::unordered_map<std::string, WriterTileVector>* tiles);
 
   /**
    * Runs the input tiles for the input attribute through the filter pipeline.
@@ -284,7 +285,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param tile The tiles to be filtered.
    * @return Status
    */
-  Status filter_tiles(const std::string& name, std::vector<WriterTile>* tiles);
+  Status filter_tiles(const std::string& name, WriterTileVector* tiles);
 
   /**
    * Runs the input tile for the input attribute/dimension through the filter
@@ -301,8 +302,8 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status filter_tile(
       const std::string& name,
-      WriterTile* tile,
-      WriterTile* offsets_tile,
+      Tile* tile,
+      Tile* offsets_tile,
       bool offsets,
       bool nullable);
 
@@ -325,54 +326,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   bool has_sum_metadata(const std::string& name, const bool var_size);
 
   /**
-   * Initializes a fixed-sized tile.
-   *
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The tile to be initialized.
-   * @return Status
-   */
-  Status init_tile(const std::string& name, WriterTile* tile) const;
-
-  /**
-   * Initializes a var-sized tile.
-   *
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The offsets tile to be initialized.
-   * @param tile_var The var-sized data tile to be initialized.
-   * @return Status
-   */
-  Status init_tile(
-      const std::string& name, WriterTile* tile, WriterTile* tile_var) const;
-
-  /**
-   * Initializes a fixed-sized, nullable tile.
-   *
-   * @param name The attribute the tile belongs to.
-   * @param tile The tile to be initialized.
-   * @param tile_validity The validity tile to be initialized.
-   * @return Status
-   */
-  Status init_tile_nullable(
-      const std::string& name,
-      WriterTile* tile,
-      WriterTile* tile_validity) const;
-
-  /**
-   * Initializes a var-sized, nullable tile.
-   *
-   * @param name The attribute the tile belongs to.
-   * @param tile The offsets tile to be initialized.
-   * @param tile_var The var-sized data tile to be initialized.
-   * @param tile_validity The validity tile to be initialized.
-   * @return Status
-   */
-  Status init_tile_nullable(
-      const std::string& name,
-      WriterTile* tile,
-      WriterTile* tile_var,
-      WriterTile* tile_validity) const;
-
-  /**
    * Initializes the tiles for writing for the input attribute/dimension.
    *
    * @param name The attribute/dimension the tiles belong to.
@@ -384,7 +337,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status init_tiles(
       const std::string& name,
       uint64_t tile_num,
-      std::vector<WriterTile>* tiles) const;
+      WriterTileVector* tiles) const;
 
   /**
    * Generates a new fragment name, which is in the form: <br>
@@ -469,7 +422,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status write_all_tiles(
       shared_ptr<FragmentMetadata> frag_meta,
-      std::unordered_map<std::string, std::vector<WriterTile>>* tiles);
+      std::unordered_map<std::string, WriterTileVector>* tiles);
 
   /**
    * Writes the input tiles for the input attribute/dimension to storage.
@@ -487,7 +440,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       const std::string& name,
       shared_ptr<FragmentMetadata> frag_meta,
       uint64_t start_tile_id,
-      std::vector<WriterTile>* tiles,
+      WriterTileVector* tiles,
       bool close_files = true);
 
   /**
@@ -519,7 +472,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   template <class T>
   Status prepare_filter_and_write_tiles(
       const std::string& name,
-      std::vector<std::vector<WriterTile>>& tile_batches,
+      std::vector<WriterTileVector>& tile_batches,
       tdb_shared_ptr<FragmentMetadata> frag_meta,
       DenseTiler<T>* dense_tiler,
       uint64_t thread_num);

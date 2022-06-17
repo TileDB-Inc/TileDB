@@ -56,6 +56,8 @@ class Array;
 class StorageManager;
 
 /** Processes sparse global order read queries. */
+
+template <class BitmapType>
 class SparseGlobalOrderReader : public SparseIndexReaderBase,
                                 public IQueryStrategy {
  public:
@@ -142,7 +144,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** The result tiles currently loaded. */
-  std::vector<std::list<GlobalOrderResultTile>> result_tiles_;
+  std::vector<std::list<GlobalOrderResultTile<BitmapType>>> result_tiles_;
 
   /** Memory used for coordinates tiles per fragment. */
   std::vector<uint64_t> memory_used_for_coords_;
@@ -172,12 +174,13 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** Tile min heap. */
   template <typename CompType>
   using TileMinHeap = std::priority_queue<
-      GlobalOrderResultCoords,
-      std::vector<GlobalOrderResultCoords>,
+      GlobalOrderResultCoords<BitmapType>,
+      std::vector<GlobalOrderResultCoords<BitmapType>>,
       CompType>;
 
   /** Tile list iterator. */
-  using TileListIt = std::list<GlobalOrderResultTile>::iterator;
+  using TileListIt =
+      typename std::list<GlobalOrderResultTile<BitmapType>>::iterator;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -248,7 +251,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * fragment with timestamps.
    */
   inline bool last_in_memory_cell_of_consolidated_fragment(
-      const unsigned int frag_idx, const GlobalOrderResultCoords& rc) const {
+      const unsigned int frag_idx,
+      const GlobalOrderResultCoords<BitmapType>& rc) const {
     return !all_tiles_loaded_[frag_idx] &&
            fragment_metadata_[frag_idx]->has_timestamps() &&
            rc.tile_->tile_idx() == last_cells_[frag_idx].tile_idx_ &&
@@ -269,7 +273,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   template <class CompType>
   tuple<Status, optional<bool>> add_next_cell_to_queue(
       bool dups,
-      GlobalOrderResultCoords& rc,
+      GlobalOrderResultCoords<BitmapType>& rc,
       std::vector<TileListIt>& result_tiles_it,
       TileMinHeap<CompType>& tile_queue);
 
@@ -289,7 +293,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @return timestamp.
    */
-  uint64_t get_timestamp(const GlobalOrderResultCoords& rc) const;
+  uint64_t get_timestamp(const GlobalOrderResultCoords<BitmapType>& rc) const;
 
   /**
    * Compute the result cell slabs once tiles are loaded.

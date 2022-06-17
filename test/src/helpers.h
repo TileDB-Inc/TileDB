@@ -692,6 +692,12 @@ std::string get_fragment_dir(std::string array_dir);
  */
 std::string get_commit_dir(std::string array_dir);
 
+/**
+ * Check count of values against a vector of expected counts for an array.
+ */
+template <class T>
+void check_counts(span<T> vals, std::vector<uint64_t> expected);
+
 }  // End of namespace test
 
 }  // End of namespace tiledb

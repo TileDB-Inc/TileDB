@@ -190,7 +190,7 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
 
 template <class T>
 Status DenseTiler<T>::get_tile(
-    uint64_t id, const std::string& name, WriterTile* tile) {
+    uint64_t id, const std::string& name, WriterTile& tile) {
   auto timer_se = stats_->start_timer("get_tile");
 
   // Checks
@@ -200,165 +200,106 @@ Status DenseTiler<T>::get_tile(
   if (!array_schema_.is_attr(name))
     return LOG_STATUS(Status_DenseTilerError(
         std::string("Cannot get tile; '") + name + "' is not an attribute"));
-  if (array_schema_.var_size(name))
-    return LOG_STATUS(Status_DenseTilerError(
-        std::string("Cannot get tile; '") + name +
-        "' is not a fixed-sized attribute"));
 
-  // For easy reference
   auto& domain{array_schema_.domain()};
-  auto type = array_schema_.type(name);
-  auto cell_num_per_tile = domain.cell_num_per_tile();
-  auto cell_size = array_schema_.cell_size(name);
-  auto tile_size = cell_num_per_tile * cell_size;
-  auto buff = (uint8_t*)buffers_->find(name)->second.buffer_;
-  assert(buff != nullptr);
-
-  // Initialize tile
-  RETURN_NOT_OK(tile->init_unfiltered(
-      constants::format_version, type, tile_size, cell_size, 0, true));
-
-  // Copy tile from buffer
-  RETURN_NOT_OK(copy_tile(id, cell_size, buff, tile));
-
-  return Status::Ok();
-}
-
-template <class T>
-Status DenseTiler<T>::get_tile_null(
-    uint64_t id, const std::string& name, WriterTile* tile) const {
-  // Checks
-  if (id >= tile_num_)
-    return LOG_STATUS(
-        Status_DenseTilerError("Cannot get tile; Invalid tile id"));
-  if (!array_schema_.is_attr(name))
-    return LOG_STATUS(Status_DenseTilerError(
-        std::string("Cannot get tile; '") + name + "' is not an attribute"));
-  if (!array_schema_.is_nullable(name))
-    return LOG_STATUS(Status_DenseTilerError(
-        std::string("Cannot get tile; '") + name +
-        "' is not a nullable attribute"));
-
-  // For easy reference
-  auto& domain{array_schema_.domain()};
-  auto type = array_schema_.type(name);
-  auto cell_num_per_tile = domain.cell_num_per_tile();
-  auto cell_size = constants::cell_validity_size;
-  auto tile_size = cell_num_per_tile * cell_size;
-  auto buff = (uint8_t*)buffers_->find(name)->second.validity_vector_.buffer();
-  assert(buff != nullptr);
-
-  // Initialize tile
-  RETURN_NOT_OK(tile->init_unfiltered(
-      constants::format_version, type, tile_size, cell_size, 0, true));
-
-  // Copy tile from buffer
-  return copy_tile(id, cell_size, buff, tile);
-}
-
-template <class T>
-Status DenseTiler<T>::get_tile_var(
-    uint64_t id,
-    const std::string& name,
-    WriterTile* tile_off,
-    WriterTile* tile_val) const {
-  // Checks
-  if (id >= tile_num_)
-    return LOG_STATUS(
-        Status_DenseTilerError("Cannot get tile; Invalid tile id"));
-  if (!array_schema_.is_attr(name))
-    return LOG_STATUS(Status_DenseTilerError(
-        std::string("Cannot get tile; '") + name + "' is not an attribute"));
-  if (!array_schema_.var_size(name))
-    return LOG_STATUS(Status_DenseTilerError(
-        std::string("Cannot get tile; '") + name +
-        "' is not a var-sized attribute"));
-
-  // For easy reference
-  auto& domain{array_schema_.domain()};
-  auto type = array_schema_.type(name);
   auto cell_num_in_tile = domain.cell_num_per_tile();
-  auto tile_off_size = constants::cell_var_offset_size * cell_num_in_tile;
-  auto buff_it = buffers_->find(name);
-  assert(buff_it != buffers_->end());
-  auto buff_var = (uint8_t*)buff_it->second.buffer_var_;
-  auto div = (offsets_bytesize_ == 8) ? 1 : 2;
-  uint64_t buff_off_size = *(buff_it->second.buffer_size_) / div;
-  uint64_t buff_var_size = *(buff_it->second.buffer_var_size_);
-  auto cell_size = datatype_size(type);
-  std::vector<uint8_t> fill_var(sizeof(uint64_t), 0);
 
-  // Initialize position tile
-  WriterTile tile_pos;
-  RETURN_NOT_OK(tile_pos.init_unfiltered(
-      constants::format_version,
-      constants::cell_var_offset_type,
-      tile_off_size,
-      constants::cell_var_offset_size,
-      0));
+  // For easy reference
+  if (tile.var_size()) {
+    auto type = array_schema_.type(name);
+    auto tile_off_size = constants::cell_var_offset_size * cell_num_in_tile;
+    auto buff_it = buffers_->find(name);
+    assert(buff_it != buffers_->end());
+    auto buff_var = (uint8_t*)buff_it->second.buffer_var_;
+    auto div = (offsets_bytesize_ == 8) ? 1 : 2;
+    uint64_t buff_off_size = *(buff_it->second.buffer_size_) / div;
+    uint64_t buff_var_size = *(buff_it->second.buffer_var_size_);
+    auto cell_size = datatype_size(type);
+    std::vector<uint8_t> fill_var(sizeof(uint64_t), 0);
 
-  // Fill entire tile with MAX_UINT64
-  std::vector<uint64_t> to_write(
-      cell_num_in_tile, std::numeric_limits<uint64_t>::max());
-  RETURN_NOT_OK(tile_pos.write(to_write.data(), 0, tile_off_size));
-  to_write.clear();
-  to_write.shrink_to_fit();
+    // Initialize position tile
+    Tile tile_pos;
+    RETURN_NOT_OK(tile_pos.init_unfiltered(
+        constants::format_version,
+        constants::cell_var_offset_type,
+        tile_off_size,
+        constants::cell_var_offset_size,
+        0));
 
-  // Get position tile
-  auto cell_num_in_buff =  // TODO: fix
-      (buff_off_size - (offsets_extra_element_ * offsets_bytesize_)) /
-      offsets_bytesize_;
-  std::vector<uint64_t> cell_pos(cell_num_in_buff);
-  for (uint64_t i = 0; i < cell_num_in_buff; ++i)
-    cell_pos[i] = i;
-  RETURN_NOT_OK(copy_tile(
-      id, constants::cell_var_offset_size, (uint8_t*)&cell_pos[0], &tile_pos));
+    // Fill entire tile with MAX_UINT64
+    std::vector<uint64_t> to_write(
+        cell_num_in_tile, std::numeric_limits<uint64_t>::max());
+    RETURN_NOT_OK(tile_pos.write(to_write.data(), 0, tile_off_size));
+    to_write.clear();
+    to_write.shrink_to_fit();
 
-  // Initialize offset and value tiles
-  RETURN_NOT_OK(tile_off->init_unfiltered(
-      constants::format_version,
-      constants::cell_var_offset_type,
-      tile_off_size,
-      constants::cell_var_offset_size,
-      0));
-  RETURN_NOT_OK(tile_val->init_unfiltered(
-      constants::format_version,
-      type,
-      buff_var_size,  // This is only the initial allocation
-      cell_size,
-      0));
+    // Get position tile
+    auto cell_num_in_buff =  // TODO: fix
+        (buff_off_size - (offsets_extra_element_ * offsets_bytesize_)) /
+        offsets_bytesize_;
+    std::vector<uint64_t> cell_pos(cell_num_in_buff);
+    for (uint64_t i = 0; i < cell_num_in_buff; ++i)
+      cell_pos[i] = i;
+    RETURN_NOT_OK(copy_tile(
+        id, constants::cell_var_offset_size, (uint8_t*)&cell_pos[0], tile_pos));
 
-  // Copy real offsets and values to the corresponding tiles
-  void* tile_pos_buff_tmp = tile_pos.data();
-  auto tile_pos_buff = (uint64_t*)tile_pos_buff_tmp;
-  uint64_t tile_off_offset = 0, offset = 0, val_offset, val_size, pos;
-  auto mul = (offsets_format_mode_ == "bytes") ? 1 : cell_size;
-  for (uint64_t i = 0; i < cell_num_in_tile; ++i) {
-    pos = tile_pos_buff[i];
-    RETURN_NOT_OK(tile_off->write(&offset, tile_off_offset, sizeof(offset)));
-    tile_off_offset += sizeof(offset);
-    if (pos == std::numeric_limits<uint64_t>::max()) {  // Empty
-      RETURN_NOT_OK(tile_val->write_var(&fill_var[0], offset, cell_size));
-      offset += cell_size;
-    } else {  // Non-empty
-      val_offset = ((offsets_bytesize_ == 8) ?
-                        ((uint64_t*)buff_it->second.buffer_)[pos] :
-                        ((uint32_t*)buff_it->second.buffer_)[pos]) *
-                   mul;
-      val_size = (pos < cell_num_in_buff - 1) ?
-                     (((offsets_bytesize_ == 8) ?
-                           ((uint64_t*)buff_it->second.buffer_)[pos + 1] :
-                           ((uint32_t*)buff_it->second.buffer_)[pos + 1]) *
-                          mul -
-                      val_offset) :
-                     buff_var_size - val_offset;
-      RETURN_NOT_OK(
-          tile_val->write_var(&buff_var[val_offset], offset, val_size));
-      offset += val_size;
+    // Copy real offsets and values to the corresponding tiles
+    void* tile_pos_buff_tmp = tile_pos.data();
+    auto tile_pos_buff = (uint64_t*)tile_pos_buff_tmp;
+    uint64_t tile_off_offset = 0, offset = 0, val_offset, val_size, pos;
+    auto mul = (offsets_format_mode_ == "bytes") ? 1 : cell_size;
+    auto& tile_off = tile.offset_tile();
+    auto& tile_val = tile.var_tile();
+    for (uint64_t i = 0; i < cell_num_in_tile; ++i) {
+      pos = tile_pos_buff[i];
+      RETURN_NOT_OK(tile_off.write(&offset, tile_off_offset, sizeof(offset)));
+      tile_off_offset += sizeof(offset);
+      if (pos == std::numeric_limits<uint64_t>::max()) {  // Empty
+        RETURN_NOT_OK(tile_val.write_var(&fill_var[0], offset, cell_size));
+        offset += cell_size;
+      } else {  // Non-empty
+        val_offset = ((offsets_bytesize_ == 8) ?
+                          ((uint64_t*)buff_it->second.buffer_)[pos] :
+                          ((uint32_t*)buff_it->second.buffer_)[pos]) *
+                     mul;
+        val_size = (pos < cell_num_in_buff - 1) ?
+                       (((offsets_bytesize_ == 8) ?
+                             ((uint64_t*)buff_it->second.buffer_)[pos + 1] :
+                             ((uint32_t*)buff_it->second.buffer_)[pos + 1]) *
+                            mul -
+                        val_offset) :
+                       buff_var_size - val_offset;
+        RETURN_NOT_OK(
+            tile_val.write_var(&buff_var[val_offset], offset, val_size));
+        offset += val_size;
+      }
     }
+
+    tile_val.set_size(offset);
+  } else {
+    auto cell_size = array_schema_.cell_size(name);
+    auto tile_size = cell_size * cell_num_in_tile;
+    auto buff = (uint8_t*)buffers_->find(name)->second.buffer_;
+    assert(buff != nullptr);
+
+    memset(tile.fixed_tile().data(), 0, tile_size);
+
+    // Copy tile from buffer
+    RETURN_NOT_OK(copy_tile(id, cell_size, buff, tile.fixed_tile()));
   }
 
-  tile_val->final_size(offset);
+  if (tile.nullable()) {
+    auto cell_size = constants::cell_validity_size;
+    auto tile_size = cell_size * cell_num_in_tile;
+    auto buff =
+        (uint8_t*)buffers_->find(name)->second.validity_vector_.buffer();
+    assert(buff != nullptr);
+
+    memset(tile.validity_tile().data(), 0, tile_size);
+
+    // Copy tile from buffer
+    return copy_tile(id, cell_size, buff, tile.validity_tile());
+  }
 
   return Status::Ok();
 }
@@ -559,7 +500,7 @@ std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
 
 template <class T>
 Status DenseTiler<T>::copy_tile(
-    uint64_t id, uint64_t cell_size, uint8_t* buff, WriterTile* tile) const {
+    uint64_t id, uint64_t cell_size, uint8_t* buff, Tile& tile) const {
   // Calculate copy plan
   const CopyPlan copy_plan = this->copy_plan(id);
 
@@ -594,7 +535,7 @@ Status DenseTiler<T>::copy_tile(
   while (true) {
     // Copy a slab
     RETURN_NOT_OK(
-        tile->write(&buff[sub_offsets[d]], tile_offsets[d], copy_nbytes));
+        tile.write(&buff[sub_offsets[d]], tile_offsets[d], copy_nbytes));
 
     // Advance cell coordinates, tile and buffer offsets
     auto last_dim_changed = d;

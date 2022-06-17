@@ -57,6 +57,8 @@ Constants
     :project: TileDB-C
 .. doxygendefine:: TILEDB_OFFSET_SIZE
     :project: TileDB-C
+.. doxygendefine:: TILEDB_TIMESTAMPS
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_coords
     :project: TileDB-C
 .. doxygenfunction:: tiledb_var_num
@@ -66,6 +68,8 @@ Constants
 .. doxygenfunction:: tiledb_datatype_size
     :project: TileDB-C
 .. doxygenfunction:: tiledb_offset_size
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_timestamps
     :project: TileDB-C
 
 Enumerations

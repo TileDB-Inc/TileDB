@@ -205,14 +205,15 @@ void FragmentMetadata::set_tile_validity_offset(
 }
 
 void FragmentMetadata::set_tile_min(
-    const std::string& name, uint64_t tid, const void* min, uint64_t size) {
+    const std::string& name, uint64_t tid, const ByteVec& min) {
+  const auto size = min.size();
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
   auto buff_offset = tid * size;
   assert(tid < tile_min_buffer_[idx].size() / size);
-  memcpy(&tile_min_buffer_[idx][buff_offset], min, size);
+  memcpy(&tile_min_buffer_[idx][buff_offset], min.data(), size);
 }
 
 void FragmentMetadata::set_tile_min_var_size(
@@ -229,7 +230,7 @@ void FragmentMetadata::set_tile_min_var_size(
 }
 
 void FragmentMetadata::set_tile_min_var(
-    const std::string& name, uint64_t tid, const void* min) {
+    const std::string& name, uint64_t tid, const ByteVec& min) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -244,19 +245,20 @@ void FragmentMetadata::set_tile_min_var(
 
   // Copy var data
   if (size) {  // avoid (potentially) illegal index ref's when size is zero
-    memcpy(&tile_min_var_buffer_[idx][offset[0]], min, size);
+    memcpy(&tile_min_var_buffer_[idx][offset[0]], min.data(), size);
   }
 }
 
 void FragmentMetadata::set_tile_max(
-    const std::string& name, uint64_t tid, const void* max, uint64_t size) {
+    const std::string& name, uint64_t tid, const ByteVec& max) {
+  const auto size = max.size();
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
   auto buff_offset = tid * size;
   assert(tid < tile_max_buffer_[idx].size() / size);
-  memcpy(&tile_max_buffer_[idx][buff_offset], max, size);
+  memcpy(&tile_max_buffer_[idx][buff_offset], max.data(), size);
 }
 
 void FragmentMetadata::set_tile_max_var_size(
@@ -273,7 +275,7 @@ void FragmentMetadata::set_tile_max_var_size(
 }
 
 void FragmentMetadata::set_tile_max_var(
-    const std::string& name, uint64_t tid, const void* max) {
+    const std::string& name, uint64_t tid, const ByteVec& max) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -288,7 +290,7 @@ void FragmentMetadata::set_tile_max_var(
 
   // Copy var data
   if (size) {  // avoid (potentially) illegal index ref's when size is zero
-    memcpy(&tile_max_var_buffer_[idx][offset[0]], max, size);
+    memcpy(&tile_max_var_buffer_[idx][offset[0]], max.data(), size);
   }
 }
 
@@ -330,14 +332,14 @@ void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
 }
 
 void FragmentMetadata::set_tile_sum(
-    const std::string& name, uint64_t tid, const ByteVec* sum) {
+    const std::string& name, uint64_t tid, const ByteVec& sum) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
   assert(tid * sizeof(uint64_t) < tile_sums_[idx].size());
   memcpy(
-      &tile_sums_[idx][tid * sizeof(uint64_t)], sum->data(), sizeof(uint64_t));
+      &tile_sums_[idx][tid * sizeof(uint64_t)], sum.data(), sizeof(uint64_t));
 }
 
 void FragmentMetadata::set_tile_null_count(

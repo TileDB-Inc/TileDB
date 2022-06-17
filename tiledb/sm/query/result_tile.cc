@@ -136,6 +136,11 @@ void ResultTile::erase_tile(const std::string& name) {
     return;
   }
 
+  if (name == constants::timestamps) {
+    timestamps_tile_ = TileTuple(Tile(), Tile(), Tile());
+    return;
+  }
+
   // Handle dimension tile
   for (auto& ct : coord_tiles_) {
     if (ct.first == name) {
@@ -301,16 +306,22 @@ Status ResultTile::read(
     void* buffer,
     uint64_t buffer_offset,
     uint64_t pos,
-    uint64_t len) {
+    uint64_t len,
+    const uint64_t timestamp_val) {
   buffer = static_cast<char*>(buffer) + buffer_offset;
 
   bool is_dim = false;
   RETURN_NOT_OK(domain_->has_dimension(name, &is_dim));
 
+  // Boolean value indicating we will copy the fragment timestamp value into
+  // the buffer for this tile.
+  const bool use_fragment_ts =
+      name == constants::timestamps && timestamp_val != UINT64_MAX;
+
   // Typical case
   // If asking for an attribute, or split dim buffers with split coordinates
   // or coordinates have been fetched as zipped
-  if ((!is_dim && name != constants::coords) ||
+  if ((!is_dim && name != constants::coords && !use_fragment_ts) ||
       (is_dim && !coord_tiles_[0].first.empty()) ||
       (name == constants::coords && !std::get<0>(coords_tile_).empty())) {
     const auto& tile = std::get<0>(*this->tile_tuple(name));
@@ -336,6 +347,13 @@ Status ResultTile::read(
             coord_tile.read(buff + buff_offset, tile_offset, cell_size));
         buff_offset += cell_size;
       }
+    }
+  } else if (use_fragment_ts) {
+    // Copy passed in fragment timestamp.
+    auto buff = static_cast<unsigned char*>(buffer);
+    for (uint64_t c = 0; c < len; c++) {
+      memcpy(buff, &timestamp_val, constants::timestamp_size);
+      buff += constants::timestamp_size;
     }
   } else {
     // Last case which is zipped coordinates but split buffers
@@ -727,6 +745,78 @@ void ResultTile::compute_results_sparse(
 }
 
 template <class BitmapType>
+void ResultTile::compute_results_count_sparse_string_range(
+    const std::vector<std::pair<std::string_view, std::string_view>>
+        cached_ranges,
+    const char* buff_str,
+    const uint64_t* buff_off,
+    const uint64_t cell_num,
+    const uint64_t buff_str_size,
+    const uint64_t start,
+    const uint64_t end,
+    std::vector<BitmapType>& result_count) {
+  const bool non_overlapping = std::is_same<BitmapType, uint8_t>::value;
+
+  // Process all cells.
+  for (uint64_t pos = start; pos <= end; ++pos) {
+    if (result_count[pos] == 0)
+      continue;
+
+    uint64_t c_offset = buff_off[pos];
+    uint64_t c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
+                                             buff_str_size - c_offset;
+
+    std::string_view str(buff_str + c_offset, c_size);
+
+    // Binary search to find the first range containing the cell.
+    auto it = std::lower_bound(
+        cached_ranges.begin(),
+        cached_ranges.end(),
+        str,
+        [&](const std::pair<std::string_view, std::string_view>& cached_range,
+            const std::string_view& value) {
+          return cached_range.second < value;
+        });
+
+    // If we didn't find a range we can set count to 0 and skip to next.
+    if (it == cached_ranges.end()) {
+      result_count[pos] = 0;
+      continue;
+    }
+    uint64_t start_range_idx = std::distance(cached_ranges.begin(), it);
+
+    uint64_t end_range_idx = 0;
+    if constexpr (non_overlapping) {
+      end_range_idx = start_range_idx + 1;
+    } else {
+      // Binary search to find the last range containing the cell.
+      auto it2 = std::lower_bound(
+          it,
+          cached_ranges.end(),
+          str,
+          [&](const std::pair<std::string_view, std::string_view>& cached_range,
+              const std::string_view& value) {
+            return cached_range.first <= value;
+          });
+
+      end_range_idx = std::distance(it, it2) + start_range_idx;
+    }
+
+    // Iterate through all relevant ranges and compute the count for this
+    // dim.
+    uint64_t count = 0;
+    for (uint64_t j = start_range_idx; j < end_range_idx; ++j) {
+      auto& range = cached_ranges[j];
+      count += str_coord_intersects(
+          c_offset, c_size, buff_str, range.first, range.second);
+    }
+
+    // Multiply the past count by this dimension's count.
+    result_count[pos] *= count;
+  }
+}
+
+template <class BitmapType>
 void ResultTile::compute_results_count_sparse_string(
     const ResultTile* result_tile,
     unsigned dim_idx,
@@ -756,6 +846,14 @@ void ResultTile::compute_results_count_sparse_string(
   const auto& coord_tile_str = std::get<1>(coord_tile);
   auto buff_str = static_cast<const char*>(coord_tile_str.data());
   auto buff_str_size = coord_tile_str.size();
+
+  // Cache start_str/end_str for all ranges.
+  std::vector<std::pair<std::string_view, std::string_view>> cached_ranges;
+  cached_ranges.reserve(range_indexes.size());
+
+  for (auto& i : range_indexes) {
+    cached_ranges.emplace_back(ranges[i].start_str(), ranges[i].end_str());
+  }
 
   // For row-major cell orders, the first dimension is sorted.
   // For col-major cell orders, the last dimension is sorted.
@@ -819,13 +917,12 @@ void ResultTile::compute_results_count_sparse_string(
           strncmp(first_c_coord, second_coord, first_c_size) == 0) {
         uint64_t count = 0;
         for (auto i : range_indexes) {
-          auto& range = ranges[i];
           count += str_coord_intersects(
               first_c_offset,
               first_c_size,
               buff_str,
-              range.start_str(),
-              range.end_str());
+              cached_ranges[i].first,
+              cached_ranges[i].second);
         }
 
         for (uint64_t pos = first_c_pos; pos < first_c_pos + c_partition_size;
@@ -834,20 +931,15 @@ void ResultTile::compute_results_count_sparse_string(
         }
       } else {
         // Compute results
-        uint64_t c_offset = 0, c_size = 0;
-        for (uint64_t pos = first_c_pos; pos <= last_c_pos; ++pos) {
-          c_offset = buff_off[pos];
-          c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
-                                          buff_str_size - c_offset;
-          uint64_t count = 0;
-          for (auto i : range_indexes) {
-            auto& range = ranges[i];
-            count += str_coord_intersects(
-                c_offset, c_size, buff_str, range.start_str(), range.end_str());
-          }
-
-          result_count[pos] = count;
-        }
+        compute_results_count_sparse_string_range(
+            cached_ranges,
+            buff_str,
+            buff_off,
+            cell_num,
+            buff_str_size,
+            first_c_pos,
+            last_c_pos,
+            result_count);
       }
     }
 
@@ -895,23 +987,15 @@ void ResultTile::compute_results_count_sparse_string(
       // Here, we know that there is at least one `1` value within the
       // `r_count` values within this partition. We must check
       // each value for an intersection.
-      uint64_t c_offset = 0, c_size = 0;
-      for (uint64_t pos = i; pos < i + partition_size; ++pos) {
-        if (result_count[pos] == 0)
-          continue;
-
-        c_offset = buff_off[pos];
-        c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
-                                        buff_str_size - c_offset;
-        uint64_t count = 0;
-        for (auto j : range_indexes) {
-          auto& range = ranges[j];
-          count += str_coord_intersects(
-              c_offset, c_size, buff_str, range.start_str(), range.end_str());
-        }
-
-        result_count[pos] *= count;
-      }
+      compute_results_count_sparse_string_range(
+          cached_ranges,
+          buff_str,
+          buff_off,
+          cell_num,
+          buff_str_size,
+          i,
+          i + partition_size - 1,
+          result_count);
     }
   }
 }

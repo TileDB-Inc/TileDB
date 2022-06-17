@@ -175,6 +175,27 @@ Status FragmentInfo::get_cell_num(uint32_t fid, uint64_t* cell_num) const {
   return Status::Ok();
 }
 
+Status FragmentInfo::get_total_cell_num(uint64_t* cell_num) const {
+  if (cell_num == nullptr)
+    return LOG_STATUS(
+        Status_FragmentInfoError("Cell number argument cannot be null"));
+
+  // Return simple summation of cell counts in each fragment present without
+  // any consideration of cells that may be overlapping, i.e. the count
+  // returned will be >= the actual unique number of cells represented within
+  // the fragments.
+
+  uint64_t total_cell_num = 0;
+  uint64_t endi = single_fragment_info_vec_.size();
+  for (auto fid = 0ul; fid < endi; ++fid) {
+    total_cell_num += single_fragment_info_vec_[fid].cell_num();
+  }
+
+  *cell_num = total_cell_num;
+
+  return Status::Ok();
+}
+
 Status FragmentInfo::get_fragment_name(uint32_t fid, const char** name) const {
   if (name == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
@@ -837,21 +858,13 @@ Status FragmentInfo::load(
   // Create an ArrayDirectory object and load
   auto timestamp_start = compute_anterior ? 0 : timestamp_start_;
   ArrayDirectory array_dir;
-  bool found = false;
-  bool consolidation_with_timestamps = false;
-  RETURN_NOT_OK(config_.get<bool>(
-      "sm.consolidation.with_timestamps",
-      &consolidation_with_timestamps,
-      &found));
-  assert(found);
   try {
     array_dir = ArrayDirectory(
         storage_manager_->vfs(),
         storage_manager_->compute_tp(),
         array_uri_,
         timestamp_start,
-        timestamp_end_,
-        consolidation_with_timestamps);
+        timestamp_end_);
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
@@ -919,7 +932,8 @@ Status FragmentInfo::load(
   }
 
   // Get the URIs to vacuum
-  to_vacuum_ = array_dir.fragment_uris_to_vacuum();
+  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
+  to_vacuum_ = filtered_fragment_uris.fragment_uris_to_vacuum();
 
   // Get number of unconsolidated fragment metadata
   unconsolidated_metadata_num_ = 0;

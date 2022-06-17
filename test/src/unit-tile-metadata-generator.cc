@@ -37,6 +37,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
+#include "tiledb/sm/tile/writer_tile.h"
 
 using namespace tiledb::sm;
 
@@ -78,7 +79,9 @@ TEMPLATE_LIST_TEST_CASE(
   uint64_t cell_val_num = std::is_same<T, char>::value ? 10 : 1;
 
   // Generate the array schema.
+  uint64_t num_cells = empty_tile ? 0 : 1000;
   ArraySchema schema;
+  schema.set_capacity(num_cells);
   Attribute a("a", tiledb_type);
   a.set_cell_val_num(cell_val_num);
   schema.add_attribute(make_shared<Attribute>(HERE(), &a));
@@ -94,23 +97,12 @@ TEMPLATE_LIST_TEST_CASE(
   }
 
   // Initialize a new tile.
-  uint64_t num_cells = empty_tile ? 0 : 1000;
-  Tile tile;
-  tile.init_unfiltered(
-      0,
-      tiledb_type,
-      num_cells * cell_val_num * sizeof(T),
-      cell_val_num * sizeof(T),
-      0,
-      true);
-  auto tile_buff = (T*)tile.data();
-
-  // Initialize a new nullable tile.
-  Tile tile_nullable;
+  WriterTile writer_tile(
+      schema, true, false, nullable, cell_val_num * sizeof(T), tiledb_type);
+  auto tile_buff = (T*)writer_tile.fixed_tile().data();
   uint8_t* nullable_buff = nullptr;
   if (nullable) {
-    tile_nullable.init_unfiltered(0, Datatype::UINT8, num_cells, 1, 0, true);
-    nullable_buff = (uint8_t*)tile_nullable.data();
+    nullable_buff = (uint8_t*)writer_tile.validity_tile().data();
   }
 
   // Compute correct values as the tile is filled with data.
@@ -196,60 +188,59 @@ TEMPLATE_LIST_TEST_CASE(
   // Call the tile metadata generator.
   TileMetadataGenerator md_generator(
       tiledb_type, false, false, cell_val_num * sizeof(T), cell_val_num);
-  md_generator.process_tile(
-      &tile, nullptr, nullable ? &tile_nullable : nullptr);
+  md_generator.process_tile(writer_tile);
 
   // Compare the metadata to what's expected.
-  auto&& [min, min_size, max, max_size, sum, nc] = md_generator.metadata();
-
   if constexpr (std::is_same<T, char>::value) {
     if (all_null || empty_tile) {
-      CHECK(min == nullptr);
-      CHECK(max == nullptr);
+      CHECK(writer_tile.min()[0] == 0);
+      CHECK(writer_tile.max()[0] == 0);
     } else {
       int64_t idx_min =
           (int64_t)correct_min - (int64_t)std::numeric_limits<char>::min();
       int64_t idx_max =
           (int64_t)correct_max - (int64_t)std::numeric_limits<char>::min();
       CHECK(
-          0 ==
-          strncmp(
-              (const char*)min, string_ascii[idx_min].c_str(), cell_val_num));
+          0 == strncmp(
+                   (const char*)writer_tile.min().data(),
+                   string_ascii[idx_min].c_str(),
+                   cell_val_num));
       CHECK(
-          0 ==
-          strncmp(
-              (const char*)max, string_ascii[idx_max].c_str(), cell_val_num));
+          0 == strncmp(
+                   (const char*)writer_tile.max().data(),
+                   string_ascii[idx_max].c_str(),
+                   cell_val_num));
     }
   } else {
     if constexpr (std::is_same<T, std::byte>::value) {
-      CHECK(min == nullptr);
-      CHECK(max == nullptr);
+      CHECK(writer_tile.min().data()[0] == 0);
+      CHECK(writer_tile.max().data()[0] == 0);
     } else if constexpr (std::is_same<T, unsigned char>::value) {
       if (all_null || empty_tile) {
-        CHECK(min == nullptr);
-        CHECK(max == nullptr);
+        CHECK(writer_tile.min().data()[0] == 0);
+        CHECK(writer_tile.max().data()[0] == 0);
       } else {
-        CHECK(*(T*)min == correct_min);
-        CHECK(*(T*)max == correct_max);
+        CHECK(*(T*)writer_tile.min().data() == correct_min);
+        CHECK(*(T*)writer_tile.max().data() == correct_max);
       }
     } else {
-      CHECK(*(T*)min == correct_min);
-      CHECK(*(T*)max == correct_max);
+      CHECK(*(T*)writer_tile.min().data() == correct_min);
+      CHECK(*(T*)writer_tile.max().data() == correct_max);
     }
   }
-  CHECK(min_size == sizeof(T) * cell_val_num);
-  CHECK(max_size == sizeof(T) * cell_val_num);
+  CHECK(writer_tile.min().size() == sizeof(T) * cell_val_num);
+  CHECK(writer_tile.max().size() == sizeof(T) * cell_val_num);
 
   if constexpr (
       !std::is_same<T, unsigned char>::value &&
       !std::is_same<T, std::byte>::value) {
     if constexpr (std::is_integral_v<T>) {
-      CHECK(*(int64_t*)sum->data() == correct_sum_int);
+      CHECK(*(int64_t*)writer_tile.sum().data() == correct_sum_int);
     } else {
-      CHECK(*(double*)sum->data() == correct_sum_double);
+      CHECK(*(double*)writer_tile.sum().data() == correct_sum_double);
     }
   }
-  CHECK(nc == correct_null_count);
+  CHECK(writer_tile.null_count() == correct_null_count);
 }
 
 typedef tuple<uint64_t, int64_t, double> FixedTypesUnderTestOverflow;
@@ -262,15 +253,14 @@ TEMPLATE_LIST_TEST_CASE(
 
   // Generate the array schema.
   ArraySchema schema;
+  schema.set_capacity(4);
   Attribute a("a", (Datatype)type.tiledb_type);
   schema.add_attribute(make_shared<Attribute>(HERE(), &a));
 
   // Initialize a new tile.
-  uint64_t num_cells = 4;
-  Tile tile;
-  tile.init_unfiltered(
-      0, (Datatype)type.tiledb_type, num_cells * sizeof(T), sizeof(T), 0, true);
-  auto tile_buff = (T*)tile.data();
+  auto tiledb_type = static_cast<Datatype>(type.tiledb_type);
+  WriterTile writer_tile(schema, true, false, false, sizeof(T), tiledb_type);
+  auto tile_buff = (T*)writer_tile.fixed_tile().data();
 
   // Once an overflow happens, the computation should abort, try to add a few
   // min values after the overflow to confirm.
@@ -280,31 +270,21 @@ TEMPLATE_LIST_TEST_CASE(
   tile_buff[3] = std::numeric_limits<T>::lowest();
 
   // Call the tile metadata generator.
-  TileMetadataGenerator md_generator(
-      static_cast<Datatype>(type.tiledb_type), false, false, sizeof(T), 1);
-  md_generator.process_tile(&tile, nullptr, nullptr);
+  TileMetadataGenerator md_generator(tiledb_type, false, false, sizeof(T), 1);
+  md_generator.process_tile(writer_tile);
 
   // Compare the metadata to what's expected.
-  auto&& [min, min_size, max, max_size, sum, nc] = md_generator.metadata();
   if constexpr (std::is_integral_v<T>) {
-    CHECK(*(T*)sum->data() == std::numeric_limits<T>::max());
+    CHECK(*(T*)writer_tile.sum().data() == std::numeric_limits<T>::max());
   } else {
-    CHECK(*(double*)sum->data() == std::numeric_limits<T>::max());
+    CHECK(*(double*)writer_tile.sum().data() == std::numeric_limits<T>::max());
   }
 
   // Test negative overflow.
   if constexpr (std::is_signed_v<T>) {
     // Initialize a new tile.
-    uint64_t num_cells = 4;
-    Tile tile;
-    tile.init_unfiltered(
-        0,
-        (Datatype)type.tiledb_type,
-        num_cells * sizeof(T),
-        sizeof(T),
-        0,
-        true);
-    auto tile_buff = (T*)tile.data();
+    WriterTile writer_tile(schema, true, false, false, sizeof(T), tiledb_type);
+    auto tile_buff = (T*)writer_tile.fixed_tile().data();
 
     // Once an overflow happens, the computation should abort, try to add a few
     // max values after the overflow to confirm.
@@ -314,16 +294,17 @@ TEMPLATE_LIST_TEST_CASE(
     tile_buff[3] = std::numeric_limits<T>::max();
 
     // Call the tile metadata generator.
-    TileMetadataGenerator md_generator(
-        static_cast<Datatype>(type.tiledb_type), false, false, sizeof(T), 1);
-    md_generator.process_tile(&tile, nullptr, nullptr);
+    TileMetadataGenerator md_generator(tiledb_type, false, false, sizeof(T), 1);
+    md_generator.process_tile(writer_tile);
 
     // Compare the metadata to what's expected.
-    auto&& [min, min_size, max, max_size, sum, nc] = md_generator.metadata();
     if constexpr (std::is_integral_v<T>) {
-      CHECK(*(int64_t*)sum->data() == std::numeric_limits<T>::min());
+      CHECK(
+          *(int64_t*)writer_tile.sum().data() == std::numeric_limits<T>::min());
     } else {
-      CHECK(*(double*)sum->data() == std::numeric_limits<T>::lowest());
+      CHECK(
+          *(double*)writer_tile.sum().data() ==
+          std::numeric_limits<T>::lowest());
     }
   }
 }
@@ -342,7 +323,9 @@ TEST_CASE(
   uint64_t num_strings = 2000;
 
   // Generate the array schema.
+  uint64_t num_cells = empty_tile ? 0 : 20;
   ArraySchema schema;
+  schema.set_capacity(num_cells);
   Attribute a("a", Datatype::STRING_ASCII);
   a.set_cell_val_num(constants::var_num);
   schema.add_attribute(make_shared<Attribute>(HERE(), &a));
@@ -356,7 +339,6 @@ TEST_CASE(
   std::sort(strings.begin(), strings.end());
 
   // Choose strings randomly.
-  uint64_t num_cells = empty_tile ? 0 : 20;
   std::vector<int> values;
   values.reserve(num_cells);
   uint64_t var_size = 0;
@@ -365,29 +347,14 @@ TEST_CASE(
     var_size += strings[values.back()].size();
   }
 
-  // Initialize offsets tile.
-  Tile offsets_tile;
-  offsets_tile.init_unfiltered(
-      0,
-      Datatype::UINT64,
-      num_cells * sizeof(uint64_t),
-      sizeof(uint64_t),
-      0,
-      true);
-  auto offsets_tile_buff = (uint64_t*)offsets_tile.data();
-
-  // Initialize var tile.
-  Tile var_tile;
-  var_tile.init_unfiltered(
-      0, Datatype::CHAR, var_size, constants::var_num, 0, true);
-  auto var_tile_buff = (char*)var_tile.data();
+  // Initialize tile.
+  WriterTile writer_tile(schema, true, true, nullable, 1, Datatype::CHAR);
+  auto offsets_tile_buff = (uint64_t*)writer_tile.offset_tile().data();
 
   // Initialize a new nullable tile.
-  Tile tile_nullable;
   uint8_t* nullable_buff = nullptr;
   if (nullable) {
-    tile_nullable.init_unfiltered(0, Datatype::UINT8, num_cells, 1, 0, true);
-    nullable_buff = (uint8_t*)tile_nullable.data();
+    nullable_buff = (uint8_t*)writer_tile.validity_tile().data();
   }
 
   // Compute correct values as the tile is filled with data.
@@ -412,43 +379,42 @@ TEST_CASE(
 
     *offsets_tile_buff = offset;
     auto& val = strings[values[i]];
-    memcpy(&var_tile_buff[offset], val.c_str(), val.size());
+    writer_tile.var_tile().write_var(val.c_str(), offset, val.size());
 
     offset += val.size();
     offsets_tile_buff++;
   }
 
+  writer_tile.var_tile().set_size(var_size);
+
   // Call the tile metadata generator.
   TileMetadataGenerator md_generator(
       Datatype::STRING_ASCII, false, true, TILEDB_VAR_NUM, 1);
-  md_generator.process_tile(
-      &offsets_tile, &var_tile, nullable ? &tile_nullable : nullptr);
+  md_generator.process_tile(writer_tile);
 
   // Compare the metadata to what's expected.
-  auto&& [min, min_size, max, max_size, sum, nc] = md_generator.metadata();
-
   if (all_null || empty_tile) {
-    CHECK(min == nullptr);
-    CHECK(max == nullptr);
-    CHECK(min_size == 0);
-    CHECK(max_size == 0);
+    CHECK(writer_tile.min().data() == nullptr);
+    CHECK(writer_tile.max().data() == nullptr);
+    CHECK(writer_tile.min().size() == 0);
+    CHECK(writer_tile.max().size() == 0);
   } else {
     CHECK(
         0 == strncmp(
-                 (const char*)min,
+                 (const char*)writer_tile.min().data(),
                  strings[correct_min].c_str(),
                  strings[correct_min].size()));
     CHECK(
         0 == strncmp(
-                 (const char*)max,
+                 (const char*)writer_tile.max().data(),
                  strings[correct_max].c_str(),
                  strings[correct_max].size()));
-    CHECK(min_size == strings[correct_min].size());
-    CHECK(max_size == strings[correct_max].size());
+    CHECK(writer_tile.min().size() == strings[correct_min].size());
+    CHECK(writer_tile.max().size() == strings[correct_max].size());
   }
 
-  CHECK(*(int64_t*)sum->data() == 0);
-  CHECK(nc == correct_null_count);
+  CHECK(*(int64_t*)writer_tile.sum().data() == 0);
+  CHECK(writer_tile.null_count() == correct_null_count);
 }
 
 TEST_CASE(
@@ -456,42 +422,34 @@ TEST_CASE(
     "[tile-metadata-generator][var-data][same-length]") {
   // Generate the array schema.
   ArraySchema schema;
+  schema.set_capacity(2);
   Attribute a("a", Datatype::CHAR);
   a.set_cell_val_num(constants::var_num);
   schema.add_attribute(make_shared<Attribute>(HERE(), &a));
 
   // Store '123' and '12'
   // Initialize offsets tile.
-  Tile offsets_tile;
-  offsets_tile.init_unfiltered(
-      0, Datatype::UINT64, 2 * sizeof(uint64_t), sizeof(uint64_t), 0, true);
-  auto offsets_tile_buff = (uint64_t*)offsets_tile.data();
+  WriterTile writer_tile(schema, true, true, false, 1, Datatype::CHAR);
+  auto offsets_tile_buff = (uint64_t*)writer_tile.offset_tile().data();
   offsets_tile_buff[0] = 0;
   offsets_tile_buff[1] = 3;
 
   // Initialize var tile.
-  Tile var_tile;
-  var_tile.init_unfiltered(0, Datatype::CHAR, 5, constants::var_num, 0, true);
-  auto var_tile_buff = (char*)var_tile.data();
-  var_tile_buff[0] = '1';
-  var_tile_buff[1] = '2';
-  var_tile_buff[2] = '3';
-  var_tile_buff[3] = '1';
-  var_tile_buff[4] = '2';
+  std::string data = "12312";
+  writer_tile.var_tile().write_var(data.c_str(), 0, 5);
+  writer_tile.var_tile().set_size(5);
 
   // Call the tile metadata generator.
   TileMetadataGenerator md_generator(
       Datatype::STRING_ASCII, false, true, TILEDB_VAR_NUM, 1);
-  md_generator.process_tile(&offsets_tile, &var_tile, nullptr);
+  md_generator.process_tile(writer_tile);
 
   // Compare the metadata to what's expected.
-  auto&& [min, min_size, max, max_size, sum, nc] = md_generator.metadata();
+  CHECK(0 == strncmp((const char*)writer_tile.min().data(), "12", 2));
+  CHECK(0 == strncmp((const char*)writer_tile.max().data(), "123", 3));
+  CHECK(writer_tile.min().size() == 2);
+  CHECK(writer_tile.max().size() == 3);
 
-  CHECK(0 == strncmp((const char*)min, "12", 2));
-  CHECK(0 == strncmp((const char*)max, "123", 3));
-  CHECK(min_size == 2);
-  CHECK(max_size == 3);
-
-  CHECK(*(int64_t*)sum->data() == 0);
-  CHECK(nc == 0);
+  CHECK(*(int64_t*)writer_tile.sum().data() == 0);
+  CHECK(writer_tile.null_count() == 0);
 }

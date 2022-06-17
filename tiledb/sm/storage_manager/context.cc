@@ -47,7 +47,7 @@ namespace sm {
 // Constructor.  Note order of construction:  storage_manager depends on the
 // preceding members to be initialized for its initialization.
 Context::Context(const Config& config)
-    : last_error_(Status::Ok())
+    : last_error_(nullopt)
     , logger_(make_shared<Logger>(
           HERE(), "Context: " + std::to_string(++logger_id_)))
     , compute_tp_(get_compute_thread_count(config))
@@ -65,14 +65,19 @@ Context::Context(const Config& config)
 /*                API             */
 /* ****************************** */
 
-Status Context::last_error() {
+optional<std::string> Context::last_error() {
   std::lock_guard<std::mutex> lock(mtx_);
   return last_error_;
 }
 
 void Context::save_error(const Status& st) {
   std::lock_guard<std::mutex> lock(mtx_);
-  last_error_ = st;
+  last_error_ = st.to_string();
+}
+
+void Context::save_error(const StatusException& st) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  last_error_ = st.what();
 }
 
 // Return pointer to underlying storage manager.

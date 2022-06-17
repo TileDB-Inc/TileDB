@@ -895,6 +895,7 @@ Status Reader::copy_partitioned_fixed_cells(
     fill_value_validity = array_schema_.attribute(*name)->fill_value_validity();
   }
   uint64_t fill_value_size = (uint64_t)fill_value.size();
+  const bool is_timestamps = *name == constants::timestamps;
 
   // Calculate the partition to operate on.
   const uint64_t cs_idx_start =
@@ -934,10 +935,17 @@ Status Reader::copy_partitioned_fixed_cells(
         offset += fill_value_size;
       }
     } else {  // Non-empty range
+      // Pass in the fragment timestamp if required.
+      uint64_t timestamp = UINT64_MAX;
+      if (is_timestamps &&
+          !fragment_metadata_[cs.tile_->frag_idx()]->has_timestamps()) {
+        timestamp = fragment_timestamp(cs.tile_);
+      }
+
       if (stride == UINT64_MAX) {
         if (!nullable)
-          RETURN_NOT_OK(
-              cs.tile_->read(*name, buffer, offset, cs.start_, cs_length));
+          RETURN_NOT_OK(cs.tile_->read(
+              *name, buffer, offset, cs.start_, cs_length, timestamp));
         else
           RETURN_NOT_OK(cs.tile_->read_nullable(
               *name, buffer, offset, cs.start_, cs_length, buffer_validity));
@@ -946,7 +954,8 @@ Status Reader::copy_partitioned_fixed_cells(
         auto start = cs.start_;
         for (uint64_t j = 0; j < cs_length; ++j) {
           if (!nullable)
-            RETURN_NOT_OK(cs.tile_->read(*name, buffer, cell_offset, start, 1));
+            RETURN_NOT_OK(cs.tile_->read(
+                *name, buffer, cell_offset, start, 1, timestamp));
           else
             RETURN_NOT_OK(cs.tile_->read_nullable(
                 *name, buffer, cell_offset, start, 1, buffer_validity));

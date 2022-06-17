@@ -488,6 +488,14 @@ class Subarray {
   template <class T>
   Subarray crop_to_tile(const T* tile_coords, Layout layout) const;
 
+  /**
+   * Returns a cropped version of the subarray, constrained in the
+   * tile with the input coordinates. The new subarray will have
+   * the input `layout`.
+   */
+  template <class T>
+  void crop_to_tile(Subarray* ret, const T* tile_coords, Layout layout) const;
+
   /** Returns the number of dimensions of the subarray. */
   uint32_t dim_num() const;
 
@@ -754,12 +762,10 @@ class Subarray {
   /** Returns the flattened 1D id of the range with the input coordinates. */
   uint64_t range_idx(const std::vector<uint64_t>& range_coords) const;
 
-  /** Returns the flattened 1D id of the range with the input coordinates for
-   * the original subarray. */
-  template <class T>
-  void get_original_range_coords(
-      const T* const range_coords,
-      std::vector<uint64_t>* original_range_coords) const;
+  /** Returns the orignal range indexes. */
+  inline const std::vector<std::vector<uint64_t>>& original_range_idx() const {
+    return original_range_idx_;
+  }
 
   /** The total number of multi-dimensional ranges in the subarray. */
   uint64_t range_num() const;
@@ -780,7 +786,9 @@ class Subarray {
    * Returns the `Range` vector for the given dimension index.
    * @note Intended for serialization only
    */
-  const std::vector<Range>& ranges_for_dim(uint32_t dim_idx) const;
+  inline const std::vector<Range>& ranges_for_dim(uint32_t dim_idx) const {
+    return range_subset_[dim_idx].ranges();
+  }
 
   /**
    * Directly sets the `Range` vector for the given dimension index, making
@@ -1295,6 +1303,14 @@ class Subarray {
    */
   tuple<Status, optional<bool>> non_overlapping_ranges_for_dim(
       const uint64_t dim_idx);
+
+  /**
+   * Returns a cropped version of the subarray, constrained in the
+   * tile with the input coordinates. The new subarray will have
+   * the input `layout`.
+   */
+  template <class T>
+  void crop_to_tile_impl(const T* tile_coords, Subarray& ret) const;
 };
 
 }  // namespace sm

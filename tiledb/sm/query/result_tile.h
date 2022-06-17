@@ -198,7 +198,8 @@ class ResultTile {
       void* buffer,
       uint64_t buffer_offset,
       uint64_t pos,
-      uint64_t len);
+      uint64_t len,
+      const uint64_t timestamp_val = UINT64_MAX);
 
   /**
    * Reads `len` coordinates the from the tile, starting at the beginning of
@@ -270,6 +271,29 @@ class ResultTile {
       const Layout& cell_order,
       const uint64_t min_cell,
       const uint64_t max_cell);
+
+  /**
+   * Applicable only to sparse arrays.
+   *
+   * Computes a result count for the input string dimension for the coordinates
+   * that fall in the input ranges and multiply with the previous count. The
+   * caller has already determined that the input start-end range needs to be
+   * processed fully.
+   *
+   * When called over multiple ranges, this follows the formula:
+   * total_count = d1_count * d2_count ... dN_count.
+   */
+  template <class BitmapType>
+  static void compute_results_count_sparse_string_range(
+      const std::vector<std::pair<std::string_view, std::string_view>>
+          cached_ranges,
+      const char* buff_str,
+      const uint64_t* buff_off,
+      const uint64_t cell_num,
+      const uint64_t buff_str_size,
+      const uint64_t start,
+      const uint64_t end,
+      std::vector<BitmapType>& result_count);
 
   /**
    * Applicable only to sparse arrays.
@@ -586,14 +610,15 @@ class ResultTileWithBitmap : public ResultTile {
 };
 
 /** Global order result tile. */
-class GlobalOrderResultTile : public ResultTileWithBitmap<uint8_t> {
+template <class BitmapType>
+class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
   GlobalOrderResultTile(
       unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
-      : ResultTileWithBitmap<uint8_t>(frag_idx, tile_idx, array_schema)
+      : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, array_schema)
       , used_(false) {
   }
 
@@ -635,7 +660,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<uint8_t> {
 
   /** Allocate space for the hilbert values vector. */
   inline void allocate_hilbert_vector() {
-    hilbert_values_.resize(cell_num());
+    hilbert_values_.resize(ResultTile::cell_num());
   }
 
   /** Get the hilbert value at an index. */
@@ -651,7 +676,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<uint8_t> {
   /** Return first cell index in bitmap. */
   uint64_t first_cell_in_bitmap() {
     uint64_t ret = 0;
-    while (!bitmap_[ret]) {
+    while (!ResultTileWithBitmap<BitmapType>::bitmap_[ret]) {
       ret++;
     }
 
@@ -660,8 +685,8 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<uint8_t> {
 
   /** Return first cell index in bitmap. */
   uint64_t last_cell_in_bitmap() {
-    uint64_t ret = bitmap_.size() - 1;
-    while (!bitmap_[ret]) {
+    uint64_t ret = ResultTileWithBitmap<BitmapType>::bitmap_.size() - 1;
+    while (!ResultTileWithBitmap<BitmapType>::bitmap_[ret]) {
       ret--;
     }
 
