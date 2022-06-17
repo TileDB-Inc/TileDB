@@ -659,6 +659,11 @@ bool libmagic_file_is_compressed(void* data, uint64_t size) {
     magic_close(magic);
     return true;
   }
+  auto rv = magic_buffer(magic, data, size);
+  if (!rv) {
+    return true;
+  }
+
   std::string mime(magic_buffer(magic, data, size));
 
   return compressed_mime_types.find(mime) != compressed_mime_types.end();
