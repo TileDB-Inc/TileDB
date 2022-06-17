@@ -362,28 +362,22 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
           TileMetadataGenerator md_generator(
               type, is_dim, var, cell_size, cell_val_num);
 
-          auto tile_val = nullable ? &writer_tile.validity_tile() : nullptr;
-          if (nullable) {
-            RETURN_NOT_OK(
-                dense_tiler->get_tile_null(frag_tile_id + i, name, tile_val));
-          }
+          RETURN_NOT_OK(
+              dense_tiler->get_tile(frag_tile_id + i, name, writer_tile));
+          md_generator.process_tile(writer_tile);
 
           if (!var) {
-            auto tile = &writer_tile.fixed_tile();
-            RETURN_NOT_OK(dense_tiler->get_tile(frag_tile_id + i, name, tile));
-            md_generator.process_tile(writer_tile);
-            RETURN_NOT_OK(filter_tile(name, tile, nullptr, false, false));
+            RETURN_NOT_OK(filter_tile(
+                name, &writer_tile.fixed_tile(), nullptr, false, false));
           } else {
-            auto tile = &writer_tile.offset_tile();
-            auto tile_var = &writer_tile.var_tile();
-            RETURN_NOT_OK(dense_tiler->get_tile_var(
-                frag_tile_id + i, name, tile, tile_var));
-            md_generator.process_tile(writer_tile);
-            RETURN_NOT_OK(filter_tile(name, tile_var, tile, false, false));
-            RETURN_NOT_OK(filter_tile(name, tile, nullptr, true, false));
+            auto offset_tile = &writer_tile.offset_tile();
+            RETURN_NOT_OK(filter_tile(
+                name, &writer_tile.var_tile(), offset_tile, false, false));
+            RETURN_NOT_OK(filter_tile(name, offset_tile, nullptr, true, false));
           }
           if (nullable) {
-            RETURN_NOT_OK(filter_tile(name, tile_val, nullptr, false, true));
+            RETURN_NOT_OK(filter_tile(
+                name, &writer_tile.validity_tile(), nullptr, false, true));
           }
           return Status::Ok();
         });
