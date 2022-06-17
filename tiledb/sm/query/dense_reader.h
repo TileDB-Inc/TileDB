@@ -56,6 +56,31 @@ class StorageManager;
 
 /** Processes dense read queries. */
 class DenseReader : public ReaderBase, public IQueryStrategy {
+  /**
+   * TileSubarrays class to store tile subarrays inside of a dynamic array with
+   * custom destructor.
+   */
+  class TileSubarrays : public DynamicArray<Subarray> {
+   public:
+    TileSubarrays(uint64_t n)
+        : DynamicArray<Subarray>(
+              n,
+              tdb::allocator<Subarray>{},
+              Tag<DynamicArray<Subarray>::NullInitializer>{})
+        , n_(n) {
+    }
+
+    ~TileSubarrays() {
+      // Delete the tile subarrays.
+      for (uint64_t i = 0; i < n_; i++) {
+        (*this)[i].~Subarray();
+      }
+    }
+
+   private:
+    uint64_t n_;
+  };
+
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
