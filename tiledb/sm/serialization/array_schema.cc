@@ -114,6 +114,13 @@ Status filter_pipeline_to_capnp(
         data.setInt32(level);
         break;
       }
+      case FilterType::FILTER_SCALE_FLOAT: {
+        // Note: this is temporary and I address this in the float scaling
+        // filter serialization PR. This case statement is here so the code can
+        // pass CI.
+        throw std::logic_error(
+            "filter_pipeline_to_capnp: Not handling float scaling filter.");
+      }
       default:
         break;
     }
