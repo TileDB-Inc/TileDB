@@ -1072,6 +1072,7 @@ TEST_CASE_METHOD(
       }
     }
   }
+
   remove_sparse_array();
 }
 
@@ -1610,6 +1611,8 @@ TEST_CASE_METHOD(
             "\"Context.StorageManager.Query.Reader.num_tiles_read\": 6") !=
         std::string::npos);
   }
+
+  remove_sparse_array();
 }
 
 TEST_CASE_METHOD(
@@ -1687,4 +1690,6 @@ TEST_CASE_METHOD(
     CHECK(!memcmp(
         c_ts.data(), timestamps.data(), c_ts.size() * sizeof(uint64_t)));
   }
+
+  remove_sparse_array();
 }
