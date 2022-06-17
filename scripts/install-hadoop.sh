@@ -50,7 +50,7 @@ function install_hadoop {
   pushd /usr/local/hadoop
   # download from closest mirror
   curl -G -L -d "action=download" \
-    "https://dlcdn.apache.org/dyn/closer.cgi/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz" \
+    "https://dlcdn.apache.org/hadoop/common/hadoop-3.3.1/hadoop-3.3.1.tar.gz" \
     -o hadoop-${HADOOP_VERSION}.tar.gz
   if [ $? -ne 0 ]; then
     die "error downloading hadoop from apache mirror"
