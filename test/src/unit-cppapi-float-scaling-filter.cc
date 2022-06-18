@@ -30,12 +30,20 @@
  * Tests the C++ API for float scaling filter related functions.
  */
 
+#include <random>
+#include <vector>
+
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
 
-std::string array_name = "cpp_unit_array";
+using namespace tiledb;
 
-TEST_CASE("C++ API: Float Scaling Filter options", "[cppapi][filter][float-scaling]") {
+std::string array_name = "cpp_unit_array";
+int dim_hi = 10;
+
+TEST_CASE(
+    "C++ API: Float Scaling Filter options",
+    "[cppapi][filter][float-scaling]") {
   using namespace tiledb;
   Context ctx;
 
@@ -62,22 +70,22 @@ TEST_CASE("C++ API: Float Scaling Filter options", "[cppapi][filter][float-scali
   CHECK(get_offset == offset);
 }
 
-template<typename T>
-void float_scaling_filter_api_test(Context &ctx, uint64_t bit_width) {
-  // Create an array with one attribute "a", run filter through it.
+template <typename T, typename W>
+void float_scaling_filter_api_test(
+    Context& ctx, tiledb_array_type_t array_type) {
+  /// TODO: Comment whole function.
   Domain domain(ctx);
-  auto d1 = Dimension::create<int>(ctx, "d1", {{0, 20}}, 4);
-  auto d2 = Dimension::create<int>(ctx, "d2", {{0, 20}}, 4);
+  auto d1 = Dimension::create<int>(ctx, "rows", {{1, dim_hi}}, 4);
+  auto d2 = Dimension::create<int>(ctx, "cols", {{1, dim_hi}}, 4);
   domain.add_dimensions(d1, d2);
 
-  // Test filter creation and option setting/getting
   Filter f(ctx, TILEDB_FILTER_SCALE_FLOAT);
 
   double scale = 2.53;
   double offset = 0.138;
-  uint64_t bw = bit_width;
+  uint64_t bit_width = sizeof(W);
 
-  f.set_option(TILEDB_SCALE_FLOAT_BITWIDTH, &bw);
+  f.set_option(TILEDB_SCALE_FLOAT_BITWIDTH, &bit_width);
   f.set_option(TILEDB_SCALE_FLOAT_FACTOR, &scale);
   f.set_option(TILEDB_SCALE_FLOAT_OFFSET, &offset);
 
@@ -87,12 +95,82 @@ void float_scaling_filter_api_test(Context &ctx, uint64_t bit_width) {
   auto a = Attribute::create<T>(ctx, "a");
   a.set_filter_list(filters);
 
+  ArraySchema schema(ctx, array_type);
+  schema.set_domain(domain);
+  schema.add_attribute(a);
+  Array::create(array_name, schema);
 
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<T> dis(-45234.0f, 45234.0);
+
+  std::vector<int> row_dims;
+  std::vector<int> col_dims;
+  std::vector<T> a_write;
+  std::vector<T> expected_a;
+  for (int i = 0; i < dim_hi * dim_hi; ++i) {
+    int row = (i / dim_hi) + 1;
+    int col = (i % dim_hi) + 1;
+    row_dims.push_back(row);
+    col_dims.push_back(col);
+
+    T f = dis(gen);
+    a_write.push_back(f);
+    W val = static_cast<W>(
+        trunc((f - static_cast<T>(offset)) / static_cast<T>(scale)));
+    T val_float = static_cast<T>(scale * static_cast<T>(val) + offset);
+    expected_a.push_back(val_float);
+  }
+
+  tiledb_layout_t layout_type =
+      array_type == TILEDB_SPARSE ? TILEDB_UNORDERED : TILEDB_ROW_MAJOR;
+
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_layout(layout_type).set_data_buffer("a", a_write);
+
+  if (array_type == TILEDB_SPARSE) {
+    query_w.set_data_buffer("rows", row_dims).set_data_buffer("cols", col_dims);
+  }
+
+  query_w.submit();
+  query_w.finalize();
+  array_w.close();
+
+  // Open and read the entire array.
+  std::vector<T> a_data_read(dim_hi * dim_hi, 0.0);
+  Array array_r(ctx, array_name, TILEDB_READ);
+  Query query_r(ctx, array_r);
+  query_r.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", a_data_read);
+
+  if (array_type == TILEDB_DENSE) {
+    int range[] = {1, dim_hi};
+    query_r.add_range("rows", range[0], range[1])
+        .add_range("cols", range[0], range[1]);
+  }
+
+  query_r.submit();
+
+  // Check for results.
+  size_t total_num_elements = static_cast<size_t>(dim_hi * dim_hi);
+  auto table = query_r.result_buffer_elements();
+  REQUIRE(table.size() == 1);
+  REQUIRE(table["a"].first == 0);
+  REQUIRE(table["a"].second == total_num_elements);
+
+  for (size_t i = 0; i < total_num_elements; ++i) {
+    CHECK(
+        fabs(a_data_read[i] - expected_a[i]) <
+        std::numeric_limits<T>::epsilon());
+  }
+
+  query_r.finalize();
+  array_r.close();
 }
 
-TEST_CASE("C++ API: Float Scaling Filter list on array, sparse", "[cppapi][filter][float-scaling]") {
+TEST_CASE(
+    "C++ API: Float Scaling Filter list on array",
+    "[cppapi][filter][float-scaling]") {
   // Setup.
   Context ctx;
   VFS vfs(ctx);
@@ -100,13 +178,38 @@ TEST_CASE("C++ API: Float Scaling Filter list on array, sparse", "[cppapi][filte
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  auto bit_width = GENERATE(1, 2, 4, 8); 
-  SECTION("Testing FLOAT32 attribute type.") {
-      float_scaling_filter_api_test<float>(ctx, bit_width);
+  auto array_type = GENERATE(TILEDB_SPARSE, TILEDB_DENSE);
+
+  SECTION("Testing FLOAT32 attribute type, bit_width = 1.") {
+    float_scaling_filter_api_test<float, int8_t>(ctx, array_type);
   }
 
-  SECTION("Testing FLOAT64 attribute type.") {
-      float_scaling_filter_api_test<double>(ctx, bit_width);
+  SECTION("Testing FLOAT32 attribute type, bit_width = 2.") {
+    float_scaling_filter_api_test<float, int16_t>(ctx, array_type);
+  }
+
+  SECTION("Testing FLOAT32 attribute type, bit_width = 4.") {
+    float_scaling_filter_api_test<float, int32_t>(ctx, array_type);
+  }
+
+  SECTION("Testing FLOAT32 attribute type, bit_width = 8.") {
+    float_scaling_filter_api_test<float, int64_t>(ctx, array_type);
+  }
+
+  SECTION("Testing FLOAT64 attribute type, bit_width = 1.") {
+    float_scaling_filter_api_test<double, int8_t>(ctx, array_type);
+  }
+
+  SECTION("Testing FLOAT64 attribute type, bit_width = 2.") {
+    float_scaling_filter_api_test<double, int16_t>(ctx, array_type);
+  }
+
+  SECTION("Testing FLOAT64 attribute type, bit_width = 4.") {
+    float_scaling_filter_api_test<double, int32_t>(ctx, array_type);
+  }
+
+  SECTION("Testing FLOAT64 attribute type, bit_width = 8.") {
+    float_scaling_filter_api_test<double, int64_t>(ctx, array_type);
   }
 
   // Teardown.

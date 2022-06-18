@@ -68,7 +68,7 @@ Status FloatScalingFilter::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   auto input_parts = input->buffers();
-  uint32_t num_parts = input_parts.size();
+  uint32_t num_parts = static_cast<uint32_t>(input_parts.size());
   uint32_t metadata_size = sizeof(uint32_t) + num_parts * sizeof(uint32_t);
   RETURN_NOT_OK(output_metadata->append_view(input_metadata));
   RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
