@@ -1611,7 +1611,8 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
         *buffers_[name].validity_vector_.buffer_size() = total_cells;
 
       // Clear tiles from memory.
-      if (!is_dim && condition_.field_names().count(name) == 0) {
+      if (!is_dim && condition_.field_names().count(name) == 0 &&
+          name != constants::timestamps) {
         clear_tiles(name, result_tiles);
       }
     }
