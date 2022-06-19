@@ -188,6 +188,11 @@ class QueryCondition {
       uint64_t* cell_count);
 
   /**
+   * Reverse the query condition using De Morgan's law.
+   */
+  void negate();
+
+  /**
    * Sets the AST. This is internal state to only be used in
    * the serialization path.
    */

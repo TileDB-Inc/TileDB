@@ -167,6 +167,11 @@ class ASTNode {
   virtual const QueryConditionCombinationOp& get_combination_op() const = 0;
 
   /**
+   * Reverse the query condition using De Morgan's law.
+   */
+  virtual void negate() = 0;
+
+  /**
    * @brief Default virtual destructor.
    */
   virtual ~ASTNode() {
@@ -324,6 +329,11 @@ class ASTNodeVal : public ASTNode {
    */
   const QueryConditionCombinationOp& get_combination_op() const override;
 
+  /**
+   * Reverse the query condition using De Morgan's law.
+   */
+  void negate() override;
+
  private:
   /** The attribute name. */
   std::string field_name_;
@@ -473,6 +483,11 @@ class ASTNodeExpr : public ASTNode {
    * @return const QueryConditionCombinationOp& The combination op.
    */
   const QueryConditionCombinationOp& get_combination_op() const override;
+
+  /**
+   * Reverse the query condition using De Morgan's law.
+   */
+  void negate() override;
 
  private:
   /** The node list **/

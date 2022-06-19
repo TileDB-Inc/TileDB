@@ -159,9 +159,11 @@ tdb_unique_ptr<ASTNode> ASTNodeVal::combine(
 const std::string& ASTNodeVal::get_field_name() const {
   return field_name_;
 }
+
 const UntypedDatumView& ASTNodeVal::get_condition_value_view() const {
   return condition_value_view_;
 }
+
 const QueryConditionOp& ASTNodeVal::get_op() const {
   return op_;
 }
@@ -170,10 +172,42 @@ const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeVal::get_children() const {
   throw std::runtime_error(
       "ASTNodeVal::get_children: Cannot get children from an AST value node.");
 }
+
 const QueryConditionCombinationOp& ASTNodeVal::get_combination_op() const {
   throw std::runtime_error(
       "ASTNodeVal::get_combination_op: Cannot get combination op from an AST "
       "value node.");
+}
+
+void ASTNodeVal::negate() {
+  switch (op_) {
+    case QueryConditionOp::LT:
+      op_ = QueryConditionOp::GE;
+      break;
+
+    case QueryConditionOp::GT:
+      op_ = QueryConditionOp::LE;
+      break;
+
+    case QueryConditionOp::GE:
+      op_ = QueryConditionOp::LT;
+      break;
+
+    case QueryConditionOp::LE:
+      op_ = QueryConditionOp::GT;
+      break;
+
+    case QueryConditionOp::NE:
+      op_ = QueryConditionOp::EQ;
+      break;
+
+    case QueryConditionOp::EQ:
+      op_ = QueryConditionOp::NE;
+      break;
+
+    default:
+      throw std::runtime_error("ASTNodeExpr::negate: Invalid op.");
+  }
 }
 
 bool ASTNodeExpr::is_expr() const {
@@ -251,11 +285,13 @@ const std::string& ASTNodeExpr::get_field_name() const {
       "ASTNodeExpr::get_field_name: Cannot get field name from an AST "
       "expression node.");
 }
+
 const UntypedDatumView& ASTNodeExpr::get_condition_value_view() const {
   throw std::runtime_error(
       "ASTNodeExpr::get_condition_value_view: Cannot get condition value view "
       "from an AST expression node.");
 }
+
 const QueryConditionOp& ASTNodeExpr::get_op() const {
   throw std::runtime_error(
       "ASTNodeExpr::get_op: Cannot get op from an AST expression node.");
@@ -266,6 +302,25 @@ const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeExpr::get_children() const {
 }
 const QueryConditionCombinationOp& ASTNodeExpr::get_combination_op() const {
   return combination_op_;
+}
+
+void ASTNodeExpr::negate() {
+  switch (combination_op_) {
+    case QueryConditionCombinationOp::AND:
+      combination_op_ = QueryConditionCombinationOp::OR;
+      break;
+
+    case QueryConditionCombinationOp::OR:
+      combination_op_ = QueryConditionCombinationOp::AND;
+      break;
+
+    default:
+      throw std::runtime_error("ASTNodeExpr::negate: Invalid combination op.");
+  }
+
+  for (const auto& child : nodes_) {
+    child->negate();
+  }
 }
 
 }  // namespace sm

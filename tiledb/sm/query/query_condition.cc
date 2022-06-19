@@ -1888,6 +1888,10 @@ Status QueryCondition::apply_sparse(
   return Status::Ok();
 }
 
+void QueryCondition::negate() {
+  tree_->negate();
+}
+
 const tdb_unique_ptr<ASTNode>& QueryCondition::ast() const {
   return tree_;
 }
