@@ -438,10 +438,11 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
 
     auto& results = object_metadata.value();
     // returned above if (!uri_dir.is_gcs()), i.e. one of following prefixes
-    // need to propogate orig prefix as other parse_gcs_uri() and other routines may
-    // have already set an internal 'static' gcs_prefix path to that original prefix.
+    // need to propogate orig prefix as other parse_gcs_uri() and other routines
+    // may have already set an internal 'static' gcs_prefix path to that
+    // original prefix.
     const static std::string gcs_prefix =
-      (uri_dir.to_string().rfind("gcs://", 0) == 0) ? "gcs://" : "gs://";
+        (uri_dir.to_string().rfind("gcs://", 0) == 0) ? "gcs://" : "gs://";
 
     if (absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
             results)) {
