@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/storage_format/uri/parse_uri.h
+ * @file tiledb/sm/query/delete_condition/serialization.h
  *
  * @section LICENSE
  *
@@ -33,37 +33,29 @@
 #ifndef TILEDB_PARSE_URI_H
 #define TILEDB_PARSE_URI_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/query/query_condition.h"
 
-namespace tiledb::sm::utils::parse {
-
-/**
- * Retrieves the timestamp range from the input
- * URI. For format version <= 2, only the range start is valid
- * (the range end is ignored).
- */
-Status get_timestamp_range(
-    const URI& uri, std::pair<uint64_t, uint64_t>* timestamp_range);
+namespace tiledb::sm::delete_condition::serialize {
 
 /**
- * Retrieves the fragment name version.
- *  - Version 1 corresponds to format versions 1 and 2
- *      * __uuid_<t1>{_t2}
- *  - Version 2 corresponds to version 3 and 4
- *      * __t1_t2_uuid
- *  - Version 3 corresponds to version 5 or higher
- *      * __t1_t2_uuid_version
+ * Serializes the delete condition.
+ *
+ * @param query_condition Query condition to serialize.
+ * @return Serialized query condition.
  */
-Status get_fragment_name_version(const std::string& name, uint32_t* version);
+std::vector<uint8_t> serialize_delete_condition(
+    const QueryCondition& query_condition);
 
 /**
- * Retrieves the fragment version. This will work only for
- * name versions > 2, otherwise the function sets `version`
- * to UINT32_MAX.
+ * Serializes the delete condition.
+ *
+ * @param buff Serialized query condition.
+ * @return Deserialized query condition.
  */
-Status get_fragment_version(const std::string& name, uint32_t* version);
+QueryCondition deserialize_delete_condition(const std::vector<uint8_t>& buff);
 
-}  // namespace tiledb::sm::utils::parse
+}  // namespace tiledb::sm::delete_condition::serialize
 
 #endif  // TILEDB_PARSE_URI_H
