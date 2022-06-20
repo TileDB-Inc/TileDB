@@ -225,9 +225,9 @@ void check_save_to_file() {
 #else
   ss << "config.logging_level 0\n";
 #endif
+  ss << "experimental.rest.optimized_array_open false\n";
   ss << "filestore.buffer_size 104857600\n";
   ss << "rest.curl.verbose false\n";
-  ss << "experimental.rest.optimized_array_open false\n";
   ss << "rest.http_compressor any\n";
   ss << "rest.retry_count 25\n";
   ss << "rest.retry_delay_factor 1.25\n";

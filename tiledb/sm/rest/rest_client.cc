@@ -278,7 +278,7 @@ Status RestClient::post_array_to_rest(const URI& uri, Array* array) {
   uint64_t timestamp_end = array->timestamp_end();
 
   // Init curl and form the URL
-  Curl curlc;
+  Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
