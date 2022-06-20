@@ -1521,7 +1521,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
 
       // Clear tiles from memory.
       if (condition_.field_names().count(name) == 0 &&
-          (!subarray_.is_set() || !is_dim)) {
+          (!subarray_.is_set() || !is_dim) && name != constants::timestamps) {
         clear_tiles(name, result_tiles);
       }
     }
