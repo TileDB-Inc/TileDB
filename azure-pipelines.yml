@@ -85,6 +85,7 @@ stages:
              TILEDB_GCS: OFF
              TILEDB_WERROR: OFF
              CMAKE_OSX_ARCHITECTURES: "arm64"
+             BUILD_MAGIC_MACOS_UNIVERSAL: "ON"
              MACOSX_DEPLOYMENT_TARGET: 11
        pool:
          vmImage: $(imageName)
