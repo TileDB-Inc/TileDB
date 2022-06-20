@@ -536,17 +536,31 @@ void QueryCondition::apply_ast_node(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
-  const auto attribute = array_schema.attribute(node->get_field_name());
-  if (!attribute) {
-    throw std::runtime_error(
-        "QueryCondition::apply_ast_node: Unknown attribute " +
-        node->get_field_name());
+  bool var_size = false, nullable = false;
+
+  // Initialize to timestamps type.
+  Datatype type = Datatype::UINT64;
+  std::string node_field_name = node->get_field_name();
+  ByteVecValue fill_value;
+  if (node_field_name != constants::timestamps) {
+    if (array_schema.is_dim(node_field_name)) {
+      const auto dim_ptr = array_schema.dimension_ptr(node_field_name);
+      var_size = dim_ptr->var_size();
+      type = dim_ptr->type();
+    } else {
+      const auto attribute = array_schema.attribute(node_field_name);
+      if (!attribute) {
+        throw std::runtime_error("Unknown attribute " + node_field_name);
+      }
+
+      var_size = attribute->var_size();
+      nullable = attribute->nullable();
+      type = attribute->type();
+      fill_value = attribute->fill_value();
+    }
   }
 
-  const ByteVecValue fill_value = attribute->fill_value();
-  const bool var_size = attribute->var_size();
-  const bool nullable = attribute->nullable();
-  switch (attribute->type()) {
+  switch (type) {
     case Datatype::INT8: {
       apply_ast_node<int8_t, CombinationOp>(
           node,
@@ -1671,14 +1685,20 @@ void QueryCondition::apply_ast_node_sparse(
   Datatype type = Datatype::UINT64;
   std::string node_field_name = node->get_field_name();
   if (node_field_name != constants::timestamps) {
-    const auto attribute = array_schema.attribute(node_field_name);
-    if (!attribute) {
-      throw std::runtime_error("Unknown attribute " + node_field_name);
-    }
+    if (array_schema.is_dim(node_field_name)) {
+      const auto dim_ptr = array_schema.dimension_ptr(node_field_name);
+      var_size = dim_ptr->var_size();
+      type = dim_ptr->type();
+    } else {
+      const auto attribute = array_schema.attribute(node_field_name);
+      if (!attribute) {
+        throw std::runtime_error("Unknown attribute " + node_field_name);
+      }
 
-    var_size = attribute->var_size();
-    nullable = attribute->nullable();
-    type = attribute->type();
+      var_size = attribute->var_size();
+      nullable = attribute->nullable();
+      type = attribute->type();
+    }
   }
 
   // Process the validity buffer now.

@@ -333,9 +333,10 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Load tile offsets and result tile ranges.
    *
+   * @param include_coords Are coords included.
    * @return Status.
    */
-  Status load_initial_data();
+  Status load_initial_data(bool include_coords);
 
   /**
    * Read and unfilter coord tiles.

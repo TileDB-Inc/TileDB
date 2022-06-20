@@ -181,8 +181,9 @@ SparseIndexReaderBase::get_coord_tiles_size(
   tiles_size += sizeof(ResultTileWithBitmap<BitmapType>);
 
   // Add the tile bitmap size if there is a subarray.
-  if (subarray_.is_set())
+  if (subarray_.is_set()) {
     tiles_size += fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
+  }
 
   if (include_timestamps(f)) {
     tiles_size +=
@@ -203,7 +204,7 @@ SparseIndexReaderBase::get_coord_tiles_size(
   return {Status::Ok(), std::make_pair(tiles_size, tiles_size_qc)};
 }
 
-Status SparseIndexReaderBase::load_initial_data() {
+Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   if (initial_data_loaded_)
     return Status::Ok();
 
@@ -214,7 +215,9 @@ Status SparseIndexReaderBase::load_initial_data() {
   if (!initial_data_loaded_) {
     if (!condition_.empty()) {
       for (auto& name : condition_.field_names()) {
-        qc_loaded_names_.emplace_back(name);
+        if (!array_schema_.is_dim(name) || !include_coords) {
+          qc_loaded_names_.emplace_back(name);
+        }
       }
     }
   }

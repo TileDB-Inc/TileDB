@@ -170,7 +170,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   }
 
   // Load initial data, if not loaded already.
-  RETURN_NOT_OK(load_initial_data());
+  RETURN_NOT_OK(load_initial_data(true));
 
   // Attributes names to process.
   std::vector<std::string> names;
