@@ -855,8 +855,7 @@ Status Array::loaded_fragment_cell_num(uint64_t* cell_count) const {
     std::stringstream msg;
     msg << "Cannot get cell count; array \"" << array_uri_.to_path()
         << "\" not open.";
-    return LOG_STATUS(
-        Status_ArrayError(msg.str().c_str()));
+    return LOG_STATUS(Status_ArrayError(msg.str().c_str()));
   }
 
   // Return if there are no metadata

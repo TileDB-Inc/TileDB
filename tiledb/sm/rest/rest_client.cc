@@ -367,42 +367,49 @@ RestClient::get_array_loaded_fragment_cell_num(Array* array, uint64_t* count) {
 #if 01
   if (array == nullptr)
     return {LOG_STATUS(
-        Status_RestError("Cannot get array cell num; array is null")), std::nullopt};
+                Status_RestError("Cannot get array cell num; array is null")),
+            std::nullopt};
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK_TUPLE(array->array_uri().get_rest_components(&array_ns, &array_uri),std::nullopt);
+  RETURN_NOT_OK_TUPLE(
+      array->array_uri().get_rest_components(&array_ns, &array_uri),
+      std::nullopt);
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK_TUPLE(
-      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),std::nullopt);
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),
+      std::nullopt);
   const std::string url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns +
                           "/" + curlc.url_escape(array_uri) +
                           "/loaded_fragment_cell_num?";
 
   // Get the data
   Buffer returned_data;
-  RETURN_NOT_OK_TUPLE(curlc.get_data(
-      stats_, url, serialization_type_, &returned_data, cache_key),std::nullopt);
+  RETURN_NOT_OK_TUPLE(
+      curlc.get_data(
+          stats_, url, serialization_type_, &returned_data, cache_key),
+      std::nullopt);
 
   if (returned_data.data() == nullptr || returned_data.size() == 0)
-    return {LOG_STATUS(
-        Status_RestError("Error getting array loaded fragment cell "
-                         "num from REST; server returned no data.")),std::nullopt};
+    return {
+        LOG_STATUS(Status_RestError("Error getting array loaded fragment cell "
+                                    "num from REST; server returned no data.")),
+        std::nullopt};
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
-  RETURN_NOT_OK_TUPLE(ensure_json_null_delimited_string(&returned_data),std::nullopt);
+  RETURN_NOT_OK_TUPLE(
+      ensure_json_null_delimited_string(&returned_data), std::nullopt);
 
   // Deserialize data returned
-  //return serialization::nonempty_domain_deserialize(
+  // return serialization::nonempty_domain_deserialize(
   //    array, returned_data, serialization_type_);
   // TBD: implement method to retrieve/return count...
-  //return serialization::deserialize_loaded_fragment_cell_num(
+  // return serialization::deserialize_loaded_fragment_cell_num(
   //    array, returned_data, serialization_type_, count);
-  return {
-      LOG_STATUS(Status_RestError(
-          "Error getting array loaded fragment cell "
-          "num from REST; rest functionality not implemented.")),
-      std::nullopt};
+  return {LOG_STATUS(Status_RestError(
+              "Error getting array loaded fragment cell "
+              "num from REST; rest functionality not implemented.")),
+          std::nullopt};
 #else
   auto st = LOG_STATUS(
       Status_RestError("Error getting array loaded fragment cell "

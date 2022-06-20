@@ -131,9 +131,11 @@ TEST_CASE(
   Context ctx;
   VFS vfs(ctx);
 
-  auto removeArray = [&]() { remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get()); };
+  auto removeArray = [&]() {
+    remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
+  };
   tiledb::common::ScopedExecutor onexit1(removeArray);
-  
+
   // Create array
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
