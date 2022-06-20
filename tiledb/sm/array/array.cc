@@ -859,13 +859,6 @@ Status Array::loaded_fragment_cell_num(uint64_t* cell_count) const {
         Status_ArrayError(msg.str().c_str()));
   }
 
-  if (!metadata_loaded_) {
-    std::stringstream msg;
-    msg << "Cannot get cell count; array \"" << array_uri_.to_path()
-        << "\" metadata(fragments) not loaded.";
-    return LOG_STATUS(Status_ArrayError(msg.str().c_str()));
-  }
-
   // Return if there are no metadata
   if (fragment_metadata_.empty())
     return Status::Ok();

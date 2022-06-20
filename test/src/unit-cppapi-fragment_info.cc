@@ -131,6 +131,9 @@ TEST_CASE(
   Context ctx;
   VFS vfs(ctx);
 
+  auto removeArray = [&]() { remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get()); };
+  tiledb::common::ScopedExecutor onexit1(removeArray);
+  
   // Create array
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
@@ -312,8 +315,7 @@ TEST_CASE(
     CHECK(version == tiledb::sm::constants::format_version);
   }
 
-  // Clean up
-  remove_dir(array_name, ctx.ptr().get(), vfs.ptr().get());
+  // Clean up - done by onexit1() ScopeExecutor defined above.
 }
 
 TEST_CASE("C++ API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
