@@ -32,6 +32,7 @@
 
 #include "catch.hpp"
 #include "test/src/helpers.h"
+#include "tiledb/api/c_api/context/context_internal.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -98,7 +99,7 @@ ConsolidationWithTimestampsFx::ConsolidationWithTimestampsFx()
   Config config;
   config.set("sm.consolidation.buffer_size", "1000");
   ctx_ = Context(config);
-  sm_ = ctx_.ptr().get()->ctx_->storage_manager();
+  sm_ = ctx_.ptr().get()->storage_manager();
   vfs_ = VFS(ctx_);
 }
 
@@ -112,7 +113,7 @@ void ConsolidationWithTimestampsFx::set_legacy() {
   config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
 
   ctx_ = Context(config);
-  sm_ = ctx_.ptr().get()->ctx_->storage_manager();
+  sm_ = ctx_.ptr().get()->storage_manager();
   vfs_ = VFS(ctx_);
 }
 

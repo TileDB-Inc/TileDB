@@ -35,11 +35,13 @@
 #define TILEDB_FILTER_OPTION_H
 
 #include <cassert>
-#include "tiledb/common/status.h"
+#include "tiledb/common/exception/exception.h"
 #include "tiledb/sm/misc/constants.h"
 
 namespace tiledb {
 namespace sm {
+
+using namespace tiledb::common;
 
 /** Defines the filter type. */
 enum class FilterOption : uint8_t {

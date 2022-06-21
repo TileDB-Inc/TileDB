@@ -1,11 +1,11 @@
 /**
- * @file   tiledb/common/common.h
+ * @file tiledb/api/c_api/config/config_external.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,43 +27,30 @@
  *
  * @section DESCRIPTION
  *
- * Common facilities of the TileDB library.
- *
- * The common facilities here are common by policy, not by convenience. The
- * elements here are expected to be used as ordinary language features. Each
- * element originates in some included file and then is incorporated into the
- * default namespace with a `using` declaration. The expectation is that common
- * elements be used *without* explicit namespace qualification.
+ * This file declares the C API for TileDB.
  */
 
-#ifndef TILEDB_COMMON_COMMON_H
-#define TILEDB_COMMON_COMMON_H
+#ifndef TILEDB_CAPI_CONFIG_EXTERNAL_H
+#define TILEDB_CAPI_CONFIG_EXTERNAL_H
 
-/*
- * All the standard library commonality is declared in "common-std.h".
+#include "../external_common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * C API carrier for a TileDB configuration
  */
-#include "common-std.h"
+typedef struct tiledb_config_t tiledb_config_t;
 
-namespace tiledb::common {}
-namespace tdb = tiledb::common;
-
-/*
- * Dynamic memory
+/**
+ * C API carrier for an iterator over a TileDB configuration
  */
-#include "dynamic_memory/dynamic_memory.h"
-using std::shared_ptr;
-using tiledb::common::allocator;
-using tiledb::common::make_shared;
-// using tiledb::common::make_unique;
+typedef struct tiledb_config_iter_t tiledb_config_iter_t;
 
-/*
- * Exception
- *
- * The exception header also put `class Status` in scope.
- */
-#include "exception/exception.h"
-using tiledb::common::Status;
-using tiledb::common::StatusException;
-using tiledb::common::throw_if_not_ok;
+#ifdef __cplusplus
+}
+#endif
 
-#endif  // TILEDB_COMMON_COMMON_H
+#endif  // TILEDB_CAPI_CONFIG_EXTERNAL_H

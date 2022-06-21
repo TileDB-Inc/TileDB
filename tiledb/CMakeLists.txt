@@ -48,12 +48,24 @@ cmake_policy(SET CMP0063 NEW)
 find_package(Threads REQUIRED)
 
 ############################################################
+# Export, initial part
+#
+# There's more export code below.
+############################################################
+
+# This is needed before adding the `api` directory, since all the C API headers
+# depend upon the export header.
+set(TILEDB_EXPORT_HEADER_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+
+############################################################
 # Subdirectories
 ############################################################
 
+add_subdirectory(api)
 add_subdirectory(common)
 add_subdirectory(type)
 add_subdirectory(sm)
+add_subdirectory(storage_format)
 
 ############################################################
 # Source files
@@ -64,6 +76,11 @@ set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 # List of API headers (to be installed)
 set(TILEDB_PUBLIC_HEADERS
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/api/c_api/external_common.h
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/api/c_api/config/config_external.h
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/api/c_api/context/context_external.h
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/api/c_api/error/error_external.h
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/api/c_api/filter/filter_external.h
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.h
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_enum.h
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_version.h
@@ -252,6 +269,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/parse_uri.cc
 )
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
+list(APPEND TILEDB_CORE_SOURCES ${TILEDB_API_SOURCES})
 
 #openssl3 md5 deprecation mitigation
 if(MSVC)
@@ -322,8 +340,6 @@ list(APPEND TILEDB_EXTERNALS_SOURCES ${TileDB_blosc_SOURCES})
 set_source_files_properties(
   ${TileDB_blosc_SOURCES}
   PROPERTIES COMPILE_OPTIONS "${TileDB_blosc_COMPILE_OPTIONS}")
-
-add_subdirectory(storage_format)
 
 ############################################################
 # Build core objects as a reusable object library
