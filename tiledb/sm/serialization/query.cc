@@ -1163,15 +1163,23 @@ Status query_to_capnp(
   auto layout = query.layout();
   auto type = query.type();
   auto array = query.array();
+  auto query_type = query.type();
 
-  if (layout == Layout::GLOBAL_ORDER && query.type() == QueryType::WRITE)
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE) {
+    return LOG_STATUS(
+        Status_SerializationError("Cannot serialize; Unsupported query type."));
+  }
+
+  if (layout == Layout::GLOBAL_ORDER && query_type == QueryType::WRITE) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; global order "
                                   "serialization not supported for writes."));
+  }
 
-  if (array == nullptr)
+  if (array == nullptr) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; array is null."));
+  }
 
   const auto& schema = query.array_schema();
 
@@ -1353,17 +1361,24 @@ Status query_from_capnp(
   auto array = query->array();
   const auto& schema = query->array_schema();
 
-  if (array == nullptr)
+  if (array == nullptr) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; array pointer is null."));
+  }
 
   // Deserialize query type (sanity check).
   QueryType query_type = QueryType::READ;
   RETURN_NOT_OK(query_type_enum(query_reader.getType().cStr(), &query_type));
-  if (query_type != type)
+  if (query_type != type) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; Query opened for " + query_type_str(type) +
         " but got serialized type for " + query_reader.getType().cStr()));
+  }
+
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE) {
+    return LOG_STATUS(Status_SerializationError(
+        "Cannot deserialize; Unsupported query type."));
+  }
 
   // Deserialize layout.
   Layout layout = Layout::UNORDERED;
@@ -1384,9 +1399,10 @@ Status query_from_capnp(
   }
 
   // Deserialize and set attribute buffers.
-  if (!query_reader.hasAttributeBufferHeaders())
+  if (!query_reader.hasAttributeBufferHeaders()) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; no attribute buffer headers in message."));
+  }
 
   auto buffer_headers = query_reader.getAttributeBufferHeaders();
   auto attribute_buffer_start = static_cast<char*>(buffer_start);
