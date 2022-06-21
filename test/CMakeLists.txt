@@ -295,11 +295,15 @@ target_link_libraries(tiledb_unit
     tiledb_test_support_lib
 )
 
+target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)
+
 target_link_libraries(tiledb_test_support_lib
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
     Catch2::Catch2
 )
+
+target_link_libraries(tiledb_test_support_lib PRIVATE $<BUILD_INTERFACE:common>)
 
 # need to properly link the signal chaining library for catch to work with the jni hdfs interface
 # see: https://docs.oracle.com/javase/9/vm/signal-chaining.htm

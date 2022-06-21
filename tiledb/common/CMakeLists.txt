@@ -27,6 +27,18 @@
 include(common-root)
 include(common)
 
+#
+# Project-wide definitions and compiler options
+#
+add_library(common INTERFACE)
+
+if (TILEDB_EXPERIMENTAL_FEATURES)
+  target_compile_definitions(common INTERFACE TILEDB_EXPERIMENTAL_FEATURES)
+endif()
+
+#
+# Subdirectories
+#
 add_subdirectory(dynamic_memory)
 add_subdirectory(exception)
 add_subdirectory(governor)
@@ -49,6 +61,7 @@ add_library(baseline OBJECT
 )
 find_package(Spdlog_EP REQUIRED)
 target_link_libraries(baseline PUBLIC spdlog::spdlog)
+target_link_libraries(baseline PRIVATE common)
 #
 # Test-compile of object library ensures link-completeness
 #
