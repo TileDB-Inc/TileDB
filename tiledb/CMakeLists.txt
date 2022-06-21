@@ -334,6 +334,10 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_EXTERNALS_SOURCES}
 )
 
+# Use BUILD_INTERFACE generator to work around
+#   https://gitlab.kitware.com/cmake/cmake/-/issues/20736
+target_link_libraries(TILEDB_CORE_OBJECTS PRIVATE $<BUILD_INTERFACE:common>)
+
 ############################################################
 # provide actions/target for preparation of magic.mgc data for embedding/build
 
@@ -1057,7 +1061,7 @@ if (TILEDB_VERSION)
     FILES "${TILEDB_PROJECT_CONFIG_VERSION_FILE}"
     DESTINATION "${CONFIG_INSTALL_DIR}"
   )
-endif() 
+endif()
 
 # Install targets file to <prefix>/lib/cmake/TileDB/TileDBTargets.cmake
 install(

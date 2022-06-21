@@ -724,6 +724,8 @@ TEST_CASE(
       REQUIRE(a_read[i] == i + 1);
     }
   } catch (const std::exception& e) {
+    std::cerr << "Unexpected exception in unit-backwards_compat: " << e.what()
+              << std::endl;
     CHECK(false);
   }
 }
