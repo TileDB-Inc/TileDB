@@ -262,6 +262,42 @@ if (COMPILER_SUPPORTS_AVX2)
   add_compile_options(${COMPILER_AVX2_FLAG})
 endif()
 
+############################################################
+# Export
+############################################################
+# The core library, tests, and examples all depend on the
+# export library.
+
+set(TILEDB_EXPORT_HEADER_DIR "${CMAKE_CURRENT_BINARY_DIR}/tiledb")
+set(TILEDB_EXPORT_HEADER_NAME "tiledb_export.h")
+set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER_DIR}/${TILEDB_EXPORT_HEADER_NAME}")
+
+############################################################
+# C API include files
+############################################################
+#
+# An explicit list of C API headers files is needed in more than one place
+# - `tiledb` (core library) uses the list for its installation target
+# - `examples` does a manual installation with the list
+#
+# FILENAME headers are copied only as their file name
+# RELATIVE headers are copied as their path from RELATIVE_HEADER_ROOT
+
+list(APPEND TILEDB_C_API_FILENAME_HEADERS
+    "${TILEDB_EXPORT_HEADER}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb_enum.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb_experimental.h"
+)
+list(APPEND TILEDB_C_API_RELATIVE_HEADERS
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/external_common.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/config/config_external.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/context/context_external.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/error/error_external.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/filter/filter_external.h"
+)
+set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
 
 ############################################################
 # Enable testing and add subdirectories

@@ -27,12 +27,17 @@
 include(common NO_POLICY_SCOPE)
 
 add_executable(unit_capi_filter EXCLUDE_FROM_ALL)
-target_link_libraries(unit_capi_filter PUBLIC capi_filter)
 find_package(Catch_EP REQUIRED)
 target_link_libraries(unit_capi_filter PUBLIC Catch2::Catch2)
+target_link_libraries(unit_capi_filter PUBLIC capi_filter)
+#
+# INCOMPLETE: This unit test runner does not link at present because
+# there's no `context` object library to link to.
+#
 
 # Sources for tests
 target_sources(unit_capi_filter PUBLIC
+    # Only contains a single null test at present
     unit_capi_filter.cc
 )
 

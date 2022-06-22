@@ -48,16 +48,6 @@ cmake_policy(SET CMP0063 NEW)
 find_package(Threads REQUIRED)
 
 ############################################################
-# Export, initial part
-#
-# There's more export code below.
-############################################################
-
-# This is needed before adding the `api` directory, since all the C API headers
-# depend upon the export header.
-set(TILEDB_EXPORT_HEADER_DIR "${CMAKE_CURRENT_BINARY_DIR}")
-
-############################################################
 # Subdirectories
 ############################################################
 
@@ -949,23 +939,17 @@ endif()
 ############################################################
 # API symbol exports (and public headers for install)
 ############################################################
-
-include(GenerateExportHeader)
+# Generation of the header (still) happens here, but `TILEDB_EXPORT_*` symbols
+# are defined in the parent directory.
 
 # Generates the file 'tiledb_export.h' suitable for the current compiler.
+include(GenerateExportHeader)
 generate_export_header(TILEDB_CORE_OBJECTS
   BASE_NAME tiledb
 )
 
-# Set variables in the parent scope so the tests and examples can reference it.
-set(TILEDB_EXPORT_HEADER_NAME "tiledb_export.h" PARENT_SCOPE)
-set(TILEDB_EXPORT_HEADER_DIR "${CMAKE_CURRENT_BINARY_DIR}" PARENT_SCOPE)
-set(TILEDB_EXPORT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/tiledb_export.h")
-set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER}" PARENT_SCOPE)
-
 target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
-
-target_include_directories(TILEDB_CORE_OBJECTS PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(TILEDB_CORE_OBJECTS PRIVATE ${TILEDB_EXPORT_HEADER_DIR})
 
 # Add the generated header to the public headers list
 list(APPEND TILEDB_PUBLIC_HEADERS

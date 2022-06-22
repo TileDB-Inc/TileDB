@@ -32,7 +32,7 @@ add_custom_target(examples_cpp DEPENDS tiledb_shared)
 function(build_TileDB_example_cppapi TARGET)
   add_executable(${TARGET}_cpp EXCLUDE_FROM_ALL ${TARGET}.cc)
   target_include_directories(${TARGET}_cpp PUBLIC
-    "${CMAKE_CURRENT_BINARY_DIR}/../"
+    "${CMAKE_CURRENT_BINARY_DIR}/../include"
   )
   target_link_libraries(${TARGET}_cpp tiledb_shared)
   if (NOT WIN32)

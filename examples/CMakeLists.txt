@@ -51,20 +51,18 @@ add_custom_target(tiledb-header-dir
 # C API
 ############################################################
 
-# Get TileDB C API headers
-file(GLOB TILEDB_C_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_api/*.h")
-
 # Copy the headers to the 'tiledb/' directory
-foreach(HEADER ${TILEDB_C_HEADERS})
-  string(REGEX
-    REPLACE "^${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_api/" ""
-    HEADER_STRIPPED ${HEADER}
-  )
-  configure_file(${HEADER} ${CMAKE_CURRENT_BINARY_DIR}/tiledb/${HEADER_STRIPPED} COPYONLY)
+foreach(HEADER ${TILEDB_C_API_FILENAME_HEADERS})
+  cmake_path(GET HEADER FILENAME HEADER_STRIPPED)
+  configure_file(${HEADER} ${CMAKE_CURRENT_BINARY_DIR}/include/tiledb/${HEADER_STRIPPED} COPYONLY)
 endforeach()
-
-# Copy the export header
-configure_file(${TILEDB_EXPORT_HEADER} ${CMAKE_CURRENT_BINARY_DIR}/tiledb/${TILEDB_EXPORT_HEADER_NAME} COPYONLY)
+foreach(HEADER ${TILEDB_C_API_RELATIVE_HEADERS})
+  cmake_path(RELATIVE_PATH HEADER
+      BASE_DIRECTORY ${TILEDB_C_API_RELATIVE_HEADER_BASE}
+      OUTPUT_VARIABLE HEADER_STRIPPED
+  )
+  configure_file(${HEADER} ${CMAKE_CURRENT_BINARY_DIR}/include/${HEADER_STRIPPED} COPYONLY)
+endforeach()
 
 # Add the C examples
 add_subdirectory(c_api)
@@ -85,7 +83,7 @@ if (TILEDB_CPP_API)
       REPLACE "^${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/cpp_api/" ""
       HEADER_STRIPPED ${HEADER}
     )
-    configure_file(${HEADER} ${CMAKE_CURRENT_BINARY_DIR}/tiledb/${HEADER_STRIPPED} COPYONLY)
+    configure_file(${HEADER} ${CMAKE_CURRENT_BINARY_DIR}/include/tiledb/${HEADER_STRIPPED} COPYONLY)
   endforeach()
 
   # Add the C++ examples
