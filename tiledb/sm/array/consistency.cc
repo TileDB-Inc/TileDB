@@ -97,9 +97,4 @@ bool ConsistencyController::is_element_of(
 
   return (prefix == intersecting_prefix);
 }
-
-size_t ConsistencyController::registry_size() {
-  return array_registry_.size();
-}
-
 }  // namespace tiledb::sm

@@ -53,6 +53,8 @@ class ConsistencySentry;
  *
  * Intended to act as a singleton global.
  * There is only one (global) copy of this class used in practice.
+ *
+ * @invariant Each registry entry is contained in exactly one Sentry.
  */
 class ConsistencyController {
   /**
@@ -116,7 +118,7 @@ class ConsistencyController {
   /**
    * Wrapper around a multimap registration operation.
    *
-   * Note: this function is private and should only be called by the
+   * Note: this function is private bacause it may only be called by the
    * ConsistencySentry constructor.
    *
    * @pre the given URI is the root directory of the Array and is not empty.
@@ -126,16 +128,13 @@ class ConsistencyController {
   /**
    * Wrapper around a multimap deregistration operation.
    *
-   * Note: this function is private and should only be called by the
+   * Note: this function is private bacuse it may only be called by the
    * ConsistencySentry destructor.
    *
    * Note: entry_type is passed as a value that is explicitly deleted from the
    * registration multimap upon ConsistencySentry destruction only.
    */
   void deregister_array(entry_type entry);
-
-  /** Returns the size of the array registry. */
-  size_t registry_size();
 
   /** The open array registry. */
   std::multimap<const URI, Array&> array_registry_;
@@ -150,6 +149,7 @@ class ConsistencyController {
 /**
  * Sentry class for ConsistencyController.
  *
+ * @invariant Each Sentry contains exactly one Controller registration entry.
  * @invariant The ConsistencyController::entry_type must not be empty.
  * @pre invariant exception:
  * the entry_type may be empty ONLY in an rvalue during move construction.
@@ -160,13 +160,20 @@ class ConsistencySentry {
   ConsistencySentry(
       ConsistencyController& registry, ConsistencyController::entry_type entry);
 
-  /** Move constructor. */
+  /**
+   * Move constructor.
+   *
+   * @pre uses transfer semantics to maintain the class invariants.
+   **/
   ConsistencySentry(ConsistencySentry&& x);
 
-  /** Copy assignment is deleted. */
+  /** Copy Constructor is deleted to maintain the class invariants. */
+  ConsistencySentry(const ConsistencySentry&) = delete;
+
+  /** Copy assignment is deleted to maintain the class invariants. */
   ConsistencySentry& operator=(const ConsistencySentry&) = delete;
 
-  /** Move assignment is deleted. */
+  /** Move assignment is unnecessary and thus deleted. */
   ConsistencySentry& operator=(ConsistencySentry&&) = delete;
 
   /** Destructor. */

@@ -66,6 +66,20 @@ ConsistencyController& controller();
 /**
  * An array object to be opened for reads/writes. An ``Array`` instance
  * is associated with the timestamp it is opened at.
+ *
+ * @invariant is_opening_or_closing_ is false outside of the body of
+ * an open or close function.
+ *
+ * @invariant is_opening_or_closing_ is true when the class is either
+ * partially open or partially closed.
+ *
+ * @invariant atomicity must be maintained between the following:
+ * 1. an open Array.
+ * 2. the is_open_ flag.
+ * 3. the existence of a ConsistencySentry object, which represents
+ * open Array registration.
+ *
+ * @invariant mtx_ must not be locked outside of the scope of a member function.
  */
 class Array {
  public:
@@ -199,7 +213,7 @@ class Array {
   bool is_empty() const;
 
   /** Returns `true` if the array is open. */
-  bool is_open() const;
+  bool is_open();
 
   /** Returns `true` if the array is remote */
   bool is_remote() const;
@@ -416,6 +430,9 @@ class Array {
   /** `True` if the array has been opened. */
   std::atomic<bool> is_open_;
 
+  /** `True` if the array is currently in the process of opening or closing. */
+  std::atomic<bool> is_opening_or_closing_;
+
   /** The query type the array was opened for. */
   QueryType query_type_;
 
@@ -477,7 +494,7 @@ class Array {
   /** Memory tracker for the array. */
   MemoryTracker memory_tracker_;
 
-  /** A reference to the free ConsistencyController object. */
+  /** A reference to the object which controls the present Array instance. */
   ConsistencyController& consistency_controller_;
 
   /** Lifespan maintenance of an open array in the ConsistencyController. */

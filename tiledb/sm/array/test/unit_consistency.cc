@@ -162,12 +162,12 @@ TEST_CASE(
   const URI uri = URI("whitebox_single_array");
 
   // Create a StorageManager
-  Config* config = new (std::nothrow) tiledb::sm::Config();
+  Config config;
   ThreadPool tp_cpu(1);
   ThreadPool tp_io(1);
   stats::Stats stats("");
   StorageManager sm(&tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""));
-  Status st = sm.init(*config);
+  Status st = sm.init(config);
   REQUIRE(st.ok());
 
   // Register array
@@ -191,12 +191,12 @@ TEST_CASE(
   WhiteboxConsistencyController x;
 
   // Create a StorageManager
-  Config* config = new (std::nothrow) tiledb::sm::Config();
+  Config config;
   ThreadPool tp_cpu(1);
   ThreadPool tp_io(1);
   stats::Stats stats("");
   StorageManager sm(&tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""));
-  Status st = sm.init(*config);
+  Status st = sm.init(config);
   REQUIRE(st.ok());
 
   std::vector<tdb_unique_ptr<Array>> arrays;

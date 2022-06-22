@@ -79,6 +79,7 @@ Array::Array(
     , array_uri_serialized_(array_uri)
     , encryption_key_(make_shared<EncryptionKey>(HERE()))
     , is_open_(false)
+    , is_opening_or_closing_(false)
     , timestamp_start_(0)
     , timestamp_end_(UINT64_MAX)
     , timestamp_end_opened_at_(UINT64_MAX)
@@ -131,13 +132,17 @@ Status Array::open_without_fragments(
     uint32_t key_length) {
   Status st;
   // Checks
-  if (is_open_)
+  if (is_open())
     return LOG_STATUS(Status_ArrayError(
         "Cannot open array without fragments; Array already open"));
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
     return LOG_STATUS(
         Status_ArrayError("Cannot open array without fragments; encrypted "
                           "remote arrays are not supported."));
+
+  metadata_.clear();
+  metadata_loaded_ = false;
+  non_empty_domain_computed_ = false;
 
   /* Note: query_type_ MUST be set before calling set_array_open()
     because it will be examined by the ConsistencyController. */
@@ -153,33 +158,27 @@ Status Array::open_without_fragments(
     if (!st.ok())
       throw StatusException(st);
 
-    metadata_.clear();
-    metadata_loaded_ = false;
-    non_empty_domain_computed_ = false;
-
     if (remote_) {
       auto rest_client = storage_manager_->rest_client();
       if (rest_client == nullptr)
         throw Status_ArrayError(
             "Cannot open array; remote array with no REST client.");
+      /* #TODO Change get_array_schema_from_rest function signature to
+        throw instead of return Status */
       auto&& [st, array_schema_latest] =
           rest_client->get_array_schema_from_rest(array_uri_);
       if (!st.ok())
         throw StatusException(st);
       array_schema_latest_ = array_schema_latest.value();
     } else {
-      try {
-        array_dir_ = ArrayDirectory(
-            storage_manager_->vfs(),
-            storage_manager_->compute_tp(),
-            array_uri_,
-            0,
-            UINT64_MAX,
-            consolidation_with_timestamps_config_enabled(),
-            ArrayDirectoryMode::SCHEMA_ONLY);
-      } catch (const std::logic_error& le) {
-        throw Status_ArrayDirectoryError(le.what());
-      }
+      array_dir_ = ArrayDirectory(
+          storage_manager_->vfs(),
+          storage_manager_->compute_tp(),
+          array_uri_,
+          0,
+          UINT64_MAX,
+          consolidation_with_timestamps_config_enabled(),
+          ArrayDirectoryMode::SCHEMA_ONLY);
 
       auto&& [st, array_schema, array_schemas] =
           storage_manager_->array_open_for_reads_without_fragments(this);
@@ -191,9 +190,10 @@ Status Array::open_without_fragments(
     }
   } catch (std::exception& e) {
     set_array_closed();
-    return LOG_STATUS(Status_ArrayError(e.what()));
+    throw Status_ArrayError(e.what());
   }
 
+  is_opening_or_closing_ = false;
   return Status::Ok();
 }
 
@@ -235,6 +235,12 @@ Status Array::open(
     return LOG_STATUS(
         Status_ArrayError("Cannot open array; Array already open"));
   }
+
+  metadata_.clear();
+  metadata_loaded_ = false;
+  non_empty_domain_computed_ = false;
+  timestamp_start_ = timestamp_start;
+  timestamp_end_opened_at_ = timestamp_end;
 
   /* Note: query_type_ MUST be set before calling set_array_open()
     because it will be examined by the ConsistencyController. */
@@ -288,12 +294,6 @@ Status Array::open(
     if (!st.ok())
       throw StatusException(st);
 
-    metadata_.clear();
-    metadata_loaded_ = false;
-    non_empty_domain_computed_ = false;
-    timestamp_start_ = timestamp_start;
-    timestamp_end_opened_at_ = timestamp_end;
-
     if (timestamp_end_opened_at_ == UINT64_MAX) {
       if (query_type == QueryType::READ) {
         timestamp_end_opened_at_ = utils::time::timestamp_now_ms();
@@ -310,17 +310,42 @@ Status Array::open(
     } else if (
         query_type == QueryType::WRITE || query_type == QueryType::DELETE) {
       timestamp_end_opened_at_ = 0;
+    if (remote_) {
+      auto rest_client = storage_manager_->rest_client();
+      if (rest_client == nullptr)
+        throw Status_ArrayError(
+            "Cannot open array; remote array with no REST client.");
+      auto&& [st, array_schema_latest] =
+          rest_client->get_array_schema_from_rest(array_uri_);
+      if (!st.ok())
+        throw StatusException(st);
+      array_schema_latest_ = array_schema_latest.value();
+    } else if (query_type == QueryType::READ) {
+      array_dir_ = ArrayDirectory(
+          storage_manager_->vfs(),
+          storage_manager_->compute_tp(),
+          array_uri_,
+          timestamp_start_,
+          timestamp_end_opened_at_,
+          consolidation_with_timestamps_config_enabled());
+
+      auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
+          storage_manager_->array_open_for_reads(this);
+      if (!st.ok())
+        throw StatusException(st);
+      // Set schemas
+      array_schema_latest_ = array_schema_latest.value();
+      array_schemas_all_ = array_schemas.value();
+      fragment_metadata_ = fragment_metadata.value();
     } else {
-      return LOG_STATUS(
-          Status_ArrayError("Cannot open array; Unsupported query type."));
-    }
-  }
-  if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr) {
-      return LOG_STATUS(Status_ArrayError(
-          "Cannot open array; remote array with no REST client."));
-    }
+      array_dir_ = ArrayDirectory(
+          storage_manager_->vfs(),
+          storage_manager_->compute_tp(),
+          array_uri_,
+          timestamp_start_,
+          timestamp_end_opened_at_,
+          consolidation_with_timestamps_config_enabled(),
+          ArrayDirectoryMode::SCHEMA_ONLY);
 
     auto&& [st, array_schema_latest] =
         rest_client->get_array_schema_from_rest(array_uri_);
@@ -373,12 +398,14 @@ Status Array::open(
     return LOG_STATUS(Status_ArrayError(e.what()));
   }
 
+  is_opening_or_closing_ = false;
   return Status::Ok();
 }
 
 Status Array::close() {
+  Status st;
   // Check if array is open
-  if (!is_open_) {
+  if (!is_open()) {
     // If array is not open treat this as a no-op
     // This keeps existing behavior from TileDB 2.6 and older
     return Status::Ok();
@@ -389,21 +416,28 @@ Status Array::close() {
   clear_last_max_buffer_sizes();
   fragment_metadata_.clear();
 
-  if (remote_) {
-    // Update array metadata for write queries if metadata was written by the
-    // user
-    if (query_type_ == QueryType::WRITE && metadata_.num() > 0) {
-      // Set metadata loaded to be true so when serialization fetchs the
-      // metadata it won't trigger a deadlock
-      metadata_loaded_ = true;
-      auto rest_client = storage_manager_->rest_client();
-      if (rest_client == nullptr)
-        return LOG_STATUS(Status_ArrayError(
-            "Error closing array; remote array with no REST client."));
-      RETURN_NOT_OK(rest_client->post_array_metadata_to_rest(
-          array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
-    }
+  try {
+    set_array_closed();
 
+    if (remote_) {
+      // Update array metadata for write queries if metadata was written by the
+      // user
+      if (query_type_ == QueryType::WRITE && metadata_.num() > 0) {
+        // Set metadata loaded to be true so when serialization fetchs the
+        // metadata it won't trigger a deadlock
+        metadata_loaded_ = true;
+        auto rest_client = storage_manager_->rest_client();
+        if (rest_client == nullptr)
+          throw Status_ArrayError(
+              "Error closing array; remote array with no REST client.");
+        st = rest_client->post_array_metadata_to_rest(
+            array_uri_, timestamp_start_, timestamp_end_opened_at_, this);
+        if (!st.ok())
+          throw StatusException(st);
+      }
+
+      // Storage manager does not own the array schema for remote arrays.
+      array_schema_latest_.reset();
     // Storage manager does not own the array schema for remote arrays.
     array_schema_latest_.reset();
   } else {
@@ -415,16 +449,28 @@ Status Array::close() {
     } else if (query_type_ == QueryType::DELETE) {
       RETURN_NOT_OK(storage_manager_->array_close_for_deletes(this));
     } else {
-      return LOG_STATUS(
-          Status_ArrayError("Error closing array; Unsupported query type."));
+      array_schema_latest_.reset();
+      if (query_type_ == QueryType::READ) {
+        st = storage_manager_->array_close_for_reads(this);
+        if (!st.ok())
+          throw StatusException(st);
+      } else {
+        st = storage_manager_->array_close_for_writes(this);
+        if (!st.ok())
+          throw StatusException(st);
+      }
     }
+
+    array_schemas_all_.clear();
+    metadata_.clear();
+    metadata_loaded_ = false;
+
+  } catch (std::exception& e) {
+    is_opening_or_closing_ = false;
+    throw Status_ArrayError(e.what());
   }
 
-  array_schemas_all_.clear();
-  metadata_.clear();
-  metadata_loaded_ = false;
-  set_array_closed();
-
+  is_opening_or_closing_ = false;
   return Status::Ok();
 }
 
@@ -432,7 +478,8 @@ bool Array::is_empty() const {
   return fragment_metadata_.empty();
 }
 
-bool Array::is_open() const {
+bool Array::is_open() {
+  std::lock_guard<std::mutex> lock(mtx_);
   return is_open_;
 }
 
@@ -1132,6 +1179,13 @@ bool Array::consolidation_with_timestamps_config_enabled() const {
 
 void Array::set_array_open() {
   std::lock_guard<std::mutex> lock(mtx_);
+  if (is_opening_or_closing_) {
+    is_opening_or_closing_ = false;
+    throw std::runtime_error(
+        "[Array::set_array_open] "
+        "May not perform simultaneous open or close operations.");
+  }
+  is_opening_or_closing_ = true;
   /**
    * Note: there is no danger in passing *this here;
    * only the pointer value is used and nothing is called on the Array objects.
@@ -1143,6 +1197,19 @@ void Array::set_array_open() {
 
 void Array::set_array_closed() {
   std::lock_guard<std::mutex> lock(mtx_);
+
+  /* Note: if the opening process is interrupted, the array must be closed. */
+  if (is_opening_or_closing_) {
+    is_opening_or_closing_ = false;
+    if (!is_open_) {
+      throw std::runtime_error(
+          "[Array::set_array_closed] "
+          "May not perform simultaneous open or close operations.");
+    }
+  } else {
+    is_opening_or_closing_ = true;
+  }
+
   /* Note: the Sentry object will also be released upon Array destruction. */
   consistency_sentry_.reset();
   is_open_ = false;

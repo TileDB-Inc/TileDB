@@ -84,7 +84,7 @@ class WhiteboxConsistencyController : public ConsistencyController {
   }
 
   size_t registry_size() {
-    return ConsistencyController::registry_size();
+    return ConsistencyController::array_registry_.size();
   }
 
   tdb_unique_ptr<Array> open_array(const URI uri, StorageManager* sm) {
