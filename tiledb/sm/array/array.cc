@@ -177,7 +177,6 @@ Status Array::open_without_fragments(
           array_uri_,
           0,
           UINT64_MAX,
-          consolidation_with_timestamps_config_enabled(),
           ArrayDirectoryMode::SCHEMA_ONLY);
 
       auto&& [st, array_schema, array_schemas] =
@@ -326,8 +325,7 @@ Status Array::open(
           storage_manager_->compute_tp(),
           array_uri_,
           timestamp_start_,
-          timestamp_end_opened_at_,
-          consolidation_with_timestamps_config_enabled());
+          timestamp_end_opened_at_);
 
       auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
           storage_manager_->array_open_for_reads(this);
@@ -344,7 +342,6 @@ Status Array::open(
           array_uri_,
           timestamp_start_,
           timestamp_end_opened_at_,
-          consolidation_with_timestamps_config_enabled(),
           ArrayDirectoryMode::SCHEMA_ONLY);
 
     auto&& [st, array_schema_latest] =
