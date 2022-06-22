@@ -44,9 +44,9 @@ namespace tiledb::sm::utils::time {
 
 uint64_t timestamp_now_ms() {
 #ifdef _WIN32
-  struct _timeb tb;
-  memset(&tb, 0, sizeof(struct _timeb));
-  _ftime_s(&tb);
+  struct __timeb64 tb;
+  memset(&tb, 0, sizeof(tb));
+  _ftime64_s(&tb);
   return static_cast<uint64_t>(tb.time * 1000L + tb.millitm);
 #else
   struct timeval tp;
