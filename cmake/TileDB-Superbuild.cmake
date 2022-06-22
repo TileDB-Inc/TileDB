@@ -207,7 +207,6 @@ find_package(Doxygen)
 if(DOXYGEN_FOUND)
   file(GLOB_RECURSE TILEDB_C_API_HEADERS "*_external.h")
   list(APPEND TILEDB_C_API_HEADERS
-      "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/external_common.h"
       "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h"
   )
   file(GLOB TILEDB_CPP_API_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/cpp_api/*.h")
