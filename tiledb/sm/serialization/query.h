@@ -52,6 +52,7 @@ class Array;
 class Buffer;
 class BufferList;
 class Query;
+class GlobalOrderWriter;
 
 enum class SerializationType : uint8_t;
 
@@ -192,18 +193,29 @@ Status query_est_result_size_deserialize(
     bool clientside,
     const Buffer& serialized_buffer);
 
-#ifdef TILEDB_SERIALIZATION
-Status condition_from_capnp(
-    const capnp::Condition::Reader& condition_reader,
-    QueryCondition* const condition);
+Status global_write_state_to_capnp(
+    const GlobalOrderWriter::GlobalWriteState& write_state,
+    capnp::GlobalWriteState::Builder* state_builder);
 
-Status condition_to_capnp(
-    const QueryCondition& condition,
-    capnp::Condition::Builder* condition_builder);
+Status global_write_state_from_capnp(
+    const capnp::GlobalWriteState::Builder& state_reader,
+    GlobalOrderWriter::GlobalWriteState* write_state);
+
+Status global_write_state_from_capnp(
+    const capnp::GlobalWriteState::Builder& state_reader,
+    GlobalOrderWriter::GlobalWriteState* write_state) {
+#ifdef TILEDB_SERIALIZATION
+  Status condition_from_capnp(
+      const capnp::Condition::Reader& condition_reader,
+      QueryCondition* const condition);
+
+  Status condition_to_capnp(
+      const QueryCondition& condition,
+      capnp::Condition::Builder* condition_builder);
 #endif
 
 }  // namespace serialization
+}  // namespace serialization
 }  // namespace sm
-}  // namespace tiledb
 
 #endif  // TILEDB_SERIALIZATION_QUERY_H

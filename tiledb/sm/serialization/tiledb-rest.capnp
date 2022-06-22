@@ -324,6 +324,9 @@ struct Writer {
 
   stats @5 :Stats;
   # Stats object
+
+  globalWriteState @6 :GlobalWriteState;
+  # All the state necessary for global writes to work in TileDB Cloud
 }
 
 struct SubarrayRanges {
@@ -750,4 +753,63 @@ struct GroupCreate {
   # Config
 
   groupDetails @1 :GroupCreateDetails $Json.name("group_details");
+}
+
+struct GlobalWriteState {
+  cellsWritten @0 :MapUInt64;
+  # number of cells written for each attribute/dimension
+
+  fragMeta @1 :FragmentMetadata;
+  # metadata of the global write fragment
+
+  lastCellCoords @2 :SingleCoord;
+  # the last cell written;
+
+  lastHilbertValue @3 :UInt64;
+  # last hilbert value written
+}
+
+struct SingleCoord {
+  coords @0 :List(List(UInt8));
+  # coordinate data per dimension
+
+  sizes @1 :List(UInt64);
+  # sizes of data per dimension
+
+  singleOffset @2 :List(UInt64);
+  # offsets buffer for a var sized  attribute
+}
+
+struct FragmentMetadata {
+  fileSizes @0 :List(Uint64);
+  fileVarSizes @1 :List(Uint64);
+  fileValiditySizes @2 :List(Uint64);
+  fragmentUri @3 :Text;
+  hasTimestamps @4 :Bool;
+  sparseTileNum @5 :Uint64;
+  tileIndexBase@6 :Uint64;
+  tileOffsets @7 :List(List(UInt64));
+  tileVarOffsets @8 :List(List(UInt64));
+  tileVarSizes @9 :List(List(UInt64));
+  tileValidityOffsets @10 :List(List(UInt64));
+  tileMinBuffer @11 :List(List(UInt8));
+  tileMinVarBuffer @12 :List(Data);
+  tileMaxBuffer @13 :List(List(UInt8));
+  tileMaxVarBuffer @14 :List(Data);
+  tileSums @15 :List(List(UInt8));
+  tileNullCounts @16 :List(List(UInt64));
+  fragmentMins @17 :List(List(UInt8));
+  fragmentMaxs @18 :List(List(UInt8));
+  fragmentSums @19 :List(Uint64);
+  fragmentNullCounts @20 :List(Uint64);
+  version @21 :Uint32;
+  timestampRange @22 :List(Uint64);
+  # A pair of timestamps for fragment
+
+  lastTileCellNum @23 :Uint64;
+
+  nonEmptyDomain @24 :NonEmptyDomainList;
+  # non empty domain
+
+  rtree @25 :Data;
 }
