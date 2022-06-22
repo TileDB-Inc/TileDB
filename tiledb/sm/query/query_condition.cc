@@ -536,26 +536,19 @@ void QueryCondition::apply_ast_node(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
-  bool var_size = false, nullable = false;
-
-  // Initialize to timestamps type.
-  Datatype type = Datatype::UINT64;
   std::string node_field_name = node->get_field_name();
+
+  const auto nullable = array_schema.is_nullable(node_field_name);
+  const auto var_size = array_schema.var_size(node_field_name);
+  const auto type = array_schema.type(node_field_name);
+
   ByteVecValue fill_value;
   if (node_field_name != constants::timestamps) {
-    if (array_schema.is_dim(node_field_name)) {
-      const auto dim_ptr = array_schema.dimension_ptr(node_field_name);
-      var_size = dim_ptr->var_size();
-      type = dim_ptr->type();
-    } else {
+    if (!array_schema.is_dim(node_field_name)) {
       const auto attribute = array_schema.attribute(node_field_name);
       if (!attribute) {
         throw std::runtime_error("Unknown attribute " + node_field_name);
       }
-
-      var_size = attribute->var_size();
-      nullable = attribute->nullable();
-      type = attribute->type();
       fill_value = attribute->fill_value();
     }
   }

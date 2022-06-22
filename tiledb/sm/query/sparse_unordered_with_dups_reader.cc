@@ -168,7 +168,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
     return Status::Ok();
   }
 
-  // Load initial data, if not loaded already.
+  // Load initial data, if not loaded already. Coords are only included if the
+  // subarray is set.
   RETURN_NOT_OK(load_initial_data(subarray_.is_set()));
 
   // Attributes names to process.

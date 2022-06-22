@@ -61,32 +61,12 @@ bool ASTNodeVal::is_backwards_compatible() const {
 
 Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   const uint64_t condition_value_size = condition_value_data_.size();
-  const bool is_dim = array_schema.is_dim(field_name_);
 
-  bool nullable = false;
-  bool var_size = false;
-  auto type = Datatype::ANY;
-  unsigned cell_val_num = 0;
-  size_t cell_size = 0;
-  if (is_dim) {
-    if (array_schema.dense()) {
-      return Status_QueryConditionError(
-          "Value node field name is not an attribute " + field_name_);
-    }
-
-    const auto dim_ptr = array_schema.dimension_ptr(field_name_);
-    var_size = dim_ptr->var_size();
-    type = dim_ptr->type();
-    cell_val_num = dim_ptr->cell_val_num();
-    cell_size = dim_ptr->coord_size();
-  } else {
-    const auto attribute = array_schema.attribute(field_name_);
-    nullable = attribute->nullable();
-    var_size = attribute->var_size();
-    type = attribute->type();
-    cell_val_num = attribute->cell_val_num();
-    cell_size = attribute->cell_size();
-  }
+  const auto nullable = array_schema.is_nullable(field_name_);
+  const auto var_size = array_schema.var_size(field_name_);
+  const auto type = array_schema.type(field_name_);
+  const auto cell_size = array_schema.cell_size(field_name_);
+  const auto cell_val_num = array_schema.cell_val_num(field_name_);
 
   // Ensure that null value can only be used with equality operators.
   if (condition_value_view_.content() == nullptr) {
