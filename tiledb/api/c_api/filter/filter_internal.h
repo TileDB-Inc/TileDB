@@ -74,13 +74,6 @@
  * Changing this will not require changes to deserialization, either from
  * storage or from network. These functions call `make_shared` with constructor
  * arguments (C.41-complaint).
- *
- * This class derives from `api::Handle`, as is the expected pattern. What's
- * less expected is that its template argument is `unique_ptr<Filter>`. This
- * avoid manual deallocation. It provides a measure of exception safety,
- * although not as much as using `make_unique` at the points of origin would.
- * `Filter::clone` is one of those points, so any change should just go straight
- * to `shared_ptr` as above.
  */
 struct tiledb_filter_handle_t
     : public tiledb::api::CAPIHandle<tiledb_filter_handle_t> {

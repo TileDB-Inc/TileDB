@@ -203,9 +203,16 @@ endif()
 # Doxygen documentation
 ###########################################################
 
+#
+# The C API files
+
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
-  set(TILEDB_C_API_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h")
+  file(GLOB TILEDB_C_API_HEADERS "api/c_api/*/*_external.h")
+  list(APPEND TILEDB_C_API_HEADERS
+      "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/external_common.h"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h"
+  )
   file(GLOB TILEDB_CPP_API_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/cpp_api/*.h")
   set(TILEDB_API_HEADERS ${TILEDB_C_API_HEADERS} ${TILEDB_CPP_API_HEADERS})
   add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
