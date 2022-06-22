@@ -341,6 +341,7 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
+      const bool nullable,
       CombinationOp combination_op,
       span<uint8_t> result_buffer) const;
 
@@ -364,6 +365,7 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       const bool var_size,
+      const bool nullable,
       CombinationOp combination_op,
       span<uint8_t> result_buffer) const;
 
@@ -432,6 +434,7 @@ class QueryCondition {
       const tdb_unique_ptr<ASTNode>& node,
       ResultTile& result_tile,
       const bool var_size,
+      const bool nullable,
       CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
 
@@ -449,6 +452,7 @@ class QueryCondition {
       const tdb_unique_ptr<ASTNode>& node,
       ResultTile& result_tile,
       const bool var_size,
+      const bool nullable,
       CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
 
