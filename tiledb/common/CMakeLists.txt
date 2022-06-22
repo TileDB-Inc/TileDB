@@ -61,7 +61,7 @@ add_library(baseline OBJECT
 )
 find_package(Spdlog_EP REQUIRED)
 target_link_libraries(baseline PUBLIC spdlog::spdlog)
-target_link_libraries(baseline PRIVATE common)
+target_link_libraries(baseline PUBLIC common)
 #
 # Test-compile of object library ensures link-completeness
 #
@@ -85,3 +85,23 @@ target_link_libraries(compile_stringx PRIVATE stringx)
 target_sources(compile_stringx PRIVATE
     test/compile_stringx_main.cc $<TARGET_OBJECTS:stringx>
 )
+
+if (TILEDB_TESTS)
+  find_package(Catch_EP REQUIRED)
+  add_executable(unit_experimental EXCLUDE_FROM_ALL)
+  target_link_libraries(unit_experimental
+    PRIVATE baseline
+    PUBLIC Catch2::Catch2
+  )
+  target_sources(unit_experimental
+    PUBLIC
+      test/main.cc
+      $<IF:$<BOOL:${TILEDB_EXPERIMENTAL_FEATURES}>,
+        test/unit_is_experimental.cc,
+        test/unit_is_not_experimental.cc>
+  )
+  add_test(
+    NAME "unit_experimental"
+    COMMAND $<TARGET_FILE:unit_experimental>
+  )
+endif()
