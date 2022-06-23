@@ -210,7 +210,7 @@
     /** Max window length for positive-delta encoding. Type: `uint32_t`. */
     TILEDB_FILTER_OPTION_ENUM(POSITIVE_DELTA_MAX_WINDOW) = 2,
     /** Bit width for float-scaling filter. Type: uint64_t. */
-    TILEDB_FILTER_OPTION_ENUM(SCALE_FLOAT_BITWIDTH) = 3,
+    TILEDB_FILTER_OPTION_ENUM(SCALE_FLOAT_BYTEWIDTH) = 3,
     /** Scale factor for float-scaling filter. Type: float64. */
     TILEDB_FILTER_OPTION_ENUM(SCALE_FLOAT_FACTOR) = 4,
     /** Offset for float-scaling filter. Type: float64. */

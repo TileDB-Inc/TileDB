@@ -379,8 +379,8 @@ const std::string filter_option_bit_width_max_window_str =
 const std::string filter_option_positive_delta_max_window_str =
     "POSITIVE_DELTA_MAX_WINDOW";
 
-/** The string representation for FilterOption type scale_float_bitwidth. */
-const std::string filter_option_scale_float_bitwidth = "SCALE_FLOAT_BITWIDTH";
+/** The string representation for FilterOption type scale_float_bytewidth. */
+const std::string filter_option_scale_float_bytewidth = "SCALE_FLOAT_BYTEWIDTH";
 
 /** The string representation for FilterOption type scale_float_factor. */
 const std::string filter_option_scale_float_factor = "SCALE_FLOAT_FACTOR";

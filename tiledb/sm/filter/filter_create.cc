@@ -175,9 +175,10 @@ tiledb::sm::FilterCreate::deserialize(
       if (!st.ok()) {
         return {st, nullopt};
       } else {
-        return {Status::Ok(),
-                make_shared<FloatScalingFilter>(
-                    HERE(), metadata.b, metadata.s, metadata.o)};
+        return {
+            Status::Ok(),
+            make_shared<FloatScalingFilter>(
+                HERE(), metadata.byte_width, metadata.scale, metadata.offset)};
       }
     };
     default:
