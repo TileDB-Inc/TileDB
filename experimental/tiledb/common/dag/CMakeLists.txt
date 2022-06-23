@@ -1,10 +1,10 @@
 #
-# experimental/tiledb/CMakeLists.txt
+# experimental/tiledb/common/dag/CMakeLists.txt
 #
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-include(common NO_POLICY_SCOPE)
 
-add_subdirectory(common)
+# add_subdirectory(data_block)
+# add_subdirectory(edge)
+add_subdirectory(execution)
+# add_subdirectory(graph)
+# add_subdirectory(node)
+add_subdirectory(ports)
+add_subdirectory(utils)
