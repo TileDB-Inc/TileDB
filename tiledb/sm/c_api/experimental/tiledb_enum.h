@@ -1,5 +1,5 @@
-/**
- * @file compile_array_schema_main.cc
+/*
+ * @file tiledb_enum.h
  *
  * @section LICENSE
  *
@@ -24,13 +24,21 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file contains the TileDB C API enum definitions for experimental enums.
  */
 
-#include "../array_schema.h"
-#include "../dimension_label_schema.h"
-
-int main() {
-  (void)sizeof(tiledb::sm::ArraySchema);
-  (void)sizeof(tiledb::sm::DimensionLabelSchema);
-  return 0;
-}
+// clang-format is disabled on the first enum so that we can manually indent it
+// properly.
+// clang-format off
+#ifdef TILEDB_LABEL_ORDER_ENUM
+    /** Ordered dimension label with increasing values. */
+    TILEDB_LABEL_ORDER_ENUM(INCREASING_LABELS) = 0,
+    /** Ordered dimension label with decreasing values. */
+    TILEDB_LABEL_ORDER_ENUM(DECREASING_LABELS) = 1,
+    /** Unordered dimension label. */
+    TILEDB_LABEL_ORDER_ENUM(UNORDERED_LABELS) = 2,
+#endif
+    // clang-format on

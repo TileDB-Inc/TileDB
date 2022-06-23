@@ -246,6 +246,12 @@ if (TILEDB_ARROW_TESTS)
   )
 endif()
 
+if (TILEDB_EXPERIMENTAL_FEATURES)
+  list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/test-capi-dimension_labels.cc
+  )
+endif()
+
 if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
 endif()
