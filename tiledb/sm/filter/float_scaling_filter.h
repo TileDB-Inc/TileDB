@@ -55,10 +55,14 @@ class FloatScalingFilter : public Filter {
     uint64_t b;  // bit width
   };
   /**
-   * Constructor.
+   * Constructor. Default settings for Float Scaling Filter are
+   * scale = 1.0f, offset = 0.0f, and bit_width = 8.
    */
   FloatScalingFilter()
-      : Filter(FilterType::FILTER_SCALE_FLOAT) {
+      : Filter(FilterType::FILTER_SCALE_FLOAT)
+      , scale_(1.0f)
+      , offset_(0.0f)
+      , bit_width_(8) {
   }
 
   FloatScalingFilter(uint64_t bit_width, double scale, double offset)
