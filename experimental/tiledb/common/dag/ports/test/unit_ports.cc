@@ -79,12 +79,6 @@ void test_connections(source_type& pn, sink_type& cn) {
 TEST_CASE("Ports: Test exceptions", "[ports]") {
   auto pn = Source<size_t, NullStateMachine<std::optional<size_t>>>{};
   auto cn = Sink<size_t, NullStateMachine<std::optional<size_t>>>{};
-
-  bind(pn, cn);
-
-  SECTION("Invalid bind") {
-    CHECK_THROWS(bind(pn, cn));
-  }
 }
 
 /**
@@ -446,4 +440,86 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
   }
 
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
+=======
+  SECTION("Invalid bind, one side") {
+    pn.unbind();
+    CHECK_THROWS(bind(pn, cn));
+  }
+  SECTION("Invalid bind, one side") {
+    cn.unbind();
+    CHECK_THROWS(bind(pn, cn));
+  }
+}
+
+TEST_CASE("Ports: Manual set source port values", "[ports]") {
+  Source<size_t> src;
+  Sink<size_t> snk;
+
+  SECTION("set source in bound pair") {
+    bind(src, snk);
+    CHECK(src.try_set(5) == true);
+  }
+  SECTION("set source in unbound src") {
+    CHECK(src.try_set(5) == false);
+  }
+  SECTION("set source that has value") {
+    bind(src, snk);
+    CHECK(src.try_set(5) == true);
+    CHECK(src.try_set(5) == false);
+  }
+}
+
+TEST_CASE("Ports: Manual retrieve sink values", "[ports]") {
+  Source<size_t> src;
+  Sink<size_t> snk;
+
+  SECTION("set source in bound pair") {
+    bind(src, snk);
+    CHECK(snk.retrieve().has_value() == false);
+  }
+}
+
+TEST_CASE("Ports: Manual send and receive", "[ports]") {
+  Source<size_t> src;
+  Sink<size_t> snk;
+
+  bind(src, snk);
+  CHECK(src.try_set(5) == true);
+  CHECK(snk.retrieve().has_value() == false);
+
+  SECTION("transfer value to snk") {
+    CHECK(src.try_get() == true);
+  }
+  SECTION("transfer value to snk, check snk has value") {
+    CHECK(src.try_get() == true);
+    CHECK(snk.retrieve().has_value() == true);
+  }
+  SECTION("transfer value to snk, check snk value") {
+    CHECK(src.try_get() == true);
+    CHECK(snk.retrieve() == 5);
+  }
+  SECTION("transfer value from src") {
+    CHECK(snk.try_put() == true);
+  }
+  SECTION("transfer value to snk, check snk has value") {
+    CHECK(snk.try_put() == true);
+    CHECK(snk.retrieve().has_value() == true);
+  }
+  SECTION("transfer value to snk, check snk value") {
+    CHECK(snk.try_put() == true);
+    CHECK(snk.retrieve() == 5);
+  }
+}
+
+TEST_CASE("Ports: Test construct proto producer_node", "[ports]") {
+  auto gen = generator<size_t>(10UL);
+  auto pn = producer_node<size_t>(std::move(gen));
+}
+
+TEST_CASE("Ports: Test construct proto consumer_node", "[ports]") {
+  std::vector<size_t> v;
+  auto con = consumer<std::back_insert_iterator<std::vector<size_t>>>(
+      std::back_insert_iterator<std::vector<size_t>>(v));
+  auto cn = consumer_node<size_t>(std::move(con));
+>>>>>>> d1199205b (WIP re-add dag folder clean [skip ci])
 }
