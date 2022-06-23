@@ -58,24 +58,17 @@ add_subdirectory(sm)
 add_subdirectory(storage_format)
 
 ############################################################
-# Source files
+# Header files
 ############################################################
+# The headers in this section are those to be installed in the base include
+# directory, not in subdirectories of the base. The other include files are
+# specified in the installation section
 
 # The core header directory.
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 # List of API headers (to be installed)
-set(TILEDB_PUBLIC_HEADERS
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/api/c_api/external_common.h
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/api/c_api/config/config_external.h
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/api/c_api/context/context_external.h
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/api/c_api/error/error_external.h
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/api/c_api/filter/filter_external.h
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.h
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_enum.h
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_version.h
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_experimental.h
-)
+set(TILEDB_PUBLIC_HEADERS ${TILEDB_C_API_FILENAME_HEADERS})
 
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_PUBLIC_HEADERS
@@ -121,6 +114,10 @@ if (TILEDB_CPP_API)
 else()
   message(STATUS "TileDB C++ API is not built.")
 endif()
+
+############################################################
+# Source files
+############################################################
 
 # List of all core source files
 set(TILEDB_CORE_SOURCES
@@ -1026,6 +1023,21 @@ install(
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
+
+# Install each of the RELATIVE headers to the subdirectory it belongs in
+# TODO: Change to use `FILE_SET` after upgrade to CMake 3.23
+foreach(HEADER ${TILEDB_C_API_RELATIVE_HEADERS})
+  cmake_path(RELATIVE_PATH HEADER
+      BASE_DIRECTORY ${TILEDB_C_API_RELATIVE_HEADER_BASE}
+      OUTPUT_VARIABLE HEADER_STRIPPED
+      )
+  cmake_path(REMOVE_FILENAME HEADER_STRIPPED OUTPUT_VARIABLE HEADER_RELATIVE)
+  message("install( FILE ${HEADER} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${HEADER_RELATIVE})")
+  install(
+      FILES ${HEADER}
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${HEADER_RELATIVE}
+  )
+endforeach()
 
 # Path to generated cmake file
 set(PROJECT_CONFIG "${CMAKE_CURRENT_BINARY_DIR}/TileDBConfig.cmake")
