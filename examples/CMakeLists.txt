@@ -39,29 +39,32 @@ else()
   add_compile_options(-Wno-deprecated-declarations)
 endif()
 
-# The examples pretend as if they use an installed TileDB, e.g.
-# '#include <tiledb/tiledb.h>'. So just create a 'tiledb' directory for the
-# headers and copy them over from the core source tree.
-add_custom_target(tiledb-header-dir
-  COMMAND ${CMAKE_COMMAND} -E make_directory
-  "${CMAKE_CURRENT_BINARY_DIR}/tiledb"
-)
+############################################################
+# Include directory
+############################################################
+# The examples assume they use an installed TileDB, for example:
+#     '#include <tiledb/tiledb.h>'
+#
+# FILENAME headers copied to `${BASE}/tiledb`
+# - All C++ headers use the FILENAME convention
+# RELATIVE headers copied to `${BASE}`
+
+set(TILEDB_EXAMPLES_INCLUDE_BASE "${CMAKE_CURRENT_BINARY_DIR}/include")
 
 ############################################################
 # C API
 ############################################################
 
-# Copy the headers to the 'tiledb/' directory
 foreach(HEADER ${TILEDB_C_API_FILENAME_HEADERS})
   cmake_path(GET HEADER FILENAME HEADER_STRIPPED)
-  configure_file(${HEADER} ${CMAKE_CURRENT_BINARY_DIR}/include/tiledb/${HEADER_STRIPPED} COPYONLY)
+  configure_file(${HEADER} ${TILEDB_EXAMPLES_INCLUDE_BASE}/tiledb/${HEADER_STRIPPED} COPYONLY)
 endforeach()
 foreach(HEADER ${TILEDB_C_API_RELATIVE_HEADERS})
   cmake_path(RELATIVE_PATH HEADER
       BASE_DIRECTORY ${TILEDB_C_API_RELATIVE_HEADER_BASE}
       OUTPUT_VARIABLE HEADER_STRIPPED
   )
-  configure_file(${HEADER} ${CMAKE_CURRENT_BINARY_DIR}/include/${HEADER_STRIPPED} COPYONLY)
+  configure_file(${HEADER} ${TILEDB_EXAMPLES_INCLUDE_BASE}/${HEADER_STRIPPED} COPYONLY)
 endforeach()
 
 # Add the C examples
@@ -83,7 +86,7 @@ if (TILEDB_CPP_API)
       REPLACE "^${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/cpp_api/" ""
       HEADER_STRIPPED ${HEADER}
     )
-    configure_file(${HEADER} ${CMAKE_CURRENT_BINARY_DIR}/include/tiledb/${HEADER_STRIPPED} COPYONLY)
+    configure_file(${HEADER} ${TILEDB_EXAMPLES_INCLUDE_BASE}/tiledb/${HEADER_STRIPPED} COPYONLY)
   endforeach()
 
   # Add the C++ examples
@@ -91,12 +94,11 @@ if (TILEDB_CPP_API)
 endif()
 
 ############################################################
-# Custom target
+# `examples` target
 ############################################################
+# The 'examples' target builds all examples.
 
-# Add custom target 'examples' that builds all examples.
-add_custom_target(examples DEPENDS tiledb-header-dir examples_c)
-
+add_custom_target(examples DEPENDS examples_c)
 if (TILEDB_CPP_API)
   add_dependencies(examples examples_cpp)
 endif()

@@ -30,8 +30,8 @@
  * This file defines C API functions for the filter section.
  */
 
-#include "filter_external.h"
-#include "filter_internal.h"
+#include "filter_api_external.h"
+#include "filter_api_internal.h"
 #include "tiledb/sm/c_api/api_exception_safety.h"
 
 /* ********************************* */

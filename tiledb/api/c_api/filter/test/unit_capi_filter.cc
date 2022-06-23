@@ -30,7 +30,7 @@
 
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
-#include "../filter_external.h"
+#include "../filter_api_external.h"
 
 TEST_CASE("CAPI Filter: null") {
 }

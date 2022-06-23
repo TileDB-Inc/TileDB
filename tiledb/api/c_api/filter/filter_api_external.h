@@ -33,8 +33,8 @@
 #ifndef TILEDB_CAPI_FILTER_EXTERNAL_H
 #define TILEDB_CAPI_FILTER_EXTERNAL_H
 
-#include "../context/context_external.h"
-#include "../external_common.h"
+#include "../api_external_common.h"
+#include "../context/context_api_external.h"
 
 #ifdef __cplusplus
 extern "C" {

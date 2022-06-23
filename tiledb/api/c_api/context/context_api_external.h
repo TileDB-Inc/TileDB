@@ -33,7 +33,7 @@
 #ifndef TILEDB_CAPI_CONTEXT_EXTERNAL_H
 #define TILEDB_CAPI_CONTEXT_EXTERNAL_H
 
-#include "../external_common.h"
+#include "../api_external_common.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -276,12 +276,13 @@ set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER_DIR}/${TILEDB_EXPORT_HEADER_NAM
 # C API include files
 ############################################################
 #
-# An explicit list of C API headers files is needed in more than one place
-# - `tiledb` (core library) uses the list for its installation target
-# - `examples` does a manual installation with the list
+# Explicit lists of C API headers are needed in more than one place
+# - `tiledb` (core library) uses the lists for its installation target
+# - `examples` does a manual installation with the lists
 #
-# FILENAME headers are copied only as their file name
-# RELATIVE headers are copied as their path from RELATIVE_HEADER_ROOT
+# FILENAME headers are copied only as their file name to ${INCLUDE_BASE}/tiledb
+# RELATIVE headers are copied as their path from RELATIVE_HEADER_BASE to ${INCLUDE_BASE}
+# In all cases the included path begins with `tiledb/`
 
 list(APPEND TILEDB_C_API_FILENAME_HEADERS
     "${TILEDB_EXPORT_HEADER}"
@@ -291,11 +292,11 @@ list(APPEND TILEDB_C_API_FILENAME_HEADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb_experimental.h"
 )
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/external_common.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/config/config_external.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/context/context_external.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/error/error_external.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/filter/filter_external.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/context/context_api_external.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
 )
 set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
 

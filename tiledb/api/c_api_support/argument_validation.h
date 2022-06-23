@@ -34,7 +34,7 @@
 #ifndef TILEDB_CAPI_SUPPORT_ARGUMENT_VALIDATION_H
 #define TILEDB_CAPI_SUPPORT_ARGUMENT_VALIDATION_H
 
-#include "tiledb/api/c_api/context/context_internal.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/sm/storage_manager/context.h"
 

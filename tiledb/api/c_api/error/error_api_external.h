@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/config/config_external.h
+ * @file tiledb/api/c_api/error/error_external.h
  *
  * @section LICENSE
  *
@@ -30,27 +30,22 @@
  * This file declares the C API for TileDB.
  */
 
-#ifndef TILEDB_CAPI_CONFIG_EXTERNAL_H
-#define TILEDB_CAPI_CONFIG_EXTERNAL_H
+#ifndef TILEDB_CAPI_ERROR_EXTERNAL_H
+#define TILEDB_CAPI_ERROR_EXTERNAL_H
 
-#include "../external_common.h"
+#include "../api_external_common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * C API carrier for a TileDB configuration
+ * C API carrier for a TileDB error
  */
-typedef struct tiledb_config_t tiledb_config_t;
-
-/**
- * C API carrier for an iterator over a TileDB configuration
- */
-typedef struct tiledb_config_iter_t tiledb_config_iter_t;
+typedef struct tiledb_error_t tiledb_error_t;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // TILEDB_CAPI_CONFIG_EXTERNAL_H
+#endif  // TILEDB_CAPI_ERROR_EXTERNAL_H

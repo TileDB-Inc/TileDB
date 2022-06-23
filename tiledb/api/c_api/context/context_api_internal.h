@@ -33,10 +33,10 @@
 #ifndef TILEDB_CAPI_CONTEXT_INTERNAL_H
 #define TILEDB_CAPI_CONTEXT_INTERNAL_H
 
-#include "../config/config_external.h"
-#include "../error/error_external.h"
-#include "../external_common.h"
-#include "context_external.h"
+#include "../api_external_common.h"
+#include "../config/config_api_external.h"
+#include "../error/error_api_external.h"
+#include "context_api_external.h"
 #include "tiledb/sm/storage_manager/context.h"
 
 /**

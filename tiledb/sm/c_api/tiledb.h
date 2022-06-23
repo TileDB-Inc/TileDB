@@ -50,15 +50,15 @@
 /*
  * Common definitions for export, noexcept, etc.
  */
-#include "tiledb/api/c_api/external_common.h"
+#include "tiledb/api/c_api/api_external_common.h"
 
 /*
  * API sections
  */
-#include "tiledb/api/c_api/config/config_external.h"
-#include "tiledb/api/c_api/context/context_external.h"
-#include "tiledb/api/c_api/error/error_external.h"
-#include "tiledb/api/c_api/filter/filter_external.h"
+#include "tiledb/api/c_api/config/config_api_external.h"
+#include "tiledb/api/c_api/context/context_api_external.h"
+#include "tiledb/api/c_api/error/error_api_external.h"
+#include "tiledb/api/c_api/filter/filter_api_external.h"
 
 #include <stdint.h>
 #include <stdio.h>

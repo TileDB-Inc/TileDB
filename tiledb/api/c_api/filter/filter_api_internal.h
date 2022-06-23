@@ -34,7 +34,7 @@
 #define TILEDB_CAPI_FILTER_INTERNAL_H
 
 #include <memory>
-#include "filter_external.h"
+#include "filter_api_external.h"
 #include "tiledb/api/c_api_support/argument_validation.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"

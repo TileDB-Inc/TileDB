@@ -34,7 +34,7 @@
 #ifndef TILEDB_CAPI_HELPERS_H
 #define TILEDB_CAPI_HELPERS_H
 
-#include "tiledb/api/c_api/filter/filter_internal.h"
+#include "tiledb/api/c_api/filter/filter_api_internal.h"
 #include "tiledb/api/c_api_support/argument_validation.h"
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/sm/c_api/tiledb.h"

@@ -26,7 +26,7 @@
  * THE SOFTWARE.
  */
 
-#include "../filter_internal.h"
+#include "../filter_api_internal.h"
 
 int main() {
   (void)sizeof(tiledb_filter_handle_t);
