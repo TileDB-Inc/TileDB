@@ -61,13 +61,12 @@ bool ASTNodeVal::is_backwards_compatible() const {
 
 Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   const uint64_t condition_value_size = condition_value_data_.size();
-  const auto attribute = array_schema.attribute(field_name_);
-  // Check that the field_name represents an attribute in the array
-  // schema corresponding to this QueryCondition object.
-  if (!attribute) {
-    return Status_QueryConditionError(
-        "Value node field name is not an attribute " + field_name_);
-  }
+
+  const auto nullable = array_schema.is_nullable(field_name_);
+  const auto var_size = array_schema.var_size(field_name_);
+  const auto type = array_schema.type(field_name_);
+  const auto cell_size = array_schema.cell_size(field_name_);
+  const auto cell_val_num = array_schema.cell_val_num(field_name_);
 
   // Ensure that null value can only be used with equality operators.
   if (condition_value_view_.content() == nullptr) {
@@ -78,9 +77,8 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
     // Ensure that an attribute that is marked as nullable
     // corresponds to a type that is nullable.
-    if ((!attribute->nullable()) &&
-        (attribute->type() != Datatype::STRING_ASCII &&
-         attribute->type() != Datatype::CHAR)) {
+    if ((!nullable) &&
+        (type != Datatype::STRING_ASCII && type != Datatype::CHAR)) {
       return Status_QueryConditionError(
           "Null value can only be used with nullable attributes");
     }
@@ -88,8 +86,7 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
   // Ensure that non-empty attributes are only var-sized for
   // ASCII strings.
-  if (attribute->var_size() && attribute->type() != Datatype::STRING_ASCII &&
-      attribute->type() != Datatype::CHAR &&
+  if (var_size && type != Datatype::STRING_ASCII && type != Datatype::CHAR &&
       condition_value_view_.content() != nullptr) {
     return Status_QueryConditionError(
         "Value node non-empty attribute may only be var-sized for ASCII "
@@ -98,9 +95,8 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   }
 
   // Ensure that non string fixed size attributes store only one value per cell.
-  if (attribute->cell_val_num() != 1 &&
-      attribute->type() != Datatype::STRING_ASCII &&
-      attribute->type() != Datatype::CHAR && (!attribute->var_size())) {
+  if (cell_val_num != 1 && type != Datatype::STRING_ASCII &&
+      type != Datatype::CHAR && (!var_size)) {
     return Status_QueryConditionError(
         "Value node attribute must have one value per cell for non-string "
         "fixed size attributes: " +
@@ -109,19 +105,17 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
   // Ensure that the condition value size matches the attribute's
   // value size.
-  if (attribute->cell_size() != constants::var_size &&
-      attribute->cell_size() != condition_value_size &&
-      !(attribute->nullable() && condition_value_view_.content() == nullptr) &&
-      attribute->type() != Datatype::STRING_ASCII &&
-      attribute->type() != Datatype::CHAR && (!attribute->var_size())) {
+  if (cell_size != constants::var_size && cell_size != condition_value_size &&
+      !(nullable && condition_value_view_.content() == nullptr) &&
+      type != Datatype::STRING_ASCII && type != Datatype::CHAR && (!var_size)) {
     return Status_QueryConditionError(
         "Value node condition value size mismatch: " +
-        std::to_string(attribute->cell_size()) +
+        std::to_string(cell_size) +
         " != " + std::to_string(condition_value_size));
   }
 
   // Ensure that the attribute type is valid.
-  switch (attribute->type()) {
+  switch (type) {
     case Datatype::ANY:
       return Status_QueryConditionError(
           "Value node attribute type may not be of type 'ANY': " + field_name_);
@@ -136,6 +130,7 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
     default:
       break;
   }
+
   return Status::Ok();
 }
 
