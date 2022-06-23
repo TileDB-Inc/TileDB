@@ -3,9 +3,11 @@
 using Json = import "/capnp/compat/json.capnp";
 using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("tiledb::sm::serialization::capnp");
-using Go = import "/go.capnp";
-$Go.package("capnp_models");
-$Go.import("capnp_models");
+
+# ** un-comment below for Go generator use **
+#using Go = import "/go.capnp";
+#$Go.package("capnp_models");
+#$Go.import("capnp_models");
 
 struct DomainArray {
   int8 @0 :List(Int8);
