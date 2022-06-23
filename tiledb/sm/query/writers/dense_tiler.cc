@@ -30,7 +30,7 @@
  * This file implements class DenseTiler.
  */
 
-#include "tiledb/sm/query/dense_tiler.h"
+#include "tiledb/sm/query/writers/dense_tiler.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension.h"

@@ -34,7 +34,7 @@
 #include "tiledb/sm/misc/types.h"
 
 #include "test/src/helpers.h"
-#include "tiledb/sm/query/sparse_index_reader_base.h"
+#include "tiledb/sm/query/readers/sparse_index_reader_base.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"

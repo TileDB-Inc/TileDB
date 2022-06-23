@@ -38,11 +38,11 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
-#include "tiledb/sm/query/dense_tiler.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/strategy_base.h"
+#include "tiledb/sm/query/writers/dense_tiler.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/tile/writer_tile.h"
 

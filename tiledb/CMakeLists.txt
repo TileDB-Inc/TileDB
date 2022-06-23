@@ -209,23 +209,23 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ast/query_ast.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_reader.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_tiler.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/global_order_writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/hilbert_order.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ordered_writer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/legacy/reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/legacy/read_cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader_base.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/result_tile.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/read_cell_slab_iter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_global_order_reader.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_index_reader_base.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_unordered_with_dups_reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/dense_reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/reader_base.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/result_tile.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/sparse_global_order_reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/sparse_index_reader_base.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/sparse_unordered_with_dups_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/strategy_base.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/unordered_writer.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer_base.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/dense_tiler.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/global_order_writer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/ordered_writer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/unordered_writer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/writer_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc

@@ -37,7 +37,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/query/writer_base.h"
+#include "tiledb/sm/query/writers/writer_base.h"
 
 using namespace tiledb::common;
 

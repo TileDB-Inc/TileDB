@@ -38,7 +38,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/query/reader.h"
+#include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/type/range/range.h"
 
 #ifdef _WIN32

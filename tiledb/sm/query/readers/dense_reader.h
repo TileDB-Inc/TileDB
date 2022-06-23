@@ -43,7 +43,7 @@
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
-#include "tiledb/sm/query/reader_base.h"
+#include "tiledb/sm/query/readers/reader_base.h"
 #include "tiledb/sm/subarray/tile_cell_slab_iter.h"
 
 using namespace tiledb::common;
