@@ -24,21 +24,21 @@
 # THE SOFTWARE.
 #
 
-add_executable(unit_handle EXCLUDE_FROM_ALL)
+add_executable(unit_capi_handle EXCLUDE_FROM_ALL)
 find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_handle PUBLIC Catch2::Catch2)
+target_link_libraries(unit_capi_handle PUBLIC Catch2::Catch2)
 
 # Sources for code under test
-target_link_libraries(unit_handle PUBLIC handle)
+target_link_libraries(unit_capi_handle PUBLIC handle)
 
 # Sources for tests
-target_sources(unit_handle PUBLIC
+target_sources(unit_capi_handle PUBLIC
     main.cc
     unit_handle.cc
 )
 
 add_test(
-    NAME "unit_handle"
-    COMMAND $<TARGET_FILE:unit_handle>
+    NAME "unit_capi_handle"
+    COMMAND $<TARGET_FILE:unit_capi_handle>
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )

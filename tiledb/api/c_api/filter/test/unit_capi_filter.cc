@@ -30,7 +30,8 @@
 
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
-#include "../filter_api_external.h"
+//#include "../filter_api_external.h"
+// Disabled until we have a context object library that will allow linking
 
 TEST_CASE("CAPI Filter: null") {
 }
