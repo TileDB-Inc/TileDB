@@ -39,6 +39,8 @@
 
 namespace tiledb::sm::delete_condition::serialize {
 
+enum class NodeType : uint8_t { EXPRESSION = 0, VALUE };
+
 /**
  * Serializes the delete condition.
  *

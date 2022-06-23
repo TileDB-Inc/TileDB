@@ -33,25 +33,25 @@
 
 namespace tiledb::sm::delete_condition::serialize {
 
-size_t get_serialized_condition_size(
+storage_size_t get_serialized_condition_size(
     const tdb_unique_ptr<tiledb::sm::ASTNode>& node) {
   if (node == nullptr) {
     return 0;
   }
 
-  size_t size = sizeof(bool);  // is_expr
+  storage_size_t size = sizeof(bool);  // is_expr
   if (!node->is_expr()) {
     size += sizeof(QueryConditionOp);                 // Query condition op.
-    size += sizeof(size_t);                           // Field name size.
+    size += sizeof(storage_size_t);                   // Field name size.
     size += node->get_field_name().length();          // Field name.
-    size += sizeof(size_t);                           // Value size.
+    size += sizeof(storage_size_t);                   // Value size.
     size += node->get_condition_value_view().size();  // Value.
     return size;
   } else {
     const auto& nodes = node->get_children();
     size += sizeof(QueryConditionCombinationOp);  // Query condition op.
-    size += sizeof(size_t);                       // Children num.
-    for (size_t i = 0; i < nodes.size(); i++) {
+    size += sizeof(storage_size_t);               // Children num.
+    for (storage_size_t i = 0; i < nodes.size(); i++) {
       size += get_serialized_condition_size(nodes[i]);
     }
   }
@@ -62,7 +62,7 @@ size_t get_serialized_condition_size(
 void serialize_delete_condition_impl(
     const tdb_unique_ptr<tiledb::sm::ASTNode>& node,
     std::vector<uint8_t>& buff,
-    size_t& idx) {
+    storage_size_t& idx) {
   if (node == nullptr) {
     return;
   }
@@ -70,7 +70,9 @@ void serialize_delete_condition_impl(
   assert(idx <= buff.size());
 
   // Serialize is_expr.
-  buff[idx++] = node->is_expr();
+  const auto node_type =
+      node->is_expr() ? NodeType::EXPRESSION : NodeType::VALUE;
+  buff[idx++] = static_cast<uint8_t>(node_type);
   if (!node->is_expr()) {
     // Get values.
     const auto op = node->get_op();
@@ -112,7 +114,7 @@ void serialize_delete_condition_impl(
     memcpy(&buff[idx], &nodes_size, sizeof(nodes_size));
     idx += sizeof(nodes_size);
 
-    for (size_t i = 0; i < nodes.size(); i++) {
+    for (storage_size_t i = 0; i < nodes.size(); i++) {
       serialize_delete_condition_impl(nodes[i], buff, idx);
     }
   }
@@ -123,19 +125,19 @@ std::vector<uint8_t> serialize_delete_condition(
   std::vector<uint8_t> ret(
       get_serialized_condition_size(query_condition.ast()));
 
-  size_t size = 0;
+  storage_size_t size = 0;
   serialize_delete_condition_impl(query_condition.ast(), ret, size);
 
   return ret;
 }
 
 tdb_unique_ptr<ASTNode> deserialize_delete_condition_impl(
-    const std::vector<uint8_t>& buff, size_t& idx) {
+    const std::vector<uint8_t>& buff, storage_size_t& idx) {
   assert(idx < buff.size());
 
   // Deserialize is_expr.
-  bool is_expr = buff[idx++];
-  if (!is_expr) {
+  NodeType node_type = static_cast<NodeType>(buff[idx++]);
+  if (node_type == NodeType::VALUE) {
     // Deserialize op.
     auto op = QueryConditionOp::LT;
     ;
@@ -144,7 +146,7 @@ tdb_unique_ptr<ASTNode> deserialize_delete_condition_impl(
     ensure_qc_op_is_valid(op);
 
     // Deserialize field name, size then value.
-    size_t field_name_length;
+    storage_size_t field_name_length;
     memcpy(&field_name_length, &buff[idx], sizeof(field_name_length));
     idx += sizeof(field_name_length);
     auto field_name_value = reinterpret_cast<const char*>(&buff[idx]);
@@ -152,7 +154,7 @@ tdb_unique_ptr<ASTNode> deserialize_delete_condition_impl(
     auto field_name = std::string(field_name_value, field_name_length);
 
     // Deserialize value, size then content.
-    size_t value_length;
+    storage_size_t value_length;
     memcpy(&value_length, &buff[idx], sizeof(value_length));
     idx += sizeof(value_length);
     const void* value = &buff[idx];
@@ -160,7 +162,7 @@ tdb_unique_ptr<ASTNode> deserialize_delete_condition_impl(
 
     return tdb_unique_ptr<ASTNode>(
         tdb_new(ASTNodeVal, field_name, value, value_length, op));
-  } else {
+  } else if (node_type == NodeType::EXPRESSION) {
     // Deserialize combination op.
     auto combination_op = QueryConditionCombinationOp::AND;
     memcpy(&combination_op, &buff[idx], sizeof(combination_op));
@@ -168,23 +170,25 @@ tdb_unique_ptr<ASTNode> deserialize_delete_condition_impl(
     ensure_qc_combo_op_is_valid(combination_op);
 
     // Deserialize children num.
-    size_t nodes_size = 0;
+    storage_size_t nodes_size = 0;
     memcpy(&nodes_size, &buff[idx], sizeof(nodes_size));
     idx += sizeof(nodes_size);
 
     std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
-    for (size_t i = 0; i < nodes_size; i++) {
+    for (storage_size_t i = 0; i < nodes_size; i++) {
       ast_nodes.push_back(deserialize_delete_condition_impl(buff, idx));
     }
 
     return tdb_unique_ptr<ASTNode>(
         tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
+  } else {
+    throw std::logic_error("Cannot deserialize, unknown node type.");
   }
 }
 
 QueryCondition deserialize_delete_condition(const std::vector<uint8_t>& buff) {
   QueryCondition query_condition;
-  size_t idx = 0;
+  storage_size_t idx = 0;
   query_condition.set_ast(deserialize_delete_condition_impl(buff, idx));
   return query_condition;
 }
