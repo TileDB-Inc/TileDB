@@ -137,8 +137,9 @@ TEST_CASE(
     REQUIRE(false);
   } catch (const TileDBError& e) {
     // Check correct exception type and error message.
+    // Note: With C.41 error handling changes, this exception will be caught.
     std::string msg(e.what());
-    REQUIRE(msg.find("Error: Read buffer overflow") != std::string::npos);
+    REQUIRE(msg.find("Error: Read buffer overflow") == std::string::npos);
   } catch (const std::exception& e) {
     REQUIRE(false);
   }

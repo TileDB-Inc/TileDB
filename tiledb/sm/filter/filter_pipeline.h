@@ -106,10 +106,11 @@ class FilterPipeline {
    *
    * @param buff The buffer to deserialize from.
    * @param version Array schema version
-   * @return Status and FilterPipeline
+   * @return FilterPipeline
+   *
+   * @pre version has been validated by ArraySchema::deserialize
    */
-  static tuple<Status, optional<FilterPipeline>> deserialize(
-      ConstBuffer* buff, const uint32_t version);
+  static FilterPipeline deserialize(ConstBuffer* buff, const uint32_t version);
 
   /**
    * Dumps the filter pipeline details in ASCII format in the selected

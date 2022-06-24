@@ -36,6 +36,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 #include <cassert>
 
@@ -111,6 +112,19 @@ inline Status compressor_enum(
     return Status_Error("Invalid Compressor " + compressor_type_str);
   }
   return Status::Ok();
+}
+
+/** Throws error if the input Compressor enum is not between 0 and 7. */
+inline void ensure_compressor_is_valid(uint8_t compressor) {
+  if (compressor > 7) {
+    throw std::runtime_error(
+        "Invalid Compressor (" + std::to_string(compressor) + ")");
+  }
+}
+
+/** Throws error if the input Compressor's enum is not between 0 and 7. */
+inline void ensure_compressor_is_valid(Compressor compressor) {
+  ensure_compressor_is_valid(::stdx::to_underlying(compressor));
 }
 }  // namespace sm
 }  // namespace tiledb

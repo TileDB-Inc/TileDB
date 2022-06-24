@@ -365,13 +365,16 @@ inline bool datatype_is_boolean(Datatype type) {
 }
 
 /** Throws error if the input Datatype's enum is not between 0 and 41. */
-inline void ensure_datatype_is_valid(Datatype type) {
-  auto datatype_enum{::stdx::to_underlying(type)};
+inline void ensure_datatype_is_valid(uint8_t datatype_enum) {
   if (datatype_enum > 41) {
     throw std::runtime_error(
-        "Invalid Datatype (" + std::to_string(datatype_enum) + ") " +
-        std::to_string(datatype_enum));
+        "Invalid Datatype (" + std::to_string(datatype_enum) + ")");
   }
+}
+
+/** Throws error if the input Datatype's enum is not between 0 and 41. */
+inline void ensure_datatype_is_valid(Datatype type) {
+  ensure_datatype_is_valid(::stdx::to_underlying(type));
 }
 
 /** Throws error if:
@@ -379,12 +382,12 @@ inline void ensure_datatype_is_valid(Datatype type) {
  * the datatype string is not valid as a datatype.
  * the datatype string's enum is not between 0 and 41.
  **/
-inline void ensure_datatype_str_is_valid(const std::string& datatype_str) {
+inline void ensure_datatype_is_valid(const std::string& datatype_str) {
   Datatype datatype_type;
   Status st{datatype_enum(datatype_str, &datatype_type)};
   if (!st.ok()) {
     throw std::runtime_error(
-        "Invalid Datatype string \"" + datatype_str + "\"");
+        "Invalid Datatype string (\"" + datatype_str + "\")");
   }
   ensure_datatype_is_valid(datatype_type);
 }

@@ -207,12 +207,9 @@ tuple<Status, optional<shared_ptr<Dimension>>> Dimension::deserialize(
       return {st, nullopt};
 
     // Load filter pipeline
-    auto&& [st_filterpipeline, filterpipeline]{
-        FilterPipeline::deserialize(buff, version)};
-    if (!st_filterpipeline.ok()) {
-      return {st_filterpipeline, nullopt};
-    }
-    filter_pipeline = filterpipeline.value();
+    // Note: Security validation delegated to invoked API
+    auto filterpipeline{FilterPipeline::deserialize(buff, version)};
+    filter_pipeline = filterpipeline;
   } else {
     datatype = type;
     cell_val_num = (datatype_is_string(datatype)) ? constants::var_num : 1;

@@ -659,27 +659,39 @@ Status FilterPipeline::serialize(Buffer* buff) const {
   return Status::Ok();
 }
 
-tuple<Status, optional<FilterPipeline>> FilterPipeline::deserialize(
+FilterPipeline FilterPipeline::deserialize(
     ConstBuffer* buff, const uint32_t version) {
   Status st;
   uint32_t max_chunk_size;
   std::vector<shared_ptr<Filter>> filters;
 
-  RETURN_NOT_OK_TUPLE(buff->read(&max_chunk_size, sizeof(uint32_t)), nullopt);
-
-  uint32_t num_filters;
-  RETURN_NOT_OK_TUPLE(buff->read(&num_filters, sizeof(uint32_t)), nullopt);
-
-  for (uint32_t i = 0; i < num_filters; i++) {
-    auto&& [st_filter, filter]{FilterCreate::deserialize(buff, version)};
-    if (!st_filter.ok()) {
-      return {st_filter, nullopt};
-    }
-    filters.push_back(std::move(filter.value()));
+  st = buff->read(&max_chunk_size, sizeof(uint32_t));
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[FilterPipeline::deserialize] Failed to load maximum tile chunk size");
+  }
+  if (max_chunk_size > constants::max_tile_chunk_size) {
+    throw std::logic_error(
+        "[FilterPipeline::deserialize] " + std::to_string(max_chunk_size) +
+        " is invalid as a maximum tile chunk size; too large");
   }
 
-  return {Status::Ok(),
-          optional<FilterPipeline>(std::in_place, max_chunk_size, filters)};
+  // Note: No security validation is possible.
+  // Note: A FilterPipeline may have 0 filters.
+  uint32_t num_filters;
+  st = buff->read(&num_filters, sizeof(uint32_t));
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[FilterPipeline::deserialize] Failed to load number of filters");
+  }
+
+  // Note: Security validation delegated to invoked API
+  for (uint32_t i = 0; i < num_filters; i++) {
+    auto filter{FilterCreate::deserialize(buff, version)};
+    filters.push_back(std::move(filter));
+  }
+
+  return FilterPipeline(max_chunk_size, filters);
 }
 
 void FilterPipeline::dump(FILE* out) const {
