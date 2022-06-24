@@ -4005,7 +4005,7 @@ void testing_float_scaling_filter() {
     FloatingType f = dis(gen);
     CHECK(tile.write(&f, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
 
-    IntType val = static_cast<IntType>(trunc(
+    IntType val = static_cast<IntType>(round(
         (f - static_cast<FloatingType>(foffset)) /
         static_cast<FloatingType>(scale)));
 

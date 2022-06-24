@@ -48,7 +48,7 @@ namespace sm {
  * takes three parameters: the scale, the offset, and the byte width.
  *
  * On write, the float scaling filter applies the scale factor and offset,
- * and stores the value of truncate((raw_float - offset) / scale) as an
+ * and stores the value of round((raw_float - offset) / scale) as an
  * integer with the specified byte width.
  *
  * On read, the float scaling filter will reverse the scale factor and offset,
@@ -92,7 +92,7 @@ class FloatScalingFilter : public Filter {
 
   /**
    * Run forward. Takes input data in floating point representation and
-   * stores it as integers with the value truncate((raw_float - offset) / scale)
+   * stores it as integers with the value round((raw_float - offset) / scale)
    * with the pre-specified byte width.
    */
   Status run_forward(

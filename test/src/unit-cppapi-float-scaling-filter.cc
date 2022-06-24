@@ -118,7 +118,7 @@ struct FloatScalingFilterTestStruct {
       T f = dis(gen);
       a_write.push_back(f);
       W val = static_cast<W>(
-          trunc((f - static_cast<T>(offset)) / static_cast<T>(scale)));
+          round((f - static_cast<T>(offset)) / static_cast<T>(scale)));
       T val_float = static_cast<T>(scale * static_cast<T>(val) + offset);
       expected_a.push_back(val_float);
     }

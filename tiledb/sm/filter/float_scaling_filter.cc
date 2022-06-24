@@ -84,12 +84,12 @@ Status FloatScalingFilter::run_forward(
     RETURN_NOT_OK(output->prepend_buffer(new_size));
 
     // Iterate through each input buffer, storing each raw float as
-    // an integer with the value truncate((raw_float - offset) / scale).
+    // an integer with the value round((raw_float - offset) / scale).
     const T* part_data = static_cast<const T*>(i.data());
     for (uint32_t j = 0; j < num_elems_in_part; ++j) {
       T elem = part_data[j];
       W converted_elem = static_cast<W>(
-          trunc((elem - static_cast<T>(offset_)) / static_cast<T>(scale_)));
+          round((elem - static_cast<T>(offset_)) / static_cast<T>(scale_)));
       RETURN_NOT_OK(output->write(&converted_elem, sizeof(W)));
       if (j != num_elems_in_part - 1) {
         output->advance_offset(sizeof(W));
