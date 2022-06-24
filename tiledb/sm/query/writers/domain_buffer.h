@@ -147,6 +147,40 @@ class SingleCoord {
   }
 
   /**
+   * Construct a SingleCoord object from deserialized data.
+   *
+   * @param schema The array schema
+   * @param coords Deserialized coordinates vector
+   * @param sizes Deserialized sizes vector
+   * @param single_offset Deserialized offset vector
+   */
+  SingleCoord(
+      const ArraySchema& schema,
+      std::vector<std::vector<uint8_t>> coords,
+      std::vector<uint64_t> sizes,
+      std::vector<uint64_t> single_offset)
+      : qb_(schema.dim_num())
+      , sizes_(schema.dim_num() + 1)
+      , single_offset_(1) {
+    sizes_[schema.dim_num()] = sizeof(uint64_t);
+    single_offset_ = single_offset;
+    for (unsigned d = 0; d < schema.dim_num(); ++d) {
+      bool var_size = schema.dimension_ptr(d)->var_size();
+      sizes_[d] = sizes[d];
+      coords_[d].resize(sizes[d]);
+      memcpy(coords_[d].data(), coords[d].data(), sizes[d]);
+
+      if (var_size) {
+        qb_[d].set_offsets_buffer(
+            single_offset_.data(), sizes_.data() + schema.dim_num());
+        qb_[d].set_data_var_buffer(coords_[d].data(), sizes_.data() + d);
+      } else {
+        qb_[d].set_data_buffer(coords_[d].data(), sizes_.data() + d);
+      }
+    }
+  }
+
+  /**
    * Get the QueryBuffer object for a specific dimension.
    *
    * @param d Dimension index.

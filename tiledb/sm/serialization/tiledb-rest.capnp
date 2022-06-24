@@ -781,32 +781,32 @@ struct SingleCoord {
 }
 
 struct FragmentMetadata {
-  fileSizes @0 :List(Uint64);
-  fileVarSizes @1 :List(Uint64);
-  fileValiditySizes @2 :List(Uint64);
+  fileSizes @0 :List(UInt64);
+  fileVarSizes @1 :List(UInt64);
+  fileValiditySizes @2 :List(UInt64);
   fragmentUri @3 :Text;
   hasTimestamps @4 :Bool;
-  sparseTileNum @5 :Uint64;
-  tileIndexBase@6 :Uint64;
+  sparseTileNum @5 :UInt64;
+  tileIndexBase@6 :UInt64;
   tileOffsets @7 :List(List(UInt64));
   tileVarOffsets @8 :List(List(UInt64));
   tileVarSizes @9 :List(List(UInt64));
   tileValidityOffsets @10 :List(List(UInt64));
   tileMinBuffer @11 :List(List(UInt8));
-  tileMinVarBuffer @12 :List(Data);
+  tileMinVarBuffer @12 :List(List(UInt8));
   tileMaxBuffer @13 :List(List(UInt8));
-  tileMaxVarBuffer @14 :List(Data);
+  tileMaxVarBuffer @14 :List(List(UInt8));
   tileSums @15 :List(List(UInt8));
   tileNullCounts @16 :List(List(UInt64));
   fragmentMins @17 :List(List(UInt8));
   fragmentMaxs @18 :List(List(UInt8));
-  fragmentSums @19 :List(Uint64);
-  fragmentNullCounts @20 :List(Uint64);
-  version @21 :Uint32;
-  timestampRange @22 :List(Uint64);
+  fragmentSums @19 :List(UInt64);
+  fragmentNullCounts @20 :List(UInt64);
+  version @21 :UInt32;
+  timestampRange @22 :List(UInt64);
   # A pair of timestamps for fragment
 
-  lastTileCellNum @23 :Uint64;
+  lastTileCellNum @23 :UInt64;
 
   nonEmptyDomain @24 :NonEmptyDomainList;
   # non empty domain

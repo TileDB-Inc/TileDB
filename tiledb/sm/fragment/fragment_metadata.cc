@@ -1187,10 +1187,6 @@ Status FragmentMetadata::store_v15_or_higher(
   return storage_manager_->close_file(fragment_metadata_uri);
 }
 
-const NDRange& FragmentMetadata::non_empty_domain() {
-  return non_empty_domain_;
-}
-
 Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   for (auto& it : idx_map_) {
     auto i = it.second;

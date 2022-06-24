@@ -132,6 +132,9 @@ class GlobalOrderWriter : public WriterBase {
   /** Resets the writer object, rendering it incomplete. */
   void reset();
 
+  /** Returns a bare pointer to the global state. */
+  GlobalWriteState* get_global_state();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

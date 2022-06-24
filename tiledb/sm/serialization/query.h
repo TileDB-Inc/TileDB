@@ -37,6 +37,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/sm/query/global_order_writer.h"
 #include "tiledb/sm/query/query_condition.h"
 
 #ifdef TILEDB_SERIALIZATION
@@ -52,7 +53,6 @@ class Array;
 class Buffer;
 class BufferList;
 class Query;
-class GlobalOrderWriter;
 
 enum class SerializationType : uint8_t;
 
@@ -193,29 +193,27 @@ Status query_est_result_size_deserialize(
     bool clientside,
     const Buffer& serialized_buffer);
 
+#ifdef TILEDB_SERIALIZATION
 Status global_write_state_to_capnp(
     const GlobalOrderWriter::GlobalWriteState& write_state,
     capnp::GlobalWriteState::Builder* state_builder);
 
 Status global_write_state_from_capnp(
-    const capnp::GlobalWriteState::Builder& state_reader,
+    const Query& query,
+    const capnp::GlobalWriteState::Reader& state_reader,
     GlobalOrderWriter::GlobalWriteState* write_state);
 
-Status global_write_state_from_capnp(
-    const capnp::GlobalWriteState::Builder& state_reader,
-    GlobalOrderWriter::GlobalWriteState* write_state) {
-#ifdef TILEDB_SERIALIZATION
-  Status condition_from_capnp(
-      const capnp::Condition::Reader& condition_reader,
-      QueryCondition* const condition);
+Status condition_from_capnp(
+    const capnp::Condition::Reader& condition_reader,
+    QueryCondition* const condition);
 
-  Status condition_to_capnp(
-      const QueryCondition& condition,
-      capnp::Condition::Builder* condition_builder);
+Status condition_to_capnp(
+    const QueryCondition& condition,
+    capnp::Condition::Builder* condition_builder);
 #endif
 
 }  // namespace serialization
-}  // namespace serialization
 }  // namespace sm
+}  // namespace tiledb
 
 #endif  // TILEDB_SERIALIZATION_QUERY_H
