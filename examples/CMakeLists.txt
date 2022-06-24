@@ -26,6 +26,10 @@
 # THE SOFTWARE.
 #
 
+#**#
+set(CMAKE_VERBOSE_MAKEFILE ON)
+#**#
+
 if (WIN32)
   # Disable MSVC warnings not present with gcc.
   #   C4204: non-constant aggregate initializer
