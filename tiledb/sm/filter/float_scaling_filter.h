@@ -43,19 +43,28 @@ namespace tiledb {
 namespace sm {
 
 /**
- * A filter that does the float scaly thingo.
- * TODO: COMMENT
+ * The float scaling filter stores the input data with floating point type
+ * as an integer type for more compressed storage. The float scaling filter
+ * takes three parameters: the scale, the offset, and the byte width.
+ *
+ * On write, the float scaling filter applies the scale factor and offset,
+ * and stores the value of round((raw_float - offset) / scale) as an
+ * integer with the specified byte width.
+ *
+ * On read, the float scaling filter will reverse the scale factor and offset,
+ * and returns the floating point data, with a potential loss of precision.
+ *
  */
 class FloatScalingFilter : public Filter {
  public:
   /** Struct used for serialization and deserialization from disk. */
   struct Metadata {
-    double s;    // scale
-    double o;    // offset
-    uint64_t b;  // bit width
+    double scale;
+    double offset;
+    uint64_t byte_width;
   };
   /**
-   * Constructor. Default settings for Float Scaling Filter are
+   * Default constructor. Default settings for Float Scaling Filter are
    * scale = 1.0f, offset = 0.0f, and bit_width = 8.
    */
   FloatScalingFilter()
@@ -65,11 +74,18 @@ class FloatScalingFilter : public Filter {
       , bit_width_(8) {
   }
 
-  FloatScalingFilter(uint64_t bit_width, double scale, double offset)
+  /**
+   * Full constructor.
+   *
+   * @param byte_width The byte width of the compressed representation.
+   * @param scale The scale factor.
+   * @param offset The offset factor.
+   */
+  FloatScalingFilter(uint64_t byte_width, double scale, double offset)
       : Filter(FilterType::FILTER_SCALE_FLOAT)
       , scale_(scale)
       , offset_(offset)
-      , bit_width_(bit_width) {
+      , byte_width_(byte_width) {
   }
 
   /** Dumps the filter details in ASCII format in the selected output. */
@@ -79,7 +95,9 @@ class FloatScalingFilter : public Filter {
   Status serialize_impl(Buffer* buff) const override;
 
   /**
-   * Run forward.
+   * Run forward. Takes input data in floating point representation and
+   * stores it as integers with the value round((raw_float - offset) / scale)
+   * with the pre-specified byte width.
    */
   Status run_forward(
       const Tile& tile,
@@ -90,7 +108,9 @@ class FloatScalingFilter : public Filter {
       FilterBuffer* output) const override;
 
   /**
-   * Run reverse.
+   * Run reverse. Takes input data in integer representation and returns the
+   * values as floating point numbers with the value (stored_int * scale) +
+   * offset with the original type of the floating point data.
    */
   Status run_reverse(
       const Tile& tile,
@@ -114,8 +134,8 @@ class FloatScalingFilter : public Filter {
   /** The offset factor. */
   double offset_;
 
-  /** The bit width of the compressed representation. */
-  uint64_t bit_width_;
+  /** The byte width of the compressed representation. */
+  uint64_t byte_width_;
 
   /** Returns a new clone of this filter. */
   FloatScalingFilter* clone_impl() const override;
@@ -131,7 +151,7 @@ class FloatScalingFilter : public Filter {
       FilterBuffer* output) const;
 
   /**
-   * Run forward, templated on the size of the input type and bit width.
+   * Run forward, templated on the size of the input type and byte width.
    */
   template <typename T, typename W>
   Status run_forward(
@@ -151,7 +171,7 @@ class FloatScalingFilter : public Filter {
       FilterBuffer* output) const;
 
   /**
-   * Run reverse, templated on the size of the input type and bit width.
+   * Run reverse, templated on the size of the input type and byte width.
    */
   template <typename T, typename W>
   Status run_reverse(

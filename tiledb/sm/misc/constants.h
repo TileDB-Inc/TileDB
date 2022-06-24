@@ -363,8 +363,8 @@ extern const std::string filter_option_bit_width_max_window_str;
  */
 extern const std::string filter_option_positive_delta_max_window_str;
 
-/** The string representation for FilterOption type scale_float_bitwidth. */
-extern const std::string filter_option_scale_float_bitwidth;
+/** The string representation for FilterOption type scale_float_bytewidth. */
+extern const std::string filter_option_scale_float_bytewidth;
 
 /** The string representation for FilterOption type scale_float_factor. */
 extern const std::string filter_option_scale_float_factor;

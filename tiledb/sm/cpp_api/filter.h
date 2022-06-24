@@ -317,7 +317,7 @@ class Filter {
         if (!std::is_same<uint32_t, T>::value)
           throw std::invalid_argument("Option value must be uint32_t.");
         break;
-      case TILEDB_SCALE_FLOAT_BITWIDTH:
+      case TILEDB_SCALE_FLOAT_BYTEWIDTH:
         if (!std::is_same<uint64_t, T>::value)
           throw std::invalid_argument("Option value must be uint64_t.");
         break;

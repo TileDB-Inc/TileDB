@@ -380,7 +380,7 @@ TEST_CASE(
   FilterType filtertype0 = FilterType::FILTER_SCALE_FLOAT;
   double scale0 = 1.5213;
   double offset0 = 0.2022;
-  uint64_t bit_width0 = 16;
+  uint64_t byte_width0 = 16;
   char serialized_buffer[29];
   char* p = &serialized_buffer[0];
   buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
@@ -391,7 +391,7 @@ TEST_CASE(
   // order.
   buffer_offset<double, 5>(p) = scale0;
   buffer_offset<double, 13>(p) = offset0;
-  buffer_offset<uint64_t, 21>(p) = bit_width0;
+  buffer_offset<uint64_t, 21>(p) = byte_width0;
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
   auto&& [st_filter, filter1]{
@@ -410,9 +410,9 @@ TEST_CASE(
               .ok());
   CHECK(offset0 == offset1);
 
-  uint64_t bit_width1 = 0;
+  uint64_t byte_width1 = 0;
   REQUIRE(filter1.value()
-              ->get_option(FilterOption::SCALE_FLOAT_BITWIDTH, &bit_width1)
+              ->get_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width1)
               .ok());
-  CHECK(bit_width0 == bit_width1);
+  CHECK(byte_width0 == byte_width1);
 }

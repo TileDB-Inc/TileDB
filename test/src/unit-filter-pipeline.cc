@@ -3995,7 +3995,7 @@ void testing_float_scaling_filter() {
   std::vector<FloatingType> float_result_vec;
   double scale = 2.53;
   double foffset = 0.31589;
-  uint64_t bit_width = sizeof(IntType);
+  uint64_t byte_width = sizeof(IntType);
 
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -4005,7 +4005,7 @@ void testing_float_scaling_filter() {
     FloatingType f = dis(gen);
     CHECK(tile.write(&f, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
 
-    IntType val = static_cast<IntType>(trunc(
+    IntType val = static_cast<IntType>(round(
         (f - static_cast<FloatingType>(foffset)) /
         static_cast<FloatingType>(scale)));
 
@@ -4018,7 +4018,7 @@ void testing_float_scaling_filter() {
   ThreadPool tp(4);
   CHECK(pipeline.add_filter(FloatScalingFilter()).ok());
   pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_BITWIDTH, &bit_width);
+      FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width);
   pipeline.get_filter<FloatScalingFilter>()->set_option(
       FilterOption::SCALE_FLOAT_FACTOR, &scale);
   pipeline.get_filter<FloatScalingFilter>()->set_option(
@@ -4039,14 +4039,13 @@ void testing_float_scaling_filter() {
   }
 }
 
-TEST_CASE("Filter: Test float scaling", "[filter][float-scaling]") {
-  testing_float_scaling_filter<float, int8_t>();
-  testing_float_scaling_filter<float, int16_t>();
-  testing_float_scaling_filter<float, int32_t>();
-  testing_float_scaling_filter<float, int64_t>();
-
-  testing_float_scaling_filter<double, int8_t>();
-  testing_float_scaling_filter<double, int16_t>();
-  testing_float_scaling_filter<double, int32_t>();
-  testing_float_scaling_filter<double, int64_t>();
+TEMPLATE_TEST_CASE(
+    "Filter: Test float scaling",
+    "[filter][float-scaling]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t) {
+  testing_float_scaling_filter<float, TestType>();
+  testing_float_scaling_filter<double, TestType>();
 }

@@ -49,14 +49,14 @@ void FloatScalingFilter::dump(FILE* out) const {
     out = stdout;
   fprintf(
       out,
-      "FloatScalingFilter: BIT_WIDTH=%u, SCALE=%lf, OFFSET=%lf",
-      static_cast<uint32_t>(bit_width_),
+      "FloatScalingFilter: BYTE_WIDTH=%u, SCALE=%lf, OFFSET=%lf",
+      static_cast<uint32_t>(byte_width_),
       scale_,
       offset_);
 }
 
 Status FloatScalingFilter::serialize_impl(Buffer* buff) const {
-  Metadata buffer_struct = {scale_, offset_, bit_width_};
+  Metadata buffer_struct = {scale_, offset_, byte_width_};
   RETURN_NOT_OK(buff->write(&buffer_struct, sizeof(Metadata)));
   return Status::Ok();
 }
@@ -74,6 +74,7 @@ Status FloatScalingFilter::run_forward(
   RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
   RETURN_NOT_OK(output_metadata->write(&num_parts, sizeof(uint32_t)));
 
+  // Iterate through all the input buffers.
   for (auto& i : input_parts) {
     uint32_t s = i.size();
     assert(s % sizeof(T) == 0);
@@ -82,11 +83,13 @@ Status FloatScalingFilter::run_forward(
     RETURN_NOT_OK(output_metadata->write(&new_size, sizeof(uint32_t)));
     RETURN_NOT_OK(output->prepend_buffer(new_size));
 
+    // Iterate through each input buffer, storing each raw float as
+    // an integer with the value round((raw_float - offset) / scale).
     const T* part_data = static_cast<const T*>(i.data());
     for (uint32_t j = 0; j < num_elems_in_part; ++j) {
       T elem = part_data[j];
       W converted_elem = static_cast<W>(
-          trunc((elem - static_cast<T>(offset_)) / static_cast<T>(scale_)));
+          round((elem - static_cast<T>(offset_)) / static_cast<T>(scale_)));
       RETURN_NOT_OK(output->write(&converted_elem, sizeof(W)));
       if (j != num_elems_in_part - 1) {
         output->advance_offset(sizeof(W));
@@ -103,7 +106,7 @@ Status FloatScalingFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  switch (bit_width_) {
+  switch (byte_width_) {
     case sizeof(int8_t): {
       return run_forward<T, int8_t>(
           input_metadata, input, output_metadata, output);
@@ -122,7 +125,7 @@ Status FloatScalingFilter::run_forward(
     } break;
     default: {
       throw std::runtime_error(
-          "FloatScalingFilter::run_forward: bit_width_ does not reflect the "
+          "FloatScalingFilter::run_forward: byte_width_ does not reflect the "
           "size of an integer type.");
     }
   }
@@ -163,6 +166,7 @@ Status FloatScalingFilter::run_reverse(
   uint32_t num_parts;
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));
 
+  // Iterate through the input buffers.
   for (uint32_t i = 0; i < num_parts; ++i) {
     uint32_t part_size;
     RETURN_NOT_OK(input_metadata->read(&part_size, sizeof(uint32_t)));
@@ -171,6 +175,9 @@ Status FloatScalingFilter::run_reverse(
 
     uint32_t num_elems_in_part = part.size() / sizeof(W);
     RETURN_NOT_OK(output->prepend_buffer(num_elems_in_part * sizeof(T)));
+
+    // Iterate through each input buffer, reversing the value of the stored
+    // integer value and writing in the value scale * stored_int + offset.
     const W* part_data = static_cast<const W*>(part.data());
     for (uint32_t j = 0; j < num_elems_in_part; ++j) {
       T elem = static_cast<T>(part_data[j]);
@@ -194,7 +201,7 @@ Status FloatScalingFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  switch (bit_width_) {
+  switch (byte_width_) {
     case sizeof(int8_t): {
       return run_reverse<T, int8_t>(
           input_metadata, input, output_metadata, output);
@@ -213,7 +220,7 @@ Status FloatScalingFilter::run_reverse(
     } break;
     default: {
       throw std::runtime_error(
-          "FloatScalingFilter::run_reverse: bit_width_ does not reflect the "
+          "FloatScalingFilter::run_reverse: byte_width_ does not reflect the "
           "size of an integer type.");
     }
   }
@@ -253,8 +260,8 @@ Status FloatScalingFilter::set_option_impl(
         Status_FilterError("Float scaling filter error; invalid option value"));
 
   switch (option) {
-    case FilterOption::SCALE_FLOAT_BITWIDTH: {
-      bit_width_ = *(uint64_t*)value;
+    case FilterOption::SCALE_FLOAT_BYTEWIDTH: {
+      byte_width_ = *(uint64_t*)value;
     } break;
     case FilterOption::SCALE_FLOAT_FACTOR: {
       scale_ = *(double*)value;
@@ -273,8 +280,8 @@ Status FloatScalingFilter::set_option_impl(
 Status FloatScalingFilter::get_option_impl(
     FilterOption option, void* value) const {
   switch (option) {
-    case FilterOption::SCALE_FLOAT_BITWIDTH: {
-      *(uint64_t*)value = bit_width_;
+    case FilterOption::SCALE_FLOAT_BYTEWIDTH: {
+      *(uint64_t*)value = byte_width_;
     } break;
     case FilterOption::SCALE_FLOAT_FACTOR: {
       *(double*)value = scale_;
@@ -291,7 +298,7 @@ Status FloatScalingFilter::get_option_impl(
 
 /** Returns a new clone of this filter. */
 FloatScalingFilter* FloatScalingFilter::clone_impl() const {
-  return tdb_new(FloatScalingFilter, bit_width_, scale_, offset_);
+  return tdb_new(FloatScalingFilter, byte_width_, scale_, offset_);
 }
 
 }  // namespace sm
