@@ -42,9 +42,9 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
-#include "tiledb/sm/query/reader_base.h"
-#include "tiledb/sm/query/result_cell_slab.h"
-#include "tiledb/sm/query/result_coords.h"
+#include "tiledb/sm/query/readers/reader_base.h"
+#include "tiledb/sm/query/readers/result_cell_slab.h"
+#include "tiledb/sm/query/readers/result_coords.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 using namespace tiledb::common;

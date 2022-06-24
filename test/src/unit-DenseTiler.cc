@@ -34,7 +34,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/query/dense_tiler.h"
+#include "tiledb/sm/query/writers/dense_tiler.h"
 
 #include <catch.hpp>
 #include <iostream>

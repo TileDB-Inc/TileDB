@@ -35,7 +35,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/query/sparse_global_order_reader.h"
+#include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 
 using namespace tiledb;
 using namespace tiledb::test;

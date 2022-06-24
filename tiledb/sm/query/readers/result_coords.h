@@ -38,7 +38,7 @@
 
 #include "tiledb/common/types/dynamic_typed_datum.h"
 #include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/query/result_tile.h"
+#include "tiledb/sm/query/readers/result_tile.h"
 
 using namespace tiledb::common;
 

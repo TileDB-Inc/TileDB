@@ -30,7 +30,7 @@
  * This file implements class Reader.
  */
 
-#include "tiledb/sm/query/reader.h"
+#include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -42,9 +42,9 @@
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/hilbert_order.h"
+#include "tiledb/sm/query/legacy/read_cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
-#include "tiledb/sm/query/read_cell_slab_iter.h"
-#include "tiledb/sm/query/result_tile.h"
+#include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/cell_slab.h"

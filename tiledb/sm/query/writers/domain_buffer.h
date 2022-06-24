@@ -33,7 +33,7 @@
 #define TILEDB_QUERY_DOMAIN_BUFFER_H
 
 #include <new>
-#include "query_buffer.h"
+#include "../query_buffer.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"

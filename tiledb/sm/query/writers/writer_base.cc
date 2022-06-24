@@ -30,7 +30,7 @@
  * This file implements class WriterBase.
  */
 
-#include "tiledb/sm/query/writer_base.h"
+#include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"

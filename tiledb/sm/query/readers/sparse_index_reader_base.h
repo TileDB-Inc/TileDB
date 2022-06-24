@@ -39,7 +39,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/query/query_condition.h"
-#include "tiledb/sm/query/result_cell_slab.h"
+#include "tiledb/sm/query/readers/result_cell_slab.h"
 
 namespace tiledb {
 namespace sm {

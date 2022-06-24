@@ -30,7 +30,7 @@
  * This file implements class GlobalOrderWriter.
  */
 
-#include "tiledb/sm/query/global_order_writer.h"
+#include "tiledb/sm/query/writers/global_order_writer.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"

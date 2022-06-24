@@ -30,7 +30,7 @@
  * This file implements class ReaderBase.
  */
 
-#include "tiledb/sm/query/reader_base.h"
+#include "tiledb/sm/query/readers/reader_base.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"

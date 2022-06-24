@@ -30,7 +30,7 @@
  * This file implements class SparseGlobalOrderReader.
  */
 
-#include "tiledb/sm/query/sparse_global_order_reader.h"
+#include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
@@ -44,7 +44,7 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
-#include "tiledb/sm/query/result_tile.h"
+#include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
