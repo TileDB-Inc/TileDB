@@ -71,7 +71,7 @@ class FloatScalingFilter : public Filter {
       : Filter(FilterType::FILTER_SCALE_FLOAT)
       , scale_(1.0f)
       , offset_(0.0f)
-      , bit_width_(8) {
+      , byte_width_(8) {
   }
 
   /**
