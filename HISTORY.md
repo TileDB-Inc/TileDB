@@ -1,3 +1,8 @@
+# TileDB v2.10.1 Release Notes
+
+## Bug fixes
+* compute_results_count_sparse_string: using cached ranges properly. [#3314](https://github.com/TileDB-Inc/TileDB/pull/3314)
+
 # TileDB v2.10.0 Release Notes
 
 **Full Changelog**: https://github.com/TileDB-Inc/TileDB/compare/2.9.0...2.10.0
