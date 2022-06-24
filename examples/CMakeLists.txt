@@ -100,5 +100,10 @@ endif()
 
 add_custom_target(examples DEPENDS examples_c)
 if (TILEDB_CPP_API)
+  #**#
+  # build C examples before C++ examples to see if error is configuration mismatch
+  #**#
+  add_dependencies(examples_cpp examples_c)
+
   add_dependencies(examples examples_cpp)
 endif()
