@@ -63,11 +63,12 @@ TEST_CASE(
 
   double scale_clone;
   double offset_clone;
-  uint64_t bit_width_clone;
-  REQUIRE(filter_clone.value()
-              .get()
-              ->get_option(FilterOption::SCALE_FLOAT_BITWIDTH, &bit_width_clone)
-              .ok());
+  uint64_t byte_width_clone;
+  REQUIRE(
+      filter_clone.value()
+          .get()
+          ->get_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width_clone)
+          .ok());
   REQUIRE(filter_clone.value()
               .get()
               ->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale_clone)
@@ -79,7 +80,7 @@ TEST_CASE(
 
   CHECK(scale_clone == 1.0f);
   CHECK(offset_clone == 0.0f);
-  CHECK(bit_width_clone == 8);
+  CHECK(byte_width_clone == 8);
 }
 
 TEST_CASE(
@@ -88,8 +89,8 @@ TEST_CASE(
   Filter* f = FilterCreate::make(FilterType::FILTER_SCALE_FLOAT);
   double scale = 2.13;
   double offset = 1.5251;
-  uint64_t bit_width = 4;
-  REQUIRE(f->set_option(FilterOption::SCALE_FLOAT_BITWIDTH, &bit_width).ok());
+  uint64_t byte_width = 4;
+  REQUIRE(f->set_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width).ok());
   REQUIRE(f->set_option(FilterOption::SCALE_FLOAT_FACTOR, &scale).ok());
   REQUIRE(f->set_option(FilterOption::SCALE_FLOAT_OFFSET, &offset).ok());
 
@@ -104,11 +105,12 @@ TEST_CASE(
 
   double scale_clone;
   double offset_clone;
-  uint64_t bit_width_clone;
-  REQUIRE(filter_clone.value()
-              .get()
-              ->get_option(FilterOption::SCALE_FLOAT_BITWIDTH, &bit_width_clone)
-              .ok());
+  uint64_t byte_width_clone;
+  REQUIRE(
+      filter_clone.value()
+          .get()
+          ->get_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width_clone)
+          .ok());
   REQUIRE(filter_clone.value()
               .get()
               ->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale_clone)
@@ -120,5 +122,5 @@ TEST_CASE(
 
   CHECK(scale == scale_clone);
   CHECK(offset == offset_clone);
-  CHECK(bit_width == bit_width_clone);
+  CHECK(byte_width == byte_width_clone);
 }

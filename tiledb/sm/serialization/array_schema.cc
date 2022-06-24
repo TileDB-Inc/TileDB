@@ -110,16 +110,16 @@ Status filter_to_capnp(
     case FilterType::FILTER_SCALE_FLOAT: {
       FloatScalingFilter::Metadata m;
       double scale, offset;
-      uint64_t bit_width;
+      uint64_t byte_width;
       RETURN_NOT_OK(
-          filter->get_option(FilterOption::SCALE_FLOAT_BITWIDTH, &bit_width));
+          filter->get_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width));
       RETURN_NOT_OK(
           filter->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale));
       RETURN_NOT_OK(
           filter->get_option(FilterOption::SCALE_FLOAT_OFFSET, &offset));
-      m.s = scale;
-      m.o = offset;
-      m.b = bit_width;
+      m.scale = scale;
+      m.offset = offset;
+      m.byte_width = byte_width;
       auto data = filter_builder->initData();
       auto capnpValue = kj::Vector<uint8_t>();
       capnpValue.addAll(kj::ArrayPtr<uint8_t>(
@@ -204,7 +204,7 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
           sizeof(FloatScalingFilter::Metadata));
       return {Status::Ok(),
               tiledb::common::make_shared<FloatScalingFilter>(
-                  HERE(), m.b, m.s, m.o)};
+                  HERE(), m.byte_width, m.scale, m.offset)};
     }
     case FilterType::FILTER_NONE:
       break;
