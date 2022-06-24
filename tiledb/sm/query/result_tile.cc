@@ -898,13 +898,13 @@ void ResultTile::compute_results_count_sparse_string(
       if (first_c_size == last_c_size &&
           strncmp(first_c_coord, second_coord, first_c_size) == 0) {
         uint64_t count = 0;
-        for (auto i : range_indexes) {
+        for (auto& cached_range : cached_ranges) {
           count += str_coord_intersects(
               first_c_offset,
               first_c_size,
               buff_str,
-              cached_ranges[i].first,
-              cached_ranges[i].second);
+              cached_range.first,
+              cached_range.second);
         }
 
         for (uint64_t pos = first_c_pos; pos < first_c_pos + c_partition_size;
