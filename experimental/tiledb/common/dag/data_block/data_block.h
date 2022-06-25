@@ -56,7 +56,7 @@ class DataBlock {
  public:
   DataBlock()
       : storage_(N_)
-      , data_(storage_.data(), storage_.data()) {
+      , data_(storage_.data(), storage_.size()) {
   }
 
   using DataBlockIterator = data_t::iterator;
