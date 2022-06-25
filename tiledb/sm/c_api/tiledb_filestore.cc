@@ -608,19 +608,23 @@ std::pair<Status, optional<std::string>> libmagic_get_mime(
     void* data, uint64_t size) {
   magic_t magic = magic_open(MAGIC_MIME_TYPE);
   if (tiledb::sm::magic_dict::magic_mgc_embedded_load(magic)) {
+    auto err_msg = std::string(magic_error(magic));
     magic_close(magic);
     return {
         Status_Error(
-            std::string("Cannot load magic database - ") + magic_error(magic)),
+            std::string("Cannot load magic database - ") + err_msg),
         nullopt};
   }
   auto rv = magic_buffer(magic, data, size);
   if (!rv) {
+    auto err_msg = std::string(magic_error(magic));
+    magic_close(magic);
     return {
         Status_Error(
-            std::string("Cannot get the mime type - ") + magic_error(magic)),
+            std::string("Cannot get the mime type - ") + err_msg),
         nullopt};
   }
+  magic_close(magic);
   return {Status::Ok(), rv};
 }
 
@@ -628,19 +632,23 @@ std::pair<Status, optional<std::string>> libmagic_get_mime_encoding(
     void* data, uint64_t size) {
   magic_t magic = magic_open(MAGIC_MIME_ENCODING);
   if (tiledb::sm::magic_dict::magic_mgc_embedded_load(magic)) {
+    auto err_msg = std::string(magic_error(magic));
     magic_close(magic);
     return {
         Status_Error(
-            std::string("Cannot load magic database - ") + magic_error(magic)),
+            std::string("Cannot load magic database - ") + err_msg),
         nullopt};
   }
   auto rv = magic_buffer(magic, data, size);
   if (!rv) {
+    auto err_msg = std::string(magic_error(magic));
+    magic_close(magic);
     return {Status_Error(
                 std::string("Cannot get the mime encoding - ") +
-                magic_error(magic)),
+                err_msg),
             nullopt};
   }
+  magic_close(magic);
   return {Status::Ok(), rv};
 }
 
@@ -660,11 +668,12 @@ bool libmagic_file_is_compressed(void* data, uint64_t size) {
     return true;
   }
   auto rv = magic_buffer(magic, data, size);
+  magic_close(magic);
   if (!rv) {
     return true;
   }
 
-  std::string mime(magic_buffer(magic, data, size));
+  std::string mime(rv);
 
   return compressed_mime_types.find(mime) != compressed_mime_types.end();
 }
