@@ -959,7 +959,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
   a.set_state(PortState::empty_empty);
 
-  size_t rounds = 379;
+  size_t rounds = 3379;
   if (debug)
     rounds = 3;
 
@@ -987,8 +987,10 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       CHECK(is_src_empty(a.state()) == "");
 
       a.source_item = *i++;
+
       a.event(PortEvent::source_fill, debug ? "async source node" : "");
       a.event(PortEvent::push, debug ? "async source node" : "");
+
       a.source_item = 400000000;
     }
   };
@@ -999,11 +1001,11 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      a.event(PortEvent::pull, debug ? "async sink node" : "");
-
-      while (a.state() == PortState::full_empty ||
-             a.state() == PortState::empty_empty)
+      while (a.state() == PortState::full_full ||
+             a.state() == PortState::empty_full)
         ;
+
+      a.event(PortEvent::pull, debug ? "async sink node" : "");
 
       CHECK(is_snk_full(a.state()) == "");
 
@@ -1085,7 +1087,7 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
 
   a.set_state(PortState::empty_empty);
 
-  size_t rounds = 379;
+  size_t rounds = 3379;
   if (debug)
     rounds = 3;
 
@@ -1115,6 +1117,9 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
       a.source_item = *i++;
       a.event(PortEvent::source_fill, debug ? "async source node" : "");
       a.event(PortEvent::push, debug ? "async source node" : "");
+
+      CHECK(is_src_empty(a.state()) == "");
+
       a.source_item = 400000000;
     }
   };
@@ -1123,13 +1128,14 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
     size_t n = rounds;
     while (n--) {
       if (debug) {
-        std::cout << "source node iteration " << n << std::endl;
+        std::cout << "sink node iteration " << n << std::endl;
       }
-      a.event(PortEvent::pull, debug ? "async sink node" : "");
 
-      while (a.state() == PortState::full_empty ||
-             a.state() == PortState::empty_empty)
+      while (a.state() == PortState::full_full ||
+             a.state() == PortState::empty_full)
         ;
+
+      a.event(PortEvent::pull, debug ? "async sink node" : "");
 
       CHECK(is_snk_full(a.state()) == "");
 
