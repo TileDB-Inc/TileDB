@@ -48,32 +48,67 @@ using PortStateMachine = DebugStateMachine<size_t>;
 TEST_CASE("Port FSM: Construct", "[fsm]") {
   [[maybe_unused]] auto a = PortStateMachine{};
 
-  CHECK(a.state() == PortState::empty_empty);
+  CHECK(a.state() == PortState::empty_full);
 }
 
 TEST_CASE("Port FSM: Start up", "[fsm]") {
   constexpr bool debug = false;
   [[maybe_unused]] auto a = PortStateMachine{};
 
-  CHECK(a.state() == PortState::empty_empty);
+  CHECK(a.state() == PortState::empty_full);
 
-  SECTION("start source") {
+  SECTION("start source, i") {
+    a.event(PortEvent::source_fill, debug ? "start source" : "");
+    CHECK(a.state() == PortState::full_full);
+  }
+
+  SECTION("start source, ii") {
+    a.set_state(PortState::empty_empty);
     a.event(PortEvent::source_fill, debug ? "start source" : "");
     CHECK(a.state() == PortState::full_empty);
   }
 
+  SECTION("start source, iii") {
+    a.set_state(PortState::full_empty);
+    a.event(PortEvent::source_fill, debug ? "start source" : "");
+    CHECK(a.state() == PortState::error);
+  }
+
+  SECTION("start source, iv") {
+    a.set_state(PortState::full_full);
+    a.event(PortEvent::source_fill, debug ? "start source" : "");
+    CHECK(a.state() == PortState::error);
+  }
+
   SECTION("start sink") {
-    a.event(PortEvent::source_fill, debug ? "start sink (fill)" : "");
-    CHECK(str(a.state()) == "full_empty");
-    a.event(PortEvent::swap, debug ? "start sink (swap)" : "");
-    CHECK(str(a.state()) == "empty_full");
+    CHECK(a.state() == PortState::empty_full);
     a.event(PortEvent::sink_drain, debug ? "start sink" : "");
     CHECK(a.state() == PortState::empty_empty);
+  }
+
+  SECTION("start sink, ii") {
+    a.set_state(PortState::empty_empty);
+    a.event(PortEvent::sink_drain, debug ? "start sink" : "");
+    CHECK(a.state() == PortState::error);
+  }
+
+  SECTION("start sink, iii") {
+    a.set_state(PortState::full_empty);
+    a.event(PortEvent::sink_drain, debug ? "start sink" : "");
+    CHECK(a.state() == PortState::error);
+  }
+
+  SECTION("start sink, iv") {
+    a.set_state(PortState::full_full);
+    a.event(PortEvent::sink_drain, debug ? "start sink" : "");
+    CHECK(a.state() == PortState::full_empty);
   }
 }
 
 TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
   [[maybe_unused]] auto a = PortStateMachine{};
+
+  a.set_state(PortState::empty_empty);
   CHECK(a.state() == PortState::empty_empty);
 
   a.event(PortEvent::source_fill);
@@ -457,7 +492,7 @@ TEST_CASE(
 
   [[maybe_unused]] auto a = AsyncStateMachine{0, 0};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(PortState::empty_full);
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.event(PortEvent::source_fill, debug ? "async source (fill)" : "");
@@ -483,7 +518,7 @@ TEST_CASE(
 
   [[maybe_unused]] auto a = AsyncStateMachine{0, 0};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(PortState::empty_full);
 
   auto fut_b = std::async(std::launch::async, [&]() {
     a.event(PortEvent::sink_drain, debug ? "async sink (drain)" : "");
@@ -508,7 +543,7 @@ TEST_CASE(
 
   [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(PortState::empty_full);
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.event(PortEvent::source_fill, debug ? "manual async source (fill)" : "");
@@ -531,7 +566,7 @@ TEST_CASE(
 
   [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(PortState::empty_full);
 
   auto fut_b = std::async(std::launch::async, [&]() {
     a.event(PortEvent::sink_drain, debug ? "manual async sink (drain)" : "");
@@ -558,7 +593,7 @@ TEST_CASE(
 
   [[maybe_unused]] auto a = AsyncStateMachine{0, 0};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(PortState::empty_full);
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
@@ -617,7 +652,7 @@ TEST_CASE(
 
   [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(PortState::empty_full);
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
@@ -676,7 +711,7 @@ TEST_CASE(
 
   [[maybe_unused]] auto a = AsyncStateMachine{0, 0};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(PortState::empty_full);
 
   size_t rounds = 37;
   if (debug)
@@ -748,7 +783,7 @@ TEST_CASE(
 
   [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(PortState::empty_full);
 
   size_t rounds = 37;
   if (debug)
@@ -774,6 +809,144 @@ TEST_CASE(
       }
       a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(7500)));
+    }
+  };
+
+  SECTION("launch source before sink, get source before sink") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch sink before source, get source before sink") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch source before sink, get sink before source") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  SECTION("launch sink before source, get sink before source") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+  CHECK(str(a.state()) == "empty_full");
+};
+
+TEST_CASE(
+    "AsynchronousStateMachine: Asynchronous source and asynchronous "
+    "sink, n iterations, no delays",
+    "[fsm]") {
+  [[maybe_unused]] constexpr bool debug = false;
+
+  [[maybe_unused]] auto a = AsyncStateMachine{0, 0};
+
+  a.set_state(PortState::empty_full);
+
+  size_t rounds = 37;
+  if (debug)
+    rounds = 3;
+
+  auto source_node = [&]() {
+    size_t n = rounds;
+
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+      a.event(PortEvent::source_fill, debug ? "async source node" : "");
+    }
+  };
+
+  auto sink_node = [&]() {
+    size_t n = rounds;
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+      a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
+    }
+  };
+
+  SECTION("launch source before sink, get source before sink") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch sink before source, get source before sink") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch source before sink, get sink before source") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  SECTION("launch sink before source, get sink before source") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+  CHECK(str(a.state()) == "empty_full");
+};
+
+TEST_CASE(
+    "UnifiedAsynchronousStateMachine: Asynchronous source and asynchronous "
+    "sink, n iterations, no delays",
+    "[fsm]") {
+  [[maybe_unused]] constexpr bool debug = false;
+
+  [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0};
+
+  a.set_state(PortState::empty_full);
+
+  size_t rounds = 37;
+  if (debug)
+    rounds = 3;
+
+  auto source_node = [&]() {
+    size_t n = rounds;
+
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+      a.event(PortEvent::source_fill, debug ? "async source node" : "");
+    }
+  };
+
+  auto sink_node = [&]() {
+    size_t n = rounds;
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+      a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
     }
   };
 

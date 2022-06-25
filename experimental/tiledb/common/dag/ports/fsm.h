@@ -438,9 +438,9 @@ namespace {
 constexpr const PortState transition_table[n_states][n_events] {
   /* source_sink */    /* source_fill */      /* swap */             /* sink_drain */        /* shutdown */
 
-  /* empty_empty */  { PortState::full_empty, PortState::error,      PortState::empty_empty, PortState::error },
+  /* empty_empty */  { PortState::full_empty, PortState::error,      PortState::error,       PortState::error },
   /* empty_full  */  { PortState::full_full,  PortState::error,      PortState::empty_empty, PortState::error },
-  /* full_empty  */  { PortState::error,      PortState::empty_full, PortState::full_empty,  PortState::error },
+  /* full_empty  */  { PortState::error,      PortState::empty_full, PortState::error,       PortState::error },
   /* full_full   */  { PortState::error,      PortState::error,      PortState::full_empty,  PortState::error },
 
   /* error       */  { PortState::error,      PortState::error,      PortState::error,       PortState::error },
@@ -494,7 +494,7 @@ class PortFiniteStateMachine {
    * Default constructor
    */
   PortFiniteStateMachine()
-      : state_(PortState::empty_empty){};
+      : state_(PortState::empty_full){};
 
   /**
    * Return the current state
