@@ -518,14 +518,8 @@ TEST_CASE(
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-<<<<<<< HEAD
       a.do_pull(debug ? "async sink node" : "");
       a.do_drain(debug ? "async sink node" : "");
-=======
-      a.event(PortEvent::pull, debug ? "async sink node" : "");
-      a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(7500)));
->>>>>>> b15b1dde0 (initial rewrite for two-phase ports [skip ci])
     }
   };
 
@@ -562,10 +556,7 @@ TEST_CASE(
   }
 
   CHECK(str(a.state()) == "empty_empty");
-<<<<<<< HEAD
   CHECK((a.source_swaps + a.sink_swaps) == rounds);
-=======
->>>>>>> b15b1dde0 (initial rewrite for two-phase ports [skip ci])
 };
 
 /**
@@ -1044,3 +1035,4 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
   CHECK(str(a.state()) == "empty_empty");
 }
+#endif
