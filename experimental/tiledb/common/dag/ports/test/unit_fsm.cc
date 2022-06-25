@@ -244,24 +244,11 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
   inline void on_ac_return(lock_type&){};
 
   inline void on_sink_swap(lock_type& lock) {
-    if (debug_)
-      std::cout << "  sink notifying source (drained) with " +
-                       str(FSM::state()) + " and " + str(FSM::next_state())
-                << std::endl;
-    source_cv_.notify_one();
-
-    if (debug_)
-      std::cout << "  sink going to sleep on_sink_swap with " +
-                       str(FSM::state())
-                << std::endl;
-    sink_cv_.wait(lock);
-
-    if (debug_)
-      std::cout << "  sink waking up on_sink_swap with " + str(FSM::state()) +
-                       " and " + str(FSM::next_state())
-                << std::endl;
+    CHECK(is_snk_empty(FSM::state()) == "");
 
     if (FSM::state() == PortState::full_empty) {
+      CHECK(str(FSM::state()) == "full_empty");
+
       std::swap(source_item, sink_item);
 
       if (debug_)
@@ -278,33 +265,40 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                   << std::endl;
 
       sink_swaps++;
+
+    } else {
+      CHECK(str(FSM::state()) == "empty_empty");
+
+      if (debug_)
+        std::cout << "  sink notifying source (drained) with " +
+                         str(FSM::state()) + " and " + str(FSM::next_state())
+                  << std::endl;
+      source_cv_.notify_one();
+
+      if (debug_)
+        std::cout << "  sink going to sleep on_sink_swap with " +
+                         str(FSM::state())
+                  << std::endl;
+      sink_cv_.wait(lock);
+
+      if (debug_)
+        std::cout << "  sink waking up on_sink_swap with " + str(FSM::state()) +
+                         " and " + str(FSM::next_state())
+                  << std::endl;
+
+      if (debug_)
+        std::cout << "  sink leaving on_sink_swap with " + str(FSM::state()) +
+                         " and " + str(FSM::next_state())
+                  << std::endl;
     }
-    if (debug_)
-      std::cout << "  sink leaving on_sink_swap with " + str(FSM::state()) +
-                       " and " + str(FSM::next_state())
-                << std::endl;
   }
 
   inline void on_source_swap(lock_type& lock) {
-    if (debug_)
-      std::cout << "  source notifying sink (filled) with " +
-                       str(FSM::state()) + " and " + str(FSM::next_state())
-                << std::endl;
-    sink_cv_.notify_one();
-
-    if (debug_)
-      std::cout << "  source going to sleep on_source_swap with " +
-                       str(FSM::state()) + " and " + str(FSM::next_state())
-                << std::endl;
-
-    source_cv_.wait(lock);
-
-    if (debug_)
-      std::cout << "  source waking up to " + str(FSM::state()) + " and " +
-                       str(FSM::next_state())
-                << std::endl;
+    CHECK(is_src_full(FSM::state()) == "");
 
     if (FSM::state() == PortState::full_empty) {
+      CHECK(str(FSM::state()) == "full_empty");
+
       if (debug_)
         std::cout << "  source swapping items with " + str(FSM::state()) +
                          " and " + str(FSM::next_state())
@@ -326,11 +320,31 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                   << std::endl;
 
       source_swaps++;
+    } else {
+      CHECK(str(FSM::state()) == "full_full");
+      if (debug_)
+        std::cout << "  source notifying sink (filled) with " +
+                         str(FSM::state()) + " and " + str(FSM::next_state())
+                  << std::endl;
+      sink_cv_.notify_one();
+
+      if (debug_)
+        std::cout << "  source going to sleep on_source_swap with " +
+                         str(FSM::state()) + " and " + str(FSM::next_state())
+                  << std::endl;
+
+      source_cv_.wait(lock);
+
+      if (debug_)
+        std::cout << "  source waking up to " + str(FSM::state()) + " and " +
+                         str(FSM::next_state())
+                  << std::endl;
+
+      if (debug_)
+        std::cout << "  source leaving on_source_swap with " +
+                         str(FSM::state()) + " and " + str(FSM::next_state())
+                  << std::endl;
     }
-    if (debug_)
-      std::cout << "  source leaving on_source_swap with " + str(FSM::state()) +
-                       " and " + str(FSM::next_state())
-                << std::endl;
   }
 };
 
@@ -370,11 +384,6 @@ class UnifiedAsyncStateMachine
   inline void on_ac_return(lock_type&){};
 
   inline void on_source_swap(lock_type& lock) {
-    if (debug_)
-      std::cout << "  source notifying sink (filled)" << std::endl;
-    cv_.notify_one();
-    cv_.wait(lock);
-
     if (FSM::state() == PortState::full_empty) {
       if (debug_)
         std::cout << "  source swapping items" << std::endl;
@@ -388,6 +397,11 @@ class UnifiedAsyncStateMachine
       FSM::set_state(PortState::empty_full);
       FSM::set_next_state(PortState::empty_full);
       source_swaps++;
+    } else {
+      if (debug_)
+        std::cout << "  source notifying sink (filled)" << std::endl;
+      cv_.notify_one();
+      cv_.wait(lock);
     }
   }
   inline void on_sink_swap(lock_type& lock) {
@@ -431,7 +445,7 @@ TEST_CASE(
     "AsynchronousStateMachine: Manual source and asynchronous sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  [[maybe_unused]] auto a = AsyncStateMachine{0, 0};
+  [[maybe_unused]] auto a = AsyncStateMachine{0, 0, debug};
 
   a.set_state(PortState::empty_empty);
 
@@ -462,7 +476,7 @@ TEST_CASE(
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0};
+  [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0, debug};
 
   a.set_state(PortState::empty_empty);
 
@@ -487,7 +501,7 @@ TEST_CASE(
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0};
+  [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0, debug};
 
   a.set_state(PortState::empty_empty);
 
@@ -882,6 +896,9 @@ TEST_CASE(
   CHECK(str(a.state()) == "empty_empty");
 };
 
+#if 0
+
+
 TEST_CASE("Pass a sequence of n integers", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = true;
 
@@ -962,3 +979,4 @@ TEST_CASE("Pass a sequence of n integers", "[fsm]") {
 
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
 }
+#endif
