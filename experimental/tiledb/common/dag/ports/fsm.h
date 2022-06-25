@@ -213,7 +213,20 @@ constexpr const PortState transition_table[n_states][n_events] {
 };
 
 constexpr const PortAction exit_table[n_states][n_events] {
+<<<<<<< HEAD
   /* source_sink */ /* source_fill */   /* source_push */      /* sink_drain */  /* sink_pull */        /* shutdown */
+=======
+  /* source_sink */    /* source_fill */      /* push */              /* sink_drain */        /* pull */              /* shutdown */
+								                              
+  /* empty_empty */  { PortAction::none,       PortAction::none,      PortAction::none,       PortAction::snk_swap,   PortAction::none },
+  /* empty_full  */  { PortAction::none,       PortAction::ac_return, PortAction::none,       PortAction::ac_return,  PortAction::none },
+  /* full_empty  */  { PortAction::none,       PortAction::src_swap,  PortAction::none,       PortAction::snk_swap,   PortAction::none },
+  /* full_full   */  { PortAction::none,       PortAction::src_swap,  PortAction::none,       PortAction::none,       PortAction::none },
+								                              
+  /* error       */  { PortAction::none,       PortAction::none,      PortAction::none,       PortAction::none,       PortAction::none },
+  /* done        */  { PortAction::none,       PortAction::none,      PortAction::none,       PortAction::none,       PortAction::none },
+  };
+>>>>>>> ffdacdb2f (Fix race condition?? [skip ci])
 
   /* empty_empty */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::sink_wait, PortAction::none },
   /* empty_full  */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
