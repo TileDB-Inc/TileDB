@@ -49,19 +49,19 @@ namespace tiledb::common {
  * currently no defined events for startup, stop, forced shutdown, or abort
  * (though we have an event enum that anticipates shutdown).
  *
- *    +-----------------+---------------------------------------------------+
- *    |      States     |                    Events                         |
- *    +--------+--------+-------------+------------+-------------+----------+
- *    | Source |  Sink  | source_fill | swap       | sink_drain  | shutdown |
- *    |--------+--------+-------------+------------+-------------+----------+
- *    | empty  | empty  | full/empty  |            |             |          |
- *    |--------+--------+-------------+------------+-------------+----------+
- *    | empty  | full   | full/full   |            | empty/empty |          |
- *    |--------+--------+-------------+------------+-------------+----------+
- *    | full   | empty  |             | empty/full |             |          |
- *    |--------+--------+-------------+------------+-------------+----------+
- *    | full   | full   |             |            | full/empty  |          |
- *    +--------+--------+-------------+------------+-------------+----------+
+ *    +-----------------+------------------------------------------------------------------+
+ *    |      States     |                     Events                                       |
+ *    +--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | Source |  Sink  | source_fill | push        | sink_drain  | pull        | shutdown |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | empty  | empty  | full/empty  |             |             | empty/full  |          |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | empty  | full   | full/full   |             | empty/empty |             |          |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | full   | empty  |             | empty/empty |             | full/full   |          |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | full   | full   |             | empty/full  | full/empty  |             |          |
+ *    +--------+--------+-------------+-------------+-------------+-------------+----------+
  *
  *
  * The entry and exit functions for a state transition from old to new are
@@ -73,7 +73,7 @@ namespace tiledb::common {
  *    new_state = transition(old_state, event)
  *    execute entry(new_state, event)
  *
- * (It is perhaps somewhat non-intuitive that the state transition executes 
+ * (It is perhaps somewhat non-intuitive that the state transition executes
  * exit and then executes entry.)
  *
  * Desired usage of a source port / fsm from a source node:
@@ -199,7 +199,7 @@ namespace tiledb::common {
  *     if state is full_empty
  *       { state == full_empty } ∧ { sink_item == false }
  *
- *       do_swap 
+ *       do_swap
  *
  *       { state == full_empty } ∧ { sink_item == false }
  *
@@ -209,11 +209,11 @@ namespace tiledb::common {
  *
  *       notify source : entry(empty_full, swap)
  *
- *       { state == empty_full ∨ state == full_full} ∧ { sink_item == true } 
+ *       { state == empty_full ∨ state == full_full} ∧ { sink_item == true }
  *     else { state == empty_full ∨ state == full_full } ∧ { sink_item == true }
  *
  *     return { state == empty_full ∨ state == full_full } ∧ { sink_item == true }
- * 
+ *
  *
  * Note that the loop structures for the source and sink are essentially the same.  The difference
  * is in the states at each point.
@@ -233,13 +233,13 @@ namespace tiledb::common {
  *       { state == full_empty ∨ state == full_full } / { state == full_empty ∨ state == empty_empty }
  *
  *     sink entry:
- *       call back notify_wait  
+ *       call back notify_wait
  *
  *       { state != full_full } / { state != empty_empty }
  *
  *       if state is full_empty
  *         do_swap
- *         do swap transition 
+ *         do swap transition
  *         call back notify_other
  *
  *         { state == empty_full } / { state == empty_full }
@@ -258,7 +258,7 @@ namespace tiledb::common {
  * the cases separately for clarity.)
  *
  * In the case of the source, on entry, we need to do the following:
- * 
+ *
  *   notify the sink
  *   wait for the sink to become empty
  *   on wakeup, if the current state is full_empty, perform a swap and set the state to empty_full
@@ -267,7 +267,7 @@ namespace tiledb::common {
  * In the case of the sink, on entry, we need to do the following:
  *
  * Notify the source
- *   wait for the source to become full  
+ *   wait for the source to become full
  *   on wakeup, if the current state is full_empty, perform a swap and set the state to empty_full
  *
  * When we are using locks and condition variables, a single cv can be shared between source and
@@ -275,21 +275,39 @@ namespace tiledb::common {
  * function is needed for source entry and sink entry.
  *
  * The table for entry functions contains actions to be performend on state transitions (as
- * described above: 
+ * described above:
  *
- *    +-----------------+---------------------------------------------------+
- *    |      States     |                    Events                         |
- *    +--------+--------+-------------+------------+-------------+----------+
- *    | Source |  Sink  | source_fill | swap       | sink_drain  | shutdown |
- *    |--------+--------+-------------+------------+-------------+----------+
- *    | empty  | empty  |             |            | snk_swap    |          |
- *    |--------+--------+-------------+------------+-------------+----------+
- *    | empty  | full   |             |            |             |          |
- *    |--------+--------+-------------+------------+-------------+----------+
- *    | full   | empty  | src_swap    |            | snk_swap    |          |
- *    |--------+--------+-------------+------------+-------------+----------+
- *    | full   | full   | src_swap    |            |             |          |
- *    +--------+--------+-------------+------------+-------------+----------+
+ *    +-----------------+------------------------------------------------------------------+
+ *    |      States     |                     Events                                       |
+ *    +--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | Source |  Sink  | source_fill | push        | sink_drain  | pull        | shutdown |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | empty  | empty  |             | return      | return      |             |          |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | empty  | full   |             | return      |  	          | return      |          |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | full   | empty  | return      |             | return      |             |          |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | full   | full   | return      |             |  	       	  | return      |          |
+ *    +--------+--------+-------------+-------------+-------------+-------------+----------+
+ *
+ *
+ *
+ *
+ *    +-----------------+------------------------------------------------------------------+
+ *    |      States     |                     Events                                       |
+ *    +--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | Source |  Sink  | source_fill | push        | sink_drain  | pull        | shutdown |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | empty  | empty  |             |             |             | sink_swap   |          |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | empty  | full   |             |             |             |             |          |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | full   | empty  |             | src_swap    |             | sink_swap   |          |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | full   | full   |             | src_swap    |             |             |          |
+ *    +--------+--------+-------------+-------------+-------------+-------------+----------+
+ *
  *
  */
 // clang-format on
@@ -341,9 +359,10 @@ static inline auto str(PortState st) {
 
 enum class PortEvent : unsigned short {
   source_fill,
-  swap,
+  push,
   sink_drain,
-  shutdown
+  pull,
+  shutdown,
 };
 
 inline constexpr unsigned short to_index(PortEvent x) {
@@ -360,8 +379,9 @@ constexpr unsigned int n_events = to_index(PortEvent::shutdown) + 1;
  */
 static std::vector<std::string> event_strings{
     "source_fill",
-    "swap",
+    "push",
     "sink_drain",
+    "pull",
     "shutdown",
 };
 
@@ -436,41 +456,41 @@ namespace {
 
 // clang-format off
 constexpr const PortState transition_table[n_states][n_events] {
-  /* source_sink */    /* source_fill */      /* swap */             /* sink_drain */        /* shutdown */
-
-  /* empty_empty */  { PortState::full_empty, PortState::error,      PortState::empty_empty, PortState::error },
-  /* empty_full  */  { PortState::full_full,  PortState::error,      PortState::empty_empty, PortState::error },
-  /* full_empty  */  { PortState::error,      PortState::empty_full, PortState::full_empty,  PortState::error },
-  /* full_full   */  { PortState::error,      PortState::error,      PortState::full_empty,  PortState::error },
-
-  /* error       */  { PortState::error,      PortState::error,      PortState::error,       PortState::error },
-  /* done        */  { PortState::error,      PortState::error,      PortState::error,       PortState::error },
+  /* source_sink */    /* source_fill */      /* push */              /* sink_drain */        /* pull */              /* shutdown */
+								                             
+  /* empty_empty */  { PortState::full_empty, PortState::error,       PortState::error,       PortState::empty_full , PortState::error },
+  /* empty_full  */  { PortState::full_full,  PortState::error,       PortState::empty_empty, PortState::error,       PortState::error },
+  /* full_empty  */  { PortState::error,      PortState::empty_full,  PortState::error,       PortState::empty_full,  PortState::error },
+  /* full_full   */  { PortState::error,      PortState::empty_full,  PortState::full_empty,  PortState::error,       PortState::error },
+								                             
+  /* error       */  { PortState::error,      PortState::error,       PortState::error,       PortState::error,       PortState::error },
+  /* done        */  { PortState::error,      PortState::error,       PortState::error,       PortState::error,       PortState::error },
   };
 
 
 constexpr const PortAction entry_table[n_states][n_events] {
-  /* source_sink */    /* source_fill */      /* swap */             /* sink_drain */        /* shutdown */
-
-  /* empty_empty */  { PortAction::none,       PortAction::ac_return,  PortAction::snk_swap,     PortAction::none },
-  /* empty_full  */  { PortAction::none,       PortAction::ac_return,  PortAction::none,         PortAction::none },
-  /* full_empty  */  { PortAction::src_swap,   PortAction::ac_return,  PortAction::snk_swap,     PortAction::none },
-  /* full_full   */  { PortAction::src_swap,   PortAction::ac_return,  PortAction::none,         PortAction::none },
-
-  /* error       */  { PortAction::none,       PortAction::none,        PortAction::none,        PortAction::none },
-  /* done        */  { PortAction::none,       PortAction::none,        PortAction::none,        PortAction::none },
+  /* source_sink */    /* source_fill */      /* swap */              /* sink_drain */        /* pull */              /* shutdown */
+								                              
+  /* empty_empty */  { PortAction::none,       PortAction::ac_return, PortAction::ac_return,  PortAction::none,       PortAction::none },
+  /* empty_full  */  { PortAction::none,       PortAction::ac_return, PortAction::none,       PortAction::ac_return,  PortAction::none },
+  /* full_empty  */  { PortAction::ac_return,  PortAction::none,      PortAction::ac_return,  PortAction::none,       PortAction::none },
+  /* full_full   */  { PortAction::ac_return,  PortAction::none,      PortAction::none,       PortAction::ac_return,  PortAction::none },
+								                              
+  /* error       */  { PortAction::none,       PortAction::none,      PortAction::none,       PortAction::none,       PortAction::none },
+  /* done        */  { PortAction::none,       PortAction::none,      PortAction::none,       PortAction::none,       PortAction::none },
   };
 
 
 constexpr const PortAction exit_table[n_states][n_events] {
-  /* source_sink */    /* source_fill */      /* swap */             /* sink_drain */        /* shutdown */
-
-  /* empty_empty */  { PortAction::none,       PortAction::none,       PortAction::none,         PortAction::none },
-  /* empty_full  */  { PortAction::none,       PortAction::none,       PortAction::none,         PortAction::none },
-  /* full_empty  */  { PortAction::none,       PortAction::none,       PortAction::none,         PortAction::none },
-  /* full_full   */  { PortAction::none,       PortAction::none,       PortAction::none,         PortAction::none },
-
-  /* error       */  { PortAction::none,       PortAction::none,       PortAction::none,         PortAction::none },
-  /* done        */  { PortAction::none,       PortAction::none,       PortAction::none,         PortAction::none },
+  /* source_sink */    /* source_fill */      /* swap */              /* sink_drain */        /* pull */              /* shutdown */
+								                              
+  /* empty_empty */  { PortAction::none,       PortAction::none,      PortAction::none,       PortAction::snk_swap,   PortAction::none },
+  /* empty_full  */  { PortAction::none,       PortAction::none,      PortAction::none,       PortAction::none,       PortAction::none },
+  /* full_empty  */  { PortAction::none,       PortAction::src_swap,  PortAction::none,       PortAction::snk_swap,   PortAction::none },
+  /* full_full   */  { PortAction::none,       PortAction::src_swap,  PortAction::none,       PortAction::none,       PortAction::none },
+								                              
+  /* error       */  { PortAction::none,       PortAction::none,      PortAction::none,       PortAction::none,       PortAction::none },
+  /* done        */  { PortAction::none,       PortAction::none,      PortAction::none,       PortAction::none,       PortAction::none },
   };
 
 // clang-format on
