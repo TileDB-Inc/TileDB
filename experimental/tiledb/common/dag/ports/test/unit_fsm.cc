@@ -127,6 +127,7 @@ TEST_CASE("Port FSM: Start up", "[fsm]") {
   constexpr bool debug = false;
   [[maybe_unused]] auto a = PortStateMachine{};
 
+  a.debug_ = debug;
   CHECK(a.state() == PortState::empty_empty);
 
   SECTION("start source") {
@@ -233,17 +234,38 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
       , debug_(debug) {
     //    CHECK(str(FSM::state()) == "empty_empty");
 
-    FSM::debug_ = debug_;
+    FSM::debug_ = debug;
     if (debug_)
-      std::cout << "Constructing AsyncStateMachine" << std::endl;
+      std::cout << "\nConstructing AsyncStateMachine" << std::endl;
   }
 
   AsyncStateMachine(const AsyncStateMachine&) = default;
   AsyncStateMachine(AsyncStateMachine&&) = default;
 
-  inline void on_ac_return(lock_type&){};
+  inline void on_ac_return(lock_type&, int) {
+  }
 
-  inline void on_sink_swap(lock_type& lock) {
+  inline void notify_source(lock_type&, std::atomic<int>& event) {
+    if (debug_)
+      std::cout << event++ << "  "
+                << " sink notifying source (on_signal_source) with " +
+                       str(FSM::state()) + " and " + str(FSM::next_state())
+                << std::endl;
+
+    source_cv_.notify_one();
+  }
+
+  inline void notify_sink(lock_type&, std::atomic<int>& event) {
+    if (debug_)
+      std::cout << event++ << "  "
+                << " source notifying sink(on_signal_sink) with " +
+                       str(FSM::state()) + " and " + str(FSM::next_state())
+                << std::endl;
+
+    sink_cv_.notify_one();
+  }
+
+  inline void on_sink_swap(lock_type& lock, std::atomic<int>& event) {
     CHECK(is_snk_empty(FSM::state()) == "");
 
     if (FSM::state() == PortState::full_empty) {
@@ -252,7 +274,8 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
       std::swap(source_item, sink_item);
 
       if (debug_)
-        std::cout << "  sink notifying source (swap) with " +
+        std::cout << event++ << "  "
+                  << "  sink notifying source (swap) with " +
                          str(FSM::state()) + " and " + str(FSM::next_state())
                   << std::endl;
       source_cv_.notify_one();
@@ -260,54 +283,59 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
       FSM::set_next_state(PortState::empty_full);
 
       if (debug_)
-        std::cout << "  sink done swapping items with " + str(FSM::state()) +
+        std::cout << event++ << "  "
+                  << " sink done swapping items with " + str(FSM::state()) +
                          " and " + str(FSM::next_state())
                   << std::endl;
 
       sink_swaps++;
-
     } else {
-      CHECK(str(FSM::state()) == "empty_empty");
-
       if (debug_)
-        std::cout << "  sink notifying source (drained) with " +
+        std::cout << event++ << "  "
+                  << " sink notifying source(drained) with " +
                          str(FSM::state()) + " and " + str(FSM::next_state())
                   << std::endl;
       source_cv_.notify_one();
 
       if (debug_)
-        std::cout << "  sink going to sleep on_sink_swap with " +
+        std::cout << event++ << "  "
+                  << " sink going to sleep on_sink_swap with " +
                          str(FSM::state())
                   << std::endl;
       sink_cv_.wait(lock);
 
+      FSM::set_next_state(FSM::state());
+
       if (debug_)
-        std::cout << "  sink waking up on_sink_swap with " + str(FSM::state()) +
+        std::cout << event++ << "  "
+                  << " sink waking up on_sink_swap with " + str(FSM::state()) +
                          " and " + str(FSM::next_state())
                   << std::endl;
 
       if (debug_)
-        std::cout << "  sink leaving on_sink_swap with " + str(FSM::state()) +
+        std::cout << event++ << "  "
+                  << " sink leaving on_sink_swap with " + str(FSM::state()) +
                          " and " + str(FSM::next_state())
                   << std::endl;
     }
   }
 
-  inline void on_source_swap(lock_type& lock) {
+  inline void on_source_swap(lock_type& lock, std::atomic<int>& event) {
     CHECK(is_src_full(FSM::state()) == "");
-
     if (FSM::state() == PortState::full_empty) {
       CHECK(str(FSM::state()) == "full_empty");
 
       if (debug_)
-        std::cout << "  source swapping items with " + str(FSM::state()) +
+        std::cout << event++ << "  "
+                  << " source swapping items with " + str(FSM::state()) +
                          " and " + str(FSM::next_state())
                   << std::endl;
       std::swap(source_item, sink_item);
 
       if (debug_)
-        std::cout << "  source notifying sink (swap) with " +
-                         str(FSM::state()) + " and " + str(FSM::next_state())
+        std::cout << event++ << "  "
+                  << " source notifying sink (swap) with " + str(FSM::state()) +
+                         " and " + str(FSM::next_state())
                   << std::endl;
       sink_cv_.notify_one();
 
@@ -315,7 +343,8 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
       FSM::set_next_state(PortState::empty_full);
 
       if (debug_)
-        std::cout << "  source done swapping items with " + str(FSM::state()) +
+        std::cout << event++ << "  "
+                  << " source done swapping items with " + str(FSM::state()) +
                          " and " + str(FSM::next_state())
                   << std::endl;
 
@@ -323,25 +352,31 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
     } else {
       CHECK(str(FSM::state()) == "full_full");
       if (debug_)
-        std::cout << "  source notifying sink (filled) with " +
+        std::cout << event++ << "  "
+                  << " source notifying sink (filled) with " +
                          str(FSM::state()) + " and " + str(FSM::next_state())
                   << std::endl;
       sink_cv_.notify_one();
 
       if (debug_)
-        std::cout << "  source going to sleep on_source_swap with " +
+        std::cout << event++ << "  "
+                  << " source going to sleep on_source_swap with " +
                          str(FSM::state()) + " and " + str(FSM::next_state())
                   << std::endl;
 
       source_cv_.wait(lock);
 
+      FSM::set_next_state(FSM::state());
+
       if (debug_)
-        std::cout << "  source waking up to " + str(FSM::state()) + " and " +
+        std::cout << event++ << "  "
+                  << " source waking up to " + str(FSM::state()) + " and " +
                          str(FSM::next_state())
                   << std::endl;
 
       if (debug_)
-        std::cout << "  source leaving on_source_swap with " +
+        std::cout << event++ << "  "
+                  << " source leaving on_source_swap with " +
                          str(FSM::state()) + " and " + str(FSM::next_state())
                   << std::endl;
     }
@@ -373,24 +408,44 @@ class UnifiedAsyncStateMachine
       , sink_item(sink_init)
       , debug_{debug} {
     //    CHECK(str(FSM::state()) == "empty_empty");
-    FSM::debug_ = debug_;
+    FSM::debug_ = debug;
     if (debug_)
-      std::cout << "Constructing UnifiedAsyncStateMachine" << std::endl;
+      std::cout << "\nConstructing UnifiedAsyncStateMachine" << std::endl;
   }
 
   UnifiedAsyncStateMachine(const UnifiedAsyncStateMachine&) = default;
   UnifiedAsyncStateMachine(UnifiedAsyncStateMachine&&) = default;
 
-  inline void on_ac_return(lock_type&){};
+  inline void on_ac_return(lock_type&, int){};
 
-  inline void on_source_swap(lock_type& lock) {
+  inline void do_notify(lock_type&, std::atomic<int>&) {
+    cv_.notify_one();
+  }
+
+  inline void notify_source(lock_type& lock, std::atomic<int>& event) {
+    if (debug_)
+      std::cout << event++ << "  "
+                << " sink notifying source" << std::endl;
+    do_notify(lock, event);
+  }
+  inline void notify_sink(lock_type& lock, std::atomic<int>& event) {
+    if (debug_)
+      std::cout << event++ << "  "
+                << " source notifying sink" << std::endl;
+    do_notify(lock, event);
+  }
+
+  inline void on_source_swap(lock_type& lock, std::atomic<int>& event) {
     if (FSM::state() == PortState::full_empty) {
       if (debug_)
-        std::cout << "  source swapping items" << std::endl;
+        std::cout << event++ << "  "
+                  << " source swapping items " << source_item << " and "
+                  << sink_item << std::endl;
       std::swap(source_item, sink_item);
 
       if (debug_)
-        std::cout << "  source notifying sink (swap)" << std::endl;
+        std::cout << event++ << "  "
+                  << " source notifying sink (swap)" << std::endl;
 
       cv_.notify_one();
 
@@ -399,13 +454,16 @@ class UnifiedAsyncStateMachine
       source_swaps++;
     } else {
       if (debug_)
-        std::cout << "  source notifying sink (filled)" << std::endl;
+        std::cout << event++ << "  "
+                  << " source notifying sink (filled)" << std::endl;
       cv_.notify_one();
       cv_.wait(lock);
+
+      FSM::set_next_state(FSM::state());
     }
   }
-  inline void on_sink_swap(lock_type& lock) {
-    on_source_swap(lock);
+  inline void on_sink_swap(lock_type& lock, std::atomic<int>& event) {
+    on_source_swap(lock, event);
   }
 };
 
@@ -530,7 +588,7 @@ TEST_CASE(
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  [[maybe_unused]] auto a = AsyncStateMachine{0, 0};
+  [[maybe_unused]] auto a = AsyncStateMachine{0, 0, debug};
 
   a.set_state(PortState::empty_empty);
 
@@ -612,7 +670,7 @@ TEST_CASE(
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0};
+  [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0, debug};
 
   a.set_state(PortState::empty_empty);
 
@@ -684,7 +742,9 @@ TEST_CASE(
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  [[maybe_unused]] auto a = AsyncStateMachine{0, 0};
+  [[maybe_unused]] auto a = AsyncStateMachine{0, 0, debug};
+
+  a.debug_ = debug;
 
   a.set_state(PortState::empty_empty);
 
@@ -699,7 +759,6 @@ TEST_CASE(
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(7500)));
       a.event(PortEvent::source_fill, debug ? "async source node" : "");
       a.event(PortEvent::push, debug ? "async source node" : "");
     }
@@ -713,7 +772,6 @@ TEST_CASE(
       }
       a.event(PortEvent::pull, debug ? "async sink node" : "");
       a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(7500)));
     }
   };
 
@@ -758,7 +816,7 @@ TEST_CASE(
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0};
+  [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0, debug};
 
   a.set_state(PortState::empty_empty);
 
@@ -773,7 +831,6 @@ TEST_CASE(
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(7500)));
       a.event(PortEvent::source_fill, debug ? "async source node" : "");
       a.event(PortEvent::push, debug ? "async source node" : "");
     }
@@ -787,7 +844,6 @@ TEST_CASE(
       }
       a.event(PortEvent::pull, debug ? "async sink node" : "");
       a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(7500)));
     }
   };
 
@@ -829,7 +885,7 @@ TEST_CASE(
     "UnifiedAsynchronousStateMachine: Asynchronous source and asynchronous "
     "sink, n iterations, no sleeping",
     "[fsm]") {
-  [[maybe_unused]] constexpr bool debug = true;
+  [[maybe_unused]] constexpr bool debug = false;
 
   [[maybe_unused]] auto a = AsyncStateMachine{0, 0, debug};
 
@@ -855,7 +911,7 @@ TEST_CASE(
     size_t n = rounds;
     while (n--) {
       if (debug) {
-        std::cout << "sink node iteration " << n << std::endl;
+        std::cout << "source node iteration " << n << std::endl;
       }
       a.event(PortEvent::pull, debug ? "async sink node" : "");
       a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
@@ -896,13 +952,10 @@ TEST_CASE(
   CHECK(str(a.state()) == "empty_empty");
 };
 
-#if 0
+TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
+  [[maybe_unused]] constexpr bool debug = false;
 
-
-TEST_CASE("Pass a sequence of n integers", "[fsm]") {
-  [[maybe_unused]] constexpr bool debug = true;
-
-  [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0};
+  [[maybe_unused]] auto a = AsyncStateMachine{0, 0, debug};
 
   a.set_state(PortState::empty_empty);
 
@@ -913,7 +966,7 @@ TEST_CASE("Pass a sequence of n integers", "[fsm]") {
   std::vector<size_t> input(rounds);
   std::vector<size_t> output(rounds);
 
-  std::iota(input.begin(), input.end(), 1);
+  std::iota(input.begin(), input.end(), 19);
   std::fill(output.begin(), output.end(), 0);
   auto i = input.begin();
   auto j = output.begin();
@@ -927,9 +980,16 @@ TEST_CASE("Pass a sequence of n integers", "[fsm]") {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
+      while (a.state() == PortState::full_empty ||
+             a.state() == PortState::full_full)
+        ;
+
+      CHECK(is_src_empty(a.state()) == "");
+
       a.source_item = *i++;
       a.event(PortEvent::source_fill, debug ? "async source node" : "");
       a.event(PortEvent::push, debug ? "async source node" : "");
+      a.source_item = 400000000;
     }
   };
 
@@ -940,8 +1000,16 @@ TEST_CASE("Pass a sequence of n integers", "[fsm]") {
         std::cout << "source node iteration " << n << std::endl;
       }
       a.event(PortEvent::pull, debug ? "async sink node" : "");
+
+      while (a.state() == PortState::full_empty ||
+             a.state() == PortState::empty_empty)
+        ;
+
+      CHECK(is_snk_full(a.state()) == "");
+
       a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
       *j++ = a.sink_item;
+      a.sink_item = 1000000000;
     }
   };
 
@@ -977,6 +1045,160 @@ TEST_CASE("Pass a sequence of n integers", "[fsm]") {
     fut_a.get();
   }
 
-  CHECK(std::equal(input.begin(), input.end(), output.begin()));
+  if (debug)
+    for (size_t i = 0; i < rounds; ++i) {
+      std::cout << i << " (" << input[i] << ", " << output[i] << ")"
+                << std::endl;
+    }
+
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    for (size_t j = 0; j < input.size(); ++j) {
+      if (input[j] != output[j]) {
+        std::cout << j << " (" << input[j] << ", " << output[j] << ")"
+                  << std::endl;
+      }
+    }
+  }
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    auto iter = std::find_first_of(
+        input.begin(),
+        input.end(),
+        output.begin(),
+        output.end(),
+        std::not_equal_to<size_t>());
+    if (iter != input.end()) {
+      size_t k = iter - input.begin();
+      std::cout << k << " (" << input[k] << ", " << output[k] << ")"
+                << std::endl;
+    } else {
+      std::cout << "this should not happen" << std::endl;
+    }
+  }
+
+  REQUIRE(std::equal(input.begin(), input.end(), output.begin()));
 }
-#endif
+
+TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
+  [[maybe_unused]] constexpr bool debug = false;
+
+  [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0, debug};
+
+  a.set_state(PortState::empty_empty);
+
+  size_t rounds = 379;
+  if (debug)
+    rounds = 3;
+
+  std::vector<size_t> input(rounds);
+  std::vector<size_t> output(rounds);
+
+  std::iota(input.begin(), input.end(), 19);
+  std::fill(output.begin(), output.end(), 0);
+  auto i = input.begin();
+  auto j = output.begin();
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
+
+  auto source_node = [&]() {
+    size_t n = rounds;
+
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+      while (a.state() == PortState::full_empty ||
+             a.state() == PortState::full_full)
+        ;
+
+      CHECK(is_src_empty(a.state()) == "");
+
+      a.source_item = *i++;
+      a.event(PortEvent::source_fill, debug ? "async source node" : "");
+      a.event(PortEvent::push, debug ? "async source node" : "");
+      a.source_item = 400000000;
+    }
+  };
+
+  auto sink_node = [&]() {
+    size_t n = rounds;
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+      a.event(PortEvent::pull, debug ? "async sink node" : "");
+
+      while (a.state() == PortState::full_empty ||
+             a.state() == PortState::empty_empty)
+        ;
+
+      CHECK(is_snk_full(a.state()) == "");
+
+      a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
+      *j++ = a.sink_item;
+      a.sink_item = 1000000000;
+    }
+  };
+
+  SECTION("launch source before sink, get source before sink") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch sink before source, get source before sink") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch source before sink, get sink before source") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  SECTION("launch sink before source, get sink before source") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  if (debug)
+    for (size_t i = 0; i < rounds; ++i) {
+      std::cout << i << " (" << input[i] << ", " << output[i] << ")"
+                << std::endl;
+    }
+
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    for (size_t j = 0; j < input.size(); ++j) {
+      if (input[j] != output[j]) {
+        std::cout << j << " (" << input[j] << ", " << output[j] << ")"
+                  << std::endl;
+      }
+    }
+  }
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    auto iter = std::find_first_of(
+        input.begin(),
+        input.end(),
+        output.begin(),
+        output.end(),
+        std::not_equal_to<size_t>());
+    if (iter != input.end()) {
+      size_t k = iter - input.begin();
+      std::cout << k << " (" << input[k] << ", " << output[k] << ")"
+                << std::endl;
+    } else {
+      std::cout << "this should not happen" << std::endl;
+    }
+  }
+  REQUIRE(std::equal(input.begin(), input.end(), output.begin()));
+}
