@@ -611,18 +611,15 @@ std::pair<Status, optional<std::string>> libmagic_get_mime(
     auto err_msg = std::string(magic_error(magic));
     magic_close(magic);
     return {
-        Status_Error(
-            std::string("Cannot load magic database - ") + err_msg),
+        Status_Error(std::string("Cannot load magic database - ") + err_msg),
         nullopt};
   }
   auto rv = magic_buffer(magic, data, size);
   if (!rv) {
     auto err_msg = std::string(magic_error(magic));
     magic_close(magic);
-    return {
-        Status_Error(
-            std::string("Cannot get the mime type - ") + err_msg),
-        nullopt};
+    return {Status_Error(std::string("Cannot get the mime type - ") + err_msg),
+            nullopt};
   }
   magic_close(magic);
   return {Status::Ok(), rv};
@@ -635,18 +632,16 @@ std::pair<Status, optional<std::string>> libmagic_get_mime_encoding(
     auto err_msg = std::string(magic_error(magic));
     magic_close(magic);
     return {
-        Status_Error(
-            std::string("Cannot load magic database - ") + err_msg),
+        Status_Error(std::string("Cannot load magic database - ") + err_msg),
         nullopt};
   }
   auto rv = magic_buffer(magic, data, size);
   if (!rv) {
     auto err_msg = std::string(magic_error(magic));
     magic_close(magic);
-    return {Status_Error(
-                std::string("Cannot get the mime encoding - ") +
-                err_msg),
-            nullopt};
+    return {
+        Status_Error(std::string("Cannot get the mime encoding - ") + err_msg),
+        nullopt};
   }
   magic_close(magic);
   return {Status::Ok(), rv};
