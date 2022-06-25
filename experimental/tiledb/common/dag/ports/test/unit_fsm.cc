@@ -31,13 +31,16 @@
  */
 
 #include "unit_fsm.h"
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <future>
 #include <iostream>
 #include <mutex>
+#include <numeric>
 #include <thread>
+#include <vector>
 #include "experimental/tiledb/common/dag/ports/fsm.h"
 
 using namespace tiledb::common;
@@ -380,49 +383,6 @@ class UnifiedAsyncStateMachine
 
   inline void on_ac_return(lock_type&){};
 
-#if 0
-  inline void on_sink_swap(lock_type& lock) {
-    if (debug_)
-      std::cout << "  sink notifying source (drained)" << std::endl;
-    cv_.notify_one();
-    cv_.wait(lock);
-
-    if (FSM::state() == PortState::full_empty) {
-      std::swap(source_item, sink_item);
-
-      if (debug_)
-        std::cout << "  sink notifying source (swap)" << std::endl;
-      cv_.notify_one();
-
-      FSM::set_state(PortState::empty_full);
-      FSM::set_next_state(PortState::empty_full);
-
-      sink_swaps++;
-    }
-  }
-
-  inline void on_source_swap(lock_type& lock) {
-    if (debug_)
-      std::cout << "  source notifying sink (filled)" << std::endl;
-    cv_.notify_one();
-    cv_.wait(lock);
-
-    if (FSM::state() == PortState::full_empty) {
-      if (debug_)
-        std::cout << "  source swapping items" << std::endl;
-      std::swap(source_item, sink_item);
-
-      if (debug_)
-        std::cout << "  source notifying sink (swap)" << std::endl;
-      cv_.notify_one();
-
-      FSM::set_state(PortState::empty_full);
-      FSM::set_next_state(PortState::empty_full);
-
-      source_swaps++;
-    }
-  }
-#else
   inline void on_source_swap(lock_type& lock) {
     if (debug_)
       std::cout << "  source notifying sink (filled)" << std::endl;
@@ -446,8 +406,6 @@ class UnifiedAsyncStateMachine
   inline void on_sink_swap(lock_type& lock) {
     on_source_swap(lock);
   }
-
-#endif
 };
 
 TEST_CASE(
@@ -810,3 +768,82 @@ TEST_CASE(
   }
   CHECK(str(a.state()) == "empty_full");
 };
+
+TEST_CASE("Pass a sequence of n integers", "[fsm]") {
+  [[maybe_unused]] constexpr bool debug = false;
+
+  [[maybe_unused]] auto a = UnifiedAsyncStateMachine{0, 0};
+
+  a.set_state(PortState::empty_empty);
+
+  size_t rounds = 379;
+  if (debug)
+    rounds = 3;
+
+  std::vector<size_t> input(rounds);
+  std::vector<size_t> output(rounds);
+
+  std::iota(input.begin(), input.end(), 1);
+  std::fill(output.begin(), output.end(), 0);
+  auto i = input.begin();
+  auto j = output.begin();
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
+
+  auto source_node = [&]() {
+    size_t n = rounds;
+
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+      a.source_item = *i++;
+      a.event(PortEvent::source_fill, debug ? "async source node" : "");
+    }
+  };
+
+  auto sink_node = [&]() {
+    size_t n = rounds;
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+      a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
+      *j++ = a.sink_item;
+    }
+  };
+
+  SECTION("launch source before sink, get source before sink") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch sink before source, get source before sink") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch source before sink, get sink before source") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  SECTION("launch sink before source, get sink before source") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()));
+}
