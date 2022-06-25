@@ -1035,4 +1035,3 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
   CHECK(str(a.state()) == "empty_empty");
 }
-#endif

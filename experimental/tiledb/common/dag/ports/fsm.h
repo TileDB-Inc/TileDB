@@ -603,6 +603,14 @@ class PortFiniteStateMachine {
   bool debug_enabled() {
     return debug_;
   }
+  inline void notify_source(lock_type&, std::atomic<int>&) {
+    std::cout << "    "
+              << "Action notify source" << std::endl;
+  }
+  inline void notify_sink(lock_type&, std::atomic<int>&) {
+    std::cout << "    "
+              << "Action notify sink" << std::endl;
+  }
 };
 
 }  // namespace tiledb::common
