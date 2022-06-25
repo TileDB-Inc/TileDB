@@ -66,9 +66,6 @@
 
 namespace tiledb::common {
 
-
-
-
 /* Forward declarations */
 template <class Block>
 class Source;
@@ -79,7 +76,7 @@ class Sink;
 /**
  * A data flow source, used by both edges and nodes.
  *
- * Source objects have three states: empty, full, and ready.
+ * Source objects have two states: empty and full.
  */
 template <class Block>
 class Source {
@@ -148,7 +145,7 @@ class Source {
 /**
  * A data flow sink, used by both edges and nodes.
  *
- * Sink objects have two states: empy, full, and ready.
+ * Sink objects have two states: empy and full.
  */
 template <class Block>
 class Sink {
@@ -333,4 +330,5 @@ inline void unbind(Sink<Block>& snk) {
 }  // namespace tiledb::common
 
 #endif
+
 #endif  // TILEDB_DAG_PORTS_H
