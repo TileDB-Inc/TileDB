@@ -67,9 +67,6 @@
 
 namespace tiledb::common {
 
-
-
-
 /* Forward declarations */
 template <class Block, class StateMachine>
 class Source;
