@@ -493,7 +493,7 @@ constexpr const PortAction exit_table[n_states][n_events] {
   /* source_sink */    /* source_fill */      /* push */              /* sink_drain */        /* pull */              /* shutdown */
 								                              
   /* empty_empty */  { PortAction::none,       PortAction::none,      PortAction::none,       PortAction::snk_swap,   PortAction::none },
-  /* empty_full  */  { PortAction::none,       PortAction::none,      PortAction::none,       PortAction::none,       PortAction::none },
+  /* empty_full  */  { PortAction::none,       PortAction::ac_return, PortAction::none,       PortAction::ac_return,  PortAction::none },
   /* full_empty  */  { PortAction::none,       PortAction::src_swap,  PortAction::none,       PortAction::snk_swap,   PortAction::none },
   /* full_full   */  { PortAction::none,       PortAction::src_swap,  PortAction::none,       PortAction::none,       PortAction::none },
 								                              

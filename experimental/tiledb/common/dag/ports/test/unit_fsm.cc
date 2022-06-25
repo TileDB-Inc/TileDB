@@ -45,6 +45,9 @@
 
 using namespace tiledb::common;
 
+const int EMPTY_SOURCE = 1234567;
+const int EMPTY_SINK = 7654321;
+
 /**
  * A series of helperf functions for testing the state
  * of the finite-state machine. We work with strings instead
@@ -271,6 +274,8 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
     if (FSM::state() == PortState::full_empty) {
       CHECK(str(FSM::state()) == "full_empty");
 
+      CHECK(source_item != EMPTY_SINK);
+
       std::swap(source_item, sink_item);
 
       if (debug_)
@@ -330,6 +335,9 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                   << " source swapping items with " + str(FSM::state()) +
                          " and " + str(FSM::next_state())
                   << std::endl;
+
+      CHECK(source_item != EMPTY_SINK);
+
       std::swap(source_item, sink_item);
 
       if (debug_)
@@ -441,6 +449,9 @@ class UnifiedAsyncStateMachine
         std::cout << event++ << "  "
                   << " source swapping items " << source_item << " and "
                   << sink_item << std::endl;
+
+      CHECK(source_item != EMPTY_SINK);
+
       std::swap(source_item, sink_item);
 
       if (debug_)
@@ -980,18 +991,32 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
+
       while (a.state() == PortState::full_empty ||
              a.state() == PortState::full_full)
         ;
 
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
       CHECK(is_src_empty(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
       a.source_item = *i++;
 
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
       a.event(PortEvent::source_fill, debug ? "async source node" : "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
       a.event(PortEvent::push, debug ? "async source node" : "");
 
-      a.source_item = 400000000;
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      a.source_item = EMPTY_SOURCE;
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
   };
 
@@ -1005,13 +1030,25 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
              a.state() == PortState::empty_full)
         ;
 
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
       a.event(PortEvent::pull, debug ? "async sink node" : "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
       CHECK(is_snk_full(a.state()) == "");
 
-      a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
       *j++ = a.sink_item;
-      a.sink_item = 1000000000;
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      a.sink_item = EMPTY_SINK;
+
+      a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
   };
 
@@ -1077,7 +1114,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
     }
   }
 
-  REQUIRE(std::equal(input.begin(), input.end(), output.begin()));
+  CHECK(std::equal(input.begin(), input.end(), output.begin()));
 }
 
 TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
@@ -1120,7 +1157,7 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
 
       CHECK(is_src_empty(a.state()) == "");
 
-      a.source_item = 400000000;
+      a.source_item = EMPTY_SOURCE;
     }
   };
 
@@ -1139,9 +1176,10 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
 
       CHECK(is_snk_full(a.state()) == "");
 
-      a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
       *j++ = a.sink_item;
-      a.sink_item = 1000000000;
+      a.sink_item = EMPTY_SINK;
+
+      a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
     }
   };
 
@@ -1206,5 +1244,5 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
       std::cout << "this should not happen" << std::endl;
     }
   }
-  REQUIRE(std::equal(input.begin(), input.end(), output.begin()));
+  CHECK(std::equal(input.begin(), input.end(), output.begin()));
 }
