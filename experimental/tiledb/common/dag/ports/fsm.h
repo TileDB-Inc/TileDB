@@ -458,10 +458,10 @@ namespace {
 constexpr const PortState transition_table[n_states][n_events] {
   /* source_sink */    /* source_fill */      /* push */              /* sink_drain */        /* pull */              /* shutdown */
 								                             
-  /* empty_empty */  { PortState::full_empty, PortState::error,       PortState::error,       PortState::empty_full , PortState::error },
-  /* empty_full  */  { PortState::full_full,  PortState::error,       PortState::empty_empty, PortState::error,       PortState::error },
+  /* empty_empty */  { PortState::full_empty, PortState::empty_empty/**/, PortState::error,       PortState::empty_full , PortState::error },
+  /* empty_full  */  { PortState::full_full,  PortState::empty_full/**/,  PortState::empty_empty, PortState::empty_full/**/,  PortState::error },
   /* full_empty  */  { PortState::error,      PortState::empty_full,  PortState::error,       PortState::empty_full,  PortState::error },
-  /* full_full   */  { PortState::error,      PortState::empty_full,  PortState::full_empty,  PortState::error,       PortState::error },
+  /* full_full   */  { PortState::error,      PortState::empty_full,  PortState::full_empty,  PortState::full_full/**/,   PortState::error },
 								                             
   /* error       */  { PortState::error,      PortState::error,       PortState::error,       PortState::error,       PortState::error },
   /* done        */  { PortState::error,      PortState::error,       PortState::error,       PortState::error,       PortState::error },
