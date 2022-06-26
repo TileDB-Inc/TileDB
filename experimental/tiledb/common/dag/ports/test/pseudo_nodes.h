@@ -61,7 +61,7 @@ class generator {
  * Prototype source node.  Constructed with a function that creates items.
  */
 template <class Block = size_t>
-class producer_node : public Source<Block> {
+class ProducerNode : public Source<Block> {
   using Base = Source<Block>;
   std::atomic<size_t> i_{0};
   size_t N_{0};
@@ -74,7 +74,7 @@ class producer_node : public Source<Block> {
    * @tparam The type of the function (or function object) that generates items.
    */
   template <class Function>
-  explicit producer_node(Function&& f)
+  explicit ProducerNode(Function&& f)
       : f_{std::forward<Function>(f)} {
   }
 
@@ -82,12 +82,12 @@ class producer_node : public Source<Block> {
    * Generate an output.
    */
   void run() {
-    while (true) {
-      auto item = f_();
-      submit(item);
-      wait();
-      try_swap();
-    }
+    //    while (true) {
+    //      auto item = f_();
+    //      submit(item);
+    //      wait();
+    //      try_swap();
+    //  }
   }
 };
 
@@ -112,7 +112,7 @@ class consumer {
  * A proto consumer node.  Constructed with a function that accepts items.
  */
 template <class Block = size_t>
-class consumer_node : public Sink<Block> {
+class ConsumerNode : public Sink<Block> {
   using Base = Sink<Block>;
   std::function<void(Block&)> f_;
 
@@ -123,7 +123,7 @@ class consumer_node : public Sink<Block> {
    * @tparam The type of the function (or function object) that accepts items.
    */
   template <class Function>
-  explicit consumer_node(Function&& f)
+  explicit ConsumerNode(Function&& f)
       : f_{std::forward<Function>(f)} {
   }
 
