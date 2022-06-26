@@ -30,11 +30,21 @@
  * Tests the ports finite state machine.
  *
  * The different tests currently include an extensive amount of debugging code.
+<<<<<<< HEAD
  * There is also a significant amount of cut-and-paste repeated code.
  *
  * @todo Remove the debugging code.
  * @todo Refactor tests to remove duplicate code.
  *
+=======
+ *
+ * @todo Remove the debugging code.
+ *
+ * The file also includes implementations for finite state machine policies to
+ * be used with the source/sink finite state machine.
+ *
+ * @todo Move policy classes to their own header file.
+>>>>>>> dc2175246 (Rework documentation to reflect current state of code [skip ci])
  */
 
 #include "unit_fsm.h"
@@ -60,7 +70,7 @@ const int EMPTY_SOURCE = 1234567;
 const int EMPTY_SINK = 7654321;
 
 /**
- * A series of helperf functions for testing the state
+ * A series of helper functions for testing the state
  * of the finite-state machine. We work with strings instead
  * of the enum values in order to make the printed output
  * from failed tests more interpretable.
@@ -232,9 +242,25 @@ TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
 }
 
 /**
+<<<<<<< HEAD
  * Simple test of asynchrous state machine policy, launching an emulated source
  * client as an asynchronous task and running an emulated sink client in the
  * main thread. The test just runs one pass of each emulated client.
+=======
+ * An asynchronous state machine class.  Implements on_sink_swap and
+ * on_source_swap using locks and condition variables.
+ *
+ * It is assumed that the source and sink are running as separate asynchronous
+ * tasks (in this case, effected by `std::async`).
+ *
+ * @note This class includes a fair amount of debugging code.
+ *
+ * @todo Remove the debugging code.
+ *
+ * @todo Investigate coroutine-like approach for corresponding with implementing
+ * actions so that the procession of steps is driven by the state machine rather
+ * than the user of the state machine.
+>>>>>>> dc2175246 (Rework documentation to reflect current state of code [skip ci])
  */
 <<<<<<< HEAD
 =======
@@ -270,9 +296,15 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
   AsyncStateMachine(const AsyncStateMachine&) = default;
   AsyncStateMachine(AsyncStateMachine&&) = default;
 
+  /**
+   * Function for handling `ac_return` action.
+   */
   inline void on_ac_return(lock_type&, int) {
   }
 
+  /**
+   * Function for handling `notify_source` action.
+   */
   inline void notify_source(lock_type&, std::atomic<int>& event) {
     if (debug_)
       std::cout << event++ << "  "
@@ -283,6 +315,9 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
     source_cv_.notify_one();
   }
 
+  /**
+   * Function for handling `notify_sink` action.
+   */
   inline void notify_sink(lock_type&, std::atomic<int>& event) {
     if (debug_)
       std::cout << event++ << "  "
@@ -293,6 +328,9 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
     sink_cv_.notify_one();
   }
 
+  /**
+   * Function for handling `snk_swap` action.
+   */
   inline void on_sink_swap(lock_type& lock, std::atomic<int>& event) {
     CHECK(is_snk_empty(FSM::state()) == "");
 
@@ -350,6 +388,9 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
     }
   }
 
+  /**
+   * Function for handling `src_swap` action.
+   */
   inline void on_source_swap(lock_type& lock, std::atomic<int>& event) {
     CHECK(is_src_full(FSM::state()) == "");
     if (FSM::state() == PortState::full_empty) {
@@ -417,8 +458,17 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
 };
 
 /**
- * An asynchronous state machine class, using only one cv and using the same
- * function for source_swap and sink_swap.
+ * An asynchronous state machine class.  Implements on_sink_swap and
+ * on_source_swap using locks and condition variables.  This class is similar to
+ * `AsyncStateMachine`, but takes advantage of the fact that the notify and swap
+ * functions are the same, and uses just a single implementation of them, along
+ * with just a single condition variable
+ *
+ * @note This class includes a fair amount of debugging code.
+ *
+ * @todo Investigate coroutine-like approach for corresponding with implementing
+ * actions so that the procession of steps is driven by the state machine rather
+ * than the user of the state machine.
  */
 template <class T>
 class UnifiedAsyncStateMachine
@@ -440,7 +490,6 @@ class UnifiedAsyncStateMachine
       : source_item(source_init)
       , sink_item(sink_init)
       , debug_{debug} {
-    //    CHECK(str(FSM::state()) == "empty_empty");
     FSM::debug_ = debug;
     if (debug_)
       std::cout << "\nConstructing UnifiedAsyncStateMachine" << std::endl;
@@ -449,18 +498,32 @@ class UnifiedAsyncStateMachine
   UnifiedAsyncStateMachine(const UnifiedAsyncStateMachine&) = default;
   UnifiedAsyncStateMachine(UnifiedAsyncStateMachine&&) = default;
 
+  /**
+   * Function for handling `ac_return` action.
+   */
   inline void on_ac_return(lock_type&, int){};
 
+  /**
+   * Single  notify function for source and sink.
+   */
   inline void do_notify(lock_type&, std::atomic<int>&) {
     cv_.notify_one();
   }
 
+  /**
+   * Function for handling `notify_source` action, invoking a `do_notify`
+   * action.
+   */
   inline void notify_source(lock_type& lock, std::atomic<int>& event) {
     if (debug_)
       std::cout << event++ << "  "
                 << " sink notifying source" << std::endl;
     do_notify(lock, event);
   }
+
+  /**
+   * Function for handling `notify_sink` action, invoking a `do_notify` action.
+   */
   inline void notify_sink(lock_type& lock, std::atomic<int>& event) {
     if (debug_)
       std::cout << event++ << "  "
@@ -468,6 +531,9 @@ class UnifiedAsyncStateMachine
     do_notify(lock, event);
   }
 
+  /**
+   * Function for handling `source_swap` action.
+   */
   inline void on_source_swap(lock_type& lock, std::atomic<int>& event) {
     if (FSM::state() == PortState::full_empty) {
       if (debug_)
@@ -498,12 +564,25 @@ class UnifiedAsyncStateMachine
       FSM::set_next_state(FSM::state());
     }
   }
+
+  /**
+   * Function for handling `sink_swap` action.  It simply calls the source swap
+   * action.
+   */
   inline void on_sink_swap(lock_type& lock, std::atomic<int>& event) {
     on_source_swap(lock, event);
   }
 };
 
+<<<<<<< HEAD
 >>>>>>> ffdacdb2f (Fix race condition?? [skip ci])
+=======
+/**
+ * Simple test of asynchrous state machine policy, launching an emulated source
+ * client as an asynchronous task and running an emulated sink client in the
+ * main thread. The test just runs one pass of each emulated client.
+ */
+>>>>>>> dc2175246 (Rework documentation to reflect current state of code [skip ci])
 TEST_CASE(
     "AsynchronousStateMachine: Asynchronous source and manual sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
@@ -934,8 +1013,13 @@ TEST_CASE(
       }
       /* Emulate running a producer task. */
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+<<<<<<< HEAD
       a.do_fill(debug ? "async source node" : "");
       a.do_push(debug ? "async source node" : "");
+=======
+      a.event(PortEvent::source_fill, debug ? "async source node" : "");
+      a.event(PortEvent::push, debug ? "async source node" : "");
+>>>>>>> dc2175246 (Rework documentation to reflect current state of code [skip ci])
     }
   };
 
@@ -945,9 +1029,15 @@ TEST_CASE(
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
+<<<<<<< HEAD
       a.do_pull(debug ? "async sink node" : "");
       /* Emulate running a consumer task. */
       a.do_drain(debug ? "async sink node" : "");
+=======
+      a.event(PortEvent::pull, debug ? "async sink node" : "");
+      /* Emulate running a consumer task. */
+      a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
+>>>>>>> dc2175246 (Rework documentation to reflect current state of code [skip ci])
     }
   };
 
@@ -1063,7 +1153,11 @@ TEST_CASE(
 };
 
 /**
+<<<<<<< HEAD
  * Test that we can correctly pass a sequence of integers from source to sink.
+=======
+ * Test that we can correctly pass a sequent of integers from source to sink.
+>>>>>>> dc2175246 (Rework documentation to reflect current state of code [skip ci])
  * Random delays are inserted between each step of each function in order to
  * increase the likelihood of exposing race conditions / deadlocks.
  *
