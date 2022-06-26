@@ -43,6 +43,13 @@ TEST_CASE("Ports: Test bind", "[ports]") {
   bind(left, right);
 }
 
+TEST_CASE("Ports: Test bind", "[ports]") {
+  ProducerNode<int> left([]() { return 0; });
+  ConsumerNode<int> right([](int) { return 0; });
+  ;
+  bind(left, right);
+}
+
 TEST_CASE(
     "Ports: Test connect proto consumer_node and proto producer_node",
     "[ports]") {
@@ -145,6 +152,7 @@ TEST_CASE("Ports: Test exceptions", "[ports]") {
   }
 }
 
+#if 0
 TEST_CASE("Ports: Manual set source port values", "[ports]") {
   Source<size_t> src;
   Sink<size_t> snk;
@@ -216,3 +224,4 @@ TEST_CASE("Ports: Test construct proto consumer_node", "[ports]") {
       std::back_insert_iterator<std::vector<size_t>>(v));
   auto cn = consumer_node<size_t>(std::move(con));
 }
+#endif

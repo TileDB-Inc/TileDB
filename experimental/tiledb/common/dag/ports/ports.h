@@ -56,8 +56,6 @@
 #ifndef TILEDB_DAG_PORTS_H
 #define TILEDB_DAG_PORTS_H
 
-#if 0
-
 #include <condition_variable>
 #include <mutex>
 #include <optional>
@@ -99,20 +97,20 @@ class Source {
   /**
    *
    */
-  void submit(Block& item) {
-    std::optional<Block> tmp{};
-    std::swap(item_, tmp);
-    (corresponent_->fsm).event(src_data_fill);
-    (corresponent_->fsm).event(source_filled);
-    src_cv.notify_one();
+  void submit(Block&) {
+    //    std::optional<Block> tmp{};
+    //    std::swap(item_, tmp);
+    //    (corresponent_->fsm).event(src_data_fill);
+    //    (corresponent_->fsm).event(source_filled);
+    //    src_cv.notify_one();
   }
 
   void try_swap() {
-    if (ready) {
-      std::swap(item_, correspondent_->item_);
-      (corresponent_->fsm).event(source_swap);
-      signal();
-    }
+    //    if (ready) {
+    //      std::swap(item_, correspondent_->item_);
+    //      (corresponent_->fsm).event(source_swap);
+    //      signal();
+    //    }
   }
 
   /**
@@ -328,7 +326,5 @@ inline void unbind(Sink<Block>& snk) {
 };
 
 }  // namespace tiledb::common
-
-#endif
 
 #endif  // TILEDB_DAG_PORTS_H
