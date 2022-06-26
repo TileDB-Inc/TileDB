@@ -30,21 +30,20 @@
  * Tests the ports finite state machine.
  *
  * The different tests currently include an extensive amount of debugging code.
-<<<<<<< HEAD
  * There is also a significant amount of cut-and-paste repeated code.
  *
  * @todo Remove the debugging code.
  * @todo Refactor tests to remove duplicate code.
  *
-=======
+ * There is also a significant amount of cut-and-paste repeated code.
  *
  * @todo Remove the debugging code.
+ * @todo Refactor tests to remove duplicate code.
  *
  * The file also includes implementations for finite state machine policies to
  * be used with the source/sink finite state machine.
  *
  * @todo Move policy classes to their own header file.
->>>>>>> dc2175246 (Rework documentation to reflect current state of code [skip ci])
  */
 
 #include "unit_fsm.h"
@@ -64,81 +63,6 @@
 
 using namespace tiledb::common;
 
-<<<<<<< HEAD
-=======
-const int EMPTY_SOURCE = 1234567;
-const int EMPTY_SINK = 7654321;
-
-/**
- * A series of helper functions for testing the state
- * of the finite-state machine. We work with strings instead
- * of the enum values in order to make the printed output
- * from failed tests more interpretable.
- *
- * The functions are used as
- *
- * CHECK(is_src_empty(state) == "");
- *
- * If the condition passes, an empty string is returned,
- * otherwise, the string that is passed in is returned and
- * the CHECK will print its value in the diagnostic message.
- */
-std::string is_src_empty(PortState st) {
-  if (str(st) == "empty_full" || str(st) == "empty_empty") {
-    return {};
-  }
-  return str(st);
-}
-
-std::string is_src_full(PortState st) {
-  if (str(st) == "full_full" || str(st) == "full_empty") {
-    return {};
-  }
-  return str(st);
-}
-
-std::string is_src_post_swap(PortState st) {
-  if (str(st) == "full_empty" || str(st) == "empty_full" ||
-      str(st) == "empty_empty") {
-    return {};
-  }
-  return str(st);
-}
-
-std::string is_snk_empty(PortState st) {
-  if (str(st) == "full_empty" || str(st) == "empty_empty") {
-    return {};
-  }
-  return str(st);
-}
-
-std::string is_snk_full(PortState st) {
-  if (str(st) == "full_full" || str(st) == "empty_full") {
-    return {};
-  }
-  return str(st);
-}
-
-std::string is_snk_post_swap(PortState st) {
-  if (str(st) == "full_empty" || str(st) == "empty_full" ||
-      str(st) == "full_full") {
-    return {};
-  }
-  return str(st);
-}
-
-/**
- * A function to generate a random number between 0 and the specified max
- */
-size_t random_us(size_t max = 7500) {
-  thread_local static uint64_t generator_seed =
-      std::hash<std::thread::id>()(std::this_thread::get_id());
-  thread_local static std::mt19937_64 generator(generator_seed);
-  std::uniform_int_distribution<size_t> distribution(0, max);
-  return distribution(generator);
-}
-
->>>>>>> ffdacdb2f (Fix race condition?? [skip ci])
 // using PortStateMachine = NullStateMachine;
 
 /*
@@ -242,347 +166,10 @@ TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
 }
 
 /**
-<<<<<<< HEAD
- * Simple test of asynchrous state machine policy, launching an emulated source
- * client as an asynchronous task and running an emulated sink client in the
- * main thread. The test just runs one pass of each emulated client.
-=======
- * An asynchronous state machine class.  Implements on_sink_swap and
- * on_source_swap using locks and condition variables.
- *
- * It is assumed that the source and sink are running as separate asynchronous
- * tasks (in this case, effected by `std::async`).
- *
- * @note This class includes a fair amount of debugging code.
- *
- * @todo Remove the debugging code.
- *
- * @todo Investigate coroutine-like approach for corresponding with implementing
- * actions so that the procession of steps is driven by the state machine rather
- * than the user of the state machine.
->>>>>>> dc2175246 (Rework documentation to reflect current state of code [skip ci])
- */
-<<<<<<< HEAD
-=======
-template <class T>
-class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
-  using FSM = PortFiniteStateMachine<AsyncStateMachine<T>>;
-  //  std::mutex mutex_;
-  std::condition_variable sink_cv_;
-  std::condition_variable source_cv_;
-
- public:
-  int source_swaps{};
-  int sink_swaps{};
-
-  T source_item;
-  T sink_item;
-
-  bool debug_{false};
-
-  using lock_type = typename FSM::lock_type;
-
-  AsyncStateMachine(T source_init, T sink_init, bool debug = false)
-      : source_item(source_init)
-      , sink_item(sink_init)
-      , debug_(debug) {
-    //    CHECK(str(FSM::state()) == "empty_empty");
-
-    FSM::debug_ = debug;
-    if (debug_)
-      std::cout << "\nConstructing AsyncStateMachine" << std::endl;
-  }
-
-  AsyncStateMachine(const AsyncStateMachine&) = default;
-  AsyncStateMachine(AsyncStateMachine&&) = default;
-
-  /**
-   * Function for handling `ac_return` action.
-   */
-  inline void on_ac_return(lock_type&, int) {
-  }
-
-  /**
-   * Function for handling `notify_source` action.
-   */
-  inline void notify_source(lock_type&, std::atomic<int>& event) {
-    if (debug_)
-      std::cout << event++ << "  "
-                << " sink notifying source (on_signal_source) with " +
-                       str(FSM::state()) + " and " + str(FSM::next_state())
-                << std::endl;
-
-    source_cv_.notify_one();
-  }
-
-  /**
-   * Function for handling `notify_sink` action.
-   */
-  inline void notify_sink(lock_type&, std::atomic<int>& event) {
-    if (debug_)
-      std::cout << event++ << "  "
-                << " source notifying sink(on_signal_sink) with " +
-                       str(FSM::state()) + " and " + str(FSM::next_state())
-                << std::endl;
-
-    sink_cv_.notify_one();
-  }
-
-  /**
-   * Function for handling `snk_swap` action.
-   */
-  inline void on_sink_swap(lock_type& lock, std::atomic<int>& event) {
-    CHECK(is_snk_empty(FSM::state()) == "");
-
-    if (FSM::state() == PortState::full_empty) {
-      CHECK(str(FSM::state()) == "full_empty");
-
-      CHECK(source_item != EMPTY_SINK);
-
-      std::swap(source_item, sink_item);
-
-      if (debug_)
-        std::cout << event++ << "  "
-                  << "  sink notifying source (swap) with " +
-                         str(FSM::state()) + " and " + str(FSM::next_state())
-                  << std::endl;
-      source_cv_.notify_one();
-      FSM::set_state(PortState::empty_full);
-      FSM::set_next_state(PortState::empty_full);
-
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " sink done swapping items with " + str(FSM::state()) +
-                         " and " + str(FSM::next_state())
-                  << std::endl;
-
-      sink_swaps++;
-    } else {
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " sink notifying source(drained) with " +
-                         str(FSM::state()) + " and " + str(FSM::next_state())
-                  << std::endl;
-      source_cv_.notify_one();
-
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " sink going to sleep on_sink_swap with " +
-                         str(FSM::state())
-                  << std::endl;
-      sink_cv_.wait(lock);
-
-      FSM::set_next_state(FSM::state());
-
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " sink waking up on_sink_swap with " + str(FSM::state()) +
-                         " and " + str(FSM::next_state())
-                  << std::endl;
-
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " sink leaving on_sink_swap with " + str(FSM::state()) +
-                         " and " + str(FSM::next_state())
-                  << std::endl;
-    }
-  }
-
-  /**
-   * Function for handling `src_swap` action.
-   */
-  inline void on_source_swap(lock_type& lock, std::atomic<int>& event) {
-    CHECK(is_src_full(FSM::state()) == "");
-    if (FSM::state() == PortState::full_empty) {
-      CHECK(str(FSM::state()) == "full_empty");
-
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " source swapping items with " + str(FSM::state()) +
-                         " and " + str(FSM::next_state())
-                  << std::endl;
-
-      CHECK(source_item != EMPTY_SINK);
-
-      std::swap(source_item, sink_item);
-
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " source notifying sink (swap) with " + str(FSM::state()) +
-                         " and " + str(FSM::next_state())
-                  << std::endl;
-      sink_cv_.notify_one();
-
-      FSM::set_state(PortState::empty_full);
-      FSM::set_next_state(PortState::empty_full);
-
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " source done swapping items with " + str(FSM::state()) +
-                         " and " + str(FSM::next_state())
-                  << std::endl;
-
-      source_swaps++;
-    } else {
-      CHECK(str(FSM::state()) == "full_full");
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " source notifying sink (filled) with " +
-                         str(FSM::state()) + " and " + str(FSM::next_state())
-                  << std::endl;
-      sink_cv_.notify_one();
-
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " source going to sleep on_source_swap with " +
-                         str(FSM::state()) + " and " + str(FSM::next_state())
-                  << std::endl;
-
-      source_cv_.wait(lock);
-
-      FSM::set_next_state(FSM::state());
-
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " source waking up to " + str(FSM::state()) + " and " +
-                         str(FSM::next_state())
-                  << std::endl;
-
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " source leaving on_source_swap with " +
-                         str(FSM::state()) + " and " + str(FSM::next_state())
-                  << std::endl;
-    }
-  }
-};
-
-/**
- * An asynchronous state machine class.  Implements on_sink_swap and
- * on_source_swap using locks and condition variables.  This class is similar to
- * `AsyncStateMachine`, but takes advantage of the fact that the notify and swap
- * functions are the same, and uses just a single implementation of them, along
- * with just a single condition variable
- *
- * @note This class includes a fair amount of debugging code.
- *
- * @todo Investigate coroutine-like approach for corresponding with implementing
- * actions so that the procession of steps is driven by the state machine rather
- * than the user of the state machine.
- */
-template <class T>
-class UnifiedAsyncStateMachine
-    : public PortFiniteStateMachine<UnifiedAsyncStateMachine<T>> {
-  using FSM = PortFiniteStateMachine<UnifiedAsyncStateMachine<T>>;
-  using lock_type = typename FSM::lock_type;
-  std::condition_variable cv_;
-
- public:
-  int source_swaps{};
-  int sink_swaps{};
-
-  T source_item;
-  T sink_item;
-
-  bool debug_{false};
-
-  UnifiedAsyncStateMachine(T source_init, T sink_init, bool debug = false)
-      : source_item(source_init)
-      , sink_item(sink_init)
-      , debug_{debug} {
-    FSM::debug_ = debug;
-    if (debug_)
-      std::cout << "\nConstructing UnifiedAsyncStateMachine" << std::endl;
-  }
-
-  UnifiedAsyncStateMachine(const UnifiedAsyncStateMachine&) = default;
-  UnifiedAsyncStateMachine(UnifiedAsyncStateMachine&&) = default;
-
-  /**
-   * Function for handling `ac_return` action.
-   */
-  inline void on_ac_return(lock_type&, int){};
-
-  /**
-   * Single  notify function for source and sink.
-   */
-  inline void do_notify(lock_type&, std::atomic<int>&) {
-    cv_.notify_one();
-  }
-
-  /**
-   * Function for handling `notify_source` action, invoking a `do_notify`
-   * action.
-   */
-  inline void notify_source(lock_type& lock, std::atomic<int>& event) {
-    if (debug_)
-      std::cout << event++ << "  "
-                << " sink notifying source" << std::endl;
-    do_notify(lock, event);
-  }
-
-  /**
-   * Function for handling `notify_sink` action, invoking a `do_notify` action.
-   */
-  inline void notify_sink(lock_type& lock, std::atomic<int>& event) {
-    if (debug_)
-      std::cout << event++ << "  "
-                << " source notifying sink" << std::endl;
-    do_notify(lock, event);
-  }
-
-  /**
-   * Function for handling `source_swap` action.
-   */
-  inline void on_source_swap(lock_type& lock, std::atomic<int>& event) {
-    if (FSM::state() == PortState::full_empty) {
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " source swapping items " << source_item << " and "
-                  << sink_item << std::endl;
-
-      CHECK(source_item != EMPTY_SINK);
-
-      std::swap(source_item, sink_item);
-
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " source notifying sink (swap)" << std::endl;
-
-      cv_.notify_one();
-
-      FSM::set_state(PortState::empty_full);
-      FSM::set_next_state(PortState::empty_full);
-      source_swaps++;
-    } else {
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " source notifying sink (filled)" << std::endl;
-      cv_.notify_one();
-      cv_.wait(lock);
-
-      FSM::set_next_state(FSM::state());
-    }
-  }
-
-  /**
-   * Function for handling `sink_swap` action.  It simply calls the source swap
-   * action.
-   */
-  inline void on_sink_swap(lock_type& lock, std::atomic<int>& event) {
-    on_source_swap(lock, event);
-  }
-};
-
-<<<<<<< HEAD
->>>>>>> ffdacdb2f (Fix race condition?? [skip ci])
-=======
-/**
  * Simple test of asynchrous state machine policy, launching an emulated source
  * client as an asynchronous task and running an emulated sink client in the
  * main thread. The test just runs one pass of each emulated client.
  */
->>>>>>> dc2175246 (Rework documentation to reflect current state of code [skip ci])
 TEST_CASE(
     "AsynchronousStateMachine: Asynchronous source and manual sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
@@ -1013,13 +600,8 @@ TEST_CASE(
       }
       /* Emulate running a producer task. */
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-<<<<<<< HEAD
       a.do_fill(debug ? "async source node" : "");
       a.do_push(debug ? "async source node" : "");
-=======
-      a.event(PortEvent::source_fill, debug ? "async source node" : "");
-      a.event(PortEvent::push, debug ? "async source node" : "");
->>>>>>> dc2175246 (Rework documentation to reflect current state of code [skip ci])
     }
   };
 
@@ -1029,15 +611,9 @@ TEST_CASE(
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-<<<<<<< HEAD
       a.do_pull(debug ? "async sink node" : "");
       /* Emulate running a consumer task. */
       a.do_drain(debug ? "async sink node" : "");
-=======
-      a.event(PortEvent::pull, debug ? "async sink node" : "");
-      /* Emulate running a consumer task. */
-      a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
->>>>>>> dc2175246 (Rework documentation to reflect current state of code [skip ci])
     }
   };
 
@@ -1153,11 +729,7 @@ TEST_CASE(
 };
 
 /**
-<<<<<<< HEAD
  * Test that we can correctly pass a sequence of integers from source to sink.
-=======
- * Test that we can correctly pass a sequent of integers from source to sink.
->>>>>>> dc2175246 (Rework documentation to reflect current state of code [skip ci])
  * Random delays are inserted between each step of each function in order to
  * increase the likelihood of exposing race conditions / deadlocks.
  *
@@ -1196,7 +768,6 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-<<<<<<< HEAD
 
       // It doesn't seem we actually need these guards here?
       // while (a.state() == PortState::full_empty ||
@@ -1225,32 +796,6 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
       *(a.source_item_) = EMPTY_SOURCE;
-=======
-
-      while (a.state() == PortState::full_empty ||
-             a.state() == PortState::full_full)
-        ;
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-
-      CHECK(is_src_empty(a.state()) == "");
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-
-      a.source_item = *i++;
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-
-      a.event(PortEvent::source_fill, debug ? "async source node" : "");
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-
-      a.event(PortEvent::push, debug ? "async source node" : "");
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-
-      a.source_item = EMPTY_SOURCE;
->>>>>>> ffdacdb2f (Fix race condition?? [skip ci])
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
@@ -1263,7 +808,6 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
         std::cout << "source node iteration " << n << std::endl;
       }
 
-<<<<<<< HEAD
       // It doesn't seem we actually need these guards here?
       // while (a.state() == PortState::full_full ||
       //             a.state() == PortState::empty_full)
@@ -1290,25 +834,6 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       *(a.sink_item_) = EMPTY_SINK;
 
       a.do_drain(debug ? "async sink node" : "");
-=======
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-
-      a.event(PortEvent::pull, debug ? "async sink node" : "");
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-
-      CHECK(is_snk_full(a.state()) == "");
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-
-      *j++ = a.sink_item;
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-
-      a.sink_item = EMPTY_SINK;
-
-      a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
->>>>>>> ffdacdb2f (Fix race condition?? [skip ci])
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
@@ -1377,11 +902,8 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
   }
 
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
-<<<<<<< HEAD
   CHECK(str(a.state()) == "empty_empty");
   CHECK((a.source_swaps + a.sink_swaps) == rounds);
-=======
->>>>>>> ffdacdb2f (Fix race condition?? [skip ci])
 }
 
 /**
@@ -1432,11 +954,7 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
 
       CHECK(is_source_empty(a.state()) == "");
 
-<<<<<<< HEAD
       *(a.source_item_) = EMPTY_SOURCE;
-=======
-      a.source_item = EMPTY_SOURCE;
->>>>>>> ffdacdb2f (Fix race condition?? [skip ci])
     }
   };
 
@@ -1455,17 +973,10 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
 
       CHECK(is_sink_full(a.state()) == "");
 
-<<<<<<< HEAD
       *j++ = *(a.sink_item_);
       *(a.sink_item_) = EMPTY_SINK;
 
       a.do_drain(debug ? "async sink node" : "");
-=======
-      *j++ = a.sink_item;
-      a.sink_item = EMPTY_SINK;
-
-      a.event(PortEvent::sink_drain, debug ? "async sink node" : "");
->>>>>>> ffdacdb2f (Fix race condition?? [skip ci])
     }
   };
 
@@ -1531,8 +1042,5 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
     }
   }
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
-<<<<<<< HEAD
   CHECK(str(a.state()) == "empty_empty");
-=======
->>>>>>> ffdacdb2f (Fix race condition?? [skip ci])
 }

@@ -56,8 +56,6 @@
 #ifndef TILEDB_DAG_PORTS_H
 #define TILEDB_DAG_PORTS_H
 
-#if 0
-
 #include <condition_variable>
 #include <mutex>
 #include <optional>
