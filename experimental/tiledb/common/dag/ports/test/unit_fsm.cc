@@ -30,8 +30,10 @@
  * Tests the ports finite state machine.
  *
  * The different tests currently include an extensive amount of debugging code.
+ * There is also a significant amount of cut-and-paste repeated code.
  *
  * @todo Remove the debugging code.
+ * @todo Refactor tests to remove duplicate code.
  *
  * The file also includes implementations for finite state machine policies to
  * be used with the source/sink finite state machine.
