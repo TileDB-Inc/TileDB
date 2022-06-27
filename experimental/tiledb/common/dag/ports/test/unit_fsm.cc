@@ -294,6 +294,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                        str(FSM::state()) + " and " + str(FSM::next_state())
                 << std::endl;
 
+    CHECK(is_src_post_swap(FSM::state()) == "");
     source_cv_.notify_one();
   }
 
@@ -307,6 +308,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                        str(FSM::state()) + " and " + str(FSM::next_state())
                 << std::endl;
 
+    CHECK(is_snk_post_swap(FSM::state()) == "");
     sink_cv_.notify_one();
   }
 
@@ -314,11 +316,12 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
    * Function for handling `snk_swap` action.
    */
   inline void on_sink_swap(lock_type& lock, std::atomic<int>& event) {
+    // { state == full_empty ∨  state == empty_empty }
     CHECK(is_snk_empty(FSM::state()) == "");
 
     if (FSM::state() == PortState::full_empty) {
-      CHECK(str(FSM::state()) == "full_empty");
-
+      // { state == full_empty }
+      CHECK(FSM::state() == PortState::full_empty);
       CHECK(source_item != EMPTY_SINK);
 
       std::swap(source_item, sink_item);
@@ -332,6 +335,8 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
       FSM::set_state(PortState::empty_full);
       FSM::set_next_state(PortState::empty_full);
 
+      // { state == empty_full }
+      CHECK(FSM::state() == PortState::empty_full);
       if (debug_)
         std::cout << event++ << "  "
                   << " sink done swapping items with " + str(FSM::state()) +
@@ -340,6 +345,8 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
 
       sink_swaps++;
     } else {
+      // { state == empty_empty }
+      CHECK(FSM::state() == PortState::empty_empty);
       if (debug_)
         std::cout << event++ << "  "
                   << " sink notifying source(drained) with " +
@@ -355,6 +362,8 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
       sink_cv_.wait(lock);
 
       FSM::set_next_state(FSM::state());
+
+      CHECK(is_snk_post_swap(FSM::state()) == "");
 
       if (debug_)
         std::cout << event++ << "  "
@@ -374,8 +383,11 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
    * Function for handling `src_swap` action.
    */
   inline void on_source_swap(lock_type& lock, std::atomic<int>& event) {
+    // { state == full_empty ∨ state == full_full }
     CHECK(is_src_full(FSM::state()) == "");
+
     if (FSM::state() == PortState::full_empty) {
+      // { state == full_full }
       CHECK(str(FSM::state()) == "full_empty");
 
       if (debug_)
@@ -398,6 +410,9 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
       FSM::set_state(PortState::empty_full);
       FSM::set_next_state(PortState::empty_full);
 
+      // { state == empty_full }
+      CHECK(str(FSM::state()) == "empty_full");
+
       if (debug_)
         std::cout << event++ << "  "
                   << " source done swapping items with " + str(FSM::state()) +
@@ -406,6 +421,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
 
       source_swaps++;
     } else {
+      // { state == full_full }
       CHECK(str(FSM::state()) == "full_full");
       if (debug_)
         std::cout << event++ << "  "
@@ -421,8 +437,11 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                   << std::endl;
 
       source_cv_.wait(lock);
+      // { state == empty_empty ∨ state == empty_full }
 
       FSM::set_next_state(FSM::state());
+
+      CHECK(is_src_post_swap(FSM::state()) == "");
 
       if (debug_)
         std::cout << event++ << "  "
@@ -800,6 +819,7 @@ TEST_CASE(
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
+      CHECK(str(a.state()) == "empty_empty");
       a.do_fill(debug ? "async source (fill)" : "");
       a.do_push(debug ? "async source (push)" : "");
     });
@@ -1134,9 +1154,12 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
         std::cout << "source node iteration " << n << std::endl;
       }
 
-      while (a.state() == PortState::full_empty ||
-             a.state() == PortState::full_full)
-        ;
+      // It doesn't seem we actually need these guards here?
+      // while (a.state() == PortState::full_empty ||
+      //        a.state() == PortState::full_full)
+      // ;
+
+      CHECK(is_src_empty(a.state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -1147,6 +1170,8 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       a.source_item = *i++;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_src_empty(a.state()) == "");
 
       a.do_fill(debug ? "async source node" : "");
 
@@ -1168,13 +1193,17 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      while (a.state() == PortState::full_full ||
-             a.state() == PortState::empty_full)
-        ;
+
+      // It doesn't seem we actually need these guards here?
+      // while (a.state() == PortState::full_full ||
+      //             a.state() == PortState::empty_full)
+      //        ;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
       a.do_pull(debug ? "async sink node" : "");
+
+      CHECK(is_snk_full(a.state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -1183,6 +1212,8 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
       *j++ = a.sink_item;
+
+      CHECK(is_snk_full(a.state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
