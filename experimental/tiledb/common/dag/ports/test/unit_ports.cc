@@ -50,12 +50,8 @@ TEST_CASE("Ports: Test bind", "[ports]") {
   bind(left, right);
 }
 
-TEST_CASE(
-    "Ports: Test connect proto consumer_node and proto producer_node",
-    "[ports]") {
-  auto pn = Source<size_t>{};
-  auto cn = Sink<size_t>{};
-
+template <class source_type, class sink_type>
+void test_connections(source_type& pn, sink_type& cn) {
   CHECK(pn.is_bound() == false);
   CHECK(cn.is_bound() == false);
 
@@ -130,6 +126,21 @@ TEST_CASE(
     unbind(pn);
     CHECK(pn.is_bound() == false);
     CHECK(cn.is_bound() == false);
+  }
+}
+
+TEST_CASE(
+    "Ports: Test connect Sink and Source ports"
+    "[ports]") {
+  SECTION("Ports") {
+    auto pn = Source<int>{};
+    auto cn = Sink<int>{};
+    test_connections(pn, cn);
+  }
+  SECTION("Pseudo Nodes") {
+    auto pn = ProducerNode<int>{[]() { return 0; }};
+    auto cn = ConsumerNode<int>{[](int) {}};
+    test_connections(pn, cn);
   }
 }
 
