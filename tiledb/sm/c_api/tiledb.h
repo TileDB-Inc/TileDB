@@ -492,9 +492,6 @@ typedef struct tiledb_buffer_t tiledb_buffer_t;
 /** A generic buffer list object. */
 typedef struct tiledb_buffer_list_t tiledb_buffer_list_t;
 
-/** A TileDB error. **/
-typedef struct tiledb_error_t tiledb_error_t;
-
 /** A TileDB attribute. */
 typedef struct tiledb_attribute_t tiledb_attribute_t;
 

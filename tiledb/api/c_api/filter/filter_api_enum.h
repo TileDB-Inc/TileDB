@@ -23,8 +23,8 @@
  */
 
 #ifdef TILEDB_FILTER_TYPE_ENUM
-    /** No-op filter */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,
+/** No-op filter */
+TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,
     /** Gzip compressor */
     TILEDB_FILTER_TYPE_ENUM(FILTER_GZIP) = 1,
     /** Zstandard compressor */
