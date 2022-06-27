@@ -262,19 +262,59 @@ if (COMPILER_SUPPORTS_AVX2)
   add_compile_options(${COMPILER_AVX2_FLAG})
 endif()
 
-############################################################
-# Export
-############################################################
+#######################################################
+# Header Files
+#######################################################
+#
+# Legacy headers: All headers for both C and C++ API in a single directory.
+#
+# Public header structure. Users of the library see this view. External source
+# code uses these names; they should be considered unchangeable.
+# - `<root>/`
+#     `tiledb/`
+#       - C API headers
+#         `tiledb.h`
+#         `tiledb_experimental.h`
+#          other `tiledb_*.h`
+#       - C++ API headers
+#         `tiledb`
+#         `tiledb_experimental`
+#          other `tiledb_*`
+#
+# Headers assume `-I<root>`. To use the C API:
+# ```C
+# #include <tiledb/tiledb.h>
+# ```
+# To use the C++ API:
+# ```C++
+# #include <tiledb/tiledb>
+# ```
+
+# Private header structure. The compiler of a user program sees this view. Only
+# TileDB source uses these names; they can be changed at will.
+# - `<root>/`
+#     `tiledb/`
+#         `api/`
+#             `c_api/`
+#                 `api_external_common.h`
+#                 `tiledb_export.h` (auto-generated)
+#                 `<section>/` (multiple)
+#                     `<section>_api_external.h`
+
+##################################
+# Export Header
+##################################
 # The core library, tests, and examples all depend on the
 # export library.
 
 set(TILEDB_EXPORT_HEADER_DIR "${CMAKE_CURRENT_BINARY_DIR}/tiledb")
 set(TILEDB_EXPORT_HEADER_NAME "tiledb_export.h")
 set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER_DIR}/${TILEDB_EXPORT_HEADER_NAME}")
+set(TILEDB_EXPORT_HEADER_INSTALL_PATH "tiledb/api/c_api/${TILEDB_EXPORT_HEADER_NAME}")
 
-############################################################
+##################################
 # C API include files
-############################################################
+##################################
 #
 # Explicit lists of C API headers are needed in more than one place
 # - `tiledb` (core library) uses the lists for its installation target
@@ -283,9 +323,9 @@ set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER_DIR}/${TILEDB_EXPORT_HEADER_NAM
 # FILENAME headers are copied only as their file name to ${INCLUDE_BASE}/tiledb
 # RELATIVE headers are copied as their path from RELATIVE_HEADER_BASE to ${INCLUDE_BASE}
 # In all cases the included path begins with `tiledb/`
+# The export header is handled separatedly.
 
 list(APPEND TILEDB_C_API_FILENAME_HEADERS
-    "${TILEDB_EXPORT_HEADER}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb_enum.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h"
