@@ -189,6 +189,16 @@ class SingleCoord {
     return &qb_[d];
   }
 
+  inline const std::vector<std::vector<uint8_t>>& get_coords() const {
+    return coords_;
+  }
+  inline const std::vector<uint64_t>& get_sizes() const {
+    return sizes_;
+  }
+  inline const std::vector<uint64_t>& get_single_offset() const {
+    return single_offset_;
+  }
+
  private:
   /**
    * The coordinate data, per dimension.

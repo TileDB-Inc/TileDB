@@ -1182,6 +1182,7 @@ Status writer_to_capnp(
   if (query.layout() == Layout::GLOBAL_ORDER) {
     auto global_state_builder = writer_builder->initGlobalWriteState();
     RETURN_NOT_OK(global_write_state_to_capnp(
+        query,
         *dynamic_cast<GlobalOrderWriter&>(writer).get_global_state(),
         &global_state_builder));
   }
@@ -2362,10 +2363,237 @@ Status query_est_result_size_deserialize(
 }
 
 Status global_write_state_to_capnp(
+    const Query& query,
     const GlobalOrderWriter::GlobalWriteState& write_state,
     capnp::GlobalWriteState::Builder* state_builder) {
-  (void)(write_state);
-  (void)(state_builder);
+  auto& cells_written = write_state.cells_written_;
+  if (!cells_written.empty()) {
+    auto cells_writen_builder = state_builder->initCellsWritten();
+    auto entries_builder =
+        cells_writen_builder.initEntries(cells_written.size());
+    uint64_t index = 0;
+    for (auto& entry : cells_written) {
+      entries_builder[index].setKey(entry.first);
+      entries_builder[index].setValue(entry.second);
+      ++index;
+    }
+  }
+
+  if (write_state.frag_meta_) {
+    auto frag_meta = write_state.frag_meta_;
+    auto frag_meta_builder = state_builder->initFragMeta();
+
+    auto& file_sizes = frag_meta->file_sizes();
+    if (!file_sizes.empty()) {
+      auto builder = frag_meta_builder.initFileSizes(file_sizes.size());
+      for (uint64_t i = 0; i < file_sizes.size(); ++i) {
+        builder.set(i, file_sizes[i]);
+      }
+    }
+    auto& file_var_sizes = frag_meta->file_var_sizes();
+    if (!file_var_sizes.empty()) {
+      auto builder = frag_meta_builder.initFileVarSizes(file_var_sizes.size());
+      for (uint64_t i = 0; i < file_var_sizes.size(); ++i) {
+        builder.set(i, file_var_sizes[i]);
+      }
+    }
+    auto& file_validity_sizes = frag_meta->file_validity_sizes();
+    if (!file_validity_sizes.empty()) {
+      auto builder =
+          frag_meta_builder.initFileValiditySizes(file_validity_sizes.size());
+      for (uint64_t i = 0; i < file_validity_sizes.size(); ++i) {
+        builder.set(i, file_validity_sizes[i]);
+      }
+    }
+
+    frag_meta_builder.setFragmentUri(frag_meta->fragment_uri());
+    frag_meta_builder.setHasTimestamps(frag_meta->has_timestamps());
+    frag_meta_builder.setSparseTileNum(frag_meta->sparse_tile_num());
+    frag_meta_builder.setTileIndexBase(frag_meta->sparse_tile_num());
+
+    auto& tile_offsets = frag_meta->tile_offsets();
+    if (!tile_offsets.empty()) {
+      auto builder = frag_meta_builder.initTileOffsets(tile_offsets.size());
+      for (uint64_t i = 0; i < tile_offsets.size(); ++i) {
+        for (uint64_t j = 0; j < tile_offsets.size(); ++j) {
+          builder[i].set(j, tile_offsets[i][j]);
+        }
+      }
+    }
+    auto& tile_var_offsets = frag_meta->tile_var_offsets();
+    if (!tile_var_offsets.empty()) {
+      auto builder =
+          frag_meta_builder.initTileVarOffsets(tile_var_offsets.size());
+      for (uint64_t i = 0; i < tile_var_offsets.size(); ++i) {
+        for (uint64_t j = 0; j < tile_var_offsets.size(); ++j) {
+          builder[i].set(j, tile_var_offsets[i][j]);
+        }
+      }
+    }
+    auto& tile_var_sizes = frag_meta->tile_var_sizes();
+    if (!tile_var_sizes.empty()) {
+      auto builder = frag_meta_builder.initTileVarSizes(tile_var_sizes.size());
+      for (uint64_t i = 0; i < tile_var_sizes.size(); ++i) {
+        for (uint64_t j = 0; j < tile_var_sizes.size(); ++j) {
+          builder[i].set(j, tile_var_sizes[i][j]);
+        }
+      }
+    }
+    auto& tile_validity_offsets = frag_meta->tile_validity_offsets();
+    if (!tile_validity_offsets.empty()) {
+      auto builder = frag_meta_builder.initTileValidityOffsets(
+          tile_validity_offsets.size());
+      for (uint64_t i = 0; i < tile_validity_offsets.size(); ++i) {
+        for (uint64_t j = 0; j < tile_validity_offsets.size(); ++j) {
+          builder[i].set(j, tile_validity_offsets[i][j]);
+        }
+      }
+    }
+    auto& tile_min_buffer = frag_meta->tile_min_buffer();
+    if (!tile_min_buffer.empty()) {
+      auto builder =
+          frag_meta_builder.initTileMinBuffer(tile_min_buffer.size());
+      for (uint64_t i = 0; i < tile_min_buffer.size(); ++i) {
+        for (uint64_t j = 0; j < tile_min_buffer.size(); ++j) {
+          builder[i].set(j, tile_min_buffer[i][j]);
+        }
+      }
+    }
+    auto& tile_min_var_buffer = frag_meta->tile_min_var_buffer();
+    if (!tile_min_var_buffer.empty()) {
+      auto builder =
+          frag_meta_builder.initTileMinVarBuffer(tile_min_var_buffer.size());
+      for (uint64_t i = 0; i < tile_min_var_buffer.size(); ++i) {
+        for (uint64_t j = 0; j < tile_min_var_buffer.size(); ++j) {
+          builder[i].set(j, tile_min_var_buffer[i][j]);
+        }
+      }
+    }
+    auto& tile_max_buffer = frag_meta->tile_max_buffer();
+    if (!tile_max_buffer.empty()) {
+      auto builder =
+          frag_meta_builder.initTileMaxBuffer(tile_max_buffer.size());
+      for (uint64_t i = 0; i < tile_max_buffer.size(); ++i) {
+        for (uint64_t j = 0; j < tile_max_buffer.size(); ++j) {
+          builder[i].set(j, tile_max_buffer[i][j]);
+        }
+      }
+    }
+    auto& tile_max_var_buffer = frag_meta->tile_max_var_buffer();
+    if (!tile_max_var_buffer.empty()) {
+      auto builder =
+          frag_meta_builder.initTileMaxVarBuffer(tile_max_var_buffer.size());
+      for (uint64_t i = 0; i < tile_max_var_buffer.size(); ++i) {
+        for (uint64_t j = 0; j < tile_max_var_buffer.size(); ++j) {
+          builder[i].set(j, tile_max_var_buffer[i][j]);
+        }
+      }
+    }
+    auto& tile_sums = frag_meta->tile_sums();
+    if (!tile_sums.empty()) {
+      auto builder = frag_meta_builder.initTileSums(tile_sums.size());
+      for (uint64_t i = 0; i < tile_sums.size(); ++i) {
+        for (uint64_t j = 0; j < tile_sums.size(); ++j) {
+          builder[i].set(j, tile_sums[i][j]);
+        }
+      }
+    }
+    auto& tile_null_counts = frag_meta->tile_null_counts();
+    if (!tile_null_counts.empty()) {
+      auto builder =
+          frag_meta_builder.initTileNullCounts(tile_null_counts.size());
+      for (uint64_t i = 0; i < tile_null_counts.size(); ++i) {
+        for (uint64_t j = 0; j < tile_null_counts.size(); ++j) {
+          builder[i].set(j, tile_null_counts[i][j]);
+        }
+      }
+    }
+    auto& fragment_mins = frag_meta->fragment_mins();
+    if (!fragment_mins.empty()) {
+      auto builder = frag_meta_builder.initFragmentMins(fragment_mins.size());
+      for (uint64_t i = 0; i < fragment_mins.size(); ++i) {
+        for (uint64_t j = 0; j < fragment_mins.size(); ++j) {
+          builder[i].set(j, fragment_mins[i][j]);
+        }
+      }
+    }
+    auto& fragment_maxs = frag_meta->fragment_maxs();
+    if (!fragment_maxs.empty()) {
+      auto builder = frag_meta_builder.initFragmentMaxs(fragment_maxs.size());
+      for (uint64_t i = 0; i < fragment_maxs.size(); ++i) {
+        for (uint64_t j = 0; j < fragment_maxs.size(); ++j) {
+          builder[i].set(j, fragment_maxs[i][j]);
+        }
+      }
+    }
+    auto& fragment_sums = frag_meta->fragment_sums();
+    if (!fragment_sums.empty()) {
+      auto builder = frag_meta_builder.initFragmentSums(fragment_sums.size());
+      for (uint64_t i = 0; i < fragment_sums.size(); ++i) {
+        builder.set(i, fragment_sums[i]);
+      }
+    }
+    auto& fragment_null_counts = frag_meta->fragment_null_counts();
+    if (!fragment_null_counts.empty()) {
+      auto builder =
+          frag_meta_builder.initFragmentNullCounts(fragment_null_counts.size());
+      for (uint64_t i = 0; i < fragment_null_counts.size(); ++i) {
+        builder.set(i, fragment_null_counts[i]);
+      }
+    }
+
+    frag_meta_builder.setVersion(frag_meta->version());
+
+    auto trange_builder = frag_meta_builder.initTimestampRange(2);
+    trange_builder.set(0, frag_meta->timestamp_range().first);
+    trange_builder.set(1, frag_meta->timestamp_range().second);
+
+    frag_meta_builder.setLastTileCellNum(frag_meta->last_tile_cell_num());
+
+    auto ned_builder = frag_meta_builder.initNonEmptyDomain();
+    RETURN_NOT_OK(utils::serialize_non_empty_domain_rv(
+        ned_builder,
+        frag_meta->non_empty_domain(),
+        query.array_schema().dim_num()));
+
+    Buffer buff;
+    frag_meta->rtree().serialize(&buff);
+    // Does setRtree copy the data? buff goes out of scope here.
+    frag_meta_builder.setRtree(
+        kj::arrayPtr(static_cast<const uint8_t*>(buff.data()), buff.size()));
+  }
+
+  if (write_state.last_cell_coords_.has_value()) {
+    auto& single_coord = write_state.last_cell_coords_.value();
+    auto coord_builder = state_builder->initLastCellCoords();
+
+    auto& coords = single_coord.get_coords();
+    if (!coords.empty()) {
+      auto builder = coord_builder.initCoords(coords.size());
+      for (uint64_t i = 0; i < coords.size(); ++i) {
+        for (uint64_t j = 0; j < coords.size(); ++j) {
+          builder[i].set(j, coords[i][j]);
+        }
+      }
+    }
+    auto& sizes = single_coord.get_sizes();
+    if (!sizes.empty()) {
+      auto builder = coord_builder.initSizes(sizes.size());
+      for (uint64_t i = 0; i < sizes.size(); ++i) {
+        builder.set(i, sizes[i]);
+      }
+    }
+    auto& single_offset = single_coord.get_single_offset();
+    if (!single_offset.empty()) {
+      auto builder = coord_builder.initSingleOffset(single_offset.size());
+      for (uint64_t i = 0; i < single_offset.size(); ++i) {
+        builder.set(i, single_offset[i]);
+      }
+    }
+  }
+
+  state_builder->setLastHilbertValue(write_state.last_hilbert_value_);
+
   return Status::Ok();
 }
 
@@ -2376,7 +2604,7 @@ Status global_write_state_from_capnp(
   if (state_reader.hasCellsWritten()) {
     auto& cells_written = write_state->cells_written_;
     auto cell_written_reader = state_reader.getCellsWritten();
-    for (auto entry : cell_written_reader.getEntries()) {
+    for (const auto& entry : cell_written_reader.getEntries()) {
       cells_written[std::string(entry.getKey().cStr())] = entry.getValue();
     }
   }
@@ -2412,7 +2640,6 @@ Status global_write_state_from_capnp(
     }
     frag_meta->has_timestamps() = frag_meta_reader.getHasTimestamps();
     frag_meta->sparse_tile_num() = frag_meta_reader.getSparseTileNum();
-    frag_meta->tile_index_base() = frag_meta_reader.getTileIndexBase();
     frag_meta->tile_index_base() = frag_meta_reader.getTileIndexBase();
     if (frag_meta_reader.hasTileOffsets()) {
       for (const auto& t : frag_meta_reader.getTileOffsets()) {
@@ -2584,6 +2811,7 @@ Status query_est_result_size_deserialize(
 }
 
 Status global_write_state_to_capnp(
+    const Query& query,
     const GlobalOrderWriter::GlobalWriteState& write_state,
     capnp::GlobalWriteState::Builder* state_builder) {
   return LOG_STATUS(Status_SerializationError(
