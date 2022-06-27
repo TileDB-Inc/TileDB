@@ -65,7 +65,7 @@ namespace tiledb::common {
  *       the swap action first checks if its current state is full and the sinks state is empty.  
  *       If so, it swaps the sink and source items, which puts the item in the sink.  It then
  *       notifies the sink. On entry to the empty state, the sink returns
- *       If not, the soure waits until it is notified by the sink that it is empty. When the
+ *       If not, the source waits until it is notified by the sink that it is empty. When the
  *       source is notified, it returns.
  *
  * The sink state machine is the dual of the source state machine:
@@ -98,23 +98,6 @@ namespace tiledb::common {
  *    +--------+--------+-------------+-------------+-------------+-------------+----------+
  *
  *
- * The table for entry actions to be performend on state transitions is:
- *
- *    +-----------------+------------------------------------------------------------------+
- *    |      States     |                     Events                                       |
- *    +--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | Source |  Sink  | source_fill | source_push | sink_drain  | sink_pull   | shutdown |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | empty  | empty  |             | return      |notify_src   |             |          |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | empty  | full   |             | return      |  	          | return      |          |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | full   | empty  | notify_sink | src_swap    | notify_src  | snk_swap    |          |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | full   | full   | notify_sink |             |  	       	  | return      |          |
- *    +--------+--------+-------------+-------------+-------------+-------------+----------+
- *
- *
  * The table for exit actions to be perfomed on state transitions is:
  *
  *    +-----------------+------------------------------------------------------------------+
@@ -122,13 +105,30 @@ namespace tiledb::common {
  *    +--------+--------+-------------+-------------+-------------+-------------+----------+
  *    | Source |  Sink  | source_fill | source_push | sink_drain  | sink_pull   | shutdown |
  *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | empty  | empty  |             |             |             | sink_swap   |          |
+ *    | empty  | empty  |             | return?     |             | sink_swap?  |          |  wait on pull?
  *    |--------+--------+-------------+-------------+-------------+-------------+----------+
  *    | empty  | full   |             | return      |             | return      |          |
  *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | full   | empty  |             | src_swap    |             | sink_swap   |          |
+ *    | full   | empty  | wait?       | src_swap    |             | sink_swap?  |          |  wait on pull?
  *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | full   | full   |             | src_swap    |             |             |          |
+ *    | full   | full   | wait?       | src_swap    |             | return?     |          |
+ *    +--------+--------+-------------+-------------+-------------+-------------+----------+
+ *
+ *
+ * The table for entry actions to be performend on state transitions is:
+ *
+ *    +-----------------+------------------------------------------------------------------+
+ *    |      States     |                     Events                                       |
+ *    +--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | Source |  Sink  | source_fill | source_push | sink_drain  | sink_pull   | shutdown |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | empty  | empty  |             | return      |notify_src   | sink_swap?  |          |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | empty  | full   |             | return      |  	          | return      |          |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | full   | empty  | notify_sink | src_swap    | notify_src  | snk_swap    |          |
+ *    |--------+--------+-------------+-------------+-------------+-------------+----------+
+ *    | full   | full   | notify_sink |             |  	       	  | return      |          |
  *    +--------+--------+-------------+-------------+-------------+-------------+----------+
  *
  *
@@ -182,13 +182,13 @@ namespace tiledb::common {
  *     post_produce: { state == empty_empty ∨ state == empty_full }
  *     client invokes fill event
  *     pre_fill: { state == empty_empty ∨ state == empty_full }
- *     invoke full_empty or full_full entry action: nil
+ *     invoke empty_full or empty_empty exit action: nil
  *     source_fill transition event - source state transitions to full
  *     source_fill: { state == full_empty ∨ state == full_full }
  *     invoke full_empty or full_full entry action: notify_sink
  *       sink.notify(): sink is notifed with { state == full_empty or state == full_full }
  *     return
- *     post_push: { state == full_empty or state == full_full } 
+ *     post_fill: { state == full_empty or state == full_full } 
  *
  *     client invoke source_push event
  *     between source fill and source_push, the following could have happened
@@ -198,6 +198,7 @@ namespace tiledb::common {
  *       sink could have done nothing: full_full -> full, full_empty -> full_empty
  *     pre_push: { state == full_empty ∨  state == empty_full ∨  state == empty_empty ∨ state == full_full }
  *     invoke exit action: empty_full -> return, full_empty -> src_swap, full_full -> src_swap, empty_empty: none
+ *     { state == full_empty ∨ state == full_full }
  *     if (state == full_empty)
  *       pre_swap: { state == full_empty }
  *       swap elements
@@ -208,10 +209,10 @@ namespace tiledb::common {
  *       sink.notify()
  *       source.wait()
  *         the sink would have notified after draining, after swapping, or after pulling
- *         draining: sink state would be empty_full or empty_empty
+ *         draining: sink state would be full_empty or empty_empty
  *         swapping: sink state would be empty_full
  *         else_swap: sink state would be empty_empty
- *       post_wait:  { state == empty_empty ∨ state == empty_full }
+ *       post_wait:  { state == empty_empty ∨ state == empty_full ∨ state == full_empty }
  *       set state to state of *sink* state and event at notification
  *       post_event_update: { state == empty_empty ∨ state == empty_full }
  *       invoke entry function for that state
@@ -414,12 +415,13 @@ static auto inline str(PortAction ac) {
 namespace {
 
 // clang-format off
+
 constexpr const PortState transition_table[n_states][n_events] {
   /* source_sink */ /* source_fill */        /* source_push */       /* sink_drain */        /* sink_pull */        /* shutdown */
 
   /* empty_empty */ { PortState::full_empty, PortState::empty_empty, PortState::error,       PortState::empty_full, PortState::error },
   /* empty_full  */ { PortState::full_full,  PortState::empty_full,  PortState::empty_empty, PortState::empty_full, PortState::error },
-  /* full_empty  */ { PortState::empty_full, PortState::empty_full,  PortState::error,       PortState::empty_full, PortState::error },
+  /* full_empty  */ { PortState::/*empty_full*/error, PortState::empty_full,  PortState::error,       PortState::empty_full, PortState::error },
   /* full_full   */ { PortState::error,      PortState::empty_full,  PortState::full_empty,  PortState::full_full,  PortState::error },
 
   /* error       */ { PortState::error,      PortState::error,       PortState::error,       PortState::error,      PortState::error },
@@ -432,7 +434,7 @@ constexpr const PortAction exit_table[n_states][n_events] {
   /* empty_empty */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::snk_swap,  PortAction::none },
   /* empty_full  */ { PortAction::none, PortAction::ac_return, PortAction::none, PortAction::ac_return, PortAction::none },
   /* full_empty  */ { PortAction::none, PortAction::src_swap,  PortAction::none, PortAction::snk_swap,  PortAction::none },
-  /* full_full   */ { PortAction::none, PortAction::src_swap,  PortAction::none, PortAction::none,      PortAction::none },
+  /* full_full   */ { PortAction::none, PortAction::src_swap,  PortAction::none, PortAction::/*none*/ac_return,      PortAction::none },
 
   /* error       */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
   /* done        */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
@@ -607,7 +609,9 @@ private:
        break;
 
      default:
-       throw std::logic_error("Unexpected entry action");
+       throw std::logic_error(
+           "Unexpected exit action: " + str(exit_action) + ": " + str(state_) +
+           " -> " + str(next_state_));
    }
 
    if (msg != "") {
@@ -686,7 +690,9 @@ private:
        break;
 
      default:
-       throw std::logic_error("Unexpected entry action");
+       throw std::logic_error(
+           "Unexpected entry action: " + str(entry_action) + ": " +
+           str(state_) + " -> " + str(next_state_));
    }
 
    if (msg != "") {

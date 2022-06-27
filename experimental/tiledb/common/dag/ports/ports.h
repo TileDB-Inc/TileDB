@@ -95,22 +95,54 @@ class Source {
 
  public:
   /**
+   * Submit an item to be transferred to correspondent_ Sink.  Blocking.  The
+   * behavior of `submit` and `try_submit` will depend on the policy associated
+   * with the state machine.  Used by dag nodes and edges for transferring data.
    *
+   * @todo Investigate policy with blocking and non-blocking variants of
+   * `do_push`.
+   *
+   * The time in the spinlock should be minimal.
    */
   void submit(Block&) {
-    //    std::optional<Block> tmp{};
-    //    std::swap(item_, tmp);
-    //    (corresponent_->fsm).event(src_data_fill);
-    //    (corresponent_->fsm).event(source_filled);
-    //    src_cv.notify_one();
+    //  Don't need the guard since { state == empty_full ∨ state == empty_empty}
+    //  at end of function and sink cannot change that.
+    //  while (!source_is_empty())
+    //    ;
+    //
+    //  { state == empty_empty ∨ state == empty_full }
+    //  inject source item
+    //  do_fill();
+    //  { state == full_empty ∨ state == full_full }
+    //  do_push();  // may block
+    //  { state == empty_full ∨ state == empty_empty }
   }
 
-  void try_swap() {
-    //    if (ready) {
-    //      std::swap(item_, correspondent_->item_);
-    //      (corresponent_->fsm).event(source_swap);
-    //      signal();
-    //    }
+  /**
+   * Submit an item to be transferred to correspondent_ Sink.  Non-blocking. The
+   * behavior of `submit` and `try_submit` will depend on the policy associated
+   * with the state machine.  Used by dag nodes and edges for transferring data.
+   *
+   * @todo Investigate policy with blocking and non-blocking variants of
+   * `do_push`.
+   *
+   * The time in the spinlock should be minimal.
+   */
+  bool try_submit() {
+    //  Don't need the guard since { state == empty_full ∨ state == empty_empty}
+    //  at end of function and sink cannot change that.
+    //  while (!source_is_empty())
+    //    ;
+    //
+    //  { state == empty_empty ∨ state == empty_full }
+    //  inject source item
+    //  do_fill();
+    //  { state == full_empty ∨ state == full_full ∨ state == empty_empty
+    //    ∨  state == empty_full }
+    //  do_push(); // could have non-blocking try_push() event, but that would
+    //             // leave the item  the item injected -- on failure, could
+    //             // reject item -- would also need try_swap action.
+    //  { state == empty_full ∨ state == empty_empty}
   }
 
   /**
@@ -169,54 +201,60 @@ class Sink {
   Source<Block>* correspondent_{nullptr};
 
   /**
-   * Mutex shared by a correspondent pair. It's defined in only the Sink
-   * arbitrarily.  Protects transfer of data item from Source to the Sink.
+   * Mutex shared by a correspondent pair. It's arbitratily defined in only the
+   * Sink. Protects binding of Source and Sink. Protection of data transfer is
+   * accomplished in the finite state machine.
+   *
+   * @todo Are there other Source / Sink functions that need to be protected?
    */
   std::mutex mutex_;
 
  public:
   /**
-   * Notification function to be called by a correspondent Source to signal that
-   * it is ready to send data. If `try_put()` is called immediately, it should
-   * ordinarily succeed.
+   * Retrieve `item_` from the Sink.  Blocking.  The behavior of `retrieve` and
+   * `try_retrieve` will depend on the policy associated with the state machine.
+   * Used by dag nodes and edges for transferring data.
    *
-   * At the point of construction it should be as if
-   * ready_to_send(false) was called in the constructor body.
-   *
-   * @pre This Sink object is registered as alive with the Scheduler.
-   */
-  void ready_to_send();
-
-  /**
-   * Retrieve `item_` from the Sink.
+   * @todo Investigate policy with blocking and non-blocking variants of
+   * `do_pull`.
    *
    * @return The retrieved `item_`.  The return value will be empty if
    * the `item_` is empty.
    */
   std::optional<Block> retrieve() {
-    std::scoped_lock lock(mutex_);
-    std::optional<Block> tmp{};
-    swap(tmp, item_);
-    return tmp;
+    //  while (!sink_is_empty())
+    //    ;
+    //  { state == empty_empty ∨ state == full_empty }
+    //  do_pull();
+    //  { state == empty_full ∨ state == full_full }
+    //  extract sink item;
+    //  do_drain();
+    //  { state == empty_empty ∨ state == full_empty ∨ state == empty_full ∨
+    //  state == full_full } return item;
+
+    //  Could also do?
   }
 
   /**
-   * Receive a block from a correspondent Source. Called by the Source.
+   * Retrieve `item_` from the Sink.  Non-blocking.  The behavior of `retrieve`
+   * and `try_retrieve` will depend on the policy associated with the state
+   * machine.  Used by dag nodes and edges for transferring data.
    *
-   * If `item_` is empty when `try_put` is called, it will be swapped with
-   * the item being sent and true will be returned.  Otherwise, false will
-   * be returned.
+   * @todo Investigate policy with blocking and non-blocking variants of
+   * `do_pull`.
    *
-   * @return true if items were successfully swapped
-   * @post If return value is true, item_ will be full
+   * @return The retrieved `item_`.  The return value will be empty if
+   * the `item_` was not able to be retrieved.
    */
-  bool try_put() {
-    std::scoped_lock lock(mutex_);
-    if (!item_.has_value() && (correspondent_->item_).has_value()) {
-      std::swap(item_, correspondent_->item_);
-      return true;
-    }
-    return false;
+  std::optional<Block> try_retrieve() {
+    //  if (sink_is_empty()) {
+    //    { state == empty_empty ∨ state == full_empty }
+    //    do_pull();
+    //    extract sink item
+    //    do_drain();
+    //    return item;
+    //  }
+    //  return {};;
   }
 
   /**
@@ -249,6 +287,10 @@ class Sink {
     }
   }
 };
+
+/**
+ * Free functions for binding / unbinding Source and Sink.
+ */
 
 /**
  * Assign sink as correspondent to source and vice versa.
