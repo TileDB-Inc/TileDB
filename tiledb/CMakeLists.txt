@@ -218,6 +218,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ast/query_ast.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/hilbert_order.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/legacy/cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/legacy/reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/legacy/read_cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
@@ -247,7 +248,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/timer_stat.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/storage_manager.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/range_subset.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray_partitioner.cc
