@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 202s TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file defines some elementary node types for testing
+ * This file defines some elementary node types for testing source and sink
+ * ports.
  */
 
 #ifndef TILEDB_DAG_PSEUDO_NODES_H
@@ -38,6 +39,11 @@
 
 namespace tiledb::common {
 
+/**
+ * Prototype producer function object class.  This class generates a sequence of
+ * integers from 0 to N (half-open interval).  It will invoke an out-of-data
+ * event when the counter hits N.
+ */
 template <class Block = size_t>
 class generator {
   std::atomic<Block> N_{0};
@@ -58,7 +64,8 @@ class generator {
 };
 
 /**
- * Prototype source node.  Constructed with a function that creates items.
+ * Prototype source node class.  Constructed with a function that creates
+ * Blocks.
  */
 template <class Block = size_t>
 class ProducerNode : public Source<Block> {
@@ -76,6 +83,12 @@ class ProducerNode : public Source<Block> {
   template <class Function>
   explicit ProducerNode(Function&& f)
       : f_{std::forward<Function>(f)} {
+  }
+
+  /**
+   * Trivial default constructor, for testing.
+   */
+  ProducerNode() {
   }
 
   /**
@@ -109,7 +122,7 @@ class consumer {
 };
 
 /**
- * A proto consumer node.  Constructed with a function that accepts items.
+ * A proto consumer node.  Constructed with a function that accepts Blocks.
  */
 template <class Block = size_t>
 class ConsumerNode : public Sink<Block> {
@@ -125,6 +138,12 @@ class ConsumerNode : public Sink<Block> {
   template <class Function>
   explicit ConsumerNode(Function&& f)
       : f_{std::forward<Function>(f)} {
+  }
+
+  /**
+   * Trivial default constructor, for testing.
+   */
+  ConsumerNode() {
   }
 
   /**
