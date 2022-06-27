@@ -51,7 +51,7 @@ typedef struct tiledb_filter_handle_t tiledb_filter_t;
 typedef enum {
 /** Selection macro for defining filter type enums. */
 #define TILEDB_FILTER_TYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
+#include "filter_api_enum.h"
 #undef TILEDB_FILTER_TYPE_ENUM
 } tiledb_filter_type_t;
 
@@ -61,7 +61,7 @@ typedef enum {
 typedef enum {
 /** Selection macro for defining filter option enums. */
 #define TILEDB_FILTER_OPTION_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
+#include "filter_api_enum.h"
 #undef TILEDB_FILTER_OPTION_ENUM
 } tiledb_filter_option_t;
 

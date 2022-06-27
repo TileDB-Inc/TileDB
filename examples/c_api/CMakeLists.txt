@@ -25,10 +25,6 @@
 # THE SOFTWARE.
 #
 
-#**#
-set(CMAKE_VERBOSE_MAKEFILE ON)
-#**#
-
 # Use C99 as the standard for these examples.
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)

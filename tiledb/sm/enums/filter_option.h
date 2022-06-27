@@ -46,7 +46,7 @@ using namespace tiledb::common;
 /** Defines the filter type. */
 enum class FilterOption : uint8_t {
 #define TILEDB_FILTER_OPTION_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
+#include "tiledb/api/c_api/filter/filter_api_enum.h"
 #undef TILEDB_FILTER_OPTION_ENUM
 };
 

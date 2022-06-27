@@ -26,10 +26,6 @@
 # THE SOFTWARE.
 #
 
-#**#
-set(CMAKE_VERBOSE_MAKEFILE ON)
-#**#
-
 if (WIN32)
   # Disable MSVC warnings not present with gcc.
   #   C4204: non-constant aggregate initializer
@@ -105,10 +101,5 @@ endif()
 
 add_custom_target(examples DEPENDS examples_c)
 if (TILEDB_CPP_API)
-  #**#
-  # build C examples before C++ examples to see if error is configuration mismatch
-  #**#
-  add_dependencies(examples_cpp examples_c)
-
   add_dependencies(examples examples_cpp)
 endif()

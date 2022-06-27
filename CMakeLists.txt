@@ -336,6 +336,7 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/context/context_api_external.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_enum.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
 )
 set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
