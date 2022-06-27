@@ -474,6 +474,8 @@ class PortFiniteStateMachine {
   PortState next_state_;
 
  public:
+  using lock_type = std::unique_lock<std::mutex>;
+
   /**
    * Default constructor
    */
@@ -512,11 +514,12 @@ private:
    * @param event msg A debugging string to preface printout information for
    * the state transition
    */
- bool debug_{false};
- std::mutex mutex_;
- std::atomic<int> event_counter{};
 
- using lock_type = std::unique_lock<std::mutex>;
+ // Used for debugging.
+ std::atomic<int> event_counter{};
+ bool debug_{false};
+
+ std::mutex mutex_;
 
  void event(PortEvent event, const std::string msg = "") {
    std::unique_lock lock(mutex_);
@@ -693,7 +696,7 @@ private:
                       str(entry_action)
                << ") " + str(next_state_) << std::endl;
    }
-  }
+ }
 
  public:
   /**
@@ -715,35 +718,35 @@ private:
   /**
    * Invoke `source_fill` event
    */
-  void do_fill(const std::string& msg) {
+  void do_fill(const std::string& msg = "") {
     event(PortEvent::source_fill, msg);
   }
 
   /**
    * Invoke `source_push` event
    */
-  void do_push(const std::string& msg) {
+  void do_push(const std::string& msg = "") {
     event(PortEvent::source_push, msg);
   }
 
   /**
    * Invoke `sink_drain` event
    */
-  void do_drain(const std::string& msg) {
+  void do_drain(const std::string& msg = "") {
     event(PortEvent::sink_drain, msg);
   }
 
   /**
    * Invoke `sink_pull` event
    */
-  void do_pull(const std::string& msg) {
+  void do_pull(const std::string& msg = "") {
     event(PortEvent::sink_pull, msg);
   }
 
   /**
    * Invoke `shutdown` event
    */
-  void do_shutdown(const std::string& msg) {
+  void do_shutdown(const std::string& msg = "") {
     event(PortEvent::shutdown, msg);
   }
 
@@ -752,6 +755,18 @@ private:
    */
   void out_of_data(const std::string&) {
     // unimplemented
+  }
+
+  void enable_debug() {
+    debug_ = true;
+  }
+
+  void disable_debug() {
+    debug_ = false;
+  }
+
+  bool debug_enabled() {
+    return debug_;
   }
 };
 
@@ -778,28 +793,28 @@ class DebugStateMachine : public PortFiniteStateMachine<DebugStateMachine<T>> {
 
  public:
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_)
+    if (FSM::debug_enabled())
       std::cout << "    "
                 << "Action return" << std::endl;
   }
   inline void on_source_swap(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_)
+    if (FSM::debug_enabled())
 
       std::cout << "    "
                 << "Action swap source" << std::endl;
   }
   inline void on_sink_swap(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_)
+    if (FSM::debug_enabled())
       std::cout << "    "
                 << "Action swap sink" << std::endl;
   }
   inline void notify_source(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_)
+    if (FSM::debug_enabled())
       std::cout << "    "
                 << "Action notify source" << std::endl;
   }
   inline void notify_sink(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_)
+    if (FSM::debug_enabled())
       std::cout << "    "
                 << "Action notify sink" << std::endl;
   }
