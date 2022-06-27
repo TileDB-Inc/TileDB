@@ -449,28 +449,28 @@ class PortFiniteStateMachine {
   /**
    * Invoke `source_push` event
    */
-  void do_push(const std::string& msg) {
+  void do_push(const std::string& msg = "") {
     event(PortEvent::source_push, msg);
   }
 
   /**
    * Invoke `sink_drain` event
    */
-  void do_drain(const std::string& msg) {
+  void do_drain(const std::string& msg = "") {
     event(PortEvent::sink_drain, msg);
   }
 
   /**
    * Invoke `sink_pull` event
    */
-  void do_pull(const std::string& msg) {
+  void do_pull(const std::string& msg = "") {
     event(PortEvent::sink_pull, msg);
   }
 
   /**
    * Invoke `shutdown` event
    */
-  void do_shutdown(const std::string& msg) {
+  void do_shutdown(const std::string& msg = "") {
     event(PortEvent::shutdown, msg);
   }
 
