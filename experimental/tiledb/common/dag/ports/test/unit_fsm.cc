@@ -823,6 +823,8 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
       CHECK(is_sink_full(a.state()) == "");
 
+      CHECK(is_snk_full(a.state()) == "");
+
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
       *j++ = *(a.sink_item_);
