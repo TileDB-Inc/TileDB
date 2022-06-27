@@ -47,8 +47,8 @@ namespace tiledb::common {
  *
  * This file implements a state machine for two communicating ports.  Each port has
  * two states, empty or full.  There are two events associated with the source:
- * source_fill and push.  There are two events associated with the sink: sink_drain,
- * and pull. For simplicty there are currently no defined events for startup, stop,
+ * source_fill and source_push.  There are two events associated with the sink: sink_drain,
+ * and sink_pull. For simplicty there are currently no defined events for startup, stop,
  * forced shutdown, or abort.
  *
  * Diagrams for the source and sink state machines can be found in
@@ -60,7 +60,7 @@ namespace tiledb::common {
  *   client invokes source_fill event to transition from empty to full.
  *     when making this transition, on entry to full, the source notifies the sink that it is 
  *     full, and returns
- *   client invokes push event to transition from full to empty, sending its item to the sink 
+ *   client invokes source_push event to transition from full to empty, sending its item to the sink 
  *     when making the transition, on exit the source invokes its swap action
  *       the swap action first checks if its current state is full and the sinks state is empty.  
  *       If so, it swaps the sink and source items, which puts the item in the sink.  It then
@@ -69,14 +69,14 @@ namespace tiledb::common {
  *       source is notified, it returns.
  *
  * The sink state machine is the dual of the source state machine:
- *   client invokes pull event to transition from empty to pull, getting its item from the source
+ *   client invokes sink_pull event to transition from empty to pull, getting its item from the source
  *     when making the transition, on exit the sik invokes its swap action
  *       the swap action first checks if its current state is full and the source state is empty.  
  *       If so, it swaps the sink and source items, which puts the item in the sink.  It then
  *       notifies the source. On entry to the empty state, the sink returns
  *       If not, the sink waits until notified by the source that it is full.  When the sink is 
  *       notified, it returns.
- *   client invokes drain event to transition from full to empty.
+ *   client invokes sink_drain event to transition from full to empty.
  *     when making this transition, on entry to empty, the sink notifies the source that it is 
  *     empty, and returns
  *
@@ -86,7 +86,7 @@ namespace tiledb::common {
  *    +-----------------+------------------------------------------------------------------+
  *    |      States     |                     Events                                       |
  *    +--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | Source |  Sink  | source_fill | push        | sink_drain  | pull        | shutdown |
+ *    | Source |  Sink  | source_fill | source_push | sink_drain  | sink_pull   | shutdown |
  *    |--------+--------+-------------+-------------+-------------+-------------+----------+
  *    | empty  | empty  | full/empty  |             |             | empty/full  |          |
  *    |--------+--------+-------------+-------------+-------------+-------------+----------+
@@ -103,7 +103,7 @@ namespace tiledb::common {
  *    +-----------------+------------------------------------------------------------------+
  *    |      States     |                     Events                                       |
  *    +--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | Source |  Sink  | source_fill | push        | sink_drain  | pull        | shutdown |
+ *    | Source |  Sink  | source_fill | source_push | sink_drain  | sink_pull   | shutdown |
  *    |--------+--------+-------------+-------------+-------------+-------------+----------+
  *    | empty  | empty  |             | return      |notify_src   |             |          |
  *    |--------+--------+-------------+-------------+-------------+-------------+----------+
@@ -120,7 +120,7 @@ namespace tiledb::common {
  *    +-----------------+------------------------------------------------------------------+
  *    |      States     |                     Events                                       |
  *    +--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | Source |  Sink  | source_fill | push        | sink_drain  | pull        | shutdown |
+ *    | Source |  Sink  | source_fill | source_push | sink_drain  | sink_pull   | shutdown |
  *    |--------+--------+-------------+-------------+-------------+-------------+----------+
  *    | empty  | empty  |             |             |             | sink_swap   |          |
  *    |--------+--------+-------------+-------------+-------------+-------------+----------+
@@ -155,14 +155,14 @@ namespace tiledb::common {
  * while (true) {
  *   produce an item
  *   cause event filled
- *   cause event push
+ *   cause event source_push
  * }
  *
  *
  * Desired usage of a sink port / fsm from a source node:
  *
  * while (true) {
- *   cause event pull
+ *   cause event sink_pull
  *   consume an item
  *   cause event drained
  * }
@@ -190,8 +190,8 @@ namespace tiledb::common {
  *     return
  *     post_push: { state == full_empty or state == full_full } 
  *
- *     client invoke push event
- *     between source fill and push, the following could have happened
+ *     client invoke source_push event
+ *     between source fill and source_push, the following could have happened
  *       sink could have drained: full_full -> full_empty
  *       sink could have pulled: full_empty -> empty_full
  *       sink could have pulled and drained: full_empty -> empty_empty
@@ -230,7 +230,7 @@ namespace tiledb::common {
  *   start: { state == empty_empty }
  *   while (not done)
  *     loop_begin: { state == empty_full ∨ state == empty_empty }
- *     client invoke pull event
+ *     client invoke sink_pull event
  *     between sink drain and pull the following could have happened
  *       source could have filled: empty_empty -> full_empty
  *       source could have filled and pushed: empty_empty -> empty_full
@@ -326,9 +326,9 @@ static inline auto str(PortState st) {
 
 enum class PortEvent : unsigned short {
   source_fill,
-  push,
+  source_push,
   sink_drain,
-  pull,
+  sink_pull,
   shutdown,
 };
 
@@ -346,9 +346,9 @@ constexpr unsigned int n_events = to_index(PortEvent::shutdown) + 1;
  */
 static std::vector<std::string> event_strings{
     "source_fill",
-    "push",
+    "source_push",
     "sink_drain",
-    "pull",
+    "sink_pull",
     "shutdown",
 };
 
@@ -415,7 +415,7 @@ namespace {
 
 // clang-format off
 constexpr const PortState transition_table[n_states][n_events] {
-  /* source_sink */ /* source_fill */        /* push */              /* sink_drain */        /* pull */            /* shutdown */
+  /* source_sink */ /* source_fill */        /* source_push */       /* sink_drain */        /* sink_pull */        /* shutdown */
 
   /* empty_empty */ { PortState::full_empty, PortState::empty_empty, PortState::error,       PortState::empty_full, PortState::error },
   /* empty_full  */ { PortState::full_full,  PortState::empty_full,  PortState::empty_empty, PortState::empty_full, PortState::error },
@@ -427,7 +427,7 @@ constexpr const PortState transition_table[n_states][n_events] {
 };
 
 constexpr const PortAction exit_table[n_states][n_events] {
-  /* source_sink */ /* source_fill */   /* push */             /* sink_drain */  /* pull */            /* shutdown */
+  /* source_sink */ /* source_fill */   /* source_push */      /* sink_drain */  /* sink_pull */        /* shutdown */
 
   /* empty_empty */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::snk_swap,  PortAction::none },
   /* empty_full  */ { PortAction::none, PortAction::ac_return, PortAction::none, PortAction::ac_return, PortAction::none },
@@ -439,7 +439,7 @@ constexpr const PortAction exit_table[n_states][n_events] {
 };
 
 constexpr const PortAction entry_table[n_states][n_events] {
-  /* source_sink */ /* source_fill */          /* push */             /* sink_drain */           /* pull */             /* shutdown */
+  /* source_sink */ /* source_fill */          /* source_push */      /* sink_drain */           /* sink_pull */        /* shutdown */
 
   /* empty_empty */ { PortAction::none,        PortAction::ac_return, PortAction::notify_source, PortAction::none,      PortAction::none },
   /* empty_full  */ { PortAction::none,        PortAction::ac_return, PortAction::none,          PortAction::ac_return, PortAction::none },
@@ -459,7 +459,7 @@ constexpr const PortAction entry_table[n_states][n_events] {
  * of the the state machine.  A policy class is used by the
  * `PortFinitStateMachine` to realize the specific state transition actions.
  *
- * The `ActionPolicy` class is expted to use the `FiniteStateMachine` class
+ * The `ActionPolicy` class is expected to use the `FiniteStateMachine` class
  * using CRTP.
  *
  * @note There is a fair amount of debugging code inserted into the class at the
@@ -494,23 +494,7 @@ class PortFiniteStateMachine {
     return next_state_;
   }
 
-  /**
-   * Set state
-   */
-  inline PortState set_state(PortState next_state_) {
-    state_ = next_state_;
-    return state_;
-  }
-
-  /**
-   * Set next state
-   */
-  inline PortState set_next_state(PortState next_state) {
-    next_state_ = next_state;
-    return next_state_;
-  }
-
- public:
+private:
   /**
    * Function to handle state transitions based on external events.
    *
@@ -528,189 +512,251 @@ class PortFiniteStateMachine {
    * @param event msg A debugging string to preface printout information for
    * the state transition
    */
-  std::mutex mutex_;
-  bool debug_{false};
-  std::atomic<int> event_counter{};
+ bool debug_{false};
+ std::mutex mutex_;
+ std::atomic<int> event_counter{};
 
-  using lock_type = std::unique_lock<std::mutex>;
+ using lock_type = std::unique_lock<std::mutex>;
 
-  void event(PortEvent event, const std::string msg = "") {
-    std::unique_lock lock(mutex_);
+ void event(PortEvent event, const std::string msg = "") {
+   std::unique_lock lock(mutex_);
 
-    next_state_ = transition_table[to_index(state_)][to_index(event)];
-    auto exit_action{exit_table[to_index(state_)][to_index(event)]};
-    auto entry_action{entry_table[to_index(next_state_)][to_index(event)]};
+   next_state_ = transition_table[to_index(state_)][to_index(event)];
+   auto exit_action{exit_table[to_index(state_)][to_index(event)]};
+   auto entry_action{entry_table[to_index(next_state_)][to_index(event)]};
 
-    auto old_state = state_;
+   auto old_state = state_;
 
-    if (msg != "") {
-      std::cout << "\n"
-                << event_counter++
-                << " On event start: " + msg + " " + str(event) + ": " +
-                       str(state_) + " (" + str(exit_action) + ") -> (" +
-                       str(entry_action)
-                << ") " + str(next_state_) << std::endl;
-    }
+   if (msg != "") {
+     std::cout << "\n"
+               << event_counter++
+               << " On event start: " + msg + " " + str(event) + ": " +
+                      str(state_) + " (" + str(exit_action) + ") -> (" +
+                      str(entry_action)
+               << ") " + str(next_state_) << std::endl;
+   }
 
-    if (next_state_ == PortState::error) {
-      std::cout << "\n"
-                << event_counter++
-                << " ERROR On event start: " + msg + " " + str(event) + ": " +
-                       str(state_) + " (" + str(exit_action) + ") -> (" +
-                       str(entry_action)
-                << ") " + str(next_state_) << std::endl;
-    }
+   // For now, ignore shutdown events
+   if (PortEvent::shutdown == event) {
+     return;
+   }
 
-    if (msg != "") {
-      std::cout << event_counter++
-                << " Pre exit event: " + msg + " " + str(event) + ": " +
-                       str(state_) + " (" + str(exit_action) + ") -> (" +
-                       str(entry_action)
-                << ") " + str(next_state_) << std::endl;
-    }
+   if (next_state_ == PortState::error) {
+     std::cout << "\n"
+               << event_counter++
+               << " ERROR On event start: " + msg + " " + str(event) + ": " +
+                      str(state_) + " (" + str(exit_action) + ") -> (" +
+                      str(entry_action)
+               << ") " + str(next_state_) << std::endl;
+   }
 
-    /**
-     * Perform any exit actions.
-     */
-    switch (exit_action) {
-      case PortAction::none:
-        break;
+   if (msg != "") {
+     std::cout << event_counter++
+               << " Pre exit event: " + msg + " " + str(event) + ": " +
+                      str(state_) + " (" + str(exit_action) + ") -> (" +
+                      str(entry_action)
+               << ") " + str(next_state_) << std::endl;
+   }
 
-      case PortAction::ac_return:
-        if (msg != "")
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to ac_return" << std::endl;
-        static_cast<ActionPolicy&>(*this).on_ac_return(lock, event_counter);
-        return;
-        break;
+   /**
+    * Perform any exit actions.
+    */
+   switch (exit_action) {
+     case PortAction::none:
+       break;
 
-      case PortAction::src_swap:
-        if (msg != "")
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to src_swap" << std::endl;
-        static_cast<ActionPolicy&>(*this).on_source_swap(lock, event_counter);
-        break;
+     case PortAction::ac_return:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to ac_return" << std::endl;
+       static_cast<ActionPolicy&>(*this).on_ac_return(lock, event_counter);
+       return;
+       break;
 
-      case PortAction::snk_swap:
-        if (msg != "")
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to snk_swap" << std::endl;
-        static_cast<ActionPolicy&>(*this).on_sink_swap(lock, event_counter);
-        break;
+     case PortAction::src_swap:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to src_swap" << std::endl;
+       static_cast<ActionPolicy&>(*this).on_source_swap(lock, event_counter);
+       break;
 
-      case PortAction::notify_source:
-        if (msg != "")
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to notify source"
-                    << std::endl;
-        static_cast<ActionPolicy&>(*this).notify_source(lock, event_counter);
-        break;
+     case PortAction::snk_swap:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to snk_swap" << std::endl;
+       static_cast<ActionPolicy&>(*this).on_sink_swap(lock, event_counter);
+       break;
 
-      case PortAction::notify_sink:
-        if (msg != "")
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to notify sink"
-                    << std::endl;
-        static_cast<ActionPolicy&>(*this).notify_sink(lock, event_counter);
-        break;
+     case PortAction::notify_source:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to notify source"
+                   << std::endl;
+       static_cast<ActionPolicy&>(*this).notify_source(lock, event_counter);
+       break;
 
-      default:
-        throw std::logic_error("Unexpected entry action");
-    }
+     case PortAction::notify_sink:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to notify sink"
+                   << std::endl;
+       static_cast<ActionPolicy&>(*this).notify_sink(lock, event_counter);
+       break;
 
-    if (msg != "") {
-      if (msg != "")
-        std::cout << event_counter++
-                  << " Post exit: " + msg + " " + str(event) + ": " +
-                         str(state_) + " (" + str(exit_action) + ") -> (" +
-                         str(entry_action)
-                  << ") " + str(next_state_) << std::endl;
-    }
+     default:
+       throw std::logic_error("Unexpected entry action");
+   }
 
-    /*
-     * Assign new state
-     */
+   if (msg != "") {
+     if (msg != "")
+       std::cout << event_counter++
+                 << " Post exit: " + msg + " " + str(event) + ": " +
+                        str(state_) + " (" + str(exit_action) + ") -> (" +
+                        str(entry_action)
+                 << ") " + str(next_state_) << std::endl;
+   }
+
+   /*
+    * Assign new state
+    */
+   state_ = next_state_;
+
+   entry_action = entry_table[to_index(next_state_)][to_index(event)];
+
+   if (msg != "") {
+     std::cout << event_counter++
+               << " Pre entry event: " + msg + " " + str(event) + ": " +
+                      str(old_state) + " (" + str(exit_action) + ") -> (" +
+                      str(entry_action)
+               << ") " + str(state_) << std::endl;
+   }
+
+   /**
+    * Perform any entry actions.
+    */
+   switch (entry_action) {
+     case PortAction::none:
+       break;
+
+     case PortAction::ac_return:
+
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " entry about to ac_return" << std::endl;
+
+       static_cast<ActionPolicy&>(*this).on_ac_return(lock, event_counter);
+       return;
+       break;
+
+     case PortAction::src_swap:
+
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " entry about to src_swap" << std::endl;
+
+       static_cast<ActionPolicy&>(*this).on_source_swap(lock, event_counter);
+       break;
+
+     case PortAction::snk_swap:
+
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " entry about to sink_swap" << std::endl;
+
+       static_cast<ActionPolicy&>(*this).on_sink_swap(lock, event_counter);
+       break;
+
+     case PortAction::notify_source:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to notify source"
+                   << std::endl;
+       static_cast<ActionPolicy&>(*this).notify_source(lock, event_counter);
+       break;
+
+     case PortAction::notify_sink:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to notify sink"
+                   << std::endl;
+       static_cast<ActionPolicy&>(*this).notify_sink(lock, event_counter);
+       break;
+
+     default:
+       throw std::logic_error("Unexpected entry action");
+   }
+
+   if (msg != "") {
+     std::cout << event_counter++
+               << " Post entry event: " + msg + " " + str(event) + ": " +
+                      str(state_) + " (" + str(exit_action) + ") -> (" +
+                      str(entry_action)
+               << ") " + str(next_state_) << std::endl;
+   }
+  }
+
+ public:
+  /**
+   * Set state
+   */
+  inline PortState set_state(PortState next_state_) {
     state_ = next_state_;
+    return state_;
+  }
 
-    entry_action = entry_table[to_index(next_state_)][to_index(event)];
+  /**
+   * Set next state
+   */
+  inline PortState set_next_state(PortState next_state) {
+    next_state_ = next_state;
+    return next_state_;
+  }
 
-    if (msg != "") {
-      std::cout << event_counter++
-                << " Pre entry event: " + msg + " " + str(event) + ": " +
-                       str(old_state) + " (" + str(exit_action) + ") -> (" +
-                       str(entry_action)
-                << ") " + str(state_) << std::endl;
-    }
+  /**
+   * Invoke `source_fill` event
+   */
+  void do_fill(const std::string& msg) {
+    event(PortEvent::source_fill, msg);
+  }
 
-    /**
-     * Perform any entry actions.
-     */
-    switch (entry_action) {
-      case PortAction::none:
-        break;
+  /**
+   * Invoke `source_push` event
+   */
+  void do_push(const std::string& msg) {
+    event(PortEvent::source_push, msg);
+  }
 
-      case PortAction::ac_return:
+  /**
+   * Invoke `sink_drain` event
+   */
+  void do_drain(const std::string& msg) {
+    event(PortEvent::sink_drain, msg);
+  }
 
-        if (msg != "")
-          std::cout << event_counter++
-                    << "      " + msg + " entry about to ac_return"
-                    << std::endl;
+  /**
+   * Invoke `sink_pull` event
+   */
+  void do_pull(const std::string& msg) {
+    event(PortEvent::sink_pull, msg);
+  }
 
-        static_cast<ActionPolicy&>(*this).on_ac_return(lock, event_counter);
-        return;
-        break;
+  /**
+   * Invoke `shutdown` event
+   */
+  void do_shutdown(const std::string& msg) {
+    event(PortEvent::shutdown, msg);
+  }
 
-      case PortAction::src_swap:
-
-        if (msg != "")
-          std::cout << event_counter++
-                    << "      " + msg + " entry about to src_swap" << std::endl;
-
-        static_cast<ActionPolicy&>(*this).on_source_swap(lock, event_counter);
-        break;
-
-      case PortAction::snk_swap:
-
-        if (msg != "")
-          std::cout << event_counter++
-                    << "      " + msg + " entry about to sink_swap"
-                    << std::endl;
-
-        static_cast<ActionPolicy&>(*this).on_sink_swap(lock, event_counter);
-        break;
-
-      case PortAction::notify_source:
-        if (msg != "")
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to notify source"
-                    << std::endl;
-        static_cast<ActionPolicy&>(*this).notify_source(lock, event_counter);
-        break;
-
-      case PortAction::notify_sink:
-        if (msg != "")
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to notify sink"
-                    << std::endl;
-        static_cast<ActionPolicy&>(*this).notify_sink(lock, event_counter);
-        break;
-
-      default:
-        throw std::logic_error("Unexpected entry action");
-    }
-
-    if (msg != "") {
-      std::cout << event_counter++
-                << " Post entry event: " + msg + " " + str(event) + ": " +
-                       str(state_) + " (" + str(exit_action) + ") -> (" +
-                       str(entry_action)
-                << ") " + str(next_state_) << std::endl;
-    }
+  /**
+   * Invoke `out_of_data` event
+   */
+  void out_of_data(const std::string&) {
+    // unimplemented
   }
 };
 
 /**
- * Null action policy
+ * Null action policy.  Verifies compilation of CRTP.
  */
 template <class T = size_t>
 class NullStateMachine : public PortFiniteStateMachine<NullStateMachine<T>> {
@@ -721,7 +767,7 @@ class NullStateMachine : public PortFiniteStateMachine<NullStateMachine<T>> {
 };
 
 /**
- * A simple debuggin action policy that simply prints that an action has been
+ * A simple debugging action policy that simply prints that an action has been
  * called.
  */
 template <class T = size_t>
@@ -767,6 +813,7 @@ class DebugStateMachineWithLock
   std::mutex(mutex_);
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;
+  using lock_type = std::unique_lock<std::mutex>;
 
  public:
   inline void on_ac_return(lock_type&, std::atomic<int>&) {

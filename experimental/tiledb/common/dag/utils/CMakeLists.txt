@@ -29,6 +29,7 @@ include(common NO_POLICY_SCOPE)
 
 list(APPEND SOURCES
   range_join.cc
+  spinlock.cc
 )
 gather_sources(${SOURCES})
 
@@ -66,4 +67,26 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_range_join> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+
+    add_executable(unit_spinlock EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_spinlock PUBLIC utils)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_spinlock PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_spinlock PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_spinlock PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_spinlock PUBLIC
+            test/main.cc
+            test/unit_spinlock.cc
+            )
+
+    add_test(
+            NAME "unit_spinlock"
+            COMMAND $<TARGET_FILE:unit_spinlock> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
 endif()
