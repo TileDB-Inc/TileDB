@@ -1,4 +1,3 @@
-
 /**
  * @file   spinklock.h
  *

@@ -1,5 +1,5 @@
 /**
- * @file   producer_consumer_queue.h
+ * @file   bounded_buffer.h
  *
  * @section LICENSE
  *
