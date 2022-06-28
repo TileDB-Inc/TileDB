@@ -281,17 +281,18 @@ endif()
 #         `tiledb_experimental`
 #          other `tiledb_*`
 #
-# Headers assume `-I<root>`. To use the C API:
+# Headers assume `-I<root>`. To wit, for the C API use this:
 # ```C
 # #include <tiledb/tiledb.h>
 # ```
-# To use the C++ API:
+# For the C++ API use this:
 # ```C++
 # #include <tiledb/tiledb>
 # ```
 
 # Private header structure. The compiler of a user program sees this view. Only
-# TileDB source uses these names; they can be changed at will.
+# TileDB source uses these names. They can be changed at will, but installation
+# will also have to changed, as may other aspects of the build.
 # - `<root>/`
 #     `tiledb/`
 #         `api/`
@@ -302,44 +303,95 @@ endif()
 #                     `<section>_api_external.h`
 
 ##################################
-# Export Header
-##################################
-# The core library, tests, and examples all depend on the
-# export library.
-
-set(TILEDB_EXPORT_HEADER_DIR "${CMAKE_CURRENT_BINARY_DIR}/tiledb")
-set(TILEDB_EXPORT_HEADER_NAME "tiledb_export.h")
-set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER_DIR}/${TILEDB_EXPORT_HEADER_NAME}")
-set(TILEDB_EXPORT_HEADER_INSTALL_PATH "tiledb/api/c_api/${TILEDB_EXPORT_HEADER_NAME}")
-
-##################################
 # C API include files
 ##################################
-#
-# Explicit lists of C API headers are needed in more than one place
-# - `tiledb` (core library) uses the lists for its installation target
-# - `examples` does a manual installation with the lists
 #
 # FILENAME headers are copied only as their file name to ${INCLUDE_BASE}/tiledb
 # RELATIVE headers are copied as their path from RELATIVE_HEADER_BASE to ${INCLUDE_BASE}
 # In all cases the included path begins with `tiledb/`
-# The export header is handled separatedly.
+# The export header is handled separatedly below.
 
 list(APPEND TILEDB_C_API_FILENAME_HEADERS
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb_enum.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_experimental.h"
 )
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/context/context_api_external.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_enum.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/context/context_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
 )
 set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
+
+##################################
+# Export Header
+##################################
+# The export header is automatically generated later in the build (using the
+# main library target). When installed, it's in the same directory as the
+# compiler-visible, interface-hidden header `api_external_common.h`.
+
+set(TILEDB_EXPORT_HEADER_DIR "${CMAKE_BINARY_DIR}/tiledb")
+set(TILEDB_EXPORT_HEADER_NAME "tiledb_export.h")
+set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER_DIR}/${TILEDB_EXPORT_HEADER_NAME}")
+set(TILEDB_EXPORT_HEADER_LOCALINSTALL_PATH "tiledb/api/c_api/${TILEDB_EXPORT_HEADER_NAME}")
+
+##################################
+# Local install
+##################################
+#
+# User code within this project requires manual installation that mimics a
+# an installation from a distribution artifact. It's required by examples,
+# integration tests, and regression tests.
+#
+# Caveat: The "installation" is done at _configuration_ time, not at _build_ time.
+# This is a side-effect of using `configure_file`. It's not necessary and it may
+# be desirable to change it to operate at build time in the future.
+
+set(TILEDB_LOCALINSTALL_DIR "${CMAKE_BINARY_DIR}/dist-in-build")
+set(TILEDB_LOCALINSTALL_INCLUDE "${TILEDB_LOCALINSTALL_DIR}/include")
+
+#####################
+# C API
+#####################
+foreach(HEADER ${TILEDB_C_API_FILENAME_HEADERS})
+  cmake_path(GET HEADER FILENAME HEADER_STRIPPED)
+  configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/tiledb/${HEADER_STRIPPED} COPYONLY)
+endforeach()
+foreach(HEADER ${TILEDB_C_API_RELATIVE_HEADERS})
+  cmake_path(RELATIVE_PATH HEADER
+      BASE_DIRECTORY ${TILEDB_C_API_RELATIVE_HEADER_BASE}
+      OUTPUT_VARIABLE HEADER_STRIPPED
+      )
+  configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/${HEADER_STRIPPED} COPYONLY)
+endforeach()
+configure_file(${TILEDB_EXPORT_HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/${TILEDB_EXPORT_HEADER_LOCALINSTALL_PATH} COPYONLY)
+
+#####################
+# C++ API
+#####################
+file(GLOB TILEDB_CPP_HEADERS
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/*.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/tiledb"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/tiledb_experimental"
+    )
+foreach(HEADER ${TILEDB_CPP_HEADERS})
+  string(REGEX
+      REPLACE "^${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/" ""
+      HEADER_STRIPPED ${HEADER}
+      )
+  message("configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/tiledb/${HEADER_STRIPPED} COPYONLY)")
+  configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/tiledb/${HEADER_STRIPPED} COPYONLY)
+endforeach()
+
+#####################
+# Interface library
+#####################
+add_library(local_install INTERFACE)
+target_include_directories(local_install INTERFACE ${TILEDB_LOCALINSTALL_INCLUDE})
 
 ############################################################
 # Enable testing and add subdirectories

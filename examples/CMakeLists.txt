@@ -44,62 +44,14 @@ endif()
 ############################################################
 # The examples assume they use an installed TileDB, for example:
 #     '#include <tiledb/tiledb.h>'
-#
-# FILENAME headers copied to `${BASE}/tiledb`
-# - All C++ headers use the FILENAME convention
-# RELATIVE headers copied to `${BASE}`
 
-set(TILEDB_EXAMPLES_INCLUDE_BASE "${CMAKE_CURRENT_BINARY_DIR}/include")
-
-############################################################
-# C API
-############################################################
-
-foreach(HEADER ${TILEDB_C_API_FILENAME_HEADERS})
-  cmake_path(GET HEADER FILENAME HEADER_STRIPPED)
-  configure_file(${HEADER} ${TILEDB_EXAMPLES_INCLUDE_BASE}/tiledb/${HEADER_STRIPPED} COPYONLY)
-endforeach()
-foreach(HEADER ${TILEDB_C_API_RELATIVE_HEADERS})
-  cmake_path(RELATIVE_PATH HEADER
-      BASE_DIRECTORY ${TILEDB_C_API_RELATIVE_HEADER_BASE}
-      OUTPUT_VARIABLE HEADER_STRIPPED
-  )
-  configure_file(${HEADER} ${TILEDB_EXAMPLES_INCLUDE_BASE}/${HEADER_STRIPPED} COPYONLY)
-endforeach()
-configure_file(${TILEDB_EXPORT_HEADER} ${TILEDB_EXAMPLES_INCLUDE_BASE}/${TILEDB_EXPORT_HEADER_INSTALL_PATH} COPYONLY)
-
-# Add the C examples
+# Always build the C examples
 add_subdirectory(c_api)
-
-############################################################
-# C++ API
-############################################################
-
-if (TILEDB_CPP_API)
-  file(GLOB TILEDB_CPP_HEADERS
-    "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/cpp_api/*.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/cpp_api/tiledb"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/cpp_api/tiledb_experimental"
-  )
-
-  foreach(HEADER ${TILEDB_CPP_HEADERS})
-    string(REGEX
-      REPLACE "^${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/cpp_api/" ""
-      HEADER_STRIPPED ${HEADER}
-    )
-    configure_file(${HEADER} ${TILEDB_EXAMPLES_INCLUDE_BASE}/tiledb/${HEADER_STRIPPED} COPYONLY)
-  endforeach()
-
-  # Add the C++ examples
-  add_subdirectory(cpp_api)
-endif()
-
-############################################################
-# `examples` target
-############################################################
-# The 'examples' target builds all examples.
-
+# Target 'examples' builds all examples.
 add_custom_target(examples DEPENDS examples_c)
+
+# Conditionally build the C++ examples
 if (TILEDB_CPP_API)
+  add_subdirectory(cpp_api)
   add_dependencies(examples examples_cpp)
 endif()

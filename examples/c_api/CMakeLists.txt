@@ -36,10 +36,7 @@ add_custom_target(examples_c DEPENDS tiledb_shared)
 # Function that builds an executable per example
 function(build_TileDB_example_capi TARGET)
   add_executable(${TARGET}_c EXCLUDE_FROM_ALL ${TARGET}.c)
-  target_include_directories(${TARGET}_c PUBLIC
-    "${TILEDB_EXAMPLES_INCLUDE_BASE}"
-  )
-  target_link_libraries(${TARGET}_c tiledb_shared)
+  target_link_libraries(${TARGET}_c PUBLIC local_install tiledb_shared)
   if (NOT WIN32)
     # On Linux, must explicitly link -lpthread -ldl in order for static linking
     # to libzstd or libcurl to work.
