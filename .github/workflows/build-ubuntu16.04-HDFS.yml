@@ -116,6 +116,8 @@ jobs:
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/regression/tiledb_regression -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
+          source $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
+
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build
           cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
