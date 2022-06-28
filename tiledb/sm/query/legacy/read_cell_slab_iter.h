@@ -36,10 +36,10 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_coords.h"
 #include "tiledb/sm/query/readers/result_space_tile.h"
-#include "tiledb/sm/subarray/cell_slab_iter.h"
 
 using namespace tiledb::common;
 
