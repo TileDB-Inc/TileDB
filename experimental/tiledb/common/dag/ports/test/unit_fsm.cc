@@ -54,17 +54,6 @@
 
 using namespace tiledb::common;
 
-/**
- * A function to generate a random number between 0 and the specified max
- */
-size_t random_us(size_t max = 7500) {
-  thread_local static uint64_t generator_seed =
-      std::hash<std::thread::id>()(std::this_thread::get_id());
-  thread_local static std::mt19937_64 generator(generator_seed);
-  std::uniform_int_distribution<size_t> distribution(0, max);
-  return distribution(generator);
-}
-
 // using PortStateMachine = NullStateMachine;
 
 /*

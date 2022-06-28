@@ -34,6 +34,8 @@
 #ifndef TILEDB_DAG_TEST_HELPERS_H
 #define TILEDB_DAG_TEST_HELPERS_H
 
+#include <random>
+#include <thread>
 #include "experimental/tiledb/common/dag/ports/fsm.h"
 
 using namespace tiledb::common;
@@ -44,6 +46,17 @@ using namespace tiledb::common;
  */
 const int EMPTY_SOURCE = 1234567;
 const int EMPTY_SINK = 7654321;
+
+/**
+ * A function to generate a random number between 0 and the specified max
+ */
+[[maybe_unused]] static size_t random_us(size_t max = 7500) {
+  thread_local static uint64_t generator_seed =
+      std::hash<std::thread::id>()(std::this_thread::get_id());
+  thread_local static std::mt19937_64 generator(generator_seed);
+  std::uniform_int_distribution<size_t> distribution(0, max);
+  return distribution(generator);
+}
 
 /**
  * A series of helper functions for testing the state
