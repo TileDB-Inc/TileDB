@@ -175,6 +175,16 @@ class StorageManager {
       Metadata* metadata);
 
   /**
+   * Load data from persistent storage.
+   *
+   * @param uri The object URI.
+   * @param encryption_key The encryption key to use.
+   * @return Status, Buffer with the data.
+   */
+  tuple<Status, optional<Buffer>> load_data_from_generic_tile(
+      const URI uri, const EncryptionKey& encryption_key);
+
+  /**
    * Load a group detail from URI
    *
    * @param group_uri group uri
@@ -939,6 +949,21 @@ class StorageManager {
    */
   Status store_metadata(
       const URI& uri, const EncryptionKey& encryption_key, Metadata* metadata);
+
+  /**
+   * Stores data into persistent storage.
+   *
+   * @param data Data to store.
+   * @param size Size of the data.
+   * @param uri The object URI.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  Status store_data_to_generic_tile(
+      void* data,
+      const size_t size,
+      const URI uri,
+      const EncryptionKey& encryption_key);
 
   /** Closes a file, flushing its contents to persistent storage. */
   Status close_file(const URI& uri);
