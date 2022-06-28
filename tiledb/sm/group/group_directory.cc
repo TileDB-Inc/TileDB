@@ -34,6 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
@@ -141,7 +142,15 @@ Status GroupDirectory::load() {
   RETURN_NOT_OK(tp_->wait_all(tasks));
 
   // Error check
-  if (group_detail_uris_.empty()) {
+  bool is_group = false;
+  for (const auto& uri : root_dir_uris) {
+    if (uri.last_path_part() == constants::group_filename ||
+        uri.last_path_part() == constants::group_detail_dir_name) {
+      is_group = true;
+    }
+  }
+
+  if (!is_group) {
     return LOG_STATUS(
         Status_GroupDirectoryError("Cannot open group; Group does not exist."));
   }

@@ -208,6 +208,7 @@ Status Array::open(
   if (is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot open array; Array already open"));
+  }
 
   // Get encryption key from config
   std::string encryption_key_from_cfg;
