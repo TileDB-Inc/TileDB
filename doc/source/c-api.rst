@@ -263,6 +263,8 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_consolidate_metadata_with_key
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_upgrade_version
+    :project: TileDB-C
 
 Array Schema
 ------------
