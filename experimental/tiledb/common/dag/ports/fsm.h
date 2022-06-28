@@ -537,8 +537,10 @@ private:
  std::atomic<int> event_counter{};
  bool debug_{false};
 
+protected:
  std::mutex mutex_;
 
+private:
  void event(PortEvent event, const std::string msg = "") {
    std::unique_lock lock(mutex_);
 
@@ -548,7 +550,7 @@ private:
 
    auto old_state = state_;
 
-   if (msg != "") {
+   if (msg != "" || debug_) {
      std::cout << "\n"
                << event_counter++
                << " On event start: " + msg + " " + str(event) + ": " +
@@ -571,7 +573,7 @@ private:
                << ") " + str(next_state_) << std::endl;
    }
 
-   if (msg != "") {
+   if (msg != "" || debug_) {
      std::cout << event_counter++
                << " Pre exit event: " + msg + " " + str(event) + ": " +
                       str(state_) + " (" + str(exit_action) + ") -> (" +
@@ -630,7 +632,7 @@ private:
            " -> " + str(next_state_));
    }
 
-   if (msg != "") {
+   if (msg != "" || debug_) {
      if (msg != "")
        std::cout << event_counter++
                  << " Post exit: " + msg + " " + str(event) + ": " +
@@ -646,7 +648,7 @@ private:
 
    entry_action = entry_table[to_index(next_state_)][to_index(event)];
 
-   if (msg != "") {
+   if (msg != "" || debug_) {
      std::cout << event_counter++
                << " Pre entry event: " + msg + " " + str(event) + ": " +
                       str(old_state) + " (" + str(exit_action) + ") -> (" +
@@ -711,7 +713,7 @@ private:
            str(state_) + " -> " + str(next_state_));
    }
 
-   if (msg != "") {
+   if (msg != "" || debug_) {
      std::cout << event_counter++
                << " Post entry event: " + msg + " " + str(event) + ": " +
                       str(state_) + " (" + str(exit_action) + ") -> (" +

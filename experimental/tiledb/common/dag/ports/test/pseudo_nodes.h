@@ -164,8 +164,10 @@ class consumer {
  */
 template <class Block, class StateMachine>
 class ConsumerNode : public Sink<Block, StateMachine> {
-  using Base = Sink<Block, StateMachine>;
   std::function<void(Block&)> f_;
+
+ public:
+  using Base = Sink<Block, StateMachine>;
 
  public:
   /**
