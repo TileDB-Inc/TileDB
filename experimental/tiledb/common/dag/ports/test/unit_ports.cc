@@ -35,19 +35,12 @@
 #include <future>
 #include "experimental/tiledb/common/dag/ports/policies.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"
-#include "pseudo_nodes.h"
 
 using namespace tiledb::common;
 
 TEST_CASE("Ports: Test bind ports", "[ports]") {
-  Source<int, NullStateMachine<int>> left;
-  Sink<int, NullStateMachine<int>> right;
-  bind(left, right);
-}
-
-TEST_CASE("Ports: Test bind pseudonodes", "[ports]") {
-  ProducerNode<int, NullStateMachine<int>> left([]() { return 0; });
-  ConsumerNode<int, NullStateMachine<int>> right([](int) { return 0; });
+  Source<int, NullStateMachine<std::optional<int>>> left;
+  Sink<int, NullStateMachine<std::optional<int>>> right;
   bind(left, right);
 }
 
@@ -75,24 +68,9 @@ void test_connections(source_type& pn, sink_type& cn) {
   }
 }
 
-TEST_CASE(
-    "Ports: Test connect Sink and Source ports"
-    "[ports]") {
-  SECTION("Ports") {
-    auto pn = Source<int, NullStateMachine<int>>{};
-    auto cn = Sink<int, NullStateMachine<int>>{};
-    test_connections(pn, cn);
-  }
-  SECTION("Pseudo Nodes") {
-    auto pn = ProducerNode<int, NullStateMachine<int>>{[]() { return 0; }};
-    auto cn = ConsumerNode<int, NullStateMachine<int>>{[](int) {}};
-    test_connections(pn, cn);
-  }
-}
-
 TEST_CASE("Ports: Test exceptions", "[ports]") {
-  auto pn = Source<size_t, NullStateMachine<size_t>>{};
-  auto cn = Sink<size_t, NullStateMachine<size_t>>{};
+  auto pn = Source<size_t, NullStateMachine<std::optional<size_t>>>{};
+  auto cn = Sink<size_t, NullStateMachine<std::optional<size_t>>>{};
 
   bind(pn, cn);
 
@@ -102,8 +80,8 @@ TEST_CASE("Ports: Test exceptions", "[ports]") {
 }
 
 TEST_CASE("Ports: Manual set source port values", "[ports]") {
-  Source<size_t, NullStateMachine<size_t>> src;
-  Sink<size_t, NullStateMachine<size_t>> snk;
+  Source<size_t, NullStateMachine<std::optional<size_t>>> src;
+  Sink<size_t, NullStateMachine<std::optional<size_t>>> snk;
 
   SECTION("set source in bound pair") {
     bind(src, snk);
@@ -121,8 +99,8 @@ TEST_CASE("Ports: Manual set source port values", "[ports]") {
 }
 
 TEST_CASE("Ports: Manual extract sink values", "[ports]") {
-  Source<size_t, NullStateMachine<size_t>> src;
-  Sink<size_t, NullStateMachine<size_t>> snk;
+  Source<size_t, NullStateMachine<std::optional<size_t>>> src;
+  Sink<size_t, NullStateMachine<std::optional<size_t>>> snk;
 
   SECTION("set source in unbound pair") {
     CHECK(snk.extract().has_value() == false);
@@ -138,8 +116,8 @@ TEST_CASE("Ports: Manual extract sink values", "[ports]") {
 }
 
 TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
-  Source<size_t, ManualStateMachine<size_t>> src;
-  Sink<size_t, ManualStateMachine<size_t>> snk;
+  Source<size_t, ManualStateMachine<std::optional<size_t>>> src;
+  Sink<size_t, ManualStateMachine<std::optional<size_t>>> snk;
 
   bind(src, snk);
 
@@ -199,8 +177,8 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
 
 TEST_CASE(
     "Ports: Manual transfer from Source to Sink, async policy", "[ports]") {
-  Source<size_t, AsyncStateMachine<size_t>> src;
-  Sink<size_t, AsyncStateMachine<size_t>> snk;
+  Source<size_t, AsyncStateMachine<std::optional<size_t>>> src;
+  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> snk;
 
   bind(src, snk);
 
@@ -220,8 +198,8 @@ TEST_CASE(
 }
 
 TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
-  Source<size_t, AsyncStateMachine<size_t>> src;
-  Sink<size_t, AsyncStateMachine<size_t>> snk;
+  Source<size_t, AsyncStateMachine<std::optional<size_t>>> src;
+  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> snk;
 
   bind(src, snk);
 
@@ -273,8 +251,8 @@ TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
 TEST_CASE("Ports: Async pass n integers", "[ports]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  Source<size_t, AsyncStateMachine<size_t>> src;
-  Sink<size_t, AsyncStateMachine<size_t>> snk;
+  Source<size_t, AsyncStateMachine<std::optional<size_t>>> src;
+  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> snk;
 
   bind(src, snk);
 
