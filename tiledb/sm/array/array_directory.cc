@@ -171,6 +171,28 @@ Status ArrayDirectory::load() {
   // Wait for all tasks to complete
   RETURN_NOT_OK(tp_->wait_all(tasks));
 
+  if (mode_ != ArrayDirectoryMode::COMMITS) {
+    // Add old array schema, if required.
+    if (mode_ != ArrayDirectoryMode::SCHEMA_ONLY) {
+      auto old_schema_uri = uri_.join_path(constants::array_schema_filename);
+      for (auto& uri : root_dir_uris) {
+        if (uri == old_schema_uri) {
+          array_schema_uris_.insert(array_schema_uris_.begin(), old_schema_uri);
+        }
+      }
+    }
+
+    // Error check
+    if (array_schema_uris_.empty()) {
+      return LOG_STATUS(Status_ArrayDirectoryError(
+          "Cannot open array; Array does not exist."));
+    }
+
+    // Set the latest array schema URI
+    latest_array_schema_uri_ = array_schema_uris_.back();
+    assert(!latest_array_schema_uri_.is_invalid());
+  }
+
   // Process the rest of the data that has dependencies between each other
   // sequentially. Again skipping for schema only.
   if (mode_ != ArrayDirectoryMode::SCHEMA_ONLY) {
@@ -809,12 +831,16 @@ ArrayDirectory::compute_filtered_uris(
 
 Status ArrayDirectory::compute_array_schema_uris(
     const std::vector<URI>& array_schema_dir_uris) {
-  // Optionally add the old array schema from the root array folder
-  auto old_schema_uri = uri_.join_path(constants::array_schema_filename);
-  bool has_file = false;
-  RETURN_NOT_OK(vfs_->is_file(old_schema_uri, &has_file));
-  if (has_file) {
-    array_schema_uris_.push_back(old_schema_uri);
+  if (mode_ == ArrayDirectoryMode::SCHEMA_ONLY) {
+    // If not in schema only mode, this is done using the listing from the root
+    // dir.
+    // Optionally add the old array schema from the root array folder
+    auto old_schema_uri = uri_.join_path(constants::array_schema_filename);
+    bool has_file = false;
+    RETURN_NOT_OK(vfs_->is_file(old_schema_uri, &has_file));
+    if (has_file) {
+      array_schema_uris_.push_back(old_schema_uri);
+    }
   }
 
   // Optionally add the new array schemas from the array schema directory
@@ -826,16 +852,6 @@ Status ArrayDirectory::compute_array_schema_uris(
         array_schema_dir_uris.end(),
         std::back_inserter(array_schema_uris_));
   }
-
-  // Error check
-  if (array_schema_uris_.empty()) {
-    return LOG_STATUS(Status_ArrayDirectoryError(
-        "Cannot compute array schemas; No array schemas found."));
-  }
-
-  // Set the latest array schema URI
-  latest_array_schema_uri_ = array_schema_uris_.back();
-  assert(!latest_array_schema_uri_.is_invalid());
 
   return Status::Ok();
 }
@@ -855,6 +871,16 @@ Status ArrayDirectory::is_fragment(
   // If the URI name has a suffix, then it is not a fragment
   auto name = uri.remove_trailing_slash().last_path_part();
   if (name.find_first_of('.') != std::string::npos) {
+    *is_fragment = 0;
+    return Status::Ok();
+  }
+
+  // Exclude all possible known folders
+  if (name == constants::array_schema_dir_name ||
+      name == constants::array_commits_dir_name ||
+      name == constants::array_metadata_dir_name ||
+      name == constants::array_fragments_dir_name ||
+      name == constants::array_fragment_meta_dir_name) {
     *is_fragment = 0;
     return Status::Ok();
   }
