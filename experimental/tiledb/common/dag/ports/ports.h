@@ -123,7 +123,33 @@ class Source {
       correspondent_ = nullptr;
     }
   }
-};
+
+ public:
+  StateMachine* get_state_machine() {
+    return (correspondent_->get_state_machine());
+  }
+
+  bool inject(const Block& value) {
+    if (!is_bound() || item_.has_value()) {
+      return false;
+    }
+    std::scoped_lock lock(correspondent_->mutex_);
+    item_ = value;
+    // correspondent_->state_machine_->do_fill();
+
+    return true;
+  }
+
+  std::optional<Block> extract() {
+    if (!is_bound()) {
+      return {};
+    }
+    std::optional<Block> ret{};
+    std::swap(ret, item_);
+
+    return ret;
+  }
+};  // namespace tiledb::common
 
 /**
  * A data flow sink, used by both edges and nodes.
@@ -150,6 +176,16 @@ class Sink {
    */
   std::unique_ptr<StateMachine> state_machine_;
 
+ public:
+  Sink()
+      : state_machine_{std::make_unique<StateMachine>()} {
+  }
+
+  StateMachine* get_state_machine() {
+    return state_machine_.get();
+  }
+
+ private:
   /**
    * Mutex shared by a correspondent pair. It's arbitratily defined in only the
    * Sink. Protects binding of Source and Sink. Protection of data transfer is
@@ -159,7 +195,6 @@ class Sink {
    */
   mutable std::mutex mutex_;
 
- private:
   /**
    * Check if Sink is bound
    *
@@ -190,7 +225,7 @@ class Sink {
     } else {
       correspondent_ = &predecessor;
       predecessor.correspondent_ = this;
-      state_machine_->register_items(*(correspondent_->item_), *item_);
+      state_machine_->register_items(correspondent_->item_, item_);
     }
   }
 
@@ -203,7 +238,7 @@ class Sink {
     if (!is_bound_to(correspondent_) || !correspondent_->is_bound_to(this)) {
       throw std::runtime_error("Attempting to unbind unbound correspondent");
     } else {
-      state_machine_->deregister_items(*(correspondent_->item_), *item_);
+      state_machine_->deregister_items(correspondent_->item_, item_);
       correspondent_->remove_binding();
       correspondent_ = nullptr;
     }
@@ -255,6 +290,24 @@ class Sink {
     } else {
       throw std::logic_error("Improperly bound in unbind");
     }
+  }
+
+ public:
+  bool inject(const Block& value) {
+    if (!is_bound() || item_.has_value()) {
+      return false;
+    }
+    item_ = value;
+    return true;
+  }
+  std::optional<Block> extract() {
+    if (!is_bound()) {
+      return {};
+    }
+    std::optional<Block> ret{};
+    std::swap(ret, item_);
+
+    return ret;
   }
 };
 
