@@ -98,6 +98,9 @@ endif()
 
 # Add custom target 'examples' that builds all examples.
 add_custom_target(examples DEPENDS tiledb-header-dir examples_c)
+if (TILEDB_STATIC)
+  add_dependencies(examples static_examples_c)
+endif()
 
 if (TILEDB_CPP_API)
   add_dependencies(examples examples_cpp)
