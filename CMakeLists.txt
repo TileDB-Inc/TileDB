@@ -368,7 +368,8 @@ foreach(HEADER ${TILEDB_C_API_RELATIVE_HEADERS})
       )
   configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/${HEADER_STRIPPED} COPYONLY)
 endforeach()
-configure_file(${TILEDB_EXPORT_HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/${TILEDB_EXPORT_HEADER_LOCALINSTALL_PATH} COPYONLY)
+# `configure_file` for the export header happens after it's been generated
+
 
 #####################
 # C++ API
