@@ -312,10 +312,6 @@ class Sink {
 };
 
 /**
- * Free functions for binding / unbinding Source and Sink.
- */
-
-/**
  * Assign sink as correspondent to source and vice versa.
  *
  * @pre Both src and snk are unbound

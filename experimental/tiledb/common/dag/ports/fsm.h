@@ -616,8 +616,9 @@ void do_fill(const std::string& msg = "") {
     std::cout << "    "
               << "Action notify sink" << std::endl;
   }
-};
+  }
+  ;
 
-}  // namespace tiledb::common
+  }  // namespace tiledb::common
 
 #endif  // TILEDB_DAG_FSM_H
