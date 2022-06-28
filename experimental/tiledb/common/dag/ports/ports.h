@@ -61,14 +61,15 @@
 #include <optional>
 
 #include "fsm.h"
+#include "policies.h"
 
 namespace tiledb::common {
 
 /* Forward declarations */
-template <class Block>
+template <class Block, class StateMachine>
 class Source;
 
-template <class Block>
+template <class Block, class StateMachine>
 class Sink;
 
 /**
@@ -76,12 +77,9 @@ class Sink;
  *
  * Source objects have two states: empty and full.
  */
-template <class Block>
+template <class Block, class StateMachine>
 class Source {
-  friend class Sink<Block>;
-
-  template <class Bl>
-  friend void unbind(Source<Bl>& src);
+  friend class Sink<Block, StateMachine>;
 
   /**
    * @inv If an item is present, `try_send` will succeed.
@@ -91,84 +89,39 @@ class Source {
   /**
    * The correspondent Sink, if any
    */
-  Sink<Block>* correspondent_{nullptr};
-
- public:
-  /**
-   * Submit an item to be transferred to correspondent_ Sink.  Blocking.  The
-   * behavior of `submit` and `try_submit` will depend on the policy associated
-   * with the state machine.  Used by dag nodes and edges for transferring data.
-   *
-   * @todo Investigate policy with blocking and non-blocking variants of
-   * `do_push`.
-   *
-   * The time in the spinlock should be minimal.
-   */
-  void submit(Block&) {
-    //  Don't need the guard since { state == empty_full ∨ state == empty_empty}
-    //  at end of function and sink cannot change that.
-    //  while (!source_is_empty())
-    //    ;
-    //
-    //  { state == empty_empty ∨ state == empty_full }
-    //  inject source item
-    //  do_fill();
-    //  { state == full_empty ∨ state == full_full }
-    //  do_push();  // may block
-    //  { state == empty_full ∨ state == empty_empty }
-  }
+  Sink<Block, StateMachine>* correspondent_{nullptr};
 
   /**
-   * Submit an item to be transferred to correspondent_ Sink.  Non-blocking. The
-   * behavior of `submit` and `try_submit` will depend on the policy associated
-   * with the state machine.  Used by dag nodes and edges for transferring data.
+   * Check if Source is bound.
    *
-   * @todo Investigate policy with blocking and non-blocking variants of
-   * `do_push`.
-   *
-   * The time in the spinlock should be minimal.
-   */
-  bool try_submit() {
-    //  Don't need the guard since { state == empty_full ∨ state == empty_empty}
-    //  at end of function and sink cannot change that.
-    //  while (!source_is_empty())
-    //    ;
-    //
-    //  { state == empty_empty ∨ state == empty_full }
-    //  inject source item
-    //  do_fill();
-    //  { state == full_empty ∨ state == full_full ∨ state == empty_empty
-    //    ∨  state == empty_full }
-    //  do_push(); // could have non-blocking try_push() event, but that would
-    //             // leave the item  the item injected -- on failure, could
-    //             // reject item -- would also need try_swap action.
-    //  { state == empty_full ∨ state == empty_empty}
-  }
-
-  /**
-   * Assign a correspondent for this Source.
-   */
-  void bind(Sink<Block>& predecessor) {
-    if (correspondent_ == nullptr) {
-      correspondent_ = &predecessor;
-    } else {
-      throw std::runtime_error(
-          "Attempting to bind to already bound correspondent");
-    }
-  }
-
-  /**
-   * Check if Sink is bound to a source
+   * @pre Called under lock
    */
   bool is_bound() const {
     return correspondent_ != nullptr;
   }
 
   /**
-   * Remove the current correspondent, if any.
+   * Check if Source is bound to a Sink
+   *
+   * @pre Called under lock
    */
-  void unbind() {
-    correspondent_ = nullptr;
+  bool is_bound_to(Sink<Block, StateMachine>* snk) const {
+    return correspondent_ != nullptr && correspondent_ == snk;
+  }
+
+  /**
+   * Remove the current binding, if any.
+   *
+   * @pre Called under lock
+   */
+  void remove_binding() {
+    if (correspondent_ == nullptr || !is_bound_to(correspondent_) ||
+        !correspondent_->is_bound_to(this)) {
+      throw std::runtime_error(
+          "Source attempting to unbind unbound correspondent");
+    } else {
+      correspondent_ = nullptr;
+    }
   }
 };
 
@@ -177,18 +130,9 @@ class Source {
  *
  * Sink objects have two states: empy and full.
  */
-template <class Block>
+template <class Block, class StateMachine>
 class Sink {
-  friend class Source<Block>;
-
-  template <class Bl>
-  friend void bind(Source<Bl>& src, Sink<Bl>& snk);
-
-  template <class Bl>
-  friend void unbind(Source<Bl>& src, Sink<Bl>& snk);
-
-  template <class Bl>
-  friend void unbind(Sink<Bl>& snk);
+  friend class Source<Block, StateMachine>;
 
   /**
    * @inv If an item is present, `try_receive` will succeed.
@@ -198,7 +142,13 @@ class Sink {
   /**
    * The correspondent Source, if any
    */
-  Source<Block>* correspondent_{nullptr};
+  Source<Block, StateMachine>* correspondent_{nullptr};
+
+  /**
+   * The finite state machine controlling data transfer between Source and Sink.
+   * We arbitrarily associate it with the Sink.
+   */
+  std::unique_ptr<StateMachine> state_machine_;
 
   /**
    * Mutex shared by a correspondent pair. It's arbitratily defined in only the
@@ -207,130 +157,117 @@ class Sink {
    *
    * @todo Are there other Source / Sink functions that need to be protected?
    */
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
 
- public:
+ private:
   /**
-   * Retrieve `item_` from the Sink.  Blocking.  The behavior of `retrieve` and
-   * `try_retrieve` will depend on the policy associated with the state machine.
-   * Used by dag nodes and edges for transferring data.
+   * Check if Sink is bound
    *
-   * @todo Investigate policy with blocking and non-blocking variants of
-   * `do_pull`.
-   *
-   * @return The retrieved `item_`.  The return value will be empty if
-   * the `item_` is empty.
-   */
-  std::optional<Block> retrieve() {
-    //  while (!sink_is_empty())
-    //    ;
-    //  { state == empty_empty ∨ state == full_empty }
-    //  do_pull();
-    //  { state == empty_full ∨ state == full_full }
-    //  extract sink item;
-    //  do_drain();
-    //  { state == empty_empty ∨ state == full_empty ∨ state == empty_full ∨
-    //  state == full_full } return item;
-
-    //  Could also do?
-  }
-
-  /**
-   * Retrieve `item_` from the Sink.  Non-blocking.  The behavior of `retrieve`
-   * and `try_retrieve` will depend on the policy associated with the state
-   * machine.  Used by dag nodes and edges for transferring data.
-   *
-   * @todo Investigate policy with blocking and non-blocking variants of
-   * `do_pull`.
-   *
-   * @return The retrieved `item_`.  The return value will be empty if
-   * the `item_` was not able to be retrieved.
-   */
-  std::optional<Block> try_retrieve() {
-    //  if (sink_is_empty()) {
-    //    { state == empty_empty ∨ state == full_empty }
-    //    do_pull();
-    //    extract sink item
-    //    do_drain();
-    //    return item;
-    //  }
-    //  return {};;
-  }
-
-  /**
-   * Assign a correspondent for this Sink.
-   */
-  void bind(Source<Block>& successor) {
-    if (correspondent_ == nullptr) {
-      correspondent_ = &successor;
-    } else {
-      throw std::runtime_error(
-          "Attempting to bind to already bound correspondent");
-    }
-  }
-
-  /**
-   * Check if Sink is bound to a source
+   * @pre Called under lock
    */
   bool is_bound() const {
     return correspondent_ != nullptr;
   }
 
   /**
-   * Remove the current correspondent, if any.
+   * Check if Sink is bound to a Source
+   *
+   * @pre Called under lock
+   */
+  bool is_bound_to(Source<Block, StateMachine>* src) const {
+    return correspondent_ != nullptr && correspondent_ == src;
+  }
+
+  /**
+   * Assign a correspondent for this Sink.
+   *
+   * @pre Called under lock
+   */
+  void bind(Source<Block, StateMachine>& predecessor) {
+    if (is_bound() || predecessor.is_bound()) {
+      throw std::runtime_error(
+          "Sink attempting to bind to already bound correspondent");
+    } else {
+      correspondent_ = &predecessor;
+      predecessor.correspondent_ = this;
+      state_machine_->register_items(*(correspondent_->item_), *item_);
+    }
+  }
+
+  /**
+   * Remove the current binding, if any.
+   *
+   * @pre Called under lock
    */
   void unbind() {
-    if (correspondent_ == nullptr) {
+    if (!is_bound_to(correspondent_) || !correspondent_->is_bound_to(this)) {
       throw std::runtime_error("Attempting to unbind unbound correspondent");
     } else {
+      state_machine_->deregister_items(*(correspondent_->item_), *item_);
+      correspondent_->remove_binding();
       correspondent_ = nullptr;
+    }
+  }
+
+ public:
+  /**
+   * Free functions for binding / unbinding Source and Sink.
+   */
+
+  /**
+   * Assign sink as correspondent to source and vice versa.  Acquires lock
+   * before calling any member functions.
+   *
+   * @pre Both src and snk are unbound
+   */
+  template <class Bl, class St>
+  friend inline void bind(Source<Bl, St>& src, Sink<Bl, St>& snk);
+
+  friend inline void bind(
+      Source<Block, StateMachine>& src, Sink<Block, StateMachine>& snk) {
+    std::scoped_lock lock(snk.mutex_);
+    if (src.is_bound() || snk.is_bound()) {
+      throw std::logic_error("Improperly bound in bind");
+    }
+    snk.bind(src);
+    if (!src.is_bound_to(&snk) || !snk.is_bound_to(&src)) {
+      throw std::logic_error("Improperly bound in bind");
+    }
+  }
+
+  /**
+   * Remove the correspondent relationship between a source and sink.  Acquires
+   * lock before calling any member functions.
+   *
+   * @param src A Souce port
+   * @param snk A Sink port
+   *
+   * @pre `src` and `snk` are in a correspondent relationship.
+   */
+  template <class Bl, class St>
+  friend inline void unbind(Source<Bl, St>& src, Sink<Bl, St>& snk);
+
+  friend inline void unbind(
+      Source<Block, StateMachine>& src, Sink<Block, StateMachine>& snk) {
+    std::scoped_lock lock(snk.mutex_);
+    if (src.is_bound() && snk.is_bound()) {
+      snk.unbind();
+    } else {
+      throw std::logic_error("Improperly bound in unbind");
     }
   }
 };
 
 /**
- * Free functions for binding / unbinding Source and Sink.
- */
-
-/**
  * Assign sink as correspondent to source and vice versa.
  *
  * @pre Both src and snk are unbound
  */
-template <class Block>
-inline void bind(Source<Block>& src, Sink<Block>& snk) {
-  std::scoped_lock(snk.mutex_);
-  src.bind(snk);
-  snk.bind(src);
-  assert(src == snk.correspondent_ && snk == src.correspondent_);
-}
-
-/**
- * Assign sink as correspondent to source and vice versa.
- *
- * @pre Both src and snk are unbound
- */
-template <class Block>
-inline void bind(Sink<Block>& snk, Source<Block>& src) {
+template <class Block, class StateMachine>
+inline void bind(
+    Sink<Block, StateMachine>& snk, Source<Block, StateMachine>& src) {
   bind(src, snk);
 }
-
-/**
- * Remove the correspondent relationship between a source and sink
- *
- * @param src A Souce port
- * @param snk A Sink port
- *
- * @pre `src` and `snk` are in a correspondent relationship.
- */
-template <class Block>
-inline void unbind(Source<Block>& src, Sink<Block>& snk) {
-  std::scoped_lock(snk.mutex_);
-  assert(src == snk.correspondent_ && snk == src.correspondent_);
-
-  src.unbind();
-  snk.unbind();
-};
 
 /**
  * Remove the correspondent relationship between a source and sink
@@ -340,32 +277,11 @@ inline void unbind(Source<Block>& src, Sink<Block>& snk) {
  *
  * @pre `src` and `snk` are in a correspondent relationship.
  */
-template <class Block>
-inline void unbind(Sink<Block>& snk, Source<Block>& src) {
+template <class Block, class StateMachine>
+inline void unbind(
+    Sink<Block, StateMachine>& snk, Source<Block, StateMachine>& src) {
   unbind(src, snk);
-};
-
-/**
- * Remove the correspondent relationship between a Source  and
- * its correspondent Sink
- *
- * @param src A Source port.
- */
-template <class Block>
-inline void unbind(Source<Block>& src) {
-  unbind(src, *(src.correspondent_));
-};
-
-/**
- * Remove the correspondent relationship between a Sink and
- * its correspondent Source
- *
- * @param src A Sink port.
- */
-template <class Block>
-inline void unbind(Sink<Block>& snk) {
-  unbind(*(snk.correspondent_), snk);
-};
+}
 
 }  // namespace tiledb::common
 
