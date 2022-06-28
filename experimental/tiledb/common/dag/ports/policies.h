@@ -52,18 +52,16 @@ class NullStateMachine : public PortFiniteStateMachine<NullStateMachine<T>> {
   using FSM = PortFiniteStateMachine<NullStateMachine<T>>;
   using lock_type = typename FSM::lock_type;
 
-  std::optional<T>* source_item_;
-  std::optional<T>* sink_item_;
+  T* source_item_;
+  T* sink_item_;
 
  public:
-  void register_items(
-      std::optional<T>& source_item, std::optional<T>& sink_item) {
+  void register_items(T& source_item, T& sink_item) {
     std::scoped_lock lock(FSM::mutex_);
     source_item_ = &source_item;
     sink_item_ = &sink_item;
   }
-  void deregister_items(
-      std::optional<T>& source_item, std::optional<T>& sink_item) {
+  void deregister_items(T& source_item, T& sink_item) {
     std::scoped_lock lock(FSM::mutex_);
     if (source_item_ != &source_item || sink_item_ != &sink_item) {
       throw std::runtime_error(
@@ -135,23 +133,21 @@ class ManualStateMachine
   using FSM = PortFiniteStateMachine<ManualStateMachine<T>>;
   using lock_type = typename FSM::lock_type;
 
-  std::optional<T>* source_item_;
-  std::optional<T>* sink_item_;
+  T* source_item_;
+  T* sink_item_;
 
  public:
   ManualStateMachine() {
     CHECK(str(FSM::state()) == "empty_empty");
   }
 
-  void register_items(
-      std::optional<T>& source_item, std::optional<T>& sink_item) {
+  void register_items(T& source_item, T& sink_item) {
     std::scoped_lock lock(FSM::mutex_);
     source_item_ = &source_item;
     sink_item_ = &sink_item;
     //    print_types(source_item_, sink_item_, *source_item_, *sink_item_);
   }
-  void deregister_items(
-      std::optional<T>& source_item, std::optional<T>& sink_item) {
+  void deregister_items(T& source_item, T& sink_item) {
     std::scoped_lock lock(FSM::mutex_);
     if (source_item_ != &source_item || sink_item_ != &sink_item) {
       throw std::runtime_error(
@@ -272,24 +268,29 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
   int source_swaps{};
   int sink_swaps{};
 
-  std::optional<T>* source_item_{};
-  std::optional<T>* sink_item_{};
+  T* source_item_{};
+  T* sink_item_{};
 
   using lock_type = typename FSM::lock_type;
 
+  AsyncStateMachine(T& source_item, T& sink_item, bool debug = false)
+      : source_item_(&source_item)
+      , sink_item_(&sink_item) {
+    if (debug) {
+      FSM::enable_debug();
+    }
+  }
   AsyncStateMachine() = default;
   AsyncStateMachine(const AsyncStateMachine&) = default;
   AsyncStateMachine(AsyncStateMachine&&) = default;
 
-  void register_items(
-      std::optional<T>& source_item, std::optional<T>& sink_item) {
+  void register_items(T& source_item, T& sink_item) {
     std::scoped_lock lock(FSM::mutex_);
     source_item_ = &source_item;
     sink_item_ = &sink_item;
   }
 
-  void deregister_items(
-      std::optional<T>& source_item, std::optional<T>& sink_item) {
+  void deregister_items(T& source_item, T& sink_item) {
     std::scoped_lock lock(FSM::mutex_);
     if (source_item_ != &source_item || sink_item_ != &sink_item) {
       throw std::runtime_error(
