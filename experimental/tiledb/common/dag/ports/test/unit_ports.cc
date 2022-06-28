@@ -32,100 +32,45 @@
  */
 
 #include "unit_ports.h"
+#include "experimental/tiledb/common/dag/ports/policies.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "pseudo_nodes.h"
 
 using namespace tiledb::common;
 
-TEST_CASE("Ports: Test bind", "[ports]") {
-  Source<int> left;
-  Sink<int> right;
+TEST_CASE("Ports: Test bind ports", "[ports]") {
+  Source<int, NullStateMachine<int>> left;
+  Sink<int, NullStateMachine<int>> right;
   bind(left, right);
 }
 
-TEST_CASE("Ports: Test bind", "[ports]") {
-  ProducerNode<int> left([]() { return 0; });
-  ConsumerNode<int> right([](int) { return 0; });
-  ;
+TEST_CASE("Ports: Test bind pseudonodes", "[ports]") {
+  ProducerNode<int, NullStateMachine<int>> left([]() { return 0; });
+  ConsumerNode<int, NullStateMachine<int>> right([](int) { return 0; });
   bind(left, right);
 }
 
 template <class source_type, class sink_type>
 void test_connections(source_type& pn, sink_type& cn) {
-  CHECK(pn.is_bound() == false);
-  CHECK(cn.is_bound() == false);
-
   bind(pn, cn);
-
-  SECTION("check bound") {
-    CHECK(pn.is_bound() == true);
-    CHECK(cn.is_bound() == true);
-  }
 
   SECTION("unbind both") {
     unbind(pn, cn);
+  }
 
-    CHECK(pn.is_bound() == false);
-    CHECK(cn.is_bound() == false);
+  SECTION("unbind, rebind both") {
+    unbind(pn, cn);
+    bind(pn, cn);
   }
 
   SECTION("bind other way") {
-    unbind(pn, cn);
-
+    unbind(cn, pn);
     bind(cn, pn);
-    CHECK(pn.is_bound() == true);
-    CHECK(cn.is_bound() == true);
   }
 
-  SECTION("unbind and rebind both") {
+  SECTION("unbind other way") {
     unbind(pn, cn);
-
-    CHECK(pn.is_bound() == false);
-    CHECK(cn.is_bound() == false);
-
-    bind(pn, cn);
-
-    CHECK(pn.is_bound() == true);
-    CHECK(cn.is_bound() == true);
-  }
-
-  SECTION("unbind only pn (member)") {
-    pn.unbind();
-    CHECK(pn.is_bound() == false);
-    CHECK(cn.is_bound() == true);
-    cn.unbind();
-    CHECK(pn.is_bound() == false);
-    CHECK(cn.is_bound() == false);
-  }
-
-  SECTION("unbind only cn (member)") {
-    cn.unbind();
-    CHECK(pn.is_bound() == true);
-    CHECK(cn.is_bound() == false);
-    pn.unbind();
-    CHECK(pn.is_bound() == false);
-    CHECK(cn.is_bound() == false);
-  }
-
-  SECTION("unbind only pn (member)") {
-    pn.unbind();
-    CHECK(pn.is_bound() == false);
-    CHECK(cn.is_bound() == true);
-    cn.unbind();
-    CHECK(pn.is_bound() == false);
-    CHECK(cn.is_bound() == false);
-  }
-
-  SECTION("unbind from cn") {
-    unbind(cn);
-    CHECK(pn.is_bound() == false);
-    CHECK(cn.is_bound() == false);
-  }
-
-  SECTION("unbind from pn") {
-    unbind(pn);
-    CHECK(pn.is_bound() == false);
-    CHECK(cn.is_bound() == false);
+    bind(cn, pn);
   }
 }
 
@@ -133,32 +78,24 @@ TEST_CASE(
     "Ports: Test connect Sink and Source ports"
     "[ports]") {
   SECTION("Ports") {
-    auto pn = Source<int>{};
-    auto cn = Sink<int>{};
+    auto pn = Source<int, NullStateMachine<int>>{};
+    auto cn = Sink<int, NullStateMachine<int>>{};
     test_connections(pn, cn);
   }
   SECTION("Pseudo Nodes") {
-    auto pn = ProducerNode<int>{[]() { return 0; }};
-    auto cn = ConsumerNode<int>{[](int) {}};
+    auto pn = ProducerNode<int, NullStateMachine<int>>{[]() { return 0; }};
+    auto cn = ConsumerNode<int, NullStateMachine<int>>{[](int) {}};
     test_connections(pn, cn);
   }
 }
 
 TEST_CASE("Ports: Test exceptions", "[ports]") {
-  auto pn = Source<size_t>{};
-  auto cn = Sink<size_t>{};
+  auto pn = Source<size_t, NullStateMachine<size_t>>{};
+  auto cn = Sink<size_t, NullStateMachine<size_t>>{};
 
   bind(pn, cn);
 
   SECTION("Invalid bind") {
-    CHECK_THROWS(bind(pn, cn));
-  }
-  SECTION("Invalid bind, one side") {
-    pn.unbind();
-    CHECK_THROWS(bind(pn, cn));
-  }
-  SECTION("Invalid bind, one side") {
-    cn.unbind();
     CHECK_THROWS(bind(pn, cn));
   }
 }

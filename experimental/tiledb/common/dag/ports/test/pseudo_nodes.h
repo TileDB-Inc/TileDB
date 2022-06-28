@@ -67,9 +67,9 @@ class generator {
  * Prototype source node class.  Constructed with a function that creates
  * Blocks.
  */
-template <class Block = size_t>
-class ProducerNode : public Source<Block> {
-  using Base = Source<Block>;
+template <class Block, class StateMachine>
+class ProducerNode : public Source<Block, StateMachine> {
+  using Base = Source<Block, StateMachine>;
   std::atomic<size_t> i_{0};
   size_t N_{0};
   std::function<Block()> f_;
@@ -92,15 +92,53 @@ class ProducerNode : public Source<Block> {
   }
 
   /**
-   * Generate an output.
+   * Submit an item to be transferred to correspondent_ Sink.  Blocking.  The
+   * behavior of `submit` and `try_submit` will depend on the policy associated
+   * with the state machine.  Used by dag nodes and edges for transferring data.
+   *
    */
-  void run() {
-    //    while (true) {
-    //      auto item = f_();
-    //      submit(item);
-    //      wait();
-    //      try_swap();
-    //  }
+  void get(Block&) {
+    //  Don't need the guard since { state == empty_full ∨ state == empty_empty}
+    //  at end of function and sink cannot change that.
+    //  while (!source_is_empty())
+    //    ;
+    //
+    //  { state == empty_empty ∨ state == empty_full }
+    //  produce source item
+    //  inject source item
+    Base::do_fill();
+    //  { state == full_empty ∨ state == full_full }
+    Base::do_push();  // may block
+    //  { state == empty_full ∨ state == empty_empty }
+  }
+
+  /**
+   * Submit an item to be transferred to correspondent_ Sink.  Non-blocking. The
+   * behavior of `submit` and `try_submit` will depend on the policy associated
+   * with the state machine.  Used by dag nodes and edges for transferring data.
+   *
+   * @todo Investigate policy with non-blocking variant of `do_push`.  Will
+   * require addtional `try_push` events, `try_swap` methods, updated tables,
+   * and `event()` will need to return a bool.
+   *
+   */
+  bool try_get() {
+    //  Don't need the guard since { state == empty_full ∨ state == empty_empty}
+    //  at end of function and sink cannot change that.
+    //  while (!source_is_empty())
+    //    ;
+    //
+    //  { state == empty_empty ∨ state == empty_full }
+    //  produce source item
+    //  inject source item
+    //  do_fill();
+    //  { state == full_empty ∨ state == full_full ∨ state == empty_empty
+    //    ∨  state == empty_full }
+    //  do_push(); // could have non-blocking try_push() event, but that would
+    //             // leave the item  the item injected -- on failure, could
+    //             // reject item -- would also need try_swap action.
+    //  { state == empty_full ∨ state == empty_empty}
+    return false;
   }
 };
 
@@ -124,9 +162,9 @@ class consumer {
 /**
  * A proto consumer node.  Constructed with a function that accepts Blocks.
  */
-template <class Block = size_t>
-class ConsumerNode : public Sink<Block> {
-  using Base = Sink<Block>;
+template <class Block, class StateMachine>
+class ConsumerNode : public Sink<Block, StateMachine> {
+  using Base = Sink<Block, StateMachine>;
   std::function<void(Block&)> f_;
 
  public:
@@ -147,10 +185,48 @@ class ConsumerNode : public Sink<Block> {
   }
 
   /**
-   *  Receive an item from a Source
+   * Retrieve `item_` from the Sink.  Blocking.  The behavior of `retrieve` and
+   * `try_retrieve` will depend on the policy associated with the state machine.
+   * Used by dag nodes and edges for transferring data.
+   *
+   * @return The retrieved `item_`.  The return value will be empty if
+   * the `item_` is empty.
    */
-  void run() {
-    f_(Base::item_);
+  void put() {
+    //  Guard does not seem necessary
+    //  while (!sink_is_empty())
+    //    ;
+    //  { state == empty_empty ∨ state == full_empty }
+    Base::do_pull();
+    //  { state == empty_full ∨ state == full_full }
+    //  extract sink item
+    //  invoke consumer function
+    Base::do_drain();
+    //  { state == empty_empty ∨ state == full_empty ∨ state == empty_full ∨
+    //  state == full_full } return item;
+  }
+
+  /**
+   * Retrieve `item_` from the Sink.  Non-blocking.  The behavior of `retrieve`
+   * and `try_retrieve` will depend on the policy associated with the state
+   * machine.  Used by dag nodes and edges for transferring data.
+   *
+   * @todo Investigate policy with non-blocking variant of `do_pull`.  Will
+   * require addtional `try_pull` events, `try_swap` methods, updated tables,
+   * and `event()` will need to return a bool.
+   *
+   * @return The retrieved `item_`.  The return value will be empty if
+   * the `item_` was not able to be retrieved.
+   */
+  void try_put() {
+    //  if (sink_is_empty()) {
+    //    { state == empty_empty ∨ state == full_empty }
+    //    do_pull();
+    //    extract sink item
+    //    invoke consumer function
+    //    do_drain();
+    //    return item;
+    //  }
   }
 };
 
@@ -158,11 +234,12 @@ class ConsumerNode : public Sink<Block> {
  * Purely notional proto `function_node`.  Constructed with function that
  * accepts an item and returns an item.
  */
-template <class Block>
-class function_node : public Source<Block>, public Sink<Block> {
+template <class Block, class StateMachine>
+class function_node : public Source<Block, StateMachine>,
+                      public Sink<Block, StateMachine> {
   std::function<Block(Block)> f_;
-  using SourceBase = Source<Block>;
-  using SinkBase = Sink<Block>;
+  using SourceBase = Source<Block, StateMachine>;
+  using SinkBase = Sink<Block, StateMachine>;
 
  public:
   template <class Function>

@@ -137,6 +137,8 @@ namespace tiledb::common {
  * of the items assoiated with the source and sink), and notifies the other.  If the state
  * is not equal to full_empty, the swap function notifies the other and goes into a wait.
  *
+ * Thus, WE MAY NOT NEED SEPARATE SWAPS for source and sink.  Leaving them in for now. 
+ *
  * The state transition tables operate in conjunction with entry and exit events
  * associated with each transition.  The entry and exit functions for a state transition 
  * from old to new are called in the following way:
@@ -181,6 +183,7 @@ namespace tiledb::common {
  *       (during producer function, sink could have drained) { state == empty_empty ∨ state == empty_full }
  *     post_produce: { state == empty_empty ∨ state == empty_full }
  *     client invokes fill event
+ *     => Note: we may want to make production an exit action <=
  *     pre_fill: { state == empty_empty ∨ state == empty_full }
  *     invoke empty_full or empty_empty exit action: nil
  *     source_fill transition event - source state transitions to full
@@ -264,8 +267,9 @@ namespace tiledb::common {
  *     pre_produce: { state == full_empty ∨ state == full_full }
  *     client calls consumer function and takes item from sink
  *       (during consumer function, source could have pushed) { state == full_full ∨ state == empty_full }
- *     post_consum: { state == full_full ∨ state == empty_full }
+ *     post_consume: { state == full_full ∨ state == empty_full }
  *     client invokes drain event
+ *     => Note: we may want to make production an exit action <=
  *     pre_drain: { state == full_full ∨ state == empty_full }
  *     invoke empty_full or full_full entry action: nil
  *     sink_drain transition event - sink state transitions to empty
@@ -330,6 +334,8 @@ enum class PortEvent : unsigned short {
   source_push,
   sink_drain,
   sink_pull,
+  //  try_push,
+  //  try_pull,
   shutdown,
 };
 
@@ -350,6 +356,8 @@ static std::vector<std::string> event_strings{
     "source_push",
     "sink_drain",
     "sink_pull",
+    //    "try_push",
+    //    "try_pull",
     "shutdown",
 };
 
@@ -373,6 +381,10 @@ enum class PortAction : unsigned short {
   snk_swap,
   notify_source,
   notify_sink,
+  //  try_src_swap,
+  //  try_snk_swap,
+  //  invoke_producer,
+  //  invoke_consumer,
   error,
 };
 
@@ -395,6 +407,10 @@ static std::vector<std::string> action_strings{
     "snk_swap",
     "notify_source",
     "notify_sink",
+    //    "try_src_swap",
+    //    "try_snk_swap",
+    //    "invoke_producer",
+    //    "invoke_consumer",
     "error",
 };
 
@@ -773,89 +789,6 @@ private:
 
   bool debug_enabled() {
     return debug_;
-  }
-};
-
-/**
- * Null action policy.  Verifies compilation of CRTP.
- */
-template <class T = size_t>
-class NullStateMachine : public PortFiniteStateMachine<NullStateMachine<T>> {
-  using FSM = PortFiniteStateMachine<NullStateMachine<T>>;
-  using lock_type = typename FSM::lock_type;
-
- public:
-};
-
-/**
- * A simple debugging action policy that simply prints that an action has been
- * called.
- */
-template <class T = size_t>
-class DebugStateMachine : public PortFiniteStateMachine<DebugStateMachine<T>> {
-  using FSM = PortFiniteStateMachine<DebugStateMachine<T>>;
-
-  using lock_type = typename FSM::lock_type;
-
- public:
-  inline void on_ac_return(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
-      std::cout << "    "
-                << "Action return" << std::endl;
-  }
-  inline void on_source_swap(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
-
-      std::cout << "    "
-                << "Action swap source" << std::endl;
-  }
-  inline void on_sink_swap(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
-      std::cout << "    "
-                << "Action swap sink" << std::endl;
-  }
-  inline void notify_source(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
-      std::cout << "    "
-                << "Action notify source" << std::endl;
-  }
-  inline void notify_sink(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
-      std::cout << "    "
-                << "Action notify sink" << std::endl;
-  }
-};
-
-/**
- * Debug action policy with some non-copyable elements (to verify compilation).
- */
-class DebugStateMachineWithLock
-    : public PortFiniteStateMachine<DebugStateMachineWithLock> {
-  std::mutex(mutex_);
-  std::condition_variable sink_cv_;
-  std::condition_variable source_cv_;
-  using lock_type = std::unique_lock<std::mutex>;
-
- public:
-  inline void on_ac_return(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action return" << std::endl;
-  }
-  inline void on_source_swap(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action swap source" << std::endl;
-  }
-  inline void on_sink_swap(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action swap sink" << std::endl;
-  }
-  inline void notify_source(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action notify source" << std::endl;
-  }
-  inline void notify_sink(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action notify sink" << std::endl;
   }
 };
 
