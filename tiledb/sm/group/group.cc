@@ -67,14 +67,10 @@ Group::Group(
 Status Group::open(
     QueryType query_type, uint64_t timestamp_start, uint64_t timestamp_end) {
   // Checks
-  if (is_open_)
+  if (is_open_) {
     return Status_GroupError("Cannot open group; Group already open");
-  if (!remote_) {
-    bool is_group = false;
-    RETURN_NOT_OK(storage_manager_->is_group(group_uri_, &is_group));
-    if (!is_group)
-      return Status_GroupError("Cannot open group; Group does not exist");
   }
+
   if (query_type != QueryType::READ && query_type != QueryType::WRITE) {
     return Status_GroupError("Cannot open group; Unsupported query type");
   }

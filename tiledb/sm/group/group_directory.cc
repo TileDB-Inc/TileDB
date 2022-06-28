@@ -140,6 +140,12 @@ Status GroupDirectory::load() {
   // Wait for all tasks to complete
   RETURN_NOT_OK(tp_->wait_all(tasks));
 
+  // Error check
+  if (group_detail_uris_.empty()) {
+    return LOG_STATUS(
+        Status_GroupDirectoryError("Cannot open group; Group does not exist."));
+  }
+
   // The URI manager has been loaded successfully
   loaded_ = true;
 
