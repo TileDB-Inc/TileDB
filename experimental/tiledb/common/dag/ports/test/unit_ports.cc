@@ -452,8 +452,8 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
 }
 
 TEST_CASE("Ports: Manual set source port values", "[ports]") {
-  Source<size_t, NullStateMachine<size_t>> src;
-  Sink<size_t, NullStateMachine<size_t>> snk;
+  Source<size_t, NullStateMachine<std::optional<size_t>>> src;
+  Sink<size_t, NullStateMachine<std::optional<size_t>>> snk;
 
   SECTION("set source in bound pair") {
     bind(src, snk);
@@ -471,8 +471,8 @@ TEST_CASE("Ports: Manual set source port values", "[ports]") {
 }
 
 TEST_CASE("Ports: Manual extract sink values", "[ports]") {
-  Source<size_t, NullStateMachine<size_t>> src;
-  Sink<size_t, NullStateMachine<size_t>> snk;
+  Source<size_t, NullStateMachine<std::optional<size_t>>> src;
+  Sink<size_t, NullStateMachine<std::optional<size_t>>> snk;
 
   SECTION("set source in unbound pair") {
     CHECK(snk.extract().has_value() == false);
@@ -488,8 +488,8 @@ TEST_CASE("Ports: Manual extract sink values", "[ports]") {
 }
 
 TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
-  Source<size_t, ManualStateMachine<size_t>> src;
-  Sink<size_t, ManualStateMachine<size_t>> snk;
+  Source<size_t, ManualStateMachine<std::optional<size_t>>> src;
+  Sink<size_t, ManualStateMachine<std::optional<size_t>>> snk;
 
   bind(src, snk);
 
@@ -549,8 +549,8 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
 
 TEST_CASE(
     "Ports: Manual transfer from Source to Sink, async policy", "[ports]") {
-  Source<size_t, AsyncStateMachine<size_t>> src;
-  Sink<size_t, AsyncStateMachine<size_t>> snk;
+  Source<size_t, AsyncStateMachine<std::optional<size_t>>> src;
+  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> snk;
 
   bind(src, snk);
 
@@ -570,8 +570,8 @@ TEST_CASE(
 }
 
 TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
-  Source<size_t, AsyncStateMachine<size_t>> src;
-  Sink<size_t, AsyncStateMachine<size_t>> snk;
+  Source<size_t, AsyncStateMachine<std::optional<size_t>>> src;
+  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> snk;
 
   bind(src, snk);
 
@@ -623,8 +623,8 @@ TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
 TEST_CASE("Ports: Async pass n integers", "[ports]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  Source<size_t, AsyncStateMachine<size_t>> src;
-  Sink<size_t, AsyncStateMachine<size_t>> snk;
+  Source<size_t, AsyncStateMachine<std::optional<size_t>>> src;
+  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> snk;
 
   bind(src, snk);
 
