@@ -1,9 +1,10 @@
 # Cloned from https://github.com/TileDB-Inc/tiledb-quarto-template
 
 name: Render and deploy Quarto files
-on: 
+on:
   push:
     paths:
+      - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
@@ -11,6 +12,7 @@ on:
       - 'tiledb/sm/c_api/tiledb_version.h'
   pull_request:
     paths:
+      - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
@@ -26,12 +28,12 @@ jobs:
     - name: "Install Quarto"
       uses: quarto-dev/quarto-actions/install-quarto@main
       with:
-        version: 0.9.141
-      
+        version: 0.9.629
+
     - name: "Quarto render"
       shell: bash
       run: |
-        quarto render --execute-debug      
+        quarto render --execute-debug
 
     - name: "Deploy to gh-pages"
       uses: peaceiris/actions-gh-pages@v3
