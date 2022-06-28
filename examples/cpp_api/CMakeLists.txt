@@ -25,8 +25,6 @@
 # THE SOFTWARE.
 #
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
-
 # Add custom target 'examples_coo'
 add_custom_target(examples_cpp DEPENDS tiledb_shared)
 

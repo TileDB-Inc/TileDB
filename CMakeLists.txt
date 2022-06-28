@@ -383,7 +383,6 @@ foreach(HEADER ${TILEDB_CPP_HEADERS})
       REPLACE "^${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/" ""
       HEADER_STRIPPED ${HEADER}
       )
-  message("configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/tiledb/${HEADER_STRIPPED} COPYONLY)")
   configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/tiledb/${HEADER_STRIPPED} COPYONLY)
 endforeach()
 
