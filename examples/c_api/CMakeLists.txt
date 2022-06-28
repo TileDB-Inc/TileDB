@@ -40,7 +40,7 @@ function(build_TileDB_example_capi TARGET)
   if (NOT WIN32)
     # On Linux, must explicitly link -lpthread -ldl in order for static linking
     # to libzstd or libcurl to work.
-    target_link_libraries(${TARGET}_c pthread dl)
+    target_link_libraries(${TARGET}_c PUBLIC pthread dl)
   endif()
   add_dependencies(examples_c ${TARGET}_c)
 endfunction()
