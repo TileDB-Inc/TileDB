@@ -197,6 +197,9 @@ extern const std::string ok_file_suffix;
 /** Suffix for the special write files used in TileDB. */
 extern const std::string write_file_suffix;
 
+/** Suffix for the special delete files used in TileDB. */
+extern const std::string delete_file_suffix;
+
 /** Suffix for the special metadata files used in TileDB. */
 extern const std::string meta_file_suffix;
 
