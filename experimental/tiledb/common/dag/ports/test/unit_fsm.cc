@@ -718,7 +718,7 @@ TEST_CASE(
 };
 
 /**
- * Test that we can correctly pass a sequent of integers from source to sink.
+ * Test that we can correctly pass a sequence of integers from source to sink.
  * Random delays are inserted between each step of each function in order to
  * increase the likelihood of exposing race conditions / deadlocks.
  *

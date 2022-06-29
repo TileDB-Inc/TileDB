@@ -33,6 +33,10 @@
 #ifndef TILEDB_DAG_DATA_BLOCK_H
 #define TILEDB_DAG_DATA_BLOCK_H
 
+#include <cstddef>
+#include <vector>
+#include "external/include/span/span.hpp"
+
 namespace tiledb::common {
 
 /**
