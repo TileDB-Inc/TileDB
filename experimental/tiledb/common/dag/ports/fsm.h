@@ -478,7 +478,8 @@ constexpr const PortAction entry_table[n_states][n_events] {
  * `PortFinitStateMachine` to realize the specific state transition actions.
  *
  * The `ActionPolicy` class is expected to use the `FiniteStateMachine` class
- * using CRTP.
+ * using CRTP. Documentation about action policy classes can be found in
+ * policies.h.
  *
  * @note There is a fair amount of debugging code inserted into the class at the
  * moment.

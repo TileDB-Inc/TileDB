@@ -44,8 +44,66 @@
 
 namespace tiledb::common {
 
+// clang-format off
 /**
- * Null action policy.  Verifies compilation of CRTP.
+ * 
+ * State machine policies work with the `PortFiniteStateMachine` class template to
+ * mix in functions associated with various entry and exit actions invoked when
+ * processing state transition events.  The policy classes defined here use CRTP
+ * to effect the mixins.
+ *
+ * Although we call these "policy" classes, when used with CRTP, we actually end
+ * up using the "policy" class as the state machine. Consider `AsyncStateMachine:`
+ * declared as:
+ * ```c++
+ * template <class T>
+ * class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>>;
+ * ```
+ * To use the state machine in fsm.h with the `AsyncStateMachine` policy to 
+ * transfer integers (say), we use
+ * ```c++
+ * AsyncStateMachine<int>
+ * ```
+ * as the state machine class.
+ *
+ * Currently, the actions defined for use by the PortFiniteStateMachine class, and 
+ * associated mixin functions are 
+ *   ac_return: on_ac_return()
+ *   src_swap: on_source_swap()
+ *   snk_swap: on_sink_swap()
+ *   notify_source: on_notify_source()
+ *   notify_sink: on_notify_sink()
+ *
+ * NB: With our current approach, we seem to really only need a single swap function
+ * and a single notify function, so we may be able to condense this in the future.
+ * For potential future flexibility, we are leaving separate source and sink versions
+ * for now.  The `UnifiedAsyncStateMachine` tests out this idea.
+ *
+ * With our definition of the state machine (see fsm.h), these actions have the 
+ * following functionality:
+ *   on_ac_return(): empty function at the moment.
+ *   on_source_swap(): if state is full_empty, notify sink and swap, otherwise, notify sink and wait.
+ *   on_sink_swap(): if state is full_empty, notify source and swap, otherwise, notify source and wait.
+ *   on_notify_source(): notify sink
+ *   on_notify_sink(): notify source
+ *
+ * The implementation of `AsyncStateMachine` currently uses locks and condition
+ * variable for effecting the wait (and notify) functions.
+ *
+ * A crucial piece of functionality in these classes is the swap operation that may take place.
+ * When operating with `Source` and `Sink` ports, we need to be able to swap the item_ member
+ * variables associated with the `Source` and a `Sink` that are bound to each other.  To
+ * enable this, the state machine policies maintatin pointers to items.  When swapping is
+ * required, `std::swap` is invoked on the pointed-to items.  (This has been tested for
+ * integer items when testing just the state machines as weill as with `std::optional` items
+ * when testing the ports.)  These internal pointers are initialized with a `register_items`
+ * function, and are reset with a `deregister_items` function.
+ */
+// clang-format on
+
+/**
+ * Null action policy.  Verifies compilation of CRTP.  All functions except
+ * registration are empty.
  */
 template <class T = size_t>
 class NullStateMachine : public PortFiniteStateMachine<NullStateMachine<T>> {
@@ -85,47 +143,10 @@ class NullStateMachine : public PortFiniteStateMachine<NullStateMachine<T>> {
 };
 
 /**
- * A simple debugging action policy that simply prints that an action has been
- * called.
- */
-template <class T = size_t>
-class DebugStateMachine : public PortFiniteStateMachine<DebugStateMachine<T>> {
-  using FSM = PortFiniteStateMachine<DebugStateMachine<T>>;
-
-  using lock_type = typename FSM::lock_type;
-
- public:
-  inline void on_ac_return(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
-      std::cout << "    "
-                << "Action return" << std::endl;
-  }
-  inline void on_source_swap(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
-
-      std::cout << "    "
-                << "Action swap source" << std::endl;
-  }
-  inline void on_sink_swap(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
-      std::cout << "    "
-                << "Action swap sink" << std::endl;
-  }
-  inline void notify_source(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
-      std::cout << "    "
-                << "Action notify source" << std::endl;
-  }
-  inline void notify_sink(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
-      std::cout << "    "
-                << "Action notify sink" << std::endl;
-  }
-};
-
-/**
  * A state machine for testing progress of messages using manual invocations of
- * port state machine functions.
+ * port state machine functions.  The only non-trivial functions are
+ * `on_source_swap` and `on_sink_swap`, both of which simply invoke
+ * `std::swap` on the cached items.
  */
 template <class T = size_t>
 class ManualStateMachine
@@ -207,39 +228,6 @@ class ManualStateMachine
                 << "Action notify source" << std::endl;
   }
 };
-/**
- * Debug action policy with some non-copyable elements (to verify
- * compilation).
- */
-class DebugStateMachineWithLock
-    : public PortFiniteStateMachine<DebugStateMachineWithLock> {
-  std::mutex(mutex_);
-  std::condition_variable sink_cv_;
-  std::condition_variable source_cv_;
-  using lock_type = std::unique_lock<std::mutex>;
-
- public:
-  inline void on_ac_return(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action return" << std::endl;
-  }
-  inline void on_source_swap(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action swap source" << std::endl;
-  }
-  inline void on_sink_swap(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action swap sink" << std::endl;
-  }
-  inline void notify_source(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action notify source" << std::endl;
-  }
-  inline void notify_sink(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action notify sink" << std::endl;
-  }
-};
 
 /**
  * An asynchronous state machine class.  Implements on_sink_swap and
@@ -248,9 +236,12 @@ class DebugStateMachineWithLock
  * It is assumed that the source and sink are running as separate asynchronous
  * tasks (in this case, effected by `std::async`).
  *
- * @note This class includes a fair amount of debugging code.
+ * @note This class includes a fair amount of debugging code, including
+ * Catch2 macros.
  *
- * @todo Remove the debugging code.
+ * @todo Remove the debugging code, or at the very least, make sure we can
+ * compile without needing the Catch2 macros defined (e.g., defining them
+ * as empty when the Catch2 header has not been included..
  *
  * @todo Investigate coroutine-like approach for corresponding with implementing
  * actions so that the procession of steps is driven by the state machine rather
@@ -611,6 +602,79 @@ class UnifiedAsyncStateMachine
    */
   inline void on_sink_swap(lock_type& lock, std::atomic<int>& event) {
     on_source_swap(lock, event);
+  }
+};
+
+/**
+ * A simple debugging action policy that simply prints that an action has been
+ * called.
+ */
+template <class T = size_t>
+class DebugStateMachine : public PortFiniteStateMachine<DebugStateMachine<T>> {
+  using FSM = PortFiniteStateMachine<DebugStateMachine<T>>;
+
+  using lock_type = typename FSM::lock_type;
+
+ public:
+  inline void on_ac_return(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+      std::cout << "    "
+                << "Action return" << std::endl;
+  }
+  inline void on_source_swap(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+
+      std::cout << "    "
+                << "Action swap source" << std::endl;
+  }
+  inline void on_sink_swap(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+      std::cout << "    "
+                << "Action swap sink" << std::endl;
+  }
+  inline void notify_source(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+      std::cout << "    "
+                << "Action notify source" << std::endl;
+  }
+  inline void notify_sink(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+      std::cout << "    "
+                << "Action notify sink" << std::endl;
+  }
+};
+
+/**
+ * Debug action policy with some non-copyable elements (to verify
+ * compilation).
+ */
+class DebugStateMachineWithLock
+    : public PortFiniteStateMachine<DebugStateMachineWithLock> {
+  std::mutex(mutex_);
+  std::condition_variable sink_cv_;
+  std::condition_variable source_cv_;
+  using lock_type = std::unique_lock<std::mutex>;
+
+ public:
+  inline void on_ac_return(lock_type&, std::atomic<int>&) {
+    std::cout << "    "
+              << "Action return" << std::endl;
+  }
+  inline void on_source_swap(lock_type&, std::atomic<int>&) {
+    std::cout << "    "
+              << "Action swap source" << std::endl;
+  }
+  inline void on_sink_swap(lock_type&, std::atomic<int>&) {
+    std::cout << "    "
+              << "Action swap sink" << std::endl;
+  }
+  inline void notify_source(lock_type&, std::atomic<int>&) {
+    std::cout << "    "
+              << "Action notify source" << std::endl;
+  }
+  inline void notify_sink(lock_type&, std::atomic<int>&) {
+    std::cout << "    "
+              << "Action notify sink" << std::endl;
   }
 };
 
