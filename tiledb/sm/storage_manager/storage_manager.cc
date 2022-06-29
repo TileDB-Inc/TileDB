@@ -1140,17 +1140,18 @@ Status StorageManager::array_get_encryption(
     const ArrayDirectory& array_dir, EncryptionType* encryption_type) {
   const URI& uri = array_dir.uri();
 
-  if (uri.is_invalid())
+  if (uri.is_invalid()) {
     return logger_->status(Status_StorageManagerError(
         "Cannot get array encryption; Invalid array URI"));
+  }
 
   const URI& schema_uri = array_dir.latest_array_schema_uri();
 
   // Read tile header
-  GenericTileIO::GenericTileHeader header;
-  RETURN_NOT_OK(
-      GenericTileIO::read_generic_tile_header(this, schema_uri, 0, &header));
-  *encryption_type = static_cast<EncryptionType>(header.encryption_type);
+  auto&& [st, header] =
+      GenericTileIO::read_generic_tile_header(this, schema_uri, 0);
+  RETURN_NOT_OK(st);
+  *encryption_type = static_cast<EncryptionType>(header->encryption_type);
 
   return Status::Ok();
 }
@@ -1422,13 +1423,15 @@ StorageManager::load_array_schema_from_uri(
     const URI& schema_uri, const EncryptionKey& encryption_key) {
   auto timer_se = stats_->start_timer("sm_load_array_schema_from_uri");
 
-  auto&& [st, buffer] = load_data_from_generic_tile(schema_uri, encryption_key);
+  auto&& [st, buffer_opt] =
+      load_data_from_generic_tile(schema_uri, encryption_key);
   RETURN_NOT_OK_TUPLE(st, nullopt);
+  auto& buffer = *buffer_opt;
 
-  stats_->add_counter("read_array_schema_size", buffer->size());
+  stats_->add_counter("read_array_schema_size", buffer.size());
 
   // Deserialize
-  ConstBuffer cbuff(&*buffer);
+  ConstBuffer cbuff(&buffer);
   auto deserialized_schema{ArraySchema::deserialize(&cbuff, schema_uri)};
 
   // #TODO Update catch statement after later StatusException changes
@@ -1902,7 +1905,6 @@ Status StorageManager::store_metadata(
       metadata_uri,
       encryption_key));
   metadata_buff.disown_data();
-  metadata_buff.clear();
 
   return Status::Ok();
 }
@@ -1910,7 +1912,7 @@ Status StorageManager::store_metadata(
 Status StorageManager::store_data_to_generic_tile(
     void* data,
     const size_t size,
-    const URI uri,
+    const URI& uri,
     const EncryptionKey& encryption_key) {
   Tile tile(
       constants::generic_tile_datatype,
@@ -1920,15 +1922,14 @@ Status StorageManager::store_data_to_generic_tile(
       size);
 
   GenericTileIO tile_io(this, uri);
-  uint64_t nbytes;
+  uint64_t nbytes = 0;
   Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
-  (void)nbytes;
 
   if (st.ok()) {
     st = close_file(uri);
   }
 
-  return Status::Ok();
+  return st;
 }
 
 Status StorageManager::close_file(const URI& uri) {
@@ -2003,13 +2004,14 @@ tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_from_uri(
     const URI& group_uri, const URI& uri, const EncryptionKey& encryption_key) {
   auto timer_se = stats_->start_timer("sm_load_group_from_uri");
 
-  auto&& [st, buffer] = load_data_from_generic_tile(uri, encryption_key);
+  auto&& [st, buffer_opt] = load_data_from_generic_tile(uri, encryption_key);
   RETURN_NOT_OK_TUPLE(st, nullopt);
+  auto& buffer = *buffer_opt;
 
-  stats_->add_counter("read_group_size", buffer->size());
+  stats_->add_counter("read_group_size", buffer.size());
 
   // Deserialize
-  ConstBuffer cbuff(&*buffer);
+  ConstBuffer cbuff(&buffer);
   return Group::deserialize(&cbuff, group_uri, this);
 }
 
@@ -2118,8 +2120,8 @@ Status StorageManager::load_group_metadata(
 }
 
 tuple<Status, optional<Buffer>> StorageManager::load_data_from_generic_tile(
-    const URI uri, const EncryptionKey& encryption_key) {
-  Tile* tile = nullptr;
+    const URI& uri, const EncryptionKey& encryption_key) {
+  tdb_unique_ptr<Tile> tile;
   GenericTileIO tile_io(this, uri);
 
   // Get encryption key from config
@@ -2158,18 +2160,21 @@ tuple<Status, optional<Buffer>> StorageManager::load_data_from_generic_tile(
               key_length),
           nullopt);
     }
-    RETURN_NOT_OK_TUPLE(
-        tile_io.read_generic(&tile, 0, encryption_key_cfg, config_), nullopt);
+
+    auto&& [st1, tile_opt] =
+        tile_io.read_generic(0, encryption_key_cfg, config_);
+    RETURN_NOT_OK_TUPLE(st1, nullopt);
+    tile = std::move(*tile_opt);
   } else {
-    RETURN_NOT_OK_TUPLE(
-        tile_io.read_generic(&tile, 0, encryption_key, config_), nullopt);
+    auto&& [st1, tile_opt] = tile_io.read_generic(0, encryption_key, config_);
+    RETURN_NOT_OK_TUPLE(st1, nullopt);
+    tile = std::move(*tile_opt);
   }
 
   Buffer buff;
-  buff.realloc(tile->size());
+  RETURN_NOT_OK_TUPLE(buff.realloc(tile->size()), std::nullopt);
   buff.set_size(tile->size());
   auto st = tile->read(buff.data(), 0, buff.size());
-  tdb_delete(tile);
 
   RETURN_NOT_OK_TUPLE(st, nullopt);
 
@@ -2269,6 +2274,7 @@ StorageManager::load_consolidated_fragment_meta(
     return {Status::Ok(), nullopt};
 
   auto&& [st, buffer] = load_data_from_generic_tile(uri, enc_key);
+  RETURN_NOT_OK_TUPLE(st, nullopt);
   buffer->swap(*f_buff);
 
   stats_->add_counter("consolidated_frag_meta_size", f_buff->size());

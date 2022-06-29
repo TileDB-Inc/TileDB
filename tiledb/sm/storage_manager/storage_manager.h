@@ -182,7 +182,7 @@ class StorageManager {
    * @return Status, Buffer with the data.
    */
   tuple<Status, optional<Buffer>> load_data_from_generic_tile(
-      const URI uri, const EncryptionKey& encryption_key);
+      const URI& uri, const EncryptionKey& encryption_key);
 
   /**
    * Load a group detail from URI
@@ -962,7 +962,7 @@ class StorageManager {
   Status store_data_to_generic_tile(
       void* data,
       const size_t size,
-      const URI uri,
+      const URI& uri,
       const EncryptionKey& encryption_key);
 
   /** Closes a file, flushing its contents to persistent storage. */

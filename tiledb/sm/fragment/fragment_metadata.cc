@@ -3561,15 +3561,15 @@ Status FragmentMetadata::load_v1_v2(
       std::string(constants::fragment_metadata_filename));
   // Read metadata
   GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
-  auto tile = (Tile*)nullptr;
-  RETURN_NOT_OK(tile_io.read_generic(
-      &tile, 0, encryption_key, storage_manager_->config()));
+  auto&& [st, tile_opt] =
+      tile_io.read_generic(0, encryption_key, storage_manager_->config());
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
 
   Buffer buff;
-  RETURN_NOT_OK_ELSE(buff.realloc(tile->size()), tdb_delete(tile));
+  RETURN_NOT_OK(buff.realloc(tile->size()));
   buff.set_size(tile->size());
-  RETURN_NOT_OK_ELSE(tile->read(buff.data(), 0, buff.size()), tdb_delete(tile));
-  tdb_delete(tile);
+  RETURN_NOT_OK(tile->read(buff.data(), 0, buff.size()));
 
   storage_manager_->stats()->add_counter("read_frag_meta_size", buff.size());
 
@@ -3982,15 +3982,14 @@ Status FragmentMetadata::read_generic_tile_from_file(
 
   // Read metadata
   GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
-  Tile* tile = nullptr;
-  RETURN_NOT_OK(tile_io.read_generic(
-      &tile, offset, encryption_key, storage_manager_->config()));
+  auto&& [st, tile_opt] =
+      tile_io.read_generic(offset, encryption_key, storage_manager_->config());
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
 
   buff->realloc(tile->size());
   buff->set_size(tile->size());
-  RETURN_NOT_OK_ELSE(
-      tile->read(buff->data(), 0, buff->size()), tdb_delete(tile));
-  tdb_delete(tile);
+  RETURN_NOT_OK(tile->read(buff->data(), 0, buff->size()));
 
   return Status::Ok();
 }
