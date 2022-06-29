@@ -57,6 +57,9 @@ struct Array {
 
   arrayMetadata @7 :ArrayMetadata;
   # array metadata
+
+  config @8 :Config;
+  # Config
 }
 
 struct ArraySchema {

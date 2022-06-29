@@ -58,7 +58,7 @@ namespace serialization {
  * Serialize an Array to Cap'n proto
  * @param array to serialize
  * @param array_builder cap'n proto class
- * @param cleint_side is serialization client or server side
+ * @param client_side is serialization client or server side
  * @return Status
  */
 Status array_to_capnp(

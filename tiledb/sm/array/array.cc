@@ -165,11 +165,19 @@ Status Array::open_without_fragments(
             "Cannot open array; remote array with no REST client.");
       /* #TODO Change get_array_schema_from_rest function signature to
         throw instead of return Status */
-      auto&& [st, array_schema_latest] =
-          rest_client->get_array_schema_from_rest(array_uri_);
-      if (!st.ok())
-        throw StatusException(st);
-      array_schema_latest_ = array_schema_latest.value();
+      if (!use_refactored_array_open()) {
+        auto&& [st, array_schema_latest] =
+            rest_client->get_array_schema_from_rest(array_uri_);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
+        array_schema_latest_ = array_schema_latest.value();
+      } else {
+        auto st = rest_client->post_array_from_rest(array_uri_, this);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
+      }
     } else {
       array_dir_ = ArrayDirectory(
           storage_manager_->vfs(),
@@ -1162,6 +1170,20 @@ void Array::set_array_closed() {
   /* Note: the Sentry object will also be released upon Array destruction. */
   consistency_sentry_.reset();
   is_open_ = false;
+}
+
+bool Array::use_refactored_array_open() const {
+  auto found = false;
+  auto refactored_array_open = false;
+  auto status = config_.get<bool>(
+      "rest.use_refactored_array_open", &refactored_array_open, &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get use_refactored_array_open configuration option from "
+        "config");
+  }
+
+  return refactored_array_open;
 }
 }  // namespace sm
 }  // namespace tiledb
