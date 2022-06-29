@@ -669,5 +669,78 @@ class DebugStateMachineWithLock
   }
 };
 
+/**
+ * A simple debugging action policy that simply prints that an action has been
+ * called.
+ */
+template <class T = size_t>
+class DebugStateMachine : public PortFiniteStateMachine<DebugStateMachine<T>> {
+  using FSM = PortFiniteStateMachine<DebugStateMachine<T>>;
+
+  using lock_type = typename FSM::lock_type;
+
+ public:
+  inline void on_ac_return(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+      std::cout << "    "
+                << "Action return" << std::endl;
+  }
+  inline void on_source_swap(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+
+      std::cout << "    "
+                << "Action swap source" << std::endl;
+  }
+  inline void on_sink_swap(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+      std::cout << "    "
+                << "Action swap sink" << std::endl;
+  }
+  inline void notify_source(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+      std::cout << "    "
+                << "Action notify source" << std::endl;
+  }
+  inline void notify_sink(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+      std::cout << "    "
+                << "Action notify sink" << std::endl;
+  }
+};
+
+/**
+ * Debug action policy with some non-copyable elements (to verify
+ * compilation).
+ */
+class DebugStateMachineWithLock
+    : public PortFiniteStateMachine<DebugStateMachineWithLock> {
+  std::mutex(mutex_);
+  std::condition_variable sink_cv_;
+  std::condition_variable source_cv_;
+  using lock_type = std::unique_lock<std::mutex>;
+
+ public:
+  inline void on_ac_return(lock_type&, std::atomic<int>&) {
+    std::cout << "    "
+              << "Action return" << std::endl;
+  }
+  inline void on_source_swap(lock_type&, std::atomic<int>&) {
+    std::cout << "    "
+              << "Action swap source" << std::endl;
+  }
+  inline void on_sink_swap(lock_type&, std::atomic<int>&) {
+    std::cout << "    "
+              << "Action swap sink" << std::endl;
+  }
+  inline void notify_source(lock_type&, std::atomic<int>&) {
+    std::cout << "    "
+              << "Action notify source" << std::endl;
+  }
+  inline void notify_sink(lock_type&, std::atomic<int>&) {
+    std::cout << "    "
+              << "Action notify sink" << std::endl;
+  }
+};
+
 }  // namespace tiledb::common
 #endif  // TILEDB_DAG_POLICIES_H

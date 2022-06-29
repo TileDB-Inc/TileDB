@@ -451,6 +451,9 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
   }
 }
 
+/**
+ * Test operation of inject and extract.
+ */
 TEST_CASE("Ports: Manual set source port values", "[ports]") {
   Source<size_t, NullStateMachine<std::optional<size_t>>> src;
   Sink<size_t, NullStateMachine<std::optional<size_t>>> snk;
@@ -470,6 +473,9 @@ TEST_CASE("Ports: Manual set source port values", "[ports]") {
   }
 }
 
+/**
+ * Test operation of inject and extract.
+ */
 TEST_CASE("Ports: Manual extract sink values", "[ports]") {
   Source<size_t, NullStateMachine<std::optional<size_t>>> src;
   Sink<size_t, NullStateMachine<std::optional<size_t>>> snk;
@@ -487,6 +493,11 @@ TEST_CASE("Ports: Manual extract sink values", "[ports]") {
   }
 }
 
+/**
+ * Test that we can inject, transfer, and extract data items from Source and
+ * Sink with ManualStateMachine.
+ *
+ */
 TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
   Source<size_t, ManualStateMachine<std::optional<size_t>>> src;
   Sink<size_t, ManualStateMachine<std::optional<size_t>>> snk;
@@ -547,6 +558,11 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
   }
 }
 
+/**
+ * Test that we can inject and extract data items from Source and Sink with
+ * AsyncStateMachine.
+ *
+ */
 TEST_CASE(
     "Ports: Manual transfer from Source to Sink, async policy", "[ports]") {
   Source<size_t, AsyncStateMachine<std::optional<size_t>>> src;
@@ -569,6 +585,14 @@ TEST_CASE(
   }
 }
 
+/**
+ * Test that we can asynchronously transfer a value from Source to Sik.
+ *
+ * The test creates an asynchronous task for a source node client and for a sync
+ * node client, and launches them separately using `std::async`.  To create
+ * different interleavings of the tasks, we use all combinations of ordering for
+ * launching the tasks and waiting on their futures.
+ */
 TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
   Source<size_t, AsyncStateMachine<std::optional<size_t>>> src;
   Sink<size_t, AsyncStateMachine<std::optional<size_t>>> snk;
@@ -620,6 +644,16 @@ TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
   CHECK(*b == 8675309);
 }
 
+/**
+ * Test that we can correctly pass a sequence of integers from source to sink.
+ * Random delays are inserted between each step of each function in order to
+ * increase the likelihood of exposing race conditions / deadlocks.
+ *
+ * The test creates an asynchronous task for a source node client and for a sync
+ * node client, and launches them separately using `std::async`.  To create
+ * different interleavings of the tasks, we use all combinations of ordering for
+ * launching the tasks and waiting on their futures.
+ */
 TEST_CASE("Ports: Async pass n integers", "[ports]") {
   [[maybe_unused]] constexpr bool debug = false;
 
@@ -790,6 +824,5 @@ TEST_CASE("Ports: Test construct proto consumer_node", "[ports]") {
   auto con = consumer<std::back_insert_iterator<std::vector<size_t>>>(
       std::back_insert_iterator<std::vector<size_t>>(v));
   auto cn = consumer_node<size_t>(std::move(con));
->>>>>>> d1199205b (WIP re-add dag folder clean [skip ci])
 }
 #endif
