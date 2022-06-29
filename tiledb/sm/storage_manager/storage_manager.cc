@@ -237,6 +237,18 @@ StorageManager::load_array_schemas_and_fragment_metadata(
       Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
 }
 
+void ensure_supported_schema_version_for_read(uint32_t version) {
+  // We do not allow reading from arrays written by newer version of TileDB
+  if (version > constants::format_version) {
+    std::stringstream err;
+    err << "Cannot open array for reads; Array format version (";
+    err << version;
+    err << ") is newer than library format version (";
+    err << constants::format_version << ")";
+    throw Status_StorageManagerError(err.str());
+  }
+}
+
 tuple<
     Status,
     optional<shared_ptr<ArraySchema>>,
@@ -250,6 +262,9 @@ StorageManager::array_open_for_reads(Array* array) {
           array->memory_tracker(),
           *array->encryption_key());
   RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
+
+  auto version = array_schema_latest.value()->version();
+  ensure_supported_schema_version_for_read(version);
 
   // Mark the array as open
   std::lock_guard<std::mutex> lock{open_arrays_mtx_};
@@ -271,6 +286,9 @@ StorageManager::array_open_for_reads_without_fragments(Array* array) {
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
       load_array_schemas(array->array_directory(), *array->encryption_key());
   RETURN_NOT_OK_TUPLE(st_schemas, nullopt, nullopt);
+
+  auto version = array_schema_latest.value()->version();
+  ensure_supported_schema_version_for_read(version);
 
   // Mark the array as now open
   std::lock_guard<std::mutex> lock{open_arrays_mtx_};
@@ -296,9 +314,23 @@ StorageManager::array_open_for_writes(Array* array) {
       load_array_schemas(array->array_directory(), *array->encryption_key());
   RETURN_NOT_OK_TUPLE(st_schemas, nullopt, nullopt);
 
-  // This library should not be able to write to newer-versioned arrays
+  // If building experimentally, this library should not be able to
+  // write to newer-versioned or older-versioned arrays
+  // Else, this library should not be able to write to newer-versioned arrays
   // (but it is ok to write to older arrays)
   auto version = array_schema_latest.value()->version();
+  if constexpr (is_experimental_build) {
+    if (version != constants::format_version) {
+      std::stringstream err;
+      err << "Cannot open array for writes; Array format version (";
+      err << version;
+      err << ") is not the library format version (";
+      err << constants::format_version << ")";
+      return {logger_->status(Status_StorageManagerError(err.str())),
+              nullopt,
+              nullopt};
+    }
+  }
   if (version > constants::format_version) {
     std::stringstream err;
     err << "Cannot open array for writes; Array format version (";

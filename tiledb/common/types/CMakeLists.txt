@@ -30,6 +30,7 @@ include(common NO_POLICY_SCOPE)
 # `datum` object library
 #
 add_library(datum OBJECT untyped_datum.cc dynamic_typed_datum.cc)
+
 #
 # Test-compile of object library ensures link-completeness
 #

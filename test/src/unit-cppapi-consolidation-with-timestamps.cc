@@ -36,7 +36,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/query/sparse_global_order_reader.h"
+#include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 
 using namespace tiledb;
 using namespace tiledb::test;
@@ -519,6 +519,10 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidation with timestamps, check directory contents of "
     "old array",
     "[cppapi][consolidation-with-timestamps][sparse-unordered-with-dups]") {
+  if constexpr (is_experimental_build) {
+    return;
+  }
+
   remove_sparse_array();
   create_sparse_array_v11();
   // Write first fragment.

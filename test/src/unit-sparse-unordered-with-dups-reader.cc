@@ -35,8 +35,8 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query_buffer.h"
-#include "tiledb/sm/query/sparse_index_reader_base.h"
-#include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
+#include "tiledb/sm/query/readers/sparse_index_reader_base.h"
+#include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"

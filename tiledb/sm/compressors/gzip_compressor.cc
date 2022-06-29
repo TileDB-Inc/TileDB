@@ -65,7 +65,9 @@ Status GZip::compress(
       deflateInit(&strm, level < level_limit_ ? GZip::default_level() : level);
 
   if (ret != Z_OK) {
-    (void)deflateEnd(&strm);
+    if ((ret != Z_MEM_ERROR && ret != Z_STREAM_ERROR)) {
+      (void)deflateEnd(&strm);
+    }
     return LOG_STATUS(Status_GZipError("Cannot compress with GZIP"));
   }
 

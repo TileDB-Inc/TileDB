@@ -75,6 +75,9 @@ Status Group::open(
     if (!is_group)
       return Status_GroupError("Cannot open group; Group does not exist");
   }
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE) {
+    return Status_GroupError("Cannot open group; Unsupported query type");
+  }
 
   if (timestamp_end == UINT64_MAX) {
     if (query_type == QueryType::READ) {
