@@ -251,6 +251,6 @@ class PoolAllocator {
 //  PoolAllocator() {
 //  }
 //};
-}  // namespace
+}  // namespace tiledb::common
 
 #endif  // TILEDB_DAG_POOL_ALLOCATOR_H
