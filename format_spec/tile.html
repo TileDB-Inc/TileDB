@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-0.9.629">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Tile</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../format_spec/generic_tile.html" rel="next">
+<link href="../format_spec/array_metadata.md" rel="prev">
+<link href="../images/favicon.ico" rel="icon">
+<script src="../site_libs/quarto-html/quarto.js"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../quarto-materials/tiledb.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <a class="navbar-brand" href="../index.html">
+    <img src="../quarto-materials/tiledb-logo.png" alt="">
+  </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com">Home page</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com/contact">Contact us</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://github.com/TileDB-Inc/TileDB">Repo</a>
+  </li>  
+</ul>
+              <div id="quarto-search" class="" title="Search"></div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+    <div class="container-fluid d-flex justify-content-between">
+      <h1 class="quarto-secondary-nav-title">Tile</h1>
+      <button type="button" class="quarto-btn-toggle btn" aria-label="Show secondary navigation">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">Public code docs</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a href="../format_spec/FORMAT_SPEC.html" class="sidebar-item-text sidebar-link">Format Specification</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true">Array</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth2 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/array_file_hierarchy.html" class="sidebar-item-text sidebar-link">Array File Hierarchy</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/array_schema.html" class="sidebar-item-text sidebar-link">Array Schema</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/fragment.html" class="sidebar-item-text sidebar-link">Fragment</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/tile.html" class="sidebar-item-text sidebar-link active">Tile</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/generic_tile.html" class="sidebar-item-text sidebar-link">Generic Tile</a>
+  </div>
+</li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">Group</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/group_file_hierarchy.html" class="sidebar-item-text sidebar-link">Group File Hierarchy</a>
+  </div>
+</li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="false">Other</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/consolidated_fragment_metadata_file.html" class="sidebar-item-text sidebar-link">Consolidated Fragment Metadata File</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/filter_pipeline.html" class="sidebar-item-text sidebar-link">Filter Pipeline</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/vacuum_file.html" class="sidebar-item-text sidebar-link">Vacuum File</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#main-structure" id="toc-main-structure" class="nav-link active" data-scroll-target="#main-structure">Main Structure</a></li>
+  <li><a href="#chunk-format" id="toc-chunk-format" class="nav-link" data-scroll-target="#chunk-format">Chunk Format</a>
+  <ul class="collapse">
+  <li><a href="#byteshuffle-filter" id="toc-byteshuffle-filter" class="nav-link" data-scroll-target="#byteshuffle-filter">Byteshuffle Filter</a></li>
+  <li><a href="#bitshuffle-filter" id="toc-bitshuffle-filter" class="nav-link" data-scroll-target="#bitshuffle-filter">Bitshuffle Filter</a></li>
+  <li><a href="#bit-width-reduction-filter" id="toc-bit-width-reduction-filter" class="nav-link" data-scroll-target="#bit-width-reduction-filter">Bit Width Reduction Filter</a></li>
+  <li><a href="#positive-delta-encoding-filter" id="toc-positive-delta-encoding-filter" class="nav-link" data-scroll-target="#positive-delta-encoding-filter">Positive Delta Encoding Filter</a></li>
+  <li><a href="#compression-filters" id="toc-compression-filters" class="nav-link" data-scroll-target="#compression-filters">Compression Filters</a></li>
+  <li><a href="#checksum-filters" id="toc-checksum-filters" class="nav-link" data-scroll-target="#checksum-filters">Checksum Filters</a></li>
+  <li><a href="#encryption-filters" id="toc-encryption-filters" class="nav-link" data-scroll-target="#encryption-filters">Encryption Filters</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title d-none d-lg-block">Tile</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+    
+  </div>
+  
+
+</header>
+
+<section id="main-structure" class="level2">
+<h2 class="anchored" data-anchor-id="main-structure">Main Structure</h2>
+<p>Internally tile data is divided into “chunks.” Every tile is at least one chunk. Each tile has the following on-disk format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Num chunks</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of chunks in the tile</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Chunk 1</td>
+<td style="text-align: left;"><a href="#chunk-format">Chunk</a></td>
+<td style="text-align: left;">First chunk in the tile</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Chunk N</td>
+<td style="text-align: left;"><a href="#chunk-format">Chunk</a></td>
+<td style="text-align: left;">N-th chunk in the tile</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="chunk-format" class="level2">
+<h2 class="anchored" data-anchor-id="chunk-format">Chunk Format</h2>
+<p>A chunk has the following on-disk format:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Original length of chunk</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">The original (unfiltered) number of bytes of chunk data</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Filtered chunk length</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">The serialized (filtered) number of bytes of chunk data</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Chunk metadata length</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes in the chunk metadata</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Chunk metadata</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Chunk metadata bytes</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Chunk filtered data</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Filtered chunk bytes</td>
+</tr>
+</tbody>
+</table>
+<p>The metadata added to a chunk depends on the sequence of filters in the pipeline used to filter the containing tile.</p>
+<p>If a pipeline used to filter tiles is empty (contains no filters), the tile is still divided into chunks and serialized according to the above format. In this case there are no chunk metadata bytes (since there are no filters to add metadata), and the filtered bytes are the same as original bytes.</p>
+<p>The “chunk metadata” before the actual “chunk filtered data” depend on the particular sequence of filters in the pipeline. In the simple case, each filter will simply concatenate its metadata to the chunk metadata region. Because some filters in the pipeline may wish to filter the metadata of previous filters (e.g.&nbsp;compression, where it is beneficial to compress previous filters’ metadata in addition to the actual chunk data), the ordering of filters also impacts the metadata that is eventually written to disk.</p>
+<p>The “chunk filtered data” bytes contain the final bytes of the chunk after being passed through the entire pipeline. When reading tiles from disk, the filter pipeline is run in the reverse order.</p>
+<p>Internally, any filter in a filter pipeline produces two arrays of data as output: a metadata byte array and a filtered data byte array. Additionally, these output byte arrays can be arbitrarily separated into “parts” by any filter. Typically, when a next filter receives the output of the previous filter as its input, it will filter each “part” independently.</p>
+<section id="byteshuffle-filter" class="level3">
+<h3 class="anchored" data-anchor-id="byteshuffle-filter">Byteshuffle Filter</h3>
+<p>The byteshuffle filter does not filter input metadata, and the output data is guaranteed to be the same length as the input data.</p>
+<p>The byteshuffle filter produces output metadata in the format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Number of parts</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of data parts</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Length of part 1</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes in data part 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Length of part N</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes in data part N</td>
+</tr>
+</tbody>
+</table>
+<p>The byteshuffle filter produces output data in the format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Part 1</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Byteshuffled data part 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Part N</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Byteshuffled data part N</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="bitshuffle-filter" class="level3">
+<h3 class="anchored" data-anchor-id="bitshuffle-filter">Bitshuffle Filter</h3>
+<p>The bitshuffle filter does not filter input metadata. It produces output metadata in the format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Number of parts</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of data parts</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Length of part 1</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes in data part 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Length of part N</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes in data part N</td>
+</tr>
+</tbody>
+</table>
+<p>The bitshuffle filter produces output data in the format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Part 1</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Bitshuffled data part 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Part N</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Bitshuffled data part N</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="bit-width-reduction-filter" class="level3">
+<h3 class="anchored" data-anchor-id="bit-width-reduction-filter">Bit Width Reduction Filter</h3>
+<p>The bit width reduction filter does not filter input metadata. It produces output metadata in the format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Length of input</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Original input number of bytes</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Number of windows</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of windows in output</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Window 1 metadata</td>
+<td style="text-align: left;"><code>WindowMD</code></td>
+<td style="text-align: left;">Metadata for window 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Window N metadata</td>
+<td style="text-align: left;"><code>WindowMD</code></td>
+<td style="text-align: left;">Metadata for window N</td>
+</tr>
+</tbody>
+</table>
+<p>The type <code>WindowMD</code> has the format:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Window value offset</td>
+<td style="text-align: left;"><code>T</code></td>
+<td style="text-align: left;">Offset applied to values in the output window, where <code>T</code> is the original datatype of the tile values.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Bit width of reduced type</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Number of bits in the new datatype of the values in the output window</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Window length</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes in output window data.</td>
+</tr>
+</tbody>
+</table>
+<p>The bit width reduction filter produces output data in the format:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Window 1</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Window 1 data (possibly-reduced width elements)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Window N</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Window N data (possibly-reduced width elements)</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="positive-delta-encoding-filter" class="level3">
+<h3 class="anchored" data-anchor-id="positive-delta-encoding-filter">Positive Delta Encoding Filter</h3>
+<p>The positive-delta encoding filter does not filter input metadata. It produces output metadata in the format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Number of windows</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of windows in output</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Window 1 metadata</td>
+<td style="text-align: left;"><code>WindowMD</code></td>
+<td style="text-align: left;">Metadata for window 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Window N metadata</td>
+<td style="text-align: left;"><code>WindowMD</code></td>
+<td style="text-align: left;">Metadata for window N</td>
+</tr>
+</tbody>
+</table>
+<p>The type <code>WindowMD</code> has the format:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Window value delta offset</td>
+<td style="text-align: left;"><code>T</code></td>
+<td style="text-align: left;">Offset applied to values in the output window, where <code>T</code> is the datatype of the tile values.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Window length</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes in output window data.</td>
+</tr>
+</tbody>
+</table>
+<p>The positive-delta encoding filter produces output data in the format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Window 1</td>
+<td style="text-align: left;"><code>T[]</code></td>
+<td style="text-align: left;">Window 1 delta-encoded data</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Window N</td>
+<td style="text-align: left;"><code>T[]</code></td>
+<td style="text-align: left;">Window N delta-encoded data</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="compression-filters" class="level3">
+<h3 class="anchored" data-anchor-id="compression-filters">Compression Filters</h3>
+<p>The compression filters do filter input metadata. They produce output metadata in the format:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Number of metadata parts</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of input metadata parts that were compressed</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Number of data parts</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of input data parts that were compressed</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Metadata part 1</td>
+<td style="text-align: left;"><code>CompressedPartMD</code></td>
+<td style="text-align: left;">Metadata about the first metadata</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Metadata part N</td>
+<td style="text-align: left;"><code>CompressedPartMD</code></td>
+<td style="text-align: left;">Metadata about the nth metadata part</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Data part 1</td>
+<td style="text-align: left;"><code>CompressedPartMD</code></td>
+<td style="text-align: left;">Metadata about the first data part</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Data part N</td>
+<td style="text-align: left;"><code>CompressedPartMD</code></td>
+<td style="text-align: left;">Metadata about the nth data part</td>
+</tr>
+</tbody>
+</table>
+<p>The type <code>CompressedPartMD</code> has the format:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Part original length</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Input length of the part (before compression)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Part compressed length</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Compressed length of the part</td>
+</tr>
+</tbody>
+</table>
+<p>The compression filters then produce output data in the format:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Metadata part 0 compressed bytes</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Compressed bytes of the first metadata part</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Metadata part N compressed bytes</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Compressed bytes of the nth metadata part</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Data part 0 compressed bytes</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Compressed bytes of the first data part</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Data part N compressed bytes</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Compressed bytes of the nth data part</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="checksum-filters" class="level3">
+<h3 class="anchored" data-anchor-id="checksum-filters">Checksum Filters</h3>
+<p>The filter metadata for <code>TILEDB_FILTER_CHECKSUM_{MD5,SHA256}</code> has internal format:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Num metadata checksums</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of checksums computed on input metadata</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Num data checksums</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of checksums computed on input data</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Num input bytes for metadata checksum 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of bytes of metadata input to the 1st metadata checksum</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Metadata checksum 1</td>
+<td style="text-align: left;"><code>uint8_t[{16,32}]</code> (MD5/SHA256)</td>
+<td style="text-align: left;">Checksum produced on first metadata input</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Num input bytes for metadata checksum N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of bytes of metadata input to the N-th metadata checksum</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Metadata checksum N</td>
+<td style="text-align: left;"><code>uint8_t[{16,32}]</code> (MD5/SHA256)</td>
+<td style="text-align: left;">Checksum produced on N-th metadata input</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Num input bytes for data checksum 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of bytes of data input to the 1st data checksum</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Data checksum 1</td>
+<td style="text-align: left;"><code>uint8_t[{16,32}]</code> (MD5/SHA256)</td>
+<td style="text-align: left;">Checksum produced on first data input</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Num input bytes for data checksum N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of bytes of data input to the N-th data checksum</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Data checksum N</td>
+<td style="text-align: left;"><code>uint8_t[{16,32}]</code> (MD5/SHA256)</td>
+<td style="text-align: left;">Checksum produced on N-th data input</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Input metadata</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Original input metadata, copied intact</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="encryption-filters" class="level3">
+<h3 class="anchored" data-anchor-id="encryption-filters">Encryption Filters</h3>
+<p>If the array is <strong>encrypted</strong>, TileDB uses an extra internal filter <code>INTERNAL_FILTER_AES_256_GCM</code> for AES encryption.</p>
+<p>The encryption filter metadata have the following on-disk format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Num metadata parts</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of encrypted metadata parts</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Num data parts</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of encrypted data parts</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">AES Metadata Part 1</td>
+<td style="text-align: left;"><code>AESPartMD</code></td>
+<td style="text-align: left;">Metadata part 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">AES Metadata Part N</td>
+<td style="text-align: left;"><code>AESPartMD</code></td>
+<td style="text-align: left;">Metadata part N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">AES Data Part 1</td>
+<td style="text-align: left;"><code>AESPart</code></td>
+<td style="text-align: left;">Data part 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">AES Data Part N</td>
+<td style="text-align: left;"><code>AESPart</code></td>
+<td style="text-align: left;">Data part N</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>AESPartMD</code> field has the following on-disk format:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Num metadata parts</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of metadata parts</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Num data parts</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of data parts</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Plaintext length for metadata part 1</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of plaintext metadata part 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ciphertext length for metadata part 1</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of ciphertext metadata part 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">IV bytes for metadata part 1</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of AES-256-GCM IV bytes for metadata part 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tag bytes for metadata part 1</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of AES-256-GCM tag for metadata part 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Plaintext length for metadata part N</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of plaintext metadata part N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ciphertext length for metadata part N</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of ciphertext metadata part N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">IV bytes for metadata part N</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of AES-256-GCM IV bytes for metadata part N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tag bytes for metadata part N</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of AES-256-GCM tag for metadata part N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Plaintext length for data part 1</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of plaintext data part 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ciphertext length for data part 1</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of ciphertext data part 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">IV bytes for data part 1</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of AES-256-GCM IV bytes for data part 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tag bytes for data part 1</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of AES-256-GCM tag for data part 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Plaintext length for data part N</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of plaintext data part N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ciphertext length for data part N</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of ciphertext data part N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">IV bytes for data part N</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of AES-256-GCM IV bytes for data part N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tag bytes for data part N</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of bytes of AES-256-GCM tag for data part N</td>
+</tr>
+</tbody>
+</table>
+<p>The original metadata is <strong>not</strong> included in the metadata output.</p>
+<p>The <code>AESPart</code> field has the following on-disk format:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Plaintext length</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">The original unencrypted length of the part</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Encrypted length</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">The encrypted length of the part</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">IV Bytes</td>
+<td style="text-align: left;"><code>uint8_t[12]</code></td>
+<td style="text-align: left;">AES-256-GCM IV bytes</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tag Bytes</td>
+<td style="text-align: left;"><code>uint8_t[16]</code></td>
+<td style="text-align: left;">AES-256-GCM tag bytes</td>
+</tr>
+</tbody>
+</table>
+<p>The data output of the encryption filter is:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Metadata part 1</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">The encrypted bytes of metadata part 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Metadata part N</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">The encrypted bytes of metadata part N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Data part 1</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">The encrypted bytes of data part 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Metadata part N</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">The encrypted bytes of data part N</td>
+</tr>
+</tbody>
+</table>
+<p>Note that the original input metadata in <strong>not</strong> part of the output.</p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    setTimeout(function() {
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      let href = ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const cites = ref.parentNode.getAttribute('data-cites').split(' ');
+    tippyHover(ref, function() {
+      var popup = window.document.createElement('div');
+      cites.forEach(function(cite) {
+        var citeDiv = window.document.createElement('div');
+        citeDiv.classList.add('hanging-indent');
+        citeDiv.classList.add('csl-entry');
+        var biblioDiv = window.document.getElementById('ref-' + cite);
+        if (biblioDiv) {
+          citeDiv.innerHTML = biblioDiv.innerHTML;
+        }
+        popup.appendChild(citeDiv);
+      });
+      return popup.innerHTML;
+    });
+  }
+});
+</script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../format_spec/array_metadata.md" class="pagination-link">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../format_spec/generic_tile.html" class="pagination-link">
+        <span class="nav-page-text">Generic Tile</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+</body></html>

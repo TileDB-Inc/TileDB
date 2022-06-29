@@ -1,0 +1,1822 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Public code docs",
+    "section": "",
+    "text": "This is public documentation of the code within this repository."
+  },
+  {
+    "objectID": "CONTRIBUTING.html",
+    "href": "CONTRIBUTING.html",
+    "title": "",
+    "section": "",
+    "text": "Hi! Thanks for your interest in TileDB. The following notes are intended to help you file issues, bug reports, or contribute code to the open source TileDB project.\n\n\n\nReporting a bug? Please read how to file a bug report section to make sure sufficient information is included.\nContributing code? You rock! Be sure to review the contributor section for helpful tips on the tools we use to build TileDB, format code, and issue pull requests (PR)’s.\n\n\n\n\nA useful bug report filed as a GitHub issue provides information about how to reproduce the error.\n\nBefore opening a new GitHub issue try searching the existing issues to see if someone else has already noticed the same problem.\nWhen filing a bug report, provide where possible:\n\n\nThe version TileDB (tiledb_version()) or if a dev version, specific commit that triggers the error.\nThe full error message, including the backtrace (if possible). Verbose error reporting is enabled by building TileDB with ../bootstrap --enable-verbose.\nA minimal working example, i.e. the smallest chunk of code that triggers the error. Ideally, this should be code that can be a small reduced C / C++ source file. If the code to reproduce is somewhat long, consider putting it in a gist.\n\n\nWhen pasting code blocks or output, put triple backquotes (```) around the text so GitHub will format it nicely. Code statements should be surrounded by single backquotes (`). See GitHub’s guide on Markdown for more formatting tricks.\n\n\n\n\nBy contributing code to TileDB, you are agreeing to release it under the MIT License.\n\n\nPlease see building from source for dependencies and detailed build instructions.\nFrom a fork of TileDB\ngit clone https://github.com/username/TileDB\ncd TileDB && mkdir build && cd build\n../bootstrap\nmake && make check\ncd ../\ngit checkout -b <my_initials>/<my_bugfix_branch>\n... code changes ...\nmake -C build format\nmake -C build check\ngit commit -a -m \"my commit message\"\ngit push --set-upstream origin <my_initials>/<my_bugfix_branch>\nIssue a PR from your updated TileDB fork\nBranch conventions: - dev is the development branch of TileDB, all PR’s are merged into dev. - master tracks the latest stable / released version of TileDB. - release-x.y.z are major / bugfix release branches of TileDB.\nFormatting conventions: - 2 spaces per indentation level not tabs - class names use CamelCase - member functions, variables use lowercase with underscores - class member variables use a trailing underscore foo_ - comments are good, TileDB uses doxygen for class doc strings. - format code using clang-format\n\n\n\n\ndev is the development branch, all PR’s should be rebased on top of the latest dev commit.\nCommit changes to a local branch. The convention is to use your initials to identify branches: (ex. “Fred Jones” , fj/my_bugfix_branch). Branch names should be identifiable and reflect the feature or bug that they want to address / fix. This helps in deleting old branches later.\nMake sure the test suite passes by running make check.\nWhen ready to submit a PR, git rebase the branch on top of the latest dev commit. Be sure to squash / cleanup the commit history so that the PR preferably one, or a couple commits at most. Each atomic commit in a PR should be able to pass the test suite.\nRun the limiting / code format tooling (make format) before submitting a final PR. Make sure that your contribution generally follows the format and naming conventions used by surrounding code.\nIf the PR changes/adds/removes user-facing API or system behavior (such as API changes), add a note to the TileDB/HISTORY.md file.\nSubmit a PR, writing a descriptive message. If a PR closes an open issue, reference the issue in the PR message (ex. If an issue closes issue number 10, you would write closes #10)\nMake sure CI (continuous integration) is passing for your PR – click Show all checks in the pull request status box at the bottom of each PR page. The continous integration project pages will also list all recently-built PRs:\n\nAzure Pipelines\n\n\n\n\n\n\nTileDB uses Sphinx as its documentation generator.\nDocumentation is written in reStructuredText markup.\n\nBuilding the docs locally:\n$ cd TileDB/doc\n$ ./local-build.sh\nThis will install all the required packages in a Python virtual environment, and build the docs locally. You can then open the doc/source/_build/html/index.html file in your browser.\nNote: If there are additions to the C/C++ API in between builds, rerun bootstrap:\n$ cd ../build\n$ ../bootstrap <flags>\n\n\n\n\nTileDB\n\nHomepage\nDocumentation\nIssues\nForum\nOrganization\n\nGithub / Git\n\nGit cheatsheet\nGithub Documentation\nForking a Repo\nMore Learning Resources"
+  },
+  {
+    "objectID": "HISTORY.html",
+    "href": "HISTORY.html",
+    "title": "",
+    "section": "",
+    "text": "Full Changelog: https://github.com/TileDB-Inc/TileDB/compare/2.9.0…2.10.0\n\n\n\nConsolidation with timestamps: add includes timestamps to fragment footer. #3138\n\n\n\n\n\nOR clause support in Query Conditions (#3041 #3083 #3112 #3264)\nNew examples for QueryCondition usage with the C++ API (#3225) and C API (#3242)\nTILEDB_BOOL Datatype #3164\nSupport for group metadata consolidation and vacuuming #3175\n\n\n\n\n\nRemove timestamp-range vacuuming (experimental) #3214 ## Improvements\nSparse global order reader: refactor merge algorithm. #3173\nDense reader: add better stats for attribute copy. #3199\nDense reader: adding ability to fully disable tile cache. #3227\nOptimize compute_results_count_sparse_string. #3263\n\n\n\n\n\nDeprecate sm.num_tbb_threads config option #3177\n\n\n\n\n\nDense reader: fixing query conditions with overlapping domains. #3244\nConsolidation w timestamps: cell slab length computations fix. #3230\nUnordered writer: fixing segfault for empty writes. #3161\nSparse global order reader: Check the right incomplete reason is returned in case of too small user buffer #3170\nGlobal writes: check global order on write continuation. #3109\nFixing Dimension::splitting_value to prevent overflows. #3116\nParse minor and patch version with more than one digit #3098\nSparse unordered w/ dups reader: fix incomplete reason for cloud reads. #3104\nRearrange context member initialization so logger is initialized prior to getting thread counts (which may log) #3128\nadjust assert for var Range usage in legacy global order reader #3122\nFix SC-17415: segfault due to underflow in for loop #3143\nFix fragment_consolidation.cc example #3145\nChange test_assert path used to locate try_assert #3158\nexample writing_sparse_global_<c,cpp>, change illegal write to be legal #3159\navoid unit_range warning as error build failures #3171\nchange to avoid warning causing build error with msvc #3162\nSparse unordered w/ dups reader: fixing overflow on int value. #3181\nSparse index readers: fixing queries with overlapping ranges. #3208\nFix bad_optional_access exceptions when running consolidation with timestamps tests #3213\nFix SC-18250: segfault due to empty default-constructed FilterPipeline #3233\nFixed regression test for SC12024, Incorrect selected type in Dimension::oob #3219\nFixed bug in documentation for cpp_api query condition examples. #3239\nFix File API failure when importing into TileDB Cloud array #3246\nFix undefined behavior in filestore whilst detecting compression #3291\nFix printing of TILEDB_BLOB attributes in Attribute::Dump #3250\nAdd missing filters to switch case for Filter serialization #3256\nFix a typo in the byteshuffle constructor for capnp serialization #3284\nRemove incorrect noexcept annotations from C API implementations in filestore API #3273\nUpdate ensure_datatype_is_valid to fix deserialization issues #3303\n\n\n\n\n\n\n\nApply TILEDB_NO_API_DEPRECATION_WARNINGS to C++ API #3236\n\n\n\n\n\n\nAdd tiledb_regression test target #3143\nProduce a TileDBConfigVersion.cmake file #3240\nIntegrate build of webp into tiledb superbuild (note: build-only) #3113\n\n\n\n\n\n@-OgreTransporter made their first contribution in https://github.com/TileDB-Inc/TileDB/pull/3118\n@-Biswa96 made their first contribution in https://github.com/TileDB-Inc/TileDB/pull/3124"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-1",
+    "href": "HISTORY.html#bug-fixes-1",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix a typo in the byteshuffle constructor for capnp serialization #3284"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-2",
+    "href": "HISTORY.html#bug-fixes-2",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix File API failure when importing into TileDB Cloud array #3246\nFix printing of TILEDB_BLOB attributes in Attribute::Dump #3250\nAdd missing filters to switch case for Filter serialization #3256\nFix filterpipeline segfault on release-2.9 #3261"
+  },
+  {
+    "objectID": "HISTORY.html#improvements",
+    "href": "HISTORY.html#improvements",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nMake filestore api get configurable buffer sizes #3223\nSpecial case tiledb cloud uris to use row_major writes 3232]([https://github.com/TileDB-Inc/TileDB/pull/3232)\n\n\nC++ API\n\nApply TILEDB_NO_API_DEPRECATION_WARNINGS to C++ API #3236"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-3",
+    "href": "HISTORY.html#bug-fixes-3",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nUpdate Zlib Download URL #3200"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-4",
+    "href": "HISTORY.html#bug-fixes-4",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\n[Backport release-2.9] Sparse global order reader: refactor merge algorithm. (#3173) by @KiterLuc in https://github.com/TileDB-Inc/TileDB/pull/3182\n[Backport release-2.9] Sparse unordered w/ dups reader: fixing overflow on int value. by @github-actions in https://github.com/TileDB-Inc/TileDB/pull/3184\n[Backport release-2.9] Sparse global order reader: Check correct incomplete reason in case of too small user buffer by @github-actions in https://github.com/TileDB-Inc/TileDB/pull/3186\n[Backport release-2.9] relocate magic_mgc_gzipped.bin for build by @github-actions in https://github.com/TileDB-Inc/TileDB/pull/3185"
+  },
+  {
+    "objectID": "HISTORY.html#disk-format-1",
+    "href": "HISTORY.html#disk-format-1",
+    "title": "",
+    "section": "Disk Format",
+    "text": "Disk Format\n\nUpdate on-disk format because of the new available compressor for Dictionary-encoding of strings #3042"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-1",
+    "href": "HISTORY.html#new-features-1",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nAdd virtual filesystem ls_with_sizes function #2971\nAdd new CMake build option for TILEDB_EXPERIMENTAL_FEATURES to compile time protect experimental features. #2748\nForwardport Group API #3058\nSupport Dictionary-encoding filter for string dimensions and attributes #3077\nUse legacy sparse global order reader for 2.9 #3096\nAdd libmagic to build process. #3088\nNew file storage APIs (tiledb_filestore_…) #3121"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-1",
+    "href": "HISTORY.html#improvements-1",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nConvert FilterPipeline deserialize function to static factory function #2799\nConvert array metadata deserialize function to factory function #2784\nA new thread pool with modern C++ compatible API and exception-safe behavior. #2944\nSmart pointer conversion: ArraySchema Domain #2948\nDeclare all C API functions noexcept. Put existing C API functions inside exception safety wrappers to meet the declaration change. #2961\nAdd support for compile-time assertion configuration #2962\nRefactored tiledb::sm::serialization::attribute_from_capnp to be C41 compliant #2937\nSmart pointer conversion: ArraySchema Dimension #2926\nRefactored tiledb::sm::serialization::filter_pipeline_from_capnp to be C41 compliant #2943\nEnable sparse global order reader by default. #2997\nAdd API for FragmentInfo::get_fragment_name #2977\nadd validity file format specification #2998\nConvert Domain class deserialize function to factory function #2800\nDense reader: fix user buffer offset computation for multi-index queries. #3002\nSparse readers: using zipped coords buffers for fragment version < 5. #3016\nExtra UTs on string RLEs #3024\nBump Catch2 version to 2.13.8 #3027\nSplit consolidator in multiple classes. #3004\nHTML-render the existing format-spec Markdown docs. #3043\nAdd more detailed doc for schema evolution timestamp range functions. #3029\nRun doc-render job on doc-only PRs, and not on non-doc PRs #3045\nSupport curl POSTing >2GB data to REST #3048\nDense reader: do not sort input ranges. #3036\nSupport consolidating non-contiguous fragments. #3037\nIntroduce dictionary-encoding as an enum option for filters #3042\nMove Range to new tiledb::type namespace #3059\nConvert tdb shared to shared #2965\nAdd StatusException, an exception class to be thrown instead of returning Status #3050\nCherry-pick #3061 #3064\nTypo fix in group.cc #3078\nRename tiledb time.h/math.h to avoid possible conflicts with standard header files. #3087\nConvert ArraySchema’s deserialize to a factory function #3012\nvarying_size_datum_at: fixing comparison error. #3127\nGlobal writes: check global order on write continuation. #3109"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-5",
+    "href": "HISTORY.html#bug-fixes-5",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\n[bug] Fix SC-17415: segfault due to underflow in for loop #3143\nSparse global order reader: prevent dims from being unfiltered twice. #3150\ncompare nullptr, avoid catch2 comparison warning failure #2970\nCheck that array is open before getting non_empty_domain #2980\nFix assertion failure in GCS, debug build #3001\nFix missing stats on cloud queries. #3009\nSparse unordered w/ dups reader: coord tiles management fix. #3023\nIncorrect validity result count in REST query #3015\nuse different API approach to avoid possible file sharing violation #3056\navoid some potentially invalid vector references #2932\nSparse Global Order Reader Fix: Decrement Total Cells #3046"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions",
+    "href": "HISTORY.html#api-additions",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC++ API\n\nAdd function to check if Config contains a parameter #3082"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-6",
+    "href": "HISTORY.html#bug-fixes-6",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nAll ranges tile overlap: skip computation for default dimensions. #3080\nFilter pipeline: fixing empty pipeline, multi chunk, refactored queries. #3149\nUnordered writer: fixing segfault for empty writes. #3161"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-7",
+    "href": "HISTORY.html#bug-fixes-7",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nSparse unordered w/ dups reader: fix incomplete reason for cloud reads. #3104"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-2",
+    "href": "HISTORY.html#improvements-2",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAdd golang annotation to capnp spec file #3089\nUpdate group metadata REST request to standardize cap’n proto class usage #3095"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-8",
+    "href": "HISTORY.html#bug-fixes-8",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nSparse Index Reader Fix: Check For Empty Buffer #3051\nReset group metadata only based on end timestamp to ensure its always reset to now #3091"
+  },
+  {
+    "objectID": "HISTORY.html#disk-format-2",
+    "href": "HISTORY.html#disk-format-2",
+    "title": "",
+    "section": "Disk Format",
+    "text": "Disk Format\n\nAdd Metadata to groups #2966\nAdd Group on disk structure for members #2966"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-2",
+    "href": "HISTORY.html#new-features-2",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nSupport gs:// as an alias for gcs:// #2864\nEliminate LOG_FATAL use from codebase #2897\nCollect missing docs #2922\nSupport tiledb:// objects in the Object API #2954\nRLE compression support for var-length string dimensions #2938\nAdd Metadata to groups #2966\nAdd robust API to groups for adding and removing members of a group #2966"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-3",
+    "href": "HISTORY.html#improvements-3",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nSupport top-level cap’n proto array object #2844\nNicer error message for tiledb fragment listing #2872\nRemoving Buffer from Tile. #2852\nSplitting Writer class into 3 separate classes. #2884\nAdding a compressor algorithm for RLE encoding of strings #2857\nReader: treating empty string range as expected. #2883\nAdd a compression algorithm for dictionary encoding of strings #2880\nAdds an ArrayDirectory class to manage all URIs within the array directory. #2909\nRemove accidental addition of writer.cc. #2917\nTile metadata generator: code cleanup. #2919\nListing improvements: new directory structure for array. #2918\nArraySchema’s Attribute smart pointer conversion #2887\nAdd option for tile level filtering #2906\nSwitch to smart pointers and const references for ArraySchema, and avoid fetching the latest array schema twice. #2923\nMove vfs_helpers.cc and helper.cc into separate library with target that can be referenced elsewhere. #2929\nAvoid calling generate_uri in ArraySchema accessors #2928\nGlobal order writer: initialize last_var_offsets_. #2930\nWrap some C API functions with exception handlers. #2650\nFragment metadata: add min/max/sun/null count. #2934\nFilter pipeline: incorrect stopping point during chunk parallellization. #2955\nAdding support to consolidate ok/wrt files. #2933\nTile medatada: treating TILEDB_CHAR as TILEDB_STRING_ASCII. #2953\nFragment metadata: treating TILEDB_CHAR as TILEDB_STRING_ASCII. #2958\nGlobal order writer: fixing multi writes for var size attributes. #2963\nVFS: adding configuration for vfs.max_batch_size. #2960\nFixing build errors using MacOSX12.3.sdk. #2981\nSupport reading all consolidated fragment metadata files. #2973\nFixing compute_results_count_sparse_string for multiple range threads. #2983\nGlobal writes: fixing OOM on write continuation. #2993\nDo not store offsets when RLE is used on string dimensions #2969\nDynamically infer bytesizes for run length and strings for strings RLE compression #2984\nAdd ability to store (optional) name with group member #3068"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-9",
+    "href": "HISTORY.html#bug-fixes-9",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nAvoid thread starvation by removing std::future usage in S3 multipart upload #2851\nwindows_sanity fix #2870\nAdds missing pthreads link to dynamic memory unit test #2888\nRemove common.h from arrow_io_impl.h #2915\nRange::set_start and set_end should throw instead of empty returning #2913\nGlobal writer: fixing write continuation for fixed sized attributes. #3062\ntiledb_serialize_array_metadata should load metadata if its not loaded before serializing #3065\ntiledb_serialize_group_metadata should load group metadata if its not loaded. #3070"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-1",
+    "href": "HISTORY.html#api-additions-1",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC API\n\nIntroduce experimental tiledb_ctx_alloc_with_error to return error when context alloc fails #2905\nAdd tiledb_group_* APIs for robust group support #2966\n\n\n\nC++ API\n\nAdd missing cstddef include to fix compile w/ GCC 7 #2885\nAdd Group::* APIs for robust group support #2966"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-10",
+    "href": "HISTORY.html#bug-fixes-10",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nSparse unordered w/ dups reader: fixing memory management for tiles. #2924"
+  },
+  {
+    "objectID": "HISTORY.html#disk-format-3",
+    "href": "HISTORY.html#disk-format-3",
+    "title": "",
+    "section": "Disk Format",
+    "text": "Disk Format\n\nRemoved file __lock.tdb from the array folder and updated the format spec. Also removed config vfs.file.enable_filelocks. #2692"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-3",
+    "href": "HISTORY.html#new-features-3",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nPublish Subarray access/functionality for use outside of core. #2214\nAdd TILEDB_BLOB datatype #2721\nExpose array schema libtiledb version information #2863"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-4",
+    "href": "HISTORY.html#improvements-4",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nConvert loose files thread_pool.* into a unit #2520\nBump cmake_minimum_required to 3.21 #2532\ndynamic_memory unit, including allocator #2542\nimplement windows CI functionality with github actions #2498\nimplement windows crash dump file processing for windows #2657\nAdded object libraries: baseline, buffer, thread_pool #2629\nubuntu core dump processing (GA) CI #2642\nAvoid copy and set of config in tiledb_query_add_range as a performance optimization from the new subarray APIs #2740\ncore file stack backtracing and artifact uploading for mac CI builds #2632\nMove Status::*Error to Status_*Error #2610\nZStd Compressor: allocate one context per thread and re-use. #2701\nInclude offset index in oversize error message #2757\nPrint resource pool contained type on error #2757\nUsing RETURN_NOT_OK_TUPLE in attribute.cc. #2787\nAdd timestamp range to schema evolution to avoid race conditions based on schema timestamp #2776\nConvert dimension deserialize to factory #2763\nImprove object type detection performance #2792\nQuery condition: differentiate between nullptr and empty string. #2802\npatch git+git: to git+https: to avoid GH access failure #2805\nRemove examples writing sparse fragments to dense arrays. #2804\nChange the ZStd filter compression level range and add defined compression level default values #2623\nChange the ZStd filter compression level range and add defined compression level default values #2811\nchanges to augment dbg output on build failures #2801\nSparse unordered w/ dups reader: process queries until full user buffers #2816\nSupport var-length CHAR QueryConditions #2814\nSparse global order reader: merge smaller cell slabs. #2818\nFixing build errors in query condition. #2820\nEnabling refactored dense reader by default. #2808\nSwitching TUPLE macros to be variadic. #2822\nRead tiles: no buffer pre-allocation for no-opt filter. #2819\nRefactored dense reader: resetting the unsplittable flag on completion. #2832\nRefactored dense reader: code cleanup. #2833\nFixing Subarray::crop_to_tile to crop default dimensions. #2831\nDense reader: fixing src cell offset for different cell order. #2835\nSupport storing integral cells in a chunk. #2821\nImprove error handling for Array non empty domain calls. #2845\nRemove OpenArray and refactor StorageManager and FragmentInfo #2839\nAdding min/max/sum/null count to fragment info. #2830\nFine-tune unfiltering parallelization #2842\nRemoving ch9473 comments in unit-cppapi-string-dims.cc. #2837\nGlobal writes: writting bad validity values when coordinates are dups. #2848\nFixing issues in VS2019. #2853\nWriter: processing var tiles before offset tiles. #2854\nWriter: moving unordered_map::emplace outside of parallel_for. #2860\nDense reader: removing unnecessary loop around read_attributes. #2859\nConvert deserialize function of Attribute to factory function #2566\nConvert Filter class deserialize and create to factory functions #2655\nTile metadata test: reducing amount of spew in verbose mode. #2882\ncompute_results_count_sparse_string: fixing incorect memcmp. #2892\nSparse rindex readers: fixing query resume on TileDB cloud. #2900"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-1",
+    "href": "HISTORY.html#deprecations-1",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations\n\nDeprecate TILEDB_CHAR in favor of users using TILEDB_BLOB or TILEDB_STRING_ASCII for attribute datatypes. #2742 #2797\nDeprecate TILEDB_ANY datatype #2807\nDeprecate TILEDB_STRING_USC2 and TILEDB_STRING_USC4 datatypes. #2812\nDrop support for Visual Studio 2017 compiler #2847"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-11",
+    "href": "HISTORY.html#bug-fixes-11",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nBetter windows relative path support with ‘/’ #2607\nFixed dangling links in README. #2712\nHandle multiple core files for stack traces and archiving #2723\nrestore lost cmake code necessary for clean build on windows with -EnableAzure #2656\nReturn error for nonempty_domain access regardless of local/remote status #2766\nFix segfault in new sparse null QueryCondition code #2794\nReaderBase needs to load var sizes #2809\nOnly initialize REST query strategies once #2836\nLogger json format output is not valid #2850\nClosing a non-opened array should be a no-op instead of error. #2889\npatch (unsupported) 3rd party azure cpp lite sdk used by TileDB to avoid memory faults #2881\nFree allocated latest array schema when on error of loading all array schemas #2907"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-2",
+    "href": "HISTORY.html#api-additions-2",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC API\n\nAdd tiledb_array_schema_evolution_set_timestamp_range to avoid race conditions based on schema timestamp #2776\nDeprecate TILEDB_CHAR in favor of users using TILEDB_BLOB or TILEDB_STRING_ASCII for attribute datatypes. #2742 #2797\nAdd {set,get}_validity_filter_list #2798\nDeprecate TILEDB_ANY datatype #2807\nDeprecate TILEDB_STRING_USC2 and TILEDB_STRING_USC4 datatypes. #2812\nAdd tiledb_array_schema_get_version for fetching array schema version #2863\nIntroduce experimental tiledb_ctx_alloc_with_error to return error when context alloc fails #2905\n\n\n\nC++ API\n\nAdd ArraySchemaEvolution::set_timestamp_range to avoid race conditions based on schema timestamp #2776\nDeprecate TILEDB_CHAR in favor of users using TILEDB_BLOB or TILEDB_STRING_ASCII for attribute datatypes. #2742 #2797\nAdd validity_filter_list set/get and missing get tests #2798\nDeprecate TILEDB_ANY datatype #2807\nDeprecate TILEDB_STRING_USC2 and TILEDB_STRING_USC4 datatypes. #2812\nAdd ArraySchema::version() for fetching array schema version #2863\nAdd missing cstddef include to fix compile w/ GCC 7 #2885"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-12",
+    "href": "HISTORY.html#bug-fixes-12",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nSparse unordered w/ dups reader: all empty string attribute fix. #2874\nUpdate Location of Zlib Download URL #2945"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-13",
+    "href": "HISTORY.html#bug-fixes-13",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\ncompute_results_count_sparse_string: fixing incorect memcmp. #2892\nSparse rindex readers: fixing query resume on TileDB cloud. #2900"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-14",
+    "href": "HISTORY.html#bug-fixes-14",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nOnly initialize REST query strategies once #2836\nSparse unordered w dups reader: fixing max pos calculation in tile copy. #2840"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-15",
+    "href": "HISTORY.html#bug-fixes-15",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nSparse unordered w/ dups reader: off by one error in query continuation. #2815\nSparse unordered w dups reader: fixing query continuation with subarray. #2824"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-3",
+    "href": "HISTORY.html#api-additions-3",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC++ API\n\ntiledb::Array destructor no longer calls ::close for non-owned C ptr #2823"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-5",
+    "href": "HISTORY.html#improvements-5",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nSparse unordered with dups reader: removing result cell slabs. #2606\nUse as-installed path for TileDBConfig CMake static library imports #2669\nCheck error message variable for nullptr before further use #2634\nFixing str_coord_intersects to use std::basic_string_view. #2654\nSparse unordered with duplicates reader: cell num fix. #2636\nSparse unordered with dups reader: fixing initial bound calculation. #2638\nRead_tiles parallelization improvements. #2644\nSparse global order reader: memory management unit tests. #2645\nReduce scope of open_array_for_reads_mtx_ locks #2681\nSparse refactored readers: better parallelization for tile bitmaps. #2643\nZStd compressor: allocate one context per thread and re-use. #2691\nSparse refactored readers: disable filtered buffer tile cache. #2651\nMoving coord_string from returning a std::string to std::basic_string_view. #2704\nSparse unordered w/ dups reader: tracking cell progress. #2668\nSparse unordered w/ dups reader: fixing var size overflow adjustment. #2713\nEnable memfs tests that were disabled by mistake #2648\nAdd helpful details to memory limit error strings. #2729\nSparse refactored readers: Better vectorization for tile bitmaps calculations. #2711\nSort ranges for unordered with duplicate reader and exit comparisons early #2736\nSparse refactored readers: better vectorization for query condition. #2737\nUse correct frag index in tiles creation for compute_result_space_tiles. #2741\nUse a single uint64 for cell counts #2749\nArray Schema name should be included with cap’n proto serialization #2696\nAdd and use blocking resource pool #2735\nMaking the allocation part of read_tiles single threaded. #2753\nSparse unordered w/ dups reader: remove invalid assert. #2778\nRead tiles: fixing preallocation size for var and validity buffers. #2781\nSparse unordered w/ dups: var buffer overflow on tile continuation fix. #2777\nDetermine non overlapping ranges automatically. #2780"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-2",
+    "href": "HISTORY.html#deprecations-2",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations\n\neliminate usage of std::iterator due to c++17 deprecation #2675"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-16",
+    "href": "HISTORY.html#bug-fixes-16",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nupgrade to blosc 1.21.0 from 1.14.x #2422\nGuard ZStd resource pool to fix initialization race #2699\nC API Add missing save_error calls in vfs_ls #2714\nUse fragment array schema for applying query condition to account for schema evolution #2698\nDon’t try to read config from uninitialize storage manager #2771"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-4",
+    "href": "HISTORY.html#api-additions-4",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC API\n\nAdd bulk point-range setter tiledb_query_add_point_ranges #2765\nAdd experimental query status details API #2770\n\n\n\nC++ API\n\nBackport Query::ctx and Query::array getters from 2.7 #2754"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-6",
+    "href": "HISTORY.html#improvements-6",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nRemoving unnecessary openssl callback function. #2705\nopenssl3 md5 deprecation mitigation #2716\nSparse refactored reader: change all_tiles_loaded_ to vector of uint8_t. #2724"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-17",
+    "href": "HISTORY.html#bug-fixes-17",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nProperly check and use legacy readers instead of refactored in serialized query. #2667\nSet array URI in cap’n proto object for compatibility with repeated opened array usage in TileDB 2.4 and older. #2676\nAdd the compute_mbr_var_func_pointer assignment in Dimension constructor #2730"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-7",
+    "href": "HISTORY.html#improvements-7",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nProvide non-AVX2 build artifact on Linux #2649\nError out when setting multiple ranges for global layout #2658"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-18",
+    "href": "HISTORY.html#bug-fixes-18",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nPatch AWS sdk for cmake 3.22 support #2639\nRemove assert on memory_used_result_tile_ranges_ in SparseUnorderedWithDupsReader #2652\nRemove tiles that are empty through being filtered with a query condition #2659\nAlways load array schemas during array open to find any new array schemas created from array schema evolution #2613"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-4",
+    "href": "HISTORY.html#new-features-4",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nDisable AVX2 for MSys2 builds used by CRAN #2614"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-8",
+    "href": "HISTORY.html#improvements-8",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nClarify error messages in check_buffers_correctness() #2580"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-19",
+    "href": "HISTORY.html#bug-fixes-19",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix schema evolution calls on all pre-TileDB 2.4 arrays #2611\nUnordered reads should be allowed for dense arrays #2608\nFix logger creation on context to be threadsafe #2625"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-5",
+    "href": "HISTORY.html#api-additions-5",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC++ API\n\nAdd C++ API for Context::last_error() #2609"
+  },
+  {
+    "objectID": "HISTORY.html#breaking-c-api-changes",
+    "href": "HISTORY.html#breaking-c-api-changes",
+    "title": "",
+    "section": "Breaking C API changes",
+    "text": "Breaking C API changes\n\nRemove deprecated c-api tiledb_array_max_buffer_size and tiledb_array_max_buffer_size_var #2579\nRemove deprecated cpp-api Array::max_buffer_elements #2579"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-5",
+    "href": "HISTORY.html#new-features-5",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nSupport upgrading an older version array to the latest version #2513\nAdd improved logging support to classes #2565"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-9",
+    "href": "HISTORY.html#improvements-9",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nReplace Buffer key_ with char key_[32] per shortcut story id 9561 #2502\nRemove support for sparse writes in dense arrays. #2504\nInitial dense refactor. #2503\nMore concise cmake output during build #2512\nSparse refactored readers: fixing looping behavior on large arrays. #2530\nUse sparse global order reader for unordered without duplicates queries. #2526\nAdd CMakeUserPresets.json to .gitignore #2534\nSparse unordered with duplicates reader: support multiple ranges. #2537\nRefactored sparse readers: tile overlap refactor. #2547\nRefactored dense reader: fixing output buffer offsets with multi-ranges. #2553\nRefactored sparse readers: serialization fixes. #2558\nRefactored sparse readers: proper lifetime for tile bitmaps. #2563\nREST scratch buffer is now owned by the query to allow reuse #2555\nRemove default constructor from Dimension #2561\nResource pool: fixing off by one error. #2567\nSplitting config for refactored readers. #2569\nSparse refactored readers: memory management unit tests. #2568\nRemoved all aspects of posix_code from Status #2571\nFixing pre-loading for tile offsets in various readers. #2570\nUse the new logger in Subarray, SubarrayPartitioner and Consolidator classes. #2574\nAdd tiledb_fragment_info_get_schema_name #2581\nEnable CMake AVX2 check #2591\nAdding logging for sparse refactored readers. #2575\nuse ROW_MAJOR read paths for unordered reads of Hilbert layout array #2551"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-20",
+    "href": "HISTORY.html#bug-fixes-20",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix the memory leak in store_array_schema in the StorageManager class. #2480\nFix curl/REST query scratch size to reset after each query is processed. #2535\nSparse refactored readers: segfault with dimension only reads. #2539\nREST array metadata writes should post with timestamps #2545\nFix bug in Arrow schema construction #2554\nReplaced auto& path with auto path #2560"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-6",
+    "href": "HISTORY.html#api-additions-6",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC API\n\nExpose MBR in Fragment Info API #2222\nAdd tiledb_fragment_info_get_array_schema_name for fetching array name used by fragment #2581\n\n\n\nC++ API\n\nExpose MBR in Fragment Info API #2222\nAdd FragmentInfo::array_schema_name for fetching array name used by fragment #2581"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-21",
+    "href": "HISTORY.html#bug-fixes-21",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix segfault in result ResultTile::coord_string and ResultTile::compute_results_sparse<char> due empty chunk buffer #2531\nFix memory corruption with empty result set in extra_element mode #2540\nREST array metadata writes should post with timestamps #2545\nBackport fixes for new Sparse Unordered with Duplicate readers from #2530 and #2538"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-7",
+    "href": "HISTORY.html#api-additions-7",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-6",
+    "href": "HISTORY.html#new-features-6",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nAdd support for empty string as query condition value. #2507"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-10",
+    "href": "HISTORY.html#improvements-10",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nSupport writing empty strings for dimensions #2501\nRefactored readers can segfault when multiple contexts are used. #2525"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-22",
+    "href": "HISTORY.html#bug-fixes-22",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix ch10191: check cell_val_num for varlen status instead of result count #2505\nDo not access variables after moving them #2522\nAdd try/catch to tiledb_ctx_alloc for exception safety #2527"
+  },
+  {
+    "objectID": "HISTORY.html#disk-format-4",
+    "href": "HISTORY.html#disk-format-4",
+    "title": "",
+    "section": "Disk Format",
+    "text": "Disk Format\n\nStore array schemas under __schema directory #2258"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-7",
+    "href": "HISTORY.html#new-features-7",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nPerform early audit for acceptable aws sdk windows path length #2260\nSupport setting via config s3 BucketCannedACL and ObjectCannedACL via SetACL() methods #2383\nUpdate spdlog dependency to 1.9.0 fixing c++17 compatibility and general improvements #1973\nAdded Azure SAS token config support and new config option #2420\nLoad all array schemas in storage manager and pass the appropriate schema pointer to each fragment #2415\nFirst revision of the Interval class #2417\nAdd tiledb_schema_evolution_t and new apis for schema evolution #2426\nAdd ArraySchemaEvolution to cpp_api and its unit tests are also added. #2462\nAdd c and cpp api functions for getting the array schema of a fragment #2468\nAdd capnp serialization and rest support for array schema evolution objects #2467"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-11",
+    "href": "HISTORY.html#improvements-11",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nencryption_key and encryption_type parameters have been added to the config; internal APIs now use these parameters to set the key. #2245\nInitial read refactor #2374\nCreate class ByteVecValue from typedef #2368\nEncapsulate spdlog.h #2396\nUpdate OSX target to 10.14 for release artifacts #2401\nAdd nullable (and unordered, nullable) support to the smoke test. #2405\nInitial sparse global order reader #2395\nRemove sm.sub_partitioner_memory_budget #2402\nUpdate the markdown documents for our new version of array schemas #2416\nSparse global order reader: no more result cell slab copy. #2411\nSparse global order reader: initial memory budget improvements. #2413\nOptimization of result cell slabs generation for sparse global order reader. #2414\nRemove selective unfiltering. #2410\nUpdated Azure Storage Lite SDK to 0.3.0 #2419\nRespect memory budget for sparse global order reader. #2425\nUse newer Azure patch for all platforms to solve missing header error #2433\nincreased diag output for differences reported by tiledb_unit (some of which may be reasonable) #2437\nAdjustments to schema evolution new attribute reads #2484\nChange Quickstart link in readthedocs/doxygen index.rst #2448\nInitial sparse unordered with duplicates reader. #2441\nAdd calls to malloc_trim on context and query destruction linux to potentially reduce idle memory usage #2443\nAdd logger internals for std::string and std::stringstream for developer convenience #2454\nAllow empty attribute writes. #2461\nRefactored readers: serialization. #2458\nAllow null data pointers for writes. #2481\nUpdate backwards compatibility arrays for 2.3.0 #2487"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-3",
+    "href": "HISTORY.html#deprecations-3",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations\n\nDeprecate all *_with_key APIs. #2245 #2308 #2412"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-23",
+    "href": "HISTORY.html#bug-fixes-23",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix to correctly apply capnproto create_symlink avoidance patch #2264\nThe bug for calculating max_size_validity for var_size attribute caused incomplete query #2266\nAlways run ASAN with matching compiler versions #2277\nFix some loop bounds that reference non-existent elements #2282\nTreating std::vector like an array; accessing an element that is not present to get its address. #2276\nFix buffer arguments in unit-curl.cc #2287\nStop loop iterations within limits of vector being initialized. #2320\nModify FindCurl_EP.cmake to work for WIN32 -EnableDebug builds #2319\nFixing test failure because of an uninitialized buffer. #2386\nChange a condition that assumed MSVC was the only compiler for WIN32 #2388\nFix defects in buffer classes: read, set_offset, advance_offset #2342\nUse CHECK_SAFE() to avoid multi-threaded conflict #2394\nUse tiledb _SAFE() items when overlapping threads may invoke code #2418\nChanges to address issues with default string dimension ranges in query #2436\nOnly set cmake policy CMP0076 if cmake version in use knows about it #2463\nFix handling curl REST request having all data in single call back #2485\nWrite queries should post start/end timestamps for REST arrays #2492"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-8",
+    "href": "HISTORY.html#api-additions-8",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nIntroduce new tiledb_experimental.h c-api header for new feature that don’t have a stabilized api yet #2453\nIntroduce new tiledb_experimental cpp-api header for new feature that don’t have a stabilized api yet #2453\n\n\nC API\n\nRefactoring [get/set]_buffer APIs #2315\nAdd tiledb_fragment_info_get_array_schema functions for getting the array schema of a fragment #2468\nAdd tiledb_schema_evolution_t and new apis for schema evolution #2426\n\n\n\nC++ API\n\nRefactoring [get/set]_buffer APIs #2399\nAdd FragmentInfo::array_schema functions for getting the array schema of a fragment #2468\nAdd ArraySchemaEvolution to cpp_api and its unit tests are also added. #2462"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-12",
+    "href": "HISTORY.html#improvements-12",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nQuery::set_layout: setting the layout on the subarray. #2451\nAllow empty attribute writes. #2461"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-24",
+    "href": "HISTORY.html#bug-fixes-24",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix deserialization of buffers in write queries with nullable var-length attributes #2442"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-13",
+    "href": "HISTORY.html#improvements-13",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nIncrease REST (TileDB Cloud) retry count from 3 to 25 to be inline with S3/GCS retry times #2421\nAvoid unnecessary est_result_size computation in must_split #2431\nUse newer Azure patch for all platforms to solve missing header error #2433"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-25",
+    "href": "HISTORY.html#bug-fixes-25",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix c-api error paths always resetting any alloced pointers to nullptr in-addition to deleting #2427"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-14",
+    "href": "HISTORY.html#improvements-14",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nSupport more env selectable options in both azure-windows.yml and azure-windows-release.yml #2384\nEnable Azure/Serialization for windows CI artifacts #2400"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-26",
+    "href": "HISTORY.html#bug-fixes-26",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nCorrect check for last offset position so that undefined memory is not accessed. #2390\nFix ch8416, failure to read array written with tiledb 2.2 via REST #2404\nFix ch7582: use the correct buffer for validity deserialization #2407"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-15",
+    "href": "HISTORY.html#improvements-15",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nUpdate bzip2 in windows build to 1.0.8 #2332\nFixing S3 build for OSX11 #2339\nFixing possible overflow in Dimension::tile_num #2265\nFixing tile extent calculations for signed integer domains #2303\nAdd support for cross compilation on OSX in superbuild #2354\nRemove curl link args for cross compilation #2359\nEnable MacOS arm64 release artifacts #2360\nAdd more stats for `compute_result_coords` path #2366\nSupport credentials refresh for AWS #2376"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-27",
+    "href": "HISTORY.html#bug-fixes-27",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixing intermittent metadata test failure #2338\nFix query condition validation check for nullable attributes with null conditions #2344\nMulti-range single dimension query fix #2347\nRewrite Dimension::overlap_ratio #2304\nFollow up fixes to floating point calculations for tile extents #2341\nFix for set_null_tile_extent_to_range #2361\nSubarray partitioner, unordered should be unordered, even for Hilbert. #2377"
+  },
+  {
+    "objectID": "HISTORY.html#disk-format-5",
+    "href": "HISTORY.html#disk-format-5",
+    "title": "",
+    "section": "Disk Format",
+    "text": "Disk Format\n\nFormat version incremented to 9. #2108"
+  },
+  {
+    "objectID": "HISTORY.html#breaking-behavior-1",
+    "href": "HISTORY.html#breaking-behavior-1",
+    "title": "",
+    "section": "Breaking behavior",
+    "text": "Breaking behavior\n\nThe setting of `sm.read_range_oob` now defaults to `warn`, allowing queries to run with bounded ranges that errored before. #2176\nRemoves TBB as an optional dependency #2181"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-8",
+    "href": "HISTORY.html#new-features-8",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nSupport TILEDB_DATETIME_{SEC,MS,US,NS} in arrow_io_impl.h #2228\nAdds support for filtering query results on attribute values #2141\nAdding support for time datatype dimension and attribute #2140\nAdd support for serialization of config objects #2164\nAdd C and C++ examples to the examples/ directory for the tiledb_fragment_info_t APIs. #2160\nsupporting serialization (using capnproto) build on windows #2100\nConfig option “vfs.s3.sse” for S3 server-side encryption support #2130\nName attribute/dimension files by index. This is fragment-specific and updates the format version to version 9. #2107\nSmoke Test, remove nullable structs from global namespace. #2078"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-16",
+    "href": "HISTORY.html#improvements-16",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nreplace ReadFromOffset with ReadRange in GCS::read() to avoid excess gcs egress traffic #2307\nHilbert partitioning fixes #2269\nStats refactor #2267\nImprove Cap’n Proto cmake setup for system installations #2263\nRuntime check for minimum validity buffer size #2261\nEnable partial vacuuming when vacuuming with timestamps #2251\nConsolidation: de-dupe FragmentInfo #2250\nConsolidation: consider non empty domain before start timestamp #2248\nAdd size details to s3 read error #2249\nConsolidation: do not re-open array for each fragment #2243\nSupport back compat writes #2230\nSerialization support for query conditions #2240\nMake SubarrayPartitioner’s member functions to return Status after calling Subarray::get_range_num. #2235\nUpdate bzip2 super build version to 1.0.8 to address CVE-2019-12900 in libbzip2 #2233\nTimestamp start and end for vacuuming and consolidation #2227\nFix memory leaks reported on ASAN when running with leak-detection. #2223\nUse relative paths in consolidated fragment metadata #2215\nOptimize Subarray::compute_relevant_fragments #2216\nAWS S3: improve is_dir #2209\nAdd nullable string to nullable attribute example #2212\nAWS S3: adding option to skip Aws::InitAPI #2204\nAdded additional stats for subarrays and subarray partitioners #2200\nIntroduces config parameter “sm.skip_est_size_partitioning” #2203\nAdd config to query serialization. #2177\nConsolidation support for nullable attributes #2196\nAdjust unit tests to reduce memory leaks inside the tests. #2179\nReduces memory usage in multi-range range reads #2165\nAdd config option `sm.read_range_oob` to toggle bounding read ranges to domain or erroring #2162\nWindows msys2 build artifacts are no longer uploaded #2159\nAdd internal log functions to log at different log levels #2161\nParallelize Writer::filter_tiles #2156\nAdded config option “vfs.gcs.request_timeout_ms” #2148\nImprove fragment info loading by parallelizing fragment_size requests #2143\nAllow open array stats to be printed without read query #2131\nCleanup the GHA CI scripts - put common code into external shell scripts. #2124\nReduced memory consumption in the read path for multi-range reads. #2118\nThe latest version of dev was leaving behind a test/empty_string3/. This ensures that the directory is removed when make check is run. #2113\nMigrating AZP CI to GA #2111\nCache non_empty_domain for REST arrays like all other arrays #2105\nAdd additional stats printing to breakdown read state initialization timings #2095\nPlaces the in-memory filesystem under unit test #1961\nAdds a Github Action to automate the HISTORY.md #2075\nChange printfs in C++ examples to cout, edit C print statements to fix format warnings #2226"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-4",
+    "href": "HISTORY.html#deprecations-4",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations\n\nThe following APIs have been deprecated: tiledb_array_open_at, tiledb_array_open_at_with_key, tiledb_array_reopen_at. #2142"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-28",
+    "href": "HISTORY.html#bug-fixes-28",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix a segfault on VFS::ls for the in-memory filesystem #2255\nFix rare read corruption in S3 #2253\nUpdate some union initializers to use strict syntax #2242\nFix race within S3::init_client #2247\nExpand accepted windows URIs. #2237\nWrite fix for unordered writes on nullable, fixed attributes. #2241\nFix tile extent to be reported as domain extent for sparse arrays with Hilbert ordering #2231\nDo not consider option sm.read_range_oob for set_subarray() on Write queries #2211\nChange avoiding generation of multiple, concatenated, subarray flattened data. #2190\nChange mutex from basic to recursive #2180\nFixes a memory leak in the S3 read path #2189\nFixes a potential memory leak in the filter pipeline #2185\nFixes misc memory leaks in the unit tests #2183\nFix memory leak of `tiledb_config_t` in error path of `tiledb_config_alloc`. #2178\nFix check for null pointer in query deserialization #2163\nFixes a potential crash when retrying incomplete reads #2137\nFixes a potential crash when opening an array with consolidated fragment metadata #2135\nCorrected a bug where sparse cells may be incorrectly returned using string dimensions. #2125\nFix segfault in serialized queries when partition is unsplittable #2120\nAlways use original buffer size in serialized read queries serverside. #2115\nFix an edge-case where a read query may hang on array with string dimensions #2089"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-9",
+    "href": "HISTORY.html#api-additions-9",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC API\n\nAdded tiledb_array_set_open_timestamp_start and tiledb_array_get_open_timestamp_start #2285\nAdded tiledb_array_set_open_timestamp_end and tiledb_array_get_open_timestamp_end #2285\nAddition of tiledb_array_set_config to directly assign a config to an array. #2142\ntiledb_query_get_array now returns a deep-copy #2184\nAdded `tiledb_serialize_config` and `tiledb_deserialize_config` #2164\nAdd new api, tiledb_query_get_config to get a query’s config. #2167\nRemoves non-default parameter in “tiledb_config_unset”. #2099\n\n\n\nC++ API\n\nAdded Array::set_open_timestamp_start and Array::open_timestamp_start #2285\nAdded Array::set_open_timestamp_end and Array::open_timestamp_end #2285\nadd Query::result_buffer_elements_nullable support for dims #2238\nAddition of tiledb_array_set_config to directly assign a config to an array. #2142\nAdd new api, Query.config() to get a query’s config. #2167\nRemoves non-default parameter in “Config::unset”. #2099\nAdd support for a string-typed, variable-sized, nullable attribute in the C++ API. #2090"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-29",
+    "href": "HISTORY.html#bug-fixes-29",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix rare read corruption in S3 #2254\nWrite fix for unordered writes on nullable, fixed attributes #2241"
+  },
+  {
+    "objectID": "HISTORY.html#disk-format-6",
+    "href": "HISTORY.html#disk-format-6",
+    "title": "",
+    "section": "Disk Format",
+    "text": "Disk Format"
+  },
+  {
+    "objectID": "HISTORY.html#breaking-c-api-changes-1",
+    "href": "HISTORY.html#breaking-c-api-changes-1",
+    "title": "",
+    "section": "Breaking C API changes",
+    "text": "Breaking C API changes"
+  },
+  {
+    "objectID": "HISTORY.html#breaking-behavior-2",
+    "href": "HISTORY.html#breaking-behavior-2",
+    "title": "",
+    "section": "Breaking behavior",
+    "text": "Breaking behavior"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-9",
+    "href": "HISTORY.html#new-features-9",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nSupport TILEDB_DATETIME_{SEC,MS,US,NS} in arrow_io_impl.h #2229\nAdd support for serialization of config objects #2164\nAdd support for serialization of query config #2177"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-17",
+    "href": "HISTORY.html#improvements-17",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nOptimize Subarray::compute_relevant_fragments #2218\nReduces memory usage in multi-range range reads #2165\nAdd config option sm.read_range_oob to toggle bounding read ranges to domain or erroring #2162\nUpdates bzip2 to v1.0.8 on Linux/OSX #2233"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-5",
+    "href": "HISTORY.html#deprecations-5",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-30",
+    "href": "HISTORY.html#bug-fixes-30",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixes a potential memory leak in the filter pipeline #2185\nFixes misc memory leaks in the unit tests #2183\nFix memory leak of tiledb_config_t in error path of tiledb_config_alloc. #2178"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-10",
+    "href": "HISTORY.html#api-additions-10",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC API\n\ntiledb_query_get_array now returns a deep-copy #2188\nAdd new api,tiledb_query_get_config to get a query’s config. #2167\nAdded tiledb_serialize_config and tiledb_deserialize_config #2164\n\n\n\nC++ API\n\nAdd new api, Query.config() to get a query’s config. #2167"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-18",
+    "href": "HISTORY.html#improvements-18",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAdded config option vfs.gcs.request_timeout_ms #2148\nImprove fragment info loading by parallelizing fragment_size requests #2143\nApply ‘var_offsets.extra_element’ mode to string dimension offsets too #2145"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-31",
+    "href": "HISTORY.html#bug-fixes-31",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixes a potential crash when retrying incomplete reads #2137"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-10",
+    "href": "HISTORY.html#new-features-10",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nConfig option vfs.s3.sse for S3 server-side encryption support #2130"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-19",
+    "href": "HISTORY.html#improvements-19",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nReduced memory consumption in the read path for multi-range reads. #2118\nCache non_empty_domain for REST arrays like all other arrays #2105\nAdd additional timer statistics for openning array for reads #2027\nAllow open array stats to be printed without read query #2131"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-32",
+    "href": "HISTORY.html#bug-fixes-32",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixes a potential crash when opening an array with consolidated fragment metadata #2135\nCorrected a bug where sparse cells may be incorrectly returned using string dimensions. #2125\nAlways use original buffer size in serialized read queries serverside. #2115\nFix segfault in serialized queries when partition is unsplittable #2120"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-20",
+    "href": "HISTORY.html#improvements-20",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAdd additional stats printing to breakdown read state initialization timings #2095\nImprove GCS multipart locking #2087"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-33",
+    "href": "HISTORY.html#bug-fixes-33",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix an edge-case where a read query may hang on array with string dimensions #2089\nFix mutex locking bugs on Windows due to unlocking on different thread and missing task join #2077\n\n\nC++ API\n\nAdd support for a string-typed, variable-sized, nullable attribute in the C++ API. #2090"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-11",
+    "href": "HISTORY.html#new-features-11",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nAdd support for retrying REST requests that fail with certain http status code such as 503 #2060"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-21",
+    "href": "HISTORY.html#improvements-21",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nParallelize across attributes when closing a write #2048\nSupport for dimension/attribute names that contain commonly reserved filesystem characters #2047\nRemove unnecessary is_dir in FragmentMetadata::store, this can increase performance for s3 writes #2050\nImprove S3 multipart locking #2055\nParallize loading fragments and array schema #2061"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-12",
+    "href": "HISTORY.html#new-features-12",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nREST client support for caching redirects #1919"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-22",
+    "href": "HISTORY.html#improvements-22",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAdd rest.creation_access_credentials_name configuration parameter #2025"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-34",
+    "href": "HISTORY.html#bug-fixes-34",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixed ArrowAdapter export of string arrays with 64-bit offsets #2037\nFixed ArrowAdapter export of TILEDB_CHAR arrays with 64-bit offsets #2039"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-11",
+    "href": "HISTORY.html#api-additions-11",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC API\n\nAdd tiledb_query_set_config to apply a tiledb_config_t to query-level parameters #2030\n\n\n\nC++ API\n\nAdded Query::set_config to apply a tiledb::Config to query-level parameters #2030"
+  },
+  {
+    "objectID": "HISTORY.html#breaking-behavior-3",
+    "href": "HISTORY.html#breaking-behavior-3",
+    "title": "",
+    "section": "Breaking behavior",
+    "text": "Breaking behavior\n\nThe tile extent can now be set to null, in which case internally TileDB sets the extent to the dimension domain range. #1880\nThe C++ API std::pair<uint64_t, uint64_t> Query::est_result_size_var has been changed to 1) a return type of std::array<uint64_t, 2> and 2) returns the offsets as a size in bytes rather than elements. #1946"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-13",
+    "href": "HISTORY.html#new-features-13",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nSupport for nullable attributes. #1895 #1938 #1948 #1945\nSupport for Hilbert order sorting for sparse arrays. #1880\nSupport for AWS S3 “AssumeRole” temporary credentials #1882\nSupport for zero-copy import/export with the Apache Arrow adapter #2001\nExperimental support for an in-memory backend used with bootstrap option “–enable-memfs” #1873\nSupport for element offsets when reading var-sized attributes. [#1897] (https://github.com/TileDB-Inc/TileDB/pull/1897)\nSupport for an extra offset indicating the size of the returned data when reading var-sized attributes. [#1932] (https://github.com/TileDB-Inc/TileDB/pull/1932)\nSupport for 32-bit offsets when reading var-sized attributes. [#1950] (https://github.com/TileDB-Inc/TileDB/pull/1950)"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-23",
+    "href": "HISTORY.html#improvements-23",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nOptimized string dimension performance.\nAdded functionality to get fragment information from an array. #1900\nPrevented unnecessary sorting when (1) there is a single fragment and (i) either the query layout is global order, or (ii) the number of dimensions is 1, and (2) when there is a single range for which the result coordinates have already been sorted. #1880\nAdded extra stats for consolidation. #1880\nDisabled checking if cells are written in global order when consolidating, as it was redundant (the cells are already being read in global order during consolidation). #1880\nOptimize consolidated fragment metadata loading #1975"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-35",
+    "href": "HISTORY.html#bug-fixes-35",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix tiledb_dimension_alloc returning a non-null pointer after error [#1959]((https://github.com/TileDB-Inc/TileDB/pull/1859)\nFixed issue with string dimensions and non-set subarray (which implies spanning the whole domain). There was an assertion being triggered. Now it works properly.\nFixed bug when checking the dimension domain for infinity or NaN values. #1880\nFixed bug with string dimension partitioning. #1880"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-12",
+    "href": "HISTORY.html#api-additions-12",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC API\n\nAdded functions for getting fragment information. #1900\nAdded APIs for getting and setting ranges of queries using a dimension name. #1920\n\n\n\nC++ API\n\nAdded class FragmentInfo and functions for getting fragment information. #1900\nAdded function Dimension::create that allows not setting a space tile extent. #1880\nAdded APIs for getting and setting ranges of queries using a dimension name. #1920\nChanged std::pair<uint64_t, uint64_t> Query::est_result_size_var to std::array<uint64_t, 2> Query::est_result_size_var. Additionally, the size estimate for the offsets have been changed from elements to bytes. #1946"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-36",
+    "href": "HISTORY.html#bug-fixes-36",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix deadlock in ThreadPool::wait_or_work #1994\nFix “[TileDB::ChunkedBuffer] Error: Cannot init chunk buffers; Total size must be non-zero.” in read path #1992"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-24",
+    "href": "HISTORY.html#improvements-24",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nOptimize consolidated fragment metadata loading #1975\nOptimize Reader::load_tile_offsets for loading only relevant fragments #1976 #1983\nOptimize locking in FragmentMetadata::load_tile_offsets and FragmentMetadata::load_tile_var_offsets #1979\nExit early in Reader::copy_coordinates/Reader::copy_attribute_values when no results #1984"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-37",
+    "href": "HISTORY.html#bug-fixes-37",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix segfault in optimized compute_results_sparse<char> #1969\nFix GCS “Error:: Read object failed”#1966\nFix segfault in ResultTile::str_coords_intersects #1981"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-25",
+    "href": "HISTORY.html#improvements-25",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nOptimize ResultTile::compute_results_sparse<char> resulting in significant performance increases in certain cases with string dimensions #1963"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-26",
+    "href": "HISTORY.html#improvements-26",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nOptimized string dimension performance. #1922"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-38",
+    "href": "HISTORY.html#bug-fixes-38",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nUpdated the AWS SDK to v1.8.84 to fix an uncaught exception when using S3 #1899TileDB-Py #409\nFixed bug where a read on a sparse array may return duplicate values. #1905\nFixed bug where an array could not be opened if created with an array schema from an older version #1889\nFix compilation of TileDB Tools #1926"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-39",
+    "href": "HISTORY.html#bug-fixes-39",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix ArraySchema not write protecting fill values for only schema version 6 or newer #1868\nFix segfault that may occur in the VFS read-ahead cache #1871"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-40",
+    "href": "HISTORY.html#bug-fixes-40",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nThe result size estimatation routines will no longer return non-zero sizes that can not contain a single value. #1849\nFix serialization of dense writes that use ranges #1860\nFixed a crash from an unhandled SIGPIPE signal that may raise when using S3 #1856"
+  },
+  {
+    "objectID": "HISTORY.html#breaking-behavior-4",
+    "href": "HISTORY.html#breaking-behavior-4",
+    "title": "",
+    "section": "Breaking behavior",
+    "text": "Breaking behavior\n\nEmpty dense arrays now return cells with fill values. Also the result estimator is adjusted to work properly with this new behavior."
+  },
+  {
+    "objectID": "HISTORY.html#new-features-14",
+    "href": "HISTORY.html#new-features-14",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nAdded configuration option “sm.compute_concurrency_level” #1766\nAdded configuration option “sm.io_concurrency_level” #1766\nAdded configuration option “sm.sub_partitioner_memory_budget” #1729\nAdded configuration option “vfs.read_ahead_size” #1785\nAdded configuration option “vfs.read_ahead_cache_size” #1785\nAdded support for getting/setting Apache Arrow buffers from a Query #1816"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-27",
+    "href": "HISTORY.html#improvements-27",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nSource built curl only need HTTP support #1712\nAWS SDK version bumped to 1.8.6 #1718\nSplit posix permissions into files and folers permissions #1719\nSupport seeking for CURL to allow redirects for posting to REST #1728\nChanged default setting for vfs.s3.proxy_scheme from https to http to match common usage needs #1759\nEnabled parallelization with native system threads when TBB is disabled #1760\nSubarray ranges will be automatically coalesced as they are added #1755\nUpdate GCS SDK to v1.16.0 to fixes multiple bugs reported #1768\nRead-ahead cache for cloud-storage backends #1785\nAllow multiple empty values at the end of a variable-length write #1805\nBuild system will raise overridable error if important paths contain regex character #1808\nLazily create AWS ClientConfiguration to avoid slow context creations for non S3 usage after the AWS SDK version bump #1821\nMoved Status, ThreadPool, and Logger classes from folder tiledb/sm to tiledb/common #1843"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-6",
+    "href": "HISTORY.html#deprecations-6",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations\n\nDeprecated config option “sm.num_async_threads” #1766\nDeprecated config option “sm.num_reader_threads” #1766\nDeprecated config option “sm.num_writer_threads” #1766\nDeprecated config option “vfs.num_threads” #1766\nSupport for MacOS older than 10.13 is being dropped when using the AWS SDK. Prebuilt Binaries now target 10.13 #1753\nUse of Intel’s Thread Building Blocks (TBB) will be discontinued in the future. It is now disabled by default #1762\nNo longer building release artifacts with Intel’s Thread Building Blocks (TBB) enabled #1825"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-41",
+    "href": "HISTORY.html#bug-fixes-41",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixed bug in setting a fill value for var-sized attributes.\nFixed a bug where the cpp headers would always produce compile-time warnings about using the deprecated c-api “tiledb_coords()” #1765\nOnly serialize the Array URI in the array schema client side. #1806\nFix C++ api consolidate_metadata function uses incorrect config #1841 #1844"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-13",
+    "href": "HISTORY.html#api-additions-13",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC API\n\nAdded functions tiledb_attribute_{set,get}_fill_value to get/set default fill values\n\n\n\nC++ API\n\nAdded functions Attribute::{set,get}_fill_value to get/set default fill values"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-28",
+    "href": "HISTORY.html#improvements-28",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nLazy initialization for GCS backend #1752\nAdd additional release artifacts which include disabling TBB #1753"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-42",
+    "href": "HISTORY.html#bug-fixes-42",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix crash during GCS backend initialization due to upstream bug. #1752"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-29",
+    "href": "HISTORY.html#improvements-29",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nVarious performance optimizations in the read path. #1689 #1692 #1693 #1694 #1695\nGoogle Cloud SDK bumped to 1.14. #1687, #1742"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-43",
+    "href": "HISTORY.html#bug-fixes-43",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixed error “Error: Out of bounds read to internal chunk buffer of size 65536” that may occur when writing var-sized attributes. #1732\nFixed error “Error: Chunk read error; chunk unallocated error” that may occur when reading arrays with more than one dimension. #1736\nFix Catch2 detection of system install #1733\nUse libtiledb-detected certificate path for Google Cloud Storage, for better linux binary/wheel portability. #1741\nFixed a small memory leak when opening arrays. #1690\nFixed an overflow in the partioning path that may result in a hang or poor read performance. #1725#1707\nFix compilation on gcc 10.1 for blosc #1740\nFixed a rare hang in the usage of load_tile_var_sizes. #1748"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-30",
+    "href": "HISTORY.html#improvements-30",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAdd new config option vfs.file.posix_permissions. #1710"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-44",
+    "href": "HISTORY.html#bug-fixes-44",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nReturn possible env config variables in config iter #1714"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-31",
+    "href": "HISTORY.html#improvements-31",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nDon’t include curl’s linking to libz, avoids build issue with double libz linkage #1682"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-32",
+    "href": "HISTORY.html#improvements-32",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nFix typo in GCS cmake file for superbuild #1665\nDon’t error on GCS client init failure #1667\nDon’t include curl’s linking to ssl, avoids build issue on fresh macos 10.14/10.15 installs #1671\nHandle ubuntu’s cap’n proto package not providing cmake targets #1659"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-45",
+    "href": "HISTORY.html#bug-fixes-45",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nThe C++ Attribute::create API now correctly builds from an STL array #1670\nAllow opening arrays with read-only permission on posix filesystems #1676\nFixed build issue caused by passing std::string to an Aws method #1678"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-33",
+    "href": "HISTORY.html#improvements-33",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAdd robust retries for S3 SLOW_DOWN errors #1651\nImprove GCS build process #1655\nAdd generation of pkg-config file #1656\nS3 should use HEADObject for file size #1657\nImprovements to stats #1652\nAdd artifacts to releases from CI #1663"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-46",
+    "href": "HISTORY.html#bug-fixes-46",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nRemove to unneeded semicolons noticed by the -pedantic flag #1653\nFix cases were TILEDB_FORCE_ALL_DEPS picked up system builds #1654\nAllow errors to be show in cmake super build #1658\nProperly check vacuum files and limit fragment loading #1661\nFix edge case where consolidated but unvacuumed array can have coordinates report twice #1662"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-14",
+    "href": "HISTORY.html#api-additions-14",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nAdd c-api tiledb_stats_raw_dump[_str] function for raw stats dump #1660\nAdd c++-api Stats::raw_dump function for raw stats dump #1660"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-47",
+    "href": "HISTORY.html#bug-fixes-47",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix hang on open array v1.6 #1645"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-34",
+    "href": "HISTORY.html#improvements-34",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAllow empty values for variable length attributes #1646"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-35",
+    "href": "HISTORY.html#improvements-35",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nRemove deprecated max buffer size APIs from unit tests #1625\nRemove deprecated max buffer API from examples #1626\nRemove zipped coords from examples #1632\nAllow AWSSDK_ROOT_DIR override #1637"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-7",
+    "href": "HISTORY.html#deprecations-7",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-48",
+    "href": "HISTORY.html#bug-fixes-48",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nAllow setting zipped coords multiple times #1627\nFix overflow in check_tile_extent #1635\nFix C++ Dimension API {tile_extent,domain}_to_str. #1638\nRemove xlock in FragmentMetadata::store #1639"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-15",
+    "href": "HISTORY.html#api-additions-15",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions"
+  },
+  {
+    "objectID": "HISTORY.html#disk-format-7",
+    "href": "HISTORY.html#disk-format-7",
+    "title": "",
+    "section": "Disk Format",
+    "text": "Disk Format\n\nRemoved file __coords.tdb that stored the zipped coordinates in sparse fragments\nNow storing the coordinate tiles on each dimension in separate files\nChanged fragment name format from __t1_t2_uuid to __t1_t2_uuid_<format_version>. That was necessary for backwards compatibility"
+  },
+  {
+    "objectID": "HISTORY.html#breaking-c-api-changes-2",
+    "href": "HISTORY.html#breaking-c-api-changes-2",
+    "title": "",
+    "section": "Breaking C API changes",
+    "text": "Breaking C API changes\n\nChanged domain input of tiledb_dimension_get_domain to const void** (from void**).\nChanged tile_extent input of tiledb_dimension_get_tile_extent to const void** (from void**).\nAnonymous attribute and dimensions (i.e., empty strings for attribute/dimension names) is no longer supported. This is because now the user can set separate dimension buffers to the query and, therefore, supporting anonymous attributes and dimensions creates ambiguity in the current API."
+  },
+  {
+    "objectID": "HISTORY.html#breaking-behavior-5",
+    "href": "HISTORY.html#breaking-behavior-5",
+    "title": "",
+    "section": "Breaking behavior",
+    "text": "Breaking behavior\n\nNow the TileDB consolidation process does not clean up the fragments or array metadata it consolidates. This is (i) to avoid exclusively locking at any point during consolidation, and (ii) to enable fine-grained time traveling even in the presence of consolidated fragments or array metadata. Instead, we added a special vacuuming API which explicitly cleans up consolidated fragments or array metadata (with appropriate configuration parameters). The vacuuming functions briefly exclusively lock the array."
+  },
+  {
+    "objectID": "HISTORY.html#new-features-15",
+    "href": "HISTORY.html#new-features-15",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nAdded string dimension support (currently only TILEDB_STRING_ASCII).\nThe user can now set separate coordinate buffers to the query. Also any subset of the dimensions is supported.\nThe user can set separate filter lists per dimension, as well as the number of values per coordinate."
+  },
+  {
+    "objectID": "HISTORY.html#improvements-36",
+    "href": "HISTORY.html#improvements-36",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAdded support for AWS Security Token Service session tokens via configuration option vfs.s3.session_token. #1472\nAdded support for indicating zero-value metadata by returning value_num == 1 from the _get_metadatata and Array::get_metadata APIs #1438 (this is a non-breaking change, as the documented return of value == nullptr to indicate missing keys does not change)`\nUser can set coordinate buffers separately for write queries.\nAdded option to enable duplicate coordinates for sparse arrays #1504\nAdded support for writing at a timestamp by allowing opening an array at a timestamp (previously disabled).\nAdded special files with the same name as a fragment directory and an added suffix “.ok”, to indicate a committed fragment. This improved the performance of opening an array on object stores significantly, as it avoids an extra REST request per fragment.\nAdded functionality to consolidation, which allows consolidating the fragment metadata footers in a single file by toggling a new config parameter. This leads to a huge performance boost when opening an array, as it avoids fetching a separate footer per fragment from storage.\nVarious reader parallelizations that boosted read performance significantly.\nConfiguration parameters can now be read from environmental variables. vfs.s3.session_token -> TILEDB_VFS_S3_SESSION_TOKEN. The prefix of TILEDB_ is configurable via config.env_var_prefix. #1600"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-8",
+    "href": "HISTORY.html#deprecations-8",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations\n\nThe TileDB tiledb_array_consolidate_metadata and tiledb_array_consolidate_metadata_with_key C-API routines have been deprecated and will be removed entirely in a future release. The tiledb_array_consolidate and tiledb_array_consolidate_with_key routines achieve the same behavior when the “sm.consolidation.mode” parameter of the configuration argument is equivalent to “array_meta”.\nThe TileDB Array::consolidate_metadata CPP-API routine has been deprecated and will be removed entirely in a future release. The Array::consolidate routine achieves the same behavior when the “sm.consolidation.mode” parameter of the configuration argument is equivalent to “array_meta”."
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-49",
+    "href": "HISTORY.html#bug-fixes-49",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixed bug in dense consolidation when the array domain is not divisible by the tile extents."
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-16",
+    "href": "HISTORY.html#api-additions-16",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nAdded C API function tiledb_array_has_metadata_key and C++ API function Array::has_metadata_key #1439\nAdded C API functions tiledb_array_schema_{set,get}_allows_dups and C++ API functions Array::set_allows_dups and Array::allows_dups\nAdded C API functions tiledb_dimension_{set,get}_filter_list and tiledb_dimension_{set,get}_cell_val_num\nAdded C API functions tiledb_array_get_non_empty_domain_from_{index,name}\nAdded C API function tiledb_array_vacuum\nAdded C API functions tiledb_array_get_non_empty_domain_var_size_from_{index,name}\nAdded C API functions tiledb_array_get_non_empty_domain_var_from_{index,name}\nAdded C API function tiledb_array_add_range_var\nAdded C API function tiledb_array_get_range_var_size\nAdded C API function tiledb_array_get_range_var\nAdded C++ API functions Dimension::set_cell_val_num and Dimension::cell_val_num.\nAdded C++ API functions Dimension::set_filter_list and Dimension::filter_list.\nAdded C++ API functions Array::non_empty_domain(unsigned idx) and Array::non_empty_domain(const std::string& name).\nAdded C++ API functions Domain::dimension(unsigned idx) and Domain::dimension(const std::string& name).\nAdded C++ API function Array::load_schema(ctx, uri) and Array::load_schema(ctx, uri, key_type, key, key_len).\nAdded C++ API function Array::vacuum.\nAdded C++ API functions Array::non_empty_domain_var (from index and name).\nAdded C++ API function add_range with string inputs.\nAdded C++ API function range with string outputs.\nAdded C++ API functions Array and Context constructors which take a c_api object to wrap. #1623"
+  },
+  {
+    "objectID": "HISTORY.html#api-removals",
+    "href": "HISTORY.html#api-removals",
+    "title": "",
+    "section": "API removals",
+    "text": "API removals"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-50",
+    "href": "HISTORY.html#bug-fixes-50",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix expanded domain consolidation #1572"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-16",
+    "href": "HISTORY.html#new-features-16",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nAdd MD5 and SHA256 checksum filters #1515"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-37",
+    "href": "HISTORY.html#improvements-37",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAdded support for AWS Security Token Service session tokens via configuration option vfs.s3.session_token. #1472"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-9",
+    "href": "HISTORY.html#deprecations-9",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-51",
+    "href": "HISTORY.html#bug-fixes-51",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix new SHA1 for intel TBB in superbuild due to change in repository name #1551"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-17",
+    "href": "HISTORY.html#api-additions-17",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions"
+  },
+  {
+    "objectID": "HISTORY.html#api-removals-1",
+    "href": "HISTORY.html#api-removals-1",
+    "title": "",
+    "section": "API removals",
+    "text": "API removals"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-17",
+    "href": "HISTORY.html#new-features-17",
+    "title": "",
+    "section": "New features",
+    "text": "New features"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-38",
+    "href": "HISTORY.html#improvements-38",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAvoid useless serialization of Array Metadata on close #1485\nUpdate CONTRIBUTING and Code of Conduct #1487"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-10",
+    "href": "HISTORY.html#deprecations-10",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-52",
+    "href": "HISTORY.html#bug-fixes-52",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix deadlock in writes of TileDB Cloud Arrays #1486"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-18",
+    "href": "HISTORY.html#api-additions-18",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions"
+  },
+  {
+    "objectID": "HISTORY.html#api-removals-2",
+    "href": "HISTORY.html#api-removals-2",
+    "title": "",
+    "section": "API removals",
+    "text": "API removals"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-18",
+    "href": "HISTORY.html#new-features-18",
+    "title": "",
+    "section": "New features",
+    "text": "New features"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-39",
+    "href": "HISTORY.html#improvements-39",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nREST requests now will use http compression if available #1479"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-11",
+    "href": "HISTORY.html#deprecations-11",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-53",
+    "href": "HISTORY.html#bug-fixes-53",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-19",
+    "href": "HISTORY.html#api-additions-19",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions"
+  },
+  {
+    "objectID": "HISTORY.html#api-removals-3",
+    "href": "HISTORY.html#api-removals-3",
+    "title": "",
+    "section": "API removals",
+    "text": "API removals"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-19",
+    "href": "HISTORY.html#new-features-19",
+    "title": "",
+    "section": "New features",
+    "text": "New features"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-40",
+    "href": "HISTORY.html#improvements-40",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nArray metadata fetching is now lazy (fetch on use) to improve array open performance #1466\nlibtiledb on Linux will no longer re-export symbols from statically linked dependencies #1461"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-12",
+    "href": "HISTORY.html#deprecations-12",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-54",
+    "href": "HISTORY.html#bug-fixes-54",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-20",
+    "href": "HISTORY.html#api-additions-20",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions"
+  },
+  {
+    "objectID": "HISTORY.html#api-removals-4",
+    "href": "HISTORY.html#api-removals-4",
+    "title": "",
+    "section": "API removals",
+    "text": "API removals"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-20",
+    "href": "HISTORY.html#new-features-20",
+    "title": "",
+    "section": "New features",
+    "text": "New features"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-41",
+    "href": "HISTORY.html#improvements-41",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAdded support for getting/setting array metadata via REST. #1449"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-13",
+    "href": "HISTORY.html#deprecations-13",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-55",
+    "href": "HISTORY.html#bug-fixes-55",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixed several REST query and deserialization bugs. #1433, #1437, #1440, #1444\nFixed bug in setting certificate path on Linux for the REST client. #1452"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-21",
+    "href": "HISTORY.html#api-additions-21",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions"
+  },
+  {
+    "objectID": "HISTORY.html#api-removals-5",
+    "href": "HISTORY.html#api-removals-5",
+    "title": "",
+    "section": "API removals",
+    "text": "API removals"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-21",
+    "href": "HISTORY.html#new-features-21",
+    "title": "",
+    "section": "New features",
+    "text": "New features"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-42",
+    "href": "HISTORY.html#improvements-42",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-14",
+    "href": "HISTORY.html#deprecations-14",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-56",
+    "href": "HISTORY.html#bug-fixes-56",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixed bug in dense consolidation when the array domain is not divisible by the tile extents. #1442"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-22",
+    "href": "HISTORY.html#api-additions-22",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nAdded C API function tiledb_array_has_metadata_key and C++ API function Array::has_metadata_key #1439\nAdded support for indicating zero-value metadata by returning value_num == 1 from the _get_metadatata and Array::get_metadata APIs #1438 (this is a non-breaking change, as the documented return of value == nullptr to indicate missing keys does not change)`"
+  },
+  {
+    "objectID": "HISTORY.html#api-removals-6",
+    "href": "HISTORY.html#api-removals-6",
+    "title": "",
+    "section": "API removals",
+    "text": "API removals"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-22",
+    "href": "HISTORY.html#new-features-22",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nAdded array metadata. #1377"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-43",
+    "href": "HISTORY.html#improvements-43",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAllow writes to older-versioned arrays. #1417\nAdded overseen optimization to check the fragment non-empty domain before loading the fragment R-Tree. #1395\nUse major.minor for SOVERSION instead of full major.minor.rev. #1398"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-57",
+    "href": "HISTORY.html#bug-fixes-57",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nNumerous query serialization bugfixes and performance improvements.\nNumerous tweaks to build strategy for libcurl dependency.\nFix crash in StorageManager destructor when GlobalState init fails. #1393\nFix Windows destructor crash due to missing unlock (mutex/refcount). #1400\nNormalize attribute names in multi-range size estimation C API. #1408"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-23",
+    "href": "HISTORY.html#api-additions-23",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nAdded C API functions tiledb_query_get_{fragment_num,fragment_uri,fragment_timestamp_range}. #1396\nAdded C++ API functions Query::{fragment_num,fragment_uri,fragment_timestamp_range}. #1396\nAdded C API function tiledb_ctx_set_tag and C++ API Context::set_tag(). #1406\nAdd config support for S3 ca_path, ca_file, and verify_ssl options. #1376"
+  },
+  {
+    "objectID": "HISTORY.html#api-removals-7",
+    "href": "HISTORY.html#api-removals-7",
+    "title": "",
+    "section": "API removals",
+    "text": "API removals\n\nRemoved key-value functionality, tiledb_kv_* functions from the C API and Map and MapSchema from the C++ API. #1415"
+  },
+  {
+    "objectID": "HISTORY.html#additions",
+    "href": "HISTORY.html#additions",
+    "title": "",
+    "section": "Additions",
+    "text": "Additions\n\nAdded config param vfs.s3.logging_level. #1236"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-58",
+    "href": "HISTORY.html#bug-fixes-58",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixed FP slice point-query with small (eps) gap coordinates. #1384\nFixed several unused variable warnings in unit tests. #1385\nFixed missing include in subarray.h. #1374\nFixed missing virtual destructor in C++ API schema.h. #1391\nFixed C++ API build error with clang regarding deleted default constructors. #1394"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-59",
+    "href": "HISTORY.html#bug-fixes-59",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix incorrect version number listed in tiledb_version.h header file and doc page.\nFix issue with release notes from 1.6.0 release. #1359"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-60",
+    "href": "HISTORY.html#bug-fixes-60",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nBug fix in incomplete query behavior. #1358"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-23",
+    "href": "HISTORY.html#new-features-23",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nAdded support for multi-range reads (non-continuous range slicing) for dense and sparse arrays.\nAdded support for datetime domains and attributes."
+  },
+  {
+    "objectID": "HISTORY.html#improvements-44",
+    "href": "HISTORY.html#improvements-44",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nRemoved fragment metadata caching. #1197\nRemoved array schema caching. #1197\nThe tile MBR in the in-memory fragment metadata are organized into an R-Tree, speeding up tile overlap operations during subarray reads. #1197\nImproved encryption key validation process when opening already open arrays. Fixes issue with indefinite growing of the URI to encryption key mapping in StorageManager (the mapping is no longer needed). #1197\nImproved dense write performance in some benchmarks. #1229\nSupport for direct writes without using the S3 multi-part API. Allows writing to Google Cloud Storage S3 compatibility mode. #1219\nRemoved 256-character length limit from URIs. #1288\nDense reads and writes now always require a subarray to be set, to avoid confusion. #1320\nAdded query and array schema serialization API. #1262"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-15",
+    "href": "HISTORY.html#deprecations-15",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations\n\nThe TileDB KV API has been deprecated and will be removed entirely in a future release. The KV mechanism will be removed when full support for string-valued dimensions has been added."
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-61",
+    "href": "HISTORY.html#bug-fixes-61",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nBug fix with amplification factor in consolidation. #1275\nFixed thread safety issue in opening arrays. #1252\nFixed floating point exception when writing fixed-length attributes with a large cell value number. #1289\nFixed off-by-one limitation with floating point dimension tile extents. #1314"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-24",
+    "href": "HISTORY.html#api-additions-24",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC API\n\nAdded functions tiledb_query_{get_est_result_size, get_est_result_size_var, add_range, get_range_num, get_range}.\nAdded function tiledb_query_get_layout\nAdded datatype tiledb_buffer_t and functions tiledb_buffer_{alloc,free,get_type,set_type,get_data,set_data}.\nAdded datatype tiledb_buffer_list_t and functions tiledb_buffer_list_{alloc,free,get_num_buffers,get_total_size,get_buffer,flatten}.\nAdded string conversion functions tiledb_*_to_str() and tiledb_*_from_str() for all public enum types.\nAdded config param vfs.file.enable_filelocks\nAdded datatypes TILEDB_DATETIME_*\nAdded function tiledb_query_get_array\n\n\n\nC++ API\n\nAdded functions Query::{query_layout, add_range, range, range_num, array}. ## Breaking changes\n\n\n\nC API\n\nRemoved ability to set null tile extents on dimensions. All dimensions must now have an explicit tile extent.\n\n\n\nC++ API\n\nRemoved cast operators of C++ API objects to their underlying C API objects. This helps prevent inadvertent memory issues such as double-frees.\nRemoved ability to set null tile extents on dimensions. All dimensions must now have an explicit tile extent.\nChanged argument config in Array::consolidate() from a const-ref to a pointer.\nRemoved default includes of Map and MapSchema. To use the deprecated KV API temporarily, include <tiledb/map.h> explicitly."
+  },
+  {
+    "objectID": "HISTORY.html#improvements-45",
+    "href": "HISTORY.html#improvements-45",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nBetter handling of {C,CXX}FLAGS during the build. #1209\nUpdate libcurl dependency to v7.64.1 for S3 builds. #1240"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-62",
+    "href": "HISTORY.html#bug-fixes-62",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nS3 SDK build error fix. #1201\nFixed thread safety issue with ZStd compressor. #1208\nFixed crash in consolidation due to accessing invalid entry #1213\nFixed memory leak in C++ KV API. #1247\nFixed minor bug when writing in global order with empty buffers. #1248"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-24",
+    "href": "HISTORY.html#new-features-24",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nAdded an advanced, tunable consolidation algorithm. #1101"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-46",
+    "href": "HISTORY.html#improvements-46",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nSmall tiles are now batched for larger VFS read operations, improving read performance in some cases. #1093\nPOSIX error messages are included in log messages. #1076\nAdded tiledb command-line tool with several supported actions. #1081\nAdded build flag to disable internal statistics. #1111\nImproved memory overhead slightly by lazily allocating memory before checking the tile cache. #1141\nImproved tile cache utilization by removing erroneous use of cache for metadata. #1151\nS3 multi-part uploads are aborted on error. #1166"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-63",
+    "href": "HISTORY.html#bug-fixes-63",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nBug fix when reading from a sparse array with real domain. Also added some checks on NaN and INF. #1100\nFixed C++ API functions group_by_cell and ungroup_var_buffer to treat offsets in units of bytes. #1047\nSeveral HDFS test build errors fixed. #1092\nFixed incorrect indexing in parallel_for. #1105\nFixed incorrect filter statistics counters. #1112\nPreserve anonymous attributes in ArraySchema copy constructor. #1144\nFix non-virtual destructors in C++ API. #1153\nAdded zlib dependency to AWS SDK EP. #1165\nFixed a hang in the ‘S3::ls()’. #1183\nMany other small and miscellaneous bug fixes."
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-25",
+    "href": "HISTORY.html#api-additions-25",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC API\n\nAdded function tiledb_vfs_dir_size.\nAdded function tiledb_vfs_ls.\nAdded config params vfs.max_batch_read_size and vfs.max_batch_read_amplification.\nAdded functions tiledb_{array,kv}_encryption_type.\nAdded functions tiledb_stats_{dump,free}_str.\nAdded function tiledb_{array,kv}_schema_has_attribute.\nAdded function tiledb_domain_has_dimension.\n\n\n\nC++ API\n\n{Array,Map}::consolidate{_with_key} now takes a Config as an optional argument.\nAdded function VFS::dir_size.\nAdded function VFS::ls.\nAdded {Array,Map}::encryption_type().\nAdded {ArraySchema,MapSchema}::has_attribute()\nAdded Domain::has_dimension()\nAdded constructor overloads for Array and Map to take a std::string encryption key.\nAdded overloads for {Array,Map}::{open,create,consolidate} to take a std::string encryption key.\nAdded untyped overloads for Query::set_buffer()."
+  },
+  {
+    "objectID": "HISTORY.html#breaking-changes",
+    "href": "HISTORY.html#breaking-changes",
+    "title": "",
+    "section": "Breaking changes",
+    "text": "Breaking changes\n\nC API\n\nDeprecated tiledb_compressor_t APIs from v1.3.x have been removed, replaced by the tiledb_filter_list API. #1128\ntiledb_{array,kv}_consolidate{_with_key} now takes a tiledb_config_t* as argument.\n\n\n\nC++ API\n\nDeprecated tiledb::Compressor APIs from v1.3.x have been removed, replaced by the FilterList API. #1128"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-64",
+    "href": "HISTORY.html#bug-fixes-64",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixed support for config parameter values sm.num_reader_threads and `sm.num_writer_threads. User-specified values had been ignored for these parameters. #1096\nFixed GCC 7 linker errors. #1091\nBug fix in the case of dense reads in the presence of both dense and sparse fragments. #1079\nFixed double-delta decompression bug on reads for uncompressible chunks. #1074\nFixed unnecessary linking of shared zlib when using TileDB superbuild. #1125"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-47",
+    "href": "HISTORY.html#improvements-47",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAdded lazy creation of S3 client instance on first request. #1084\nAdded config params vfs.s3.aws_access_key_id and vfs.s3.aws_secret_access_key for configure s3 access at runtime. #1036\nAdded missing check if coordinates obey the global order in global order sparse writes. #1039"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-65",
+    "href": "HISTORY.html#bug-fixes-65",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixed bug in incomplete queries, which should always return partial results. An incomplete status with 0 returned results must always mean that the buffers cannot even fit a single cell value. #1056\nFixed performance bug during global order write finalization. #1065\nFixed error in linking against static TileDB on Windows. #1058\nFixed build error when building without TBB. #1051"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-48",
+    "href": "HISTORY.html#improvements-48",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nSet LZ4, Zlib and Zstd compressors to build in release mode. #1034\nChanged coordinates to always be split before filtering. #1054\nAdded type-safe filter option methods to C++ API. #1062"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-25",
+    "href": "HISTORY.html#new-features-25",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nAll array data can now be encrypted at rest using AES-256-GCM symmetric encryption. #968\nNegative and real-valued domain types are now fully supported. #885\nNew filter API for transforming attribute data with an ordered list of filters. #912\nCurrent filters include: previous compressors, bit width reduction, bitshuffle, byteshuffle, and positive-delta encoding.\n\nThe bitshuffle filter uses an implementation by Kiyoshi Masui.\nThe byteshuffle filter uses an implementation by Francesc Alted (from the Blosc project).\n\nArrays can now be opened at specific timestamps. #984"
+  },
+  {
+    "objectID": "HISTORY.html#deprecations-16",
+    "href": "HISTORY.html#deprecations-16",
+    "title": "",
+    "section": "Deprecations",
+    "text": "Deprecations\n\nThe C and C++ APIs for compression have been deprecated. The corresponding filter API should be used instead. The compression API will be removed in a future TileDB version. #1008\nRemoved Blosc compressors (obviated by byteshuffle -> compressor filter list)."
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-66",
+    "href": "HISTORY.html#bug-fixes-66",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix issue where performing a read query with empty result could cause future reads to return empty #882\nFix TBB initialization bug with multiple contexts #898\nFix bug in max buffer sizes estimation #903\nFix Buffer allocation size being incorrectly set on realloc #911"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-49",
+    "href": "HISTORY.html#improvements-49",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAdded check if the coordinates fall out-of-bounds (i.e., outside the array domain) during sparse writes, and added config param sm.check_coord_oob to enable/disable the check (enabled by default). #996\nAdd config params sm.num_reader_threads and sm.num_writer_threads for separately controlling I/O parallelism from compression parallelism.\nAdded contribution guidelines #899\nEnable building TileDB in Cygwin environment on Windows #890\nAdded a simple benchmarking script and several benchmark programs #889\nChanged C API and disk format integer types to have explicit bit widths. #981"
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-26",
+    "href": "HISTORY.html#api-additions-26",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC API\n\nAdded tiledb_{array,kv}_open_at, tiledb_{array,kv}_open_at_with_key and tiledb_{array,kv}_reopen_at.\nAdded tiledb_{array,kv}_get_timestamp().\nAdded tiledb_kv_is_open\nAdded tiledb_filter_t tiledb_filter_type_t, tiledb_filter_option_t, and tiledb_filter_list_t types\nAdded tiledb_filter_* and tiledb_filter_list_* functions.\nAdded tiledb_attribute_{set,get}_filter_list, tiledb_array_schema_{set,get}_coords_filter_list, tiledb_array_schema_{set,get}_offsets_filter_list functions.\nAdded tiledb_query_get_buffer and tiledb_query_get_buffer_var.\nAdded tiledb_array_get_uri\nAdded tiledb_encryption_type_t\nAdded tiledb_array_create_with_key, tiledb_array_open_with_key, tiledb_array_schema_load_with_key, tiledb_array_consolidate_with_key\nAdded tiledb_kv_create_with_key, tiledb_kv_open_with_key, tiledb_kv_schema_load_with_key, tiledb_kv_consolidate_with_key\n\n\n\nC++ API\n\nAdded encryption overloads for Array(), Array::open(), Array::create(), ArraySchema(), Map(), Map::open(), Map::create() and MapSchema().\nAdded Array::timestamp() and Array::reopen_at() methods.\nAdded Filter and FilterList classes\nAdded Attribute::filter_list(), Attribute::set_filter_list(), ArraySchema::coords_filter_list(), ArraySchema::set_coords_filter_list(), ArraySchema::offsets_filter_list(), ArraySchema::set_offsets_filter_list() functions.\nAdded overloads for Array(), Array::open(), Map(), Map::open() for handling timestamps."
+  },
+  {
+    "objectID": "HISTORY.html#breaking-changes-1",
+    "href": "HISTORY.html#breaking-changes-1",
+    "title": "",
+    "section": "Breaking changes",
+    "text": "Breaking changes\n\nC API\n\nRemoved Blosc compressors.\nRemoved tiledb_kv_set_max_buffered_items.\nModified tiledb_kv_open to not take an attribute subselection, but instead take as input the query type (similar to arrays). This makes the key-value store behave similarly to arrays, which means that the key-value store does not support interleaved reads/writes any more (an opened key-value store is used either for reads or writes, but not both).\ntiledb_kv_close does not flush the written items. Instead, tiledb_kv_flush must be invoked explicitly.\n\n\n\nC++ API\n\nRemoved Blosc compressors.\nRemoved Map::set_max_buffered_items.\nModified Map::Map and Map::open to not take an attribute subselection, but instead take as input the query type (similar to arrays). This makes the key-value store behave similarly to arrays, which means that the key-value store does not support interleaved reads/writes any more (an opened key-value store is used either for reads or writes, but not both).\nMap::close does not flush the written items. Instead, Map::flush must be invoked explicitly."
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-67",
+    "href": "HISTORY.html#bug-fixes-67",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix read query bug from multiple fragments when query layout differs from array layout #869\nFix error when consolidating empty arrays #861\nFix bzip2 external project URL #875\nInvalidate cached buffer sizes when query subarray changes #882"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-50",
+    "href": "HISTORY.html#improvements-50",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAdd check to ensure tile extent greater than zero #866\nAdd TILEDB_INSTALL_LIBDIR CMake option #858\nRemove TILEDB_USE_STATIC_* CMake variables from build #871\nAllow HDFS init to succeed even if libhdfs is not found #873"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-68",
+    "href": "HISTORY.html#bug-fixes-68",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nAdd missing checks when setting subarray for sparse writes #843\nFix dl linking build issue for C/C++ examples on Linux #844\nAdd missing type checks for C++ api Query object #845\nAdd missing check that coordinates are provided for sparse writes #846"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-51",
+    "href": "HISTORY.html#improvements-51",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nFixes to compile on llvm v3.5 #831\nAdd option disable building unittests #836"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-26",
+    "href": "HISTORY.html#new-features-26",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nNew guided tutorial series added to documentation.\nQuery times improved dramatically with internal parallelization using TBB (multiple PRs)\nOptional deduplication pass on writes can be enabled #636\nNew internal statistics reporting system to aid in performance optimization #736\nAdded string type support: ASCII, UTF-8, UTF-16, UTF-32, UCS-2, UCS-4 #415\nAdded TILEDB_ANY datatype #446\nAdded parallelized VFS read operations, enabled by default #499\nSIGINT signals will cancel in-progress queries #578"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-52",
+    "href": "HISTORY.html#improvements-52",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nArrays must now be open and closed before issuing queries, which clarifies the TileDB consistency model.\nImproved handling of incomplete queries and variable-length attribute data.\nAdded parallel S3, POSIX, and Win32 reads and writes, enabled by default.\nQuery performance improvements with parallelism (using TBB as a dependency).\nGot rid of special S3 “directory objects.”\nRefactored sparse reads, making them simpler and more amenable to parallelization.\nRefactored dense reads, making them simpler and more amenable to parallelization.\nRefactored dense ordered writes, making them simpler and more amenable to parallelization.\nRefactored unordered writes, making them simpler and more amenable to parallelization.\nRefactored global writes, making them simpler and more amenable to parallelization.\nAdded ability to cancel pending background/async tasks. SIGINT signals now cancel pending tasks.\nAsync queries now use a configurable number of background threads (default number of threads is 1).\nAdded checks for duplicate coordinates and option for coordinate deduplication.\nMap usage via the C++ API operator[] is faster, similar to the MapItem path."
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-69",
+    "href": "HISTORY.html#bug-fixes-69",
+    "title": "",
+    "section": "Bug Fixes",
+    "text": "Bug Fixes\n\nFixed bugs with reads/writes of variable-sized attributes.\nFixed file locking issue with simultaneous queries.\nFixed S3 issues with simultaneous queries within the same context."
+  },
+  {
+    "objectID": "HISTORY.html#api-additions-27",
+    "href": "HISTORY.html#api-additions-27",
+    "title": "",
+    "section": "API additions",
+    "text": "API additions\n\nC API\n\nAdded tiledb_array_alloc\nAdded tiledb_array_{open, close, free}\nAdded tiledb_array_reopen\nAdded tiledb_array_is_open\nAdded tiledb_array_get_query_type\nAdded tiledb_array_get_schema\nAdded tiledb_array_max_buffer_size and tiledb_array_max_buffer_size_var\nAdded tiledb_query_finalize function.\nAdded tiledb_ctx_cancel_tasks function.\nAdded tiledb_query_set_buffer and tiledb_query_set_buffer_var which sets a single attribute buffer\nAdded tiledb_query_get_type\nAdded tiledb_query_has_results\nAdded tiledb_vfs_get_config function.\nAdded tiledb_stats_{enable,disable,reset,dump} functions.\nAdded tiledb_kv_alloc\nAdded tiledb_kv_reopen\nAdded tiledb_kv_has_key to check if a key exists in the key-value store.\nAdded tiledb_kv_free.\nAdded tiledb_kv_iter_alloc which takes as input a kv object\nAdded tiledb_kv_schema_{set,get}_capacity.\nAdded tiledb_kv_is_dirty\nAdded tiledb_kv_iter_reset\nAdded sm.num_async_threads, sm.num_tbb_threads, and sm.enable_signal_handlers config parameters.\nAdded sm.check_dedup_coords and sm.dedup_coords config parameters.\nAdded vfs.num_threads and vfs.min_parallel_size config parameters.\nAdded vfs.{s3,file}.max_parallel_ops config parameters.\nAdded vfs.s3.multipart_part_size config parameter.\nAdded vfs.s3.proxy_{scheme,host,port,username,password} config parameters.\n\n\n\nC++ API\n\nAdded Array::{open, close}\nAdded Array::reopen\nAdded Array::is_open\nAdded Array::query_type\nAdded Context::cancel_tasks() function.\nAdded Query::finalize() function.\nAdded Query::query_type\nAdded Query::has_results\nChanged the return type of the Query setters to return the object reference.\nAdded an extra Query constructor that omits the query type (this is inherited from the input array).\nAdded Map::{open, close}\nAdded Map::reopen\nAdded Map::is_dirty\nAdded Map::has_key to check for key presence.\nA tiledb::Map defined with only one attribute will allow implicit usage, e.x. map[key] = val instead of map[key][attr] = val.\nAdded optional attributes argument in Map::Map and Map::open\nMapIter can be used to create iterators for a map.\nAdded MapIter::reset\nAdded MapSchema::set_capacity and MapSchema::capacity\nSupport for trivially copyable objects, such as a custom data struct, was added. They will be backed by an sizeof(T) sized char attribute.\nAttribute::create<T> can now be used with compound T, such as std::string and std::vector<T>, and other objects such as a simple data struct.\nAdded a Dimension::create factory function that does not take tile extent, which sets the tile extent to NULL.\ntiledb::Attribute can now be constructed with an enumerated type (e.x. TILEDB_CHAR).\nAdded Stats class (wraps C API tiledb_stats_* functions)\nAdded Config::save_to_file"
+  },
+  {
+    "objectID": "HISTORY.html#breaking-changes-2",
+    "href": "HISTORY.html#breaking-changes-2",
+    "title": "",
+    "section": "Breaking changes",
+    "text": "Breaking changes\n\nC API\n\ntiledb_query_finalize must always be called before tiledb_query_free after global-order writes.\nRemoved tiledb_vfs_move and added tiledb_vfs_move_file and tiledb_vfs_move_dir instead.\nRemoved force argument from tiledb_vfs_move_* and tiledb_object_move.\nRemoved vfs.s3.file_buffer_size config parameter.\nRemoved tiledb_query_get_attribute_status.\nAll tiledb_*_free functions now return void and do not take ctx as input (except for tiledb_ctx_free).\nChanged signature of tiledb_kv_close to take a tiledb_kv_t* argument instead of tiledb_kv_t**.\nRenamed tiledb_domain_get_rank to tiledb_domain_get_ndim to avoid confusion with matrix def of rank.\nChanged signature of tiledb_array_get_non_empty_domain.\nRemoved tiledb_array_compute_max_read_buffer_sizes.\nChanged signature of tiledb_{array,kv}_open.\nRemoved tiledb_kv_iter_create\nRenamed all C API functions that create TileDB objects from tiledb_*_create to tiledb_*_alloc.\nRemoved tiledb_query_set_buffers\nRemoved tiledb_query_reset_buffers\nAdded query type argument to tiledb_array_open\nChanged argument order in tiledb_config_iter_alloc, tiledb_ctx_alloc, tiledb_attribute_alloc, tiledb_dimension_alloc, tiledb_array_schema_alloc, tiledb_kv_schema_load, tiledb_kv_get_item, tiledb_vfs_alloc\n\n\n\nC++ API\n\nFixes with Array::max_buffer_elements and Query::result_buffer_elements to comply with the API docs. pair.first is the number of elements of the offsets buffer. If pair.first is 0, it is a fixed-sized attribute or coordinates.\nstd::array<T, N> is backed by a char tiledb attribute since the size is not guaranteed.\nHeaders have the tiledb_cpp_api_ prefix removed. For example, the include is now #include <tiledb/attribute.h>\nRemoved VFS::move and added VFS::move_file and VFS::move_dir instead.\nRemoved force argument from VFS::move_* and Object::move.\nRemoved vfs.s3.file_buffer_size config parameter.\nQuery::finalize must always be called before going out of scope after global-order writes.\nRemoved Query::attribute_status.\nThe API was made header only to improve cross-platform compatibility. config_iter.h, filebuf.h, map_item.h, map_iter.h, and map_proxy.h are no longer available, but grouped into the headers of the objects they support.\nPreviously a tiledb::Map could be created from a std::map, an anonymous attribute name was defined. This must now be explicitly defined: tiledb::Map::create(tiledb::Context, std::string uri, std::map, std::string attr_name)\nRemoved tiledb::Query::reset_buffers. Any previous usages can safely be removed.\nMap::begin refers to the same iterator object. For multiple concurrent iterators, a MapIter should be manually constructed instead of using Map::begin() more than once.\nRenamed Domain::rank to Domain::ndim to avoid confusion with matrix def of rank.\nAdded query type argument to Array constructor\nRemoved iterator functionality from Map.\nRemoved Array::parition_subarray."
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-70",
+    "href": "HISTORY.html#bug-fixes-70",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFix I/O bug on POSIX systems with large reads/writes (#467)\nMemory overflow error handling (moved from constructors to init functions) (#472)\nMemory leaks with realloc in case of error (#472)\nHandle non-existent config param in C++ API (#475)\nRead query overflow handling (#485)"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-53",
+    "href": "HISTORY.html#improvements-53",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nChanged S3 default config so that AWS S3 just works (#455)\nMinor S3 optimizations and error message fixes (#462)\nDocumentation additions including S3 usage (#456, #458, #459)\nVarious CI improvements (#449)"
+  },
+  {
+    "objectID": "HISTORY.html#bug-fixes-71",
+    "href": "HISTORY.html#bug-fixes-71",
+    "title": "",
+    "section": "Bug fixes",
+    "text": "Bug fixes\n\nFixed TileDB header includes for all examples (#409)\nFixed TileDB library dynamic linking problem for C++ API (#412)\nFixed VS2015 build errors (#424)\nBug fix in the sparse case (#434)\nBug fix for 1D vector query layout (#438)"
+  },
+  {
+    "objectID": "HISTORY.html#improvements-54",
+    "href": "HISTORY.html#improvements-54",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nAdded documentation to API and examples (#410, #414)\nMigrated docs to Readthedocs (#418, #420, #422, #423, #425)\nAdded dimension domain/tile extent checks (#429)"
+  },
+  {
+    "objectID": "HISTORY.html#new-features-27",
+    "href": "HISTORY.html#new-features-27",
+    "title": "",
+    "section": "New features",
+    "text": "New features\n\nWindows support. TileDB is now fully supported on Windows systems (64-bit Windows 7 and newer).\nPython API. We are very excited to announce the initial release of a Python API for TileDB. The Python API makes TileDB accessible to a much broader audience, allowing seamless integration with existing Python libraries such as NumPy, Pandas and the scientific Python ecosystem.\nC++ API. We’ve included a C++ API, which allows TileDB to integrate into modern C++ applications without having to write code towards the C API. The C++ API is more concise and provides additional compile time type safety.\nS3 object store support. You can now easily store, query, and manipulate your TileDB arrays on S3 API compatibile object stores, including Amazon’s AWS S3 service.\nVirtual filesystem interface. The TileDB API now exposes a virtual filesystem (or VFS) interface, allowing you to perform tasks such as file creation, deletion, reads, and appends without worrying about whether your files are stored on S3, HDFS, a POSIX or Windows filesystem, etc.\nKey-value store. TileDB now provides a key-value (meta) data storage abstraction. Its implementation is built upon TileDB’s sparse arrays and inherits all the properties of TileDB sparse arrays."
+  },
+  {
+    "objectID": "HISTORY.html#improvements-55",
+    "href": "HISTORY.html#improvements-55",
+    "title": "",
+    "section": "Improvements",
+    "text": "Improvements\n\nHomebrew formula added for easier installation on macOS. Homebrew is now the perferred method for installing TileDB and its dependencies on macOS.\nDocker images updated to include stable/unstable/dev options, and easy configuration of additional components (e.g. S3 support).\nTile cache implemented, which will greatly speed up repeated queries on overlapping regions of the same array.\nAbility to pass runtime configuration arguments to TileDB/VFS backends.\nUnnamed (or “anonymous”) dimensions are now supported; having a single anonymous attribute is also supported.\nConcurrency bugfixes for several compressors.\nCorrectness issue fixed in double-delta compressor for some datatypes.\nBetter build behavior on systems with older GCC or CMake versions.\nSeveral memory leaks and overruns fixed with help of sanitizers.\nMany improved error condition checks and messages for easier debugging.\nMany other small bugs and API inconsistencies fixed."
+  },
+  {
+    "objectID": "HISTORY.html#c-api-additions",
+    "href": "HISTORY.html#c-api-additions",
+    "title": "",
+    "section": "C API additions",
+    "text": "C API additions\n\ntiledb_config_*: Types and functions related to the new configuration object and functionality.\ntiledb_config_iter_*: Iteration functionality for retieving parameters/values from the new configuration object.\ntiledb_ctx_get_config(): Function to get a configuration from a context.\ntiledb_filesystem_t: Filesystem type enum.\ntiledb_ctx_is_supported_fs(): Function to check for support for a given filesystem backend.\ntiledb_error_t, tiledb_error_message() and tiledb_error_free(): Type and functions for TileDB error messages.\ntiledb_ctx_get_last_error(): Function to get last error from context.\ntiledb_domain_get_rank(): Function to retrieve number of dimensions in a domain.\ntiledb_domain_get_dimension_from_index() and tiledb_domain_get_dimension_from_name(): Replaces dimension iterators.\ntiledb_dimension_{create,free,get_name,get_type,get_domain,get_tile_extent}(): Functions related to creation and manipulation of tiledb_dimension_t objects.\ntiledb_array_schema_set_coords_compressor(): Function to set the coordinates compressor.\ntiledb_array_schema_set_offsets_compressor(): Function to set the offsets compressor.\ntiledb_array_schema_get_attribute_{num,from_index,from_name}(): Replaces attribute iterators.\ntiledb_query_create(): Replaced many arguments with new tiledb_query_set_*() setter functions.\ntiledb_array_get_non_empty_domain(): Function to retrieve the non-empty domain from an array.\ntiledb_array_compute_max_read_buffer_sizes(): Function to compute an upper bound on the buffer sizes required for a read query.\ntiledb_object_ls(): Function to visit the children of a path.\ntiledb_uri_to_path(): Function to convert a file:// URI to a platform-native path.\nTILEDB_MAX_PATH and tiledb_max_path(): The maximum length for tiledb resource paths.\ntiledb_kv_*: Types and functions related to the new key-value store functionality.\ntiledb_vfs_*: Types and functions related to the new virtual filesystem (VFS) functionality."
+  },
+  {
+    "objectID": "HISTORY.html#breaking-changes-3",
+    "href": "HISTORY.html#breaking-changes-3",
+    "title": "",
+    "section": "Breaking changes",
+    "text": "Breaking changes\n\nC API\n\nRename tiledb_array_metadata_t -> tiledb_array_schema_t, and associated tiledb_array_metadata_* functions to tiledb_array_schema_*.\nRemove tiledb_attribute_iter_t.\nRemove tiledb_dimension_iter_t.\nRename tiledb_delete(), tiledb_move(), tiledb_walk() to tiledb_object_{delete,move,walk}().\ntiledb_ctx_create: Config argument added.\ntiledb_domain_create: Datatype argument removed.\ntiledb_domain_add_dimension: Name, domain and tile extent arguments replaced with single tiledb_dimension_t argument.\ntiledb_query_create(): Replaced many arguments with new tiledb_query_set_*() setter functions.\ntiledb_array_create(): Added array URI argument.\ntiledb_*_free(): All free functions now take a pointer to the object pointer instead of simply object pointer.\nThe include files are now installed into a tiledb folder. The correct path is now #include <tiledb/tiledb.h> (or #include <tiledb/tiledb> for the C++ API).\n\n\n\nResource Management\n\nSupport for moving resources across previous VFS backends (local fs <-> HDFS) has been removed. A more generic implementation for this functionality with improved performance is planned for the next version of TileDB."
+  },
+  {
+    "objectID": "external/blosc/README-VERSIONS.html",
+    "href": "external/blosc/README-VERSIONS.html",
+    "title": "",
+    "section": "",
+    "text": "https://github.com/Blosc/c-blosc\nhttps://github.com/Blosc/c-blosc/releases/tag/v1.21.0"
+  },
+  {
+    "objectID": "format_spec/group_file_hierarchy.html",
+    "href": "format_spec/group_file_hierarchy.html",
+    "title": "Group File Hierarchy",
+    "section": "",
+    "text": "my_group                       # Group folder\n    |_ __tiledb_group.tdb      # Empty group file\n    |_ __group                 # Group folder\n        |_ <timestamped_name>  # Timestamped group file detailing members\n    |_ __meta                  # group metadata folder\nFile __tiledb_group.tdb is empty and it is merely used to indicate that my_group is a TileDB group.\nInside the group folder, you can find the following:\n\nGroup details folder __group.\nGroup metadata folder __meta."
+  },
+  {
+    "objectID": "format_spec/metadata.html",
+    "href": "format_spec/metadata.html",
+    "title": "Array Metadata",
+    "section": "",
+    "text": "The metadata is a folder called __meta located here:\nmy_array                            # array folder\n   |  ...\n   |_ __meta                        # metadata folder\n         |_ <timestamped_name>      # metadata file\n         |_ ...\n         |_ <timestamped_name>.vac  # vacuum file\n         |_ ...\n<timestamped_name> has format __t1_t2_uuid_v, where:\n\nt1 and t2 are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)\nuuid is a unique identifier\nv is the format version\n\nThe metadata folder can contain: * Any number of metadata files * Any number of vacuum files"
+  },
+  {
+    "objectID": "format_spec/metadata.html#metadata-file",
+    "href": "format_spec/metadata.html#metadata-file",
+    "title": "Array Metadata",
+    "section": "Metadata File",
+    "text": "Metadata File\nThe metadata file has the following on-disk format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nKey length\nuint32_t\nThe length of the key.\n\n\nKey\nuint8_t[]\nThe key.\n\n\nDeletion\nchar\n1/0 if it is a deletion/insertion.\n\n\nValue type\nchar\nThe value data type. Present only if del is 0.\n\n\nNumber of values\nuint32_t\nThe number of values. Present only if del is 0.\n\n\nValue\nuint8_t[]\nThe value. Present only if del is 0."
+  },
+  {
+    "objectID": "format_spec/consolidated_fragment_metadata_file.html",
+    "href": "format_spec/consolidated_fragment_metadata_file.html",
+    "title": "Consolidated Fragment Metadata File",
+    "section": "",
+    "text": "my_array                              # array folder\n   |_ ....\n   |_ __fragment_meta                 # array fragment metadata folder\n         |_ <timestamped_name>.meta   # consolidated fragment metadata file\n         |_ ...\n<timestamped_name> has format __t1_t2_uuid_v, where:\n\nt1 and t2 are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)\nuuid is a unique identifier\nv is the format version\n\nThere may be multiple such files in the array folder. Each consolidated fragment metadata file combines the metadata footers of a set of fragments. It has the following on-disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nURI 1 length\nuint64_t\nNumber of bytes in the string of URI 1\n\n\nURI 1\nuint8_t[]\nURI 1\n\n\nURI 1 offset\nuint64_t\nThe offset in the file where the URI 1 footer begins\n\n\n…\n…\n…\n\n\nURI N length\nuint64_t\nNumber of bytes in the string of URI N\n\n\nURI N\nuint8_t[]\nURI N\n\n\nURI N offset\nuint64_t\nThe offset in the file where the URI N footer begins\n\n\nURI 1 footer\nFooter\nSerialized footer of URI (fragment) 1\n\n\n…\n…\n…\n\n\nURI N footer\nFooter\nSerialized footer of URI (fragment) N"
+  },
+  {
+    "objectID": "format_spec/FORMAT_SPEC.html",
+    "href": "format_spec/FORMAT_SPEC.html",
+    "title": "Format Specification",
+    "section": "",
+    "text": "Notes:"
+  },
+  {
+    "objectID": "format_spec/FORMAT_SPEC.html#table-of-contents",
+    "href": "format_spec/FORMAT_SPEC.html#table-of-contents",
+    "title": "Format Specification",
+    "section": "Table of Contents",
+    "text": "Table of Contents\n\nArray\n\nFile hierarchy\nArray Schema\nFragment\nArray Metadata\nTile\nGeneric Tile\n\nGroup\n\nFile hierarchy\n\nOther\n\nConsolidated Fragment Metadata File\nFilter Pipeline\nVacuum Pipeline"
+  },
+  {
+    "objectID": "format_spec/generic_tile.html",
+    "href": "format_spec/generic_tile.html",
+    "title": "Generic Tile",
+    "section": "",
+    "text": "Field\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nFormat version number of the generic tile\n\n\nPersisted size\nuint64_t\nPersisted (e.g. compressed) size of the tile\n\n\nTile size\nuint64_t\nIn-memory (e.g. uncompressed) size of the tile\n\n\nDatatype\nuint8_t\nDatatype of the tile\n\n\nCell size\nuint64_t\nCell size of the tile\n\n\nEncryption type\nuint8_t\nType of encryption used in filtering the tile\n\n\nFilter pipeline size\nuint32_t\nNumber of bytes in the serialized filter pipeline\n\n\nFilter pipeline\nFilter Pipeline\nFilter pipeline used to filter the tile\n\n\nTile data\nTile\nThe serialized tile data"
+  },
+  {
+    "objectID": "format_spec/ignore_file.html",
+    "href": "format_spec/ignore_file.html",
+    "title": "Ignore File",
+    "section": "",
+    "text": "my_array                           # array folder\n   |_ ....\n   |_ __commits                    # array commit folder\n         |___t1_t2_uuid_v.ign      # ignore file\nor in the array metadata folder:\nIn the file name:\n\nt1 and t2 are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)\nuuid is a unique identifier\nv is the format version\n\nThe ignore file is a simple text file where each line contains a URI string. The URI is the relative URI based on the top level array URI.\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nURI 1 followed by a new line character\nuint8_t[]\nURI 1 to be ignored\n\n\n…\n…\n…\n\n\nURI N followed by a new line character\nuint8_t[]\nURI N to be ignored"
+  },
+  {
+    "objectID": "format_spec/consolidated_commits_file.html",
+    "href": "format_spec/consolidated_commits_file.html",
+    "title": "Consolidated Commits File",
+    "section": "",
+    "text": "my_array                              # array folder\n   |_ ....\n   |_ __commits                       # array commits folder\n         |_ <timestamped_name>.con    # consolidated commits file\n         |_ ...\n<timestamped_name> has format __t1_t2_uuid_v, where:\n\nt1 and t2 are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)\nuuid is a unique identifier\nv is the format version\n\nThere may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits URIs delimited by a new line character. The URI is the relative URI based on the top level array URI.\n\n\n\nField\nType\nDescription\n\n\n\n\nURI 1 followed by a new line character\nuint8_t[]\nURI 1\n\n\n…\n…\n…\n\n\nURI N followed by a new line character\nuint8_t[]\nURI N"
+  },
+  {
+    "objectID": "format_spec/tile.html",
+    "href": "format_spec/tile.html",
+    "title": "Tile",
+    "section": "",
+    "text": "Internally tile data is divided into “chunks.” Every tile is at least one chunk. Each tile has the following on-disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum chunks\nuint64_t\nNumber of chunks in the tile\n\n\nChunk 1\nChunk\nFirst chunk in the tile\n\n\n…\n…\n…\n\n\nChunk N\nChunk\nN-th chunk in the tile"
+  },
+  {
+    "objectID": "format_spec/tile.html#chunk-format",
+    "href": "format_spec/tile.html#chunk-format",
+    "title": "Tile",
+    "section": "Chunk Format",
+    "text": "Chunk Format\nA chunk has the following on-disk format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nOriginal length of chunk\nuint32_t\nThe original (unfiltered) number of bytes of chunk data\n\n\nFiltered chunk length\nuint32_t\nThe serialized (filtered) number of bytes of chunk data\n\n\nChunk metadata length\nuint32_t\nNumber of bytes in the chunk metadata\n\n\nChunk metadata\nuint8_t[]\nChunk metadata bytes\n\n\nChunk filtered data\nuint8_t[]\nFiltered chunk bytes\n\n\n\nThe metadata added to a chunk depends on the sequence of filters in the pipeline used to filter the containing tile.\nIf a pipeline used to filter tiles is empty (contains no filters), the tile is still divided into chunks and serialized according to the above format. In this case there are no chunk metadata bytes (since there are no filters to add metadata), and the filtered bytes are the same as original bytes.\nThe “chunk metadata” before the actual “chunk filtered data” depend on the particular sequence of filters in the pipeline. In the simple case, each filter will simply concatenate its metadata to the chunk metadata region. Because some filters in the pipeline may wish to filter the metadata of previous filters (e.g. compression, where it is beneficial to compress previous filters’ metadata in addition to the actual chunk data), the ordering of filters also impacts the metadata that is eventually written to disk.\nThe “chunk filtered data” bytes contain the final bytes of the chunk after being passed through the entire pipeline. When reading tiles from disk, the filter pipeline is run in the reverse order.\nInternally, any filter in a filter pipeline produces two arrays of data as output: a metadata byte array and a filtered data byte array. Additionally, these output byte arrays can be arbitrarily separated into “parts” by any filter. Typically, when a next filter receives the output of the previous filter as its input, it will filter each “part” independently.\n\nByteshuffle Filter\nThe byteshuffle filter does not filter input metadata, and the output data is guaranteed to be the same length as the input data.\nThe byteshuffle filter produces output metadata in the format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNumber of parts\nuint32_t\nNumber of data parts\n\n\nLength of part 1\nuint32_t\nNumber of bytes in data part 1\n\n\n…\n…\n…\n\n\nLength of part N\nuint32_t\nNumber of bytes in data part N\n\n\n\nThe byteshuffle filter produces output data in the format:\n\n\n\nField\nType\nDescription\n\n\n\n\nPart 1\nuint8_t[]\nByteshuffled data part 1\n\n\n…\n…\n…\n\n\nPart N\nuint8_t[]\nByteshuffled data part N\n\n\n\n\n\nBitshuffle Filter\nThe bitshuffle filter does not filter input metadata. It produces output metadata in the format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNumber of parts\nuint32_t\nNumber of data parts\n\n\nLength of part 1\nuint32_t\nNumber of bytes in data part 1\n\n\n…\n…\n…\n\n\nLength of part N\nuint32_t\nNumber of bytes in data part N\n\n\n\nThe bitshuffle filter produces output data in the format:\n\n\n\nField\nType\nDescription\n\n\n\n\nPart 1\nuint8_t[]\nBitshuffled data part 1\n\n\n…\n…\n…\n\n\nPart N\nuint8_t[]\nBitshuffled data part N\n\n\n\n\n\nBit Width Reduction Filter\nThe bit width reduction filter does not filter input metadata. It produces output metadata in the format:\n\n\n\nField\nType\nDescription\n\n\n\n\nLength of input\nuint32_t\nOriginal input number of bytes\n\n\nNumber of windows\nuint32_t\nNumber of windows in output\n\n\nWindow 1 metadata\nWindowMD\nMetadata for window 1\n\n\n…\n…\n…\n\n\nWindow N metadata\nWindowMD\nMetadata for window N\n\n\n\nThe type WindowMD has the format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nWindow value offset\nT\nOffset applied to values in the output window, where T is the original datatype of the tile values.\n\n\nBit width of reduced type\nuint8_t\nNumber of bits in the new datatype of the values in the output window\n\n\nWindow length\nuint32_t\nNumber of bytes in output window data.\n\n\n\nThe bit width reduction filter produces output data in the format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nWindow 1\nuint8_t[]\nWindow 1 data (possibly-reduced width elements)\n\n\n…\n…\n…\n\n\nWindow N\nuint8_t[]\nWindow N data (possibly-reduced width elements)\n\n\n\n\n\nPositive Delta Encoding Filter\nThe positive-delta encoding filter does not filter input metadata. It produces output metadata in the format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNumber of windows\nuint32_t\nNumber of windows in output\n\n\nWindow 1 metadata\nWindowMD\nMetadata for window 1\n\n\n…\n…\n…\n\n\nWindow N metadata\nWindowMD\nMetadata for window N\n\n\n\nThe type WindowMD has the format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nWindow value delta offset\nT\nOffset applied to values in the output window, where T is the datatype of the tile values.\n\n\nWindow length\nuint32_t\nNumber of bytes in output window data.\n\n\n\nThe positive-delta encoding filter produces output data in the format:\n\n\n\nField\nType\nDescription\n\n\n\n\nWindow 1\nT[]\nWindow 1 delta-encoded data\n\n\n…\n…\n…\n\n\nWindow N\nT[]\nWindow N delta-encoded data\n\n\n\n\n\nCompression Filters\nThe compression filters do filter input metadata. They produce output metadata in the format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nNumber of metadata parts\nuint32_t\nNumber of input metadata parts that were compressed\n\n\nNumber of data parts\nuint32_t\nNumber of input data parts that were compressed\n\n\nMetadata part 1\nCompressedPartMD\nMetadata about the first metadata\n\n\n…\n…\n…\n\n\nMetadata part N\nCompressedPartMD\nMetadata about the nth metadata part\n\n\nData part 1\nCompressedPartMD\nMetadata about the first data part\n\n\n…\n…\n…\n\n\nData part N\nCompressedPartMD\nMetadata about the nth data part\n\n\n\nThe type CompressedPartMD has the format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nPart original length\nuint32_t\nInput length of the part (before compression)\n\n\nPart compressed length\nuint32_t\nCompressed length of the part\n\n\n\nThe compression filters then produce output data in the format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nMetadata part 0 compressed bytes\nuint8_t[]\nCompressed bytes of the first metadata part\n\n\n…\n…\n…\n\n\nMetadata part N compressed bytes\nuint8_t[]\nCompressed bytes of the nth metadata part\n\n\nData part 0 compressed bytes\nuint8_t[]\nCompressed bytes of the first data part\n\n\n…\n…\n…\n\n\nData part N compressed bytes\nuint8_t[]\nCompressed bytes of the nth data part\n\n\n\n\n\nChecksum Filters\nThe filter metadata for TILEDB_FILTER_CHECKSUM_{MD5,SHA256} has internal format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nNum metadata checksums\nuint32_t\nNumber of checksums computed on input metadata\n\n\nNum data checksums\nuint32_t\nNumber of checksums computed on input data\n\n\nNum input bytes for metadata checksum 1\nuint64_t\nNumber of bytes of metadata input to the 1st metadata checksum\n\n\nMetadata checksum 1\nuint8_t[{16,32}] (MD5/SHA256)\nChecksum produced on first metadata input\n\n\n…\n…\n…\n\n\nNum input bytes for metadata checksum N\nuint64_t\nNumber of bytes of metadata input to the N-th metadata checksum\n\n\nMetadata checksum N\nuint8_t[{16,32}] (MD5/SHA256)\nChecksum produced on N-th metadata input\n\n\nNum input bytes for data checksum 1\nuint64_t\nNumber of bytes of data input to the 1st data checksum\n\n\nData checksum 1\nuint8_t[{16,32}] (MD5/SHA256)\nChecksum produced on first data input\n\n\n…\n…\n…\n\n\nNum input bytes for data checksum N\nuint64_t\nNumber of bytes of data input to the N-th data checksum\n\n\nData checksum N\nuint8_t[{16,32}] (MD5/SHA256)\nChecksum produced on N-th data input\n\n\nInput metadata\nuint8_t[]\nOriginal input metadata, copied intact\n\n\n\n\n\nEncryption Filters\nIf the array is encrypted, TileDB uses an extra internal filter INTERNAL_FILTER_AES_256_GCM for AES encryption.\nThe encryption filter metadata have the following on-disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum metadata parts\nuint32_t\nNumber of encrypted metadata parts\n\n\nNum data parts\nuint32_t\nNumber of encrypted data parts\n\n\nAES Metadata Part 1\nAESPartMD\nMetadata part 1\n\n\n…\n…\n…\n\n\nAES Metadata Part N\nAESPartMD\nMetadata part N\n\n\nAES Data Part 1\nAESPart\nData part 1\n\n\n…\n…\n…\n\n\nAES Data Part N\nAESPart\nData part N\n\n\n\nThe AESPartMD field has the following on-disk format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nNum metadata parts\nuint32_t\nNumber of metadata parts\n\n\nNum data parts\nuint32_t\nNumber of data parts\n\n\nPlaintext length for metadata part 1\nuint32_t\nNumber of bytes of plaintext metadata part 1\n\n\nCiphertext length for metadata part 1\nuint32_t\nNumber of bytes of ciphertext metadata part 1\n\n\nIV bytes for metadata part 1\nuint32_t\nNumber of bytes of AES-256-GCM IV bytes for metadata part 1\n\n\nTag bytes for metadata part 1\nuint32_t\nNumber of bytes of AES-256-GCM tag for metadata part 1\n\n\n…\n…\n…\n\n\nPlaintext length for metadata part N\nuint32_t\nNumber of bytes of plaintext metadata part N\n\n\nCiphertext length for metadata part N\nuint32_t\nNumber of bytes of ciphertext metadata part N\n\n\nIV bytes for metadata part N\nuint32_t\nNumber of bytes of AES-256-GCM IV bytes for metadata part N\n\n\nTag bytes for metadata part N\nuint32_t\nNumber of bytes of AES-256-GCM tag for metadata part N\n\n\nPlaintext length for data part 1\nuint32_t\nNumber of bytes of plaintext data part 1\n\n\nCiphertext length for data part 1\nuint32_t\nNumber of bytes of ciphertext data part 1\n\n\nIV bytes for data part 1\nuint32_t\nNumber of bytes of AES-256-GCM IV bytes for data part 1\n\n\nTag bytes for data part 1\nuint32_t\nNumber of bytes of AES-256-GCM tag for data part 1\n\n\n…\n…\n…\n\n\nPlaintext length for data part N\nuint32_t\nNumber of bytes of plaintext data part N\n\n\nCiphertext length for data part N\nuint32_t\nNumber of bytes of ciphertext data part N\n\n\nIV bytes for data part N\nuint32_t\nNumber of bytes of AES-256-GCM IV bytes for data part N\n\n\nTag bytes for data part N\nuint32_t\nNumber of bytes of AES-256-GCM tag for data part N\n\n\n\nThe original metadata is not included in the metadata output.\nThe AESPart field has the following on-disk format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nPlaintext length\nuint32_t\nThe original unencrypted length of the part\n\n\nEncrypted length\nuint32_t\nThe encrypted length of the part\n\n\nIV Bytes\nuint8_t[12]\nAES-256-GCM IV bytes\n\n\nTag Bytes\nuint8_t[16]\nAES-256-GCM tag bytes\n\n\n\nThe data output of the encryption filter is:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nMetadata part 1\nuint8_t[]\nThe encrypted bytes of metadata part 1\n\n\n…\n…\n…\n\n\nMetadata part N\nuint8_t[]\nThe encrypted bytes of metadata part N\n\n\nData part 1\nuint8_t[]\nThe encrypted bytes of data part 1\n\n\n…\n…\n…\n\n\nMetadata part N\nuint8_t[]\nThe encrypted bytes of data part N\n\n\n\nNote that the original input metadata in not part of the output."
+  },
+  {
+    "objectID": "format_spec/fragment.html",
+    "href": "format_spec/fragment.html",
+    "title": "Fragment",
+    "section": "",
+    "text": "A fragment metadata folder is called <timestamped_name> and located here:\nmy_array                                    # array folder\n   |  ...\n   |_ __fragments                           # array fragments folder\n         |_ <timestamped_name>              # fragment folder\n         |      |_ __fragment_metadata.tdb  # fragment metadata\n         |      |_ a0.tdb                   # fixed-sized attribute \n         |      |_ a1.tdb                   # var-sized attribute (offsets) \n         |      |_ a1_var.tdb               # var-sized attribute (values)\n         |      |_ a2.tdb                   # fixed-sized nullable attribute\n         |      |_ a2_validity.tdb          # fixed-sized nullable attribute (validities)\n         |      |_ ...      \n         |      |_ d0.tdb                   # fixed-sized dimension \n         |      |_ d1.tdb                   # var-sized dimension (offsets) \n         |      |_ d1_var.tdb               # var-sized dimension (values)\n         |      |_ ...      \n        |_ ...  \n<timestamped_name> has format __t1_t2_uuid_v, where: * t1 and t2 are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC) * uuid is a unique identifier * v is the format version\nThere can be any number of fragments in an array. The fragment folder contains:\n\nA single fragment metadata file named __fragment_metadata.tdb.\nAny number of data files. For each fixed-sized attribute foo1 (or dimension bar1), there is a single data file a0.tdb (d0.tdb) containing the values along this attribute (dimension). For every var-sized attribute foo2 (or dimensions bar2), there are two data files; a1_var.tdb (d1_var.tdb) containing the var-sized values of the attribute (dimension) and a1.tdb (d1.tdb) containing the starting offsets of each value in a1_var.tdb (d1_var.rdb). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, foo3, will have an additional file a2_validity.tdb that contains its validity vector.\nThe names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema."
+  },
+  {
+    "objectID": "format_spec/fragment.html#fragment-metadata-file",
+    "href": "format_spec/fragment.html#fragment-metadata-file",
+    "title": "Fragment",
+    "section": "Fragment Metadata File",
+    "text": "Fragment Metadata File\nThe fragment metadata file has the following on-disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nR-Tree\nR-Tree\nThe serialized R-Tree\n\n\nTile offsets for attribute/dimension 1\nTile Offsets\nThe serialized tile offsets for attribute/dimension 1\n\n\n…\n…\n…\n\n\nTile offsets for attribute/dimension N\nTile Offsets\nThe serialized tile offsets for attribute/dimension N\n\n\nVariable tile offsets for attribute/dimension 1\nTile Offsets\nThe serialized variable tile offsets for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable tile offsets for attribute/dimension N\nTile Offsets\nThe serialized variable tile offsets for attribute/dimension N\n\n\nVariable tile sizes for attribute/dimension 1\nTile Offsets\nThe serialized variable tile sizes for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable tile sizes for attribute/dimension N\nTile Offsets\nThe serialized variable tile sizes for attribute/dimension N\n\n\nValidity tile offsets for attribute/dimension 1\nTile Offsets\nThe serialized validity tile offsets for attribute/dimension 1\n\n\n…\n…\n…\n\n\nValidity tile offsets for attribute/dimension N\nTile Offsets\nThe serialized validity tile offsets for attribute/dimension N\n\n\nTile mins for attribute/dimension 1\nTile mins/maxs\nThe serialized mins for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable mins for attribute/dimension N\nTile mins/maxs\nThe serialized mins for attribute/dimension N\n\n\nTile maxs for attribute/dimension 1\nTile mins/maxs\nThe serialized maxs for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable maxs for attribute/dimension N\nTile mins/maxs\nThe serialized maxs for attribute/dimension N\n\n\nTile sums for attribute/dimension 1\nTile sums\nThe serialized sums for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable sums for attribute/dimension N\nTile sums\nThe serialized sums for attribute/dimension N\n\n\nTile null counts for attribute/dimension 1\nTile null count\nThe serialized null counts for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable maxs for attribute/dimension N\n[Tile null count\nThe serialized null counts for attribute/dimension N\n\n\nMetadata footer\nFooter\nBasic metadata gathered in the footer\n\n\n\n\nR-Tree\nThe R-Tree is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nFanout\nuint32_t\nThe tree fanout\n\n\nNum levels\nuint32_t\nThe number of levels in the tree\n\n\nNum MBRs at level 1\nuint64_t\nThe number of MBRs at level 1\n\n\nMBR 1 at level 1\nMBR\nFirst MBR at level 1\n\n\n…\n…\n…\n\n\nMBR N at level 1\nMBR\nN-th MBR at level 1\n\n\n…\n…\n…\n\n\nNum MBRs at level L\nuint64_t\nThe number of MBRs at level L\n\n\nMBR 1 at level L\nMBR\nFirst MBR at level L\n\n\n…\n…\n…\n\n\nMBR N at level L\nMBR\nN-th MBR at level L\n\n\n\n\n\nMBR\nEach MBR entry has format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\n1D range for dimension 1\n1DRange\nThe 1-dimensional range for dimension 1\n\n\n…\n…\n…\n\n\n1D range for dimension D\n1DRange\nThe 1-dimensional range for dimension D\n\n\n\nFor fixed-sized dimensions, the 1DRange format is:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nRange minimum\nuint8_t\nThe minimum value with the same datatype as the dimension\n\n\nRange maximum\nuint8_t\nThe maximum value with the same datatype as the dimension\n\n\n\nFor var-sized dimensions, the 1DRange format is:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nRange length\nuint64_t\nThe number of bytes of the 1D range\n\n\nMinimum value length\nuint64_t\nThe number of bytes of the minimum value\n\n\nRange minimum\nuint8_t\nThe minimum (var-sized) value with the same datatype as the dimension\n\n\nRange maximum\nuint8_t\nThe maximum (var-sized) value with the same datatype as the dimension\n\n\n\n\n\nTile Offsets\nThe tile offsets is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum tile offsets\nuint64_t\nNumber of tile offsets\n\n\nTile offset 1\nuint64_t\nOffset 1\n\n\n…\n…\n…\n\n\nTile offset N\nuint64_t\nOffset N\n\n\n\n\n\nTile Sizes\nThe tile sizes is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum tile sizes\nuint64_t\nNumber of tile sizes\n\n\nTile size 1\nuint64_t\nSize 1\n\n\n…\n…\n…\n\n\nTile size N\nuint64_t\nSize N\n\n\n\n\n\nTile Mins Maxs\nThe tile mins maxs is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum values\nuint64_t\nNumber of values\n\n\nValue 1\ntype\nValue 1 or Offset 1\n\n\n…\n…\n…\n\n\nValue N\ntype\nValue N or Offset N\n\n\nVar buffer size\nuint64_t\nVar buffer size\n\n\nVar buffer\nuint8_t\nVar buffer\n\n\n\n\n\nTile Sums\nThe tile sums is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum values\nuint64_t\nNumber of values\n\n\nValue 1\nuint64_t\nSum 1\n\n\n…\n…\n…\n\n\nValue N\nuint64_t\nSum N\n\n\n\nThe tile null count is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum values\nuint64_t\nNumber of values\n\n\nValue 1\nuint64_t\nCount 1\n\n\n…\n…\n…\n\n\nValue N\nuint64_t\nCount N\n\n\n\nThe fragment min max sum null count is a generic tile with the following internal format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nMin size\nuint64_t\nSize of the min value for attribute/dimension 1\n\n\nMin value\nuint8_t\nBuffer for min value for attribute/dimension 1\n\n\nMax size\nuint64_t\nSize of the max value for attribute/dimension 1\n\n\nMax value\nuint8_t\nBuffer for max value for attribute/dimension 1\n\n\nSum\nuint64_t\nSum value for attribute/dimension 1\n\n\nNull count\nuint64_t\nNull count value for attribute/dimension 1\n\n\n…\n…\n…\n\n\nMin size\nuint64_t\nSize of the min value for attribute/dimension N\n\n\nMin value\nuint8_t\nBuffer for min value for attribute/dimension N\n\n\nMax size\nuint64_t\nSize of the max value for attribute/dimension N\n\n\nMax value\nuint8_t\nBuffer for max value for attribute/dimension N\n\n\nSum\nuint64_t\nSum value for attribute/dimension N\n\n\nNull count\nuint64_t\nNull count value for attribute/dimension N\n\n\n\n\n\nFooter\nThe footer is a simple blob (i.e., not a generic tile) with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nFormat version number of the fragment\n\n\nArray schema name size\nuint64_t\nSize of the array schema name\n\n\nArray schema name\nstring\nArray schema name\n\n\nDense\nchar\nWhether the array is dense\n\n\nNull non-empty domain\nchar\nIndicates whether the non-empty domain is null or not\n\n\nNon-empty domain\nMBR\nAn MBR denoting the non-empty domain\n\n\nNumber of sparse tiles\nuint64_t\nNumber of sparse tiles\n\n\nLast tile cell num\nuint64_t\nFor sparse arrays, the number of cells in the last tile in the fragment\n\n\nIncludes timestamps\nchar\nWhether the fragment includes timestamps or not\n\n\nFile sizes\nuint64_t[]\nThe size in bytes of each attribute/dimension file in the fragment. For var-length attributes/dimensions, this is the size of the offsets file.\n\n\nFile var sizes\nuint64_t[]\nThe size in bytes of each var-length attribute/dimension file in the fragment.\n\n\nFile validity sizes\nuint64_t[]\nThe size in bytes of each attribute/dimension validity vector file in the fragment.\n\n\nR-Tree offset\nuint64_t\nThe offset to the generic tile storing the R-Tree in the metadata file.\n\n\nTile offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile offsets for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile offsets for attribute/dimension N\n\n\nTile var offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the variable tile offsets for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile var offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the variable tile offsets for attribute/dimension N.\n\n\nTile var sizes offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the variable tile sizes for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile var sizes offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the variable tile sizes for attribute/dimension N.\n\n\nTile validity offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile validity offsets for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile validity offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile validity offsets for attribute/dimension N\n\n\nTile mins offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile mins for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile mins offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile mins for attribute/dimension N\n\n\nTile maxs offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile maxs for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile maxs offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile maxs for attribute/dimension N\n\n\nTile sums offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile sums for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile sums offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile sums for attribute/dimension N\n\n\nTile null counts offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile null counts for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile null counts offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile null counts for attribute/dimension N\n\n\nFragment min max sum null count offset\nuint64_t\nThe offset to the generic tile storing the fragment min max sum null count data.\n\n\nArray schema name size\nuint64_t\nThe total number of characters of the array schema name.\n\n\nArray schema name character 1\nchar\nThe first character of the array schema name.\n\n\n…\n…\n…\n\n\nArray schema name character N\nchar\nThe last character of the array schema name.\n\n\nFooter length\nuint64_t\nSum of bytes of the above fields. Only present when there is at least one var-sized dimension."
+  },
+  {
+    "objectID": "format_spec/fragment.html#data-file",
+    "href": "format_spec/fragment.html#data-file",
+    "title": "Fragment",
+    "section": "Data File",
+    "text": "Data File\nThe on-disk format of each data file is:\n\n\n\nField\nType\nDescription\n\n\n\n\nTile 1\nTile\nThe data of tile 1\n\n\n…\n…\n…\n\n\nTile N\nTile\nThe data of tile N"
+  },
+  {
+    "objectID": "format_spec/array_schema.html",
+    "href": "format_spec/array_schema.html",
+    "title": "Array Schema",
+    "section": "",
+    "text": "The current array schema version(>=10) is a folder called __schema located here:\nmy_array                            # array folder\n   |  ...\n   |_ __schema                      # array schema folder\n         |_ <timestamped_name>      # array schema file\n         |_ ...  \n<timestamped_name> has format __timestamp_timestamp_uuid, where: * timestamp is timestamp in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC) * uuid is a unique identifier\nThe array schema folder can contain:\n\nAny number of array schema files"
+  },
+  {
+    "objectID": "format_spec/array_schema.html#previous-array-schema-version",
+    "href": "format_spec/array_schema.html#previous-array-schema-version",
+    "title": "Array Schema",
+    "section": "Previous Array Schema Version",
+    "text": "Previous Array Schema Version\nThe previous array schema version(<=9) has a file named __array_schema.tdb and is located here:\nmy_array                   # array folder\n   |_ ....\n   |_ __array_schema.tdb   # array schema file\n   |_ ..."
+  },
+  {
+    "objectID": "format_spec/array_schema.html#array-schema-file",
+    "href": "format_spec/array_schema.html#array-schema-file",
+    "title": "Array Schema",
+    "section": "Array Schema File",
+    "text": "Array Schema File\nThe array schema file consists of a single generic tile, with the following data:\n\n\n\nField\nType\nDescription\n\n\n\n\nArray version\nuint32_t\nFormat version number of the array schema\n\n\nAllows dups\nbool\nWhether or not the array allows duplicate cells\n\n\nArray type\nuint8_t\nDense or sparse\n\n\nTile order\nuint8_t\nRow or column major\n\n\nCell order\nuint8_t\nRow or column major\n\n\nCapacity\nuint64_t\nFor sparse fragments, the data tile capacity\n\n\nCoords filters\nFilter Pipeline\nThe filter pipeline used as default for coordinate tiles\n\n\nOffsets filters\nFilter Pipeline\nThe filter pipeline used for cell var-len offset tiles\n\n\nValidity filters\nFilter Pipeline\nThe filter pipeline used for cell validity tiles\n\n\nDomain\nDomain\nThe array domain\n\n\nNum attributes\nuint32_t\nNumber of attributes in the array\n\n\nAttribute 1\nAttribute\nFirst attribute\n\n\n…\n…\n…\n\n\nAttribute N\nAttribute\nNth attribute"
+  },
+  {
+    "objectID": "format_spec/array_schema.html#domain",
+    "href": "format_spec/array_schema.html#domain",
+    "title": "Array Schema",
+    "section": "Domain",
+    "text": "Domain\nThe domain has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum dimensions\nuint32_t\nDimensionality/rank of the domain\n\n\nDimension 1\nDimension\nFirst dimension\n\n\n…\n…\n…\n\n\nDimension N\nDimension\nNth dimension"
+  },
+  {
+    "objectID": "format_spec/array_schema.html#dimension",
+    "href": "format_spec/array_schema.html#dimension",
+    "title": "Array Schema",
+    "section": "Dimension",
+    "text": "Dimension\nThe dimension has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nDimension name length\nuint32_t\nNumber of characters in dimension name\n\n\nDimension name\nchar[]\nDimension name character array\n\n\nDimension datatype\nuint8_t\nDatatype of the coordinate values\n\n\nCell val num\nuint32_t\nNumber of coordinate values per cell. For variable-length dimensions, this is std::numeric_limits<uint32_t>::max()\n\n\nFilters\nFilter Pipeline\nThe filter pipeline used on coordinate value tiles\n\n\nDomain size\nuint64_t[]\nThe domain size in bytes\n\n\nDomain\nuint8_t[]\nByte array of length equal to domain size above, storing the min, max values of the dimension.\n\n\nNull tile extent\nuint8_t\n1 if the dimension has a null tile extent, else 0.\n\n\nTile extent\nuint8_t[]\nByte array of length equal to the dimension datatype size, storing the space tile extent of this dimension."
+  },
+  {
+    "objectID": "format_spec/array_schema.html#attribute",
+    "href": "format_spec/array_schema.html#attribute",
+    "title": "Array Schema",
+    "section": "Attribute",
+    "text": "Attribute\nThe attribute has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nAttribute name length\nuint32_t\nNumber of characters in attribute name\n\n\nAttribute name\nchar[]\nAttribute name character array\n\n\nAttribute datatype\nuint8_t\nDatatype of the attribute values\n\n\nCell val num\nuint32_t\nNumber of attribute values per cell. For variable-length attributes, this is std::numeric_limits<uint32_t>::max()\n\n\nFilters\nFilter Pipeline\nThe filter pipeline used on attribute value tiles\n\n\nFill value size\nuint64_t\nThe size in bytes of the fill value\n\n\nFill value\nuint8_t[]\nThe fill value\n\n\nNullable\nbool\nWhether or not the attribute can be null\n\n\nFill value validity\nuint8_t\nThe validity fill value"
+  },
+  {
+    "objectID": "format_spec/group.html",
+    "href": "format_spec/group.html",
+    "title": "",
+    "section": "",
+    "text": "A group consists of metadata and a file containing group members\nmy_group                       # Group folder\n    |_ __tiledb_group.tdb      # Empty group file\n    |_ __group                 # Group folder\n        |_ <timestamped_name>  # Timestamped group file detailing members\n    |_ __meta                  # group metadata folder\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion\nuint32_t\nFormat version number of the group\n\n\nNumber of Group Member\nuint32_t\nThe number of group members.\n\n\nGroup Member 1\nGroup Member\nFirst group member\n\n\n…\n…\n…\n\n\nGroup Member N\nGroup Member\nNth group member\n\n\n\n\n\n\nThe group member is the content inside a group\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion\nuint32_t\nFormat version number of the group member\n\n\nObject type\nuint8_t\nObject type of the member\n\n\nRelative\nuint8_t\nIs the URI relative to the group\n\n\nURI length\nuint32_t\nNumber of characters in uri\n\n\nURI\nchar[]\nURI character array"
+  },
+  {
+    "objectID": "format_spec/vacuum_file.html",
+    "href": "format_spec/vacuum_file.html",
+    "title": "Vacuum File",
+    "section": "",
+    "text": "my_array                        # array folder\n   |_ ....\n   |_ __commits                 # array commit folder\n         |___t1_t2_uuid_v.vac   # vacuum file\nor in the array metadata folder:\nmy_array                        # array folder\n   |  ...            \n   |_ __meta                    # array metadata folder\n         |_ ...\n         |_ __t1_t2_uuid_v.vac  # vacuum file\n         |_ ...\nIn the file name:\n\nt1 and t2 are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)\nuuid is a unique identifier\nv is the format version\n\nThe vacuum file is a simple text file where each line contains a URI string:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nURI 1 followed by a new line character\nuint8_t[]\nURI 1 to be vacuumed\n\n\n…\n…\n…\n\n\nURI N followed by a new line character\nuint8_t[]\nURI N to be vacuumed"
+  },
+  {
+    "objectID": "format_spec/filter_pipeline.html",
+    "href": "format_spec/filter_pipeline.html",
+    "title": "Filter Pipeline",
+    "section": "",
+    "text": "The filter pipeline has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax chunk size\nuint32_t\nMaximum chunk size within a tile\n\n\nNum filters\nuint32_t\nNumber of filters in pipeline\n\n\nFilter 1\nFilter\nFirst filter\n\n\n…\n…\n…\n\n\nFilter N\nFilter\nNth filter\n\n\n\nFor var size data, the filter pipeline tries to fit integral cells in a chunk. It uses the following heuristic if the cell doesn’t fit:\n\nIf the chunk is not yet at 50% capacity, add the cell to the current chunk.\nIf the chunk is over 50% capacity and adding the cell would make it less than 150% of the maximum chunk size, add it to this chunk.\nElse, start a new chunk."
+  },
+  {
+    "objectID": "format_spec/filter_pipeline.html#filter",
+    "href": "format_spec/filter_pipeline.html#filter",
+    "title": "Filter Pipeline",
+    "section": "Filter",
+    "text": "Filter\nThe filter has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nFilter type\nuint8_t\nType of filter (e.g. TILEDB_FILTER_BZIP2)\n\n\nFilter metadata size\nuint32_t\nNumber of bytes in filter metadata — may be 0.\n\n\nFilter metadata\nFilter Metadata\nFilter metadata, specific to each filter. E.g. compression level for compression filters."
+  },
+  {
+    "objectID": "format_spec/filter_pipeline.html#filter-options",
+    "href": "format_spec/filter_pipeline.html#filter-options",
+    "title": "Filter Pipeline",
+    "section": "Filter Options",
+    "text": "Filter Options\nThe filter options are configuration parameters for the filters that do not change once the array schema has been created.\n\nMain Compressor Options\nFor the compression filters (any of the filter types TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DOUBLE_DELTA,DICTIONARY}) the filter options have internal format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nCompressor type\nuint8_t\nType of compression (e.g. TILEDB_BZIP2)\n\n\nCompression level\nint32_t\nCompression level used (ignored by some compressors).\n\n\n\n\n\nBit-width Reduction Options\nThe filter options for TILEDB_FILTER_BIT_WIDTH_REDUCTION has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax window size\nuint32_t\nMaximum window size in bytes\n\n\n\n\n\nPositive Delta Options\nThe filter options for TILEDB_FILTER_POSITIVE_DELTA has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax window size\nuint32_t\nMaximum window size in bytes\n\n\n\n\n\nOther Filter Options\nThe remaining filters (TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256} do not serialize any options."
+  },
+  {
+    "objectID": "format_spec/array_file_hierarchy.html",
+    "href": "format_spec/array_file_hierarchy.html",
+    "title": "Array File Hierarchy",
+    "section": "",
+    "text": "my_array                                # array folder\n    |_ __schema                         # array schema folder\n    |_ __fragments                      # array fragments folder\n          |_ <timestamped_name>         # fragment folder\n          |_ ...\n    |_ __commits                        # array commits folder\n          |_ <timestamped_name>.wrt     # fragment write file\n          |_ ...\n          |_ <timestamped_name>.vac     # fragment vacuum file\n          |_ ...\n          |_ <timestamped_name>.con     # consolidated commits file\n          |_ ...\n          |_ <timestamped_name>.ign     # ignore file for consolidated commits file\n    |_ __fragment_meta                  \n          |_ <timestamped_name>.meta    # consol. fragment meta file\n          |_ ...                  \n    |_ __meta                           # array metadata folder\n\nA <timestamped_name> above has format __t1_t2_uuid_v, where\n\nt1 and t2 are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)\nuuid is a unique identifier\nv is the format version\n\nInside the array folder, you can find the following:\n\nArray schema folder __schema.\nInside of a fragments folder, any number of fragment folders <timestamped_name>.\nInside of a commit folder, an empty file <timestamped_name>.wrt associated with every fragment folder <timestamped_name>, where <timestamped_name> is common for the folder and the WRT file. This is used to indicate that fragment <timestamped_name> has been committed (i.e., its write process finished successfully) and it is ready for use by TileDB. If the WRT file does not exist, the corresponding fragment folder is ignored by TileDB during the reads.\nInside the same commit folder, any number of consolidated commits files of the form <timestamped_name>.con.\nInside the same commit folder, any number of ignore files of the form <timestamped_name>.ign.\nInside of a fragment metadata folder, any number of consolidated fragment metadata files of the form <timestamped_name>.meta.\nArray metadata folder __meta."
+  },
+  {
+    "objectID": "CODE_OF_CONDUCT.html",
+    "href": "CODE_OF_CONDUCT.html",
+    "title": "",
+    "section": "",
+    "text": "All participants in TileDB spaces are expected to adhere to high standards of professionalism in all interactions. These standards include, but are not limited to, the specific behaviors outlined below. Upholding these standards is fundamental to our commitment to create a welcoming, positive, and inclusive environment for everyone. We as contributors and maintainers pledge to making participation in our project and our community a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, gender identity and expression, level of experience, nationality, personal appearance, race, religion, or sexual identity and orientation.\n\n\nExamples of behavior that contributes to creating a positive environment include:\n\nUsing welcoming and inclusive language\nBeing respectful of differing viewpoints and experiences\nGracefully accepting constructive criticism\nFocusing on what is best for the community\nShowing empathy towards other community members\n\nAll of these serve to help the make the project better, but also serve to make the experience of participating in the project better as well.\nExamples of unacceptable behavior by participants include:\n\nSexist, racist, and other exclusionary language.\nThe use of sexualized language or imagery and unwelcome sexual attention or advances\nTrolling, insulting/derogatory comments, and personal or political attacks\nPublic or private harassment or intimidation\nPublishing others’ private information, such as a physical or electronic address, without explicit permission\nOther conduct which could reasonably be considered inappropriate in a professional setting\n\n\n\n\nProject maintainers are responsible for maintaining, upholding, and observing these standards.\n\n\n\nPlease contact conduct@tiledb.com. All code of conduct reports will be kept in confidence.\n\n\n\nThis document is adapted from the Bokeh code of conduct, which is in turn adapted from the Contributor Covenant, version 1.4, available at http://contributor-covenant.org/version/1/4"
+  },
+  {
+    "objectID": "tiledb/common/exception/DIRECTORY.html",
+    "href": "tiledb/common/exception/DIRECTORY.html",
+    "title": "",
+    "section": "",
+    "text": "This directory defines tiledb::common::StatusException and tiledb::common::Status. class Status is a legacy class, originally used as a poor substitute for exceptions. class StatusException is a proper exception class derived from std::exception. StatusException is interconvertible with error Status objects.\n\n\nThe goal is to incrementally replace Status objects with an appropriate replacement. In many cases this will be to throw StatusException instead of returning an error Status, but not in all cases. In some cases a bool may be an appropriate return. In others there might be (or might be created) a semantically appropriate return type that distinguishes between different kinds of failure condititions.\nThere is no particular urgency to this goal. The code has used Status for years. This change is not being made to solve any particular technical defect.\n\n\n\nElimination of code-junk macros RETURN_NOT_OK and their ilk. Error handling is fundamental. It can’t be avoided; it must be faced. In C++ there’s a basic choice to use exceptions or to use return values. There’s syntactic overhead with both. The choice is between try statements with exceptions and return-if-return statements otherwise.\nUsing try statement syntactically marks off error handling code to readily identifiable blocks. Using if statements (or a macro encapsulation) intermixes code for each possible failure in with the code that might fail. Since most failures are rare-to-nonexistent, particularly possible logic errors, try statements end up with code that is far easier to read.\nPromotion of RAII and C.41. When there’s a policy of avoiding exceptions, constructors can’t throw to enforce class invariants. This means that having class invariants requires private constructors and dedicated factory functions in all cases. Of course it’s easier not to do this, which leads to the practice of not defining class invariants. This bypasses the benefits of RAII and obviates the utility of C.41 compliance.\n\n\n\n\n\n\nclass StatusException is available for use. Functions that currently return Status but only do so to signal logic errors are immediate candidates for conversion.\nStatus factory classes are still defined in status.h. Prior to beginning this goal, class Status contained a number of member functions to create Status objects with designated origins. These functions required global declaration where local declaration would have been more appropriate. These functions are still declared in status.h but only because the task of moving all the declarations to more appropriate source files has not yet started.\nStatus still has its legacy implementation pattern. Status is due for one more rewrite. Its current internals can be replaced with a single member variable of type optional<StatusException>."
+  },
+  {
+    "objectID": "tiledb/storage_format/DIRECTORY.html",
+    "href": "tiledb/storage_format/DIRECTORY.html",
+    "title": "",
+    "section": "",
+    "text": "TileDB arrays are stored within a directory structure on some object store or file system. The information of an array is stored in three different forms. The data of the database is within files, of course, but there’s also necessary information in other places.\n\nDirectory. Certain files and other directories must be present or may be present within the content of a directory.\nFile Name. File names are an encoded set of fields.\nFile. Each type of file has its own data layout.\n\nEach of these entities may be regarded as having syntax and semantics: what a valid entity is and what it means. The scope of this directory is to support these two aspects of array storage.\n\n\nHere’s a partial list of concerns that are out of scope:\n\nStorage access. Nothing in this directory has direct access to an object store or a file system. A user of these classes must provide the results of a storage operation to this code for parsing and interpretation.\nState maintenance. This code has the notion of an “array in a directory”, but it does not provide any notion of “the current state” of an array in storage. The concept here is that of an array a data type, not as a variable of that data type."
+  }
+]

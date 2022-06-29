@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-0.9.629">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>contributing</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./images/favicon.ico" rel="icon">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="quarto-materials/tiledb.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <a class="navbar-brand" href="./index.html">
+    <img src="./quarto-materials/tiledb-logo.png" alt="">
+  </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com">Home page</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com/contact">Contact us</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://github.com/TileDB-Inc/TileDB">Repo</a>
+  </li>  
+</ul>
+              <div id="quarto-search" class="" title="Search"></div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+    <div class="container-fluid d-flex justify-content-between">
+      <h1 class="quarto-secondary-nav-title">(Untitled)</h1>
+      <button type="button" class="quarto-btn-toggle btn" aria-label="Show secondary navigation">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">Public code docs</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a href="./format_spec/FORMAT_SPEC.html" class="sidebar-item-text sidebar-link">Format Specification</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="false">Array</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./format_spec/array_file_hierarchy.html" class="sidebar-item-text sidebar-link">Array File Hierarchy</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./format_spec/array_schema.html" class="sidebar-item-text sidebar-link">Array Schema</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./format_spec/fragment.html" class="sidebar-item-text sidebar-link">Fragment</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./format_spec/tile.html" class="sidebar-item-text sidebar-link">Tile</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./format_spec/generic_tile.html" class="sidebar-item-text sidebar-link">Generic Tile</a>
+  </div>
+</li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">Group</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./format_spec/group_file_hierarchy.html" class="sidebar-item-text sidebar-link">Group File Hierarchy</a>
+  </div>
+</li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="false">Other</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./format_spec/consolidated_fragment_metadata_file.html" class="sidebar-item-text sidebar-link">Consolidated Fragment Metadata File</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./format_spec/filter_pipeline.html" class="sidebar-item-text sidebar-link">Filter Pipeline</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./format_spec/vacuum_file.html" class="sidebar-item-text sidebar-link">Vacuum File</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#contributing-to-tiledb" id="toc-contributing-to-tiledb" class="nav-link active" data-scroll-target="#contributing-to-tiledb">Contributing to TileDB</a>
+  <ul class="collapse">
+  <li><a href="#contribution-checklist" id="toc-contribution-checklist" class="nav-link" data-scroll-target="#contribution-checklist">Contribution Checklist:</a></li>
+  <li><a href="#reporting-a-bug" id="toc-reporting-a-bug" class="nav-link" data-scroll-target="#reporting-a-bug">Reporting a Bug</a></li>
+  <li><a href="#contributing-code" id="toc-contributing-code" class="nav-link" data-scroll-target="#contributing-code">Contributing Code</a>
+  <ul class="collapse">
+  <li><a href="#quickstart-workflow" id="toc-quickstart-workflow" class="nav-link" data-scroll-target="#quickstart-workflow">Quickstart Workflow:</a></li>
+  <li><a href="#pull-requests" id="toc-pull-requests" class="nav-link" data-scroll-target="#pull-requests">Pull Requests:</a></li>
+  <li><a href="#documentation-pull-requests" id="toc-documentation-pull-requests" class="nav-link" data-scroll-target="#documentation-pull-requests">Documentation Pull Requests:</a></li>
+  <li><a href="#resources" id="toc-resources" class="nav-link" data-scroll-target="#resources">Resources</a></li>
+  </ul></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+
+<section id="contributing-to-tiledb" class="level1">
+<h1>Contributing to TileDB</h1>
+<p>Hi! Thanks for your interest in TileDB. The following notes are intended to help you file issues, bug reports, or contribute code to the open source TileDB project.</p>
+<section id="contribution-checklist" class="level2">
+<h2 class="anchored" data-anchor-id="contribution-checklist">Contribution Checklist:</h2>
+<ul>
+<li><p>Reporting a bug? Please read <a href="https://github.com/TileDB-Inc/TileDB/blob/dev/CONTRIBUTING.md#reporting-a-bug">how to file a bug report</a> section to make sure sufficient information is included.</p></li>
+<li><p>Contributing code? You rock! Be sure to <a href="https://github.com/TileDB-Inc/TileDB/blob/dev/CONTRIBUTING.md#contributing-code">review the contributor section</a> for helpful tips on the tools we use to build TileDB, format code, and issue pull requests (PR)’s.</p></li>
+</ul>
+</section>
+<section id="reporting-a-bug" class="level2">
+<h2 class="anchored" data-anchor-id="reporting-a-bug">Reporting a Bug</h2>
+<p>A useful bug report filed as a GitHub issue provides information about how to reproduce the error.</p>
+<ol type="1">
+<li><p>Before opening a new <a href="https://github.com/TileDB-Inc/TileDB/issues">GitHub issue</a> try searching the existing issues to see if someone else has already noticed the same problem.</p></li>
+<li><p>When filing a bug report, provide where possible:</p></li>
+</ol>
+<ul>
+<li>The version TileDB (<code>tiledb_version()</code>) or if a <code>dev</code> version, specific commit that triggers the error.</li>
+<li>The full error message, including the backtrace (if possible). Verbose error reporting is enabled by building TileDB with <code>../bootstrap --enable-verbose</code>.</li>
+<li>A minimal working example, i.e.&nbsp;the smallest chunk of code that triggers the error. Ideally, this should be code that can be a small reduced C / C++ source file. If the code to reproduce is somewhat long, consider putting it in a <a href="https://gist.github.com">gist</a>.</li>
+</ul>
+<ol start="3" type="1">
+<li>When pasting code blocks or output, put triple backquotes (```) around the text so GitHub will format it nicely. Code statements should be surrounded by single backquotes (`). See <a href="https://guides.github.com/features/mastering-markdown">GitHub’s guide on Markdown</a> for more formatting tricks.</li>
+</ol>
+</section>
+<section id="contributing-code" class="level2">
+<h2 class="anchored" data-anchor-id="contributing-code">Contributing Code</h2>
+<p><em>By contributing code to TileDB, you are agreeing to release it under the <a href="https://github.com/TileDB-Inc/TileDB/tree/dev/LICENSE">MIT License</a>.</em></p>
+<section id="quickstart-workflow" class="level3">
+<h3 class="anchored" data-anchor-id="quickstart-workflow">Quickstart Workflow:</h3>
+<p>Please see <a href="https://docs.tiledb.com/main/how-to/installation/building-from-source">building from source</a> for dependencies and detailed build instructions.</p>
+<p><a href="https://help.github.com/articles/fork-a-repo/">From a fork of TileDB</a></p>
+<pre><code>git clone https://github.com/username/TileDB
+cd TileDB &amp;&amp; mkdir build &amp;&amp; cd build
+../bootstrap
+make &amp;&amp; make check
+cd ../
+git checkout -b &lt;my_initials&gt;/&lt;my_bugfix_branch&gt;
+... code changes ...
+make -C build format
+make -C build check
+git commit -a -m "my commit message"
+git push --set-upstream origin &lt;my_initials&gt;/&lt;my_bugfix_branch&gt;</code></pre>
+<p><a href="https://help.github.com/articles/creating-a-pull-request-from-a-fork/">Issue a PR from your updated TileDB fork</a></p>
+<p>Branch conventions: - <code>dev</code> is the development branch of TileDB, all PR’s are merged into <code>dev</code>. - <code>master</code> tracks the latest stable / released version of TileDB. - <code>release-x.y.z</code> are major / bugfix release branches of TileDB.</p>
+<p>Formatting conventions: - 2 spaces per indentation level not tabs - class names use CamelCase - member functions, variables use lowercase with underscores - class member variables use a trailing underscore <code>foo_</code> - comments are good, TileDB uses <a href="http://www.stack.nl/~dimitri/doxygen/manual/docblocks.html">doxygen</a> for class doc strings. - format code using <a href="https://clang.llvm.org/docs/ClangFormat.html">clang-format</a></p>
+</section>
+<section id="pull-requests" class="level3">
+<h3 class="anchored" data-anchor-id="pull-requests">Pull Requests:</h3>
+<ul>
+<li><p><code>dev</code> is the development branch, all PR’s should be rebased on top of the latest <code>dev</code> commit.</p></li>
+<li><p>Commit changes to a local branch. The convention is to use your initials to identify branches: (ex. “Fred Jones” , <code>fj/my_bugfix_branch</code>). Branch names should be identifiable and reflect the feature or bug that they want to address / fix. This helps in deleting old branches later.</p></li>
+<li><p>Make sure the test suite passes by running <code>make check</code>.</p></li>
+<li><p>When ready to submit a PR, <code>git rebase</code> the branch on top of the latest <code>dev</code> commit. Be sure to squash / cleanup the commit history so that the PR preferably one, or a couple commits at most. Each atomic commit in a PR should be able to pass the test suite.</p></li>
+<li><p>Run the limiting / code format tooling (<code>make format</code>) before submitting a final PR. Make sure that your contribution generally follows the format and naming conventions used by surrounding code.</p></li>
+<li><p>If the PR changes/adds/removes user-facing API or system behavior (such as API changes), add a note to the <code>TileDB/HISTORY.md</code> file.</p></li>
+<li><p>Submit a PR, writing a descriptive message. If a PR closes an open issue, reference the issue in the PR message (ex. If an issue closes issue number 10, you would write <code>closes #10</code>)</p></li>
+<li><p>Make sure CI (continuous integration) is passing for your PR – click <code>Show all checks</code> in the pull request status box at the bottom of each PR page. The continous integration project pages will also list all recently-built PRs:</p>
+<ul>
+<li><a href="https://dev.azure.com/TileDB-Inc/CI/_build">Azure Pipelines</a></li>
+</ul></li>
+</ul>
+</section>
+<section id="documentation-pull-requests" class="level3">
+<h3 class="anchored" data-anchor-id="documentation-pull-requests">Documentation Pull Requests:</h3>
+<ul>
+<li>TileDB uses <a href="http://www.sphinx-doc.org/en/master/">Sphinx</a> as its documentation generator.</li>
+<li>Documentation is written in <a href="http://docutils.sourceforge.net/rst.html">reStructuredText</a> markup.</li>
+</ul>
+<p>Building the docs locally:</p>
+<pre><code>$ cd TileDB/doc
+$ ./local-build.sh</code></pre>
+<p>This will install all the required packages in a Python virtual environment, and build the docs locally. You can then open the <code>doc/source/_build/html/index.html</code> file in your browser.</p>
+<p><strong>Note:</strong> If there are additions to the C/C++ API in between builds, rerun bootstrap:</p>
+<pre><code>$ cd ../build
+$ ../bootstrap &lt;flags&gt;</code></pre>
+</section>
+<section id="resources" class="level3">
+<h3 class="anchored" data-anchor-id="resources">Resources</h3>
+<ul>
+<li>TileDB
+<ul>
+<li><a href="https://tiledb.io">Homepage</a></li>
+<li><a href="https://docs.tiledb.io/en/latest/">Documentation</a></li>
+<li><a href="https://github.com/TileDB-Inc/TileDB/issues">Issues</a></li>
+<li><a href="https://forum.tiledb.io/">Forum</a></li>
+<li><a href="https://github.com/TileDB-Inc/">Organization</a></li>
+</ul></li>
+<li>Github / Git
+<ul>
+<li><a href="https://services.github.com/on-demand/downloads/github-git-cheat-sheet/">Git cheatsheet</a></li>
+<li><a href="https://help.github.com/">Github Documentation</a></li>
+<li><a href="https://help.github.com/articles/fork-a-repo/">Forking a Repo</a></li>
+<li><a href="https://help.github.com/articles/git-and-github-learning-resources/">More Learning Resources</a></li>
+</ul></li>
+</ul>
+
+
+</section>
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    setTimeout(function() {
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      let href = ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const cites = ref.parentNode.getAttribute('data-cites').split(' ');
+    tippyHover(ref, function() {
+      var popup = window.document.createElement('div');
+      cites.forEach(function(cite) {
+        var citeDiv = window.document.createElement('div');
+        citeDiv.classList.add('hanging-indent');
+        citeDiv.classList.add('csl-entry');
+        var biblioDiv = window.document.getElementById('ref-' + cite);
+        if (biblioDiv) {
+          citeDiv.innerHTML = biblioDiv.innerHTML;
+        }
+        popup.appendChild(citeDiv);
+      });
+      return popup.innerHTML;
+    });
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

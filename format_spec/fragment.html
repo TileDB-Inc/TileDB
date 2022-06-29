@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-0.9.629">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Fragment</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../format_spec/array_metadata.md" rel="next">
+<link href="../format_spec/array_schema.html" rel="prev">
+<link href="../images/favicon.ico" rel="icon">
+<script src="../site_libs/quarto-html/quarto.js"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../quarto-materials/tiledb.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <a class="navbar-brand" href="../index.html">
+    <img src="../quarto-materials/tiledb-logo.png" alt="">
+  </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com">Home page</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com/contact">Contact us</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://github.com/TileDB-Inc/TileDB">Repo</a>
+  </li>  
+</ul>
+              <div id="quarto-search" class="" title="Search"></div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+    <div class="container-fluid d-flex justify-content-between">
+      <h1 class="quarto-secondary-nav-title">Fragment</h1>
+      <button type="button" class="quarto-btn-toggle btn" aria-label="Show secondary navigation">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">Public code docs</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a href="../format_spec/FORMAT_SPEC.html" class="sidebar-item-text sidebar-link">Format Specification</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true">Array</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth2 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/array_file_hierarchy.html" class="sidebar-item-text sidebar-link">Array File Hierarchy</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/array_schema.html" class="sidebar-item-text sidebar-link">Array Schema</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/fragment.html" class="sidebar-item-text sidebar-link active">Fragment</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/tile.html" class="sidebar-item-text sidebar-link">Tile</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/generic_tile.html" class="sidebar-item-text sidebar-link">Generic Tile</a>
+  </div>
+</li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">Group</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/group_file_hierarchy.html" class="sidebar-item-text sidebar-link">Group File Hierarchy</a>
+  </div>
+</li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="false">Other</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/consolidated_fragment_metadata_file.html" class="sidebar-item-text sidebar-link">Consolidated Fragment Metadata File</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/filter_pipeline.html" class="sidebar-item-text sidebar-link">Filter Pipeline</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../format_spec/vacuum_file.html" class="sidebar-item-text sidebar-link">Vacuum File</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#main-structure" id="toc-main-structure" class="nav-link active" data-scroll-target="#main-structure">Main Structure</a></li>
+  <li><a href="#fragment-metadata-file" id="toc-fragment-metadata-file" class="nav-link" data-scroll-target="#fragment-metadata-file">Fragment Metadata File</a>
+  <ul class="collapse">
+  <li><a href="#r-tree" id="toc-r-tree" class="nav-link" data-scroll-target="#r-tree">R-Tree</a></li>
+  <li><a href="#mbr" id="toc-mbr" class="nav-link" data-scroll-target="#mbr">MBR</a></li>
+  <li><a href="#tile-offsets" id="toc-tile-offsets" class="nav-link" data-scroll-target="#tile-offsets">Tile Offsets</a></li>
+  <li><a href="#tile-sizes" id="toc-tile-sizes" class="nav-link" data-scroll-target="#tile-sizes">Tile Sizes</a></li>
+  <li><a href="#tile-mins-maxs" id="toc-tile-mins-maxs" class="nav-link" data-scroll-target="#tile-mins-maxs">Tile Mins Maxs</a></li>
+  <li><a href="#tile-sums" id="toc-tile-sums" class="nav-link" data-scroll-target="#tile-sums">Tile Sums</a></li>
+  <li><a href="#footer" id="toc-footer" class="nav-link" data-scroll-target="#footer">Footer</a></li>
+  </ul></li>
+  <li><a href="#data-file" id="toc-data-file" class="nav-link" data-scroll-target="#data-file">Data File</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title d-none d-lg-block">Fragment</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+    
+  </div>
+  
+
+</header>
+
+<section id="main-structure" class="level2">
+<h2 class="anchored" data-anchor-id="main-structure">Main Structure</h2>
+<p>A fragment metadata folder is called <code>&lt;timestamped_name&gt;</code> and located here:</p>
+<pre><code>my_array                                    # array folder
+   |  ...
+   |_ __fragments                           # array fragments folder
+         |_ &lt;timestamped_name&gt;              # fragment folder
+         |      |_ __fragment_metadata.tdb  # fragment metadata
+         |      |_ a0.tdb                   # fixed-sized attribute 
+         |      |_ a1.tdb                   # var-sized attribute (offsets) 
+         |      |_ a1_var.tdb               # var-sized attribute (values)
+         |      |_ a2.tdb                   # fixed-sized nullable attribute
+         |      |_ a2_validity.tdb          # fixed-sized nullable attribute (validities)
+         |      |_ ...      
+         |      |_ d0.tdb                   # fixed-sized dimension 
+         |      |_ d1.tdb                   # var-sized dimension (offsets) 
+         |      |_ d1_var.tdb               # var-sized dimension (values)
+         |      |_ ...      
+        |_ ...  </code></pre>
+<p><code>&lt;timestamped_name&gt;</code> has format <code>__t1_t2_uuid_v</code>, where: * <code>t1</code> and <code>t2</code> are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC) * <code>uuid</code> is a unique identifier * <code>v</code> is the format version</p>
+<p>There can be any number of fragments in an array. The fragment folder contains:</p>
+<ul>
+<li>A single <a href="#fragment-metadata-file">fragment metadata file</a> named <code>__fragment_metadata.tdb</code>.</li>
+<li>Any number of <a href="#data-file">data files</a>. For each fixed-sized attribute <code>foo1</code> (or dimension <code>bar1</code>), there is a single data file <code>a0.tdb</code> (<code>d0.tdb</code>) containing the values along this attribute (dimension). For every var-sized attribute <code>foo2</code> (or dimensions <code>bar2</code>), there are two data files; <code>a1_var.tdb</code> (<code>d1_var.tdb</code>) containing the var-sized values of the attribute (dimension) and <code>a1.tdb</code> (<code>d1.tdb</code>) containing the starting offsets of each value in <code>a1_var.tdb</code> (<code>d1_var.rdb</code>). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, <code>foo3</code>, will have an additional file <code>a2_validity.tdb</code> that contains its validity vector.</li>
+<li>The names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.</li>
+</ul>
+</section>
+<section id="fragment-metadata-file" class="level2">
+<h2 class="anchored" data-anchor-id="fragment-metadata-file">Fragment Metadata File</h2>
+<p>The fragment metadata file has the following on-disk format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">R-Tree</td>
+<td style="text-align: left;"><a href="#r-tree">R-Tree</a></td>
+<td style="text-align: left;">The serialized R-Tree</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile offsets for attribute/dimension 1</td>
+<td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
+<td style="text-align: left;">The serialized tile offsets for attribute/dimension 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile offsets for attribute/dimension N</td>
+<td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
+<td style="text-align: left;">The serialized tile offsets for attribute/dimension N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Variable tile offsets for attribute/dimension 1</td>
+<td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
+<td style="text-align: left;">The serialized variable tile offsets for attribute/dimension 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Variable tile offsets for attribute/dimension N</td>
+<td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
+<td style="text-align: left;">The serialized variable tile offsets for attribute/dimension N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Variable tile sizes for attribute/dimension 1</td>
+<td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
+<td style="text-align: left;">The serialized variable tile sizes for attribute/dimension 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Variable tile sizes for attribute/dimension N</td>
+<td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
+<td style="text-align: left;">The serialized variable tile sizes for attribute/dimension N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Validity tile offsets for attribute/dimension 1</td>
+<td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
+<td style="text-align: left;">The serialized validity tile offsets for attribute/dimension 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Validity tile offsets for attribute/dimension N</td>
+<td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
+<td style="text-align: left;">The serialized validity tile offsets for attribute/dimension N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile mins for attribute/dimension 1</td>
+<td style="text-align: left;"><a href="#tile-mins-maxs">Tile mins/maxs</a></td>
+<td style="text-align: left;">The serialized mins for attribute/dimension 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Variable mins for attribute/dimension N</td>
+<td style="text-align: left;"><a href="#tile-mins-maxs">Tile mins/maxs</a></td>
+<td style="text-align: left;">The serialized mins for attribute/dimension N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tile maxs for attribute/dimension 1</td>
+<td style="text-align: left;"><a href="#tile-mins-maxs">Tile mins/maxs</a></td>
+<td style="text-align: left;">The serialized maxs for attribute/dimension 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Variable maxs for attribute/dimension N</td>
+<td style="text-align: left;"><a href="#tile-mins-maxs">Tile mins/maxs</a></td>
+<td style="text-align: left;">The serialized maxs for attribute/dimension N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile sums for attribute/dimension 1</td>
+<td style="text-align: left;"><a href="#tile-sums">Tile sums</a></td>
+<td style="text-align: left;">The serialized sums for attribute/dimension 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Variable sums for attribute/dimension N</td>
+<td style="text-align: left;"><a href="#tile-sums">Tile sums</a></td>
+<td style="text-align: left;">The serialized sums for attribute/dimension N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tile null counts for attribute/dimension 1</td>
+<td style="text-align: left;"><a href="#tile-null-count">Tile null count</a></td>
+<td style="text-align: left;">The serialized null counts for attribute/dimension 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Variable maxs for attribute/dimension N</td>
+<td style="text-align: left;">[<a href="#tile-null-count">Tile null count</a></td>
+<td style="text-align: left;">The serialized null counts for attribute/dimension N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Metadata footer</td>
+<td style="text-align: left;"><a href="#footer">Footer</a></td>
+<td style="text-align: left;">Basic metadata gathered in the footer</td>
+</tr>
+</tbody>
+</table>
+<section id="r-tree" class="level3">
+<h3 class="anchored" data-anchor-id="r-tree">R-Tree</h3>
+<p>The R-Tree is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Fanout</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">The tree fanout</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Num levels</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">The number of levels in the tree</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Num MBRs at level 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The number of MBRs at level 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">MBR 1 at level 1</td>
+<td style="text-align: left;"><a href="#mbr">MBR</a></td>
+<td style="text-align: left;">First MBR at level 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">MBR N at level 1</td>
+<td style="text-align: left;"><a href="#mbr">MBR</a></td>
+<td style="text-align: left;">N-th MBR at level 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Num MBRs at level L</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The number of MBRs at level L</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">MBR 1 at level L</td>
+<td style="text-align: left;"><a href="#mbr">MBR</a></td>
+<td style="text-align: left;">First MBR at level L</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">MBR N at level L</td>
+<td style="text-align: left;"><a href="#mbr">MBR</a></td>
+<td style="text-align: left;">N-th MBR at level L</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="mbr" class="level3">
+<h3 class="anchored" data-anchor-id="mbr">MBR</h3>
+<p>Each MBR entry has format:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">1D range for dimension 1</td>
+<td style="text-align: left;"><code>1DRange</code></td>
+<td style="text-align: left;">The 1-dimensional range for dimension 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">1D range for dimension D</td>
+<td style="text-align: left;"><code>1DRange</code></td>
+<td style="text-align: left;">The 1-dimensional range for dimension D</td>
+</tr>
+</tbody>
+</table>
+<p>For <em>fixed-sized dimensions</em>, the <code>1DRange</code> format is:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Range minimum</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">The minimum value with the same datatype as the dimension</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Range maximum</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">The maximum value with the same datatype as the dimension</td>
+</tr>
+</tbody>
+</table>
+<p>For <em>var-sized dimensions</em>, the <code>1DRange</code> format is:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Range length</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The number of bytes of the 1D range</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Minimum value length</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The number of bytes of the minimum value</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Range minimum</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">The minimum (var-sized) value with the same datatype as the dimension</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Range maximum</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">The maximum (var-sized) value with the same datatype as the dimension</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="tile-offsets" class="level3">
+<h3 class="anchored" data-anchor-id="tile-offsets">Tile Offsets</h3>
+<p>The tile offsets is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Num tile offsets</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of tile offsets</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile offset 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Offset 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile offset N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Offset N</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="tile-sizes" class="level3">
+<h3 class="anchored" data-anchor-id="tile-sizes">Tile Sizes</h3>
+<p>The tile sizes is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Num tile sizes</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of tile sizes</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile size 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Size 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile size N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Size N</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="tile-mins-maxs" class="level3">
+<h3 class="anchored" data-anchor-id="tile-mins-maxs">Tile Mins Maxs</h3>
+<p>The tile mins maxs is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Num values</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of values</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Value 1</td>
+<td style="text-align: left;"><code>type</code></td>
+<td style="text-align: left;">Value 1 or Offset 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Value N</td>
+<td style="text-align: left;"><code>type</code></td>
+<td style="text-align: left;">Value N or Offset N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Var buffer size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Var buffer size</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Var buffer</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Var buffer</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="tile-sums" class="level3">
+<h3 class="anchored" data-anchor-id="tile-sums">Tile Sums</h3>
+<p>The tile sums is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Num values</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of values</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Value 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Sum 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Value N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Sum N</td>
+</tr>
+</tbody>
+</table>
+<p>The tile null count is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Num values</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of values</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Value 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Count 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Value N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Count N</td>
+</tr>
+</tbody>
+</table>
+<p>The fragment min max sum null count is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Min size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Size of the min value for attribute/dimension 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Min value</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Buffer for min value for attribute/dimension 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Max size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Size of the max value for attribute/dimension 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Max value</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Buffer for max value for attribute/dimension 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sum</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Sum value for attribute/dimension 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Null count</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Null count value for attribute/dimension 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Min size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Size of the min value for attribute/dimension N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Min value</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Buffer for min value for attribute/dimension N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Max size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Size of the max value for attribute/dimension N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Max value</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Buffer for max value for attribute/dimension N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Sum</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Sum value for attribute/dimension N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Null count</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Null count value for attribute/dimension N</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="footer" class="level3">
+<h3 class="anchored" data-anchor-id="footer">Footer</h3>
+<p>The footer is a simple blob (i.e., <em>not a generic tile</em>) with the following internal format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Version number</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Format version number of the fragment</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Array schema name size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Size of the array schema name</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Array schema name</td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">Array schema name</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Dense</td>
+<td style="text-align: left;"><code>char</code></td>
+<td style="text-align: left;">Whether the array is dense</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Null non-empty domain</td>
+<td style="text-align: left;"><code>char</code></td>
+<td style="text-align: left;">Indicates whether the non-empty domain is null or not</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Non-empty domain</td>
+<td style="text-align: left;"><a href="#mbr">MBR</a></td>
+<td style="text-align: left;">An MBR denoting the non-empty domain</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Number of sparse tiles</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of sparse tiles</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Last tile cell num</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">For sparse arrays, the number of cells in the last tile in the fragment</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Includes timestamps</td>
+<td style="text-align: left;"><code>char</code></td>
+<td style="text-align: left;">Whether the fragment includes timestamps or not</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">File sizes</td>
+<td style="text-align: left;"><code>uint64_t[]</code></td>
+<td style="text-align: left;">The size in bytes of each attribute/dimension file in the fragment. For var-length attributes/dimensions, this is the size of the offsets file.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">File var sizes</td>
+<td style="text-align: left;"><code>uint64_t[]</code></td>
+<td style="text-align: left;">The size in bytes of each var-length attribute/dimension file in the fragment.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">File validity sizes</td>
+<td style="text-align: left;"><code>uint64_t[]</code></td>
+<td style="text-align: left;">The size in bytes of each attribute/dimension validity vector file in the fragment.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">R-Tree offset</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the R-Tree in the metadata file.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile offset for attribute/dimension 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the tile offsets for attribute/dimension 1.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile offset for attribute/dimension N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the tile offsets for attribute/dimension N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tile var offset for attribute/dimension 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the variable tile offsets for attribute/dimension 1.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tile var offset for attribute/dimension N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the variable tile offsets for attribute/dimension N.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile var sizes offset for attribute/dimension 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the variable tile sizes for attribute/dimension 1.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile var sizes offset for attribute/dimension N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the variable tile sizes for attribute/dimension N.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tile validity offset for attribute/dimension 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the tile validity offsets for attribute/dimension 1.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tile validity offset for attribute/dimension N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the tile validity offsets for attribute/dimension N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile mins offset for attribute/dimension 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the tile mins for attribute/dimension 1.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile mins offset for attribute/dimension N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the tile mins for attribute/dimension N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tile maxs offset for attribute/dimension 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the tile maxs for attribute/dimension 1.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tile maxs offset for attribute/dimension N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the tile maxs for attribute/dimension N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile sums offset for attribute/dimension 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the tile sums for attribute/dimension 1.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tile sums offset for attribute/dimension N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the tile sums for attribute/dimension N</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tile null counts offset for attribute/dimension 1</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the tile null counts for attribute/dimension 1.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tile null counts offset for attribute/dimension N</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the tile null counts for attribute/dimension N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Fragment min max sum null count offset</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the fragment min max sum null count data.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Array schema name size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The total number of characters of the array schema name.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Array schema name character 1</td>
+<td style="text-align: left;"><code>char</code></td>
+<td style="text-align: left;">The first character of the array schema name.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Array schema name character N</td>
+<td style="text-align: left;"><code>char</code></td>
+<td style="text-align: left;">The last character of the array schema name.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Footer length</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Sum of bytes of the above fields. Only present when there is at least one var-sized dimension.</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="data-file" class="level2">
+<h2 class="anchored" data-anchor-id="data-file">Data File</h2>
+<p>The on-disk format of each data file is:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Tile 1</td>
+<td style="text-align: left;"><a href="../format_spec/tile.html#tile">Tile</a></td>
+<td style="text-align: left;">The data of tile 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tile N</td>
+<td style="text-align: left;"><a href="../format_spec/tile.html#tile">Tile</a></td>
+<td style="text-align: left;">The data of tile N</td>
+</tr>
+</tbody>
+</table>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    setTimeout(function() {
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      let href = ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const cites = ref.parentNode.getAttribute('data-cites').split(' ');
+    tippyHover(ref, function() {
+      var popup = window.document.createElement('div');
+      cites.forEach(function(cite) {
+        var citeDiv = window.document.createElement('div');
+        citeDiv.classList.add('hanging-indent');
+        citeDiv.classList.add('csl-entry');
+        var biblioDiv = window.document.getElementById('ref-' + cite);
+        if (biblioDiv) {
+          citeDiv.innerHTML = biblioDiv.innerHTML;
+        }
+        popup.appendChild(citeDiv);
+      });
+      return popup.innerHTML;
+    });
+  }
+});
+</script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../format_spec/array_schema.html" class="pagination-link">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Array Schema</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../format_spec/array_metadata.md" class="pagination-link">
+        <span class="nav-page-text"></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+</body></html>
