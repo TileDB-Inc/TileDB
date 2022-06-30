@@ -38,17 +38,17 @@
 
 namespace tiledb::common {
 
-template <class Chunk>
+template <size_t chunk_size>
 class pool_allocator {
   bool debug_{false};
 
-  using value_type = Chunk;
+  using value_type = std::byte;
   using pointer = value_type*;
 
   std::mutex mutex_;
 
   /**
-   * Book keeping posize_ters
+   * Book keeping pointers
    */
   pointer the_free_list = nullptr;
   pointer the_array_list = nullptr;
@@ -56,12 +56,14 @@ class pool_allocator {
   size_t num_free = 0;
 
   constexpr static ptrdiff_t page_size{4096};
-  constexpr static size_t align{page_size};
+  constexpr static ptrdiff_t align{page_size};
   constexpr static ptrdiff_t page_mask{~(page_size - 1)};
 
-  /* 32M / sizeof(chunk) */
+  /* 32M / chunk_size */
   constexpr static size_t mem_size{32 * 1024 * 1024};
-  constexpr static size_t chunks_per_array{mem_size / sizeof(value_type)};
+  constexpr static size_t chunks_per_array{mem_size / chunk_size};
+  static_assert(mem_size % chunk_size == 0);
+  static_assert(chunk_size <= mem_size);
 
   /* Add some padding so that we can align on page boundary */
   constexpr static size_t array_size{mem_size + align + sizeof(pointer)};
@@ -93,30 +95,62 @@ class pool_allocator {
   /**
    * Allocates a new array of chunks and puts them on the free list
    */
-  size_t free_list_more() {
-    auto new_bytes = reinterpret_cast<std::byte*>(malloc(array_size));
-    pointer new_array = reinterpret_cast<pointer>(new_bytes);
+  void free_list_more() {
+    auto new_bytes{reinterpret_cast<std::byte*>(malloc(array_size))};
+    pointer new_array{reinterpret_cast<pointer>(new_bytes)};
 
     /* "Next" is stored at the beginning of the array */
     *(pointer*)new_array = the_array_list;
     the_array_list = new_array;
 
-    /* Force page alignment -- skip past the pointer, add page_mask, and then
-     * mask off the lower bits */
-    pointer aligned_start = reinterpret_cast<pointer>(
+    /*
+     * Force page alignment -- skip past the pointer, add (alignment-1),
+     * and then mask off the lower bits
+     */
+    auto aligned_start{reinterpret_cast<std::byte*>(
         reinterpret_cast<ptrdiff_t>(new_bytes + sizeof(pointer) + (align - 1)) &
-        reinterpret_cast<ptrdiff_t>(page_mask));
+        reinterpret_cast<ptrdiff_t>(page_mask))};
 
     for (size_t i = 0; i < chunks_per_array; ++i) {
-      push_chunk(aligned_start + i);
+      push_chunk(aligned_start + i * chunk_size);
     }
 
     num_arrays++;
+  }
 
-    return 0;
+  /**
+   * Go through list of arrays, freeing each one
+   */
+  void free_list_free() {
+    pointer first_array = the_array_list;
+
+    auto num_to_free{num_arrays};
+    for (size_t j = 0; j < num_to_free; ++j) {
+      auto next_array = *(pointer*)first_array;
+      free(first_array);
+      first_array = next_array;
+      --num_arrays;
+    }
+    the_array_list = first_array;
+    the_free_list = first_array;
   }
 
  public:
+  /**
+   * Use default constructor
+   */
+  pool_allocator() = default;
+
+  /**
+   * Release allocated memory (free each array)
+   */
+  ~pool_allocator() {
+    free_list_free();
+    assert(num_arrays == 0);
+    assert(the_free_list == nullptr);
+    assert(the_array_list == nullptr);
+  }
+
   pointer allocate() {
     std::scoped_lock lock(mutex_);
 
@@ -139,13 +173,12 @@ class pool_allocator {
 
   /* Iterate through every element that has been allocated */
   void scan_all(void (*f)(pointer)) {
-    pointer start_value_type = (pointer)NULL;
     pointer first_array = the_array_list;
 
     for (size_t j = 0; j < num_arrays; ++j) {
-      start_value_type = (pointer)((char*)first_array + sizeof(pointer));
+      auto start = (pointer)((char*)first_array + sizeof(pointer));
       for (size_t i = 0; i < chunks_per_array; ++i) {
-        f(start_value_type + i);
+        f(start + i * chunk_size);
         ; /* Do something -- your code here */
 
         if (debug_) {

@@ -38,11 +38,11 @@
 using namespace tiledb::common;
 
 class big_class {
-  std::array<char, 2 * 1024 * 1024> storage_;
+  [[maybe_unused]] std::array<char, 2 * 1024 * 1024> storage_;
 };
 
 class small_class {
-  std::array<char, 4 * 1024> storage_;
+  [[maybe_unused]] std::array<char, 4 * 1024> storage_;
 };
 
 /**
@@ -55,26 +55,20 @@ TEST_CASE("Pool Allocator: Test chunk sizes", "[pool_allocator]") {
 
 template <class T>
 void test_alloc() {
-  pool_allocator<T> p;
+  pool_allocator<sizeof(T)> p;
 
   auto p1 = p.allocate();
   auto p2 = p.allocate();
-  CHECK(p1 - p2 == 1);
-  CHECK(
-      reinterpret_cast<std::byte*>(p1) - reinterpret_cast<std::byte*>(p2) ==
-      sizeof(T));
+  CHECK(p1 - p2 == sizeof(T));
 }
 
 template <class T>
 void test_alloc_dealloc() {
-  pool_allocator<T> p;
+  pool_allocator<sizeof(T)> p;
 
   auto p1 = p.allocate();
   auto p2 = p.allocate();
-  CHECK(p1 - p2 == 1);
-  CHECK(
-      reinterpret_cast<std::byte*>(p1) - reinterpret_cast<std::byte*>(p2) ==
-      sizeof(T));
+  CHECK(p1 - p2 == sizeof(T));
 
   p.deallocate(p2);
   p.deallocate(p1);
@@ -86,13 +80,11 @@ void test_alloc_dealloc() {
 
 template <class T>
 void test_alloc_dealloc_scan() {
-  pool_allocator<T> p;
+  pool_allocator<sizeof(T)> p;
 
   auto p1 = p.allocate();
   auto p2 = p.allocate();
-  CHECK(
-      reinterpret_cast<std::byte*>(p1) - reinterpret_cast<std::byte*>(p2) ==
-      sizeof(T));
+  CHECK(p1 - p2 == sizeof(T));
 
   p.deallocate(p2);
   p.deallocate(p1);
@@ -131,14 +123,14 @@ TEST_CASE(
 
 template <class T>
 void test_shared() {
-  pool_allocator<T> p;
+  pool_allocator<sizeof(T)> p;
   auto p1 = p.allocate();
-  auto d = [&](T* px) { p.deallocate(px); };
+  auto d = [&](auto px) { p.deallocate(px); };
 
   // Create and destroy a shared pointer to p1 */
-  std::shared_ptr<T> u;
+  std::shared_ptr<std::byte> u;
   {
-    std::shared_ptr<T> s(p1, d);
+    std::shared_ptr<std::byte> s(p1, d);
     CHECK(u.use_count() == 0);
     CHECK(s.use_count() == 1);
     u = s;
