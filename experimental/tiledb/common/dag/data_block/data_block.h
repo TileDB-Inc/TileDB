@@ -152,7 +152,7 @@ class DataBlockImpl {
   }
 };
 
-using DataBlock = DataBlockImpl<SingletonPoolAllocator<chunk_size_>>;
+using DataBlock = DataBlockImpl<PoolAllocator<chunk_size_>>;
 
 }  // namespace tiledb::common
 
