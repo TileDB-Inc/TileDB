@@ -33,6 +33,8 @@
 #include "unit_pool_allocator.h"
 #include <array>
 #include <memory>
+#include <vector>
+#include "../../utils/print_types.h"
 #include "experimental/tiledb/common/dag/data_block/pool_allocator.h"
 
 using namespace tiledb::common;
@@ -55,7 +57,7 @@ TEST_CASE("Pool Allocator: Test chunk sizes", "[pool_allocator]") {
 
 template <class T>
 void test_alloc() {
-  PoolAllocator<sizeof(T)> p;
+  PoolAllocator<sizeof(T)> p{};
 
   auto p1 = p.allocate();
   auto p2 = p.allocate();
@@ -167,13 +169,10 @@ TEST_CASE("Pool Allocator: Test use with std::shared_ptr", "[PoolAllocator]") {
   }
 }
 
-template <size_t chunk_size>
-SingletonPoolAllocator<chunk_size>*
-    SingletonPoolAllocator<chunk_size>::instance{nullptr};
-
 template <class T>
 void test_singleton() {
   auto p = SingletonPoolAllocator<sizeof(T)>::get_instance();
+  auto r = SingletonPoolAllocator<sizeof(T)>::get_instance();
 
   auto p1 = p->allocate();
   auto p2 = p->allocate();
@@ -185,6 +184,40 @@ void test_singleton() {
   auto q2 = p->allocate();
   CHECK(p1 == q1);
   CHECK(p2 == q2);
+
+  p->deallocate(q2);
+  p->deallocate(q1);
+  auto r1 = r->allocate();
+  auto r2 = r->allocate();
+  CHECK(p1 == r1);
+  CHECK(p2 == r2);
+}
+
+template <class T>
+void test_pool_allocator() {
+  /* Instantiate two allocators */
+  auto p = PoolAllocator<sizeof(T)>{};
+  auto r = PoolAllocator<sizeof(T)>{};
+
+  auto p1 = p.allocate();
+  auto p2 = p.allocate();
+  CHECK(p1 - p2 == sizeof(T));
+
+  p.deallocate(p2);
+  p.deallocate(p1);
+  auto q1 = p.allocate();
+  auto q2 = p.allocate();
+  CHECK(p1 == q1);
+  CHECK(p2 == q2);
+
+  p.deallocate(q2);
+  p.deallocate(q1);
+
+  /* Get an element from second allocator */
+  auto r1 = r.allocate();
+  auto r2 = r.allocate();
+  CHECK(p1 == r1);
+  CHECK(p2 == r2);
 }
 
 /**
@@ -198,4 +231,23 @@ TEST_CASE(
   SECTION("small class") {
     test_singleton<small_class>();
   }
+}
+
+/**
+ * Test allocation and deallocation with PoolAllocator (also singleton)
+ */
+TEST_CASE("Pool Allocator: Test use with PoolAllocator", "[PoolAllocator]") {
+  SECTION("big class") {
+    test_pool_allocator<big_class>();
+  }
+  SECTION("small class") {
+    test_pool_allocator<small_class>();
+  }
+}
+
+TEST_CASE(
+    "Pool Allocator: Allocate vector with PoolAllocator - compile only",
+    "[PoolAllocator]") {
+  std::vector<std::byte, PoolAllocator<1024 * 1024>> v(10);
+  CHECK(v.size() == 10);
 }

@@ -36,8 +36,13 @@
 #include <cstddef>
 #include <vector>
 #include "external/include/span/span.hpp"
+#include "pool_allocator.h"
 
 namespace tiledb::common {
+
+namespace {
+constexpr static const size_t chunk_size_ = 4'194'304;  // 4M
+}
 
 /**
  * A fixed size block, an untyped carrier for data to be interpreted by its
@@ -49,25 +54,29 @@ namespace tiledb::common {
  *
  * Implements standard library interface for random access container.
  */
-class DataBlock {
-  constexpr static const size_t N_ = 4'194'304;  // 4M
+template <class Allocator>
+class DataBlockImpl {
+  //  static SingletonPoolAllocator<chunk_size_>* allocator_;
 
-  using storage_t = std::vector<std::byte>;  // For prototyping
+  static Allocator allocator_;
+
+  using storage_t = std::shared_ptr<std::byte>;
   using data_t = tcb::span<std::byte>;
   storage_t storage_;
   data_t data_;
+  size_t size_;
 
  public:
-  DataBlock()
-      : storage_(N_)
-      , data_(storage_.data(), storage_.size()) {
+  DataBlockImpl() {
+    //    : storage_(allocator_.allocate(), allocator_t
+    // data_(storage_.data(), storage_.size()) {
   }
 
   using DataBlockIterator = data_t::iterator;
   using DataBlockConstIterator = data_t::iterator;
 
   using value_type = data_t::value_type;
-  // using  allocator_type = ??
+  using allocator_type = SingletonPoolAllocator<chunk_size_>;
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
   using reference = value_type&;
@@ -139,9 +148,11 @@ class DataBlock {
     return data_.size();
   }
   size_t capacity() const {
-    return storage_.size();
+    return chunk_size_;
   }
 };
+
+using DataBlock = DataBlockImpl<SingletonPoolAllocator<chunk_size_>>;
 
 }  // namespace tiledb::common
 
