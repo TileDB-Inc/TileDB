@@ -205,8 +205,10 @@ StorageManager::load_array_schemas_and_fragment_metadata(
   std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
       meta_uris.size());
   auto status = parallel_for(compute_tp_, 0, meta_uris.size(), [&](size_t i) {
-    auto&& [st, offsets] =
-        load_consolidated_fragment_meta(meta_uris[i], enc_key, &f_buffs[i]);
+    auto&& [st, buffer_opt, offsets] =
+        load_consolidated_fragment_meta(meta_uris[i], enc_key);
+    RETURN_NOT_OK(st);
+    f_buffs[i] = std::move(*buffer_opt);
     offsets_vectors[i] = std::move(offsets.value());
     return st;
   });
@@ -2121,7 +2123,6 @@ Status StorageManager::load_group_metadata(
 
 tuple<Status, optional<Buffer>> StorageManager::load_data_from_generic_tile(
     const URI& uri, const EncryptionKey& encryption_key) {
-  tdb_unique_ptr<Tile> tile;
   GenericTileIO tile_io(this, uri);
 
   // Get encryption key from config
@@ -2161,24 +2162,19 @@ tuple<Status, optional<Buffer>> StorageManager::load_data_from_generic_tile(
           nullopt);
     }
 
-    auto&& [st1, tile_opt] =
+    auto&& [st1, buff_opt] =
         tile_io.read_generic(0, encryption_key_cfg, config_);
     RETURN_NOT_OK_TUPLE(st1, nullopt);
-    tile = std::move(*tile_opt);
+
+    return {Status::Ok(), std::move(*buff_opt)};
   } else {
-    auto&& [st1, tile_opt] = tile_io.read_generic(0, encryption_key, config_);
+    auto&& [st1, buff_opt] = tile_io.read_generic(0, encryption_key, config_);
     RETURN_NOT_OK_TUPLE(st1, nullopt);
-    tile = std::move(*tile_opt);
+
+    return {Status::Ok(), std::move(*buff_opt)};
   }
 
-  Buffer buff;
-  RETURN_NOT_OK_TUPLE(buff.realloc(tile->size()), std::nullopt);
-  buff.set_size(tile->size());
-  auto st = tile->read(buff.data(), 0, buff.size());
-
-  RETURN_NOT_OK_TUPLE(st, nullopt);
-
-  return {Status::Ok(), buff};
+  assert(false);
 }
 
 /* ****************************** */
@@ -2264,38 +2260,41 @@ StorageManager::load_fragment_metadata(
   return {Status::Ok(), fragment_metadata};
 }
 
-tuple<Status, optional<std::vector<std::pair<std::string, uint64_t>>>>
+tuple<
+    Status,
+    optional<Buffer>,
+    optional<std::vector<std::pair<std::string, uint64_t>>>>
 StorageManager::load_consolidated_fragment_meta(
-    const URI& uri, const EncryptionKey& enc_key, Buffer* f_buff) {
+    const URI& uri, const EncryptionKey& enc_key) {
   auto timer_se = stats_->start_timer("read_load_consolidated_frag_meta");
 
   // No consolidated fragment metadata file
   if (uri.to_string().empty())
-    return {Status::Ok(), nullopt};
+    return {Status::Ok(), nullopt, nullopt};
 
-  auto&& [st, buffer] = load_data_from_generic_tile(uri, enc_key);
-  RETURN_NOT_OK_TUPLE(st, nullopt);
-  buffer->swap(*f_buff);
+  auto&& [st, buffer_opt] = load_data_from_generic_tile(uri, enc_key);
+  RETURN_NOT_OK_TUPLE(st, nullopt, nullopt);
+  auto& buffer = *buffer_opt;
 
-  stats_->add_counter("consolidated_frag_meta_size", f_buff->size());
+  stats_->add_counter("consolidated_frag_meta_size", buffer.size());
 
   uint32_t fragment_num;
-  f_buff->reset_offset();
-  f_buff->read(&fragment_num, sizeof(uint32_t));
+  buffer.reset_offset();
+  buffer.read(&fragment_num, sizeof(uint32_t));
 
   uint64_t name_size, offset;
   std::string name;
   std::vector<std::pair<std::string, uint64_t>> ret;
   ret.reserve(fragment_num);
   for (uint32_t f = 0; f < fragment_num; ++f) {
-    f_buff->read(&name_size, sizeof(uint64_t));
+    buffer.read(&name_size, sizeof(uint64_t));
     name.resize(name_size);
-    f_buff->read(&name[0], name_size);
-    f_buff->read(&offset, sizeof(uint64_t));
+    buffer.read(&name[0], name_size);
+    buffer.read(&offset, sizeof(uint64_t));
     ret.emplace_back(name, offset);
   }
 
-  return {Status::Ok(), ret};
+  return {Status::Ok(), buffer, ret};
 }
 
 Status StorageManager::set_default_tags() {

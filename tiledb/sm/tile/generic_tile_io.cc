@@ -59,11 +59,11 @@ GenericTileIO::GenericTileIO(StorageManager* storage_manager, const URI& uri)
 /*               API              */
 /* ****************************** */
 
-tuple<Status, optional<tdb_unique_ptr<Tile>>> GenericTileIO::read_generic(
+tuple<Status, optional<Buffer>> GenericTileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
     const Config& config) {
-  tdb_unique_ptr<Tile> ret(tdb_new(Tile));
+  Tile tile;
   auto&& [st, header_opt] =
       read_generic_tile_header(storage_manager_, uri_, file_offset);
   RETURN_NOT_OK_TUPLE(st, nullopt);
@@ -86,7 +86,7 @@ tuple<Status, optional<tdb_unique_ptr<Tile>>> GenericTileIO::read_generic(
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
 
   RETURN_NOT_OK_TUPLE(
-      ret->init_filtered(
+      tile.init_filtered(
           header.version_number,
           (Datatype)header.datatype,
           header.cell_size,
@@ -94,27 +94,32 @@ tuple<Status, optional<tdb_unique_ptr<Tile>>> GenericTileIO::read_generic(
       nullopt);
 
   // Read the tile.
-  ret->filtered_buffer().expand(header.persisted_size);
-  RETURN_NOT_OK_TUPLE(ret->alloc_data(header.tile_size), nullopt);
+  tile.filtered_buffer().expand(header.persisted_size);
+  RETURN_NOT_OK_TUPLE(tile.alloc_data(header.tile_size), nullopt);
   RETURN_NOT_OK_TUPLE(
       storage_manager_->read(
           uri_,
           file_offset + tile_data_offset,
-          ret->filtered_buffer().data(),
+          tile.filtered_buffer().data(),
           header.persisted_size),
       nullopt);
 
   // Unfilter
-  assert(ret->filtered());
+  assert(tile.filtered());
   RETURN_NOT_OK_TUPLE(
       header.filters.run_reverse(
           storage_manager_->stats(),
-          ret.get(),
+          &tile,
           nullptr,
           storage_manager_->compute_tp(),
           config),
       nullopt);
-  assert(!ret->filtered());
+  assert(!tile.filtered());
+
+  Buffer ret;
+  RETURN_NOT_OK_TUPLE(ret.realloc(tile.size()), std::nullopt);
+  ret.set_size(tile.size());
+  RETURN_NOT_OK_TUPLE(tile.read(ret.data(), 0, ret.size()), nullopt);
 
   return {Status::Ok(), std::move(ret)};
 }

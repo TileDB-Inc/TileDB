@@ -1200,9 +1200,11 @@ class StorageManager {
    * @return Status, vector from the fragment name to the offset in `f_buff`
    *     where the basic fragment metadata starts.
    */
-  tuple<Status, optional<std::vector<std::pair<std::string, uint64_t>>>>
-  load_consolidated_fragment_meta(
-      const URI& uri, const EncryptionKey& enc_key, Buffer* f_buff);
+  tuple<
+      Status,
+      optional<Buffer>,
+      optional<std::vector<std::pair<std::string, uint64_t>>>>
+  load_consolidated_fragment_meta(const URI& uri, const EncryptionKey& enc_key);
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();
