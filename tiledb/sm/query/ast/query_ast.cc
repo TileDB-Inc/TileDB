@@ -41,13 +41,45 @@ bool ASTNodeVal::is_expr() const {
   return false;
 }
 
-tdb_unique_ptr<ASTNode> ASTNodeVal::clone() const {
+tdb_unique_ptr<ASTNode> ASTNodeVal::clone(bool negate) const {
+  auto op = op_;
+  if (negate) {
+    switch (op) {
+      case QueryConditionOp::LT:
+        op = QueryConditionOp::GE;
+        break;
+
+      case QueryConditionOp::GT:
+        op = QueryConditionOp::LE;
+        break;
+
+      case QueryConditionOp::GE:
+        op = QueryConditionOp::LT;
+        break;
+
+      case QueryConditionOp::LE:
+        op = QueryConditionOp::GT;
+        break;
+
+      case QueryConditionOp::NE:
+        op = QueryConditionOp::EQ;
+        break;
+
+      case QueryConditionOp::EQ:
+        op = QueryConditionOp::NE;
+        break;
+
+      default:
+        throw std::runtime_error("ASTNodeExpr::negate: Invalid op.");
+    }
+  }
+
   return tdb_unique_ptr<ASTNode>(tdb_new(
       ASTNodeVal,
       field_name_,
       condition_value_data_.data(),
       condition_value_data_.size(),
-      op_));
+      op));
 }
 
 void ASTNodeVal::get_field_names(
@@ -179,48 +211,34 @@ const QueryConditionCombinationOp& ASTNodeVal::get_combination_op() const {
       "value node.");
 }
 
-void ASTNodeVal::negate() {
-  switch (op_) {
-    case QueryConditionOp::LT:
-      op_ = QueryConditionOp::GE;
-      break;
-
-    case QueryConditionOp::GT:
-      op_ = QueryConditionOp::LE;
-      break;
-
-    case QueryConditionOp::GE:
-      op_ = QueryConditionOp::LT;
-      break;
-
-    case QueryConditionOp::LE:
-      op_ = QueryConditionOp::GT;
-      break;
-
-    case QueryConditionOp::NE:
-      op_ = QueryConditionOp::EQ;
-      break;
-
-    case QueryConditionOp::EQ:
-      op_ = QueryConditionOp::NE;
-      break;
-
-    default:
-      throw std::runtime_error("ASTNodeExpr::negate: Invalid op.");
-  }
-}
-
 bool ASTNodeExpr::is_expr() const {
   return true;
 }
 
-tdb_unique_ptr<ASTNode> ASTNodeExpr::clone() const {
+tdb_unique_ptr<ASTNode> ASTNodeExpr::clone(bool negate) const {
   std::vector<tdb_unique_ptr<ASTNode>> nodes_copy;
   for (const auto& node : nodes_) {
-    nodes_copy.push_back(node->clone());
+    nodes_copy.push_back(node->clone(negate));
   }
+
+  auto combination_op = combination_op_;
+  if (negate) {
+    switch (combination_op) {
+      case QueryConditionCombinationOp::AND:
+        combination_op = QueryConditionCombinationOp::OR;
+        break;
+
+      case QueryConditionCombinationOp::OR:
+        combination_op = QueryConditionCombinationOp::AND;
+        break;
+
+      default:
+        throw std::runtime_error("ASTNodeExpr::negate: Invalid op.");
+    }
+  }
+
   return tdb_unique_ptr<ASTNode>(
-      tdb_new(ASTNodeExpr, std::move(nodes_copy), combination_op_));
+      tdb_new(ASTNodeExpr, std::move(nodes_copy), combination_op));
 }
 
 void ASTNodeExpr::get_field_names(
@@ -302,25 +320,6 @@ const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeExpr::get_children() const {
 }
 const QueryConditionCombinationOp& ASTNodeExpr::get_combination_op() const {
   return combination_op_;
-}
-
-void ASTNodeExpr::negate() {
-  switch (combination_op_) {
-    case QueryConditionCombinationOp::AND:
-      combination_op_ = QueryConditionCombinationOp::OR;
-      break;
-
-    case QueryConditionCombinationOp::OR:
-      combination_op_ = QueryConditionCombinationOp::AND;
-      break;
-
-    default:
-      throw std::runtime_error("ASTNodeExpr::negate: Invalid combination op.");
-  }
-
-  for (const auto& child : nodes_) {
-    child->negate();
-  }
 }
 
 }  // namespace sm

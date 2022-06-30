@@ -60,6 +60,9 @@ class QueryCondition {
   /** Default constructor. */
   QueryCondition();
 
+  /** Constructor from a tree. */
+  QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree);
+
   /** Copy constructor. */
   QueryCondition(const QueryCondition& rhs);
 
@@ -190,7 +193,7 @@ class QueryCondition {
   /**
    * Reverse the query condition using De Morgan's law.
    */
-  void negate();
+  QueryCondition negated_condition();
 
   /**
    * Sets the AST. This is internal state to only be used in

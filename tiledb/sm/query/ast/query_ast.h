@@ -75,7 +75,7 @@ class ASTNode {
    *
    * @return tdb_unique_ptr<ASTNode> A deep copy of the ASTNode.
    */
-  virtual tdb_unique_ptr<ASTNode> clone() const = 0;
+  virtual tdb_unique_ptr<ASTNode> clone(bool negate = false) const = 0;
 
   /**
    * @brief Gets the set of field names from all the value nodes in the ASTNode.
@@ -167,11 +167,6 @@ class ASTNode {
   virtual const QueryConditionCombinationOp& get_combination_op() const = 0;
 
   /**
-   * Reverse the query condition using De Morgan's law.
-   */
-  virtual void negate() = 0;
-
-  /**
    * @brief Default virtual destructor.
    */
   virtual ~ASTNode() {
@@ -233,11 +228,11 @@ class ASTNodeVal : public ASTNode {
   /**
    * @brief ASTNode class method used in the QueryCondition copy constructor
    *        ASTNode::combine, and testing that returns a copy of the caller
-   * node.
+   *        node.
    *
    * @return tdb_unique_ptr<ASTNode> A deep copy of the ASTNode.
    */
-  tdb_unique_ptr<ASTNode> clone() const override;
+  tdb_unique_ptr<ASTNode> clone(bool negate = false) const override;
 
   /**
    * @brief Gets the set of field names from all the value nodes in the ASTNode.
@@ -328,11 +323,6 @@ class ASTNodeVal : public ASTNode {
    * @return const QueryConditionCombinationOp& The combination op.
    */
   const QueryConditionCombinationOp& get_combination_op() const override;
-
-  /**
-   * Reverse the query condition using De Morgan's law.
-   */
-  void negate() override;
 
  private:
   /** The attribute name. */
@@ -392,7 +382,7 @@ class ASTNodeExpr : public ASTNode {
    *
    * @return tdb_unique_ptr<ASTNode> A deep copy of the ASTNode.
    */
-  tdb_unique_ptr<ASTNode> clone() const override;
+  tdb_unique_ptr<ASTNode> clone(bool negate = false) const override;
 
   /**
    * @brief Gets the set of field names from all the value nodes in the ASTNode.
@@ -483,11 +473,6 @@ class ASTNodeExpr : public ASTNode {
    * @return const QueryConditionCombinationOp& The combination op.
    */
   const QueryConditionCombinationOp& get_combination_op() const override;
-
-  /**
-   * Reverse the query condition using De Morgan's law.
-   */
-  void negate() override;
 
  private:
   /** The node list **/

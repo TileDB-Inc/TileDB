@@ -54,19 +54,13 @@ tdb_unique_ptr<ASTNode> test_value_node(
   auto node_val = tdb_unique_ptr<ASTNode>(
       tdb_new(ASTNodeVal, field_name, val, sizeof(T), op));
 
-  if (negate) {
-    node_val->negate();
+  if (!negate) {
+    CHECK(ast_node_to_str(node_val) == expected_result);
   }
-
-  CHECK(ast_node_to_str(node_val) == expected_result);
 
   // Test ASTNode::clone on the constructed node.
-  auto node_val_clone = node_val->clone();
+  auto node_val_clone = node_val->clone(negate);
   CHECK(ast_node_to_str(node_val_clone) == expected_result);
-
-  if (negate) {
-    node_val->negate();
-  }
 
   return node_val;
 }
@@ -83,18 +77,13 @@ tdb_unique_ptr<ASTNode> test_string_value_node(
   // Test validity of construction of value node.
   auto node_val = tdb_unique_ptr<ASTNode>(
       tdb_new(ASTNodeVal, field_name, val, strlen(val), op));
-  if (negate) {
-    node_val->negate();
+  if (!negate) {
+    CHECK(ast_node_to_str(node_val) == expected_result);
   }
-  CHECK(ast_node_to_str(node_val) == expected_result);
 
   // Test ASTNode::clone on the constructed node.
-  auto node_val_clone = node_val->clone();
+  auto node_val_clone = node_val->clone(negate);
   CHECK(ast_node_to_str(node_val_clone) == expected_result);
-
-  if (negate) {
-    node_val->negate();
-  }
 
   return node_val;
 }
@@ -108,19 +97,13 @@ tdb_unique_ptr<ASTNode> test_expression_node(
   // Test validity of construction of expression node.
   auto combined_node = lhs->combine(rhs, op);
 
-  if (negate) {
-    combined_node->negate();
+  if (!negate) {
+    CHECK(ast_node_to_str(combined_node) == expected_result);
   }
-
-  CHECK(ast_node_to_str(combined_node) == expected_result);
 
   // Test ASTNode::clone on the constructed node.
-  auto combined_node_clone = combined_node->clone();
+  auto combined_node_clone = combined_node->clone(negate);
   CHECK(ast_node_to_str(combined_node_clone) == expected_result);
-
-  if (negate) {
-    combined_node->negate();
-  }
 
   return combined_node;
 }
