@@ -32,6 +32,7 @@
 
 #include "unit_pool_allocator.h"
 #include <array>
+#include <memory>
 #include "experimental/tiledb/common/dag/data_block/pool_allocator.h"
 
 using namespace tiledb::common;
@@ -128,3 +129,53 @@ TEST_CASE(
   // return 0;
 }
 
+template <class T>
+void test_shared() {
+  pool_allocator<T> p;
+  auto p1 = p.allocate();
+  auto d = [&](T* px) { p.deallocate(px); };
+
+  // Create and destroy a shared pointer to p1 */
+  std::shared_ptr<T> u;
+  {
+    std::shared_ptr<T> s(p1, d);
+    CHECK(u.use_count() == 0);
+    CHECK(s.use_count() == 1);
+    u = s;
+
+    // Two objects are sharing p1
+    CHECK(s.use_count() == 2);
+    CHECK(u.use_count() == 2);
+
+    CHECK(s.get() == p1);
+    CHECK(u.get() == p1);
+    // s goes out of scope
+  }
+  CHECK(u.get() == p1);
+  CHECK(u.use_count() == 1);
+
+  // Get another object, should be different from p1
+  auto p2 = p.allocate();
+  CHECK(p1 != p2);
+  p.deallocate(p2);
+
+  // Get rid of u, should return p1 to pool
+  u.reset();
+  CHECK(u.use_count() == 0);
+
+  // Get top object of pool, should be p1 again
+  auto p3 = p.allocate();
+  CHECK(p1 == p3);
+}
+
+/**
+ * Test allocation and deallocation with std::shared_ptr
+ */
+TEST_CASE("Pool Allocator: Test use with std::shared_ptr", "[pool_allocator]") {
+  SECTION("big class") {
+    test_shared<big_class>();
+  }
+  SECTION("small class") {
+    test_shared<small_class>();
+  }
+}
