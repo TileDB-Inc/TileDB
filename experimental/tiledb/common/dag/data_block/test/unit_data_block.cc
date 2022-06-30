@@ -102,10 +102,14 @@ TEST_CASE(
   auto db = DataBlockImpl<std::allocator<std::byte>>{};
   db_test_0(db);
   db_test_1(db);
+
+  auto dc = DataBlock{};
+  db_test_0(dc);
+  db_test_1(dc);
 }
 
-TEST_CASE("DataBlock: Iterate through data_block", "[data_block]") {
-  auto db = DataBlockImpl<std::allocator<std::byte>>{};
+template <class DB>
+void db_test_2(DB& db) {
   for (auto& j : db) {
     j = std::byte{255};
   }
@@ -121,21 +125,20 @@ TEST_CASE("DataBlock: Iterate through data_block", "[data_block]") {
   CHECK(f == db.end());
 }
 
+TEST_CASE("DataBlock: Iterate through data_block", "[data_block]") {
+  auto db = DataBlockImpl<std::allocator<std::byte>>{};
+  db_test_2(db);
+  auto dc = DataBlock{};
+  db_test_2(dc);
+}
+
 TEST_CASE("DataBlock: Iterate through 8 data_blocks", "[data_block]") {
   for (size_t i = 0; i < 8; ++i) {
     auto db = DataBlockImpl<std::allocator<std::byte>>{};
-    for (auto& j : db) {
-      j = std::byte{255};
-    }
-    auto e = std::find_if_not(
-        db.begin(), db.end(), [](auto a) { return std::byte{255} == a; });
-    CHECK(e == db.end());
-
-    for (auto& j : db) {
-      j = std::byte{13};
-    }
-    auto f = std::find_if_not(
-        db.begin(), db.end(), [](auto a) { return std::byte{13} == a; });
-    CHECK(f == db.end());
+    db_test_2(db);
+  }
+  for (size_t i = 0; i < 8; ++i) {
+    auto db = DataBlock{};
+    db_test_2(db);
   }
 }
