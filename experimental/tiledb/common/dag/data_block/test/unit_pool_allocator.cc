@@ -55,7 +55,7 @@ TEST_CASE("Pool Allocator: Test chunk sizes", "[pool_allocator]") {
 
 template <class T>
 void test_alloc() {
-  pool_allocator<sizeof(T)> p;
+  PoolAllocator<sizeof(T)> p;
 
   auto p1 = p.allocate();
   auto p2 = p.allocate();
@@ -64,7 +64,7 @@ void test_alloc() {
 
 template <class T>
 void test_alloc_dealloc() {
-  pool_allocator<sizeof(T)> p;
+  PoolAllocator<sizeof(T)> p;
 
   auto p1 = p.allocate();
   auto p2 = p.allocate();
@@ -80,7 +80,7 @@ void test_alloc_dealloc() {
 
 template <class T>
 void test_alloc_dealloc_scan() {
-  pool_allocator<sizeof(T)> p;
+  PoolAllocator<sizeof(T)> p;
 
   auto p1 = p.allocate();
   auto p2 = p.allocate();
@@ -98,7 +98,7 @@ void test_alloc_dealloc_scan() {
  * Test allocation and deallocation
  */
 TEST_CASE(
-    "Pool Allocator: Test allocation and deallocation", "[pool_allocator]") {
+    "Pool Allocator: Test allocation and deallocation", "[PoolAllocator]") {
   SECTION("big class") {
     test_alloc<big_class>();
   }
@@ -114,16 +114,11 @@ TEST_CASE(
   SECTION("small class") {
     test_alloc_dealloc<small_class>();
   }
-
-  // scan_all(mark);
-  // scan_all(sweep);
-
-  // return 0;
 }
 
 template <class T>
 void test_shared() {
-  pool_allocator<sizeof(T)> p;
+  PoolAllocator<sizeof(T)> p;
   auto p1 = p.allocate();
   auto d = [&](auto px) { p.deallocate(px); };
 
@@ -163,11 +158,44 @@ void test_shared() {
 /**
  * Test allocation and deallocation with std::shared_ptr
  */
-TEST_CASE("Pool Allocator: Test use with std::shared_ptr", "[pool_allocator]") {
+TEST_CASE("Pool Allocator: Test use with std::shared_ptr", "[PoolAllocator]") {
   SECTION("big class") {
     test_shared<big_class>();
   }
   SECTION("small class") {
     test_shared<small_class>();
+  }
+}
+
+template <size_t chunk_size>
+SingletonPoolAllocator<chunk_size>*
+    SingletonPoolAllocator<chunk_size>::instance{nullptr};
+
+template <class T>
+void test_singleton() {
+  auto p = SingletonPoolAllocator<sizeof(T)>::get_instance();
+
+  auto p1 = p->allocate();
+  auto p2 = p->allocate();
+  CHECK(p1 - p2 == sizeof(T));
+
+  p->deallocate(p2);
+  p->deallocate(p1);
+  auto q1 = p->allocate();
+  auto q2 = p->allocate();
+  CHECK(p1 == q1);
+  CHECK(p2 == q2);
+}
+
+/**
+ * Test allocation and deallocation with singleton
+ */
+TEST_CASE(
+    "Pool Allocator: Test use with SingletonPoolAllocator", "[PoolAllocator]") {
+  SECTION("big class") {
+    test_singleton<big_class>();
+  }
+  SECTION("small class") {
+    test_singleton<small_class>();
   }
 }
