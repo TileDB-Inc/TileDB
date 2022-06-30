@@ -127,13 +127,6 @@ Status Array::open_without_fragments(
     return LOG_STATUS(
         Status_ArrayError("Cannot open array without fragments; encrypted "
                           "remote arrays are not supported."));
-  if (!remote_) {
-    bool is_array = false;
-    RETURN_NOT_OK(storage_manager_->is_array(array_uri_, &is_array));
-    if (!is_array)
-      return LOG_STATUS(Status_ArrayError(
-          "Cannot open array without fragments; Array does not exist"));
-  }
 
   // Copy the key bytes.
   RETURN_NOT_OK(
@@ -215,15 +208,6 @@ Status Array::open(
   if (is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot open array; Array already open"));
-  }
-
-  if (!remote_) {
-    bool is_array = false;
-    RETURN_NOT_OK(storage_manager_->is_array(array_uri_, &is_array));
-    if (!is_array) {
-      return LOG_STATUS(
-          Status_ArrayError("Cannot open array; Array does not exist"));
-    }
   }
 
   // Get encryption key from config
