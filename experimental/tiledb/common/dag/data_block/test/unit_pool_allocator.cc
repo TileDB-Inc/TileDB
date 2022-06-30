@@ -219,6 +219,33 @@ void test_pool_allocator() {
   CHECK(p2 == r2);
 }
 
+template <class T>
+void test_both_allocators() {
+  /* Instantiate two allocators */
+  auto p = PoolAllocator<sizeof(T)>{};
+  auto r = SingletonPoolAllocator<sizeof(T)>::get_instance();
+
+  auto p1 = p.allocate();
+  auto p2 = p.allocate();
+  CHECK(p1 - p2 == sizeof(T));
+
+  p.deallocate(p2);
+  p.deallocate(p1);
+  auto q1 = p.allocate();
+  auto q2 = p.allocate();
+  CHECK(p1 == q1);
+  CHECK(p2 == q2);
+
+  p.deallocate(q2);
+  p.deallocate(q1);
+
+  /* Get an element from second allocator */
+  auto r1 = r->allocate();
+  auto r2 = r->allocate();
+  CHECK(p1 == r1);
+  CHECK(p2 == r2);
+}
+
 /**
  * Test getting a block from one allocator, deallocating, and getting the block
  * from a different allocator.
