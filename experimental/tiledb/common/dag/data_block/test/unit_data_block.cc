@@ -31,11 +31,13 @@
  */
 
 #include "unit_data_block.h"
+#include <memory>
 #include "experimental/tiledb/common/dag/data_block/data_block.h"
 
 using namespace tiledb::common;
 
-void db_test_0(DataBlock& db) {
+template <class DB>
+void db_test_0(DB& db) {
   auto a = db.begin();
   auto b = db.cbegin();
   auto c = db.end();
@@ -61,7 +63,8 @@ void db_test_0(DataBlock& db) {
   REQUIRE(a <= g);
 }
 
-void db_test_1(const DataBlock& db) {
+template <class DB>
+void db_test_1(const DB& db) {
   auto a = db.begin();
   auto b = db.cbegin();
   auto c = db.end();
@@ -89,6 +92,13 @@ void db_test_1(const DataBlock& db) {
 
 TEST_CASE("Ports: Test create DataBlock", "[ports]") {
   auto db = DataBlock();
+  db_test_0(db);
+  db_test_1(db);
+}
+
+TEST_CASE(
+    "Ports: Test create DataBlock with std::allocator<std::byte>", "[ports]") {
+  auto db = DataBlockImpl<std::allocator<std::byte>>{};
   db_test_0(db);
   db_test_1(db);
 }
