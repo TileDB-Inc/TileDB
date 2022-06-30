@@ -1607,8 +1607,8 @@ class FragmentMetadata {
    * Reads the contents of a generic tile starting at the input offset,
    * and stores them into buffer ``buff``.
    */
-  Status read_generic_tile_from_file(
-      const EncryptionKey& encryption_key, uint64_t offset, Buffer* buff) const;
+  tuple<Status, optional<Buffer>> read_generic_tile_from_file(
+      const EncryptionKey& encryption_key, uint64_t offset) const;
 
   /**
    * Reads the fragment metadata file footer (which contains the generic tile
