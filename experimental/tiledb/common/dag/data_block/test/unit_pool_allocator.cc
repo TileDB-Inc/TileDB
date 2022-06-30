@@ -221,7 +221,8 @@ void test_pool_allocator() {
 
 template <class T>
 void test_both_allocators() {
-  /* Instantiate two allocators */
+  /* Instantiate two allocators, one from PoolAllocator class and one from
+   * SingletonPoolAllocator object */
   auto p = PoolAllocator<sizeof(T)>{};
   auto r = SingletonPoolAllocator<sizeof(T)>::get_instance();
 
@@ -239,7 +240,7 @@ void test_both_allocators() {
   p.deallocate(q2);
   p.deallocate(q1);
 
-  /* Get an element from second allocator */
+  /* Get an element from second allocator and compare to first */
   auto r1 = r->allocate();
   auto r2 = r->allocate();
   CHECK(p1 == r1);

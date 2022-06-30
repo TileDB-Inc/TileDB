@@ -64,7 +64,6 @@ class DataBlockImpl {
   size_t size_;
   storage_t storage_;
   data_t data_;
-  size_t size_;
 
  public:
   template <class R = Allocator>
