@@ -38,13 +38,20 @@
 
 namespace tiledb::common {
 
+namespace {
+/**
+ *
+ *
+ * @tparam chunk_size Number of Ts to allocate per chunk
+ */
 template <size_t chunk_size>
-class PoolAllocator {
-  bool debug_{false};
-
+class PoolAllocatorImpl {
+ public:
   using value_type = std::byte;
   using pointer = value_type*;
 
+ private:
+  bool debug_{false};
   std::mutex mutex_;
 
   /**
@@ -62,6 +69,7 @@ class PoolAllocator {
   /* 32M / chunk_size */
   constexpr static size_t mem_size{32 * 1024 * 1024};
   constexpr static size_t chunks_per_array{mem_size / chunk_size};
+
   static_assert(mem_size % chunk_size == 0);
   static_assert(chunk_size <= mem_size);
 
@@ -139,12 +147,12 @@ class PoolAllocator {
   /**
    * Use default constructor
    */
-  PoolAllocator() = default;
+  PoolAllocatorImpl() = default;
 
   /**
    * Release allocated memory (free each array)
    */
-  ~PoolAllocator() {
+  ~PoolAllocatorImpl() {
     free_list_free();
     assert(num_arrays == 0);
     assert(the_free_list == nullptr);
@@ -191,22 +199,58 @@ class PoolAllocator {
 };
 
 template <size_t chunk_size>
-class SingletonPoolAllocator : public PoolAllocator<chunk_size> {
-  static SingletonPoolAllocator* instance;
-  PoolAllocator<chunk_size> pool_allocator_;
+class SingletonPoolAllocator : public PoolAllocatorImpl<chunk_size> {
+  PoolAllocatorImpl<chunk_size> pool_allocator_;
 
   // Private constructor so that no objects can be created.
   SingletonPoolAllocator() {
   }
 
+  static SingletonPoolAllocator instance;
+
  public:
   static SingletonPoolAllocator* get_instance() {
-    if (!instance)
-      instance = new SingletonPoolAllocator;
-    return instance;
+    return &instance;
   }
 };
 
-}  // namespace tiledb::common
+template <size_t chunk_size>
+SingletonPoolAllocator<chunk_size> SingletonPoolAllocator<chunk_size>::instance;
+
+template <size_t chunk_size>
+SingletonPoolAllocator<chunk_size>* my_allocator =
+    SingletonPoolAllocator<chunk_size>::get_instance();
+}  // namespace
+
+template <size_t chunk_size>
+class PoolAllocator {
+ public:
+  using value_type = typename SingletonPoolAllocator<chunk_size>::value_type;
+  PoolAllocator() {
+  }
+  value_type* allocate() {
+    return my_allocator<chunk_size>->allocate();
+  }
+  value_type* allocate(size_t) {
+    return my_allocator<chunk_size>->allocate();
+  }
+  void deallocate(value_type* a) {
+    return my_allocator<chunk_size>->deallocate(a);
+  }
+  void deallocate(value_type* a, size_t) {
+    return my_allocator<chunk_size>->deallocate(a);
+  }
+};
+
+// template <size_t chunk_size>
+// using PoolAllocator = SingletonPoolAllocator<chunk_size>::get_instance();
+
+// template <size_t chunk_size>
+// using PoolAllocator = SingletonPoolAllocator<chunk_size>;
+// struct PoolAllocator : SingletonPoolAllocator<chunk_size> {
+//  PoolAllocator() {
+//  }
+//};
+}  // namespace
 
 #endif  // TILEDB_DAG_POOL_ALLOCATOR_H
