@@ -56,20 +56,34 @@ constexpr static const size_t chunk_size_ = 4'194'304;  // 4M
  */
 template <class Allocator>
 class DataBlockImpl {
-  //  static SingletonPoolAllocator<chunk_size_>* allocator_;
-
   static Allocator allocator_;
 
   using storage_t = std::shared_ptr<std::byte>;
   using data_t = tcb::span<std::byte>;
+
+  size_t size_;
   storage_t storage_;
   data_t data_;
-  size_t size_;
 
  public:
-  DataBlockImpl() {
-    //    : storage_(allocator_.allocate(), allocator_t
-    // data_(storage_.data(), storage_.size()) {
+  template <class R = Allocator>
+  DataBlockImpl(
+      typename std::enable_if<
+          std::is_same_v<R, std::allocator<std::byte>>>::type* = 0)
+      : size_{chunk_size_}
+      , storage_{allocator_.allocate(chunk_size_),
+                 [&](auto px) { allocator_.deallocate(px, chunk_size_); }}
+      , data_{storage_.get(), size_} {
+  }
+
+  template <class R = Allocator>
+  DataBlockImpl(
+      typename std::enable_if<
+          std::is_same_v<R, PoolAllocator<chunk_size_>>>::type* = 0)
+      : size_{chunk_size_}
+      , storage_{allocator_.allocate(),
+                 [&](auto px) { allocator_.deallocate(px); }}
+      , data_{storage_.get(), size_} {
   }
 
   using DataBlockIterator = data_t::iterator;
@@ -151,6 +165,9 @@ class DataBlockImpl {
     return chunk_size_;
   }
 };
+
+template <class Allocator>
+Allocator DataBlockImpl<Allocator>::allocator_;
 
 using DataBlock = DataBlockImpl<PoolAllocator<chunk_size_>>;
 
