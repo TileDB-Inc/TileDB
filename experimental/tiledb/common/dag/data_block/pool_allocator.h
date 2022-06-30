@@ -39,7 +39,7 @@
 namespace tiledb::common {
 
 template <size_t chunk_size>
-class pool_allocator {
+class PoolAllocator {
   bool debug_{false};
 
   using value_type = std::byte;
@@ -139,12 +139,12 @@ class pool_allocator {
   /**
    * Use default constructor
    */
-  pool_allocator() = default;
+  PoolAllocator() = default;
 
   /**
    * Release allocated memory (free each array)
    */
-  ~pool_allocator() {
+  ~PoolAllocator() {
     free_list_free();
     assert(num_arrays == 0);
     assert(the_free_list == nullptr);
@@ -189,6 +189,24 @@ class pool_allocator {
     }
   }
 };
+
+template <size_t chunk_size>
+class SingletonPoolAllocator : public PoolAllocator<chunk_size> {
+  static SingletonPoolAllocator* instance;
+  PoolAllocator<chunk_size> pool_allocator_;
+
+  // Private constructor so that no objects can be created.
+  SingletonPoolAllocator() {
+  }
+
+ public:
+  static SingletonPoolAllocator* get_instance() {
+    if (!instance)
+      instance = new SingletonPoolAllocator;
+    return instance;
+  }
+};
+
 }  // namespace tiledb::common
 
 #endif  // TILEDB_DAG_POOL_ALLOCATOR_H
