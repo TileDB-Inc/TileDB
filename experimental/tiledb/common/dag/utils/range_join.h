@@ -48,6 +48,8 @@
 #include <utility>
 #include "arrow_proxy.hpp"
 
+#include "print_types.h"
+
 namespace tiledb::common {
 
 /*
@@ -222,12 +224,12 @@ class join {
       return {**this};
     }
 
-    difference_type operator-(const join_iterator& b) const {
-      return first_ - b.first_;
-    }
-    join_iterator operator+(difference_type step) const {
-      return join_iterator(*this, step);
-    }
+    //    difference_type operator-(const join_iterator& b) const {
+    //      return first_ - b.first_;
+    //    }
+    //    join_iterator operator+(difference_type step) const {
+    //      return join_iterator(*this, step);
+    //    }
   };
 
   using iterator = join_iterator<false>;
@@ -257,7 +259,16 @@ class join {
   }
 
   std::size_t size() const {
-    return std::distance(outer_begin_, outer_end_);
+    size_t n = 0;
+
+    auto tmp = outer_begin_;
+    //    print_types(outer_begin_, outer_end_, *outer_begin_, *outer_end_);
+
+    while (tmp != outer_end_) {
+      n += (*tmp).size();
+      ++tmp;
+    }
+    return n;
   }
   bool empty() const {
     return begin() == end();
