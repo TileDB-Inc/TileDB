@@ -221,11 +221,13 @@ struct GlobalOrderResultCoords
   template <class CompType>
   uint64_t max_slab_length(
       const GlobalOrderResultCoords& next, const CompType& cmp) {
-    uint64_t ret = 1;
     uint64_t cell_num = base::tile_->cell_num();
 
     // Store the original position.
-    uint64_t orig_pos = base::pos_;
+    uint64_t original_pos = base::pos_;
+
+    // Max posssible position in the tile.
+    uint64_t max_pos = cell_num - 1;
 
     if (base::tile_->has_post_qc_bmp()) {
       auto& bitmap = base::tile_->bitmap_with_qc();
@@ -244,27 +246,55 @@ struct GlobalOrderResultCoords
         }
       }
 
-      // With bitmap, find the longest contiguous set of bits in the bitmap
-      // from the current position, with coordinares smaller than the next one
-      // in the queue.
-      base::pos_++;
-      while (base::pos_ < cell_num && bitmap[base::pos_] && !cmp(*this, next)) {
-        base::pos_++;
-        ret++;
+      // Compute max position.
+      max_pos = base::pos_;
+      while (max_pos < cell_num && bitmap[max_pos] == 1) {
+        max_pos++;
       }
-    } else {
-      // No bitmap, add all cells from current position, with coordinares
-      // smaller than the next one in the queue.
-      base::pos_++;
-      while (base::pos_ < cell_num - 1 && !cmp(*this, next)) {
-        base::pos_++;
-        ret++;
+      max_pos--;
+    }
+
+    // Find the upper bound comparison by increasing power of two. This ensures
+    // the algorithm works equally well for small slabs vs large ones.
+    uint64_t power_of_two = 1;
+    bool return_max = true;
+    while (return_max && base::pos_ != max_pos) {
+      base::pos_ = std::min(original_pos + power_of_two, max_pos);
+      if (cmp(*this, next)) {
+        return_max = false;
+
+        // If we exit on first comprarison, return 1.
+        if (power_of_two == 1) {
+          base::pos_ = original_pos;
+          return 1;
+        }
+      } else {
+        power_of_two *= 2;
       }
     }
 
-    // Restore the original position.
-    base::pos_ = orig_pos;
-    return ret;
+    // Return max.
+    if (return_max) {
+      base::pos_ = original_pos;
+      return max_pos - original_pos + 1;
+    }
+
+    // Run a bisection search on to find the last cell. Maximum value is the
+    // value found above, minimum is the power of two preceding.
+    uint64_t left = power_of_two / 2;
+    uint64_t right = base::pos_;
+    while (left != right - 1) {
+      // Check against mid.
+      base::pos_ = left + (right - left) / 2;
+      if (!cmp(*this, next))
+        left = base::pos_;
+      else
+        right = base::pos_;
+    }
+
+    // Restore the original position and return.
+    base::pos_ = original_pos;
+    return left - original_pos + 1;
   }
 
  private:
