@@ -212,6 +212,9 @@ const std::string ok_file_suffix = ".ok";
 /** Suffix for the special write files used in TileDB. */
 const std::string write_file_suffix = ".wrt";
 
+/** Suffix for the special delete files used in TileDB. */
+const std::string delete_file_suffix = ".del";
+
 /** Suffix for the special metadata files used in TileDB. */
 const std::string meta_file_suffix = ".meta";
 
