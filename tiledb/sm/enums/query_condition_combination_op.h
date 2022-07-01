@@ -113,6 +113,21 @@ inline void ensure_qc_combo_op_string_is_valid(
   ensure_qc_combo_op_is_valid(qc_combo_op);
 }
 
+/** Returns the negated combination op given a combination op. */
+inline QueryConditionCombinationOp negate_qc_combination_op(
+    const QueryConditionCombinationOp op) {
+  switch (op) {
+    case QueryConditionCombinationOp::AND:
+      return QueryConditionCombinationOp::OR;
+
+    case QueryConditionCombinationOp::OR:
+      return QueryConditionCombinationOp::AND;
+
+    default:
+      throw std::runtime_error("negate_qc_combination_op: Invalid op.");
+  }
+}
+
 }  // namespace sm
 }  // namespace tiledb
 

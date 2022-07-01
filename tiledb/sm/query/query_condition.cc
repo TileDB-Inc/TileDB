@@ -1893,7 +1893,7 @@ Status QueryCondition::apply_sparse(
 }
 
 QueryCondition QueryCondition::negated_condition() {
-  return QueryCondition(tree_->clone(true));
+  return QueryCondition(tree_->get_negated_tree());
 }
 
 const tdb_unique_ptr<ASTNode>& QueryCondition::ast() const {

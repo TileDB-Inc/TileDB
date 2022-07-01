@@ -53,6 +53,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class ASTNegationT {};
+static constexpr ASTNegationT ASTNegation{};
+
 /**
  * @brief The ASTNode class is an abstract class that contains virtual
  * methods used by both the value and expression node implementation
@@ -70,12 +73,19 @@ class ASTNode {
 
   /**
    * @brief ASTNode class method used in the QueryCondition copy constructor
-   *        ASTNode::combine, and testing that returns a copy of the caller
-   * node.
+   * ASTNode::combine, and testing that returns a copy of the caller node.
    *
    * @return tdb_unique_ptr<ASTNode> A deep copy of the ASTNode.
    */
-  virtual tdb_unique_ptr<ASTNode> clone(bool negate = false) const = 0;
+  virtual tdb_unique_ptr<ASTNode> clone() const = 0;
+
+  /**
+   * @brief ASTNode class method used in the QueryCondition that returns a copy
+   * of the caller node, but negated.
+   *
+   * @return tdb_unique_ptr<ASTNode> A negated deep copy of the ASTNode.
+   */
+  virtual tdb_unique_ptr<ASTNode> get_negated_tree() const = 0;
 
   /**
    * @brief Gets the set of field names from all the value nodes in the ASTNode.
@@ -207,12 +217,41 @@ class ASTNodeVal : public ASTNode {
   };
 
   /**
+   * @brief Copy constructor.
+   */
+  ASTNodeVal(const ASTNodeVal& rhs)
+      : field_name_(rhs.field_name_)
+      , condition_value_data_(rhs.condition_value_data_)
+      , condition_value_view_(
+            (rhs.condition_value_view_.content() != nullptr &&
+                     rhs.condition_value_view_.size() == 0 ?
+                 (void*)"" :
+                 condition_value_data_.data()),
+            condition_value_data_.size())
+      , op_(rhs.op_) {
+  }
+
+  /**
+   * @brief Copy constructor, negated.
+   */
+  ASTNodeVal(const ASTNodeVal& rhs, ASTNegationT)
+      : field_name_(rhs.field_name_)
+      , condition_value_data_(rhs.condition_value_data_)
+      , condition_value_view_(
+            (rhs.condition_value_view_.content() != nullptr &&
+                     rhs.condition_value_view_.size() == 0 ?
+                 (void*)"" :
+                 condition_value_data_.data()),
+            condition_value_data_.size())
+      , op_(negate_query_condition_op(rhs.op_)) {
+  }
+
+  /**
    * @brief Default destructor of ASTNodeVal.
    */
   ~ASTNodeVal() {
   }
 
-  DISABLE_COPY(ASTNodeVal);
   DISABLE_MOVE(ASTNodeVal);
   DISABLE_COPY_ASSIGN(ASTNodeVal);
   DISABLE_MOVE_ASSIGN(ASTNodeVal);
@@ -227,12 +266,19 @@ class ASTNodeVal : public ASTNode {
 
   /**
    * @brief ASTNode class method used in the QueryCondition copy constructor
-   *        ASTNode::combine, and testing that returns a copy of the caller
-   *        node.
+   * ASTNode::combine, and testing that returns a copy of the caller node.
    *
    * @return tdb_unique_ptr<ASTNode> A deep copy of the ASTNode.
    */
-  tdb_unique_ptr<ASTNode> clone(bool negate = false) const override;
+  tdb_unique_ptr<ASTNode> clone() const override;
+
+  /**
+   * @brief ASTNode class method used in the QueryCondition that returns a copy
+   * of the caller node, but negated.
+   *
+   * @return tdb_unique_ptr<ASTNode> A negated deep copy of the ASTNode.
+   */
+  tdb_unique_ptr<ASTNode> get_negated_tree() const override;
 
   /**
    * @brief Gets the set of field names from all the value nodes in the ASTNode.
@@ -357,12 +403,31 @@ class ASTNodeExpr : public ASTNode {
   }
 
   /**
+   * @brief Copy constructor.
+   */
+  ASTNodeExpr(const ASTNodeExpr& rhs)
+      : combination_op_(rhs.combination_op_) {
+    for (auto& node : rhs.nodes_) {
+      nodes_.push_back(node->clone());
+    }
+  }
+
+  /**
+   * @brief Copy constructor, negated.
+   */
+  ASTNodeExpr(const ASTNodeExpr& rhs, ASTNegationT)
+      : combination_op_(negate_qc_combination_op(rhs.combination_op_)) {
+    for (auto& node : rhs.nodes_) {
+      nodes_.push_back(node->get_negated_tree());
+    }
+  }
+
+  /**
    * @brief Default destructor of ASTNodeExpr.
    */
   ~ASTNodeExpr() {
   }
 
-  DISABLE_COPY(ASTNodeExpr);
   DISABLE_MOVE(ASTNodeExpr);
   DISABLE_COPY_ASSIGN(ASTNodeExpr);
   DISABLE_MOVE_ASSIGN(ASTNodeExpr);
@@ -382,7 +447,15 @@ class ASTNodeExpr : public ASTNode {
    *
    * @return tdb_unique_ptr<ASTNode> A deep copy of the ASTNode.
    */
-  tdb_unique_ptr<ASTNode> clone(bool negate = false) const override;
+  tdb_unique_ptr<ASTNode> clone() const override;
+
+  /**
+   * @brief ASTNode class method used in the QueryCondition that returns a copy
+   * of the caller node, but negated.
+   *
+   * @return tdb_unique_ptr<ASTNode> A negated deep copy of the ASTNode.
+   */
+  tdb_unique_ptr<ASTNode> get_negated_tree() const override;
 
   /**
    * @brief Gets the set of field names from all the value nodes in the ASTNode.

@@ -41,45 +41,12 @@ bool ASTNodeVal::is_expr() const {
   return false;
 }
 
-tdb_unique_ptr<ASTNode> ASTNodeVal::clone(bool negate) const {
-  auto op = op_;
-  if (negate) {
-    switch (op) {
-      case QueryConditionOp::LT:
-        op = QueryConditionOp::GE;
-        break;
+tdb_unique_ptr<ASTNode> ASTNodeVal::clone() const {
+  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeVal, *this));
+}
 
-      case QueryConditionOp::GT:
-        op = QueryConditionOp::LE;
-        break;
-
-      case QueryConditionOp::GE:
-        op = QueryConditionOp::LT;
-        break;
-
-      case QueryConditionOp::LE:
-        op = QueryConditionOp::GT;
-        break;
-
-      case QueryConditionOp::NE:
-        op = QueryConditionOp::EQ;
-        break;
-
-      case QueryConditionOp::EQ:
-        op = QueryConditionOp::NE;
-        break;
-
-      default:
-        throw std::runtime_error("ASTNodeExpr::negate: Invalid op.");
-    }
-  }
-
-  return tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal,
-      field_name_,
-      condition_value_data_.data(),
-      condition_value_data_.size(),
-      op));
+tdb_unique_ptr<ASTNode> ASTNodeVal::get_negated_tree() const {
+  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeVal, *this, ASTNegation));
 }
 
 void ASTNodeVal::get_field_names(
@@ -215,30 +182,12 @@ bool ASTNodeExpr::is_expr() const {
   return true;
 }
 
-tdb_unique_ptr<ASTNode> ASTNodeExpr::clone(bool negate) const {
-  std::vector<tdb_unique_ptr<ASTNode>> nodes_copy;
-  for (const auto& node : nodes_) {
-    nodes_copy.push_back(node->clone(negate));
-  }
+tdb_unique_ptr<ASTNode> ASTNodeExpr::clone() const {
+  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeExpr, *this));
+}
 
-  auto combination_op = combination_op_;
-  if (negate) {
-    switch (combination_op) {
-      case QueryConditionCombinationOp::AND:
-        combination_op = QueryConditionCombinationOp::OR;
-        break;
-
-      case QueryConditionCombinationOp::OR:
-        combination_op = QueryConditionCombinationOp::AND;
-        break;
-
-      default:
-        throw std::runtime_error("ASTNodeExpr::negate: Invalid op.");
-    }
-  }
-
-  return tdb_unique_ptr<ASTNode>(
-      tdb_new(ASTNodeExpr, std::move(nodes_copy), combination_op));
+tdb_unique_ptr<ASTNode> ASTNodeExpr::get_negated_tree() const {
+  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeExpr, *this, ASTNegation));
 }
 
 void ASTNodeExpr::get_field_names(

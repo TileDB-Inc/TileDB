@@ -59,7 +59,12 @@ tdb_unique_ptr<ASTNode> test_value_node(
   }
 
   // Test ASTNode::clone on the constructed node.
-  auto node_val_clone = node_val->clone(negate);
+  tdb_unique_ptr<ASTNode> node_val_clone;
+  if (negate) {
+    node_val_clone = node_val->get_negated_tree();
+  } else {
+    node_val_clone = node_val->clone();
+  }
   CHECK(ast_node_to_str(node_val_clone) == expected_result);
 
   return node_val;
@@ -82,7 +87,12 @@ tdb_unique_ptr<ASTNode> test_string_value_node(
   }
 
   // Test ASTNode::clone on the constructed node.
-  auto node_val_clone = node_val->clone(negate);
+  tdb_unique_ptr<ASTNode> node_val_clone;
+  if (negate) {
+    node_val_clone = node_val->get_negated_tree();
+  } else {
+    node_val_clone = node_val->clone();
+  }
   CHECK(ast_node_to_str(node_val_clone) == expected_result);
 
   return node_val;
@@ -102,7 +112,12 @@ tdb_unique_ptr<ASTNode> test_expression_node(
   }
 
   // Test ASTNode::clone on the constructed node.
-  auto combined_node_clone = combined_node->clone(negate);
+  tdb_unique_ptr<ASTNode> combined_node_clone;
+  if (negate) {
+    combined_node_clone = combined_node->get_negated_tree();
+  } else {
+    combined_node_clone = combined_node->clone();
+  }
   CHECK(ast_node_to_str(combined_node_clone) == expected_result);
 
   return combined_node;
