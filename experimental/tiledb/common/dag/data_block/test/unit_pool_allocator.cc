@@ -34,7 +34,6 @@
 #include <array>
 #include <memory>
 #include <vector>
-#include "../../utils/print_types.h"
 #include "experimental/tiledb/common/dag/data_block/pool_allocator.h"
 
 using namespace tiledb::common;
@@ -220,6 +219,10 @@ void test_pool_allocator() {
   CHECK(p2 == r2);
 }
 
+/**
+ * Test getting a block from one allocator, deallocating, and getting the block
+ * from a different allocator.
+ */
 template <class T>
 void test_both_allocators() {
   /* Instantiate two allocators, one from PoolAllocator class and one from

@@ -27,7 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the finite state machine for communicating ports.
+ *
+ * This file implements a state machine for two communicating ports: a 
+ * `Source` and a `Sink`.  Full documentation for it can be found in the file 
+ * fsm.md in this directory.
  *
  */
 
@@ -41,248 +44,6 @@
 #include <vector>
 
 namespace tiledb::common {
-
-// clang-format off
-/**
- *
- * This file implements a state machine for two communicating ports.  Each port has
- * two states, empty or full.  There are two events associated with the source:
- * source_fill and source_push.  There are two events associated with the sink: sink_drain,
- * and sink_pull. For simplicty there are currently no defined events for startup, stop,
- * forced shutdown, or abort.
- *
- * Diagrams for the source and sink state machines can be found in
- * source_state_machine.svg and sink_state_machine.svg, respectively.  The diagrams also
- * show the entry and exit actions for each state machine.
- *
- * In words, the source state machine would be used as follows:
- *   client of the source inserts an item
- *   client invokes source_fill event to transition from empty to full.
- *     when making this transition, on entry to full, the source notifies the sink that it is 
- *     full, and returns
- *   client invokes source_push event to transition from full to empty, sending its item to the sink 
- *     when making the transition, on exit the source invokes its swap action
- *       the swap action first checks if its current state is full and the sinks state is empty.  
- *       If so, it swaps the sink and source items, which puts the item in the sink.  It then
- *       notifies the sink. On entry to the empty state, the sink returns
- *       If not, the source waits until it is notified by the sink that it is empty. When the
- *       source is notified, it returns.
- *
- * The sink state machine is the dual of the source state machine:
- *   client invokes sink_pull event to transition from empty to pull, getting its item from the source
- *     when making the transition, on exit the sik invokes its swap action
- *       the swap action first checks if its current state is full and the source state is empty.  
- *       If so, it swaps the sink and source items, which puts the item in the sink.  It then
- *       notifies the source. On entry to the empty state, the sink returns
- *       If not, the sink waits until notified by the source that it is full.  When the sink is 
- *       notified, it returns.
- *   client invokes sink_drain event to transition from full to empty.
- *     when making this transition, on entry to empty, the sink notifies the source that it is 
- *     empty, and returns
- *
- *
- * The product state transition table is thus
- *
- *    +-----------------+------------------------------------------------------------------+
- *    |      States     |                     Events                                       |
- *    +--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | Source |  Sink  | source_fill | source_push | sink_drain  | sink_pull   | shutdown |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | empty  | empty  | full/empty  |             |             | empty/full  |          |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | empty  | full   | full/full   |             | empty/empty |             |          |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | full   | empty  |             | empty/empty |             | full/full   |          |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | full   | full   |             | empty/full  | full/empty  |             |          |
- *    +--------+--------+-------------+-------------+-------------+-------------+----------+
- *
- *
- * The table for exit actions to be perfomed on state transitions is:
- *
- *    +-----------------+------------------------------------------------------------------+
- *    |      States     |                     Events                                       |
- *    +--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | Source |  Sink  | source_fill | source_push | sink_drain  | sink_pull   | shutdown |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | empty  | empty  |             | return?     |             | sink_swap?  |          |  wait on pull?
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | empty  | full   |             | return      |             | return      |          |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | full   | empty  | wait?       | src_swap    |             | sink_swap?  |          |  wait on pull?
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | full   | full   | wait?       | src_swap    |             | return?     |          |
- *    +--------+--------+-------------+-------------+-------------+-------------+----------+
- *
- *
- * The table for entry actions to be performend on state transitions is:
- *
- *    +-----------------+------------------------------------------------------------------+
- *    |      States     |                     Events                                       |
- *    +--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | Source |  Sink  | source_fill | source_push | sink_drain  | sink_pull   | shutdown |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | empty  | empty  |             | return      |notify_src   | sink_swap?  |          |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | empty  | full   |             | return      |  	          | return      |          |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | full   | empty  | notify_sink | src_swap    | notify_src  | snk_swap    |          |
- *    |--------+--------+-------------+-------------+-------------+-------------+----------+
- *    | full   | full   | notify_sink |             |  	       	  | return      |          |
- *    +--------+--------+-------------+-------------+-------------+-------------+----------+
- *
- *
- * The sink_swap and src_swap functions are identical. They check to see if the state is
- * equal to full_empty, if so, swap the state to empty_full (and perform an action swap 
- * of the items assoiated with the source and sink), and notifies the other.  If the state
- * is not equal to full_empty, the swap function notifies the other and goes into a wait.
- *
- * Thus, WE MAY NOT NEED SEPARATE SWAPS for source and sink.  Leaving them in for now. 
- *
- * The state transition tables operate in conjunction with entry and exit events
- * associated with each transition.  The entry and exit functions for a state transition 
- * from old to new are called in the following way:
- *
- * begin_transition: given old_state and event
- *
- *    execute exit(old_state, event)
- *    new_state = transition(old_state, event)
- *    execute entry(new_state, event)
- *
- * Note that the exit action is called before the state transition, and then the 
- * entry action is called.
- *
- * Desired usage of a source port / fsm from a source node:
- *
- * while (true) {
- *   produce an item
- *   cause event filled
- *   cause event source_push
- * }
- *
- *
- * Desired usage of a sink port / fsm from a source node:
- *
- * while (true) {
- *   cause event sink_pull
- *   consume an item
- *   cause event drained
- * }
- *
- *
- *  More formally, with predicate annotations of the state at each part of the state
- *  transitions, the basic behavior of a client of a source port is
- *
- *   init: { state == empty_empty }
- *   start: { state == empty_empty }
- *   while (not done)
- *     loop_begin: { state == empty_empty ∨ state == empty_full }
- *       invoke exit action: none
- *     pre_produce: { state == empty_empty ∨ state == empty_full }
- *     client calls producer function and insert item into source
- *       (during producer function, sink could have drained) { state == empty_empty ∨ state == empty_full }
- *     post_produce: { state == empty_empty ∨ state == empty_full }
- *     client invokes fill event
- *     => Note: we may want to make production an exit action <=
- *     pre_fill: { state == empty_empty ∨ state == empty_full }
- *     invoke empty_full or empty_empty exit action: nil
- *     source_fill transition event - source state transitions to full
- *     source_fill: { state == full_empty ∨ state == full_full }
- *     invoke full_empty or full_full entry action: notify_sink
- *       sink.notify(): sink is notifed with { state == full_empty or state == full_full }
- *     return
- *     post_fill: { state == full_empty or state == full_full } 
- *
- *     client invoke source_push event
- *     between source fill and source_push, the following could have happened
- *       sink could have drained: full_full -> full_empty
- *       sink could have pulled: full_empty -> empty_full
- *       sink could have pulled and drained: full_empty -> empty_empty
- *       sink could have done nothing: full_full -> full, full_empty -> full_empty
- *     pre_push: { state == full_empty ∨  state == empty_full ∨  state == empty_empty ∨ state == full_full }
- *     invoke exit action: empty_full -> return, full_empty -> src_swap, full_full -> src_swap, empty_empty: none
- *     { state == full_empty ∨ state == full_full }
- *     if (state == full_empty)
- *       pre_swap: { state == full_empty }
- *       swap elements
- *       post_swap: { state == empty_full }
- *       sink.notify()
- *     else
- *       else_swap: { state == full_full }
- *       sink.notify()
- *       source.wait()
- *         the sink would have notified after draining, after swapping, or after pulling
- *         draining: sink state would be full_empty or empty_empty
- *         swapping: sink state would be empty_full
- *         else_swap: sink state would be empty_empty
- *       post_wait:  { state == empty_empty ∨ state == empty_full ∨ state == full_empty }
- *       set state to state of *sink* state and event at notification
- *       post_event_update: { state == empty_empty ∨ state == empty_full }
- *       invoke entry function for that state
- *         draining: sink state would be empty_full or empty_empty -> none
- *         swapping: sink state would be empty_full -> return
- *         else_swap: sink state would be empty_empty -> none
- *       post_push: { state == empty_full ∨ state == empty_empty }
- *       end_loop:  { state == empty_full ∨ state == empty_empty }
- *     post_loop:   { state == empty_full ∨ state == empty_empty }
- *
- *
- *  Similarly, with predicate annotations of the state at each part of the state
- *  transitions, the basic behavior of a client of a sink port is
- *
- *   init: { state == empty_empty }
- *   start: { state == empty_empty }
- *   while (not done)
- *     loop_begin: { state == empty_full ∨ state == empty_empty }
- *     client invoke sink_pull event
- *     between sink drain and pull the following could have happened
- *       source could have filled: empty_empty -> full_empty
- *       source could have filled and pushed: empty_empty -> empty_full
- *       source could have done nothing: empty_empty -> empty_empty, empty_full -> empty_full
- *     pre_pull: { state == empty_full ∨ state == full_empty ∨  state == empty_empty }
- *     invoke exit action: empty_full -> return, full_empty -> snk_swap, empty_empty: snk_swap
- *     post_exit: { state == full_empty ∨  state == empty_empty }
- *     if (state == full_empty)
- *       pre_swap: { state == full_empty }
- *       swap elements
- *       post_swap: { state == empty_full }
- *       source.notify()
- *     else
- *       else_swap: { state == empty_empty }
- *       source.notify()
- *       sink.wait()
- *         the source would have notified after filling, after swapping, or after pushing
- *         filling: source state would be full_empty or full_full
- *         swapping: sink state would be empty_full
- *         else_swap: sink state would be full_full
- *       post_wait:  { state == full ∨ state == empty_full }
- *       set state to state of *source* state and event at notification
- *       post_event_update: { state == full_full ∨ state == empty_full }
- *       invoke entry function for that state
- *         filling: source state would be full_empty or full_full -> none
- *         swapping: sink state would be empty_full -> return
- *         else_swap: sink state would be empty_empty -> none
- *       post_push: { state == full_empty ∨ state == full_full }
- *
- *     pre_produce: { state == full_empty ∨ state == full_full }
- *     client calls consumer function and takes item from sink
- *       (during consumer function, source could have pushed) { state == full_full ∨ state == empty_full }
- *     post_consume: { state == full_full ∨ state == empty_full }
- *     client invokes drain event
- *     => Note: we may want to make production an exit action <=
- *     pre_drain: { state == full_full ∨ state == empty_full }
- *     invoke empty_full or full_full entry action: nil
- *     sink_drain transition event - sink state transitions to empty
- *     source_fill: { state == full_empty ∨ state == empty_empty }
- *     invoke empty_full or empty_empty entry action: notify_source
- *       source.notify(): source is notifed with { state == empty_full or state == empty_empty }
- *     return
- *     post_push: { state == empty_full or state == empty_empty } 
- *
- *     end_loop:  { state == empty_full ∨ state == empty_empty }
- *   post_loop:   { state == empty_full ∨ state == empty_empty }
- */
-// clang-format on
 
 /**
  * An enum representing the different states of the bound ports.
@@ -329,6 +90,9 @@ static inline auto str(PortState st) {
   return port_state_strings[static_cast<int>(st)];
 }
 
+/**
+ * enum class for the state machine events.
+ */
 enum class PortEvent : unsigned short {
   source_fill,
   source_push,
@@ -372,7 +136,7 @@ static inline auto str(PortEvent ev) {
 }
 
 /**
- * Port Actions
+ * enum class for port actions associated with transitions.
  */
 enum class PortAction : unsigned short {
   none,
@@ -484,7 +248,8 @@ constexpr const PortAction entry_table[n_states][n_events] {
  * @note There is a fair amount of debugging code inserted into the class at the
  * moment.
  *
- * @todo Remove the debugging code.
+ * @todo Use an aspect class (as another template argument) to effect callbacks
+ * at each interesting point in the state machine.
  */
 template <class ActionPolicy>
 class PortFiniteStateMachine {
