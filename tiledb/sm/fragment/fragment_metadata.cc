@@ -853,9 +853,6 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
 }
 
 Status FragmentMetadata::store_v7_v10(const EncryptionKey& encryption_key) {
-  auto timer_se =
-      storage_manager_->stats()->start_timer("write_store_frag_meta");
-
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
   auto num = num_dims_and_attrs();
@@ -910,9 +907,6 @@ Status FragmentMetadata::store_v7_v10(const EncryptionKey& encryption_key) {
 }
 
 Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
-  auto timer_se =
-      storage_manager_->stats()->start_timer("write_store_frag_meta");
-
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
   auto num = num_dims_and_attrs();
@@ -1000,9 +994,6 @@ Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
 }
 
 Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
-  auto timer_se =
-      storage_manager_->stats()->start_timer("write_store_frag_meta");
-
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
   auto num = num_dims_and_attrs();
@@ -1098,9 +1089,6 @@ Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
 
 Status FragmentMetadata::store_v15_or_higher(
     const EncryptionKey& encryption_key) {
-  auto timer_se =
-      storage_manager_->stats()->start_timer("write_store_frag_meta");
-
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
   auto num = num_dims_and_attrs();

@@ -713,7 +713,9 @@ class FragmentMetadata {
   tuple<Status, optional<uint64_t>> get_null_count(const std::string& name);
 
   /**
-   * Retrieves the processed conditions
+   * Retrieves the processed conditions. The processed conditions is the list
+   * of delete/update conditions that have already been applied for this
+   * fragment and don't need to be applied again.
    *
    * @return Processed conditions.
    */
@@ -807,7 +809,9 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key);
 
   /**
-   * Loads the processed conditions for the fragment.
+   * Loads the processed conditions for the fragment. The processed conditions
+   * is the list of delete/update conditions that have already been applied for
+   * this fragment and don't need to be applied again.
    *
    * @param encryption_key The key the array got opened with.
    * @return Status
