@@ -110,6 +110,8 @@ jobs:
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/regression/tiledb_regression -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
+          source $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
+
           # Kill the running GCS emulator server Linux only because OSX does not
           # run the emulator
           kill -9 $GCS_PID

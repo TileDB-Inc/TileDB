@@ -89,8 +89,10 @@ jobs:
           bootstrap_args="${bootstrap_args} --enable-release-symbols";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
-          # GCS unit tests are temporarily unsupported on CI for MacOS. Fake success with
-          # this echo.
+          source $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
+
+          # GCS unit tests (tiledb_unit) are temporarily unsupported on CI for MacOS GCS build.
+          # Fake success with this echo since actual tiledb_unit that does this not being run
           echo ::set-output name=TILEDB_CI_SUCCESS::1
 
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh

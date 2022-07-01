@@ -65,6 +65,9 @@ const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::REST_CURL_VERBOSE = "false";
+const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
+const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
+const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
 const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
 const std::string Config::SM_DEDUP_COORDS = "false";
@@ -222,6 +225,12 @@ Config::Config() {
   param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
   param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
+  param_values_["rest.load_metadata_on_array_open"] =
+      REST_LOAD_METADATA_ON_ARRAY_OPEN;
+  param_values_["rest.load_non_empty_domain_on_array_open"] =
+      REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN;
+  param_values_["rest.use_refactored_array_open"] =
+      REST_USE_REFACTORED_ARRAY_OPEN;
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
@@ -516,6 +525,15 @@ Status Config::unset(const std::string& param) {
     param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   } else if (param == "rest.curl.verbose") {
     param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
+  } else if (param == "rest.load_metadata_on_array_open") {
+    param_values_["rest.load_metadata_on_array_open"] =
+        REST_LOAD_METADATA_ON_ARRAY_OPEN;
+  } else if (param == "rest.load_non_empty_domain_on_array_open") {
+    param_values_["rest.load_non_empty_domain_on_array_open"] =
+        REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN;
+  } else if (param == "rest.use_refactored_array_open") {
+    param_values_["rest.use_refactored_array_open"] =
+        REST_USE_REFACTORED_ARRAY_OPEN;
   } else if (param == "config.env_var_prefix") {
     param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   } else if (param == "config.logging_level") {
