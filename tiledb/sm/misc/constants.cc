@@ -125,6 +125,12 @@ const std::string coords = "__coords";
 /** Special name reserved for the timestamp attribute. */
 const std::string timestamps = "__timestamps";
 
+/** Special name reserved for the delete timestamp attribute. */
+const std::string delete_timestamps = "__delete_timestamps";
+
+/** Special name reserved for the delete condition name attribute. */
+const std::string delete_condition_names = "__delete_condition_names";
+
 /** The size of a timestamp cell. */
 const uint64_t timestamp_size = sizeof(uint64_t);
 

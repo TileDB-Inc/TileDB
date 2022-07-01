@@ -122,6 +122,12 @@ extern const std::string coords;
 /** Special name reserved for the timestamp attribute. */
 extern const std::string timestamps;
 
+/** Special name reserved for the delete timestamp attribute. */
+extern const std::string delete_timestamps;
+
+/** Special name reserved for the delete condition name attribute. */
+extern const std::string delete_condition_names;
+
 /** The size of a timestamp cell. */
 extern const uint64_t timestamp_size;
 
