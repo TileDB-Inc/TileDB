@@ -148,7 +148,7 @@ TEST_CASE("DataBlock: Iterate through 8 data_blocks", "[data_block]") {
   }
 }
 
-TEST_CASE("DataBlock: Join data_blocks", "[data_block]") {
+TEST_CASE("DataBlock: Join data_blocks (join view)", "[data_block]") {
   auto a = DataBlock{};
   auto b = DataBlock{};
   auto c = DataBlock{};
@@ -177,4 +177,32 @@ TEST_CASE("DataBlock: Join data_blocks", "[data_block]") {
     return (std::byte{19} == a) || (std::byte{23} == a) || (std::byte{29} == a);
   });
   CHECK(e == y.end());
+
+  size_t k = 0;
+  for (auto& j : y) {
+    ++k;
+  }
+  CHECK(k == y.size());
+
+  for (auto& j : y) {
+    j = std::byte{89};
+  }
+
+  auto f = std::find_if_not(
+      a.begin(), a.end(), [](auto a) { return (std::byte{89} == a); });
+  CHECK(f == a.end());
+
+  for (auto& j : y) {
+    j = std::byte{91};
+  }
+  auto g = std::find_if_not(
+      b.begin(), b.end(), [](auto a) { return (std::byte{91} == a); });
+  CHECK(g == b.end());
+
+  for (auto& j : y) {
+    j = std::byte{103};
+  }
+  auto h = std::find_if_not(
+      c.begin(), c.end(), [](auto a) { return (std::byte{103} == a); });
+  CHECK(h == c.end());
 }
