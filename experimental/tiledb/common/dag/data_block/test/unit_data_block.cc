@@ -31,8 +31,11 @@
  */
 
 #include "unit_data_block.h"
+#include <list>
 #include <memory>
+#include <vector>
 #include "experimental/tiledb/common/dag/data_block/data_block.h"
+#include "experimental/tiledb/common/dag/utils/range_join.h"
 
 using namespace tiledb::common;
 
@@ -43,24 +46,25 @@ void db_test_0(DB& db) {
   auto c = db.end();
   auto d = db.cend();
 
-  REQUIRE(a == b);
-  REQUIRE(++a == ++b);
-  REQUIRE(a++ == b++);
-  REQUIRE(a == b);
-  REQUIRE(++a != b);
-  REQUIRE(a == ++b);
-  REQUIRE(c == d);
+  CHECK(db.size() != 0);
+  CHECK(a == b);
+  CHECK(++a == ++b);
+  CHECK(a++ == b++);
+  CHECK(a == b);
+  CHECK(++a != b);
+  CHECK(a == ++b);
+  CHECK(c == d);
   auto e = c + 5;
   auto f = d + 5;
-  REQUIRE(c == e - 5);
-  REQUIRE(d == f - 5);
-  REQUIRE(e == f);
-  REQUIRE(e - 5 == f - 5);
+  CHECK(c == e - 5);
+  CHECK(d == f - 5);
+  CHECK(e == f);
+  CHECK(e - 5 == f - 5);
   auto g = a + 1;
-  REQUIRE(g > a);
-  REQUIRE(g >= a);
-  REQUIRE(a < g);
-  REQUIRE(a <= g);
+  CHECK(g > a);
+  CHECK(g >= a);
+  CHECK(a < g);
+  CHECK(a <= g);
 }
 
 template <class DB>
@@ -70,24 +74,25 @@ void db_test_1(const DB& db) {
   auto c = db.end();
   auto d = db.cend();
 
-  REQUIRE(a == b);
-  REQUIRE(++a == ++b);
-  REQUIRE(a++ == b++);
-  REQUIRE(a == b);
-  REQUIRE(++a != b);
-  REQUIRE(a == ++b);
-  REQUIRE(c == d);
+  CHECK(db.size() != 0);
+  CHECK(a == b);
+  CHECK(++a == ++b);
+  CHECK(a++ == b++);
+  CHECK(a == b);
+  CHECK(++a != b);
+  CHECK(a == ++b);
+  CHECK(c == d);
   auto e = c + 5;
   auto f = d + 5;
-  REQUIRE(c == e - 5);
-  REQUIRE(d == f - 5);
-  REQUIRE(e == f);
-  REQUIRE(e - 5 == f - 5);
+  CHECK(c == e - 5);
+  CHECK(d == f - 5);
+  CHECK(e == f);
+  CHECK(e - 5 == f - 5);
   auto g = a + 1;
-  REQUIRE(g > a);
-  REQUIRE(g >= a);
-  REQUIRE(a < g);
-  REQUIRE(a <= g);
+  CHECK(g > a);
+  CHECK(g >= a);
+  CHECK(a < g);
+  CHECK(a <= g);
 }
 
 TEST_CASE("DataBlock: Test create DataBlock", "[data_block]") {
@@ -141,4 +146,35 @@ TEST_CASE("DataBlock: Iterate through 8 data_blocks", "[data_block]") {
     auto db = DataBlock{};
     db_test_2(db);
   }
+}
+
+TEST_CASE("DataBlock: Join data_blocks", "[data_block]") {
+  auto a = DataBlock{};
+  auto b = DataBlock{};
+  auto c = DataBlock{};
+  std::list<DataBlock> x{a, b, c};
+  auto y = join(x);
+
+  CHECK(a.begin() + chunk_size_ == a.end());
+  CHECK(b.begin() + chunk_size_ == b.end());
+  CHECK(c.begin() + chunk_size_ == c.end());
+  CHECK(a.size() == chunk_size_);
+  CHECK(b.size() == chunk_size_);
+  CHECK(c.size() == chunk_size_);
+
+  CHECK(y.size() == (a.size() + b.size() + c.size()));
+
+  for (auto& j : a) {
+    j = std::byte{19};
+  }
+  for (auto& j : b) {
+    j = std::byte{23};
+  }
+  for (auto& j : c) {
+    j = std::byte{29};
+  }
+  auto e = std::find_if_not(y.begin(), y.end(), [](auto a) {
+    return (std::byte{19} == a) || (std::byte{23} == a) || (std::byte{29} == a);
+  });
+  CHECK(e == y.end());
 }
