@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-0.9.629">
+<meta name="generator" content="quarto-0.9.637">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -840,6 +840,48 @@ ul.task-list{list-style: none;}
 </tr>
 </tbody>
 </table>
+<p>The processed conditions is a <a href="../format_spec/generic_tile.html">generic tile</a> and is the list of delete/update conditions that have already been applied for this fragment and don’t need to be applied again, in no particular order, with the following internal format:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Num</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of processed conditions</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Condition size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Condition size 1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Condition</td>
+<td style="text-align: left;"><code>char</code></td>
+<td style="text-align: left;">Condition marker filename 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Condition size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Condition size N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Condition</td>
+<td style="text-align: left;"><code>char</code></td>
+<td style="text-align: left;">Condition marker filename N</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="footer" class="level3">
 <h3 class="anchored" data-anchor-id="footer">Footer</h3>
@@ -899,149 +941,159 @@ ul.task-list{list-style: none;}
 <td style="text-align: left;">Whether the fragment includes timestamps or not</td>
 </tr>
 <tr class="even">
+<td style="text-align: left;">Includes delete metadata</td>
+<td style="text-align: left;"><code>char</code></td>
+<td style="text-align: left;">Whether the fragment includes delete metadata or not</td>
+</tr>
+<tr class="odd">
 <td style="text-align: left;">File sizes</td>
 <td style="text-align: left;"><code>uint64_t[]</code></td>
 <td style="text-align: left;">The size in bytes of each attribute/dimension file in the fragment. For var-length attributes/dimensions, this is the size of the offsets file.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">File var sizes</td>
 <td style="text-align: left;"><code>uint64_t[]</code></td>
 <td style="text-align: left;">The size in bytes of each var-length attribute/dimension file in the fragment.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">File validity sizes</td>
 <td style="text-align: left;"><code>uint64_t[]</code></td>
 <td style="text-align: left;">The size in bytes of each attribute/dimension validity vector file in the fragment.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">R-Tree offset</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the R-Tree in the metadata file.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Tile offset for attribute/dimension 1</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the tile offsets for attribute/dimension 1.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Tile offset for attribute/dimension N</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the tile offsets for attribute/dimension N</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Tile var offset for attribute/dimension 1</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the variable tile offsets for attribute/dimension 1.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Tile var offset for attribute/dimension N</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the variable tile offsets for attribute/dimension N.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Tile var sizes offset for attribute/dimension 1</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the variable tile sizes for attribute/dimension 1.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Tile var sizes offset for attribute/dimension N</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the variable tile sizes for attribute/dimension N.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Tile validity offset for attribute/dimension 1</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the tile validity offsets for attribute/dimension 1.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Tile validity offset for attribute/dimension N</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the tile validity offsets for attribute/dimension N</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Tile mins offset for attribute/dimension 1</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the tile mins for attribute/dimension 1.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Tile mins offset for attribute/dimension N</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the tile mins for attribute/dimension N</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Tile maxs offset for attribute/dimension 1</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the tile maxs for attribute/dimension 1.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Tile maxs offset for attribute/dimension N</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the tile maxs for attribute/dimension N</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Tile sums offset for attribute/dimension 1</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the tile sums for attribute/dimension 1.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Tile sums offset for attribute/dimension N</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the tile sums for attribute/dimension N</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Tile null counts offset for attribute/dimension 1</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the tile null counts for attribute/dimension 1.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Tile null counts offset for attribute/dimension N</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the tile null counts for attribute/dimension N</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Fragment min max sum null count offset</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
 <td style="text-align: left;">The offset to the generic tile storing the fragment min max sum null count data.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Processed conditions offset</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The offset to the generic tile storing the processed conditions.</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Array schema name size</td>

@@ -36,6 +36,10 @@
   --quarto-font-monospace: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
+pre > code.sourceCode > span {
+  color: #003B4F;
+}
+
 code span {
   color: #003B4F;
 }
