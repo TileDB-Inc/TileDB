@@ -81,7 +81,8 @@ namespace tiledb::common {
  *
  * With our definition of the state machine (see fsm.h), these actions have the 
  * following functionality:
- *   on_ac_return(): empty function at the moment.
+ *   on_ac_return(): empty function at the moment.  The actual return is performed in
+ *     the state machine event handler.
  *   on_source_swap(): if state is full_empty, notify sink and swap, otherwise, notify sink and wait.
  *   on_sink_swap(): if state is full_empty, notify source and swap, otherwise, notify source and wait.
  *   on_notify_source(): notify sink
