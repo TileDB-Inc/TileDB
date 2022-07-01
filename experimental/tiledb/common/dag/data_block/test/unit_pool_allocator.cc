@@ -219,6 +219,10 @@ void test_pool_allocator() {
   CHECK(p2 == r2);
 }
 
+/**
+ * Test getting a block from one allocator, deallocating, and getting the block
+ * from a different allocator.
+ */
 template <class T>
 void test_both_allocators() {
   /* Instantiate two allocators, one from PoolAllocator class and one from
