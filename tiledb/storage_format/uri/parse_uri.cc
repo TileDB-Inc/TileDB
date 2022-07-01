@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/storage_format/parse_uri.cc
+ * @file tiledb/sm/storage_format/uri/parse_uri.cc
  *
  * @section LICENSE
  *
