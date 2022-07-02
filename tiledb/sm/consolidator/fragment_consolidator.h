@@ -166,6 +166,8 @@ class FragmentConsolidator : public Consolidator {
     float size_ratio_;
     /** Is the refactored reader in use or not */
     bool use_refactored_reader_;
+    /** Purge deleted cells or not. */
+    bool purge_deleted_cells_;
   };
 
   /* ********************************* */

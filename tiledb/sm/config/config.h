@@ -235,6 +235,9 @@ class Config {
   /** The buffer size for each attribute used in consolidation. */
   static const std::string SM_CONSOLIDATION_BUFFER_SIZE;
 
+  /** Purge deleted cells or not. */
+  static const std::string SM_CONSOLIDATION_PURGE_DELETED_CELLS;
+
   /** Number of steps in the consolidation algorithm. */
   static const std::string SM_CONSOLIDATION_STEPS;
 
