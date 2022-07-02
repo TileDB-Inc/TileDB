@@ -54,6 +54,7 @@ struct CResultCoordsFx {
   std::string array_name_;
   const char* ARRAY_NAME = "test_result_coords";
   tiledb_array_t* array_;
+  std::unique_ptr<FragmentMetadata> frag_md;
 
   CResultCoordsFx();
   ~CResultCoordsFx();
@@ -104,6 +105,14 @@ CResultCoordsFx::CResultCoordsFx() {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array_, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
+
+  frag_md.reset(new FragmentMetadata(
+      nullptr,
+      nullptr,
+      array_->array_->array_schema_latest_ptr(),
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true));
 }
 
 CResultCoordsFx::~CResultCoordsFx() {
@@ -118,8 +127,7 @@ CResultCoordsFx::~CResultCoordsFx() {
 
 GlobalOrderResultTile<uint8_t> CResultCoordsFx::make_tile_with_num_cells(
     uint64_t num_cells) {
-  GlobalOrderResultTile<uint8_t> result_tile(
-      0, 0, array_->array_->array_schema_latest());
+  GlobalOrderResultTile<uint8_t> result_tile(0, 0, false, *frag_md);
   auto tile_tuple = result_tile.tile_tuple(constants::coords);
   Tile* const tile = &std::get<0>(*tile_tuple);
   auto cell_size = sizeof(int64_t);
@@ -166,18 +174,18 @@ TEST_CASE_METHOD(
   REQUIRE(rc1.max_slab_length() == 4);
 
   // Test max_slab_length with bitmap 1.
-  tile.bitmap_ = {0, 1, 1, 1, 1};
-  tile.bitmap_result_num_ = 4;
+  tile.bitmap() = {0, 1, 1, 1, 1};
+  tile.count_cells();
   REQUIRE(rc1.max_slab_length() == 4);
 
   // Test max_slab_length with bitmap 2.
-  tile.bitmap_ = {0, 1, 1, 1, 0};
-  tile.bitmap_result_num_ = 3;
+  tile.bitmap() = {0, 1, 1, 1, 0};
+  tile.count_cells();
   REQUIRE(rc1.max_slab_length() == 3);
 
   // Test max_slab_length with bitmap 3.
-  tile.bitmap_ = {0, 1, 1, 1, 0};
-  tile.bitmap_result_num_ = 3;
+  tile.bitmap() = {0, 1, 1, 1, 0};
+  tile.count_cells();
   rc1.pos_ = 0;
   REQUIRE(rc1.max_slab_length() == 0);
 }
@@ -194,20 +202,20 @@ TEST_CASE_METHOD(
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 3), cmp) == 2);
 
   // Test max_slab_length with bitmap and comparator 1.
-  tile.bitmap_ = {0, 1, 1, 1, 1};
-  tile.bitmap_result_num_ = 4;
+  tile.bitmap() = {0, 1, 1, 1, 1};
+  tile.count_cells();
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 10), cmp) == 4);
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 3), cmp) == 2);
 
   // Test max_slab_length with bitmap and comparator 2.
-  tile.bitmap_ = {0, 1, 1, 1, 0};
-  tile.bitmap_result_num_ = 3;
+  tile.bitmap() = {0, 1, 1, 1, 0};
+  tile.count_cells();
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 10), cmp) == 3);
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 3), cmp) == 2);
 
   // Test max_slab_length with bitmap and comparator 3.
-  tile.bitmap_ = {0, 1, 1, 1, 0};
-  tile.bitmap_result_num_ = 3;
+  tile.bitmap() = {0, 1, 1, 1, 0};
+  tile.count_cells();
   rc1.pos_ = 0;
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 3), cmp) == 0);
 }
@@ -220,8 +228,8 @@ TEST_CASE_METHOD(
   Cmp cmp;
 
   GlobalOrderResultCoords rc1(&tile, 0);
-  tile.bitmap_ = {0, 1, 1, 0, 1};
-  tile.bitmap_result_num_ = 3;
+  tile.bitmap() = {0, 1, 1, 0, 1};
+  tile.count_cells();
   REQUIRE(rc1.advance_to_next_cell() == true);
   REQUIRE(rc1.pos_ == 1);
   REQUIRE(rc1.advance_to_next_cell() == true);
@@ -232,8 +240,8 @@ TEST_CASE_METHOD(
 
   // Recreate to test that we don't move pos_ on the first call.
   GlobalOrderResultCoords rc2(&tile, 0);
-  tile.bitmap_ = {1, 1, 1, 0, 0};
-  tile.bitmap_result_num_ = 3;
+  tile.bitmap() = {1, 1, 1, 0, 0};
+  tile.count_cells();
   REQUIRE(rc2.advance_to_next_cell() == true);
   REQUIRE(rc2.pos_ == 0);
   REQUIRE(rc2.advance_to_next_cell() == true);

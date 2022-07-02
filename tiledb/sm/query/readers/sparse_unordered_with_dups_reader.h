@@ -195,7 +195,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param f Fragment index.
    * @param t Tile index.
    * @param last_t Last tile index.
-   * @param array_schema Array schema.
+   * @param frag_md Fragment metadata.
    *
    * @return buffers_full, new_var_buffer_size, new_result_tiles_size.
    */
@@ -206,7 +206,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const unsigned f,
       const uint64_t t,
       const uint64_t last_t,
-      const ArraySchema& array_schema);
+      const FragmentMetadata& frag_md);
 
   /**
    * Create the result tiles.

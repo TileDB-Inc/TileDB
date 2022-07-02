@@ -35,12 +35,14 @@
 
 #include <functional>
 #include <iostream>
+#include <numeric>
 #include <unordered_map>
 #include <vector>
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -511,9 +513,10 @@ class ResultTileWithBitmap : public ResultTile {
   ResultTileWithBitmap() = default;
 
   ResultTileWithBitmap(
-      unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
-      : ResultTile(frag_idx, tile_idx, array_schema)
-      , bitmap_result_num_(std::numeric_limits<uint64_t>::max())
+      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
+      : ResultTile(frag_idx, tile_idx, *frag_md.array_schema().get())
+      , cell_num_(frag_md.cell_num(tile_idx))
+      , result_num_(cell_num_)
       , coords_loaded_(false) {
   }
 
@@ -540,6 +543,65 @@ class ResultTileWithBitmap : public ResultTile {
   /* ********************************* */
 
   /**
+   * Returns true if the coordinates were loaded for this result tile.
+   *
+   * @return 'true' if the coords are loaded.
+   */
+  inline bool coords_loaded() {
+    return coords_loaded_;
+  }
+
+  /**
+   * Specifies coords are loaded for this result tile.
+   */
+  inline void set_coords_loaded() {
+    coords_loaded_ = true;
+  }
+
+  /**
+   * Returns the number of results in the bitmap.
+   *
+   * @return Number of results.
+   */
+  inline uint64_t result_num() {
+    return result_num_;
+  }
+
+  /**
+   * Clear a cell in the bitmap.
+   *
+   * @param cell_idx Cell index to clear.
+   */
+  void clear_cell(uint64_t cell_idx) {
+    result_num_ -= bitmap_[cell_idx];
+    bitmap_[cell_idx] = 0;
+  }
+
+  /**
+   * Get the bitmap.
+   *
+   * @param cell_idx Cell index.
+   */
+  inline std::vector<BitmapType>& bitmap() {
+    return bitmap_;
+  }
+
+  /**
+   * Accumulates the number of cells in the bitmap.
+   */
+  void count_cells() {
+    result_num_ = std::accumulate(bitmap_.begin(), bitmap_.end(), 0);
+  }
+
+  /**
+   * Resize the bitmap.
+   */
+  void alloc_bitmap() {
+    assert(bitmap_.size() == 0);
+    bitmap_.resize(cell_num_, 1);
+  }
+
+  /**
    * Returns the number of cells that are that are between two cell positions
    * in the bitmap.
    *
@@ -549,12 +611,14 @@ class ResultTileWithBitmap : public ResultTile {
    * @return Result number between the positions.
    */
   uint64_t result_num_between_pos(uint64_t start_pos, uint64_t end_pos) const {
-    if (bitmap_.size() == 0)
+    if (bitmap_.size() == 0) {
       return end_pos - start_pos;
+    }
 
     uint64_t result_num = 0;
-    for (uint64_t c = start_pos; c < end_pos; c++)
+    for (uint64_t c = start_pos; c < end_pos; c++) {
       result_num += bitmap_[c];
+    }
 
     return result_num;
   }
@@ -569,11 +633,9 @@ class ResultTileWithBitmap : public ResultTile {
    */
   uint64_t pos_with_given_result_sum(
       uint64_t start_pos, uint64_t result_num) const {
-    assert(
-        bitmap_result_num_ != std::numeric_limits<uint64_t>::max() &&
-        result_num != 0);
-    if (bitmap_.size() == 0)
+    if (bitmap_.size() == 0) {
       return start_pos + result_num - 1;
+    }
 
     uint64_t sum = 0;
     for (uint64_t c = start_pos; c < bitmap_.size(); c++) {
@@ -591,23 +653,42 @@ class ResultTileWithBitmap : public ResultTile {
     return bitmap_.size() > 0;
   }
 
+  /** Should we copy the whole tile. */
+  inline bool copy_full_tile() {
+    // No bitmap, copy full tile.
+    if (bitmap_.size() == 0) {
+      return true;
+    }
+
+    // For non overlapping ranges, if result_num == cell_num, copy full tile.
+    const bool non_overlapping = std::is_same<BitmapType, uint8_t>::value;
+    if (non_overlapping) {
+      return cell_num_ == result_num_;
+    }
+
+    return false;
+  }
+
   /** Swaps the contents (all field values) of this tile with the given tile. */
   void swap(ResultTileWithBitmap<BitmapType>& tile) {
     ResultTile::swap(tile);
     std::swap(bitmap_, tile.bitmap_);
-    std::swap(bitmap_result_num_, tile.bitmap_result_num_);
+    std::swap(result_num_, tile.result_num_);
     std::swap(coords_loaded_, tile.coords_loaded_);
   }
 
+ protected:
   /* ********************************* */
-  /*         PUBLIC ATTRIBUTES         */
+  /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
-
   /** Bitmap for this tile. */
   std::vector<BitmapType> bitmap_;
 
+  /** Cell number for this tile. */
+  uint64_t cell_num_;
+
   /** Number of cells in this bitmap. */
-  uint64_t bitmap_result_num_;
+  uint64_t result_num_;
 
   /** Were the coordinates loaded for this tile. */
   bool coords_loaded_;
@@ -621,9 +702,9 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
   GlobalOrderResultTile(
-      unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
-      : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, array_schema)
-      , dups_(array_schema.allows_dups())
+      unsigned frag_idx, uint64_t tile_idx, bool dups, const FragmentMetadata& frag_md)
+      : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md)
+      , dups_(dups)
       , used_(false) {
   }
 
@@ -681,15 +762,17 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
    * combination of the existing bitmap with query condition results. Otherwise
    * it will only contain the query condition results.
    */
-  void ensure_bitmap_for_query_condition(uint64_t cell_num) {
+  void ensure_bitmap_for_query_condition() {
     if (!dups_) {
       if (ResultTileWithBitmap<BitmapType>::has_bmp()) {
         extra_bitmap_ = ResultTileWithBitmap<BitmapType>::bitmap_;
       } else {
-        extra_bitmap_.resize(cell_num, 1);
+        extra_bitmap_.resize(ResultTileWithBitmap<BitmapType>::cell_num_, 1);
       }
     } else {
-      ResultTileWithBitmap<BitmapType>::bitmap_.resize(cell_num, 1);
+      if (ResultTileWithBitmap<BitmapType>::bitmap_.size() == 0) {
+        ResultTileWithBitmap<BitmapType>::bitmap_.resize(ResultTileWithBitmap<BitmapType>::cell_num_, 1);
+      }
     }
   }
 
@@ -700,20 +783,6 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   inline std::vector<BitmapType>& bitmap_with_qc() {
     return extra_bitmap_.size() > 0 ? extra_bitmap_ :
                                       ResultTileWithBitmap<BitmapType>::bitmap_;
-  }
-
-  /*
-   * Return the variable to update the number of cells post query condition.
-   * If there is an extra bitmap, we don't change the cell number as it is used
-   * to entirely remove tiles that have no more cells in them. For Global order
-   * reads, we still need the tile for deduplication, so return nullptr.
-   */
-  inline uint64_t* qc_result_num_ptr() {
-    if (extra_bitmap_.size() > 0) {
-      return nullptr;
-    }
-
-    return &(ResultTileWithBitmap<BitmapType>::bitmap_result_num_);
   }
 
   /** Allocate space for the hilbert values vector. */
@@ -781,8 +850,8 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
   UnorderedWithDupsResultTile(
-      unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
-      : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, array_schema) {
+      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
+      : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md) {
   }
 
   /** Move constructor. */
@@ -822,10 +891,9 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
    * Ensures there is a post query condition bitmap allocated. For this tile
    * type, this is stored in the regular bitmap.
    */
-  void ensure_bitmap_for_query_condition(uint64_t cell_num) {
+  void ensure_bitmap_for_query_condition() {
     if (ResultTileWithBitmap<BitmapType>::bitmap_.size() == 0) {
-      ResultTileWithBitmap<BitmapType>::bitmap_.resize(cell_num, 1);
-      ResultTileWithBitmap<BitmapType>::bitmap_result_num_ = cell_num;
+      ResultTileWithBitmap<BitmapType>::bitmap_.resize(ResultTileWithBitmap<BitmapType>::cell_num_, 1);
     }
   }
 
@@ -835,13 +903,6 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
    */
   inline std::vector<BitmapType>& bitmap_with_qc() {
     return ResultTileWithBitmap<BitmapType>::bitmap_;
-  }
-
-  /*
-   * Return the variable to update the number of cells post query condition.
-   */
-  inline uint64_t* qc_result_num_ptr() {
-    return &(ResultTileWithBitmap<BitmapType>::bitmap_result_num_);
   }
 };
 

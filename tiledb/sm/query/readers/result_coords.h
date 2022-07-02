@@ -162,7 +162,7 @@ struct GlobalOrderResultCoords
     if (base::pos_ != cell_num) {
       if (base::tile_->has_bmp()) {
         while (base::pos_ < cell_num) {
-          if (base::tile_->bitmap_[base::pos_]) {
+          if (base::tile_->bitmap()[base::pos_]) {
             return true;
           }
           base::pos_++;
@@ -248,7 +248,8 @@ struct GlobalOrderResultCoords
       // from the current position, with coordinares smaller than the next one
       // in the queue.
       base::pos_++;
-      while (base::pos_ < cell_num && bitmap[base::pos_] && !cmp(*this, next)) {
+      while (base::pos_ < cell_num && bitmap[base::pos_] &&
+             !cmp(*this, next)) {
         base::pos_++;
         ret++;
       }
