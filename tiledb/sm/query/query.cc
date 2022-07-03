@@ -1466,26 +1466,30 @@ Status Query::set_data_buffer(
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   // Check buffer
-  if (check_null_buffers && buffer == nullptr)
-    if (type_ != QueryType::WRITE || *buffer_size != 0)
+  if (check_null_buffers && buffer == nullptr) {
+    if (type_ != QueryType::WRITE || *buffer_size != 0) {
       return logger_->status(
           Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
+    }
+  }
 
   // Check buffer size
-  if (check_null_buffers && buffer_size == nullptr)
+  if (check_null_buffers && buffer_size == nullptr) {
     return logger_->status(Status_QueryError(
         "Cannot set buffer; " + name + " buffer size is null"));
+  }
 
   // For easy reference
   const bool is_dim = array_schema_->is_dim(name);
   const bool is_attr = array_schema_->is_attr(name);
 
   // Check that attribute/dimension exists
-  if (name != constants::coords && name != constants::timestamps && !is_dim &&
-      !is_attr)
+  if (name != constants::coords && name != constants::timestamps &&
+      name != constants::delete_timestamps && !is_dim && !is_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));
+  }
 
   if (array_schema_->dense() && type_ == QueryType::WRITE && !is_attr) {
     return logger_->status(Status_QueryError(
@@ -1494,17 +1498,19 @@ Status Query::set_data_buffer(
 
   // Check if zipped coordinates coexist with separate coordinate buffers
   if ((is_dim && has_zipped_coords_buffer_) ||
-      (name == constants::coords && has_coords_buffer_))
+      (name == constants::coords && has_coords_buffer_)) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set separate coordinate buffers and "
                     "a zipped coordinate buffer in the same query")));
+  }
 
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
+  if (status_ != QueryStatus::UNINITIALIZED && !exists) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
+  }
 
   if (name == constants::coords) {
     has_zipped_coords_buffer_ = true;
