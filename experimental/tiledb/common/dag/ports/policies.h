@@ -344,9 +344,13 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                 << "  sink notifying source (swap) with " + str(FSM::state()) +
                        " and " + str(FSM::next_state())
                 << std::endl;
-    source_cv_.notify_one();
+    //    source_cv_.notify_one();
+
+    // Will fail tests without this
     FSM::set_state(PortState::empty_full);
-    FSM::set_next_state(PortState::empty_full);
+
+    // Not needed?
+    // FSM::set_next_state(PortState::empty_full);
 
     // { state == empty_full }
     CHECK(FSM::state() == PortState::empty_full);
@@ -357,38 +361,6 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                 << std::endl;
 
     sink_swaps++;
-  }
-
-  inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
-    CHECK(FSM::state() == PortState::empty_empty);
-    if (FSM::debug_enabled())
-      std::cout << event++ << "  "
-                << " sink notifying source(drained) with " + str(FSM::state()) +
-                       " and " + str(FSM::next_state())
-                << std::endl;
-    source_cv_.notify_one();
-
-    if (FSM::debug_enabled())
-      std::cout << event++ << "  "
-                << " sink going to sleep on_sink_swap with " + str(FSM::state())
-                << std::endl;
-    sink_cv_.wait(lock);
-
-    FSM::set_next_state(FSM::state());
-
-    CHECK(is_snk_post_swap(FSM::state()) == "");
-
-    if (FSM::debug_enabled())
-      std::cout << event++ << "  "
-                << " sink waking up on_sink_swap with " + str(FSM::state()) +
-                       " and " + str(FSM::next_state())
-                << std::endl;
-
-    if (FSM::debug_enabled())
-      std::cout << event++ << "  "
-                << " sink leaving on_sink_swap with " + str(FSM::state()) +
-                       " and " + str(FSM::next_state())
-                << std::endl;
   }
 
   /**
@@ -416,10 +388,13 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                 << " source notifying sink (swap) with " + str(FSM::state()) +
                        " and " + str(FSM::next_state())
                 << std::endl;
-    sink_cv_.notify_one();
+    // sink_cv_.notify_one();
 
+    // Needed
     FSM::set_state(PortState::empty_full);
-    FSM::set_next_state(PortState::empty_full);
+
+    // Not needed?
+    // FSM::set_next_state(PortState::empty_full);
 
     // { state == empty_full }
     CHECK(str(FSM::state()) == "empty_full");
@@ -433,6 +408,39 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
     source_swaps++;
   }
 
+  inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
+    CHECK(FSM::state() == PortState::empty_empty);
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " sink notifying source(drained) with " + str(FSM::state()) +
+                       " and " + str(FSM::next_state())
+                << std::endl;
+    // source_cv_.notify_one();
+
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " sink going to sleep on_sink_swap with " + str(FSM::state())
+                << std::endl;
+    sink_cv_.wait(lock);
+
+    // Will deadlock without this
+    FSM::set_next_state(FSM::state());
+
+    CHECK(is_snk_post_swap(FSM::state()) == "");
+
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " sink waking up on_sink_swap with " + str(FSM::state()) +
+                       " and " + str(FSM::next_state())
+                << std::endl;
+
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " sink leaving on_sink_swap with " + str(FSM::state()) +
+                       " and " + str(FSM::next_state())
+                << std::endl;
+  }
+
   inline void on_source_wait(lock_type& lock, std::atomic<int>& event) {
     CHECK(str(FSM::state()) == "full_full");
     if (FSM::debug_enabled())
@@ -440,7 +448,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                 << " source notifying sink (filled) with " + str(FSM::state()) +
                        " and " + str(FSM::next_state())
                 << std::endl;
-    sink_cv_.notify_one();
+    //    sink_cv_.notify_one();
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "
