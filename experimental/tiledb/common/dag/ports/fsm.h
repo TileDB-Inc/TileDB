@@ -229,7 +229,7 @@ constexpr const PortAction entry_table[n_states][n_events] {
 
   /* empty_empty */ { PortAction::none,        PortAction::ac_return, PortAction::notify_source, PortAction::none,      PortAction::none },
   /* empty_full  */ { PortAction::none,        PortAction::ac_return, PortAction::none,          PortAction::ac_return, PortAction::none },
-  /* full_empty  */ { PortAction::notify_sink, PortAction::src_swap,  PortAction::notify_source, PortAction::src_swap,  PortAction::none },
+  /* full_empty  */ { PortAction::notify_sink, PortAction::src_swap,  PortAction::notify_source, PortAction::snk_swap,  PortAction::none },
   /* full_full   */ { PortAction::notify_sink, PortAction::none,      PortAction::none,          PortAction::ac_return, PortAction::none },
 
   /* error       */ { PortAction::none,        PortAction::none,      PortAction::none,          PortAction::none,      PortAction::none },
