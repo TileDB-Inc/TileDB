@@ -257,8 +257,8 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
 
  public:
   // Counters for testing
-  int source_swaps{};
-  int sink_swaps{};
+  size_t source_swaps{};
+  size_t sink_swaps{};
 
   T* source_item_{};
   T* sink_item_{};
@@ -309,7 +309,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                        str(FSM::state()) + " and " + str(FSM::next_state())
                 << std::endl;
 
-    CHECK(is_source_post_swap(FSM::state()) == "");
+    CHECK(is_sink_empty(FSM::state()) == "");
     source_cv_.notify_one();
   }
 
@@ -323,7 +323,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                        str(FSM::state()) + " and " + str(FSM::next_state())
                 << std::endl;
 
-    CHECK(is_sink_post_swap(FSM::state()) == "");
+    CHECK(is_source_full(FSM::state()) == "");
     sink_cv_.notify_one();
   }
 
@@ -331,9 +331,6 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
    * Function for handling `sink_swap` action.
    */
   inline void on_sink_swap(lock_type&, std::atomic<int>& event) {
-    // { state == full_empty ∨  state == empty_empty }
-    CHECK(is_sink_empty(FSM::state()) == "");
-
     // { state == full_empty }
     CHECK(FSM::state() == PortState::full_empty);
     CHECK(*source_item_ != EMPTY_SINK);
@@ -364,10 +361,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
    * Function for handling `src_swap` action.
    */
   inline void on_source_swap(lock_type&, std::atomic<int>& event) {
-    // { state == full_empty ∨ state == full_full }
-    CHECK(is_source_full(FSM::state()) == "");
-
-    // { state == full_full }
+    // { state == full_empty }
     CHECK(str(FSM::state()) == "full_empty");
 
     if (FSM::debug_enabled())
@@ -399,7 +393,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
   }
 
   inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
-    CHECK(FSM::state() == PortState::empty_empty);
+    CHECK(str(FSM::state()) == "empty_empty");
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "
@@ -435,8 +429,8 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                 << std::endl;
 
     source_cv_.wait(lock);
-    // { state == empty_empty ∨ state == empty_full }
 
+    // { state == empty_empty ∨ state == empty_full }
     // FSM::set_next_state(FSM::state());
 
     CHECK(is_source_post_swap(FSM::state()) == "");
@@ -476,8 +470,8 @@ class UnifiedAsyncStateMachine
   std::condition_variable cv_;
 
  public:
-  int source_swaps{};
-  int sink_swaps{};
+  size_t source_swaps{};
+  size_t sink_swaps{};
 
   T* source_item_{nullptr};
   T* sink_item_{nullptr};
