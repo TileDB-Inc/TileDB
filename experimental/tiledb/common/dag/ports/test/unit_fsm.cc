@@ -85,9 +85,9 @@ TEST_CASE("Port FSM: Start up", "[fsm]") {
     a.do_fill(debug ? "start sink (fill)" : "");
     CHECK(str(a.state()) == "full_empty");
     a.do_push(debug ? "start sink (push)" : "");
-    CHECK(is_src_empty(a.state()) == "");
+    CHECK(is_source_empty(a.state()) == "");
     a.do_drain(debug ? "start sink (drain)" : "");
-    CHECK(is_snk_empty(a.state()) == "");
+    CHECK(is_sink_empty(a.state()) == "");
   }
 }
 
@@ -173,9 +173,9 @@ TEST_CASE(
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.do_fill(debug ? "async source (fill)" : "");
-    CHECK(is_src_full(a.state()) == "");
+    CHECK(is_source_full(a.state()) == "");
     a.do_push(debug ? "async source (push)" : "");
-    CHECK(is_src_empty(a.state()) == "");
+    CHECK(is_source_empty(a.state()) == "");
   });
 
   //  std::this_thread::sleep_for(std::chrono::microseconds(random_us(5000)));
@@ -212,7 +212,7 @@ TEST_CASE(
 
   auto fut_b = std::async(std::launch::async, [&]() {
     a.do_pull(debug ? "async sink (pull)" : "");
-    CHECK(is_snk_full(a.state()) == "");
+    CHECK(is_sink_full(a.state()) == "");
 
     a.do_drain(debug ? "async sink (drain)" : "");
   });
@@ -762,11 +762,11 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       // while (a.state() == PortState::full_empty ||
       //        a.state() == PortState::full_full)// ;
 
-      CHECK(is_src_empty(a.state()) == "");
+      CHECK(is_source_empty(a.state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      CHECK(is_src_empty(a.state()) == "");
+      CHECK(is_source_empty(a.state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -774,7 +774,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      CHECK(is_src_empty(a.state()) == "");
+      CHECK(is_source_empty(a.state()) == "");
 
       a.do_fill(debug ? "async source node" : "");
 
@@ -806,17 +806,17 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
       a.do_pull(debug ? "async sink node" : "");
 
-      CHECK(is_snk_full(a.state()) == "");
+      CHECK(is_sink_full(a.state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      CHECK(is_snk_full(a.state()) == "");
+      CHECK(is_sink_full(a.state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
       *j++ = *(a.sink_item_);
 
-      CHECK(is_snk_full(a.state()) == "");
+      CHECK(is_sink_full(a.state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -933,13 +933,13 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
       // a.state() == PortState::full_full)
       // ;
 
-      CHECK(is_src_empty(a.state()) == "");
+      CHECK(is_source_empty(a.state()) == "");
 
       *(a.source_item_) = *i++;
       a.do_fill(debug ? "async source node" : "");
       a.do_push(debug ? "async source node" : "");
 
-      CHECK(is_src_empty(a.state()) == "");
+      CHECK(is_source_empty(a.state()) == "");
 
       *(a.source_item_) = EMPTY_SOURCE;
     }
@@ -958,7 +958,7 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
 
       a.do_pull(debug ? "async sink node" : "");
 
-      CHECK(is_snk_full(a.state()) == "");
+      CHECK(is_sink_full(a.state()) == "");
 
       *j++ = *(a.sink_item_);
       *(a.sink_item_) = EMPTY_SINK;

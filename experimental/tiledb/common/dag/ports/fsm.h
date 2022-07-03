@@ -141,14 +141,14 @@ static inline auto str(PortEvent ev) {
 enum class PortAction : unsigned short {
   none,
   ac_return,
-  src_swap,
-  snk_swap,
+  source_swap,
+  sink_swap,
   notify_source,
   notify_sink,
-  src_wait,
-  snk_wait,
-  //  try_src_swap,
-  //  try_snk_swap,
+  source_wait,
+  sink_wait,
+  //  try_source_swap,
+  //  try_sink_swap,
   //  invoke_producer,
   //  invoke_consumer,
   error,
@@ -169,14 +169,14 @@ constexpr unsigned int n_actions = to_index(PortAction::error) + 1;
 static std::vector<std::string> action_strings{
     "none",
     "ac_return",
-    "src_swap",
-    "snk_swap",
+    "source_swap",
+    "sink_swap",
     "notify_source",
     "notify_sink",
-    "src_wait",
-    "snk_wait",
-    //    "try_src_swap",
-    //    "try_snk_swap",
+    "source_wait",
+    "sink_wait",
+    //    "try_source_swap",
+    //    "try_sink_swap",
     //    "invoke_producer",
     //    "invoke_consumer",
     "error",
@@ -205,7 +205,7 @@ constexpr const PortState transition_table[n_states][n_events] {
 
   /* empty_empty */ { PortState::full_empty, PortState::empty_empty, PortState::error,       PortState::empty_full, PortState::error },
   /* empty_full  */ { PortState::full_full,  PortState::empty_full,  PortState::empty_empty, PortState::empty_full, PortState::error },
-  /* full_empty  */ { PortState::/*empty_full*/error, PortState::empty_full,  PortState::error,       PortState::empty_full, PortState::error },
+  /* full_empty  */ { PortState::error,      PortState::empty_full,  PortState::error,       PortState::empty_full, PortState::error },
   /* full_full   */ { PortState::error,      PortState::empty_full,  PortState::full_empty,  PortState::full_full,  PortState::error },
 
   /* error       */ { PortState::error,      PortState::error,       PortState::error,       PortState::error,      PortState::error },
@@ -215,10 +215,10 @@ constexpr const PortState transition_table[n_states][n_events] {
 constexpr const PortAction exit_table[n_states][n_events] {
   /* source_sink */ /* source_fill */   /* source_push */      /* sink_drain */  /* sink_pull */        /* shutdown */
 
-  /* empty_empty */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::snk_wait,  PortAction::none },
-  /* empty_full  */ { PortAction::none, PortAction::ac_return, PortAction::none, PortAction::ac_return, PortAction::none },
-  /* full_empty  */ { PortAction::none, PortAction::src_swap,  PortAction::none, PortAction::snk_swap,  PortAction::none },
-  /* full_full   */ { PortAction::none, PortAction::src_wait,  PortAction::none, PortAction::/*none*/ac_return,      PortAction::none },
+  /* empty_empty */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::sink_wait,  PortAction::none },
+  /* empty_full  */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
+  /* full_empty  */ { PortAction::none, PortAction::source_swap, PortAction::none, PortAction::sink_swap,  PortAction::none },
+  /* full_full   */ { PortAction::none, PortAction::source_wait, PortAction::none, PortAction::none,      PortAction::none },
 
   /* error       */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
   /* done        */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
@@ -227,10 +227,10 @@ constexpr const PortAction exit_table[n_states][n_events] {
 constexpr const PortAction entry_table[n_states][n_events] {
   /* source_sink */ /* source_fill */          /* source_push */      /* sink_drain */           /* sink_pull */        /* shutdown */
 
-  /* empty_empty */ { PortAction::none,        PortAction::ac_return, PortAction::notify_source, PortAction::none,      PortAction::none },
-  /* empty_full  */ { PortAction::none,        PortAction::ac_return, PortAction::none,          PortAction::ac_return, PortAction::none },
-  /* full_empty  */ { PortAction::notify_sink, PortAction::src_swap,  PortAction::notify_source, PortAction::snk_swap,  PortAction::none },
-  /* full_full   */ { PortAction::notify_sink, PortAction::none,      PortAction::none,          PortAction::ac_return, PortAction::none },
+  /* empty_empty */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
+  /* empty_full  */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
+  /* full_empty  */ { PortAction::notify_sink, PortAction::source_swap, PortAction::notify_source, PortAction::sink_swap,  PortAction::none },
+  /* full_full   */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
 
   /* error       */ { PortAction::none,        PortAction::none,      PortAction::none,          PortAction::none,      PortAction::none },
   /* done        */ { PortAction::none,        PortAction::none,      PortAction::none,          PortAction::none,      PortAction::none },
@@ -366,31 +366,31 @@ private:
        return;
        break;
 
-     case PortAction::src_swap:
+     case PortAction::source_swap:
        if (msg != "")
          std::cout << event_counter++
-                   << "      " + msg + " exit about to src_swap" << std::endl;
+                   << "      " + msg + " exit about to source_swap" << std::endl;
        static_cast<ActionPolicy&>(*this).on_source_swap(lock, event_counter);
        break;
 
-     case PortAction::snk_swap:
+     case PortAction::sink_swap:
        if (msg != "")
          std::cout << event_counter++
-                   << "      " + msg + " exit about to snk_swap" << std::endl;
+                   << "      " + msg + " exit about to sink_swap" << std::endl;
        static_cast<ActionPolicy&>(*this).on_sink_swap(lock, event_counter);
        break;
 
-     case PortAction::src_wait:
+     case PortAction::source_wait:
        if (msg != "")
          std::cout << event_counter++
-                   << "      " + msg + " exit about to src_wait" << std::endl;
+                   << "      " + msg + " exit about to source_wait" << std::endl;
        static_cast<ActionPolicy&>(*this).on_source_wait(lock, event_counter);
        break;
 
-     case PortAction::snk_wait:
+     case PortAction::sink_wait:
        if (msg != "")
          std::cout << event_counter++
-                   << "      " + msg + " exit about to snk_wait" << std::endl;
+                   << "      " + msg + " exit about to sink_wait" << std::endl;
        static_cast<ActionPolicy&>(*this).on_sink_wait(lock, event_counter);
        break;
 
@@ -457,16 +457,16 @@ private:
        return;
        break;
 
-     case PortAction::src_swap:
+     case PortAction::source_swap:
 
        if (msg != "")
          std::cout << event_counter++
-                   << "      " + msg + " entry about to src_swap" << std::endl;
+                   << "      " + msg + " entry about to source_swap" << std::endl;
 
        static_cast<ActionPolicy&>(*this).on_source_swap(lock, event_counter);
        break;
 
-     case PortAction::snk_swap:
+     case PortAction::sink_swap:
 
        if (msg != "")
          std::cout << event_counter++
@@ -475,17 +475,17 @@ private:
        static_cast<ActionPolicy&>(*this).on_sink_swap(lock, event_counter);
        break;
 
-     case PortAction::src_wait:
+     case PortAction::source_wait:
        if (msg != "")
          std::cout << event_counter++
-                   << "      " + msg + " exit about to src_wait" << std::endl;
+                   << "      " + msg + " exit about to source_wait" << std::endl;
        static_cast<ActionPolicy&>(*this).on_source_wait(lock, event_counter);
        break;
 
-     case PortAction::snk_wait:
+     case PortAction::sink_wait:
        if (msg != "")
          std::cout << event_counter++
-                   << "      " + msg + " entry about to snk_wait" << std::endl;
+                   << "      " + msg + " entry about to sink_wait" << std::endl;
        static_cast<ActionPolicy&>(*this).on_sink_wait(lock, event_counter);
        break;
 
