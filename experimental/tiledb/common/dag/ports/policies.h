@@ -330,146 +330,143 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
   /**
    * Function for handling `snk_swap` action.
    */
-  inline void on_sink_swap(lock_type& lock, std::atomic<int>& event) {
+  inline void on_sink_swap(lock_type&, std::atomic<int>& event) {
     // { state == full_empty ∨  state == empty_empty }
     CHECK(is_snk_empty(FSM::state()) == "");
 
-    if (FSM::state() == PortState::full_empty) {
-      // { state == full_empty }
-      CHECK(FSM::state() == PortState::full_empty);
-      CHECK(*source_item_ != EMPTY_SINK);
+    // { state == full_empty }
+    CHECK(FSM::state() == PortState::full_empty);
+    CHECK(*source_item_ != EMPTY_SINK);
 
-      std::swap(*source_item_, *sink_item_);
+    std::swap(*source_item_, *sink_item_);
 
-      if (FSM::debug_enabled())
-        std::cout << event++ << "  "
-                  << "  sink notifying source (swap) with " +
-                         str(FSM::state()) + " and " + str(FSM::next_state())
-                  << std::endl;
-      source_cv_.notify_one();
-      FSM::set_state(PortState::empty_full);
-      FSM::set_next_state(PortState::empty_full);
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << "  sink notifying source (swap) with " + str(FSM::state()) +
+                       " and " + str(FSM::next_state())
+                << std::endl;
+    source_cv_.notify_one();
+    FSM::set_state(PortState::empty_full);
+    FSM::set_next_state(PortState::empty_full);
 
-      // { state == empty_full }
-      CHECK(FSM::state() == PortState::empty_full);
-      if (FSM::debug_enabled())
-        std::cout << event++ << "  "
-                  << " sink done swapping items with " + str(FSM::state()) +
-                         " and " + str(FSM::next_state())
-                  << std::endl;
+    // { state == empty_full }
+    CHECK(FSM::state() == PortState::empty_full);
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " sink done swapping items with " + str(FSM::state()) +
+                       " and " + str(FSM::next_state())
+                << std::endl;
 
-      sink_swaps++;
-    } else {
-      // { state == empty_empty }
-      CHECK(FSM::state() == PortState::empty_empty);
-      if (FSM::debug_enabled())
-        std::cout << event++ << "  "
-                  << " sink notifying source(drained) with " +
-                         str(FSM::state()) + " and " + str(FSM::next_state())
-                  << std::endl;
-      source_cv_.notify_one();
+    sink_swaps++;
+  }
 
-      if (FSM::debug_enabled())
-        std::cout << event++ << "  "
-                  << " sink going to sleep on_sink_swap with " +
-                         str(FSM::state())
-                  << std::endl;
-      sink_cv_.wait(lock);
+  inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
+    CHECK(FSM::state() == PortState::empty_empty);
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " sink notifying source(drained) with " + str(FSM::state()) +
+                       " and " + str(FSM::next_state())
+                << std::endl;
+    source_cv_.notify_one();
 
-      FSM::set_next_state(FSM::state());
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " sink going to sleep on_sink_swap with " + str(FSM::state())
+                << std::endl;
+    sink_cv_.wait(lock);
 
-      CHECK(is_snk_post_swap(FSM::state()) == "");
+    FSM::set_next_state(FSM::state());
 
-      if (FSM::debug_enabled())
-        std::cout << event++ << "  "
-                  << " sink waking up on_sink_swap with " + str(FSM::state()) +
-                         " and " + str(FSM::next_state())
-                  << std::endl;
+    CHECK(is_snk_post_swap(FSM::state()) == "");
 
-      if (FSM::debug_enabled())
-        std::cout << event++ << "  "
-                  << " sink leaving on_sink_swap with " + str(FSM::state()) +
-                         " and " + str(FSM::next_state())
-                  << std::endl;
-    }
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " sink waking up on_sink_swap with " + str(FSM::state()) +
+                       " and " + str(FSM::next_state())
+                << std::endl;
+
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " sink leaving on_sink_swap with " + str(FSM::state()) +
+                       " and " + str(FSM::next_state())
+                << std::endl;
   }
 
   /**
    * Function for handling `src_swap` action.
    */
-  inline void on_source_swap(lock_type& lock, std::atomic<int>& event) {
+  inline void on_source_swap(lock_type&, std::atomic<int>& event) {
     // { state == full_empty ∨ state == full_full }
     CHECK(is_src_full(FSM::state()) == "");
 
-    if (FSM::state() == PortState::full_empty) {
-      // { state == full_full }
-      CHECK(str(FSM::state()) == "full_empty");
+    // { state == full_full }
+    CHECK(str(FSM::state()) == "full_empty");
 
-      if (FSM::debug_enabled())
-        std::cout << event++ << "  "
-                  << " source swapping items with " + str(FSM::state()) +
-                         " and " + str(FSM::next_state())
-                  << std::endl;
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " source swapping items with " + str(FSM::state()) +
+                       " and " + str(FSM::next_state())
+                << std::endl;
 
-      CHECK(*source_item_ != EMPTY_SINK);
+    CHECK(*source_item_ != EMPTY_SINK);
 
-      std::swap(*source_item_, *sink_item_);
+    std::swap(*source_item_, *sink_item_);
 
-      if (FSM::debug_enabled())
-        std::cout << event++ << "  "
-                  << " source notifying sink (swap) with " + str(FSM::state()) +
-                         " and " + str(FSM::next_state())
-                  << std::endl;
-      sink_cv_.notify_one();
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " source notifying sink (swap) with " + str(FSM::state()) +
+                       " and " + str(FSM::next_state())
+                << std::endl;
+    sink_cv_.notify_one();
 
-      FSM::set_state(PortState::empty_full);
-      FSM::set_next_state(PortState::empty_full);
+    FSM::set_state(PortState::empty_full);
+    FSM::set_next_state(PortState::empty_full);
 
-      // { state == empty_full }
-      CHECK(str(FSM::state()) == "empty_full");
+    // { state == empty_full }
+    CHECK(str(FSM::state()) == "empty_full");
 
-      if (FSM::debug_enabled())
-        std::cout << event++ << "  "
-                  << " source done swapping items with " + str(FSM::state()) +
-                         " and " + str(FSM::next_state())
-                  << std::endl;
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " source done swapping items with " + str(FSM::state()) +
+                       " and " + str(FSM::next_state())
+                << std::endl;
 
-      source_swaps++;
-    } else {
-      // { state == full_full }
-      CHECK(str(FSM::state()) == "full_full");
-      if (FSM::debug_enabled())
-        std::cout << event++ << "  "
-                  << " source notifying sink (filled) with " +
-                         str(FSM::state()) + " and " + str(FSM::next_state())
-                  << std::endl;
-      sink_cv_.notify_one();
+    source_swaps++;
+  }
 
-      if (FSM::debug_enabled())
-        std::cout << event++ << "  "
-                  << " source going to sleep on_source_swap with " +
-                         str(FSM::state()) + " and " + str(FSM::next_state())
-                  << std::endl;
+  inline void on_source_wait(lock_type& lock, std::atomic<int>& event) {
+    CHECK(str(FSM::state()) == "full_full");
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " source notifying sink (filled) with " + str(FSM::state()) +
+                       " and " + str(FSM::next_state())
+                << std::endl;
+    sink_cv_.notify_one();
 
-      source_cv_.wait(lock);
-      // { state == empty_empty ∨ state == empty_full }
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " source going to sleep on_source_swap with " +
+                       str(FSM::state()) + " and " + str(FSM::next_state())
+                << std::endl;
 
-      FSM::set_next_state(FSM::state());
+    source_cv_.wait(lock);
+    // { state == empty_empty ∨ state == empty_full }
 
-      CHECK(is_src_post_swap(FSM::state()) == "");
+    FSM::set_next_state(FSM::state());
 
-      if (FSM::debug_enabled())
-        std::cout << event++ << "  "
-                  << " source waking up to " + str(FSM::state()) + " and " +
-                         str(FSM::next_state())
-                  << std::endl;
+    CHECK(is_src_post_swap(FSM::state()) == "");
 
-      if (FSM::debug_enabled())
-        std::cout << event++ << "  "
-                  << " source leaving on_source_swap with " +
-                         str(FSM::state()) + " and " + str(FSM::next_state())
-                  << std::endl;
-    }
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " source waking up to " + str(FSM::state()) + " and " +
+                       str(FSM::next_state())
+                << std::endl;
+
+    if (FSM::debug_enabled())
+      std::cout << event++ << "  "
+                << " source leaving on_source_swap with " + str(FSM::state()) +
+                       " and " + str(FSM::next_state())
+                << std::endl;
   }
 };
 
@@ -566,35 +563,25 @@ class UnifiedAsyncStateMachine
   /**
    * Function for handling `source_swap` action.
    */
-  inline void on_source_swap(lock_type& lock, std::atomic<int>& event) {
-    if (FSM::state() == PortState::full_empty) {
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " source swapping items " << *source_item_ << " and "
-                  << *sink_item_ << std::endl;
+  inline void on_source_swap(lock_type&, std::atomic<int>& event) {
+    if (debug_)
+      std::cout << event++ << "  "
+                << " source swapping items " << *source_item_ << " and "
+                << *sink_item_ << std::endl;
 
-      CHECK(*source_item_ != EMPTY_SINK);
+    CHECK(*source_item_ != EMPTY_SINK);
 
-      std::swap(*source_item_, *sink_item_);
+    std::swap(*source_item_, *sink_item_);
 
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " source notifying sink (swap)" << std::endl;
+    if (debug_)
+      std::cout << event++ << "  "
+                << " source notifying sink (swap)" << std::endl;
 
-      cv_.notify_one();
+    cv_.notify_one();
 
-      FSM::set_state(PortState::empty_full);
-      FSM::set_next_state(PortState::empty_full);
-      source_swaps++;
-    } else {
-      if (debug_)
-        std::cout << event++ << "  "
-                  << " source notifying sink (filled)" << std::endl;
-      cv_.notify_one();
-      cv_.wait(lock);
-
-      FSM::set_next_state(FSM::state());
-    }
+    FSM::set_state(PortState::empty_full);
+    FSM::set_next_state(PortState::empty_full);
+    source_swaps++;
   }
 
   /**
@@ -603,6 +590,38 @@ class UnifiedAsyncStateMachine
    */
   inline void on_sink_swap(lock_type& lock, std::atomic<int>& event) {
     on_source_swap(lock, event);
+  }
+
+  /**
+   * Function for handling `source_swap` action.
+   */
+  inline void on_source_wait(lock_type&, std::atomic<int>& event) {
+    if (debug_)
+      std::cout << event++ << "  "
+                << " source swapping items " << *source_item_ << " and "
+                << *sink_item_ << std::endl;
+
+    CHECK(*source_item_ != EMPTY_SINK);
+
+    std::swap(*source_item_, *sink_item_);
+
+    if (debug_)
+      std::cout << event++ << "  "
+                << " source notifying sink (swap)" << std::endl;
+
+    cv_.notify_one();
+
+    FSM::set_state(PortState::empty_full);
+    FSM::set_next_state(PortState::empty_full);
+    source_swaps++;
+  }
+
+  /**
+   * Function for handling `sink_swap` action.  It simply calls the source swap
+   * action.
+   */
+  inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
+    on_source_wait(lock, event);
   }
 };
 
@@ -632,6 +651,17 @@ class DebugStateMachine : public PortFiniteStateMachine<DebugStateMachine<T>> {
     if (FSM::debug_enabled())
       std::cout << "    "
                 << "Action swap sink" << std::endl;
+  }
+  inline void on_source_wait(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+
+      std::cout << "    "
+                << "Action source wait" << std::endl;
+  }
+  inline void on_sink_wait(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+      std::cout << "    "
+                << "Action sink wait" << std::endl;
   }
   inline void notify_source(lock_type&, std::atomic<int>&) {
     if (FSM::debug_enabled())
