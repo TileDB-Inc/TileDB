@@ -203,10 +203,10 @@ namespace {
 constexpr const PortState transition_table[n_states][n_events] {
   /* source_sink */ /* source_fill */        /* source_push */       /* sink_drain */        /* sink_pull */        /* shutdown */
 
-  /* empty_empty */ { PortState::full_empty, PortState::empty_empty, PortState::error,       PortState::empty_full, PortState::error },
+  /* empty_empty */ { PortState::full_empty, PortState::empty_empty, PortState::error,       PortState::empty_empty, PortState::error },
   /* empty_full  */ { PortState::full_full,  PortState::empty_full,  PortState::empty_empty, PortState::empty_full, PortState::error },
   /* full_empty  */ { PortState::error,      PortState::empty_full,  PortState::error,       PortState::empty_full, PortState::error },
-  /* full_full   */ { PortState::error,      PortState::empty_full,  PortState::full_empty,  PortState::full_full,  PortState::error },
+  /* full_full   */ { PortState::error,      PortState::full_full,  PortState::full_empty,  PortState::full_full,  PortState::error },
 
   /* error       */ { PortState::error,      PortState::error,       PortState::error,       PortState::error,      PortState::error },
   /* done        */ { PortState::error,      PortState::error,       PortState::error,       PortState::error,      PortState::error },
@@ -369,7 +369,8 @@ private:
      case PortAction::source_swap:
        if (msg != "")
          std::cout << event_counter++
-                   << "      " + msg + " exit about to source_swap" << std::endl;
+                   << "      " + msg + " exit about to source_swap"
+                   << std::endl;
        static_cast<ActionPolicy&>(*this).on_source_swap(lock, event_counter);
        break;
 
@@ -383,7 +384,8 @@ private:
      case PortAction::source_wait:
        if (msg != "")
          std::cout << event_counter++
-                   << "      " + msg + " exit about to source_wait" << std::endl;
+                   << "      " + msg + " exit about to source_wait"
+                   << std::endl;
        static_cast<ActionPolicy&>(*this).on_source_wait(lock, event_counter);
        break;
 
@@ -426,10 +428,14 @@ private:
    }
 
    /*
-    * Assign new state
+    * Assign new state.  Note that next_state_ may have been changed by one of
+    * the actions above (in particular, wait or swap).
     */
    state_ = next_state_;
 
+   /*
+    * Update the entry_action in case next_state_ was changed.
+    */
    entry_action = entry_table[to_index(next_state_)][to_index(event)];
 
    if (msg != "" || debug_) {
@@ -461,9 +467,11 @@ private:
 
        if (msg != "")
          std::cout << event_counter++
-                   << "      " + msg + " entry about to source_swap" << std::endl;
+                   << "      " + msg + " entry about to source_swap"
+                   << std::endl;
 
        static_cast<ActionPolicy&>(*this).on_source_swap(lock, event_counter);
+       state_ = PortState::empty_full;
        break;
 
      case PortAction::sink_swap:
@@ -473,12 +481,14 @@ private:
                    << "      " + msg + " entry about to sink_swap" << std::endl;
 
        static_cast<ActionPolicy&>(*this).on_sink_swap(lock, event_counter);
+       state_ = PortState::empty_full;
        break;
 
      case PortAction::source_wait:
        if (msg != "")
          std::cout << event_counter++
-                   << "      " + msg + " exit about to source_wait" << std::endl;
+                   << "      " + msg + " exit about to source_wait"
+                   << std::endl;
        static_cast<ActionPolicy&>(*this).on_source_wait(lock, event_counter);
        break;
 
