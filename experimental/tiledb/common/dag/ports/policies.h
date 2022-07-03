@@ -70,7 +70,7 @@ namespace tiledb::common {
  * associated mixin functions are 
  *   ac_return: on_ac_return()
  *   src_swap: on_source_swap()
- *   snk_swap: on_sink_swap()
+ *   sink_swap: on_sink_swap()
  *   notify_source: on_notify_source()
  *   notify_sink: on_notify_sink()
  *
@@ -308,7 +308,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                        str(FSM::state()) + " and " + str(FSM::next_state())
                 << std::endl;
 
-    CHECK(is_src_post_swap(FSM::state()) == "");
+    CHECK(is_source_post_swap(FSM::state()) == "");
     source_cv_.notify_one();
   }
 
@@ -322,16 +322,16 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
                        str(FSM::state()) + " and " + str(FSM::next_state())
                 << std::endl;
 
-    CHECK(is_snk_post_swap(FSM::state()) == "");
+    CHECK(is_sink_post_swap(FSM::state()) == "");
     sink_cv_.notify_one();
   }
 
   /**
-   * Function for handling `snk_swap` action.
+   * Function for handling `sink_swap` action.
    */
   inline void on_sink_swap(lock_type&, std::atomic<int>& event) {
     // { state == full_empty ∨  state == empty_empty }
-    CHECK(is_snk_empty(FSM::state()) == "");
+    CHECK(is_sink_empty(FSM::state()) == "");
 
     // { state == full_empty }
     CHECK(FSM::state() == PortState::full_empty);
@@ -361,7 +361,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
    */
   inline void on_source_swap(lock_type&, std::atomic<int>& event) {
     // { state == full_empty ∨ state == full_full }
-    CHECK(is_src_full(FSM::state()) == "");
+    CHECK(is_source_full(FSM::state()) == "");
 
     // { state == full_full }
     CHECK(str(FSM::state()) == "full_empty");
@@ -406,7 +406,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
     // Will deadlock without this
     FSM::set_next_state(FSM::state());
 
-    CHECK(is_snk_post_swap(FSM::state()) == "");
+    CHECK(is_sink_post_swap(FSM::state()) == "");
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "
@@ -435,7 +435,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
 
     FSM::set_next_state(FSM::state());
 
-    CHECK(is_src_post_swap(FSM::state()) == "");
+    CHECK(is_source_post_swap(FSM::state()) == "");
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "

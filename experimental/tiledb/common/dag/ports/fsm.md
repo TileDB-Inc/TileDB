@@ -17,11 +17,16 @@ transferring data from a `Source` to a `Sink`, there are exit and entry actions
 associated with selected states and events.
 
 Diagrams for the source and sink state machines can be found in
-source_state_machine.svg and sink_state_machine.svg, respectively.  The diagrams also
-show the entry and exit actions for each state machine.  
+source_state_machine.svg and sink_state_machine.svg, respectively.  
 
-<img src="source_state_machine.svg" width="360" />
-<img src="sink_state_machine.svg" width="360" />
+The following diagrams show the entry and exit actions for each state machine, for the
+`Source` and `Sink` in isolation.  Note that there is some "spooky action at a
+distance" between the two due to waiting in one with notification from the other.
+We don't show those interactions in the diagram, but capture than in the state
+transition and event action tables.
+
+<img source="source_state_machine.svg" width="360" />
+<img source="sink_state_machine.svg" width="360" />
 
 Our basic goal for the `Source` and `Sink` ports is to transfer a data item from a
 `Source` to a connected (bound) `Sink`.  At a high level, the way a client would use
@@ -40,7 +45,6 @@ is the following
 - consume the item
 - invoke the sink_drain event
 
-
 Since the `Source` and `Sink` are bound together, we need to consider a product state
 machine, one which has all combinations of `Source` and `Sink` states.  Since the
 `Source` and `Sink` states each have *empty* and *full* states, we denote the product
@@ -54,10 +58,10 @@ below is the following:
 |  State          |||| Event      |||
 |--------|--------|-------------|-------------|-------------|-------------|----------|
 | Source |  Sink  | source_fill | source_push | sink_drain  | sink_pull   | shutdown |
-| empty  | empty  | full_empty  |             |             | empty_full  |          |
-| empty  | full   | full_full   |             | empty/empty |             |          |
-| full   | empty  |             | empty_empty |             | full_full   |          |
-| full   | full   |             | empty_full  | full_empty  |             |          |  
+| empty  | empty  | full_empty  | empty_empty |             | empty_full  |          |
+| empty  | full   | full_full   | empty_full  | empty_empty | empty_full  |          |
+| full   | empty  |             | empty_full  |             | empty_full  |          |
+| full   | full   |             | empty_full  | full_empty  | full_full   |          |  
 
 
 Using this table, we can include the states as predicates with "proof outline" 
@@ -109,80 +113,96 @@ Note that the exit action is called *before* the state transition.
 Note also that the entry action is called with the new state
 (the post transition state).
 
-The tables for entry and exit actions to be perfomed on state transitions is:
+The tables for exit actions to be perfomed on state transitions is:
 
    |      States     ||||                     Events                                  |||
    |--------|--------|-------------|-------------|-------------|-------------|----------|
    | Source |  Sink  | source_fill | source_push | sink_drain  | sink_pull   | shutdown |
-   | empty  | empty  |             |             |             | sink_swap   |          |  wait on pull?
-   | empty  | full   |             | return      |             | return      |          |
-   | full   | empty  |             | src_swap    |             | sink_swap   |          |  wait on pull?
-   | full   | full   |             | src_swap    |             | return      |          |
+   | empty  | empty  |             |             |             | sink_wait   |          |
+   | empty  | full   |             |             |             |             |          |
+   | full   | empty  |             | source_swap |             | sink_swap   |          |
+   | full   | full   |             | source_wait |             |             |          |
 
 
 The table for entry actions to be performend on state transitions is:
 
 
    |      States     ||||                     Events                                  |||
-   |--------|--------|-------------|-------------|-------------|-------------|----------|
-   | Source |  Sink  | source_fill | source_push | sink_drain  | sink_pull   | shutdown |
-   | empty  | empty  |             | return      | notify_src  |             |          |
-   | empty  | full   |             | return      |             | return      |          |
-   | full   | empty  | notify_sink | src_swap    | notify_src  | snk_swap    |          |
-   | full   | full   | notify_sink |             |             | return      |          |
+   |--------|--------|-------------|-------------|---------------|-------------|----------|
+   | Source |  Sink  | source_fill | source_push | sink_drain    | sink_pull   | shutdown |
+   | empty  | empty  |             |             | notify_source |             |          |
+   | empty  | full   |             |             |               |             |          |
+   | full   | empty  | notify_sink | source_swap | notify_source | sink_swap   |          |
+   | full   | full   | notify_sink |             |               |             |          |
 
 
-The `src_swap` function is used to potentially transfer the data items associated with `Source` and `Sink` from the `Source` to the `Sink` (as well as changing the state if data transfer is carried out).  The data transfer is carried out by swapping the `Source` and `Sink` items and changing the full_empty to empty_full.  Since data transfer can only happen when the `Source` is full and the `Sink` is empty, the `Source` will wait until it receives a signal from the `Sink` indicating that the `Sink` is empty.  The operation of the `snk_swap` function is identical -- the `Sink` checks if the `Sink` is empty, swaps if the state is full_empty, and waits if it is not.
+The `source_swap` function is used to potentially transfer the data items associated with
+`Source` and `Sink` from the `Source` to the `Sink` (as well as changing the state if
+data transfer is carried out).  The `source_swap` function is invoked whenever the state is 
+full_empty (which is when there is an item in `Source` and space available to transfer to
+the `Sink`.
+The data transfer is carried out by swapping the
+`Source` and `Sink` items and changing the state of full_empty to empty_full.
+
+When the state is empty_empty, the `Sink` will wait for the `Source` to become full.  The
+`Source` will notify the `Sink` when it becomes full.  Similarly, if the state is full_full,
+the `Source` will wait until it is signalled by the `Sink` that the `Sink` is empty.
 
 In more detail, we can describe the `Source` behavior (including proof outline predicates);
 ```C
   init: { state = empty_empty ∧ source_item = empty }
   while (not done)
+
      /* { state = empty_empty ∨ state = empty_full } ∧ { source_item = empty } */
-     client of the source inserts an item  /* Note that the Sink can execute during this */
+     client of the source inserts an item  /* Note that although the Sink can execute and potentially change the
+                                              state here, the allowable transitions do not end up changing it */
+
      /* { state = empty_empty ∨ state = empty_full } ∧ { source_item = full } */
      client invokes source_fill event to transition from empty to full.
+
+     /* state machine locks mutex */
      /* { state = full_empty ∨ state = full_full } ∧ { source_item = full } */
      Source notifies Sink that it is full
      /* { state = full_empty ∨ state = full_full } ∧ { source_item = full } */
      Source returns
+     /* state machine unlocks mutex */
 
-     /* The Sink may pull, drain, do both, or do nothing */
+     /* Before the Source begins the source_push, the Sink may pull, drain, do both, or do nothing */
+
      /* { state = full_empty ∨ state = full_full ∨ state = empty_full ∨ state = empty_empty } ∧ { source_item = empty ∨ source_item = full } */
      client invokes source_push event
+     state machine locks the mutex
+
      /* { state = full_empty ∨ state = full_full ∨ state = empty_full ∨ state = empty_empty } ∧ { source_item = empty ∨ source_item = full } */
      state machine executes source_push exit action, which may be one of the following, depending on the state */
-       if state = empty_full → return
-       if state = empty_empty → continue
-       if state = full_empty ∨ state = full_full → execute src_swap
-         /* pre_src_swap: { state = full_empty ∨ state = full_full } ∧ { source_item = full } */
-         if state = full_empty, do swap
-           /* pre_swap: { state = full_empty } ∧ { source_item = full } */       
-           state machine swaps source_item and sink_item and transitions to empty_full state
-           /* post_swap: { state = empty_full } ∧ { source_item = empty } */       
-           notify sink
-         else 
-           /* else_swap: { state = full_full } ∧ { source_item = full } */
-           notify sink
-           wait for sink to drain item or to pull and drain_item
-             /* Important! The state machine is now no longer in the state it was when it started the wait. */
-             if sink drained: state → full_empty
-             if sink pulled: state → full_empty
-	     if sink pulled and drained: state → empty_empty
-	     if sink drained and pulled: state → empty_full
+       if state = empty_empty or state = empty_full → continue
+       if state = full_empty → execute source_swap
+         /* pre_source_swap: { state = full_empty } ∧ { source_item = full } */
+            state machine swaps source_item and sink_item and transitions to empty_full state
+         /* post_source_swap: { state = empty_full } ∧ { source_item = empty } */
+       if state = full_full → execute source_wait  /* wait for Sink to become empty */
+          /* Important! The state machine is now no longer in the state it was when it started the wait. */
+          /* The Sink will notify on { state = empty_empty ∨ state = full_empty } but the Source may not run immediately */
+          if Sink was in sink_drain and notifies the Source, { state = empty_empty ∨ state = full_empty } and { event = sink_drain }
+            { state = full_empty ∧ next_state = empty_full } we set next_state to { full_empty } so that source will swap on entry actio
+	    wait sets next_state of state: { state = empty_full }
+          if Sink also runs sink_pull then either it goes into a wait or { state = empty_full } ∧ { event = sink_pull }
+          { state = empty_empty ∨ state = empty_full }
        make state transition according to state transition table and state on exit of exit action
        /* { state = empty_empty ∨ state = empty_full } ∧ { source_item = empty } */
-       invoke entry action 
-         if state = empty_empty → return
-         if state = empty_full → return
-         /* post_entry: { state = empty_empty ∨ state = empty_full } ∧ { source_item = full } */
+       state machine invokes entry action 
+         if state = empty_empty → none
+         if state = empty_full → none
+         /* post_entry: { state = empty_empty ∨ state = empty_full } ∧ { source_item = empty } */
+     state machine unlocks mutex
+
       /* post_push: { state = empty_empty ∨ state = empty_full } ∧ { source_item = empty } */
     /* end_loop: { state = empty_empty ∨ state = empty_full } ∧ { source_item = empty } */
   /* post_loop: { state = empty_empty ∨ state = empty_full } ∧ { source_item = empty } */
 ```
 
-The `Sink` is the dual of the `Source`.
-We can describe the `Sink` behavior (including proof outline predicates);
+The `Sink` is the dual of the Source.  Note that we start with sink_pull.
+We can describe the `Sink` behavior (including proof outline predicates):
 ```C
   init: { state = empty_empty ∧ sink_item = empty }
   while (not done)
@@ -193,57 +213,67 @@ We can describe the `Sink` behavior (including proof outline predicates);
        if source did nothing state does not change
      /* { state = empty_empty ∨ state = empty_full ∨ state = full_empty } ∧ { sink_item = empty ∨ sink_item = full } */
      client invokes sink_pull event
-     invoke exit action for state
-       empty_full → return
-       full_empty, empty → snk_swap
-       /* { state = full_empty ∨ state = empty_empty } ∧ { sink_item = empty } */
-       if state = full_empty
-          { state = full_empty } ∧ { sink_item = empty } */
-          swap elements
-          { state = empty_full } ∧ { sink_item = full } */
-        notify source
-     else
-       /* { state = empty_empty } ∧ { sink_item = empty } */
-       notify source
-       wait
-        /* Important! The state machine is now no longer in the state it was when it started the wait. */
-        /* the source would have been notified after filling, pushing, or filling and pushing */
- 	      if source filled: state → full_empty or full_full
-	      if source pushed: → full_full 
-	      fill then push: → full_full
-     make state transition
-     /* { state = empty_full ∨ state = full_full } ∧ { sink_item = full } */
-     invoke entry function for that state
-       if source notified from source_fill: state would be empty_full or full_full → none
-       if source notifed from src_swap: state would be empty_full → return
-       if source notifed from src_swap else: state would be empty_empty → none
+     state machine locks mutex
+
+     /* { state = empty_empty ∨ state = empty_full ∨ state = full_empty } ∧ { sink_item = empty ∨ sink_item = full } */
+     state machine invokes sink_pull exit action, which may be one of the following, depending on the state
+       { state = empty_full ∨ state = full_full } → none
+       { state = empty_empty } → sink_wait
+       { state = full_empty } → sink_swap 
+         /* pre_sink_swap: { state = full_empty } ∧ { sink_item = empty
+         state machine swap source_item and sink_item and transitions to empty_full state
+         /* post_sink_swap: { state = empty_full } ∧ { sink_item = full }
+
+         /* pre_sink_wait: { state = empty_empty } /* wait for source to become full */
+         /* Important! The state machine is now no longer in the state it was when it started the wait. */
+         /* The Source will notify on { state = full_empty ∨ state = full_full } but the Sink may not run immediately */
+         if Source was in source_fill and notifies the Sink { state = full_empty ∨ state = full_full } ∧ { event = source_fill }
+           { state = full_empty ∧ { next_state = empty_full } we set next state to full_empty so that Sink will swap on entry actio
+           set next_state = state: { state = full_empty }
+         if Source also runs source_push, the either it goes into a wait or { state = full_empty } ∧ { event = source_push }
+         /* { state = empty_empty ∨ state = full_empty } ∧ { sink_item = full } */
+       make state transition according to state transition table and state on exit of exit action
+       /* { state = empty_empty ∨ state = full_empty } ∧ { sink_item = full } */       
+       state machine invokes entry action 
+         { state = empty_empty } → none
+         { state = full_empty } → none
+       { state = empty_empty ∨ state = full_empty } ∧ { sink_item = full } */
+       { state = empty_full ∨ state = full_full } 
+       state machine returns
+     { state = empty_full ∨ state = full_full } 
+     state machine unlocks mutex
      /* post_pull: { state = empty_full ∨ state = full_full } ∧ { sink_item = full } */
 
-     client of the source extracts an item  /* Note that the Source can execute during this */
+     client of the source extracts the item  /* Note that although the Sink can execute and potentially change the
+                                                state here, the allowable transitions do not end up changing it */
      /* { state = empty_full ∨ state = full_full } ∧ { sink_item = empty } */
      client invokes sink_drain event to transition from full to empty 
+     state machine locks mutex
      /* { state = empty_empty ∨ state = full_empty } ∧ { sink_item = empty } */
-     Sink notifies Souce that it is empty
-     /* { state = full_empty ∨ state = empty_empty } ∧ { sink_item = empty } */
+     Sink notifies Source that it is empty
+     /* { state = empty_empty ∨ state = full_empty } ∧ { sink_item = empty } */
      Sink returns
-     /* end_loop: { state = empty_empty  ∨ state = full_empty } ∧ { sink_item = empty } */
+     state machine unlocks mutex
+     /* end_loop: { state = empty_empty ∨ state = full_empty } ∧ { sink_item = empty } */
   /* post_loop: { state = empty_empty ∨ state = full_empty } ∧ { sink_item = empty } */
 ```
 
-Operations carried out directly by the state machine are protected by a lock.  When the `Source` or `Sink` wait, they do so on a condition variable using that same lock.
+Operations carried out directly by the state machine are protected by a lock.  When
+the `Source` or `Sink` wait, they do so on a condition variable using that same lock.
 
 Since the synchronization implies that if the `Source` and `Sink` execute the same
-number of loops, the `Sink` will execute last, we can conclude that the final state
-after `Source` and `Sink` finish executing will be `empty_empty` and both
-`source_item` and `sink_item` will be empty.
+number of loops, the `Source` will have { state = empty_empty ∨ state = empty_full }
+while the `Sink` will have { state = empty_empty ∨ state = full_empty }.  
+The final state of the state machine must be 
+{ state = empty_empty ∨ state = empty_full } ∧ { state = empty_empty ∨ state = full_empty } ∧ { item = empty },
+i.e., { state = empty_empty } ∧ { item = empty }. 
 
-The sink_swap and src_swap functions are identical. Each checks to see if the state is
+**NB:** The sink_swap and source_swap functions are identical. Each checks to see if the state is
 equal to full_empty, if so, swap the state to empty_full (and perform an action swap 
 of the items assoiated with the source and sink), and notifies the other.  If the state
 is not equal to full_empty, the swap function notifies the other and goes into a wait.
 
-Thus, we may not need separate swaps for source and sink, nor separate condition variables, nor separate notification functions.  Leaving things separate for now.
-
-
-
+Thus, we may not need separate swaps for `Source` and `Sink`, nor separate condition
+variables, nor separate notification functions.  I have verified that this works
+experimentally, but I am leaving things separate for now.
 
