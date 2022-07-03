@@ -556,6 +556,7 @@ TEST_CASE(
   }
 
   CHECK(str(a.state()) == "empty_empty");
+  CHECK((a.source_swaps + a.sink_swaps) == rounds);
 };
 
 /**
@@ -715,6 +716,7 @@ TEST_CASE(
     fut_a.get();
   }
   CHECK(str(a.state()) == "empty_empty");
+  CHECK(a.source_swaps + a.sink_swaps == rounds);
 };
 
 /**
@@ -891,6 +893,8 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
   }
 
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
+  CHECK(str(a.state()) == "empty_empty");
+  CHECK((a.source_swaps + a.sink_swaps) == rounds);
 }
 
 /**
@@ -1029,4 +1033,5 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
     }
   }
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
+  CHECK(str(a.state()) == "empty_empty");
 }
