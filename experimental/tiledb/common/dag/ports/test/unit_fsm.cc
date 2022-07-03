@@ -929,9 +929,9 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      while (a.state() == PortState::full_empty ||
-             a.state() == PortState::full_full)
-        ;
+      // while (a.state() == PortState::full_empty ||
+      // a.state() == PortState::full_full)
+      // ;
 
       CHECK(is_src_empty(a.state()) == "");
 
@@ -952,9 +952,9 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
         std::cout << "sink node iteration " << n << std::endl;
       }
 
-      while (a.state() == PortState::full_full ||
-             a.state() == PortState::empty_full)
-        ;
+      // while (a.state() == PortState::full_full ||
+      //             a.state() == PortState::empty_full)
+      //        ;
 
       a.do_pull(debug ? "async sink node" : "");
 
