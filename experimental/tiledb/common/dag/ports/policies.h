@@ -594,25 +594,11 @@ class UnifiedAsyncStateMachine
   /**
    * Function for handling `source_swap` action.
    */
-  inline void on_source_wait(lock_type&, std::atomic<int>& event) {
-    if (debug_)
-      std::cout << event++ << "  "
-                << " source swapping items " << *source_item_ << " and "
-                << *sink_item_ << std::endl;
+  inline void on_source_wait(lock_type& lock, std::atomic<int>&) {
+    cv_.wait(lock);
+    // { state == empty_empty ∨ state == empty_full }
 
-    CHECK(*source_item_ != EMPTY_SINK);
-
-    std::swap(*source_item_, *sink_item_);
-
-    if (debug_)
-      std::cout << event++ << "  "
-                << " source notifying sink (swap)" << std::endl;
-
-    cv_.notify_one();
-
-    FSM::set_state(PortState::empty_full);
-    FSM::set_next_state(PortState::empty_full);
-    source_swaps++;
+    FSM::set_next_state(FSM::state());
   }
 
   /**
