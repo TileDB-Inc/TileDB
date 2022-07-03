@@ -66,27 +66,27 @@ const int EMPTY_SINK = 7654321;
  *
  * The functions are used as
  *
- * CHECK(is_src_empty(state) == "");
+ * CHECK(is_source_empty(state) == "");
  *
  * If the condition passes, an empty string is returned,
  * otherwise, the string that is passed in is returned and
  * the CHECK will print its value in the diagnostic message.
  */
-[[maybe_unused]] static std::string is_src_empty(PortState st) {
+[[maybe_unused]] static std::string is_source_empty(PortState st) {
   if (str(st) == "empty_full" || str(st) == "empty_empty") {
     return {};
   }
   return str(st);
 }
 
-[[maybe_unused]] static std::string is_src_full(PortState st) {
+[[maybe_unused]] static std::string is_source_full(PortState st) {
   if (str(st) == "full_full" || str(st) == "full_empty") {
     return {};
   }
   return str(st);
 }
 
-[[maybe_unused]] static std::string is_src_post_swap(PortState st) {
+[[maybe_unused]] static std::string is_source_post_swap(PortState st) {
   if (str(st) == "full_empty" || str(st) == "empty_full" ||
       str(st) == "empty_empty") {
     return {};
@@ -94,21 +94,21 @@ const int EMPTY_SINK = 7654321;
   return str(st);
 }
 
-[[maybe_unused]] static std::string is_snk_empty(PortState st) {
+[[maybe_unused]] static std::string is_sink_empty(PortState st) {
   if (str(st) == "full_empty" || str(st) == "empty_empty") {
     return {};
   }
   return str(st);
 }
 
-[[maybe_unused]] static std::string is_snk_full(PortState st) {
+[[maybe_unused]] static std::string is_sink_full(PortState st) {
   if (str(st) == "full_full" || str(st) == "empty_full") {
     return {};
   }
   return str(st);
 }
 
-[[maybe_unused]] static std::string is_snk_post_swap(PortState st) {
+[[maybe_unused]] static std::string is_sink_post_swap(PortState st) {
   if (str(st) == "full_empty" || str(st) == "empty_full" ||
       str(st) == "full_full") {
     return {};
