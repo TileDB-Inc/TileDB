@@ -539,7 +539,7 @@ Status Config::unset(const std::string& param) {
   } else if (param == "config.logging_level") {
     param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   } else if (param == "config.logging_format") {
-    param_values_["config.logging_foramt"] = CONFIG_LOGGING_DEFAULT_FORMAT;
+    param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
   } else if (param == "sm.encryption_key") {
     param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   } else if (param == "sm.encryption_type") {
