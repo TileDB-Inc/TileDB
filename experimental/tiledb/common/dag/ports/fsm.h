@@ -145,6 +145,8 @@ enum class PortAction : unsigned short {
   snk_swap,
   notify_source,
   notify_sink,
+  src_wait,
+  snk_wait,
   //  try_src_swap,
   //  try_snk_swap,
   //  invoke_producer,
@@ -171,6 +173,8 @@ static std::vector<std::string> action_strings{
     "snk_swap",
     "notify_source",
     "notify_sink",
+    "src_wait",
+    "snk_wait",
     //    "try_src_swap",
     //    "try_snk_swap",
     //    "invoke_producer",
@@ -211,10 +215,10 @@ constexpr const PortState transition_table[n_states][n_events] {
 constexpr const PortAction exit_table[n_states][n_events] {
   /* source_sink */ /* source_fill */   /* source_push */      /* sink_drain */  /* sink_pull */        /* shutdown */
 
-  /* empty_empty */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::snk_swap,  PortAction::none },
+  /* empty_empty */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::snk_wait,  PortAction::none },
   /* empty_full  */ { PortAction::none, PortAction::ac_return, PortAction::none, PortAction::ac_return, PortAction::none },
   /* full_empty  */ { PortAction::none, PortAction::src_swap,  PortAction::none, PortAction::snk_swap,  PortAction::none },
-  /* full_full   */ { PortAction::none, PortAction::src_swap,  PortAction::none, PortAction::/*none*/ac_return,      PortAction::none },
+  /* full_full   */ { PortAction::none, PortAction::src_wait,  PortAction::none, PortAction::/*none*/ac_return,      PortAction::none },
 
   /* error       */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
   /* done        */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
@@ -376,6 +380,20 @@ private:
        static_cast<ActionPolicy&>(*this).on_sink_swap(lock, event_counter);
        break;
 
+     case PortAction::src_wait:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to src_wait" << std::endl;
+       static_cast<ActionPolicy&>(*this).on_source_wait(lock, event_counter);
+       break;
+
+     case PortAction::snk_wait:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to snk_wait" << std::endl;
+       static_cast<ActionPolicy&>(*this).on_sink_wait(lock, event_counter);
+       break;
+
      case PortAction::notify_source:
        if (msg != "")
          std::cout << event_counter++
@@ -457,10 +475,24 @@ private:
        static_cast<ActionPolicy&>(*this).on_sink_swap(lock, event_counter);
        break;
 
+     case PortAction::src_wait:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to src_wait" << std::endl;
+       static_cast<ActionPolicy&>(*this).on_source_wait(lock, event_counter);
+       break;
+
+     case PortAction::snk_wait:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " entry about to snk_wait" << std::endl;
+       static_cast<ActionPolicy&>(*this).on_sink_wait(lock, event_counter);
+       break;
+
      case PortAction::notify_source:
        if (msg != "")
          std::cout << event_counter++
-                   << "      " + msg + " exit about to notify source"
+                   << "      " + msg + " entry about to notify source"
                    << std::endl;
        static_cast<ActionPolicy&>(*this).notify_source(lock, event_counter);
        break;
@@ -468,7 +500,7 @@ private:
      case PortAction::notify_sink:
        if (msg != "")
          std::cout << event_counter++
-                   << "      " + msg + " exit about to notify sink"
+                   << "      " + msg + " entry about to notify sink"
                    << std::endl;
        static_cast<ActionPolicy&>(*this).notify_sink(lock, event_counter);
        break;
