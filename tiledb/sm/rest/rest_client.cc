@@ -269,14 +269,14 @@ Status RestClient::post_array_schema_to_rest(
 }
 
 Status RestClient::post_array_from_rest(const URI& uri, Array* array) {
-  if (array == nullptr)
-    return LOG_STATUS(
-        Status_RestError("Error posting array from REST; array is null."));
+  if (array == nullptr) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error getting remote array; array is null."));
+  }
 
   Buffer buff;
-  auto config = array->config();
-  RETURN_NOT_OK(serialization::config_serialize(
-      &config, serialization_type_, &buff, true));
+  RETURN_NOT_OK(
+      serialization::array_open_serialize(*array, serialization_type_, &buff));
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
@@ -292,8 +292,8 @@ Status RestClient::post_array_from_rest(const URI& uri, Array* array) {
   std::string url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
                     curlc.url_escape(array_uri);
 
-  // TODO: is this necessary?
-  // Remote array operations should supply the timestamp
+  // Remote array operations should provide start and end timestamps
+  // TBD: leave here as URI parameters or put in CAPnP msg ?
   url += "&start_timestamp=" + std::to_string(array->timestamp_start()) +
          "&end_timestamp=" + std::to_string(array->timestamp_end());
 

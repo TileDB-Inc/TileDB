@@ -57,10 +57,13 @@ struct Array {
 
   arrayMetadata @7 :ArrayMetadata;
   # array metadata
+}
 
-  config @8 :Config;
+struct ArrayOpen {
+  config @0 :Config;
   # Config
 }
+
 
 struct ArraySchema {
 # ArraySchema during creation or retrieval
