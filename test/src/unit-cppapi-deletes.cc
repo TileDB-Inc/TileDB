@@ -37,6 +37,12 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
+#ifdef _WIN32
+#include "tiledb/sm/filesystem/win.h"
+#else
+#include "tiledb/sm/filesystem/posix.h"
+#endif
+
 using namespace tiledb;
 using namespace tiledb::test;
 
@@ -50,18 +56,22 @@ struct DeletesFx {
   VFS vfs_;
   sm::StorageManager* sm_;
 
+  std::string key_ = "0123456789abcdeF0123456789abcdeF";
+  const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
+
   // Constructors/destructors.
   DeletesFx();
   ~DeletesFx();
 
   // Functions.
   void set_legacy();
-  void create_sparse_array(bool allows_dups = false);
+  void create_sparse_array(bool allows_dups = false, bool encrypt = false);
   void write_sparse(
       std::vector<int> a1,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
-      uint64_t timestamp);
+      uint64_t timestamp,
+      bool encrypt = false);
   void read_sparse(
       std::vector<int>& a1,
       std::vector<uint64_t>& dim1,
@@ -69,11 +79,16 @@ struct DeletesFx {
       std::string& stats,
       tiledb_layout_t layout,
       uint64_t timestamp,
-      std::vector<uint64_t>* timestamps_ptr = nullptr);
+      bool encrypt = false);
   void write_delete_condition(
-      QueryCondition& qc, uint64_t timestamp, bool error_expected = false);
+      QueryCondition& qc,
+      uint64_t timestamp,
+      bool encrypt = false,
+      bool error_expected = false);
   void check_delete_conditions(
-      std::vector<QueryCondition> qcs, uint64_t timestamp);
+      std::vector<QueryCondition> qcs,
+      uint64_t timestamp,
+      bool encrypt = false);
   void remove_sparse_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
@@ -102,7 +117,7 @@ void DeletesFx::set_legacy() {
   vfs_ = VFS(ctx_);
 }
 
-void DeletesFx::create_sparse_array(bool allows_dups) {
+void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
   // Create dimensions.
   auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 4}}, 2);
   auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 4}}, 2);
@@ -131,19 +146,35 @@ void DeletesFx::create_sparse_array(bool allows_dups) {
   filter_list.add_filter(filter);
   schema.set_coords_filter_list(filter_list);
 
-  Array::create(SPARSE_ARRAY_NAME, schema);
+  if (encrypt) {
+    Array::create(SPARSE_ARRAY_NAME, schema, enc_type_, key_);
+  } else {
+    Array::create(SPARSE_ARRAY_NAME, schema);
+  }
 }
 
 void DeletesFx::write_sparse(
     std::vector<int> a1,
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,
-    uint64_t timestamp) {
+    uint64_t timestamp,
+    bool encrypt) {
   // Open array.
-  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, timestamp);
+  std::unique_ptr<Array> array;
+  if (encrypt) {
+    array.reset(new Array(
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        TILEDB_WRITE,
+        enc_type_,
+        std::string(key_),
+        timestamp));
+  } else {
+    array.reset(new Array(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, timestamp));
+  }
 
   // Create query.
-  Query query(ctx_, array, TILEDB_WRITE);
+  Query query(ctx_, *array, TILEDB_WRITE);
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_data_buffer("a1", a1);
   query.set_data_buffer("d1", dim1);
@@ -154,7 +185,7 @@ void DeletesFx::write_sparse(
   query.finalize();
 
   // Close array.
-  array.close();
+  array->close();
 }
 
 void DeletesFx::read_sparse(
@@ -164,19 +195,27 @@ void DeletesFx::read_sparse(
     std::string& stats,
     tiledb_layout_t layout,
     uint64_t timestamp,
-    std::vector<uint64_t>* timestamps_ptr) {
+    bool encrypt) {
   // Open array.
-  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
+  std::unique_ptr<Array> array;
+  if (encrypt) {
+    array.reset(new Array(
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        TILEDB_READ,
+        enc_type_,
+        std::string(key_),
+        timestamp));
+  } else {
+    array.reset(new Array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp));
+  }
 
   // Create query.
-  Query query(ctx_, array, TILEDB_READ);
+  Query query(ctx_, *array, TILEDB_READ);
   query.set_layout(layout);
   query.set_data_buffer("a1", a1);
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
-  if (timestamps_ptr != nullptr) {
-    query.set_data_buffer(tiledb_timestamps(), *timestamps_ptr);
-  }
 
   // Submit the query.
   query.submit();
@@ -186,16 +225,27 @@ void DeletesFx::read_sparse(
   stats = query.stats();
 
   // Close array.
-  array.close();
+  array->close();
 }
 
 void DeletesFx::write_delete_condition(
-    QueryCondition& qc, uint64_t timestamp, bool error_expected) {
+    QueryCondition& qc, uint64_t timestamp, bool encrypt, bool error_expected) {
   // Open array.
-  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_DELETE, timestamp);
+  std::unique_ptr<Array> array;
+  if (encrypt) {
+    array.reset(new Array(
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        TILEDB_DELETE,
+        enc_type_,
+        std::string(key_),
+        timestamp));
+  } else {
+    array.reset(new Array(ctx_, SPARSE_ARRAY_NAME, TILEDB_DELETE, timestamp));
+  }
 
   // Create query.
-  Query query(ctx_, array, TILEDB_DELETE);
+  Query query(ctx_, *array, TILEDB_DELETE);
 
   query.set_condition(qc);
 
@@ -210,14 +260,25 @@ void DeletesFx::write_delete_condition(
       (error_expected ? Query::Status::FAILED : Query::Status::COMPLETE));
 
   // Close array.
-  array.close();
+  array->close();
 }
 
 void DeletesFx::check_delete_conditions(
-    std::vector<QueryCondition> qcs, uint64_t timestamp) {
-  // Open the array for read.
-  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
-  auto array_ptr = array.ptr()->array_;
+    std::vector<QueryCondition> qcs, uint64_t timestamp, bool encrypt) {
+  // Open array.
+  std::unique_ptr<Array> array;
+  if (encrypt) {
+    array.reset(new Array(
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        TILEDB_READ,
+        enc_type_,
+        std::string(key_),
+        timestamp));
+  } else {
+    array.reset(new Array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp));
+  }
+  auto array_ptr = array->ptr()->array_;
   auto& array_dir = array_ptr->array_directory();
   auto& enc_key = *array_ptr->encryption_key();
 
@@ -232,6 +293,8 @@ void DeletesFx::check_delete_conditions(
     auto cmp = qcs[i].ptr()->query_condition_->negated_condition();
     CHECK(tiledb::test::ast_equal(delete_conditions->at(i).ast(), cmp.ast()));
   }
+
+  array->close();
 }
 
 void DeletesFx::remove_array(const std::string& array_name) {
@@ -254,7 +317,9 @@ TEST_CASE_METHOD(
     "CPP API: Test writting delete condition",
     "[cppapi][deletes][write-check]") {
   remove_sparse_array();
-  create_sparse_array();
+
+  bool encrypt = GENERATE(true, false);
+  create_sparse_array(false, encrypt);
 
   // Define query condition (a1 < 4.0).
   QueryCondition qc(ctx_);
@@ -266,12 +331,12 @@ TEST_CASE_METHOD(
   int32_t val2 = 8;
   qc2.init("a1", &val2, sizeof(int32_t), TILEDB_GT);
 
-  write_delete_condition(qc, 1);
-  check_delete_conditions({qc}, 2);
+  write_delete_condition(qc, 1, encrypt);
+  check_delete_conditions({qc}, 2, encrypt);
 
-  write_delete_condition(qc2, 3);
-  check_delete_conditions({qc}, 2);
-  check_delete_conditions({qc, qc2}, 4);
+  write_delete_condition(qc2, 3, encrypt);
+  check_delete_conditions({qc}, 2, encrypt);
+  check_delete_conditions({qc, qc2}, 4, encrypt);
 
   remove_sparse_array();
 }
@@ -288,7 +353,7 @@ TEST_CASE_METHOD(
   int32_t val = 4;
   qc.init("b", &val, sizeof(int32_t), TILEDB_LT);
 
-  write_delete_condition(qc, 1, true);
+  write_delete_condition(qc, 1, false, true);
 
   remove_sparse_array();
 }
