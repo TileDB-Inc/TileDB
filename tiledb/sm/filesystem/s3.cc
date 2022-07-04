@@ -935,10 +935,13 @@ Status S3::remove_dir(const URI& uri) const {
   RETURN_NOT_OK(init_client());
 
   std::vector<std::string> paths;
-  auto uri_dir = uri.add_trailing_slash();
-  RETURN_NOT_OK(ls(uri_dir, &paths, ""));
-  for (const auto& p : paths)
-    RETURN_NOT_OK(remove_object(URI(p)));
+  RETURN_NOT_OK(ls(uri, &paths, ""));
+  auto status = parallel_for(vfs_thread_pool_, 0, paths.size(), [&](size_t i) {
+    RETURN_NOT_OK(remove_object(URI(paths[i])));
+    return Status::Ok();
+  });
+  RETURN_NOT_OK(status);
+
   return Status::Ok();
 }
 
