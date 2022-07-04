@@ -32,7 +32,7 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_delete_condition PUBLIC ast_test_support_lib)
 
     # Sources for tests
-    target_sources(unit_delete_condition PUBLIC test/main.cc test/unit_delete_condition.cc serialization.cc)
+    target_sources(unit_delete_condition PUBLIC test/main.cc test/unit_delete_condition.cc)
 
     # The dependencies can't yet be factored into separate object libraries
     target_link_libraries(unit_delete_condition PUBLIC TILEDB_CORE_OBJECTS)

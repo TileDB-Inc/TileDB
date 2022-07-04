@@ -363,6 +363,8 @@ Status Array::close() {
       RETURN_NOT_OK(storage_manager_->array_close_for_reads(this));
     } else if (query_type_ == QueryType::WRITE) {
       RETURN_NOT_OK(storage_manager_->array_close_for_writes(this));
+    } else if (query_type_ == QueryType::DELETE) {
+      RETURN_NOT_OK(storage_manager_->array_close_for_deletes(this));
     } else {
       return LOG_STATUS(
           Status_ArrayError("Error closing array; Unsupported query type."));

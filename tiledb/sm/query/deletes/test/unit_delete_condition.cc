@@ -31,13 +31,13 @@
  */
 
 #include "test/src/ast_helpers.h"
-#include "tiledb/sm/query/delete_condition/serialization.h"
+#include "tiledb/sm/query/deletes/serialization.h"
 #include "tiledb/sm/storage_manager/context.h"
 
 #include <catch.hpp>
 
 using namespace tiledb::sm;
-using namespace tiledb::sm::delete_condition::serialize;
+using namespace tiledb::sm::deletes::serialize;
 
 /**
  * Make sure a condition is the same after going through
@@ -47,7 +47,8 @@ using namespace tiledb::sm::delete_condition::serialize;
  */
 void serialize_deserialize_check(QueryCondition& query_condition) {
   auto serialized = serialize_delete_condition(query_condition);
-  auto deserialized = deserialize_delete_condition(serialized);
+  auto deserialized =
+      deserialize_delete_condition("", serialized.data(), serialized.size());
 
   CHECK(tiledb::test::ast_equal(query_condition.ast(), deserialized.ast()));
 }

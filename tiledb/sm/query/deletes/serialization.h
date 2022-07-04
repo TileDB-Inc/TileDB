@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/query/delete_condition/serialization.h
+ * @file tiledb/sm/query/deletes/serialization.h
  *
  * @section LICENSE
  *
@@ -27,17 +27,17 @@
  *
  * @section DESCRIPTION
  *
- * This file contains functions for parsing URIs for storage of an array.
+ * This file contains functions for serializing/deserializing query conditions.
  */
 
-#ifndef TILEDB_PARSE_URI_H
-#define TILEDB_PARSE_URI_H
+#ifndef TILEDB_DELETE_CONDITION_SERIALIZATION_H
+#define TILEDB_DELETE_CONDITION_SERIALIZATION_H
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/query/query_condition.h"
 
-namespace tiledb::sm::delete_condition::serialize {
+namespace tiledb::sm::deletes::serialize {
 
 enum class NodeType : uint8_t { EXPRESSION = 0, VALUE };
 
@@ -53,11 +53,17 @@ std::vector<uint8_t> serialize_delete_condition(
 /**
  * Serializes the delete condition.
  *
- * @param buff Serialized query condition.
+ * @param condition_marker Marker used to know which file the condition came
+ * from.
+ * @param buff Pointer to the serialized data.
+ * @param size Size of the serialized data.
  * @return Deserialized query condition.
  */
-QueryCondition deserialize_delete_condition(const std::vector<uint8_t>& buff);
+QueryCondition deserialize_delete_condition(
+    const std::string& condition_marker,
+    const void* buff,
+    const storage_size_t size);
 
-}  // namespace tiledb::sm::delete_condition::serialize
+}  // namespace tiledb::sm::deletes::serialize
 
-#endif  // TILEDB_PARSE_URI_H
+#endif  // TILEDB_DELETE_CONDITION_SERIALIZATION_H

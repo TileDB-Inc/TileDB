@@ -35,6 +35,8 @@
     TILEDB_QUERY_TYPE_ENUM(READ) = 0,
     /** Write query */
     TILEDB_QUERY_TYPE_ENUM(WRITE) = 1,
+    /** Delete query */
+    TILEDB_QUERY_TYPE_ENUM(DELETE) = 2,
 #endif
 // clang-format on
 

@@ -173,11 +173,11 @@ class ArrayDirectory {
     /* ********************************* */
     /*                API                */
     /* ********************************* */
-    inline URI& Uri() {
+    inline const URI& uri() const {
       return uri_;
     }
 
-    inline uint64_t Offset() {
+    inline uint64_t offset() const {
       return offset_;
     }
 

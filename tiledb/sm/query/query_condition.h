@@ -63,6 +63,11 @@ class QueryCondition {
   /** Constructor from a tree. */
   QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree);
 
+  /** Constructor from a tree and marker. */
+  QueryCondition(
+      const std::string& condition_marker,
+      tdb_unique_ptr<tiledb::sm::ASTNode>&& tree);
+
   /** Copy constructor. */
   QueryCondition(const QueryCondition& rhs);
 
@@ -234,6 +239,9 @@ class QueryCondition {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+  /** Marker used to reference which file the condition came from. */
+  std::string condition_marker_;
+
   /** AST Tree structure representing the condition. **/
   tdb_unique_ptr<tiledb::sm::ASTNode> tree_{};
 

@@ -40,6 +40,7 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parse_argument.h"
+#include "tiledb/sm/query/deletes/deletes.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
@@ -1243,6 +1244,18 @@ Status Query::create_strategy() {
           layout_,
           condition_));
     }
+  } else if (type_ == QueryType::DELETE) {
+    strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+        Deletes,
+        stats_->create_child("Deletes"),
+        logger_,
+        storage_manager_,
+        array_,
+        config_,
+        buffers_,
+        subarray_,
+        layout_,
+        condition_));
   } else {
     return logger_->status(
         Status_QueryError("Cannot create strategy; unsupported query type"));
@@ -2097,7 +2110,8 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 }
 
 Status Query::check_buffers_correctness() {
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
+  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
+      type_ != QueryType::DELETE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot check buffers; Unsupported query type."));
   }

@@ -57,12 +57,21 @@ QueryCondition::QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree)
     : tree_(std::move(tree)) {
 }
 
+QueryCondition::QueryCondition(
+    const std::string& condition_marker,
+    tdb_unique_ptr<tiledb::sm::ASTNode>&& tree)
+    : condition_marker_(condition_marker)
+    , tree_(std::move(tree)) {
+}
+
 QueryCondition::QueryCondition(const QueryCondition& rhs)
-    : tree_(rhs.tree_ == nullptr ? nullptr : rhs.tree_->clone()) {
+    : condition_marker_(rhs.condition_marker_)
+    , tree_(rhs.tree_ == nullptr ? nullptr : rhs.tree_->clone()) {
 }
 
 QueryCondition::QueryCondition(QueryCondition&& rhs)
-    : tree_(std::move(rhs.tree_)) {
+    : condition_marker_(std::move(rhs.condition_marker_))
+    , tree_(std::move(rhs.tree_)) {
 }
 
 QueryCondition::~QueryCondition() {
@@ -70,6 +79,7 @@ QueryCondition::~QueryCondition() {
 
 QueryCondition& QueryCondition::operator=(const QueryCondition& rhs) {
   if (this != &rhs) {
+    condition_marker_ = rhs.condition_marker_;
     tree_ = rhs.tree_ == nullptr ? nullptr : rhs.tree_->clone();
   }
 
@@ -77,6 +87,7 @@ QueryCondition& QueryCondition::operator=(const QueryCondition& rhs) {
 }
 
 QueryCondition& QueryCondition::operator=(QueryCondition&& rhs) {
+  condition_marker_ = std::move(rhs.condition_marker_);
   tree_ = std::move(rhs.tree_);
   return *this;
 }

@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests the CPP API consolidation with timestamps.
+ * Tests the CPP API for consolidation with timestamps.
  */
 
 #include "catch.hpp"
