@@ -48,6 +48,7 @@
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
@@ -112,6 +113,10 @@ struct tiledb_query_t {
 
 struct tiledb_query_condition_t {
   tiledb::sm::QueryCondition* query_condition_ = nullptr;
+};
+
+struct tiledb_update_value_t {
+  tiledb::sm::UpdateValue* update_value_ = nullptr;
 };
 
 struct tiledb_vfs_t {

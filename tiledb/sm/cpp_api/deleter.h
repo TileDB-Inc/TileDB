@@ -86,6 +86,10 @@ class Deleter {
     tiledb_query_condition_free(&p);
   }
 
+  void operator()(tiledb_update_value_t* p) const {
+    tiledb_update_value_free(&p);
+  }
+
   void operator()(tiledb_array_schema_t* p) const {
     tiledb_array_schema_free(&p);
   }

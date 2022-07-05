@@ -113,6 +113,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/stats.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/subarray.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/type.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/update_value_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/utils.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/version.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/vfs.h
@@ -242,6 +243,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/sparse_index_reader_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/sparse_unordered_with_dups_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/strategy_base.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/update_value.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/dense_tiler.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/global_order_writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/ordered_writer.cc

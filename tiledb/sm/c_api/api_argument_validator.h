@@ -256,6 +256,17 @@ inline int32_t sanity_check(
   return TILEDB_OK;
 }
 
+inline int32_t sanity_check(
+    tiledb_ctx_t* ctx, const tiledb_update_value_t* value) {
+  if (value == nullptr || value->update_value_ == nullptr) {
+    auto st = Status_Error("Invalid TileDB update value object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_t* vfs) {
   if (vfs == nullptr || vfs->vfs_ == nullptr) {
     auto st = Status_Error("Invalid TileDB virtual filesystem object");

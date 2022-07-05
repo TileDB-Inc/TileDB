@@ -513,6 +513,9 @@ typedef struct tiledb_query_t tiledb_query_t;
 /** A TileDB query condition object. */
 typedef struct tiledb_query_condition_t tiledb_query_condition_t;
 
+/** A TileDB update value object. */
+typedef struct tiledb_update_value_t tiledb_update_value_t;
+
 /** A virtual filesystem object. */
 typedef struct tiledb_vfs_t tiledb_vfs_t;
 
@@ -522,7 +525,7 @@ typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
 /** A fragment info object. */
 typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
-/** An group object. */
+/** A group object. */
 typedef struct tiledb_group_t tiledb_group_t;
 
 /* ********************************* */

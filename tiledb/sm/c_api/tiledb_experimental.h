@@ -233,6 +233,68 @@ TILEDB_EXPORT int32_t tiledb_array_upgrade_version(
 /* ********************************* */
 
 /**
+ * Allocates a TileDB update value object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_update_value_t* update_value;
+ * uint32_t value = 5;
+ * tiledb_update_value_alloc(
+ *   ctx, "longitude", &value, sizeof(value), &update_value);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param field_name The attribute name.
+ * @param update_value The value to set.
+ * @param update_value_size The byte size of `update_value`.
+ * @param val The allocated update value object.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_update_value_alloc(
+    tiledb_ctx_t* ctx,
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size,
+    tiledb_update_value_t** val) TILEDB_NOEXCEPT;
+
+/**
+ * Frees a TileDB query object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_update_value_free(&update_value);
+ * @endcode
+ *
+ * @param update_value The update value object to be deleted.
+ */
+TILEDB_EXPORT void tiledb_update_value_free(
+    tiledb_update_value_t** update_value) TILEDB_NOEXCEPT;
+
+/**
+ * Adds a query update values to be applied on an update.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_update_value_t* update_value;
+ * uint32_t value = 5;
+ * tiledb_update_value_alloc(
+ *   ctx, "longitude", &value, sizeof(value), &update_value);
+ * tiledb_query_add_update_value(ctx, query, update_value);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param cond The TileDB query condition.
+ */
+TILEDB_EXPORT int32_t tiledb_query_add_update_value(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const tiledb_update_value_t* value) TILEDB_NOEXCEPT;
+
+/**
  * Adds point ranges to the given dimension index of the subarray
  * Effectively `add_range(x_i, x_i)` for `count` points in the
  * target array, but set in bulk to amortize expensive steps.

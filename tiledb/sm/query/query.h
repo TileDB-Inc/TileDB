@@ -49,6 +49,7 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/subarray/subarray.h"
 
@@ -829,6 +830,14 @@ class Query {
   Status set_condition(const QueryCondition& condition);
 
   /**
+   * Adds an update value for an update query.
+   *
+   * @param update_value The update value object.
+   * @return Status
+   */
+  Status add_update_value(const UpdateValue& update_value);
+
+  /**
    * Set query status, needed for json deserialization
    * @param status
    * @return Status
@@ -976,6 +985,9 @@ class Query {
 
   /** The query condition. */
   QueryCondition condition_;
+
+  /** The update values. */
+  std::vector<UpdateValue> update_values_;
 
   /** The fragment metadata that this query will focus on. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;

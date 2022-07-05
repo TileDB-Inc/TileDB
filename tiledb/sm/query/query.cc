@@ -2035,12 +2035,30 @@ Status Query::set_layout(Layout layout) {
 }
 
 Status Query::set_condition(const QueryCondition& condition) {
-  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)
+  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     return logger_->status(Status_QueryError(
         "Cannot set query condition; Operation not applicable "
         "to write queries"));
+  }
 
   condition_ = condition;
+  return Status::Ok();
+}
+
+Status Query::add_update_value(const UpdateValue& update_value) {
+  if constexpr (true) {
+    return logger_->status(Status_QueryError(
+        "Cannot add query update value; Operation only applicable "
+        "to update queries"));
+  }
+
+  // Make sure the array is sparse.
+  if (array_schema_->dense()) {
+    return logger_->status(Status_QueryError(
+        "Setting update values is only valid for sparse arrays"));
+  }
+
+  update_values_.push_back(update_value);
   return Status::Ok();
 }
 
