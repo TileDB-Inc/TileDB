@@ -96,7 +96,7 @@ void db_test_1(const DB& db) {
 }
 
 TEST_CASE("DataBlock: Test create DataBlock", "[data_block]") {
-  auto db = DataBlock();
+  auto db = DataBlock{chunk_size_};
   db_test_0(db);
   db_test_1(db);
 }
@@ -104,11 +104,11 @@ TEST_CASE("DataBlock: Test create DataBlock", "[data_block]") {
 TEST_CASE(
     "DataBlock: Test create DataBlock with std::allocator<std::byte>",
     "[data_block]") {
-  auto db = DataBlockImpl<std::allocator<std::byte>>{};
+  auto db = DataBlockImpl<std::allocator<std::byte>>{chunk_size_};
   db_test_0(db);
   db_test_1(db);
 
-  auto dc = DataBlock{};
+  auto dc = DataBlock{chunk_size_};
   db_test_0(dc);
   db_test_1(dc);
 }
@@ -148,19 +148,20 @@ TEST_CASE("DataBlock: Iterate through 8 data_blocks", "[data_block]") {
   }
 }
 
-TEST_CASE("DataBlock: Join data_blocks (join view)", "[data_block]") {
-  auto a = DataBlock{};
-  auto b = DataBlock{};
-  auto c = DataBlock{};
+void test_join(size_t test_size) {
+  auto a = DataBlock{test_size};
+  auto b = DataBlock{test_size};
+  auto c = DataBlock{test_size};
   std::list<DataBlock> x{a, b, c};
   auto y = join(x);
 
-  CHECK(a.begin() + chunk_size_ == a.end());
-  CHECK(b.begin() + chunk_size_ == b.end());
-  CHECK(c.begin() + chunk_size_ == c.end());
-  CHECK(a.size() == chunk_size_);
-  CHECK(b.size() == chunk_size_);
-  CHECK(c.size() == chunk_size_);
+  CHECK(a.begin() + test_size == a.end());
+  CHECK(b.begin() + test_size == b.end());
+  CHECK(c.begin() + test_size == c.end());
+
+  CHECK(a.size() == test_size);
+  CHECK(b.size() == test_size);
+  CHECK(c.size() == test_size);
 
   CHECK(y.size() == (a.size() + b.size() + c.size()));
 
@@ -179,7 +180,7 @@ TEST_CASE("DataBlock: Join data_blocks (join view)", "[data_block]") {
   CHECK(e == y.end());
 
   size_t k = 0;
-  for (auto& j : y) {
+  for ([[maybe_unused]] auto& j : y) {
     ++k;
   }
   CHECK(k == y.size());
@@ -205,4 +206,116 @@ TEST_CASE("DataBlock: Join data_blocks (join view)", "[data_block]") {
   auto h = std::find_if_not(
       c.begin(), c.end(), [](auto a) { return (std::byte{103} == a); });
   CHECK(h == c.end());
+}
+
+TEST_CASE("DataBlock: Join data_blocks (join view)", "[data_block]") {
+  SECTION("chunk_size") {
+    test_join(chunk_size_);
+  }
+  SECTION("chunk_size / 2") {
+    test_join(chunk_size_ / 2);
+  }
+}
+
+TEST_CASE("DataBlock: Get span", "[data_block]") {
+  auto a = DataBlock{};
+  auto b = DataBlock{};
+  auto c = DataBlock{};
+
+  CHECK(a.size() == 0);
+  CHECK(b.size() == 0);
+  CHECK(c.size() == 0);
+
+  CHECK(a.data() != b.data());
+  CHECK(a.data() != c.data());
+  CHECK(b.data() != c.data());
+
+  CHECK(a.capacity() == 4'194'304);
+  CHECK(b.capacity() == 4'194'304);
+  CHECK(c.capacity() == 4'194'304);
+
+  SECTION("entire_span") {
+    auto span_a = a.entire_span();
+    auto span_b = b.entire_span();
+    auto span_c = c.entire_span();
+
+    CHECK(span_a.data() == a.data());
+    CHECK(span_b.data() == b.data());
+    CHECK(span_c.data() == c.data());
+
+    CHECK(span_a.size() == 4'194'304);
+    CHECK(span_b.size() == 4'194'304);
+    CHECK(span_c.size() == 4'194'304);
+  }
+  SECTION("span") {
+    auto span_a = a.span();
+    auto span_b = b.span();
+    auto span_c = c.span();
+
+    CHECK(span_a.data() == a.data());
+    CHECK(span_b.data() == b.data());
+    CHECK(span_c.data() == c.data());
+
+    CHECK(span_a.size() == 0);
+    CHECK(span_b.size() == 0);
+    CHECK(span_c.size() == 0);
+  }
+}
+
+TEST_CASE("DataBlock: Test resize", "[data_block]") {
+  auto a = DataBlock{};
+  auto b = DataBlock{};
+  auto c = DataBlock{};
+
+  a.resize(1'000'000);
+  b.resize(2'000'000);
+  c.resize(3'000'000);
+
+  CHECK(a.size() == 1'000'000);
+  CHECK(b.size() == 2'000'000);
+  CHECK(c.size() == 3'000'000);
+
+  auto span_a = a.span();
+  auto span_b = b.span();
+  auto span_c = c.span();
+
+  CHECK(span_a.size() == 1'000'000);
+  CHECK(span_b.size() == 2'000'000);
+  CHECK(span_c.size() == 3'000'000);
+}
+
+TEST_CASE(
+    "DataBlock: Test allocation and deallocation of DataBlock", "[data_block") {
+  auto a = DataBlock{};
+  auto ptr_a = a.data();
+  a.~DataBlock();
+  auto b = DataBlock{};
+  auto ptr_b = b.data();
+  CHECK(ptr_a == ptr_b);
+}
+
+TEST_CASE(
+    "DataBlock: Test deallocation of DataBlock on destruction",
+    "[data_block]") {
+  std::byte* x;
+  std::byte* y;
+  {
+    auto a = DataBlock{};
+    auto b = DataBlock{};
+    x = a.data();
+    y = b.data();
+    CHECK(x != y);
+  }
+  // b is deallocated first, then a is deallocated (LIFO)
+
+  // allocate a first, then b
+  auto a = DataBlock{};
+  auto b = DataBlock{};
+
+  auto ptr_a = a.data();
+  auto ptr_b = b.data();
+  CHECK(ptr_a != ptr_b);
+
+  CHECK(x == ptr_a);
+  CHECK(y == ptr_b);
 }

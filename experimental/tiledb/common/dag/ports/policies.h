@@ -470,13 +470,8 @@ class UnifiedAsyncStateMachine
   std::condition_variable cv_;
 
  public:
-<<<<<<< HEAD
   size_t source_swaps{};
   size_t sink_swaps{};
-=======
-  int source_swaps{};
-  int sink_swaps{};
->>>>>>> b9642796007eeb1899c0246748660d151e7213ff
 
   T* source_item_{nullptr};
   T* sink_item_{nullptr};

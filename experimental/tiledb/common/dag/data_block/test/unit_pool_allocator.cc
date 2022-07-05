@@ -296,3 +296,35 @@ TEST_CASE(
   std::vector<std::byte, PoolAllocator<1024 * 1024>> v(10);
   CHECK(v.size() == 10);
 }
+
+template <class T>
+void test_big_allocate() {
+  auto p = PoolAllocator<sizeof(T)>{};
+
+  size_t N = 64'000'000 / sizeof(T);
+
+  std::vector<std::byte*> v(N);
+
+  for (size_t i = 0; i < N; ++i) {
+    v[i] = p.allocate();
+  }
+
+  for (size_t i = 0; i < N; ++i) {
+    p.deallocate(v[i]);
+  }
+
+  for (size_t i = 0; i < N; ++i) {
+    CHECK(p.allocate() == v[N - 1 - i]);
+  }
+}
+
+TEST_CASE(
+    "Pool Allocator: Allocate more DataBlocks than initial array"
+    "[PoolAllocator]") {
+  SECTION("big class") {
+    test_big_allocate<big_class>();
+  }
+  SECTION("small class") {
+    test_big_allocate<small_class>();
+  }
+}
