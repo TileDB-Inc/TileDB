@@ -59,44 +59,50 @@ class DataBlockImpl {
   static Allocator allocator_;
 
   using storage_t = std::shared_ptr<std::byte>;
-  using data_t = tcb::span<std::byte>;
+  using span_t = tcb::span<std::byte>;
+  using pointer_t = std::byte*;
 
+  size_t capacity_;
   size_t size_;
   storage_t storage_;
-  data_t data_;
+  pointer_t data_;
 
  public:
   template <class R = Allocator>
   DataBlockImpl(
+      size_t init_size = 0UL,
       typename std::enable_if<
           std::is_same_v<R, std::allocator<std::byte>>>::type* = 0)
-      : size_{chunk_size_}
+      : capacity_{chunk_size_}
+      , size_{init_size}
       , storage_{allocator_.allocate(chunk_size_),
                  [&](auto px) { allocator_.deallocate(px, chunk_size_); }}
-      , data_{storage_.get(), size_} {
+      , data_{storage_.get()} {
   }
 
   template <class R = Allocator>
   DataBlockImpl(
+      size_t init_size = 0UL,
       typename std::enable_if<
           std::is_same_v<R, PoolAllocator<chunk_size_>>>::type* = 0)
-      : size_{chunk_size_}
+      : capacity_{chunk_size_}
+      , size_{init_size}
       , storage_{allocator_.allocate(),
                  [&](auto px) { allocator_.deallocate(px); }}
-      , data_{storage_.get(), size_} {
+      , data_{storage_.get()} {
   }
 
-  using DataBlockIterator = data_t::iterator;
-  using DataBlockConstIterator = data_t::iterator;
+  using DataBlockIterator = span_t::iterator;
+  using DataBlockConstIterator = span_t::iterator;
 
-  using value_type = data_t::value_type;
+  using value_type = span_t::value_type;
   using allocator_type = SingletonPoolAllocator<chunk_size_>;
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
   using reference = value_type&;
   using const_reference = const value_type&;
-  using pointer = data_t::pointer;
-  using const_pointer = data_t::const_pointer;
+  using pointer = span_t::pointer;
+  using const_pointer = span_t::const_pointer;
   using iterator = DataBlockIterator;
   using const_iterator = DataBlockConstIterator;
   using reverse_iterator = std::reverse_iterator<iterator>;
@@ -110,59 +116,75 @@ class DataBlockImpl {
   }
 
   pointer data() {
-    return data_.data();
+    return data_;
   }
   const_pointer data() const {
-    return data_.data();
+    return data_;
+  }
+
+  span_t entire_span() const {
+    return {data_, capacity_};
+  }
+
+  span_t span() const {
+    return {data_, size_};
   }
 
   iterator begin() {
-    return data_.begin();
+    return data_;
   }
   const_iterator begin() const {
-    return data_.begin();
+    return data_;
   }
   const_iterator cbegin() const {
-    return data_.begin();
+    return data_;
   }
   reverse_iterator rbegin() {
-    return data_.rbegin();
+    return span_t(data_, size_).rbegin();
   }
   const_reverse_iterator rbegin() const {
-    return data_.rbegin();
+    return data_t(data_, size_).rbegin();
   }
   const_reverse_iterator crbegin() const {
-    return data_.rbegin();
+    return data_t(data_, size_).rbegin();
   }
 
   iterator end() {
-    return data_.end();
+    return data_ + size_;
   }
   const_iterator end() const {
-    return data_.end();
+    return data_ + size_;
   }
   const_iterator cend() const {
-    return data_.end();
+    return data_ + size_;
   }
   reverse_iterator rend() {
-    return data_.rend();
+    return data_t(data_, size_).rend();
   }
   const_reverse_iterator rend() const {
-    return data_.rend();
+    return data_t(data_, size_).rend();
   }
   const_reverse_iterator crend() const {
-    return data_.rend();
+    return data_t(data_, size_).rend();
+  }
+
+  bool resize(size_t count) {
+    if (count > capacity_) {
+      return false;
+    }
+    size_ = count;
+    return true;
   }
 
   bool empty() const {
-    return data_.empty();
+    return size_ == 0;
   }
 
   size_t size() const {
-    return data_.size();
+    return size_;
   }
   size_t capacity() const {
-    return chunk_size_;
+    return capacity_;
   }
 };
 

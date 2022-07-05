@@ -96,7 +96,7 @@ void db_test_1(const DB& db) {
 }
 
 TEST_CASE("DataBlock: Test create DataBlock", "[data_block]") {
-  auto db = DataBlock();
+  auto db = DataBlock{chunk_size_};
   db_test_0(db);
   db_test_1(db);
 }
@@ -104,11 +104,11 @@ TEST_CASE("DataBlock: Test create DataBlock", "[data_block]") {
 TEST_CASE(
     "DataBlock: Test create DataBlock with std::allocator<std::byte>",
     "[data_block]") {
-  auto db = DataBlockImpl<std::allocator<std::byte>>{};
+  auto db = DataBlockImpl<std::allocator<std::byte>>{chunk_size_};
   db_test_0(db);
   db_test_1(db);
 
-  auto dc = DataBlock{};
+  auto dc = DataBlock{chunk_size_};
   db_test_0(dc);
   db_test_1(dc);
 }
@@ -148,19 +148,20 @@ TEST_CASE("DataBlock: Iterate through 8 data_blocks", "[data_block]") {
   }
 }
 
-TEST_CASE("DataBlock: Join data_blocks (join view)", "[data_block]") {
-  auto a = DataBlock{};
-  auto b = DataBlock{};
-  auto c = DataBlock{};
+void test_join(size_t test_size) {
+  auto a = DataBlock{test_size};
+  auto b = DataBlock{test_size};
+  auto c = DataBlock{test_size};
   std::list<DataBlock> x{a, b, c};
   auto y = join(x);
 
-  CHECK(a.begin() + chunk_size_ == a.end());
-  CHECK(b.begin() + chunk_size_ == b.end());
-  CHECK(c.begin() + chunk_size_ == c.end());
-  CHECK(a.size() == chunk_size_);
-  CHECK(b.size() == chunk_size_);
-  CHECK(c.size() == chunk_size_);
+  CHECK(a.begin() + test_size == a.end());
+  CHECK(b.begin() + test_size == b.end());
+  CHECK(c.begin() + test_size == c.end());
+
+  CHECK(a.size() == test_size);
+  CHECK(b.size() == test_size);
+  CHECK(c.size() == test_size);
 
   CHECK(y.size() == (a.size() + b.size() + c.size()));
 
@@ -179,7 +180,7 @@ TEST_CASE("DataBlock: Join data_blocks (join view)", "[data_block]") {
   CHECK(e == y.end());
 
   size_t k = 0;
-  for (auto& j : y) {
+  for ([[maybe_unused]] auto& j : y) {
     ++k;
   }
   CHECK(k == y.size());
