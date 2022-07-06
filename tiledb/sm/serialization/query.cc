@@ -1180,11 +1180,17 @@ Status writer_to_capnp(
   }
 
   if (query.layout() == Layout::GLOBAL_ORDER) {
-    auto global_state_builder = writer_builder->initGlobalWriteState();
-    RETURN_NOT_OK(global_write_state_to_capnp(
-        query,
-        *dynamic_cast<GlobalOrderWriter&>(writer).get_global_state(),
-        &global_state_builder));
+    auto& globalwriter = dynamic_cast<GlobalOrderWriter&>(writer);
+    auto globalstate = globalwriter.get_global_state();
+    // Remote global order writes have global_write_state equal to nullptr
+    // before the first submit(). The state gets initialized when do_work() gets
+    // invoked. Once GlobalOrderWriter becomes C41 compliant, we can delete this
+    // check.
+    if (globalstate) {
+      auto global_state_builder = writer_builder->initGlobalWriteState();
+      RETURN_NOT_OK(global_write_state_to_capnp(
+          query, *globalstate, &global_state_builder));
+    }
   }
 
   return Status::Ok();
@@ -1209,10 +1215,17 @@ Status writer_from_capnp(
 
   if (query.layout() == Layout::GLOBAL_ORDER &&
       writer_reader.hasGlobalWriteState()) {
+    auto global_writer = dynamic_cast<GlobalOrderWriter*>(writer);
+
+    // global_write_state is not allocated when deserializing into a
+    // new Query object
+    if (!global_writer->get_global_state()) {
+      RETURN_NOT_OK(global_writer->alloc_global_write_state());
+    }
     RETURN_NOT_OK(global_write_state_from_capnp(
         query,
         writer_reader.getGlobalWriteState(),
-        dynamic_cast<GlobalOrderWriter*>(writer)->get_global_state()));
+        global_writer->get_global_state()));
   }
 
   return Status::Ok();
@@ -1226,20 +1239,8 @@ Status query_to_capnp(
   auto layout = query.layout();
   auto type = query.type();
   auto array = query.array();
-  auto query_type = query.type();
-
-<<<<<<< HEAD
-  if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
-      query_type != QueryType::DELETE &&
-      query_type != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(
-        Status_SerializationError("Cannot serialize; Unsupported query type."));
-  }
 
   if (array == nullptr) {
-=======
-  if (array == nullptr)
->>>>>>> 8c4526fd4 (deserialization of global write state)
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; array is null."));
   }
@@ -1896,6 +1897,13 @@ Status query_from_capnp(
     }
   } else if (query_type == QueryType::WRITE) {
     auto writer_reader = query_reader.getWriter();
+
+    // Following other code paths, we need to clear the strategy here.
+    // When creating a backup in query_deserialize (with query_serialize)
+    // we end up creating an OrderedWriter strategy on the Query object:
+    // layout is not properly initialized at the point where we make a
+    // create_strategy() call
+    query->clear_strategy();
     auto writer = dynamic_cast<WriterBase*>(query->strategy());
 
     if (query_reader.hasVarOffsetsMode()) {
@@ -2415,7 +2423,8 @@ Status global_write_state_to_capnp(
     if (!tile_offsets.empty()) {
       auto builder = frag_meta_builder.initTileOffsets(tile_offsets.size());
       for (uint64_t i = 0; i < tile_offsets.size(); ++i) {
-        for (uint64_t j = 0; j < tile_offsets.size(); ++j) {
+        builder.init(i, tile_offsets[i].size());
+        for (uint64_t j = 0; j < tile_offsets[i].size(); ++j) {
           builder[i].set(j, tile_offsets[i][j]);
         }
       }
@@ -2425,7 +2434,8 @@ Status global_write_state_to_capnp(
       auto builder =
           frag_meta_builder.initTileVarOffsets(tile_var_offsets.size());
       for (uint64_t i = 0; i < tile_var_offsets.size(); ++i) {
-        for (uint64_t j = 0; j < tile_var_offsets.size(); ++j) {
+        builder.init(i, tile_var_offsets[i].size());
+        for (uint64_t j = 0; j < tile_var_offsets[i].size(); ++j) {
           builder[i].set(j, tile_var_offsets[i][j]);
         }
       }
@@ -2434,7 +2444,8 @@ Status global_write_state_to_capnp(
     if (!tile_var_sizes.empty()) {
       auto builder = frag_meta_builder.initTileVarSizes(tile_var_sizes.size());
       for (uint64_t i = 0; i < tile_var_sizes.size(); ++i) {
-        for (uint64_t j = 0; j < tile_var_sizes.size(); ++j) {
+        builder.init(i, tile_var_sizes[i].size());
+        for (uint64_t j = 0; j < tile_var_sizes[i].size(); ++j) {
           builder[i].set(j, tile_var_sizes[i][j]);
         }
       }
@@ -2444,7 +2455,8 @@ Status global_write_state_to_capnp(
       auto builder = frag_meta_builder.initTileValidityOffsets(
           tile_validity_offsets.size());
       for (uint64_t i = 0; i < tile_validity_offsets.size(); ++i) {
-        for (uint64_t j = 0; j < tile_validity_offsets.size(); ++j) {
+        builder.init(i, tile_validity_offsets[i].size());
+        for (uint64_t j = 0; j < tile_validity_offsets[i].size(); ++j) {
           builder[i].set(j, tile_validity_offsets[i][j]);
         }
       }
@@ -2454,7 +2466,8 @@ Status global_write_state_to_capnp(
       auto builder =
           frag_meta_builder.initTileMinBuffer(tile_min_buffer.size());
       for (uint64_t i = 0; i < tile_min_buffer.size(); ++i) {
-        for (uint64_t j = 0; j < tile_min_buffer.size(); ++j) {
+        builder.init(i, tile_min_buffer[i].size());
+        for (uint64_t j = 0; j < tile_min_buffer[i].size(); ++j) {
           builder[i].set(j, tile_min_buffer[i][j]);
         }
       }
@@ -2464,7 +2477,8 @@ Status global_write_state_to_capnp(
       auto builder =
           frag_meta_builder.initTileMinVarBuffer(tile_min_var_buffer.size());
       for (uint64_t i = 0; i < tile_min_var_buffer.size(); ++i) {
-        for (uint64_t j = 0; j < tile_min_var_buffer.size(); ++j) {
+        builder.init(i, tile_min_var_buffer[i].size());
+        for (uint64_t j = 0; j < tile_min_var_buffer[i].size(); ++j) {
           builder[i].set(j, tile_min_var_buffer[i][j]);
         }
       }
@@ -2474,7 +2488,8 @@ Status global_write_state_to_capnp(
       auto builder =
           frag_meta_builder.initTileMaxBuffer(tile_max_buffer.size());
       for (uint64_t i = 0; i < tile_max_buffer.size(); ++i) {
-        for (uint64_t j = 0; j < tile_max_buffer.size(); ++j) {
+        builder.init(i, tile_max_buffer[i].size());
+        for (uint64_t j = 0; j < tile_max_buffer[i].size(); ++j) {
           builder[i].set(j, tile_max_buffer[i][j]);
         }
       }
@@ -2484,7 +2499,8 @@ Status global_write_state_to_capnp(
       auto builder =
           frag_meta_builder.initTileMaxVarBuffer(tile_max_var_buffer.size());
       for (uint64_t i = 0; i < tile_max_var_buffer.size(); ++i) {
-        for (uint64_t j = 0; j < tile_max_var_buffer.size(); ++j) {
+        builder.init(i, tile_max_var_buffer[i].size());
+        for (uint64_t j = 0; j < tile_max_var_buffer[i].size(); ++j) {
           builder[i].set(j, tile_max_var_buffer[i][j]);
         }
       }
@@ -2493,7 +2509,8 @@ Status global_write_state_to_capnp(
     if (!tile_sums.empty()) {
       auto builder = frag_meta_builder.initTileSums(tile_sums.size());
       for (uint64_t i = 0; i < tile_sums.size(); ++i) {
-        for (uint64_t j = 0; j < tile_sums.size(); ++j) {
+        builder.init(i, tile_sums[i].size());
+        for (uint64_t j = 0; j < tile_sums[i].size(); ++j) {
           builder[i].set(j, tile_sums[i][j]);
         }
       }
@@ -2503,7 +2520,8 @@ Status global_write_state_to_capnp(
       auto builder =
           frag_meta_builder.initTileNullCounts(tile_null_counts.size());
       for (uint64_t i = 0; i < tile_null_counts.size(); ++i) {
-        for (uint64_t j = 0; j < tile_null_counts.size(); ++j) {
+        builder.init(i, tile_null_counts[i].size());
+        for (uint64_t j = 0; j < tile_null_counts[i].size(); ++j) {
           builder[i].set(j, tile_null_counts[i][j]);
         }
       }
@@ -2512,7 +2530,8 @@ Status global_write_state_to_capnp(
     if (!fragment_mins.empty()) {
       auto builder = frag_meta_builder.initFragmentMins(fragment_mins.size());
       for (uint64_t i = 0; i < fragment_mins.size(); ++i) {
-        for (uint64_t j = 0; j < fragment_mins.size(); ++j) {
+        builder.init(i, fragment_mins[i].size());
+        for (uint64_t j = 0; j < fragment_mins[i].size(); ++j) {
           builder[i].set(j, fragment_mins[i][j]);
         }
       }
@@ -2521,7 +2540,8 @@ Status global_write_state_to_capnp(
     if (!fragment_maxs.empty()) {
       auto builder = frag_meta_builder.initFragmentMaxs(fragment_maxs.size());
       for (uint64_t i = 0; i < fragment_maxs.size(); ++i) {
-        for (uint64_t j = 0; j < fragment_maxs.size(); ++j) {
+        builder.init(i, fragment_maxs[i].size());
+        for (uint64_t j = 0; j < fragment_maxs[i].size(); ++j) {
           builder[i].set(j, fragment_maxs[i][j]);
         }
       }
@@ -2556,11 +2576,13 @@ Status global_write_state_to_capnp(
         frag_meta->non_empty_domain(),
         query.array_schema().dim_num()));
 
+    // TODO: Can this be done better? Does this make a lot of copies?
     Buffer buff;
     frag_meta->rtree().serialize(&buff);
-    // Does setRtree copy the data? buff goes out of scope here.
-    frag_meta_builder.setRtree(
-        kj::arrayPtr(static_cast<const uint8_t*>(buff.data()), buff.size()));
+    auto vec = kj::Vector<uint8_t>();
+    vec.addAll(
+        kj::ArrayPtr<uint8_t>(static_cast<uint8_t*>(buff.data()), buff.size()));
+    frag_meta_builder.setRtree(vec.asPtr());
   }
 
   if (write_state.last_cell_coords_.has_value()) {
@@ -2571,6 +2593,7 @@ Status global_write_state_to_capnp(
     if (!coords.empty()) {
       auto builder = coord_builder.initCoords(coords.size());
       for (uint64_t i = 0; i < coords.size(); ++i) {
+        builder.init(i, coords[i].size());
         for (uint64_t j = 0; j < coords.size(); ++j) {
           builder[i].set(j, coords[i][j]);
         }
@@ -2643,73 +2666,73 @@ Status global_write_state_from_capnp(
     frag_meta->tile_index_base() = frag_meta_reader.getTileIndexBase();
     if (frag_meta_reader.hasTileOffsets()) {
       for (const auto& t : frag_meta_reader.getTileOffsets()) {
-        auto last = frag_meta->tile_offsets().emplace_back(t.size());
+        auto& last = frag_meta->tile_offsets().emplace_back(t.size());
         std::copy(t.begin(), t.end(), last.begin());
       }
     }
     if (frag_meta_reader.hasTileVarOffsets()) {
       for (const auto& t : frag_meta_reader.getTileVarOffsets()) {
-        auto last = frag_meta->tile_var_offsets().emplace_back(t.size());
+        auto& last = frag_meta->tile_var_offsets().emplace_back(t.size());
         std::copy(t.begin(), t.end(), last.begin());
       }
     }
     if (frag_meta_reader.hasTileVarSizes()) {
       for (const auto& t : frag_meta_reader.getTileVarSizes()) {
-        auto last = frag_meta->tile_var_sizes().emplace_back(t.size());
+        auto& last = frag_meta->tile_var_sizes().emplace_back(t.size());
         std::copy(t.begin(), t.end(), last.begin());
       }
     }
     if (frag_meta_reader.hasTileValidityOffsets()) {
       for (const auto& t : frag_meta_reader.getTileValidityOffsets()) {
-        auto last = frag_meta->tile_validity_offsets().emplace_back(t.size());
+        auto& last = frag_meta->tile_validity_offsets().emplace_back(t.size());
         std::copy(t.begin(), t.end(), last.begin());
       }
     }
     if (frag_meta_reader.hasTileMinBuffer()) {
       for (const auto& t : frag_meta_reader.getTileMinBuffer()) {
-        auto last = frag_meta->tile_min_buffer().emplace_back(t.size());
+        auto& last = frag_meta->tile_min_buffer().emplace_back(t.size());
         std::copy(t.begin(), t.end(), last.begin());
       }
     }
     if (frag_meta_reader.hasTileMinVarBuffer()) {
       for (const auto& t : frag_meta_reader.getTileMinVarBuffer()) {
-        auto last = frag_meta->tile_min_var_buffer().emplace_back(t.size());
+        auto& last = frag_meta->tile_min_var_buffer().emplace_back(t.size());
         std::copy(t.begin(), t.end(), last.begin());
       }
     }
     if (frag_meta_reader.hasTileMaxBuffer()) {
       for (const auto& t : frag_meta_reader.getTileMaxBuffer()) {
-        auto last = frag_meta->tile_max_buffer().emplace_back(t.size());
+        auto& last = frag_meta->tile_max_buffer().emplace_back(t.size());
         std::copy(t.begin(), t.end(), last.begin());
       }
     }
     if (frag_meta_reader.hasTileMaxVarBuffer()) {
       for (const auto& t : frag_meta_reader.getTileMaxVarBuffer()) {
-        auto last = frag_meta->tile_max_var_buffer().emplace_back(t.size());
+        auto& last = frag_meta->tile_max_var_buffer().emplace_back(t.size());
         std::copy(t.begin(), t.end(), last.begin());
       }
     }
     if (frag_meta_reader.hasTileSums()) {
       for (const auto& t : frag_meta_reader.getTileSums()) {
-        auto last = frag_meta->tile_sums().emplace_back(t.size());
+        auto& last = frag_meta->tile_sums().emplace_back(t.size());
         std::copy(t.begin(), t.end(), last.begin());
       }
     }
     if (frag_meta_reader.hasTileNullCounts()) {
       for (const auto& t : frag_meta_reader.getTileNullCounts()) {
-        auto last = frag_meta->tile_null_counts().emplace_back(t.size());
+        auto& last = frag_meta->tile_null_counts().emplace_back(t.size());
         std::copy(t.begin(), t.end(), last.begin());
       }
     }
     if (frag_meta_reader.hasFragmentMins()) {
       for (const auto& t : frag_meta_reader.getFragmentMins()) {
-        auto last = frag_meta->fragment_mins().emplace_back(t.size());
+        auto& last = frag_meta->fragment_mins().emplace_back(t.size());
         std::copy(t.begin(), t.end(), last.begin());
       }
     }
     if (frag_meta_reader.hasFragmentMaxs()) {
       for (const auto& t : frag_meta_reader.getFragmentMaxs()) {
-        auto last = frag_meta->fragment_maxs().emplace_back(t.size());
+        auto& last = frag_meta->fragment_maxs().emplace_back(t.size());
         std::copy(t.begin(), t.end(), last.begin());
       }
     }
@@ -2737,16 +2760,12 @@ Status global_write_state_from_capnp(
     }
     frag_meta->last_tile_cell_num() = frag_meta_reader.getLastTileCellNum();
 
-    if (frag_meta_reader.hasNonEmptyDomain()) {
-      auto reader = frag_meta_reader.getNonEmptyDomain();
-      auto&& [status, ndrange] = utils::deserialize_non_empty_domain_rv(reader);
-      RETURN_NOT_OK(status);
-      frag_meta->non_empty_domain() = std::move(*ndrange);
-    }
     if (frag_meta_reader.hasRtree()) {
       auto data = frag_meta_reader.getRtree();
       auto cb = ConstBuffer(data.begin(), data.size());
       auto& domain = query.array_schema().domain();
+      // If there are no levels, we still need domain_ properly initialized
+      frag_meta->rtree() = RTree(&domain, constants::rtree_fanout);
       frag_meta->rtree().deserialize(&cb, &domain, frag_meta->version());
     }
   }
@@ -2760,7 +2779,7 @@ Status global_write_state_from_capnp(
       std::vector<uint64_t> sizes;
       std::vector<uint64_t> single_offset;
       for (const auto& t : single_coord_reader.getCoords()) {
-        auto last = coords.emplace_back(t.size());
+        auto& last = coords.emplace_back(t.size());
         std::copy(t.begin(), t.end(), last.begin());
       }
 
@@ -2781,6 +2800,31 @@ Status global_write_state_from_capnp(
   }
 
   write_state->last_hilbert_value_ = state_reader.getLastHilbertValue();
+
+  // Set the array schema and most importantly retrigger the build
+  // of the internal idx_map. Also set array_schema_name which is used
+  // in some places in the global writer
+  write_state->frag_meta_->set_array_schema(query.array_schema_shared());
+  write_state->frag_meta_->set_schema_name(query.array_schema().name());
+
+  write_state->frag_meta_->set_dense(query.is_dense());
+
+  // It's important to do this here as init_domain depends on some fields
+  // above to be properly initialized
+  if (state_reader.hasFragMeta()) {
+    auto frag_meta = write_state->frag_meta_;
+    auto frag_meta_reader = state_reader.getFragMeta();
+
+    if (frag_meta_reader.hasNonEmptyDomain()) {
+      auto reader = frag_meta_reader.getNonEmptyDomain();
+      auto&& [status, ndrange] = utils::deserialize_non_empty_domain_rv(reader);
+      RETURN_NOT_OK(status);
+      frag_meta->init_domain(*ndrange);
+      // init_domain only inits non_empty_domain for dense case
+      // we need to have this assignment here for sparse case to work
+      frag_meta->non_empty_domain() = std::move(*ndrange);
+    }
+  }
 
   return Status::Ok();
 }

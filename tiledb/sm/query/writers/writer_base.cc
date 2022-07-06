@@ -1036,6 +1036,9 @@ Status WriterBase::write_tiles(
 
   // Close files, except in the case of global order
   if (close_files && layout_ != Layout::GLOBAL_ORDER) {
+    // TODO: close files here if on the server side
+    // TODO: Make sure a0.tbd doesn't get overwritten on the second
+    // query.submit(), make sure a continuiation happen and we actually append
     auto&& [st1, uri] = frag_meta->uri(name);
     RETURN_NOT_OK(st1);
 

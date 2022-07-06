@@ -619,6 +619,10 @@ const ArraySchema& Query::array_schema() const {
   return *(array_schema_.get());
 }
 
+const std::shared_ptr<const ArraySchema> Query::array_schema_shared() const {
+  return array_schema_;
+}
+
 std::vector<std::string> Query::buffer_names() const {
   std::vector<std::string> ret;
 
@@ -2199,8 +2203,13 @@ Status Query::set_subarray(const void* subarray) {
       return logger_->status(
           Status_WriterError("Cannot set subarray; Multi-range dense writes "
                              "are not supported"));
-    if (strategy_ != nullptr)
+
+    // When executed from serialization, resetting the strategy will delete
+    // the fragment for global order writes. We need to prevent this, thus
+    // persist the fragment between remote global order write submits.
+    if (strategy_ != nullptr && layout_ != Layout::GLOBAL_ORDER) {
       strategy_->reset();
+    }
   }
 
   subarray_ = sub;
@@ -2474,6 +2483,10 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader(
 
 tuple<Status, optional<bool>> Query::non_overlapping_ranges() {
   return subarray_.non_overlapping_ranges(storage_manager_->compute_tp());
+}
+
+bool Query::is_dense() const {
+  return !coords_info_.has_coords_;
 }
 
 /* ****************************** */

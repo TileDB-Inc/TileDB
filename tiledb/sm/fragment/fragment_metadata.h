@@ -268,6 +268,11 @@ class FragmentMetadata {
    */
   Status init(const NDRange& non_empty_domain);
 
+  /**
+   * Initializes the fragment's internal domain and non-empty domain members
+   */
+  Status init_domain(const NDRange& non_empty_domain);
+
   /** Returns the number of cells in the last tile. */
   uint64_t last_tile_cell_num() const;
 
@@ -503,6 +508,12 @@ class FragmentMetadata {
    * @return void
    */
   void set_array_schema(const shared_ptr<const ArraySchema>& array_schema);
+
+  /** Sets the array_schema name */
+  void set_schema_name(const std::string& name);
+
+  /** Sets the internal dense_ field*/
+  void set_dense(bool dense);
 
   /** Returns the tile index base value. */
   uint64_t tile_index_base() const;
@@ -991,6 +1002,11 @@ class FragmentMetadata {
   /** rtree accessor */
   RTree& rtree() {
     return rtree_;
+  }
+
+  /** set the SM pointer during deserialization*/
+  void set_storage_manager(StorageManager* sm) {
+    storage_manager_ = sm;
   }
 
  private:

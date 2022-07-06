@@ -361,6 +361,9 @@ class Query {
   /** Returns the array schema. */
   const ArraySchema& array_schema() const;
 
+  /** Returns the array schema as a shared_ptr */
+  const std::shared_ptr<const ArraySchema> array_schema_shared() const;
+
   /** Returns the names of the buffers set by the user for the query. */
   std::vector<std::string> buffer_names() const;
 
@@ -934,6 +937,9 @@ class Query {
 
   /** Returns if all ranges for this query are non overlapping. */
   tuple<Status, optional<bool>> non_overlapping_ranges();
+
+  /** Returns true if this is a dense query */
+  bool is_dense() const;
 
  private:
   /* ********************************* */

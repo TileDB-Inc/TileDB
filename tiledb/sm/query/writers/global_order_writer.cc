@@ -555,6 +555,9 @@ Status GlobalOrderWriter::global_write() {
 
   // Initialize the global write state if this is the first invocation
   if (!global_write_state_) {
+    RETURN_CANCEL_OR_ERROR(alloc_global_write_state());
+    RETURN_CANCEL_OR_ERROR(create_fragment(
+        !coords_info_.has_coords_, global_write_state_->frag_meta_));
     RETURN_CANCEL_OR_ERROR(init_global_write_state());
   }
   auto frag_meta = global_write_state_->frag_meta_;
@@ -649,7 +652,7 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
   return Status::Ok();
 }
 
-Status GlobalOrderWriter::init_global_write_state() {
+Status GlobalOrderWriter::alloc_global_write_state() {
   // Create global array state object
   if (global_write_state_ != nullptr)
     return logger_->status(
@@ -657,10 +660,15 @@ Status GlobalOrderWriter::init_global_write_state() {
                            "properly finalized"));
   global_write_state_.reset(new GlobalWriteState);
 
-  // Create fragment
+  // Alloc FragmentMetadata object
   global_write_state_->frag_meta_ = make_shared<FragmentMetadata>(HERE());
-  RETURN_NOT_OK(create_fragment(
-      !coords_info_.has_coords_, global_write_state_->frag_meta_));
+  // Used in serialization when FragmentMetadata is built from ground up
+  global_write_state_->frag_meta_->set_storage_manager(storage_manager_);
+
+  return Status::Ok();
+}
+
+Status GlobalOrderWriter::init_global_write_state() {
   auto uri = global_write_state_->frag_meta_->fragment_uri();
 
   // Initialize global write state for attribute and coordinates

@@ -132,6 +132,12 @@ class GlobalOrderWriter : public WriterBase {
   /** Resets the writer object, rendering it incomplete. */
   void reset();
 
+  /** Alloc a new global_write_state and its associated fragment metadata */
+  Status alloc_global_write_state();
+
+  /** Initializes the global write state. */
+  Status init_global_write_state();
+
   /** Returns a bare pointer to the global state. */
   GlobalWriteState* get_global_state();
 
@@ -220,9 +226,6 @@ class GlobalOrderWriter : public WriterBase {
    * @return Status
    */
   Status global_write_handle_last_tile();
-
-  /** Initializes the global write state. */
-  Status init_global_write_state();
 
   /**
    * This deletes the global write state and deletes the potentially

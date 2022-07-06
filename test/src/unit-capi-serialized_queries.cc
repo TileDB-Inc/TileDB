@@ -155,15 +155,15 @@ struct SerializationFx {
   void create_array(tiledb_array_type_t type) {
     ArraySchema schema(ctx, type);
     Domain domain(ctx);
-    domain.add_dimension(Dimension::create<int32_t>(ctx, "d1", {1, 10}, 2))
-        .add_dimension(Dimension::create<int32_t>(ctx, "d2", {1, 10}, 2));
+    domain.add_dimension(Dimension::create<uint64_t>(ctx, "d1", {0, 100}, 2));
+    //.add_dimension(Dimension::create<uint64_t>(ctx, "d2", {0, 10}, 2));
     schema.set_domain(domain);
 
     schema.add_attribute(Attribute::create<uint32_t>(ctx, "a1"));
-    schema.add_attribute(
-        Attribute::create<std::array<uint32_t, 2>>(ctx, "a2").set_nullable(
-            true));
-    schema.add_attribute(Attribute::create<std::vector<char>>(ctx, "a3"));
+    // schema.add_attribute(
+    // Attribute::create<std::array<uint32_t, 2>>(ctx, "a2").set_nullable(
+    // true));
+    // schema.add_attribute(Attribute::create<std::vector<char>>(ctx, "a3"));
 
     Array::create(array_uri, schema);
   }
@@ -1334,5 +1334,79 @@ TEST_CASE_METHOD(
 
     for (void* b : to_free)
       std::free(b);
+  }
+}
+
+TEST_CASE_METHOD(
+    SerializationFx, "Global order writes serialization", "[rob][global]") {
+  create_array(TILEDB_DENSE);
+
+  // Build input data
+  uint64_t ncells = 4;
+  std::vector<uint32_t> a1;
+  for (uint64_t i = 0; i < ncells; i++) {
+    a1.push_back(i);
+  }
+
+  Array array(ctx, array_uri, TILEDB_WRITE);
+  Query query(ctx, array);
+  Subarray subarray(ctx, array);
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+
+  // This needs to be tile-aligned
+  uint64_t chunk_size = 2;
+
+  uint64_t last_space_tile =
+      (ncells / chunk_size + static_cast<uint64_t>(ncells % chunk_size != 0)) *
+          chunk_size -
+      1;
+  subarray.add_range(0, static_cast<uint64_t>(0), last_space_tile);
+  query.set_subarray(subarray);
+
+  uint64_t begin = 0;
+  uint64_t end = chunk_size - 1;
+  while (begin < end) {
+    query.set_data_buffer("a1", a1.data() + begin, end - begin + 1);
+    begin += chunk_size;
+    end = std::min(ncells - 1, end + chunk_size);
+
+    // Simulate REST submit()
+    Array copy_array(ctx, array_uri, TILEDB_WRITE);
+    Query copy_query(ctx, copy_array);
+    std::vector<uint8_t> serialized;
+    serialize_query(ctx, query, &serialized, true);
+    deserialize_query(ctx, serialized, &copy_query, false);
+    copy_query.submit();
+    serialize_query(ctx, copy_query, &serialized, false);
+    deserialize_query(ctx, serialized, &query, true);
+  }
+
+  Array copy_array(ctx, array_uri, TILEDB_WRITE);
+  Query copy_query(ctx, copy_array);
+  std::vector<uint8_t> serialized;
+  serialize_query(ctx, query, &serialized, true);
+  deserialize_query(ctx, serialized, &copy_query, false);
+  copy_query.finalize();
+  serialize_query(ctx, copy_query, &serialized, false);
+  deserialize_query(ctx, serialized, &query, true);
+
+  REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+  // Read and validate results
+  {
+    Array array(ctx, array_uri, TILEDB_READ);
+    Query query(ctx, array);
+    std::vector<uint32_t> a2(ncells, 1);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, static_cast<uint64_t>(0), ncells - 1);
+    query.set_subarray(subarray);
+    query.set_data_buffer("a1", a2.data(), a2.size());
+
+    query.submit();
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    for (uint64_t i = 0; i < ncells; ++i) {
+      CHECK(a1[i] == a2[i]);
+    }
   }
 }
