@@ -391,6 +391,9 @@ class ResultTile {
   /** The timestamp attribute tile. */
   optional<TileTuple> timestamps_tile_;
 
+  /** The delete timestamp attribute tile. */
+  optional<TileTuple> delete_timestamps_tile_;
+
   /** The zipped coordinates tile. */
   TileTuple coords_tile_;
 

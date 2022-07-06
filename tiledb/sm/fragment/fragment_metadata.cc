@@ -1330,6 +1330,10 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
     return {Status::Ok(), "t"};
   }
 
+  if (name == constants::delete_timestamps) {
+    return {Status::Ok(), "dt"};
+  }
+
   auto err = "Unable to locate dimension/attribute " + name;
   return {Status_FragmentMetadataError(err), std::nullopt};
 }
