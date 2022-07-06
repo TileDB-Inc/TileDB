@@ -1,4 +1,4 @@
-name: build-ubuntu-20.04-HDFS
+name: build-ubuntu-2X.04-EXPERIMENTAL
 on:
   push:
     branches:
@@ -20,11 +20,12 @@ on:
       - '**/.md'
       - 'doc/source/conf.py'
       - 'tiledb/sm/c_api/tiledb_version.h'
+
 env:
-  BACKWARDS_COMPATIBILITY_ARRAYS: OFF
-  TILEDB_HDFS: ON
-  CXX: g++-9
-  CC: gcc-9
+  TILEDB_SERIALIZATION: ON # NOTE: currently defined directly inline
+  CXX: g++
+  TILEDB_EXPERIMENTAL_FEATURES: ON
+  BACKWARDS_COMPATIBILITY_ARRAYS: ON
 
 jobs:
   build:
@@ -34,8 +35,8 @@ jobs:
         os:
           - ubuntu-20.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
-    timeout-minutes: 90
-    name: Build - ${{matrix.os}} - HDFS
+    timeout-minutes: 120
+    name: Build - ${{matrix.os}} - EXPERIMENTAL ${{ matrix.cxx }}
     steps:
       - name: 'prep ubuntu for core dumps'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
@@ -83,7 +84,6 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: '3.8'
-
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
@@ -95,19 +95,8 @@ jobs:
           ulimit -c unlimited
           ulimit -c
 
-          set -exo pipefail
-
-          # - run: |
-          # Start HDFS server if enabled
-          # - ssh to localhost is required for HDFS launch...
-          # - /home/vsts has permissions g+w and is owned by user 'docker'
-          #   for VSTS purposes, so disable ssh strictness
-          sudo sed -i.bak 's/StrictModes\ yes/StrictModes\ no/g' /etc/ssh/sshd_config
-
-          source scripts/install-hadoop.sh
-          source scripts/run-hadoop.sh
-
-          bootstrap_args=" --enable-hdfs";
+          bootstrap_args="${bootstrap_args} --enable-experimental-features";
+          bootstrap_args="${bootstrap_args} --enable-serialization";
           bootstrap_args="${bootstrap_args} --enable-release-symbols";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
@@ -116,8 +105,7 @@ jobs:
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/regression/tiledb_regression -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
-          source $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
-
+          # - bash: |
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build
           cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make

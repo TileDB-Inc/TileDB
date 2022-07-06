@@ -171,6 +171,28 @@ Status ArrayDirectory::load() {
   // Wait for all tasks to complete
   RETURN_NOT_OK(tp_->wait_all(tasks));
 
+  if (mode_ != ArrayDirectoryMode::COMMITS) {
+    // Add old array schema, if required.
+    if (mode_ != ArrayDirectoryMode::SCHEMA_ONLY) {
+      auto old_schema_uri = uri_.join_path(constants::array_schema_filename);
+      for (auto& uri : root_dir_uris) {
+        if (uri == old_schema_uri) {
+          array_schema_uris_.insert(array_schema_uris_.begin(), old_schema_uri);
+        }
+      }
+    }
+
+    // Error check
+    if (array_schema_uris_.empty()) {
+      return LOG_STATUS(Status_ArrayDirectoryError(
+          "Cannot open array; Array does not exist."));
+    }
+
+    // Set the latest array schema URI
+    latest_array_schema_uri_ = array_schema_uris_.back();
+    assert(!latest_array_schema_uri_.is_invalid());
+  }
+
   // Process the rest of the data that has dependencies between each other
   // sequentially. Again skipping for schema only.
   if (mode_ != ArrayDirectoryMode::SCHEMA_ONLY) {
@@ -270,6 +292,11 @@ ArrayDirectory::filtered_fragment_uris(const bool full_overlap_only) const {
 
 const std::vector<URI>& ArrayDirectory::fragment_meta_uris() const {
   return fragment_meta_uris_;
+}
+
+const std::vector<ArrayDirectory::DeleteTileLocation>&
+ArrayDirectory::delete_tiles_location() const {
+  return delete_tiles_location_;
 }
 
 URI ArrayDirectory::get_fragments_dir(uint32_t write_version) const {
@@ -398,7 +425,7 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
     const std::vector<URI>& commits_dir_uris,
     const std::vector<URI>& consolidated_uris) {
   std::vector<URI> fragment_uris;
-  // Find the commited fragments
+  // Find the commited fragments from consolidated commits URIs
   for (size_t i = 0; i < consolidated_uris.size(); ++i) {
     if (stdx::string::ends_with(
             consolidated_uris[i].to_string(), constants::write_file_suffix)) {
@@ -424,6 +451,13 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
       }
     } else if (is_vacuum_file(commits_dir_uris[i])) {
       fragment_uris.emplace_back(commits_dir_uris[i]);
+    } else if (stdx::string::ends_with(
+                   commits_dir_uris[i].to_string(),
+                   constants::delete_file_suffix)) {
+      if (consolidated_commit_uris_set_.count(commits_dir_uris[i].c_str()) ==
+          0) {
+        delete_tiles_location_.emplace_back(commits_dir_uris[i], 0);
+      }
     }
   }
 
@@ -809,12 +843,16 @@ ArrayDirectory::compute_filtered_uris(
 
 Status ArrayDirectory::compute_array_schema_uris(
     const std::vector<URI>& array_schema_dir_uris) {
-  // Optionally add the old array schema from the root array folder
-  auto old_schema_uri = uri_.join_path(constants::array_schema_filename);
-  bool has_file = false;
-  RETURN_NOT_OK(vfs_->is_file(old_schema_uri, &has_file));
-  if (has_file) {
-    array_schema_uris_.push_back(old_schema_uri);
+  if (mode_ == ArrayDirectoryMode::SCHEMA_ONLY) {
+    // If not in schema only mode, this is done using the listing from the root
+    // dir.
+    // Optionally add the old array schema from the root array folder
+    auto old_schema_uri = uri_.join_path(constants::array_schema_filename);
+    bool has_file = false;
+    RETURN_NOT_OK(vfs_->is_file(old_schema_uri, &has_file));
+    if (has_file) {
+      array_schema_uris_.push_back(old_schema_uri);
+    }
   }
 
   // Optionally add the new array schemas from the array schema directory
@@ -826,16 +864,6 @@ Status ArrayDirectory::compute_array_schema_uris(
         array_schema_dir_uris.end(),
         std::back_inserter(array_schema_uris_));
   }
-
-  // Error check
-  if (array_schema_uris_.empty()) {
-    return LOG_STATUS(Status_ArrayDirectoryError(
-        "Cannot compute array schemas; No array schemas found."));
-  }
-
-  // Set the latest array schema URI
-  latest_array_schema_uri_ = array_schema_uris_.back();
-  assert(!latest_array_schema_uri_.is_invalid());
 
   return Status::Ok();
 }
@@ -855,6 +883,16 @@ Status ArrayDirectory::is_fragment(
   // If the URI name has a suffix, then it is not a fragment
   auto name = uri.remove_trailing_slash().last_path_part();
   if (name.find_first_of('.') != std::string::npos) {
+    *is_fragment = 0;
+    return Status::Ok();
+  }
+
+  // Exclude all possible known folders
+  if (name == constants::array_schema_dir_name ||
+      name == constants::array_commits_dir_name ||
+      name == constants::array_metadata_dir_name ||
+      name == constants::array_fragments_dir_name ||
+      name == constants::array_fragment_meta_dir_name) {
     *is_fragment = 0;
     return Status::Ok();
   }

@@ -125,6 +125,12 @@ const std::string coords = "__coords";
 /** Special name reserved for the timestamp attribute. */
 const std::string timestamps = "__timestamps";
 
+/** Special name reserved for the delete timestamp attribute. */
+const std::string delete_timestamps = "__delete_timestamps";
+
+/** Special name reserved for the delete condition name attribute. */
+const std::string delete_condition_names = "__delete_condition_names";
+
 /** The size of a timestamp cell. */
 const uint64_t timestamp_size = sizeof(uint64_t);
 
@@ -211,6 +217,9 @@ const std::string ok_file_suffix = ".ok";
 
 /** Suffix for the special write files used in TileDB. */
 const std::string write_file_suffix = ".wrt";
+
+/** Suffix for the special delete files used in TileDB. */
+const std::string delete_file_suffix = ".del";
 
 /** Suffix for the special metadata files used in TileDB. */
 const std::string meta_file_suffix = ".meta";

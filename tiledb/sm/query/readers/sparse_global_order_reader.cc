@@ -155,6 +155,12 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
 
+  // Make sure user didn't request delete timestamps.
+  if (buffers_.count(constants::delete_timestamps) != 0) {
+    return logger_->status(Status_SparseGlobalOrderReaderError(
+        "Reader cannot process delete timestamps"));
+  }
+
   // Check that the query condition is valid.
   RETURN_NOT_OK(condition_.check(array_schema_));
 
@@ -1317,7 +1323,8 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
         const auto& name = names[i];
         const auto var_sized = array_schema_.var_size(name);
         uint64_t* mem_usage = &total_mem_usage_per_attr[i];
-        const bool is_timestamps = name == constants::timestamps;
+        const bool is_timestamps = name == constants::timestamps ||
+                                   name == constants::delete_timestamps;
 
         // Keep track of tiles already accounted for.
         std::
@@ -1612,7 +1619,8 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
 
       // Clear tiles from memory.
       if (!is_dim && condition_.field_names().count(name) == 0 &&
-          name != constants::timestamps) {
+          name != constants::timestamps &&
+          name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);
       }
     }

@@ -53,6 +53,10 @@ namespace sm {
 QueryCondition::QueryCondition() {
 }
 
+QueryCondition::QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree)
+    : tree_(std::move(tree)) {
+}
+
 QueryCondition::QueryCondition(const QueryCondition& rhs)
     : tree_(rhs.tree_ == nullptr ? nullptr : rhs.tree_->clone()) {
 }
@@ -543,7 +547,8 @@ void QueryCondition::apply_ast_node(
   const auto type = array_schema.type(node_field_name);
 
   ByteVecValue fill_value;
-  if (node_field_name != constants::timestamps) {
+  if (node_field_name != constants::timestamps &&
+      node_field_name != constants::delete_timestamps) {
     if (!array_schema.is_dim(node_field_name)) {
       const auto attribute = array_schema.attribute(node_field_name);
       if (!attribute) {
@@ -1886,6 +1891,10 @@ Status QueryCondition::apply_sparse(
   }
 
   return Status::Ok();
+}
+
+QueryCondition QueryCondition::negated_condition() {
+  return QueryCondition(tree_->get_negated_tree());
 }
 
 const tdb_unique_ptr<ASTNode>& QueryCondition::ast() const {

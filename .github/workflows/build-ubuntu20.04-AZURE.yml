@@ -117,11 +117,13 @@ jobs:
           bootstrap_args="${bootstrap_args} --enable-azure";
           bootstrap_args="${bootstrap_args} --enable-release-symbols";
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
-          
+
           # Bypass Catch2 Framework stdout interception with awk on test output
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/regression/tiledb_regression -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+
+          source $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
 
           # Kill the running Azurite server
           kill -n 9 $AZURITE_PID
