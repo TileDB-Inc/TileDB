@@ -42,10 +42,10 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/strategy_base.h"
-#include "tiledb/sm/subarray/cell_slab_iter.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 namespace tiledb {

@@ -122,14 +122,12 @@ class GenericTileIO {
    * information about the tile, and then reads the tile data. Note that it
    * creates a new Tile object with the header information.
    *
-   * @param tile The tile that will hold the read data.
    * @param file_offset The offset in the file to read from.
    * @param encryption_key The encryption key to use.
    * @param config The storage manager's config.
-   * @return Status
+   * @return Status, Tile
    */
-  Status read_generic(
-      Tile** tile,
+  tuple<Status, optional<Buffer>> read_generic(
       uint64_t file_offset,
       const EncryptionKey& encryption_key,
       const Config& config);
@@ -142,14 +140,10 @@ class GenericTileIO {
    * @param file_offset The offset where the header read will begin.
    * @param encryption_key If the array is encrypted, the private encryption
    *    key. For unencrypted arrays, pass `nullptr`.
-   * @param header The header to be retrieved.
-   * @return Status
+   * @return Status, Header
    */
-  static Status read_generic_tile_header(
-      const StorageManager* sm,
-      const URI& uri,
-      uint64_t file_offset,
-      GenericTileHeader* header);
+  static tuple<Status, optional<GenericTileHeader>> read_generic_tile_header(
+      const StorageManager* sm, const URI& uri, uint64_t file_offset);
 
   /**
    * Writes a tile generically to the file. This means that a header will be

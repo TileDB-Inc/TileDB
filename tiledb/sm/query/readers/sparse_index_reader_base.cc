@@ -190,6 +190,11 @@ SparseIndexReaderBase::get_coord_tiles_size(
         fragment_metadata_[f]->cell_num(t) * constants::timestamp_size;
   }
 
+  if (fragment_metadata_[f]->has_delete_meta()) {
+    tiles_size +=
+        fragment_metadata_[f]->cell_num(t) * constants::timestamp_size;
+  }
+
   // Compute query condition tile sizes.
   uint64_t tiles_size_qc = 0;
   if (!qc_loaded_names_.empty()) {

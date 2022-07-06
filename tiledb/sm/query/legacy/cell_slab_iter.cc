@@ -30,7 +30,7 @@
  * This file implements class CellSlabIter.
  */
 
-#include "tiledb/sm/subarray/cell_slab_iter.h"
+#include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
