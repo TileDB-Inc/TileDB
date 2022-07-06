@@ -1,5 +1,5 @@
 /**
- * @file unit_data_blok.cc
+ * @file unit_data_block.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,22 @@
  *
  * @section DESCRIPTION
  *
- * Tests the data_block class.
+ * Unit tests for the data_block class.  We test with 3 sizes: size equal to a
+ * complete chunk, a size equal to half a chunk - 1, and a size equal to half a
+ * chunk + 1.  The latter two are to check for some corner cases.
  */
 
 #include "unit_data_block.h"
+#include <algorithm>
+
+/**
+ * @todo Use proper checks for preprocessor directives to selectively include
+ * test with `std::execution` policy.
+ */
+#if 0
+#include <execution>
+#endif
+
 #include <list>
 #include <memory>
 #include <vector>
@@ -224,10 +236,9 @@ TEST_CASE(
   auto a = DataBlock{chunk_size_};
   auto ptr_a = a.data();
 
-  // Don't do this -- it will call destructor again when a goes out of scope
+  // Don't do this!  It will call destructor again when `a` goes out of scope
   // (which would be bad)
   a.~DataBlock();
-
 
   auto b = DataBlock{chunk_size_};
   auto ptr_b = b.data();
