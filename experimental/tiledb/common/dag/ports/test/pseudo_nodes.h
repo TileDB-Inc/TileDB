@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 202s TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file defines some elementary node types for testing source and sink
- * ports.
+ * This file defines some elementary pseudo node types for testing source and
+ * sink ports.
  */
 
 #ifndef TILEDB_DAG_PSEUDO_NODES_H

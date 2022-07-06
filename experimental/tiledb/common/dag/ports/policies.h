@@ -218,6 +218,17 @@ class ManualStateMachine
                         "no_value")
                 << ", " << sink_item_->value() << ")" << std::endl;
   }
+  inline void on_source_wait(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+      std::cout << "    "
+                << "Action source wait" << std::endl;
+  }
+  inline void on_sink_wait(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+      std::cout << "    "
+                << "Action sink wait" << std::endl;
+  }
+
   inline void notify_source(lock_type&, std::atomic<int>&) {
     if (FSM::debug_enabled())
       std::cout << "    "

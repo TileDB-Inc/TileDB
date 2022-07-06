@@ -91,21 +91,21 @@ TEST_CASE("Ports: Test exceptions", "[ports]") {
  * Test operation of inject and extract.
  */
 TEST_CASE("Ports: Manual set source port values", "[ports]") {
-  Source<size_t, NullStateMachine<std::optional<size_t>>> src;
-  Sink<size_t, NullStateMachine<std::optional<size_t>>> snk;
+  Source<size_t, NullStateMachine<std::optional<size_t>>> source;
+  Sink<size_t, NullStateMachine<std::optional<size_t>>> sink;
 
   SECTION("set source in bound pair") {
-    bind(src, snk);
-    CHECK(src.inject(55UL) == true);
-    CHECK(src.extract().has_value() == true);
+    bind(source, sink);
+    CHECK(source.inject(55UL) == true);
+    CHECK(source.extract().has_value() == true);
   }
-  SECTION("set source in unbound src") {
-    CHECK(src.inject(9UL) == false);
+  SECTION("set source in unbound source") {
+    CHECK(source.inject(9UL) == false);
   }
   SECTION("set source that has value") {
-    bind(src, snk);
-    CHECK(src.inject(11UL) == true);
-    CHECK(src.inject(11UL) == false);
+    bind(source, sink);
+    CHECK(source.inject(11UL) == true);
+    CHECK(source.inject(11UL) == false);
   }
 }
 
@@ -113,17 +113,17 @@ TEST_CASE("Ports: Manual set source port values", "[ports]") {
  * Test operation of inject and extract.
  */
 TEST_CASE("Ports: Manual extract sink values", "[ports]") {
-  Source<size_t, NullStateMachine<std::optional<size_t>>> src;
-  Sink<size_t, NullStateMachine<std::optional<size_t>>> snk;
+  Source<size_t, NullStateMachine<std::optional<size_t>>> source;
+  Sink<size_t, NullStateMachine<std::optional<size_t>>> sink;
 
   SECTION("set source in unbound pair") {
-    CHECK(snk.extract().has_value() == false);
+    CHECK(sink.extract().has_value() == false);
   }
   SECTION("set source in bound pair") {
-    bind(src, snk);
-    CHECK(snk.extract().has_value() == false);
-    CHECK(snk.inject(13UL) == true);
-    auto v = snk.extract();
+    bind(source, sink);
+    CHECK(sink.extract().has_value() == false);
+    CHECK(sink.inject(13UL) == true);
+    auto v = sink.extract();
     CHECK(v.has_value() == true);
     CHECK(*v == 13UL);
   }
@@ -135,32 +135,32 @@ TEST_CASE("Ports: Manual extract sink values", "[ports]") {
  *
  */
 TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
-  Source<size_t, ManualStateMachine<std::optional<size_t>>> src;
-  Sink<size_t, ManualStateMachine<std::optional<size_t>>> snk;
+  Source<size_t, ManualStateMachine<std::optional<size_t>>> source;
+  Sink<size_t, ManualStateMachine<std::optional<size_t>>> sink;
 
-  bind(src, snk);
+  bind(source, sink);
 
-  auto state_machine = snk.get_state_machine();
+  auto state_machine = sink.get_state_machine();
   // state_machine->enable_debug();
 
   CHECK(str(state_machine->state()) == "empty_empty");
 
   SECTION("test injection") {
-    CHECK(src.inject(123UL) == true);
-    CHECK(src.inject(321UL) == false);
-    CHECK(snk.extract().has_value() == false);
+    CHECK(source.inject(123UL) == true);
+    CHECK(source.inject(321UL) == false);
+    CHECK(sink.extract().has_value() == false);
   }
   SECTION("test extraction") {
-    CHECK(snk.inject(123UL) == true);
-    CHECK(snk.extract().has_value() == true);
-    CHECK(snk.extract().has_value() == false);
+    CHECK(sink.inject(123UL) == true);
+    CHECK(sink.extract().has_value() == true);
+    CHECK(sink.extract().has_value() == false);
   }
 
   SECTION("test one item transfer") {
-    CHECK(src.inject(123UL) == true);
+    CHECK(source.inject(123UL) == true);
     state_machine->do_fill();
     state_machine->do_push();
-    auto b = snk.extract();
+    auto b = sink.extract();
     CHECK(b.has_value() == true);
     CHECK(*b == 123UL);
     CHECK(str(state_machine->state()) == "empty_full");
@@ -169,28 +169,28 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
   }
 
   SECTION("test two item transfer") {
-    CHECK(src.inject(456UL) == true);
+    CHECK(source.inject(456UL) == true);
     state_machine->do_fill();
     state_machine->do_push();
-    auto b = snk.extract();
+    auto b = sink.extract();
     CHECK(b.has_value() == true);
     CHECK(*b == 456UL);
     CHECK(str(state_machine->state()) == "empty_full");
     state_machine->do_drain();
     CHECK(str(state_machine->state()) == "empty_empty");
-    CHECK(snk.extract().has_value() == false);
+    CHECK(sink.extract().has_value() == false);
 
-    CHECK(src.inject(789UL) == true);
+    CHECK(source.inject(789UL) == true);
     state_machine->do_fill();
     state_machine->do_push();
 
-    auto c = snk.extract();
+    auto c = sink.extract();
     CHECK(c.has_value() == true);
     CHECK(*c == 789UL);
     CHECK(str(state_machine->state()) == "empty_full");
     state_machine->do_drain();
     CHECK(str(state_machine->state()) == "empty_empty");
-    CHECK(snk.extract().has_value() == false);
+    CHECK(sink.extract().has_value() == false);
   }
 }
 
@@ -201,23 +201,23 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
  */
 TEST_CASE(
     "Ports: Manual transfer from Source to Sink, async policy", "[ports]") {
-  Source<size_t, AsyncStateMachine<std::optional<size_t>>> src;
-  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> snk;
+  Source<size_t, AsyncStateMachine<std::optional<size_t>>> source;
+  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> sink;
 
-  bind(src, snk);
+  bind(source, sink);
 
-  auto state_machine = snk.get_state_machine();
+  auto state_machine = sink.get_state_machine();
   CHECK(str(state_machine->state()) == "empty_empty");
 
   SECTION("test injection") {
-    CHECK(src.inject(123UL) == true);
-    CHECK(src.inject(321UL) == false);
-    CHECK(snk.extract().has_value() == false);
+    CHECK(source.inject(123UL) == true);
+    CHECK(source.inject(321UL) == false);
+    CHECK(sink.extract().has_value() == false);
   }
   SECTION("test extraction") {
-    CHECK(snk.inject(123UL) == true);
-    CHECK(snk.extract().has_value() == true);
-    CHECK(snk.extract().has_value() == false);
+    CHECK(sink.inject(123UL) == true);
+    CHECK(sink.extract().has_value() == true);
+    CHECK(sink.extract().has_value() == false);
   }
 }
 
@@ -230,24 +230,24 @@ TEST_CASE(
  * launching the tasks and waiting on their futures.
  */
 TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
-  Source<size_t, AsyncStateMachine<std::optional<size_t>>> src;
-  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> snk;
+  Source<size_t, AsyncStateMachine<std::optional<size_t>>> source;
+  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> sink;
 
-  bind(src, snk);
+  bind(source, sink);
 
-  auto state_machine = snk.get_state_machine();
+  auto state_machine = sink.get_state_machine();
   CHECK(str(state_machine->state()) == "empty_empty");
 
   std::optional<size_t> b;
 
   auto source_node = [&]() {
-    CHECK(src.inject(8675309UL) == true);
+    CHECK(source.inject(8675309UL) == true);
     state_machine->do_fill();
     state_machine->do_push();
   };
   auto sink_node = [&]() {
     state_machine->do_pull();
-    b = snk.extract();
+    b = sink.extract();
     state_machine->do_drain();
   };
 
@@ -293,12 +293,12 @@ TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
 TEST_CASE("Ports: Async pass n integers", "[ports]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  Source<size_t, AsyncStateMachine<std::optional<size_t>>> src;
-  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> snk;
+  Source<size_t, AsyncStateMachine<std::optional<size_t>>> source;
+  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> sink;
 
-  bind(src, snk);
+  bind(source, sink);
 
-  auto state_machine = snk.get_state_machine();
+  auto state_machine = sink.get_state_machine();
   CHECK(str(state_machine->state()) == "empty_empty");
 
   size_t rounds = 3379;
@@ -315,7 +315,7 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
 
   CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
 
-  std::optional<size_t> b;
+  [[maybe_unused]] std::optional<size_t> b;
 
   auto source_node = [&]() {
     size_t n = rounds;
@@ -329,19 +329,19 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
       // while (state_machine->state() == PortState::full_empty ||
       //        state_machine->state() == PortState::full_full)// ;
 
-      CHECK(is_src_empty(state_machine->state()) == "");
+      CHECK(is_source_empty(state_machine->state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      CHECK(is_src_empty(state_machine->state()) == "");
+      CHECK(is_source_empty(state_machine->state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      src.inject(*i++);
+      source.inject(*i++);
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      CHECK(is_src_empty(state_machine->state()) == "");
+      CHECK(is_source_empty(state_machine->state()) == "");
 
       state_machine->do_fill(debug ? "async source node" : "");
 
@@ -351,7 +351,7 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      //      CHECK(src.extract().has_value() == false);
+      //      CHECK(source.extract().has_value() == false);
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
@@ -373,17 +373,17 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
 
       state_machine->do_pull(debug ? "async sink node" : "");
 
-      CHECK(is_snk_full(state_machine->state()) == "");
+      CHECK(is_sink_full(state_machine->state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      CHECK(is_snk_full(state_machine->state()) == "");
+      CHECK(is_sink_full(state_machine->state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      *j++ = *(snk.extract());
+      *j++ = *(sink.extract());
 
-      CHECK(is_snk_full(state_machine->state()) == "");
+      CHECK(is_sink_full(state_machine->state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 

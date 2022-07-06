@@ -105,8 +105,8 @@ class Source {
    *
    * @pre Called under lock
    */
-  bool is_bound_to(Sink<Block, StateMachine>* snk) const {
-    return correspondent_ != nullptr && correspondent_ == snk;
+  bool is_bound_to(Sink<Block, StateMachine>* sink) const {
+    return correspondent_ != nullptr && correspondent_ == sink;
   }
 
   /**
@@ -154,7 +154,8 @@ class Source {
 /**
  * A data flow sink, used by both edges and nodes.
  *
- * Sink objects have two states: empy and full.
+ * Sink objects have two states: empty and full.  Their functionality is
+ * determined by the states (and policies) of the `StateMachine`.
  */
 template <class Block, class StateMachine>
 class Sink {
@@ -209,8 +210,8 @@ class Sink {
    *
    * @pre Called under lock
    */
-  bool is_bound_to(Source<Block, StateMachine>* src) const {
-    return correspondent_ != nullptr && correspondent_ == src;
+  bool is_bound_to(Source<Block, StateMachine>* source) const {
+    return correspondent_ != nullptr && correspondent_ == source;
   }
 
   /**
@@ -253,19 +254,19 @@ class Sink {
    * Assign sink as correspondent to source and vice versa.  Acquires lock
    * before calling any member functions.
    *
-   * @pre Both src and snk are unbound
+   * @pre Both source and sink are unbound
    */
   template <class Bl, class St>
-  friend inline void bind(Source<Bl, St>& src, Sink<Bl, St>& snk);
+  friend inline void bind(Source<Bl, St>& source, Sink<Bl, St>& sink);
 
   friend inline void bind(
-      Source<Block, StateMachine>& src, Sink<Block, StateMachine>& snk) {
-    std::scoped_lock lock(snk.mutex_);
-    if (src.is_bound() || snk.is_bound()) {
+      Source<Block, StateMachine>& source, Sink<Block, StateMachine>& sink) {
+    std::scoped_lock lock(sink.mutex_);
+    if (source.is_bound() || sink.is_bound()) {
       throw std::logic_error("Improperly bound in bind");
     }
-    snk.bind(src);
-    if (!src.is_bound_to(&snk) || !snk.is_bound_to(&src)) {
+    sink.bind(source);
+    if (!source.is_bound_to(&sink) || !sink.is_bound_to(&source)) {
       throw std::logic_error("Improperly bound in bind");
     }
   }
@@ -274,19 +275,19 @@ class Sink {
    * Remove the correspondent relationship between a source and sink.  Acquires
    * lock before calling any member functions.
    *
-   * @param src A Souce port
-   * @param snk A Sink port
+   * @param source A Souce port
+   * @param sink A Sink port
    *
-   * @pre `src` and `snk` are in a correspondent relationship.
+   * @pre `source` and `sink` are in a correspondent relationship.
    */
   template <class Bl, class St>
-  friend inline void unbind(Source<Bl, St>& src, Sink<Bl, St>& snk);
+  friend inline void unbind(Source<Bl, St>& source, Sink<Bl, St>& sink);
 
   friend inline void unbind(
-      Source<Block, StateMachine>& src, Sink<Block, StateMachine>& snk) {
-    std::scoped_lock lock(snk.mutex_);
-    if (src.is_bound() && snk.is_bound()) {
-      snk.unbind();
+      Source<Block, StateMachine>& source, Sink<Block, StateMachine>& sink) {
+    std::scoped_lock lock(sink.mutex_);
+    if (source.is_bound() && sink.is_bound()) {
+      sink.unbind();
     } else {
       throw std::logic_error("Improperly bound in unbind");
     }
@@ -314,26 +315,26 @@ class Sink {
 /**
  * Assign sink as correspondent to source and vice versa.
  *
- * @pre Both src and snk are unbound
+ * @pre Both source and sink are unbound
  */
 template <class Block, class StateMachine>
 inline void bind(
-    Sink<Block, StateMachine>& snk, Source<Block, StateMachine>& src) {
-  bind(src, snk);
+    Sink<Block, StateMachine>& sink, Source<Block, StateMachine>& source) {
+  bind(source, sink);
 }
 
 /**
  * Remove the correspondent relationship between a source and sink
  *
- * @param snk A Sink port
- * @param snk A Source port
+ * @param sink A Sink port
+ * @param sink A Source port
  *
- * @pre `src` and `snk` are in a correspondent relationship.
+ * @pre `source` and `sink` are in a correspondent relationship.
  */
 template <class Block, class StateMachine>
 inline void unbind(
-    Sink<Block, StateMachine>& snk, Source<Block, StateMachine>& src) {
-  unbind(src, snk);
+    Sink<Block, StateMachine>& sink, Source<Block, StateMachine>& source) {
+  unbind(source, sink);
 }
 
 }  // namespace tiledb::common
