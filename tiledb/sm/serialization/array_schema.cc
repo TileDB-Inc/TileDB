@@ -537,6 +537,9 @@ Status domain_to_capnp(
     return LOG_STATUS(
         Status_SerializationError("Error serializing domain; domain is null."));
 
+  // The type must be serialized for backwards compatibility with pre
+  // TileDB 2.10 clients
+  domainBuilder->setType(datatype_str(domain->dimension_ptr(0)->type()));
   domainBuilder->setTileOrder(layout_str(domain->tile_order()));
   domainBuilder->setCellOrder(layout_str(domain->cell_order()));
 
