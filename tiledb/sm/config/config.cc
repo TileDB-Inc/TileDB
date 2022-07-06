@@ -106,6 +106,7 @@ const std::string Config::SM_IO_CONCURRENCY_LEVEL =
 const std::string Config::SM_SKIP_CHECKSUM_VALIDATION = "false";
 const std::string Config::SM_CONSOLIDATION_AMPLIFICATION = "1.0";
 const std::string Config::SM_CONSOLIDATION_BUFFER_SIZE = "50000000";
+const std::string Config::SM_CONSOLIDATION_PURGE_DELETED_CELLS = "false";
 const std::string Config::SM_CONSOLIDATION_STEPS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_MIN_FRAGS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_MAX_FRAGS = "4294967295";
@@ -277,6 +278,8 @@ Config::Config() {
   param_values_["sm.consolidation.amplification"] =
       SM_CONSOLIDATION_AMPLIFICATION;
   param_values_["sm.consolidation.buffer_size"] = SM_CONSOLIDATION_BUFFER_SIZE;
+  param_values_["sm.consolidation.purge_deleted_cells"] =
+      SM_CONSOLIDATION_PURGE_DELETED_CELLS;
   param_values_["sm.consolidation.step_min_frags"] =
       SM_CONSOLIDATION_STEP_MIN_FRAGS;
   param_values_["sm.consolidation.step_max_frags"] =
@@ -616,6 +619,9 @@ Status Config::unset(const std::string& param) {
   } else if (param == "sm.consolidation.buffer_size") {
     param_values_["sm.consolidation.buffer_size"] =
         SM_CONSOLIDATION_BUFFER_SIZE;
+  } else if (param == "sm.consolidation.purge_deleted_cells") {
+    param_values_["sm.consolidation.steps"] =
+        SM_CONSOLIDATION_PURGE_DELETED_CELLS;
   } else if (param == "sm.consolidation.steps") {
     param_values_["sm.consolidation.steps"] = SM_CONSOLIDATION_STEPS;
   } else if (param == "sm.consolidation.step_min_frags") {
@@ -854,6 +860,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vf));
   } else if (param == "sm.consolidation.buffer_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
+  } else if (param == "sm.consolidation.purge_deleted_cells") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.consolidation.steps") {
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "sm.consolidation.step_min_frags") {
