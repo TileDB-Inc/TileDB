@@ -80,9 +80,16 @@ template <typename G>
 using inner_reference_t = typename inner_range_t<G>::reference;
 
 /**
- * A joined range view class.  Creates a single view of
- * a range of ranges.  Currently, creates an input_range
- * view.
+ * A joined range view class.  Creates a single view of a range of ranges.
+ * Currently, creates an input_range view.  Unlike `std::ranges::join`, which is
+ * a variadic template, this view is constructed from a number of containers
+ * whose cardinality is determined at run time.  As a result, also unlike
+ * `std::ranges::view`, all of the inner containers must be of the same type
+ * (which is fine for our purposes).
+ *
+ * NB: As with other containers in the C++ standard library, this view is
+ * not thread-safe. Users of a joined container are responsible for protecting
+ * access to it.
  */
 template <class RangeOfRanges>
 class join {
@@ -107,17 +114,15 @@ class join {
    * resulting view will appear as a single range, equal
    * to the concatenation of the inner ranges.
    */
-
-  // template <
-  //     typename U = RangeOfRanges,
-  //     typename = typename std::enable_if_t<std::is_same_v<
-  //         std::iterator_traits<U>,
-  //         std::random_access_iterator_tag>>>
-
   explicit join(RangeOfRanges& g)
       : outer_begin_(g.begin())
       , outer_end_(g.end())
       , offsets_(g.size() + 1) {
+    /*
+     * If the outer container is random access, we can support `operator[]` in
+     * the joined view.  Compute an `offsets` array to support
+     * `operator[]`.
+     */
     if constexpr (std::is_same_v<
                       typename std::iterator_traits<
                           typename RangeOfRanges::iterator>::iterator_category,
@@ -136,6 +141,14 @@ class join {
   join& operator=(const join&) = default;
   join& operator=(join&&) = default;
 
+  /**
+   * Iterator class for the joined data structure.  Currently it is a (legacy)
+   * forward iterator.
+   *
+   * @todo Implement to support legacy random access iterator.  Operator[]
+   * should be fairly straightforward using the `offsets` array from the
+   * view the iterator belongs to.
+   */
   template <bool is_const>
   class join_iterator {
    public:
@@ -146,10 +159,22 @@ class join {
     using pointer = arrow_proxy<reference>;
 
    private:
-    range_of_ranges_iterator first_;     //!<
-    range_of_ranges_iterator last_;      //!<
-    inner_range_iterator u_begin_ = {};  //!<
-    inner_range_iterator u_end_ = {};    //!<
+    /*
+     * Iterators over the outer "backbone" container. `first` is essentially a
+     * cursor.
+     */
+    range_of_ranges_iterator first_;  //!<
+    range_of_ranges_iterator last_;   //!<
+
+    /*
+     * Iterators over the inner containers.  The current element being pointed
+     * to by the joined view is a combination of the outer iterator (which
+     * points to the current inner container and the inner container, which
+     * points to the current element in the inner container pointed to by the
+     * outer iterator.
+     */
+    inner_range_iterator inner_begin_ = {};  //!<
+    inner_range_iterator inner_end_ = {};    //!<
 
     join_iterator(const join_iterator& b, unsigned long step)
         : join_iterator(b) {
@@ -157,12 +182,12 @@ class join {
     }
 
     void check() {
-      while (u_begin_ == u_end_ &&
+      while (inner_begin_ == inner_end_ &&
              first_ !=
                  last_) {  // make sure we start at a valid dereference point
         if (++first_ != last_) {
-          u_begin_ = (*first_).begin();
-          u_end_ = (*first_).end();
+          inner_begin_ = (*first_).begin();
+          inner_end_ = (*first_).end();
         } else
           break;
       }
@@ -175,8 +200,8 @@ class join {
         : first_(begin)
         , last_(end) {
       if (first_ != last_) {
-        u_begin_ = (*first_).begin();
-        u_end_ = (*first_).end();
+        inner_begin_ = (*first_).begin();
+        inner_end_ = (*first_).end();
         check();
       }
     }
@@ -189,8 +214,8 @@ class join {
     join_iterator(const join_iterator<false>& rhs)
         : first_(rhs.first_)
         , last_(rhs.last_)
-        , u_begin_(rhs.u_begin_)
-        , u_end_(rhs.u_end_) {
+        , inner_begin_(rhs.inner_begin_)
+        , inner_end_(rhs.inner_end_) {
     }
 
     join_iterator& operator=(const join_iterator&) = default;
@@ -202,8 +227,8 @@ class join {
     {
       first_ = rhs.first_;
       last_ = rhs.last_;
-      u_begin_ = rhs.u_begin_;
-      u_end_ = rhs.u_end_;
+      inner_begin_ = rhs.inner_begin_;
+      inner_end_ = rhs.inner_end_;
       return *this;
     }
 
@@ -227,7 +252,7 @@ class join {
     }
 
     join_iterator& operator++() {
-      ++u_begin_;
+      ++inner_begin_;
 
       check();
       return *this;
@@ -240,7 +265,7 @@ class join {
     }
 
     reference operator*() const {
-      return reference(*u_begin_);
+      return reference(*inner_begin_);
     }
 
     pointer operator->() const {
@@ -264,9 +289,11 @@ class join {
   iterator begin() {
     return {outer_begin_, outer_end_};
   }
+
   const_iterator begin() const {
     return {outer_begin_, outer_end_};
   }
+
   const_iterator cbegin() const {
     return {outer_begin_, outer_end_};
   }
@@ -274,13 +301,22 @@ class join {
   iterator end() {
     return {outer_end_, outer_end_};
   }
+
   const_iterator end() const {
     return {outer_end_, outer_end_};
   }
+
   const_iterator cend() const {
     return {outer_end_, outer_end_};
   }
 
+  /*
+   * We can implement operator[] for the container itself, using the `offsets`
+   * array created when the joined view was constructed.  Note that having
+   * `operator[]` does not make the view a `random_access_range`, as the
+   * requirement for `random_access_range` is that its iterator be a random
+   * access iterator.
+   */
   value_type& operator[](size_t i) {
     auto it_j = std::upper_bound(offsets_.begin(), offsets_.end(), i) - 1;
     auto idx_j = it_j - offsets_.begin();
@@ -290,11 +326,17 @@ class join {
     return block[k];
   }
 
+  /**
+   * Return the size of the joined view.  We do this dynamically by adding up
+   * the sizes of the inner containers every time * `size` is invoked in case
+   * one of the underlying containers has changed its * size.
+   *
+   * @invariant Equal to the sum of the sizes of the inner containers.
+   */
   std::size_t size() const {
     size_t n = 0;
 
     auto tmp = outer_begin_;
-    //    print_types(outer_begin_, outer_end_, *outer_begin_, *outer_end_);
 
     while (tmp != outer_end_) {
       n += (*tmp).size();
@@ -302,6 +344,10 @@ class join {
     }
     return n;
   }
+
+  /**
+   * Return whether the joined view is empty.
+   */
   bool empty() const {
     return begin() == end();
   }
