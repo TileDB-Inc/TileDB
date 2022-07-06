@@ -178,6 +178,8 @@ struct GlobalOrderResultCoords
   /**
    * Get the maximum slab length that can be created (when there's no other
    * fragments left).
+   *
+   * @return Max slab length that can be merge for this tile.
    */
   uint64_t max_slab_length() {
     uint64_t ret = 1;
@@ -217,6 +219,15 @@ struct GlobalOrderResultCoords
   /**
    * Get the maximum slab length that can be created using the next result
    * coords in the queue.
+   *
+   * @param next The next coordinate, which is the smallest coordinate, in
+   * Global order or Hilbert order, from all the other fragments current
+   * indexes. Mostly, this is the maximum coordinate value that can be merged
+   * before we need to run our top level algorithm again.
+   * @param cmp The comparator class. Calling cmp(current, next) should tell us
+   * if current is bigger or equal than next in the order of the comparator.
+   *
+   * @return Max slab length that can be merge for this tile.
    */
   template <class CompType>
   uint64_t max_slab_length(
@@ -226,12 +237,17 @@ struct GlobalOrderResultCoords
     // Store the original position.
     uint64_t original_pos = base::pos_;
 
-    // Max posssible position in the tile.
+    // Max posssible position in the tile. Defaults to the last cell in the
+    // tile, it might get updated if we have a bitmap below.
     uint64_t max_pos = cell_num - 1;
 
+    // If there is a bitmap, update the maximum position. Mostly, this looks at
+    // the current cell (if it's not in the bitmap, return 0), then will go
+    // until we find a cell that isn't in the bitmap. This will tell us the
+    // maximum slab that can be merged for this bitmap, next we'll look at
+    // next.
     if (base::tile_->has_post_qc_bmp()) {
       auto& bitmap = base::tile_->bitmap_with_qc();
-
       // Current cell is not in the bitmap.
       if (!bitmap[base::pos_]) {
         return 0;
@@ -254,8 +270,15 @@ struct GlobalOrderResultCoords
       max_pos--;
     }
 
-    // Find the upper bound comparison by increasing power of two. This ensures
-    // the algorithm works equally well for small slabs vs large ones.
+    // Now use cmp to find the last value in this tile smaller than next.
+    // But, calling cmp can be expensive. So to minimize how many times it is
+    // called, we first call cmp at every power of 2 indexes from the current
+    // cell, until we find a value that is bigger than next. This will give us
+    // an upper bound for searching. We know that the previous power of two is
+    // smaller than next as we already called cmp on it, so this will be a
+    // lower bound for the search.
+    // This ensures the algorithm works equally well for small slabs vs large
+    // ones. It will never take more comparisons that a linear search.
     uint64_t power_of_two = 1;
     bool return_max = true;
     while (return_max && base::pos_ != max_pos) {
@@ -273,14 +296,17 @@ struct GlobalOrderResultCoords
       }
     }
 
-    // Return max.
+    // If we reached the end without cmp being true once, we know that every
+    // cell until max_pos is smaller than next. So return the maximum cell
+    // slab.
     if (return_max) {
       base::pos_ = original_pos;
       return max_pos - original_pos + 1;
     }
 
-    // Run a bisection search on to find the last cell. Maximum value is the
-    // value found above, minimum is the power of two preceding.
+    // We have an upper bound and a lower bound for our search with our power
+    // of twos found above. Run a bisection search in between to find the exact
+    // cell.
     uint64_t left = power_of_two / 2;
     uint64_t right = base::pos_;
     while (left != right - 1) {
