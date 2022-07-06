@@ -101,6 +101,8 @@ TEST_CASE("DataBlock: Test create DataBlock", "[data_block]") {
   db_test_1(db);
 }
 
+
+
 TEST_CASE(
     "DataBlock: Test create DataBlock with std::allocator<std::byte>",
     "[data_block]") {
@@ -112,6 +114,7 @@ TEST_CASE(
   db_test_0(dc);
   db_test_1(dc);
 }
+
 
 template <class DB>
 void db_test_2(DB& db) {
@@ -133,7 +136,7 @@ void db_test_2(DB& db) {
 TEST_CASE("DataBlock: Iterate through data_block", "[data_block]") {
   auto db = DataBlockImpl<std::allocator<std::byte>>{};
   db_test_2(db);
-  auto dc = DataBlock{};
+  auto dc = DataBlock{chunk_size_};
   db_test_2(dc);
 }
 
@@ -143,8 +146,197 @@ TEST_CASE("DataBlock: Iterate through 8 data_blocks", "[data_block]") {
     db_test_2(db);
   }
   for (size_t i = 0; i < 8; ++i) {
-    auto db = DataBlock{};
+    auto db = DataBlock{chunk_size_};
     db_test_2(db);
+  }
+}
+
+TEST_CASE("DataBlock: Get span", "[data_block]") {
+  auto a = DataBlock{};
+  auto b = DataBlock{};
+  auto c = DataBlock{};
+
+  CHECK(a.size() == 0);
+  CHECK(b.size() == 0);
+  CHECK(c.size() == 0);
+
+  CHECK(a.data() != b.data());
+  CHECK(a.data() != c.data());
+  CHECK(b.data() != c.data());
+
+  CHECK(a.capacity() == 4'194'304);
+  CHECK(b.capacity() == 4'194'304);
+  CHECK(c.capacity() == 4'194'304);
+
+  SECTION("entire_span") {
+    auto span_a = a.entire_span();
+    auto span_b = b.entire_span();
+    auto span_c = c.entire_span();
+
+    CHECK(span_a.data() == a.data());
+    CHECK(span_b.data() == b.data());
+    CHECK(span_c.data() == c.data());
+
+    CHECK(span_a.size() == 4'194'304);
+    CHECK(span_b.size() == 4'194'304);
+    CHECK(span_c.size() == 4'194'304);
+  }
+  SECTION("span") {
+    auto span_a = a.span();
+    auto span_b = b.span();
+    auto span_c = c.span();
+
+    CHECK(span_a.data() == a.data());
+    CHECK(span_b.data() == b.data());
+    CHECK(span_c.data() == c.data());
+
+    CHECK(span_a.size() == 0);
+    CHECK(span_b.size() == 0);
+    CHECK(span_c.size() == 0);
+  }
+}
+
+TEST_CASE("DataBlock: Test resize", "[data_block]") {
+  auto a = DataBlock{chunk_size_};
+  auto b = DataBlock{chunk_size_};
+  auto c = DataBlock{chunk_size_};
+
+  a.resize(1'000'000);
+  b.resize(2'000'000);
+  c.resize(3'000'000);
+
+  CHECK(a.size() == 1'000'000);
+  CHECK(b.size() == 2'000'000);
+  CHECK(c.size() == 3'000'000);
+
+  auto span_a = a.span();
+  auto span_b = b.span();
+  auto span_c = c.span();
+
+  CHECK(span_a.size() == 1'000'000);
+  CHECK(span_b.size() == 2'000'000);
+  CHECK(span_c.size() == 3'000'000);
+}
+
+#if 0
+TEST_CASE(
+    "DataBlock: Test allocation and deallocation of DataBlock", "[data_block") {
+  auto a = DataBlock{chunk_size_};
+  auto ptr_a = a.data();
+
+  // Don't do this -- it will call destructor again when a goes out of scope
+  // (which would be bad)
+  a.~DataBlock();
+
+
+  auto b = DataBlock{chunk_size_};
+  auto ptr_b = b.data();
+  CHECK(ptr_a == ptr_b);
+}
+#endif
+
+TEST_CASE(
+    "DataBlock: Test deallocation of DataBlock on destruction",
+    "[data_block]") {
+  std::byte* x;
+  std::byte* y;
+
+  {
+    auto a = DataBlock{chunk_size_};
+    auto b = DataBlock{chunk_size_};
+    x = a.data();
+    y = b.data();
+    CHECK(x != y);
+  }
+
+  // b is deallocated first, then a is deallocated (LIFO)
+
+  // allocate a first, then b
+  auto a = DataBlock{chunk_size_};
+  auto b = DataBlock{chunk_size_};
+
+  auto ptr_a = a.data();
+  auto ptr_b = b.data();
+  CHECK(ptr_a != ptr_b);
+
+  CHECK(x == ptr_a);
+  CHECK(y == ptr_b);
+}
+
+void test_std_fill(size_t test_size) {
+  auto a = DataBlock{test_size};
+  auto b = DataBlock{test_size};
+  auto c = DataBlock{test_size};
+  CHECK(a.begin() + test_size == a.end());
+  CHECK(b.begin() + test_size == b.end());
+  CHECK(c.begin() + test_size == c.end());
+
+  CHECK(a.size() == test_size);
+  CHECK(b.size() == test_size);
+  CHECK(c.size() == test_size);
+
+  std::fill(a.begin(), a.end(), std::byte{0});
+  std::fill(b.begin(), b.end(), std::byte{0});
+  std::fill(c.begin(), c.end(), std::byte{0});
+
+  a[33] = std::byte{19};
+  CHECK(a[32] == std::byte{0});
+  CHECK(a[33] == std::byte{19});
+  CHECK(a[34] == std::byte{0});
+
+  b[127] = std::byte{23};
+  CHECK(b[126] == std::byte{0});
+  CHECK(b[127] == std::byte{23});
+  CHECK(b[128] == std::byte{0});
+
+  c[432] = std::byte{29};
+  CHECK(c[431] == std::byte{0});
+  CHECK(c[432] == std::byte{29});
+  CHECK(c[433] == std::byte{0});
+
+  for (auto& j : a) {
+    j = std::byte{23};
+  }
+  for (auto& j : b) {
+    j = std::byte{23};
+  }
+  for (auto& j : c) {
+    j = std::byte{29};
+  }
+
+  std::fill(a.begin(), a.end(), std::byte{0});
+  std::fill(b.begin(), b.end(), std::byte{0});
+  std::fill(c.begin(), c.end(), std::byte{0});
+  CHECK(a.end() == std::find_if_not(a.begin(), a.end(), [](auto e) {
+          return (std::byte{0} == e);
+        }));
+  CHECK(b.end() == std::find_if_not(b.begin(), b.end(), [](auto e) {
+          return (std::byte{0} == e);
+        }));
+  CHECK(c.end() == std::find_if_not(c.begin(), c.end(), [](auto e) {
+          return (std::byte{0} == e);
+        }));
+
+  std::fill(a.begin(), a.end(), std::byte{19});
+  std::fill(b.begin(), b.end(), std::byte{23});
+  std::fill(c.begin(), c.end(), std::byte{29});
+  CHECK(a.end() == std::find_if_not(a.begin(), a.end(), [](auto e) {
+          return (std::byte{19} == e);
+        }));
+  CHECK(b.end() == std::find_if_not(b.begin(), b.end(), [](auto e) {
+          return (std::byte{23} == e);
+        }));
+  CHECK(c.end() == std::find_if_not(c.begin(), c.end(), [](auto e) {
+          return (std::byte{29} == e);
+        }));
+}
+
+TEST_CASE("DataBlock: Fill with std::fill", "[data_block]") {
+  SECTION("chunk_size") {
+    test_std_fill(chunk_size_);
+  }
+  SECTION("chunk_size / 2") {
+    test_std_fill(chunk_size_ / 2);
   }
 }
 

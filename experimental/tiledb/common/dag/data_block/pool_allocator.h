@@ -27,7 +27,22 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a pool memory allocator.
+ * This file declares a simple pool memory allocator, intended for use with
+ * DataBlocks.  The allocator initially uses malloc to get a 32MB array (plus
+ * some space for a superblock, plus some space to allow page alignment).
+ * The page-aligned portion of each array is subdivided into specified
+ * fixed-size chunks. The chunks are expected to be a power of two size.
+ * The arrays are kept in a linked list, with 8 bytes of the superblock
+ * used as a pointer to the next array.  Blocks are kept in a linked list
+ * in a similar fashion.
+ *
+ * The pool allocator is implemented with the PoolAllocatorImpl, which is
+ * private to this file.  A singleton object, SingletonPoolAllocator, is
+ * used to ensure that there is only one PoolAllocatorImpl in the application.
+ * Access to the pool allocator is via PoolAllocator objects.  There can
+ * be multiple PoolAllocator objects in an application -- any such objects
+ * will use the SingletonPoolAllocator.
+ *
  */
 
 #ifndef TILEDB_DAG_POOL_ALLOCATOR_H
@@ -40,7 +55,8 @@ namespace tiledb::common {
 
 namespace {
 /**
- *
+ * The PoolAllocator implementation class.  Allocates a fixed-size block
+ * of bytes.
  *
  * @tparam chunk_size Number of Ts to allocate per chunk
  */
@@ -96,7 +112,7 @@ class PoolAllocatorImpl {
    */
   void push_chunk(pointer finished_chunk) {
     /* "Next" is stored at the beginning of the chunk */
-    *(pointer*)finished_chunk = the_free_list;
+    *reinterpret_cast<pointer*>(finished_chunk) = the_free_list;
     the_free_list = finished_chunk;
   }
 
@@ -161,7 +177,6 @@ class PoolAllocatorImpl {
 
   pointer allocate() {
     std::scoped_lock lock(mutex_);
-
     num_free--;
     return pop_chunk();
   }
@@ -200,26 +215,24 @@ class PoolAllocatorImpl {
 
 template <size_t chunk_size>
 class SingletonPoolAllocator : public PoolAllocatorImpl<chunk_size> {
-  PoolAllocatorImpl<chunk_size> pool_allocator_;
-
   // Private constructor so that no objects can be created.
   SingletonPoolAllocator() {
   }
 
-  static SingletonPoolAllocator instance;
-
  public:
-  static SingletonPoolAllocator* get_instance() {
-    return &instance;
+  SingletonPoolAllocator(const SingletonPoolAllocator&) = delete;
+  void operator=(const SingletonPoolAllocator&) = delete;
+
+  static SingletonPoolAllocator& get_instance() {
+    static SingletonPoolAllocator instance;
+    return instance;
   }
 };
 
 template <size_t chunk_size>
-SingletonPoolAllocator<chunk_size> SingletonPoolAllocator<chunk_size>::instance;
+SingletonPoolAllocator<chunk_size>& my_allocator{
+    SingletonPoolAllocator<chunk_size>::get_instance()};
 
-template <size_t chunk_size>
-SingletonPoolAllocator<chunk_size>* my_allocator =
-    SingletonPoolAllocator<chunk_size>::get_instance();
 }  // namespace
 
 template <size_t chunk_size>
@@ -229,16 +242,16 @@ class PoolAllocator {
   PoolAllocator() {
   }
   value_type* allocate() {
-    return my_allocator<chunk_size>->allocate();
+    return my_allocator<chunk_size>.allocate();
   }
   value_type* allocate(size_t) {
-    return my_allocator<chunk_size>->allocate();
+    return my_allocator<chunk_size>.allocate();
   }
   void deallocate(value_type* a) {
-    return my_allocator<chunk_size>->deallocate(a);
+    return my_allocator<chunk_size>.deallocate(a);
   }
   void deallocate(value_type* a, size_t) {
-    return my_allocator<chunk_size>->deallocate(a);
+    return my_allocator<chunk_size>.deallocate(a);
   }
 };
 

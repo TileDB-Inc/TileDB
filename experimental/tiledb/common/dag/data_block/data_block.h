@@ -104,6 +104,7 @@ class DataBlockImpl {
   using pointer = span_t::pointer;
   using const_pointer = span_t::const_pointer;
   using iterator = DataBlockIterator;
+  using iterator_category = std::random_access_iterator_tag;
   using const_iterator = DataBlockConstIterator;
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
