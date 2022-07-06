@@ -1,5 +1,5 @@
 /**
- * @file unit_data_blok.cc
+ * @file unit_data_block.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,22 @@
  *
  * @section DESCRIPTION
  *
- * Tests the data_block class.
+ * Unit tests for the data_block class.  We test with 3 sizes: size equal to a
+ * complete chunk, a size equal to half a chunk - 1, and a size equal to half a
+ * chunk + 1.  The latter two are to check for some corner cases.
  */
 
 #include "unit_data_block.h"
+#include <algorithm>
+
+/**
+ * @todo Use proper checks for preprocessor directives to selectively include
+ * test with `std::execution` policy.
+ */
+#if 0
+#include <execution>
+#endif
+
 #include <list>
 #include <memory>
 #include <vector>
@@ -224,10 +236,9 @@ TEST_CASE(
   auto a = DataBlock{chunk_size_};
   auto ptr_a = a.data();
 
-  // Don't do this -- it will call destructor again when a goes out of scope
+  // Don't do this!  It will call destructor again when `a` goes out of scope
   // (which would be bad)
   a.~DataBlock();
-
 
   auto b = DataBlock{chunk_size_};
   auto ptr_b = b.data();
@@ -522,11 +533,19 @@ void test_operator_bracket_loops(size_t test_size) {
   auto b = DataBlock{test_size};
   auto c = DataBlock{test_size};
 
+  CHECK(a.size() == test_size);
+  CHECK(b.size() == test_size);
+  CHECK(c.size() == test_size);
+
   std::vector<DataBlock> x{a, b, c};
+  CHECK(x.size() == 3);
+
   auto y = join(x);
 
   CHECK(y.size() == a.size() + b.size() + c.size());
+  CHECK(y.size() == 3 * test_size);
 
+  /* Hmm...  Can't do arithmetic on std::byte */
   std::iota(
       reinterpret_cast<uint8_t*>(a.begin()),
       reinterpret_cast<uint8_t*>(a.end()),
@@ -552,6 +571,7 @@ void test_operator_bracket_loops(size_t test_size) {
     }
     return true;
   }());
+
   CHECK([&]() {
     uint8_t b{0};
     for (auto&& j : y) {
@@ -563,6 +583,25 @@ void test_operator_bracket_loops(size_t test_size) {
     }
     return true;
   }());
+
+  uint8_t d{0};
+  auto z = std::find_if_not(y.begin(), y.end(), [&d](auto e) {
+    return static_cast<uint8_t>(e) == d++;
+  });
+  CHECK(z == y.end());
+
+  /**
+   * @todo Use proper checks for preprocessor directives to selectively include
+   * test with `std::execution` policy.
+   */
+#if 0
+  d = 0;
+  auto u = std::find_if_not(
+      std::execution::par_unseq, y.begin(), y.end(), [&d](auto e) {
+        return static_cast<uint8_t>(e) == d++;
+      });
+  CHECK(u == y.end());
+#endif
 }
 
 TEST_CASE("DataBlock: Join data_blocks loops operator[]", "[data_block]") {
