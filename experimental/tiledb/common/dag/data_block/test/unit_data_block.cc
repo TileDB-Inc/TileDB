@@ -335,8 +335,11 @@ TEST_CASE("DataBlock: Fill with std::fill", "[data_block]") {
   SECTION("chunk_size") {
     test_std_fill(chunk_size_);
   }
-  SECTION("chunk_size / 2") {
-    test_std_fill(chunk_size_ / 2);
+  SECTION("chunk_size / 2 + 1") {
+    test_std_fill(chunk_size_ / 2 + 1);
+  }
+  SECTION("chunk_size / 2 -1") {
+    test_std_fill(chunk_size_ / 2 - 1);
   }
 }
 
@@ -405,7 +408,10 @@ TEST_CASE("DataBlock: Join data_blocks (join view)", "[data_block]") {
     test_join(chunk_size_);
   }
   SECTION("chunk_size / 2") {
-    test_join(chunk_size_ / 2);
+    test_join(chunk_size_ / 2 + 1);
+  }
+  SECTION("chunk_size / 2") {
+    test_join(chunk_size_ / 2 - 1);
   }
 }
 
@@ -450,7 +456,10 @@ TEST_CASE("DataBlock: Join data_blocks std::fill", "[data_block]") {
     test_join_std_fill(chunk_size_);
   }
   SECTION("chunk_size / 2") {
-    test_join_std_fill(chunk_size_ / 2);
+    test_join_std_fill(chunk_size_ / 2 + 1);
+  }
+  SECTION("chunk_size / 2") {
+    test_join_std_fill(chunk_size_ / 2 - 1);
   }
 }
 
@@ -501,6 +510,69 @@ TEST_CASE("DataBlock: Join data_blocks operator[]", "[data_block]") {
     test_join_operator_bracket(chunk_size_);
   }
   SECTION("chunk_size / 2") {
-    test_join_operator_bracket(chunk_size_ / 2);
+    test_join_operator_bracket(chunk_size_ / 2 + 1);
+  }
+  SECTION("chunk_size / 2") {
+    test_join_operator_bracket(chunk_size_ / 2 - 1);
+  }
+}
+
+void test_operator_bracket_loops(size_t test_size) {
+  auto a = DataBlock{test_size};
+  auto b = DataBlock{test_size};
+  auto c = DataBlock{test_size};
+
+  std::vector<DataBlock> x{a, b, c};
+  auto y = join(x);
+
+  CHECK(y.size() == a.size() + b.size() + c.size());
+
+  std::iota(
+      reinterpret_cast<uint8_t*>(a.begin()),
+      reinterpret_cast<uint8_t*>(a.end()),
+      uint8_t{0});
+  std::iota(
+      reinterpret_cast<uint8_t*>(b.begin()),
+      reinterpret_cast<uint8_t*>(b.end()),
+      static_cast<uint8_t>(a.back()) + 1);
+  std::iota(
+      reinterpret_cast<uint8_t*>(c.begin()),
+      reinterpret_cast<uint8_t*>(c.end()),
+      static_cast<uint8_t>(b.back()) + 1);
+
+  CHECK([&]() {
+    uint8_t b{0};
+    for (size_t i = 0; i < y.size(); ++i) {
+      if (static_cast<uint8_t>(y[i]) != b) {
+        std::cout << i << " " << static_cast<uint8_t>(y[i]) << " " << b
+                  << std::endl;
+        return false;
+      }
+      ++b;
+    }
+    return true;
+  }());
+  CHECK([&]() {
+    uint8_t b{0};
+    for (auto&& j : y) {
+      if (static_cast<uint8_t>(j) != b) {
+        std::cout << static_cast<uint8_t>(j) << " " << b << std::endl;
+        return false;
+      }
+      ++b;
+    }
+    return true;
+  }());
+}
+
+TEST_CASE("DataBlock: Join data_blocks loops operator[]", "[data_block]") {
+  SECTION("chunk_size") {
+    test_operator_bracket_loops(chunk_size_);
+  }
+  SECTION("chunk_size / 2") {
+    test_operator_bracket_loops(chunk_size_ / 2 + 1);
+  }
+  SECTION("chunk_size / 2") {
+    test_operator_bracket_loops(chunk_size_ / 2 - 1);
   }
 }

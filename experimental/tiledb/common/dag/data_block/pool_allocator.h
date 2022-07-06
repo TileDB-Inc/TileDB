@@ -48,6 +48,7 @@
 #ifndef TILEDB_DAG_POOL_ALLOCATOR_H
 #define TILEDB_DAG_POOL_ALLOCATOR_H
 
+#include <atomic>
 #include <iostream>
 #include <mutex>
 
@@ -68,15 +69,15 @@ class PoolAllocatorImpl {
 
  private:
   bool debug_{false};
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
 
-  /**
-   * Book keeping pointers
+  /*
+   * Pointers and counters for managing the pool
    */
   pointer the_free_list = nullptr;
   pointer the_array_list = nullptr;
-  size_t num_arrays = 0;
-  size_t num_free = 0;
+  size_t num_arrays_ = 0;
+  size_t num_free_ = 0;
 
   constexpr static ptrdiff_t page_size{4096};
   constexpr static ptrdiff_t align{page_size};
@@ -92,11 +93,23 @@ class PoolAllocatorImpl {
   /* Add some padding so that we can align on page boundary */
   constexpr static size_t array_size{mem_size + align + sizeof(pointer)};
 
+  /*
+   * Counters for statistics / diagnostics.  Declare these `inline` so we don't
+   * need to define themm outside of the class itself.
+   */
+  static inline std::atomic<size_t> num_instances_;
+  static inline std::atomic<size_t> num_allocations_;
+  static inline std::atomic<size_t> num_deallocations_;
+  static inline std::atomic<size_t> num_allocated_;
+
   /**
-   * Get a chunk from the free list
+   * Get a chunk from the free list.  The first `sizeof(pointer)` bytes in the
+   * chunk are used to create a linked list of chunks.
+   *
+   * @pre a lock is held by function calling this one.
    */
   pointer pop_chunk() {
-    if ((num_free == 0) || (the_free_list == NULL))
+    if ((num_free_ == 0) || (the_free_list == NULL))
       free_list_more();
 
     pointer the_new_chunk = the_free_list;
@@ -109,6 +122,8 @@ class PoolAllocatorImpl {
 
   /**
    * Put a chunk back into the free list
+   *
+   * @pre a lock is held by function calling this one.
    */
   void push_chunk(pointer finished_chunk) {
     /* "Next" is stored at the beginning of the chunk */
@@ -117,7 +132,11 @@ class PoolAllocatorImpl {
   }
 
   /**
-   * Allocates a new array of chunks and puts them on the free list
+   * Allocates a new array of chunks and puts them on the free list.  Like
+   * chunks, The first `sizeof(pointer)` bytes in each array are used to create
+   * a linked list of arrays.
+   *
+   * @pre a lock is held by function calling this one.
    */
   void free_list_more() {
     auto new_bytes{reinterpret_cast<std::byte*>(malloc(array_size))};
@@ -139,22 +158,25 @@ class PoolAllocatorImpl {
       push_chunk(aligned_start + i * chunk_size);
     }
 
-    num_arrays++;
+    ++num_arrays_;
   }
 
   /**
-   * Go through list of arrays, freeing each one
+   * Go through list of arrays, freeing each array
    */
   void free_list_free() {
     pointer first_array = the_array_list;
 
-    auto num_to_free{num_arrays};
+    auto num_to_free{num_arrays_};
     for (size_t j = 0; j < num_to_free; ++j) {
       auto next_array = *(pointer*)first_array;
       free(first_array);
       first_array = next_array;
-      --num_arrays;
+      --num_arrays_;
     }
+    num_free_ = 0;
+    num_allocated_ = 0;
+
     the_array_list = first_array;
     the_free_list = first_array;
   }
@@ -163,27 +185,86 @@ class PoolAllocatorImpl {
   /**
    * Use default constructor
    */
-  PoolAllocatorImpl() = default;
+  PoolAllocatorImpl() {
+    ++num_instances_;
+  }
 
   /**
    * Release allocated memory (free each array)
    */
   ~PoolAllocatorImpl() {
     free_list_free();
-    assert(num_arrays == 0);
+    assert(num_arrays_ == 0);
     assert(the_free_list == nullptr);
     assert(the_array_list == nullptr);
   }
 
   pointer allocate() {
-    std::scoped_lock lock(mutex_);
-    num_free--;
+    std::lock_guard lock(mutex_);
+    --num_free_;
+    ++num_allocated_;
+    ++num_allocations_;
     return pop_chunk();
   }
 
   void deallocate(pointer p) {
+    std::lock_guard lock(mutex_);
     push_chunk(p);
-    num_free++;
+    ++num_free_;
+    --num_allocated_;
+    ++num_deallocations_;
+  }
+
+  /**
+   * Get the number of instances of the allocator. Should always be equal to
+   * one. Note that allocators for different chunk sizes are different
+   * allocators. Singletons are on a per chunk size basis.
+   */
+  size_t num_instances() {
+    return num_instances_;
+  }
+
+  /**
+   * Get the total number of chunks that have been allocated during the lifetime
+   * of this allocator.
+   */
+  size_t num_allocations() {
+    return num_allocations_;
+  }
+
+  /**
+   * Get the total number of chunks that have been deallocated during the
+   * lifetime of this allocator.
+   *
+   * @invariant `num_allocations` + `num_deallocations` == `num_free_`
+   */
+  size_t num_deallocations() {
+    return num_deallocations_;
+  }
+
+  /**
+   * Get the number of chunks that are currently in use.
+   */
+  size_t num_allocated() {
+    return num_allocated_;
+  }
+
+  /**
+   * Get the number of chunks that are currently free (available for allocation
+   * in the pool).
+   *
+   * @invariant `num_free_` + `num_allocated` == `num_arrays_` *
+   * `chunks_per_array`
+   */
+  size_t num_free() {
+    return num_free_;
+  }
+
+  /**
+   * Get the number of chunk arrays that have been malloc'd to create the pool.
+   */
+  size_t num_arrays() {
+    return num_arrays_;
   }
 
   void mark(pointer) {
@@ -198,7 +279,7 @@ class PoolAllocatorImpl {
   void scan_all(void (*f)(pointer)) {
     pointer first_array = the_array_list;
 
-    for (size_t j = 0; j < num_arrays; ++j) {
+    for (size_t j = 0; j < num_arrays_; ++j) {
       auto start = (pointer)((char*)first_array + sizeof(pointer));
       for (size_t i = 0; i < chunks_per_array; ++i) {
         f(start + i * chunk_size);
@@ -230,7 +311,7 @@ class SingletonPoolAllocator : public PoolAllocatorImpl<chunk_size> {
 };
 
 template <size_t chunk_size>
-SingletonPoolAllocator<chunk_size>& my_allocator{
+SingletonPoolAllocator<chunk_size>& _allocator{
     SingletonPoolAllocator<chunk_size>::get_instance()};
 
 }  // namespace
@@ -242,28 +323,37 @@ class PoolAllocator {
   PoolAllocator() {
   }
   value_type* allocate() {
-    return my_allocator<chunk_size>.allocate();
+    return _allocator<chunk_size>.allocate();
   }
   value_type* allocate(size_t) {
-    return my_allocator<chunk_size>.allocate();
+    return _allocator<chunk_size>.allocate();
   }
   void deallocate(value_type* a) {
-    return my_allocator<chunk_size>.deallocate(a);
+    return _allocator<chunk_size>.deallocate(a);
   }
   void deallocate(value_type* a, size_t) {
-    return my_allocator<chunk_size>.deallocate(a);
+    return _allocator<chunk_size>.deallocate(a);
+  }
+  size_t num_instances() {
+    return _allocator<chunk_size>.num_instances();
+  }
+  size_t num_allocations() {
+    return _allocator<chunk_size>.num_allocations();
+  }
+  size_t num_deallocations() {
+    return _allocator<chunk_size>.num_deallocations();
+  }
+  size_t num_allocated() {
+    return _allocator<chunk_size>.num_allocated();
+  }
+  size_t num_free() {
+    return _allocator<chunk_size>.num_free();
+  }
+  size_t num_arrays() {
+    return _allocator<chunk_size>.num_arrays();
   }
 };
 
-// template <size_t chunk_size>
-// using PoolAllocator = SingletonPoolAllocator<chunk_size>::get_instance();
-
-// template <size_t chunk_size>
-// using PoolAllocator = SingletonPoolAllocator<chunk_size>;
-// struct PoolAllocator : SingletonPoolAllocator<chunk_size> {
-//  PoolAllocator() {
-//  }
-//};
 }  // namespace tiledb::common
 
 #endif  // TILEDB_DAG_POOL_ALLOCATOR_H
