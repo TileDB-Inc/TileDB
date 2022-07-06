@@ -344,26 +344,11 @@ Status Array::open(
           timestamp_end_opened_at_,
           ArrayDirectoryMode::SCHEMA_ONLY);
 
-    auto&& [st, array_schema_latest] =
-        rest_client->get_array_schema_from_rest(array_uri_);
-    RETURN_NOT_OK(st);
-    array_schema_latest_ = array_schema_latest.value();
-  } else if (query_type == QueryType::READ) {
-    try {
-      array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_);
-    } catch (const std::logic_error& le) {
-      return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-    }
-
       auto&& [st, array_schema_latest, array_schemas] =
           storage_manager_->array_open_for_writes(this);
       if (!st.ok())
         throw StatusException(st);
+
       // Set schemas
       array_schema_latest_ = array_schema_latest.value();
       array_schemas_all_ = array_schemas.value();
