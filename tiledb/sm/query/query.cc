@@ -1073,7 +1073,7 @@ Status Query::create_strategy() {
             condition_));
       }
     } else if (
-        use_refactored_sparse_global_order_reader() &&
+        use_refactored_sparse_global_order_reader() && condition_.empty() &&
         !array_schema_->dense() &&
         (layout_ == Layout::GLOBAL_ORDER ||
          (layout_ == Layout::UNORDERED && subarray_.range_num() <= 1))) {
