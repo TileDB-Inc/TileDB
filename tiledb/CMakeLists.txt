@@ -1098,8 +1098,10 @@ set(ver_patch ${CMAKE_MATCH_1})
 
 set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
 
-set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
-string(CONCAT PKGCONF_REQ_PRIV ${PKGCONF_REQ_PRIV} " webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux")
+if (WIN32)
+  set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
+  string(CONCAT PKGCONF_REQ_PRIV ${PKGCONF_REQ_PRIV} " webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux")
+endif()
 
 # PKG Config file
 configure_file(

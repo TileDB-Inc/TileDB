@@ -333,6 +333,10 @@ class Config {
    *    The number of consolidation steps to be performed when executing
    *    the consolidation algorithm.<br>
    *    **Default**: 1
+   * - `sm.consolidation.purge_deleted_cells` <br>
+   *    **Experimental** <br>
+   *    Purge deleted cells from the consolidated fragment or not.<br>
+   *    **Default**: false
    * - `sm.consolidation.step_min_frags` <br>
    *    The minimum number of fragments to consolidate in a single step.<br>
    *    **Default**: UINT32_MAX
