@@ -63,6 +63,8 @@
 #include "fsm.h"
 #include "policies.h"
 
+#include "../utils/print_types.h"
+
 namespace tiledb::common {
 
 /* Forward declarations */
@@ -81,11 +83,10 @@ template <class Block, class StateMachine>
 class Source {
   friend class Sink<Block, StateMachine>;
 
-  /**
-   * @inv If an item is present, `try_send` will succeed.
-   */
+ protected:
   std::optional<Block> item_{};
 
+ private:
   /**
    * The correspondent Sink, if any
    */
@@ -110,15 +111,15 @@ class Source {
   }
 
   /**
-   * Remove the current binding, if any.
+   * Remove the current attachment, if any.
    *
    * @pre Called under lock
    */
-  void remove_binding() {
+  void remove_attachment() {
     if (correspondent_ == nullptr || !is_bound_to(correspondent_) ||
         !correspondent_->is_bound_to(this)) {
       throw std::runtime_error(
-          "Source attempting to unbind unbound correspondent");
+          "Source attempting to unattach unbound correspondent");
     } else {
       correspondent_ = nullptr;
     }
@@ -164,7 +165,7 @@ class Sink {
   /**
    * @inv If an item is present, `try_receive` will succeed.
    */
-  std::optional<Block> item_;
+  std::optional<Block> item_{};
 
   /**
    * The correspondent Source, if any
@@ -189,8 +190,8 @@ class Sink {
  private:
   /**
    * Mutex shared by a correspondent pair. It's arbitratily defined in only the
-   * Sink. Protects binding of Source and Sink. Protection of data transfer is
-   * accomplished in the finite state machine.
+   * Sink. Protects attachment of Source and Sink. Protection of data transfer
+   * is accomplished in the finite state machine.
    *
    * @todo Are there other Source / Sink functions that need to be protected?
    */
@@ -219,10 +220,10 @@ class Sink {
    *
    * @pre Called under lock
    */
-  void bind(Source<Block, StateMachine>& predecessor) {
+  void attach(Source<Block, StateMachine>& predecessor) {
     if (is_bound() || predecessor.is_bound()) {
       throw std::runtime_error(
-          "Sink attempting to bind to already bound correspondent");
+          "Sink attempting to attach to already bound correspondent");
     } else {
       correspondent_ = &predecessor;
       predecessor.correspondent_ = this;
@@ -231,23 +232,23 @@ class Sink {
   }
 
   /**
-   * Remove the current binding, if any.
+   * Remove the current attachment, if any.
    *
    * @pre Called under lock
    */
-  void unbind() {
+  void unattach() {
     if (!is_bound_to(correspondent_) || !correspondent_->is_bound_to(this)) {
-      throw std::runtime_error("Attempting to unbind unbound correspondent");
+      throw std::runtime_error("Attempting to unattach unbound correspondent");
     } else {
       state_machine_->deregister_items(correspondent_->item_, item_);
-      correspondent_->remove_binding();
+      correspondent_->remove_attachment();
       correspondent_ = nullptr;
     }
   }
 
  public:
   /**
-   * Free functions for binding / unbinding Source and Sink.
+   * Free functions for attachment / unattachment Source and Sink.
    */
 
   /**
@@ -257,17 +258,17 @@ class Sink {
    * @pre Both source and sink are unbound
    */
   template <class Bl, class St>
-  friend inline void bind(Source<Bl, St>& source, Sink<Bl, St>& sink);
+  friend inline void attach(Source<Bl, St>& source, Sink<Bl, St>& sink);
 
-  friend inline void bind(
+  friend inline void attach(
       Source<Block, StateMachine>& source, Sink<Block, StateMachine>& sink) {
     std::scoped_lock lock(sink.mutex_);
     if (source.is_bound() || sink.is_bound()) {
-      throw std::logic_error("Improperly bound in bind");
+      throw std::logic_error("Improperly bound in attach");
     }
-    sink.bind(source);
+    sink.attach(source);
     if (!source.is_bound_to(&sink) || !sink.is_bound_to(&source)) {
-      throw std::logic_error("Improperly bound in bind");
+      throw std::logic_error("Improperly bound in attach");
     }
   }
 
@@ -281,15 +282,15 @@ class Sink {
    * @pre `source` and `sink` are in a correspondent relationship.
    */
   template <class Bl, class St>
-  friend inline void unbind(Source<Bl, St>& source, Sink<Bl, St>& sink);
+  friend inline void unattach(Source<Bl, St>& source, Sink<Bl, St>& sink);
 
-  friend inline void unbind(
+  friend inline void unattach(
       Source<Block, StateMachine>& source, Sink<Block, StateMachine>& sink) {
     std::scoped_lock lock(sink.mutex_);
     if (source.is_bound() && sink.is_bound()) {
-      sink.unbind();
+      sink.unattach();
     } else {
-      throw std::logic_error("Improperly bound in unbind");
+      throw std::logic_error("Improperly bound in unattach");
     }
   }
 
@@ -318,10 +319,18 @@ class Sink {
  * @pre Both source and sink are unbound
  */
 template <class Block, class StateMachine>
-inline void bind(
+inline void attach(
     Sink<Block, StateMachine>& sink, Source<Block, StateMachine>& source) {
-  bind(source, sink);
+  attach(source, sink);
 }
+
+#if 0
+template <class Block, class StateMachine>
+inline void attach(
+    Source<Block, StateMachine>& source, Sink<Block, StateMachine>& sink) {
+  sink.attach(source);
+}
+#endif
 
 /**
  * Remove the correspondent relationship between a source and sink
@@ -332,9 +341,9 @@ inline void bind(
  * @pre `source` and `sink` are in a correspondent relationship.
  */
 template <class Block, class StateMachine>
-inline void unbind(
+inline void unattach(
     Sink<Block, StateMachine>& sink, Source<Block, StateMachine>& source) {
-  unbind(source, sink);
+  unattach(source, sink);
 }
 
 }  // namespace tiledb::common

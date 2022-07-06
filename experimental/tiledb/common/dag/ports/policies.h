@@ -42,6 +42,8 @@
 #include "experimental/tiledb/common/dag/ports/test/helpers.h"
 #include "experimental/tiledb/common/dag/utils/print_types.h"
 
+#include "../utils/print_types.h"
+
 namespace tiledb::common {
 
 // clang-format off
@@ -606,7 +608,26 @@ class DebugStateMachine : public PortFiniteStateMachine<DebugStateMachine<T>> {
 
   using lock_type = typename FSM::lock_type;
 
+  T* source_item_;
+  T* sink_item_;
+
  public:
+  void register_items(T& source_item, T& sink_item) {
+    std::scoped_lock lock(FSM::mutex_);
+    source_item_ = &source_item;
+    sink_item_ = &sink_item;
+  }
+  void deregister_items(T& source_item, T& sink_item) {
+    std::scoped_lock lock(FSM::mutex_);
+    if (source_item_ != &source_item || sink_item_ != &sink_item) {
+      throw std::runtime_error(
+          "Attempting to deregister source and sink items that were not "
+          "registered.");
+    }
+    source_item_->reset();
+    sink_item_->reset();
+  }
+
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
     if (FSM::debug_enabled())
       std::cout << "    "

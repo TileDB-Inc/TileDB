@@ -35,6 +35,7 @@
 #define TILEDB_DAG_PSEUDO_NODES_H
 
 #include <atomic>
+#include "../../utils/print_types.h"
 #include "../ports.h"
 
 namespace tiledb::common {
@@ -83,6 +84,7 @@ class ProducerNode : public Source<Block, StateMachine> {
   template <class Function>
   explicit ProducerNode(Function&& f)
       : f_{std::forward<Function>(f)} {
+    //    print_types(f, f_);
   }
 
   /**
@@ -91,13 +93,16 @@ class ProducerNode : public Source<Block, StateMachine> {
   ProducerNode() {
   }
 
+  ProducerNode(const ProducerNode&) = default;
+  ProducerNode(ProducerNode&&) = default;
+
   /**
    * Submit an item to be transferred to correspondent_ Sink.  Blocking.  The
    * behavior of `submit` and `try_submit` will depend on the policy associated
    * with the state machine.  Used by dag nodes and edges for transferring data.
    *
    */
-  void get(Block&) {
+  void get() {
     //  Don't need the guard since { state == empty_full ∨ state == empty_empty}
     //  at end of function and sink cannot change that.
     //  while (!source_is_empty())
@@ -106,9 +111,13 @@ class ProducerNode : public Source<Block, StateMachine> {
     //  { state == empty_empty ∨ state == empty_full }
     //  produce source item
     //  inject source item
-    Base::do_fill();
+    auto state_machine = Base::get_state_machine();
+
+    Base::inject(f_());
+    state_machine->do_fill();
     //  { state == full_empty ∨ state == full_full }
-    Base::do_push();  // may block
+
+    state_machine->do_push();
     //  { state == empty_full ∨ state == empty_empty }
   }
 
@@ -151,7 +160,7 @@ class consumer {
   OutputIterator iter_;
 
  public:
-  consumer(OutputIterator iter)
+  explicit consumer(OutputIterator iter)
       : iter_(iter) {
   }
   void operator()(Block& item) {
@@ -199,11 +208,17 @@ class ConsumerNode : public Sink<Block, StateMachine> {
     //  while (!sink_is_empty())
     //    ;
     //  { state == empty_empty ∨ state == full_empty }
-    Base::do_pull();
+    auto state_machine = Base::get_state_machine();
+
+    state_machine->do_pull();
     //  { state == empty_full ∨ state == full_full }
     //  extract sink item
     //  invoke consumer function
-    Base::do_drain();
+    auto b = Base::extract();
+    CHECK(b.has_value());
+    f_(*b);
+
+    state_machine->do_drain();
     //  { state == empty_empty ∨ state == full_empty ∨ state == empty_full ∨
     //  state == full_full } return item;
   }
