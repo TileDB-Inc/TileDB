@@ -207,7 +207,7 @@ TEST_CASE("Pseudo Nodes: Pass some data", "[pseudo_nodes]") {
 }
 
 TEST_CASE("Pseudo Nodes: Pass some data, random delays", "[pseudo_nodes]") {
-  size_t rounds = 43;
+  size_t rounds = 433;
 
   std::vector<size_t> v;
   size_t i{0};
