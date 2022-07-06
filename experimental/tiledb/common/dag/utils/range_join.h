@@ -44,6 +44,7 @@
 #define TILEDB_RANGE_JOIN_H
 
 #include <iterator>
+#include <numeric>
 #include <tuple>
 #include <type_traits>
 #include <utility>

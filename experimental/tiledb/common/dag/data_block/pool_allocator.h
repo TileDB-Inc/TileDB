@@ -74,19 +74,22 @@ class PoolAllocatorImpl {
   /*
    * Pointers and counters for managing the pool
    */
-  pointer the_free_list = nullptr;
-  pointer the_array_list = nullptr;
-  size_t num_arrays_ = 0;
-  size_t num_free_ = 0;
+  pointer the_free_list{nullptr};
+  pointer the_array_list{nullptr};
+  size_t num_arrays_{0};
+  size_t num_free_{0};
 
   constexpr static ptrdiff_t page_size{4096};
   constexpr static ptrdiff_t align{page_size};
   constexpr static ptrdiff_t page_mask{~(page_size - 1)};
 
-  /* 32M / chunk_size */
+  /* Size of each array in the memory pool is 32 MB */
   constexpr static size_t mem_size{32 * 1024 * 1024};
+
+  /* The number of chunks contained in each array */
   constexpr static size_t chunks_per_array{mem_size / chunk_size};
 
+  /* Check that chunks evenly divide the array */
   static_assert(mem_size % chunk_size == 0);
   static_assert(chunk_size <= mem_size);
 
@@ -97,14 +100,17 @@ class PoolAllocatorImpl {
    * Counters for statistics / diagnostics.  Declare these `inline` so we don't
    * need to define themm outside of the class itself.
    */
-  static inline std::atomic<size_t> num_instances_;
-  static inline std::atomic<size_t> num_allocations_;
-  static inline std::atomic<size_t> num_deallocations_;
-  static inline std::atomic<size_t> num_allocated_;
+  static inline std::atomic<size_t> num_instances_{0};
+  static inline std::atomic<size_t> num_allocations_{0};
+  static inline std::atomic<size_t> num_deallocations_{0};
+  static inline std::atomic<size_t> num_allocated_{0};
+  ;
 
   /**
    * Get a chunk from the free list.  The first `sizeof(pointer)` bytes in the
-   * chunk are used to create a linked list of chunks.
+   * chunk are used as a pointer to create a linked list of chunks.  Those bytes
+   * will be overwritten by the user of the chunk, which is fine -- a pointer
+   * will be written into those bytes when the chunk is returned to the pool.
    *
    * @pre a lock is held by function calling this one.
    */
@@ -121,7 +127,7 @@ class PoolAllocatorImpl {
   }
 
   /**
-   * Put a chunk back into the free list
+   * Return a chunk back into the pool's free list.
    *
    * @pre a lock is held by function calling this one.
    */
@@ -132,9 +138,9 @@ class PoolAllocatorImpl {
   }
 
   /**
-   * Allocates a new array of chunks and puts them on the free list.  Like
-   * chunks, The first `sizeof(pointer)` bytes in each array are used to create
-   * a linked list of arrays.
+   * Allocate a new array of chunks and puts the chunks into the free list. Like
+   * we do with chunks, the first `sizeof(pointer)` bytes in each array are used
+   * as a pointer to create a linked list of arrays.
    *
    * @pre a lock is held by function calling this one.
    */
@@ -163,6 +169,8 @@ class PoolAllocatorImpl {
 
   /**
    * Go through list of arrays, freeing each array
+   *
+   * @pre a lock is held by function calling this one.
    */
   void free_list_free() {
     pointer first_array = the_array_list;
@@ -183,7 +191,8 @@ class PoolAllocatorImpl {
 
  public:
   /**
-   * Use default constructor
+   * Any members in the class are default constructed.  We increment the
+   * `num_instance` counter.
    */
   PoolAllocatorImpl() {
     ++num_instances_;
