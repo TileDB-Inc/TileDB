@@ -45,7 +45,9 @@
 
 #include <iterator>
 #include <tuple>
+#include <type_traits>
 #include <utility>
+#include <vector>
 #include "arrow_proxy.hpp"
 
 #include "print_types.h"
@@ -96,15 +98,35 @@ class join {
   range_of_ranges_iterator outer_begin_;
   range_of_ranges_iterator outer_end_;
 
+  std::vector<size_t> offsets_;
+
  public:
   /**
    * Construct view from a range of ranges.  The
    * resulting view will appear as a single range, equal
    * to the concatenation of the inner ranges.
    */
+
+  // template <
+  //     typename U = RangeOfRanges,
+  //     typename = typename std::enable_if_t<std::is_same_v<
+  //         std::iterator_traits<U>,
+  //         std::random_access_iterator_tag>>>
+
   explicit join(RangeOfRanges& g)
       : outer_begin_(g.begin())
-      , outer_end_(g.end()) {
+      , outer_end_(g.end())
+      , offsets_(g.size() + 1) {
+    if constexpr (std::is_same_v<
+                      typename std::iterator_traits<
+                          typename RangeOfRanges::iterator>::iterator_category,
+                      std::random_access_iterator_tag>) {
+      for (size_t i = 0; i < g.size(); ++i) {
+        offsets_[i] = g[i].size();
+      }
+      std::exclusive_scan(
+          offsets_.begin(), offsets_.end(), offsets_.begin(), 0UL);
+    }
   }
 
   // Default copy constructor and assignment operators are fine.
@@ -256,6 +278,15 @@ class join {
   }
   const_iterator cend() const {
     return {outer_end_, outer_end_};
+  }
+
+  value_type& operator[](size_t i) {
+    auto it_j = std::upper_bound(offsets_.begin(), offsets_.end(), i) - 1;
+    auto idx_j = it_j - offsets_.begin();
+    auto j = *it_j;
+    auto k = i - j;
+    auto block = outer_begin_[idx_j];
+    return block[k];
   }
 
   std::size_t size() const {
