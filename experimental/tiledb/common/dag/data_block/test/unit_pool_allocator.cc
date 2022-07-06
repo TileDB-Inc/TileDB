@@ -362,13 +362,17 @@ void test_big_allocate() {
   std::vector<std::byte*> v(N);
   std::vector<std::byte*> w(N);
 
+  auto a = p.num_arrays();
   for (size_t i = 0; i < N; ++i) {
     v[i] = p.allocate();
   }
+  CHECK(a < p.num_arrays());
 
+  auto b = p.num_arrays();
   for (size_t i = 0; i < N; ++i) {
     p.deallocate(v[i]);
   }
+  CHECK(b == p.num_arrays());
 
   for (size_t i = 0; i < N; ++i) {
     w[i] = p.allocate();
@@ -377,6 +381,7 @@ void test_big_allocate() {
   for (size_t i = 0; i < N; ++i) {
     p.deallocate(w[i]);
   }
+  CHECK(b == p.num_arrays());
 }
 
 TEST_CASE(
