@@ -547,7 +547,8 @@ void QueryCondition::apply_ast_node(
   const auto type = array_schema.type(node_field_name);
 
   ByteVecValue fill_value;
-  if (node_field_name != constants::timestamps) {
+  if (node_field_name != constants::timestamps &&
+      node_field_name != constants::delete_timestamps) {
     if (!array_schema.is_dim(node_field_name)) {
       const auto attribute = array_schema.attribute(node_field_name);
       if (!attribute) {

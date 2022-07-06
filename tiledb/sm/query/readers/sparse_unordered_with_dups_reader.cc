@@ -151,6 +151,12 @@ template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   auto timer_se = stats_->start_timer("dowork");
 
+  // Make sure user didn't request delete timestamps.
+  if (buffers_.count(constants::delete_timestamps) != 0) {
+    return logger_->status(Status_SparseUnorderedWithDupsReaderError(
+        "Reader cannot process delete timestamps"));
+  }
+
   // Check that the query condition is valid.
   RETURN_NOT_OK(condition_.check(array_schema_));
 
@@ -1240,7 +1246,8 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         const auto& name = names[i];
         const auto var_sized = array_schema_.var_size(name);
         auto mem_usage = &total_mem_usage_per_attr[i];
-        const bool is_timestamps = name == constants::timestamps;
+        const bool is_timestamps = name == constants::timestamps ||
+                                   name == constants::delete_timestamps;
 
         // For dimensions, when we have a subarray, tiles are already all
         // loaded in memory.
@@ -1522,7 +1529,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
 
       // Clear tiles from memory.
       if (condition_.field_names().count(name) == 0 &&
-          (!subarray_.is_set() || !is_dim) && name != constants::timestamps) {
+          (!subarray_.is_set() || !is_dim) && name != constants::timestamps &&
+          name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);
       }
     }
