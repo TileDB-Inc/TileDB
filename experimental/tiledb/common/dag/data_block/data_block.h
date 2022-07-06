@@ -169,6 +169,14 @@ class DataBlockImpl {
     return data_t(data_, size_).rend();
   }
 
+  reference back() {
+    return data_[size_ - 1];
+  }
+
+  const_reference back() const {
+    return data_[size_ - 1];
+  }
+
   bool resize(size_t count) {
     if (count > capacity_) {
       return false;

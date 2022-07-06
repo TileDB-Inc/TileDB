@@ -335,8 +335,11 @@ TEST_CASE("DataBlock: Fill with std::fill", "[data_block]") {
   SECTION("chunk_size") {
     test_std_fill(chunk_size_);
   }
-  SECTION("chunk_size / 2") {
-    test_std_fill(chunk_size_ / 2);
+  SECTION("chunk_size / 2 + 1") {
+    test_std_fill(chunk_size_ / 2 + 1);
+  }
+  SECTION("chunk_size / 2 -1") {
+    test_std_fill(chunk_size_ / 2 - 1);
   }
 }
 

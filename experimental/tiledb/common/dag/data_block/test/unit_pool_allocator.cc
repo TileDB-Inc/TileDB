@@ -61,6 +61,16 @@ void test_alloc() {
   auto p1 = p.allocate();
   auto p2 = p.allocate();
   CHECK(p1 - p2 == sizeof(T));
+  CHECK(p.num_allocations() == 2);
+  CHECK(p.num_allocated() == 2);
+
+  /* Allocations work like malloc -- chunks must be deallocated */
+  CHECK(p.num_allocations() == 2);
+  CHECK(p.num_allocated() == 2);
+  p.deallocate(p2);
+  p.deallocate(p1);
+  CHECK(p.num_allocations() == 2);
+  CHECK(p.num_allocated() == 0);
 }
 
 template <class T>
@@ -77,6 +87,10 @@ void test_alloc_dealloc() {
   auto q2 = p.allocate();
   CHECK(p1 == q1);
   CHECK(p2 == q2);
+
+  p.deallocate(p2);
+  p.deallocate(p1);
+  CHECK(p.num_allocated() == 0);
 }
 
 template <class T>
@@ -93,6 +107,10 @@ void test_alloc_dealloc_scan() {
   auto q2 = p.allocate();
   CHECK(p1 == q1);
   CHECK(p2 == q2);
+
+  p.deallocate(p2);
+  p.deallocate(p1);
+  CHECK(p.num_allocated() == 0);
 }
 
 /**
@@ -117,7 +135,32 @@ TEST_CASE(
   }
 }
 
-#if 0
+template <class T>
+void test_alignment() {
+  const size_t page_size{4096};
+
+  PoolAllocator<sizeof(T)> p;
+
+  auto p1 = p.allocate();
+  size_t q1{reinterpret_cast<size_t>(p1)};
+  CHECK(q1 % page_size == 0);
+
+  p.deallocate(p1);
+  CHECK(p.num_allocated() == 0);
+}
+
+/**
+ * Test that chunks are page-aligned
+ */
+TEST_CASE("Pool Allocator: Test page alignment", "[PoolAllocator]") {
+  SECTION("big class") {
+    test_alignment<big_class>();
+  }
+
+  SECTION("small class") {
+    test_alignment<small_class>();
+  }
+}
 
 template <class T>
 void test_shared() {
@@ -156,8 +199,9 @@ void test_shared() {
   // Get top object of pool, should be p1 again
   auto p3 = p.allocate();
   CHECK(p1 == p3);
+  p.deallocate(p3);
+  CHECK(p.num_allocated() == 0);
 }
-
 
 /**
  * Test allocation and deallocation with std::shared_ptr
@@ -193,6 +237,9 @@ void test_singleton() {
   auto r2 = r.allocate();
   CHECK(p1 == r1);
   CHECK(p2 == r2);
+  p.deallocate(r2);
+  p.deallocate(r1);
+  CHECK(p.num_allocated() == 0);
 }
 
 template <class T>
@@ -220,6 +267,9 @@ void test_pool_allocator() {
   auto r2 = r.allocate();
   CHECK(p1 == r1);
   CHECK(p2 == r2);
+  p.deallocate(r2);
+  p.deallocate(r1);
+  CHECK(p.num_allocated() == 0);
 }
 
 /**
@@ -252,6 +302,9 @@ void test_both_allocators() {
   auto r2 = r.allocate();
   CHECK(p1 == r1);
   CHECK(p2 == r2);
+  p.deallocate(r2);
+  p.deallocate(r1);
+  CHECK(p.num_allocated() == 0);
 }
 
 /**
@@ -339,6 +392,7 @@ void test_big_allocate() {
   size_t N = 64'000'000 / sizeof(T);
 
   std::vector<std::byte*> v(N);
+  std::vector<std::byte*> w(N);
 
   for (size_t i = 0; i < N; ++i) {
     v[i] = p.allocate();
@@ -349,7 +403,11 @@ void test_big_allocate() {
   }
 
   for (size_t i = 0; i < N; ++i) {
-    CHECK(p.allocate() == v[N - 1 - i]);
+    w[i] = p.allocate();
+    CHECK(w[i] == v[N - 1 - i]);
+  }
+  for (size_t i = 0; i < N; ++i) {
+    p.deallocate(w[i]);
   }
 }
 
@@ -363,4 +421,108 @@ TEST_CASE(
     test_big_allocate<small_class>();
   }
 }
-#endif
+
+template <class T>
+void test_statistics() {
+  PoolAllocator<sizeof(T)> p;
+
+  CHECK(p.num_instances() == 1);
+
+  PoolAllocator<sizeof(T)> q;
+  CHECK(p.num_instances() == 1);
+  CHECK(q.num_instances() == 1);
+
+  PoolAllocator<sizeof(T)> r;
+  CHECK(p.num_instances() == 1);
+  CHECK(q.num_instances() == 1);
+  CHECK(r.num_instances() == 1);
+
+  PoolAllocator<sizeof(T)> s;
+  CHECK(p.num_instances() == 1);
+  CHECK(q.num_instances() == 1);
+  CHECK(r.num_instances() == 1);
+  CHECK(s.num_instances() == 1);
+
+  PoolAllocator<sizeof(T)> t;
+  CHECK(p.num_instances() == 1);
+  CHECK(q.num_instances() == 1);
+  CHECK(r.num_instances() == 1);
+  CHECK(s.num_instances() == 1);
+  CHECK(t.num_instances() == 1);
+
+  {
+    auto p1 = p.allocate();
+    q.deallocate(p1);
+    auto r1 = r.allocate();
+    CHECK(r1 == p1);
+    s.deallocate(r1);
+    auto t1 = t.allocate();
+    CHECK(t1 == p1);
+    p.deallocate(t1);
+  }
+  CHECK(q.num_allocated() == 0);
+
+  {
+    auto f = q.num_free();
+
+    CHECK(p.num_allocated() == 0);
+    [[maybe_unused]] auto p1 = p.allocate();
+    CHECK(r.num_free() == f - 1);
+    CHECK(q.num_allocated() == 1);
+    [[maybe_unused]] auto q1 = q.allocate();
+    CHECK(s.num_free() == f - 2);
+    CHECK(r.num_allocated() == 2);
+    [[maybe_unused]] auto r1 = r.allocate();
+    CHECK(t.num_free() == f - 3);
+    CHECK(s.num_allocated() == 3);
+    [[maybe_unused]] auto s1 = s.allocate();
+    CHECK(p.num_free() == f - 4);
+    CHECK(t.num_allocated() == 4);
+
+    t.deallocate(s1);
+    s.deallocate(r1);
+    r.deallocate(q1);
+    q.deallocate(p1);
+    CHECK(p.num_free() == f);
+  }
+  CHECK(q.num_allocated() == 0);
+
+  auto n = q.num_allocations();
+  CHECK(n != 0);
+
+  auto m = s.num_allocations();
+  CHECK(m != 0);
+  {
+    CHECK(q.num_allocations() == n);
+    [[maybe_unused]] auto p1 = p.allocate();
+    CHECK(q.num_allocations() == n + 1);
+
+    [[maybe_unused]] auto q1 = q.allocate();
+    CHECK(r.num_allocations() == n + 2);
+    [[maybe_unused]] auto r1 = r.allocate();
+    CHECK(s.num_allocations() == n + 3);
+    [[maybe_unused]] auto s1 = s.allocate();
+    CHECK(t.num_allocations() == n + 4);
+
+    CHECK(r.num_deallocations() == m);
+    t.deallocate(s1);
+    CHECK(r.num_deallocations() == m + 1);
+    s.deallocate(r1);
+    CHECK(r.num_deallocations() == m + 2);
+    r.deallocate(q1);
+    CHECK(r.num_deallocations() == m + 3);
+    q.deallocate(p1);
+    CHECK(r.num_deallocations() == m + 4);
+  }
+}
+
+TEST_CASE(
+    "Pool Allocator: Test statistics functions and consistency thereof",
+    "[PoolAllocator]") {
+  SECTION("big class") {
+    test_statistics<big_class>();
+  }
+  SECTION("small class") {
+    test_statistics<small_class>();
+  }
+}
