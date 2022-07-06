@@ -238,59 +238,37 @@ TEST_CASE("Pseudo Nodes: Pass some data, random delays", "[pseudo_nodes]") {
     }
   };
 
-  SECTION("Async Nodes a, b, a, b") {
-    CHECK(v.size() == 0);
+  CHECK(v.size() == 0);
 
+  SECTION("Async Nodes a, b, a, b") {
     auto fut_a = std::async(std::launch::async, fun_a);
     auto fut_b = std::async(std::launch::async, fun_b);
     fut_a.get();
     fut_b.get();
-
-    CHECK(v.size() == rounds);
-    for (size_t i = 0; i < rounds; ++i) {
-      CHECK(v[i] == i);
-    }
   }
 
   SECTION("Async Nodes a, b, b, a") {
-    CHECK(v.size() == 0);
-
     auto fut_a = std::async(std::launch::async, fun_a);
     auto fut_b = std::async(std::launch::async, fun_b);
     fut_b.get();
     fut_a.get();
-
-    CHECK(v.size() == rounds);
-    for (size_t i = 0; i < rounds; ++i) {
-      CHECK(v[i] == i);
-    }
   }
 
   SECTION("Async Nodes b, a, a, b") {
-    CHECK(v.size() == 0);
-
     auto fut_b = std::async(std::launch::async, fun_b);
     auto fut_a = std::async(std::launch::async, fun_a);
     fut_a.get();
     fut_b.get();
-
-    CHECK(v.size() == rounds);
-    for (size_t i = 0; i < rounds; ++i) {
-      CHECK(v[i] == i);
-    }
   }
 
   SECTION("Async Nodes b, a, b, a") {
-    CHECK(v.size() == 0);
-
     auto fut_b = std::async(std::launch::async, fun_b);
     auto fut_a = std::async(std::launch::async, fun_a);
     fut_b.get();
     fut_a.get();
-
-    CHECK(v.size() == rounds);
-    for (size_t i = 0; i < rounds; ++i) {
-      CHECK(v[i] == i);
-    }
+  }
+  CHECK(v.size() == rounds);
+  for (size_t i = 0; i < rounds; ++i) {
+    CHECK(v[i] == i);
   }
 }
