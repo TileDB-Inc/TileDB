@@ -31,13 +31,22 @@
  * a view of a single container.  Modeled after std::ranges::join (and
  * derived from NWGraph hierarchical graph container).
  *
+ * The view takes a container of containers (a range of ranges) and presents a
+ * view that is a single contiguous range, with elements in the same order as
+ * determined by the order of the inner ranges within the outer range.  As a
+ * view, the joined view object refers to the actual ranges in the range of
+ * ranges.  That is, changing an element in one of the inner ranges will be seen
+ * in the joined range -- and vice versa.
+ *
  * Todo: Add variadic constructor / initializer list constructor so
  * that a range_join view can be constructed from a collection of
  * containers, rather than having to explicitly form a container
  * of containers (which could be expensive to construct).
  *
- * Todo: Create a random_access_range view if the constituent inner
- * ranges are random_access.
+ * Todo: Create a random_access_range view if the constituent inner ranges are
+ * random_access.  The simple case would also require that the outer range by
+ * random access.  A non-random access outer range would require the joined view
+ * to construct its own random access range over the inner ranges.
  */
 
 #ifndef TILEDB_RANGE_JOIN_H
@@ -50,8 +59,6 @@
 #include <utility>
 #include <vector>
 #include "arrow_proxy.hpp"
-
-#include "print_types.h"
 
 namespace tiledb::common {
 
@@ -145,6 +152,11 @@ class join {
    * Iterator class for the joined data structure.  Currently it is a (legacy)
    * forward iterator.
    *
+   * @tparam a `bool` indicating whether the definition of the iterator is for a
+   * const or non-const iterator.  This hack avoids having to duplicate all of
+   * the boilerplate required for separately implementing the iterator class and
+   * the const iterator class.
+   *
    * @todo Implement to support legacy random access iterator.  Operator[]
    * should be fairly straightforward using the `offsets` array from the
    * view the iterator belongs to.
@@ -181,6 +193,12 @@ class join {
       first_ += step;
     }
 
+    /*
+     * Function that increments the inner iterator and properly updates the
+     * outer iterator if the inner iterator crosses container boundaries.  Works
+     * for empty inner ranges, including the case where an inner empty range is
+     * at the beginning or end of the viewed range of ranges.
+     */
     void check() {
       while (inner_begin_ == inner_end_ &&
              first_ !=
@@ -272,6 +290,8 @@ class join {
       return {**this};
     }
 
+    //  Functions appropriate for a random access iterator (a todo)
+    //
     //    difference_type operator-(const join_iterator& b) const {
     //      return first_ - b.first_;
     //    }
@@ -353,6 +373,10 @@ class join {
   }
 };
 
+/**
+ * Function to generate joined views from a container of containers (a range of
+ * ranges).
+ */
 template <class RangeOfRanges>
 static inline join<RangeOfRanges> make_join(RangeOfRanges& g) {
   return {g};
