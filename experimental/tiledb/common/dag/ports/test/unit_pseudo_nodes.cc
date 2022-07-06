@@ -34,6 +34,7 @@
 #include <vector>
 #include "../fsm.h"
 #include "../ports.h"
+#include "helpers.h"
 #include "pseudo_nodes.h"
 
 using namespace tiledb::common;
@@ -147,6 +148,95 @@ TEST_CASE("Pseudo Nodes: Pass some data", "[pseudo_nodes]") {
     CHECK(v[1] == 1);
     CHECK(v[2] == 2);
   }
+
+  SECTION("Async Nodes a, b, a, b") {
+    CHECK(v.size() == 0);
+
+    auto fut_a = std::async(std::launch::async, fun_a);
+    auto fut_b = std::async(std::launch::async, fun_b);
+    fut_a.get();
+    fut_b.get();
+
+    CHECK(v.size() == rounds);
+    for (size_t i = 0; i < rounds; ++i) {
+      CHECK(v[i] == i);
+    }
+  }
+
+  SECTION("Async Nodes a, b, b, a") {
+    CHECK(v.size() == 0);
+
+    auto fut_a = std::async(std::launch::async, fun_a);
+    auto fut_b = std::async(std::launch::async, fun_b);
+    fut_b.get();
+    fut_a.get();
+
+    CHECK(v.size() == rounds);
+    for (size_t i = 0; i < rounds; ++i) {
+      CHECK(v[i] == i);
+    }
+  }
+
+  SECTION("Async Nodes b, a, a, b") {
+    CHECK(v.size() == 0);
+
+    auto fut_b = std::async(std::launch::async, fun_b);
+    auto fut_a = std::async(std::launch::async, fun_a);
+    fut_a.get();
+    fut_b.get();
+
+    CHECK(v.size() == rounds);
+    for (size_t i = 0; i < rounds; ++i) {
+      CHECK(v[i] == i);
+    }
+  }
+
+  SECTION("Async Nodes b, a, b, a") {
+    CHECK(v.size() == 0);
+
+    auto fut_b = std::async(std::launch::async, fun_b);
+    auto fut_a = std::async(std::launch::async, fun_a);
+    fut_b.get();
+    fut_a.get();
+
+    CHECK(v.size() == rounds);
+    for (size_t i = 0; i < rounds; ++i) {
+      CHECK(v[i] == i);
+    }
+  }
+}
+
+TEST_CASE("Pseudo Nodes: Pass some data, random delays", "[pseudo_nodes]") {
+  size_t rounds = 43;
+
+  std::vector<size_t> v;
+  size_t i{0};
+
+  ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> r(
+      [&](size_t i) {
+        v.push_back(i);
+        std::this_thread::sleep_for(std::chrono::microseconds(random_us(1234)));
+      });
+  ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> p([&]() {
+    std::this_thread::sleep_for(std::chrono::microseconds(random_us(1234)));
+    return i++;
+  });
+
+  attach(p, r);
+
+  auto fun_a = [&]() {
+    size_t N = rounds;
+    while (N--) {
+      p.get();
+    }
+  };
+
+  auto fun_b = [&]() {
+    size_t N = rounds;
+    while (N--) {
+      r.put();
+    }
+  };
 
   SECTION("Async Nodes a, b, a, b") {
     CHECK(v.size() == 0);
