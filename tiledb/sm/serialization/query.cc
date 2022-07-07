@@ -1251,9 +1251,8 @@ Status query_to_capnp(
     bool all_dense = true;
     for (auto& frag_md : array->fragment_metadata())
       all_dense &= frag_md->dense();
-    if (query.use_refactored_sparse_unordered_with_dups_reader() &&
-        !schema.dense() && layout == Layout::UNORDERED &&
-        schema.allows_dups()) {
+    if (query.use_refactored_sparse_unordered_with_dups_reader(
+            layout, schema)) {
       auto builder = query_builder->initReaderIndex();
 
       auto&& [st, non_overlapping_ranges]{query.non_overlapping_ranges()};
@@ -1277,10 +1276,8 @@ Status query_to_capnp(
         query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
         RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
       }
-    } else if (
-        query.use_refactored_sparse_global_order_reader() && !schema.dense() &&
-        (query.condition() == nullptr || query.condition()->empty()) &&
-        (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED)) {
+    } else if (query.use_refactored_sparse_global_order_reader(
+                   layout, schema)) {
       auto builder = query_builder->initReaderIndex();
 
       auto&& [st, non_overlapping_ranges]{query.non_overlapping_ranges()};
@@ -1303,8 +1300,7 @@ Status query_to_capnp(
         query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
         RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
       }
-    } else if (
-        query.use_refactored_dense_reader() && all_dense && schema.dense()) {
+    } else if (query.use_refactored_dense_reader(schema, all_dense)) {
       auto builder = query_builder->initDenseReader();
       auto reader = (DenseReader*)query.strategy();
 

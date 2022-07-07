@@ -883,13 +883,16 @@ class Query {
   shared_ptr<Buffer> rest_scratch() const;
 
   /** Use the refactored dense reader or not. */
-  bool use_refactored_dense_reader();
+  bool use_refactored_dense_reader(
+      const ArraySchema& array_schema, bool all_dense);
 
   /** Use the refactored sparse global order reader or not. */
-  bool use_refactored_sparse_global_order_reader();
+  bool use_refactored_sparse_global_order_reader(
+      Layout layout, const ArraySchema& array_schema);
 
   /** Use the refactored sparse unordered with dups reader or not. */
-  bool use_refactored_sparse_unordered_with_dups_reader();
+  bool use_refactored_sparse_unordered_with_dups_reader(
+      Layout layout, const ArraySchema& array_schema);
 
   /** Returns if all ranges for this query are non overlapping. */
   tuple<Status, optional<bool>> non_overlapping_ranges();
