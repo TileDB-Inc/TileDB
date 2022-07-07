@@ -1279,6 +1279,7 @@ Status query_to_capnp(
       }
     } else if (
         query.use_refactored_sparse_global_order_reader() && !schema.dense() &&
+        (query.condition() == nullptr || query.condition()->empty()) &&
         (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED)) {
       auto builder = query_builder->initReaderIndex();
 
@@ -1830,7 +1831,7 @@ Status query_from_capnp(
   // heterogeneous coordinate changes
   if (type == QueryType::READ) {
     if (query_reader.hasReaderIndex() && !schema.dense() &&
-        layout == Layout::GLOBAL_ORDER) {
+        (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED)) {
       // Strategy needs to be cleared here to create the correct reader.
       query->clear_strategy();
       RETURN_NOT_OK(query->set_layout_unsafe(layout));
