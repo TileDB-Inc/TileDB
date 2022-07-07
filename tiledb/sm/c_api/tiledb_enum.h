@@ -27,7 +27,7 @@
 // clang-format off
 /**
  * NOTE: The values of these enums are serialized to the array schema and/or
- * fragment metadata. Therefore, the values below should never change, 
+ * fragment metadata. Therefore, the values below should never change,
  * otherwise backwards compatibility breaks.
  */
 #ifdef TILEDB_QUERY_TYPE_ENUM

@@ -124,7 +124,7 @@ Status FloatScalingFilter::run_forward(
           input_metadata, input, output_metadata, output);
     } break;
     default: {
-      throw std::runtime_error(
+      throw std::logic_error(
           "FloatScalingFilter::run_forward: byte_width_ does not reflect the "
           "size of an integer type.");
     }
@@ -149,7 +149,7 @@ Status FloatScalingFilter::run_forward(
           input_metadata, input, output_metadata, output);
     } break;
     default: {
-      throw std::runtime_error(
+      throw std::logic_error(
           "FloatScalingFilter::run_forward: tile_type_size does not reflect "
           "the size of a floating point type.");
     }
@@ -219,7 +219,7 @@ Status FloatScalingFilter::run_reverse(
           input_metadata, input, output_metadata, output);
     } break;
     default: {
-      throw std::runtime_error(
+      throw std::logic_error(
           "FloatScalingFilter::run_reverse: byte_width_ does not reflect the "
           "size of an integer type.");
     }
@@ -246,7 +246,7 @@ Status FloatScalingFilter::run_reverse(
           input_metadata, input, output_metadata, output);
     } break;
     default: {
-      throw std::runtime_error(
+      throw std::logic_error(
           "FloatScalingFilter::run_reverse: tile_type_size does not reflect "
           "the size of a floating point type.");
     }

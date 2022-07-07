@@ -35,7 +35,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/query/sparse_global_order_reader.h"
+#include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 
 using namespace tiledb;
 using namespace tiledb::test;
@@ -303,7 +303,7 @@ void ConsolidationWithTimestampsFx::read_sparse(
     query.set_data_buffer(tiledb_timestamps(), *timestamps_ptr);
   }
 
-  // Submit/finalize the query.
+  // Submit the query.
   query.submit();
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
@@ -339,7 +339,7 @@ void ConsolidationWithTimestampsFx::reopen_sparse(
     query.set_data_buffer(tiledb_timestamps(), *timestamps_ptr);
   }
 
-  // Submit/finalize the query.
+  // Submit the query.
   query.submit();
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
@@ -518,6 +518,10 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidation with timestamps, check directory contents of "
     "old array",
     "[cppapi][consolidation-with-timestamps][sparse-unordered-with-dups]") {
+  if constexpr (is_experimental_build) {
+    return;
+  }
+
   remove_sparse_array();
   create_sparse_array_v11();
   // Write first fragment.
@@ -699,7 +703,7 @@ TEST_CASE_METHOD(
   // Will only allow to load two tiles out of 3.
   Config cfg;
   cfg.set("sm.mem.total_budget", "10000");
-  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.35");
+  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.4");
   ctx_ = Context(cfg);
 
   std::string stats;
@@ -748,7 +752,7 @@ TEST_CASE_METHOD(
   // Will only allow to load two tiles out of 3.
   Config cfg;
   cfg.set("sm.mem.total_budget", "10000");
-  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.35");
+  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.4");
   ctx_ = Context(cfg);
 
   std::string stats;
@@ -963,7 +967,6 @@ TEST_CASE_METHOD(
   }
 
   std::string stats;
-  // TBD: why 15 in user buffer not enough?
   std::vector<int> a(16);
   std::vector<uint64_t> dim1(16);
   std::vector<uint64_t> dim2(16);
@@ -1690,6 +1693,78 @@ TEST_CASE_METHOD(
     CHECK(!memcmp(
         c_ts.data(), timestamps.data(), c_ts.size() * sizeof(uint64_t)));
   }
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationWithTimestampsFx,
+    "CPP API: Test consolidation with timestamps, ts tiles kept in memory",
+    "[cppapi][consolidation-with-timestamps][ts-tile-in-memory]") {
+  remove_sparse_array();
+
+  // Enable duplicates.
+  create_sparse_array(true);
+
+  // Write first fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+  // Write second fragment.
+  write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3);
+
+  // Consolidate first 2 fragments into 1:3
+  consolidate_sparse(true);
+
+  std::vector<int> a1(4);
+  std::vector<uint64_t> dim1(4);
+  std::vector<uint64_t> dim2(4);
+  std::vector<uint64_t> timestamps(4);
+  tiledb_layout_t layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
+  // Open array.
+  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ);
+
+  // Create query.
+  Query query(ctx_, array, TILEDB_READ);
+  query.set_layout(layout);
+  query.set_data_buffer("a1", a1);
+  query.set_data_buffer("d1", dim1);
+  query.set_data_buffer("d2", dim2);
+  query.set_data_buffer(tiledb_timestamps(), timestamps);
+
+  // Submit the query.
+  query.submit();
+  CHECK(query.query_status() == Query::Status::INCOMPLETE);
+
+  // Validate.
+  std::vector<int> c_a = {0, 1, 4, 2};
+  std::vector<uint64_t> c_dim1 = {1, 1, 2, 1};
+  std::vector<uint64_t> c_dim2 = {1, 2, 2, 4};
+  std::vector<uint64_t> c_ts = {1, 1, 3, 1};
+  CHECK(!memcmp(c_a.data(), a1.data(), c_a.size() * sizeof(int)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+  CHECK(
+      !memcmp(c_ts.data(), timestamps.data(), c_ts.size() * sizeof(uint64_t)));
+
+  // Submit again.
+  query.submit();
+  CHECK(query.query_status() == Query::Status::COMPLETE);
+
+  // Validate.
+  std::vector<int> c_a_2 = {3, 5, 6, 7};
+  std::vector<uint64_t> c_dim1_2 = {2, 2, 3, 3};
+  std::vector<uint64_t> c_dim2_2 = {3, 4, 2, 3};
+  std::vector<uint64_t> c_ts_2 = {1, 3, 3, 3};
+  CHECK(!memcmp(c_a_2.data(), a1.data(), c_a_2.size() * sizeof(int)));
+  CHECK(!memcmp(
+      c_dim1_2.data(), dim1.data(), c_dim1_2.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(
+      c_dim2_2.data(), dim2.data(), c_dim2_2.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(
+      c_ts_2.data(), timestamps.data(), c_ts_2.size() * sizeof(uint64_t)));
+
+  // Close array.
+  array.close();
 
   remove_sparse_array();
 }

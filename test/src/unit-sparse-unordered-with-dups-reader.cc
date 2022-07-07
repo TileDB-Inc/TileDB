@@ -35,8 +35,8 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query_buffer.h"
-#include "tiledb/sm/query/sparse_index_reader_base.h"
-#include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
+#include "tiledb/sm/query/readers/sparse_index_reader_base.h"
+#include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -770,9 +770,9 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
-  // Two result tile (2 * ~505) will be bigger than the budget (800).
+  // Two result tile (2 * ~888) will be bigger than the budget (1000).
   total_budget_ = "10000";
-  ratio_coords_ = "0.08";
+  ratio_coords_ = "0.1";
   update_config();
 
   tiledb_array_t* array = nullptr;

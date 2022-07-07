@@ -42,12 +42,11 @@ bool ASTNodeVal::is_expr() const {
 }
 
 tdb_unique_ptr<ASTNode> ASTNodeVal::clone() const {
-  return tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal,
-      field_name_,
-      condition_value_data_.data(),
-      condition_value_data_.size(),
-      op_));
+  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeVal, *this));
+}
+
+tdb_unique_ptr<ASTNode> ASTNodeVal::get_negated_tree() const {
+  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeVal, *this, ASTNegation));
 }
 
 void ASTNodeVal::get_field_names(
@@ -61,13 +60,12 @@ bool ASTNodeVal::is_backwards_compatible() const {
 
 Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   const uint64_t condition_value_size = condition_value_data_.size();
-  const auto attribute = array_schema.attribute(field_name_);
-  // Check that the field_name represents an attribute in the array
-  // schema corresponding to this QueryCondition object.
-  if (!attribute) {
-    return Status_QueryConditionError(
-        "Value node field name is not an attribute " + field_name_);
-  }
+
+  const auto nullable = array_schema.is_nullable(field_name_);
+  const auto var_size = array_schema.var_size(field_name_);
+  const auto type = array_schema.type(field_name_);
+  const auto cell_size = array_schema.cell_size(field_name_);
+  const auto cell_val_num = array_schema.cell_val_num(field_name_);
 
   // Ensure that null value can only be used with equality operators.
   if (condition_value_view_.content() == nullptr) {
@@ -78,9 +76,8 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
     // Ensure that an attribute that is marked as nullable
     // corresponds to a type that is nullable.
-    if ((!attribute->nullable()) &&
-        (attribute->type() != Datatype::STRING_ASCII &&
-         attribute->type() != Datatype::CHAR)) {
+    if ((!nullable) &&
+        (type != Datatype::STRING_ASCII && type != Datatype::CHAR)) {
       return Status_QueryConditionError(
           "Null value can only be used with nullable attributes");
     }
@@ -88,8 +85,7 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
   // Ensure that non-empty attributes are only var-sized for
   // ASCII strings.
-  if (attribute->var_size() && attribute->type() != Datatype::STRING_ASCII &&
-      attribute->type() != Datatype::CHAR &&
+  if (var_size && type != Datatype::STRING_ASCII && type != Datatype::CHAR &&
       condition_value_view_.content() != nullptr) {
     return Status_QueryConditionError(
         "Value node non-empty attribute may only be var-sized for ASCII "
@@ -98,9 +94,8 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   }
 
   // Ensure that non string fixed size attributes store only one value per cell.
-  if (attribute->cell_val_num() != 1 &&
-      attribute->type() != Datatype::STRING_ASCII &&
-      attribute->type() != Datatype::CHAR && (!attribute->var_size())) {
+  if (cell_val_num != 1 && type != Datatype::STRING_ASCII &&
+      type != Datatype::CHAR && (!var_size)) {
     return Status_QueryConditionError(
         "Value node attribute must have one value per cell for non-string "
         "fixed size attributes: " +
@@ -109,19 +104,17 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
   // Ensure that the condition value size matches the attribute's
   // value size.
-  if (attribute->cell_size() != constants::var_size &&
-      attribute->cell_size() != condition_value_size &&
-      !(attribute->nullable() && condition_value_view_.content() == nullptr) &&
-      attribute->type() != Datatype::STRING_ASCII &&
-      attribute->type() != Datatype::CHAR && (!attribute->var_size())) {
+  if (cell_size != constants::var_size && cell_size != condition_value_size &&
+      !(nullable && condition_value_view_.content() == nullptr) &&
+      type != Datatype::STRING_ASCII && type != Datatype::CHAR && (!var_size)) {
     return Status_QueryConditionError(
         "Value node condition value size mismatch: " +
-        std::to_string(attribute->cell_size()) +
+        std::to_string(cell_size) +
         " != " + std::to_string(condition_value_size));
   }
 
   // Ensure that the attribute type is valid.
-  switch (attribute->type()) {
+  switch (type) {
     case Datatype::ANY:
       return Status_QueryConditionError(
           "Value node attribute type may not be of type 'ANY': " + field_name_);
@@ -136,6 +129,7 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
     default:
       break;
   }
+
   return Status::Ok();
 }
 
@@ -164,9 +158,11 @@ tdb_unique_ptr<ASTNode> ASTNodeVal::combine(
 const std::string& ASTNodeVal::get_field_name() const {
   return field_name_;
 }
+
 const UntypedDatumView& ASTNodeVal::get_condition_value_view() const {
   return condition_value_view_;
 }
+
 const QueryConditionOp& ASTNodeVal::get_op() const {
   return op_;
 }
@@ -175,6 +171,7 @@ const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeVal::get_children() const {
   throw std::runtime_error(
       "ASTNodeVal::get_children: Cannot get children from an AST value node.");
 }
+
 const QueryConditionCombinationOp& ASTNodeVal::get_combination_op() const {
   throw std::runtime_error(
       "ASTNodeVal::get_combination_op: Cannot get combination op from an AST "
@@ -186,12 +183,11 @@ bool ASTNodeExpr::is_expr() const {
 }
 
 tdb_unique_ptr<ASTNode> ASTNodeExpr::clone() const {
-  std::vector<tdb_unique_ptr<ASTNode>> nodes_copy;
-  for (const auto& node : nodes_) {
-    nodes_copy.push_back(node->clone());
-  }
-  return tdb_unique_ptr<ASTNode>(
-      tdb_new(ASTNodeExpr, std::move(nodes_copy), combination_op_));
+  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeExpr, *this));
+}
+
+tdb_unique_ptr<ASTNode> ASTNodeExpr::get_negated_tree() const {
+  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeExpr, *this, ASTNegation));
 }
 
 void ASTNodeExpr::get_field_names(
@@ -256,11 +252,13 @@ const std::string& ASTNodeExpr::get_field_name() const {
       "ASTNodeExpr::get_field_name: Cannot get field name from an AST "
       "expression node.");
 }
+
 const UntypedDatumView& ASTNodeExpr::get_condition_value_view() const {
   throw std::runtime_error(
       "ASTNodeExpr::get_condition_value_view: Cannot get condition value view "
       "from an AST expression node.");
 }
+
 const QueryConditionOp& ASTNodeExpr::get_op() const {
   throw std::runtime_error(
       "ASTNodeExpr::get_op: Cannot get op from an AST expression node.");

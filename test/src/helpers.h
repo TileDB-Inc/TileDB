@@ -66,6 +66,16 @@ extern std::mutex catch2_macro_mutex;
     REQUIRE(a);                                           \
   }
 
+// A variant of the CHECK macro for checking C API return value equals
+// TILEDB_OK.
+#define CHECK_TILEDB_OK(a) \
+  { CHECK(a == TILEDB_OK); }
+
+// A variant of the REQUIRE macro for checking C API return value equals
+// TILEDB_OK.
+#define REQUIRE_TILEDB_OK(a) \
+  { REQUIRE(a == TILEDB_OK); }
+
 namespace tiledb {
 
 namespace sm {
