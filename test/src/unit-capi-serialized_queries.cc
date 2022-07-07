@@ -160,10 +160,10 @@ struct SerializationFx {
     schema.set_domain(domain);
 
     schema.add_attribute(Attribute::create<uint32_t>(ctx, "a1"));
-    // schema.add_attribute(
-    // Attribute::create<std::array<uint32_t, 2>>(ctx, "a2").set_nullable(
-    // true));
-    // schema.add_attribute(Attribute::create<std::vector<char>>(ctx, "a3"));
+    schema.add_attribute(
+        Attribute::create<std::array<uint32_t, 2>>(ctx, "a2").set_nullable(
+            true));
+    schema.add_attribute(Attribute::create<std::vector<char>>(ctx, "a3"));
 
     Array::create(array_uri, schema);
   }
@@ -1344,8 +1344,18 @@ TEST_CASE_METHOD(
   // Build input data
   uint64_t ncells = 100;
   std::vector<uint32_t> a1;
+  std::vector<uint32_t> a2;
+  std::vector<uint8_t> a2_nullable;
+  std::vector<char> a3_data;
+  std::vector<uint64_t> a3_offsets;
   for (uint64_t i = 0; i < ncells; i++) {
     a1.push_back(i);
+    a2.push_back(i);
+    a2.push_back(2 * i);
+    a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
+    std::string a3 = "abcd";
+    a3_offsets.push_back(i % 2 * 4);
+    a3_data.insert(a3_data.end(), a3.begin(), a3.end());
   }
 
   Array array(ctx, array_uri, TILEDB_WRITE);
@@ -1354,7 +1364,7 @@ TEST_CASE_METHOD(
   query.set_layout(TILEDB_GLOBAL_ORDER);
 
   // This needs to be tile-aligned
-  uint64_t chunk_size = 4;
+  uint64_t chunk_size = 2;
 
   uint64_t last_space_tile =
       (ncells / chunk_size + static_cast<uint64_t>(ncells % chunk_size != 0)) *
@@ -1367,6 +1377,12 @@ TEST_CASE_METHOD(
   uint64_t end = chunk_size - 1;
   while (begin < end) {
     query.set_data_buffer("a1", a1.data() + begin, end - begin + 1);
+    query.set_data_buffer("a2", a2.data() + begin * 2, (end - begin + 1) * 2);
+    query.set_validity_buffer(
+        "a2", a2_nullable.data() + begin, end - begin + 1);
+    query.set_data_buffer(
+        "a3", a3_data.data() + begin * 4, (end - begin + 1) * 4);
+    query.set_offsets_buffer("a3", a3_offsets.data() + begin, end - begin + 1);
     begin += chunk_size;
     end = std::min(ncells - 1, end + chunk_size);
 
@@ -1396,17 +1412,36 @@ TEST_CASE_METHOD(
   {
     Array array(ctx, array_uri, TILEDB_READ);
     Query query(ctx, array);
-    std::vector<uint32_t> a2(ncells, 1);
+    std::vector<uint32_t> a1_result(ncells);
+    std::vector<uint32_t> a2_result(ncells * 2);
+    std::vector<uint8_t> a2_result_nullable(ncells);
+    std::vector<char> a3_result_data(4 * ncells);
+    std::vector<uint64_t> a3_result_offsets(ncells);
     Subarray subarray(ctx, array);
     subarray.add_range(0, static_cast<uint64_t>(0), ncells - 1);
     query.set_subarray(subarray);
-    query.set_data_buffer("a1", a2.data(), a2.size());
+    query.set_data_buffer("a1", a1_result.data(), a1_result.size());
+    query.set_data_buffer("a2", a2_result.data(), a2_result.size());
+    query.set_validity_buffer(
+        "a2", a2_result_nullable.data(), a2_result_nullable.size());
+    query.set_data_buffer("a3", a3_result_data.data(), a3_result_data.size());
+    query.set_offsets_buffer(
+        "a3", a3_result_offsets.data(), a3_result_offsets.size());
 
     query.submit();
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
     for (uint64_t i = 0; i < ncells; ++i) {
-      CHECK(a1[i] == a2[i]);
+      CHECK(a1[i] == a1_result[i]);
+    }
+    for (uint64_t i = 0; i < ncells * 2; ++i) {
+      CHECK(a2[i] == a2_result[i]);
+    }
+    for (uint64_t i = 0; i < ncells; ++i) {
+      CHECK(a2_nullable[i] == a2_result_nullable[i]);
+    }
+    for (uint64_t i = 0; i < ncells * 4; ++i) {
+      CHECK(a3_data[i] == a3_result_data[i]);
     }
   }
 }

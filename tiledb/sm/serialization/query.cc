@@ -1221,6 +1221,7 @@ Status writer_from_capnp(
     // new Query object
     if (!global_writer->get_global_state()) {
       RETURN_NOT_OK(global_writer->alloc_global_write_state());
+      RETURN_NOT_OK(global_writer->init_global_write_state());
     }
     RETURN_NOT_OK(global_write_state_from_capnp(
         query,
