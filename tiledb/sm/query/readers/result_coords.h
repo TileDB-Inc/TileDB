@@ -179,7 +179,7 @@ struct GlobalOrderResultCoords
    * Get the maximum slab length that can be created (when there's no other
    * fragments left).
    *
-   * @return Max slab length that can be merge for this tile.
+   * @return Max slab length that can be merged for this tile.
    */
   uint64_t max_slab_length() {
     uint64_t ret = 1;
@@ -227,7 +227,7 @@ struct GlobalOrderResultCoords
    * @param cmp The comparator class. Calling cmp(current, next) should tell us
    * if current is bigger or equal than next in the order of the comparator.
    *
-   * @return Max slab length that can be merge for this tile.
+   * @return Max slab length that can be merged for this tile.
    */
   template <class CompType>
   uint64_t max_slab_length(
@@ -312,10 +312,11 @@ struct GlobalOrderResultCoords
     while (left != right - 1) {
       // Check against mid.
       base::pos_ = left + (right - left) / 2;
-      if (!cmp(*this, next))
+      if (!cmp(*this, next)) {
         left = base::pos_;
-      else
+      } else {
         right = base::pos_;
+      }
     }
 
     // Restore the original position and return.
