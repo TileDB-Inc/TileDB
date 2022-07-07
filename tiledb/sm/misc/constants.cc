@@ -373,6 +373,9 @@ const std::string filter_checksum_sha256_str = "CHECKSUM_SHA256";
 /** String describing FILTER_DICTIONARY. */
 const std::string filter_dictionary_str = "DICTIONARY_ENCODING";
 
+/** String describing FILTER_SCALE_FLOAT. */
+const std::string filter_scale_float_str = "SCALE_FLOAT";
+
 /** The string representation for FilterOption type compression_level. */
 const std::string filter_option_compression_level_str = "COMPRESSION_LEVEL";
 
@@ -380,10 +383,19 @@ const std::string filter_option_compression_level_str = "COMPRESSION_LEVEL";
 const std::string filter_option_bit_width_max_window_str =
     "BIT_WIDTH_MAX_WINDOW";
 
-/** The string representation for FilterOption type positive_delta_max_window.
+/** The string representation for FilterOption type positives_delta_max_window.
  */
 const std::string filter_option_positive_delta_max_window_str =
     "POSITIVE_DELTA_MAX_WINDOW";
+
+/** The string representation for FilterOption type scale_float_bytewidth. */
+const std::string filter_option_scale_float_bytewidth = "SCALE_FLOAT_BYTEWIDTH";
+
+/** The string representation for FilterOption type scale_float_factor. */
+const std::string filter_option_scale_float_factor = "SCALE_FLOAT_FACTOR";
+
+/** The string representation for FilterOption type scale_float_offset. */
+const std::string filter_option_scale_float_offset = "SCALE_FLOAT_OFFSET";
 
 /** The string representation for type int32. */
 const std::string int32_str = "INT32";

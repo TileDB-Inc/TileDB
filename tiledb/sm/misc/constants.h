@@ -359,6 +359,9 @@ extern const std::string filter_checksum_sha256_str;
 /** String describing FILTER_DICTIONARY. */
 extern const std::string filter_dictionary_str;
 
+/** String describing FILTER_SCALE_FLOAT. */
+extern const std::string filter_scale_float_str;
+
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;
 
@@ -368,6 +371,15 @@ extern const std::string filter_option_bit_width_max_window_str;
 /** The string representation for FilterOption type positive_delta_max_window.
  */
 extern const std::string filter_option_positive_delta_max_window_str;
+
+/** The string representation for FilterOption type scale_float_bytewidth. */
+extern const std::string filter_option_scale_float_bytewidth;
+
+/** The string representation for FilterOption type scale_float_factor. */
+extern const std::string filter_option_scale_float_factor;
+
+/** The string representation for FilterOption type scale_float_offset. */
+extern const std::string filter_option_scale_float_offset;
 
 /** The string representation for type int32. */
 extern const std::string int32_str;
