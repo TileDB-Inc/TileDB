@@ -93,7 +93,13 @@ TEST_CASE(
         []() -> int { return 0; });
     ConsumerNode<int, DebugStateMachine<std::optional<int>>> right(
         [](int) -> void { return; });
-    attach(left, right);
+
+    SECTION("left to right") {
+      attach(left, right);
+    }
+    SECTION("right to left") {
+      attach(right, left);
+    }
   }
 
   SECTION("Attach generator and consumer") {
@@ -106,7 +112,12 @@ TEST_CASE(
     ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> r(c);
     ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> p(g);
 
-    attach(p, r);
+    SECTION("Attach generator to consumer") {
+      attach(p, r);
+    }
+    SECTION("Attach consumer to generator") {
+      attach(r, p);
+    }
   }
 }
 
@@ -114,7 +125,8 @@ TEST_CASE(
  * Test that we can synchronously send data from a producer to an attached
  * consumer.
  */
-TEST_CASE("Pseudo Nodes: Pass some data", "[pseudo_nodes]") {
+TEST_CASE(
+    "Pseudo Nodes: Pass some data, two attachment orders", "[pseudo_nodes]") {
   size_t rounds = 43;
 
   generator g(rounds);
@@ -126,35 +138,38 @@ TEST_CASE("Pseudo Nodes: Pass some data", "[pseudo_nodes]") {
   ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> r(c);
   ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> p(g);
 
-  attach(p, r);
-
-  SECTION("Get then put") {
-    p.get();
-    r.put();
-
-    CHECK(v.size() == 1);
-
-    p.get();
-    r.put();
-
-    CHECK(v.size() == 2);
-
-    p.get();
-    r.put();
-
-    CHECK(v.size() == 3);
-
-    CHECK(v[0] == 0);
-    CHECK(v[1] == 1);
-    CHECK(v[2] == 2);
+  SECTION("Attach p to r") {
+    attach(p, r);
   }
+  SECTION("Attach r to p") {
+    attach(p, r);
+  }
+
+  p.get();
+  r.put();
+
+  CHECK(v.size() == 1);
+
+  p.get();
+  r.put();
+
+  CHECK(v.size() == 2);
+
+  p.get();
+  r.put();
+
+  CHECK(v.size() == 3);
+
+  CHECK(v[0] == 0);
+  CHECK(v[1] == 1);
+  CHECK(v[2] == 2);
 }
 
 /**
  * Test that we can asynchronously send data from a producer to an attached
  * consumer.
  */
-TEST_CASE("Pseudo Nodes: Asynchronously ass some data", "[pseudo_nodes]") {
+TEST_CASE("Pseudo Nodes: Asynchronously pass some data", "[pseudo_nodes]") {
   size_t rounds = 423;
 
   generator g(rounds);
@@ -221,7 +236,9 @@ TEST_CASE("Pseudo Nodes: Asynchronously ass some data", "[pseudo_nodes]") {
  * Repeat previous test, adding a random delay to each function body to emulate
  * a computation being done by the node body.
  */
-TEST_CASE("Pseudo Nodes: Pass some data, random delays", "[pseudo_nodes]") {
+TEST_CASE(
+    "Pseudo Nodes: Asynchronously pass some data, random delays",
+    "[pseudo_nodes]") {
   size_t rounds = 433;
 
   std::vector<size_t> v;
