@@ -261,7 +261,8 @@ Status Array::open(
   if (timestamp_end_opened_at_ == UINT64_MAX) {
     if (query_type == QueryType::READ) {
       timestamp_end_opened_at_ = utils::time::timestamp_now_ms();
-    } else if (query_type == QueryType::WRITE) {
+    } else if (
+        query_type == QueryType::WRITE || query_type == QueryType::DELETE) {
       timestamp_end_opened_at_ = 0;
     } else {
       return LOG_STATUS(
@@ -317,6 +318,17 @@ Status Array::open(
     // Set schemas
     array_schema_latest_ = array_schema_latest.value();
     array_schemas_all_ = array_schemas.value();
+
+    auto version = array_schema_latest_->version();
+    if (query_type == QueryType::DELETE &&
+        version < constants::deletes_min_version) {
+      std::stringstream err;
+      err << "Cannot open array for deletes; Array format version (";
+      err << version;
+      err << ") is smaller than the minimum supported version (";
+      err << constants::deletes_min_version << ").";
+      return LOG_STATUS(Status_ArrayError(err.str()));
+    }
 
     metadata_.reset(timestamp_end_opened_at_);
   }

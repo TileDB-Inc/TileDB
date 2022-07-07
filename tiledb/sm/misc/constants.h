@@ -579,6 +579,9 @@ extern const uint32_t back_compat_writes_min_format_version;
 /** The lowest version supported for consolidation with timestamps. */
 extern const uint32_t consolidation_with_timestamps_min_version;
 
+/** The lowest version supported for deletes. */
+extern const uint32_t deletes_min_version;
+
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;
 

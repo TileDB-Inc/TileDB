@@ -357,3 +357,22 @@ TEST_CASE_METHOD(
 
   remove_sparse_array();
 }
+
+TEST_CASE_METHOD(
+    DeletesFx,
+    "CPP API: Test open for delete invalid version",
+    "[cppapi][deletes][][invalid-version]") {
+  std::string v11_arrays_dir =
+      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/sparse_array_v11";
+  std::string exception;
+  try {
+    Array(ctx_, v11_arrays_dir, TILEDB_DELETE);
+  } catch (std::exception& e) {
+    exception = e.what();
+  }
+
+  CHECK(
+      exception ==
+      "[TileDB::Array] Error: Cannot open array for deletes; Array format "
+      "version (11) is smaller than the minimum supported version (16).");
+}

@@ -588,13 +588,16 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization format version number. */
-const uint32_t format_version = 15;
+const uint32_t format_version = 16;
 
 /** The lowest version supported for back compat writes. */
 const uint32_t back_compat_writes_min_format_version = 7;
 
 /** The lowest version supported for consolidation with timestamps. */
 const uint32_t consolidation_with_timestamps_min_version = 15;
+
+/** The lowest version supported for deletes. */
+const uint32_t deletes_min_version = 16;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;
