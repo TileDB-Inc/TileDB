@@ -39,6 +39,13 @@
 
 using namespace tiledb::common;
 
+/**
+ * Test of producer and consumer functions.  The producer generates a an
+ * increasing sequence of numbers starting from 0 and incrementing by 1 on each
+ * invocation.  The consumer appends its input to a specified output iterator --
+ * in this case, a back inserter to an `std::vector`.
+ *
+ */
 TEST_CASE(
     "Pseudo Nodes: Producer and consumer functions and nodes",
     "[pseudo_nodes]") {
@@ -74,6 +81,9 @@ TEST_CASE(
   }
 }
 
+/**
+ * Test that we can attach a producer and consumer node to each other.
+ */
 TEST_CASE(
     "Pseudo Nodes: Attach producer and consumer nodes", "[pseudo_nodes]") {
   size_t N = 41;
@@ -100,8 +110,52 @@ TEST_CASE(
   }
 }
 
+/**
+ * Test that we can synchronously send data from a producer to an attached
+ * consumer.
+ */
 TEST_CASE("Pseudo Nodes: Pass some data", "[pseudo_nodes]") {
   size_t rounds = 43;
+
+  generator g(rounds);
+
+  std::vector<size_t> v;
+  std::back_insert_iterator<std::vector<size_t>> w(v);
+  consumer<std::back_insert_iterator<std::vector<size_t>>> c(w);
+
+  ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> r(c);
+  ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> p(g);
+
+  attach(p, r);
+
+  SECTION("Get then put") {
+    p.get();
+    r.put();
+
+    CHECK(v.size() == 1);
+
+    p.get();
+    r.put();
+
+    CHECK(v.size() == 2);
+
+    p.get();
+    r.put();
+
+    CHECK(v.size() == 3);
+
+    CHECK(v[0] == 0);
+    CHECK(v[1] == 1);
+    CHECK(v[2] == 2);
+  }
+}
+
+/**
+ * Test that we can asynchronously send data from a producer to an attached
+ * consumer.
+ */
+TEST_CASE("Pseudo Nodes: Asynchronously ass some data", "[pseudo_nodes]") {
+  size_t rounds = 423;
 
   generator g(rounds);
 
@@ -128,84 +182,45 @@ TEST_CASE("Pseudo Nodes: Pass some data", "[pseudo_nodes]") {
     }
   };
 
-  SECTION("Get then put") {
-    p.get();
-    r.put();
-
-    CHECK(v.size() == 1);
-
-    p.get();
-    r.put();
-
-    CHECK(v.size() == 2);
-
-    p.get();
-    r.put();
-
-    CHECK(v.size() == 3);
-
-    CHECK(v[0] == 0);
-    CHECK(v[1] == 1);
-    CHECK(v[2] == 2);
-  }
-
+  CHECK(v.size() == 0);
   SECTION("Async Nodes a, b, a, b") {
-    CHECK(v.size() == 0);
-
     auto fut_a = std::async(std::launch::async, fun_a);
     auto fut_b = std::async(std::launch::async, fun_b);
     fut_a.get();
     fut_b.get();
-
-    CHECK(v.size() == rounds);
-    for (size_t i = 0; i < rounds; ++i) {
-      CHECK(v[i] == i);
-    }
   }
 
   SECTION("Async Nodes a, b, b, a") {
-    CHECK(v.size() == 0);
-
     auto fut_a = std::async(std::launch::async, fun_a);
     auto fut_b = std::async(std::launch::async, fun_b);
     fut_b.get();
     fut_a.get();
-
-    CHECK(v.size() == rounds);
-    for (size_t i = 0; i < rounds; ++i) {
-      CHECK(v[i] == i);
-    }
   }
 
   SECTION("Async Nodes b, a, a, b") {
-    CHECK(v.size() == 0);
-
     auto fut_b = std::async(std::launch::async, fun_b);
     auto fut_a = std::async(std::launch::async, fun_a);
     fut_a.get();
     fut_b.get();
-
-    CHECK(v.size() == rounds);
-    for (size_t i = 0; i < rounds; ++i) {
-      CHECK(v[i] == i);
-    }
   }
 
   SECTION("Async Nodes b, a, b, a") {
-    CHECK(v.size() == 0);
-
     auto fut_b = std::async(std::launch::async, fun_b);
     auto fut_a = std::async(std::launch::async, fun_a);
     fut_b.get();
     fut_a.get();
+  }
 
-    CHECK(v.size() == rounds);
-    for (size_t i = 0; i < rounds; ++i) {
-      CHECK(v[i] == i);
-    }
+  CHECK(v.size() == rounds);
+  for (size_t i = 0; i < rounds; ++i) {
+    CHECK(v[i] == i);
   }
 }
 
+/**
+ * Repeat previous test, adding a random delay to each function body to emulate
+ * a computation being done by the node body.
+ */
 TEST_CASE("Pseudo Nodes: Pass some data, random delays", "[pseudo_nodes]") {
   size_t rounds = 433;
 
@@ -267,6 +282,7 @@ TEST_CASE("Pseudo Nodes: Pass some data, random delays", "[pseudo_nodes]") {
     fut_b.get();
     fut_a.get();
   }
+
   CHECK(v.size() == rounds);
   for (size_t i = 0; i < rounds; ++i) {
     CHECK(v[i] == i);
