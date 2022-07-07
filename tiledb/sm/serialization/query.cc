@@ -2417,7 +2417,7 @@ Status global_write_state_to_capnp(
     frag_meta_builder.setFragmentUri(frag_meta->fragment_uri());
     frag_meta_builder.setHasTimestamps(frag_meta->has_timestamps());
     frag_meta_builder.setSparseTileNum(frag_meta->sparse_tile_num());
-    frag_meta_builder.setTileIndexBase(frag_meta->sparse_tile_num());
+    frag_meta_builder.setTileIndexBase(frag_meta->tile_index_base());
 
     auto& tile_offsets = frag_meta->tile_offsets();
     if (!tile_offsets.empty()) {

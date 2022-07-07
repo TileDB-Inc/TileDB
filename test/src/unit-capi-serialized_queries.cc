@@ -1342,7 +1342,7 @@ TEST_CASE_METHOD(
   create_array(TILEDB_DENSE);
 
   // Build input data
-  uint64_t ncells = 4;
+  uint64_t ncells = 100;
   std::vector<uint32_t> a1;
   for (uint64_t i = 0; i < ncells; i++) {
     a1.push_back(i);
@@ -1354,7 +1354,7 @@ TEST_CASE_METHOD(
   query.set_layout(TILEDB_GLOBAL_ORDER);
 
   // This needs to be tile-aligned
-  uint64_t chunk_size = 2;
+  uint64_t chunk_size = 4;
 
   uint64_t last_space_tile =
       (ncells / chunk_size + static_cast<uint64_t>(ncells % chunk_size != 0)) *
