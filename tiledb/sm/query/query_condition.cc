@@ -44,6 +44,7 @@
 #include <memory>
 #include <mutex>
 #include <numeric>
+#include <type_traits>
 
 using namespace tiledb::common;
 
@@ -1594,25 +1595,27 @@ struct QCMax {
   }
 };
 
+
 template <
     typename T,
     QueryConditionOp Op,
     typename BitmapType,
-    typename CombinationOp>
+    typename CombinationOp,
+    typename nullable>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
     ResultTile& result_tile,
     const bool var_size,
-    const bool nullable,
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   const auto tile_tuple = result_tile.tile_tuple(node->get_field_name());
   const void* condition_value_content =
       node->get_condition_value_view().content();
   const size_t condition_value_size = node->get_condition_value_view().size();
-  uint8_t* buffer_validity = nullptr;
-  if (nullable) {
-    const auto tile_tuple = result_tile.tile_tuple(node->get_field_name());
+  uint8_t *buffer_validity = nullptr;
+  if constexpr (std::is_same_v<
+                          CombinationOp,
+                          QCMax<BitmapType>> && nullable::value) {
     const auto& tile_validity = std::get<2>(*tile_tuple);
     buffer_validity = static_cast<uint8_t*>(tile_validity.data());
   }
@@ -1629,28 +1632,50 @@ void QueryCondition::apply_ast_node_sparse(
     const uint64_t buffer_offsets_el =
         tile_offsets.size() / constants::cell_var_offset_size;
 
+    // We need to repeat code/have two for loops in order to support vectorization.
     // Iterate through each cell.
-    for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
-      // Check the previous cell here, which breaks vectorization but as this
-      // is string data requiring a strcmp which cannot be vectorized, this is
-      // ok.
-      const uint64_t buffer_offset = buffer_offsets[c];
-      const uint64_t next_cell_offset =
-          (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
-      const uint64_t cell_size = next_cell_offset - buffer_offset;
+    if (buffer_validity) {
+      for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
+        // Check the previous cell here, which breaks vectorization but as this
+        // is string data requiring a strcmp which cannot be vectorized, this is
+        // ok.
+        const uint64_t buffer_offset = buffer_offsets[c];
+        const uint64_t next_cell_offset =
+            (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
+        const uint64_t cell_size = next_cell_offset - buffer_offset;
 
-      // Get the cell value.
-      const void* const cell_value = buffer + buffer_offset;
+        // Get the cell value.
+        const void* const cell_value = buffer + buffer_offset;
 
-      // Compare the cell value against the value in the value node.
-      const bool cmp = BinaryCmp<T, Op>::cmp(
-          cell_value, cell_size, condition_value_content, condition_value_size);
+        // Compare the cell value against the value in the value node.
+        const bool cmp = BinaryCmp<T, Op>::cmp(
+            cell_value, cell_size, condition_value_content, condition_value_size);
 
-      // Set the value.
-      bool buffer_validity_val =
-          buffer_validity == nullptr ? true : (buffer_validity[c] != 0);
-      result_bitmap[c] =
-          combination_op(result_bitmap[c], cmp && buffer_validity_val);
+        // Set the value.
+        result_bitmap[c] =
+            combination_op(result_bitmap[c], cmp && (buffer_validity[c] != 0));
+      }
+    } else {
+      for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
+        // Check the previous cell here, which breaks vectorization but as this
+        // is string data requiring a strcmp which cannot be vectorized, this is
+        // ok.
+        const uint64_t buffer_offset = buffer_offsets[c];
+        const uint64_t next_cell_offset =
+            (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
+        const uint64_t cell_size = next_cell_offset - buffer_offset;
+
+        // Get the cell value.
+        const void* const cell_value = buffer + buffer_offset;
+
+        // Compare the cell value against the value in the value node.
+        const bool cmp = BinaryCmp<T, Op>::cmp(
+            cell_value, cell_size, condition_value_content, condition_value_size);
+
+        // Set the value.
+        result_bitmap[c] =
+            combination_op(result_bitmap[c], cmp);
+      }
     }
   } else {
     // Get the fixed size data buffers.
@@ -1661,7 +1686,8 @@ void QueryCondition::apply_ast_node_sparse(
 
     // Iterate through each cell without checking the bitmap to enable
     // vectorization.
-    for (uint64_t c = 0; c < buffer_el; ++c) {
+    if (buffer_validity) {
+      for (uint64_t c = 0; c < buffer_el; ++c) {
       // Get the cell value.
       const void* const cell_value = buffer + c * cell_size;
 
@@ -1670,51 +1696,71 @@ void QueryCondition::apply_ast_node_sparse(
           cell_value, cell_size, condition_value_content, condition_value_size);
 
       // Set the value.
-      bool buffer_validity_val =
-          buffer_validity == nullptr ? true : (buffer_validity[c] != 0);
       result_bitmap[c] =
-          combination_op(result_bitmap[c], cmp && buffer_validity_val);
+          combination_op(result_bitmap[c], cmp && (buffer_validity[c] != 0));
+    }
+    } else {
+      for (uint64_t c = 0; c < buffer_el; ++c) {
+        // Get the cell value.
+        const void* const cell_value = buffer + c * cell_size;
+
+        // Compare the cell value against the value in the value node.
+        const bool cmp = BinaryCmp<T, Op>::cmp(
+            cell_value, cell_size, condition_value_content, condition_value_size);
+
+        // Set the value.
+        result_bitmap[c] =
+            combination_op(result_bitmap[c], cmp);
+      }
     }
   }
 }
 
-template <typename T, typename BitmapType, typename CombinationOp>
+template <typename T, typename BitmapType, typename CombinationOp, typename nullable>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
     ResultTile& result_tile,
     const bool var_size,
-    const bool nullable,
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   switch (node->get_op()) {
     case QueryConditionOp::LT:
       apply_ast_node_sparse<T, QueryConditionOp::LT, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
       break;
     case QueryConditionOp::LE:
       apply_ast_node_sparse<T, QueryConditionOp::LE, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
       break;
     case QueryConditionOp::GT:
       apply_ast_node_sparse<T, QueryConditionOp::GT, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
       break;
     case QueryConditionOp::GE:
       apply_ast_node_sparse<T, QueryConditionOp::GE, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
       break;
     case QueryConditionOp::EQ:
       apply_ast_node_sparse<T, QueryConditionOp::EQ, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
       break;
     case QueryConditionOp::NE:
       apply_ast_node_sparse<T, QueryConditionOp::NE, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+          node, result_tile, var_size, combination_op, result_bitmap);
       break;
     default:
       throw std::runtime_error(
           "Cannot perform query comparison; Unknown query condition operator.");
   }
+}
+
+template <typename T, typename BitmapType, typename CombinationOp>
+void QueryCondition::apply_ast_node_sparse(const tdb_unique_ptr<ASTNode>& node,
+    ResultTile& result_tile,
+    const bool var_size,
+    CombinationOp combination_op,
+    std::vector<BitmapType>& result_bitmap) const {
+
 }
 
 template <typename BitmapType, typename CombinationOp>
@@ -1745,83 +1791,90 @@ void QueryCondition::apply_ast_node_sparse(
     const auto tile_tuple = result_tile.tile_tuple(node->get_field_name());
     const auto& tile_validity = std::get<2>(*tile_tuple);
     const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
-
-    // Null values can only be specified for equality operators.
     const auto cell_num = result_tile.cell_num();
-    if (node->get_op() == QueryConditionOp::NE) {
-      for (uint64_t c = 0; c < cell_num; c++) {
-        result_bitmap[c] =
-            combination_op(buffer_validity[c] != 0, result_bitmap[c]);
+
+    if ( node->get_condition_value_view().content() == nullptr) {
+      // Null values can only be specified for equality operators.
+      if (node->get_op() == QueryConditionOp::NE) {
+        for (uint64_t c = 0; c < cell_num; c++) {
+          result_bitmap[c] =
+              combination_op(buffer_validity[c] != 0, result_bitmap[c]);
+        }
+      } else {
+        for (uint64_t c = 0; c < cell_num; c++) {
+          result_bitmap[c] =
+              combination_op(buffer_validity[c] == 0, result_bitmap[c]);
+        }
       }
-    } else {
+      return;
+    } else if constexpr (std::is_same_v<CombinationOp, std::multiplies<BitmapType>>) {
+      // Turn off bitmap values for null cells.
       for (uint64_t c = 0; c < cell_num; c++) {
-        result_bitmap[c] =
-            combination_op(buffer_validity[c] == 0, result_bitmap[c]);
+        result_bitmap[c] *= buffer_validity[c] != 0;
       }
     }
-    return;
   }
+
+  typedef std::conditional<nullable, std::true_type, std::false_type>::type nullable_type;
 
   switch (type) {
     case Datatype::INT8: {
-      apply_ast_node_sparse<int8_t, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+      apply_ast_node_sparse<int8_t, BitmapType, CombinationOp, nullable_type>(
+          node, result_tile, var_size, combination_op, result_bitmap);
     } break;
     case Datatype::UINT8: {
-      apply_ast_node_sparse<uint8_t, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+      apply_ast_node_sparse<uint8_t, BitmapType, CombinationOp, nullable_type>(
+          node, result_tile, var_size, combination_op, result_bitmap);
     } break;
     case Datatype::INT16: {
-      apply_ast_node_sparse<int16_t, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+      apply_ast_node_sparse<int16_t, BitmapType, CombinationOp, nullable_type>(
+          node, result_tile, var_size, combination_op, result_bitmap);
     } break;
     case Datatype::UINT16: {
-      apply_ast_node_sparse<uint16_t, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+      apply_ast_node_sparse<uint16_t, BitmapType, CombinationOp, nullable_type>(
+          node, result_tile, var_size, combination_op, result_bitmap);
     } break;
     case Datatype::INT32: {
-      apply_ast_node_sparse<int32_t, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+      apply_ast_node_sparse<int32_t, BitmapType, CombinationOp, nullable_type>(
+          node, result_tile, var_size, combination_op, result_bitmap);
     } break;
     case Datatype::UINT32: {
-      apply_ast_node_sparse<uint32_t, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+      apply_ast_node_sparse<uint32_t, BitmapType, CombinationOp, nullable_type>(
+          node, result_tile, var_size, combination_op, result_bitmap);
     } break;
     case Datatype::INT64: {
-      apply_ast_node_sparse<int64_t, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+      apply_ast_node_sparse<int64_t, BitmapType, CombinationOp, nullable_type>(
+          node, result_tile, var_size, combination_op, result_bitmap);
     } break;
     case Datatype::UINT64: {
-      apply_ast_node_sparse<uint64_t, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+      apply_ast_node_sparse<uint64_t, BitmapType, CombinationOp, nullable_type>(
+          node, result_tile, var_size, combination_op, result_bitmap);
     } break;
     case Datatype::FLOAT32: {
-      apply_ast_node_sparse<float, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+      apply_ast_node_sparse<float, BitmapType, CombinationOp, nullable_type>(
+          node, result_tile, var_size, combination_op, result_bitmap);
     } break;
     case Datatype::FLOAT64: {
-      apply_ast_node_sparse<double, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+      apply_ast_node_sparse<double, BitmapType, CombinationOp, nullable_type>(
+          node, result_tile, var_size, combination_op, result_bitmap);
     } break;
     case Datatype::STRING_ASCII: {
-      apply_ast_node_sparse<char*, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+      apply_ast_node_sparse<char*, BitmapType, CombinationOp, nullable_type>(
+          node, result_tile, var_size, combination_op, result_bitmap);
     } break;
     case Datatype::CHAR: {
       if (var_size) {
-        apply_ast_node_sparse<char*, BitmapType>(
+        apply_ast_node_sparse<char*, BitmapType, CombinationOp, nullable_type>(
             node,
             result_tile,
             var_size,
-            nullable,
             combination_op,
             result_bitmap);
       } else {
-        apply_ast_node_sparse<char, BitmapType>(
+        apply_ast_node_sparse<char, BitmapType, CombinationOp, nullable_type>(
             node,
             result_tile,
             var_size,
-            nullable,
             combination_op,
             result_bitmap);
       }
@@ -1839,8 +1892,8 @@ void QueryCondition::apply_ast_node_sparse(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS: {
-      apply_ast_node_sparse<int64_t, BitmapType>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+      apply_ast_node_sparse<int64_t, BitmapType, CombinationOp, nullable_type>(
+          node, result_tile, var_size, combination_op, result_bitmap);
     } break;
     case Datatype::ANY:
     case Datatype::BLOB:
