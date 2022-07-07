@@ -251,24 +251,40 @@ class ConsumerNode : public Sink<Block, StateMachine> {
  * Purely notional proto `function_node`.  Constructed with function that
  * accepts an item and returns an item.
  */
-template <class Block, class StateMachine>
-class function_node : public Source<Block, StateMachine>,
-                      public Sink<Block, StateMachine> {
-  std::function<Block(Block)> f_;
-  using SourceBase = Source<Block, StateMachine>;
-  using SinkBase = Sink<Block, StateMachine>;
+template <
+    class BlockIn,
+    class BlockOut,
+    class SourceStateMachine,
+    class SinkStateMachine = SourceStateMachine>
+class FunctionNode : public Source<BlockIn, SourceStateMachine>,
+                     public Sink<BlockOut, SinkStateMachine> {
+  std::function<BlockOut(BlockIn)> f_;
+  using SourceBase = Source<BlockIn, SourceStateMachine>;
+  using SinkBase = Sink<BlockOut, SinkStateMachine>;
 
  public:
   template <class Function>
-  function_node(Function&& f)
+  explicit FunctionNode(Function&& f)
       : f_{std::forward<Function>(f)} {
   }
 
-  /**
-   * Receive an item from a source and put it on a sink.
-   */
-  Block run() {
-    SinkBase::item_ = f_(SourceBase::item_);
+  void run() {
+    auto source_state_machine = SourceBase::get_state_machine();
+    auto sink_state_machine = SinkBase::get_state_machine();
+
+    sink_state_machine->do_pull();
+
+    auto b = SinkBase::extract();
+    CHECK(b.has_value());
+
+    auto j = f_(*b);
+
+    sink_state_machine->do_drain();
+
+    SourceBase::inject(j);
+
+    source_state_machine->do_fill();
+    source_state_machine->do_push();
   }
 };
 

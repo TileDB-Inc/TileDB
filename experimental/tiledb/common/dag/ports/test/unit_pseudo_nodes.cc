@@ -305,3 +305,154 @@ TEST_CASE(
     CHECK(v[i] == i);
   }
 }
+
+TEST_CASE("Pseudo Nodes: Attach to function node", "[pseudo_nodes]") {
+  ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> q(
+      []() { return 0UL; });
+
+  FunctionNode<size_t, size_t, AsyncStateMachine<std::optional<size_t>>> r(
+      [](size_t) { return 0UL; });
+
+  ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> s(
+      [](size_t) {});
+
+  attach(q, r);
+  attach(r, s);
+}
+
+/**
+ * Test that we can synchronously send data from a producer to an attached
+ * function node and then toconsumer.
+ */
+TEST_CASE(
+    "Pseudo Nodes: Manuallay pass some data in a chain with function node",
+    "[pseudo_nodes]") {
+  size_t i{0UL};
+  ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> q(
+      [&]() { return i++; });
+
+  FunctionNode<size_t, size_t, AsyncStateMachine<std::optional<size_t>>> r(
+      [&](size_t i) { return 2 * i; });
+
+  std::vector<size_t> v;
+  ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> s(
+      [&](size_t i) { v.push_back(i); });
+
+  attach(q, r);
+  attach(r, s);
+
+  q.get();
+  r.run();
+  s.put();
+
+  CHECK(v.size() == 1);
+
+  q.get();
+  r.run();
+  s.put();
+
+  CHECK(v.size() == 2);
+
+  q.get();
+  r.run();
+  s.put();
+
+  CHECK(v.size() == 3);
+
+  CHECK(v[0] == 0);
+  CHECK(v[1] == 2);
+  CHECK(v[2] == 4);
+}
+
+TEST_CASE(
+    "Pseudo Nodes: Asynchronous with function node and delay",
+    "[pseudo_nodes]") {
+  size_t rounds = 437;
+
+  std::vector<size_t> v;
+  size_t i{0};
+
+  ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> q([&]() {
+    std::this_thread::sleep_for(std::chrono::microseconds(random_us(1234)));
+    return i++;
+  });
+
+  FunctionNode<size_t, size_t, AsyncStateMachine<std::optional<size_t>>> r(
+      [&](size_t i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(random_us(1234)));
+        return 3 * i;
+      });
+
+  ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> s(
+      [&](size_t i) {
+        v.push_back(i);
+        std::this_thread::sleep_for(std::chrono::microseconds(random_us(1234)));
+      });
+
+  attach(q, r);
+  attach(r, s);
+
+  auto fun_a = [&]() {
+    size_t N = rounds;
+    while (N--) {
+      q.get();
+    }
+  };
+
+  auto fun_b = [&]() {
+    size_t N = rounds;
+    while (N--) {
+      r.run();
+    }
+  };
+
+  auto fun_c = [&]() {
+    size_t N = rounds;
+    while (N--) {
+      s.put();
+    }
+  };
+
+  CHECK(v.size() == 0);
+
+  SECTION("Async Nodes a, b, c, a, b, c") {
+    auto fut_a = std::async(std::launch::async, fun_a);
+    auto fut_b = std::async(std::launch::async, fun_b);
+    auto fut_c = std::async(std::launch::async, fun_c);
+    fut_a.get();
+    fut_b.get();
+    fut_c.get();
+  }
+
+  SECTION("Async Nodes a, b, c, c, b, a") {
+    auto fut_a = std::async(std::launch::async, fun_a);
+    auto fut_b = std::async(std::launch::async, fun_b);
+    auto fut_c = std::async(std::launch::async, fun_c);
+    fut_c.get();
+    fut_b.get();
+    fut_a.get();
+  }
+
+  SECTION("Async Nodes c, b, a, a, b, c") {
+    auto fut_c = std::async(std::launch::async, fun_c);
+    auto fut_b = std::async(std::launch::async, fun_b);
+    auto fut_a = std::async(std::launch::async, fun_a);
+    fut_a.get();
+    fut_b.get();
+    fut_c.get();
+  }
+
+  SECTION("Async Nodes c, b, a, c, b, a") {
+    auto fut_c = std::async(std::launch::async, fun_c);
+    auto fut_b = std::async(std::launch::async, fun_b);
+    auto fut_a = std::async(std::launch::async, fun_a);
+    fut_c.get();
+    fut_b.get();
+    fut_a.get();
+  }
+
+  CHECK(v.size() == rounds);
+  for (size_t i = 0; i < rounds; ++i) {
+    CHECK(v[i] == 3 * i);
+  }
+}
