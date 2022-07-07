@@ -438,7 +438,8 @@ class QueryCondition {
       typename T,
       QueryConditionOp Op,
       typename BitmapType,
-      typename CombinationOp, typename nullable>
+      typename CombinationOp,
+      typename nullable>
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       ResultTile& result_tile,
@@ -447,7 +448,7 @@ class QueryCondition {
       std::vector<BitmapType>& result_bitmap) const;
 
   /**
-   * Applies a value node on a sparse result tile, 
+   * Applies a value node on a sparse result tile,
    * templated on the nullable operator.
    *
    * @param node The node to apply.
@@ -457,7 +458,11 @@ class QueryCondition {
    * @param result_bitmap The result bitmap.
    * @return Status.
    */
-  template <typename T, typename BitmapType, typename CombinationOp, typename nullable>
+  template <
+      typename T,
+      typename BitmapType,
+      typename CombinationOp,
+      typename nullable>
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       ResultTile& result_tile,
@@ -465,8 +470,7 @@ class QueryCondition {
       CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
 
-
-/**
+  /**
    * Applies a value node on a sparse result tile.
    *
    * @param node The node to apply.
@@ -475,13 +479,14 @@ class QueryCondition {
    * @param combination_op The combination op.
    * @param result_bitmap The result bitmap.
    */
-template <typename T, typename BitmapType, typename CombinationOp>
-void apply_ast_node_sparse(const tdb_unique_ptr<ASTNode>& node,
-    ResultTile& result_tile,
-    const bool var_size,
-    const bool nullable,
-    CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const;
+  template <typename T, typename BitmapType, typename CombinationOp>
+  void apply_ast_node_sparse(
+      const tdb_unique_ptr<ASTNode>& node,
+      ResultTile& result_tile,
+      const bool var_size,
+      const bool nullable,
+      CombinationOp combination_op,
+      std::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies a value node to filter result cells from the input
