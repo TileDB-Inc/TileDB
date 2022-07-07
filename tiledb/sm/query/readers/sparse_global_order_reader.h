@@ -187,6 +187,18 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /* ********************************* */
 
   /**
+   * Get the coordinate tiles size for a dimension.
+   *
+   * @param dim_num Number of dimensions.
+   * @param f Fragment index.
+   * @param t Tile index.
+   *
+   * @return Status, tiles_size, tiles_size_qc.
+   */
+  tuple<Status, optional<std::pair<uint64_t, uint64_t>>> get_coord_tiles_size(
+      unsigned dim_num, unsigned f, uint64_t t);
+
+  /**
    * Add a result tile to process, making sure maximum budget is respected.
    *
    * @param dim_num Number of dimensions.

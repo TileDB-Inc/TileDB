@@ -386,7 +386,7 @@ class SparseIndexReaderBase : public ReaderBase {
    *
    * @return Status.
    */
-  template <class BitmapType>
+  template <class ResultTileType, class BitmapType>
   Status apply_query_condition(std::vector<ResultTile*>& result_tiles);
 
   /**

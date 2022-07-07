@@ -767,6 +767,97 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
+    "Sparse global order reader: qc removes tile from second fragment "
+    "replacing data from first fragment",
+    "[sparse-global-order][qc-removes-replacement-data]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  bool use_subarray = false;
+  SECTION("- No subarray") {
+    use_subarray = false;
+  }
+  SECTION("- Subarray") {
+    use_subarray = true;
+  }
+
+  int coords_1[] = {1, 2, 3};
+  int data_1[] = {2, 2, 2};
+
+  int coords_2[] = {1, 2, 3};
+  int data_2[] = {12, 12, 12};
+
+  uint64_t coords_size = sizeof(coords_1);
+  uint64_t data_size = sizeof(data_1);
+  write_1d_fragment(coords_1, &coords_size, data_1, &data_size);
+  write_1d_fragment(coords_2, &coords_size, data_2, &data_size);
+
+  // Read.
+  int coords_r[6];
+  int data_r[6];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+
+  auto rc =
+      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Should read nothing.
+  CHECK(0 == data_r_size);
+  CHECK(0 == coords_r_size);
+}
+
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: qc removes tile from second fragment "
+    "replacing data from first fragment, 2",
+    "[sparse-global-order][qc-removes-replacement-data]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  bool use_subarray = false;
+  SECTION("- No subarray") {
+    use_subarray = false;
+  }
+  SECTION("- Subarray") {
+    use_subarray = true;
+  }
+
+  int coords_1[] = {1, 2, 3};
+  int data_1[] = {2, 2, 2};
+
+  int coords_2[] = {1, 2, 3};
+  int data_2[] = {12, 4, 12};
+
+  uint64_t coords_size = sizeof(coords_1);
+  uint64_t data_size = sizeof(data_1);
+  write_1d_fragment(coords_1, &coords_size, data_1, &data_size);
+  write_1d_fragment(coords_2, &coords_size, data_2, &data_size);
+
+  // Read.
+  int coords_r[6];
+  int data_r[6];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+
+  auto rc =
+      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Should read nothing.
+  CHECK(4 == data_r_size);
+  CHECK(4 == coords_r_size);
+
+  int coords_c[] = {2};
+  int data_c[] = {4};
+  CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
+  CHECK(!std::memcmp(data_c, data_r, data_r_size));
+}
+
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
     "Sparse global order reader: merge with subarray and dups",
     "[sparse-global-order][merge][subarray][dups]") {
   // Create default array.

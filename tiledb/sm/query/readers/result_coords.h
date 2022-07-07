@@ -183,9 +183,11 @@ struct GlobalOrderResultCoords
     uint64_t ret = 1;
     uint64_t cell_num = base::tile_->cell_num();
     uint64_t next_pos = base::pos_ + 1;
-    if (base::tile_->has_bmp()) {
+    if (base::tile_->has_post_qc_bmp()) {
+      auto& bitmap = base::tile_->post_qc_bitmap();
+
       // Current cell is not in the bitmap.
-      if (!base::tile_->bitmap_[base::pos_]) {
+      if (!bitmap[base::pos_]) {
         return 0;
       }
 
@@ -193,14 +195,14 @@ struct GlobalOrderResultCoords
       // return 1.
       const bool overlapping_ranges = std::is_same<BitmapType, uint64_t>::value;
       if constexpr (overlapping_ranges) {
-        if (base::tile_->bitmap_[base::pos_] != 1) {
+        if (bitmap[base::pos_] != 1) {
           return 1;
         }
       }
 
       // With bitmap, find the longest contiguous set of bits in the bitmap
       // from the current position.
-      while (next_pos < cell_num && base::tile_->bitmap_[next_pos] == 1) {
+      while (next_pos < cell_num && bitmap[next_pos] == 1) {
         next_pos++;
         ret++;
       }
@@ -225,9 +227,11 @@ struct GlobalOrderResultCoords
     // Store the original position.
     uint64_t orig_pos = base::pos_;
 
-    if (base::tile_->has_bmp()) {
+    if (base::tile_->has_post_qc_bmp()) {
+      auto& bitmap = base::tile_->post_qc_bitmap();
+
       // Current cell is not in the bitmap.
-      if (!base::tile_->bitmap_[base::pos_]) {
+      if (!bitmap[base::pos_]) {
         return 0;
       }
 
@@ -235,7 +239,7 @@ struct GlobalOrderResultCoords
       // return 1.
       const bool overlapping_ranges = std::is_same<BitmapType, uint64_t>::value;
       if constexpr (overlapping_ranges) {
-        if (base::tile_->bitmap_[base::pos_] != 1) {
+        if (bitmap[base::pos_] != 1) {
           return 1;
         }
       }
@@ -244,8 +248,7 @@ struct GlobalOrderResultCoords
       // from the current position, with coordinares smaller than the next one
       // in the queue.
       base::pos_++;
-      while (base::pos_ < cell_num && base::tile_->bitmap_[base::pos_] &&
-             !cmp(*this, next)) {
+      while (base::pos_ < cell_num && bitmap[base::pos_] && !cmp(*this, next)) {
         base::pos_++;
         ret++;
       }

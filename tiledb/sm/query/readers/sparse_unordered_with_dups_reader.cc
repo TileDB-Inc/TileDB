@@ -215,7 +215,10 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
       RETURN_NOT_OK(compute_tile_bitmaps<BitmapType>(result_tiles_created));
 
       // Apply query condition.
-      RETURN_NOT_OK(apply_query_condition<BitmapType>(result_tiles_created));
+      auto st =
+          apply_query_condition<ResultTileWithBitmap<BitmapType>, BitmapType>(
+              result_tiles_created);
+      RETURN_NOT_OK(st);
 
       // Clear result tiles that are not necessary anymore.
       uint64_t current = 0;
@@ -275,6 +278,27 @@ void SparseUnorderedWithDupsReader<BitmapType>::reset() {
 }
 
 template <class BitmapType>
+tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
+SparseUnorderedWithDupsReader<BitmapType>::get_coord_tiles_size(
+    unsigned dim_num, unsigned f, uint64_t t) {
+  auto&& [st, tiles_sizes] =
+      SparseIndexReaderBase::get_coord_tiles_size<BitmapType>(
+          subarray_.is_set(), dim_num, f, t);
+  RETURN_NOT_OK_TUPLE(st, nullopt);
+
+  // Add the result tile structure size.
+  tiles_sizes->first += sizeof(ResultTileWithBitmap<BitmapType>);
+
+  // Add the tile bitmap size if there is a subarray or query condition set.
+  if (subarray_.is_set() || !condition_.empty()) {
+    tiles_sizes->first +=
+        fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
+  }
+
+  return {Status::Ok(), *tiles_sizes};
+}
+
+template <class BitmapType>
 tuple<Status, optional<bool>>
 SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
     const unsigned dim_num,
@@ -285,8 +309,7 @@ SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
     const uint64_t last_t,
     const ArraySchema& array_schema) {
   // Calculate memory consumption for this tile.
-  auto&& [st, tiles_sizes] =
-      get_coord_tiles_size<BitmapType>(subarray_.is_set(), dim_num, f, t);
+  auto&& [st, tiles_sizes] = get_coord_tiles_size(dim_num, f, t);
   RETURN_NOT_OK_TUPLE(st, nullopt);
   auto tiles_size = tiles_sizes->first;
   auto tiles_size_qc = tiles_sizes->second;
@@ -1573,8 +1596,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::remove_result_tile(
     typename std::list<ResultTileWithBitmap<BitmapType>>::iterator rt) {
   // Remove coord tile size from memory budget.
   const auto tile_idx = rt->tile_idx();
-  auto&& [st, tiles_sizes] = get_coord_tiles_size<BitmapType>(
-      subarray_.is_set(), array_schema_.dim_num(), frag_idx, tile_idx);
+  auto&& [st, tiles_sizes] =
+      get_coord_tiles_size(array_schema_.dim_num(), frag_idx, tile_idx);
   RETURN_NOT_OK(st);
   auto tiles_size = tiles_sizes->first;
   auto tiles_size_qc = tiles_sizes->second;
