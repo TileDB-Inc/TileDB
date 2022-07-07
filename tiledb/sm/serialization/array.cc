@@ -145,13 +145,17 @@ Status array_to_capnp(
         *(schema.second.get()), &schema_builder, client_side));
   }
 
-  auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
-  RETURN_NOT_OK(
-      utils::serialize_non_empty_domain(nonempty_domain_builder, array));
+  if (array->serialize_non_empty_domain()) {
+    auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
+    RETURN_NOT_OK(
+        utils::serialize_non_empty_domain(nonempty_domain_builder, array));
+  }
 
-  auto array_metadata_builder = array_builder->initArrayMetadata();
-  RETURN_NOT_OK(
-      metadata_to_capnp(array->unsafe_metadata(), &array_metadata_builder));
+  if (array->serialize_metadata()) {
+    auto array_metadata_builder = array_builder->initArrayMetadata();
+    RETURN_NOT_OK(
+        metadata_to_capnp(array->unsafe_metadata(), &array_metadata_builder));
+  }
 
   return Status::Ok();
 }
@@ -191,18 +195,22 @@ Status array_from_capnp(
         make_shared<ArraySchema>(HERE(), array_schema_latest));
   }
 
-  if (array_reader.hasNonEmptyDomain()) {
-    const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
-    // Deserialize
-    RETURN_NOT_OK(
-        utils::deserialize_non_empty_domain(nonempty_domain_reader, array));
+  if (array->serialize_non_empty_domain()) {
+    if (array_reader.hasNonEmptyDomain()) {
+      const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
+      // Deserialize
+      RETURN_NOT_OK(
+          utils::deserialize_non_empty_domain(nonempty_domain_reader, array));
+    }
   }
 
-  if (array_reader.hasArrayMetadata()) {
-    const auto& array_metadata_reader = array_reader.getArrayMetadata();
-    // Deserialize
-    RETURN_NOT_OK(
-        metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
+  if (array->serialize_metadata()) {
+    if (array_reader.hasArrayMetadata()) {
+      const auto& array_metadata_reader = array_reader.getArrayMetadata();
+      // Deserialize
+      RETURN_NOT_OK(
+          metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
+    }
   }
 
   return Status::Ok();

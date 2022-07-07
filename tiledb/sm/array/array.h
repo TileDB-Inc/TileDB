@@ -388,6 +388,14 @@ class Array {
   /** Returns the memory tracker. */
   MemoryTracker* memory_tracker();
 
+  /** Checks the config to see if non empty domain should be serialized on array
+   * open. */
+  bool serialize_non_empty_domain() const;
+
+  /** Checks the config to see if metadata should be serialized on array open.
+   */
+  bool serialize_metadata() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

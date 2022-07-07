@@ -1193,5 +1193,37 @@ bool Array::use_refactored_array_open() const {
 
   return refactored_array_open;
 }
+
+bool Array::serialize_non_empty_domain() const {
+  auto found = false;
+  auto serialize_ned_array_open = false;
+  auto status = config_.get<bool>(
+      "rest.load_non_empty_domain_on_array_open",
+      &serialize_ned_array_open,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get rest.load_non_empty_domain_on_array_open configuration "
+        "option from config");
+  }
+
+  return serialize_ned_array_open;
+}
+
+bool Array::serialize_metadata() const {
+  auto found = false;
+  auto serialize_metadata_array_open = false;
+  auto status = config_.get<bool>(
+      "rest.load_metadata_on_array_open",
+      &serialize_metadata_array_open,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get rest.load_metadata_on_array_open configuration option from "
+        "config");
+  }
+
+  return serialize_metadata_array_open;
+}
 }  // namespace sm
 }  // namespace tiledb
