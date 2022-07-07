@@ -447,7 +447,8 @@ class QueryCondition {
       std::vector<BitmapType>& result_bitmap) const;
 
   /**
-   * Applies a value node on a sparse result tile.
+   * Applies a value node on a sparse result tile, 
+   * templated on the nullable operator.
    *
    * @param node The node to apply.
    * @param result_tile The result tile to get the cells from.
@@ -463,6 +464,24 @@ class QueryCondition {
       const bool var_size,
       CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
+
+
+/**
+   * Applies a value node on a sparse result tile.
+   *
+   * @param node The node to apply.
+   * @param result_tile The result tile to get the cells from.
+   * @param var_size The attribute is var sized or not.
+   * @param combination_op The combination op.
+   * @param result_bitmap The result bitmap.
+   */
+template <typename T, typename BitmapType, typename CombinationOp>
+void apply_ast_node_sparse(const tdb_unique_ptr<ASTNode>& node,
+    ResultTile& result_tile,
+    const bool var_size,
+    const bool nullable,
+    CombinationOp combination_op,
+    std::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies a value node to filter result cells from the input
