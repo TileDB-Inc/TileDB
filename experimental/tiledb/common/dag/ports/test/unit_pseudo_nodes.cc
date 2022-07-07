@@ -306,6 +306,10 @@ TEST_CASE(
   }
 }
 
+/**
+ * Test that we can connect source node and a sink node to a
+ * function node.
+ */
 TEST_CASE("Pseudo Nodes: Attach to function node", "[pseudo_nodes]") {
   ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> q(
       []() { return 0UL; });
@@ -322,7 +326,7 @@ TEST_CASE("Pseudo Nodes: Attach to function node", "[pseudo_nodes]") {
 
 /**
  * Test that we can synchronously send data from a producer to an attached
- * function node and then toconsumer.
+ * function node and then to consumer.
  */
 TEST_CASE(
     "Pseudo Nodes: Manuallay pass some data in a chain with function node",
@@ -364,29 +368,36 @@ TEST_CASE(
   CHECK(v[2] == 4);
 }
 
-TEST_CASE(
-    "Pseudo Nodes: Asynchronous with function node and delay",
-    "[pseudo_nodes]") {
+template <bool delay>
+void asynchronous_with_function_node() {
   size_t rounds = 437;
 
   std::vector<size_t> v;
   size_t i{0};
 
   ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> q([&]() {
-    std::this_thread::sleep_for(std::chrono::microseconds(random_us(1234)));
+    if constexpr (delay) {
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(1234)));
+    }
     return i++;
   });
 
   FunctionNode<size_t, size_t, AsyncStateMachine<std::optional<size_t>>> r(
       [&](size_t i) {
-        std::this_thread::sleep_for(std::chrono::microseconds(random_us(1234)));
+        if constexpr (delay) {
+          std::this_thread::sleep_for(
+              std::chrono::microseconds(random_us(1234)));
+        }
         return 3 * i;
       });
 
   ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> s(
       [&](size_t i) {
         v.push_back(i);
-        std::this_thread::sleep_for(std::chrono::microseconds(random_us(1234)));
+        if constexpr (delay) {
+          std::this_thread::sleep_for(
+              std::chrono::microseconds(random_us(1234)));
+        }
       });
 
   attach(q, r);
@@ -454,5 +465,16 @@ TEST_CASE(
   CHECK(v.size() == rounds);
   for (size_t i = 0; i < rounds; ++i) {
     CHECK(v[i] == 3 * i);
+  }
+}
+
+TEST_CASE(
+    "Pseudo Nodes: Asynchronous with function node and delay",
+    "[pseudo_nodes]") {
+  SECTION("Without delay") {
+    asynchronous_with_function_node<false>();
+  }
+  SECTION("With delay") {
+    asynchronous_with_function_node<true>();
   }
 }
