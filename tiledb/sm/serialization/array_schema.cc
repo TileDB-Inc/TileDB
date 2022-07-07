@@ -73,6 +73,73 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
+Status filter_to_capnp(
+    const Filter* filter, capnp::Filter::Builder* filter_builder) {
+  filter_builder->setType(filter_type_str(filter->type()));
+  switch (filter->type()) {
+    case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
+      uint32_t window;
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &window));
+      auto data = filter_builder->initData();
+      data.setUint32(window);
+      break;
+    }
+    case FilterType::FILTER_POSITIVE_DELTA: {
+      uint32_t window;
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::POSITIVE_DELTA_MAX_WINDOW, &window));
+      auto data = filter_builder->initData();
+      data.setUint32(window);
+      break;
+    }
+    case FilterType::FILTER_GZIP:
+    case FilterType::FILTER_ZSTD:
+    case FilterType::FILTER_LZ4:
+    case FilterType::FILTER_RLE:
+    case FilterType::FILTER_BZIP2:
+    case FilterType::FILTER_DOUBLE_DELTA:
+    case FilterType::FILTER_DICTIONARY: {
+      int32_t level;
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::COMPRESSION_LEVEL, &level));
+      auto data = filter_builder->initData();
+      data.setInt32(level);
+      break;
+    }
+    case FilterType::FILTER_SCALE_FLOAT: {
+      FloatScalingFilter::Metadata m;
+      double scale, offset;
+      uint64_t byte_width;
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width));
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale));
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::SCALE_FLOAT_OFFSET, &offset));
+      m.scale = scale;
+      m.offset = offset;
+      m.byte_width = byte_width;
+      auto data = filter_builder->initData();
+      auto capnpValue = kj::Vector<uint8_t>();
+      capnpValue.addAll(kj::ArrayPtr<uint8_t>(
+          const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(&m)),
+          sizeof(FloatScalingFilter::Metadata)));
+      data.setBytes(capnpValue.asPtr());
+      break;
+    }
+    case FilterType::FILTER_NONE:
+    case FilterType::FILTER_BITSHUFFLE:
+    case FilterType::FILTER_BYTESHUFFLE:
+    case FilterType::FILTER_CHECKSUM_MD5:
+    case FilterType::FILTER_CHECKSUM_SHA256:
+    case FilterType::INTERNAL_FILTER_AES_256_GCM:
+      break;
+  }
+
+  return Status::Ok();
+}
+
 Status filter_pipeline_to_capnp(
     const FilterPipeline* filter_pipeline,
     capnp::FilterPipeline::Builder* filter_pipeline_builder) {
@@ -88,68 +155,7 @@ Status filter_pipeline_to_capnp(
   for (unsigned i = 0; i < num_filters; i++) {
     const auto* filter = filter_pipeline->get_filter(i);
     auto filter_builder = filter_list_builder[i];
-    filter_builder.setType(filter_type_str(filter->type()));
-
-    switch (filter->type()) {
-      case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
-        uint32_t window;
-        RETURN_NOT_OK(
-            filter->get_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &window));
-        auto data = filter_builder.initData();
-        data.setUint32(window);
-        break;
-      }
-      case FilterType::FILTER_POSITIVE_DELTA: {
-        uint32_t window;
-        RETURN_NOT_OK(filter->get_option(
-            FilterOption::POSITIVE_DELTA_MAX_WINDOW, &window));
-        auto data = filter_builder.initData();
-        data.setUint32(window);
-        break;
-      }
-      case FilterType::FILTER_GZIP:
-      case FilterType::FILTER_ZSTD:
-      case FilterType::FILTER_LZ4:
-      case FilterType::FILTER_RLE:
-      case FilterType::FILTER_BZIP2:
-      case FilterType::FILTER_DOUBLE_DELTA:
-      case FilterType::FILTER_DICTIONARY: {
-        int32_t level;
-        RETURN_NOT_OK(
-            filter->get_option(FilterOption::COMPRESSION_LEVEL, &level));
-        auto data = filter_builder.initData();
-        data.setInt32(level);
-        break;
-      }
-      case FilterType::FILTER_SCALE_FLOAT: {
-        FloatScalingFilter::Metadata m;
-        double scale, offset;
-        uint64_t byte_width;
-        RETURN_NOT_OK(
-            filter->get_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width));
-        RETURN_NOT_OK(
-            filter->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale));
-        RETURN_NOT_OK(
-            filter->get_option(FilterOption::SCALE_FLOAT_OFFSET, &offset));
-        m.scale = scale;
-        m.offset = offset;
-        m.byte_width = byte_width;
-        auto data = filter_builder->initData();
-        auto capnpValue = kj::Vector<uint8_t>();
-        capnpValue.addAll(kj::ArrayPtr<uint8_t>(
-            const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(&m)),
-            sizeof(FloatScalingFilter::Metadata)));
-        data.setBytes(capnpValue.asPtr());
-        break;
-      }
-      case FilterType::FILTER_NONE:
-      case FilterType::FILTER_BITSHUFFLE:
-      case FilterType::FILTER_BYTESHUFFLE:
-      case FilterType::FILTER_CHECKSUM_MD5:
-      case FilterType::FILTER_CHECKSUM_SHA256:
-      case FilterType::INTERNAL_FILTER_AES_256_GCM:
-        break;
-    }
+    filter_to_capnp(filter, &filter_builder);
   }
 
   return Status::Ok();
