@@ -573,6 +573,7 @@ class ResultTileWithBitmap : public ResultTile {
    * @param cell_idx Cell index to clear.
    */
   void clear_cell(uint64_t cell_idx) {
+    assert(cell_idx < bitmap_.size());
     result_num_ -= bitmap_[cell_idx];
     bitmap_[cell_idx] = 0;
   }
@@ -594,7 +595,7 @@ class ResultTileWithBitmap : public ResultTile {
   }
 
   /**
-   * Resize the bitmap.
+   * Allocate the bitmap.
    */
   void alloc_bitmap() {
     assert(bitmap_.size() == 0);
@@ -673,6 +674,7 @@ class ResultTileWithBitmap : public ResultTile {
   void swap(ResultTileWithBitmap<BitmapType>& tile) {
     ResultTile::swap(tile);
     std::swap(bitmap_, tile.bitmap_);
+    std::swap(cell_num_, tile.cell_num_);
     std::swap(result_num_, tile.result_num_);
     std::swap(coords_loaded_, tile.coords_loaded_);
   }
@@ -702,7 +704,10 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
   GlobalOrderResultTile(
-      unsigned frag_idx, uint64_t tile_idx, bool dups, const FragmentMetadata& frag_md)
+      unsigned frag_idx,
+      uint64_t tile_idx,
+      bool dups,
+      const FragmentMetadata& frag_md)
       : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md)
       , dups_(dups)
       , used_(false) {
@@ -771,7 +776,8 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
       }
     } else {
       if (ResultTileWithBitmap<BitmapType>::bitmap_.size() == 0) {
-        ResultTileWithBitmap<BitmapType>::bitmap_.resize(ResultTileWithBitmap<BitmapType>::cell_num_, 1);
+        ResultTileWithBitmap<BitmapType>::bitmap_.resize(
+            ResultTileWithBitmap<BitmapType>::cell_num_, 1);
       }
     }
   }
@@ -893,7 +899,8 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
    */
   void ensure_bitmap_for_query_condition() {
     if (ResultTileWithBitmap<BitmapType>::bitmap_.size() == 0) {
-      ResultTileWithBitmap<BitmapType>::bitmap_.resize(ResultTileWithBitmap<BitmapType>::cell_num_, 1);
+      ResultTileWithBitmap<BitmapType>::bitmap_.resize(
+          ResultTileWithBitmap<BitmapType>::cell_num_, 1);
     }
   }
 

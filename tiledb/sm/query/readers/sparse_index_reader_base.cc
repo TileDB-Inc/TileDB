@@ -557,9 +557,7 @@ Status SparseIndexReaderBase::apply_query_condition(
           if (!condition_.empty()) {
             rt->ensure_bitmap_for_query_condition();
             RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
-                *(frag_meta->array_schema().get()),
-                *rt,
-                rt->bitmap_with_qc()));
+                *(frag_meta->array_schema().get()), *rt, rt->bitmap_with_qc()));
             if (array_schema_.allows_dups()) {
               rt->count_cells();
             }

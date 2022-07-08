@@ -248,8 +248,7 @@ struct GlobalOrderResultCoords
       // from the current position, with coordinares smaller than the next one
       // in the queue.
       base::pos_++;
-      while (base::pos_ < cell_num && bitmap[base::pos_] &&
-             !cmp(*this, next)) {
+      while (base::pos_ < cell_num && bitmap[base::pos_] && !cmp(*this, next)) {
         base::pos_++;
         ret++;
       }
