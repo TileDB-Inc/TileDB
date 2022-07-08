@@ -35,14 +35,17 @@
 #include <stdint.h>
 #include <atomic>
 #include <catch.hpp>
+#include <cstdio>
 #include <iostream>
+#include <sstream>
 
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 
 size_t random_ms(size_t max = 3) {
-  thread_local static uint64_t generator_seed =
-      std::hash<std::thread::id>()(std::this_thread::get_id());
+  // Using a fixed seed for determinism. 
+  thread_local static uint64_t generator_seed = 0x4E996D11;
+  thread_local static std::ostringstream ss;
   thread_local static std::mt19937_64 generator(generator_seed);
   std::uniform_int_distribution<size_t> distribution(0, max);
   return distribution(generator);
