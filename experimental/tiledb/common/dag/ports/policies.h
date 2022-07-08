@@ -39,8 +39,7 @@
 #define TILEDB_DAG_POLICIES_H
 
 #include <optional>
-#include "experimental/tiledb/common/dag/ports/test/helpers.h"
-#include "experimental/tiledb/common/dag/utils/print_types.h"
+#include "test/helpers.h"
 
 #include "../utils/print_types.h"
 

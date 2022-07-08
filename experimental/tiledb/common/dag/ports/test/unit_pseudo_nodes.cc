@@ -100,6 +100,15 @@ TEST_CASE(
     SECTION("right to left") {
       attach(right, left);
     }
+
+    SECTION("Attach 2") {
+      ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> foo{
+          []() { return 0UL; }};
+      ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> bar{
+          [](size_t) {}};
+
+      attach(foo, bar);
+    }
   }
 
   SECTION("Attach generator and consumer") {
@@ -538,8 +547,12 @@ void asynchronous_with_function_node_4(
     return i++;
   });
 
-  FunctionNode<size_t, size_t, AsyncStateMachine<std::optional<size_t>>> r(
-      [&](size_t i) {
+  FunctionNode<
+      size_t,
+      size_t,
+      AsyncStateMachine<std::optional<size_t>>,
+      AsyncStateMachine<std::optional<size_t>>>
+      r([&](size_t i) {
         if constexpr (delay) {
           std::this_thread::sleep_for(std::chrono::microseconds(
               static_cast<size_t>(rwt * random_us(1234))));
@@ -547,8 +560,12 @@ void asynchronous_with_function_node_4(
         return 3 * i;
       });
 
-  FunctionNode<size_t, size_t, AsyncStateMachine<std::optional<size_t>>> s(
-      [&](size_t i) {
+  FunctionNode<
+      size_t,
+      size_t,
+      AsyncStateMachine<std::optional<size_t>>,
+      AsyncStateMachine<std::optional<size_t>>>
+      s([&](size_t i) {
         if constexpr (delay) {
           std::this_thread::sleep_for(std::chrono::microseconds(
               static_cast<size_t>(swt * random_us(1234))));

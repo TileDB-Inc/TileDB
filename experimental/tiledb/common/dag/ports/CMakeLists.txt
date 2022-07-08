@@ -116,7 +116,6 @@ list(APPEND PSEUDO_NODES_SOURCES
     test/pseudo_nodes.cc
 )
 gather_sources(${PSEUDO_NODES_SOURCES})
-message(WARNING ${PSEUDO_NODES_SOURCES})
 
 #
 # Object library for other units to depend upon
@@ -150,6 +149,48 @@ if (TILEDB_TESTS)
     add_test(
             NAME "unit_pseudo_nodes"
             COMMAND $<TARGET_FILE:unit_pseudo_nodes> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()
+
+# list(APPEND CONCURRENCY_SOURCES
+#    test/concurrency.cc
+# )
+# gather_sources(${CONCURRENCY_SOURCES})
+
+
+#
+# Object library for other units to depend upon
+#
+# add_library(concurrency OBJECT ${CONCURRENCY_SOURCES})
+# target_link_libraries(concurrency PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+
+#
+# Since there are no components, there is no object library to test compile
+#
+# add_executable(compile_concurrency EXCLUDE_FROM_ALL)
+# target_link_libraries(compile_concurrency PRIVATE concurrency)
+# target_sources(compile_concurrency PRIVATE test/compile_concurrency_main.cc)
+
+if (TILEDB_TESTS)
+    add_executable(unit_concurrency EXCLUDE_FROM_ALL)
+#    target_link_libraries(unit_concurrency PUBLIC concurrency)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_concurrency PUBLIC Catch2::Catch2)
+#    target_link_libraries(unit_concurrency PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_concurrency PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_concurrency PUBLIC
+            test/main.cc
+            test/unit_concurrency.cc
+            )
+
+    add_test(
+            NAME "unit_concurrency"
+            COMMAND $<TARGET_FILE:unit_concurrency> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()

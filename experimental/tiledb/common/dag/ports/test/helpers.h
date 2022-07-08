@@ -36,7 +36,6 @@
 
 #include <random>
 #include <thread>
-#include "experimental/tiledb/common/dag/ports/fsm.h"
 
 using namespace tiledb::common;
 

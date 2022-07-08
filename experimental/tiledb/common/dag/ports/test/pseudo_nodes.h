@@ -35,6 +35,7 @@
 #define TILEDB_DAG_PSEUDO_NODES_H
 
 #include <atomic>
+#include <functional>
 #include "../../utils/print_types.h"
 #include "../ports.h"
 
@@ -254,13 +255,13 @@ class ConsumerNode : public Sink<Block, StateMachine> {
 template <
     class BlockIn,
     class BlockOut,
-    class SourceStateMachine,
-    class SinkStateMachine = SourceStateMachine>
-class FunctionNode : public Source<BlockIn, SourceStateMachine>,
-                     public Sink<BlockOut, SinkStateMachine> {
+    class SinkStateMachine,  // Input
+    class SourceStateMachine = SinkStateMachine>
+class FunctionNode : public Source<BlockOut, SourceStateMachine>,
+                     public Sink<BlockIn, SinkStateMachine> {
   std::function<BlockOut(BlockIn)> f_;
-  using SourceBase = Source<BlockIn, SourceStateMachine>;
-  using SinkBase = Sink<BlockOut, SinkStateMachine>;
+  using SourceBase = Source<BlockOut, SourceStateMachine>;
+  using SinkBase = Sink<BlockIn, SinkStateMachine>;
 
  public:
   template <class Function>

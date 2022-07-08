@@ -83,10 +83,9 @@ template <class Block, class StateMachine>
 class Source {
   friend class Sink<Block, StateMachine>;
 
- protected:
+ public:
   std::optional<Block> item_{};
 
- private:
   /**
    * The correspondent Sink, if any
    */
@@ -197,6 +196,7 @@ class Sink {
    */
   mutable std::mutex mutex_;
 
+ public:
   /**
    * Check if Sink is bound
    *
