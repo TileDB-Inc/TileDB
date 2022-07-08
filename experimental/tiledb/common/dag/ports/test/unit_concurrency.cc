@@ -56,8 +56,9 @@
 
 using namespace tiledb::common;
 
-TEST_CASE("a", "b") {
-  bool debug = false;
+TEST_CASE(
+    "Concurrency: Test level of concurrency for simple graphs", "[ports]") {
+  bool debug = true;
 
   auto async_sync = [&](size_t source_delay,
                         size_t sink_delay,
@@ -325,5 +326,10 @@ TEST_CASE("a", "b") {
     if (debug)
       std::cout << "500 250 100" << std::endl;
     async_sync(500, 250, 100);
+  }
+  SECTION("100 100 100") {
+    if (debug)
+      std::cout << "100 100 100" << std::endl;
+    async_sync(100, 100, 100);
   }
 }
