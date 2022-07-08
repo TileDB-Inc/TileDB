@@ -59,92 +59,117 @@ GenericTileIO::GenericTileIO(StorageManager* storage_manager, const URI& uri)
 /*               API              */
 /* ****************************** */
 
-Status GenericTileIO::read_generic(
-    Tile** tile,
+tuple<Status, optional<Buffer>> GenericTileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
     const Config& config) {
-  tdb_unique_ptr<Tile> ret(tdb_new(Tile));
-  GenericTileHeader header;
-  RETURN_NOT_OK(
-      read_generic_tile_header(storage_manager_, uri_, file_offset, &header));
+  Tile tile;
+  auto&& [st, header_opt] =
+      read_generic_tile_header(storage_manager_, uri_, file_offset);
+  RETURN_NOT_OK_TUPLE(st, nullopt);
+  auto& header = *header_opt;
 
   if (encryption_key.encryption_type() !=
-      (EncryptionType)header.encryption_type)
-    return LOG_STATUS(Status_TileIOError(
-        "Error reading generic tile; tile is encrypted with " +
-        encryption_type_str((EncryptionType)header.encryption_type) +
-        " but given key is for " +
-        encryption_type_str(encryption_key.encryption_type())));
+      (EncryptionType)header.encryption_type) {
+    return {LOG_STATUS(Status_TileIOError(
+                "Error reading generic tile; tile is encrypted with " +
+                encryption_type_str((EncryptionType)header.encryption_type) +
+                " but given key is for " +
+                encryption_type_str(encryption_key.encryption_type()))),
+            nullopt};
+  }
 
-  RETURN_NOT_OK(configure_encryption_filter(&header, encryption_key));
+  RETURN_NOT_OK_TUPLE(
+      configure_encryption_filter(&header, encryption_key), nullopt);
 
   const auto tile_data_offset =
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
 
-  RETURN_NOT_OK(ret->init_filtered(
-      header.version_number, (Datatype)header.datatype, header.cell_size, 0));
+  RETURN_NOT_OK_TUPLE(
+      tile.init_filtered(
+          header.version_number,
+          (Datatype)header.datatype,
+          header.cell_size,
+          0),
+      nullopt);
 
   // Read the tile.
-  ret->filtered_buffer().expand(header.persisted_size);
-  RETURN_NOT_OK(ret->alloc_data(header.tile_size));
-  RETURN_NOT_OK(storage_manager_->read(
-      uri_,
-      file_offset + tile_data_offset,
-      ret->filtered_buffer().data(),
-      header.persisted_size));
+  tile.filtered_buffer().expand(header.persisted_size);
+  RETURN_NOT_OK_TUPLE(tile.alloc_data(header.tile_size), nullopt);
+  RETURN_NOT_OK_TUPLE(
+      storage_manager_->read(
+          uri_,
+          file_offset + tile_data_offset,
+          tile.filtered_buffer().data(),
+          header.persisted_size),
+      nullopt);
 
   // Unfilter
-  assert(ret->filtered());
-  RETURN_NOT_OK(header.filters.run_reverse(
-      storage_manager_->stats(),
-      ret.get(),
-      nullptr,
-      storage_manager_->compute_tp(),
-      config));
-  assert(!ret->filtered());
+  assert(tile.filtered());
+  RETURN_NOT_OK_TUPLE(
+      header.filters.run_reverse(
+          storage_manager_->stats(),
+          &tile,
+          nullptr,
+          storage_manager_->compute_tp(),
+          config),
+      nullopt);
+  assert(!tile.filtered());
 
-  *tile = ret.release();
-  return Status::Ok();
+  Buffer ret;
+  RETURN_NOT_OK_TUPLE(ret.realloc(tile.size()), std::nullopt);
+  ret.set_size(tile.size());
+  RETURN_NOT_OK_TUPLE(tile.read(ret.data(), 0, ret.size()), nullopt);
+
+  return {Status::Ok(), std::move(ret)};
 }
 
-Status GenericTileIO::read_generic_tile_header(
-    const StorageManager* sm,
-    const URI& uri,
-    uint64_t file_offset,
-    GenericTileHeader* header) {
+tuple<Status, optional<GenericTileIO::GenericTileHeader>>
+GenericTileIO::read_generic_tile_header(
+    const StorageManager* sm, const URI& uri, uint64_t file_offset) {
+  GenericTileHeader header;
+
   // Read the fixed-sized part of the header from file
   tdb_unique_ptr<Buffer> header_buff(tdb_new(Buffer));
-  RETURN_NOT_OK(sm->read(
-      uri, file_offset, header_buff.get(), GenericTileHeader::BASE_SIZE));
+  RETURN_NOT_OK_TUPLE(
+      sm->read(
+          uri, file_offset, header_buff.get(), GenericTileHeader::BASE_SIZE),
+      nullopt);
 
   // Read header individual values
-  RETURN_NOT_OK(header_buff->read(&header->version_number, sizeof(uint32_t)));
-  RETURN_NOT_OK(header_buff->read(&header->persisted_size, sizeof(uint64_t)));
-  RETURN_NOT_OK(header_buff->read(&header->tile_size, sizeof(uint64_t)));
-  RETURN_NOT_OK(header_buff->read(&header->datatype, sizeof(uint8_t)));
-  RETURN_NOT_OK(header_buff->read(&header->cell_size, sizeof(uint64_t)));
-  RETURN_NOT_OK(header_buff->read(&header->encryption_type, sizeof(uint8_t)));
-  RETURN_NOT_OK(
-      header_buff->read(&header->filter_pipeline_size, sizeof(uint32_t)));
+  RETURN_NOT_OK_TUPLE(
+      header_buff->read(&header.version_number, sizeof(uint32_t)), nullopt);
+  RETURN_NOT_OK_TUPLE(
+      header_buff->read(&header.persisted_size, sizeof(uint64_t)), nullopt);
+  RETURN_NOT_OK_TUPLE(
+      header_buff->read(&header.tile_size, sizeof(uint64_t)), nullopt);
+  RETURN_NOT_OK_TUPLE(
+      header_buff->read(&header.datatype, sizeof(uint8_t)), nullopt);
+  RETURN_NOT_OK_TUPLE(
+      header_buff->read(&header.cell_size, sizeof(uint64_t)), nullopt);
+  RETURN_NOT_OK_TUPLE(
+      header_buff->read(&header.encryption_type, sizeof(uint8_t)), nullopt);
+  RETURN_NOT_OK_TUPLE(
+      header_buff->read(&header.filter_pipeline_size, sizeof(uint32_t)),
+      nullopt);
 
   // Read header filter pipeline.
   header_buff->reset_size();
   header_buff->reset_offset();
-  RETURN_NOT_OK(sm->read(
-      uri,
-      file_offset + GenericTileHeader::BASE_SIZE,
-      header_buff.get(),
-      header->filter_pipeline_size));
+  RETURN_NOT_OK_TUPLE(
+      sm->read(
+          uri,
+          file_offset + GenericTileHeader::BASE_SIZE,
+          header_buff.get(),
+          header.filter_pipeline_size),
+      nullopt);
   ConstBuffer cbuf(header_buff->data(), header_buff->size());
   auto&& [st_filterpipeline, filterpipeline]{
-      FilterPipeline::deserialize(&cbuf, header->version_number)};
-  if (!st_filterpipeline.ok()) {
-    return st_filterpipeline;
-  }
-  header->filters = filterpipeline.value();
+      FilterPipeline::deserialize(&cbuf, header.version_number)};
+  RETURN_NOT_OK_TUPLE(st_filterpipeline, nullopt);
+  header.filters = filterpipeline.value();
 
-  return Status::Ok();
+  return {Status::Ok(), header};
 }
 
 Status GenericTileIO::write_generic(

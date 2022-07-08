@@ -41,8 +41,8 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/ast/query_ast.h"
-#include "tiledb/sm/query/result_cell_slab.h"
-#include "tiledb/sm/query/result_tile.h"
+#include "tiledb/sm/query/readers/result_cell_slab.h"
+#include "tiledb/sm/query/readers/result_tile.h"
 
 using namespace tiledb::common;
 
@@ -59,6 +59,9 @@ class QueryCondition {
 
   /** Default constructor. */
   QueryCondition();
+
+  /** Constructor from a tree. */
+  QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree);
 
   /** Copy constructor. */
   QueryCondition(const QueryCondition& rhs);
@@ -186,6 +189,11 @@ class QueryCondition {
       ResultTile& result_tile,
       std::vector<BitmapType>& result_bitmap,
       uint64_t* cell_count);
+
+  /**
+   * Reverse the query condition using De Morgan's law.
+   */
+  QueryCondition negated_condition();
 
   /**
    * Sets the AST. This is internal state to only be used in

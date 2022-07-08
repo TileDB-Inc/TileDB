@@ -30,7 +30,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/query/query_buffer.h"
-#include "tiledb/sm/query/result_coords.h"
+#include "tiledb/sm/query/readers/result_coords.h"
 
 namespace tiledb::sm::hilbert_order {
 

@@ -125,6 +125,7 @@ Status filter_pipeline_to_capnp(
       case FilterType::FILTER_CHECKSUM_MD5:
       case FilterType::FILTER_CHECKSUM_SHA256:
       case FilterType::INTERNAL_FILTER_AES_256_GCM:
+      case FilterType::FILTER_SCALE_FLOAT:
         break;
     }
   }
@@ -537,6 +538,9 @@ Status domain_to_capnp(
     return LOG_STATUS(
         Status_SerializationError("Error serializing domain; domain is null."));
 
+  // The type must be serialized for backwards compatibility with pre
+  // TileDB 2.10 clients
+  domainBuilder->setType(datatype_str(domain->dimension_ptr(0)->type()));
   domainBuilder->setTileOrder(layout_str(domain->tile_order()));
   domainBuilder->setCellOrder(layout_str(domain->cell_order()));
 

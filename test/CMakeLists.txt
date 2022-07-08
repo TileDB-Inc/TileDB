@@ -206,6 +206,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-time.cc
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
+    src/unit-cppapi-float-scaling-filter.cc
     src/unit-cppapi-fragment_info.cc
     src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
@@ -243,6 +244,12 @@ if (TILEDB_ARROW_TESTS)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-arrow.cc
     ${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
+  )
+endif()
+
+if (TILEDB_EXPERIMENTAL_FEATURES)
+  list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/test-capi-dimension_labels.cc
   )
 endif()
 

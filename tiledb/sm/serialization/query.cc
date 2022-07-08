@@ -60,11 +60,11 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/dense_reader.h"
-#include "tiledb/sm/query/reader.h"
-#include "tiledb/sm/query/sparse_global_order_reader.h"
-#include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
-#include "tiledb/sm/query/writer_base.h"
+#include "tiledb/sm/query/readers/dense_reader.h"
+#include "tiledb/sm/query/legacy/reader.h"
+#include "tiledb/sm/query/readers/sparse_global_order_reader.h"
+#include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
+#include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -1163,15 +1163,23 @@ Status query_to_capnp(
   auto layout = query.layout();
   auto type = query.type();
   auto array = query.array();
+  auto query_type = query.type();
 
-  if (layout == Layout::GLOBAL_ORDER && query.type() == QueryType::WRITE)
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE) {
+    return LOG_STATUS(
+        Status_SerializationError("Cannot serialize; Unsupported query type."));
+  }
+
+  if (layout == Layout::GLOBAL_ORDER && query_type == QueryType::WRITE) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; global order "
                                   "serialization not supported for writes."));
+  }
 
-  if (array == nullptr)
+  if (array == nullptr) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; array is null."));
+  }
 
   const auto& schema = query.array_schema();
 
@@ -1271,6 +1279,7 @@ Status query_to_capnp(
       }
     } else if (
         query.use_refactored_sparse_global_order_reader() && !schema.dense() &&
+        (query.condition() == nullptr || query.condition()->empty()) &&
         (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED)) {
       auto builder = query_builder->initReaderIndex();
 
@@ -1353,17 +1362,24 @@ Status query_from_capnp(
   auto array = query->array();
   const auto& schema = query->array_schema();
 
-  if (array == nullptr)
+  if (array == nullptr) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; array pointer is null."));
+  }
 
   // Deserialize query type (sanity check).
   QueryType query_type = QueryType::READ;
   RETURN_NOT_OK(query_type_enum(query_reader.getType().cStr(), &query_type));
-  if (query_type != type)
+  if (query_type != type) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; Query opened for " + query_type_str(type) +
         " but got serialized type for " + query_reader.getType().cStr()));
+  }
+
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE) {
+    return LOG_STATUS(Status_SerializationError(
+        "Cannot deserialize; Unsupported query type."));
+  }
 
   // Deserialize layout.
   Layout layout = Layout::UNORDERED;
@@ -1384,9 +1400,10 @@ Status query_from_capnp(
   }
 
   // Deserialize and set attribute buffers.
-  if (!query_reader.hasAttributeBufferHeaders())
+  if (!query_reader.hasAttributeBufferHeaders()) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; no attribute buffer headers in message."));
+  }
 
   auto buffer_headers = query_reader.getAttributeBufferHeaders();
   auto attribute_buffer_start = static_cast<char*>(buffer_start);
@@ -1814,7 +1831,7 @@ Status query_from_capnp(
   // heterogeneous coordinate changes
   if (type == QueryType::READ) {
     if (query_reader.hasReaderIndex() && !schema.dense() &&
-        layout == Layout::GLOBAL_ORDER) {
+        (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED)) {
       // Strategy needs to be cleared here to create the correct reader.
       query->clear_strategy();
       RETURN_NOT_OK(query->set_layout_unsafe(layout));

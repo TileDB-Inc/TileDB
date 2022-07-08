@@ -76,6 +76,12 @@ if (TILEDB_SERIALIZATION)
   )
 endif()
 
+if (TILEDB_EXPERIMENTAL_FEATURES)
+  list(APPEND TILEDB_PUBLIC_HEADERS
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/experimental/tiledb_dimension_label.h
+  )
+endif()
+
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb
@@ -128,9 +134,11 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array_directory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema_evolution.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension_label_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/attribute.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/domain.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/dimension_label/dimension_label.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer_list.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/api_argument_validator.cc
@@ -183,6 +191,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_create.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_pipeline.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_storage.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/float_scaling_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/noop_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/positive_delta_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_info.cc
@@ -209,23 +218,24 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ast/query_ast.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_reader.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_tiler.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/global_order_writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/hilbert_order.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ordered_writer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/legacy/cell_slab_iter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/legacy/reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/legacy/read_cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader_base.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/result_tile.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/read_cell_slab_iter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_global_order_reader.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_index_reader_base.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/sparse_unordered_with_dups_reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/dense_reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/reader_base.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/result_tile.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/sparse_global_order_reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/sparse_index_reader_base.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/sparse_unordered_with_dups_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/strategy_base.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/unordered_writer.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer_base.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/dense_tiler.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/global_order_writer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/ordered_writer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/unordered_writer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/writer_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
@@ -239,7 +249,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/timer_stat.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/storage_manager.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/range_subset.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray_partitioner.cc
@@ -252,6 +261,12 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/parse_uri.cc
 )
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
+
+if (TILEDB_EXPERIMENTAL_FEATURES)
+  list(APPEND TILEDB_CORE_SOURCES
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/experimental/tiledb_dimension_label.cc)
+endif()
+
 
 #openssl3 md5 deprecation mitigation
 if(MSVC)
@@ -1083,8 +1098,10 @@ set(ver_patch ${CMAKE_MATCH_1})
 
 set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
 
-set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
-string(CONCAT PKGCONF_REQ_PRIV ${PKGCONF_REQ_PRIV} " webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux")
+if (WIN32)
+  set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
+  string(CONCAT PKGCONF_REQ_PRIV ${PKGCONF_REQ_PRIV} " webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux")
+endif()
 
 # PKG Config file
 configure_file(

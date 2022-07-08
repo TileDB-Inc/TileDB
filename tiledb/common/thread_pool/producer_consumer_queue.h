@@ -60,7 +60,7 @@ class ProducerConsumerQueue {
    * @return bool indicating whether the item was successfully pushed or not.
    */
   bool push(const Item& item) {
-    std::unique_lock lock{mutex_};
+    std::lock_guard lock{mutex_};
     if (closed_) {
       return false;
     }
@@ -87,7 +87,7 @@ class ProducerConsumerQueue {
    * @return bool indicating whether the item was successfully pushed or not.
    */
   bool push(Item&& item) {
-    std::unique_lock lock{mutex_};
+    std::lock_guard lock{mutex_};
     if (closed_) {
       return false;
     }
@@ -112,7 +112,7 @@ class ProducerConsumerQueue {
    * @returns Item from the queue, if available, otherwise nothing.
    */
   std::optional<Item> try_pop() {
-    std::scoped_lock lock{mutex_};
+    std::lock_guard lock{mutex_};
 
     if (queue_.empty() || closed_) {
       return {};
@@ -202,7 +202,7 @@ class ProducerConsumerQueue {
       std::is_same_v<Container, std::deque<Q>>,
       std::optional<Q>>::type
   try_pop_back() {
-    std::unique_lock lock{mutex_};
+    std::lock_guard lock{mutex_};
 
     if (queue_.empty() || closed_) {
       return {};
@@ -218,7 +218,7 @@ class ProducerConsumerQueue {
    * are notified.  Any threads waiting on pop() will then return nothing.
    */
   void drain() {
-    std::scoped_lock lock{mutex_};
+    std::lock_guard lock{mutex_};
     closed_ = true;
     cv_.notify_all();
   }
