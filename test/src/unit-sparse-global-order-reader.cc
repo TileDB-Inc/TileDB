@@ -772,15 +772,12 @@ TEST_CASE_METHOD(
     "[sparse-global-order][qc-removes-replacement-data]") {
   // Create default array.
   reset_config();
-  create_default_array_1d();
 
-  bool use_subarray = false;
-  SECTION("- No subarray") {
-    use_subarray = false;
-  }
-  SECTION("- Subarray") {
-    use_subarray = true;
-  }
+  bool use_subarray = GENERATE(true, false);
+  bool dups = GENERATE(false, true);
+  bool extra_fragment = GENERATE(true, false);
+
+  create_default_array_1d(dups);
 
   int coords_1[] = {1, 2, 3};
   int data_1[] = {2, 2, 2};
@@ -793,9 +790,13 @@ TEST_CASE_METHOD(
   write_1d_fragment(coords_1, &coords_size, data_1, &data_size);
   write_1d_fragment(coords_2, &coords_size, data_2, &data_size);
 
+  if (extra_fragment) {
+    write_1d_fragment(coords_2, &coords_size, data_2, &data_size);
+  }
+
   // Read.
-  int coords_r[6];
-  int data_r[6];
+  int coords_r[9];
+  int data_r[9];
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
 
@@ -803,9 +804,19 @@ TEST_CASE_METHOD(
       read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
 
-  // Should read nothing.
-  CHECK(0 == data_r_size);
-  CHECK(0 == coords_r_size);
+  if (dups) {
+    CHECK(3 * sizeof(int) == data_r_size);
+    CHECK(3 * sizeof(int) == data_r_size);
+
+    int coords_c[] = {1, 2, 3};
+    int data_c[] = {2, 2, 2};
+    CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
+    CHECK(!std::memcmp(data_c, data_r, data_r_size));
+  } else {
+    // Should read nothing.
+    CHECK(0 == data_r_size);
+    CHECK(0 == coords_r_size);
+  }
 }
 
 TEST_CASE_METHOD(
@@ -846,8 +857,8 @@ TEST_CASE_METHOD(
       read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
 
-  // Should read nothing.
-  CHECK(4 == data_r_size);
+  // One value.
+  CHECK(sizeof(int) == data_r_size);
   CHECK(4 == coords_r_size);
 
   int coords_c[] = {2};

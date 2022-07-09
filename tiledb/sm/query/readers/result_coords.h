@@ -184,7 +184,7 @@ struct GlobalOrderResultCoords
     uint64_t cell_num = base::tile_->cell_num();
     uint64_t next_pos = base::pos_ + 1;
     if (base::tile_->has_post_qc_bmp()) {
-      auto& bitmap = base::tile_->post_qc_bitmap();
+      auto& bitmap = base::tile_->bitmap_with_qc();
 
       // Current cell is not in the bitmap.
       if (!bitmap[base::pos_]) {
@@ -228,7 +228,7 @@ struct GlobalOrderResultCoords
     uint64_t orig_pos = base::pos_;
 
     if (base::tile_->has_post_qc_bmp()) {
-      auto& bitmap = base::tile_->post_qc_bitmap();
+      auto& bitmap = base::tile_->bitmap_with_qc();
 
       // Current cell is not in the bitmap.
       if (!bitmap[base::pos_]) {

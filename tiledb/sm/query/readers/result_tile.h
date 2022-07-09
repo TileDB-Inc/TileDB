@@ -501,7 +501,7 @@ class ResultTile {
 /** Result tile with bitmap. */
 template <class BitmapType>
 class ResultTileWithBitmap : public ResultTile {
- public:
+ protected:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -531,6 +531,7 @@ class ResultTileWithBitmap : public ResultTile {
 
   DISABLE_COPY_AND_COPY_ASSIGN(ResultTileWithBitmap);
 
+ public:
   /* ********************************* */
   /*          PUBLIC METHODS           */
   /* ********************************* */
@@ -587,40 +588,6 @@ class ResultTileWithBitmap : public ResultTile {
     return bitmap_.size() > 0;
   }
 
-  /**
-   * Does this tile have a post query condition bitmap. As there is no post
-   * qc bitmap for this result tile type. Use the regular bitmap.
-   */
-  inline bool has_post_qc_bmp() {
-    return has_bmp();
-  }
-
-  /**
-   * Ensures there is a post query condition bitmap allocated. But as there is
-   * no post qc bitmap for this result tile type. Use the regular bitmap.
-   */
-  void ensure_post_qc_bitmap(uint64_t cell_num) {
-    if (bitmap_.size() == 0) {
-      bitmap_.resize(cell_num, 1);
-      bitmap_result_num_ = cell_num;
-    }
-  }
-
-  /**
-   * Returns the post query condition bitmap, which for this tile type is the
-   * regular bitmap.
-   */
-  inline std::vector<BitmapType>& post_qc_bitmap() {
-    return bitmap_;
-  }
-
-  /*
-   * Return the variable to update the number of cells post query condition.
-   */
-  inline uint64_t* qc_result_num_ptr() {
-    return &bitmap_result_num_;
-  }
-
   /** Swaps the contents (all field values) of this tile with the given tile. */
   void swap(ResultTileWithBitmap<BitmapType>& tile) {
     ResultTile::swap(tile);
@@ -653,6 +620,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   GlobalOrderResultTile(
       unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
       : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, array_schema)
+      , dups_(array_schema.allows_dups())
       , used_(false) {
   }
 
@@ -679,7 +647,10 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   /** Swaps the contents (all field values) of this tile with the given tile. */
   void swap(GlobalOrderResultTile& tile) {
     ResultTileWithBitmap<uint8_t>::swap(tile);
+    std::swap(used_, tile.used_);
+    std::swap(dups_, tile.dups_);
     std::swap(hilbert_values_, tile.hilbert_values_);
+    std::swap(extra_bitmap_, tile.extra_bitmap_);
   }
 
   /** Returns if the tile was used by the merge or not. */
@@ -693,44 +664,53 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   }
 
   /**
-   * Does this tile have a post query condition bitmap, or a normal bitmap.
+   * Returns whether this tile has a post query condition bitmap. For this
+   * tile type, it will either be extra_bitmap_ or the normal bitmap.
    */
   inline bool has_post_qc_bmp() {
     return ResultTileWithBitmap<BitmapType>::has_bmp() ||
-           post_qc_bitmap_.size() > 0;
+           extra_bitmap_.size() > 0;
   }
 
   /**
    * Ensures there is a post query condition bitmap allocated. If there is a
-   * bitmap already for this tile, 'post_qc_bitmap_' will contain the
-   * combination of the existing bitmap and query condition results.
+   * regular bitmap already for this tile, 'extra_bitmap_' will contain the
+   * combination of the existing bitmap with query condition results. Otherwise
+   * it will only contain the query condition results.
    */
-  void ensure_post_qc_bitmap(uint64_t cell_num) {
-    if (ResultTileWithBitmap<BitmapType>::has_bmp()) {
-      post_qc_bitmap_ = ResultTileWithBitmap<BitmapType>::bitmap_;
+  void ensure_bitmap_for_query_condition(uint64_t cell_num) {
+    if (!dups_) {
+      if (ResultTileWithBitmap<BitmapType>::has_bmp()) {
+        extra_bitmap_ = ResultTileWithBitmap<BitmapType>::bitmap_;
+      } else {
+        extra_bitmap_.resize(cell_num, 1);
+      }
     } else {
-      post_qc_bitmap_.resize(cell_num, 1);
+      ResultTileWithBitmap<BitmapType>::bitmap_.resize(cell_num, 1);
     }
   }
 
   /**
-   * Returns the post query condition bitmap, if allocated, or the normal
-   * bitmap.
+   * Returns the bitmap that included query condition results. For this tile
+   * type, this is 'extra_bitmap_' if allocated, or the regular bitmap.
    */
-  inline std::vector<BitmapType>& post_qc_bitmap() {
-    return post_qc_bitmap_.size() > 0 ?
-               post_qc_bitmap_ :
-               ResultTileWithBitmap<BitmapType>::bitmap_;
+  inline std::vector<BitmapType>& bitmap_with_qc() {
+    return extra_bitmap_.size() > 0 ? extra_bitmap_ :
+                                      ResultTileWithBitmap<BitmapType>::bitmap_;
   }
 
   /*
    * Return the variable to update the number of cells post query condition.
-   * We don't change the cell number for query condition as it is used to
-   * entirely remove tiles that have no more cells in them. For Global order
+   * If there is an extra bitmap, we don't change the cell number as it is used
+   * to entirely remove tiles that have no more cells in them. For Global order
    * reads, we still need the tile for deduplication, so return nullptr.
    */
   inline uint64_t* qc_result_num_ptr() {
-    return nullptr;
+    if (extra_bitmap_.size() > 0) {
+      return nullptr;
+    }
+
+    return &(ResultTileWithBitmap<BitmapType>::bitmap_result_num_);
   }
 
   /** Allocate space for the hilbert values vector. */
@@ -776,11 +756,90 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   /** Hilbert values for this tile. */
   std::vector<uint64_t> hilbert_values_;
 
-  /** Tile bitmap after query condition is applied. */
-  std::vector<BitmapType> post_qc_bitmap_;
+  /**
+   * An extra bitmap will be needed for array with no duplicates. For those,
+   * deduplication need to be run before query condition is applied. So bitmap_
+   * will contain the results before query condition, and extra_bitmap_ will
+   * contain results after query condition.
+   */
+  std::vector<BitmapType> extra_bitmap_;
+
+  /** Are duplicates allowed. */
+  bool dups_;
 
   /** Was the tile used in the merge. */
   bool used_;
+};
+
+template <class BitmapType>
+class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+  UnorderedWithDupsResultTile(
+      unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
+      : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, array_schema) {
+  }
+
+  /** Move constructor. */
+  UnorderedWithDupsResultTile(UnorderedWithDupsResultTile&& other) noexcept {
+    // Swap with the argument
+    swap(other);
+  }
+
+  /** Move-assign operator. */
+  UnorderedWithDupsResultTile& operator=(UnorderedWithDupsResultTile&& other) {
+    // Swap with the argument
+    swap(other);
+
+    return *this;
+  }
+
+  DISABLE_COPY_AND_COPY_ASSIGN(UnorderedWithDupsResultTile);
+
+  /* ********************************* */
+  /*          PUBLIC METHODS           */
+  /* ********************************* */
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(UnorderedWithDupsResultTile& tile) {
+    ResultTileWithBitmap<BitmapType>::swap(tile);
+  }
+
+  /**
+   * Returns whether this tile has a post query condition bitmap. For this
+   * tile type, this is stored in the regular bitmap.
+   */
+  inline bool has_post_qc_bmp() {
+    return ResultTileWithBitmap<BitmapType>::has_bmp();
+  }
+
+  /**
+   * Ensures there is a post query condition bitmap allocated. For this tile
+   * type, this is stored in the regular bitmap.
+   */
+  void ensure_bitmap_for_query_condition(uint64_t cell_num) {
+    if (ResultTileWithBitmap<BitmapType>::bitmap_.size() == 0) {
+      ResultTileWithBitmap<BitmapType>::bitmap_.resize(cell_num, 1);
+      ResultTileWithBitmap<BitmapType>::bitmap_result_num_ = cell_num;
+    }
+  }
+
+  /**
+   * Returns the bitmap that included query condition results. For this tile
+   * type, this is stored in the regular bitmap.
+   */
+  inline std::vector<BitmapType>& bitmap_with_qc() {
+    return ResultTileWithBitmap<BitmapType>::bitmap_;
+  }
+
+  /*
+   * Return the variable to update the number of cells post query condition.
+   */
+  inline uint64_t* qc_result_num_ptr() {
+    return &(ResultTileWithBitmap<BitmapType>::bitmap_result_num_);
+  }
 };
 
 }  // namespace sm

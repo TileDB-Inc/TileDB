@@ -599,11 +599,11 @@ Status SparseIndexReaderBase::apply_query_condition(
 
           // Compute the result of the query condition for this tile.
           if (!condition_.empty()) {
-            rt->ensure_post_qc_bitmap(cell_num);
+            rt->ensure_bitmap_for_query_condition(cell_num);
             RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
                 *(frag_meta->array_schema().get()),
                 *rt,
-                rt->post_qc_bitmap(),
+                rt->bitmap_with_qc(),
                 rt->qc_result_num_ptr()));
           }
 
@@ -758,10 +758,10 @@ template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size<uint8_t>(
     bool, unsigned, unsigned, uint64_t);
 template Status SparseIndexReaderBase::apply_query_condition<
-    ResultTileWithBitmap<uint64_t>,
+    UnorderedWithDupsResultTile<uint64_t>,
     uint64_t>(std::vector<ResultTile*>&);
 template Status SparseIndexReaderBase::apply_query_condition<
-    ResultTileWithBitmap<uint8_t>,
+    UnorderedWithDupsResultTile<uint8_t>,
     uint8_t>(std::vector<ResultTile*>&);
 template Status SparseIndexReaderBase::apply_query_condition<
     GlobalOrderResultTile<uint64_t>,
