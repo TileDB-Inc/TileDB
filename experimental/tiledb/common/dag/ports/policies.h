@@ -46,7 +46,7 @@ namespace tiledb::common {
 
 // clang-format off
 /**
- * 
+ *
  * State machine policies work with the `PortFiniteStateMachine` class template to
  * mix in functions associated with various entry and exit actions invoked when
  * processing state transition events.  The policy classes defined here use CRTP
@@ -59,15 +59,15 @@ namespace tiledb::common {
  * template <class T>
  * class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>>;
  * ```
- * To use the state machine in fsm.h with the `AsyncStateMachine` policy to 
+ * To use the state machine in fsm.h with the `AsyncStateMachine` policy to
  * transfer integers (say), we use
  * ```c++
  * AsyncStateMachine<int>
  * ```
  * as the state machine class.
  *
- * Currently, the actions defined for use by the PortFiniteStateMachine class, and 
- * associated mixin functions are 
+ * Currently, the actions defined for use by the PortFiniteStateMachine class, and
+ * associated mixin functions are
  *   ac_return: on_ac_return()
  *   src_swap: on_source_swap()
  *   sink_swap: on_sink_swap()
@@ -79,7 +79,7 @@ namespace tiledb::common {
  * For potential future flexibility, we are leaving separate source and sink versions
  * for now.  The `UnifiedAsyncStateMachine` tests out this idea.
  *
- * With our definition of the state machine (see fsm.h), these actions have the 
+ * With our definition of the state machine (see fsm.h), these actions have the
  * following functionality:
  *   on_ac_return(): empty function at the moment.
  *   on_source_swap(): if state is full_empty, notify sink and swap, otherwise, notify sink and wait.
@@ -640,7 +640,7 @@ class DebugStateMachine : public PortFiniteStateMachine<DebugStateMachine<T>> {
  */
 class DebugStateMachineWithLock
     : public PortFiniteStateMachine<DebugStateMachineWithLock> {
-  std::mutex(mutex_);
+  std::mutex mutex_;
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;
   using lock_type = std::unique_lock<std::mutex>;
