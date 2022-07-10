@@ -299,8 +299,8 @@ SparseGlobalOrderReader<BitmapType>::get_coord_tiles_size(
         fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
   }
 
-  // Add the post query condition bitmap size if there is a query condition.
-  if (!condition_.empty()) {
+  // Add the extra bitmap size if there is a query condition and no dups.
+  if (!array_schema_.allows_dups() && !condition_.empty()) {
     tiles_sizes->first +=
         fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
   }
