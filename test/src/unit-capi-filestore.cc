@@ -166,6 +166,7 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string txt_path = files_dir + "/" + "text.txt";
+  std::string array_path = temp_dir + "/" + "test_filestore_non_imported_array";
 
   create_temp_dir(temp_dir);
 
@@ -201,6 +202,10 @@ TEST_CASE_METHOD(
       tiledb::sm::constants::filestore_attribute_name.c_str(),
       &attr);
   REQUIRE(rc == TILEDB_OK);
+
+  size_t size = 0;
+  REQUIRE(tiledb_array_create(ctx_, array_path.c_str(), schema) == TILEDB_OK);
+  REQUIRE(tiledb_filestore_size(ctx_, array_path.c_str(), &size) == TILEDB_ERR);
 
   // Cleanup
   tiledb_attribute_free(&attr);
@@ -474,6 +479,7 @@ TEST_CASE_METHOD(
       tiledb_filestore_buffer_export(
           ctx_, array_name.c_str(), 18, buffer, 15) == TILEDB_OK);
   CHECK(!std::memcmp(buffer, "With two lines.", 15));
+
 
   // Check filestore size
   size_t size;

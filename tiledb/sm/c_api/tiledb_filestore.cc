@@ -563,6 +563,13 @@ TILEDB_EXPORT int32_t tiledb_filestore_size(
   Array array(context, std::string(filestore_array_uri), TILEDB_READ);
 
   tiledb_datatype_t dtype;
+  if (!array.has_metadata(
+          tiledb::sm::constants::filestore_metadata_size_key, &dtype)) {
+    LOG_STATUS(Status_Error(
+        std::string("Filestore size key not found in array metadata; this "
+                    "array may not be a filestore: ") + filestore_array_uri));
+    return TILEDB_ERR;
+  }
   uint32_t num;
   const void* file_size;
   array.get_metadata(
