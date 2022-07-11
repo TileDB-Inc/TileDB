@@ -620,19 +620,18 @@ Status array_schema_to_capnp(
 }
 
 // #TODO Add security validation on incoming URI
-shared_ptr<ArraySchema> array_schema_from_capnp(
+ArraySchema array_schema_from_capnp(
     const capnp::ArraySchema::Reader& schema_reader, const URI& uri) {
-  Status st;
-
   // Deserialize and validate array_type
   ArrayType array_type = ArrayType::DENSE;
-  st = array_type_enum(schema_reader.getArrayType(), &array_type);
+  Status st = array_type_enum(schema_reader.getArrayType(), &array_type);
   if (!st.ok()) {
     throw std::runtime_error(
         "[Deserialization::array_schema_from_capnp] " +
         std::string(schema_reader.getArrayType().cStr()) +
         " is not a valid ArrayType identifer.");
   }
+
   try {
     ensure_array_type_is_valid(std::underlying_type_t<ArrayType>(array_type));
   } catch (std::exception& e) {
@@ -649,6 +648,7 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
         std::string(schema_reader.getTileOrder().cStr()) +
         " is not a valid tile order identifer.");
   }
+
   try {
     ensure_tile_order_is_valid(std::underlying_type_t<Layout>(tile_order));
   } catch (std::exception& e) {
@@ -665,6 +665,7 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
         std::string(schema_reader.getCellOrder().cStr()) +
         " is not a valid cell order identifer.");
   }
+
   try {
     ensure_cell_order_is_valid(std::underlying_type_t<Layout>(cell_order));
   } catch (std::exception& e) {
@@ -753,6 +754,7 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
   // #TODO Add security validation
   auto attributes_reader = schema_reader.getAttributes();
   std::vector<shared_ptr<const Attribute>> attributes;
+  attributes.reserve(attributes_reader.size());
   for (auto attr_reader : attributes_reader) {
     auto&& [st_attr, attr]{attribute_from_capnp(attr_reader)};
     if (!st_attr.ok()) {
@@ -775,11 +777,11 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
   // Deserialize the name
   // #TODO Add security validation
   std::string name;
-  if (schema_reader.hasName())
+  if (schema_reader.hasName()) {
     name = schema_reader.getName().cStr();
+  }
 
-  return make_shared<ArraySchema>(
-      HERE(),
+  return ArraySchema(
       uri_deserialized,
       version,
       timestamp_range,
@@ -867,8 +869,8 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
             array_schema_builder);
         capnp::ArraySchema::Reader array_schema_reader =
             array_schema_builder.asReader();
-        decoded_array_schema =
-            array_schema_from_capnp(array_schema_reader, URI());
+        decoded_array_schema = make_shared<ArraySchema>(
+            HERE(), array_schema_from_capnp(array_schema_reader, URI()));
         break;
       }
       case SerializationType::CAPNP: {
@@ -879,8 +881,8 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
             serialized_buffer.size() / sizeof(::capnp::word)));
         capnp::ArraySchema::Reader array_schema_reader =
             reader.getRoot<capnp::ArraySchema>();
-        decoded_array_schema =
-            array_schema_from_capnp(array_schema_reader, URI());
+        decoded_array_schema = make_shared<ArraySchema>(
+            HERE(), array_schema_from_capnp(array_schema_reader, URI()));
         break;
       }
       default: {

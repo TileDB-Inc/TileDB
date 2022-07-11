@@ -304,7 +304,7 @@ class ArraySchema {
    * It assigns values to the members of the object from the input buffer.
    *
    * @param buff The binary representation of the object to read from.
-   * @param uri A uri object.
+   * @param uri The uri of the Array.
    * @return A new ArraySchema.
    */
   static ArraySchema deserialize(ConstBuffer* buff, const URI& uri);

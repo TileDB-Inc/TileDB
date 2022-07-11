@@ -76,7 +76,7 @@ Status array_schema_to_capnp(
  * @param uri A URI object
  * @return a new ArraySchema
  */
-shared_ptr<ArraySchema> array_schema_from_capnp(
+ArraySchema array_schema_from_capnp(
     const capnp::ArraySchema::Reader& schema_reader, const URI& uri);
 
 #endif  // TILEDB_SERIALIZATION
