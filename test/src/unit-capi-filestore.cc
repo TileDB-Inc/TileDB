@@ -480,7 +480,6 @@ TEST_CASE_METHOD(
           ctx_, array_name.c_str(), 18, buffer, 15) == TILEDB_OK);
   CHECK(!std::memcmp(buffer, "With two lines.", 15));
 
-
   // Check filestore size
   size_t size;
   CHECK(tiledb_filestore_size(ctx_, array_name.c_str(), &size) == TILEDB_OK);
