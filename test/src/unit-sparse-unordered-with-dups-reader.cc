@@ -1094,8 +1094,8 @@ TEST_CASE_METHOD(
   CHECK(status == TILEDB_COMPLETED);
 
   // Should read last tile (1 value).
-  CHECK(4 == data_r_size);
-  CHECK(4 == coords_r_size);
+  CHECK(sizeof(int) == data_r_size);
+  CHECK(sizeof(int) == coords_r_size);
 
   int coords_c_3[] = {5};
   int data_c_3[] = {5};
@@ -1188,8 +1188,8 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Should read two tile (6 values).
-  CHECK(24 == data_r_size);
-  CHECK(24 == coords_r_size);
+  CHECK(6 * sizeof(int) == data_r_size);
+  CHECK(6 * sizeof(int) == coords_r_size);
 
   int coords_c[] = {1, 2, 3, 4, 5, 6};
   int data_c[] = {1, 2, 3, 4, 5, 6};
@@ -1245,8 +1245,8 @@ TEST_CASE_METHOD(
   CHECK(status == TILEDB_INCOMPLETE);
 
   // Should only read one cell (1 values).
-  CHECK(4 == data_r_size);
-  CHECK(4 == coords_r_size);
+  CHECK(sizeof(int) == data_r_size);
+  CHECK(sizeof(int) == coords_r_size);
 
   int coords_c_1[] = {1};
   int data_c_1[] = {1};
@@ -1262,8 +1262,8 @@ TEST_CASE_METHOD(
   CHECK(status == TILEDB_COMPLETED);
 
   // Should read last cell (1 values).
-  CHECK(4 == data_r_size);
-  CHECK(4 == coords_r_size);
+  CHECK(sizeof(int) == data_r_size);
+  CHECK(sizeof(int) == coords_r_size);
 
   int coords_c_2[] = {2};
   int data_c_2[] = {2};

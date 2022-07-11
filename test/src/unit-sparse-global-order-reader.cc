@@ -805,7 +805,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   if (dups) {
-    CHECK(3 * sizeof(int) == data_r_size);
+    CHECK(3 * sizeof(int) == coords_r_size);
     CHECK(3 * sizeof(int) == data_r_size);
 
     int coords_c[] = {1, 2, 3};
@@ -859,7 +859,7 @@ TEST_CASE_METHOD(
 
   // One value.
   CHECK(sizeof(int) == data_r_size);
-  CHECK(4 == coords_r_size);
+  CHECK(sizeof(int) == coords_r_size);
 
   int coords_c[] = {2};
   int data_c[] = {4};
