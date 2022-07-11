@@ -318,7 +318,7 @@ class VFS {
    * // Create new file, truncating it if it exists.
    * buff.open("file.txt", std::ios::out);
    * std::ostream os(&buff);
-   * if (!os.good()) throw std::runtime_error("Error opening file);
+   * if (!os.good()) throw std::runtime_error("Error opening file");
    *
    * std::string str = "This will be written to the file.";
    *
