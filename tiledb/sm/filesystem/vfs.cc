@@ -539,6 +539,7 @@ Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
 }
 
 Status VFS::file_size(const URI& uri, uint64_t* size) const {
+  stats_->add_counter("file_size_num", 1);
   if (!init_)
     return LOG_STATUS(
         Status_VFSError("Cannot get file size; VFS not initialized"));
@@ -641,9 +642,12 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
 }
 
 Status VFS::is_file(const URI& uri, bool* is_file) const {
-  if (!init_)
+  if (!init_) {
     return LOG_STATUS(
         Status_VFSError("Cannot check file; VFS not initialized"));
+  }
+
+  stats_->add_counter("is_object_num", 1);
 
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -812,6 +816,7 @@ Status VFS::terminate() {
 }
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
+  stats_->add_counter("ls_num", 1);
   auto&& [st, entries] = ls_with_sizes(parent);
   RETURN_NOT_OK(st);
 
