@@ -372,7 +372,8 @@ TEST_CASE_METHOD(
   }
 
   CHECK(
-      exception ==
-      "[TileDB::Array] Error: Cannot open array for deletes; Array format "
-      "version (11) is smaller than the minimum supported version (16).");
+      exception.find(
+          "Error: Cannot open array for deletes; Array format version (11) is "
+          "smaller than the minimum supported version (16).") !=
+      std::string::npos);
 }
