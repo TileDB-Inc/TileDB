@@ -362,6 +362,10 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test open for delete invalid version",
     "[cppapi][deletes][][invalid-version]") {
+  if constexpr (is_experimental_build) {
+    return;
+  }
+
   std::string v11_arrays_dir =
       std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/sparse_array_v11";
   std::string exception;
@@ -372,8 +376,7 @@ TEST_CASE_METHOD(
   }
 
   CHECK(
-      exception.find(
-          "Error: Cannot open array for deletes; Array format version (11) is "
-          "smaller than the minimum supported version (16).") !=
-      std::string::npos);
+      exception ==
+      "[TileDB::Array] Error: Cannot open array for deletes; Array format "
+      "version (11) is smaller than the minimum supported version (16).");
 }
