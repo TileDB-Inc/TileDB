@@ -63,7 +63,7 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
   // Ensure that the field exists.
   if (!array_schema.is_field(field_name_)) {
-    return Status_QueryConditionError("Field doesn't exits");
+    return Status_QueryConditionError("Field doesn't exist");
   }
 
   const auto nullable = array_schema.is_nullable(field_name_);

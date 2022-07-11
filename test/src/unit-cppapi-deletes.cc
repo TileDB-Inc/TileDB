@@ -162,15 +162,16 @@ void DeletesFx::write_sparse(
   // Open array.
   std::unique_ptr<Array> array;
   if (encrypt) {
-    array.reset(new Array(
+    array = std::make_unique<Array>(
         ctx_,
         SPARSE_ARRAY_NAME,
         TILEDB_WRITE,
         enc_type_,
         std::string(key_),
-        timestamp));
+        timestamp);
   } else {
-    array.reset(new Array(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, timestamp));
+    array = std::make_unique<Array>(
+        ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, timestamp);
   }
 
   // Create query.
@@ -199,15 +200,16 @@ void DeletesFx::read_sparse(
   // Open array.
   std::unique_ptr<Array> array;
   if (encrypt) {
-    array.reset(new Array(
+    array = std::make_unique<Array>(
         ctx_,
         SPARSE_ARRAY_NAME,
         TILEDB_READ,
         enc_type_,
         std::string(key_),
-        timestamp));
+        timestamp);
   } else {
-    array.reset(new Array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp));
+    array = std::make_unique<Array>(
+        ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
   }
 
   // Create query.
@@ -233,15 +235,16 @@ void DeletesFx::write_delete_condition(
   // Open array.
   std::unique_ptr<Array> array;
   if (encrypt) {
-    array.reset(new Array(
+    array = std::make_unique<Array>(
         ctx_,
         SPARSE_ARRAY_NAME,
         TILEDB_DELETE,
         enc_type_,
         std::string(key_),
-        timestamp));
+        timestamp);
   } else {
-    array.reset(new Array(ctx_, SPARSE_ARRAY_NAME, TILEDB_DELETE, timestamp));
+    array = std::make_unique<Array>(
+        ctx_, SPARSE_ARRAY_NAME, TILEDB_DELETE, timestamp);
   }
 
   // Create query.
@@ -268,15 +271,16 @@ void DeletesFx::check_delete_conditions(
   // Open array.
   std::unique_ptr<Array> array;
   if (encrypt) {
-    array.reset(new Array(
+    array = std::make_unique<Array>(
         ctx_,
         SPARSE_ARRAY_NAME,
         TILEDB_READ,
         enc_type_,
         std::string(key_),
-        timestamp));
+        timestamp);
   } else {
-    array.reset(new Array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp));
+    array = std::make_unique<Array>(
+        ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
   }
   auto array_ptr = array->ptr()->array_;
   auto& array_dir = array_ptr->array_directory();
