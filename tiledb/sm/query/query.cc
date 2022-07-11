@@ -40,7 +40,7 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/deletes/deletes.h"
+#include "tiledb/sm/query/deletes_and_updates/deletes.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/dense_reader.h"

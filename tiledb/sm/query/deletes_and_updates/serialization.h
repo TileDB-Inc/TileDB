@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/query/deletes/serialization.h
+ * @file tiledb/sm/query/deletes_and_updates/serialization.h
  *
  * @section LICENSE
  *
@@ -30,28 +30,27 @@
  * This file contains functions for serializing/deserializing query conditions.
  */
 
-#ifndef TILEDB_DELETE_CONDITION_SERIALIZATION_H
-#define TILEDB_DELETE_CONDITION_SERIALIZATION_H
+#ifndef TILEDB_CONDITION_SERIALIZATION_H
+#define TILEDB_CONDITION_SERIALIZATION_H
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/query/query_condition.h"
 
-namespace tiledb::sm::deletes::serialize {
+namespace tiledb::sm::deletes_and_updates::serialization {
 
 enum class NodeType : uint8_t { EXPRESSION = 0, VALUE };
 
 /**
- * Serializes the delete condition.
+ * Serializes the condition.
  *
  * @param query_condition Query condition to serialize.
  * @return Serialized query condition.
  */
-std::vector<uint8_t> serialize_delete_condition(
-    const QueryCondition& query_condition);
+std::vector<uint8_t> serialize_condition(const QueryCondition& query_condition);
 
 /**
- * Serializes the delete condition.
+ * Deserializes the condition.
  *
  * @param condition_marker Marker used to know which file the condition came
  * from.
@@ -59,11 +58,11 @@ std::vector<uint8_t> serialize_delete_condition(
  * @param size Size of the serialized data.
  * @return Deserialized query condition.
  */
-QueryCondition deserialize_delete_condition(
+QueryCondition deserialize_condition(
     const std::string& condition_marker,
     const void* buff,
     const storage_size_t size);
 
-}  // namespace tiledb::sm::deletes::serialize
+}  // namespace tiledb::sm::deletes_and_updates::serialization
 
-#endif  // TILEDB_DELETE_CONDITION_SERIALIZATION_H
+#endif  // TILEDB_CONDITION_SERIALIZATION_H

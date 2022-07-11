@@ -30,10 +30,10 @@
  * This file implements class Deletes.
  */
 
-#include "tiledb/sm/query/deletes/deletes.h"
+#include "tiledb/sm/query/deletes_and_updates/deletes.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
-#include "tiledb/sm/query/deletes/serialization.h"
+#include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 using namespace tiledb;
@@ -137,7 +137,7 @@ Status Deletes::dowork() {
 
   // Serialize the negated condition and write to disk.
   auto serialized_condition =
-      tiledb::sm::deletes::serialize::serialize_delete_condition(
+      tiledb::sm::deletes_and_updates::serialization::serialize_condition(
           condition_.negated_condition());
   RETURN_NOT_OK(storage_manager_->store_data_to_generic_tile(
       serialized_condition.data(),

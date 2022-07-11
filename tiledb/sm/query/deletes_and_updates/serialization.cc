@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/query/deletes/serialization.cc
+ * @file tiledb/sm/query/deletes_and_updates/serialization.cc
  *
  * @section LICENSE
  *
@@ -27,11 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This file contains functions for parsing URIs for storage of an array.
+ * This file contains functions for serializing deletes and updates data
+ * to/from disk.
  */
 #include "serialization.h"
 
-namespace tiledb::sm::deletes::serialize {
+namespace tiledb::sm::deletes_and_updates::serialization {
 
 storage_size_t get_serialized_condition_size(
     const tdb_unique_ptr<tiledb::sm::ASTNode>& node) {
@@ -59,7 +60,7 @@ storage_size_t get_serialized_condition_size(
   return size;
 }
 
-void serialize_delete_condition_impl(
+void serialize_condition_impl(
     const tdb_unique_ptr<tiledb::sm::ASTNode>& node,
     std::vector<uint8_t>& buff,
     storage_size_t& idx) {
@@ -115,23 +116,23 @@ void serialize_delete_condition_impl(
     idx += sizeof(nodes_size);
 
     for (storage_size_t i = 0; i < nodes.size(); i++) {
-      serialize_delete_condition_impl(nodes[i], buff, idx);
+      serialize_condition_impl(nodes[i], buff, idx);
     }
   }
 }
 
-std::vector<uint8_t> serialize_delete_condition(
+std::vector<uint8_t> serialize_condition(
     const QueryCondition& query_condition) {
   std::vector<uint8_t> ret(
       get_serialized_condition_size(query_condition.ast()));
 
   storage_size_t size = 0;
-  serialize_delete_condition_impl(query_condition.ast(), ret, size);
+  serialize_condition_impl(query_condition.ast(), ret, size);
 
   return ret;
 }
 
-tdb_unique_ptr<ASTNode> deserialize_delete_condition_impl(
+tdb_unique_ptr<ASTNode> deserialize_condition_impl(
     const char* buff, const storage_size_t size, storage_size_t& idx) {
   assert(idx < size);
 
@@ -175,7 +176,7 @@ tdb_unique_ptr<ASTNode> deserialize_delete_condition_impl(
 
     std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
     for (storage_size_t i = 0; i < nodes_size; i++) {
-      ast_nodes.push_back(deserialize_delete_condition_impl(buff, size, idx));
+      ast_nodes.push_back(deserialize_condition_impl(buff, size, idx));
     }
 
     return tdb_unique_ptr<ASTNode>(
@@ -185,15 +186,14 @@ tdb_unique_ptr<ASTNode> deserialize_delete_condition_impl(
   }
 }
 
-QueryCondition deserialize_delete_condition(
+QueryCondition deserialize_condition(
     const std::string& condition_marker,
     const void* buff,
     const storage_size_t size) {
   storage_size_t idx = 0;
   return QueryCondition(
       condition_marker,
-      deserialize_delete_condition_impl(
-          static_cast<const char*>(buff), size, idx));
+      deserialize_condition_impl(static_cast<const char*>(buff), size, idx));
 }
 
-}  // namespace tiledb::sm::deletes::serialize
+}  // namespace tiledb::sm::deletes_and_updates::serialization

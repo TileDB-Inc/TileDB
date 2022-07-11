@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/query/delete_condition/test/main.cc
+ * @file tiledb/sm/query/deletes_and_updates/test/main.cc
  *
  * @section LICENSE
  *

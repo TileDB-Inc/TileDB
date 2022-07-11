@@ -63,7 +63,7 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
-#include "tiledb/sm/query/deletes/serialization.h"
+#include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -1605,8 +1605,9 @@ StorageManager::load_delete_conditions(
         load_data_from_generic_tile(uri, locations[i].offset(), enc_key);
     RETURN_NOT_OK(st);
 
-    ret[i] = tiledb::sm::deletes::serialize::deserialize_delete_condition(
-        condition_marker, buff_opt->data(), buff_opt->size());
+    ret[i] =
+        tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
+            condition_marker, buff_opt->data(), buff_opt->size());
     return Status::Ok();
   });
   RETURN_NOT_OK_TUPLE(status, nullopt);
