@@ -1137,9 +1137,13 @@ Status Query::create_strategy() {
     }
   } else if (type_ == QueryType::READ) {
     bool use_default = true;
-    if (use_refactored_sparse_unordered_with_dups_reader() &&
-        !array_schema_->dense() && layout_ == Layout::UNORDERED &&
-        array_schema_->allows_dups()) {
+    bool all_dense = true;
+    for (auto& frag_md : fragment_metadata_) {
+      all_dense &= frag_md->dense();
+    }
+
+    if (use_refactored_sparse_unordered_with_dups_reader(
+            layout_, *array_schema_)) {
       use_default = false;
 
       auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
@@ -1172,7 +1176,7 @@ Status Query::create_strategy() {
             condition_));
       }
     } else if (
-        use_refactored_sparse_global_order_reader() &&
+        use_refactored_sparse_global_order_reader(layout_, *array_schema_) &&
         !array_schema_->dense() &&
         (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED)) {
       // Using the reader for unordered queries to do deduplication.
@@ -1209,25 +1213,19 @@ Status Query::create_strategy() {
             condition_,
             consolidation_with_timestamps_));
       }
-    } else if (use_refactored_dense_reader() && array_schema_->dense()) {
-      bool all_dense = true;
-      for (auto& frag_md : fragment_metadata_)
-        all_dense &= frag_md->dense();
-
-      if (all_dense) {
-        use_default = false;
-        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-            DenseReader,
-            stats_->create_child("Reader"),
-            logger_,
-            storage_manager_,
-            array_,
-            config_,
-            buffers_,
-            subarray_,
-            layout_,
-            condition_));
-      }
+    } else if (use_refactored_dense_reader(*array_schema_, all_dense)) {
+      use_default = false;
+      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+          DenseReader,
+          stats_->create_child("Reader"),
+          logger_,
+          storage_manager_,
+          array_,
+          config_,
+          buffers_,
+          subarray_,
+          layout_,
+          condition_));
     }
 
     if (use_default) {
@@ -2222,33 +2220,35 @@ shared_ptr<Buffer> Query::rest_scratch() const {
   return rest_scratch_;
 }
 
-bool Query::use_refactored_dense_reader() {
-  bool use_refactored_readers = false;
+bool Query::use_refactored_dense_reader(
+    const ArraySchema& array_schema, bool all_dense) {
+  bool use_refactored_reader = false;
   bool found = false;
   // First check for legacy option
   config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_readers, &found);
+      "sm.use_refactored_readers", &use_refactored_reader, &found);
   // If the legacy/deprecated option is set use it over the new parameters
   // This facilitates backwards compatibility
   if (found) {
     logger_->warn(
         "sm.use_refactored_readers config option is deprecated.\nPlease use "
         "'sm.query.dense.reader' with value of 'refactored' or 'legacy'");
-    return use_refactored_readers;
+  } else {
+    const std::string& val = config_.get("sm.query.dense.reader", &found);
+    assert(found);
+    use_refactored_reader = val == "refactored";
   }
 
-  const std::string& val = config_.get("sm.query.dense.reader", &found);
-  assert(found);
-
-  return val == "refactored";
+  return use_refactored_reader && array_schema.dense() && all_dense;
 }
 
-bool Query::use_refactored_sparse_global_order_reader() {
-  bool use_refactored_readers = false;
+bool Query::use_refactored_sparse_global_order_reader(
+    Layout layout, const ArraySchema& array_schema) {
+  bool use_refactored_reader = false;
   bool found = false;
   // First check for legacy option
   config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_readers, &found);
+      "sm.use_refactored_readers", &use_refactored_reader, &found);
   // If the legacy/deprecated option is set use it over the new parameters
   // This facilitates backwards compatibility
   if (found) {
@@ -2256,23 +2256,24 @@ bool Query::use_refactored_sparse_global_order_reader() {
         "sm.use_refactored_readers config option is deprecated.\nPlease use "
         "'sm.query.sparse_global_order.reader' with value of 'refactored' or "
         "'legacy'");
-    return use_refactored_readers;
+  } else {
+    const std::string& val =
+        config_.get("sm.query.sparse_global_order.reader", &found);
+    assert(found);
+    use_refactored_reader = val == "refactored";
   }
-
-  const std::string& val =
-      config_.get("sm.query.sparse_global_order.reader", &found);
-  assert(found);
-
-  return val == "refactored";
+  return use_refactored_reader && !array_schema.dense() &&
+         (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED);
 }
 
-bool Query::use_refactored_sparse_unordered_with_dups_reader() {
-  bool use_refactored_readers = false;
+bool Query::use_refactored_sparse_unordered_with_dups_reader(
+    Layout layout, const ArraySchema& array_schema) {
+  bool use_refactored_reader = false;
   bool found = false;
 
   // First check for legacy option
   config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_readers, &found);
+      "sm.use_refactored_readers", &use_refactored_reader, &found);
   // If the legacy/deprecated option is set use it over the new parameters
   // This facilitates backwards compatibility
   if (found) {
@@ -2280,14 +2281,15 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader() {
         "sm.use_refactored_readers config option is deprecated.\nPlease use "
         "'sm.query.sparse_unordered_with_dups.reader' with value of "
         "'refactored' or 'legacy'");
-    return use_refactored_readers;
+  } else {
+    const std::string& val =
+        config_.get("sm.query.sparse_unordered_with_dups.reader", &found);
+    assert(found);
+    use_refactored_reader = val == "refactored";
   }
 
-  const std::string& val =
-      config_.get("sm.query.sparse_unordered_with_dups.reader", &found);
-  assert(found);
-
-  return val == "refactored";
+  return use_refactored_reader && !array_schema.dense() &&
+         layout == Layout::UNORDERED && array_schema.allows_dups();
 }
 
 tuple<Status, optional<bool>> Query::non_overlapping_ranges() {
