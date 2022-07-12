@@ -125,6 +125,7 @@ Status filter_pipeline_to_capnp(
       case FilterType::FILTER_CHECKSUM_MD5:
       case FilterType::FILTER_CHECKSUM_SHA256:
       case FilterType::INTERNAL_FILTER_AES_256_GCM:
+      case FilterType::FILTER_SCALE_FLOAT:
         break;
     }
   }

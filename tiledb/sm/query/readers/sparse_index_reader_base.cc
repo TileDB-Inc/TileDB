@@ -177,14 +177,6 @@ SparseIndexReaderBase::get_coord_tiles_size(
     }
   }
 
-  // Add the result tile structure size.
-  tiles_size += sizeof(ResultTileWithBitmap<BitmapType>);
-
-  // Add the tile bitmap size if there is a subarray.
-  if (subarray_.is_set()) {
-    tiles_size += fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
-  }
-
   if (include_timestamps(f)) {
     tiles_size +=
         fragment_metadata_[f]->cell_num(t) * constants::timestamp_size;
@@ -572,7 +564,7 @@ Status SparseIndexReaderBase::count_tile_bitmap_cells(
   return Status::Ok();
 }
 
-template <class BitmapType>
+template <class ResultTileType, class BitmapType>
 Status SparseIndexReaderBase::apply_query_condition(
     std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("apply_query_condition");
@@ -585,30 +577,10 @@ Status SparseIndexReaderBase::apply_query_condition(
         result_tiles.size(),
         [&](uint64_t t) {
           // For easy reference.
-          auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[t];
+          auto rt = static_cast<ResultTileType*>(result_tiles[t]);
           const auto frag_meta = fragment_metadata_[rt->frag_idx()];
 
           auto cell_num = frag_meta->cell_num(rt->tile_idx());
-
-          // Set num_cells if no subarray as it's used to filter below.
-          if (!subarray_.is_set()) {
-            rt->bitmap_result_num_ = cell_num;
-          }
-
-          // Full overlap in bitmap calculation, make a bitmap.
-          if (!rt->has_bmp()) {
-            rt->bitmap_.resize(cell_num, 1);
-            rt->bitmap_result_num_ = cell_num;
-          }
-
-          // Compute the result of the query condition for this tile.
-          if (!condition_.empty()) {
-            RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
-                *(frag_meta->array_schema().get()),
-                *rt,
-                rt->bitmap_,
-                &rt->bitmap_result_num_));
-          }
 
           // If timestamps are present and fragment is partially included,
           // filter out tiles based on time by applying the query condition
@@ -616,11 +588,28 @@ Status SparseIndexReaderBase::apply_query_condition(
               frag_meta->partial_time_overlap(
                   array_->timestamp_start(),
                   array_->timestamp_end_opened_at())) {
+            // Full overlap in bitmap calculation, make a bitmap.
+            if (!rt->has_bmp()) {
+              rt->bitmap_.resize(cell_num, 1);
+              rt->bitmap_result_num_ = cell_num;
+            }
+
+            // Remove cells with partial overlap from the bitmap.
             RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<BitmapType>(
                 *(frag_meta->array_schema().get()),
                 *rt,
                 rt->bitmap_,
                 &rt->bitmap_result_num_));
+          }
+
+          // Compute the result of the query condition for this tile.
+          if (!condition_.empty()) {
+            rt->ensure_bitmap_for_query_condition(cell_num);
+            RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
+                *(frag_meta->array_schema().get()),
+                *rt,
+                rt->bitmap_with_qc(),
+                rt->qc_result_num_ptr()));
           }
 
           return Status::Ok();
@@ -773,10 +762,18 @@ SparseIndexReaderBase::get_coord_tiles_size<uint64_t>(
 template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size<uint8_t>(
     bool, unsigned, unsigned, uint64_t);
-template Status SparseIndexReaderBase::apply_query_condition<uint64_t>(
-    std::vector<ResultTile*>&);
-template Status SparseIndexReaderBase::apply_query_condition<uint8_t>(
-    std::vector<ResultTile*>&);
+template Status SparseIndexReaderBase::apply_query_condition<
+    UnorderedWithDupsResultTile<uint64_t>,
+    uint64_t>(std::vector<ResultTile*>&);
+template Status SparseIndexReaderBase::apply_query_condition<
+    UnorderedWithDupsResultTile<uint8_t>,
+    uint8_t>(std::vector<ResultTile*>&);
+template Status SparseIndexReaderBase::apply_query_condition<
+    GlobalOrderResultTile<uint64_t>,
+    uint64_t>(std::vector<ResultTile*>&);
+template Status SparseIndexReaderBase::apply_query_condition<
+    GlobalOrderResultTile<uint8_t>,
+    uint8_t>(std::vector<ResultTile*>&);
 template Status SparseIndexReaderBase::compute_tile_bitmaps<uint64_t>(
     std::vector<ResultTile*>&);
 template Status SparseIndexReaderBase::compute_tile_bitmaps<uint8_t>(
