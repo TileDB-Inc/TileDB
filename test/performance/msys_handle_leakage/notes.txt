@@ -1,3 +1,6 @@
+(from
+https://app.shortcut.com/tiledb-inc/story/19067/rtools40-msys-builds-of-tiledb-unit-leaking-handles)
+
 (Event) Handle leakage in mingw builds (rtools40, rtools42) seems to be issue within
 those cpp std libraries that tiledb usage aggravates, as visual studio builds are not exhibiting this leakage.
 
@@ -16,6 +19,7 @@ rtools42 so this may not be important.
 
 The ('recent') msys2 mingw versions I have installed of both gdb and lldb seem to have (differing) issues of their own
 making it difficult to try and gather a complete picture of exactly what/where all may be involved in calls to the
-CreateEventA (windows api) routine presumed to be at least responsible for the direct creation of the handles being leaked.
+CreateEventA (windows api) routine presumed to be at least responsible for the direct creation of the handles being
+leaked.
 
 See notes on building this module and running some trials in the top of unit.cc along with some previously observed results.

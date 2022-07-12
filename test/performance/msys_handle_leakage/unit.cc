@@ -1,5 +1,32 @@
 // cmake --build tiledb/test/performance --target tiledb_explore_msys_handle_leakage --config RelWithDebInfo
 
+/*
+(from                                                                                                                   
+* https://app.shortcut.com/tiledb-inc/story/19067/rtools40-msys-builds-of-tiledb-unit-leaking-handles)
+*                                                                                                                                             
+* (Event) Handle leakage in mingw builds (rtools40, rtools42) seems to be issue within
+* those cpp std libraries that tiledb usage aggravates, as visual studio builds are not exhibiting this leakage.
+* 
+* The leakage itself does not seem to be completely deterministic, as repeatedly running with the same parameters
+* (available with modified unit test) multiple times generally results in different numbers of handles leaked on
+* any given run.  Leakage can be demonstrated with tiledb_unit filtering on "CPP API: Test consolidation with timestamps, full and partial read with dups"
+* 
+* Modifications to unit-cppapi-consolidation-with-timestamps.cc which implements that TEST_CASE indicate that in
+* particular the activity of the .query .submit()d in read_sparse() routine seems to be at least the largest culprit,
+* without the query there seems little/no leakage.
+* 
+* The handle leakage may be causing some of the 32bit unit test failures in mingw, as some of the tests that fail in an
+* unfiltered run work acceptably when run individually, but it seems 32bit builds are not going to be supported with
+* rtools42 so this may not be important.
+* 
+* The ('recent') msys2 mingw versions I have installed of both gdb and lldb seem to have (differing) issues of their own
+* making it difficult to try and gather a complete picture of exactly what/where all may be involved in calls to the
+* CreateEventA (windows api) routine presumed to be at least responsible for the direct creation of the handles being 
+* leaked.
+* 
+* See notes on building this module and running some trials in the top of unit.cc along with some previously observed results.
+*/
+
 //.\tiledb\test\performance\RelWithDebInfo\tiledb_explore_msys_handle_leakage.exe --read-sparse-iters=1 --perform-query=1 --consolidate-sparse-iters=1 --wait-for-keypress both
 //./tiledb/test/performance/tiledb_explore_msys_handle_leakage.exe --read-sparse-iters=1 --perform-query=1 --consolidate-sparse-sparse-iters=1 --wait-for-keypress both
 
