@@ -414,6 +414,7 @@ void test_join(size_t test_size) {
   CHECK(h == c.end());
 }
 
+<<<<<<< HEAD
 template <class DB>
 void db_test_2(DB& db) {
   for (auto& j : db) {
@@ -446,5 +447,206 @@ TEST_CASE("DataBlock: Iterate through 8 data_blocks", "[data_block]") {
   for (size_t i = 0; i < 8; ++i) {
     auto db = DataBlock{};
     db_test_2(db);
+=======
+TEST_CASE("DataBlock: Join data_blocks (join view)", "[data_block]") {
+  SECTION("chunk_size") {
+    test_join(chunk_size_);
+  }
+  SECTION("chunk_size / 2") {
+    test_join(chunk_size_ / 2 + 1);
+  }
+  SECTION("chunk_size / 2") {
+    test_join(chunk_size_ / 2 - 1);
+  }
+}
+
+void test_join_std_fill(size_t test_size) {
+  auto a = DataBlock{test_size};
+  auto b = DataBlock{test_size};
+  auto c = DataBlock{test_size};
+  CHECK(a.begin() + test_size == a.end());
+  CHECK(b.begin() + test_size == b.end());
+  CHECK(c.begin() + test_size == c.end());
+
+  std::fill(a.begin(), a.end(), std::byte{0});
+  std::fill(b.begin(), b.end(), std::byte{0});
+  std::fill(c.begin(), c.end(), std::byte{0});
+
+  std::list<DataBlock> x{a, b, c};
+  auto y = join(x);
+
+  CHECK(y.size() == (a.size() + b.size() + c.size()));
+
+  auto e = std::find_if_not(
+      y.begin(), y.end(), [](auto e) { return (std::byte{0} == e); });
+  CHECK(e == y.end());
+
+  std::fill(y.begin(), y.end(), std::byte{77});
+  auto f = std::find_if_not(
+      y.begin(), y.end(), [](auto e) { return (std::byte{77} == e); });
+  CHECK(f == y.end());
+  auto g = std::find_if_not(
+      a.begin(), a.end(), [](auto e) { return (std::byte{77} == e); });
+  CHECK(g == a.end());
+  auto h = std::find_if_not(
+      b.begin(), b.end(), [](auto e) { return (std::byte{77} == e); });
+  CHECK(h == b.end());
+  auto i = std::find_if_not(
+      c.begin(), c.end(), [](auto e) { return (std::byte{77} == e); });
+  CHECK(i == c.end());
+}
+
+TEST_CASE("DataBlock: Join data_blocks std::fill", "[data_block]") {
+  SECTION("chunk_size") {
+    test_join_std_fill(chunk_size_);
+  }
+  SECTION("chunk_size / 2") {
+    test_join_std_fill(chunk_size_ / 2 + 1);
+  }
+  SECTION("chunk_size / 2") {
+    test_join_std_fill(chunk_size_ / 2 - 1);
+  }
+}
+
+void test_join_operator_bracket(size_t test_size) {
+  auto a = DataBlock{test_size};
+  auto b = DataBlock{test_size};
+  auto c = DataBlock{test_size};
+  CHECK(a.begin() + test_size == a.end());
+  CHECK(b.begin() + test_size == b.end());
+  CHECK(c.begin() + test_size == c.end());
+
+  std::fill(a.begin(), a.end(), std::byte{33});
+  std::fill(b.begin(), b.end(), std::byte{66});
+  std::fill(c.begin(), c.end(), std::byte{99});
+
+  std::vector<DataBlock> x{a, b, c};
+  auto y = join(x);
+
+  a[33] = std::byte{19};
+  CHECK(a[32] == std::byte{33});
+  CHECK(a[33] == std::byte{19});
+  CHECK(a[34] == std::byte{33});
+
+  b[127] = std::byte{23};
+  CHECK(b[126] == std::byte{66});
+  CHECK(b[127] == std::byte{23});
+  CHECK(b[128] == std::byte{66});
+
+  c[432] = std::byte{29};
+  CHECK(c[431] == std::byte{99});
+  CHECK(c[432] == std::byte{29});
+  CHECK(c[433] == std::byte{99});
+
+  CHECK(y[0] == std::byte{33});
+  CHECK(y[32] == std::byte{33});
+  CHECK(y[33] == std::byte{19});
+  CHECK(y[34] == std::byte{33});
+  CHECK(y[test_size + 126] == std::byte{66});
+  CHECK(y[test_size + 127] == std::byte{23});
+  CHECK(y[test_size + 128] == std::byte{66});
+  CHECK(y[2 * test_size + 431] == std::byte{99});
+  CHECK(y[2 * test_size + 432] == std::byte{29});
+  CHECK(y[2 * test_size + 433] == std::byte{99});
+}
+
+TEST_CASE("DataBlock: Join data_blocks operator[]", "[data_block]") {
+  SECTION("chunk_size") {
+    test_join_operator_bracket(chunk_size_);
+  }
+  SECTION("chunk_size / 2") {
+    test_join_operator_bracket(chunk_size_ / 2 + 1);
+  }
+  SECTION("chunk_size / 2") {
+    test_join_operator_bracket(chunk_size_ / 2 - 1);
+  }
+}
+
+void test_operator_bracket_loops(size_t test_size) {
+  auto a = DataBlock{test_size};
+  auto b = DataBlock{test_size};
+  auto c = DataBlock{test_size};
+
+  CHECK(a.size() == test_size);
+  CHECK(b.size() == test_size);
+  CHECK(c.size() == test_size);
+
+  std::vector<DataBlock> x{a, b, c};
+  CHECK(x.size() == 3);
+
+  auto y = join(x);
+
+  CHECK(y.size() == a.size() + b.size() + c.size());
+  CHECK(y.size() == 3 * test_size);
+
+  /* Hmm...  Can't do arithmetic on std::byte */
+  std::iota(
+      reinterpret_cast<uint8_t*>(a.begin()),
+      reinterpret_cast<uint8_t*>(a.end()),
+      uint8_t{0});
+  std::iota(
+      reinterpret_cast<uint8_t*>(b.begin()),
+      reinterpret_cast<uint8_t*>(b.end()),
+      static_cast<uint8_t>(a.back()) + 1);
+  std::iota(
+      reinterpret_cast<uint8_t*>(c.begin()),
+      reinterpret_cast<uint8_t*>(c.end()),
+      static_cast<uint8_t>(b.back()) + 1);
+
+  CHECK([&]() {
+    uint8_t b{0};
+    for (size_t i = 0; i < y.size(); ++i) {
+      if (static_cast<uint8_t>(y[i]) != b) {
+        std::cout << i << " " << static_cast<uint8_t>(y[i]) << " " << b
+                  << std::endl;
+        return false;
+      }
+      ++b;
+    }
+    return true;
+  }());
+
+  CHECK([&]() {
+    uint8_t b{0};
+    for (auto&& j : y) {
+      if (static_cast<uint8_t>(j) != b) {
+        std::cout << static_cast<uint8_t>(j) << " " << b << std::endl;
+        return false;
+      }
+      ++b;
+    }
+    return true;
+  }());
+
+  uint8_t d{0};
+  auto z = std::find_if_not(y.begin(), y.end(), [&d](auto e) {
+    return static_cast<uint8_t>(e) == d++;
+  });
+  CHECK(z == y.end());
+
+  /**
+   * @todo Use proper checks for preprocessor directives to selectively include
+   * test with `std::execution` policy.
+   */
+#if 0
+  d = 0;
+  auto u = std::find_if_not(
+      std::execution::par_unseq, y.begin(), y.end(), [&d](auto e) {
+        return static_cast<uint8_t>(e) == d++;
+      });
+  CHECK(u == y.end());
+#endif
+}
+
+TEST_CASE("DataBlock: Join data_blocks loops operator[]", "[data_block]") {
+  SECTION("chunk_size") {
+    test_operator_bracket_loops(chunk_size_);
+  }
+  SECTION("chunk_size / 2") {
+    test_operator_bracket_loops(chunk_size_ / 2 + 1);
+  }
+  SECTION("chunk_size / 2") {
+    test_operator_bracket_loops(chunk_size_ / 2 - 1);
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
   }
 }

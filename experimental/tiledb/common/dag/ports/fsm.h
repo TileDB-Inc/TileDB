@@ -28,8 +28,13 @@
  * @section DESCRIPTION
  *
  *
+<<<<<<< HEAD
  * This file implements a state machine for two communicating ports: a
  * `Source` and a `Sink`.  Full documentation for it can be found in the file
+=======
+ * This file implements a state machine for two communicating ports: a 
+ * `Source` and a `Sink`.  Full documentation for it can be found in the file 
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
  * fsm.md in this directory.
  *
  */
@@ -219,6 +224,10 @@ constexpr const PortAction exit_table[n_states][n_events] {
   /* empty_full  */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
   /* full_empty  */ { PortAction::none, PortAction::source_swap, PortAction::none, PortAction::sink_swap, PortAction::none },
   /* full_full   */ { PortAction::none, PortAction::source_wait, PortAction::none, PortAction::none,      PortAction::none },
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
   /* error       */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
   /* done        */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
 };
@@ -230,6 +239,10 @@ constexpr const PortAction entry_table[n_states][n_events] {
   /* empty_full  */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
   /* full_empty  */ { PortAction::notify_sink, PortAction::source_swap, PortAction::notify_source, PortAction::sink_swap, PortAction::none },
   /* full_full   */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
   /* error       */ { PortAction::none,        PortAction::none,      PortAction::none,          PortAction::none,      PortAction::none },
   /* done        */ { PortAction::none,        PortAction::none,      PortAction::none,          PortAction::none,      PortAction::none },
 };
@@ -282,7 +295,11 @@ class PortFiniteStateMachine {
     return next_state_;
   }
 
+<<<<<<< HEAD
  private:
+=======
+private:
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
   /**
    * Function to handle state transitions based on external events.
    *
@@ -301,6 +318,7 @@ class PortFiniteStateMachine {
    * the state transition
    */
 
+<<<<<<< HEAD
   // Used for debugging.
   std::atomic<int> event_counter{};
   bool debug_{false};
@@ -429,10 +447,245 @@ class PortFiniteStateMachine {
      * Assign new state.  Note that next_state_ may have been changed by one of
      * the actions above (in particular, wait or swap).
      */
+=======
+ // Used for debugging.
+ std::atomic<int> event_counter{};
+ bool debug_{false};
+
+protected:
+ std::mutex mutex_;
+
+private:
+ void event(PortEvent event, const std::string msg = "") {
+   std::unique_lock lock(mutex_);
+
+   next_state_ = transition_table[to_index(state_)][to_index(event)];
+   auto exit_action{exit_table[to_index(state_)][to_index(event)]};
+   auto entry_action{entry_table[to_index(next_state_)][to_index(event)]};
+
+   auto old_state = state_;
+
+   if (msg != "" || debug_) {
+     std::cout << "\n"
+               << event_counter++
+               << " On event start: " + msg + " " + str(event) + ": " +
+                      str(state_) + " (" + str(exit_action) + ") -> (" +
+                      str(entry_action)
+               << ") " + str(next_state_) << std::endl;
+   }
+
+   // For now, ignore shutdown events
+   if (PortEvent::shutdown == event) {
+     return;
+   }
+
+   if (next_state_ == PortState::error) {
+     std::cout << "\n"
+               << event_counter++
+               << " ERROR On event start: " + msg + " " + str(event) + ": " +
+                      str(state_) + " (" + str(exit_action) + ") -> (" +
+                      str(entry_action)
+               << ") " + str(next_state_) << std::endl;
+   }
+
+   if (msg != "" || debug_) {
+     std::cout << event_counter++
+               << " Pre exit event: " + msg + " " + str(event) + ": " +
+                      str(state_) + " (" + str(exit_action) + ") -> (" +
+                      str(entry_action)
+               << ") " + str(next_state_) << std::endl;
+   }
+
+   /**
+    * Perform any exit actions.
+    */
+   switch (exit_action) {
+     case PortAction::none:
+       break;
+
+     case PortAction::ac_return:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to ac_return" << std::endl;
+       static_cast<ActionPolicy&>(*this).on_ac_return(lock, event_counter);
+       return;
+       break;
+
+     case PortAction::source_swap:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to source_swap"
+                   << std::endl;
+       static_cast<ActionPolicy&>(*this).on_source_swap(lock, event_counter);
+       break;
+
+     case PortAction::sink_swap:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to sink_swap" << std::endl;
+       static_cast<ActionPolicy&>(*this).on_sink_swap(lock, event_counter);
+       break;
+
+     case PortAction::source_wait:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to source_wait"
+                   << std::endl;
+       static_cast<ActionPolicy&>(*this).on_source_wait(lock, event_counter);
+       break;
+
+     case PortAction::sink_wait:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to sink_wait" << std::endl;
+       static_cast<ActionPolicy&>(*this).on_sink_wait(lock, event_counter);
+       break;
+
+     case PortAction::notify_source:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to notify source"
+                   << std::endl;
+       static_cast<ActionPolicy&>(*this).notify_source(lock, event_counter);
+       break;
+
+     case PortAction::notify_sink:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to notify sink"
+                   << std::endl;
+       static_cast<ActionPolicy&>(*this).notify_sink(lock, event_counter);
+       break;
+
+     default:
+       throw std::logic_error(
+           "Unexpected exit action: " + str(exit_action) + ": " + str(state_) +
+           " -> " + str(next_state_));
+   }
+
+   if (msg != "" || debug_) {
+     if (msg != "")
+       std::cout << event_counter++
+                 << " Post exit: " + msg + " " + str(event) + ": " +
+                        str(state_) + " (" + str(exit_action) + ") -> (" +
+                        str(entry_action)
+                 << ") " + str(next_state_) << std::endl;
+   }
+
+   /*
+    * Assign new state.  Note that next_state_ may have been changed by one of
+    * the actions above (in particular, wait or swap).
+    */
+   state_ = next_state_;
+
+   /*
+    * Update the entry_action in case next_state_ was changed.
+    */
+   entry_action = entry_table[to_index(next_state_)][to_index(event)];
+
+   if (msg != "" || debug_) {
+     std::cout << event_counter++
+               << " Pre entry event: " + msg + " " + str(event) + ": " +
+                      str(old_state) + " (" + str(exit_action) + ") -> (" +
+                      str(entry_action)
+               << ") " + str(state_) << std::endl;
+   }
+
+   /**
+    * Perform any entry actions.
+    */
+   switch (entry_action) {
+     case PortAction::none:
+       break;
+
+     case PortAction::ac_return:
+
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " entry about to ac_return" << std::endl;
+
+       static_cast<ActionPolicy&>(*this).on_ac_return(lock, event_counter);
+       return;
+       break;
+
+     case PortAction::source_swap:
+
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " entry about to source_swap"
+                   << std::endl;
+
+       static_cast<ActionPolicy&>(*this).on_source_swap(lock, event_counter);
+       state_ = PortState::empty_full;
+       break;
+
+     case PortAction::sink_swap:
+
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " entry about to sink_swap" << std::endl;
+
+       static_cast<ActionPolicy&>(*this).on_sink_swap(lock, event_counter);
+       state_ = PortState::empty_full;
+       break;
+
+     case PortAction::source_wait:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " exit about to source_wait"
+                   << std::endl;
+       static_cast<ActionPolicy&>(*this).on_source_wait(lock, event_counter);
+       break;
+
+     case PortAction::sink_wait:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " entry about to sink_wait" << std::endl;
+       static_cast<ActionPolicy&>(*this).on_sink_wait(lock, event_counter);
+       break;
+
+     case PortAction::notify_source:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " entry about to notify source"
+                   << std::endl;
+       static_cast<ActionPolicy&>(*this).notify_source(lock, event_counter);
+       break;
+
+     case PortAction::notify_sink:
+       if (msg != "")
+         std::cout << event_counter++
+                   << "      " + msg + " entry about to notify sink"
+                   << std::endl;
+       static_cast<ActionPolicy&>(*this).notify_sink(lock, event_counter);
+       break;
+
+     default:
+       throw std::logic_error(
+           "Unexpected entry action: " + str(entry_action) + ": " +
+           str(state_) + " -> " + str(next_state_));
+   }
+
+   if (msg != "" || debug_) {
+     std::cout << event_counter++
+               << " Post entry event: " + msg + " " + str(event) + ": " +
+                      str(state_) + " (" + str(exit_action) + ") -> (" +
+                      str(entry_action)
+               << ") " + str(next_state_) << std::endl;
+   }
+ }
+
+ public:
+  /**
+   * Set state
+   */
+  inline PortState set_state(PortState next_state_) {
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
     state_ = next_state_;
     return state_;
   }
 
+<<<<<<< HEAD
   /*
    * Update the entry_action in case next_state_ was changed.
    */
@@ -561,6 +814,22 @@ inline PortState set_next_state(PortState next_state) {
 void do_fill(const std::string& msg = "") {
   event(PortEvent::source_fill, msg);
 }
+=======
+  /**
+   * Set next state
+   */
+  inline PortState set_next_state(PortState next_state) {
+    next_state_ = next_state;
+    return next_state_;
+  }
+
+  /**
+   * Invoke `source_fill` event
+   */
+  void do_fill(const std::string& msg = "") {
+    event(PortEvent::source_fill, msg);
+  }
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
 
   /**
    * Invoke `source_push` event
@@ -608,6 +877,7 @@ void do_fill(const std::string& msg = "") {
   bool debug_enabled() {
     return debug_;
   }
+<<<<<<< HEAD
   inline void notify_source(lock_type&, std::atomic<int>&) {
     std::cout << "    "
               << "Action notify source" << std::endl;
@@ -620,5 +890,10 @@ void do_fill(const std::string& msg = "") {
   ;
 
   }  // namespace tiledb::common
+=======
+};
+
+}  // namespace tiledb::common
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
 
 #endif  // TILEDB_DAG_FSM_H

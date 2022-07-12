@@ -5,7 +5,11 @@
  *
  * The MIT License
  *
+<<<<<<< HEAD
  * @copyright Copyright (c) 2022 TileDB, Inc.
+=======
+ * @copyright Copyright (c) 202s TileDB, Inc.
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,8 +43,11 @@
 
 namespace tiledb::common {
 
+<<<<<<< HEAD
 class GraphNode {};
 
+=======
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
 /**
  * Prototype producer function object class.  This class generates a sequence of
  * integers from 0 to N (half-open interval).  It will invoke an out-of-data
@@ -72,8 +79,12 @@ class generator {
 template <class Block, class StateMachine>
 class ProducerNode : public Source<Block, StateMachine> {
   using Base = Source<Block, StateMachine>;
+<<<<<<< HEAD
   // This causes initialization problems 
   //  std::atomic<size_t> i_{0};
+=======
+  std::atomic<size_t> i_{0};
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
   size_t N_{0};
   std::function<Block()> f_;
 
@@ -248,11 +259,15 @@ class function_node : public Source<Block, StateMachine>,
 
  public:
   template <class Function>
+<<<<<<< HEAD
 <<<<<<< Updated upstream
   function_node(Function&& f)
 =======
   FunctionNode(Function&& f)
 >>>>>>> Stashed changes
+=======
+  function_node(Function&& f)
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
       : f_{std::forward<Function>(f)} {
   }
 

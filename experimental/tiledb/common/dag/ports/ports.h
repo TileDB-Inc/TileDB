@@ -181,11 +181,14 @@ class Sink {
       : state_machine_{std::make_unique<StateMachine>()} {
   }
 
+<<<<<<< HEAD
   Sink(Sink&& rhs) {
     state_machine_ = std::move(rhs.state_machine_);
     correspondent_ = nullptr;
   }
 
+=======
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
   StateMachine* get_state_machine() {
     return state_machine_.get();
   }

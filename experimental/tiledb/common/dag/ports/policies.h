@@ -669,6 +669,7 @@ class DebugStateMachineWithLock
   }
 };
 
+<<<<<<< HEAD
 /**
  * A simple debugging action policy that simply prints that an action has been
  * called.
@@ -742,5 +743,7 @@ class DebugStateMachineWithLock
   }
 };
 
+=======
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
 }  // namespace tiledb::common
 #endif  // TILEDB_DAG_POLICIES_H

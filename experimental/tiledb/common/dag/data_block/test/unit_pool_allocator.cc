@@ -308,6 +308,7 @@ void test_both_allocators() {
 }
 
 /**
+<<<<<<< HEAD
  * Test getting a block from one allocator, deallocating, and getting the block
  * from a different allocator.
  */
@@ -340,6 +341,8 @@ void test_both_allocators() {
 }
 
 /**
+=======
+>>>>>>> 5813782075364bdae06ba4e0c815d2665412287c
  * Test allocation and deallocation with singleton
  */
 TEST_CASE(

@@ -440,15 +440,6 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
   }
 
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
-=======
-  SECTION("Invalid bind, one side") {
-    pn.unbind();
-    CHECK_THROWS(bind(pn, cn));
-  }
-  SECTION("Invalid bind, one side") {
-    cn.unbind();
-    CHECK_THROWS(bind(pn, cn));
-  }
 }
 
 /**
