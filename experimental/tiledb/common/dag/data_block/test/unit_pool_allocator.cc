@@ -54,6 +54,9 @@ TEST_CASE("Pool Allocator: Test chunk sizes", "[pool_allocator]") {
   CHECK(sizeof(small_class) == 4 * 1024);
 }
 
+/**
+ * Test allocation of chunks.
+ */
 template <class T>
 void test_alloc() {
   PoolAllocator<sizeof(T)> p{};
@@ -73,6 +76,11 @@ void test_alloc() {
   CHECK(p.num_allocated() == 0);
 }
 
+/**
+ * Test allocation and deallocation of chunks.  We leverage (and test) the fact
+ * that the `PoolAllocator` maintains chunks in FIFO order.  Thus, a deallocated
+ * chunk will be the next chunk that is allocated.
+ */
 template <class T>
 void test_alloc_dealloc() {
   PoolAllocator<sizeof(T)> p;
@@ -135,6 +143,9 @@ TEST_CASE(
   }
 }
 
+/**
+ * Test that chunks are page-aligned (on 4k boundaries).
+ */
 template <class T>
 void test_alignment() {
   const size_t page_size{4096};
@@ -162,6 +173,10 @@ TEST_CASE("Pool Allocator: Test page alignment", "[PoolAllocator]") {
   }
 }
 
+/**
+ * Test use of `shared_ptr` with a chunk.  We pass in our own deleter, which
+ * will return the chunk to the pool upon actual deletion by the `shared_ptr`.
+ */
 template <class T>
 void test_shared() {
   PoolAllocator<sizeof(T)> p;
@@ -215,6 +230,9 @@ TEST_CASE("Pool Allocator: Test use with std::shared_ptr", "[PoolAllocator]") {
   }
 }
 
+/**
+ * Test to verify that the `PoolAllocator` is actually a singleton.
+ */
 template <class T>
 void test_singleton() {
   auto& p = SingletonPoolAllocator<sizeof(T)>::get_instance();
@@ -242,6 +260,9 @@ void test_singleton() {
   CHECK(p.num_allocated() == 0);
 }
 
+/**
+ * Further tests to verify that the `PoolAllocator` is actually a singleton.
+ */
 template <class T>
 void test_pool_allocator() {
   /* Instantiate two allocators */
@@ -353,6 +374,9 @@ TEST_CASE(
   CHECK(v.size() == 10);
 }
 
+/**
+ * Allocate a large number of chunks.
+ */
 template <class T>
 void test_big_allocate() {
   auto p = PoolAllocator<sizeof(T)>{};
@@ -395,6 +419,9 @@ TEST_CASE(
   }
 }
 
+/**
+ * Verify that invariants hold for statistics of `PoolAllocator`.
+ */
 template <class T>
 void test_statistics() {
   PoolAllocator<sizeof(T)> p;

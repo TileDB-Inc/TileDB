@@ -29,7 +29,13 @@
  *
  * Unit tests for the data_block class.  We test with 3 sizes: size equal to a
  * complete chunk, a size equal to half a chunk - 1, and a size equal to half a
- * chunk + 1.  The latter two are to check for some corner cases.
+ * chunk + 1.  The latter two are to check for some corner cases.  We implement
+ * tests as templated functions to accommodate the differently sized
+ * `DataBlocks`.
+ *
+ * In addition to tests of `DataBlock`s, we also include tests of `DataBlock`s
+ * that have been joined into a virtual contiguous range.  The implementation of
+ * `join` is in dag/utils/range_join.h.
  */
 
 #include "unit_data_block.h"
@@ -51,6 +57,11 @@
 
 using namespace tiledb::common;
 
+/**
+ * Some simple tests of the DataBlock interface.
+ *
+ * @tparam The `DataBlock` type
+ */
 template <class DB>
 void db_test_0(DB& db) {
   auto a = db.begin();
@@ -107,14 +118,18 @@ void db_test_1(const DB& db) {
   CHECK(a <= g);
 }
 
+/**
+ * Invoke the simple tests with a basic `DataBlock`
+ */
 TEST_CASE("DataBlock: Test create DataBlock", "[data_block]") {
   auto db = DataBlock{chunk_size_};
   db_test_0(db);
   db_test_1(db);
 }
 
-
-
+/**
+ * Invoke the simple tests with a `DataBlock` created with an `std::allocator`.
+ */
 TEST_CASE(
     "DataBlock: Test create DataBlock with std::allocator<std::byte>",
     "[data_block]") {
@@ -127,7 +142,9 @@ TEST_CASE(
   db_test_1(dc);
 }
 
-
+/**
+ * Test iterating through a `DataBlock`
+ */
 template <class DB>
 void db_test_2(DB& db) {
   for (auto& j : db) {
@@ -145,6 +162,10 @@ void db_test_2(DB& db) {
   CHECK(f == db.end());
 }
 
+/**
+ * Run iteration test on DataBlock allocated with `std::allocator` and with our
+ * `PoolAllocator`.
+ */
 TEST_CASE("DataBlock: Iterate through data_block", "[data_block]") {
   auto db = DataBlockImpl<std::allocator<std::byte>>{};
   db_test_2(db);
@@ -152,6 +173,10 @@ TEST_CASE("DataBlock: Iterate through data_block", "[data_block]") {
   db_test_2(dc);
 }
 
+/**
+ * Run iteration test on multiple DataBlocks, again allocated with
+ * `std::allocator` and with our `PoolAllocator`.
+ */
 TEST_CASE("DataBlock: Iterate through 8 data_blocks", "[data_block]") {
   for (size_t i = 0; i < 8; ++i) {
     auto db = DataBlockImpl<std::allocator<std::byte>>{};
@@ -163,6 +188,9 @@ TEST_CASE("DataBlock: Iterate through 8 data_blocks", "[data_block]") {
   }
 }
 
+/**
+ * Verify some properties of `DataBlock`s
+ */
 TEST_CASE("DataBlock: Get span", "[data_block]") {
   auto a = DataBlock{};
   auto b = DataBlock{};
@@ -208,6 +236,9 @@ TEST_CASE("DataBlock: Get span", "[data_block]") {
   }
 }
 
+/**
+ * Test resizing.
+ */
 TEST_CASE("DataBlock: Test resize", "[data_block]") {
   auto a = DataBlock{chunk_size_};
   auto b = DataBlock{chunk_size_};
@@ -231,6 +262,9 @@ TEST_CASE("DataBlock: Test resize", "[data_block]") {
 }
 
 #if 0
+/**
+ * Attempt to test destructor by invoking it explicitly.  Unfortunately, the destructor will be invoked again when the variable goes out of scope.  Which is bad.
+ */
 TEST_CASE(
     "DataBlock: Test allocation and deallocation of DataBlock", "[data_block") {
   auto a = DataBlock{chunk_size_};
@@ -246,6 +280,12 @@ TEST_CASE(
 }
 #endif
 
+/**
+ * Verify that blocks are deallocated properly when the destructor is called. We
+ * leverage the fact (and also check) that the `PoolAllocator` is a FIFO buffer
+ * and check that when we deallocate a block, that will be the block that is
+ * returned on next call to allocate.
+ */
 TEST_CASE(
     "DataBlock: Test deallocation of DataBlock on destruction",
     "[data_block]") {
@@ -274,6 +314,10 @@ TEST_CASE(
   CHECK(y == ptr_b);
 }
 
+/**
+ * Verify the random-access range interface of a `DataBlock` by using
+ * `std::fill` algorithm.
+ */
 void test_std_fill(size_t test_size) {
   auto a = DataBlock{test_size};
   auto b = DataBlock{test_size};
@@ -342,6 +386,10 @@ void test_std_fill(size_t test_size) {
         }));
 }
 
+/**
+ * Verify the random-access range interface of a `DataBlock` by using
+ * `std::fill` algorithm.
+ */
 TEST_CASE("DataBlock: Fill with std::fill", "[data_block]") {
   SECTION("chunk_size") {
     test_std_fill(chunk_size_);
@@ -354,6 +402,9 @@ TEST_CASE("DataBlock: Fill with std::fill", "[data_block]") {
   }
 }
 
+/**
+ * Verify some properties of joined `DataBlock`s.
+ */
 void test_join(size_t test_size) {
   auto a = DataBlock{test_size};
   auto b = DataBlock{test_size};
@@ -426,6 +477,10 @@ TEST_CASE("DataBlock: Join data_blocks (join view)", "[data_block]") {
   }
 }
 
+/**
+ * Verify that joined `DataBlock`s operate as a forward range by using standard
+ * library algorithms.
+ */
 void test_join_std_fill(size_t test_size) {
   auto a = DataBlock{test_size};
   auto b = DataBlock{test_size};
@@ -474,6 +529,9 @@ TEST_CASE("DataBlock: Join data_blocks std::fill", "[data_block]") {
   }
 }
 
+/**
+ * Test `operator[]` of joined `DataBlock`s.
+ */
 void test_join_operator_bracket(size_t test_size) {
   auto a = DataBlock{test_size};
   auto b = DataBlock{test_size};
@@ -528,6 +586,9 @@ TEST_CASE("DataBlock: Join data_blocks operator[]", "[data_block]") {
   }
 }
 
+/**
+ * Additional standard library uses of joined `DataBlock`s.
+ */
 void test_operator_bracket_loops(size_t test_size) {
   auto a = DataBlock{test_size};
   auto b = DataBlock{test_size};

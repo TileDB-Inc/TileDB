@@ -43,6 +43,47 @@
  * be multiple PoolAllocator objects in an application -- any such objects
  * will use the SingletonPoolAllocator.
  *
+ * The `PoolAllocator` implements an interface conforming to C++ standard
+ * library named requirements for `Allocator`.
+
+ * According to Howard Hinnant
+ * (https://howardhinnant.github.io/allocator_boilerplate.html), an allocator
+ * needs the following minimal set of type  aliases and associated functions
+ * (the rest will be provided as defaults by `allocator_traits`), as shown
+ * by a simple example class:
+ *
+ * template <class T>
+ * class allocator {
+ *  public:
+ *   using value_type = T;
+ *
+ *   allocator() noexcept {
+ *   }  // not required, unless used
+ *   template <class U>
+ *   allocator(allocator<U> const&) noexcept {
+ *   }
+ *
+ *   value_type* allocate(std::size_t n) {
+ *     return static_cast<value_type*>(::operator new(n * sizeof(value_type)));
+ *   }
+
+ *   void deallocate(
+ *       value_type* p,
+ *       std::size_t) noexcept  // Use pointer if pointer is not a value_type*
+ *   {
+ *     ::operator delete(p);
+ *   }
+ * };
+ *
+ * template <class T, class U>
+ * bool operator==(allocator<T> const&, allocator<U> const&) noexcept {
+ *   return true;
+ * }
+ *
+ * template <class T, class U>
+ * bool operator!=(allocator<T> const& x, allocator<U> const& y) noexcept {
+ *   return !(x == y);
+ * }
  */
 
 #ifndef TILEDB_DAG_POOL_ALLOCATOR_H
@@ -55,12 +96,14 @@
 namespace tiledb::common {
 
 namespace {
+
 /**
  * The PoolAllocator implementation class.  Allocates a fixed-size block
  * of bytes.
  *
- * @tparam chunk_size Number of Ts to allocate per chunk
+ * @tparam chunk_size Number of Ts to allocate per chunk* /
  */
+
 template <size_t chunk_size>
 class PoolAllocatorImpl {
  public:
@@ -79,6 +122,12 @@ class PoolAllocatorImpl {
   size_t num_arrays_{0};
   size_t num_free_{0};
 
+  /*
+   * Data chunks will be aligned to page boundaries.
+   * Assumed to be 4k.
+   *
+   * @todo Determine page size at compile-time for the target architecture.
+   */
   constexpr static ptrdiff_t page_size{4096};
   constexpr static ptrdiff_t align{page_size};
   constexpr static ptrdiff_t page_mask{~(page_size - 1)};
@@ -93,7 +142,8 @@ class PoolAllocatorImpl {
   static_assert(mem_size % chunk_size == 0);
   static_assert(chunk_size <= mem_size);
 
-  /* Add some padding so that we can align on page boundary */
+  /* Add some padding to the space we will allocate for the array so that we can
+   * align chunks taken from it on page boundary */
   constexpr static size_t array_size{mem_size + align + sizeof(pointer)};
 
   /*
@@ -168,7 +218,7 @@ class PoolAllocatorImpl {
   }
 
   /**
-   * Go through list of arrays, freeing each array
+   * Go through the list of arrays, freeing each array
    *
    * @pre a lock is held by function calling this one.
    */
@@ -191,15 +241,17 @@ class PoolAllocatorImpl {
 
  public:
   /**
-   * Any members in the class are default constructed.  We increment the
-   * `num_instance` counter.
+   * Any members in the class are default constructed.  We have an
+   * implementation of the default constructor here so that we can increment the
+   * class `num_instance` counter (which we use for debugging and testing that
+   * we, in fact, have a singleton allocator.
    */
   PoolAllocatorImpl() {
     ++num_instances_;
   }
 
   /**
-   * Release allocated memory (free each array)
+   * Destructor. Releases allocated memory (frees each array).
    */
   ~PoolAllocatorImpl() {
     free_list_free();
@@ -208,6 +260,11 @@ class PoolAllocatorImpl {
     assert(the_array_list == nullptr);
   }
 
+  /**
+   * Function to actually allocate a chunk.  Returns a chunk from the pool.  The
+   * function `pop_chunk` may allocate more chunks (by allocating another array)
+   * if there are no free chunks available.
+   */
   pointer allocate() {
     std::lock_guard lock(mutex_);
     --num_free_;
@@ -216,6 +273,9 @@ class PoolAllocatorImpl {
     return pop_chunk();
   }
 
+  /**
+   * Return a chunk to the pool.
+   */
   void deallocate(pointer p) {
     std::lock_guard lock(mutex_);
     push_chunk(p);
@@ -276,6 +336,9 @@ class PoolAllocatorImpl {
     return num_arrays_;
   }
 
+  /**
+   * Some legacy instrumentation code.
+   */
   void mark(pointer) {
     std::cout << "mark" << std::endl;
   }
@@ -301,8 +364,11 @@ class PoolAllocatorImpl {
       first_array = *(pointer*)first_array;
     }
   }
-};
+};  // namespace
 
+/**
+ * Define a class that will only allow the creation of a single instance.
+ */
 template <size_t chunk_size>
 class SingletonPoolAllocator : public PoolAllocatorImpl<chunk_size> {
   // Private constructor so that no objects can be created.
@@ -319,12 +385,20 @@ class SingletonPoolAllocator : public PoolAllocatorImpl<chunk_size> {
   }
 };
 
+/**
+ * Access the single `PoolAllocator` instance.
+ */
 template <size_t chunk_size>
 SingletonPoolAllocator<chunk_size>& _allocator{
     SingletonPoolAllocator<chunk_size>::get_instance()};
 
 }  // namespace
 
+/**
+ * The external interface for pool allocation (done via the singleton pool
+ * allocator object).  See the documentation for `PoolAllocatorImpl` for
+ * each of these functions.
+ */
 template <size_t chunk_size>
 class PoolAllocator {
  public:

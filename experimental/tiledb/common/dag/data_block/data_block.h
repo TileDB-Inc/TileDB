@@ -40,34 +40,67 @@
 
 namespace tiledb::common {
 
+/**
+ * The fixed size (in bytes) of each `DataBlock`.
+ */
 namespace {
 constexpr static const size_t chunk_size_ = 4'194'304;  // 4M
 }
 
 /**
- * A fixed size block, an untyped carrier for data to be interpreted by its
- * users.
+ * A fixed size block, an untyped carrier (of `std::byte`) for data to
+ * be interpreted by its users.
  *
- * Intended to be allocated from a pool with a bitmap allocation strategy.
+ * The actual storage associated with the `DataBlock` is a fixed-size "chunk",
+ * allocated by an allocator specified by the template parameter `Allocator`.
+ * The `DataBlock` can use `std::allocator<std::byte>` as well as the fixed-size
+ * `PoolAllocator`.
  *
- * Implemented internally as a span.
+ * The `DataBlock` itself implements a standard library interface for random
+ * access container.  It can also present a `span` for its dat chunk.
  *
- * Implements standard library interface for random access container.
+ * The interface to the `DataBlock` has some similarities to `std::vector` in
+ * that it has a `size` indicating how much of the `DataBlock` contains valid
+ * data as well as a `capacity` indicating maximum possible size (i.e., the size
+ * of the underlying chunk).  A `DataBlock` can be resized up its capacity.
+ * Unlike `std::vector` a `DataBlock` will not reallocate space if a resize
+ * request is larger than the capacity.
+ *
+ * The `DataBlockImpl` class provides the interface for `DataBlock`, but is also
+ * parameterized by`Allocator`.
  */
 template <class Allocator>
 class DataBlockImpl {
   static Allocator allocator_;
 
+  /**
+   * Type aliases for `DataBlock` storage.  The underlying storage for the
+   * `DataBlock` is a chunk of `std::byte`.  The `DataBlock` maintains this
+   * storage as a `shared_ptr<std::byte>`.
+   */
   using storage_t = std::shared_ptr<std::byte>;
   using span_t = tcb::span<std::byte>;
   using pointer_t = std::byte*;
 
+  /**
+   * Internal accounting to maintain the current size (the extent of valid data)
+   * as well as the total capacity of the underlying data chunk.  Both size and
+   * capacity are in units of bytes.
+   */
   size_t capacity_;
   size_t size_;
+
+  /**
+   * The actual stored chunk.  The `storage_` is the `shared_ptr` to the chunk,
+   * while `data_` is a pointer to the actual bytes.
+   */
   storage_t storage_;
   pointer_t data_;
 
  public:
+  /**
+   * Constructor used if the `Allocator` is `std::allocator` of `std::byte`.
+   */
   template <class R = Allocator>
   DataBlockImpl(
       size_t init_size = 0UL,
@@ -80,6 +113,12 @@ class DataBlockImpl {
       , data_{storage_.get()} {
   }
 
+  /**
+   * Constructor used if the `Allocator` is the fixed-size pool allocator.  Note
+   * that we pass the deleter associated with the `PoolAllocator` to to the
+   * `shared_ptr` constructor.  It is expected that his deleter will simply
+   * return the chunk to the pool.  See pool_allocator.h for details.
+   */
   template <class R = Allocator>
   DataBlockImpl(
       size_t init_size = 0UL,
@@ -92,6 +131,9 @@ class DataBlockImpl {
       , data_{storage_.get()} {
   }
 
+  /*
+   * Various type aliases expected for a random-access range.
+   */
   using DataBlockIterator = span_t::iterator;
   using DataBlockConstIterator = span_t::iterator;
 
@@ -109,6 +151,9 @@ class DataBlockImpl {
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
+  /*
+   * Various functions expected for a random-access range.
+   */
   reference operator[](size_type idx) {
     return data_[idx];
   }
@@ -200,6 +245,10 @@ class DataBlockImpl {
 template <class Allocator>
 Allocator DataBlockImpl<Allocator>::allocator_;
 
+/**
+ * The `DataBlock` class is the `DataBlockImpl` above, specialized to the
+ * PoolAllocator with chunk size specified by our defined `chunk_size_`.
+ */
 using DataBlock = DataBlockImpl<PoolAllocator<chunk_size_>>;
 
 }  // namespace tiledb::common

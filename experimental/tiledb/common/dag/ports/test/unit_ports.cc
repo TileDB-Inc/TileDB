@@ -38,52 +38,52 @@
 using namespace tiledb::common;
 
 /**
- * Test binding of Source and Sink ports.
+ * Test attaching of Source and Sink ports.
  */
-TEST_CASE("Ports: Test bind ports", "[ports]") {
+TEST_CASE("Ports: Test attach ports", "[ports]") {
   Source<int, NullStateMachine<std::optional<int>>> left;
   Sink<int, NullStateMachine<std::optional<int>>> right;
-  bind(left, right);
+  attach(left, right);
 }
 
 /**
- * Test various types of binding and unbinding of Source and Sink ports.
+ * Test various types of attaching and unattaching of Source and Sink ports.
  */
 template <class source_type, class sink_type>
 void test_connections(source_type& pn, sink_type& cn) {
-  bind(pn, cn);
+  attach(pn, cn);
 
-  SECTION("unbind both") {
-    unbind(pn, cn);
+  SECTION("unattach both") {
+    unattach(pn, cn);
   }
 
-  SECTION("unbind, rebind both") {
-    unbind(pn, cn);
-    bind(pn, cn);
+  SECTION("unattach, reattach both") {
+    unattach(pn, cn);
+    attach(pn, cn);
   }
 
-  SECTION("bind other way") {
-    unbind(cn, pn);
-    bind(cn, pn);
+  SECTION("attach other way") {
+    unattach(cn, pn);
+    attach(cn, pn);
   }
 
-  SECTION("unbind other way") {
-    unbind(pn, cn);
-    bind(cn, pn);
+  SECTION("unattach other way") {
+    unattach(pn, cn);
+    attach(cn, pn);
   }
 }
 
 /**
- * Test exception when trying to bind already bound ports.
+ * Test exception when trying to attach already bound ports.
  */
 TEST_CASE("Ports: Test exceptions", "[ports]") {
   auto pn = Source<size_t, NullStateMachine<std::optional<size_t>>>{};
   auto cn = Sink<size_t, NullStateMachine<std::optional<size_t>>>{};
 
-  bind(pn, cn);
+  attach(pn, cn);
 
-  SECTION("Invalid bind") {
-    CHECK_THROWS(bind(pn, cn));
+  SECTION("Invalid attach") {
+    CHECK_THROWS(attach(pn, cn));
   }
 }
 
@@ -95,7 +95,7 @@ TEST_CASE("Ports: Manual set source port values", "[ports]") {
   Sink<size_t, NullStateMachine<std::optional<size_t>>> sink;
 
   SECTION("set source in bound pair") {
-    bind(source, sink);
+    attach(source, sink);
     CHECK(source.inject(55UL) == true);
     CHECK(source.extract().has_value() == true);
   }
@@ -103,7 +103,7 @@ TEST_CASE("Ports: Manual set source port values", "[ports]") {
     CHECK(source.inject(9UL) == false);
   }
   SECTION("set source that has value") {
-    bind(source, sink);
+    attach(source, sink);
     CHECK(source.inject(11UL) == true);
     CHECK(source.inject(11UL) == false);
   }
@@ -120,7 +120,7 @@ TEST_CASE("Ports: Manual extract sink values", "[ports]") {
     CHECK(sink.extract().has_value() == false);
   }
   SECTION("set source in bound pair") {
-    bind(source, sink);
+    attach(source, sink);
     CHECK(sink.extract().has_value() == false);
     CHECK(sink.inject(13UL) == true);
     auto v = sink.extract();
@@ -138,7 +138,7 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
   Source<size_t, ManualStateMachine<std::optional<size_t>>> source;
   Sink<size_t, ManualStateMachine<std::optional<size_t>>> sink;
 
-  bind(source, sink);
+  attach(source, sink);
 
   auto state_machine = sink.get_state_machine();
   // state_machine->enable_debug();
@@ -204,7 +204,7 @@ TEST_CASE(
   Source<size_t, AsyncStateMachine<std::optional<size_t>>> source;
   Sink<size_t, AsyncStateMachine<std::optional<size_t>>> sink;
 
-  bind(source, sink);
+  attach(source, sink);
 
   auto state_machine = sink.get_state_machine();
   CHECK(str(state_machine->state()) == "empty_empty");
@@ -233,7 +233,7 @@ TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
   Source<size_t, AsyncStateMachine<std::optional<size_t>>> source;
   Sink<size_t, AsyncStateMachine<std::optional<size_t>>> sink;
 
-  bind(source, sink);
+  attach(source, sink);
 
   auto state_machine = sink.get_state_machine();
   CHECK(str(state_machine->state()) == "empty_empty");
@@ -296,7 +296,7 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
   Source<size_t, AsyncStateMachine<std::optional<size_t>>> source;
   Sink<size_t, AsyncStateMachine<std::optional<size_t>>> sink;
 
-  bind(source, sink);
+  attach(source, sink);
 
   auto state_machine = sink.get_state_machine();
   CHECK(str(state_machine->state()) == "empty_empty");
