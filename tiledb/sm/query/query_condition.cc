@@ -1624,6 +1624,8 @@ void QueryCondition::apply_ast_node_sparse(
       node->get_condition_value_view().content();
   const size_t condition_value_size = node->get_condition_value_view().size();
   uint8_t* buffer_validity = nullptr;
+
+  // Check if the combination op = OR and the attribute is nullable.
   if constexpr (
       std::is_same_v<CombinationOp, QCMax<BitmapType>> && nullable::value) {
     const auto& tile_validity = std::get<2>(*tile_tuple);
@@ -1644,35 +1646,33 @@ void QueryCondition::apply_ast_node_sparse(
 
     // We need to repeat code/have two for loops in order to support
     // vectorization. Iterate through each cell.
-    
-      for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
-        // Check the previous cell here, which breaks vectorization but as this
-        // is string data requiring a strcmp which cannot be vectorized, this is
-        // ok.
-        const uint64_t buffer_offset = buffer_offsets[c];
-        const uint64_t next_cell_offset =
-            (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
-        const uint64_t cell_size = next_cell_offset - buffer_offset;
 
-        // Get the cell value.
-        const void* const cell_value = buffer + buffer_offset;
+    for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
+      // Check the previous cell here, which breaks vectorization but as this
+      // is string data requiring a strcmp which cannot be vectorized, this is
+      // ok.
+      const uint64_t buffer_offset = buffer_offsets[c];
+      const uint64_t next_cell_offset =
+          (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
+      const uint64_t cell_size = next_cell_offset - buffer_offset;
 
-        // Compare the cell value against the value in the value node.
-        const bool cmp = BinaryCmp<T, Op>::cmp(
-            cell_value,
-            cell_size,
-            condition_value_content,
-            condition_value_size);
+      // Get the cell value.
+      const void* const cell_value = buffer + buffer_offset;
 
-        // Set the value.
-         if constexpr (
-        std::is_same_v<CombinationOp, QCMax<BitmapType>> && nullable::value) {
-           result_bitmap[c] =
+      // Compare the cell value against the value in the value node.
+      const bool cmp = BinaryCmp<T, Op>::cmp(
+          cell_value, cell_size, condition_value_content, condition_value_size);
+
+      // Set the value, casing on whether the combination op = OR and the
+      // attribute is nullable.
+      if constexpr (
+          std::is_same_v<CombinationOp, QCMax<BitmapType>> && nullable::value) {
+        result_bitmap[c] =
             combination_op(result_bitmap[c], cmp && (buffer_validity[c] != 0));
-        } else {
-          result_bitmap[c] = combination_op(result_bitmap[c], cmp);
-        }
+      } else {
+        result_bitmap[c] = combination_op(result_bitmap[c], cmp);
       }
+    }
   } else {
     // Get the fixed size data buffers.
     const auto& tile = std::get<0>(*tile_tuple);
@@ -1683,25 +1683,23 @@ void QueryCondition::apply_ast_node_sparse(
     // Iterate through each cell without checking the bitmap to enable
     // vectorization.
     for (uint64_t c = 0; c < buffer_el; ++c) {
-        // Get the cell value.
-        const void* const cell_value = buffer + c * cell_size;
+      // Get the cell value.
+      const void* const cell_value = buffer + c * cell_size;
 
-        // Compare the cell value against the value in the value node.
-        const bool cmp = BinaryCmp<T, Op>::cmp(
-            cell_value,
-            cell_size,
-            condition_value_content,
-            condition_value_size);
+      // Compare the cell value against the value in the value node.
+      const bool cmp = BinaryCmp<T, Op>::cmp(
+          cell_value, cell_size, condition_value_content, condition_value_size);
 
-        // Set the value.
-        if constexpr (
-        std::is_same_v<CombinationOp, QCMax<BitmapType>> && nullable::value) {
-          result_bitmap[c] =
+      // Set the value, casing on whether the combination op = OR and the
+      // attribute is nullable.
+      if constexpr (
+          std::is_same_v<CombinationOp, QCMax<BitmapType>> && nullable::value) {
+        result_bitmap[c] =
             combination_op(result_bitmap[c], cmp && (buffer_validity[c] != 0));
-        } else {
-           result_bitmap[c] = combination_op(result_bitmap[c], cmp);
-        }
+      } else {
+        result_bitmap[c] = combination_op(result_bitmap[c], cmp);
       }
+    }
   }
 }
 
@@ -1824,7 +1822,7 @@ void QueryCondition::apply_ast_node_sparse(
     } else if constexpr (std::is_same_v<
                              CombinationOp,
                              std::multiplies<BitmapType>>) {
-      // Turn off bitmap values for null cells.
+      // When the combination op is AND, turn off bitmap values for null cells.
       for (uint64_t c = 0; c < cell_num; c++) {
         result_bitmap[c] *= buffer_validity[c] != 0;
       }
@@ -1968,7 +1966,8 @@ void QueryCondition::apply_tree_sparse(
                 result_bitmap);
           }
 
-          // Handle the cl'(q, a) case
+          // Handle the cl'(q, a) case.
+          // This cases on whether the combination op = OR.
         } else if constexpr (std::is_same_v<CombinationOp, QCMax<BitmapType>>) {
           std::vector<BitmapType> combination_op_bitmap(result_bitmap_size, 1);
 
