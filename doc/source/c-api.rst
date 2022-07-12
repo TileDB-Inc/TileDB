@@ -263,8 +263,6 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_consolidate_metadata_with_key
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_upgrade_version
-    :project: TileDB-C
 
 Array Schema
 ------------
@@ -727,4 +725,9 @@ Fragment Info
 .. doxygenfunction:: tiledb_fragment_info_get_to_vacuum_uri
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_dump
+    :project: TileDB-C
+
+Experimental
+-------------
+.. autodoxygenfile:: tiledb_experimental.h
     :project: TileDB-C

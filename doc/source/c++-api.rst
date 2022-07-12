@@ -127,3 +127,16 @@ FragmentInfo
 .. doxygenclass:: tiledb::FragmentInfo
     :project: TileDB-C++
     :members:
+
+Experimental
+------------
+.. autodoxygenfile:: tiledb_experimental
+    :project: TileDB-C++
+
+.. doxygenclass:: tiledb::ArraySchemaEvolution
+    :project: TileDB-C++
+    :members:
+
+.. doxygenclass:: tiledb::Group
+    :project: TileDB-C++
+    :members:

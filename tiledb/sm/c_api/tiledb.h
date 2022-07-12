@@ -6950,31 +6950,6 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata_with_key(
     uint32_t key_length,
     tiledb_config_t* config) TILEDB_NOEXCEPT;
 
-/**
- * Upgrades an array to the latest format version.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_config_t* conf;
- * status = tiledb_ctx_get_config(ctx, &conf);
- * if (status != TILEDB_OK) {
- *     printf("Error: Unable to get config for current context\n");
- * }
- * else {
- *     tiledb_array_upgrade_version(ctx, ARRAY_NAME, conf);
- * }
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_uri The name of the TileDB array to be upgraded.
- * @param config Configuration parameters for the upgrade
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_upgrade_version(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_config_t* config) TILEDB_NOEXCEPT;
-
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */
 /* ********************************* */
