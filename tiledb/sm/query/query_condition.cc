@@ -1632,55 +1632,35 @@ void QueryCondition::apply_ast_node_sparse(
 
     // We need to repeat code/have two for loops in order to support
     // vectorization. Iterate through each cell.
-    if constexpr (
+    
+      for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
+        // Check the previous cell here, which breaks vectorization but as this
+        // is string data requiring a strcmp which cannot be vectorized, this is
+        // ok.
+        const uint64_t buffer_offset = buffer_offsets[c];
+        const uint64_t next_cell_offset =
+            (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
+        const uint64_t cell_size = next_cell_offset - buffer_offset;
+
+        // Get the cell value.
+        const void* const cell_value = buffer + buffer_offset;
+
+        // Compare the cell value against the value in the value node.
+        const bool cmp = BinaryCmp<T, Op>::cmp(
+            cell_value,
+            cell_size,
+            condition_value_content,
+            condition_value_size);
+
+        // Set the value.
+         if constexpr (
         std::is_same_v<CombinationOp, QCMax<BitmapType>> && nullable::value) {
-      for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
-        // Check the previous cell here, which breaks vectorization but as this
-        // is string data requiring a strcmp which cannot be vectorized, this is
-        // ok.
-        const uint64_t buffer_offset = buffer_offsets[c];
-        const uint64_t next_cell_offset =
-            (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
-        const uint64_t cell_size = next_cell_offset - buffer_offset;
-
-        // Get the cell value.
-        const void* const cell_value = buffer + buffer_offset;
-
-        // Compare the cell value against the value in the value node.
-        const bool cmp = BinaryCmp<T, Op>::cmp(
-            cell_value,
-            cell_size,
-            condition_value_content,
-            condition_value_size);
-
-        // Set the value.
-        result_bitmap[c] =
+           result_bitmap[c] =
             combination_op(result_bitmap[c], cmp && (buffer_validity[c] != 0));
+        } else {
+          result_bitmap[c] = combination_op(result_bitmap[c], cmp);
+        }
       }
-    } else {
-      for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
-        // Check the previous cell here, which breaks vectorization but as this
-        // is string data requiring a strcmp which cannot be vectorized, this is
-        // ok.
-        const uint64_t buffer_offset = buffer_offsets[c];
-        const uint64_t next_cell_offset =
-            (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
-        const uint64_t cell_size = next_cell_offset - buffer_offset;
-
-        // Get the cell value.
-        const void* const cell_value = buffer + buffer_offset;
-
-        // Compare the cell value against the value in the value node.
-        const bool cmp = BinaryCmp<T, Op>::cmp(
-            cell_value,
-            cell_size,
-            condition_value_content,
-            condition_value_size);
-
-        // Set the value.
-        result_bitmap[c] = combination_op(result_bitmap[c], cmp);
-      }
-    }
   } else {
     // Get the fixed size data buffers.
     const auto& tile = std::get<0>(*tile_tuple);
@@ -1690,39 +1670,26 @@ void QueryCondition::apply_ast_node_sparse(
 
     // Iterate through each cell without checking the bitmap to enable
     // vectorization.
-    if constexpr (
+    for (uint64_t c = 0; c < buffer_el; ++c) {
+        // Get the cell value.
+        const void* const cell_value = buffer + c * cell_size;
+
+        // Compare the cell value against the value in the value node.
+        const bool cmp = BinaryCmp<T, Op>::cmp(
+            cell_value,
+            cell_size,
+            condition_value_content,
+            condition_value_size);
+
+        // Set the value.
+        if constexpr (
         std::is_same_v<CombinationOp, QCMax<BitmapType>> && nullable::value) {
-      for (uint64_t c = 0; c < buffer_el; ++c) {
-        // Get the cell value.
-        const void* const cell_value = buffer + c * cell_size;
-
-        // Compare the cell value against the value in the value node.
-        const bool cmp = BinaryCmp<T, Op>::cmp(
-            cell_value,
-            cell_size,
-            condition_value_content,
-            condition_value_size);
-
-        // Set the value.
-        result_bitmap[c] =
+          result_bitmap[c] =
             combination_op(result_bitmap[c], cmp && (buffer_validity[c] != 0));
+        } else {
+           result_bitmap[c] = combination_op(result_bitmap[c], cmp);
+        }
       }
-    } else {
-      for (uint64_t c = 0; c < buffer_el; ++c) {
-        // Get the cell value.
-        const void* const cell_value = buffer + c * cell_size;
-
-        // Compare the cell value against the value in the value node.
-        const bool cmp = BinaryCmp<T, Op>::cmp(
-            cell_value,
-            cell_size,
-            condition_value_content,
-            condition_value_size);
-
-        // Set the value.
-        result_bitmap[c] = combination_op(result_bitmap[c], cmp);
-      }
-    }
   }
 }
 
