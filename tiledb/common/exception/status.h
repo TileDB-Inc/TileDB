@@ -478,10 +478,6 @@ inline Status Status_TaskError(const std::string& msg) {
 inline Status Status_RangeError(const std::string& msg) {
   return {"[TileDB::Range] Error", msg};
 }
-/** Return a Writer error class Status with a given message **/
-inline Status Status_DeletesError(const std::string& msg) {
-  return {"[TileDB::Deletes] Error", msg};
-}
 }  // namespace common
 }  // namespace tiledb
 

@@ -43,6 +43,13 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
+class DeleteStatusException : public StatusException {
+ public:
+  explicit DeleteStatusException(const std::string& message)
+      : StatusException("Deletes", message) {
+  }
+};
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -67,6 +74,30 @@ Deletes::Deletes(
           subarray,
           layout)
     , condition_(condition) {
+  // Sanity checks
+  if (storage_manager_ == nullptr) {
+    throw DeleteStatusException(
+        "Cannot initialize query; Storage manager not set");
+  }
+
+  if (!buffers_.empty()) {
+    throw DeleteStatusException("Cannot initialize deletes; Buffers are set");
+  }
+
+  if (array_schema_.dense()) {
+    throw DeleteStatusException(
+        "Cannot initialize deletes; Only supported for sparse arrays");
+  }
+
+  if (subarray_.is_set()) {
+    throw DeleteStatusException(
+        "Cannot initialize deletes; Subarrays are not supported");
+  }
+
+  if (condition_.empty()) {
+    throw DeleteStatusException(
+        "Cannot initialize deletes; One condition is needed");
+  }
 }
 
 Deletes::~Deletes() {
@@ -81,32 +112,6 @@ Status Deletes::finalize() {
 }
 
 Status Deletes::init() {
-  // Sanity checks
-  if (storage_manager_ == nullptr) {
-    return logger_->status(Status_DeletesError(
-        "Cannot initialize query; Storage manager not set"));
-  }
-
-  if (!buffers_.empty()) {
-    return logger_->status(
-        Status_DeletesError("Cannot initialize deletes; Buffers are set"));
-  }
-
-  if (array_schema_.dense()) {
-    return logger_->status(Status_DeletesError(
-        "Cannot initialize deletes; Only supported for sparse arrays"));
-  }
-
-  if (subarray_.is_set()) {
-    return logger_->status(Status_DeletesError(
-        "Cannot initialize deletes; Subarrays are not supported"));
-  }
-
-  if (condition_.empty()) {
-    return logger_->status(Status_DeletesError(
-        "Cannot initialize deletes; One condition is needed"));
-  }
-
   return Status::Ok();
 }
 
