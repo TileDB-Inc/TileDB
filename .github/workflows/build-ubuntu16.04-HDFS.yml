@@ -6,6 +6,7 @@ on:
       - release-*
       - refs/tags/*
     paths-ignore:
+      - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
@@ -15,6 +16,7 @@ on:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
     paths-ignore:
+      - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
