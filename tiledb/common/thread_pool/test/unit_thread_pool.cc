@@ -42,51 +42,53 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 
-// Fixed seed for determinism.                                                                                                      
+// Fixed seed for determinism.
 static std::vector<uint64_t> generator_seed_arr = {
-  0xBE08D299, 0x4E996D11, 0x402A1E10, 0x95379958, 0x22101AA9};
+    0xBE08D299, 0x4E996D11, 0x402A1E10, 0x95379958, 0x22101AA9};
 
 static std::atomic<uint64_t> generator_seed = 0;
 
 std::once_flag once_flag;
-thread_local static uint64_t local_seed {0};
+thread_local static uint64_t local_seed{0};
 thread_local static std::mt19937_64 generator;
 
-/**                                                                                                                                 
- * Get one of the pre-set seeds.                                                                                                    
+/**
+ * Get one of the pre-set seeds.
  */
 void set_generator_seed() {
-
-  // Set the global seed only once                                                                                                  
+  // Set the global seed only once
   std::call_once(once_flag, []() {
     static std::random_device rd;
     static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<> dis(0, generator_seed_arr.size() - 1);
+    static std::uniform_int_distribution<> dis(
+        0, generator_seed_arr.size() - 1);
     generator_seed = generator_seed_arr[dis(gen)];
     std::string gen_seed_str =
-      "Generator seed: " + std::to_string(generator_seed);
+        "Generator seed: " + std::to_string(generator_seed);
     puts(gen_seed_str.c_str());
   });
 
-  // Different threads need different seeds.                                                                                        
-  // Safely increment the generator seed and assign to local seed.                                                                  
+  // Different threads need different seeds.
+  // Safely increment the generator seed and assign to local seed.
   if (local_seed == 0) {
     do {
       local_seed = generator_seed;
-    } while (!generator_seed.compare_exchange_strong(local_seed, local_seed+1));
+    } while (
+        !generator_seed.compare_exchange_strong(local_seed, local_seed + 1));
     generator.seed(local_seed);
   }
 }
 
-/**                                                                                                                                 
- * Generate a random number from a uniform distribution, between 0 and specified max.                                               
+/**
+ * Generate a random number from a uniform distribution, between 0 and specified
+ * max.
  */
 size_t random_ms(size_t max = 3) {
-
-  // Pick generator seed at random.                                                                                                 
+  // Pick generator seed at random.
   set_generator_seed();
 
-  thread_local static std::uniform_int_distribution<size_t> distribution(0, max);
+  thread_local static std::uniform_int_distribution<size_t> distribution(
+      0, max);
   return distribution(generator);
 }
 
