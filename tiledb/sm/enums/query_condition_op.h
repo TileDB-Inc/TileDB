@@ -113,6 +113,32 @@ inline void ensure_qc_op_string_is_valid(const std::string& qc_op_str) {
   ensure_qc_op_is_valid(qc_op);
 }
 
+/** Returns the negated op given a query condition op. */
+inline QueryConditionOp negate_query_condition_op(const QueryConditionOp op) {
+  switch (op) {
+    case QueryConditionOp::LT:
+      return QueryConditionOp::GE;
+
+    case QueryConditionOp::GT:
+      return QueryConditionOp::LE;
+
+    case QueryConditionOp::GE:
+      return QueryConditionOp::LT;
+
+    case QueryConditionOp::LE:
+      return QueryConditionOp::GT;
+
+    case QueryConditionOp::NE:
+      return QueryConditionOp::EQ;
+
+    case QueryConditionOp::EQ:
+      return QueryConditionOp::NE;
+
+    default:
+      throw std::runtime_error("negate_query_condition_op: Invalid op.");
+  }
+}
+
 }  // namespace sm
 }  // namespace tiledb
 

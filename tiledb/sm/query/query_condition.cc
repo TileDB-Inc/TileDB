@@ -54,6 +54,10 @@ namespace sm {
 QueryCondition::QueryCondition() {
 }
 
+QueryCondition::QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree)
+    : tree_(std::move(tree)) {
+}
+
 QueryCondition::QueryCondition(const QueryCondition& rhs)
     : tree_(rhs.tree_ == nullptr ? nullptr : rhs.tree_->clone()) {
 }
@@ -538,17 +542,25 @@ void QueryCondition::apply_ast_node(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
-  const auto attribute = array_schema.attribute(node->get_field_name());
-  if (!attribute) {
-    throw std::runtime_error(
-        "QueryCondition::apply_ast_node: Unknown attribute " +
-        node->get_field_name());
+  std::string node_field_name = node->get_field_name();
+
+  const auto nullable = array_schema.is_nullable(node_field_name);
+  const auto var_size = array_schema.var_size(node_field_name);
+  const auto type = array_schema.type(node_field_name);
+
+  ByteVecValue fill_value;
+  if (node_field_name != constants::timestamps &&
+      node_field_name != constants::delete_timestamps) {
+    if (!array_schema.is_dim(node_field_name)) {
+      const auto attribute = array_schema.attribute(node_field_name);
+      if (!attribute) {
+        throw std::runtime_error("Unknown attribute " + node_field_name);
+      }
+      fill_value = attribute->fill_value();
+    }
   }
 
-  const ByteVecValue fill_value = attribute->fill_value();
-  const bool var_size = attribute->var_size();
-  const bool nullable = attribute->nullable();
-  switch (attribute->type()) {
+  switch (type) {
     case Datatype::INT8: {
       apply_ast_node<int8_t, CombinationOp>(
           node,
@@ -1783,25 +1795,14 @@ void QueryCondition::apply_ast_node_sparse(
     ResultTile& result_tile,
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
-  bool var_size = false, nullable = false;
-
-  // Initialize to timestamps type.
-  Datatype type = Datatype::UINT64;
   std::string node_field_name = node->get_field_name();
-  if (node_field_name != constants::timestamps) {
-    const auto attribute = array_schema.attribute(node_field_name);
-    if (!attribute) {
-      throw std::runtime_error("Unknown attribute " + node_field_name);
-    }
-
-    var_size = attribute->var_size();
-    nullable = attribute->nullable();
-    type = attribute->type();
-  }
+  const auto nullable = array_schema.is_nullable(node_field_name);
+  const auto var_size = array_schema.var_size(node_field_name);
+  const auto type = array_schema.type(node_field_name);
 
   // Process the validity buffer now.
   if (nullable) {
-    const auto tile_tuple = result_tile.tile_tuple(node->get_field_name());
+    const auto tile_tuple = result_tile.tile_tuple(node_field_name);
     const auto& tile_validity = std::get<2>(*tile_tuple);
     const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
     const auto cell_num = result_tile.cell_num();
@@ -2036,6 +2037,10 @@ Status QueryCondition::apply_sparse(
   }
 
   return Status::Ok();
+}
+
+QueryCondition QueryCondition::negated_condition() {
+  return QueryCondition(tree_->get_negated_tree());
 }
 
 const tdb_unique_ptr<ASTNode>& QueryCondition::ast() const {

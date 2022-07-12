@@ -85,6 +85,7 @@ class FragmentMetadata {
    *     1970-01-01 00:00:00 +0000 (UTC).
    * @param dense Indicates whether the fragment is dense or sparse.
    * @param has_timestamps Does the fragment contains timestamps.
+   * @param has_delete_meta Does the fragment contains delete metadata.
    */
   FragmentMetadata(
       StorageManager* storage_manager,
@@ -93,7 +94,8 @@ class FragmentMetadata {
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
       bool dense = true,
-      bool has_timestamps = false);
+      bool has_timestamps = false,
+      bool has_delete_mata = false);
 
   /** Destructor. */
   ~FragmentMetadata();
@@ -238,6 +240,11 @@ class FragmentMetadata {
     return has_timestamps_;
   }
 
+  /** Returns true if the fragment has delete metadata. */
+  inline bool has_delete_meta() const {
+    return has_delete_meta_;
+  }
+
   /**
    * Retrieves the overlap of all MBRs with the input ND range.
    */
@@ -296,7 +303,14 @@ class FragmentMetadata {
    *
    * Applicable to format versions 12 or higher.
    */
-  Status store_v12_or_higher(const EncryptionKey& encryption_key);
+  Status store_v12_v14(const EncryptionKey& encryption_key);
+
+  /**
+   * Stores all the metadata to storage.
+   *
+   * Applicable to format versions 15 or higher.
+   */
+  Status store_v15_or_higher(const EncryptionKey& encryption_key);
 
   /** Returns the non-empty domain in which the fragment is constrained. */
   const NDRange& non_empty_domain();
@@ -698,6 +712,15 @@ class FragmentMetadata {
    */
   tuple<Status, optional<uint64_t>> get_null_count(const std::string& name);
 
+  /**
+   * Retrieves the processed conditions. The processed conditions is the list
+   * of delete/update conditions that have already been applied for this
+   * fragment and don't need to be applied again.
+   *
+   * @return Processed conditions.
+   */
+  std::unordered_set<std::string>& get_processed_conditions();
+
   /** Returns the first timestamp of the fragment timestamp range. */
   uint64_t first_timestamp() const;
 
@@ -786,6 +809,16 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key);
 
   /**
+   * Loads the processed conditions for the fragment. The processed conditions
+   * is the list of delete/update conditions that have already been applied for
+   * this fragment and don't need to be applied again.
+   *
+   * @param encryption_key The key the array got opened with.
+   * @return Status
+   */
+  Status load_processed_conditions(const EncryptionKey& encryption_key);
+
+  /**
    * Checks if the fragment overlaps partially (not fully) with a given
    * array open - end time. Assumes overlapping fragment and array open - close
    * times.
@@ -835,7 +868,8 @@ class FragmentMetadata {
     std::vector<uint64_t> tile_max_offsets_;
     std::vector<uint64_t> tile_sum_offsets_;
     std::vector<uint64_t> tile_null_count_offsets_;
-    uint64_t tile_min_max_sum_null_count_offset_;
+    uint64_t fragment_min_max_sum_null_count_offset_;
+    uint64_t processed_conditions_offsets_;
   };
 
   /** Keeps track of which metadata is loaded. */
@@ -851,6 +885,7 @@ class FragmentMetadata {
     std::vector<bool> tile_sum_;
     std::vector<bool> tile_null_count_;
     bool fragment_min_max_sum_null_count_ = false;
+    bool processed_conditions_ = false;
   };
 
   /* ********************************* */
@@ -918,6 +953,9 @@ class FragmentMetadata {
 
   /** True if the fragment has timestamps, and false otherwise. */
   bool has_timestamps_;
+
+  /** True if the fragment has delete metadata, and false otherwise. */
+  bool has_delete_meta_;
 
   /** Number of sparse tiles. */
   uint64_t sparse_tile_num_;
@@ -1036,6 +1074,9 @@ class FragmentMetadata {
 
   /** The uri of the array the metadata belongs to. */
   URI array_uri_;
+
+  /** Set of already processed delete/update conditions for this fragment. */
+  std::unordered_set<std::string> processed_conditions_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -1251,6 +1292,14 @@ class FragmentMetadata {
   Status load_has_timestamps(ConstBuffer* buff);
 
   /**
+   * Loads the `has_delete_meta_` field from the buffer.
+   *
+   * @param buff Metadata buffer.
+   * @return Status
+   */
+  Status load_has_delete_meta(ConstBuffer* buff);
+
+  /**
    * Loads the MBRs from the fragment metadata buffer.
    *
    * @param buff Metadata buffer.
@@ -1344,6 +1393,11 @@ class FragmentMetadata {
    */
   Status load_fragment_min_max_sum_null_count(ConstBuffer* buff);
 
+  /**
+   * Loads the processed conditions for the fragment.
+   */
+  Status load_processed_conditions(ConstBuffer* buff);
+
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
 
@@ -1405,6 +1459,11 @@ class FragmentMetadata {
    * Writes the `has_timestamps_` field to the fragment metadata buffer.
    */
   Status write_has_timestamps(Buffer* buff) const;
+
+  /**
+   * Writes the `has_delete_meta_` field to the fragment metadata buffer.
+   */
+  Status write_has_delete_meta(Buffer* buff) const;
 
   /**
    * Writes the R-tree to storage.
@@ -1571,6 +1630,16 @@ class FragmentMetadata {
       uint64_t num, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
+   * Writes the processed conditions to storage.
+   *
+   * @param encryption_key The encryption key.
+   * @param nbytes The total number of bytes written.
+   * @return Status
+   */
+  Status store_processed_conditions(
+      const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  /**
    * Compute the fragment min, max and sum values.
    *
    * @param name The attribute/dimension name.
@@ -1607,8 +1676,8 @@ class FragmentMetadata {
    * Reads the contents of a generic tile starting at the input offset,
    * and stores them into buffer ``buff``.
    */
-  Status read_generic_tile_from_file(
-      const EncryptionKey& encryption_key, uint64_t offset, Buffer* buff) const;
+  tuple<Status, optional<Buffer>> read_generic_tile_from_file(
+      const EncryptionKey& encryption_key, uint64_t offset) const;
 
   /**
    * Reads the fragment metadata file footer (which contains the generic tile

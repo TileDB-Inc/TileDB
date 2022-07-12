@@ -34,7 +34,7 @@
 #include "tiledb/sm/misc/types.h"
 
 #include "test/src/helpers.h"
-#include "tiledb/sm/query/sparse_index_reader_base.h"
+#include "tiledb/sm/query/readers/sparse_index_reader_base.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -149,7 +149,7 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
   tiledb_domain_free(&domain);
 
-  ResultTileWithBitmap<uint8_t> tile(
+  UnorderedWithDupsResultTile<uint8_t> tile(
       0, 0, *(array_schema->array_schema_.get()));
   tile.bitmap_result_num_ = 100;
 

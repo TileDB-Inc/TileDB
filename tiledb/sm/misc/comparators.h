@@ -40,9 +40,9 @@
 
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
-#include "tiledb/sm/query/domain_buffer.h"
-#include "tiledb/sm/query/result_coords.h"
-#include "tiledb/sm/query/sparse_global_order_reader.h"
+#include "tiledb/sm/query/readers/result_coords.h"
+#include "tiledb/sm/query/readers/sparse_global_order_reader.h"
+#include "tiledb/sm/query/writers/domain_buffer.h"
 
 using namespace tiledb::common;
 

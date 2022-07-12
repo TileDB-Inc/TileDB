@@ -65,6 +65,9 @@ const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::REST_CURL_VERBOSE = "false";
+const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
+const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
+const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
 const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
 const std::string Config::SM_DEDUP_COORDS = "false";
@@ -103,6 +106,7 @@ const std::string Config::SM_IO_CONCURRENCY_LEVEL =
 const std::string Config::SM_SKIP_CHECKSUM_VALIDATION = "false";
 const std::string Config::SM_CONSOLIDATION_AMPLIFICATION = "1.0";
 const std::string Config::SM_CONSOLIDATION_BUFFER_SIZE = "50000000";
+const std::string Config::SM_CONSOLIDATION_PURGE_DELETED_CELLS = "false";
 const std::string Config::SM_CONSOLIDATION_STEPS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_MIN_FRAGS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_MAX_FRAGS = "4294967295";
@@ -222,6 +226,12 @@ Config::Config() {
   param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
   param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
+  param_values_["rest.load_metadata_on_array_open"] =
+      REST_LOAD_METADATA_ON_ARRAY_OPEN;
+  param_values_["rest.load_non_empty_domain_on_array_open"] =
+      REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN;
+  param_values_["rest.use_refactored_array_open"] =
+      REST_USE_REFACTORED_ARRAY_OPEN;
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
@@ -268,6 +278,8 @@ Config::Config() {
   param_values_["sm.consolidation.amplification"] =
       SM_CONSOLIDATION_AMPLIFICATION;
   param_values_["sm.consolidation.buffer_size"] = SM_CONSOLIDATION_BUFFER_SIZE;
+  param_values_["sm.consolidation.purge_deleted_cells"] =
+      SM_CONSOLIDATION_PURGE_DELETED_CELLS;
   param_values_["sm.consolidation.step_min_frags"] =
       SM_CONSOLIDATION_STEP_MIN_FRAGS;
   param_values_["sm.consolidation.step_max_frags"] =
@@ -516,12 +528,21 @@ Status Config::unset(const std::string& param) {
     param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   } else if (param == "rest.curl.verbose") {
     param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
+  } else if (param == "rest.load_metadata_on_array_open") {
+    param_values_["rest.load_metadata_on_array_open"] =
+        REST_LOAD_METADATA_ON_ARRAY_OPEN;
+  } else if (param == "rest.load_non_empty_domain_on_array_open") {
+    param_values_["rest.load_non_empty_domain_on_array_open"] =
+        REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN;
+  } else if (param == "rest.use_refactored_array_open") {
+    param_values_["rest.use_refactored_array_open"] =
+        REST_USE_REFACTORED_ARRAY_OPEN;
   } else if (param == "config.env_var_prefix") {
     param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   } else if (param == "config.logging_level") {
     param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   } else if (param == "config.logging_format") {
-    param_values_["config.logging_foramt"] = CONFIG_LOGGING_DEFAULT_FORMAT;
+    param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
   } else if (param == "sm.encryption_key") {
     param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   } else if (param == "sm.encryption_type") {
@@ -598,6 +619,9 @@ Status Config::unset(const std::string& param) {
   } else if (param == "sm.consolidation.buffer_size") {
     param_values_["sm.consolidation.buffer_size"] =
         SM_CONSOLIDATION_BUFFER_SIZE;
+  } else if (param == "sm.consolidation.purge_deleted_cells") {
+    param_values_["sm.consolidation.steps"] =
+        SM_CONSOLIDATION_PURGE_DELETED_CELLS;
   } else if (param == "sm.consolidation.steps") {
     param_values_["sm.consolidation.steps"] = SM_CONSOLIDATION_STEPS;
   } else if (param == "sm.consolidation.step_min_frags") {
@@ -836,6 +860,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vf));
   } else if (param == "sm.consolidation.buffer_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
+  } else if (param == "sm.consolidation.purge_deleted_cells") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.consolidation.steps") {
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "sm.consolidation.step_min_frags") {

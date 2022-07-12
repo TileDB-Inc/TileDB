@@ -820,6 +820,12 @@ Status FragmentConsolidator::set_config(const Config* config) {
   RETURN_NOT_OK(merged_config.get<float>(
       "sm.consolidation.step_size_ratio", &config_.size_ratio_, &found));
   assert(found);
+  config_.purge_deleted_cells_ = false;
+  RETURN_NOT_OK(merged_config.get<bool>(
+      "sm.consolidation.purge_deleted_cells",
+      &config_.purge_deleted_cells_,
+      &found));
+  assert(found);
   config_.min_frags_ = 0;
   RETURN_NOT_OK(merged_config.get<uint32_t>(
       "sm.consolidation.step_min_frags", &config_.min_frags_, &found));

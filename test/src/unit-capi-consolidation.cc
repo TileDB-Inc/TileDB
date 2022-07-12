@@ -4720,6 +4720,17 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
+  // Test purge deleted cells
+  rc = tiledb_config_set(
+      config, "sm.consolidation.purge_deleted_cells", "1", &error);
+  REQUIRE(rc == TILEDB_ERR);
+  REQUIRE(error != nullptr);
+  tiledb_error_free(&error);
+  rc = tiledb_config_set(
+      config, "sm.consolidation.purge_deleted_cells", "true", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
   // Test min frags
   rc = tiledb_config_set(
       config, "sm.consolidation.step_min_frags", "-1", &error);
@@ -6737,6 +6748,10 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse, commits, mixed versions",
     "[capi][consolidation][commits][mixed-versions]") {
+  if constexpr (is_experimental_build) {
+    return;
+  }
+
   remove_sparse_array();
 
   // Get the v11 sparse array.
