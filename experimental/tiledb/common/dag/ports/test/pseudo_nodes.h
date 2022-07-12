@@ -41,6 +41,8 @@
 
 namespace tiledb::common {
 
+class GraphNode {};
+
 /**
  * Prototype producer function object class.  This class generates a sequence of
  * integers from 0 to N (half-open interval).  It will invoke an out-of-data
@@ -72,7 +74,8 @@ class generator {
 template <class Block, class StateMachine>
 class ProducerNode : public Source<Block, StateMachine> {
   using Base = Source<Block, StateMachine>;
-  std::atomic<size_t> i_{0};
+  // This causes initialization problems 
+  //  std::atomic<size_t> i_{0};
   size_t N_{0};
   std::function<Block()> f_;
 
@@ -265,7 +268,7 @@ class FunctionNode : public Source<BlockOut, SourceStateMachine>,
 
  public:
   template <class Function>
-  explicit FunctionNode(Function&& f)
+  FunctionNode(Function&& f)
       : f_{std::forward<Function>(f)} {
   }
 
