@@ -237,7 +237,7 @@ struct Filter {
     int16 @5 :Int16;
     uint16 @6 :UInt16;
     int32 @7 :Int32;
-    uint32 @8 :UInt32;
+    uint32 @8 :UgsInt32;
     int64 @9 :Int64;
     uint64 @10 :UInt64;
     float32 @11 :Float32;
