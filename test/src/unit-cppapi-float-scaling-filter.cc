@@ -30,6 +30,7 @@
  * Tests the C++ API for float scaling filter related functions.
  */
 
+#include <iostream> //DELETE
 #include <random>
 #include <vector>
 
@@ -41,6 +42,7 @@ using namespace tiledb;
 std::string array_name = "cpp_unit_array";
 int dim_hi = 10;
 
+/*
 TEST_CASE(
     "C++ API: Float Scaling Filter options",
     "[cppapi][filter][float-scaling]") {
@@ -69,6 +71,7 @@ TEST_CASE(
   f.get_option(TILEDB_SCALE_FLOAT_OFFSET, &get_offset);
   CHECK(get_offset == offset);
 }
+*/
 
 template <typename T, typename W>
 struct FloatScalingFilterTestStruct {
@@ -161,6 +164,12 @@ struct FloatScalingFilterTestStruct {
     REQUIRE(table["a"].second == total_num_elements);
 
     for (size_t i = 0; i < total_num_elements; ++i) {
+      W val = static_cast<W>(
+          round((a_write[i] - static_cast<T>(offset)) / static_cast<T>(scale)));
+      std::cout << std::to_string(val) << std::endl;
+
+      std::cout << a_data_read[i] << std::endl;
+      std::cout << expected_a[i] << std::endl;
       CHECK(
           fabs(a_data_read[i] - expected_a[i]) <
           std::numeric_limits<T>::epsilon());
@@ -171,18 +180,23 @@ struct FloatScalingFilterTestStruct {
   }
 };
 
-TEMPLATE_PRODUCT_TEST_CASE(
-    "C++ API: Float Scaling Filter list on array",
-    "[cppapi][filter][float-scaling]",
-    FloatScalingFilterTestStruct,
-    ((float, int8_t),
-     (double, int8_t),
+/**
+,
      (float, int16_t),
      (double, int16_t),
      (float, int32_t),
      (double, int32_t),
      (float, int64_t),
-     (double, int64_t))) {
+     (double, int64_t)
+ * 
+ */
+
+TEMPLATE_PRODUCT_TEST_CASE(
+    "C++ API: Float Scaling Filter list on array",
+    "[cppapi][filter][float-scaling]",
+    FloatScalingFilterTestStruct,
+    ((float, int8_t),
+     (double, int8_t))) {
   // Setup.
   Context ctx;
   VFS vfs(ctx);
