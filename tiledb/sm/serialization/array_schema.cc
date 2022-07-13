@@ -1463,8 +1463,8 @@ Status array_schema_serialize(
       "Cannot serialize; serialization not enabled."));
 }
 
-Status array_schema_deserialize(SerializationType, const Buffer&) {
-  return LOG_STATUS(Status_SerializationError(
+ArraySchema array_schema_deserialize(SerializationType, const Buffer&) {
+  throw StatusException(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
