@@ -58,7 +58,7 @@ namespace sm {
 class FloatScalingFilter : public Filter {
  public:
   /** Struct used for serialization and deserialization from disk. */
-  struct Metadata {
+  struct FilterConfig {
     double scale;
     double offset;
     uint64_t byte_width;

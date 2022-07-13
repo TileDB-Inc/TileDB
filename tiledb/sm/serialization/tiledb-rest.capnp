@@ -219,6 +219,12 @@ struct Error {
     message @1 :Text;
 }
 
+struct FloatScaleConfig {
+  scale @0 :Float64;
+  offset @1 :Float64;
+  bitWidth @2 :UInt64;
+}
+
 struct Filter {
   type @0 :Text;
   # filter type
@@ -236,6 +242,7 @@ struct Filter {
     uint64 @10 :UInt64;
     float32 @11 :Float32;
     float64 @12 :Float64;
+    floatScaleConfig @13 :FloatScaleConfig
   }
   # filter data
 }
