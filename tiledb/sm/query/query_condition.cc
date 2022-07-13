@@ -1644,9 +1644,7 @@ void QueryCondition::apply_ast_node_sparse(
     const uint64_t buffer_offsets_el =
         tile_offsets.size() / constants::cell_var_offset_size;
 
-    // We need to repeat code/have two for loops in order to support
-    // vectorization. Iterate through each cell.
-
+    // Iterate through each cell.
     for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
       // Check the previous cell here, which breaks vectorization but as this
       // is string data requiring a strcmp which cannot be vectorized, this is
