@@ -54,7 +54,7 @@ void create_array(){
 }
 
 TEST_CASE("Query Condition CPP API: Query Condition OR with nullable attributes (sc-18836)", "[QueryCondition]"){
-  Context cfx;
+  Context ctx;
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
