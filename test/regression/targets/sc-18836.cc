@@ -45,10 +45,10 @@ void create_array(){
 
 	Query query(ctx, array);
 	query.set_layout(TILEDB_ROW_MAJOR)
-     .set_buffer("a1", data1)
-     .set_validity_buffer("a1", a1_validity_buf)
-     .set_buffer("a2", data2)
-     .set_subarray(subarray);
+     	 .set_buffer("a1", data1)
+     	 .set_validity_buffer("a1", a1_validity_buf)
+         .set_buffer("a2", data2)
+         .set_subarray(subarray);
 
 	query.submit();
 	array.close();
@@ -76,10 +76,10 @@ TEST_CASE("Query Condition CPP API: Query Condition OR with nullable attributes 
 	// Prepare the query
 	Query query(ctx, array, TILEDB_READ);
     query.set_subarray(subarray)
-	 .set_layout(TILEDB_ROW_MAJOR)
-	 .set_buffer("a1", a1_buffer)
-	 .set_validity_buffer("a1", a1_validity_buf)
-	 .set_buffer("a2", a2_buffer);
+	     .set_layout(TILEDB_ROW_MAJOR)
+	     .set_buffer("a1", a1_buffer)
+	     .set_validity_buffer("a1", a1_validity_buf)
+	     .set_buffer("a2", a2_buffer);
 
     QueryCondition qc1(ctx);
 	float val = 15.1f;
