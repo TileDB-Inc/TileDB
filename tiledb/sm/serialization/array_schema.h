@@ -96,7 +96,7 @@ Status array_schema_serialize(
     Buffer* serialized_buffer,
     const bool client_side);
 
-tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
+ArraySchema array_schema_deserialize(
     SerializationType serialize_type, const Buffer& serialized_buffer);
 
 Status nonempty_domain_serialize(

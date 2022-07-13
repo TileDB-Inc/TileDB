@@ -852,12 +852,11 @@ Status array_schema_serialize(
   return Status::Ok();
 }
 
-tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
+ArraySchema array_schema_deserialize(
     SerializationType serialize_type, const Buffer& serialized_buffer) {
-  shared_ptr<ArraySchema> array_schema;
+  capnp::ArraySchema::Reader array_schema_reader;
 
   try {
-    shared_ptr<ArraySchema> decoded_array_schema;
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
@@ -867,10 +866,7 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
         json.decode(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             array_schema_builder);
-        capnp::ArraySchema::Reader array_schema_reader =
-            array_schema_builder.asReader();
-        decoded_array_schema = make_shared<ArraySchema>(
-            HERE(), array_schema_from_capnp(array_schema_reader, URI()));
+        array_schema_reader = array_schema_builder.asReader();
         break;
       }
       case SerializationType::CAPNP: {
@@ -879,41 +875,26 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
         ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             serialized_buffer.size() / sizeof(::capnp::word)));
-        capnp::ArraySchema::Reader array_schema_reader =
-            reader.getRoot<capnp::ArraySchema>();
-        decoded_array_schema = make_shared<ArraySchema>(
-            HERE(), array_schema_from_capnp(array_schema_reader, URI()));
+        array_schema_reader = reader.getRoot<capnp::ArraySchema>();
         break;
       }
       default: {
-        return {
-            LOG_STATUS(Status_SerializationError(
-                "Error deserializing array schema; Unknown serialization type "
-                "passed")),
-            nullopt};
+        throw StatusException(Status_SerializationError(
+            "Error deserializing array schema; Unknown serialization type "
+            "passed"));
       }
     }
-
-    if (decoded_array_schema == nullptr)
-      return {
-          LOG_STATUS(Status_SerializationError(
-              "Error serializing array schema; deserialized schema is null")),
-          nullopt};
-
-    array_schema = decoded_array_schema;
   } catch (kj::Exception& e) {
-    return {LOG_STATUS(Status_SerializationError(
-                "Error deserializing array schema; kj::Exception: " +
-                std::string(e.getDescription().cStr()))),
-            nullopt};
+    throw StatusException(Status_SerializationError(
+        "Error deserializing array schema; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return {LOG_STATUS(Status_SerializationError(
-                "Error deserializing array schema; exception " +
-                std::string(e.what()))),
-            nullopt};
+    throw StatusException(Status_SerializationError(
+        "Error deserializing array schema; exception " +
+        std::string(e.what())));
   }
 
-  return {Status::Ok(), array_schema};
+  return array_schema_from_capnp(array_schema_reader, URI());
 }
 
 Status nonempty_domain_serialize(
@@ -1482,11 +1463,9 @@ Status array_schema_serialize(
       "Cannot serialize; serialization not enabled."));
 }
 
-tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
-    SerializationType, const Buffer&) {
-  return {LOG_STATUS(Status_SerializationError(
-              "Cannot serialize; serialization not enabled.")),
-          nullopt};
+Status array_schema_deserialize(SerializationType, const Buffer&) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot serialize; serialization not enabled."));
 }
 
 Status nonempty_domain_serialize(Array*, SerializationType, Buffer*) {
