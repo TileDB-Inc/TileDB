@@ -108,7 +108,6 @@ Status filter_to_capnp(
       break;
     }
     case FilterType::FILTER_SCALE_FLOAT: {
-      FloatScalingFilter::Metadata m;
       double scale, offset;
       uint64_t byte_width;
       RETURN_NOT_OK(
@@ -117,15 +116,11 @@ Status filter_to_capnp(
           filter->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale));
       RETURN_NOT_OK(
           filter->get_option(FilterOption::SCALE_FLOAT_OFFSET, &offset));
-      m.scale = scale;
-      m.offset = offset;
-      m.byte_width = byte_width;
       auto data = filter_builder->initData();
-      auto capnpValue = kj::Vector<uint8_t>();
-      capnpValue.addAll(kj::ArrayPtr<uint8_t>(
-          const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(&m)),
-          sizeof(FloatScalingFilter::Metadata)));
-      data.setBytes(capnpValue.asPtr());
+      auto config = data.initFloatScaleConfig();
+      config.setScale(scale);
+      config.setOffset(offset);
+      config.setByteWidth(byte_width);
       break;
     }
     case FilterType::FILTER_NONE:
@@ -162,7 +157,7 @@ Status filter_pipeline_to_capnp(
 }
 
 tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
-    capnp::Filter::Reader filter_reader) {
+    const capnp::Filter::Reader &filter_reader) {
   FilterType type = FilterType::FILTER_NONE;
   RETURN_NOT_OK_TUPLE(
       filter_type_enum(filter_reader.getType().cStr(), &type), nullopt);
@@ -196,15 +191,13 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
     }
     case FilterType::FILTER_SCALE_FLOAT: {
       auto data = filter_reader.getData();
-      auto metadata_value = data.getBytes();
-      FloatScalingFilter::Metadata m;
-      memcpy(
-          &m,
-          metadata_value.asBytes().begin(),
-          sizeof(FloatScalingFilter::Metadata));
+      auto float_scale_config = data.getFloatScaleConfig();
+      double scale = float_scale_config.getScale();
+      double offset = float_scale_config.getOffset();
+      uint64_t byte_width =  float_scale_config.getByteWidth();
       return {Status::Ok(),
               tiledb::common::make_shared<FloatScalingFilter>(
-                  HERE(), m.byte_width, m.scale, m.offset)};
+                  HERE(), byte_width, scale, offset)};
     }
     case FilterType::FILTER_NONE:
       break;
