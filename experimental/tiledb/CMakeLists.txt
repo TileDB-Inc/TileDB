@@ -25,3 +25,5 @@
 # THE SOFTWARE.
 #
 include(common NO_POLICY_SCOPE)
+
+add_subdirectory(common)

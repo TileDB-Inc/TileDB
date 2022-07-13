@@ -149,7 +149,7 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
   tiledb_domain_free(&domain);
 
-  ResultTileWithBitmap<uint8_t> tile(
+  UnorderedWithDupsResultTile<uint8_t> tile(
       0, 0, *(array_schema->array_schema_.get()));
   tile.bitmap_result_num_ = 100;
 

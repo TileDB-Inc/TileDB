@@ -118,6 +118,6 @@ int32_t tiledb_dimension_label_schema_alloc(
 
 void tiledb_dimension_label_schema_free(
     tiledb_dimension_label_schema_t** dim_label_schema) noexcept {
-  return api_entry<detail::tiledb_dimension_label_schema_free>(
+  return api_entry_void<detail::tiledb_dimension_label_schema_free>(
       dim_label_schema);
 }
