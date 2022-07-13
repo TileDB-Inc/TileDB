@@ -1,5 +1,5 @@
 #
-# tiledb/storage_format/CMakeLists.txt
+# tiledb/storage_format/serialization/CMakeLists.txt
 #
 # The MIT License
 #
@@ -23,5 +23,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-add_subdirectory(serialization)
-add_subdirectory(uri)
+include(common NO_POLICY_SCOPE)
+
+if (TILEDB_TESTS)
+    add_executable(unit_serializers EXCLUDE_FROM_ALL)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_serializers PUBLIC Catch2::Catch2)
+
+    # Sources for tests
+    target_sources(unit_serializers PUBLIC test/main.cc test/unit_serializers.cc)
+
+    add_test(
+        NAME "unit_serializers"
+        COMMAND $<TARGET_FILE:unit_serializers>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()

@@ -189,9 +189,9 @@ class StorageManager {
    * @param uri The object URI.
    * @param offset The offset into the file to read from.
    * @param encryption_key The encryption key to use.
-   * @return Status, Buffer with the data.
+   * @return Status, Tile with the data.
    */
-  tuple<Status, optional<Buffer>> load_data_from_generic_tile(
+  tuple<Status, optional<Tile>> load_data_from_generic_tile(
       const URI& uri, uint64_t offset, const EncryptionKey& encryption_key);
 
   /**

@@ -59,7 +59,7 @@ GenericTileIO::GenericTileIO(StorageManager* storage_manager, const URI& uri)
 /*               API              */
 /* ****************************** */
 
-tuple<Status, optional<Buffer>> GenericTileIO::read_generic(
+tuple<Status, optional<Tile>> GenericTileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
     const Config& config) {
@@ -116,12 +116,7 @@ tuple<Status, optional<Buffer>> GenericTileIO::read_generic(
       nullopt);
   assert(!tile.filtered());
 
-  Buffer ret;
-  RETURN_NOT_OK_TUPLE(ret.realloc(tile.size()), std::nullopt);
-  ret.set_size(tile.size());
-  RETURN_NOT_OK_TUPLE(tile.read(ret.data(), 0, ret.size()), nullopt);
-
-  return {Status::Ok(), std::move(ret)};
+  return {Status::Ok(), std::move(tile)};
 }
 
 tuple<Status, optional<GenericTileIO::GenericTileHeader>>
