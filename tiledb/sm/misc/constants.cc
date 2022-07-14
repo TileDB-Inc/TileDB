@@ -604,7 +604,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization base format version number. */
-const uint32_t base_format_version = 15;
+const uint32_t base_format_version = 16;
 
 /**
  * The TileDB serialization format version number.
