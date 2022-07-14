@@ -855,12 +855,12 @@ Status array_schema_serialize(
 ArraySchema array_schema_deserialize(
     SerializationType serialize_type, const Buffer& serialized_buffer) {
   capnp::ArraySchema::Reader array_schema_reader;
+  ::capnp::MallocMessageBuilder message_builder;
 
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
-        ::capnp::MallocMessageBuilder message_builder;
         capnp::ArraySchema::Builder array_schema_builder =
             message_builder.initRoot<capnp::ArraySchema>();
         json.decode(
