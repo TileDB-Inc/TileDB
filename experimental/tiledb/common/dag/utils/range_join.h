@@ -38,15 +38,29 @@
  * ranges.  That is, changing an element in one of the inner ranges will be seen
  * in the joined range -- and vice versa.
  *
- * Todo: Add variadic constructor / initializer list constructor so
- * that a range_join view can be constructed from a collection of
- * containers, rather than having to explicitly form a container
- * of containers (which could be expensive to construct).
+ * @example Suppose we have three vectors that we wish to join.
  *
- * Todo: Create a random_access_range view if the constituent inner ranges are
- * random_access.  The simple case would also require that the outer range by
- * random access.  A non-random access outer range would require the joined view
- * to construct its own random access range over the inner ranges.
+ *   std::vector<int> u { 3, 1, 4 };
+ *   std::vector<int> v { 1, 5, 9, 2 };
+ *   std::vector<int> w { 6, 5 } ;
+ *
+ *   std::list<std::vector<int>> a { u, v, w };
+ *
+ *   auto x = join(a);
+ *
+ * The joined view `x` will now be a single view of the elements in `u`, `v`,
+ * and `w`.  We can use that view as if it were a single container, for example:
+ *
+ *   for (auto&& j : x) {
+ *     std::cout << j << " ";
+ *   }
+ *
+ * Will print
+ *
+ *   3 1 4 1 5 9 2 6 5
+ *
+ * @todo Implement random-access iterator if inner and outer containers have
+ * random access iterators.
  */
 
 #ifndef TILEDB_RANGE_JOIN_H
@@ -60,13 +74,25 @@
 #include <vector>
 #include "arrow_proxy.hpp"
 
+#include "experimental/tiledb/common/dag/utils/traits.h"
+#include "external/include/span/span.hpp"
+
 namespace tiledb::common {
 
 /*
  * Some useful type aliases
  */
-template <class T>
-using const_iterator_t = typename T::const_iterator;
+
+template <typename T, typename = void>
+struct last_t_impl {
+  using type = T;
+};
+template <typename T>
+struct last_t_impl<T, std::enable_if_t<!std::is_same_v<typename T::Next, T>>> {
+  using type = typename last_t_impl<typename T::Next>::type;
+};
+template <typename T>
+using last_t = typename last_t_impl<T>::type;
 
 template <class T>
 using iterator_t = typename T::iterator;
@@ -86,9 +112,13 @@ using inner_value_t = typename inner_range_t<G>::value_type;
 template <typename G>
 using inner_reference_t = typename inner_range_t<G>::reference;
 
+template <typename G>
+using inner_const_reference_t = typename inner_range_t<G>::const_reference;
+
 /**
  * A joined range view class.  Creates a single view of a range of ranges.
- * Currently, creates an input_range view.  Unlike `std::ranges::join`, which is
+ * Currently, creates an input_range view, meaning the iterator associated with
+ * the joined view are forward iterators.  Unlike `std::ranges::join`, which is
  * a variadic template, this view is constructed from a number of containers
  * whose cardinality is determined at run time.  As a result, also unlike
  * `std::ranges::view`, all of the inner containers must be of the same type
@@ -107,7 +137,7 @@ class join {
 
   using inner_range_iterator = std::conditional_t<
       std::is_const_v<RangeOfRanges>,
-      inner_iterator_t<RangeOfRanges>,
+      inner_const_iterator_t<RangeOfRanges>,
       inner_iterator_t<RangeOfRanges>>;
 
   range_of_ranges_iterator outer_begin_;
@@ -126,9 +156,17 @@ class join {
       , outer_end_(g.end())
       , offsets_(g.size() + 1) {
     /*
-     * If the outer container is random access, we can support `operator[]` in
-     * the joined view.  Compute an `offsets` array to support
-     * `operator[]`.
+     * If both the outer container and inner container are random access, we can
+     * support `operator[]` in the joined view.  Compute an `offsets` array to
+     * support `operator[]`.
+     *
+     * NB: The offsets array is computed based on the sizes of the underlying
+     * containers.  The offsets array will be invalid if any of the underlying
+     * containers resize themselves.  This is only an issue with respect to
+     * `operator[]`, other aspects of the view will work as expected if any
+     * underlying container changes its size.
+     *
+     * @todo Add a `resize` function to the view to regenerate the offset array.
      */
     if constexpr (std::is_same_v<
                       typename std::iterator_traits<
@@ -168,6 +206,7 @@ class join {
     using value_type = inner_value_t<RangeOfRanges>;
     using difference_type = std::ptrdiff_t;
     using reference = inner_reference_t<RangeOfRanges>;
+    using const_reference = inner_const_reference_t<RangeOfRanges>;
     using pointer = arrow_proxy<reference>;
 
    private:
@@ -228,7 +267,7 @@ class join {
     join_iterator(const join_iterator&) = default;
     join_iterator(join_iterator&&) = default;
 
-    template <typename = std::enable_if<is_const>>
+    template <bool is_const_ = is_const, class = std::enable_if<is_const_>>
     join_iterator(const join_iterator<false>& rhs)
         : first_(rhs.first_)
         , last_(rhs.last_)
@@ -239,7 +278,7 @@ class join {
     join_iterator& operator=(const join_iterator&) = default;
     join_iterator& operator=(join_iterator&&) = default;
 
-    template <typename = std::enable_if<is_const>>
+    template <bool is_const_ = is_const, class = std::enable_if<is_const_>>
     join_iterator& operator=(
         const join_iterator<false>& rhs)  // requires(is_const)
     {
@@ -276,13 +315,18 @@ class join {
       return *this;
     }
 
-    join_iterator operator++(int) const {
+    join_iterator operator++(int) {
       join_iterator it = *this;
       ++(*this);
       return it;
     }
 
-    reference operator*() const {
+    const_reference operator*() const {
+      return reference(*inner_begin_);
+    }
+
+    typename std::conditional_t<is_const, const_reference, reference>
+    operator*() {
       return reference(*inner_begin_);
     }
 
@@ -305,6 +349,7 @@ class join {
 
   using value_type = typename iterator::value_type;
   using reference = typename iterator::reference;
+  using const_reference = typename iterator::const_reference;
 
   iterator begin() {
     return {outer_begin_, outer_end_};
@@ -330,26 +375,46 @@ class join {
     return {outer_end_, outer_end_};
   }
 
-  /*
-   * We can implement operator[] for the container itself, using the `offsets`
-   * array created when the joined view was constructed.  Note that having
+  /**
+   * operator[] for the joined container.
+   *
+   * We can implement operator[] for the view itself, without requiring that the
+   * view also provide a random access iterator, using the `offsets` array
+   * created when the joined view was constructed.  Note that having
    * `operator[]` does not make the view a `random_access_range`, as the
    * requirement for `random_access_range` is that its iterator be a random
    * access iterator.
+   *
+   * @param i The index into the joined container.
+   * @return A reference to the value in the joined container at index i.
+   *
+   * @todo Implement random access iterator
    */
-  value_type& operator[](size_t i) {
+
+  template <typename Dummy = value_type&>
+  constexpr typename std::enable_if_t<
+      std::is_same_v<
+          typename std::iterator_traits<
+              typename RangeOfRanges::iterator>::iterator_category,
+          std::random_access_iterator_tag>,
+      Dummy>
+  // value_type&
+  operator[](size_t i) {
     auto it_j = std::upper_bound(offsets_.begin(), offsets_.end(), i) - 1;
     auto idx_j = it_j - offsets_.begin();
     auto j = *it_j;
     auto k = i - j;
-    auto block = outer_begin_[idx_j];
-    return block[k];
+    //    auto block = outer_begin_[idx_j];
+    //    return block[k];
+    return outer_begin_[idx_j][k];
   }
 
   /**
    * Return the size of the joined view.  We do this dynamically by adding up
-   * the sizes of the inner containers every time * `size` is invoked in case
-   * one of the underlying containers has changed its * size.
+   * the sizes of the inner containers every time `size` is invoked in case
+   * one of the underlying containers has changed its size.  (Note, however,
+   * that the offsets array will probably be incorrect if an underlying
+   * containers does change its size.)
    *
    * @invariant Equal to the sum of the sizes of the inner containers.
    */
