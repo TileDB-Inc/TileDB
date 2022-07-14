@@ -34,6 +34,7 @@
 #include <limits>
 #include <thread>
 
+#include "tiledb/common/common.h"
 #include "tiledb/sm/c_api/tiledb_version.h"
 
 // Include files for platform path max definition.
@@ -605,13 +606,16 @@ const int32_t library_version[3] = {
 /** The TileDB serialization base format version number. */
 const uint32_t base_format_version = 15;
 
-/** The TileDB serialization format version number. */
-#ifdef TILEDB_EXPERIMENTAL_FEATURES
+/**
+ * The TileDB serialization format version number.
+ *
+ * Conditionally set the high bit on the base_format_version to
+ * easily identify that the build is experimental.
+ **/
 const uint32_t format_version =
-    0b10000000000000000000000000000000 | base_format_version;
-#else
-const uint32_t format_version = base_format_version;
-#endif
+    is_experimental_build ?
+        0b10000000000000000000000000000000 | base_format_version :
+        base_format_version;
 
 /** The lowest version supported for back compat writes. */
 const uint32_t back_compat_writes_min_format_version = 7;
