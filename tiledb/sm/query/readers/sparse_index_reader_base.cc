@@ -208,15 +208,72 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   auto timer_se = stats_->start_timer("load_initial_data");
   read_state_.done_adding_result_tiles_ = false;
 
-  // Make a list of dim/attr that will be loaded for query condition.
-  if (!initial_data_loaded_) {
-    if (!condition_.empty()) {
-      for (auto& name : condition_.field_names()) {
-        if (!array_schema_.is_dim(name) || !include_coords) {
-          qc_loaded_names_.emplace_back(name);
+  // Load delete conditions.
+  auto&& [st, delete_conditions] = storage_manager_->load_delete_conditions(
+      array_->array_directory(), *array_->encryption_key());
+  RETURN_CANCEL_OR_ERROR(st);
+  delete_conditions_ = std::move(*delete_conditions);
+
+  // If we have any delete condition that falls between the timestamps of a
+  // fragment with timestamps, generate timestamped query conditions.
+  bool make_timestamped_conditions = false;
+  for (uint64_t i = 0; i < fragment_metadata_.size(); i++) {
+    if (fragment_metadata_[i]->has_timestamps()) {
+      for (auto& delete_condition : delete_conditions_) {
+        auto delete_timestamp = delete_condition.condition_timestamp();
+        auto& frag_timestamps = fragment_metadata_[i]->timestamp_range();
+        if (delete_timestamp >= frag_timestamps.first &&
+            delete_timestamp <= frag_timestamps.second) {
+          make_timestamped_conditions = true;
+          timestamps_for_deletes_[i] = true;
         }
       }
     }
+  }
+
+  // Generate timestamped conditions.
+  if (make_timestamped_conditions) {
+    timestamped_delete_conditions_.reserve(delete_conditions_.size());
+    for (auto& delete_condition : delete_conditions_) {
+      // Make the timestamp condition.
+      QueryCondition timestamp_condition;
+      auto delete_timestamp = delete_condition.condition_timestamp();
+      std::string attr = constants::timestamps;
+      RETURN_NOT_OK(timestamp_condition.init(
+          std::move(attr),
+          &delete_timestamp,
+          constants::timestamp_size,
+          QueryConditionOp::GT));
+
+      // Combine the timestamp condition and delete condition.
+      QueryCondition timestamped_condition;
+      RETURN_NOT_OK(timestamp_condition.combine(
+          delete_condition,
+          QueryConditionCombinationOp::OR,
+          &timestamped_condition));
+      timestamped_delete_conditions_.push_back(timestamped_condition);
+    }
+  }
+
+  // Make a list of dim/attr that will be loaded for query condition.
+  if (!condition_.empty()) {
+    for (auto& name : condition_.field_names()) {
+      if (!array_schema_.is_dim(name) || !include_coords) {
+        qc_loaded_names_set_.insert(name);
+      }
+    }
+  }
+  for (auto delete_condition : delete_conditions_) {
+    for (auto& name : delete_condition.field_names()) {
+      if (!array_schema_.is_dim(name) || !include_coords) {
+        qc_loaded_names_set_.insert(name);
+      }
+    }
+  }
+
+  qc_loaded_names_.reserve(qc_loaded_names_set_.size());
+  for (auto& name : qc_loaded_names_set_) {
+    qc_loaded_names_.emplace_back(name);
   }
 
   // For easy reference.
@@ -296,7 +353,8 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   const bool partial_consol_fragment_overlap =
       partial_consolidated_fragment_overlap();
   use_timestamps_ = partial_consol_fragment_overlap ||
-                    !array_schema_.allows_dups() || user_requested_timestamps_;
+                    !array_schema_.allows_dups() ||
+                    user_requested_timestamps_ || make_timestamped_conditions;
 
   // Add partial overlap condition, if required.
   if (partial_consol_fragment_overlap) {
@@ -351,7 +409,7 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::timestamps, result_tiles));
   }
 
-  if (!condition_.empty()) {
+  if (!qc_loaded_names_.empty()) {
     // Read and unfilter tiles for query condition.
     RETURN_CANCEL_OR_ERROR(
         read_attribute_tiles(qc_loaded_names_, result_tiles));
@@ -525,7 +583,7 @@ Status SparseIndexReaderBase::apply_query_condition(
     std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("apply_query_condition");
 
-  if (!condition_.empty() || use_timestamps_) {
+  if (!condition_.empty() || !delete_conditions_.empty() || use_timestamps_) {
     // Process all tiles in parallel.
     auto status = parallel_for(
         storage_manager_->compute_tp(),
@@ -553,13 +611,48 @@ Status SparseIndexReaderBase::apply_query_condition(
             rt->count_cells();
           }
 
-          // Compute the result of the query condition for this tile.
-          if (!condition_.empty()) {
+          // Make sure we have a condition bitmap if needed.
+          if (!condition_.empty() || !delete_conditions_.empty()) {
             rt->ensure_bitmap_for_query_condition();
+          }
+
+          // Compute the result of the query condition for this tile
+          if (!condition_.empty()) {
             RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
                 *(frag_meta->array_schema().get()), *rt, rt->bitmap_with_qc()));
             if (array_schema_.allows_dups()) {
               rt->count_cells();
+            }
+          }
+
+          // Apply delete conditions.
+          if (!delete_conditions_.empty()) {
+            for (uint64_t i = 0; i < delete_conditions_.size(); i++) {
+              auto delete_timestamp =
+                  delete_conditions_[i].condition_timestamp();
+
+              // Check the delete condition timestamp is after the fragment
+              // start.
+              if (delete_timestamp >= frag_meta->timestamp_range().first) {
+                // Apply timestamped condition or regular condition.
+                if (!frag_meta->has_timestamps() ||
+                    delete_timestamp > frag_meta->timestamp_range().second) {
+                  RETURN_NOT_OK(delete_conditions_[i].apply_sparse<BitmapType>(
+                      *(frag_meta->array_schema().get()),
+                      *rt,
+                      rt->bitmap_with_qc()));
+                } else {
+                  RETURN_NOT_OK(timestamped_delete_conditions_[i]
+                                    .apply_sparse<BitmapType>(
+                                        *(frag_meta->array_schema().get()),
+                                        *rt,
+                                        rt->bitmap_with_qc()));
+                }
+
+                if (array_schema_.allows_dups()) {
+                  rt->count_cells();
+                }
+              }
             }
           }
 

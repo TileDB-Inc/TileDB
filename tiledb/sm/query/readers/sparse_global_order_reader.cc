@@ -1359,7 +1359,7 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
         // For dimensions or query condition fields, tiles are already all
         // loaded in memory.
         if (array_schema_.is_dim(name) ||
-            condition_.field_names().count(name) != 0 || is_timestamps)
+            qc_loaded_names_set_.count(name) != 0 || is_timestamps)
           return Status::Ok();
 
         // Get the size for all tiles.
@@ -1638,7 +1638,7 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
         *buffers_[name].validity_vector_.buffer_size() = total_cells;
 
       // Clear tiles from memory.
-      if (!is_dim && condition_.field_names().count(name) == 0 &&
+      if (!is_dim && qc_loaded_names_set_.count(name) == 0 &&
           name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);

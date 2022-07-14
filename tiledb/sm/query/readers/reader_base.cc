@@ -80,6 +80,7 @@ ReaderBase::ReaderBase(
     , use_timestamps_(false) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
+  timestamps_for_deletes_.resize(fragment_metadata_.size());
 }
 
 /* ********************************* */
@@ -277,8 +278,8 @@ bool ReaderBase::include_timestamps(const unsigned f) const {
       array_->timestamp_start(), array_->timestamp_end_opened_at());
   auto dups = array_schema_.allows_dups();
 
-  return frag_has_ts &&
-         (user_requested_timestamps_ || partial_overlap || !dups);
+  return frag_has_ts && (user_requested_timestamps_ || partial_overlap ||
+                         !dups || timestamps_for_deletes_[f]);
 }
 
 Status ReaderBase::load_tile_offsets(
