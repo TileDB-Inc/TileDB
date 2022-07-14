@@ -33,48 +33,127 @@
 #ifndef TILEDB_DAG_DATA_BLOCK_H
 #define TILEDB_DAG_DATA_BLOCK_H
 
+#include <cstddef>
+#include <vector>
+#include "external/include/span/span.hpp"
+#include "pool_allocator.h"
+
 namespace tiledb::common {
 
 /**
- * A fixed size block, an untyped carrier for data to be interpreted by its
- * users.
- *
- * Intended to be allocated from a pool with a bitmap allocation strategy.
- *
- * Implemented internally as a span.
- *
- * Implements standard library interface for random access container.
+ * The fixed size (in bytes) of each `DataBlock`.
  */
-class DataBlock {
-  constexpr static const size_t N_ = 4'194'304;  // 4M
+namespace {
+constexpr static const size_t chunk_size_ = 4'194'304;  // 4M
+}
 
-  using storage_t = std::vector<std::byte>;  // For prototyping
-  using data_t = tcb::span<std::byte>;
+/**
+ * A fixed size block, an untyped carrier (of `std::byte`) for data to
+ * be interpreted by its users.
+ *
+ * The actual storage associated with the `DataBlock` is a fixed-size "chunk",
+ * allocated by an allocator specified by the template parameter `Allocator`.
+ * The `DataBlock` can use `std::allocator<std::byte>` as well as the fixed-size
+ * `PoolAllocator`.
+ *
+ * The `DataBlock` itself implements a standard library interface for random
+ * access container.  It can also present a `span` for its dat chunk.
+ *
+ * The interface to the `DataBlock` has some similarities to `std::vector` in
+ * that it has a `size` indicating how much of the `DataBlock` contains valid
+ * data as well as a `capacity` indicating maximum possible size (i.e., the size
+ * of the underlying chunk).  A `DataBlock` can be resized up its capacity.
+ * Unlike `std::vector` a `DataBlock` will not reallocate space if a resize
+ * request is larger than the capacity.
+ *
+ * The `DataBlockImpl` class provides the interface for `DataBlock`, but is also
+ * parameterized by`Allocator`.
+ */
+template <class Allocator>
+class DataBlockImpl {
+  static Allocator allocator_;
+
+  /**
+   * Type aliases for `DataBlock` storage.  The underlying storage for the
+   * `DataBlock` is a chunk of `std::byte`.  The `DataBlock` maintains this
+   * storage as a `shared_ptr<std::byte>`.
+   */
+  using storage_t = std::shared_ptr<std::byte>;
+  using span_t = tcb::span<std::byte>;
+  using pointer_t = std::byte*;
+
+  /**
+   * Internal accounting to maintain the current size (the extent of valid data)
+   * as well as the total capacity of the underlying data chunk.  Both size and
+   * capacity are in units of bytes.
+   */
+  size_t capacity_;
+  size_t size_;
+
+  /**
+   * The actual stored chunk.  The `storage_` is the `shared_ptr` to the chunk,
+   * while `data_` is a pointer to the actual bytes.
+   */
   storage_t storage_;
-  data_t data_;
+  pointer_t data_;
 
  public:
-  DataBlock()
-      : storage_(N_)
-      , data_(storage_.data(), storage_.size()) {
+  /**
+   * Constructor used if the `Allocator` is `std::allocator` of `std::byte`.
+   */
+  template <class R = Allocator>
+  DataBlockImpl(
+      size_t init_size = 0UL,
+      typename std::enable_if<
+          std::is_same_v<R, std::allocator<std::byte>>>::type* = 0)
+      : capacity_{chunk_size_}
+      , size_{init_size}
+      , storage_{allocator_.allocate(chunk_size_),
+                 [&](auto px) { allocator_.deallocate(px, chunk_size_); }}
+      , data_{storage_.get()} {
   }
 
-  using DataBlockIterator = data_t::iterator;
-  using DataBlockConstIterator = data_t::iterator;
+  /**
+   * Constructor used if the `Allocator` is the fixed-size pool allocator.  Note
+   * that we pass the deleter associated with the `PoolAllocator` to to the
+   * `shared_ptr` constructor.  It is expected that his deleter will simply
+   * return the chunk to the pool.  See pool_allocator.h for details.
+   */
+  template <class R = Allocator>
+  DataBlockImpl(
+      size_t init_size = 0UL,
+      typename std::enable_if<
+          std::is_same_v<R, PoolAllocator<chunk_size_>>>::type* = 0)
+      : capacity_{chunk_size_}
+      , size_{init_size}
+      , storage_{allocator_.allocate(),
+                 [&](auto px) { allocator_.deallocate(px); }}
+      , data_{storage_.get()} {
+  }
 
-  using value_type = data_t::value_type;
-  // using  allocator_type = ??
+  /*
+   * Various type aliases expected for a random-access range.
+   */
+  using DataBlockIterator = span_t::iterator;
+  using DataBlockConstIterator = span_t::iterator;
+
+  using value_type = span_t::value_type;
+  using allocator_type = SingletonPoolAllocator<chunk_size_>;
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
   using reference = value_type&;
   using const_reference = const value_type&;
-  using pointer = data_t::pointer;
-  using const_pointer = data_t::const_pointer;
+  using pointer = span_t::pointer;
+  using const_pointer = span_t::const_pointer;
   using iterator = DataBlockIterator;
+  using iterator_category = std::random_access_iterator_tag;
   using const_iterator = DataBlockConstIterator;
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
+  /*
+   * Various functions expected for a random-access range.
+   */
   reference operator[](size_type idx) {
     return data_[idx];
   }
@@ -83,61 +162,94 @@ class DataBlock {
   }
 
   pointer data() {
-    return data_.data();
+    return data_;
   }
   const_pointer data() const {
-    return data_.data();
+    return data_;
+  }
+
+  span_t entire_span() const {
+    return {data_, capacity_};
+  }
+
+  span_t span() const {
+    return {data_, size_};
   }
 
   iterator begin() {
-    return data_.begin();
+    return data_;
   }
   const_iterator begin() const {
-    return data_.begin();
+    return data_;
   }
   const_iterator cbegin() const {
-    return data_.begin();
+    return data_;
   }
   reverse_iterator rbegin() {
-    return data_.rbegin();
+    return span_t(data_, size_).rbegin();
   }
   const_reverse_iterator rbegin() const {
-    return data_.rbegin();
+    return data_t(data_, size_).rbegin();
   }
   const_reverse_iterator crbegin() const {
-    return data_.rbegin();
+    return data_t(data_, size_).rbegin();
   }
 
   iterator end() {
-    return data_.end();
+    return data_ + size_;
   }
   const_iterator end() const {
-    return data_.end();
+    return data_ + size_;
   }
   const_iterator cend() const {
-    return data_.end();
+    return data_ + size_;
   }
   reverse_iterator rend() {
-    return data_.rend();
+    return data_t(data_, size_).rend();
   }
   const_reverse_iterator rend() const {
-    return data_.rend();
+    return data_t(data_, size_).rend();
   }
   const_reverse_iterator crend() const {
-    return data_.rend();
+    return data_t(data_, size_).rend();
+  }
+
+  reference back() {
+    return data_[size_ - 1];
+  }
+
+  const_reference back() const {
+    return data_[size_ - 1];
+  }
+
+  bool resize(size_t count) {
+    if (count > capacity_) {
+      return false;
+    }
+    size_ = count;
+    return true;
   }
 
   bool empty() const {
-    return data_.empty();
+    return size_ == 0;
   }
 
   size_t size() const {
-    return data_.size();
+    return size_;
   }
   size_t capacity() const {
-    return storage_.size();
+    return capacity_;
   }
 };
+
+template <class Allocator>
+Allocator DataBlockImpl<Allocator>::allocator_;
+
+/**
+ * The `DataBlock` class is the `DataBlockImpl` above, specialized to the
+ * PoolAllocator with chunk size specified by our defined `chunk_size_`.
+ */
+using DataBlock = DataBlockImpl<PoolAllocator<chunk_size_>>;
 
 }  // namespace tiledb::common
 

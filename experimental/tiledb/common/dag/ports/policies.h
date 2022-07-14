@@ -39,14 +39,15 @@
 #define TILEDB_DAG_POLICIES_H
 
 #include <optional>
-#include "experimental/tiledb/common/dag/ports/test/helpers.h"
-#include "experimental/tiledb/common/dag/utils/print_types.h"
+#include "test/helpers.h"
+
+#include "../utils/print_types.h"
 
 namespace tiledb::common {
 
 // clang-format off
 /**
- *
+ * 
  * State machine policies work with the `PortFiniteStateMachine` class template to
  * mix in functions associated with various entry and exit actions invoked when
  * processing state transition events.  The policy classes defined here use CRTP
@@ -59,15 +60,15 @@ namespace tiledb::common {
  * template <class T>
  * class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>>;
  * ```
- * To use the state machine in fsm.h with the `AsyncStateMachine` policy to
+ * To use the state machine in fsm.h with the `AsyncStateMachine` policy to 
  * transfer integers (say), we use
  * ```c++
  * AsyncStateMachine<int>
  * ```
  * as the state machine class.
  *
- * Currently, the actions defined for use by the PortFiniteStateMachine class, and
- * associated mixin functions are
+ * Currently, the actions defined for use by the PortFiniteStateMachine class, and 
+ * associated mixin functions are 
  *   ac_return: on_ac_return()
  *   src_swap: on_source_swap()
  *   sink_swap: on_sink_swap()
@@ -79,9 +80,10 @@ namespace tiledb::common {
  * For potential future flexibility, we are leaving separate source and sink versions
  * for now.  The `UnifiedAsyncStateMachine` tests out this idea.
  *
- * With our definition of the state machine (see fsm.h), these actions have the
+ * With our definition of the state machine (see fsm.h), these actions have the 
  * following functionality:
- *   on_ac_return(): empty function at the moment.
+ *   on_ac_return(): empty function at the moment.  The actual return is performed in
+ *     the state machine event handler.
  *   on_source_swap(): if state is full_empty, notify sink and swap, otherwise, notify sink and wait.
  *   on_sink_swap(): if state is full_empty, notify source and swap, otherwise, notify source and wait.
  *   on_notify_source(): notify sink
@@ -217,6 +219,17 @@ class ManualStateMachine
                         "no_value")
                 << ", " << sink_item_->value() << ")" << std::endl;
   }
+  inline void on_source_wait(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+      std::cout << "    "
+                << "Action source wait" << std::endl;
+  }
+  inline void on_sink_wait(lock_type&, std::atomic<int>&) {
+    if (FSM::debug_enabled())
+      std::cout << "    "
+                << "Action sink wait" << std::endl;
+  }
+
   inline void notify_source(lock_type&, std::atomic<int>&) {
     if (FSM::debug_enabled())
       std::cout << "    "
@@ -594,7 +607,26 @@ class DebugStateMachine : public PortFiniteStateMachine<DebugStateMachine<T>> {
 
   using lock_type = typename FSM::lock_type;
 
+  T* source_item_;
+  T* sink_item_;
+
  public:
+  void register_items(T& source_item, T& sink_item) {
+    std::scoped_lock lock(FSM::mutex_);
+    source_item_ = &source_item;
+    sink_item_ = &sink_item;
+  }
+  void deregister_items(T& source_item, T& sink_item) {
+    std::scoped_lock lock(FSM::mutex_);
+    if (source_item_ != &source_item || sink_item_ != &sink_item) {
+      throw std::runtime_error(
+          "Attempting to deregister source and sink items that were not "
+          "registered.");
+    }
+    source_item_->reset();
+    sink_item_->reset();
+  }
+
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
     if (FSM::debug_enabled())
       std::cout << "    "
@@ -640,7 +672,7 @@ class DebugStateMachine : public PortFiniteStateMachine<DebugStateMachine<T>> {
  */
 class DebugStateMachineWithLock
     : public PortFiniteStateMachine<DebugStateMachineWithLock> {
-  std::mutex mutex_;
+  std::mutex(mutex_);
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;
   using lock_type = std::unique_lock<std::mutex>;

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 202s TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,17 +27,21 @@
  *
  * @section DESCRIPTION
  *
- * This file defines some elementary node types for testing source and sink
- * ports.
+ * This file defines some elementary pseudo node types for testing source and
+ * sink ports.
  */
 
 #ifndef TILEDB_DAG_PSEUDO_NODES_H
 #define TILEDB_DAG_PSEUDO_NODES_H
 
 #include <atomic>
+#include <functional>
+#include "../../utils/print_types.h"
 #include "../ports.h"
 
 namespace tiledb::common {
+
+class GraphNode {};
 
 /**
  * Prototype producer function object class.  This class generates a sequence of
@@ -70,7 +74,8 @@ class generator {
 template <class Block, class StateMachine>
 class ProducerNode : public Source<Block, StateMachine> {
   using Base = Source<Block, StateMachine>;
-  std::atomic<size_t> i_{0};
+  // This causes initialization problems 
+  //  std::atomic<size_t> i_{0};
   size_t N_{0};
   std::function<Block()> f_;
 
@@ -83,6 +88,7 @@ class ProducerNode : public Source<Block, StateMachine> {
   template <class Function>
   explicit ProducerNode(Function&& f)
       : f_{std::forward<Function>(f)} {
+    //    print_types(f, f_);
   }
 
   /**
@@ -91,13 +97,16 @@ class ProducerNode : public Source<Block, StateMachine> {
   ProducerNode() {
   }
 
+  ProducerNode(const ProducerNode&) = default;
+  ProducerNode(ProducerNode&&) = default;
+
   /**
    * Submit an item to be transferred to correspondent_ Sink.  Blocking.  The
    * behavior of `submit` and `try_submit` will depend on the policy associated
    * with the state machine.  Used by dag nodes and edges for transferring data.
    *
    */
-  void get(Block&) {
+  void get() {
     //  Don't need the guard since { state == empty_full ∨ state == empty_empty}
     //  at end of function and sink cannot change that.
     //  while (!source_is_empty())
@@ -106,9 +115,13 @@ class ProducerNode : public Source<Block, StateMachine> {
     //  { state == empty_empty ∨ state == empty_full }
     //  produce source item
     //  inject source item
-    Base::do_fill();
+    auto state_machine = Base::get_state_machine();
+
+    Base::inject(f_());
+    state_machine->do_fill();
     //  { state == full_empty ∨ state == full_full }
-    Base::do_push();  // may block
+
+    state_machine->do_push();
     //  { state == empty_full ∨ state == empty_empty }
   }
 
@@ -151,7 +164,7 @@ class consumer {
   OutputIterator iter_;
 
  public:
-  consumer(OutputIterator iter)
+  explicit consumer(OutputIterator iter)
       : iter_(iter) {
   }
   void operator()(Block& item) {
@@ -199,11 +212,17 @@ class ConsumerNode : public Sink<Block, StateMachine> {
     //  while (!sink_is_empty())
     //    ;
     //  { state == empty_empty ∨ state == full_empty }
-    Base::do_pull();
+    auto state_machine = Base::get_state_machine();
+
+    state_machine->do_pull();
     //  { state == empty_full ∨ state == full_full }
     //  extract sink item
     //  invoke consumer function
-    Base::do_drain();
+    auto b = Base::extract();
+    CHECK(b.has_value());
+    f_(*b);
+
+    state_machine->do_drain();
     //  { state == empty_empty ∨ state == full_empty ∨ state == empty_full ∨
     //  state == full_full } return item;
   }
@@ -236,24 +255,40 @@ class ConsumerNode : public Sink<Block, StateMachine> {
  * Purely notional proto `function_node`.  Constructed with function that
  * accepts an item and returns an item.
  */
-template <class Block, class StateMachine>
-class function_node : public Source<Block, StateMachine>,
-                      public Sink<Block, StateMachine> {
-  std::function<Block(Block)> f_;
-  using SourceBase = Source<Block, StateMachine>;
-  using SinkBase = Sink<Block, StateMachine>;
+template <
+    class BlockIn,
+    class BlockOut,
+    class SinkStateMachine,  // Input
+    class SourceStateMachine = SinkStateMachine>
+class FunctionNode : public Source<BlockOut, SourceStateMachine>,
+                     public Sink<BlockIn, SinkStateMachine> {
+  std::function<BlockOut(BlockIn)> f_;
+  using SourceBase = Source<BlockOut, SourceStateMachine>;
+  using SinkBase = Sink<BlockIn, SinkStateMachine>;
 
  public:
   template <class Function>
-  function_node(Function&& f)
+  FunctionNode(Function&& f)
       : f_{std::forward<Function>(f)} {
   }
 
-  /**
-   * Receive an item from a source and put it on a sink.
-   */
-  Block run() {
-    SinkBase::item_ = f_(SourceBase::item_);
+  void run() {
+    auto source_state_machine = SourceBase::get_state_machine();
+    auto sink_state_machine = SinkBase::get_state_machine();
+
+    sink_state_machine->do_pull();
+
+    auto b = SinkBase::extract();
+    CHECK(b.has_value());
+
+    auto j = f_(*b);
+
+    sink_state_machine->do_drain();
+
+    SourceBase::inject(j);
+
+    source_state_machine->do_fill();
+    source_state_machine->do_push();
   }
 };
 
