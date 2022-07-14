@@ -157,7 +157,7 @@ Status filter_pipeline_to_capnp(
 }
 
 tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
-    const capnp::Filter::Reader &filter_reader) {
+    const capnp::Filter::Reader& filter_reader) {
   FilterType type = FilterType::FILTER_NONE;
   RETURN_NOT_OK_TUPLE(
       filter_type_enum(filter_reader.getType().cStr(), &type), nullopt);
@@ -194,7 +194,7 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
       auto float_scale_config = data.getFloatScaleConfig();
       double scale = float_scale_config.getScale();
       double offset = float_scale_config.getOffset();
-      uint64_t byte_width =  float_scale_config.getByteWidth();
+      uint64_t byte_width = float_scale_config.getByteWidth();
       return {Status::Ok(),
               tiledb::common::make_shared<FloatScalingFilter>(
                   HERE(), byte_width, scale, offset)};

@@ -72,7 +72,7 @@ Status filter_to_capnp(
  * @return Status
  */
 tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
-    const capnp::Filter::Reader &filter_reader);
+    const capnp::Filter::Reader& filter_reader);
 
 /**
  * Serialize an array schema to cap'n proto object
