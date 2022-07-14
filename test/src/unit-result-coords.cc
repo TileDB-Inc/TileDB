@@ -155,7 +155,7 @@ class Cmp {
   bool operator()(
       const GlobalOrderResultCoords<uint8_t>& a,
       const GlobalOrderResultCoords<uint8_t>& b) const {
-    if (a.pos_ == b.pos_) {
+    if (a.pos_ >= b.pos_) {
       return true;
     }
 
@@ -218,6 +218,17 @@ TEST_CASE_METHOD(
   tile.count_cells();
   rc1.pos_ = 0;
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 3), cmp) == 0);
+
+  auto tile2 = make_tile_with_num_cells(100);
+  rc1.tile_ = &tile2;
+  for (uint64_t i = 0; i < 100; i++) {
+    for (uint64_t j = i + 1; j < 100; j++) {
+      rc1.pos_ = i;
+      REQUIRE(
+          rc1.max_slab_length(GlobalOrderResultCoords(&tile2, j), cmp) ==
+          j - i);
+    }
+  }
 }
 
 TEST_CASE_METHOD(
