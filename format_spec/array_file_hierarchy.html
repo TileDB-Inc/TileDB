@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.0.8">
+<meta name="generator" content="quarto-1.0.18">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -36,7 +36,7 @@ ul.task-list{list-style: none;}
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -229,6 +229,8 @@ ul.task-list{list-style: none;}
     |_ __commits                        # array commits folder
           |_ &lt;timestamped_name&gt;.wrt     # fragment write file
           |_ ...
+          |_ &lt;timestamped_name&gt;.del     # delete commit file
+          |_ ...
           |_ &lt;timestamped_name&gt;.vac     # fragment vacuum file
           |_ ...
           |_ &lt;timestamped_name&gt;.con     # consolidated commits file
@@ -250,6 +252,7 @@ ul.task-list{list-style: none;}
 <li><a href="../format_spec/array_schema.html">Array schema</a> folder <code>__schema</code>.</li>
 <li>Inside of a fragments folder, any number of <a href="../format_spec/fragment.html">fragment folders</a> <code>&lt;timestamped_name&gt;</code>.</li>
 <li>Inside of a commit folder, an empty file <code>&lt;timestamped_name&gt;.wrt</code> associated with every fragment folder <code>&lt;timestamped_name&gt;</code>, where <code>&lt;timestamped_name&gt;</code> is common for the folder and the WRT file. This is used to indicate that fragment <code>&lt;timestamped_name&gt;</code> has been <em>committed</em> (i.e., its write process finished successfully) and it is ready for use by TileDB. If the WRT file does not exist, the corresponding fragment folder is ignored by TileDB during the reads.</li>
+<li>Inside the same commit folder, any number of <a href="../format_spec/delete_commit_file.html">delete commit files</a> of the form <code>&lt;timestamped_name&gt;.del</code>.</li>
 <li>Inside the same commit folder, any number of <a href="../format_spec/consolidated_commits_file.html">consolidated commits files</a> of the form <code>&lt;timestamped_name&gt;.con</code>.</li>
 <li>Inside the same commit folder, any number of <a href="../format_spec/ignore_file.html">ignore files</a> of the form <code>&lt;timestamped_name&gt;.ign</code>.</li>
 <li>Inside of a fragment metadata folder, any number of <a href="../format_spec/consolidated_fragment_metadata_file.html">consolidated fragment metadata files</a> of the form <code>&lt;timestamped_name&gt;.meta</code>.</li>
@@ -261,6 +264,21 @@ ul.task-list{list-style: none;}
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    toggleBodyColorMode(window.document.querySelector("link#quarto-bootstrap"));
+  }
+  toggleBodyColorPrimary();  
   const icon = "";
   const anchorJS = new window.AnchorJS();
   anchorJS.options = {
