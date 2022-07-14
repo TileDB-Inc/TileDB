@@ -2020,18 +2020,13 @@ template <typename BitmapType>
 Status QueryCondition::apply_sparse(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
-    std::vector<BitmapType>& result_bitmap,
-    uint64_t* cell_count) {
+    std::vector<BitmapType>& result_bitmap) {
   apply_tree_sparse<BitmapType>(
       tree_,
       array_schema,
       result_tile,
       std::multiplies<BitmapType>(),
       result_bitmap);
-  if (cell_count != nullptr) {
-    *cell_count =
-        std::accumulate(result_bitmap.begin(), result_bitmap.end(), 0);
-  }
 
   return Status::Ok();
 }
@@ -2050,14 +2045,8 @@ void QueryCondition::set_ast(tdb_unique_ptr<ASTNode>&& ast) {
 
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(
-    const ArraySchema& array_schema,
-    ResultTile&,
-    std::vector<uint8_t>&,
-    uint64_t*);
+    const ArraySchema& array_schema, ResultTile&, std::vector<uint8_t>&);
 template Status QueryCondition::apply_sparse<uint64_t>(
-    const ArraySchema& array_schema,
-    ResultTile&,
-    std::vector<uint64_t>&,
-    uint64_t*);
+    const ArraySchema& array_schema, ResultTile&, std::vector<uint64_t>&);
 }  // namespace sm
 }  // namespace tiledb

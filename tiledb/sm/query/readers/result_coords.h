@@ -162,7 +162,7 @@ struct GlobalOrderResultCoords
     if (base::pos_ != cell_num) {
       if (base::tile_->has_bmp()) {
         while (base::pos_ < cell_num) {
-          if (base::tile_->bitmap_[base::pos_]) {
+          if (base::tile_->bitmap()[base::pos_]) {
             return true;
           }
           base::pos_++;

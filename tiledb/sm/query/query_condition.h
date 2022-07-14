@@ -180,15 +180,13 @@ class QueryCondition {
    * @param array_schema The array schema.
    * @param result_tile The result tile to get the cells from.
    * @param result_bitmap The bitmap to use for results.
-   * @param cell_count The cell count after condition is applied.
    * @return Status
    */
   template <typename BitmapType>
   Status apply_sparse(
       const ArraySchema& array_schema,
       ResultTile& result_tile,
-      std::vector<BitmapType>& result_bitmap,
-      uint64_t* cell_count);
+      std::vector<BitmapType>& result_bitmap);
 
   /**
    * Reverse the query condition using De Morgan's law.

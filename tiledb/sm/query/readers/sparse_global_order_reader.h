@@ -206,7 +206,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param memory_budget_qc_tiles Memory budget for query condition tiles.
    * @param f Fragment index.
    * @param t Tile index.
-   * @param array_schema Array schema.
+   * @param frag_md Fragment metadata.
    *
    * @return buffers_full, new_var_buffer_size, new_result_tiles_size.
    */
@@ -216,7 +216,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const uint64_t memory_budget_qc_tiles,
       const unsigned f,
       const uint64_t t,
-      const ArraySchema& array_schema);
+      const FragmentMetadata& frag_md);
 
   /**
    * Create the result tiles.
