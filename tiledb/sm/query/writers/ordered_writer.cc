@@ -123,7 +123,6 @@ Status OrderedWriter::finalize() {
 }
 
 void OrderedWriter::reset() {
-  initialized_ = false;
 }
 
 /* ****************************** */

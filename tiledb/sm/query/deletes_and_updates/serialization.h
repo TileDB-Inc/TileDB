@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/query/delete_condition/test/main.cc
+ * @file tiledb/sm/query/deletes_and_updates/serialization.h
  *
  * @section LICENSE
  *
@@ -27,8 +27,42 @@
  *
  * @section DESCRIPTION
  *
- * This file defines a test `main()`
+ * This file contains functions for serializing/deserializing query conditions.
  */
 
-#define CATCH_CONFIG_MAIN
-#include <catch.hpp>
+#ifndef TILEDB_CONDITION_SERIALIZATION_H
+#define TILEDB_CONDITION_SERIALIZATION_H
+
+#include "tiledb/common/common.h"
+#include "tiledb/common/status.h"
+#include "tiledb/sm/query/query_condition.h"
+
+namespace tiledb::sm::deletes_and_updates::serialization {
+
+enum class NodeType : uint8_t { EXPRESSION = 0, VALUE };
+
+/**
+ * Serializes the condition.
+ *
+ * @param query_condition Query condition to serialize.
+ * @return Serialized query condition.
+ */
+std::vector<uint8_t> serialize_condition(const QueryCondition& query_condition);
+
+/**
+ * Deserializes the condition.
+ *
+ * @param condition_marker Marker used to know which file the condition came
+ * from.
+ * @param buff Pointer to the serialized data.
+ * @param size Size of the serialized data.
+ * @return Deserialized query condition.
+ */
+QueryCondition deserialize_condition(
+    const std::string& condition_marker,
+    const void* buff,
+    const storage_size_t size);
+
+}  // namespace tiledb::sm::deletes_and_updates::serialization
+
+#endif  // TILEDB_CONDITION_SERIALIZATION_H

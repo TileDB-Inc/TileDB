@@ -68,7 +68,6 @@ Status FragmentMetaConsolidator::consolidate(
   auto timer_se = stats_->start_timer("consolidate_frag_meta");
 
   // Open array for reading
-
   Array array(URI(array_name), storage_manager_);
   RETURN_NOT_OK(
       array.open(QueryType::READ, encryption_type, encryption_key, key_length));
@@ -166,7 +165,6 @@ Status FragmentMetaConsolidator::consolidate(
       0,
       buff.data(),
       buff.size());
-  buff.disown_data();
 
   GenericTileIO tile_io(storage_manager_, uri);
   uint64_t nbytes = 0;

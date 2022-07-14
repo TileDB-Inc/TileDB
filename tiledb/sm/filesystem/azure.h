@@ -56,6 +56,11 @@
 #ifdef TIME_MS
 #undef TIME_MS
 #endif
+
+#ifdef DELETE
+#undef DELETE
+#endif
+
 // Forward declaration
 namespace azure::storage_lite {
 class blob_client;

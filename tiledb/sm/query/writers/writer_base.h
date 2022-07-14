@@ -181,9 +181,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /** The name of the new fragment to be created. */
   URI fragment_uri_;
 
-  /** True if the writer has been initialized. */
-  bool initialized_;
-
   /** Stores information about the written fragments. */
   std::vector<WrittenFragmentInfo>& written_fragment_info_;
 
@@ -338,22 +335,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       const std::string& name,
       uint64_t tile_num,
       WriterTileVector* tiles) const;
-
-  /**
-   * Generates a new fragment name, which is in the form: <br>
-   * `__t_t_uuid_v`, where `t` is the input timestamp and `v` is the current
-   * format version. For instance,
-   * `__1458759561320_1458759561320_6ba7b8129dad11d180b400c04fd430c8_3`.
-   *
-   * If `timestamp` is 0, then it is set to the current time.
-   *
-   * @param timestamp The timestamp of when the array got opened for writes. It
-   *     is in ms since 1970-01-01 00:00:00 +0000 (UTC).
-   * @param frag_uri Will store the new special fragment name
-   * @return Status
-   */
-  Status new_fragment_name(
-      uint64_t timestamp, uint32_t format_version, std::string* frag_uri) const;
 
   /**
    * Optimize the layout for 1D arrays. Specifically, if the array
