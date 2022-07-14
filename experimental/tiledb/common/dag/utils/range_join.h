@@ -74,7 +74,6 @@
 #include <vector>
 #include "arrow_proxy.hpp"
 
-#include "experimental/tiledb/common/dag/utils/traits.h"
 #include "external/include/span/span.hpp"
 
 namespace tiledb::common {
@@ -96,6 +95,19 @@ using last_t = typename last_t_impl<T>::type;
 
 template <class T>
 using iterator_t = typename T::iterator;
+
+template <class T>
+struct const_iterator_traits {
+  using type = typename T::const_iterator;
+};
+
+template <class T>
+struct const_iterator_traits<tcb::span<T>> {
+  using type = typename tcb::span<T>::iterator;
+};
+
+template <class T>
+using const_iterator_t = typename const_iterator_traits<T>::type;
 
 template <typename G>
 using inner_range_t = typename G::value_type;

@@ -106,6 +106,7 @@ template <class T>
 [[nodiscard]] T non_const_move(T&& x) {
   CHECK(!std::is_const_v<decltype(x)>);
 
+  // rvalue reference doesn't like ::
   // CHECK(has_iterator_v<decltype(x)>);
   CHECK(has_begin_end_v<decltype(x)>);
 
