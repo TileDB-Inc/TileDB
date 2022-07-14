@@ -296,19 +296,14 @@ Status Array::open(
     if (timestamp_end_opened_at_ == UINT64_MAX) {
       if (query_type == QueryType::READ) {
         timestamp_end_opened_at_ = utils::time::timestamp_now_ms();
-      } else {
-        assert(query_type == QueryType::WRITE);
+      } else if (
+          query_type == QueryType::WRITE || query_type == QueryType::DELETE) {
         timestamp_end_opened_at_ = 0;
+      } else {
+        throw Status_ArrayError("Cannot open array; Unsupported query type.");
       }
     }
 
-  timestamp_end_opened_at_ = timestamp_end;
-  if (timestamp_end_opened_at_ == UINT64_MAX) {
-    if (query_type == QueryType::READ) {
-      timestamp_end_opened_at_ = utils::time::timestamp_now_ms();
-    } else if (
-        query_type == QueryType::WRITE || query_type == QueryType::DELETE) {
-      timestamp_end_opened_at_ = 0;
     if (remote_) {
       auto rest_client = storage_manager_->rest_client();
       if (rest_client == nullptr)
@@ -353,28 +348,19 @@ Status Array::open(
       array_schema_latest_ = array_schema_latest.value();
       array_schemas_all_ = array_schemas.value();
 
+      auto version = array_schema_latest_->version();
+      if (query_type == QueryType::DELETE &&
+          version < constants::deletes_min_version) {
+        std::stringstream err;
+        err << "Cannot open array for deletes; Array format version (";
+        err << version;
+        err << ") is smaller than the minimum supported version (";
+        err << constants::deletes_min_version << ").";
+        return LOG_STATUS(Status_ArrayError(err.str()));
+      }
+
       metadata_.reset(timestamp_end_opened_at_);
     }
-
-    auto&& [st, array_schema_latest, array_schemas] =
-        storage_manager_->array_open_for_writes(this);
-    RETURN_NOT_OK(st);
-    // Set schemas
-    array_schema_latest_ = array_schema_latest.value();
-    array_schemas_all_ = array_schemas.value();
-
-    auto version = array_schema_latest_->version();
-    if (query_type == QueryType::DELETE &&
-        version < constants::deletes_min_version) {
-      std::stringstream err;
-      err << "Cannot open array for deletes; Array format version (";
-      err << version;
-      err << ") is smaller than the minimum supported version (";
-      err << constants::deletes_min_version << ").";
-      return LOG_STATUS(Status_ArrayError(err.str()));
-    }
-
-    metadata_.reset(timestamp_end_opened_at_);
   } catch (std::exception& e) {
     set_array_closed();
     return LOG_STATUS(Status_ArrayError(e.what()));
@@ -420,26 +406,22 @@ Status Array::close() {
 
       // Storage manager does not own the array schema for remote arrays.
       array_schema_latest_.reset();
-    // Storage manager does not own the array schema for remote arrays.
-    array_schema_latest_.reset();
-  } else {
-    array_schema_latest_.reset();
-    if (query_type_ == QueryType::READ) {
-      RETURN_NOT_OK(storage_manager_->array_close_for_reads(this));
-    } else if (query_type_ == QueryType::WRITE) {
-      RETURN_NOT_OK(storage_manager_->array_close_for_writes(this));
-    } else if (query_type_ == QueryType::DELETE) {
-      RETURN_NOT_OK(storage_manager_->array_close_for_deletes(this));
     } else {
       array_schema_latest_.reset();
       if (query_type_ == QueryType::READ) {
         st = storage_manager_->array_close_for_reads(this);
         if (!st.ok())
           throw StatusException(st);
-      } else {
+      } else if (query_type_ == QueryType::WRITE) {
         st = storage_manager_->array_close_for_writes(this);
         if (!st.ok())
           throw StatusException(st);
+      } else if (query_type_ == QueryType::DELETE) {
+        st = storage_manager_->array_close_for_deletes(this);
+        if (!st.ok())
+          throw StatusException(st);
+      } else {
+        throw Status_ArrayError("Error closing array; Unsupported query type.");
       }
     }
 
