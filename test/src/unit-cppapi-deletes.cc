@@ -548,7 +548,7 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test reading with delete condition, delete duplicates from later "
     "fragments",
-    "[cppapi][deletes][read][consolidated]") {
+    "[cppapi][deletes][duplicates]") {
   remove_sparse_array();
 
   bool allows_dups = GENERATE(true, false);
@@ -574,7 +574,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1(buffer_size);
   std::vector<uint64_t> dim1(buffer_size);
   std::vector<uint64_t> dim2(buffer_size);
-  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 2);
+  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 7);
 
   if (allows_dups) {
     std::vector<int> c_a1 = {0, 1, 2, 3};
