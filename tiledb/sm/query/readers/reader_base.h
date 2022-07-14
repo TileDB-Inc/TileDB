@@ -213,6 +213,20 @@ class ReaderBase : public StrategyBase {
       const uint64_t min_result_tile = 0) const;
 
   /**
+   * Is there a need to build timestamped conditions for deletes.
+   *
+   * @return true if the conditions need to be generated.
+   */
+  bool need_timestamped_conditions();
+
+  /**
+   * Generates timestamped conditions for deletes.
+   *
+   * @return Status.
+   */
+  Status generate_timestamped_conditions();
+
+  /**
    * Resets the buffer sizes to the original buffer sizes. This is because
    * the read query may alter the buffer sizes to reflect the size of
    * the useful data (results) written in the buffers.

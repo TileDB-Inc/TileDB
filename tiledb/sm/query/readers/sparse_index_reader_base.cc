@@ -213,46 +213,10 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
       array_->array_directory(), *array_->encryption_key());
   RETURN_CANCEL_OR_ERROR(st);
   delete_conditions_ = std::move(*delete_conditions);
+  bool make_timestamped_conditions = need_timestamped_conditions();
 
-  // If we have any delete condition that falls between the timestamps of a
-  // fragment with timestamps, generate timestamped query conditions.
-  bool make_timestamped_conditions = false;
-  for (uint64_t i = 0; i < fragment_metadata_.size(); i++) {
-    if (fragment_metadata_[i]->has_timestamps()) {
-      for (auto& delete_condition : delete_conditions_) {
-        auto delete_timestamp = delete_condition.condition_timestamp();
-        auto& frag_timestamps = fragment_metadata_[i]->timestamp_range();
-        if (delete_timestamp >= frag_timestamps.first &&
-            delete_timestamp <= frag_timestamps.second) {
-          make_timestamped_conditions = true;
-          timestamps_for_deletes_[i] = true;
-        }
-      }
-    }
-  }
-
-  // Generate timestamped conditions.
   if (make_timestamped_conditions) {
-    timestamped_delete_conditions_.reserve(delete_conditions_.size());
-    for (auto& delete_condition : delete_conditions_) {
-      // Make the timestamp condition.
-      QueryCondition timestamp_condition;
-      auto delete_timestamp = delete_condition.condition_timestamp();
-      std::string attr = constants::timestamps;
-      RETURN_NOT_OK(timestamp_condition.init(
-          std::move(attr),
-          &delete_timestamp,
-          constants::timestamp_size,
-          QueryConditionOp::GT));
-
-      // Combine the timestamp condition and delete condition.
-      QueryCondition timestamped_condition;
-      RETURN_NOT_OK(timestamp_condition.combine(
-          delete_condition,
-          QueryConditionCombinationOp::OR,
-          &timestamped_condition));
-      timestamped_delete_conditions_.push_back(timestamped_condition);
-    }
+    RETURN_CANCEL_OR_ERROR(generate_timestamped_conditions());
   }
 
   // Make a list of dim/attr that will be loaded for query condition.
