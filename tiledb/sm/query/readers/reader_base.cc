@@ -80,7 +80,7 @@ ReaderBase::ReaderBase(
     , use_timestamps_(false) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
-  timestamps_for_deletes_.resize(fragment_metadata_.size());
+  timestamps_needed_for_deletes_.resize(fragment_metadata_.size());
 }
 
 /* ********************************* */
@@ -169,7 +169,7 @@ bool ReaderBase::need_timestamped_conditions() {
         if (delete_timestamp >= frag_timestamps.first &&
             delete_timestamp <= frag_timestamps.second) {
           make_timestamped_conditions = true;
-          timestamps_for_deletes_[i] = true;
+          timestamps_needed_for_deletes_[i] = true;
         }
       }
     }
@@ -182,7 +182,12 @@ Status ReaderBase::generate_timestamped_conditions() {
   // Generate timestamped conditions.
   timestamped_delete_conditions_.reserve(delete_conditions_.size());
   for (auto& delete_condition : delete_conditions_) {
-    // Make the timestamp condition.
+    // We want the condition to be:
+    // DELETE WHERE (cond) AND cell timestamp <= delete timestamp.
+    // For apply, this condition needs to be be negated and become:
+    // (!cond) OR cell timestamp > delete timestamp.
+
+    // Make the timestamp condition, cell timestamp > delete timestamp.
     QueryCondition timestamp_condition;
     auto delete_timestamp = delete_condition.condition_timestamp();
     std::string attr = constants::timestamps;
@@ -192,7 +197,8 @@ Status ReaderBase::generate_timestamped_conditions() {
         constants::timestamp_size,
         QueryConditionOp::GT));
 
-    // Combine the timestamp condition and delete condition.
+    // Combine the timestamp condition and delete condition. The condition is
+    // already negated.
     QueryCondition timestamped_condition;
     RETURN_NOT_OK(timestamp_condition.combine(
         delete_condition,
@@ -326,7 +332,7 @@ bool ReaderBase::include_timestamps(const unsigned f) const {
   auto dups = array_schema_.allows_dups();
 
   return frag_has_ts && (user_requested_timestamps_ || partial_overlap ||
-                         !dups || timestamps_for_deletes_[f]);
+                         !dups || timestamps_needed_for_deletes_[f]);
 }
 
 Status ReaderBase::load_tile_offsets(

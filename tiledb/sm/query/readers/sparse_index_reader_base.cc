@@ -189,8 +189,8 @@ SparseIndexReaderBase::get_coord_tiles_size(
 
   // Compute query condition tile sizes.
   uint64_t tiles_size_qc = 0;
-  if (!qc_loaded_names_.empty()) {
-    for (auto& name : qc_loaded_names_) {
+  if (!qc_loaded_attr_names_.empty()) {
+    for (auto& name : qc_loaded_attr_names_) {
       // Calculate memory consumption for this tile.
       auto&& [st, tile_size] = get_attribute_tile_size(name, f, t);
       RETURN_NOT_OK_TUPLE(st, nullopt);
@@ -223,21 +223,21 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   if (!condition_.empty()) {
     for (auto& name : condition_.field_names()) {
       if (!array_schema_.is_dim(name) || !include_coords) {
-        qc_loaded_names_set_.insert(name);
+        qc_loaded_attr_names_set_.insert(name);
       }
     }
   }
   for (auto delete_condition : delete_conditions_) {
     for (auto& name : delete_condition.field_names()) {
       if (!array_schema_.is_dim(name) || !include_coords) {
-        qc_loaded_names_set_.insert(name);
+        qc_loaded_attr_names_set_.insert(name);
       }
     }
   }
 
-  qc_loaded_names_.reserve(qc_loaded_names_set_.size());
-  for (auto& name : qc_loaded_names_set_) {
-    qc_loaded_names_.emplace_back(name);
+  qc_loaded_attr_names_.reserve(qc_loaded_attr_names_set_.size());
+  for (auto& name : qc_loaded_attr_names_set_) {
+    qc_loaded_attr_names_.emplace_back(name);
   }
 
   // For easy reference.
@@ -373,12 +373,12 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::timestamps, result_tiles));
   }
 
-  if (!qc_loaded_names_.empty()) {
+  if (!qc_loaded_attr_names_.empty()) {
     // Read and unfilter tiles for query condition.
     RETURN_CANCEL_OR_ERROR(
-        read_attribute_tiles(qc_loaded_names_, result_tiles));
+        read_attribute_tiles(qc_loaded_attr_names_, result_tiles));
 
-    for (const auto& name : qc_loaded_names_) {
+    for (const auto& name : qc_loaded_attr_names_) {
       RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
     }
   }

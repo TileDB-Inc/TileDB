@@ -191,9 +191,9 @@ class ReaderBase : public StrategyBase {
 
   /**
    * Boolean, per fragment, to specify that we need to load timestamps for
-   * deletes.
+   * deletes. This matches the fragments in 'fragment_metadata_'
    */
-  std::vector<bool> timestamps_for_deletes_;
+  std::vector<bool> timestamps_needed_for_deletes_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
