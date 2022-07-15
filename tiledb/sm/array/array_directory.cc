@@ -454,13 +454,15 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
     } else if (stdx::string::ends_with(
                    commits_dir_uris[i].to_string(),
                    constants::delete_file_suffix)) {
-      // Get the start and end timestamp for this fragment
-      std::pair<uint64_t, uint64_t> fragment_timestamp_range;
+      // Get the start and end timestamp for this delete
+      std::pair<uint64_t, uint64_t> delete_timestamp_range;
       RETURN_NOT_OK_TUPLE(
           utils::parse::get_timestamp_range(
-              commits_dir_uris[i], &fragment_timestamp_range),
+              commits_dir_uris[i], &delete_timestamp_range),
           nullopt);
-      if (timestamps_overlap(fragment_timestamp_range, false)) {
+
+      // Add the delete tile location if it overlaps the open start/end times
+      if (timestamps_overlap(delete_timestamp_range, false)) {
         if (consolidated_commit_uris_set_.count(commits_dir_uris[i].c_str()) ==
             0) {
           delete_tiles_location_.emplace_back(commits_dir_uris[i], 0);
@@ -527,6 +529,33 @@ ArrayDirectory::load_consolidated_commit_uris(
       for (std::string uri_str; std::getline(ss, uri_str);) {
         if (ignore_set.count(uri_str) == 0) {
           uris_set.emplace(uri_.to_string() + uri_str);
+        }
+
+        // If we have a delete, process the condition tile
+        if (stdx::string::ends_with(uri_str, constants::delete_file_suffix)) {
+          storage_size_t size = 0;
+          ss.read(
+              static_cast<char*>(static_cast<void*>(&size)),
+              sizeof(storage_size_t));
+          auto pos = ss.tellg();
+          pos += sizeof(storage_size_t);
+
+          // Get the start and end timestamp for this delete
+          std::pair<uint64_t, uint64_t> delete_timestamp_range;
+          URI full_delete_uri = uri_.join_path(uri_str);
+          RETURN_NOT_OK_TUPLE(
+              utils::parse::get_timestamp_range(
+                  full_delete_uri, &delete_timestamp_range),
+              nullopt,
+              nullopt);
+
+          // Add the delete tile location if it overlaps the open start/end
+          // times
+          if (timestamps_overlap(delete_timestamp_range, false)) {
+            delete_tiles_location_.emplace_back(full_delete_uri, pos);
+          }
+          pos += size;
+          ss.seekg(pos);
         }
       }
     }
@@ -643,7 +672,9 @@ void ArrayDirectory::load_commits_uris_to_consolidate(
   // Add the wrt file URIs not already in the list.
   for (auto& uri : commits_dir_uris) {
     if (stdx::string::ends_with(
-            uri.to_string(), constants::write_file_suffix)) {
+            uri.to_string(), constants::write_file_suffix) ||
+        stdx::string::ends_with(
+            uri.to_string(), constants::delete_file_suffix)) {
       if (consolidated_uris_set.count(uri.c_str()) == 0) {
         commit_uris_to_consolidate_.emplace_back(uri);
       }
