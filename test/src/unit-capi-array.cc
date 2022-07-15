@@ -47,6 +47,7 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
@@ -2051,6 +2052,8 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
+  auto all_arrays = array->array_->array_schemas_all();
+
   int32_t a[4];
   uint64_t a_size = sizeof(a);
 
@@ -2134,8 +2137,13 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK(ndim == 2);
 
-  // TODO: Check the retrieved array_schemas list. Currently there is no
-  // CAPI to get it, should we introduce one?
+  auto all_arrays_new = new_array->array_->array_schemas_all();
+  CHECK(all_arrays.size() == all_arrays_new.size());
+  CHECK(std::equal(
+      all_arrays.begin(),
+      all_arrays.end(),
+      all_arrays_new.begin(),
+      [](auto a, auto b) { return a.first == b.first; }));
 
   // Check the retrieved non empty domain
   int is_empty;
