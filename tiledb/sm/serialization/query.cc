@@ -1248,43 +1248,34 @@ Status query_to_capnp(
 
   if (type == QueryType::READ) {
     bool all_dense = true;
-    for (auto& frag_md : array->fragment_metadata())
+    for (auto& frag_md : array->fragment_metadata()) {
       all_dense &= frag_md->dense();
-
-    bool is_index_reader = false;
-    bool is_dense_reader = false;
-    if (query.use_refactored_sparse_unordered_with_dups_reader(
-            layout, schema)) {
-      is_index_reader = true;
-    } else if (query.use_refactored_sparse_global_order_reader(
-                   layout, schema)) {
-      is_index_reader = true;
-    } else if (query.use_refactored_dense_reader(schema, all_dense)) {
-      is_dense_reader = true;
     }
 
-    auto reader = (ReaderBase*)query.strategy(true);
+    auto reader = dynamic_cast<ReaderBase*>(query.strategy(true));
     query_builder->setVarOffsetsMode(reader->offsets_mode());
     query_builder->setVarOffsetsAddExtraElement(
         reader->offsets_extra_element());
     query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
 
-    if (is_index_reader) {
+    if (query.use_refactored_sparse_unordered_with_dups_reader(
+            layout, schema) ||
+        query.use_refactored_sparse_global_order_reader(layout, schema)) {
       auto builder = query_builder->initReaderIndex();
-      auto reader = (SparseIndexReaderBase*)query.strategy(true);
+      auto reader = dynamic_cast<SparseIndexReaderBase*>(query.strategy(true));
       RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
-    } else if (is_dense_reader) {
+    } else if (query.use_refactored_dense_reader(schema, all_dense)) {
       auto builder = query_builder->initDenseReader();
-      auto reader = (DenseReader*)query.strategy(true);
+      auto reader = dynamic_cast<DenseReader*>(query.strategy(true));
       RETURN_NOT_OK(dense_reader_to_capnp(query, *reader, &builder));
     } else {
       auto builder = query_builder->initReader();
-      auto reader = (Reader*)query.strategy();
+      auto reader = dynamic_cast<Reader*>(query.strategy());
       RETURN_NOT_OK(reader_to_capnp(query, *reader, &builder));
     }
   } else {
     auto builder = query_builder->initWriter();
-    auto writer = (WriterBase*)query.strategy(true);
+    auto writer = dynamic_cast<WriterBase*>(query.strategy(true));
 
     query_builder->setVarOffsetsMode(writer->offsets_mode());
     query_builder->setVarOffsetsAddExtraElement(
@@ -1789,7 +1780,7 @@ Status query_from_capnp(
   // on the reader or writer directly Now we set it on the query class after the
   // heterogeneous coordinate changes
   if (type == QueryType::READ) {
-    auto reader = (ReaderBase*)query->strategy();
+    auto reader = dynamic_cast<ReaderBase*>(query->strategy());
     if (query_reader.hasVarOffsetsMode()) {
       RETURN_NOT_OK(reader->set_offsets_mode(query_reader.getVarOffsetsMode()));
     }
@@ -1805,19 +1796,29 @@ Status query_from_capnp(
     if (query_reader.hasReaderIndex()) {
       auto reader_reader = query_reader.getReaderIndex();
       RETURN_NOT_OK(index_reader_from_capnp(
-          schema, reader_reader, query, (SparseIndexReaderBase*)reader));
+          schema,
+          reader_reader,
+          query,
+          dynamic_cast<SparseIndexReaderBase*>(query->strategy())));
     } else if (query_reader.hasDenseReader()) {
       auto reader_reader = query_reader.getDenseReader();
       RETURN_NOT_OK(dense_reader_from_capnp(
-          schema, reader_reader, query, (DenseReader*)reader, compute_tp));
+          schema,
+          reader_reader,
+          query,
+          dynamic_cast<DenseReader*>(query->strategy()),
+          compute_tp));
     } else {
       auto reader_reader = query_reader.getReader();
-      RETURN_NOT_OK(
-          reader_from_capnp(reader_reader, query, (Reader*)reader, compute_tp));
+      RETURN_NOT_OK(reader_from_capnp(
+          reader_reader,
+          query,
+          dynamic_cast<Reader*>(query->strategy()),
+          compute_tp));
     }
   } else {
     auto writer_reader = query_reader.getWriter();
-    auto writer = (WriterBase*)query->strategy();
+    auto writer = dynamic_cast<WriterBase*>(query->strategy());
 
     if (query_reader.hasVarOffsetsMode()) {
       RETURN_NOT_OK(writer->set_offsets_mode(query_reader.getVarOffsetsMode()));
