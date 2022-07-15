@@ -37,7 +37,10 @@
 
 #include "tiledb/sm/filter/float_scaling_filter.h"
 
+#include <cmath>
 #include <cassert>
+
+using std::fpclassify;
 
 using namespace tiledb::common;
 
@@ -88,6 +91,19 @@ Status FloatScalingFilter::run_forward(
     const T* part_data = static_cast<const T*>(i.data());
     for (uint32_t j = 0; j < num_elems_in_part; ++j) {
       T elem = part_data[j];
+
+      // We should only handle numbers that are either normalized or 0.
+      switch (std::fpclassify(elem)) {
+        case FP_INFINITE: {
+          return Status_FilterError("FloatScalingFilter::run_forward: Floating point input is infinite.");
+        }
+        case FP_NAN: {
+          return Status_FilterError("FloatScalingFilter::run_forward: Floating point input is NaN.");
+        }
+        case FP_SUBNORMAL: {
+          return Status_FilterError("FloatScalingFilter::run_forward: Floating point input is denormalized.");
+        }
+      }
       W converted_elem = static_cast<W>(
           round((elem - static_cast<T>(offset_)) / static_cast<T>(scale_)));
       RETURN_NOT_OK(output->write(&converted_elem, sizeof(W)));

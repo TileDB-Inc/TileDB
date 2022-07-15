@@ -4049,3 +4049,169 @@ TEMPLATE_TEST_CASE(
   testing_float_scaling_filter<float, TestType>();
   testing_float_scaling_filter<double, TestType>();
 }
+
+/*
+template <typename FloatingType, typename IntType>
+void testing_float_scaling_filter_zeros() {
+  tiledb::sm::Config config;
+
+  // Set up test data
+  const uint64_t nelts = 100;
+  const uint64_t tile_size = nelts * sizeof(FloatingType);
+  const uint64_t cell_size = sizeof(FloatingType);
+  const uint32_t dim_num = 0;
+
+  Tile tile;
+  Datatype t = Datatype::FLOAT32;
+  switch (sizeof(FloatingType)) {
+    case 4: {
+      t = Datatype::FLOAT32;
+    } break;
+    case 8: {
+      t = Datatype::FLOAT64;
+    } break;
+    default: {
+      INFO(
+          "testing_float_scaling_filter: passed floating type with size of not "
+          "4 bytes or 8 bytes.");
+      CHECK(false);
+    }
+  }
+
+  tile.init_unfiltered(
+      constants::format_version, t, tile_size, cell_size, dim_num);
+
+  double scale = 2.53;
+  double foffset = 0.31589;
+  uint64_t byte_width = sizeof(IntType);
+
+  for (uint64_t i = 0; i < nelts; i++) {
+    FloatingType f = 0.0f;
+    CHECK(tile.write(&f, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
+  }
+
+  FilterPipeline pipeline;
+  ThreadPool tp(4);
+  CHECK(pipeline.add_filter(FloatScalingFilter()).ok());
+  pipeline.get_filter<FloatScalingFilter>()->set_option(
+      FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width);
+  pipeline.get_filter<FloatScalingFilter>()->set_option(
+      FilterOption::SCALE_FLOAT_FACTOR, &scale);
+  pipeline.get_filter<FloatScalingFilter>()->set_option(
+      FilterOption::SCALE_FLOAT_OFFSET, &foffset);
+
+  CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
+
+  // Check new size and number of chunks
+  CHECK(tile.size() == 0);
+  CHECK(tile.filtered_buffer().size() != 0);
+  CHECK(tile.alloc_data(nelts * sizeof(FloatingType)).ok());
+  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
+  for (uint64_t i = 0; i < nelts; i++) {
+    FloatingType elt = 0.0f;
+    CHECK(tile.read(&elt, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
+    CHECK(elt == 0.0f);
+  }
+}
+
+TEMPLATE_TEST_CASE(
+    "Filter: Test float scaling, zero array",
+    "[filter][float-scaling]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t) {
+  testing_float_scaling_filter_zeros<float, TestType>();
+  testing_float_scaling_filter_zeros<double, TestType>();
+}
+*/
+
+enum class FPErrorTestingType : char {
+  NAN,
+  INF,
+  DENORM
+};
+
+template <typename FloatingType, typename IntType>
+void testing_float_scaling_filter_error(FPErrorTestingType type) {
+  tiledb::sm::Config config;
+
+  // Set up test data
+  const uint64_t nelts = 100;
+  const uint64_t tile_size = nelts * sizeof(FloatingType);
+  const uint64_t cell_size = sizeof(FloatingType);
+  const uint32_t dim_num = 0;
+
+  Tile tile;
+  FloatingType num = 0.0f;
+  Datatype t = Datatype::FLOAT32;
+  /// TODO: finish later oops
+  switch (sizeof(FloatingType)) {
+    case 4: {
+      t = Datatype::FLOAT32;
+      switch(type) {
+        case NAN: {
+          num = nanf("");
+        } break;
+        case INF: {
+          num = inf
+        } break;
+        case DENORM: {
+        } break;
+        default: {
+          INFO(
+              "testing_float_scaling_filter: passed error type that is not NaN, Inf, or denorm.");
+          CHECK(false);
+        }
+      };
+    } break;
+    case 8: {
+      t = Datatype::FLOAT64;
+    } break;
+    default: {
+      INFO(
+          "testing_float_scaling_filter: passed floating type with size of not "
+          "4 bytes or 8 bytes.");
+      CHECK(false);
+    }
+  }
+
+  tile.init_unfiltered(
+      constants::format_version, t, tile_size, cell_size, dim_num);
+
+  double scale = 2.53;
+  double foffset = 0.31589;
+  uint64_t byte_width = sizeof(IntType);
+
+  for (uint64_t i = 0; i < nelts; i++) {
+    FloatingType f = num;
+    CHECK(tile.write(&f, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
+  }
+
+  FilterPipeline pipeline;
+  ThreadPool tp(4);
+  CHECK(pipeline.add_filter(FloatScalingFilter()).ok());
+  pipeline.get_filter<FloatScalingFilter>()->set_option(
+      FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width);
+  pipeline.get_filter<FloatScalingFilter>()->set_option(
+      FilterOption::SCALE_FLOAT_FACTOR, &scale);
+  pipeline.get_filter<FloatScalingFilter>()->set_option(
+      FilterOption::SCALE_FLOAT_OFFSET, &foffset);
+
+  CHECK(!pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
+}
+
+TEMPLATE_TEST_CASE(
+    "Filter: Test float scaling, NaN array",
+    "[filter][float-scaling]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t) {
+  typedef std::integral_constant<float, nanf("")> nan_float;
+  typedef std::integral_constant<double, nan("")> nan_double;
+
+  testing_float_scaling_filter_error<float, TestType, nan_float>();
+  testing_float_scaling_filter_error<double, TestType, nan_double>();
+}
