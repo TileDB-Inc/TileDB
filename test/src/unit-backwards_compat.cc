@@ -1267,8 +1267,9 @@ TEST_CASE(
   query_write.set_data_buffer("d1", d1_write);
   query_write.set_data_buffer("d2", d2_write);
 
-  query_write.submit();
-  query_write.finalize();
+  // query_write.submit();
+  // query_write.finalize();
+  submit_and_finalize_serialized_query(ctx, query_write);
   array_write.close();
 
   FragmentInfo fragment_info(ctx, array_name);

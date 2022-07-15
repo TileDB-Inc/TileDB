@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 static void check_filters(
@@ -247,11 +248,11 @@ void write_sparse_array_string_attr(
   query.set_data_buffer("d1", d1);
   query.set_data_buffer("d2", d2);
   query.set_data_buffer("a1", data).set_offsets_buffer("a1", data_offsets);
-  CHECK_NOTHROW(query.submit());
-  array.close();
+  // CHECK_NOTHROW(query.submit());
 
   // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  // query.finalize();
+  test::submit_and_finalize_serialized_query(ctx, query);
 
   array.close();
 }
@@ -380,10 +381,12 @@ void write_dense_array_string_attr(
   query.set_layout(layout);
   query.set_subarray<int64_t>({0, 1, 0, 2});
 
-  CHECK_NOTHROW(query.submit());
+  // CHECK_NOTHROW(query.submit());
 
   // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  // query.finalize();
+  test::submit_serialized_query(ctx, query);
+  test::finalize_serialized_query(ctx, query);
 
   array.close();
 }

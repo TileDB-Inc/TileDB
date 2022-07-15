@@ -177,8 +177,10 @@ void ConsolidationWithTimestampsFx::write_sparse(
   query.set_data_buffer("d2", dim2);
 
   // Submit/finalize the query.
-  query.submit();
-  query.finalize();
+  // query.submit();
+  // query.finalize();
+  // Bug: Hitting a bug in filter serialization
+  test::submit_and_finalize_serialized_query(ctx_, query);
 
   // Close array.
   array.close();
@@ -208,8 +210,9 @@ void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
   query.set_data_buffer("d2", buffer_coords_dim2);
 
   // Submit/finalize the query.
-  query.submit();
-  query.finalize();
+  // query.submit();
+  // query.finalize();
+  test::submit_and_finalize_serialized_query(ctx_, query);
 
   // Close array.
   array.close();

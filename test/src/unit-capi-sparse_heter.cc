@@ -531,10 +531,11 @@ void SparseHeterFx::write_sparse_array_float_int64(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, layout);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_submit(ctx_, query);
+  // REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_finalize(ctx_, query);
+  // REQUIRE(rc == TILEDB_OK);
+  submit_and_finalize_serialized_query(ctx_, query);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

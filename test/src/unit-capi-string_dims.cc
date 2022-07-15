@@ -85,7 +85,6 @@ struct StringDimsFx {
       const std::string& path, tiledb_array_schema_t* array_schema);
   int array_schema_load_wrapper(
       const std::string& path, tiledb_array_schema_t** array_schema);
-  void write_array_ascii(const std::string& array_name);
   void write_array_1d(
       tiledb_ctx_t* ctx,
       const std::string& array_name,
@@ -365,15 +364,7 @@ int StringDimsFx::tiledb_query_submit_wrapper(
   tiledb_buffer_list_t* buff_list1;
   int rc = tiledb_serialize_query(ctx, query, TILEDB_CAPNP, 1, &buff_list1);
 
-  // Global order writes are not (yet) supported for serialization. Just
-  // check that serialization is an error, and then execute the regular query.
-  if (layout == TILEDB_GLOBAL_ORDER && query_type == TILEDB_WRITE) {
-    REQUIRE(rc == TILEDB_ERR);
-    tiledb_buffer_list_free(&buff_list1);
-    return tiledb_query_submit(ctx, query);
-  } else {
-    REQUIRE(rc == TILEDB_OK);
-  }
+  REQUIRE(rc == TILEDB_OK);
 
   // Copy the data to a temporary memory region ("send over the network").
   tiledb_buffer_t* buff1;
@@ -613,49 +604,6 @@ int StringDimsFx::tiledb_query_submit_wrapper(
   return rc;
 }
 
-void StringDimsFx::write_array_ascii(const std::string& array_name) {
-  // Open array
-  tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  CHECK(rc == TILEDB_OK);
-
-  // Create and submit query
-  tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
-  REQUIRE(rc == TILEDB_OK);
-
-  char d_data[] = "aabbbcdddd";
-  uint64_t d_data_size = strlen(d_data);
-  uint64_t d_off[] = {0, 2, 5, 6};
-  uint64_t d_off_size = sizeof(d_off);
-  int32_t a_data[] = {1, 2, 3, 4};
-  uint64_t a_size = sizeof(a_data);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "d", d_data, &d_data_size);
-  REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "d", d_data, &d_data_size);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_offsets_buffer(ctx_, query, "d", d_off, &d_off_size);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", a_data, &a_size);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Close array
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-
-  // Clean up
-  tiledb_array_free(&array);
-  tiledb_query_free(&query);
-}
-
 void StringDimsFx::write_array_1d(
     tiledb_ctx_t* ctx,
     const std::string& array_name,
@@ -688,10 +636,14 @@ void StringDimsFx::write_array_1d(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, layout);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit_wrapper(ctx, query, array_name);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
-  REQUIRE(rc == TILEDB_OK);
+  if (layout != TILEDB_GLOBAL_ORDER) {
+    rc = tiledb_query_submit_wrapper(ctx, query, array_name);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx, query);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx, array);
@@ -1947,6 +1899,7 @@ TEST_CASE_METHOD(
   d_off = {0, 1, 2};
   d_val = "abee";
   a = {5, 6, 7};
+  // Bug: wrong results here
   write_array_1d(ctx_, array_name, TILEDB_GLOBAL_ORDER, d_off, d_val, a);
 
   // Open array
@@ -2650,17 +2603,19 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
-  REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
+  // REQUIRE(rc == TILEDB_OK);
+  tiledb_query_submit_and_finalize(ctx_, query);
 
   // Write "b, 2"
   d_data[0] = 'b';
   a_data[0] = 2;
-  rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
-  REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
+  // REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_query_finalize(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_finalize(ctx_, query);
+  // REQUIRE(rc == TILEDB_OK);
+  tiledb_query_submit_and_finalize(ctx_, query);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2768,14 +2723,16 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
-  REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
+  // REQUIRE(rc == TILEDB_OK);
+  tiledb_query_submit_and_finalize(ctx_, query);
 
   // Write "b, 2"
   d_data[0] = 'b';
   a_data[0] = 2;
-  rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
-  REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
+  // REQUIRE(rc == TILEDB_OK);
+  tiledb_query_submit_and_finalize(ctx_, query);
 
   // Write c, 3; d, 4 and e, 5.
   d_data[0] = 'c';
@@ -2787,11 +2744,12 @@ TEST_CASE_METHOD(
   a_data[1] = 4;
   a_data[2] = 5;
   a_size = 3 * sizeof(int32_t);
-  rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
-  REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
+  // REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_query_finalize(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_finalize(ctx_, query);
+  // REQUIRE(rc == TILEDB_OK);
+  tiledb_query_submit_and_finalize(ctx_, query);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

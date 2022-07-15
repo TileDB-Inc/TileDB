@@ -3026,15 +3026,7 @@ int DenseArrayFx::submit_query_wrapper(
   tiledb_buffer_list_t* buff_list1 = nullptr;
   int rc = tiledb_serialize_query(ctx_, query, TILEDB_CAPNP, 1, &buff_list1);
 
-  // Global order writes are not (yet) supported for serialization. Just
-  // check that serialization is an error, and then execute the regular query.
-  if (layout == TILEDB_GLOBAL_ORDER && query_type == TILEDB_WRITE) {
-    REQUIRE_SAFE(rc == TILEDB_ERR);
-    tiledb_buffer_list_free(&buff_list1);
-    return tiledb_query_submit(ctx_, query);
-  } else {
-    REQUIRE_SAFE(rc == TILEDB_OK);
-  }
+  REQUIRE_SAFE(rc == TILEDB_OK);
 
   // Copy the data to a temporary memory region ("send over the network").
   tiledb_buffer_t* buff1;

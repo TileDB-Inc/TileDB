@@ -36,6 +36,7 @@
 
 #include <cstring>
 #include <iostream>
+#include "helpers.h"
 
 struct AnyFx {
   const int C1 = 5;
@@ -164,12 +165,15 @@ void AnyFx::write_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);  // Second time must create no problem
-  REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_submit(ctx, query);
+  // REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_finalize(ctx, query);
+  // REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_finalize(ctx, query);  // Second time must create no
+  // problem REQUIRE(rc == TILEDB_OK)
+  tiledb::test::submit_serialized_query(ctx, query);
+  tiledb::test::finalize_serialized_query(ctx, query);
+  tiledb::test::finalize_serialized_query(ctx, query);
 
   // Close array
   rc = tiledb_array_close(ctx, array);

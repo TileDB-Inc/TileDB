@@ -948,10 +948,11 @@ TEST_CASE(
   query.set_data_buffer("d1", d1);
   query.set_data_buffer("a", a1_data);
   query.set_offsets_buffer("a", a1_offsets);
-  CHECK_NOTHROW(query.submit());
+  // CHECK_NOTHROW(query.submit());
 
   // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  // query.finalize();
+  submit_and_finalize_serialized_query(ctx, query);
 
   // Read using a buffer that can't fit a single result
   Array array2(ctx, array_name, TILEDB_READ);

@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 #include "tiledb/common/logger_public.h"
@@ -1457,10 +1458,11 @@ void write_sparse_array_string_dim(
   query.set_data_buffer("dim1", (char*)data.data(), data.size());
   query.set_offsets_buffer("dim1", data_offsets.data(), data_offsets.size());
 
-  CHECK_NOTHROW(query.submit());
+  // CHECK_NOTHROW(query.submit());
 
   // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  // query.finalize();
+  test::submit_and_finalize_serialized_query(ctx, query);
 
   array.close();
 }

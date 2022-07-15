@@ -270,10 +270,12 @@ void DenseNegFx::write_dense_array_global(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_submit(ctx_, query);
+  // REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_finalize(ctx_, query);
+  // REQUIRE(rc == TILEDB_OK);
+  submit_serialized_query(ctx_, query);
+  finalize_serialized_query(ctx_, query);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

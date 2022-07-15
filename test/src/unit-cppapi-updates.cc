@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
@@ -143,8 +144,9 @@ TEST_CASE(
   Query query_w1(ctx, array_w1);
   query_w1.set_layout(layout).set_data_buffer("d", data).set_offsets_buffer(
       "d", offsets);
-  query_w1.submit();
-  query_w1.finalize();
+  // query_w1.submit();
+  // query_w1.finalize();
+  test::submit_and_finalize_serialized_query(ctx, query_w1);
   array_w1.close();
 
   // Second write
@@ -153,8 +155,10 @@ TEST_CASE(
   Query query_w2(ctx, array_w2);
   query_w2.set_layout(layout).set_data_buffer("d", data).set_offsets_buffer(
       "d", offsets);
-  query_w2.submit();
-  query_w2.finalize();
+  // query_w2.submit();
+  // query_w2.finalize();
+  test::submit_serialized_query(ctx, query_w2);
+  test::finalize_serialized_query(ctx, query_w2);
   array_w2.close();
 
   if (vfs.is_dir(array_name))

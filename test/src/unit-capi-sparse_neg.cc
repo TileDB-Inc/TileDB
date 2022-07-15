@@ -238,10 +238,11 @@ void SparseNegFx::write_sparse_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_submit(ctx_, query);
+  // REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_query_finalize(ctx_, query);
+  // REQUIRE(rc == TILEDB_OK);
+  submit_and_finalize_serialized_query(ctx_, query);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

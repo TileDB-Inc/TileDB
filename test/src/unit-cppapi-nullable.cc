@@ -291,10 +291,12 @@ void NullableArrayCppFx::write(
   }
 
   // Submit the query.
-  REQUIRE(query.submit() == Query::Status::COMPLETE);
+  // REQUIRE(query.submit() == Query::Status::COMPLETE);
 
   // Finalize the query, a no-op for non-global writes.
-  query.finalize();
+  // query.finalize();
+
+  submit_and_finalize_serialized_query(ctx_, query);
 
   // Clean up
   array.close();

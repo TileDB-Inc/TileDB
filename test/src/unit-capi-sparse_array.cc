@@ -5882,7 +5882,8 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  CHECK(tiledb_query_submit(ctx, query) == TILEDB_OK);
+  // CHECK(tiledb_query_submit(ctx, query) == TILEDB_OK);
+  submit_serialized_query(ctx, query);
 
   // Close array
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
@@ -6162,12 +6163,13 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  // rc = tiledb_query_submit(ctx_, query);
+  // CHECK(rc == TILEDB_OK);
 
   // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  // rc = tiledb_query_finalize(ctx_, query);
+  // CHECK(rc == TILEDB_OK);
+  submit_and_finalize_serialized_query(ctx_, query);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -6926,8 +6928,9 @@ TEST_CASE_METHOD(
   }
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  // rc = tiledb_query_submit(ctx_, query);
+  submit_serialized_query(ctx_, query);
+  // CHECK(rc == TILEDB_OK);
 
   // Create new buffers of smaller size to test being able to write multiple
   // buffer sizes
@@ -6982,12 +6985,13 @@ TEST_CASE_METHOD(
   }
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  // rc = tiledb_query_submit(ctx_, query);
+  // CHECK(rc == TILEDB_OK);
 
   // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  // rc = tiledb_query_finalize(ctx_, query);
+  // CHECK(rc == TILEDB_OK);
+  submit_and_finalize_serialized_query(ctx_, query);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

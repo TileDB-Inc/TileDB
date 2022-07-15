@@ -254,8 +254,9 @@ struct CPPFixedTileMetadataFx {
       query.set_validity_buffer("a", a_val);
     }
 
-    query.submit();
-    query.finalize();
+    // query.submit();
+    // query.finalize();
+    test::submit_and_finalize_serialized_query(ctx_, query);
     array.close();
   }
 
@@ -792,8 +793,9 @@ struct CPPVarTileMetadataFx {
       query.set_validity_buffer("a", a_val);
     }
 
-    query.submit();
-    query.finalize();
+    // query.submit();
+    // query.finalize();
+    test::submit_and_finalize_serialized_query(ctx_, query);
     array.close();
   }
 

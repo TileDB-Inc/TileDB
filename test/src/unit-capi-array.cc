@@ -927,10 +927,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  // rc = tiledb_query_submit(ctx_, query);
+  // CHECK(rc == TILEDB_OK);
+  // rc = tiledb_query_finalize(ctx_, query);
+  // CHECK(rc == TILEDB_OK);
+  submit_serialized_query(ctx_, query);
+  finalize_serialized_query(ctx_, query);
 
   // Close array and clean up
   rc = tiledb_array_close(ctx_, array);
@@ -1490,10 +1492,13 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  // rc = tiledb_query_submit(ctx_, query);
+  // CHECK(rc == TILEDB_OK);
+  // rc = tiledb_query_finalize(ctx_, query);
+  // CHECK(rc == TILEDB_OK);
+  // TODO: Bug, wrong results
+  // submit_serialized_query(ctx_, query);
+  submit_and_finalize_serialized_query(ctx_, query);
 
   // Get written timestamp
   uint64_t timestamp_get;
@@ -1760,13 +1765,16 @@ TEST_CASE_METHOD(
         ctx, query, "d2", buffer_coords_dim2, &buffer_coords_size);
     CHECK(rc == TILEDB_OK);
   }
-  rc = tiledb_query_submit(ctx, query);
-  if (check_coords_oob)
-    CHECK(rc == TILEDB_ERR);
-  else
-    CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
-  CHECK(rc == TILEDB_OK);
+  // rc = tiledb_query_submit(ctx, query);
+  // if (check_coords_oob)
+  // CHECK(rc == TILEDB_ERR);
+  // else
+  // CHECK(rc == TILEDB_OK);
+  // rc = tiledb_query_finalize(ctx, query);
+  // CHECK(rc == TILEDB_OK);
+  if (!check_coords_oob) {
+    submit_and_finalize_serialized_query(ctx, query);
+  }
 
   // Close array and clean up
   rc = tiledb_array_close(ctx, array);

@@ -212,10 +212,13 @@ TEST_CASE_METHOD(
           ctx_, query, attr_name.c_str(), buffer_a1, &buffer_a1_size);
       CHECK(rc == TILEDB_OK);
 
-      rc = tiledb_query_submit(ctx_, query);
-      CHECK(rc == TILEDB_OK);
-      rc = tiledb_query_finalize(ctx_, query);
-      CHECK(rc == TILEDB_OK);
+      // rc = tiledb_query_submit(ctx_, query);
+      // CHECK(rc == TILEDB_OK);
+      // rc = tiledb_query_finalize(ctx_, query);
+      // CHECK(rc == TILEDB_OK);
+
+      submit_serialized_query(ctx_, query);
+      finalize_serialized_query(ctx_, query);
 
       // Close array and clean up
       rc = tiledb_array_close(ctx_, array);
@@ -312,10 +315,12 @@ TEST_CASE_METHOD(
         ctx_, query, attr_name.c_str(), buffer_write, &buffer_write_size);
     CHECK(rc == TILEDB_OK);
 
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx_, query);
-    CHECK(rc == TILEDB_OK);
+    // rc = tiledb_query_submit(ctx_, query);
+    // CHECK(rc == TILEDB_OK);
+    // rc = tiledb_query_finalize(ctx_, query);
+    // CHECK(rc == TILEDB_OK);
+    submit_serialized_query(ctx_, query);
+    finalize_serialized_query(ctx_, query);
 
     // Close array and clean up
     rc = tiledb_array_close(ctx_, array);
@@ -415,10 +420,12 @@ TEST_CASE_METHOD(
         ctx_, query, attr_name.c_str(), buffer_write, &buffer_write_size);
     CHECK(rc == TILEDB_OK);
 
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx_, query);
-    CHECK(rc == TILEDB_OK);
+    // rc = tiledb_query_submit(ctx_, query);
+    // CHECK(rc == TILEDB_OK);
+    // rc = tiledb_query_finalize(ctx_, query);
+    // CHECK(rc == TILEDB_OK);
+    submit_serialized_query(ctx_, query);
+    finalize_serialized_query(ctx_, query);
 
     // Close array and clean up
     rc = tiledb_array_close(ctx_, array);

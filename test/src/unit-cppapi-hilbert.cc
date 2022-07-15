@@ -542,8 +542,9 @@ TEST_CASE(
   buff_a = {2, 3, 4, 1};
   buff_d1 = {1, 1, 5, 4};
   buff_d2 = {3, 1, 4, 2};
-  CHECK_NOTHROW(query_w.submit());
-  query_w.finalize();
+  // CHECK_NOTHROW(query_w.submit());
+  // query_w.finalize();
+  submit_and_finalize_serialized_query(ctx, query_w);
   array_w.close();
 
   // Remove array
