@@ -235,6 +235,9 @@ Status ArrayDirectory::load() {
           fragment_meta_uris_v12_or_higher.begin(),
           fragment_meta_uris_v12_or_higher.end(),
           std::back_inserter(fragment_meta_uris_));
+
+      // Sort the delete commits by timestamp.
+      std::sort(delete_tiles_location_.begin(), delete_tiles_location_.end());
     }
   }
 
