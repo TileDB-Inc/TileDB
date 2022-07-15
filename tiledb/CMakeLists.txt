@@ -466,14 +466,8 @@ if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
   find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      AWSSDK::aws-cpp-sdk-s3
-      AWSSDK::aws-cpp-sdk-core
-      AWSSDK::aws-c-event-stream
-      AWSSDK::aws-checksums
-      AWSSDK::aws-c-common
-      AWSSDK::aws-cpp-sdk-identity-management
-      AWSSDK::aws-cpp-sdk-sts)
+    INTERFACE ${TILEDB_AWS_LINK_TARGETS}
+    )
   add_definitions(-DHAVE_S3)
 endif()
 
@@ -625,6 +619,7 @@ if(APPLE)
   if(TILEDB_S3)
     # this is a transitive dependency for statically linking S3 SDK
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE "-framework CoreFoundation")
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE "-framework Security")
   endif()
 endif()
 
@@ -846,13 +841,6 @@ if (TILEDB_STATIC)
   append_dep_lib(OpenSSL::SSL)
   append_dep_lib(OpenSSL::Crypto)
   append_dep_lib(CURL::libcurl)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-core)
-  append_dep_lib(AWSSDK::aws-c-event-stream)
-  append_dep_lib(AWSSDK::aws-checksums)
-  append_dep_lib(AWSSDK::aws-c-common)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-identity-management)
   append_dep_lib(AzureSDK::AzureSDK)
   append_dep_lib(GCSSDK::storage_client)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)
@@ -860,6 +848,9 @@ if (TILEDB_STATIC)
   append_dep_lib(spdlog::spdlog)
   append_dep_lib(libmagic)
   append_dep_lib(WebP::webp)
+  foreach(AWSTARG ${TILEDB_AWS_LINK_TARGETS})
+    append_dep_lib(${AWSTARG})
+  endforeach()
 endif()
 
 ############################################################

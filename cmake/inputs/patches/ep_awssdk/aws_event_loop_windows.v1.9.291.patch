@@ -1,0 +1,21 @@
+diff --git "a/crt/aws-crt-cpp/crt/aws-c-io/source/event_loop.c" "b/crt/aws-crt-cpp/crt/aws-c-io/source/event_loop.c"
+index 5eb8a084ac..e46cec1dfd 100644
+--- "a/crt/aws-crt-cpp/crt/aws-c-io/source/event_loop.c"
++++ "b/crt/aws-crt-cpp/crt/aws-c-io/source/event_loop.c"
+@@ -70,9 +70,16 @@ static void s_aws_event_loop_group_shutdown_async(struct aws_event_loop_group *e
+     thread_options.cpu_id = -1;
+     thread_options.join_strategy = AWS_TJS_MANAGED;
+
++    /*
++     * tiledb encountered issue similar to https://github.com/huggingface/datasets/issues/3310#issuecomment-1155285967.
++     */
++#if 1
++    aws_thread_launch(&cleanup_thread, s_event_loop_destroy_async_thread_fn, el_group, &thread_options);
++#else
+     AWS_FATAL_ASSERT(
+         aws_thread_launch(&cleanup_thread, s_event_loop_destroy_async_thread_fn, el_group, &thread_options) ==
+         AWS_OP_SUCCESS);
++#endif
+ }
+
+ static struct aws_event_loop_group *s_event_loop_group_new(

@@ -58,7 +58,6 @@ endif()
 
 if (NOT AWSSDK_FOUND)
   if (TILEDB_SUPERBUILD)
-    message(STATUS "Could NOT find AWSSDK")
     message(STATUS "Adding AWSSDK as an external project")
 
     set(DEPENDS)
@@ -96,19 +95,18 @@ if (NOT AWSSDK_FOUND)
 
     if (WIN32)
       find_package(Git REQUIRED)
-      set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch &&
-                                                      ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsconfig_cmake_3.22.patch)
+      set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/aws_event_loop_windows.v1.9.291.patch)
     else()
-      set(CONDITIONAL_PATCH patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch &&
-                            patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsconfig_cmake_3.22.patch)
+      set(CONDITIONAL_PATCH "")
     endif()
 
     ExternalProject_Add(ep_awssdk
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_awssdk.zip
-      URL "https://github.com/aws/aws-sdk-cpp/archive/1.8.84.zip"
-      URL_HASH SHA1=e32a53a01c75ca7fdfe9feed9c5bbcedd98708e3
+      GIT_REPOSITORY "https://github.com/aws/aws-sdk-cpp"
+      GIT_TAG 1.9.291
+      GIT_SUBMODULES_RECURSE ON #TBD: Seems 'ON' may be default, is this needed? Is this correct?
       PATCH_COMMAND
         ${CONDITIONAL_PATCH}
       CMAKE_ARGS
@@ -124,6 +122,7 @@ if (NOT AWSSDK_FOUND)
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
         -DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}
         -DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}
+        -DBUILD_DEPS=ON
       UPDATE_COMMAND ""
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
@@ -151,15 +150,54 @@ endif ()
 
 if (AWSSDK_FOUND)
   set(AWS_SERVICES s3)
-  AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICES AWS_LINKED_LIBS)
-  list(APPEND AWS_LINKED_LIBS aws-c-common
-                              aws-c-event-stream
-                              aws-checksums
-                              aws-cpp-sdk-sts
-                              aws-cpp-sdk-identity-management)
+  # append these libs in an order manually, by trial and error, determined to support successful
+  # linking of dependencies on *nix.  (windows doesn't seem to care or 'just lucked out'.)
+  list(APPEND AWS_LINKED_LIBS #aws-c-common
+          aws-cpp-sdk-s3
+        aws-cpp-sdk-core
+        aws-crt-cpp
+        #AWSSDK::aws-c-auth
+        #AWSSDK::aws-c-cal
+        #AWSSDK::aws-c-common
+        #AWSSDK::aws-c-compression
+        aws-c-event-stream
+        #xAWSSDK::aws-c-io
+        aws-c-mqtt
+        aws-c-s3
+        aws-c-auth
+        aws-c-http
+        aws-c-compression
+        aws-checksums
+        aws-c-sdkutils
+        aws-crt-cpp
+        #xAWSSDK::aws-c-s3
+        aws-cpp-sdk-s3
+        aws-c-event-stream
+        aws-c-mqtt
+        aws-checksums
+        aws-c-auth
+        #AWSSDK::aws-c-http
+        aws-c-sdkutils
+        aws-c-io
+        aws-c-compression
+        aws-c-cal
+        aws-cpp-sdk-cognito-identity
+        aws-cpp-sdk-identity-management
+        aws-cpp-sdk-sts
+        aws-c-common
+        #s2n # There is a libs2n.a generated and in install/lib path... but not an INTERFACE, hmm...
+  )
+  if (NOT WIN32)
+    list(APPEND AWS_LINKED_LIBS #aws-c-common
+                              s2n # There is a libs2n.a generated and in install/lib path... but not an INTERFACE, hmm...
+    )
+  endif()
 
+  set(TILEDB_AWS_LINK_TARGETS "")
   foreach (LIB ${AWS_LINKED_LIBS})
-    if (NOT ${LIB} MATCHES "aws-*")
+    if ((NOT ${LIB} MATCHES "aws-*" )
+        AND (NOT LIB STREQUAL "s2n") )
+      message(STATUS "AWS_LINKED_LIBS, skipping ${LIB}")
       continue()
     endif()
 
@@ -168,7 +206,12 @@ if (AWSSDK_FOUND)
       PATHS ${AWSSDK_LIB_DIR}
       ${TILEDB_DEPS_NO_DEFAULT_PATH}
     )
-    message(STATUS "Found AWS lib: ${LIB} (${AWS_FOUND_${LIB}})")
+    if ("${AWS_FOUND_${LIB}}" MATCHES ".*-NOTFOUND")
+      message(STATUS "not found, ${LIB}")
+      continue()
+    else()
+      message(STATUS "for ${LIB} adding link to ${AWS_FOUND_${LIB}}")
+    endif()
     if (NOT TARGET AWSSDK::${LIB})
       add_library(AWSSDK::${LIB} UNKNOWN IMPORTED)
       set_target_properties(AWSSDK::${LIB} PROPERTIES
@@ -176,6 +219,8 @@ if (AWSSDK_FOUND)
         INTERFACE_INCLUDE_DIRECTORIES "${AWSSDK_INCLUDE_DIR}"
       )
     endif()
+
+    list(APPEND TILEDB_AWS_LINK_TARGETS "AWSSDK::${LIB}")
 
     # If we built a static EP, install it if required.
     if (TILEDB_AWSSDK_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
@@ -187,6 +232,6 @@ if (AWSSDK_FOUND)
   # the AWSSDK does not include links to some transitive dependencies
   # ref: github<dot>com/aws<slash>aws-sdk-cpp/issues/1074#issuecomment-466252911
   if (WIN32)
-    list(APPEND AWS_EXTRA_LIBS userenv ws2_32 wininet winhttp bcrypt version)
+    list(APPEND AWS_EXTRA_LIBS userenv ws2_32 wininet winhttp bcrypt version crypt32 secur32 Ncrypt)
   endif()
 endif ()
