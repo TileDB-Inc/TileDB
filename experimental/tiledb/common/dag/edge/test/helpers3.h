@@ -106,6 +106,7 @@ const int EMPTY_SINK = 7654321;
 [[maybe_unused]] static std::string is_sink_full(PortState st) {
   if (str(st) == "st_001" || str(st) == "st_011" || str(st) == "st_101" ||
       str(st) == "st_111") {
+    return {};
   }
   return str(st);
 }

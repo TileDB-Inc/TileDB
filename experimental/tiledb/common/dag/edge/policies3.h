@@ -93,7 +93,7 @@ namespace tiledb::common {
  * A crucial piece of functionality in these classes is the move operation that may take place.
  * When operating with `Source` and `Sink` ports, we need to be able to move the item_ member
  * variables associated with the `Source` and a `Sink` that are bound to each other.  To
- * enable this, the state machine policies3 maintatin pointers to items.  When moveping is
+ * enable this, the state machine policies3 maintatin pointers to items.  When moving is
  * required, `std::move` is invoked on the pointed-to items.  (This has been tested for
  * integer items when testing just the state machines as weill as with `std::optional` items
  * when testing the ports.)  These internal pointers are initialized with a `register_items`
@@ -370,7 +370,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "
-                << " sink done moveping items with " + str(FSM::state()) +
+                << " sink done moving items with " + str(FSM::state()) +
                        " and " + str(FSM::next_state())
                 << std::endl;
 
@@ -388,8 +388,8 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "
-                << " source moveping items with " + str(FSM::state()) +
-                       " and " + str(FSM::next_state())
+                << " source moving items with " + str(FSM::state()) + " and " +
+                       str(FSM::next_state())
                 << std::endl;
 
     CHECK(*source_item_ != EMPTY_SINK);
@@ -423,7 +423,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "
-                << " source done moveping items with " + str(FSM::state()) +
+                << " source done moving items with " + str(FSM::state()) +
                        " and " + str(FSM::next_state())
                 << std::endl;
 
@@ -458,7 +458,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
   }
 
   inline void on_source_wait(lock_type& lock, std::atomic<int>& event) {
-    CHECK(str(FSM::state()) == "full_full");
+    CHECK(str(FSM::state()) == "st_111");
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "
@@ -583,12 +583,29 @@ class UnifiedAsyncStateMachine
   inline void on_source_move(lock_type&, std::atomic<int>& event) {
     if (debug_)
       std::cout << event++ << "  "
-                << " source moveping items " << *source_item_ << " and "
+                << " source moving items " << *source_item_ << " and "
                 << *sink_item_ << std::endl;
 
     CHECK(*source_item_ != EMPTY_SINK);
 
-    std::move(*source_item_, *sink_item_);
+    // std::move(*source_item_, *sink_item_);
+
+    switch (FSM::state()) {
+      case PortState::st_010:
+
+        break;
+      case PortState::st_110:
+
+        break;
+      case PortState::st_100:
+
+        break;
+      case PortState::st_101:
+
+        break;
+      default:
+        break;
+    }
 
     // FSM::set_state(PortState::empty_full);
 
