@@ -332,13 +332,30 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
   inline void on_sink_move(lock_type&, std::atomic<int>& event) {
     // { state == full_empty }
     CHECK(
-        FSM::state() == PortState::st_010 ||
-        FSM::state() == PortState::st_100 ||
-        FSM::state() == PortState::st_101 || FSM::state() == PortState::st_110);
+        (FSM::state() == PortState::st_010 ||
+         FSM::state() == PortState::st_100 ||
+         FSM::state() == PortState::st_101 ||
+         FSM::state() == PortState::st_110));
 
     CHECK(*source_item_ != EMPTY_SINK);
 
-    std::move(*source_item_, *sink_item_);
+    // std::move(*source_item_, *sink_item_);
+    switch (FSM::state()) {
+      case PortState::st_010:
+
+        break;
+      case PortState::st_110:
+
+        break;
+      case PortState::st_100:
+
+        break;
+      case PortState::st_101:
+
+        break;
+      default:
+        break;
+    }
 
     // Will fail tests without this (needed for entry_action invocations)
     // Could instead set this in the action case, or update state with next
@@ -365,7 +382,9 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
    */
   inline void on_source_move(lock_type&, std::atomic<int>& event) {
     // { state == full_empty }
-    CHECK(str(FSM::state()) == "full_empty");
+    CHECK(
+        (str(FSM::state()) == "st_010" || str(FSM::state()) == "st_110" ||
+         str(FSM::state()) == "st_101" || str(FSM::state()) == "st_100"));
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "
@@ -375,7 +394,23 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
 
     CHECK(*source_item_ != EMPTY_SINK);
 
-    std::move(*source_item_, *sink_item_);
+    //    std::move(*source_item_, *sink_item_);
+    switch (FSM::state()) {
+      case PortState::st_010:
+
+        break;
+      case PortState::st_110:
+
+        break;
+      case PortState::st_100:
+
+        break;
+      case PortState::st_101:
+
+        break;
+      default:
+        break;
+    }
 
     // Needed
     // FSM::set_state(PortState::empty_full);
@@ -396,7 +431,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
   }
 
   inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
-    CHECK(str(FSM::state()) == "empty_empty");
+    CHECK(str(FSM::state()) == "st_000");
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "

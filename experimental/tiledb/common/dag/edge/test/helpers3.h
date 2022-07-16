@@ -88,9 +88,8 @@ const int EMPTY_SINK = 7654321;
   return str(st);
 }
 
-[[maybe_unused]] static std::string is_source_post_swap(PortState st) {
-  if (str(st) == "full_empty" || str(st) == "empty_full" ||
-      str(st) == "empty_empty") {
+[[maybe_unused]] static std::string is_source_post_move(PortState st) {
+  if (str(st) != "st_111") {
     return {};
   }
   return str(st);
@@ -111,9 +110,8 @@ const int EMPTY_SINK = 7654321;
   return str(st);
 }
 
-[[maybe_unused]] static std::string is_sink_post_swap(PortState st) {
-  if (str(st) == "full_empty" || str(st) == "empty_full" ||
-      str(st) == "full_full") {
+[[maybe_unused]] static std::string is_sink_post_move(PortState st) {
+  if (str(st) != "st_000") {
     return {};
   }
   return str(st);

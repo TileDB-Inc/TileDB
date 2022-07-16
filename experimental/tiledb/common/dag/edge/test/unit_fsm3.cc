@@ -101,70 +101,121 @@ TEST_CASE("Port FSM3: Start up", "[fsm3]") {
   }
 }
 
-#if 0
 /*
  * Use the `DebugStateMachine` to verify startup state and some more involved
  * transition sequences.
  */
 TEST_CASE("Port FSM3: Basic manual sequence", "[fsm3]") {
   [[maybe_unused]] auto a = PortStateMachine{};
-  CHECK(a.state() == PortState::empty_empty);
+  CHECK(a.state() == PortState::st_000);
 
-  a.do_fill();
-  CHECK(str(a.state()) == "full_empty");
-  a.do_push();
-  CHECK(str(a.state()) == "empty_full");
-  a.do_fill();
-  CHECK(str(a.state()) == "full_full");
-  a.do_drain();
-  CHECK(str(a.state()) == "full_empty");
-  a.do_push();
-  CHECK(str(a.state()) == "empty_full");
+  SECTION("Two element tests") {
+    a.do_fill();
+    CHECK(str(a.state()) == "st_100");
+    a.do_push();
+    CHECK(str(a.state()) == "st_001");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_101");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_100");
+    a.do_push();
+    CHECK(str(a.state()) == "st_001");
 
-  a.do_drain();
-  CHECK(str(a.state()) == "empty_empty");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_000");
 
-  a.do_fill();
-  CHECK(str(a.state()) == "full_empty");
-  a.do_pull();
-  CHECK(str(a.state()) == "empty_full");
-  a.do_fill();
-  CHECK(str(a.state()) == "full_full");
-  a.do_drain();
-  CHECK(str(a.state()) == "full_empty");
-  a.do_pull();
-  CHECK(str(a.state()) == "empty_full");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_100");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_001");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_101");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_100");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_001");
 
-  a.do_drain();
-  CHECK(a.state() == PortState::empty_empty);
+    a.do_drain();
+    CHECK(str(a.state()) == "st_000");
 
-  a.do_fill();
-  CHECK(str(a.state()) == "full_empty");
-  a.do_push();
-  CHECK(str(a.state()) == "empty_full");
-  a.do_fill();
-  CHECK(str(a.state()) == "full_full");
-  a.do_drain();
-  CHECK(str(a.state()) == "full_empty");
-  a.do_pull();
-  CHECK(str(a.state()) == "empty_full");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_100");
+    a.do_push();
+    CHECK(str(a.state()) == "st_001");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_101");
+    a.do_push();
+    CHECK(str(a.state()) == "st_011");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_010");
+    a.do_push();
+    CHECK(str(a.state()) == "st_001");
 
-  a.do_drain();
-  CHECK(a.state() == PortState::empty_empty);
+    a.do_drain();
+    CHECK(str(a.state()) == "st_000");
 
-  a.do_fill();
-  CHECK(str(a.state()) == "full_empty");
-  a.do_pull();
-  CHECK(str(a.state()) == "empty_full");
-  a.do_fill();
-  CHECK(str(a.state()) == "full_full");
-  a.do_drain();
-  CHECK(str(a.state()) == "full_empty");
-  a.do_push();
-  CHECK(str(a.state()) == "empty_full");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_100");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_001");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_101");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_011");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_010");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_001");
 
-  a.do_drain();
-  CHECK(a.state() == PortState::empty_empty);
+    a.do_drain();
+    CHECK(str(a.state()) == "st_000");
+  }
+
+  SECTION("three element tests") {
+    a.do_fill();
+    CHECK(str(a.state()) == "st_100");
+    a.do_push();
+    CHECK(str(a.state()) == "st_001");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_101");
+    a.do_push();
+    CHECK(str(a.state()) == "st_011");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_111");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_110");
+    a.do_push();
+    CHECK(str(a.state()) == "st_011");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_010");
+    a.do_push();
+    CHECK(str(a.state()) == "st_001");
+
+    a.do_drain();
+    CHECK(str(a.state()) == "st_000");
+
+    a.do_fill();
+    CHECK(str(a.state()) == "st_100");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_001");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_101");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_011");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_111");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_110");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_011");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_010");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_001");
+
+    a.do_drain();
+    CHECK(str(a.state()) == "st_000");
+  }
 }
 
 /**
@@ -180,7 +231,7 @@ TEST_CASE(
   size_t sink_item{0};
   [[maybe_unused]] auto a = AsyncStateMachine{source_item, sink_item, debug};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(PortState::st_000);
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.do_fill(debug ? "async source (fill)" : "");
@@ -197,14 +248,16 @@ TEST_CASE(
   //  std::this_thread::sleep_for(std::chrono::microseconds(random_us(5000)));
 
   a.do_pull(debug ? "manual sink (pull)" : "");
-  CHECK(str(a.state()) == "empty_full");
+  CHECK(str(a.state()) == "st_001");
 
   a.do_drain(debug ? "manual sink (drain)" : "");
 
   fut_a.get();
 
-  CHECK(str(a.state()) == "empty_empty");
+  CHECK(str(a.state()) == "st_000");
 };
+
+#if 0
 
 /**
  * Simple test of asynchrous state machine policy, launching an emulated sink
