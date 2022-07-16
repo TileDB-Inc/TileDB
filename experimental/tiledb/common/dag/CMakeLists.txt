@@ -26,7 +26,7 @@
 #
 
 # add_subdirectory(data_block)
-# add_subdirectory(edge)
+add_subdirectory(edge)
 add_subdirectory(execution)
 # add_subdirectory(graph)
 # add_subdirectory(node)

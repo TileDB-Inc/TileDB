@@ -1,5 +1,5 @@
 /**
- * @file compile_fsm_main.cc
+ * @file   fsm3.cc
  *
  * @section LICENSE
  *
@@ -24,11 +24,14 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines a finite state machine with 2^3 states, one state
+ * for each binary number in [0, 2^3).
  */
 
-#include "../ports.h"
+#include <cassert>
 
-int main() {
-  (void)sizeof(tiledb::common::PortFiniteStateMachine);
-  return 0;
-}
+#include "experimental/tiledb/common/dag/edge/fsm3.h"
+#include "tiledb/common/logger.h"

@@ -26,9 +26,10 @@
  * THE SOFTWARE.
  */
 
-#include "../ports.h"
+#include "../fsm3.h"
+#include "../policies3.h"
 
 int main() {
-  (void)sizeof(tiledb::common::PortFiniteStateMachine);
+  (void)sizeof(tiledb::common::NullStateMachine<size_t>);
   return 0;
 }
