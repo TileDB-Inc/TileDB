@@ -67,3 +67,45 @@ if (TILEDB_TESTS)
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
+
+list(APPEND FSM3_SOURCES
+    fsm3.cc
+)
+gather_sources(${FSM3_SOURCES})
+
+
+#
+# Object library for other units to depend upon
+#
+add_library(fsm3 OBJECT ${FSM3_SOURCES})
+target_link_libraries(fsm3 PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_fsm3 EXCLUDE_FROM_ALL)
+target_link_libraries(compile_fsm3 PRIVATE fsm3)
+target_sources(compile_fsm3 PRIVATE test/compile_fsm3_main.cc)
+
+if (TILEDB_TESTS)
+    add_executable(unit_fsm3 EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_fsm3 PUBLIC fsm3)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_fsm3 PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_fsm3 PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_fsm3 PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_fsm3 PUBLIC
+            test/main.cc
+            test/unit_fsm3.cc
+            )
+
+    add_test(
+            NAME "unit_fsm3"
+            COMMAND $<TARGET_FILE:unit_fsm3> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()

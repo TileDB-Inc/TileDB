@@ -1,5 +1,5 @@
 /**
- * @file compile_fsm_main.cc
+ * @file experimental/tiledb/common/thread_pool/test/unit_fsm3.h
  *
  * @section LICENSE
  *
@@ -24,11 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
  */
 
-#include "../ports.h"
-
-int main() {
-  (void)sizeof(tiledb::common::PortFiniteStateMachine);
-  return 0;
-}
+#ifndef TILEDB_UNIT_FSM3_H
+#define TILEDB_UNIT_FSM3_H
+#include <catch.hpp>
+#endif  // TILEDB_UNIT_FSM_H
