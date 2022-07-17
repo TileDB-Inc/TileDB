@@ -1,5 +1,5 @@
 /**
- * @file compile_fsm_main.cc
+ * @file compile_fsm3_main.cc
  *
  * @section LICENSE
  *
@@ -30,6 +30,12 @@
 #include "../policies3.h"
 
 int main() {
+  (void)sizeof(tiledb::common::PortFiniteStateMachine<size_t>);
+  (void)sizeof(tiledb::common::BaseStateMachine<size_t>);
   (void)sizeof(tiledb::common::NullStateMachine<size_t>);
-  return 0;
+  (void)sizeof(tiledb::common::ManualStateMachine<size_t>);
+  (void)sizeof(tiledb::common::AsyncStateMachine<size_t>);
+  (void)sizeof(tiledb::common::UnifiedAsyncStateMachine<size_t>);
+  (void)sizeof(tiledb::common::DebugStateMachine<size_t>);
+  (void)sizeof(tiledb::common::DebugStateMachineWithLock);
 }

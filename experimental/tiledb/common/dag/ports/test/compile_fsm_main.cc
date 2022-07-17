@@ -26,9 +26,15 @@
  * THE SOFTWARE.
  */
 
-#include "../ports.h"
+#include "../fsm.h"
+#include "../policies.h"
 
 int main() {
-  (void)sizeof(tiledb::common::PortFiniteStateMachine);
-  return 0;
+  (void)sizeof(tiledb::common::PortFiniteStateMachine<size_t>);
+  (void)sizeof(tiledb::common::NullStateMachine<size_t>);
+  (void)sizeof(tiledb::common::ManualStateMachine<size_t>);
+  (void)sizeof(tiledb::common::AsyncStateMachine<size_t>);
+  (void)sizeof(tiledb::common::UnifiedAsyncStateMachine<size_t>);
+  (void)sizeof(tiledb::common::DebugStateMachine<size_t>);
+  (void)sizeof(tiledb::common::DebugStateMachineWithLock);
 }

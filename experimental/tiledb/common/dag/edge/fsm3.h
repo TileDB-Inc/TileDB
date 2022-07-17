@@ -276,14 +276,16 @@ class PortFiniteStateMachine {
    * Default constructor
    */
   PortFiniteStateMachine()
-      : state_(PortState::st_000){};
-
-  /**
-   * Return the current state
-   */
-  [[nodiscard]] inline PortState state() const {
-    return state_;
+      : state_(PortState::st_000) {
   }
+
+/**
+ * Return the current state
+ */
+[[nodiscard]] inline PortState
+state() const {
+  return state_;
+}
 
   /**
    * Return the next state
@@ -635,7 +637,7 @@ class PortFiniteStateMachine {
     debug_ = false;
   }
 
-  bool debug_enabled() {
+  constexpr inline bool debug_enabled() {
     return debug_;
   }
 };

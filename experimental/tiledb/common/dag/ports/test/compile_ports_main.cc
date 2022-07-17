@@ -31,5 +31,4 @@
 int main() {
   (void)sizeof(tiledb::common::Sink);
   (void)sizeof(tiledb::common::Source);
-  return 0;
 }
