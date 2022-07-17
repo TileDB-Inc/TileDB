@@ -57,6 +57,7 @@
 #define TILEDB_DAG_PORTS_H
 
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 #include <optional>
 
@@ -92,20 +93,32 @@ class Source {
   Sink<Block, StateMachine>* correspondent_{nullptr};
 
   /**
-   * Check if Source is bound.
+   * The finite state machine controlling data transfer between Source and Sink.
+   * Shared between Source and Sink.
+   */
+  std::shared_ptr<StateMachine> state_machine_;
+
+  Source() = default;
+  Source(const Source& rhs) = delete;
+  Source(Source&& rhs) = delete;
+  Source& operator=(const Source& rhs) = delete;
+  Source& operator=(Source&& rhs) = delete;
+
+  /**
+   * Check if Source is attached.
    *
    * @pre Called under lock
    */
-  bool is_bound() const {
+  bool is_attached() const {
     return correspondent_ != nullptr;
   }
 
   /**
-   * Check if Source is bound to a Sink
+   * Check if Source is attached to a Sink
    *
    * @pre Called under lock
    */
-  bool is_bound_to(Sink<Block, StateMachine>* sink) const {
+  bool is_attached_to(Sink<Block, StateMachine>* sink) const {
     return correspondent_ != nullptr && correspondent_ == sink;
   }
 
@@ -115,10 +128,10 @@ class Source {
    * @pre Called under lock
    */
   void remove_attachment() {
-    if (correspondent_ == nullptr || !is_bound_to(correspondent_) ||
-        !correspondent_->is_bound_to(this)) {
+    if (correspondent_ == nullptr || !is_attached_to(correspondent_) ||
+        !correspondent_->is_attached_to(this)) {
       throw std::runtime_error(
-          "Source attempting to unattach unbound correspondent");
+          "Source attempting to unattach unattached correspondent");
     } else {
       correspondent_ = nullptr;
     }
@@ -130,7 +143,7 @@ class Source {
   }
 
   bool inject(const Block& value) {
-    if (!is_bound() || item_.has_value()) {
+    if (!is_attached() || item_.has_value()) {
       return false;
     }
     std::scoped_lock lock(correspondent_->mutex_);
@@ -141,7 +154,7 @@ class Source {
   }
 
   std::optional<Block> extract() {
-    if (!is_bound()) {
+    if (!is_attached()) {
       return {};
     }
     std::optional<Block> ret{};
@@ -173,19 +186,17 @@ class Sink {
 
   /**
    * The finite state machine controlling data transfer between Source and Sink.
-   * We arbitrarily associate it with the Sink.
+   * Shared between Source and Sink.
    */
-  std::unique_ptr<StateMachine> state_machine_;
+  std::shared_ptr<StateMachine> state_machine_;
 
  public:
-  Sink()
-      : state_machine_{std::make_unique<StateMachine>()} {
-  }
+  Sink() = default;
 
-  Sink(Sink&& rhs) {
-    state_machine_ = std::move(rhs.state_machine_);
-    correspondent_ = nullptr;
-  }
+  Sink(const Sink& rhs) = delete;
+  Sink(Sink&& rhs) = delete;
+  Sink& operator=(const Sink& rhs) = delete;
+  Sink& operator=(Sink&& rhs) = delete;
 
   StateMachine* get_state_machine() {
     return state_machine_.get();
@@ -203,20 +214,20 @@ class Sink {
 
  public:
   /**
-   * Check if Sink is bound
+   * Check if Sink is attached
    *
    * @pre Called under lock
    */
-  bool is_bound() const {
+  bool is_attached() const {
     return correspondent_ != nullptr;
   }
 
   /**
-   * Check if Sink is bound to a Source
+   * Check if Sink is attached to a Source
    *
    * @pre Called under lock
    */
-  bool is_bound_to(Source<Block, StateMachine>* source) const {
+  bool is_attached_to(Source<Block, StateMachine>* source) const {
     return correspondent_ != nullptr && correspondent_ == source;
   }
 
@@ -226,12 +237,14 @@ class Sink {
    * @pre Called under lock
    */
   void attach(Source<Block, StateMachine>& predecessor) {
-    if (is_bound() || predecessor.is_bound()) {
+    if (is_attached() || predecessor.is_attached()) {
       throw std::runtime_error(
-          "Sink attempting to attach to already bound correspondent");
+          "Sink attempting to attach to already attached correspondent");
     } else {
       correspondent_ = &predecessor;
       predecessor.correspondent_ = this;
+      state_machine_ = std::make_shared<StateMachine>();
+      correspondent_->state_machine_ = state_machine_;
       state_machine_->register_items(correspondent_->item_, item_);
     }
   }
@@ -242,10 +255,14 @@ class Sink {
    * @pre Called under lock
    */
   void unattach() {
-    if (!is_bound_to(correspondent_) || !correspondent_->is_bound_to(this)) {
-      throw std::runtime_error("Attempting to unattach unbound correspondent");
+    if (!is_attached_to(correspondent_) ||
+        !correspondent_->is_attached_to(this)) {
+      throw std::runtime_error(
+          "Attempting to unattach unattached correspondent");
     } else {
       state_machine_->deregister_items(correspondent_->item_, item_);
+      state_machine_.reset();
+      correspondent_->state_machine_.reset();
       correspondent_->remove_attachment();
       correspondent_ = nullptr;
     }
@@ -260,7 +277,7 @@ class Sink {
    * Assign sink as correspondent to source and vice versa.  Acquires lock
    * before calling any member functions.
    *
-   * @pre Both source and sink are unbound
+   * @pre Both source and sink are unattached
    */
   template <class Bl, class St>
   friend inline void attach(Source<Bl, St>& source, Sink<Bl, St>& sink);
@@ -268,12 +285,12 @@ class Sink {
   friend inline void attach(
       Source<Block, StateMachine>& source, Sink<Block, StateMachine>& sink) {
     std::scoped_lock lock(sink.mutex_);
-    if (source.is_bound() || sink.is_bound()) {
-      throw std::logic_error("Improperly bound in attach");
+    if (source.is_attached() || sink.is_attached()) {
+      throw std::logic_error("Improperly attached in attach");
     }
     sink.attach(source);
-    if (!source.is_bound_to(&sink) || !sink.is_bound_to(&source)) {
-      throw std::logic_error("Improperly bound in attach");
+    if (!source.is_attached_to(&sink) || !sink.is_attached_to(&source)) {
+      throw std::logic_error("Improperly attached in attach");
     }
   }
 
@@ -292,23 +309,23 @@ class Sink {
   friend inline void unattach(
       Source<Block, StateMachine>& source, Sink<Block, StateMachine>& sink) {
     std::scoped_lock lock(sink.mutex_);
-    if (source.is_bound() && sink.is_bound()) {
+    if (source.is_attached() && sink.is_attached()) {
       sink.unattach();
     } else {
-      throw std::logic_error("Improperly bound in unattach");
+      throw std::logic_error("Improperly attached in unattach");
     }
   }
 
  public:
   bool inject(const Block& value) {
-    if (!is_bound() || item_.has_value()) {
+    if (!is_attached() || item_.has_value()) {
       return false;
     }
     item_ = value;
     return true;
   }
   std::optional<Block> extract() {
-    if (!is_bound()) {
+    if (!is_attached()) {
       return {};
     }
     std::optional<Block> ret{};
@@ -321,7 +338,7 @@ class Sink {
 /**
  * Assign sink as correspondent to source and vice versa.
  *
- * @pre Both source and sink are unbound
+ * @pre Both source and sink are unattached
  */
 template <class Block, class StateMachine>
 inline void attach(
