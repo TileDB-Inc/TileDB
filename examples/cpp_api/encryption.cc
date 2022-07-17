@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -67,20 +67,17 @@ void create_array() {
 }
 
 void write_array() {
-  Context ctx;
+  tiledb::Config cfg;
+  cfg["sm.encryption_type"] = "AES_256_GCM";
+  cfg["sm.encryption_key"] = encryption_key;
+  Context ctx(cfg);
 
   // Prepare some data for the array
   std::vector<int> data = {
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 
   // Open the encrypted array for writing and create the query.
-  Array array(
-      ctx,
-      array_name,
-      TILEDB_WRITE,
-      TILEDB_AES_256_GCM,
-      encryption_key,
-      (uint32_t)strlen(encryption_key));
+  Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
 
@@ -90,19 +87,18 @@ void write_array() {
 }
 
 void read_array() {
-  Context ctx;
+  tiledb::Config cfg;
+  cfg["sm.encryption_type"] = "AES_256_GCM";
+  cfg["sm.encryption_key"] = encryption_key;
+  Context ctx(cfg);
 
   // Open the encrypted array for reading
-  Array array(
-      ctx,
-      array_name,
-      TILEDB_READ,
-      TILEDB_AES_256_GCM,
-      encryption_key,
-      (uint32_t)strlen(encryption_key));
+  Array array(ctx, array_name, TILEDB_READ);
 
   // Slice only rows 1, 2 and cols 2, 3, 4
-  const std::vector<int> subarray = {1, 2, 2, 4};
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 2)
+      .add_range(1, 2, 4);
 
   // Prepare the vector that will hold the result (of size 6 elements)
   std::vector<int> data(6);

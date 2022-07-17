@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -87,11 +87,14 @@ void read_array() {
   // Prepare the array for reading
   Array array(ctx, array_name, TILEDB_READ);
 
+  // Slice only rows 1, 2 and cols 1.1, 1.2, 1.3
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 2)
+      .add_range<float>(1, 1, 2);
+
   // Prepare the query
   Query query(ctx, array, TILEDB_READ);
-  // Slice only rows 1, 2 and cols 1.1, 1.2, 1.3
-  query.add_range(0, 1, 2);
-  query.add_range<float>(1, 1, 2);
+  query.set_subarray(subarray);
 
   // Prepare the vector that will hold the result.
   // We take an upper bound on the result size, as we do not

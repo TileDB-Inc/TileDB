@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -75,7 +75,10 @@ void read_array() {
   Query query(ctx, array);
 
   // Read a slice of 3,000 rows.
-  std::vector<uint32_t> subarray = {1, 3000, 1, 12000};
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 3000)
+      .add_range(1, 1, 12000);
+
   std::vector<int32_t> values(3000 * 12000);
   query.set_subarray(subarray).set_data_buffer("a", values);
 

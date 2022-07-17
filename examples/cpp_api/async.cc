@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -94,7 +94,9 @@ void write_array() {
 void read_array() {
   Context ctx;
   Array array(ctx, array_name, TILEDB_READ);
-  const std::vector<int> subarray = {1, 4, 1, 4};
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 4)
+      .add_range(1, 1, 4);
   std::vector<int> data(4);
   std::vector<int> coords_rows(4);
   std::vector<int> coords_cols(4);

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -106,7 +106,9 @@ void read_array() {
   Array array(ctx, array_name, TILEDB_READ);
 
   // Slice only rows 1, 2 and cols 2, 3, 4
-  const std::vector<int> subarray = {1, 2, 2, 4};
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 2)
+      .add_range(1, 2, 4);
 
   // Prepare the vector that will hold the result.
   // We take an upper bound on the result size, as we do not
