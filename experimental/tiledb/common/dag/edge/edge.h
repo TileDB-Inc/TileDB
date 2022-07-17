@@ -33,6 +33,8 @@
 #ifndef TILEDB_DAG_EDGE_H
 #define TILEDB_DAG_EDGE_H
 
+#include "experimental/tiledb/common/dag/ports/ports.h"
+
 namespace tiledb::common {
 
 /**
@@ -54,9 +56,9 @@ class Edge : public Source<Block, StateMachine>,
   std::optional<Block> item_{};
 
  public:
-  Edge(Source<Block>& from, Sink<Block>& to) {
-    attach(SourceBase, to);
-    attach(from, SinkBase);
+  Edge(Source<Block, StateMachine>& from, Sink<Block, StateMachine>& to) {
+    attach(*this, to);
+    attach(from, *this);
   }
 };
 

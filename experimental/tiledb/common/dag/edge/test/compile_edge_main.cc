@@ -27,7 +27,15 @@
  */
 
 #include "../edge.h"
+#include "../policies3.h"
 
 int main() {
-  (void)sizeof(tiledb::common::Edge);
+  (void)sizeof(tiledb::common::Edge<size_t, NullStateMachine<size_t>>);
+  (void)sizeof(tiledb::common::Edge<size_t, BaseStateMachine<size_t>>);
+  (void)sizeof(tiledb::common::Edge<size_t, NullStateMachine<size_t>>);
+  (void)sizeof(tiledb::common::Edge<size_t, ManualStateMachine<size_t>>);
+  (void)sizeof(tiledb::common::Edge<size_t, AsyncStateMachine<size_t>>);
+  (void)sizeof(tiledb::common::Edge<size_t, UnifiedAsyncStateMachine<size_t>>);
+  (void)sizeof(tiledb::common::Edge<size_t, DebugStateMachine<size_t>>);
+  (void)sizeof(tiledb::common::DebugStateMachineWithLock);
 }
