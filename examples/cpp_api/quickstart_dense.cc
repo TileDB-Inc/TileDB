@@ -84,8 +84,7 @@ void read_array() {
 
   // Slice only rows 1, 2 and cols 2, 3, 4
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 2)
-      .add_range(1, 2, 4);
+  subarray.add_range(0, 1, 2).add_range(1, 2, 4);
 
   // Prepare the vector that will hold the result (of size 6 elements)
   std::vector<int> data(6);

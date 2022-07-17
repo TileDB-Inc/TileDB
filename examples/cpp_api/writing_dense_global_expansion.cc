@@ -66,8 +66,7 @@ void write_array_global() {
   Context ctx;
   Array array(ctx, array_name, TILEDB_WRITE);
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 4)
-      .add_range(1, 1, 2);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 2);
   Query query(ctx, array);
   std::vector<int> data = {1, 2, 3, 4, 5, 6, 7, 8};
   query.set_layout(TILEDB_GLOBAL_ORDER)
@@ -82,8 +81,7 @@ void write_array_row_major() {
   Context ctx;
   Array array(ctx, array_name, TILEDB_WRITE);
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 4)
-      .add_range(1, 3, 3);
+  subarray.add_range(0, 1, 4).add_range(1, 3, 3);
   Query query(ctx, array);
   std::vector<int> data = {9, 10, 11, 12};
   query.set_layout(TILEDB_ROW_MAJOR)
@@ -101,8 +99,7 @@ void read_array() {
 
   // Read the entire array
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 4)
-      .add_range(1, 1, 3);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 3);
 
   // Prepare the vector that will hold the result (of size 12 elements)
   std::vector<int> data(12);

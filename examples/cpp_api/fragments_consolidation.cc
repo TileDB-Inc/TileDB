@@ -70,8 +70,7 @@ void write_array_1() {
   // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 2)
-      .add_range(1, 1, 4);
+  subarray.add_range(0, 1, 2).add_range(1, 1, 4);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data)
@@ -91,8 +90,7 @@ void write_array_2() {
   // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 2, 3)
-      .add_range(1, 2, 3);
+  subarray.add_range(0, 2, 3).add_range(1, 2, 3);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data)
@@ -112,8 +110,7 @@ void write_array_3() {
   // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 1)
-      .add_range(1, 1, 1);
+  subarray.add_range(0, 1, 1).add_range(1, 1, 1);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data)
@@ -133,8 +130,7 @@ void write_array_4() {
   // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 3, 3)
-      .add_range(1, 4, 4);
+  subarray.add_range(0, 3, 3).add_range(1, 4, 4);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data)
@@ -153,8 +149,7 @@ void read_array() {
 
   // Read the entire array
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 4)
-      .add_range(1, 1, 4);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 4);
 
   // Prepare the vector that will hold the result
   std::vector<int> data(16);

@@ -105,8 +105,7 @@ void read_array() {
 
   // Read the whole array
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 4)
-      .add_range(1, 1, 4);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 4);
 
   // Prepare the vector that will hold the result.
   // We take an upper bound on the result size, as we do not

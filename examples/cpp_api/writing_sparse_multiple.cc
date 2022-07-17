@@ -98,8 +98,7 @@ void read_array() {
 
   // Prepare the buffers
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 4)
-      .add_range(1, 1, 4);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 4);
   std::vector<int> data(5);
   std::vector<int> coords_rows(50);
   std::vector<int> coords_cols(50);

@@ -140,8 +140,7 @@ void read_array() {
 
   // Read the full array
   Subarray subarray_full(ctx, array);
-  subarray_full.add_range(0, 1, 2)
-      .add_range(1, 1, 2);
+  subarray_full.add_range(0, 1, 2).add_range(1, 1, 2);
   query.set_subarray(subarray_full);
 
   // Set the query buffers specifying the validity for each data

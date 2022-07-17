@@ -89,8 +89,7 @@ void read_array() {
 
   // Slice only rows 1, 2 and cols 1.1, 1.2, 1.3
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 2)
-      .add_range<float>(1, 1, 2);
+  subarray.add_range(0, 1, 2).add_range<float>(1, 1, 2);
 
   // Prepare the query
   Query query(ctx, array, TILEDB_READ);

@@ -95,8 +95,7 @@ void read_array() {
   Context ctx;
   Array array(ctx, array_name, TILEDB_READ);
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 4)
-      .add_range(1, 1, 4);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 4);
   std::vector<int> data(4);
   std::vector<int> coords_rows(4);
   std::vector<int> coords_cols(4);

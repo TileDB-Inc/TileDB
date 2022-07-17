@@ -94,8 +94,7 @@ void read_array(tiledb_layout_t layout) {
 
   // Slice only rows 1, 2 and cols 2, 3, 4
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 2)
-      .add_range(1, 2, 4);
+  subarray.add_range(0, 1, 2).add_range(1, 2, 4);
 
   // Prepare the vectors that will hold the results
   std::vector<int> data(6);

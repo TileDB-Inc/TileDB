@@ -146,8 +146,7 @@ void read_array() {
 
   // Read entire array
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 4)
-      .add_range(1, 1, 4);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 4);
 
   // Prepare buffers such that the results **cannot** fit
   std::vector<int> coords_rows(1);

@@ -65,8 +65,7 @@ void write_array() {
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array);
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 4)
-      .add_range(1, 1, 2);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 2);
 
   // First submission
   std::vector<int> data = {1, 2, 3, 4};
@@ -94,8 +93,7 @@ void read_array() {
 
   // Read the entire array
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 4)
-      .add_range(1, 1, 4);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 4);
 
   // Prepare the vector that will hold the result (of size 16 elements)
   std::vector<int> data(16);

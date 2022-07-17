@@ -76,8 +76,7 @@ void read_array() {
 
   // Read a slice of 3,000 rows.
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 3000)
-      .add_range(1, 1, 12000);
+  subarray.add_range(0, 1, 3000).add_range(1, 1, 12000);
 
   std::vector<int32_t> values(3000 * 12000);
   query.set_subarray(subarray).set_data_buffer("a", values);
