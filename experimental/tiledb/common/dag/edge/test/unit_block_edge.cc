@@ -1,5 +1,5 @@
 /**
- * @file experimental/tiledb/common/thread_pool/test/unit_fsm3.h
+ * @file unit_block_edge.cc
  *
  * @section LICENSE
  *
@@ -26,9 +26,11 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
+ *
+ * Tests the operation of passing data blocks along edges.
+ *
+ * The different tests currently include an extensive amount of debugging code.
  */
 
-#ifndef TILEDB_UNIT_FSM3_H
-#define TILEDB_UNIT_FSM3_H
-#include <catch.hpp>
-#endif  // TILEDB_UNIT_FSM3_H
+#include "experimental/tiledb/common/dag/data_block/data_block.h"
+#include "unit_block_test.h"

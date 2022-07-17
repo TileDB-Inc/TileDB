@@ -1,5 +1,5 @@
 /**
- * @file experimental/tiledb/common/thread_pool/test/unit_fsm3.h
+ * @file unit_block_edge.h
  *
  * @section LICENSE
  *
@@ -27,8 +27,7 @@
  *
  * @section DESCRIPTION
  */
-
-#ifndef TILEDB_UNIT_FSM3_H
-#define TILEDB_UNIT_FSM3_H
+#ifndef TILEDB_UNIT_BLOCK_EDGE_H
+#define TILEDB_UNIT_BLOCK_EDGE_H
 #include <catch.hpp>
-#endif  // TILEDB_UNIT_FSM3_H
+#endif  // TILEDB_UNIT_BLOCK_EDGE_H
