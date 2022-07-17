@@ -637,7 +637,7 @@ state() const {
     debug_ = false;
   }
 
-  constexpr inline bool debug_enabled() {
+  constexpr inline bool debug_enabled() const {
     return debug_;
   }
 };

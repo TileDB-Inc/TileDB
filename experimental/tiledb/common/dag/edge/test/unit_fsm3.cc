@@ -228,8 +228,10 @@ TEST_CASE(
   [[maybe_unused]] constexpr bool debug = false;
 
   size_t source_item{0};
+  size_t edge_item{0};
   size_t sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine{source_item, sink_item, debug};
+  [[maybe_unused]] auto a =
+      AsyncStateMachine{source_item, edge_item, sink_item, debug};
 
   a.set_state(PortState::st_000);
 
@@ -267,8 +269,10 @@ TEST_CASE(
   [[maybe_unused]] constexpr bool debug = false;
 
   size_t source_item{0};
+  size_t edge_item{0};
   size_t sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine{source_item, sink_item, debug};
+  [[maybe_unused]] auto a =
+      AsyncStateMachine{source_item, edge_item, sink_item, debug};
 
   a.set_state(PortState::st_000);
 
@@ -306,9 +310,10 @@ TEST_CASE(
   [[maybe_unused]] constexpr bool debug = false;
 
   size_t source_item{0};
+  size_t edge_item{0};
   size_t sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine{source_item, sink_item, debug};
+      UnifiedAsyncStateMachine{source_item, edge_item, sink_item, debug};
 
   a.set_state(PortState::st_000);
 
@@ -328,8 +333,6 @@ TEST_CASE(
   CHECK(str(a.state()) == "st_000");
 };
 
-
-
 /**
  * Simple test of the unified asynchrous state machine policy, launching an
  * emulated source client as an asynchronous task and running an emulated sink
@@ -342,9 +345,10 @@ TEST_CASE(
   [[maybe_unused]] constexpr bool debug = false;
 
   size_t source_item{0};
+  size_t edge_item{0};
   size_t sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine{source_item, sink_item, debug};
+      UnifiedAsyncStateMachine{source_item, edge_item, sink_item, debug};
 
   a.set_state(PortState::st_000);
 
@@ -380,8 +384,10 @@ TEST_CASE(
   [[maybe_unused]] constexpr bool debug = false;
 
   size_t source_item{0};
+  size_t edge_item{0};
   size_t sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine{source_item, sink_item, debug};
+  [[maybe_unused]] auto a =
+      AsyncStateMachine{source_item, edge_item, sink_item, debug};
 
   a.set_state(PortState::st_000);
 
@@ -470,9 +476,10 @@ TEST_CASE(
   [[maybe_unused]] constexpr bool debug = false;
 
   size_t source_item{0};
+  size_t edge_item{0};
   size_t sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine{source_item, sink_item, debug};
+      UnifiedAsyncStateMachine{source_item, edge_item, sink_item, debug};
 
   a.set_state(PortState::st_000);
 
@@ -552,8 +559,10 @@ TEST_CASE(
   [[maybe_unused]] constexpr bool debug = false;
 
   size_t source_item{0};
+  size_t edge_item{0};
   size_t sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine{source_item, sink_item, debug};
+  [[maybe_unused]] auto a =
+      AsyncStateMachine{source_item, edge_item, sink_item, debug};
 
   if (debug)
     a.enable_debug();
@@ -640,9 +649,10 @@ TEST_CASE(
   [[maybe_unused]] constexpr bool debug = false;
 
   size_t source_item{0};
+  size_t edge_item{0};
   size_t sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine{source_item, sink_item, debug};
+      UnifiedAsyncStateMachine{source_item, edge_item, sink_item, debug};
 
   a.set_state(PortState::st_000);
 
@@ -725,8 +735,10 @@ TEST_CASE(
   [[maybe_unused]] constexpr bool debug = false;
 
   size_t source_item{0};
+  size_t edge_item{0};
   size_t sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine{source_item, sink_item, debug};
+  [[maybe_unused]] auto a =
+      AsyncStateMachine{source_item, edge_item, sink_item, debug};
 
   a.set_state(PortState::st_000);
 
@@ -792,4 +804,3 @@ TEST_CASE(
 
   // CHECK(a.source_swaps + a.sink_swaps == rounds);
 };
-

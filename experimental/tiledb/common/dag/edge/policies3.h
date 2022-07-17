@@ -110,9 +110,10 @@ namespace tiledb::common {
 template <class T = size_t>
 class BaseStateMachine {
   std::array<T*, 3> items_;
-  std::array<T*, 3> moves_;
+  std::array<size_t, 3> moves_;
 
  public:
+  BaseStateMachine() = default;
   BaseStateMachine(T& source_init, T& edge_init, T& sink_init)
       : items_{&source_init, &edge_init, &sink_init} {
   }
@@ -145,18 +146,22 @@ class BaseStateMachine {
   inline void on_move(
       const StateMachine& state_machine, std::atomic<int>& event) {
     auto state = state_machine.state();
-    const bool debug = state_machine.debug_enabled();
+    bool debug = state_machine.debug_enabled();
     CHECK(
         (state == PortState::st_010 || state == PortState::st_100 ||
          state == PortState::st_101 || state == PortState::st_110));
 
-    if constexpr (debug) {
-      std::cout << event++;
+    if (state_machine.debug_enabled()) {
+      std::cout << event << "  "
+                << " source swapping items with " + str(state) + " and " +
+                       str(state_machine.next_state())
+                << std::endl;
+
+      std::cout << event;
       std::cout << "    "
                 << "Action on_move state = (";
       for (auto& j : items_) {
-        std::cout << " "
-                  << (j->has_value() ? std::to_string(j->value()) : "no_value")
+        std::cout << " " << (j == nullptr ? std::to_string(*j) : "no_value")
                   << " ";
       }
       std::cout << ") -> ";
@@ -186,19 +191,24 @@ class BaseStateMachine {
         break;
 
       default:
-        if constexpr (debug) {
+        if (debug) {
           std::cout << "???" << std::endl;
         }
         break;
     }
-    if constexpr (debug) {
+    if (debug) {
       std::cout << "(";
       for (auto& j : items_) {
-        std::cout << " "
-                  << (j->has_value() ? std::to_string(j->value()) : "no_value")
+        std::cout << " " << (j == nullptr ? std::to_string(*j) : "no_value")
                   << " ";
       }
       std::cout << ")" << std::endl;
+      std::cout << event << "  "
+                << " source done swapping items with " +
+                       str(state_machine.state()) + " and " +
+                       str(state_machine.next_state())
+                << std::endl;
+      ++event;
     }
   }
 };
@@ -251,11 +261,11 @@ class ManualStateMachine
                 << "Action return" << std::endl;
   }
   inline void on_source_move(lock_type&, std::atomic<int>& event) {
-    BSM::on_move(this->FSM, event);
+    BSM::on_move(*this, event);
   }
 
   inline void on_sink_move(lock_type&, std::atomic<int>& event) {
-    BSM::on_move(this->FSM, event);
+    BSM::on_move(*this, event);
   }
   inline void notify_source(lock_type&, std::atomic<int>&) {
     if constexpr (FSM::debug_enabled())
@@ -320,7 +330,7 @@ class AsyncStateMachine : public BaseStateMachine<T>,
    * Function for handling `notify_source` action.
    */
   inline void notify_source(lock_type&, std::atomic<int>& event) {
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
       std::cout << event++ << "  "
                 << " sink notifying source (on_signal_source) with " +
                        str(FSM::state()) + " and " + str(FSM::next_state())
@@ -334,7 +344,7 @@ class AsyncStateMachine : public BaseStateMachine<T>,
    * Function for handling `notify_sink` action.
    */
   inline void notify_sink(lock_type&, std::atomic<int>& event) {
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
       std::cout << event++ << "  "
                 << " source notifying sink(on_signal_sink) with " +
                        str(FSM::state()) + " and " + str(FSM::next_state())
@@ -348,37 +358,34 @@ class AsyncStateMachine : public BaseStateMachine<T>,
    * Function for handling `sink_move` action.
    */
   inline void on_sink_move(lock_type&, std::atomic<int>& event) {
-    BSM::on_move(this->FSM, event);
+    BSM::on_move(*this, event);
   }
 
   /**
    * Function for handling `src_move` action.
    */
   inline void on_source_move(lock_type&, std::atomic<int>& event) {
-    BSM::on_move(this->FSM, event);
+    BSM::on_move(*this, event);
   }
 
   inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
     CHECK(str(FSM::state()) == "st_000");
 
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
       std::cout << event++ << "  "
                 << " sink going to sleep on_sink_move with " + str(FSM::state())
                 << std::endl;
     sink_cv_.wait(lock);
 
-    // Will deadlock without this
-    // FSM::set_next_state(FSM::state());
-
     CHECK(is_sink_post_move(FSM::state()) == "");
 
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
       std::cout << event++ << "  "
                 << " sink waking up on_sink_move with " + str(FSM::state()) +
                        " and " + str(FSM::next_state())
                 << std::endl;
 
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
       std::cout << event++ << "  "
                 << " sink leaving on_sink_move with " + str(FSM::state()) +
                        " and " + str(FSM::next_state())
@@ -388,7 +395,7 @@ class AsyncStateMachine : public BaseStateMachine<T>,
   inline void on_source_wait(lock_type& lock, std::atomic<int>& event) {
     CHECK(str(FSM::state()) == "st_111");
 
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
       std::cout << event++ << "  "
                 << " source going to sleep on_source_move with " +
                        str(FSM::state()) + " and " + str(FSM::next_state())
@@ -396,18 +403,15 @@ class AsyncStateMachine : public BaseStateMachine<T>,
 
     source_cv_.wait(lock);
 
-    // { state == empty_empty ∨ state == empty_full }
-    // FSM::set_next_state(FSM::state());
-
     CHECK(is_source_post_move(FSM::state()) == "");
 
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
       std::cout << event++ << "  "
                 << " source waking up to " + str(FSM::state()) + " and " +
                        str(FSM::next_state())
                 << std::endl;
 
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
       std::cout << event++ << "  "
                 << " source leaving on_source_move with " + str(FSM::state()) +
                        " and " + str(FSM::next_state())
@@ -490,7 +494,7 @@ class UnifiedAsyncStateMachine
    * Function for handling `source_move` action.
    */
   inline void on_source_move(lock_type&, std::atomic<int>& event) {
-    BSM::on_move(this->FSM, event);
+    BSM::on_move(*this, event);
   }
 
   /**
@@ -506,9 +510,6 @@ class UnifiedAsyncStateMachine
    */
   inline void on_source_wait(lock_type& lock, std::atomic<int>&) {
     cv_.wait(lock);
-    // { state == empty_empty ∨ state == empty_full }
-
-    // FSM::set_next_state(FSM::state());
   }
 
   /**
@@ -534,39 +535,39 @@ class DebugStateMachine : public BaseStateMachine<T>,
 
  public:
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
       std::cout << "    "
                 << "Action return" << std::endl;
   }
   inline void on_source_move(lock_type&, std::atomic<int>&) {
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
 
       std::cout << "    "
                 << "Action move source" << std::endl;
   }
   inline void on_sink_move(lock_type&, std::atomic<int>&) {
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
       std::cout << "    "
                 << "Action move sink" << std::endl;
   }
   inline void on_source_wait(lock_type&, std::atomic<int>&) {
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
 
       std::cout << "    "
                 << "Action source wait" << std::endl;
   }
   inline void on_sink_wait(lock_type&, std::atomic<int>&) {
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
       std::cout << "    "
                 << "Action sink wait" << std::endl;
   }
   inline void notify_source(lock_type&, std::atomic<int>&) {
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
       std::cout << "    "
                 << "Action notify source" << std::endl;
   }
   inline void notify_sink(lock_type&, std::atomic<int>&) {
-    if constexpr (FSM::debug_enabled())
+    if (FSM::debug_enabled())
       std::cout << "    "
                 << "Action notify sink" << std::endl;
   }
