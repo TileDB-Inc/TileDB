@@ -569,7 +569,7 @@ TEST_CASE(
 
   a.set_state(PortState::st_000);
 
-  size_t rounds = 37;
+  size_t rounds = 377;
   if (debug)
     rounds = 3;
 
@@ -656,7 +656,7 @@ TEST_CASE(
 
   a.set_state(PortState::st_000);
 
-  size_t rounds = 37;
+  size_t rounds = 377;
   if (debug)
     rounds = 3;
 
@@ -742,7 +742,7 @@ TEST_CASE(
 
   a.set_state(PortState::st_000);
 
-  size_t rounds = 37;
+  size_t rounds = 377;
   if (debug)
     rounds = 3;
 
@@ -801,6 +801,4 @@ TEST_CASE(
     fut_a.get();
   }
   CHECK(str(a.state()) == "st_000");
-
-  // CHECK(a.source_swaps + a.sink_swaps == rounds);
 };
