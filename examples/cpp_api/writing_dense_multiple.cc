@@ -69,7 +69,7 @@ void write_array_1() {
   // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 2).add_range(0, 1, 2);
+  subarray.add_range(0, 1, 2).add_range(1, 1, 2);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data)
@@ -89,7 +89,7 @@ void write_array_2() {
   // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 2, 3).add_range(0, 1, 4);
+  subarray.add_range(0, 2, 3).add_range(1, 1, 4);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data)
