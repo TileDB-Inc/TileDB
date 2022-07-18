@@ -50,8 +50,8 @@ void create_array(uint32_t row_tile_extent, uint32_t col_tile_extent) {
   Domain dom(ctx);
   dom.add_dimension(
          Dimension::create<uint32_t>(ctx, "row", {{1, 12000}}, row_tile_extent))
-      .add_dimension(Dimension::create<uint32_t>(ctx, "col", {{1, 12000}},
-                                                 col_tile_extent));
+      .add_dimension(Dimension::create<uint32_t>(
+          ctx, "col", {{1, 12000}}, col_tile_extent));
 
   schema.set_domain(dom);
   schema.add_attribute(Attribute::create<int32_t>(ctx, "a"));
