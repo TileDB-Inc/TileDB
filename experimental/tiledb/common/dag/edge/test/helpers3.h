@@ -134,4 +134,62 @@ template <>
   return state;
 }
 
+/**
+ *
+ */
+
+template <>
+[[maybe_unused]] std::string is_source_empty(decltype(PortState<2>::st_00) st) {
+  std::string state = str(st);
+  if (state == "st_00" || state == "st_01") {
+    return {};
+  }
+  return state;
+}
+
+[[maybe_unused]] static std::string is_source_full(
+    decltype(PortState<2>::st_00) st) {
+  std::string state = str(st);
+  if (state == "st_10" || state == "st_11") {
+    return {};
+  }
+  return state;
+}
+
+[[maybe_unused]] static std::string is_source_post_move(
+    decltype(PortState<2>::st_00) st) {
+  std::string state = str(st);
+  if (state != "st_11") {
+    return {};
+  }
+  return state;
+}
+
+[[maybe_unused]] static std::string is_sink_empty(
+    decltype(PortState<2>::st_00) st) {
+  std::string state = str(st);
+  if (state == "st_00" || state == "st_10") {
+    return {};
+  }
+  return state;
+}
+
+[[maybe_unused]] static std::string is_sink_full(
+    decltype(PortState<2>::st_00) st) {
+  std::string state = str(st);
+  if (state == "st_01" || state == "st_11") {
+    return {};
+  }
+  return state;
+}
+
+[[maybe_unused]] static std::string is_sink_post_move(
+    decltype(PortState<2>::st_00) st) {
+  std::string state = str(st);
+  if (state != "st_00") {
+    return {};
+  }
+  return state;
+}
+
 #endif  // TILEDB_DAG_TEST_HELPERS3_H

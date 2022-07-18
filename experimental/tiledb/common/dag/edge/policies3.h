@@ -313,6 +313,9 @@ class AsyncStateMachine : public BaseStateMachine<PortState, T>,
  public:
   using lock_type = typename FSM::lock_type;
 
+  template <
+      bool rightsize_ = (PortState::N_ == 3),
+      class = std::enable_if<rightsize_>>
   AsyncStateMachine(
       T& source_item, T& edge_item, T& sink_item, bool debug = false)
       : BSM{source_item, edge_item, sink_item} {

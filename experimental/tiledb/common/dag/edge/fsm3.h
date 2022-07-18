@@ -139,6 +139,11 @@ inline auto str(decltype(PortState<3>::st_000) st) {
   return port_state_strings<PortState<3>>[static_cast<int>(st)];
 }
 
+template <>
+inline auto str(decltype(PortState<2>::st_00) st) {
+  return port_state_strings<PortState<2>>[static_cast<int>(st)];
+}
+
 /**
  * enum class for the state machine events.
  */
