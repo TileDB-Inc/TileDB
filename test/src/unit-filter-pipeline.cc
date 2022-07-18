@@ -4127,14 +4127,8 @@ TEMPLATE_TEST_CASE(
 }
 */
 
-enum class FPErrorTestingType : char {
-  NAN,
-  INF,
-  DENORM
-};
-
 template <typename FloatingType, typename IntType>
-void testing_float_scaling_filter_error(FPErrorTestingType type) {
+void testing_float_scaling_filter_error(FloatingType error_val) {
   tiledb::sm::Config config;
 
   // Set up test data
@@ -4144,27 +4138,10 @@ void testing_float_scaling_filter_error(FPErrorTestingType type) {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  FloatingType num = 0.0f;
   Datatype t = Datatype::FLOAT32;
-  /// TODO: finish later oops
   switch (sizeof(FloatingType)) {
     case 4: {
       t = Datatype::FLOAT32;
-      switch(type) {
-        case NAN: {
-          num = nanf("");
-        } break;
-        case INF: {
-          num = inf
-        } break;
-        case DENORM: {
-        } break;
-        default: {
-          INFO(
-              "testing_float_scaling_filter: passed error type that is not NaN, Inf, or denorm.");
-          CHECK(false);
-        }
-      };
     } break;
     case 8: {
       t = Datatype::FLOAT64;
@@ -4185,7 +4162,7 @@ void testing_float_scaling_filter_error(FPErrorTestingType type) {
   uint64_t byte_width = sizeof(IntType);
 
   for (uint64_t i = 0; i < nelts; i++) {
-    FloatingType f = num;
+    FloatingType f = error_val;
     CHECK(tile.write(&f, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
   }
 
@@ -4209,9 +4186,43 @@ TEMPLATE_TEST_CASE(
     int16_t,
     int32_t,
     int64_t) {
-  typedef std::integral_constant<float, nanf("")> nan_float;
-  typedef std::integral_constant<double, nan("")> nan_double;
 
-  testing_float_scaling_filter_error<float, TestType, nan_float>();
-  testing_float_scaling_filter_error<double, TestType, nan_double>();
+  testing_float_scaling_filter_error<float, TestType>(nanf(""));
+  testing_float_scaling_filter_error<double, TestType>(nan(""));
+
+  testing_float_scaling_filter_error<float, TestType>(-1.0f * nanf(""));
+  testing_float_scaling_filter_error<double, TestType>(-1.0f * nan(""));
 }
+
+TEMPLATE_TEST_CASE(
+    "Filter: Test float scaling, denormalized array",
+    "[filter][float-scaling]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t) {
+
+  testing_float_scaling_filter_error<float, TestType>(std::numeric_limits<float>::denorm_min());
+  testing_float_scaling_filter_error<double, TestType>(std::numeric_limits<double>::denorm_min());
+
+
+  testing_float_scaling_filter_error<float, TestType>(-1.0f * std::numeric_limits<float>::denorm_min());
+  testing_float_scaling_filter_error<double, TestType>(-1.0f * std::numeric_limits<double>::denorm_min());
+}
+
+TEMPLATE_TEST_CASE(
+    "Filter: Test float scaling, infinity array",
+    "[filter][float-scaling]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t) {
+
+  testing_float_scaling_filter_error<float, TestType>(std::numeric_limits<float>::infinity());
+  testing_float_scaling_filter_error<double, TestType>(std::numeric_limits<double>::infinity());
+
+
+  testing_float_scaling_filter_error<float, TestType>(-1.0f * std::numeric_limits<float>::infinity());
+  testing_float_scaling_filter_error<double, TestType>(-1.0f * std::numeric_limits<double>::infinity());
+}
+
