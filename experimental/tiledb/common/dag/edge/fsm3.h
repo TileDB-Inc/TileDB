@@ -46,22 +46,44 @@
 namespace tiledb::common {
 
 /**
- * An enum representing the different states of the bound ports.
+ * An enum representing the different states of ports.  Forward declaration.
  */
-enum class PortState {
-  st_000,
-  st_001,
-  st_010,
-  st_011,
-  st_100,
-  st_101,
-  st_110,
-  st_111,
-  error,
-  done
+template <size_t N>
+struct PortState;
+
+/**
+ * An enum representing the different states of two bound ports plus an
+ * intermediary..
+ */
+template <>
+struct PortState<3> {
+  enum {
+    st_000,
+    st_001,
+    st_010,
+    st_011,
+    st_100,
+    st_101,
+    st_110,
+    st_111,
+    error,
+    done
+  };
+  //  constexpr operator int() { return static_cast<int>(st);}
+  static constexpr const size_t N_ = 3;
+};
+
+/**
+ * An enum representing the different states of two bound ports.
+ */
+template <>
+struct PortState<2> {
+  enum { st_00, st_01, st_10, st_11, error, done };
+  static constexpr const size_t N_ = 2;
 };
 
 namespace {
+template <class PortState>
 constexpr unsigned short to_index(PortState x) {
   return static_cast<unsigned short>(x);
 }
@@ -69,13 +91,28 @@ constexpr unsigned short to_index(PortState x) {
 /**
  * Number of states in the Port state machine
  */
+template <class PortState>
 constexpr unsigned short n_states = to_index(PortState::done) + 1;
 }  // namespace
 
 /**
  * Strings for each enum member, for debugging.
  */
-static std::vector<std::string> port_state_strings{
+template <class PortState>
+static std::vector<std::string> port_state_strings;
+
+template <>
+static std::vector<std::string> port_state_strings<PortState<2>>{
+    "st_00",
+    "st_01",
+    "st_10",
+    "st_11",
+    "error",
+    "done",
+};
+
+template <>
+static std::vector<std::string> port_state_strings<PortState<3>>{
     "st_000",
     "st_001",
     "st_010",
@@ -94,8 +131,12 @@ static std::vector<std::string> port_state_strings{
  * @param event The event to stringify.
  * @return The string corresponding to the event.
  */
-static inline auto str(PortState st) {
-  return port_state_strings[static_cast<int>(st)];
+template <class State>
+static inline auto str(State st);
+
+template <>
+inline auto str(decltype(PortState<3>::st_000) st) {
+  return port_state_strings<PortState<3>>[static_cast<int>(st)];
 }
 
 /**
@@ -196,7 +237,58 @@ namespace {
 
 // clang-format off
 
-constexpr const PortState transition_table[n_states][n_events] {
+template<class PortState, size_t N>
+constexpr const PortState transition_table[n_states<PortState>][n_events];
+
+template<class PortState, size_t N>
+constexpr const PortAction exit_table[n_states<PortState>][n_events];
+
+template<class PortState, size_t N>
+constexpr const PortAction entry_table[n_states<PortState>][n_events];
+
+
+template<class PortState>
+constexpr const PortState transition_table<PortState, 2>[n_states<PortState>][n_events] {
+  /* source_sink */ /* source_fill */        /* source_push */       /* sink_drain */        /* sink_pull */        /* shutdown */
+
+  /* st_00 */ { PortState::st_10, PortState::st_00, PortState::error,       PortState::st_00, PortState::error },
+  /* st_01  */ { PortState::st_11,  PortState::st_01,  PortState::st_00, PortState::st_01,  PortState::error },
+  /* st_10  */ { PortState::error,      PortState::st_01,  PortState::error,       PortState::st_01,  PortState::error },
+  /* st_11   */ { PortState::error,      PortState::st_11,   PortState::st_10,  PortState::st_11,   PortState::error },
+
+  /* error       */ { PortState::error,      PortState::error,       PortState::error,       PortState::error,       PortState::error },
+  /* done        */ { PortState::error,      PortState::error,       PortState::error,       PortState::error,       PortState::error },
+};
+
+template<class PortState>
+constexpr const PortAction exit_table<PortState,2>[n_states<PortState>][n_events] {
+  /* source_sink */ /* source_fill */   /* source_push */      /* sink_drain */  /* sink_pull */        /* shutdown */
+
+  /* st_00 */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::sink_wait, PortAction::none },
+  /* st_01  */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
+  /* st_10  */ { PortAction::none, PortAction::source_move, PortAction::none, PortAction::sink_move, PortAction::none },
+  /* st_11   */ { PortAction::none, PortAction::source_wait, PortAction::none, PortAction::none,      PortAction::none },
+
+  /* error       */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
+  /* done        */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
+};
+
+template<class PortState>
+constexpr const PortAction entry_table<PortState,2> [n_states<PortState>][n_events] {
+  /* source_sink */ /* source_fill */          /* source_push */      /* sink_drain */           /* sink_pull */        /* shutdown */
+
+  /* st_00 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
+  /* st_01  */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
+  /* st_10  */ { PortAction::notify_sink, PortAction::source_move, PortAction::notify_source, PortAction::sink_move, PortAction::none },
+  /* st_11   */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
+
+  /* error       */ { PortAction::none,        PortAction::none,      PortAction::none,          PortAction::none,      PortAction::none },
+  /* done        */ { PortAction::none,        PortAction::none,      PortAction::none,          PortAction::none,      PortAction::none },
+};
+
+
+template<class PortState>
+constexpr const decltype(PortState::done) transition_table<PortState, 3>[n_states<PortState>][n_events] {
   /* state  */  /* source_fill */   /* source_push */  /* sink_drain */   /* sink_pull */    /* shutdown */
 
   /* st_000 */ { PortState::st_100, PortState::st_000, PortState::error,  PortState::st_000, PortState::error },
@@ -212,7 +304,8 @@ constexpr const PortState transition_table[n_states][n_events] {
   /* done   */ { PortState::error,  PortState::error,  PortState::error,  PortState::error,  PortState::error },
 };
 
-constexpr const PortAction exit_table[n_states][n_events] {
+template<class PortState>
+constexpr const PortAction exit_table<PortState,3>[n_states<PortState>][n_events] {
   /* state  */  /* source_fill */  /* source_push */        /* sink_drain */  /* sink_pull */        /* shutdown */
 
   /* st_000 */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::sink_wait, PortAction::none },
@@ -228,7 +321,8 @@ constexpr const PortAction exit_table[n_states][n_events] {
   /* done   */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
 };
 
-constexpr const PortAction entry_table[n_states][n_events] {
+template<class PortState>
+constexpr const PortAction entry_table<PortState, 3>[n_states<PortState>][n_events] {
   /* state  */  /* source_fill */         /* source_push */        /* sink_drain */           /* sink_pull */        /* shutdown */
 
   /* st_000 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
@@ -263,11 +357,12 @@ constexpr const PortAction entry_table[n_states][n_events] {
  * @todo Use an aspect class (as another template argument) to effect callbacks
  * at each interesting point in the state machine.
  */
-template <class ActionPolicy>
+template <class PortState, class ActionPolicy>
 class PortFiniteStateMachine {
  private:
-  PortState state_;
-  PortState next_state_;
+
+  decltype(PortState::done) state_;
+  decltype(PortState::done) next_state_;
 
  public:
   using lock_type = std::unique_lock<std::mutex>;
@@ -276,21 +371,22 @@ class PortFiniteStateMachine {
    * Default constructor
    */
   PortFiniteStateMachine()
-      : state_(PortState::st_000) {
+    : state_(PortState::st_000) {
   }
 
 /**
  * Return the current state
  */
-[[nodiscard]] inline PortState
-state() const {
+  [[nodiscard]] inline auto
+  state() const {
   return state_;
 }
 
   /**
    * Return the next state
    */
-  [[nodiscard]] inline PortState next_state() const {
+  [[nodiscard]] inline auto
+  next_state() const {
     return next_state_;
   }
 
@@ -324,9 +420,9 @@ state() const {
   void event(PortEvent event, const std::string msg = "") {
     std::unique_lock lock(mutex_);
 
-    next_state_ = transition_table[to_index(state_)][to_index(event)];
-    auto exit_action{exit_table[to_index(state_)][to_index(event)]};
-    auto entry_action{entry_table[to_index(next_state_)][to_index(event)]};
+    next_state_ = transition_table<PortState, PortState::N_>[to_index(state_)][to_index(event)];
+    auto exit_action{exit_table<PortState, PortState::N_>[to_index(state_)][to_index(event)]};
+    auto entry_action{entry_table<PortState, PortState::N_>[to_index(next_state_)][to_index(event)]};
 
     auto old_state = state_;
 
@@ -446,7 +542,7 @@ state() const {
     /*
      * Update the entry_action in case next_state_ was changed.
      */
-    entry_action = entry_table[to_index(next_state_)][to_index(event)];
+    entry_action = entry_table<PortState, PortState::N_>[to_index(next_state_)][to_index(event)];
 
     if (msg != "" || debug_) {
       std::cout << event_counter++
@@ -574,7 +670,7 @@ state() const {
   /**
    * Set state
    */
-  inline PortState set_state(PortState next_state_) {
+  inline auto set_state(decltype(PortState::done)next_state_) {
     state_ = next_state_;
     return state_;
   }
@@ -582,7 +678,7 @@ state() const {
   /**
    * Set next state
    */
-  inline PortState set_next_state(PortState next_state) {
+  inline auto set_next_state(decltype(PortState::done) next_state) {
     next_state_ = next_state;
     return next_state_;
   }

@@ -56,16 +56,21 @@ using namespace tiledb::common;
 
 // using PortStateMachine = NullStateMachine;
 
+using PortState3 = PortState<3>;
+using States3 = decltype(PortState<3>::done);
+using AsyncStateMachine3 = AsyncStateMachine<PortState3, size_t>;
+using UnifiedAsyncStateMachine3 = UnifiedAsyncStateMachine<PortState3, size_t>;
+
 /*
  * Use the `DebugStateMachine` to verify startup state and some simple
  * transitions.
  */
-using PortStateMachine = DebugStateMachine<size_t>;
+using PortStateMachine = DebugStateMachine<PortState3, size_t>;
 
 TEST_CASE("Port FSM3: Construct", "[fsm3]") {
   [[maybe_unused]] auto a = PortStateMachine{};
 
-  CHECK(a.state() == PortState::st_000);
+  CHECK(a.state() == PortState3::st_000);
 }
 
 TEST_CASE("Port FSM3: Start up", "[fsm3]") {
@@ -74,17 +79,17 @@ TEST_CASE("Port FSM3: Start up", "[fsm3]") {
 
   if (debug)
     a.enable_debug();
-  CHECK(a.state() == PortState::st_000);
+  CHECK(a.state() == States3::st_000);
 
   SECTION("start source") {
-    CHECK(a.state() == PortState::st_000);
+    CHECK(a.state() == States3::st_000);
 
     a.do_fill(debug ? "start source" : "");
-    CHECK(a.state() == PortState::st_100);
+    CHECK(a.state() == States3::st_100);
   }
 
   SECTION("start sink") {
-    CHECK(a.state() == PortState::st_000);
+    CHECK(a.state() == States3::st_000);
 
     a.do_fill(debug ? "start sink (fill)" : "");
 
@@ -107,7 +112,7 @@ TEST_CASE("Port FSM3: Start up", "[fsm3]") {
  */
 TEST_CASE("Port FSM3: Basic manual sequence", "[fsm3]") {
   [[maybe_unused]] auto a = PortStateMachine{};
-  CHECK(a.state() == PortState::st_000);
+  CHECK(a.state() == States3::st_000);
 
   SECTION("Two element tests") {
     a.do_fill();
@@ -231,9 +236,9 @@ TEST_CASE(
   size_t edge_item{0};
   size_t sink_item{0};
   [[maybe_unused]] auto a =
-      AsyncStateMachine{source_item, edge_item, sink_item, debug};
+      AsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
-  a.set_state(PortState::st_000);
+  a.set_state(States3::st_000);
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.do_fill(debug ? "async source (fill)" : "");
@@ -272,9 +277,9 @@ TEST_CASE(
   size_t edge_item{0};
   size_t sink_item{0};
   [[maybe_unused]] auto a =
-      AsyncStateMachine{source_item, edge_item, sink_item, debug};
+      AsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
-  a.set_state(PortState::st_000);
+  a.set_state(States3::st_000);
 
   auto fut_b = std::async(std::launch::async, [&]() {
     a.do_pull(debug ? "async sink (pull)" : "");
@@ -313,9 +318,9 @@ TEST_CASE(
   size_t edge_item{0};
   size_t sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine{source_item, edge_item, sink_item, debug};
+      UnifiedAsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
-  a.set_state(PortState::st_000);
+  a.set_state(States3::st_000);
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.do_fill(debug ? "manual async source (fill)" : "");
@@ -348,9 +353,9 @@ TEST_CASE(
   size_t edge_item{0};
   size_t sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine{source_item, edge_item, sink_item, debug};
+      UnifiedAsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
-  a.set_state(PortState::st_000);
+  a.set_state(States3::st_000);
 
   auto fut_b = std::async(std::launch::async, [&]() {
     a.do_pull(debug ? "manual async sink (pull)" : "");
@@ -387,9 +392,9 @@ TEST_CASE(
   size_t edge_item{0};
   size_t sink_item{0};
   [[maybe_unused]] auto a =
-      AsyncStateMachine{source_item, edge_item, sink_item, debug};
+      AsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
-  a.set_state(PortState::st_000);
+  a.set_state(States3::st_000);
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
@@ -479,9 +484,9 @@ TEST_CASE(
   size_t edge_item{0};
   size_t sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine{source_item, edge_item, sink_item, debug};
+      UnifiedAsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
-  a.set_state(PortState::st_000);
+  a.set_state(States3::st_000);
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
@@ -562,12 +567,12 @@ TEST_CASE(
   size_t edge_item{0};
   size_t sink_item{0};
   [[maybe_unused]] auto a =
-      AsyncStateMachine{source_item, edge_item, sink_item, debug};
+      AsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
   if (debug)
     a.enable_debug();
 
-  a.set_state(PortState::st_000);
+  a.set_state(States3::st_000);
 
   size_t rounds = 377;
   if (debug)
@@ -652,9 +657,9 @@ TEST_CASE(
   size_t edge_item{0};
   size_t sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine{source_item, edge_item, sink_item, debug};
+      UnifiedAsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
-  a.set_state(PortState::st_000);
+  a.set_state(States3::st_000);
 
   size_t rounds = 377;
   if (debug)
@@ -738,9 +743,9 @@ TEST_CASE(
   size_t edge_item{0};
   size_t sink_item{0};
   [[maybe_unused]] auto a =
-      AsyncStateMachine{source_item, edge_item, sink_item, debug};
+      AsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
-  a.set_state(PortState::st_000);
+  a.set_state(States3::st_000);
 
   size_t rounds = 377;
   if (debug)

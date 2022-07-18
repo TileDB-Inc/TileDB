@@ -72,50 +72,66 @@ const int EMPTY_SINK = 7654321;
  * otherwise, the string that is passed in is returned and
  * the CHECK will print its value in the diagnostic message.
  */
-[[maybe_unused]] static std::string is_source_empty(PortState st) {
-  if (str(st) == "st_000" || str(st) == "st_001" || str(st) == "st_010" ||
-      str(st) == "st_011") {
+template <class State>
+[[maybe_unused]] std::string is_source_empty(State st);
+
+template <>
+[[maybe_unused]] std::string is_source_empty(
+    decltype(PortState<3>::st_000) st) {
+  std::string state = str(st);
+  if (state == "st_000" || state == "st_001" || state == "st_010" ||
+      state == "st_011") {
     return {};
   }
-  return str(st);
+  return state;
 }
 
-[[maybe_unused]] static std::string is_source_full(PortState st) {
-  if (str(st) == "st_100" || str(st) == "st_101" || str(st) == "st_110" ||
-      str(st) == "st_111") {
+[[maybe_unused]] static std::string is_source_full(
+    decltype(PortState<3>::st_000) st) {
+  std::string state = str(st);
+  if (state == "st_100" || state == "st_101" || state == "st_110" ||
+      state == "st_111") {
     return {};
   }
-  return str(st);
+  return state;
 }
 
-[[maybe_unused]] static std::string is_source_post_move(PortState st) {
-  if (str(st) != "st_111") {
+[[maybe_unused]] static std::string is_source_post_move(
+    decltype(PortState<3>::st_000) st) {
+  std::string state = str(st);
+  if (state != "st_111") {
     return {};
   }
-  return str(st);
+  return state;
 }
 
-[[maybe_unused]] static std::string is_sink_empty(PortState st) {
-  if (str(st) == "st_000" || str(st) == "st_010" || str(st) == "st_100" ||
-      str(st) == "st_110") {
+[[maybe_unused]] static std::string is_sink_empty(
+    decltype(PortState<3>::st_000) st) {
+  std::string state = str(st);
+  if (state == "st_000" || state == "st_010" || state == "st_100" ||
+      state == "st_110") {
     return {};
   }
-  return str(st);
+  return state;
 }
 
-[[maybe_unused]] static std::string is_sink_full(PortState st) {
-  if (str(st) == "st_001" || str(st) == "st_011" || str(st) == "st_101" ||
-      str(st) == "st_111") {
+[[maybe_unused]] static std::string is_sink_full(
+    decltype(PortState<3>::st_000) st) {
+  std::string state = str(st);
+  if (state == "st_001" || state == "st_011" || state == "st_101" ||
+      state == "st_111") {
     return {};
   }
-  return str(st);
+  return state;
 }
 
-[[maybe_unused]] static std::string is_sink_post_move(PortState st) {
-  if (str(st) != "st_000") {
+[[maybe_unused]] static std::string is_sink_post_move(
+    decltype(PortState<3>::st_000) st) {
+  std::string state = str(st);
+  if (state != "st_000") {
     return {};
   }
-  return str(st);
+  return state;
 }
 
 #endif  // TILEDB_DAG_TEST_HELPERS3_H

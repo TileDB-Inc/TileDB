@@ -48,14 +48,7 @@ namespace tiledb::common {
 /**
  * An enum representing the different states of the bound ports.
  */
-enum class PortState {
-  empty_empty,
-  empty_full,
-  full_empty,
-  full_full,
-  error,
-  done
-};
+enum class PortState { st_00, st_01, st_10, st_11l, error, done };
 
 namespace {
 constexpr unsigned short to_index(PortState x) {
@@ -72,10 +65,10 @@ constexpr unsigned short n_states = to_index(PortState::done) + 1;
  * Strings for each enum member, for debugging.
  */
 static std::vector<std::string> port_state_strings{
-    "empty_empty",
-    "empty_full",
-    "full_empty",
-    "full_full",
+    "st_00",
+    "st_01",
+    "st_10",
+    "st_11l",
     "error",
     "done",
 };
@@ -203,10 +196,10 @@ namespace {
 constexpr const PortState transition_table[n_states][n_events] {
   /* source_sink */ /* source_fill */        /* source_push */       /* sink_drain */        /* sink_pull */        /* shutdown */
 
-  /* empty_empty */ { PortState::full_empty, PortState::empty_empty, PortState::error,       PortState::empty_empty, PortState::error },
-  /* empty_full  */ { PortState::full_full,  PortState::empty_full,  PortState::empty_empty, PortState::empty_full,  PortState::error },
-  /* full_empty  */ { PortState::error,      PortState::empty_full,  PortState::error,       PortState::empty_full,  PortState::error },
-  /* full_full   */ { PortState::error,      PortState::full_full,   PortState::full_empty,  PortState::full_full,   PortState::error },
+  /* st_00 */ { PortState::st_10, PortState::st_00, PortState::error,       PortState::st_00, PortState::error },
+  /* st_01  */ { PortState::st_11l,  PortState::st_01,  PortState::st_00, PortState::st_01,  PortState::error },
+  /* st_10  */ { PortState::error,      PortState::st_01,  PortState::error,       PortState::st_01,  PortState::error },
+  /* st_11l   */ { PortState::error,      PortState::st_11l,   PortState::st_10,  PortState::st_11l,   PortState::error },
 
   /* error       */ { PortState::error,      PortState::error,       PortState::error,       PortState::error,       PortState::error },
   /* done        */ { PortState::error,      PortState::error,       PortState::error,       PortState::error,       PortState::error },
@@ -215,10 +208,10 @@ constexpr const PortState transition_table[n_states][n_events] {
 constexpr const PortAction exit_table[n_states][n_events] {
   /* source_sink */ /* source_fill */   /* source_push */      /* sink_drain */  /* sink_pull */        /* shutdown */
 
-  /* empty_empty */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::sink_wait, PortAction::none },
-  /* empty_full  */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
-  /* full_empty  */ { PortAction::none, PortAction::source_swap, PortAction::none, PortAction::sink_swap, PortAction::none },
-  /* full_full   */ { PortAction::none, PortAction::source_wait, PortAction::none, PortAction::none,      PortAction::none },
+  /* st_00 */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::sink_wait, PortAction::none },
+  /* st_01  */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
+  /* st_10  */ { PortAction::none, PortAction::source_swap, PortAction::none, PortAction::sink_swap, PortAction::none },
+  /* st_11l   */ { PortAction::none, PortAction::source_wait, PortAction::none, PortAction::none,      PortAction::none },
 
   /* error       */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
   /* done        */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
@@ -227,10 +220,10 @@ constexpr const PortAction exit_table[n_states][n_events] {
 constexpr const PortAction entry_table[n_states][n_events] {
   /* source_sink */ /* source_fill */          /* source_push */      /* sink_drain */           /* sink_pull */        /* shutdown */
 
-  /* empty_empty */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
-  /* empty_full  */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
-  /* full_empty  */ { PortAction::notify_sink, PortAction::source_swap, PortAction::notify_source, PortAction::sink_swap, PortAction::none },
-  /* full_full   */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
+  /* st_00 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
+  /* st_01  */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
+  /* st_10  */ { PortAction::notify_sink, PortAction::source_swap, PortAction::notify_source, PortAction::sink_swap, PortAction::none },
+  /* st_11l   */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
 
   /* error       */ { PortAction::none,        PortAction::none,      PortAction::none,          PortAction::none,      PortAction::none },
   /* done        */ { PortAction::none,        PortAction::none,      PortAction::none,          PortAction::none,      PortAction::none },
@@ -268,7 +261,7 @@ class PortFiniteStateMachine {
    * Default constructor
    */
   PortFiniteStateMachine()
-      : state_(PortState::empty_empty){};
+      : state_(PortState::st_00){};
 
   /**
    * Return the current state
@@ -471,7 +464,7 @@ private:
                    << std::endl;
 
        static_cast<ActionPolicy&>(*this).on_source_swap(lock, event_counter);
-       state_ = PortState::empty_full;
+       state_ = PortState::st_01;
        break;
 
      case PortAction::sink_swap:
@@ -481,7 +474,7 @@ private:
                    << "      " + msg + " entry about to sink_swap" << std::endl;
 
        static_cast<ActionPolicy&>(*this).on_sink_swap(lock, event_counter);
-       state_ = PortState::empty_full;
+       state_ = PortState::st_01;
        break;
 
      case PortAction::source_wait:

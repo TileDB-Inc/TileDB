@@ -74,44 +74,42 @@ const int EMPTY_SINK = 7654321;
  * the CHECK will print its value in the diagnostic message.
  */
 [[maybe_unused]] static std::string is_source_empty(PortState st) {
-  if (str(st) == "empty_full" || str(st) == "empty_empty") {
+  if (str(st) == "st_01" || str(st) == "st_00") {
     return {};
   }
   return str(st);
 }
 
 [[maybe_unused]] static std::string is_source_full(PortState st) {
-  if (str(st) == "full_full" || str(st) == "full_empty") {
+  if (str(st) == "st_11" || str(st) == "st_10") {
     return {};
   }
   return str(st);
 }
 
 [[maybe_unused]] static std::string is_source_post_swap(PortState st) {
-  if (str(st) == "full_empty" || str(st) == "empty_full" ||
-      str(st) == "empty_empty") {
+  if (str(st) == "st_10" || str(st) == "st_01" || str(st) == "st_00") {
     return {};
   }
   return str(st);
 }
 
 [[maybe_unused]] static std::string is_sink_empty(PortState st) {
-  if (str(st) == "full_empty" || str(st) == "empty_empty") {
+  if (str(st) == "st_10" || str(st) == "st_00") {
     return {};
   }
   return str(st);
 }
 
 [[maybe_unused]] static std::string is_sink_full(PortState st) {
-  if (str(st) == "full_full" || str(st) == "empty_full") {
+  if (str(st) == "st_11" || str(st) == "st_01") {
     return {};
   }
   return str(st);
 }
 
 [[maybe_unused]] static std::string is_sink_post_swap(PortState st) {
-  if (str(st) == "full_empty" || str(st) == "empty_full" ||
-      str(st) == "full_full") {
+  if (str(st) == "st_10" || str(st) == "st_01" || str(st) == "st_11") {
     return {};
   }
   return str(st);

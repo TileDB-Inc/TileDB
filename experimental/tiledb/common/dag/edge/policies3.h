@@ -107,7 +107,7 @@ namespace tiledb::common {
  * Base action policy. Includes items array and `register` and `deregister`
  * functions.
  */
-template <class T = size_t>
+template <class PortState, class T = size_t>
 class BaseStateMachine {
   std::array<T*, 3> items_;
   std::array<size_t, 3> moves_;
@@ -217,11 +217,12 @@ class BaseStateMachine {
  * Null action policy.  Verifies compilation of CRTP.  All functions except
  * registration are empty.
  */
-template <class T = size_t>
-class NullStateMachine : public BaseStateMachine<T>,
-                         public PortFiniteStateMachine<NullStateMachine<T>> {
-  using BSM = BaseStateMachine<T>;
-  using FSM = PortFiniteStateMachine<NullStateMachine<T>>;
+template <class PortState, class T = size_t>
+class NullStateMachine
+    : public BaseStateMachine<PortState, T>,
+      public PortFiniteStateMachine<PortState, NullStateMachine<T>> {
+  using BSM = BaseStateMachine<PortState, T>;
+  using FSM = PortFiniteStateMachine<PortState, NullStateMachine<T>>;
   using lock_type = typename FSM::lock_type;
 
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
@@ -242,12 +243,12 @@ class NullStateMachine : public BaseStateMachine<T>,
  * `on_source_move` and `on_sink_move`, both of which simply invoke
  * `std::move` on the cached items.
  */
-template <class T = size_t>
+template <class PortState, class T = size_t>
 class ManualStateMachine
-    : public BaseStateMachine<T>,
-      public PortFiniteStateMachine<ManualStateMachine<T>> {
-  using BSM = BaseStateMachine<T>;
-  using FSM = PortFiniteStateMachine<ManualStateMachine<T>>;
+    : public BaseStateMachine<PortState, T>,
+      public PortFiniteStateMachine<PortState, ManualStateMachine<T>> {
+  using BSM = BaseStateMachine<PortState, T>;
+  using FSM = PortFiniteStateMachine<PortState, ManualStateMachine<T>>;
   using lock_type = typename FSM::lock_type;
 
  public:
@@ -297,11 +298,14 @@ class ManualStateMachine
  * actions so that the procession of steps is driven by the state machine rather
  * than the user of the state machine.
  */
-template <class T>
-class AsyncStateMachine : public BaseStateMachine<T>,
-                          public PortFiniteStateMachine<AsyncStateMachine<T>> {
-  using BSM = BaseStateMachine<T>;
-  using FSM = PortFiniteStateMachine<AsyncStateMachine<T>>;
+template <class PortState, class T = size_t>
+class AsyncStateMachine : public BaseStateMachine<PortState, T>,
+                          public PortFiniteStateMachine<
+                              PortState,
+                              AsyncStateMachine<PortState, T>> {
+  using BSM = BaseStateMachine<PortState, T>;
+  using FSM =
+      PortFiniteStateMachine<PortState, AsyncStateMachine<PortState, T>>;
   //  std::mutex mutex_;
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;
@@ -432,12 +436,14 @@ class AsyncStateMachine : public BaseStateMachine<T>,
  * actions so that the procession of steps is driven by the state machine rather
  * than the user of the state machine.
  */
-template <class T>
-class UnifiedAsyncStateMachine
-    : public BaseStateMachine<T>,
-      public PortFiniteStateMachine<UnifiedAsyncStateMachine<T>> {
-  using BSM = BaseStateMachine<T>;
-  using FSM = PortFiniteStateMachine<UnifiedAsyncStateMachine<T>>;
+template <class PortState, class T>
+class UnifiedAsyncStateMachine : public BaseStateMachine<PortState, T>,
+                                 public PortFiniteStateMachine<
+                                     PortState,
+                                     UnifiedAsyncStateMachine<PortState, T>> {
+  using BSM = BaseStateMachine<PortState, T>;
+  using FSM =
+      PortFiniteStateMachine<PortState, UnifiedAsyncStateMachine<PortState, T>>;
   using lock_type = typename FSM::lock_type;
   std::condition_variable cv_;
 
@@ -525,49 +531,51 @@ class UnifiedAsyncStateMachine
  * A simple debugging action policy that simply prints that an action has been
  * called.
  */
-template <class T = size_t>
-class DebugStateMachine : public BaseStateMachine<T>,
-                          public PortFiniteStateMachine<DebugStateMachine<T>> {
-  using BSM = BaseStateMachine<T>;
-  using FSM = PortFiniteStateMachine<DebugStateMachine<T>>;
+template <class PortState, class T = size_t>
+class DebugStateMachine : public BaseStateMachine<PortState, T>,
+                          public PortFiniteStateMachine<
+                              PortState,
+                              DebugStateMachine<PortState, T>> {
+  using BSM = BaseStateMachine<PortState, T>;
+  using FSM = PortFiniteStateMachine<PortState, DebugStateMachine<T>>;
 
   using lock_type = typename FSM::lock_type;
 
  public:
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
       std::cout << "    "
                 << "Action return" << std::endl;
   }
   inline void on_source_move(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
 
       std::cout << "    "
                 << "Action move source" << std::endl;
   }
   inline void on_sink_move(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
       std::cout << "    "
                 << "Action move sink" << std::endl;
   }
   inline void on_source_wait(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
 
       std::cout << "    "
                 << "Action source wait" << std::endl;
   }
   inline void on_sink_wait(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
       std::cout << "    "
                 << "Action sink wait" << std::endl;
   }
   inline void notify_source(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
       std::cout << "    "
                 << "Action notify source" << std::endl;
   }
   inline void notify_sink(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
       std::cout << "    "
                 << "Action notify sink" << std::endl;
   }
@@ -579,7 +587,7 @@ class DebugStateMachine : public BaseStateMachine<T>,
  */
 class DebugStateMachineWithLock
     : public BaseStateMachine<size_t>,
-      public PortFiniteStateMachine<DebugStateMachineWithLock> {
+      public PortFiniteStateMachine<PortState<2>, DebugStateMachineWithLock> {
   std::mutex mutex_;
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;

@@ -143,7 +143,7 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
   auto state_machine = sink.get_state_machine();
   // state_machine->enable_debug();
 
-  CHECK(str(state_machine->state()) == "empty_empty");
+  CHECK(str(state_machine->state()) == "st_00");
 
   SECTION("test injection") {
     CHECK(source.inject(123UL) == true);
@@ -163,9 +163,9 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
     auto b = sink.extract();
     CHECK(b.has_value() == true);
     CHECK(*b == 123UL);
-    CHECK(str(state_machine->state()) == "empty_full");
+    CHECK(str(state_machine->state()) == "st_01");
     state_machine->do_drain();
-    CHECK(str(state_machine->state()) == "empty_empty");
+    CHECK(str(state_machine->state()) == "st_00");
   }
 
   SECTION("test two item transfer") {
@@ -175,9 +175,9 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
     auto b = sink.extract();
     CHECK(b.has_value() == true);
     CHECK(*b == 456UL);
-    CHECK(str(state_machine->state()) == "empty_full");
+    CHECK(str(state_machine->state()) == "st_01");
     state_machine->do_drain();
-    CHECK(str(state_machine->state()) == "empty_empty");
+    CHECK(str(state_machine->state()) == "st_00");
     CHECK(sink.extract().has_value() == false);
 
     CHECK(source.inject(789UL) == true);
@@ -187,9 +187,9 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
     auto c = sink.extract();
     CHECK(c.has_value() == true);
     CHECK(*c == 789UL);
-    CHECK(str(state_machine->state()) == "empty_full");
+    CHECK(str(state_machine->state()) == "st_01");
     state_machine->do_drain();
-    CHECK(str(state_machine->state()) == "empty_empty");
+    CHECK(str(state_machine->state()) == "st_00");
     CHECK(sink.extract().has_value() == false);
   }
 }
@@ -207,7 +207,7 @@ TEST_CASE(
   attach(source, sink);
 
   auto state_machine = sink.get_state_machine();
-  CHECK(str(state_machine->state()) == "empty_empty");
+  CHECK(str(state_machine->state()) == "st_00");
 
   SECTION("test injection") {
     CHECK(source.inject(123UL) == true);
@@ -236,7 +236,7 @@ TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
   attach(source, sink);
 
   auto state_machine = sink.get_state_machine();
-  CHECK(str(state_machine->state()) == "empty_empty");
+  CHECK(str(state_machine->state()) == "st_00");
 
   std::optional<size_t> b;
 
@@ -299,7 +299,7 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
   attach(source, sink);
 
   auto state_machine = sink.get_state_machine();
-  CHECK(str(state_machine->state()) == "empty_empty");
+  CHECK(str(state_machine->state()) == "st_00");
 
   size_t rounds = 3379;
   if (debug)
@@ -326,8 +326,8 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
       }
 
       // It doesn't seem we actually need these guards here?
-      // while (state_machine->state() == PortState::full_empty ||
-      //        state_machine->state() == PortState::full_full)// ;
+      // while (state_machine->state() == PortState::st_10 ||
+      //        state_machine->state() == PortState::st_11)// ;
 
       CHECK(is_source_empty(state_machine->state()) == "");
 
@@ -365,8 +365,8 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
       }
 
       // It doesn't seem we actually need these guards here?
-      // while (state_machine->state() == PortState::full_full ||
-      //             state_machine->state() == PortState::empty_full)
+      // while (state_machine->state() == PortState::st_11 ||
+      //             state_machine->state() == PortState::st_01)
       //        ;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));

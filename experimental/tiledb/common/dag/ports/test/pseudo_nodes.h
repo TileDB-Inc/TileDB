@@ -107,22 +107,22 @@ class ProducerNode : public Source<Block, StateMachine> {
    *
    */
   void get() {
-    //  Don't need the guard since { state == empty_full ∨ state == empty_empty}
+    //  Don't need the guard since { state == st_01 ∨ state == st_00}
     //  at end of function and sink cannot change that.
     //  while (!source_is_empty())
     //    ;
     //
-    //  { state == empty_empty ∨ state == empty_full }
+    //  { state == st_00 ∨ state == st_01 }
     //  produce source item
     //  inject source item
     auto state_machine = Base::get_state_machine();
 
     Base::inject(f_());
     state_machine->do_fill();
-    //  { state == full_empty ∨ state == full_full }
+    //  { state == st_10 ∨ state == st_11 }
 
     state_machine->do_push();
-    //  { state == empty_full ∨ state == empty_empty }
+    //  { state == st_01 ∨ state == st_00 }
   }
 
   /**
@@ -136,21 +136,21 @@ class ProducerNode : public Source<Block, StateMachine> {
    *
    */
   bool try_get() {
-    //  Don't need the guard since { state == empty_full ∨ state == empty_empty}
+    //  Don't need the guard since { state == st_01 ∨ state == st_00}
     //  at end of function and sink cannot change that.
     //  while (!source_is_empty())
     //    ;
     //
-    //  { state == empty_empty ∨ state == empty_full }
+    //  { state == st_00 ∨ state == st_01 }
     //  produce source item
     //  inject source item
     //  do_fill();
-    //  { state == full_empty ∨ state == full_full ∨ state == empty_empty
-    //    ∨  state == empty_full }
+    //  { state == st_10 ∨ state == st_11 ∨ state == st_00
+    //    ∨  state == st_01 }
     //  do_push(); // could have non-blocking try_push() event, but that would
     //             // leave the item  the item injected -- on failure, could
     //             // reject item -- would also need try_swap action.
-    //  { state == empty_full ∨ state == empty_empty}
+    //  { state == st_01 ∨ state == st_00}
     return false;
   }
 };
@@ -211,11 +211,11 @@ class ConsumerNode : public Sink<Block, StateMachine> {
     //  Guard does not seem necessary
     //  while (!sink_is_empty())
     //    ;
-    //  { state == empty_empty ∨ state == full_empty }
+    //  { state == st_00 ∨ state == st_10 }
     auto state_machine = Base::get_state_machine();
 
     state_machine->do_pull();
-    //  { state == empty_full ∨ state == full_full }
+    //  { state == st_01 ∨ state == st_11 }
     //  extract sink item
     //  invoke consumer function
     auto b = Base::extract();
@@ -223,8 +223,8 @@ class ConsumerNode : public Sink<Block, StateMachine> {
     f_(*b);
 
     state_machine->do_drain();
-    //  { state == empty_empty ∨ state == full_empty ∨ state == empty_full ∨
-    //  state == full_full } return item;
+    //  { state == st_00 ∨ state == st_10 ∨ state == st_01 ∨
+    //  state == st_11 } return item;
   }
 
   /**
@@ -241,7 +241,7 @@ class ConsumerNode : public Sink<Block, StateMachine> {
    */
   void try_put() {
     //  if (sink_is_empty()) {
-    //    { state == empty_empty ∨ state == full_empty }
+    //    { state == st_00 ∨ state == st_10 }
     //    do_pull();
     //    extract sink item
     //    invoke consumer function

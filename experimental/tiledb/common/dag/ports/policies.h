@@ -84,8 +84,8 @@ namespace tiledb::common {
  * following functionality:
  *   on_ac_return(): empty function at the moment.  The actual return is performed in
  *     the state machine event handler.
- *   on_source_swap(): if state is full_empty, notify sink and swap, otherwise, notify sink and wait.
- *   on_sink_swap(): if state is full_empty, notify source and swap, otherwise, notify source and wait.
+ *   on_source_swap(): if state is st_10, notify sink and swap, otherwise, notify sink and wait.
+ *   on_sink_swap(): if state is st_10, notify source and swap, otherwise, notify source and wait.
  *   on_notify_source(): notify sink
  *   on_notify_sink(): notify source
  *
@@ -161,7 +161,7 @@ class ManualStateMachine
 
  public:
   ManualStateMachine() {
-    CHECK(str(FSM::state()) == "empty_empty");
+    CHECK(str(FSM::state()) == "st_00");
   }
 
   void register_items(T& source_item, T& sink_item) {
@@ -343,8 +343,8 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
    * Function for handling `sink_swap` action.
    */
   inline void on_sink_swap(lock_type&, std::atomic<int>& event) {
-    // { state == full_empty }
-    CHECK(FSM::state() == PortState::full_empty);
+    // { state == st_10 }
+    CHECK(FSM::state() == PortState::st_10);
     CHECK(*source_item_ != EMPTY_SINK);
 
     std::swap(*source_item_, *sink_item_);
@@ -352,13 +352,13 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
     // Will fail tests without this (needed for entry_action invocations)
     // Could instead set this in the action case, or update state with next
     // state after entry processing.
-    // FSM::set_state(PortState::empty_full);
+    // FSM::set_state(PortState::st_01);
 
-    // Not needed -- the next_state_ for full_empty is empty_full
-    // FSM::set_next_state(PortState::empty_full);
+    // Not needed -- the next_state_ for st_10 is st_01
+    // FSM::set_next_state(PortState::st_01);
 
-    // { state == empty_full }
-    // CHECK(FSM::state() == PortState::empty_full);
+    // { state == st_01 }
+    // CHECK(FSM::state() == PortState::st_01);
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "
@@ -373,8 +373,8 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
    * Function for handling `src_swap` action.
    */
   inline void on_source_swap(lock_type&, std::atomic<int>& event) {
-    // { state == full_empty }
-    CHECK(str(FSM::state()) == "full_empty");
+    // { state == st_10 }
+    CHECK(str(FSM::state()) == "st_10");
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "
@@ -387,13 +387,13 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
     std::swap(*source_item_, *sink_item_);
 
     // Needed
-    // FSM::set_state(PortState::empty_full);
+    // FSM::set_state(PortState::st_01);
 
     // Not needed?
-    // FSM::set_next_state(PortState::empty_full);
+    // FSM::set_next_state(PortState::st_01);
 
-    // { state == empty_full }
-    // CHECK(str(FSM::state()) == "empty_full");
+    // { state == st_01 }
+    // CHECK(str(FSM::state()) == "st_01");
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "
@@ -405,7 +405,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
   }
 
   inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
-    CHECK(str(FSM::state()) == "empty_empty");
+    CHECK(str(FSM::state()) == "st_00");
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "
@@ -432,7 +432,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
   }
 
   inline void on_source_wait(lock_type& lock, std::atomic<int>& event) {
-    CHECK(str(FSM::state()) == "full_full");
+    CHECK(str(FSM::state()) == "st_11");
 
     if (FSM::debug_enabled())
       std::cout << event++ << "  "
@@ -442,7 +442,7 @@ class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>> {
 
     source_cv_.wait(lock);
 
-    // { state == empty_empty ∨ state == empty_full }
+    // { state == st_00 ∨ state == st_01 }
     // FSM::set_next_state(FSM::state());
 
     CHECK(is_source_post_swap(FSM::state()) == "");
@@ -564,9 +564,9 @@ class UnifiedAsyncStateMachine
 
     std::swap(*source_item_, *sink_item_);
 
-    // FSM::set_state(PortState::empty_full);
+    // FSM::set_state(PortState::st_01);
 
-    // FSM::set_next_state(PortState::empty_full);
+    // FSM::set_next_state(PortState::st_01);
     source_swaps++;
   }
 
@@ -583,7 +583,7 @@ class UnifiedAsyncStateMachine
    */
   inline void on_source_wait(lock_type& lock, std::atomic<int>&) {
     cv_.wait(lock);
-    // { state == empty_empty ∨ state == empty_full }
+    // { state == st_00 ∨ state == st_01 }
 
     // FSM::set_next_state(FSM::state());
   }
