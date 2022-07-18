@@ -41,13 +41,17 @@ std::string array_name("stats_array");
 
 void create_array(uint32_t row_tile_extent, uint32_t col_tile_extent) {
   Context ctx;
+  VFS vfs(ctx);
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
   ArraySchema schema(ctx, TILEDB_DENSE);
 
   Domain dom(ctx);
   dom.add_dimension(
          Dimension::create<uint32_t>(ctx, "row", {{1, 12000}}, row_tile_extent))
-      .add_dimension(Dimension::create<uint32_t>(
-          ctx, "col", {{1, 12000}}, col_tile_extent));
+      .add_dimension(Dimension::create<uint32_t>(ctx, "col", {{1, 12000}},
+                                                 col_tile_extent));
 
   schema.set_domain(dom);
   schema.add_attribute(Attribute::create<int32_t>(ctx, "a"));
@@ -76,7 +80,7 @@ void read_array() {
 
   // Read a slice of 3,000 rows.
   Subarray subarray(ctx, array);
-  subarray.add_range(0, 1, 3000).add_range(1, 1, 12000);
+  subarray.add_range<uint32_t>(0, 1, 3000).add_range<uint32_t>(1, 1, 12000);
 
   std::vector<int32_t> values(3000 * 12000);
   query.set_subarray(subarray).set_data_buffer("a", values);
