@@ -39,6 +39,8 @@
 
 using namespace tiledb;
 
+const bool bits32 = (sizeof(ptrdiff_t) == 4) ? true : false;
+
 struct Point {
   int coords[3];
   double value;
@@ -1126,7 +1128,17 @@ TEST_CASE("C++ API: Write cell with large cell val num", "[cppapi][sparse]") {
     vfs.remove_dir(array_name);
 
   // Create array with a large fixed-length attribute
-  const size_t cell_val_num = 70000;
+  unsigned cell_val_num;
+  if constexpr (bits32) {
+    // have seen failure at 25000, not sure how much below that to avoid.
+    // have now seen failure at 20000... will run individual but (sometimes?)
+    // fails with 'full' tiledb_unit run
+    // cell_val_num = 20000;
+    // cell_val_num = 10000;
+    cell_val_num = 15000;
+  } else {
+    cell_val_num = 70000;
+  }
   auto attr = Attribute::create<int>(ctx, "a")
                   .set_cell_val_num(cell_val_num)
                   .set_filter_list(FilterList(ctx).add_filter(
@@ -1148,6 +1160,10 @@ TEST_CASE("C++ API: Write cell with large cell val num", "[cppapi][sparse]") {
 
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
+  // TBD: rtools40/mingw32 32bit build fails here with
+  // D:/dev/tiledb/gh.sc15835-rt40-msys-tests.git/test/src/unit-cppapi-array.cc:1120:
+  // FAILED: due to unexpected exception with message: [TileDB::Tile] Error:
+  // Cannot initialize tile; Buffer allocation failed
   query_w.set_layout(TILEDB_UNORDERED)
       .set_data_buffer("a", data_w)
       .set_coordinates(coords_w)

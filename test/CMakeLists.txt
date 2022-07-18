@@ -103,13 +103,14 @@ set(TILEDB_TEST_SUPPORT_SOURCES
   src/helpers.cc
   src/helpers-dimension.h
   src/vfs_helpers.cc
+  src/serialization_wrappers.cc
   )
 
 set(TILEDB_UNIT_TEST_SOURCES
   src/helpers.h
-  src/helpers.cc
+#  src/helpers.cc
   src/helpers-dimension.h
-  src/serialization_wrappers.cc
+#  src/serialization_wrappers.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
@@ -406,3 +407,6 @@ add_custom_target(
 
 # CI tests
 add_subdirectory(ci)
+if(WIN32)
+  add_subdirectory(performance)
+endif()
