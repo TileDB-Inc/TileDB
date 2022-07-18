@@ -167,10 +167,10 @@ GenericTileIO::read_generic_tile_header(
 
   try {
     auto filterpipeline{
-        FilterPipeline::deserialize(&cbuf, header->version_number)};
-    header->filters = filterpipeline;
+        FilterPipeline::deserialize(&cbuf, header.version_number)};
+    header.filters = filterpipeline;
   } catch (std::exception& e) {
-    return Status_Error(e.what());
+    return {Status_Error(e.what()), nullopt};
   }
 
   return {Status::Ok(), header};

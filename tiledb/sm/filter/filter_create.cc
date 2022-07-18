@@ -186,17 +186,16 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     case FilterType::FILTER_CHECKSUM_MD5:
       return make_shared<ChecksumMD5Filter>(HERE());
     case FilterType::FILTER_CHECKSUM_SHA256:
-      return {Status::Ok(), make_shared<ChecksumSHA256Filter>(HERE())};
+      return make_shared<ChecksumSHA256Filter>(HERE());
     case FilterType::FILTER_SCALE_FLOAT: {
       FloatScalingFilter::Metadata metadata;
       st = buff->read(&metadata, sizeof(FloatScalingFilter::Metadata));
       if (!st.ok()) {
-        return {st, nullopt};
+        throw std::runtime_error(
+            "[FilterCreate::deserialize] Failed to load FloatScaling metadata");
       } else {
-        return {
-            Status::Ok(),
-            make_shared<FloatScalingFilter>(
-                HERE(), metadata.byte_width, metadata.scale, metadata.offset)};
+        return make_shared<FloatScalingFilter>(
+            HERE(), metadata.byte_width, metadata.scale, metadata.offset);
       }
     };
     default:

@@ -376,25 +376,19 @@ TEST_CASE(
   buffer_offset<uint64_t, 21>(p) = byte_width0;
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_filter, filter1]{
+  auto filter1{
       FilterCreate::deserialize(&constbuffer, constants::format_version)};
-  REQUIRE(st_filter.ok());
-  CHECK(filter1.value()->type() == filtertype0);
+  CHECK(filter1->type() == filtertype0);
   double scale1 = 0.0;
-  REQUIRE(filter1.value()
-              ->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale1)
-              .ok());
+  REQUIRE(filter1->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale1).ok());
   CHECK(scale0 == scale1);
 
   double offset1 = 0.0;
-  REQUIRE(filter1.value()
-              ->get_option(FilterOption::SCALE_FLOAT_OFFSET, &offset1)
-              .ok());
+  REQUIRE(filter1->get_option(FilterOption::SCALE_FLOAT_OFFSET, &offset1).ok());
   CHECK(offset0 == offset1);
 
   uint64_t byte_width1 = 0;
-  REQUIRE(filter1.value()
-              ->get_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width1)
+  REQUIRE(filter1->get_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width1)
               .ok());
   CHECK(byte_width0 == byte_width1);
 }
