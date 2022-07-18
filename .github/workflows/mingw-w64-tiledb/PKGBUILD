@@ -35,13 +35,6 @@ build() {
 
 #    -DCMAKE_BUILD_TYPE=Release \
 #    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-# tried the following to avoid, at least, the zstd SEGV application
-# verifier aggravates, but several of the fetched libs failed to build in
-# this environment (mingw32, 32bit), perhaps
-# our find....cmake(s) have WIN32 where they should have some MSVC, or other
-# mistakes for gcc on win32...
-#    -DTILEDB_FORCE_ALL_DEPS=ON \
-#    -DTILEDB_S3=ON \
 
   ${MINGW_PREFIX}/bin/cmake.exe \
     -G"MSYS Makefiles" \
@@ -61,11 +54,6 @@ build() {
 
   make -C tiledb tests -j ${NUMBER_OF_PROCESSORS}
   make examples
-
-# in a local environ, can build to demo/check for previously seen (windows event) handle leakge
-# apparently due to issues with mingw std library implementation.
-#  make -C tiledb/test/performance tiledb_explore_msys_handle_leakage
-
 }
 
 package() {
@@ -100,9 +88,7 @@ check (){
     exclude_tests="${exclude_tests} ~\"C\\ API:\\ Test\\ dense\\ array\\,\\ encrypted\""
 
     prev_excluded=""
-    # ?? will this one work?
     prev_excluded="${prev_excluded} \"CPP API: Test consolidation with timestamps\\, global read\\, all cells same coords\\, with memory budget\""
-    # ?? will this one work?
     prev_excluded="${prev_excluded} \"CPP API: Test consolidation with timestamps\\, global read\\, same cells across tiles\\, with memory budget\""
     prev_excluded="${prev_excluded} \"Compression-RLE: Test compression parameter calculation of strings\""
     prev_excluded="${prev_excluded} \"C API: Test importing from a buffer\""
@@ -114,9 +100,11 @@ check (){
   echo "run tiledb_unit with exclusions"
   ./tiledb/test/tiledb_unit.exe -d=yes --vfs=native "${exclude_tests}"
 
-  #now run some of the excluded ones that seem to have failed just because of the handle leakage issues
-  echo "run tiledb only with some previously excluded items"
-  ./tiledb/test/tiledb_unit.exe -d=yes --vfs=native "${prev_excluded}"
+  if [ x"${prev_excluded}" != x ]; then
+    #now run some of the excluded ones that seem to have failed just because of the handle leakage issues
+    echo "run tiledb only with some previously excluded items"
+    ./tiledb/test/tiledb_unit.exe -d=yes --vfs=native "${prev_excluded}"
+  fi
 
   # add location of libtiledb.dll so examples can run
   export PATH=${PATH}:$(pwd)/tiledb/tiledb
