@@ -31,5 +31,4 @@
  */
 
 #define CATCH_CONFIG_MAIN
-#include "unit_fsm.h"
 #include "unit_ports.h"

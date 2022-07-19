@@ -32,8 +32,8 @@
 
 #include "unit_ports.h"
 #include <future>
-#include "experimental/tiledb/common/dag/edge/policies3.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"
+#include "experimental/tiledb/common/dag/state_machine/policies3.h"
 
 using namespace tiledb::common;
 

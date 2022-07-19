@@ -42,7 +42,7 @@
 #include <optional>
 #include <string>
 #include <tuple>
-#include "experimental/tiledb/common/dag/edge/test/helpers3.h"
+#include "experimental/tiledb/common/dag/state_machine/test/helpers3.h"
 #include "experimental/tiledb/common/dag/utils/print_types.h"
 
 namespace tiledb::common {

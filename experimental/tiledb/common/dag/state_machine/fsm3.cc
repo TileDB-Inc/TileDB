@@ -33,5 +33,5 @@
 
 #include <cassert>
 
-#include "experimental/tiledb/common/dag/edge/fsm3.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm3.h"
 #include "tiledb/common/logger.h"

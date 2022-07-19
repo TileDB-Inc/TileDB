@@ -48,9 +48,9 @@
 #include <numeric>
 #include <thread>
 #include <vector>
-#include "experimental/tiledb/common/dag/edge/fsm3.h"
-#include "experimental/tiledb/common/dag/edge/policies3.h"
-#include "helpers3.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm3.h"
+#include "experimental/tiledb/common/dag/state_machine/policies3.h"
+#include "experimental/tiledb/common/dag/state_machine/test/helpers3.h"
 
 using namespace tiledb::common;
 
