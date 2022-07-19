@@ -407,6 +407,3 @@ add_custom_target(
 
 # CI tests
 add_subdirectory(ci)
-if(WIN32)
-  add_subdirectory(performance)
-endif()
