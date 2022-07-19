@@ -153,3 +153,47 @@ if (TILEDB_TESTS)
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
+
+
+# list(APPEND SIEVE_SOURCES
+#    test/sieve.cc
+# )
+# gather_sources(${SIEVE_SOURCES})
+
+#
+# Object library for other units to depend upon
+#
+# add_library(sieve OBJECT ${SIEVE_SOURCES})
+# target_link_libraries(sieve PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+
+#
+# Since there are no components, there is no object library to test compile
+#
+# add_executable(compile_sieve EXCLUDE_FROM_ALL)
+# target_link_libraries(compile_sieve PRIVATE sieve)
+# target_sources(compile_sieve PRIVATE test/compile_sieve_main.cc)
+
+if (TILEDB_TESTS)
+    add_executable(sieve EXCLUDE_FROM_ALL)
+
+#    target_link_libraries(sieve PUBLIC sieve)
+#    find_package(Catch_EP REQUIRED)
+#    target_link_libraries(sieve PUBLIC Catch2::Catch2)
+#    target_link_libraries(sieve PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(sieve PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(sieve PUBLIC
+            test/sieve.cc
+            )
+
+# Not a test (yet) per se
+#    add_test(
+#            NAME "sieve"
+#            COMMAND $<TARGET_FILE:sieve> --durations=yes
+#            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#    )
+endif()
+

@@ -36,6 +36,7 @@
 
 #include <atomic>
 #include <functional>
+#include <type_traits>
 #include "../../utils/print_types.h"
 #include "../ports.h"
 
@@ -74,7 +75,7 @@ class generator {
 template <class Block, class StateMachine>
 class ProducerNode : public Source<Block, StateMachine> {
   using Base = Source<Block, StateMachine>;
-  // This causes initialization problems 
+  // This causes initialization problems
   //  std::atomic<size_t> i_{0};
   size_t N_{0};
   std::function<Block()> f_;
@@ -87,6 +88,20 @@ class ProducerNode : public Source<Block, StateMachine> {
    */
   template <class Function>
   explicit ProducerNode(Function&& f)
+
+      /*
+       * It would be nice to guard this constructor so that only functions or
+       * function objects are accepted.  Unfortunately, is_function does not
+       * work for bind or for function objects.
+       *
+       * typename std::enable_if<
+       * std::is_function_v<std::remove_reference_t<decltype(f)>> ||
+       * std::is_bind_expression_v<std::remove_reference_t<decltype(f)>> ||
+       * std::is_member_function_pointer_v<
+       * std::remove_reference_t<decltype(f)>::operator()>, void**>::type =
+       * nullptr
+       */
+
       : f_{std::forward<Function>(f)} {
     //    print_types(f, f_);
   }
@@ -94,10 +109,9 @@ class ProducerNode : public Source<Block, StateMachine> {
   /**
    * Trivial default constructor, for testing.
    */
-  ProducerNode() {
+  ProducerNode() = default;
+  ProducerNode(const ProducerNode&) {
   }
-
-  ProducerNode(const ProducerNode&) = default;
   ProducerNode(ProducerNode&&) = default;
 
   /**
@@ -189,15 +203,22 @@ class ConsumerNode : public Sink<Block, StateMachine> {
    * @tparam The type of the function (or function object) that accepts items.
    */
   template <class Function>
-  explicit ConsumerNode(Function&& f)
+  explicit ConsumerNode(
+      Function&& f,
+      typename std::enable_if<
+          std::is_function_v<std::remove_reference_t<decltype(f)>> ||
+              std::is_bind_expression_v<std::remove_reference_t<decltype(f)>>,
+          void**>::type = nullptr)
       : f_{std::forward<Function>(f)} {
   }
 
   /**
    * Trivial default constructor, for testing.
    */
-  ConsumerNode() {
+  ConsumerNode() = default;
+  ConsumerNode(const ConsumerNode&) {
   }
+  ConsumerNode(ConsumerNode&&) = default;
 
   /**
    * Retrieve `item_` from the Sink.  Blocking.  The behavior of `retrieve` and
@@ -269,8 +290,29 @@ class FunctionNode : public Source<BlockOut, SourceStateMachine>,
  public:
   template <class Function>
   FunctionNode(Function&& f)
+
+      /*
+       * It would be nice to guard this constructor so that only functions or
+       * function objects are accepted.  Unfortunately, is_function does not
+       * work for bind or for function objects.
+       *
+       * typename std::enable_if<
+       * std::is_function_v<std::remove_reference_t<decltype(f)>> ||
+       * std::is_bind_expression_v<
+       * std::remove_reference_t<decltype(f)>::operator()>,
+       * void**>::type = nullptr
+       */
+
       : f_{std::forward<Function>(f)} {
   }
+
+  /**
+   * Trivial default constructor, for testing.
+   */
+  FunctionNode() = default;
+  FunctionNode(const FunctionNode&) {
+  }
+  FunctionNode(FunctionNode&&) = default;
 
   void run() {
     auto source_state_machine = SourceBase::get_state_machine();

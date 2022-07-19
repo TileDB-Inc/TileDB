@@ -44,6 +44,7 @@
 #include <tuple>
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 #include "experimental/tiledb/common/dag/utils/print_types.h"
+#include "experimental/tiledb/common/dag/utils/traits.h"
 
 namespace tiledb::common {
 
@@ -298,11 +299,13 @@ class BaseStateMachine<PortState<2>, T> {
       for (auto& j : items_) {
         //        print_types(j);
 
-        std::cout << " "
-                  << (j == nullptr && j->has_value() ?
-                          std::to_string(j->value()) :
-                          "no_value")
-                  << " ";
+        if constexpr (has_to_string_v<decltype(j->value())>) {
+          std::cout << " "
+                    << (j == nullptr && j->has_value() ?
+                            std::to_string(j->value()) :
+                            "no_value")
+                    << " ";
+        }
       }
       std::cout << ") -> ";
     }
@@ -312,11 +315,13 @@ class BaseStateMachine<PortState<2>, T> {
     if (debug) {
       std::cout << "(";
       for (auto& j : items_) {
-        std::cout << " "
-                  << (j == nullptr && j->has_value() ?
-                          std::to_string(j->value()) :
-                          "no_value")
-                  << " ";
+        if constexpr (has_to_string_v<decltype(j->value())>) {
+          std::cout << " "
+                    << (j == nullptr && j->has_value() ?
+                            std::to_string(j->value()) :
+                            "no_value")
+                    << " ";
+        }
       }
       std::cout << ")" << std::endl;
       std::cout << event << "  "
@@ -493,7 +498,8 @@ class AsyncStateMachine : public BaseStateMachine<PortState, T>,
   }
 
   AsyncStateMachine() = default;
-  AsyncStateMachine(const AsyncStateMachine&) = default;
+  AsyncStateMachine(const AsyncStateMachine&) {
+  }
   AsyncStateMachine(AsyncStateMachine&&) = default;
 
   /**

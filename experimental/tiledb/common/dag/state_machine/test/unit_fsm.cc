@@ -47,6 +47,7 @@
 #include <mutex>
 #include <numeric>
 #include <thread>
+#include <tuple>
 #include <vector>
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
@@ -67,10 +68,31 @@ using PortState2Machine = DebugStateMachine<PortState2, size_t>;
  */
 using PortStateMachine = DebugStateMachine<PortState2, size_t>;
 
-TEST_CASE("Port FSM: Construct", "[fsm]") {
+TEST_CASE("Port FSM: Construct PortStateMachine", "[fsm]") {
   [[maybe_unused]] auto a = PortStateMachine{};
 
   CHECK(a.state() == PortState2::st_00);
+}
+
+TEST_CASE("Port FSM: Copy, Move, etc", "[fsm]") {
+  [[maybe_unused]] auto a = PortStateMachine{};
+  std::vector<PortStateMachine> v;
+  v.reserve(55);
+
+  [[maybe_unused]] auto b = AsyncStateMachine2{};
+
+  std::vector<AsyncStateMachine2> w;
+  w.reserve(55);
+
+  auto t = std::make_tuple(a, b);
+  std::vector<decltype(t)> u;
+  u.reserve(55);
+
+  auto foo = [](PortStateMachine&&) {};
+  auto bar = [](AsyncStateMachine2&&) {};
+
+  foo(std::move(a));
+  bar(std::move(b));
 }
 
 TEST_CASE("Port FSM: Start up", "[fsm]") {

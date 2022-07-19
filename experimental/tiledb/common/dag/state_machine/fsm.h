@@ -1,5 +1,5 @@
 /**
- * @file   fsm3.h
+ * @file   fsm.h
  *
  * @section LICENSE
  *
@@ -365,7 +365,6 @@ constexpr const PortAction entry_table<PortState, 3>[n_states<PortState>][n_even
 template <class PortState, class ActionPolicy>
 class PortFiniteStateMachine {
  private:
-
   decltype(PortState::done) state_;
   decltype(PortState::done) next_state_;
 
@@ -376,22 +375,27 @@ class PortFiniteStateMachine {
    * Default constructor
    */
   PortFiniteStateMachine()
-    : state_(static_cast<decltype(PortState::done)>(0)) {
+      : state_(static_cast<decltype(PortState::done)>(0)) {
+  }
+
+  /**
+   * Copy constructor -- completely bogus, but needed for move requirement
+   */
+  PortFiniteStateMachine(const PortFiniteStateMachine&) {
   }
 
 /**
  * Return the current state
  */
-  [[nodiscard]] inline auto
-  state() const {
+[[nodiscard]] inline auto
+state() const {
   return state_;
 }
 
   /**
    * Return the next state
    */
-  [[nodiscard]] inline auto
-  next_state() const {
+  [[nodiscard]] inline auto next_state() const {
     return next_state_;
   }
 
@@ -415,7 +419,7 @@ class PortFiniteStateMachine {
    */
 
   // Used for debugging.
-  std::atomic<int> event_counter{};
+  inline static std::atomic<int> event_counter{};
   bool debug_{false};
 
  protected:
@@ -425,9 +429,12 @@ class PortFiniteStateMachine {
   void event(PortEvent event, const std::string msg = "") {
     std::unique_lock lock(mutex_);
 
-    next_state_ = transition_table<PortState, PortState::N_>[to_index(state_)][to_index(event)];
-    auto exit_action{exit_table<PortState, PortState::N_>[to_index(state_)][to_index(event)]};
-    auto entry_action{entry_table<PortState, PortState::N_>[to_index(next_state_)][to_index(event)]};
+    next_state_ = transition_table<PortState, PortState::N_>[to_index(state_)]
+                                                            [to_index(event)];
+    auto exit_action{exit_table<PortState, PortState::N_>[to_index(state_)]
+                                                         [to_index(event)]};
+    auto entry_action{entry_table<PortState, PortState::N_>[to_index(
+        next_state_)][to_index(event)]};
 
     auto old_state = state_;
 
@@ -547,7 +554,8 @@ class PortFiniteStateMachine {
     /*
      * Update the entry_action in case next_state_ was changed.
      */
-    entry_action = entry_table<PortState, PortState::N_>[to_index(next_state_)][to_index(event)];
+    entry_action = entry_table<PortState, PortState::N_>[to_index(next_state_)]
+                                                        [to_index(event)];
 
     if (msg != "" || debug_) {
       std::cout << event_counter++
@@ -584,25 +592,25 @@ class PortFiniteStateMachine {
 
         static_cast<ActionPolicy&>(*this).on_source_move(lock, event_counter);
 
-	if constexpr (PortState::N_ == 2) {
-	  state_ = PortState::st_01;
+        if constexpr (PortState::N_ == 2) {
+          state_ = PortState::st_01;
 
-	} else if constexpr (PortState::N_ == 3) {
-	  switch (state_) {
-          case PortState::st_010:
-            // Fall through
-          case PortState::st_100:
-            state_ = PortState::st_001;
-            break;
-          case PortState::st_110:
-            // Fall through
-          case PortState::st_101:
-            state_ = PortState::st_011;
-            break;
-          default:
-            break;
+        } else if constexpr (PortState::N_ == 3) {
+          switch (state_) {
+            case PortState::st_010:
+              // Fall through
+            case PortState::st_100:
+              state_ = PortState::st_001;
+              break;
+            case PortState::st_110:
+              // Fall through
+            case PortState::st_101:
+              state_ = PortState::st_011;
+              break;
+            default:
+              break;
+          }
         }
-	}
 
         break;
 
@@ -615,25 +623,24 @@ class PortFiniteStateMachine {
 
         static_cast<ActionPolicy&>(*this).on_sink_move(lock, event_counter);
 
-	if constexpr (PortState::N_ == 2) {
-	  state_ = PortState::st_01;
-	}	  else 
-	if constexpr (PortState::N_ == 3) {
-        switch (state_) {
-          case PortState::st_010:
-            // Fall through
-          case PortState::st_100:
-            state_ = PortState::st_001;
-            break;
-          case PortState::st_110:
-            // Fall through
-          case PortState::st_101:
-            state_ = PortState::st_011;
-            break;
-          default:
-            break;
+        if constexpr (PortState::N_ == 2) {
+          state_ = PortState::st_01;
+        } else if constexpr (PortState::N_ == 3) {
+          switch (state_) {
+            case PortState::st_010:
+              // Fall through
+            case PortState::st_100:
+              state_ = PortState::st_001;
+              break;
+            case PortState::st_110:
+              // Fall through
+            case PortState::st_101:
+              state_ = PortState::st_011;
+              break;
+            default:
+              break;
+          }
         }
-	}
 
         break;
 
@@ -688,7 +695,7 @@ class PortFiniteStateMachine {
   /**
    * Set state
    */
-  inline auto set_state(decltype(PortState::done)next_state_) {
+  inline auto set_state(decltype(PortState::done) next_state_) {
     state_ = next_state_;
     return state_;
   }
