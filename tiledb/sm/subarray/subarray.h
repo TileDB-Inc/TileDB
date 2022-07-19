@@ -67,6 +67,7 @@ namespace sm {
 
 class Array;
 class ArraySchema;
+class DimensionLabelReference;
 class EncryptionKey;
 class FragIdx;
 class FragmentMetadata;
@@ -249,6 +250,53 @@ class Subarray {
   /** equivalent for older Query::set_subarray(const void *subarray); */
   Status set_subarray(const void* subarray);
 
+  /**
+   * Adds a range along the dimension with the given index for the requested
+   * dimension label.
+   *
+   * @param dim_label_ref Cache data about the dimension label definition.
+   * @param range The range to add.
+   * @param read_range_oob_error If ``true`` return error for input range larger
+   * than domain, otherwise return a warning and truncate the range.
+   */
+  void add_label_range(
+      const DimensionLabelReference& dim_label_ref,
+      Range&& range,
+      const bool read_range_oob_error = true);
+
+  /**
+   * Adds a range along the dimension with the given index for the requested
+   * dimension label.
+   *
+   * @param dim_idx The index of the dimension to add the range to.
+   * @param label_name The name of the dimension label to add the range to.
+   * @param start The range start.
+   * @param end The range end.
+   * @param stride The range stride.
+   */
+  void add_label_range(
+      const std::string& label_name,
+      const void* start,
+      const void* end,
+      const void* stride);
+
+  /**
+   * Adds a variable-sized range along the dimension with the given index for
+   * the requested dimension label.
+   *
+   * @param dim_idx The index of the dimension to add the range to.
+   * @param label_name The name of the dimension label to add the range to.
+   * @param start The range start.
+   * @param end The range end.
+   * @param stride The range stride.
+   */
+  void add_label_range_var(
+      const std::string& label_name,
+      const void* start,
+      uint64_t start_size,
+      const void* end,
+      uint64_t end_size);
+
   /** Adds a range along the dimension with the given index. */
   Status add_range(
       uint32_t dim_idx, Range&& range, const bool read_range_oob_error = true);
@@ -311,6 +359,115 @@ class Subarray {
       uint64_t start_size,
       const void* end,
       uint64_t end_size);
+
+  /**
+   * Retrieves a label range from a dimension name in the form (start, end,
+   * stride).
+   *
+   * @param dim_idx The index of the dimension to the label name from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start The range start to retrieve.
+   * @param end The range end to retrieve.
+   * @param stride The range stride to retrieve.
+   * @return Status
+   */
+  void get_label_range(
+      uint32_t dim_idx,
+      uint64_t range_idx,
+      const void** start,
+      const void** end,
+      const void** stride) const;
+
+  /**
+   * Retrieves a range from a dimension label name in the form (start, end,
+   * stride).
+   *
+   * @param label_name The dimension label to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start The range start to retrieve.
+   * @param end The range end to retrieve.
+   * @param stride The range stride to retrieve.
+   * @return Status
+   */
+  void get_label_range_from_name(
+      const std::string& label_name,
+      uint64_t range_idx,
+      const void** start,
+      const void** end,
+      const void** stride) const;
+
+  /**
+   * Retrieves the number of ranges of the subarray set for the dimension label
+   * on a given dimension index.
+   */
+  void get_label_range_num(uint32_t dim_idx, uint64_t* range_num) const;
+
+  /**
+   * Retrieves the number of ranges of the subarray for the given dimension
+   * label name.
+   */
+  void get_label_range_num_from_name(
+      const std::string& label_name, uint64_t* range_num) const;
+
+  /**
+   * Retrieves a range's sizes for a variable-length dimension label at a given
+   * dimension index.
+   *
+   * @param dim_idx The dimension index to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start_size range start size in bytes
+   * @param end_size range end size in bytes
+   * @return Status
+   */
+  void get_label_range_var_size(
+      uint32_t dim_idx,
+      uint64_t range_idx,
+      uint64_t* start_size,
+      uint64_t* end_size) const;
+
+  /**
+   * Retrieves a range's sizes for a variable-length dimension label name
+   *
+   * @param label_name The dimension label name to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start_size range start size in bytes
+   * @param end_size range end size in bytes
+   * @return Status
+   */
+  void get_label_range_var_size_from_name(
+      const std::string& label_name,
+      uint64_t range_idx,
+      uint64_t* start_size,
+      uint64_t* end_size) const;
+
+  /**
+   * Retrieves a range from a variable-length dimension name in the form (start,
+   * end).
+   *
+   * @param dim_idx The dimension name to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start The range start to retrieve.
+   * @param end The range end to retrieve.
+   * @return Status
+   */
+  void get_label_range_var(
+      uint32_t dim_idx, uint64_t range_idx, void* start, void* end) const;
+
+  /**
+   * Retrieves a range from a variable-length dimension label name in the form
+   * (start, end).
+   *
+   * @param dim_name The dimension name to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start The range start to retrieve.
+   * @param end The range end to retrieve.
+   * @return Status
+   */
+  void get_label_range_var_from_name(
+      const std::string& label_name,
+      uint64_t range_idx,
+      void* start,
+      void* end) const;
 
   /**
    * Retrieves the number of ranges of the subarray for the given dimension
@@ -1026,6 +1183,41 @@ class Subarray {
     uint64_t range_len_;
   };
 
+  /**
+   * Wrapper for optional<tuple<std::string, RangeSetAndSuperset>> for
+   * cleaner data access.
+   */
+  struct LabelRangeSubset {
+   public:
+    LabelRangeSubset();
+
+    LabelRangeSubset(
+        const DimensionLabelReference& ref, bool coalesce_ranges = true);
+
+    inline bool has_value() const {
+      return label_range_subset_.has_value();
+    }
+
+    inline const std::string& name() const {
+      return std::get<0>(label_range_subset_.value());
+    }
+
+    inline RangeSetAndSuperset& range_subset() {
+      return std::get<1>(label_range_subset_.value());
+    }
+
+    inline const Range& operator[](const uint64_t range_index) const {
+      return std::get<1>(label_range_subset_.value())[range_index];
+    }
+
+    inline const std::vector<Range>& ranges() const {
+      return std::get<1>(label_range_subset_.value()).ranges();
+    }
+
+   private:
+    optional<tuple<std::string, RangeSetAndSuperset>> label_range_subset_;
+  };
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -1066,6 +1258,11 @@ class Subarray {
    * handling operations on ranges.
    */
   std::vector<RangeSetAndSuperset> range_subset_;
+
+  /**
+   * Stores LabelRangeSubset objects for handling ranges on dimension labels.
+   */
+  std::vector<LabelRangeSubset> label_range_subset_;
 
   /**
    * Flag storing if each dimension is a default value or not.
