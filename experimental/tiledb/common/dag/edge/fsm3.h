@@ -253,7 +253,7 @@ constexpr const PortAction entry_table[n_states<PortState>][n_events];
 
 
 template<class PortState>
-constexpr const PortState transition_table<PortState, 2>[n_states<PortState>][n_events] {
+constexpr const decltype(PortState::done) transition_table<PortState, 2>[n_states<PortState>][n_events] {
   /* source_sink */ /* source_fill */        /* source_push */       /* sink_drain */        /* sink_pull */        /* shutdown */
 
   /* st_00 */ { PortState::st_10, PortState::st_00, PortState::error,       PortState::st_00, PortState::error },
@@ -376,7 +376,7 @@ class PortFiniteStateMachine {
    * Default constructor
    */
   PortFiniteStateMachine()
-    : state_(PortState::st_000) {
+    : state_(static_cast<decltype(PortState::done)>(0)) {
   }
 
 /**
@@ -583,7 +583,12 @@ class PortFiniteStateMachine {
                     << std::endl;
 
         static_cast<ActionPolicy&>(*this).on_source_move(lock, event_counter);
-        switch (state_) {
+
+	if constexpr (PortState::N_ == 2) {
+	  state_ = PortState::st_01;
+
+	} else if constexpr (PortState::N_ == 3) {
+	  switch (state_) {
           case PortState::st_010:
             // Fall through
           case PortState::st_100:
@@ -597,6 +602,8 @@ class PortFiniteStateMachine {
           default:
             break;
         }
+	}
+
         break;
 
       case PortAction::sink_move:
@@ -607,6 +614,11 @@ class PortFiniteStateMachine {
                     << std::endl;
 
         static_cast<ActionPolicy&>(*this).on_sink_move(lock, event_counter);
+
+	if constexpr (PortState::N_ == 2) {
+	  state_ = PortState::st_01;
+	}	  else 
+	if constexpr (PortState::N_ == 3) {
         switch (state_) {
           case PortState::st_010:
             // Fall through
@@ -621,6 +633,7 @@ class PortFiniteStateMachine {
           default:
             break;
         }
+	}
 
         break;
 

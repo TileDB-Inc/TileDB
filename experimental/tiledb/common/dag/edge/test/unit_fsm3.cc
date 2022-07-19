@@ -232,9 +232,9 @@ TEST_CASE(
     "AsynchronousStateMachine: Asynchronous source and manual sink", "[fsm3]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t edge_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> edge_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       AsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
@@ -273,9 +273,9 @@ TEST_CASE(
     "AsynchronousStateMachine: Manual source and asynchronous sink", "[fsm3]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t edge_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> edge_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       AsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
@@ -314,9 +314,9 @@ TEST_CASE(
     "[fsm3]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t edge_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> edge_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       UnifiedAsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
@@ -349,9 +349,9 @@ TEST_CASE(
     "[fsm3]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t edge_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> edge_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       UnifiedAsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
@@ -388,9 +388,9 @@ TEST_CASE(
     "[fsm3]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t edge_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> edge_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       AsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
@@ -480,9 +480,9 @@ TEST_CASE(
     "[fsm3]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t edge_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> edge_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       UnifiedAsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
@@ -563,9 +563,9 @@ TEST_CASE(
     "[fsm3]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t edge_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> edge_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       AsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
@@ -653,9 +653,9 @@ TEST_CASE(
     "[fsm3]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t edge_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> edge_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       UnifiedAsyncStateMachine3{source_item, edge_item, sink_item, debug};
 
@@ -739,9 +739,9 @@ TEST_CASE(
     "[fsm3]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t edge_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> edge_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       AsyncStateMachine3{source_item, edge_item, sink_item, debug};
 

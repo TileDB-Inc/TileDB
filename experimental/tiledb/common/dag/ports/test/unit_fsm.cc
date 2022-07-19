@@ -170,8 +170,8 @@ TEST_CASE(
     "AsynchronousStateMachine: Asynchronous source and manual sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = AsyncStateMachine2{source_item, sink_item, debug};
 
   a.set_state(PortState2::st_00);
@@ -209,8 +209,8 @@ TEST_CASE(
     "AsynchronousStateMachine: Manual source and asynchronous sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = AsyncStateMachine2{source_item, sink_item, debug};
 
   a.set_state(PortState2::st_00);
@@ -248,8 +248,8 @@ TEST_CASE(
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       UnifiedAsyncStateMachine2{source_item, sink_item, debug};
 
@@ -282,8 +282,8 @@ TEST_CASE(
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       UnifiedAsyncStateMachine2{source_item, sink_item, debug};
 
@@ -320,8 +320,8 @@ TEST_CASE(
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = AsyncStateMachine2{source_item, sink_item, debug};
 
   a.set_state(PortState2::st_00);
@@ -410,8 +410,8 @@ TEST_CASE(
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       UnifiedAsyncStateMachine2{source_item, sink_item, debug};
 
@@ -492,8 +492,8 @@ TEST_CASE(
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = AsyncStateMachine2{source_item, sink_item, debug};
 
   if (debug)
@@ -561,7 +561,7 @@ TEST_CASE(
   }
 
   CHECK(str(a.state()) == "st_00");
-  CHECK((a.source_swaps + a.sink_swaps) == rounds);
+  CHECK((a.source_swaps() + a.sink_swaps()) == rounds);
 };
 
 /**
@@ -576,8 +576,8 @@ TEST_CASE(
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       UnifiedAsyncStateMachine2{source_item, sink_item, debug};
 
@@ -656,8 +656,8 @@ TEST_CASE(
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = AsyncStateMachine2{source_item, sink_item, debug};
 
   a.set_state(PortState2::st_00);
@@ -721,7 +721,7 @@ TEST_CASE(
     fut_a.get();
   }
   CHECK(str(a.state()) == "st_00");
-  CHECK(a.source_swaps + a.sink_swaps == rounds);
+  CHECK(a.source_swaps() + a.sink_swaps() == rounds);
 };
 
 /**
@@ -737,8 +737,8 @@ TEST_CASE(
 TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = AsyncStateMachine2{source_item, sink_item, debug};
 
   a.set_state(PortState2::st_00);
@@ -777,7 +777,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      *(a.source_item_) = *i++;
+      *(a.source_item()) = *i++;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -791,7 +791,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      *(a.source_item_) = EMPTY_SOURCE;
+      *(a.source_item()) = EMPTY_SOURCE;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
@@ -821,13 +821,13 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      *j++ = *(a.sink_item_);
+      *j++ = *(a.sink_item());
 
       CHECK(is_sink_full(a.state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      *(a.sink_item_) = EMPTY_SINK;
+      *(a.sink_item()) = EMPTY_SINK;
 
       a.do_drain(debug ? "async sink node" : "");
 
@@ -899,7 +899,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
   CHECK(str(a.state()) == "st_00");
-  CHECK((a.source_swaps + a.sink_swaps) == rounds);
+  CHECK((a.source_swaps() + a.sink_swaps()) == rounds);
 }
 
 /**
@@ -910,8 +910,8 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
       UnifiedAsyncStateMachine2{source_item, sink_item, debug};
 
@@ -944,13 +944,13 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
 
       CHECK(is_source_empty(a.state()) == "");
 
-      *(a.source_item_) = *i++;
+      *(a.source_item()) = *i++;
       a.do_fill(debug ? "async source node" : "");
       a.do_push(debug ? "async source node" : "");
 
       CHECK(is_source_empty(a.state()) == "");
 
-      *(a.source_item_) = EMPTY_SOURCE;
+      *(a.source_item()) = EMPTY_SOURCE;
     }
   };
 
@@ -969,8 +969,8 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
 
       CHECK(is_sink_full(a.state()) == "");
 
-      *j++ = *(a.sink_item_);
-      *(a.sink_item_) = EMPTY_SINK;
+      *j++ = *(a.sink_item());
+      *(a.sink_item()) = EMPTY_SINK;
 
       a.do_drain(debug ? "async sink node" : "");
     }

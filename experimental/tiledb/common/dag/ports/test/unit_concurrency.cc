@@ -49,15 +49,21 @@
 #include <future>
 #include <string>
 #include <vector>
-#include "../fsm.h"
 #include "../ports.h"
-#include "helpers.h"
+#include "experimental/tiledb/common/dag/edge/fsm3.h"
+#include "experimental/tiledb/common/dag/edge/policies3.h"
+#include "experimental/tiledb/common/dag/edge/test/helpers3.h"
 #include "pseudo_nodes.h"
 
 using namespace tiledb::common;
 
-TEST_CASE(
-    "Concurrency: Test level of concurrency for simple graphs", "[ports]") {
+template <size_t N23>
+void simple_graph() {
+  using PortStateN = PortState<N23>;
+  using AsyncStateMachineN = AsyncStateMachine<PortStateN, size_t>;
+  //  using UnifiedAsyncStateMachineN =
+  //      UnifiedAsyncStateMachine<PortStateN, size_t>;
+
   bool debug = true;
 
   auto async_sync = [&](size_t source_delay,
@@ -72,7 +78,7 @@ TEST_CASE(
     std::atomic<size_t> i{0};
     size_t num_nodes{0};
 
-    ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> q([&]() {
+    ProducerNode<size_t, AsyncStateMachineN> q([&]() {
       timestamps[time_index++] = {
           time_index,
           "start",
@@ -95,36 +101,29 @@ TEST_CASE(
       return i++;
     });
 
-    ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> r(
+    ConsumerNode<size_t, AsyncStateMachineN> r([&](size_t) {
+      timestamps[time_index++] = {
+          time_index,
+          "start",
+          1,
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              (time_t)std::chrono::high_resolution_clock::now() - start_time)
+              .count()};
+
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(static_cast<size_t>(sink_delay)));
+
+      timestamps[time_index++] = {
+          time_index,
+          "stop",
+          1,
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              (time_t)std::chrono::high_resolution_clock::now() - start_time)
+              .count()};
+    });
+
+    FunctionNode<size_t, size_t, AsyncStateMachineN, AsyncStateMachineN> t(
         [&](size_t) {
-          timestamps[time_index++] = {
-              time_index,
-              "start",
-              1,
-              std::chrono::duration_cast<std::chrono::milliseconds>(
-                  (time_t)std::chrono::high_resolution_clock::now() -
-                  start_time)
-                  .count()};
-
-          std::this_thread::sleep_for(
-              std::chrono::milliseconds(static_cast<size_t>(sink_delay)));
-
-          timestamps[time_index++] = {
-              time_index,
-              "stop",
-              1,
-              std::chrono::duration_cast<std::chrono::milliseconds>(
-                  (time_t)std::chrono::high_resolution_clock::now() -
-                  start_time)
-                  .count()};
-        });
-
-    FunctionNode<
-        size_t,
-        size_t,
-        AsyncStateMachine<std::optional<size_t>>,
-        AsyncStateMachine<std::optional<size_t>>>
-        t([&](size_t) {
           timestamps[time_index++] = {
               time_index,
               "start",
@@ -332,4 +331,10 @@ TEST_CASE(
       std::cout << "100 100 100" << std::endl;
     async_sync(100, 100, 100);
   }
+}
+
+TEST_CASE(
+    "Concurrency: Test level of concurrency for simple graphs", "[ports]") {
+  simple_graph<2>();
+  //  simple_graph<3>();
 }
