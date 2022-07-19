@@ -26,16 +26,16 @@
  * THE SOFTWARE.
  */
 
-#include "../fsm3.h"
-#include "../policies3.h"
+#include "../fsm.h"
+#include "../policies.h"
 
 int main() {
-  (void)sizeof(tiledb::common::PortFiniteStateMachine<size_t>);
-  (void)sizeof(tiledb::common::BaseStateMachine<size_t>);
-  (void)sizeof(tiledb::common::NullStateMachine<size_t>);
-  (void)sizeof(tiledb::common::ManualStateMachine<size_t>);
-  (void)sizeof(tiledb::common::AsyncStateMachine<size_t>);
-  (void)sizeof(tiledb::common::UnifiedAsyncStateMachine<size_t>);
-  (void)sizeof(tiledb::common::DebugStateMachine<size_t>);
+  (void)sizeof(tiledb::common::PortFiniteStateMachine<PortState<3>, size_t>);
+  (void)sizeof(tiledb::common::BaseStateMachine<PortState<3>, size_t>);
+  (void)sizeof(tiledb::common::NullStateMachine<PortState<3>, size_t>);
+  (void)sizeof(tiledb::common::ManualStateMachine<PortState<3>, size_t>);
+  (void)sizeof(tiledb::common::AsyncStateMachine<PortState<3>, size_t>);
+  (void)sizeof(tiledb::common::UnifiedAsyncStateMachine<PortState<3>, size_t>);
+  (void)sizeof(tiledb::common::DebugStateMachine<PortState<3>, size_t>);
   (void)sizeof(tiledb::common::DebugStateMachineWithLock);
 }

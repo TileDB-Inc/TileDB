@@ -27,7 +27,11 @@
  */
 
 #include "../edge.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#include "experimental/tiledb/common/dag/state_machine/policies.h"
+
+using namespace tiledb::common;
 
 int main() {
-  (void)sizeof(tiledb::common::Edge);
+  (void)sizeof(Edge<size_t, NullStateMachine<PortState<2>, size_t>>);
 }

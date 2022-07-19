@@ -1,5 +1,5 @@
 /**
- * @file compile_fsm_main.cc
+ * @file   fsm3.cc
  *
  * @section LICENSE
  *
@@ -24,18 +24,14 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines a finite state machine with 2^3 states, one state
+ * for each binary number in [0, 2^3).
  */
 
-#include "../fsm.h"
-#include "../policies.h"
+#include <cassert>
 
-int main() {
-  (void)sizeof(tiledb::common::PortFiniteStateMachine<PortState<2>, size_t>);
-  (void)sizeof(tiledb::common::BaseStateMachine<PortState<2>, size_t>);
-  (void)sizeof(tiledb::common::NullStateMachine<PortState<2>, size_t>);
-  (void)sizeof(tiledb::common::ManualStateMachine<PortState<2>, size_t>);
-  (void)sizeof(tiledb::common::AsyncStateMachine<PortState<2>, size_t>);
-  (void)sizeof(tiledb::common::UnifiedAsyncStateMachine<PortState<2>, size_t>);
-  (void)sizeof(tiledb::common::DebugStateMachine<PortState<2>, size_t>);
-  (void)sizeof(tiledb::common::DebugStateMachineWithLock);
-}
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#include "tiledb/common/logger.h"

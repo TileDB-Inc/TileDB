@@ -33,9 +33,9 @@
 #include <future>
 #include <vector>
 #include "../ports.h"
-#include "experimental/tiledb/common/dag/state_machine/fsm3.h"
-#include "experimental/tiledb/common/dag/state_machine/policies3.h"
-#include "experimental/tiledb/common/dag/state_machine/test/helpers3.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#include "experimental/tiledb/common/dag/state_machine/policies.h"
+#include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 #include "pseudo_nodes.h"
 
 using namespace tiledb::common;

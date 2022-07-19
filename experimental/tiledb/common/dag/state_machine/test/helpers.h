@@ -36,7 +36,7 @@
 
 #include <random>
 #include <thread>
-#include "experimental/tiledb/common/dag/state_machine/fsm3.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
 
 using namespace tiledb::common;
 

@@ -1,11 +1,11 @@
 /**
- * @file   fsm3.cc
+ * @file experimental/tiledb/common/dag/test/main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,11 +27,9 @@
  *
  * @section DESCRIPTION
  *
- * This file defines a finite state machine with 2^3 states, one state
- * for each binary number in [0, 2^3).
+ * This file defines a test `main()`
  */
 
-#include <cassert>
-
-#include "experimental/tiledb/common/dag/state_machine/fsm3.h"
-#include "tiledb/common/logger.h"
+#define CATCH_CONFIG_MAIN
+#include "unit_fsm.h"
+#include "unit_fsm3.h"

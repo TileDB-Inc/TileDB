@@ -27,8 +27,14 @@
  */
 
 #include "../ports.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#include "experimental/tiledb/common/dag/state_machine/policies.h"
+
+using namespace tiledb::common;
 
 int main() {
-  (void)sizeof(tiledb::common::Sink);
-  (void)sizeof(tiledb::common::Source);
+  (void)sizeof(
+      tiledb::common::Sink<size_t, NullStateMachine<PortState<2>, size_t>>);
+  (void)sizeof(
+      tiledb::common::Source<size_t, NullStateMachine<PortState<2>, size_t>>);
 }
