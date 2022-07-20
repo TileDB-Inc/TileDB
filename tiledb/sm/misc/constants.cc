@@ -379,6 +379,9 @@ const std::string filter_dictionary_str = "DICTIONARY_ENCODING";
 /** String describing FILTER_SCALE_FLOAT. */
 const std::string filter_scale_float_str = "SCALE_FLOAT";
 
+/** String describing FILTER_XOR. */
+const std::string filter_xor_str = "XOR";
+
 /** The string representation for FilterOption type compression_level. */
 const std::string filter_option_compression_level_str = "COMPRESSION_LEVEL";
 
