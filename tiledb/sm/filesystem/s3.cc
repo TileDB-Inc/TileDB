@@ -733,7 +733,8 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
     for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
       std::string file(object.GetKey().c_str());
       uint64_t size = object.GetSize();
-      entries.emplace_back("s3://" + aws_auth + add_front_slash(file), size);
+      entries.emplace_back(
+          "s3://" + aws_auth + add_front_slash(file), size, false);
     }
 
     for (const auto& object :
@@ -742,7 +743,9 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
       // For "directories" it doesn't seem possible to get a shallow size in
       // S3, so the size of such an entry will be 0 in S3.
       entries.emplace_back(
-          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)), 0);
+          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)),
+          0,
+          true);
     }
 
     is_done =
