@@ -28,6 +28,12 @@
  * @section DESCRIPTION
  *
  * This file declares the DataBlock class for dag.
+ *
+ * A `DataBlock` is a managed fixed-size container of `std::byte`.  The actual
+ * data is a fixed-size "chunk" of bytes, which are managed by a shared pointer.
+ * As a result (and by design), copy and assignment semantics are shallow.
+ *
+ * @todo For hygiene, might want to clean up a moved-from `DataBlock`.
  */
 
 #ifndef TILEDB_DAG_DATA_BLOCK_H
@@ -87,22 +93,22 @@ class DataBlockImpl {
    * as well as the total capacity of the underlying data chunk.  Both size and
    * capacity are in units of bytes.
    */
-  size_t capacity_;
-  size_t size_;
+  size_t capacity_{0};
+  size_t size_{0};
 
   /**
    * The actual stored chunk.  The `storage_` is the `shared_ptr` to the chunk,
    * while `data_` is a pointer to the actual bytes.
    */
   storage_t storage_;
-  pointer_t data_;
+  pointer_t data_{nullptr};
 
  public:
   /**
    * Constructor used if the `Allocator` is `std::allocator` of `std::byte`.
    */
   template <class R = Allocator>
-  DataBlockImpl(
+  explicit DataBlockImpl(
       size_t init_size = 0UL,
       typename std::enable_if<
           std::is_same_v<R, std::allocator<std::byte>>>::type* = 0)
@@ -120,7 +126,7 @@ class DataBlockImpl {
    * return the chunk to the pool.  See pool_allocator.h for details.
    */
   template <class R = Allocator>
-  DataBlockImpl(
+  explicit DataBlockImpl(
       size_t init_size = 0UL,
       typename std::enable_if<
           std::is_same_v<R, PoolAllocator<chunk_size_>>>::type* = 0)
@@ -131,7 +137,23 @@ class DataBlockImpl {
       , data_{storage_.get()} {
   }
 
-  /*
+  /**
+   * Copy constructors and assignment operators.
+   * NOTE: Copies are shallow.
+   */
+  DataBlockImpl(const DataBlockImpl&) = default;
+  DataBlockImpl(DataBlockImpl&&) = default;
+  //  DataBlockImpl(DataBlockImpl&& rhs) {
+  //    if (storage_.use_count() == 0) {
+  //      rhs.size_ = 0;
+  //      rhs.capacity_ = 0;
+  //      rhs.data_ = nullptr;
+  //    }
+  //  }
+  DataBlockImpl& operator=(const DataBlockImpl&) = default;
+  DataBlockImpl& operator=(DataBlockImpl&&) = default;
+
+  /**
    * Various type aliases expected for a random-access range.
    */
   using DataBlockIterator = span_t::iterator;
@@ -239,6 +261,20 @@ class DataBlockImpl {
   }
   size_t capacity() const {
     return capacity_;
+  }
+
+  /**
+   * Class variable to access max possible size of the `DataBlock`
+   */
+  constexpr static inline size_t max_size() {
+    return chunk_size_;
+  }
+
+  /**
+   * Get shared pointer use count -- needed for diagnostics / testing
+   */
+  size_t use_count() const noexcept {
+    return storage_.use_count();
   }
 };
 
