@@ -31,11 +31,12 @@
  *
  */
 
+#include "unit_data_block.h"
+
 #include "experimental/tiledb/common/dag/data_block/data_block.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
-#include "unit_data_block.h"
 
 template <class T>
 using AsyncStateMachine2 = AsyncStateMachine<PortState<2>, T>;
@@ -73,39 +74,70 @@ TEST_CASE("Ports: Manual set source port values", "[ports]") {
   DataBlock x{DataBlock::max_size()};
   DataBlock y{DataBlock::max_size()};
 
-  SECTION("zero out blocks") {
-    for (auto& j : source) {
-      j = std::byte{0};
-    }
-    auto e = std::find_if_not(source.begin(), source.end(), [](auto a) {
-      return (std::byte{0} == a);
-    });
-    CHECK(e == source.end());
-    for (auto& j : sink) {
-      j = std::byte{0};
-    }
-    auto e = std::find_if_not(
-        sink.begin(), sink.end(), [](auto a) { return (std::byte{0} == a); });
-    CHECK(e == sink.end());
-  }
-}
-
-#if 0
   SECTION("set source in bound pair") {
     attach(source, sink);
-    CHECK(source.inject(55UL) == true);
+    CHECK(source.inject(x) == true);
     CHECK(source.extract().has_value() == true);
   }
   SECTION("set source in unbound source") {
-    CHECK(source.inject(9UL) == false);
+    CHECK(source.inject(x) == false);
   }
   SECTION("set source that has value") {
     attach(source, sink);
-    CHECK(source.inject(11UL) == true);
-    CHECK(source.inject(11UL) == false);
+    CHECK(source.inject(x) == true);
+    CHECK(source.inject(x) == false);
   }
 }
 
+bool zeroize(DataBlock& x) {
+  for (auto& j : x) {
+    j = std::byte{0};
+  }
+  auto e = std::find_if_not(
+      x.begin(), x.end(), [](auto a) { return (std::byte{0} == a); });
+  CHECK(e == x.end());
+  return e == x.end();
+}
+
+void iotize(DataBlock& x) {
+  std::iota(
+      reinterpret_cast<uint8_t*>(x.begin()),
+      reinterpret_cast<uint8_t*>(x.end()),
+      uint8_t{0});
+}
+
+bool check_iotized(DataBlock& x) {
+  bool ret = [&](DataBlock& z) {
+    uint8_t b{0};
+    for (auto&& j : z) {
+      if (static_cast<uint8_t>(j) != b) {
+        std::cout << static_cast<uint8_t>(j) << " " << b << std::endl;
+        return false;
+      }
+      ++b;
+    }
+    return true;
+  }(x);
+
+  CHECK(ret == true);
+  return ret;
+}
+
+bool check_zeroized(DataBlock& x) {
+  bool ret = [&](DataBlock& z) {
+    uint8_t b{0};
+    for (auto&& j : z) {
+      if (static_cast<uint8_t>(j) != b) {
+        std::cout << static_cast<uint8_t>(j) << " " << b << std::endl;
+        return false;
+      }
+    }
+    return true;
+  }(x);
+
+  CHECK(ret == true);
+  return ret;
+}
 
 /**
  * Test operation of inject and extract.
@@ -114,16 +146,28 @@ TEST_CASE("Ports: Manual extract sink values", "[ports]") {
   auto source = Source<DataBlock, NullStateMachine2<DataBlock>>{};
   auto sink = Sink<DataBlock, NullStateMachine2<DataBlock>>{};
 
+  DataBlock x{DataBlock::max_size()};
+  DataBlock y{DataBlock::max_size()};
+
   SECTION("set source in unbound pair") {
     CHECK(sink.extract().has_value() == false);
   }
   SECTION("set source in bound pair") {
+    CHECK(x.size() == DataBlock::max_size());
+    CHECK(y.size() == DataBlock::max_size());
+    iotize(x);
+    zeroize(y);
+    check_iotized(x);
+    check_zeroized(y);
+    auto dx = x.data();
+
     attach(source, sink);
     CHECK(sink.extract().has_value() == false);
-    CHECK(sink.inject(13UL) == true);
+    CHECK(sink.inject(x) == true);
     auto v = sink.extract();
     CHECK(v.has_value() == true);
-    CHECK(*v == 13UL);
+    check_iotized(*v);
+    CHECK(dx == v->data());
   }
 }
 
@@ -133,8 +177,21 @@ TEST_CASE("Ports: Manual extract sink values", "[ports]") {
  *
  */
 TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
-  Source<size_t, ManualStateMachine2<size_t>> source;
-  Sink<size_t, ManualStateMachine2<size_t>> sink;
+  Source<DataBlock, ManualStateMachine2<DataBlock>> source;
+  Sink<DataBlock, ManualStateMachine2<DataBlock>> sink;
+
+  DataBlock x{DataBlock::max_size()};
+  DataBlock y{DataBlock::max_size()};
+
+  [[maybe_unused]] auto dx = x.data();
+  [[maybe_unused]] auto dy = y.data();
+
+  CHECK(dx != dy);
+
+  iotize(x);
+  zeroize(y);
+  check_iotized(x);
+  check_zeroized(y);
 
   attach(source, sink);
 
@@ -144,51 +201,58 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
   CHECK(str(state_machine->state()) == "st_00");
 
   SECTION("test injection") {
-    CHECK(source.inject(123UL) == true);
-    CHECK(source.inject(321UL) == false);
+    CHECK(source.inject(x) == true);
+    CHECK(source.inject(y) == false);
     CHECK(sink.extract().has_value() == false);
   }
   SECTION("test extraction") {
-    CHECK(sink.inject(123UL) == true);
+    CHECK(sink.inject(x) == true);
     CHECK(sink.extract().has_value() == true);
     CHECK(sink.extract().has_value() == false);
   }
 
   SECTION("test one item transfer") {
-    CHECK(source.inject(123UL) == true);
+    check_iotized(x);
+
+    CHECK(source.inject(x) == true);
     state_machine->do_fill();
     state_machine->do_push();
     auto b = sink.extract();
     CHECK(b.has_value() == true);
-    CHECK(*b == 123UL);
+    CHECK(b->data() == dx);
+    check_iotized(*b);
     CHECK(str(state_machine->state()) == "st_01");
     state_machine->do_drain();
     CHECK(str(state_machine->state()) == "st_00");
   }
 
   SECTION("test two item transfer") {
-    CHECK(source.inject(456UL) == true);
+    check_iotized(x);
+    check_zeroized(y);
+
+    CHECK(source.inject(x) == true);
     state_machine->do_fill();
     state_machine->do_push();
     auto b = sink.extract();
     CHECK(b.has_value() == true);
-    CHECK(*b == 456UL);
+    CHECK(b->data() == x.data());
+    check_iotized(*b);
     CHECK(str(state_machine->state()) == "st_01");
     state_machine->do_drain();
     CHECK(str(state_machine->state()) == "st_00");
     CHECK(sink.extract().has_value() == false);
 
-    CHECK(source.inject(789UL) == true);
+    CHECK(source.inject(y) == true);
     state_machine->do_fill();
     state_machine->do_push();
 
     auto c = sink.extract();
     CHECK(c.has_value() == true);
-    CHECK(*c == 789UL);
+    CHECK(c->data() == dy);
+    check_zeroized(*c);
     CHECK(str(state_machine->state()) == "st_01");
     state_machine->do_drain();
     CHECK(str(state_machine->state()) == "st_00");
     CHECK(sink.extract().has_value() == false);
   }
 }
-#endif
