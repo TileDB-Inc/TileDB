@@ -31,6 +31,8 @@
  *
  */
 
+#include <future>
+
 #include "unit_data_block.h"
 
 #include "experimental/tiledb/common/dag/data_block/data_block.h"
@@ -57,7 +59,9 @@ using namespace tiledb::common;
 /**
  * Test creation of port with `DataBlock`
  */
-TEST_CASE("DataBlock: Create Source and Sink with DataBlock", "[data_block]") {
+TEST_CASE(
+    "BlocksAndPorts: Create Source and Sink with DataBlock",
+    "[blocks_and_ports]") {
   auto pn = Source<DataBlock, NullStateMachine2<DataBlock>>{};
   auto cn = Sink<DataBlock, NullStateMachine2<DataBlock>>{};
 
@@ -67,7 +71,8 @@ TEST_CASE("DataBlock: Create Source and Sink with DataBlock", "[data_block]") {
 /**
  * Test operation of inject and extract.
  */
-TEST_CASE("Ports: Manual set source port values", "[ports]") {
+TEST_CASE(
+    "BlocksAndPorts: Manual set source port values", "[blocks_and_ports]") {
   auto source = Source<DataBlock, NullStateMachine2<DataBlock>>{};
   auto sink = Sink<DataBlock, NullStateMachine2<DataBlock>>{};
 
@@ -142,7 +147,7 @@ bool check_zeroized(DataBlock& x) {
 /**
  * Test operation of inject and extract.
  */
-TEST_CASE("Ports: Manual extract sink values", "[ports]") {
+TEST_CASE("BlocksAndPorts: Manual extract sink values", "[blocks_and_ports]") {
   auto source = Source<DataBlock, NullStateMachine2<DataBlock>>{};
   auto sink = Sink<DataBlock, NullStateMachine2<DataBlock>>{};
 
@@ -176,7 +181,9 @@ TEST_CASE("Ports: Manual extract sink values", "[ports]") {
  * Sink with ManualStateMachine2.
  *
  */
-TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
+TEST_CASE(
+    "BlocksAndPorts: Manual transfer from Source to Sink",
+    "[blocks_and_ports]") {
   Source<DataBlock, ManualStateMachine2<DataBlock>> source;
   Sink<DataBlock, ManualStateMachine2<DataBlock>> sink;
 
@@ -255,4 +262,294 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
     CHECK(str(state_machine->state()) == "st_00");
     CHECK(sink.extract().has_value() == false);
   }
+}
+
+/**
+ * Test that we can inject and extract data items from Source and Sink with
+ * AsyncStateMachine.
+ *
+ */
+TEST_CASE(
+    "BlocksAndPorts: Manual transfer from Source to Sink, async policy",
+    "[blocks_and_ports]") {
+  Source<DataBlock, AsyncStateMachine2<DataBlock>> source;
+  Sink<DataBlock, AsyncStateMachine2<DataBlock>> sink;
+
+  DataBlock x{DataBlock::max_size()};
+  DataBlock y{DataBlock::max_size()};
+
+  [[maybe_unused]] auto dx = x.data();
+  [[maybe_unused]] auto dy = y.data();
+
+  CHECK(dx != dy);
+
+  iotize(x);
+  zeroize(y);
+  check_iotized(x);
+  check_zeroized(y);
+
+  attach(source, sink);
+
+  auto state_machine = sink.get_state_machine();
+  CHECK(str(state_machine->state()) == "st_00");
+
+  SECTION("test injection") {
+    CHECK(source.inject(x) == true);
+    CHECK(source.inject(y) == false);
+    CHECK(sink.extract().has_value() == false);
+  }
+  SECTION("test extraction") {
+    CHECK(sink.inject(x) == true);
+    CHECK(sink.extract().has_value() == true);
+    CHECK(sink.extract().has_value() == false);
+  }
+}
+
+/**
+ * Test that we can asynchronously transfer a value from Source to Sik.
+ *
+ * The test creates an asynchronous task for a source node client and for a sync
+ * node client, and launches them separately using `std::async`.  To create
+ * different interleavings of the tasks, we use all combinations of ordering for
+ * launching the tasks and waiting on their futures.
+ */
+TEST_CASE(
+    "BlocksAndPorts: Async transfer from Source to Sink",
+    "[blocks_and_ports]") {
+  Source<DataBlock, AsyncStateMachine2<DataBlock>> source;
+  Sink<DataBlock, AsyncStateMachine2<DataBlock>> sink;
+
+  DataBlock x{DataBlock::max_size()};
+  DataBlock y{DataBlock::max_size()};
+
+  [[maybe_unused]] auto dx = x.data();
+  [[maybe_unused]] auto dy = y.data();
+
+  CHECK(dx != dy);
+
+  iotize(x);
+  zeroize(y);
+  check_iotized(x);
+  check_zeroized(y);
+
+  attach(source, sink);
+
+  auto state_machine = sink.get_state_machine();
+  CHECK(str(state_machine->state()) == "st_00");
+
+  std::optional<DataBlock> b;
+
+  auto source_node = [&]() {
+    CHECK(source.inject(x) == true);
+    state_machine->do_fill();
+    state_machine->do_push();
+  };
+  auto sink_node = [&]() {
+    state_machine->do_pull();
+    b = sink.extract();
+    state_machine->do_drain();
+  };
+
+  SECTION("test source launch, sink launch, source get, sink get") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+    fut_a.get();
+    fut_b.get();
+  }
+  SECTION("test source launch, sink launch, sink get, source get") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+    fut_b.get();
+    fut_a.get();
+  }
+  SECTION("test sink launch, source launch, source get, sink get") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+    fut_a.get();
+    fut_b.get();
+  }
+  SECTION("test sink launch, source launch, sink get, source get") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+    fut_b.get();
+    fut_a.get();
+  }
+
+  CHECK(b.has_value() == true);
+  CHECK(b->data() == dx);
+  check_iotized(*b);
+}
+
+/**
+ * Test that we can correctly pass a sequence of blocks from source to sink.
+ * Random delays are inserted between each step of each function in order to
+ * increase the likelihood of exposing race conditions / deadlocks.
+ *
+ * The test creates an asynchronous task for a source node client and for a sync
+ * node client, and launches them separately using `std::async`.  To create
+ * different interleavings of the tasks, we use all combinations of ordering for
+ * launching the tasks and waiting on their futures.
+ */
+TEST_CASE("BlocksAndPorts: Async pass n blocks", "[blocks_and_ports]") {
+  [[maybe_unused]] constexpr bool debug = false;
+
+  Source<DataBlock, AsyncStateMachine2<DataBlock>> source;
+  Sink<DataBlock, AsyncStateMachine2<DataBlock>> sink;
+
+  attach(source, sink);
+
+  auto state_machine = sink.get_state_machine();
+  CHECK(str(state_machine->state()) == "st_00");
+
+  size_t rounds = 337;
+  if (debug)
+    rounds = 3;
+
+  std::vector<size_t> input(rounds);
+  std::vector<size_t> output(rounds);
+
+  std::iota(input.begin(), input.end(), 19);
+  std::fill(output.begin(), output.end(), 0);
+  auto i = input.begin();
+  auto j = output.begin();
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
+
+  auto p = PoolAllocator<DataBlock::max_size()>{};
+  size_t init_allocations = p.num_allocations();
+
+  size_t max_allocated = 0;
+
+  auto source_node = [&]() {
+    size_t n = rounds;
+
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+
+      CHECK(is_source_empty(state_machine->state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_source_empty(state_machine->state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      source.inject(make_data_block(*i++));
+      max_allocated = std::max(max_allocated, p.num_allocated());
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_source_empty(state_machine->state()) == "");
+
+      state_machine->do_fill(debug ? "async source node" : "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      state_machine->do_push(debug ? "async source node" : "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    }
+  };
+
+  auto sink_node = [&]() {
+    size_t n = rounds;
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      state_machine->do_pull(debug ? "async sink node" : "");
+
+      CHECK(is_sink_full(state_machine->state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_sink_full(state_machine->state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      auto k = *(sink.extract());
+
+      *j++ = k.size();
+
+      CHECK(is_sink_full(state_machine->state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      state_machine->do_drain(debug ? "async sink node" : "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    }
+  };
+
+  SECTION("test source launch, sink launch, source get, sink get") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("test source launch, sink launch, sink get, source get") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+    fut_b.get();
+    fut_a.get();
+  }
+
+  SECTION("test sink launch, source launch, source get, sink get") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("test sink launch, source launch, sink get, source get") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+    fut_b.get();
+    fut_a.get();
+  }
+
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    for (size_t j = 0; j < input.size(); ++j) {
+      if (input[j] != output[j]) {
+        std::cout << j << " (" << input[j] << ", " << output[j] << ")"
+                  << std::endl;
+      }
+    }
+  }
+
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    auto iter = std::find_first_of(
+        input.begin(),
+        input.end(),
+        output.begin(),
+        output.end(),
+        std::not_equal_to<size_t>());
+    if (iter != input.end()) {
+      size_t k = iter - input.begin();
+      std::cout << k << " (" << input[k] << ", " << output[k] << ")"
+                << std::endl;
+    } else {
+      std::cout << "this should not happen" << std::endl;
+    }
+  }
+
+  // Check that block sizes sent equal block sizes received
+  CHECK(std::equal(input.begin(), input.end(), output.begin()));
+
+  // We should have used one block per round
+  CHECK(p.num_allocations() == init_allocations + rounds);
+
+  // There should not have been any more than 3 blocks in flight at any one time
+  CHECK(max_allocated <= 3);
+
+  // All blocks should have been freed
+  CHECK(p.num_allocated() == 0);
 }

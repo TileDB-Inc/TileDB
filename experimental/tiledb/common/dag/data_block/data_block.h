@@ -287,6 +287,13 @@ Allocator DataBlockImpl<Allocator>::allocator_;
  */
 using DataBlock = DataBlockImpl<PoolAllocator<chunk_size_>>;
 
+/**
+ * Function for getting new `DataBlock`s
+ */
+DataBlock make_data_block(size_t init_size) {
+  return DataBlock{init_size};
+}
+
 }  // namespace tiledb::common
 
 #endif  // TILEDB_DAG_DATA_BLOCK_H
