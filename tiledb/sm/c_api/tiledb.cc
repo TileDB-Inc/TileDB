@@ -5813,7 +5813,8 @@ int32_t tiledb_serialize_array_open(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_buffer_t** buffer) {
-  // client_side is currently unused
+  // Currently no different behaviour is required if array open is serialized by
+  // the client or the Cloud server, so the variable is unused
   (void)client_side;
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -5846,7 +5847,8 @@ int32_t tiledb_deserialize_array_open(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_array_t** array) {
-  // Currently unused:
+  // Currently no different behaviour is required if array open is deserialized
+  // by the client or the Cloud server, so the variable is unused
   (void)client_side;
 
   // Sanity check

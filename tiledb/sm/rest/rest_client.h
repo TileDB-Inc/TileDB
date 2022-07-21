@@ -99,7 +99,7 @@ class RestClient {
       const URI& uri);
 
   /**
-   * Post tha array config and get an array from rest server
+   * Post the array config and get an array from rest server
    *
    * @param uri of array being loaded
    * @param array array to load into

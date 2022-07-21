@@ -161,8 +161,9 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_schema(
  * @param ctx The TileDB context.
  * @param array The array to get the information to serialize from.
  * @param serialization_type Type of serialization to use.
- * @param client_side If set to 1, deserialize from "client-side" perspective.
- *    Else, "server-side."
+ * @param client_side Allows to specify different behavior depending on who is
+ * serializing, the client (1) or the Cloud server (0). This is sometimes needed
+ * since they are both using the same Core library APIs for serialization.
  * @param tiledb_buffer_t Will be set to a newly allocated buffer containing
  *    the serialized array open information.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
@@ -183,8 +184,9 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_open(
  * @param ctx The TileDB context.
  * @param buffer Buffer to deserialize from.
  * @param serialization_type Type of deserialization to use.
- * @param client_side If set to 1, deserialize from "client-side" perspective.
- *    Else, "server-side."
+ * @param client_side Allows to specify different behavior depending on who is
+ * serializing, the client (1) or the Cloud server (0). This is sometimes needed
+ * since they are both using the same Core library APIs for serialization.
  * @param array The array object to deserialize into (must be pre-allocated).
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */

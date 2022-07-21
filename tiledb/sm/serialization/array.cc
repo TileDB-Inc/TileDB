@@ -39,6 +39,8 @@
 #endif
 // clang-format on
 
+#include <string>
+
 #include "tiledb/common/common.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/enums/serialization_type.h"
@@ -492,7 +494,8 @@ Status array_open_serialize(
       default: {
         return LOG_STATUS(Status_SerializationError(
             "Error serializing array open; Unknown serialization type "
-            "passed"));
+            "passed: " +
+            std::to_string(static_cast<uint8_t>(serialize_type))));
       }
     }
 
