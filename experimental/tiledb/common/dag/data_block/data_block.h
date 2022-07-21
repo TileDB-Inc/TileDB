@@ -290,7 +290,7 @@ using DataBlock = DataBlockImpl<PoolAllocator<chunk_size_>>;
 /**
  * Function for getting new `DataBlock`s
  */
-DataBlock make_data_block(size_t init_size) {
+[[maybe_unused]] static DataBlock make_data_block(size_t init_size) {
   return DataBlock{init_size};
 }
 
