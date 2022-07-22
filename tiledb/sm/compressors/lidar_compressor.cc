@@ -1,11 +1,11 @@
 /**
- * @file compile_filter_main.cc
+ * @file   lidar_compressor.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,25 +24,40 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file implements the lidar compressor class.
  */
 
-#include "../bzip_compressor.h"
-#include "../dd_compressor.h"
-#include "../dict_compressor.h"
-#include "../gzip_compressor.h"
-#include "../lidar_compressor.h"
-#include "../lz4_compressor.h"
-#include "../rle_compressor.h"
-#include "../zstd_compressor.h"
+#include "tiledb/sm/compressors/lidar_compressor.h"
+#include "tiledb/common/logger.h"
+#include "tiledb/sm/buffer/buffer.h"
 
-int main() {
-  (void)sizeof(tiledb::sm::BZip);
-  (void)sizeof(tiledb::sm::DoubleDelta);
-  (void)sizeof(tiledb::sm::DictEncoding);
-  (void)sizeof(tiledb::sm::GZip);
-  (void)sizeof(tiledb::sm::Lidar);
-  (void)sizeof(tiledb::sm::LZ4);
-  (void)sizeof(tiledb::sm::RLE);
-  (void)sizeof(tiledb::sm::ZStd);
+#include <cmath>
+
+using namespace tiledb::common;
+
+namespace tiledb {
+namespace sm {
+
+Status Lidar::compress(
+    int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
+  return Status::Ok();
+}
+
+Status Lidar::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+    return Status::Ok();
+}
+
+Status Lidar::decompress(
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
+  return Status::Ok();
+}
+
+uint64_t Lidar::overhead(uint64_t nbytes) {
   return 0;
 }
+
+}  // namespace sm
+}  // namespace tiledb
