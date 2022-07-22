@@ -3963,7 +3963,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
 }
 
 template <typename FloatingType, typename IntType>
-void testing_float_scaling_filter() {
+void testing_float_scaling_filter(bool negative) {
   tiledb::sm::Config config;
 
   // Set up test data
@@ -3998,8 +3998,10 @@ void testing_float_scaling_filter() {
   uint64_t byte_width = sizeof(IntType);
 
   std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<FloatingType> dis(0.0, 213.0);
+  g std::mt19937 gen(rd());
+  IntType smallest_val = negative ? std::numeric_limits<IntType>::min() : 1.0f;
+  IntType largest_val = negative ? -1.0f : std::numeric_limits<IntType>::max();
+  std::uniform_real_distribution<FloatingType> dis(smallest_val, largest_val);
 
   for (uint64_t i = 0; i < nelts; i++) {
     FloatingType f = dis(gen);
@@ -4046,13 +4048,13 @@ TEMPLATE_TEST_CASE(
     int16_t,
     int32_t,
     int64_t) {
-  testing_float_scaling_filter<float, TestType>();
-  testing_float_scaling_filter<double, TestType>();
+  auto negative = GENERATE(true, false);
+  testing_float_scaling_filter<float, TestType>(negative);
+  testing_float_scaling_filter<double, TestType>(negative);
 }
 
-/*
 template <typename FloatingType, typename IntType>
-void testing_float_scaling_filter_zeros() {
+void testing_float_scaling_filter_zeros(FloatingType zero_val) {
   tiledb::sm::Config config;
 
   // Set up test data
@@ -4086,7 +4088,7 @@ void testing_float_scaling_filter_zeros() {
   uint64_t byte_width = sizeof(IntType);
 
   for (uint64_t i = 0; i < nelts; i++) {
-    FloatingType f = 0.0f;
+    FloatingType f = zero_val;
     CHECK(tile.write(&f, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
   }
 
@@ -4111,7 +4113,7 @@ void testing_float_scaling_filter_zeros() {
   for (uint64_t i = 0; i < nelts; i++) {
     FloatingType elt = 0.0f;
     CHECK(tile.read(&elt, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
-    CHECK(elt == 0.0f);
+    CHECK(elt - foffset < std::numeric_limits<FloatingType>::epsilon());
   }
 }
 
@@ -4122,10 +4124,14 @@ TEMPLATE_TEST_CASE(
     int16_t,
     int32_t,
     int64_t) {
-  testing_float_scaling_filter_zeros<float, TestType>();
-  testing_float_scaling_filter_zeros<double, TestType>();
+  // Positive zero
+  testing_float_scaling_filter_zeros<float, TestType>(0.0f);
+  testing_float_scaling_filter_zeros<double, TestType>(0.0f);
+
+  // Negative zero
+  testing_float_scaling_filter_zeros<float, TestType>(-0.0f);
+  testing_float_scaling_filter_zeros<double, TestType>(-0.0f);
 }
-*/
 
 template <typename FloatingType, typename IntType>
 void testing_float_scaling_filter_error(FloatingType error_val) {

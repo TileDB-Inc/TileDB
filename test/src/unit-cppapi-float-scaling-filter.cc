@@ -30,6 +30,7 @@
  * Tests the C++ API for float scaling filter related functions.
  */
 
+#include <limits>
 #include <random>
 #include <vector>
 
@@ -73,22 +74,22 @@ TEST_CASE(
 template <typename T, typename W>
 struct FloatScalingFilterTestStruct {
   void float_scaling_filter_api_test(
-      Context& ctx, tiledb_array_type_t array_type) {
-    /// TODO: Comment whole function.
+      Context& ctx, tiledb_array_type_t array_type, bool negative) {
+    // Create the domain and dimensions.
     Domain domain(ctx);
     auto d1 = Dimension::create<int>(ctx, "rows", {{1, dim_hi}}, 4);
     auto d2 = Dimension::create<int>(ctx, "cols", {{1, dim_hi}}, 4);
     domain.add_dimensions(d1, d2);
 
+    // Create the filter and set the scale, offset,and byte width.
     Filter f(ctx, TILEDB_FILTER_SCALE_FLOAT);
-
     double scale = 2.53;
     double offset = 0.138;
     uint64_t byte_width = sizeof(W);
 
-    f.set_option(TILEDB_SCALE_FLOAT_BYTEWIDTH, &byte_width);
-    f.set_option(TILEDB_SCALE_FLOAT_FACTOR, &scale);
-    f.set_option(TILEDB_SCALE_FLOAT_OFFSET, &offset);
+    f.set_option(TILEDB_SCALE_FLOAT_BYTEWIDTH, &byte_width)
+        .set_option(TILEDB_SCALE_FLOAT_FACTOR, &scale)
+        .set_option(TILEDB_SCALE_FLOAT_OFFSET, &offset);
 
     FilterList filters(ctx);
     filters.add_filter(f);
@@ -103,7 +104,9 @@ struct FloatScalingFilterTestStruct {
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<T> dis(-45234.0f, 45234.0);
+    W smallest_val = negative ? std::numeric_limits<W>::min() : 1.0f;
+    W largest_val = negative ? -1.0f : std::numeric_limits<W>::max();
+    std::uniform_real_distribution<T> dis(smallest_val, largest_val);
 
     std::vector<int> row_dims;
     std::vector<int> col_dims;
@@ -191,9 +194,10 @@ TEMPLATE_PRODUCT_TEST_CASE(
     vfs.remove_dir(array_name);
 
   auto array_type = GENERATE(TILEDB_SPARSE, TILEDB_DENSE);
+  auto negative = GENERATE(true, false);
 
   TestType fs;
-  fs.float_scaling_filter_api_test(ctx, array_type);
+  fs.float_scaling_filter_api_test(ctx, array_type, negative);
 
   // Teardown.
   if (vfs.is_dir(array_name))

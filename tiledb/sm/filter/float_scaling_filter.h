@@ -54,6 +54,11 @@ namespace sm {
  * On read, the float scaling filter will reverse the scale factor and offset,
  * and returns the floating point data, with a potential loss of precision.
  *
+ * This filter is a lossy filter. This means that when using this filter, you
+ * should expect some error when reading your data back. A couple cases where
+ * this is evident is:
+ * - when you have zeros in your data
+ * - when your data does not fit into the byte width size you have specified
  */
 class FloatScalingFilter : public Filter {
  public:
