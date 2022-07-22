@@ -416,3 +416,20 @@ TEST_CASE(
               .ok());
   CHECK(byte_width0 == byte_width1);
 }
+
+TEST_CASE("Filter: Test XOR filter deserialization", "[filter][xor]") {
+  Buffer buffer;
+  FilterType filtertype0 = FilterType::FILTER_XOR;
+  char serialized_buffer[5];
+  char* p = &serialized_buffer[0];
+  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+  buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
+
+  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+  auto&& [st_filter, filter1]{
+      FilterCreate::deserialize(&constbuffer, constants::format_version)};
+  REQUIRE(st_filter.ok());
+
+  // Check type
+  CHECK(filter1.value()->type() == filtertype0);
+}

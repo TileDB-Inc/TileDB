@@ -225,18 +225,14 @@ Status XORFilter::unshuffle_part(
 
   // Write starting element.
   const T* part_array = static_cast<const T*>(part->data());
-  RETURN_NOT_OK(output->write(part_array, sizeof(T)));
-  output->advance_offset(sizeof(T));
+  T* output_array = static_cast<T*>(output->cur_data());
+  output_array[0] = part_array[0];
 
   T last_element = part_array[0];
   for (uint32_t j = 1; j < num_elems_in_part; ++j) {
     T value = last_element + part_array[j];
-    RETURN_NOT_OK(output->write(&value, sizeof(T)));
-
+    output_array[j] = value;
     last_element = value;
-    if (j != num_elems_in_part - 1) {
-      output->advance_offset(sizeof(T));
-    }
   }
 
   return Status::Ok();

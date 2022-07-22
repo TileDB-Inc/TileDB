@@ -54,6 +54,7 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/filter/float_scaling_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
+#include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/tile/tile.h"
 
 #include <catch.hpp>
@@ -4048,4 +4049,77 @@ TEMPLATE_TEST_CASE(
     int64_t) {
   testing_float_scaling_filter<float, TestType>();
   testing_float_scaling_filter<double, TestType>();
+}
+
+template <typename T>
+void testing_xor_filter() {
+  tiledb::sm::Config config;
+
+  // Set up test data
+  const uint64_t nelts = 100;
+  const uint64_t tile_size = nelts * sizeof(T);
+  const uint64_t cell_size = sizeof(T);
+  const uint32_t dim_num = 0;
+
+  Tile tile;
+  Datatype t = Datatype::INT8;
+  switch (sizeof(T)) {
+    case 1: {
+      t = Datatype::INT8;
+    } break;
+    case 2: {
+      t = Datatype::INT16;
+    } break;
+    case 4: {
+      t = Datatype::INT32;
+    } break;
+    case 8: {
+      t = Datatype::INT64;
+    } break;
+    default: {
+      INFO(
+          "testing_xor_filter: passed int type with size of not 1, 2, 4, or 8 "
+          "bytes.");
+      CHECK(false);
+    }
+  }
+
+  tile.init_unfiltered(
+      constants::format_version, t, tile_size, cell_size, dim_num);
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<T> dis(
+      std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
+
+  std::vector<T> results;
+
+  for (uint64_t i = 0; i < nelts; i++) {
+    T val = dis(gen);
+    CHECK(tile.write(&val, i * sizeof(T), sizeof(T)).ok());
+    results.push_back(val);
+  }
+
+  FilterPipeline pipeline;
+  ThreadPool tp(4);
+  CHECK(pipeline.add_filter(XORFilter()).ok());
+
+  CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
+
+  // Check new size and number of chunks
+  CHECK(tile.size() == 0);
+  CHECK(tile.filtered_buffer().size() != 0);
+  CHECK(tile.alloc_data(nelts * sizeof(T)).ok());
+  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
+  for (uint64_t i = 0; i < nelts; i++) {
+    T elt = 0;
+    CHECK(tile.read(&elt, i * sizeof(T), sizeof(T)).ok());
+    CHECK(elt == results[i]);
+  }
+}
+
+TEMPLATE_TEST_CASE(
+    "Filter: Test XOR", "[filter][xor]", int8_t, int16_t, int32_t, int64_t) {
+  testing_xor_filter<TestType>();
 }
