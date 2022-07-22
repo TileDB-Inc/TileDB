@@ -164,8 +164,12 @@ class ReaderBase : public StrategyBase {
   /** The delete conditions. */
   std::vector<QueryCondition> delete_conditions_;
 
-  /** Timestamped delete conditions, used for consolidated fragments with
-   * timestamps. */
+  /**
+   * Timestamped delete conditions. This the same as delete_conditions_ but
+   * adds a conditional in the condition with the timestamp of the condition.
+   * It will be used to process fragments with timestamps when a delete
+   * condition timestamp falls within the fragment timestamps.
+   */
   std::vector<QueryCondition> timestamped_delete_conditions_;
 
   /** The fragment metadata that the reader will focus on. */

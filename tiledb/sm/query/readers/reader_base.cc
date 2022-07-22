@@ -330,9 +330,10 @@ bool ReaderBase::include_timestamps(const unsigned f) const {
   auto partial_overlap = fragment_metadata_[f]->partial_time_overlap(
       array_->timestamp_start(), array_->timestamp_end_opened_at());
   auto dups = array_schema_.allows_dups();
+  auto timestamps_needed = timestamps_needed_for_deletes_[f];
 
   return frag_has_ts && (user_requested_timestamps_ || partial_overlap ||
-                         !dups || timestamps_needed_for_deletes_[f]);
+                         !dups || timestamps_needed);
 }
 
 Status ReaderBase::load_tile_offsets(
