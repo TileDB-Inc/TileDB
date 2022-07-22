@@ -43,7 +43,11 @@ namespace tiledb {
 namespace sm {
 
 /**
- * TODO: header comment
+ * The XOR filter stores an array of integers (with size n) by storing
+ * the starting element and then storing the difference between the next
+ * n-1 consecutive pairs of elements.
+ * 
+ * TODO: document more 
  */
 class XORFilter : public Filter {
  public:
