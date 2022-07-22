@@ -61,6 +61,11 @@ bool ASTNodeVal::is_backwards_compatible() const {
 Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   const uint64_t condition_value_size = condition_value_data_.size();
 
+  // Ensure that the field exists.
+  if (!array_schema.is_field(field_name_)) {
+    return Status_QueryConditionError("Field doesn't exist");
+  }
+
   const auto nullable = array_schema.is_nullable(field_name_);
   const auto var_size = array_schema.var_size(field_name_);
   const auto type = array_schema.type(field_name_);

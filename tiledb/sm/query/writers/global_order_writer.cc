@@ -125,9 +125,9 @@ Status GlobalOrderWriter::finalize() {
 }
 
 void GlobalOrderWriter::reset() {
-  if (global_write_state_ != nullptr)
+  if (global_write_state_ != nullptr) {
     nuke_global_write_state();
-  initialized_ = false;
+  }
 }
 
 /* ****************************** */

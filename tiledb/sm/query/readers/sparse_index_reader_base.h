@@ -350,16 +350,6 @@ class SparseIndexReaderBase : public ReaderBase {
       bool include_coords, const std::vector<ResultTile*>& result_tiles);
 
   /**
-   * Allocate a tile bitmap if required for this tile.
-   *
-   * @param rt Result tile currently in process.
-   *
-   * @return Status.
-   */
-  template <class BitmapType>
-  Status allocate_tile_bitmap(ResultTileWithBitmap<BitmapType>* rt);
-
-  /**
    * Compute tile bitmaps.
    *
    * @param result_tiles Result tiles to process.
@@ -368,16 +358,6 @@ class SparseIndexReaderBase : public ReaderBase {
    * */
   template <class BitmapType>
   Status compute_tile_bitmaps(std::vector<ResultTile*>& result_tiles);
-
-  /**
-   * Count the number of cells in a bitmap.
-   *
-   * @param rt Result tile currently in process.
-   *
-   * @return Status.
-   */
-  template <class BitmapType>
-  Status count_tile_bitmap_cells(ResultTileWithBitmap<BitmapType>* rt);
 
   /**
    * Apply query condition.
