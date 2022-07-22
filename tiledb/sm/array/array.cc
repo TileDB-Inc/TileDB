@@ -1126,21 +1126,6 @@ Status Array::compute_non_empty_domain() {
   return Status::Ok();
 }
 
-bool Array::consolidation_with_timestamps_config_enabled() const {
-  auto found = false;
-  auto consolidation_with_timestamps = false;
-  auto status = config_.get<bool>(
-      "sm.consolidation.with_timestamps",
-      &consolidation_with_timestamps,
-      &found);
-  if (!status.ok() || !found) {
-    throw std::runtime_error(
-        "Cannot get with_timestamps configuration option from config");
-  }
-
-  return consolidation_with_timestamps;
-}
-
 void Array::set_array_open() {
   std::lock_guard<std::mutex> lock(mtx_);
   if (is_opening_or_closing_) {

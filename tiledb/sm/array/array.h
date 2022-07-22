@@ -553,9 +553,6 @@ class Array {
   /** Computes the non-empty domain of the array. */
   Status compute_non_empty_domain();
 
-  /** Checks if consolidation with timestamps is enabled in config. */
-  bool consolidation_with_timestamps_config_enabled() const;
-
   /** Sets the array state as open. */
   void set_array_open();
 
