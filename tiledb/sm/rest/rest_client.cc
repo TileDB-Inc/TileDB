@@ -288,12 +288,10 @@ Status RestClient::post_array_from_rest(const URI& uri, Array* array) {
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  // TODO: update when new REST route is finalized
   std::string url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
                     curlc.url_escape(array_uri) + "/?";
 
   // Remote array operations should provide start and end timestamps
-  // TBD: leave here as URI parameters or put in CAPnP msg ?
   url += "start_timestamp=" + std::to_string(array->timestamp_start()) +
          "&end_timestamp=" + std::to_string(array->timestamp_end());
 
