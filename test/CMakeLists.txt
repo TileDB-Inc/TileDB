@@ -203,9 +203,11 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-consolidation.cc
     src/unit-cppapi-consolidation-with-timestamps.cc
     src/unit-cppapi-datetimes.cc
+    src/unit-cppapi-deletes.cc
     src/unit-cppapi-time.cc
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
+    src/unit-cppapi-float-scaling-filter.cc
     src/unit-cppapi-fragment_info.cc
     src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc

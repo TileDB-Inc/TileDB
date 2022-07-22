@@ -122,7 +122,6 @@ Status UnorderedWriter::finalize() {
 }
 
 void UnorderedWriter::reset() {
-  initialized_ = false;
 }
 
 /* ****************************** */

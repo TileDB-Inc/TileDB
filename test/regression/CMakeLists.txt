@@ -30,6 +30,7 @@ find_package(Catch_EP REQUIRED)
 set(SOURCES
   targets/sc-12024.cc
   targets/sc-15387.cc
+  targets/sc-18836.cc
 )
 
 if (TILEDB_SERIALIZATION)

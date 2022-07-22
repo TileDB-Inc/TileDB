@@ -40,6 +40,7 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parse_argument.h"
+#include "tiledb/sm/query/deletes_and_updates/deletes.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
@@ -1137,9 +1138,13 @@ Status Query::create_strategy() {
     }
   } else if (type_ == QueryType::READ) {
     bool use_default = true;
-    if (use_refactored_sparse_unordered_with_dups_reader() &&
-        !array_schema_->dense() && layout_ == Layout::UNORDERED &&
-        array_schema_->allows_dups()) {
+    bool all_dense = true;
+    for (auto& frag_md : fragment_metadata_) {
+      all_dense &= frag_md->dense();
+    }
+
+    if (use_refactored_sparse_unordered_with_dups_reader(
+            layout_, *array_schema_)) {
       use_default = false;
 
       auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
@@ -1172,7 +1177,7 @@ Status Query::create_strategy() {
             condition_));
       }
     } else if (
-        use_refactored_sparse_global_order_reader() &&
+        use_refactored_sparse_global_order_reader(layout_, *array_schema_) &&
         !array_schema_->dense() &&
         (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED)) {
       // Using the reader for unordered queries to do deduplication.
@@ -1209,25 +1214,19 @@ Status Query::create_strategy() {
             condition_,
             consolidation_with_timestamps_));
       }
-    } else if (use_refactored_dense_reader() && array_schema_->dense()) {
-      bool all_dense = true;
-      for (auto& frag_md : fragment_metadata_)
-        all_dense &= frag_md->dense();
-
-      if (all_dense) {
-        use_default = false;
-        strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-            DenseReader,
-            stats_->create_child("Reader"),
-            logger_,
-            storage_manager_,
-            array_,
-            config_,
-            buffers_,
-            subarray_,
-            layout_,
-            condition_));
-      }
+    } else if (use_refactored_dense_reader(*array_schema_, all_dense)) {
+      use_default = false;
+      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+          DenseReader,
+          stats_->create_child("Reader"),
+          logger_,
+          storage_manager_,
+          array_,
+          config_,
+          buffers_,
+          subarray_,
+          layout_,
+          condition_));
     }
 
     if (use_default) {
@@ -1243,6 +1242,18 @@ Status Query::create_strategy() {
           layout_,
           condition_));
     }
+  } else if (type_ == QueryType::DELETE) {
+    strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+        Deletes,
+        stats_->create_child("Deletes"),
+        logger_,
+        storage_manager_,
+        array_,
+        config_,
+        buffers_,
+        subarray_,
+        layout_,
+        condition_));
   } else {
     return logger_->status(
         Status_QueryError("Cannot create strategy; unsupported query type"));
@@ -1466,26 +1477,30 @@ Status Query::set_data_buffer(
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   // Check buffer
-  if (check_null_buffers && buffer == nullptr)
-    if (type_ != QueryType::WRITE || *buffer_size != 0)
+  if (check_null_buffers && buffer == nullptr) {
+    if (type_ != QueryType::WRITE || *buffer_size != 0) {
       return logger_->status(
           Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
+    }
+  }
 
   // Check buffer size
-  if (check_null_buffers && buffer_size == nullptr)
+  if (check_null_buffers && buffer_size == nullptr) {
     return logger_->status(Status_QueryError(
         "Cannot set buffer; " + name + " buffer size is null"));
+  }
 
   // For easy reference
   const bool is_dim = array_schema_->is_dim(name);
   const bool is_attr = array_schema_->is_attr(name);
 
   // Check that attribute/dimension exists
-  if (name != constants::coords && name != constants::timestamps && !is_dim &&
-      !is_attr)
+  if (name != constants::coords && name != constants::timestamps &&
+      name != constants::delete_timestamps && !is_dim && !is_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));
+  }
 
   if (array_schema_->dense() && type_ == QueryType::WRITE && !is_attr) {
     return logger_->status(Status_QueryError(
@@ -1494,17 +1509,19 @@ Status Query::set_data_buffer(
 
   // Check if zipped coordinates coexist with separate coordinate buffers
   if ((is_dim && has_zipped_coords_buffer_) ||
-      (name == constants::coords && has_coords_buffer_))
+      (name == constants::coords && has_coords_buffer_)) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set separate coordinate buffers and "
                     "a zipped coordinate buffer in the same query")));
+  }
 
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
+  if (status_ != QueryStatus::UNINITIALIZED && !exists) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
+  }
 
   if (name == constants::coords) {
     has_zipped_coords_buffer_ = true;
@@ -2097,7 +2114,8 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 }
 
 Status Query::check_buffers_correctness() {
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
+  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
+      type_ != QueryType::DELETE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot check buffers; Unsupported query type."));
   }
@@ -2216,33 +2234,35 @@ shared_ptr<Buffer> Query::rest_scratch() const {
   return rest_scratch_;
 }
 
-bool Query::use_refactored_dense_reader() {
-  bool use_refactored_readers = false;
+bool Query::use_refactored_dense_reader(
+    const ArraySchema& array_schema, bool all_dense) {
+  bool use_refactored_reader = false;
   bool found = false;
   // First check for legacy option
   config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_readers, &found);
+      "sm.use_refactored_readers", &use_refactored_reader, &found);
   // If the legacy/deprecated option is set use it over the new parameters
   // This facilitates backwards compatibility
   if (found) {
     logger_->warn(
         "sm.use_refactored_readers config option is deprecated.\nPlease use "
         "'sm.query.dense.reader' with value of 'refactored' or 'legacy'");
-    return use_refactored_readers;
+  } else {
+    const std::string& val = config_.get("sm.query.dense.reader", &found);
+    assert(found);
+    use_refactored_reader = val == "refactored";
   }
 
-  const std::string& val = config_.get("sm.query.dense.reader", &found);
-  assert(found);
-
-  return val == "refactored";
+  return use_refactored_reader && array_schema.dense() && all_dense;
 }
 
-bool Query::use_refactored_sparse_global_order_reader() {
-  bool use_refactored_readers = false;
+bool Query::use_refactored_sparse_global_order_reader(
+    Layout layout, const ArraySchema& array_schema) {
+  bool use_refactored_reader = false;
   bool found = false;
   // First check for legacy option
   config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_readers, &found);
+      "sm.use_refactored_readers", &use_refactored_reader, &found);
   // If the legacy/deprecated option is set use it over the new parameters
   // This facilitates backwards compatibility
   if (found) {
@@ -2250,23 +2270,24 @@ bool Query::use_refactored_sparse_global_order_reader() {
         "sm.use_refactored_readers config option is deprecated.\nPlease use "
         "'sm.query.sparse_global_order.reader' with value of 'refactored' or "
         "'legacy'");
-    return use_refactored_readers;
+  } else {
+    const std::string& val =
+        config_.get("sm.query.sparse_global_order.reader", &found);
+    assert(found);
+    use_refactored_reader = val == "refactored";
   }
-
-  const std::string& val =
-      config_.get("sm.query.sparse_global_order.reader", &found);
-  assert(found);
-
-  return val == "refactored";
+  return use_refactored_reader && !array_schema.dense() &&
+         (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED);
 }
 
-bool Query::use_refactored_sparse_unordered_with_dups_reader() {
-  bool use_refactored_readers = false;
+bool Query::use_refactored_sparse_unordered_with_dups_reader(
+    Layout layout, const ArraySchema& array_schema) {
+  bool use_refactored_reader = false;
   bool found = false;
 
   // First check for legacy option
   config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_readers, &found);
+      "sm.use_refactored_readers", &use_refactored_reader, &found);
   // If the legacy/deprecated option is set use it over the new parameters
   // This facilitates backwards compatibility
   if (found) {
@@ -2274,14 +2295,15 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader() {
         "sm.use_refactored_readers config option is deprecated.\nPlease use "
         "'sm.query.sparse_unordered_with_dups.reader' with value of "
         "'refactored' or 'legacy'");
-    return use_refactored_readers;
+  } else {
+    const std::string& val =
+        config_.get("sm.query.sparse_unordered_with_dups.reader", &found);
+    assert(found);
+    use_refactored_reader = val == "refactored";
   }
 
-  const std::string& val =
-      config_.get("sm.query.sparse_unordered_with_dups.reader", &found);
-  assert(found);
-
-  return val == "refactored";
+  return use_refactored_reader && !array_schema.dense() &&
+         layout == Layout::UNORDERED && array_schema.allows_dups();
 }
 
 tuple<Status, optional<bool>> Query::non_overlapping_ranges() {

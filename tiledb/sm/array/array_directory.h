@@ -150,6 +150,49 @@ class ArrayDirectory {
     std::vector<TimestampedURI> fragment_uris_;
   };
 
+  /**
+   * Class to return a location of a delete tile, which is file URI/offset.
+   */
+  class DeleteTileLocation {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+
+    /**
+     * Constructor.
+     */
+    DeleteTileLocation(const URI& uri, const storage_size_t offset)
+        : uri_(uri)
+        , offset_(offset) {
+    }
+
+    /** Destructor. */
+    ~DeleteTileLocation() = default;
+
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+    inline const URI& uri() const {
+      return uri_;
+    }
+
+    inline uint64_t offset() const {
+      return offset_;
+    }
+
+   private:
+    /* ********************************* */
+    /*         PRIVATE ATTRIBUTES        */
+    /* ********************************* */
+
+    /** The URIs of the file. */
+    URI uri_;
+
+    /** The offset within the file. */
+    uint64_t offset_;
+  };
+
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -218,6 +261,9 @@ class ArrayDirectory {
 
   /** Returns the URIs of the consolidated fragment metadata files. */
   const std::vector<URI>& fragment_meta_uris() const;
+
+  /** Returns the location of delete tiles. */
+  const std::vector<DeleteTileLocation>& delete_tiles_location() const;
 
   /** Returns the URI to store fragments. */
   URI get_fragments_dir(uint32_t write_version) const;
@@ -297,6 +343,9 @@ class ArrayDirectory {
 
   /** The URIs of the consolidated fragment metadata files. */
   std::vector<URI> fragment_meta_uris_;
+
+  /** The location of delete tiles. */
+  std::vector<DeleteTileLocation> delete_tiles_location_;
 
   /**
    * Only array fragments, metadata, etc. that

@@ -42,12 +42,11 @@ bool ASTNodeVal::is_expr() const {
 }
 
 tdb_unique_ptr<ASTNode> ASTNodeVal::clone() const {
-  return tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal,
-      field_name_,
-      condition_value_data_.data(),
-      condition_value_data_.size(),
-      op_));
+  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeVal, *this));
+}
+
+tdb_unique_ptr<ASTNode> ASTNodeVal::get_negated_tree() const {
+  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeVal, *this, ASTNegation));
 }
 
 void ASTNodeVal::get_field_names(
@@ -61,6 +60,11 @@ bool ASTNodeVal::is_backwards_compatible() const {
 
 Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   const uint64_t condition_value_size = condition_value_data_.size();
+
+  // Ensure that the field exists.
+  if (!array_schema.is_field(field_name_)) {
+    return Status_QueryConditionError("Field doesn't exist");
+  }
 
   const auto nullable = array_schema.is_nullable(field_name_);
   const auto var_size = array_schema.var_size(field_name_);
@@ -159,9 +163,11 @@ tdb_unique_ptr<ASTNode> ASTNodeVal::combine(
 const std::string& ASTNodeVal::get_field_name() const {
   return field_name_;
 }
+
 const UntypedDatumView& ASTNodeVal::get_condition_value_view() const {
   return condition_value_view_;
 }
+
 const QueryConditionOp& ASTNodeVal::get_op() const {
   return op_;
 }
@@ -170,6 +176,7 @@ const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeVal::get_children() const {
   throw std::runtime_error(
       "ASTNodeVal::get_children: Cannot get children from an AST value node.");
 }
+
 const QueryConditionCombinationOp& ASTNodeVal::get_combination_op() const {
   throw std::runtime_error(
       "ASTNodeVal::get_combination_op: Cannot get combination op from an AST "
@@ -181,12 +188,11 @@ bool ASTNodeExpr::is_expr() const {
 }
 
 tdb_unique_ptr<ASTNode> ASTNodeExpr::clone() const {
-  std::vector<tdb_unique_ptr<ASTNode>> nodes_copy;
-  for (const auto& node : nodes_) {
-    nodes_copy.push_back(node->clone());
-  }
-  return tdb_unique_ptr<ASTNode>(
-      tdb_new(ASTNodeExpr, std::move(nodes_copy), combination_op_));
+  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeExpr, *this));
+}
+
+tdb_unique_ptr<ASTNode> ASTNodeExpr::get_negated_tree() const {
+  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeExpr, *this, ASTNegation));
 }
 
 void ASTNodeExpr::get_field_names(
@@ -251,11 +257,13 @@ const std::string& ASTNodeExpr::get_field_name() const {
       "ASTNodeExpr::get_field_name: Cannot get field name from an AST "
       "expression node.");
 }
+
 const UntypedDatumView& ASTNodeExpr::get_condition_value_view() const {
   throw std::runtime_error(
       "ASTNodeExpr::get_condition_value_view: Cannot get condition value view "
       "from an AST expression node.");
 }
+
 const QueryConditionOp& ASTNodeExpr::get_op() const {
   throw std::runtime_error(
       "ASTNodeExpr::get_op: Cannot get op from an AST expression node.");

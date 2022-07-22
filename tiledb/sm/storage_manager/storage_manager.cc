@@ -63,6 +63,7 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
+#include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -141,6 +142,16 @@ Status StorageManager::array_close_for_writes(Array* array) {
   // Flush the array metadata
   RETURN_NOT_OK(store_metadata(
       array->array_uri(), *array->encryption_key(), array->unsafe_metadata()));
+
+  // Remove entry from open arrays
+  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
+  open_arrays_.erase(array);
+
+  return Status::Ok();
+}
+
+Status StorageManager::array_close_for_deletes(Array* array) {
+  assert(open_arrays_.find(array) != open_arrays_.end());
 
   // Remove entry from open arrays
   std::lock_guard<std::mutex> lock{open_arrays_mtx_};
@@ -1426,7 +1437,7 @@ StorageManager::load_array_schema_from_uri(
   auto timer_se = stats_->start_timer("sm_load_array_schema_from_uri");
 
   auto&& [st, buffer_opt] =
-      load_data_from_generic_tile(schema_uri, encryption_key);
+      load_data_from_generic_tile(schema_uri, 0, encryption_key);
   RETURN_NOT_OK_TUPLE(st, nullopt);
   auto& buffer = *buffer_opt;
 
@@ -1549,7 +1560,7 @@ Status StorageManager::load_array_metadata(
   auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
 
-    auto&& [st, buffer] = load_data_from_generic_tile(uri, encryption_key);
+    auto&& [st, buffer] = load_data_from_generic_tile(uri, 0, encryption_key);
     RETURN_NOT_OK(st);
     metadata_buffs[m] = make_shared<Buffer>(HERE(), std::move(*buffer));
 
@@ -1574,6 +1585,34 @@ Status StorageManager::load_array_metadata(
   RETURN_NOT_OK(metadata->set_loaded_metadata_uris(array_metadata_to_load));
 
   return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<QueryCondition>>>
+StorageManager::load_delete_conditions(
+    const ArrayDirectory& array_dir, const EncryptionKey& enc_key) {
+  auto& locations = array_dir.delete_tiles_location();
+  auto delete_conditions = std::vector<QueryCondition>(locations.size());
+
+  auto status = parallel_for(compute_tp_, 0, locations.size(), [&](size_t i) {
+    // Get condition marker.
+    auto& uri = locations[i].uri();
+    auto condition_marker = uri.last_path_part();
+    condition_marker = condition_marker.substr(
+        0, condition_marker.length() - constants::delete_file_suffix.length());
+
+    // Read the condition from storage.
+    auto&& [st, buff_opt] =
+        load_data_from_generic_tile(uri, locations[i].offset(), enc_key);
+    RETURN_NOT_OK(st);
+
+    delete_conditions[i] =
+        tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
+            condition_marker, buff_opt->data(), buff_opt->size());
+    return Status::Ok();
+  });
+  RETURN_NOT_OK_TUPLE(status, nullopt);
+
+  return {Status::Ok(), delete_conditions};
 }
 
 Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
@@ -1841,7 +1880,6 @@ Status StorageManager::store_group_detail(
 
   RETURN_NOT_OK(store_data_to_generic_tile(
       buff.data(), buff.size(), *group_detail_uri, encryption_key));
-  buff.disown_data();
 
   return st;
 }
@@ -1874,7 +1912,6 @@ Status StorageManager::store_array_schema(
 
   RETURN_NOT_OK(store_data_to_generic_tile(
       buff.data(), buff.size(), schema_uri, encryption_key));
-  buff.disown_data();
 
   return Status::Ok();
 }
@@ -1906,7 +1943,6 @@ Status StorageManager::store_metadata(
       metadata_buff.size(),
       metadata_uri,
       encryption_key));
-  metadata_buff.disown_data();
 
   return Status::Ok();
 }
@@ -2006,7 +2042,7 @@ tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_from_uri(
     const URI& group_uri, const URI& uri, const EncryptionKey& encryption_key) {
   auto timer_se = stats_->start_timer("sm_load_group_from_uri");
 
-  auto&& [st, buffer_opt] = load_data_from_generic_tile(uri, encryption_key);
+  auto&& [st, buffer_opt] = load_data_from_generic_tile(uri, 0, encryption_key);
   RETURN_NOT_OK_TUPLE(st, nullopt);
   auto& buffer = *buffer_opt;
 
@@ -2094,7 +2130,7 @@ Status StorageManager::load_group_metadata(
   auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = group_metadata_to_load[m].uri_;
 
-    auto&& [st, buffer] = load_data_from_generic_tile(uri, encryption_key);
+    auto&& [st, buffer] = load_data_from_generic_tile(uri, 0, encryption_key);
     RETURN_NOT_OK(st);
     metadata_buffs[m] = tdb::make_shared<Buffer>(HERE(), std::move(*buffer));
 
@@ -2122,7 +2158,7 @@ Status StorageManager::load_group_metadata(
 }
 
 tuple<Status, optional<Buffer>> StorageManager::load_data_from_generic_tile(
-    const URI& uri, const EncryptionKey& encryption_key) {
+    const URI& uri, uint64_t offset, const EncryptionKey& encryption_key) {
   GenericTileIO tile_io(this, uri);
 
   // Get encryption key from config
@@ -2168,7 +2204,8 @@ tuple<Status, optional<Buffer>> StorageManager::load_data_from_generic_tile(
 
     return {Status::Ok(), std::move(*buff_opt)};
   } else {
-    auto&& [st1, buff_opt] = tile_io.read_generic(0, encryption_key, config_);
+    auto&& [st1, buff_opt] =
+        tile_io.read_generic(offset, encryption_key, config_);
     RETURN_NOT_OK_TUPLE(st1, nullopt);
 
     return {Status::Ok(), std::move(*buff_opt)};
@@ -2272,7 +2309,7 @@ StorageManager::load_consolidated_fragment_meta(
   if (uri.to_string().empty())
     return {Status::Ok(), nullopt, nullopt};
 
-  auto&& [st, buffer_opt] = load_data_from_generic_tile(uri, enc_key);
+  auto&& [st, buffer_opt] = load_data_from_generic_tile(uri, 0, enc_key);
   RETURN_NOT_OK_TUPLE(st, nullopt, nullopt);
   auto& buffer = *buffer_opt;
 

@@ -277,6 +277,8 @@ class Filter {
         return "CHECKSUM_SHA256";
       case TILEDB_FILTER_DICTIONARY:
         return "DICTIONARY_ENCODING";
+      case TILEDB_FILTER_SCALE_FLOAT:
+        return "SCALE_FLOAT";
     }
     return "";
   }
@@ -314,6 +316,15 @@ class Filter {
       case TILEDB_POSITIVE_DELTA_MAX_WINDOW:
         if (!std::is_same<uint32_t, T>::value)
           throw std::invalid_argument("Option value must be uint32_t.");
+        break;
+      case TILEDB_SCALE_FLOAT_BYTEWIDTH:
+        if (!std::is_same<uint64_t, T>::value)
+          throw std::invalid_argument("Option value must be uint64_t.");
+        break;
+      case TILEDB_SCALE_FLOAT_FACTOR:
+      case TILEDB_SCALE_FLOAT_OFFSET:
+        if (!std::is_same<double, T>::value)
+          throw std::invalid_argument("Option value must be double.");
         break;
       default:
         throw std::invalid_argument("Invalid option type");

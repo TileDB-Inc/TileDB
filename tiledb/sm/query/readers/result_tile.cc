@@ -141,6 +141,11 @@ void ResultTile::erase_tile(const std::string& name) {
     return;
   }
 
+  if (name == constants::delete_timestamps) {
+    delete_timestamps_tile_ = TileTuple(Tile(), Tile(), Tile());
+    return;
+  }
+
   // Handle dimension tile
   for (auto& ct : coord_tiles_) {
     if (ct.first == name) {
@@ -166,6 +171,11 @@ void ResultTile::init_attr_tile(const std::string& name) {
 
   if (name == constants::timestamps) {
     timestamps_tile_ = TileTuple(Tile(), Tile(), Tile());
+    return;
+  }
+
+  if (name == constants::delete_timestamps) {
+    delete_timestamps_tile_ = TileTuple(Tile(), Tile(), Tile());
     return;
   }
 
@@ -196,6 +206,11 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   // Handle timestamps tile
   if (name == constants::timestamps) {
     return &*timestamps_tile_;
+  }
+
+  // Handle delete timestamps tile
+  if (name == constants::delete_timestamps) {
+    return &*delete_timestamps_tile_;
   }
 
   // Handle attribute tile

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,8 @@
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/sm/misc/constants.h"
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 
@@ -59,6 +61,12 @@ inline const std::string& filter_option_str(FilterOption filter_option_) {
       return constants::filter_option_bit_width_max_window_str;
     case FilterOption::POSITIVE_DELTA_MAX_WINDOW:
       return constants::filter_option_positive_delta_max_window_str;
+    case FilterOption::SCALE_FLOAT_BYTEWIDTH:
+      return constants::filter_option_scale_float_bytewidth;
+    case FilterOption::SCALE_FLOAT_FACTOR:
+      return constants::filter_option_scale_float_factor;
+    case FilterOption::SCALE_FLOAT_OFFSET:
+      return constants::filter_option_scale_float_offset;
     default:
       return constants::empty_str;
   }
@@ -76,6 +84,12 @@ inline Status filter_option_enum(
       filter_option_str ==
       constants::filter_option_positive_delta_max_window_str)
     *filter_option_ = FilterOption::POSITIVE_DELTA_MAX_WINDOW;
+  else if (filter_option_str == constants::filter_option_scale_float_bytewidth)
+    *filter_option_ = FilterOption::SCALE_FLOAT_BYTEWIDTH;
+  else if (filter_option_str == constants::filter_option_scale_float_factor)
+    *filter_option_ = FilterOption::SCALE_FLOAT_FACTOR;
+  else if (filter_option_str == constants::filter_option_scale_float_offset)
+    *filter_option_ = FilterOption::SCALE_FLOAT_OFFSET;
   else
     return Status_Error("Invalid FilterOption " + filter_option_str);
 

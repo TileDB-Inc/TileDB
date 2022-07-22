@@ -189,12 +189,17 @@ uint64_t Reader::get_timestamp(const ResultCoords& rc) const {
 }
 
 Status Reader::dowork() {
+  auto timer_se = stats_->start_timer("dowork");
+
   // Check that the query condition is valid.
   RETURN_NOT_OK(condition_.check(array_schema_));
 
-  get_dim_attr_stats();
+  if (buffers_.count(constants::delete_timestamps) != 0) {
+    return logger_->status(
+        Status_ReaderError("Reader cannot process delete timestamps"));
+  }
 
-  auto timer_se = stats_->start_timer("read");
+  get_dim_attr_stats();
 
   auto dense_mode = array_schema_.dense();
 
@@ -392,7 +397,7 @@ Status Reader::compute_range_result_coords(
         array_->timestamp_start(), array_->timestamp_end_opened_at());
     if (frag_meta->has_timestamps() && partial_overlap) {
       RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
-          *(frag_meta->array_schema().get()), *tile, result_bitmap, nullptr));
+          *(frag_meta->array_schema().get()), *tile, result_bitmap));
     }
 
     // Gather results
@@ -1743,7 +1748,7 @@ Status Reader::get_all_result_coords(
       partial_overlap) {
     std::vector<uint8_t> result_bitmap(coords_num, 1);
     RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
-        *(frag_meta->array_schema().get()), *tile, result_bitmap, nullptr));
+        *(frag_meta->array_schema().get()), *tile, result_bitmap));
 
     for (uint64_t i = 0; i < coords_num; ++i) {
       if (result_bitmap[i]) {

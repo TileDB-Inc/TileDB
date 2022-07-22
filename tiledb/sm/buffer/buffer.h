@@ -192,12 +192,6 @@ class Buffer : public BufferBase {
   /** Returns the buffer data pointer at the input offset. */
   void* data(uint64_t offset) const;
 
-  /**
-   * Sets `owns_data_` to `false` and thus will not destroy the data
-   * in the destructor.
-   */
-  void disown_data();
-
   /** Returns the number of byte of free space in the buffer. */
   uint64_t free_space() const;
 

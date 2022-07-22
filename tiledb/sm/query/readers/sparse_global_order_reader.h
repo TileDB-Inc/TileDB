@@ -187,6 +187,18 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /* ********************************* */
 
   /**
+   * Get the coordinate tiles size for a dimension.
+   *
+   * @param dim_num Number of dimensions.
+   * @param f Fragment index.
+   * @param t Tile index.
+   *
+   * @return Status, tiles_size, tiles_size_qc.
+   */
+  tuple<Status, optional<std::pair<uint64_t, uint64_t>>> get_coord_tiles_size(
+      unsigned dim_num, unsigned f, uint64_t t);
+
+  /**
    * Add a result tile to process, making sure maximum budget is respected.
    *
    * @param dim_num Number of dimensions.
@@ -194,7 +206,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param memory_budget_qc_tiles Memory budget for query condition tiles.
    * @param f Fragment index.
    * @param t Tile index.
-   * @param array_schema Array schema.
+   * @param frag_md Fragment metadata.
    *
    * @return buffers_full, new_var_buffer_size, new_result_tiles_size.
    */
@@ -204,7 +216,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const uint64_t memory_budget_qc_tiles,
       const unsigned f,
       const uint64_t t,
-      const ArraySchema& array_schema);
+      const FragmentMetadata& frag_md);
 
   /**
    * Create the result tiles.

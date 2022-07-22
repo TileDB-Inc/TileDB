@@ -245,6 +245,7 @@ void check_save_to_file() {
   ss << "sm.consolidation.amplification 1.0\n";
   ss << "sm.consolidation.buffer_size 50000000\n";
   ss << "sm.consolidation.mode fragments\n";
+  ss << "sm.consolidation.purge_deleted_cells false\n";
   ss << "sm.consolidation.step_max_frags 4294967295\n";
   ss << "sm.consolidation.step_min_frags 4294967295\n";
   ss << "sm.consolidation.step_size_ratio 0.0\n";
@@ -621,6 +622,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.consolidation.timestamp_start"] = "0";
   all_param_values["sm.consolidation.timestamp_end"] =
       std::to_string(UINT64_MAX);
+  all_param_values["sm.consolidation.purge_deleted_cells"] = "false";
   all_param_values["sm.consolidation.step_min_frags"] = "4294967295";
   all_param_values["sm.consolidation.step_max_frags"] = "4294967295";
   all_param_values["sm.consolidation.buffer_size"] = "50000000";

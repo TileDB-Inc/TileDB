@@ -89,8 +89,8 @@ class Tile {
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
-   * @param buffer The buffer to be encapsulated by the tile object. This means
-   *     that the tile will take ownership of the buffer.
+   * @param buffer The buffer to be encapsulated by the tile object. The tile
+   *      will not take ownership of the buffer.
    * @param size The buffer size.
    */
   Tile(

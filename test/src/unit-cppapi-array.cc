@@ -1591,3 +1591,116 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE(
+    "C++ API: Array open VFS calls, dense", "[cppapi][dense][vfs-calls]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  // Write
+  std::vector<int> data_w = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_subarray({0, 3, 0, 3})
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", data_w);
+  query_w.submit();
+  array_w.close();
+
+  // Open for read.
+  Stats::reset();
+  Stats::enable();
+  Array array(ctx, array_name, TILEDB_READ);
+  array.close();
+  Stats::disable();
+
+  // Check stats.
+  std::string stats;
+  Stats::dump(&stats);
+
+  // Expect ls on:
+  // cpp_unit_array/
+  // cpp_unit_array/__commits
+  // cpp_unit_array/__schema
+  // cpp_unit_array/__meta
+  // cpp_unit_array/__fragment_meta
+  CHECK(
+      stats.find("\"Context.StorageManager.VFS.ls_num\": 5") !=
+      std::string::npos);
+
+  // Expect file_size on the fragment.
+  CHECK(
+      stats.find("\"Context.StorageManager.VFS.file_size_num\": 1") !=
+      std::string::npos);
+}
+
+TEST_CASE(
+    "C++ API: Array open VFS calls, sparse", "[cppapi][sparse][vfs-calls]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  // Write
+  std::vector<int> data_w = {1};
+  std::vector<int> coords_w = {0, 0};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_coordinates(coords_w)
+      .set_layout(TILEDB_GLOBAL_ORDER)
+      .set_data_buffer("a", data_w);
+  query_w.submit();
+  query_w.finalize();
+  array_w.close();
+
+  // Open for read.
+  Stats::reset();
+  Stats::enable();
+  Array array(ctx, array_name, TILEDB_READ);
+  array.close();
+  Stats::disable();
+
+  // Check stats.
+  std::string stats;
+  Stats::dump(&stats);
+
+  // Expect ls on:
+  // cpp_unit_array/
+  // cpp_unit_array/__commits
+  // cpp_unit_array/__schema
+  // cpp_unit_array/__meta
+  // cpp_unit_array/__fragment_meta
+  CHECK(
+      stats.find("\"Context.StorageManager.VFS.ls_num\": 5") !=
+      std::string::npos);
+
+  // Expect file_size on the fragment.
+  CHECK(
+      stats.find("\"Context.StorageManager.VFS.file_size_num\": 1") !=
+      std::string::npos);
+}

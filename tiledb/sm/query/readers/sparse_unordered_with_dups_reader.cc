@@ -151,6 +151,12 @@ template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   auto timer_se = stats_->start_timer("dowork");
 
+  // Make sure user didn't request delete timestamps.
+  if (buffers_.count(constants::delete_timestamps) != 0) {
+    return logger_->status(Status_SparseUnorderedWithDupsReaderError(
+        "Reader cannot process delete timestamps"));
+  }
+
   // Check that the query condition is valid.
   RETURN_NOT_OK(condition_.check(array_schema_));
 
@@ -198,8 +204,9 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
     std::vector<ResultTile*> result_tiles_created;
     std::vector<ResultTile*> result_tiles_loaded;
     for (auto& result_tile : result_tiles_) {
-      if (!result_tile.coords_loaded_) {
-        result_tile.coords_loaded_ = true;
+      if (!result_tile.coords_loaded()) {
+        result_tile.set_coords_loaded();
+        ;
         result_tiles_created.emplace_back(&result_tile);
       } else {
         result_tiles_loaded.emplace_back(&result_tile);
@@ -215,13 +222,16 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
       RETURN_NOT_OK(compute_tile_bitmaps<BitmapType>(result_tiles_created));
 
       // Apply query condition.
-      RETURN_NOT_OK(apply_query_condition<BitmapType>(result_tiles_created));
+      auto st = apply_query_condition<
+          UnorderedWithDupsResultTile<BitmapType>,
+          BitmapType>(result_tiles_created);
+      RETURN_NOT_OK(st);
 
       // Clear result tiles that are not necessary anymore.
       uint64_t current = 0;
       for (uint64_t i = 0; i < result_tiles_created.size(); i++) {
         if (((ResultTileWithBitmap<uint64_t>*)result_tiles_created[i])
-                ->bitmap_result_num_ != 0) {
+                ->result_num() != 0) {
           result_tiles_created[current++] = result_tiles_created[i];
         }
       }
@@ -231,7 +241,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
       auto it = result_tiles_.begin();
       while (it != result_tiles_.end()) {
         auto f = it->frag_idx();
-        if (it->bitmap_result_num_ == 0) {
+        if (it->result_num() == 0) {
           RETURN_NOT_OK(remove_result_tile(f, it++));
         } else {
           it++;
@@ -275,6 +285,27 @@ void SparseUnorderedWithDupsReader<BitmapType>::reset() {
 }
 
 template <class BitmapType>
+tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
+SparseUnorderedWithDupsReader<BitmapType>::get_coord_tiles_size(
+    unsigned dim_num, unsigned f, uint64_t t) {
+  auto&& [st, tiles_sizes] =
+      SparseIndexReaderBase::get_coord_tiles_size<BitmapType>(
+          subarray_.is_set(), dim_num, f, t);
+  RETURN_NOT_OK_TUPLE(st, nullopt);
+
+  // Add the result tile structure size.
+  tiles_sizes->first += sizeof(UnorderedWithDupsResultTile<BitmapType>);
+
+  // Add the tile bitmap size if there is a subarray or query condition set.
+  if (subarray_.is_set() || !condition_.empty()) {
+    tiles_sizes->first +=
+        fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
+  }
+
+  return {Status::Ok(), *tiles_sizes};
+}
+
+template <class BitmapType>
 tuple<Status, optional<bool>>
 SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
     const unsigned dim_num,
@@ -283,10 +314,9 @@ SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
     const unsigned f,
     const uint64_t t,
     const uint64_t last_t,
-    const ArraySchema& array_schema) {
+    const FragmentMetadata& frag_md) {
   // Calculate memory consumption for this tile.
-  auto&& [st, tiles_sizes] =
-      get_coord_tiles_size<BitmapType>(subarray_.is_set(), dim_num, f, t);
+  auto&& [st, tiles_sizes] = get_coord_tiles_size(dim_num, f, t);
   RETURN_NOT_OK_TUPLE(st, nullopt);
   auto tiles_size = tiles_sizes->first;
   auto tiles_size_qc = tiles_sizes->second;
@@ -302,7 +332,7 @@ SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
   memory_used_qc_tiles_total_ += tiles_size_qc;
 
   // Add the result tile.
-  result_tiles_.emplace_back(f, t, array_schema);
+  result_tiles_.emplace_back(f, t, frag_md);
 
   // Are all tiles loaded for this fragment.
   if (t == last_t)
@@ -345,7 +375,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
                 f,
                 t,
                 last_t,
-                *(fragment_metadata_[f]->array_schema()).get());
+                *fragment_metadata_[f]);
             RETURN_NOT_OK(st);
 
             // Make sure we can add at least one tile.
@@ -396,7 +426,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
               f,
               t,
               tile_num - 1,
-              *(fragment_metadata_[f]->array_schema()).get());
+              *fragment_metadata_[f]);
           (void)st;
           // Make sure we can add at least one tile.
           if (*exceeded) {
@@ -441,7 +471,7 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_parallelization_parameters(
     const uint64_t min_pos_tile,
     const uint64_t max_pos_tile,
     const uint64_t cell_offset,
-    const ResultTileWithBitmap<BitmapType>* rt) {
+    const UnorderedWithDupsResultTile<BitmapType>* rt) {
   // Prevent processing past the end of the cells in case there are more
   // threads than cells.
   auto cell_num = max_pos_tile - min_pos_tile;
@@ -475,7 +505,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
     const std::string& name,
     const bool nullable,
     const OffType offset_div,
-    ResultTileWithBitmap<uint64_t>* rt,
+    UnorderedWithDupsResultTile<uint64_t>* rt,
     uint64_t src_min_pos,
     uint64_t src_max_pos,
     OffType* buffer,
@@ -494,7 +524,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
   // Process all cells. Last cell might be taken out for vectorization.
   uint64_t end = (src_max_pos == cell_num) ? src_max_pos - 1 : src_max_pos;
   for (uint64_t c = src_min_pos; c < end; c++) {
-    for (uint64_t i = 0; i < rt->bitmap_[c]; i++) {
+    for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
       *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
       buffer++;
       *var_data = src_var_buff + src_buff[c];
@@ -504,7 +534,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
 
   // Do last cell.
   if (src_max_pos == cell_num) {
-    for (uint64_t i = 0; i < rt->bitmap_[src_max_pos - 1]; i++) {
+    for (uint64_t i = 0; i < rt->bitmap()[src_max_pos - 1]; i++) {
       *buffer =
           (OffType)(t_var->size() - src_buff[src_max_pos - 1]) / offset_div;
       buffer++;
@@ -517,7 +547,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
   if (nullable) {
     const auto src_val_buff = t_val->data_as<uint8_t>();
     for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-      for (uint64_t i = 0; i < rt->bitmap_[c]; i++) {
+      for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
         *val_buffer = src_val_buff[c];
         val_buffer++;
       }
@@ -534,7 +564,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
     const std::string& name,
     const bool nullable,
     const OffType offset_div,
-    ResultTileWithBitmap<uint8_t>* rt,
+    UnorderedWithDupsResultTile<uint8_t>* rt,
     const uint64_t src_min_pos,
     const uint64_t src_max_pos,
     OffType* buffer,
@@ -550,12 +580,11 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
   const auto cell_num =
       fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
 
-  // 0 sized bitmap means full tile, full tile copy done below.
-  if (rt->has_bmp()) {
+  if (!rt->copy_full_tile()) {
     // Process all cells. Last cell might be taken out for vectorization.
     uint64_t end = (src_max_pos == cell_num) ? src_max_pos - 1 : src_max_pos;
     for (uint64_t c = src_min_pos; c < end; c++) {
-      if (rt->bitmap_[c]) {
+      if (rt->bitmap()[c]) {
         *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
         buffer++;
         *var_data = src_var_buff + src_buff[c];
@@ -564,7 +593,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
     }
 
     // Do last cell.
-    if (src_max_pos == cell_num && rt->bitmap_[src_max_pos - 1]) {
+    if (src_max_pos == cell_num && rt->bitmap()[src_max_pos - 1]) {
       *buffer =
           (OffType)(t_var->size() - src_buff[src_max_pos - 1]) / offset_div;
       *var_data = src_var_buff + src_buff[src_max_pos - 1];
@@ -574,7 +603,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
     if (nullable) {
       const auto src_val_buff = t_val->data_as<uint8_t>();
       for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-        if (rt->bitmap_[c]) {
+        if (rt->bitmap()[c]) {
           *val_buffer = src_val_buff[c];
           val_buffer++;
         }
@@ -636,7 +665,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_offsets_tiles(
       num_range_threads,
       [&](uint64_t i, uint64_t range_thread_idx) {
         // For easy reference.
-        auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[i];
+        auto rt = (UnorderedWithDupsResultTile<BitmapType>*)result_tiles[i];
 
         // We might have a partially processed result tile from last run.
         auto min_pos_tile = 0;
@@ -650,15 +679,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_offsets_tiles(
         // Adjust max cell if this is the last tile.
         if (i == result_tiles.size() - 1) {
           auto to_copy = cell_offsets[i + 1] - cell_offsets[i];
-
-          // No bitmap, just use the cell offsets. Otherwise, we need to check
-          // the bitmap to determine the max.
-          if (rt->bitmap_result_num_ == std::numeric_limits<uint64_t>::max()) {
-            max_pos_tile = min_pos_tile + to_copy;
-          } else {
-            max_pos_tile =
-                rt->pos_with_given_result_sum(min_pos_tile, to_copy) + 1;
-          }
+          max_pos_tile =
+              rt->pos_with_given_result_sum(min_pos_tile, to_copy) + 1;
         }
 
         auto&& [skip_copy, src_min_pos, src_max_pos, dest_cell_offset] =
@@ -795,7 +817,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
     const bool nullable,
     const unsigned dim_idx,
     const uint64_t cell_size,
-    ResultTileWithBitmap<uint64_t>* rt,
+    UnorderedWithDupsResultTile<uint64_t>* rt,
     const uint64_t src_min_pos,
     const uint64_t src_max_pos,
     uint8_t* buffer,
@@ -811,7 +833,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
   // Copy values.
   if (!stores_zipped_coords) {
     for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-      for (uint64_t i = 0; i < rt->bitmap_[c]; i++) {
+      for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
         memcpy(buffer, src_buff + c * cell_size, cell_size);
         buffer += cell_size;
       }
@@ -819,7 +841,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
   } else {  // Copy for zipped coords.
     const auto dim_num = rt->domain()->dim_num();
     for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-      for (uint64_t i = 0; i < rt->bitmap_[c]; i++) {
+      for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
         auto pos = c * dim_num + dim_idx;
         memcpy(buffer, src_buff + pos * cell_size, cell_size);
         buffer += cell_size;
@@ -832,7 +854,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
     const auto t_val = &std::get<2>(*tile_tuple);
     const auto src_val_buff = t_val->data_as<uint8_t>();
     for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-      for (uint64_t i = 0; i < rt->bitmap_[c]; i++) {
+      for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
         *val_buffer = src_val_buff[c];
         val_buffer++;
       }
@@ -850,7 +872,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
     const bool nullable,
     const unsigned dim_idx,
     const uint64_t cell_size,
-    ResultTileWithBitmap<uint8_t>* rt,
+    UnorderedWithDupsResultTile<uint8_t>* rt,
     const uint64_t src_min_pos,
     const uint64_t src_max_pos,
     uint8_t* buffer,
@@ -864,8 +886,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
   const auto src_buff = t->data_as<uint8_t>();
   const auto t_val = &std::get<2>(*tile_tuple);
 
-  // Partial tile copy, full tile copy done below.
-  if (rt->has_bmp()) {
+  if (!rt->copy_full_tile()) {
     // Copy values.
     if (!stores_zipped_coords) {
       // Go through bitmap, when there is a hole in cell contiguity, do a
@@ -873,7 +894,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
       uint64_t length = 0;
       uint64_t start = src_min_pos;
       for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-        if (rt->bitmap_[c]) {
+        if (rt->bitmap()[c]) {
           length++;
         } else {
           if (length != 0) {
@@ -894,7 +915,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
     } else {  // Copy for zipped coords.
       const auto dim_num = rt->domain()->dim_num();
       for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-        if (rt->bitmap_[c]) {
+        if (rt->bitmap()[c]) {
           auto pos = c * dim_num + dim_idx;
           memcpy(buffer, src_buff + pos * cell_size, cell_size);
           buffer += cell_size;
@@ -910,7 +931,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
       uint64_t start = src_min_pos;
       const auto src_val_buff = t_val->data_as<uint8_t>();
       for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-        if (rt->bitmap_[c]) {
+        if (rt->bitmap()[c]) {
           length++;
         } else {
           if (length != 0) {
@@ -946,7 +967,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
 
 template <>
 Status SparseUnorderedWithDupsReader<uint64_t>::copy_timestamp_data_tile(
-    ResultTileWithBitmap<uint64_t>* rt,
+    UnorderedWithDupsResultTile<uint64_t>* rt,
     const uint64_t src_min_pos,
     const uint64_t src_max_pos,
     uint8_t* buffer) {
@@ -959,7 +980,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_timestamp_data_tile(
   if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
     // Copy values.
     for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-      for (uint64_t i = 0; i < rt->bitmap_[c]; i++) {
+      for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
         memcpy(buffer, src_buff + c * cell_size, cell_size);
         buffer += cell_size;
       }
@@ -968,7 +989,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_timestamp_data_tile(
     // Copy fragment timestamp.
     auto timestamp = fragment_timestamp(rt);
     for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-      for (uint64_t i = 0; i < rt->bitmap_[c]; i++) {
+      for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
         memcpy(buffer, &timestamp, cell_size);
         buffer += cell_size;
       }
@@ -979,7 +1000,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_timestamp_data_tile(
 
 template <>
 Status SparseUnorderedWithDupsReader<uint8_t>::copy_timestamp_data_tile(
-    ResultTileWithBitmap<uint8_t>* rt,
+    UnorderedWithDupsResultTile<uint8_t>* rt,
     const uint64_t src_min_pos,
     const uint64_t src_max_pos,
     uint8_t* buffer) {
@@ -991,15 +1012,14 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_timestamp_data_tile(
   const uint64_t cell_size = constants::timestamp_size;
   auto frag_timestamp = fragment_timestamp(rt);
 
-  // Partial tile copy, full tile copy done below.
-  if (rt->has_bmp()) {
+  if (!rt->copy_full_tile()) {
     // Copy values.
     // Go through bitmap, when there is a hole in cell contiguity, do a
     // memcpy.
     uint64_t length = 0;
     uint64_t start = src_min_pos;
     for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-      if (rt->bitmap_[c]) {
+      if (rt->bitmap()[c]) {
         length++;
       } else {
         if (length != 0) {
@@ -1069,7 +1089,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
       num_range_threads,
       [&](uint64_t i, uint64_t range_thread_idx) {
         // For easy reference.
-        auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[i];
+        auto rt = (UnorderedWithDupsResultTile<BitmapType>*)result_tiles[i];
 
         // We might have a partially processed result tile from last run.
         auto min_pos_tile = 0;
@@ -1083,15 +1103,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
         // Adjust max cell if this is the last tile.
         if (i == result_tiles.size() - 1) {
           auto to_copy = cell_offsets[i + 1] - cell_offsets[i];
-
-          // No bitmap, just use the cell offsets. Otherwise, we need to check
-          // the bitmap to determine the max.
-          if (rt->bitmap_result_num_ == std::numeric_limits<uint64_t>::max()) {
-            max_pos_tile = min_pos_tile + to_copy;
-          } else {
-            max_pos_tile =
-                rt->pos_with_given_result_sum(min_pos_tile, to_copy) + 1;
-          }
+          max_pos_tile =
+              rt->pos_with_given_result_sum(min_pos_tile, to_copy) + 1;
         }
 
         auto&& [skip_copy, src_min_pos, src_max_pos, dest_cell_offset] =
@@ -1178,23 +1191,14 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
   uint64_t cell_offset = cells_copied(names);
   for (uint64_t i = 0; i < result_tiles.size(); i++) {
     auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[i];
-    auto cell_num =
-        rt->bitmap_result_num_ != std::numeric_limits<uint64_t>::max() ?
-            rt->bitmap_result_num_ :
-            fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+    auto cell_num = rt->result_num();
 
     // First tile might have been partially copied. Adjust cell_num to account
     // for it.
     if (i == 0) {
       if (read_state_.frag_idx_[rt->frag_idx()].tile_idx_ == rt->tile_idx()) {
-        if (rt->bitmap_result_num_ != std::numeric_limits<uint64_t>::max()) {
-          if (rt->bitmap_result_num_ != 0) {
-            auto pos = read_state_.frag_idx_[rt->frag_idx()].cell_idx_;
-            cell_num -= rt->result_num_between_pos(0, pos);
-          }
-        } else {
-          cell_num -= read_state_.frag_idx_[rt->frag_idx()].cell_idx_;
-        }
+        auto pos = read_state_.frag_idx_[rt->frag_idx()].cell_idx_;
+        cell_num -= rt->result_num_between_pos(0, pos);
       }
     }
 
@@ -1240,7 +1244,8 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         const auto& name = names[i];
         const auto var_sized = array_schema_.var_size(name);
         auto mem_usage = &total_mem_usage_per_attr[i];
-        const bool is_timestamps = name == constants::timestamps;
+        const bool is_timestamps = name == constants::timestamps ||
+                                   name == constants::delete_timestamps;
 
         // For dimensions, when we have a subarray, tiles are already all
         // loaded in memory.
@@ -1252,7 +1257,7 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         uint64_t idx = 0;
         for (; idx < max_rt_idx; idx++) {
           // Size of the tile in memory.
-          auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[idx];
+          auto rt = (UnorderedWithDupsResultTile<BitmapType>*)result_tiles[idx];
 
           auto&& [st, tile_size] =
               get_attribute_tile_size(name, rt->frag_idx(), rt->tile_idx());
@@ -1261,12 +1266,7 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
           // Account for the pointers to the var data that is created in
           // copy_tiles for var sized attributes.
           if (var_sized) {
-            auto cell_num =
-                rt->bitmap_result_num_ != std::numeric_limits<uint64_t>::max() ?
-                    rt->bitmap_result_num_ :
-                    fragment_metadata_[rt->frag_idx()]->cell_num(
-                        rt->tile_idx());
-            *tile_size += sizeof(void*) * cell_num;
+            *tile_size += sizeof(void*) * rt->result_num();
           }
 
           // Stop when we reach the budget.
@@ -1338,7 +1338,7 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
 
     // Add in a partial tile if the buffer is not full.
     if (query_buffer.original_buffer_var_size_ != new_var_buffer_size) {
-      auto last_tile = (ResultTileWithBitmap<BitmapType>*)
+      auto last_tile = (UnorderedWithDupsResultTile<BitmapType>*)
           result_tiles[new_result_tiles_size];
 
       auto last_tile_num_cells =
@@ -1350,10 +1350,9 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
           new_result_tiles_size > 0 ? cell_offsets[new_result_tiles_size - 1] :
                                       0;
 
-      const bool has_bmp = last_tile->has_bmp();
       const auto min_pos = new_result_tiles_size == 1 ? first_tile_min_pos : 0;
       for (uint64_t c = min_pos; c < last_tile_num_cells - 1; c++) {
-        auto cell_count = has_bmp ? last_tile->bitmap_[c] : 1;
+        auto cell_count = last_tile->has_bmp() ? last_tile->bitmap()[c] : 1;
         auto new_size =
             ((OffType*)query_buffer
                  .buffer_)[cell_offsets[new_result_tiles_size] + cell_count];
@@ -1522,7 +1521,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
 
       // Clear tiles from memory.
       if (condition_.field_names().count(name) == 0 &&
-          (!subarray_.is_set() || !is_dim) && name != constants::timestamps) {
+          (!subarray_.is_set() || !is_dim) && name != constants::timestamps &&
+          name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);
       }
     }
@@ -1530,17 +1530,14 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
 
   // Compute the number of cells copied for the last tile before updating tile
   // index.
-  auto last_tile = (ResultTileWithBitmap<BitmapType>*)result_tiles.back();
+  auto last_tile =
+      (UnorderedWithDupsResultTile<BitmapType>*)result_tiles.back();
   auto& frag_tile_idx = read_state_.frag_idx_[last_tile->frag_idx()];
   auto last_tile_cells_copied =
       cell_offsets[result_tiles.size()] - cell_offsets[result_tiles.size() - 1];
   if (frag_tile_idx.tile_idx_ == last_tile->tile_idx()) {
-    if (last_tile->bitmap_result_num_ != std::numeric_limits<uint64_t>::max()) {
-      last_tile_cells_copied +=
-          last_tile->result_num_between_pos(0, frag_tile_idx.cell_idx_);
-    } else {
-      last_tile_cells_copied += frag_tile_idx.cell_idx_;
-    }
+    last_tile_cells_copied +=
+        last_tile->result_num_between_pos(0, frag_tile_idx.cell_idx_);
   }
 
   // Adjust tile index.
@@ -1549,18 +1546,10 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
   }
 
   // If the last tile is not fully copied, save the cell index.
-  auto last_tile_num_cells =
-      fragment_metadata_[last_tile->frag_idx()]->cell_num(
-          last_tile->tile_idx());
-  if (last_tile->bitmap_result_num_ != std::numeric_limits<uint64_t>::max()) {
-    if (last_tile->bitmap_result_num_ != last_tile_cells_copied) {
-      frag_tile_idx.tile_idx_ = last_tile->tile_idx();
-      frag_tile_idx.cell_idx_ =
-          last_tile->pos_with_given_result_sum(0, last_tile_cells_copied) + 1;
-    }
-  } else if (last_tile_num_cells != last_tile_cells_copied) {
+  if (last_tile->result_num() != last_tile_cells_copied) {
     frag_tile_idx.tile_idx_ = last_tile->tile_idx();
-    frag_tile_idx.cell_idx_ = last_tile_cells_copied;
+    frag_tile_idx.cell_idx_ =
+        last_tile->pos_with_given_result_sum(0, last_tile_cells_copied) + 1;
   }
 
   logger_->debug("Done copying tiles");
@@ -1570,11 +1559,11 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
 template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::remove_result_tile(
     const unsigned frag_idx,
-    typename std::list<ResultTileWithBitmap<BitmapType>>::iterator rt) {
+    typename std::list<UnorderedWithDupsResultTile<BitmapType>>::iterator rt) {
   // Remove coord tile size from memory budget.
   const auto tile_idx = rt->tile_idx();
-  auto&& [st, tiles_sizes] = get_coord_tiles_size<BitmapType>(
-      subarray_.is_set(), array_schema_.dim_num(), frag_idx, tile_idx);
+  auto&& [st, tiles_sizes] =
+      get_coord_tiles_size(array_schema_.dim_num(), frag_idx, tile_idx);
   RETURN_NOT_OK(st);
   auto tiles_size = tiles_sizes->first;
   auto tiles_size_qc = tiles_sizes->second;

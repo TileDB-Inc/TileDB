@@ -294,6 +294,11 @@ const std::vector<URI>& ArrayDirectory::fragment_meta_uris() const {
   return fragment_meta_uris_;
 }
 
+const std::vector<ArrayDirectory::DeleteTileLocation>&
+ArrayDirectory::delete_tiles_location() const {
+  return delete_tiles_location_;
+}
+
 URI ArrayDirectory::get_fragments_dir(uint32_t write_version) const {
   if (write_version < 12) {
     return uri_;
@@ -420,7 +425,7 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
     const std::vector<URI>& commits_dir_uris,
     const std::vector<URI>& consolidated_uris) {
   std::vector<URI> fragment_uris;
-  // Find the commited fragments
+  // Find the commited fragments from consolidated commits URIs
   for (size_t i = 0; i < consolidated_uris.size(); ++i) {
     if (stdx::string::ends_with(
             consolidated_uris[i].to_string(), constants::write_file_suffix)) {
@@ -446,6 +451,21 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
       }
     } else if (is_vacuum_file(commits_dir_uris[i])) {
       fragment_uris.emplace_back(commits_dir_uris[i]);
+    } else if (stdx::string::ends_with(
+                   commits_dir_uris[i].to_string(),
+                   constants::delete_file_suffix)) {
+      // Get the start and end timestamp for this fragment
+      std::pair<uint64_t, uint64_t> fragment_timestamp_range;
+      RETURN_NOT_OK_TUPLE(
+          utils::parse::get_timestamp_range(
+              commits_dir_uris[i], &fragment_timestamp_range),
+          nullopt);
+      if (timestamps_overlap(fragment_timestamp_range, false)) {
+        if (consolidated_commit_uris_set_.count(commits_dir_uris[i].c_str()) ==
+            0) {
+          delete_tiles_location_.emplace_back(commits_dir_uris[i], 0);
+        }
+      }
     }
   }
 

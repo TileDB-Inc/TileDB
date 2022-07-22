@@ -168,11 +168,23 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** Result tiles currently loaded. */
-  std::list<ResultTileWithBitmap<BitmapType>> result_tiles_;
+  std::list<UnorderedWithDupsResultTile<BitmapType>> result_tiles_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /**
+   * Get the coordinate tiles size for a dimension.
+   *
+   * @param dim_num Number of dimensions.
+   * @param f Fragment index.
+   * @param t Tile index.
+   *
+   * @return Status, tiles_size, tiles_size_qc.
+   */
+  tuple<Status, optional<std::pair<uint64_t, uint64_t>>> get_coord_tiles_size(
+      unsigned dim_num, unsigned f, uint64_t t);
 
   /**
    * Add a result tile to process, making sure maximum budget is respected.
@@ -183,7 +195,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param f Fragment index.
    * @param t Tile index.
    * @param last_t Last tile index.
-   * @param array_schema Array schema.
+   * @param frag_md Fragment metadata.
    *
    * @return buffers_full, new_var_buffer_size, new_result_tiles_size.
    */
@@ -194,7 +206,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const unsigned f,
       const uint64_t t,
       const uint64_t last_t,
-      const ArraySchema& array_schema);
+      const FragmentMetadata& frag_md);
 
   /**
    * Create the result tiles.
@@ -221,7 +233,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const uint64_t min_pos_tile,
       const uint64_t max_pos_tile,
       const uint64_t cell_offset,
-      const ResultTileWithBitmap<BitmapType>* rt);
+      const UnorderedWithDupsResultTile<BitmapType>* rt);
 
   /**
    * Copy offsets tile.
@@ -243,7 +255,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const std::string& name,
       const bool nullable,
       const OffType offset_div,
-      ResultTileWithBitmap<BitmapType>* rt,
+      UnorderedWithDupsResultTile<BitmapType>* rt,
       const uint64_t src_min_pos,
       const uint64_t src_max_pos,
       OffType* buffer,
@@ -347,7 +359,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const bool nullable,
       const unsigned dim_idx,
       const uint64_t cell_size,
-      ResultTileWithBitmap<BitmapType>* rt,
+      UnorderedWithDupsResultTile<BitmapType>* rt,
       const uint64_t src_min_pos,
       const uint64_t src_max_pos,
       uint8_t* buffer,
@@ -364,7 +376,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @return Status.
    */
   Status copy_timestamp_data_tile(
-      ResultTileWithBitmap<BitmapType>* rt,
+      UnorderedWithDupsResultTile<BitmapType>* rt,
       const uint64_t src_min_pos,
       const uint64_t src_max_pos,
       uint8_t* buffer);
@@ -446,7 +458,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    */
   Status remove_result_tile(
       const unsigned frag_idx,
-      typename std::list<ResultTileWithBitmap<BitmapType>>::iterator rt);
+      typename std::list<UnorderedWithDupsResultTile<BitmapType>>::iterator rt);
 
   /**
    * Clean up processed data after copying and get ready for the next

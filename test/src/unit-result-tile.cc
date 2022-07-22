@@ -59,6 +59,7 @@ struct CResultTileFx {
   std::string array_name_;
   const char* ARRAY_NAME = "test_result_coords";
   tiledb_array_t* array_;
+  std::unique_ptr<FragmentMetadata> frag_md_;
 
   CResultTileFx();
   ~CResultTileFx();
@@ -98,13 +99,21 @@ CResultTileFx::CResultTileFx() {
       {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      100000);
+      100);
 
   // Open array for reading.
   auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array_);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array_, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
+
+  frag_md_.reset(new FragmentMetadata(
+      nullptr,
+      nullptr,
+      array_->array_->array_schema_latest_ptr(),
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      false));
 }
 
 CResultTileFx::~CResultTileFx() {
@@ -117,7 +126,8 @@ CResultTileFx::~CResultTileFx() {
   tiledb_vfs_free(&vfs_);
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    CResultTileFx,
     "ResultTileWithBitmap: result_num_between_pos and "
     "pos_with_given_result_sum test",
     "[resulttilewithbitmap][pos_with_given_result_sum][pos_with_given_result_"
@@ -149,25 +159,21 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
   tiledb_domain_free(&domain);
 
-  ResultTileWithBitmap<uint8_t> tile(
-      0, 0, *(array_schema->array_schema_.get()));
-  tile.bitmap_result_num_ = 100;
+  UnorderedWithDupsResultTile<uint8_t> tile(0, 0, *frag_md_);
 
   // Check the function with an empty bitmap.
   CHECK(tile.result_num_between_pos(2, 10) == 8);
   CHECK(tile.pos_with_given_result_sum(2, 8) == 9);
 
   // Check the functions with a bitmap.
-  tile.bitmap_.resize(100, 1);
+  tile.alloc_bitmap();
   CHECK(tile.result_num_between_pos(2, 10) == 8);
   CHECK(tile.pos_with_given_result_sum(2, 8) == 9);
 
-  tile.bitmap_result_num_ = 99;
-  tile.bitmap_[6] = 0;
+  tile.bitmap()[6] = 0;
+  tile.count_cells();
   CHECK(tile.result_num_between_pos(2, 10) == 7);
   CHECK(tile.pos_with_given_result_sum(2, 8) == 10);
-
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
