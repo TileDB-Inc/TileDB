@@ -3998,7 +3998,7 @@ void testing_float_scaling_filter(bool negative) {
   uint64_t byte_width = sizeof(IntType);
 
   std::random_device rd;
-  g std::mt19937 gen(rd());
+  std::mt19937 gen(rd());
   IntType smallest_val = negative ? std::numeric_limits<IntType>::min() : 1.0f;
   IntType largest_val = negative ? -1.0f : std::numeric_limits<IntType>::max();
   std::uniform_real_distribution<FloatingType> dis(smallest_val, largest_val);
