@@ -190,7 +190,9 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
     }
     case FilterType::FILTER_SCALE_FLOAT: {
       if (!filter_reader.hasFloatScaleConfig()) {
-        throw std::logic_error("filter_from_capnp: float scale filter reader should have FloatScaleConfig struct.");
+        throw std::logic_error(
+            "filter_from_capnp: float scale filter reader should have "
+            "FloatScaleConfig struct.");
       }
       auto float_scale_config = filter_reader.getFloatScaleConfig();
       double scale = float_scale_config.getScale();
