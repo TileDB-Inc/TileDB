@@ -242,9 +242,10 @@ struct Filter {
     uint64 @10 :UInt64;
     float32 @11 :Float32;
     float64 @12 :Float64;
-    floatScaleConfig @13 :FloatScaleConfig;
   }
   # filter data
+
+  floatScaleConfig @13 :FloatScaleConfig;
 }
 
 struct FilterPipeline {
