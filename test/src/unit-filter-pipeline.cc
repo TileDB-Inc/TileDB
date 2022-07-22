@@ -4186,7 +4186,6 @@ TEMPLATE_TEST_CASE(
     int16_t,
     int32_t,
     int64_t) {
-
   testing_float_scaling_filter_error<float, TestType>(nanf(""));
   testing_float_scaling_filter_error<double, TestType>(nan(""));
 
@@ -4201,13 +4200,15 @@ TEMPLATE_TEST_CASE(
     int16_t,
     int32_t,
     int64_t) {
+  testing_float_scaling_filter_error<float, TestType>(
+      std::numeric_limits<float>::denorm_min());
+  testing_float_scaling_filter_error<double, TestType>(
+      std::numeric_limits<double>::denorm_min());
 
-  testing_float_scaling_filter_error<float, TestType>(std::numeric_limits<float>::denorm_min());
-  testing_float_scaling_filter_error<double, TestType>(std::numeric_limits<double>::denorm_min());
-
-
-  testing_float_scaling_filter_error<float, TestType>(-1.0f * std::numeric_limits<float>::denorm_min());
-  testing_float_scaling_filter_error<double, TestType>(-1.0f * std::numeric_limits<double>::denorm_min());
+  testing_float_scaling_filter_error<float, TestType>(
+      -1.0f * std::numeric_limits<float>::denorm_min());
+  testing_float_scaling_filter_error<double, TestType>(
+      -1.0f * std::numeric_limits<double>::denorm_min());
 }
 
 TEMPLATE_TEST_CASE(
@@ -4217,12 +4218,13 @@ TEMPLATE_TEST_CASE(
     int16_t,
     int32_t,
     int64_t) {
+  testing_float_scaling_filter_error<float, TestType>(
+      std::numeric_limits<float>::infinity());
+  testing_float_scaling_filter_error<double, TestType>(
+      std::numeric_limits<double>::infinity());
 
-  testing_float_scaling_filter_error<float, TestType>(std::numeric_limits<float>::infinity());
-  testing_float_scaling_filter_error<double, TestType>(std::numeric_limits<double>::infinity());
-
-
-  testing_float_scaling_filter_error<float, TestType>(-1.0f * std::numeric_limits<float>::infinity());
-  testing_float_scaling_filter_error<double, TestType>(-1.0f * std::numeric_limits<double>::infinity());
+  testing_float_scaling_filter_error<float, TestType>(
+      -1.0f * std::numeric_limits<float>::infinity());
+  testing_float_scaling_filter_error<double, TestType>(
+      -1.0f * std::numeric_limits<double>::infinity());
 }
-

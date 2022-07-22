@@ -37,8 +37,8 @@
 
 #include "tiledb/sm/filter/float_scaling_filter.h"
 
-#include <cmath>
 #include <cassert>
+#include <cmath>
 
 using std::fpclassify;
 
@@ -95,13 +95,18 @@ Status FloatScalingFilter::run_forward(
       // We should only handle numbers that are either normalized or 0.
       switch (std::fpclassify(elem)) {
         case FP_INFINITE: {
-          return Status_FilterError("FloatScalingFilter::run_forward: Floating point input is infinite.");
+          return Status_FilterError(
+              "FloatScalingFilter::run_forward: Floating point input is "
+              "infinite.");
         }
         case FP_NAN: {
-          return Status_FilterError("FloatScalingFilter::run_forward: Floating point input is NaN.");
+          return Status_FilterError(
+              "FloatScalingFilter::run_forward: Floating point input is NaN.");
         }
         case FP_SUBNORMAL: {
-          return Status_FilterError("FloatScalingFilter::run_forward: Floating point input is denormalized.");
+          return Status_FilterError(
+              "FloatScalingFilter::run_forward: Floating point input is "
+              "denormalized.");
         }
       }
       W converted_elem = static_cast<W>(
