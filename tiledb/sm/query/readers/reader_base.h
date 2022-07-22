@@ -199,6 +199,12 @@ class ReaderBase : public StrategyBase {
    */
   std::vector<bool> timestamps_needed_for_deletes_;
 
+  /** Names of dim/attr loaded for query condition. */
+  std::unordered_set<std::string> qc_loaded_attr_names_set_;
+
+  /** Have ve loaded the initial data. */
+  bool initial_data_loaded_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */

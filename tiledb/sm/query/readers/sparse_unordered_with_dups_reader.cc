@@ -1520,7 +1520,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         *query_buffer.validity_vector_.buffer_size() = total_cells;
 
       // Clear tiles from memory.
-      if (condition_.field_names().count(name) == 0 &&
+      if (qc_loaded_attr_names_set_.count(name) == 0 &&
           (!subarray_.is_set() || !is_dim) && name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);

@@ -418,8 +418,14 @@ TEST_CASE_METHOD(
   // Write another fragment that will not be affected by the condition.
   write_sparse({1}, {4}, {4}, 5);
 
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  if (legacy) {
+    set_legacy();
+  }
+
   // Reading before the delete condition timestamp.
-  uint64_t buffer_size = 4;
+  uint64_t buffer_size = legacy ? 100 : 4;
   std::string stats;
   std::vector<int> a1(buffer_size);
   std::vector<uint64_t> dim1(buffer_size);
@@ -434,7 +440,7 @@ TEST_CASE_METHOD(
   CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
 
   // Reading after delete condition timestamp.
-  buffer_size = 2;
+  buffer_size = legacy ? 100 : 2;
   std::vector<int> a1_2(buffer_size);
   std::vector<uint64_t> dim1_2(buffer_size);
   std::vector<uint64_t> dim2_2(buffer_size);
@@ -450,7 +456,7 @@ TEST_CASE_METHOD(
       c_dim2_2.data(), dim2_2.data(), c_dim2_2.size() * sizeof(uint64_t)));
 
   // Reading after new fragment.
-  buffer_size = 3;
+  buffer_size = legacy ? 100 : 3;
   std::vector<int> a1_3(buffer_size);
   std::vector<uint64_t> dim1_3(buffer_size);
   std::vector<uint64_t> dim2_3(buffer_size);
@@ -494,8 +500,14 @@ TEST_CASE_METHOD(
   // Write condition.
   write_delete_condition(qc, 3);
 
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  if (legacy) {
+    set_legacy();
+  }
+
   // Reading before the delete condition timestamp.
-  uint64_t buffer_size = 4;
+  uint64_t buffer_size = legacy ? 100 : 4;
   std::string stats;
   std::vector<int> a1(buffer_size);
   std::vector<uint64_t> dim1(buffer_size);
@@ -510,7 +522,7 @@ TEST_CASE_METHOD(
   CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
 
   // Reading after delete condition timestamp.
-  buffer_size = 2;
+  buffer_size = legacy ? 100 : 2;
   std::vector<int> a1_2(buffer_size);
   std::vector<uint64_t> dim1_2(buffer_size);
   std::vector<uint64_t> dim2_2(buffer_size);
@@ -526,7 +538,7 @@ TEST_CASE_METHOD(
       c_dim2_2.data(), dim2_2.data(), c_dim2_2.size() * sizeof(uint64_t)));
 
   // Reading after new fragment.
-  buffer_size = 3;
+  buffer_size = legacy ? 100 : 3;
   std::vector<int> a1_3(buffer_size);
   std::vector<uint64_t> dim1_3(buffer_size);
   std::vector<uint64_t> dim2_3(buffer_size);
@@ -568,8 +580,14 @@ TEST_CASE_METHOD(
   // Write condition.
   write_delete_condition(qc, 5);
 
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  if (legacy) {
+    set_legacy();
+  }
+
   // Reading.
-  uint64_t buffer_size = allows_dups ? 4 : 3;
+  uint64_t buffer_size = legacy ? 100 : (allows_dups ? 4 : 3);
   std::string stats;
   std::vector<int> a1(buffer_size);
   std::vector<uint64_t> dim1(buffer_size);
