@@ -36,6 +36,7 @@
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <algorithm>
 #include <functional>
@@ -144,6 +145,20 @@ std::unordered_set<std::string>& QueryCondition::field_names() const {
   }
 
   return field_names_;
+}
+
+uint64_t QueryCondition::condition_timestamp() const {
+  if (condition_marker_.empty()) {
+    return 0;
+  }
+
+  std::pair<uint64_t, uint64_t> timestamps;
+  if (!utils::parse::get_timestamp_range(URI(condition_marker_), &timestamps)
+           .ok()) {
+    throw std::logic_error("Error parsing condition marker.");
+  }
+
+  return timestamps.first;
 }
 
 /** Full template specialization for `char*` and `QueryConditionOp::LT`. */

@@ -145,6 +145,11 @@ class QueryCondition {
   std::unordered_set<std::string>& field_names() const;
 
   /**
+   * Returns the timestamp for this condition.
+   */
+  uint64_t condition_timestamp() const;
+
+  /**
    * Applies this query condition to `result_cell_slabs`.
    *
    * @param array_schema The array schema associated with `result_cell_slabs`.
