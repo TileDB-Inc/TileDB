@@ -55,7 +55,40 @@ Status XORFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-   // Output size does not change with this filter.
+  auto tile_type = tile.type();
+
+  switch (tile_type) {
+    case Datatype::INT8: {
+      return run_forward<int8_t>(
+          input_metadata, input, output_metadata, output);
+    }
+    case Datatype::INT16: {
+      return run_forward<int16_t>(
+          input_metadata, input, output_metadata, output);
+    }
+    case Datatype::INT32: {
+      return run_forward<int32_t>(
+          input_metadata, input, output_metadata, output);
+    }
+    case Datatype::INT64: {
+      return run_forward<int64_t>(
+          input_metadata, input, output_metadata, output);
+    }
+    default: {
+      return Status_FilterError("XORFilter::run_forward: invalid datatype.");
+    }
+  }
+
+  return Status::Ok();
+}
+
+template <typename T>
+Status XORFilter::run_forward(
+    FilterBuffer* input_metadata,
+    FilterBuffer* input,
+    FilterBuffer* output_metadata,
+    FilterBuffer* output) const {
+  // Output size does not change with this filter.
   RETURN_NOT_OK(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
   assert(output_buf != nullptr);
@@ -72,26 +105,37 @@ Status XORFilter::run_forward(
   for (const auto& part : parts) {
     auto part_size = (uint32_t)part.size();
     RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
-    RETURN_NOT_OK(shuffle_part(tile, &part, output_buf));
+    RETURN_NOT_OK(shuffle_part<T>(&part, output_buf));
   }
 
   return Status::Ok();
 }
 
-Status XORFilter::shuffle_part(const Tile& tile, const ConstBuffer* part, Buffer* output) {
-  auto tile_type = tile.type();
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
-
+template <typename T>
+Status XORFilter::shuffle_part(const ConstBuffer* part, Buffer* output) const {
   uint32_t s = part->size();
-  assert(s % tile_type_size == 0);
-  uint32_t num_elems_in_part = s / tile_type_size;
+  assert(s % sizeof(T) == 0);
+  uint32_t num_elems_in_part = s / sizeof(T);
 
   if (num_elems_in_part == 0) {
-    return Status::ok();
+    return Status::Ok();
   }
 
   // Write starting element.
+  const T* part_array = static_cast<const T*>(part->data());
+  RETURN_NOT_OK(output->write(part_array, sizeof(T)));
+  output->advance_offset(sizeof(T));
 
+  for (uint32_t j = 1; j < num_elems_in_part; ++j) {
+    T value = part_array[j] - part_array[j - 1];
+    RETURN_NOT_OK(output->write(&value, sizeof(T)));
+
+    if (j != num_elems_in_part - 1) {
+      output->advance_offset(sizeof(T));
+    }
+  }
+
+  return Status::Ok();
 }
 
 Status XORFilter::run_reverse(
@@ -104,6 +148,39 @@ Status XORFilter::run_reverse(
     const Config& config) const {
   (void)config;
 
+  auto tile_type = tile.type();
+
+  switch (tile_type) {
+    case Datatype::INT8: {
+      return run_reverse<int8_t>(
+          input_metadata, input, output_metadata, output);
+    }
+    case Datatype::INT16: {
+      return run_reverse<int16_t>(
+          input_metadata, input, output_metadata, output);
+    }
+    case Datatype::INT32: {
+      return run_reverse<int32_t>(
+          input_metadata, input, output_metadata, output);
+    }
+    case Datatype::INT64: {
+      return run_reverse<int64_t>(
+          input_metadata, input, output_metadata, output);
+    }
+    default: {
+      return Status_FilterError("XORFilter::run_forward: invalid datatype.");
+    }
+  }
+
+  return Status::Ok();
+}
+
+template <typename T>
+Status XORFilter::run_reverse(
+    FilterBuffer* input_metadata,
+    FilterBuffer* input,
+    FilterBuffer* output_metadata,
+    FilterBuffer* output) const {
   // Get number of parts
   uint32_t num_parts;
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));
@@ -118,7 +195,7 @@ Status XORFilter::run_reverse(
     ConstBuffer part(nullptr, 0);
     RETURN_NOT_OK(input->get_const_buffer(part_size, &part));
 
-    RETURN_NOT_OK(unshuffle_part(tile, &part, output_buf));
+    RETURN_NOT_OK(unshuffle_part<T>(&part, output_buf));
 
     if (output_buf->owns_data())
       output_buf->advance_size(part_size);
@@ -135,10 +212,35 @@ Status XORFilter::run_reverse(
   return Status::Ok();
 }
 
-Status XORFilter::unshuffle_part(const Tile& tile, const ConstBuffer* part, Buffer* output) {
+template <typename T>
+Status XORFilter::unshuffle_part(
+    const ConstBuffer* part, Buffer* output) const {
+  uint32_t s = part->size();
+  assert(s % sizeof(T) == 0);
+  uint32_t num_elems_in_part = s / sizeof(T);
 
+  if (num_elems_in_part == 0) {
+    return Status::Ok();
+  }
+
+  // Write starting element.
+  const T* part_array = static_cast<const T*>(part->data());
+  RETURN_NOT_OK(output->write(part_array, sizeof(T)));
+  output->advance_offset(sizeof(T));
+
+  T last_element = part_array[0];
+  for (uint32_t j = 1; j < num_elems_in_part; ++j) {
+    T value = last_element + part_array[j];
+    RETURN_NOT_OK(output->write(&value, sizeof(T)));
+
+    last_element = value;
+    if (j != num_elems_in_part - 1) {
+      output->advance_offset(sizeof(T));
+    }
+  }
+
+  return Status::Ok();
 }
-
 
 /** Returns a new clone of this filter. */
 XORFilter* XORFilter::clone_impl() const {

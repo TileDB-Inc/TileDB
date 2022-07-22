@@ -70,9 +70,9 @@ class XORFilter : public Filter {
       FilterBuffer* output) const override;
 
   /**
-   * Run reverse. 
+   * Run reverse.
    * TODO: comment
-   */ 
+   */
   Status run_reverse(
       const Tile& tile,
       Tile* const tile_offsets,
@@ -83,8 +83,25 @@ class XORFilter : public Filter {
       const Config& config) const override;
 
  private:
-  Status shuffle_part(const Tile& tile, const ConstBuffer* part, Buffer* output);
-  Status unshuffle_part(const Tile& tile, const ConstBuffer* part, Buffer* output);
+  template <typename T>
+  Status run_forward(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
+
+  template <typename T>
+  Status run_reverse(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
+
+  template <typename T>
+  Status shuffle_part(const ConstBuffer* part, Buffer* output) const;
+
+  template <typename T>
+  Status unshuffle_part(const ConstBuffer* part, Buffer* output) const;
 
   /** Returns a new clone of this filter. */
   XORFilter* clone_impl() const override;
