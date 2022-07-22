@@ -1009,7 +1009,6 @@ Status Query::init() {
 
     RETURN_NOT_OK(check_buffer_names());
     RETURN_NOT_OK(create_strategy());
-    RETURN_NOT_OK(strategy_->init());
   }
 
   status_ = QueryStatus::INPROGRESS;
@@ -2181,7 +2180,6 @@ Status Query::submit() {
 
     if (status_ == QueryStatus::UNINITIALIZED) {
       RETURN_NOT_OK(create_strategy());
-      RETURN_NOT_OK(strategy_->init());
     }
     return rest_client->submit_query_to_rest(array_->array_uri(), this);
   }

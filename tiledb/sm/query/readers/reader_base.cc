@@ -51,6 +51,13 @@
 namespace tiledb {
 namespace sm {
 
+class ReaderBaseStatusException : public StatusException {
+ public:
+  explicit ReaderBaseStatusException(const std::string& message)
+      : StatusException("ReaderBase", message) {
+  }
+};
+
 /* ****************************** */
 /*          CONSTRUCTORS          */
 /* ****************************** */
@@ -232,16 +239,16 @@ void ReaderBase::zero_out_buffer_sizes() {
   }
 }
 
-Status ReaderBase::check_subarray() const {
-  if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
-    return logger_->status(Status_ReaderError(
+void ReaderBase::check_subarray() const {
+  if (subarray_.layout() == Layout::GLOBAL_ORDER &&
+      subarray_.range_num() != 1) {
+    throw ReaderBaseStatusException(
         "Cannot initialize reader; Multi-range subarrays with "
-        "global order layout are not supported"));
-
-  return Status::Ok();
+        "global order layout are not supported");
+  }
 }
 
-Status ReaderBase::check_validity_buffer_sizes() const {
+void ReaderBase::check_validity_buffer_sizes() const {
   // Verify that the validity buffer size for each
   // nullable attribute is large enough to contain
   // a validity value for each cell.
@@ -274,12 +281,10 @@ Status ReaderBase::check_validity_buffer_sizes() const {
               "given for ";
         ss << "attribute '" << name << "'";
         ss << " (" << cell_validity_num << " < " << min_cell_num << ")";
-        return logger_->status(Status_ReaderError(ss.str()));
+        throw ReaderBaseStatusException(ss.str());
       }
     }
   }
-
-  return Status::Ok();
 }
 
 bool ReaderBase::partial_consolidated_fragment_overlap() const {

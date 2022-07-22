@@ -226,7 +226,7 @@ class SparseIndexReaderBase : public ReaderBase {
    *
    * @return Status.
    */
-  Status init();
+  void init();
 
   /**
    * Resize the output buffers to the correct size after copying.

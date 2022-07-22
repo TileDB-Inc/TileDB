@@ -98,9 +98,6 @@ class Reader : public ReaderBase, public IQueryStrategy {
   /** Returns the status details reason. */
   QueryStatusDetailsReason status_incomplete_reason() const;
 
-  /** Initializes the reader. */
-  Status init();
-
   /** Initialize the memory budget variables. */
   Status initialize_memory_budget();
 
@@ -613,7 +610,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   bool has_separate_coords() const;
 
   /** Initializes the read state. */
-  Status init_read_state();
+  void init_read_state();
 
   /**
    * Sorts the input result coordinates according to the subarray layout.

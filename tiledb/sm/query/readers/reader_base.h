@@ -241,10 +241,10 @@ class ReaderBase : public StrategyBase {
   void zero_out_buffer_sizes();
 
   /** Correctness checks for `subarray_`. */
-  Status check_subarray() const;
+  void check_subarray() const;
 
   /** Correctness checks validity buffer sizes in `buffers_`. */
-  Status check_validity_buffer_sizes() const;
+  void check_validity_buffer_sizes() const;
 
   /**
    * Skip read/unfilter operations for timestamps attribute and fragments

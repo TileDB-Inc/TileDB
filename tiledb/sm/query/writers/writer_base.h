@@ -113,9 +113,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /** Returns current setting of dedup_coords_ */
   bool get_dedup_coords() const;
 
-  /** Initializes the writer. */
-  Status init();
-
   /** Initialize the memory budget variables. */
   Status initialize_memory_budget();
 
@@ -198,7 +195,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status add_written_fragment_info(const URI& uri);
 
   /** Correctness checks for buffer sizes. */
-  Status check_buffer_sizes() const;
+  void check_buffer_sizes() const;
 
   /**
    * Throws an error if there are coordinates falling out-of-bounds, i.e.,
@@ -209,14 +206,14 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status check_coord_oob() const;
 
   /** Correctness checks for `subarray_`. */
-  Status check_subarray() const;
+  void check_subarray() const;
 
   /**
    * Check the validity of the provided buffer offsets for a variable attribute.
    *
    * @return Status
    */
-  Status check_var_attr_offsets() const;
+  void check_var_attr_offsets() const;
 
   /**
    * Cleans up the coordinate buffers. Applicable only if the coordinate
@@ -348,7 +345,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * Checks the validity of the extra element from var-sized offsets of
    * attributes
    */
-  Status check_extra_element();
+  void check_extra_element();
 
   /**
    * Return an element of the offsets buffer at a certain position

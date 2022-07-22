@@ -50,6 +50,13 @@
 namespace tiledb {
 namespace sm {
 
+class SparseIndexReaderBaseStatusException : public StatusException {
+ public:
+  explicit SparseIndexReaderBaseStatusException(const std::string& message)
+      : StatusException("SparseIndexReaderBase", message) {
+  }
+};
+
 /* ****************************** */
 /*          CONSTRUCTORS          */
 /* ****************************** */
@@ -102,45 +109,55 @@ typename SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state() {
   return &read_state_;
 }
 
-Status SparseIndexReaderBase::init() {
+void SparseIndexReaderBase::init() {
   // Sanity checks
-  if (storage_manager_ == nullptr)
-    return logger_->status(Status_ReaderError(
+  if (storage_manager_ == nullptr) {
+    throw SparseIndexReaderBaseStatusException(
         "Cannot initialize sparse global order reader; Storage manager not "
-        "set"));
-  if (buffers_.empty())
-    return logger_->status(Status_ReaderError(
-        "Cannot initialize sparse global order reader; Buffers not set"));
+        "set");
+  }
+
+  if (buffers_.empty()) {
+    throw SparseIndexReaderBaseStatusException(
+        "Cannot initialize sparse global order reader; Buffers not set");
+  }
 
   // Check subarray
-  RETURN_NOT_OK(check_subarray());
+  check_subarray();
 
   // Load offset configuration options.
   bool found = false;
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    return logger_->status(
-        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
-                           "format in configuration"));
+    throw SparseIndexReaderBaseStatusException(
+        "Cannot initialize reader; Unsupported offsets format in "
+        "configuration");
   }
   elements_mode_ = offsets_format_mode_ == "elements";
 
-  RETURN_NOT_OK(config_.get<bool>(
-      "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
+  if (!config_
+           .get<bool>(
+               "sm.var_offsets.extra_element", &offsets_extra_element_, &found)
+           .ok()) {
+    throw SparseIndexReaderBaseStatusException("Cannot get setting");
+  }
   assert(found);
-  RETURN_NOT_OK(config_.get<uint32_t>(
-      "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
+
+  if (!config_
+           .get<uint32_t>("sm.var_offsets.bitsize", &offsets_bitsize_, &found)
+           .ok()) {
+    throw SparseIndexReaderBaseStatusException("Cannot get setting");
+  }
+  assert(found);
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    return logger_->status(
-        Status_ReaderError("Cannot initialize reader; "
-                           "Unsupported offsets bitsize in configuration"));
+    throw SparseIndexReaderBaseStatusException(
+        "Cannot initialize reader; Unsupported offsets bitsize in "
+        "configuration");
   }
 
   // Check the validity buffer sizes.
-  RETURN_NOT_OK(check_validity_buffer_sizes());
-
-  return Status::Ok();
+  check_validity_buffer_sizes();
 }
 
 uint64_t SparseIndexReaderBase::cells_copied(

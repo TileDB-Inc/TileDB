@@ -123,9 +123,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Returns the status details reason. */
   QueryStatusDetailsReason status_incomplete_reason() const;
 
-  /** Initializes the reader. */
-  Status init();
-
   /** Initialize the memory budget variables. */
   Status initialize_memory_budget();
 
@@ -168,7 +165,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   Status dense_read();
 
   /** Initializes the read state. */
-  Status init_read_state();
+  void init_read_state();
 
   /** Apply the query condition. */
   template <class DimType, class OffType>

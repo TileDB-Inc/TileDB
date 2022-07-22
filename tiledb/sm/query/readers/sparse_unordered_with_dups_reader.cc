@@ -53,6 +53,14 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
+class SparseUnorderedWithDupsReaderStatusException : public StatusException {
+ public:
+  explicit SparseUnorderedWithDupsReaderStatusException(
+      const std::string& message)
+      : StatusException("SparseUnorderedWithDupsReader", message) {
+  }
+};
+
 /* ****************************** */
 /*          CONSTRUCTORS          */
 /* ****************************** */
@@ -78,6 +86,13 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           subarray,
           layout,
           condition) {
+  SparseIndexReaderBase::init();
+
+  // Initialize memory budget variables.
+  if (!initialize_memory_budget().ok()) {
+    throw SparseUnorderedWithDupsReaderStatusException(
+        "Cannot initialize memory budget");
+  }
 }
 
 /* ****************************** */
@@ -101,16 +116,6 @@ SparseUnorderedWithDupsReader<BitmapType>::status_incomplete_reason() const {
   return result_tiles_.empty() ?
              QueryStatusDetailsReason::REASON_MEMORY_BUDGET :
              QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE;
-}
-
-template <class BitmapType>
-Status SparseUnorderedWithDupsReader<BitmapType>::init() {
-  RETURN_NOT_OK(SparseIndexReaderBase::init());
-
-  // Initialize memory budget variables.
-  RETURN_NOT_OK(initialize_memory_budget());
-
-  return Status::Ok();
 }
 
 template <class BitmapType>

@@ -136,13 +136,6 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   QueryStatusDetailsReason status_incomplete_reason() const;
 
   /**
-   * Initializes the reader.
-   *
-   * @return Status.
-   */
-  Status init();
-
-  /**
    * Initialize the memory budget variables.
    *
    * @return Status.
