@@ -84,17 +84,4 @@ bool ConsistencyController::is_open(const URI uri) {
   }
   return false;
 }
-
-bool ConsistencyController::is_element_of(
-    const URI uri, const URI intersecting_uri) {
-  std::string prefix = uri.to_string().substr(
-      0, std::string(uri.c_str()).size() - (uri.last_path_part()).size());
-
-  std::string intersecting_prefix = intersecting_uri.to_string().substr(
-      0,
-      std::string(intersecting_uri.c_str()).size() -
-          (intersecting_uri.last_path_part()).size());
-
-  return (prefix == intersecting_prefix);
-}
 }  // namespace tiledb::sm
