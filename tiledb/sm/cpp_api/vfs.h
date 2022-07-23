@@ -92,7 +92,7 @@ class VFSFilebuf : public std::streambuf {
   VFSFilebuf& operator=(const VFSFilebuf&) = default;
   VFSFilebuf& operator=(VFSFilebuf&&) = default;
   ~VFSFilebuf() override {
-    close();
+    close(false);
   }
 
   /* ********************************* */
@@ -114,7 +114,7 @@ class VFSFilebuf : public std::streambuf {
   }
 
   /** Close a file. **/
-  VFSFilebuf* close();
+  VFSFilebuf* close(bool should_throw = true);
 
   /** Current opened URI. **/
   const std::string& get_uri() const {
@@ -631,10 +631,11 @@ inline VFSFilebuf* VFSFilebuf::open(
   return this;
 }
 
-inline VFSFilebuf* VFSFilebuf::close() {
+inline VFSFilebuf* VFSFilebuf::close(bool should_throw) {
   if (is_open()) {
     auto& ctx = vfs_.get().context();
-    ctx.handle_error(tiledb_vfs_close(ctx.ptr().get(), fh_.get()));
+    if (should_throw)
+      ctx.handle_error(tiledb_vfs_close(ctx.ptr().get(), fh_.get()));
   }
   uri_ = "";
   fh_ = nullptr;
