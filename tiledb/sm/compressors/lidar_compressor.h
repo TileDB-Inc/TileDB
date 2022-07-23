@@ -86,6 +86,10 @@ class Lidar {
 
   /** Returns the compression overhead for the given input. */
   static uint64_t overhead(uint64_t nbytes);
+
+  private:
+    /** The default filter compression level. */
+    static constexpr int default_level_ = -1;
 };
 
 }; // namespace sm
