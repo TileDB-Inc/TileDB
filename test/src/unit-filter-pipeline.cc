@@ -4089,7 +4089,11 @@ void testing_xor_filter() {
 
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_int_distribution<T> dis(
+  typedef typename std::conditional<
+      is_windows && std::is_same<T, int8_t>::value,
+      int16_t,
+      T>::type DIST_TYPE;
+  std::uniform_int_distribution<DIST_TYPE> dis(
       std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
 
   std::vector<T> results;

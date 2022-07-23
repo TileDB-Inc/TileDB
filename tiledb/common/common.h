@@ -73,4 +73,9 @@ constexpr bool is_experimental_build = true;
 constexpr bool is_experimental_build = false;
 #endif  // TILEDB_EXPERIMENTAL_FEATURES
 
+/*
+ * Platform/machine config
+ */
+#include "platform.h"
+
 #endif  // TILEDB_COMMON_COMMON_H
