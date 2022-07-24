@@ -89,8 +89,8 @@ class Tile {
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
-   * @param buffer The buffer to be encapsulated by the tile object. This means
-   *     that the tile will take ownership of the buffer.
+   * @param buffer The buffer to be encapsulated by the tile object. The tile
+   *      will not take ownership of the buffer.
    * @param size The buffer size.
    */
   Tile(
@@ -248,17 +248,36 @@ class Tile {
   Status write(const void* data, uint64_t offset, uint64_t nbytes);
 
   /**
+   * Write method used for var data. Resizes the internal buffer if needed.
+   *
+   * @param data Pointer to the data to write.
+   * @param offset Offset to write into the tile buffer.
+   * @param nbytes Number of bytes to write.
+   * @return Status.
+   */
+  Status write_var(const void* data, uint64_t offset, uint64_t nbytes);
+
+  /**
    * Zips the coordinate values such that a cell's coordinates across
    * all dimensions appear contiguously in the buffer.
    */
   Status zip_coordinates();
 
+  /**
+   * Sets the size of the tile.
+   *
+   * @param size The new size.
+   */
+  inline void set_size(uint64_t size) {
+    size_ = size;
+  }
+
   /** Swaps the contents (all field values) of this tile with the given tile. */
   void swap(Tile& tile);
 
- protected:
+ private:
   /* ********************************* */
-  /*        PROTECTED ATTRIBUTES       */
+  /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
   /**

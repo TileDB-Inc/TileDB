@@ -34,6 +34,7 @@
 #ifndef TILEDB_C_API_STRUCT_DEF_H
 #define TILEDB_C_API_STRUCT_DEF_H
 
+#include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
@@ -52,11 +53,12 @@
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 struct tiledb_array_t {
-  tiledb::sm::Array* array_ = nullptr;
+  shared_ptr<tiledb::sm::Array> array_;
 };
 
 struct tiledb_subarray_t {
   tiledb::sm::Subarray* subarray_ = nullptr;
+  bool is_allocated_ = false;
 };
 
 struct tiledb_buffer_t {
@@ -74,10 +76,6 @@ struct tiledb_config_t {
 
 struct tiledb_config_iter_t {
   tiledb::sm::ConfigIter* config_iter_ = nullptr;
-};
-
-struct tiledb_ctx_t {
-  tiledb::sm::Context* ctx_ = nullptr;
 };
 
 struct tiledb_error_t {
@@ -102,10 +100,6 @@ struct tiledb_dimension_t {
 
 struct tiledb_domain_t {
   tiledb::sm::Domain* domain_ = nullptr;
-};
-
-struct tiledb_filter_t {
-  tiledb::sm::Filter* filter_ = nullptr;
 };
 
 struct tiledb_filter_list_t {

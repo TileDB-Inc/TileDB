@@ -80,6 +80,15 @@ class Config {
   /** The default for Curl's verbose mode used by REST. */
   static const std::string REST_CURL_VERBOSE;
 
+  /** If the array metadata should be loaded on array open */
+  static const std::string REST_LOAD_METADATA_ON_ARRAY_OPEN;
+
+  /** If the array non empty domain should be loaded on array open */
+  static const std::string REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN;
+
+  /** Refactored array open is disabled by default */
+  static const std::string REST_USE_REFACTORED_ARRAY_OPEN;
+
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 
@@ -226,6 +235,9 @@ class Config {
   /** The buffer size for each attribute used in consolidation. */
   static const std::string SM_CONSOLIDATION_BUFFER_SIZE;
 
+  /** Purge deleted cells or not. */
+  static const std::string SM_CONSOLIDATION_PURGE_DELETED_CELLS;
+
   /** Number of steps in the consolidation algorithm. */
   static const std::string SM_CONSOLIDATION_STEPS;
 
@@ -262,11 +274,6 @@ class Config {
   static const std::string SM_CONSOLIDATION_TIMESTAMP_END;
 
   /**
-   * Enable or disable consolidation with timestamps.
-   */
-  static const std::string SM_CONSOLIDATION_WITH_TIMESTAMPS;
-
-  /**
    * The vacuum mode. It can be one of:
    *     - "fragments": only the fragments will be vacuumed
    *     - "fragment_meta": only the fragment metadata will be vacuumed
@@ -282,12 +289,12 @@ class Config {
 
   /**
    * An array will vacuum between timestamp_start and this value.
-   *  */
+   */
   static const std::string SM_VACUUM_TIMESTAMP_END;
 
   /**
    * The size of offsets in bits to be used for offset buffers of var-sized
-   * attributes<br>
+   * attributes
    */
   static const std::string SM_OFFSETS_BITSIZE;
 
@@ -317,7 +324,7 @@ class Config {
 
   /**
    * An group will open between timestamp_start and this value.
-   *  */
+   */
   static const std::string SM_GROUP_TIMESTAMP_END;
 
   /** The default minimum number of bytes in a parallel VFS operation. */
@@ -495,6 +502,12 @@ class Config {
 
   /** S3 default object canned ACL */
   static const std::string VFS_S3_OBJECT_CANNED_ACL;
+
+  /**
+   * Specifies the size in bytes of the internal buffers used in the filestore
+   * API. The size should be bigger than the minimum tile size filestore
+   * currently supports, that is currently 1024bytes. */
+  static const std::string FILESTORE_BUFFER_SIZE;
 
   /* ****************************** */
   /*        OTHER CONSTANTS         */

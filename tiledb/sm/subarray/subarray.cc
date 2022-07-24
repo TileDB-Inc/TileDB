@@ -52,7 +52,7 @@
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
-#include "tiledb/sm/query/sparse_index_reader_base.h"
+#include "tiledb/sm/query/readers/sparse_index_reader_base.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -113,9 +113,10 @@ Subarray::Subarray(
     , est_result_size_computed_(false)
     , coalesce_ranges_(coalesce_ranges)
     , ranges_sorted_(false) {
-  if (!parent_stats && !storage_manager)
+  if (!parent_stats && !storage_manager) {
     throw std::runtime_error(
         "Subarray(): missing parent_stats requires live storage_manager!");
+  }
   add_default_ranges();
 }
 
@@ -156,9 +157,10 @@ Subarray& Subarray::operator=(Subarray&& subarray) noexcept {
 Status Subarray::add_range(
     uint32_t dim_idx, Range&& range, const bool read_range_oob_error) {
   auto dim_num = array_->array_schema_latest().dim_num();
-  if (dim_idx >= dim_num)
+  if (dim_idx >= dim_num) {
     return logger_->status(Status_SubarrayError(
         "Cannot add range to dimension; Invalid dimension index"));
+  }
 
   // Must reset the result size and tile overlap
   est_result_size_computed_ = false;
@@ -236,16 +238,23 @@ Status Subarray::add_range(
 
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == tiledb::sm::QueryType::WRITE) {
+  if (array_query_type == QueryType::WRITE) {
     if (!array_->array_schema_latest().dense()) {
       return LOG_STATUS(Status_SubarrayError(
           "Adding a subarray range to a write query is not "
           "supported in sparse arrays"));
     }
-    if (this->is_set(dim_idx))
+    if (this->is_set(dim_idx)) {
       return LOG_STATUS(
           Status_SubarrayError("Cannot add range; Multi-range dense writes "
                                "are not supported"));
+    }
+  }
+
+  if (array_query_type != QueryType::READ &&
+      array_query_type != QueryType::WRITE) {
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add range; Unsupported query type"));
   }
 
   if (start == nullptr || end == nullptr)
@@ -277,34 +286,44 @@ Status Subarray::add_range(
 
 Status Subarray::add_point_ranges(
     unsigned dim_idx, const void* start, uint64_t count) {
-  if (dim_idx >= this->array_->array_schema_latest().dim_num())
+  if (dim_idx >= this->array_->array_schema_latest().dim_num()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
+  }
 
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == tiledb::sm::QueryType::WRITE) {
+  if (array_query_type == QueryType::WRITE) {
     if (!array_->array_schema_latest().dense()) {
       return LOG_STATUS(Status_SubarrayError(
           "Adding a subarray range to a write query is not "
           "supported in sparse arrays"));
     }
-    if (this->is_set(dim_idx))
+    if (this->is_set(dim_idx)) {
       return LOG_STATUS(
           Status_SubarrayError("Cannot add range; Multi-range dense writes "
                                "are not supported"));
+    }
   }
 
-  if (start == nullptr)
+  if (array_query_type != QueryType::READ &&
+      array_query_type != QueryType::WRITE) {
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add range; Unsupported query type"));
+  }
+
+  if (start == nullptr) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add ranges; Invalid start pointer"));
+  }
 
   if (this->array_->array_schema_latest()
           .domain()
           .dimension_ptr(dim_idx)
-          ->var_size())
+          ->var_size()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Range must be fixed-sized"));
+  }
 
   // Prepare a temp range
   std::vector<uint8_t> range;
@@ -346,36 +365,41 @@ Status Subarray::add_range_var(
     uint64_t start_size,
     const void* end,
     uint64_t end_size) {
-  if (dim_idx >= array_->array_schema_latest().dim_num())
+  if (dim_idx >= array_->array_schema_latest().dim_num()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
+  }
 
   if ((start == nullptr && start_size != 0) ||
-      (end == nullptr && end_size != 0))
+      (end == nullptr && end_size != 0)) {
     return LOG_STATUS(Status_SubarrayError("Cannot add range; Invalid range"));
+  }
 
   if (!array_->array_schema_latest()
            .domain()
            .dimension_ptr(dim_idx)
-           ->var_size())
+           ->var_size()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Range must be variable-sized"));
+  }
 
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == tiledb::sm::QueryType::WRITE)
+  if (array_query_type != QueryType::READ) {
     return LOG_STATUS(Status_SubarrayError(
         "Cannot add range; Function applicable only to reads"));
+  }
 
   // Get read_range_oob config setting
   bool found = false;
   std::string read_range_oob = config_.get("sm.read_range_oob", &found);
   assert(found);
 
-  if (read_range_oob != "error" && read_range_oob != "warn")
+  if (read_range_oob != "error" && read_range_oob != "warn") {
     return LOG_STATUS(Status_SubarrayError(
         "Invalid value " + read_range_oob +
         " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
+  }
 
   // Add range
   Range r;
@@ -400,9 +424,10 @@ Status Subarray::get_range_var(
     unsigned dim_idx, uint64_t range_idx, void* start, void* end) const {
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == tiledb::sm::QueryType::WRITE)
+  if (array_query_type != QueryType::READ) {
     return LOG_STATUS(Status_SubarrayError(
-        "Getting a var range for a write query is not applicable"));
+        "Getting a var range for an unsupported query type"));
+  }
 
   uint64_t start_size = 0;
   uint64_t end_size = 0;
@@ -437,11 +462,17 @@ Status Subarray::get_range(
     const void** stride) const {
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == tiledb::sm::QueryType::WRITE) {
+  if (array_query_type == QueryType::WRITE) {
     if (!array_->array_schema_latest().dense())
       return LOG_STATUS(
           Status_SubarrayError("Getting a range from a write query is not "
                                "applicable to sparse arrays"));
+  }
+
+  if (array_query_type != QueryType::READ &&
+      array_query_type != QueryType::WRITE) {
+    return LOG_STATUS(
+        Status_SubarrayError("Getting a range for an unsupported query type"));
   }
 
   *stride = nullptr;
@@ -618,38 +649,17 @@ template <class T>
 Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
   // TBD: is it ok that Subarray log id will increase as if it's a new subarray?
   Subarray ret(array_, layout, stats_->parent(), logger_, false);
-
-  T new_range[2];
-  bool overlaps;
-
-  // Get tile subarray based on the input coordinates
-  const auto& array_schema = array_->array_schema_latest();
-  std::vector<T> tile_subarray(2 * dim_num());
-  array_schema.domain().get_tile_subarray(tile_coords, &tile_subarray[0]);
-
-  // Compute cropped subarray
-  for (unsigned d = 0; d < dim_num(); ++d) {
-    auto r_size{2 * array_schema.dimension_ptr(d)->coord_size()};
-    uint64_t i = 0;
-    for (size_t r = 0; r < range_subset_[d].num_ranges(); ++r) {
-      const auto& range = range_subset_[d][r];
-      utils::geometry::overlap(
-          (const T*)range.data(),
-          &tile_subarray[2 * d],
-          1,
-          new_range,
-          &overlaps);
-
-      if (overlaps) {
-        ret.add_range_unsafe(d, Range(new_range, r_size));
-        ret.original_range_idx_.resize(dim_num());
-        ret.original_range_idx_[d].resize(i + 1);
-        ret.original_range_idx_[d][i++] = r;
-      }
-    }
-  }
+  crop_to_tile_impl(tile_coords, ret);
 
   return ret;
+}
+
+template <class T>
+void Subarray::crop_to_tile(
+    Subarray* ret, const T* tile_coords, Layout layout) const {
+  new (ret) Subarray(array_, layout, stats_->parent(), logger_, false);
+  Subarray(array_, layout, stats_->parent(), logger_, false);
+  crop_to_tile_impl(tile_coords, *ret);
 }
 
 uint32_t Subarray::dim_num() const {
@@ -757,11 +767,18 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
 
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == tiledb::sm::QueryType::WRITE &&
+  if (array_query_type == QueryType::WRITE &&
       !array_->array_schema_latest().dense()) {
     return LOG_STATUS(
         Status_SubarrayError("Getting the number of ranges from a write query "
                              "is not applicable to sparse arrays"));
+  }
+
+  if (array_query_type != QueryType::READ &&
+      array_query_type != QueryType::WRITE) {
+    return LOG_STATUS(
+        Status_SubarrayError("Getting the number of ranges for an unsupported "
+                             "query type"));
   }
 
   *range_num = range_subset_[dim_idx].num_ranges();
@@ -857,7 +874,7 @@ Status Subarray::set_config(const Config& config) {
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
 
-  if (array_query_type == tiledb::sm::QueryType::READ) {
+  if (array_query_type == QueryType::READ) {
     bool found = false;
     std::string read_range_oob_str = config.get("sm.read_range_oob", &found);
     assert(found);
@@ -912,15 +929,17 @@ Status Subarray::get_est_result_size_internal(
     const Config* const config,
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
-  if (name == nullptr)
+  if (name == nullptr) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension name cannot be null"));
+  }
 
   // Check size pointer
-  if (size == nullptr)
+  if (size == nullptr) {
     return logger_->status(Status_SubarrayError(
         "Cannot get estimated result size; Input size cannot be null"));
+  }
 
   // Check if name is attribute or dimension
   const auto& array_schema = array_->array_schema_latest();
@@ -928,22 +947,26 @@ Status Subarray::get_est_result_size_internal(
   const bool is_attr = array_schema.is_attr(name);
 
   // Check if attribute/dimension exists
-  if (name != constants::coords && !is_dim && !is_attr)
+  if (name != constants::coords && name != constants::timestamps &&
+      name != constants::delete_timestamps && !is_dim && !is_attr) {
     return logger_->status(Status_SubarrayError(
         std::string("Cannot get estimated result size; Attribute/Dimension '") +
         name + "' does not exist"));
+  }
 
   // Check if the attribute/dimension is fixed-sized
-  if (array_schema.var_size(name))
+  if (array_schema.var_size(name)) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension must be fixed-sized"));
+  }
 
   // Check if attribute/dimension is nullable
-  if (array_schema.is_nullable(name))
+  if (array_schema.is_nullable(name)) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension must not be nullable"));
+  }
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
@@ -960,37 +983,41 @@ Status Subarray::get_est_result_size_internal(
 
 Status Subarray::get_est_result_size(
     const char* name, uint64_t* size, StorageManager* storage_manager) {
-  QueryType type;
+  QueryType array_query_type;
   // Note: various items below expect array open, get_query_type() providing
   // that audit.
-  RETURN_NOT_OK(array_->get_query_type(&type));
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
 
-  if (type == QueryType::WRITE)
+  if (array_query_type != QueryType::READ) {
     return LOG_STATUS(Status_SubarrayError(
-        "Cannot get estimated result size; Operation currently "
-        "unsupported for write queries"));
+        "Cannot get estimated result size; unsupported query type"));
+  }
 
-  if (name == nullptr)
+  if (name == nullptr) {
     return LOG_STATUS(Status_SubarrayError(
         "Cannot get estimated result size; Name cannot be null"));
+  }
 
   if (name == constants::coords &&
-      !array_->array_schema_latest().domain().all_dims_same_type())
+      !array_->array_schema_latest().domain().all_dims_same_type()) {
     return LOG_STATUS(Status_SubarrayError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with heterogeneous domain"));
+  }
 
   if (name == constants::coords &&
-      !array_->array_schema_latest().domain().all_dims_fixed())
+      !array_->array_schema_latest().domain().all_dims_fixed()) {
     return LOG_STATUS(Status_SubarrayError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with domains with variable-sized dimensions"));
+  }
 
-  if (array_->array_schema_latest().is_nullable(name))
+  if (array_->array_schema_latest().is_nullable(name)) {
     return LOG_STATUS(Status_SubarrayError(
         std::string(
             "Cannot get estimated result size; Input attribute/dimension '") +
         name + "' is nullable"));
+  }
 
   if (array_->is_remote()) {
     return LOG_STATUS(Status_SubarrayError(
@@ -1009,15 +1036,17 @@ Status Subarray::get_est_result_size(
     const Config* const config,
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
-  if (name == nullptr)
+  if (name == nullptr) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension name cannot be null"));
+  }
 
   // Check size pointer
-  if (size_off == nullptr || size_val == nullptr)
+  if (size_off == nullptr || size_val == nullptr) {
     return logger_->status(Status_SubarrayError(
         "Cannot get estimated result size; Input sizes cannot be null"));
+  }
 
   // Check if name is attribute or dimension
   const auto& array_schema = array_->array_schema_latest();
@@ -1025,22 +1054,26 @@ Status Subarray::get_est_result_size(
   const bool is_attr = array_schema.is_attr(name);
 
   // Check if attribute/dimension exists
-  if (name != constants::coords && !is_dim && !is_attr)
+  if (name != constants::coords && name != constants::timestamps &&
+      name != constants::delete_timestamps && !is_dim && !is_attr) {
     return logger_->status(Status_SubarrayError(
         std::string("Cannot get estimated result size; Attribute/Dimension '") +
         name + "' does not exist"));
+  }
 
   // Check if the attribute/dimension is var-sized
-  if (!array_schema.var_size(name))
+  if (!array_schema.var_size(name)) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension must be var-sized"));
+  }
 
   // Check if attribute/dimension is nullable
-  if (array_schema.is_nullable(name))
+  if (array_schema.is_nullable(name)) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension must not be nullable"));
+  }
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
@@ -1228,21 +1261,25 @@ Status Subarray::get_max_memory_size(
   bool is_attr = array_schema.is_attr(name);
 
   // Check if attribute/dimension exists
-  if (name != constants::coords && !is_dim && !is_attr)
+  if (name != constants::coords && name != constants::timestamps &&
+      name != constants::delete_timestamps && !is_dim && !is_attr) {
     return logger_->status(Status_SubarrayError(
         std::string("Cannot get max memory size; Attribute/Dimension '") +
         name + "' does not exist"));
+  }
 
   // Check if the attribute/dimension is fixed-sized
-  if (name != constants::coords && array_schema.var_size(name))
+  if (name != constants::coords && array_schema.var_size(name)) {
     return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Attribute/Dimension must be fixed-sized"));
+  }
 
   // Check if attribute/dimension is nullable
-  if (array_schema.is_nullable(name))
+  if (array_schema.is_nullable(name)) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension must not be nullable"));
+  }
 
   // Compute tile overlap for each fragment
   compute_est_result_size(config, compute_tp);
@@ -1462,15 +1499,6 @@ uint64_t Subarray::range_idx(const std::vector<uint64_t>& range_coords) const {
   return ret;
 }
 
-template <class T>
-void Subarray::get_original_range_coords(
-    const T* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const {
-  auto dim_num = this->dim_num();
-  for (unsigned i = 0; i < dim_num; ++i)
-    original_range_coords->at(i) = original_range_idx_[i][range_coords[i]];
-}
-
 uint64_t Subarray::range_num() const {
   if (range_subset_.empty())
     return 0;
@@ -1530,10 +1558,6 @@ NDRange Subarray::ndrange(const std::vector<uint64_t>& range_coords) const {
   for (unsigned d = 0; d < dim_num; ++d)
     ret.emplace_back(range_subset_[d][range_coords[d]]);
   return ret;
-}
-
-const std::vector<Range>& Subarray::ranges_for_dim(uint32_t dim_idx) const {
-  return range_subset_[dim_idx].ranges();
 }
 
 Status Subarray::set_ranges_for_dim(
@@ -3059,6 +3083,39 @@ tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
   ;
 }
 
+template <class T>
+void Subarray::crop_to_tile_impl(const T* tile_coords, Subarray& ret) const {
+  T new_range[2];
+  bool overlaps;
+
+  // Get tile subarray based on the input coordinates
+  const auto& array_schema = array_->array_schema_latest();
+  std::vector<T> tile_subarray(2 * dim_num());
+  array_schema.domain().get_tile_subarray(tile_coords, &tile_subarray[0]);
+
+  // Compute cropped subarray
+  for (unsigned d = 0; d < dim_num(); ++d) {
+    auto r_size{2 * array_schema.dimension_ptr(d)->coord_size()};
+    uint64_t i = 0;
+    for (size_t r = 0; r < range_subset_[d].num_ranges(); ++r) {
+      const auto& range = range_subset_[d][r];
+      utils::geometry::overlap(
+          (const T*)range.data(),
+          &tile_subarray[2 * d],
+          1,
+          new_range,
+          &overlaps);
+
+      if (overlaps) {
+        ret.add_range_unsafe(d, Range(new_range, r_size));
+        ret.original_range_idx_.resize(dim_num());
+        ret.original_range_idx_[d].resize(i + 1);
+        ret.original_range_idx_[d][i++] = r;
+      }
+    }
+  }
+}
+
 // Explicit instantiations
 template Status Subarray::compute_tile_coords<int8_t>();
 template Status Subarray::compute_tile_coords<uint8_t>();
@@ -3123,36 +3180,26 @@ template Subarray Subarray::crop_to_tile<float>(
 template Subarray Subarray::crop_to_tile<double>(
     const double* tile_coords, Layout layout) const;
 
-template void Subarray::get_original_range_coords<int8_t>(
-    const int8_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<uint8_t>(
-    const uint8_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<int16_t>(
-    const int16_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<uint16_t>(
-    const uint16_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<int32_t>(
-    const int32_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<uint32_t>(
-    const uint32_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<int64_t>(
-    const int64_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<uint64_t>(
-    const uint64_t* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<float>(
-    const float* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
-template void Subarray::get_original_range_coords<double>(
-    const double* const range_coords,
-    std::vector<uint64_t>* original_range_coords) const;
+template void Subarray::crop_to_tile<int8_t>(
+    Subarray* ret, const int8_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<uint8_t>(
+    Subarray* ret, const uint8_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<int16_t>(
+    Subarray* ret, const int16_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<uint16_t>(
+    Subarray* ret, const uint16_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<int32_t>(
+    Subarray* ret, const int32_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<uint32_t>(
+    Subarray* ret, const uint32_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<int64_t>(
+    Subarray* ret, const int64_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<uint64_t>(
+    Subarray* ret, const uint64_t* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<float>(
+    Subarray* ret, const float* tile_coords, Layout layout) const;
+template void Subarray::crop_to_tile<double>(
+    Subarray* ret, const double* tile_coords, Layout layout) const;
 
 }  // namespace sm
 }  // namespace tiledb

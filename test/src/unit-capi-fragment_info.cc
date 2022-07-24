@@ -217,6 +217,17 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   CHECK(fragment_num == 1);
 
+  uint64_t frag0_cell_num_after_first_write;
+  rc = tiledb_fragment_info_get_cell_num(
+      ctx, fragment_info, 0, &frag0_cell_num_after_first_write);
+  CHECK(rc == TILEDB_OK);
+  CHECK(frag0_cell_num_after_first_write == 10);
+  uint64_t total_cell_num_after_first_write;
+  rc = tiledb_fragment_info_get_total_cell_num(
+      ctx, fragment_info, &total_cell_num_after_first_write);
+  CHECK(rc == TILEDB_OK);
+  CHECK(total_cell_num_after_first_write == 10);
+
   // Write another dense fragment
   subarray[0] = 1;
   subarray[1] = 7;
@@ -277,7 +288,7 @@ TEST_CASE(
   uint64_t size;
   rc = tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);
   CHECK(rc == TILEDB_OK);
-  CHECK(size == 3085);
+  CHECK(size == 3185);
 
   // Get dense / sparse
   int32_t dense;
@@ -322,16 +333,30 @@ TEST_CASE(
   CHECK(non_empty_dom == std::vector<uint64_t>{1, 7});
 
   // Get number of cells
-  uint64_t cell_num;
-  rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 0, &cell_num);
+  uint64_t frag0_cell_num;
+  rc =
+      tiledb_fragment_info_get_cell_num(ctx, fragment_info, 0, &frag0_cell_num);
   CHECK(rc == TILEDB_OK);
-  CHECK(cell_num == 10);
-  rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 1, &cell_num);
+  CHECK(frag0_cell_num == 10);
+  CHECK(frag0_cell_num == frag0_cell_num_after_first_write);
+  uint64_t frag1_cell_num;
+  rc =
+      tiledb_fragment_info_get_cell_num(ctx, fragment_info, 1, &frag1_cell_num);
   CHECK(rc == TILEDB_OK);
-  CHECK(cell_num == 10);
-  rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 2, &cell_num);
+  CHECK(frag1_cell_num == 10);
+  uint64_t frag2_cell_num;
+  rc =
+      tiledb_fragment_info_get_cell_num(ctx, fragment_info, 2, &frag2_cell_num);
   CHECK(rc == TILEDB_OK);
-  CHECK(cell_num == 10);
+  CHECK(frag2_cell_num == 10);
+
+  uint64_t total_cell_num_after_third_write;
+  rc = tiledb_fragment_info_get_total_cell_num(
+      ctx, fragment_info, &total_cell_num_after_third_write);
+  CHECK(rc == TILEDB_OK);
+  CHECK(
+      total_cell_num_after_third_write ==
+      frag0_cell_num + frag1_cell_num + frag2_cell_num);
 
   // Get version
   uint32_t version;
@@ -514,7 +539,7 @@ TEST_CASE(
   uint64_t size;
   rc = tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);
   CHECK(rc == TILEDB_OK);
-  CHECK(size == 5383);
+  CHECK(size == 5568);
 
   // Get dense / sparse
   int32_t dense;
@@ -1351,16 +1376,16 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
       "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
       "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
-      "  > Size: 3085\n" + "  > Cell num: 10\n" +
+      "  > Size: 3185\n" + "  > Cell num: 10\n" +
       "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
       "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [1, 4]\n" + "  > Size: 3034\n" +
+      "  > Non-empty domain: [1, 4]\n" + "  > Size: 3134\n" +
       "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #3:\n" +
       "  > URI: " + written_frag_uri_3 + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [5, 6]\n" + "  > Size: 3082\n" +
+      "  > Non-empty domain: [5, 6]\n" + "  > Size: 3182\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [3, 3]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
@@ -1491,7 +1516,7 @@ TEST_CASE(
       "- To vacuum URIs:\n" + "  > " + written_frag_uri_1 + "\n  > " +
       written_frag_uri_2 + "\n  > " + written_frag_uri_3 + "\n" +
       "- Fragment #1:\n" + "  > URI: " + uri + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [1, 10]\n" + "  > Size: 3100\n" +
+      "  > Non-empty domain: [1, 10]\n" + "  > Size: 3200\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [1, 3]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
@@ -1575,7 +1600,7 @@ TEST_CASE(
       "- Unconsolidated metadata num: 1\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri + "\n" +
       "  > Type: sparse\n" + "  > Non-empty domain: [a, ddd]\n" +
-      "  > Size: 3331\n" + "  > Cell num: 4\n" +
+      "  > Size: 3431\n" + "  > Cell num: 4\n" +
       "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");

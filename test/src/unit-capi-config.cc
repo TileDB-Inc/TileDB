@@ -225,14 +225,18 @@ void check_save_to_file() {
 #else
   ss << "config.logging_level 0\n";
 #endif
+  ss << "filestore.buffer_size 104857600\n";
   ss << "rest.curl.verbose false\n";
   ss << "rest.http_compressor any\n";
+  ss << "rest.load_metadata_on_array_open true\n";
+  ss << "rest.load_non_empty_domain_on_array_open true\n";
   ss << "rest.retry_count 25\n";
   ss << "rest.retry_delay_factor 1.25\n";
   ss << "rest.retry_http_codes 503\n";
   ss << "rest.retry_initial_delay_ms 500\n";
   ss << "rest.server_address https://api.tiledb.com\n";
   ss << "rest.server_serialization_format CAPNP\n";
+  ss << "rest.use_refactored_array_open false\n";
   ss << "sm.check_coord_dups true\n";
   ss << "sm.check_coord_oob true\n";
   ss << "sm.check_global_order true\n";
@@ -241,13 +245,13 @@ void check_save_to_file() {
   ss << "sm.consolidation.amplification 1.0\n";
   ss << "sm.consolidation.buffer_size 50000000\n";
   ss << "sm.consolidation.mode fragments\n";
+  ss << "sm.consolidation.purge_deleted_cells false\n";
   ss << "sm.consolidation.step_max_frags 4294967295\n";
   ss << "sm.consolidation.step_min_frags 4294967295\n";
   ss << "sm.consolidation.step_size_ratio 0.0\n";
   ss << "sm.consolidation.steps 4294967295\n";
   ss << "sm.consolidation.timestamp_end " << std::to_string(UINT64_MAX) << "\n";
   ss << "sm.consolidation.timestamp_start 0\n";
-  ss << "sm.consolidation.with_timestamps false\n";
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.encryption_type NO_ENCRYPTION\n";
@@ -277,8 +281,6 @@ void check_save_to_file() {
   ss << "sm.skip_est_size_partitioning false\n";
   ss << "sm.tile_cache_size 10000000\n";
   ss << "sm.vacuum.mode fragments\n";
-  ss << "sm.vacuum.timestamp_end " << std::to_string(UINT64_MAX) << "\n";
-  ss << "sm.vacuum.timestamp_start 0\n";
   ss << "sm.var_offsets.bitsize 64\n";
   ss << "sm.var_offsets.extra_element false\n";
   ss << "sm.var_offsets.mode bytes\n";
@@ -546,12 +548,25 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   rc = tiledb_config_set(config, "sm.var_offsets.bitsize", "32", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
+  rc = tiledb_config_set(
+      config, "rest.load_metadata_on_array_open", "false", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_set(
+      config, "rest.load_non_empty_domain_on_array_open", "false", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_set(
+      config, "rest.use_refactored_array_open", "true", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
 
   // Prepare maps
   std::map<std::string, std::string> all_param_values;
   all_param_values["config.env_var_prefix"] = "TILEDB_";
   all_param_values["config.logging_level"] = "2";
   all_param_values["config.logging_format"] = "JSON";
+  all_param_values["filestore.buffer_size"] = "104857600";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";
@@ -560,6 +575,9 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.retry_initial_delay_ms"] = "500";
   all_param_values["rest.retry_http_codes"] = "503";
   all_param_values["rest.curl.verbose"] = "false";
+  all_param_values["rest.load_metadata_on_array_open"] = "false";
+  all_param_values["rest.load_non_empty_domain_on_array_open"] = "false";
+  all_param_values["rest.use_refactored_array_open"] = "true";
   all_param_values["sm.encryption_key"] = "";
   all_param_values["sm.encryption_type"] = "NO_ENCRYPTION";
   all_param_values["sm.dedup_coords"] = "false";
@@ -604,7 +622,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.consolidation.timestamp_start"] = "0";
   all_param_values["sm.consolidation.timestamp_end"] =
       std::to_string(UINT64_MAX);
-  all_param_values["sm.consolidation.with_timestamps"] = "false";
+  all_param_values["sm.consolidation.purge_deleted_cells"] = "false";
   all_param_values["sm.consolidation.step_min_frags"] = "4294967295";
   all_param_values["sm.consolidation.step_max_frags"] = "4294967295";
   all_param_values["sm.consolidation.buffer_size"] = "50000000";
@@ -612,8 +630,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.consolidation.mode"] = "fragments";
   all_param_values["sm.read_range_oob"] = "warn";
   all_param_values["sm.vacuum.mode"] = "fragments";
-  all_param_values["sm.vacuum.timestamp_start"] = "0";
-  all_param_values["sm.vacuum.timestamp_end"] = std::to_string(UINT64_MAX);
   all_param_values["sm.var_offsets.bitsize"] = "32";
   all_param_values["sm.var_offsets.extra_element"] = "true";
   all_param_values["sm.var_offsets.mode"] = "elements";

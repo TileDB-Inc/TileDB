@@ -40,12 +40,14 @@
 #include "compression_filter.h"
 #include "encryption_aes256gcm_filter.h"
 #include "filter.h"
+#include "float_scaling_filter.h"
 #include "noop_filter.h"
 #include "positive_delta_filter.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
   switch (type) {
@@ -73,9 +75,12 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
       return tdb_new(tiledb::sm::ChecksumMD5Filter);
     case tiledb::sm::FilterType::FILTER_CHECKSUM_SHA256:
       return tdb_new(tiledb::sm::ChecksumSHA256Filter);
+    case tiledb::sm::FilterType::FILTER_SCALE_FLOAT:
+      return tdb_new(tiledb::sm::FloatScalingFilter);
     default:
-      assert(false);
-      return nullptr;
+      throw StatusException(
+          "FilterCreate",
+          "Invalid filter type " + std::to_string(stdx::to_underlying(type)));
   }
 }
 
@@ -164,6 +169,18 @@ tiledb::sm::FilterCreate::deserialize(
       return {Status::Ok(), make_shared<ChecksumMD5Filter>(HERE())};
     case FilterType::FILTER_CHECKSUM_SHA256:
       return {Status::Ok(), make_shared<ChecksumSHA256Filter>(HERE())};
+    case FilterType::FILTER_SCALE_FLOAT: {
+      FloatScalingFilter::Metadata metadata;
+      st = buff->read(&metadata, sizeof(FloatScalingFilter::Metadata));
+      if (!st.ok()) {
+        return {st, nullopt};
+      } else {
+        return {
+            Status::Ok(),
+            make_shared<FloatScalingFilter>(
+                HERE(), metadata.byte_width, metadata.scale, metadata.offset)};
+      }
+    };
     default:
       assert(false);
       return {Status_FilterError("Deserialization error; unknown type"),

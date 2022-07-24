@@ -341,6 +341,15 @@ class FragmentInfo {
     return ret;
   }
 
+  /** Returns the total number of cells written in the loaded fragments. */
+  uint64_t total_cell_num() const {
+    auto& ctx = ctx_.get();
+    uint64_t ret;
+    ctx.handle_error(tiledb_fragment_info_get_total_cell_num(
+        ctx.ptr().get(), fragment_info_.get(), &ret));
+    return ret;
+  }
+
   /** Returns the version of the fragment with the given index. */
   uint32_t version(uint32_t fid) const {
     auto& ctx = ctx_.get();

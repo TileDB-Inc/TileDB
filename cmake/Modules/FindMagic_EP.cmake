@@ -90,7 +90,7 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
     ExternalProject_Add(ep_magic
       PREFIX "externals"
       GIT_REPOSITORY "https://github.com/TileDB-Inc/file-windows.git"
-      GIT_TAG "494060c2ea02494aabfbfc75e76d0af95c36156c"
+      GIT_TAG "5.38.1.tiledb"
       GIT_SUBMODULES_RECURSE TRUE
       UPDATE_COMMAND ""
       CMAKE_ARGS
@@ -98,6 +98,7 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
         -Dlibmagic_STATIC_LIB=ON
+        -DBUILD_MAGIC_MACOS_UNIVERSAL=$ENV{BUILD_MAGIC_MACOS_UNIVERSAL}
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE

@@ -166,6 +166,8 @@ class FragmentConsolidator : public Consolidator {
     float size_ratio_;
     /** Is the refactored reader in use or not */
     bool use_refactored_reader_;
+    /** Purge deleted cells or not. */
+    bool purge_deleted_cells_;
   };
 
   /* ********************************* */
@@ -215,9 +217,9 @@ class FragmentConsolidator : public Consolidator {
    *     consolidating the `to_consolidate` fragments.
    * @return Status
    */
-  Status consolidate(
-      Array& array_for_reads,
-      Array& array_for_writes,
+  Status consolidate_internal(
+      shared_ptr<Array> array_for_reads,
+      shared_ptr<Array> array_for_writes,
       const std::vector<TimestampedURI>& to_consolidate,
       const NDRange& union_non_empty_domains,
       URI* new_fragment_uri);
@@ -269,8 +271,8 @@ class FragmentConsolidator : public Consolidator {
    * @return Status
    */
   Status create_queries(
-      Array* array_for_reads,
-      Array* array_for_writes,
+      shared_ptr<Array> array_for_reads,
+      shared_ptr<Array> array_for_writes,
       const NDRange& subarray,
       Query** query_r,
       Query** query_w,

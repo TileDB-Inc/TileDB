@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/storage_format/parse_uri.h
+ * @file tiledb/sm/storage_format/uri/parse_uri.h
  *
  * @section LICENSE
  *
@@ -63,6 +63,16 @@ Status get_fragment_name_version(const std::string& name, uint32_t* version);
  * to UINT32_MAX.
  */
 Status get_fragment_version(const std::string& name, uint32_t* version);
+
+/**
+ * Returns true if the given URIs have the same "prefix" and could
+ * potentially intersect one another.
+ * i.e. The second URI is an element of the first (or vice versa).
+ *
+ * Note: The order of the arguments does not matter;
+ * the API is checking for working tree intersection.
+ */
+bool is_element_of(const URI uri, const URI intersecting_uri);
 
 }  // namespace tiledb::sm::utils::parse
 

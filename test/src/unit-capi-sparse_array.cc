@@ -3278,29 +3278,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(status == TILEDB_COMPLETED);
 
-  CHECK(a1[0] == 1);
-  CHECK(a1[1] == 2);
-  CHECK(a1[2] == 5);
-  CHECK(a1[3] == 6);
-  CHECK(a1[4] == 7);
-  CHECK(a1[5] == 1);
-  CHECK(a1[6] == 2);
+  check_counts(span(a1, 7), {0, 2, 2, 0, 0, 1, 1, 1});
   CHECK(a1_size == 7 * sizeof(int));
+  check_counts(span(coords_dim1, 7), {0, 4, 0, 2, 1});
+  check_counts(span(coords_dim2, 7), {0, 0, 3, 1, 3});
   CHECK(coords_size == 7 * sizeof(uint64_t));
-  CHECK(coords_dim1[0] == 1);
-  CHECK(coords_dim2[0] == 2);
-  CHECK(coords_dim1[1] == 1);
-  CHECK(coords_dim2[1] == 4);
-  CHECK(coords_dim1[2] == 4);
-  CHECK(coords_dim2[2] == 2);
-  CHECK(coords_dim1[3] == 3);
-  CHECK(coords_dim2[3] == 3);
-  CHECK(coords_dim1[4] == 3);
-  CHECK(coords_dim2[4] == 4);
-  CHECK(coords_dim1[5] == 1);
-  CHECK(coords_dim2[5] == 2);
-  CHECK(coords_dim1[6] == 1);
-  CHECK(coords_dim2[6] == 4);
 
   // Close array
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
@@ -3376,14 +3358,22 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(status == TILEDB_INCOMPLETE);
 
-  CHECK(a1_size == 2 * sizeof(int));
-  CHECK(a1[0] == 1);
-  CHECK(a1[1] == 2);
-  CHECK(coords_size == 2 * sizeof(uint64_t));
-  CHECK(coords_dim1[0] == 1);
-  CHECK(coords_dim2[0] == 2);
-  CHECK(coords_dim1[1] == 1);
-  CHECK(coords_dim2[1] == 4);
+  if (use_refactored_sparse_global_order_reader()) {
+    CHECK(a1_size == 3 * sizeof(int));
+    check_counts(span(a1, 3), {0, 1, 1, 0, 0, 1});
+    CHECK(coords_size == 3 * sizeof(uint64_t));
+    check_counts(span(coords_dim1, 3), {0, 2, 0, 0, 1});
+    check_counts(span(coords_dim2, 3), {0, 0, 2, 0, 1});
+  } else {
+    CHECK(a1_size == 2 * sizeof(int));
+    CHECK(a1[0] == 1);
+    CHECK(a1[1] == 2);
+    CHECK(coords_size == 2 * sizeof(uint64_t));
+    CHECK(coords_dim1[0] == 1);
+    CHECK(coords_dim2[0] == 2);
+    CHECK(coords_dim1[1] == 1);
+    CHECK(coords_dim2[1] == 4);
+  }
 
   rc = tiledb_query_submit(ctx, query);
   CHECK(rc == TILEDB_OK);
@@ -3391,17 +3381,25 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(status == TILEDB_COMPLETED);
 
-  CHECK(a1_size == 3 * sizeof(int));
-  CHECK(a1[0] == 5);
-  CHECK(a1[1] == 6);
-  CHECK(a1[2] == 7);
-  CHECK(coords_size == 3 * sizeof(uint64_t));
-  CHECK(coords_dim1[0] == 4);
-  CHECK(coords_dim2[0] == 2);
-  CHECK(coords_dim1[1] == 3);
-  CHECK(coords_dim2[1] == 3);
-  CHECK(coords_dim1[2] == 3);
-  CHECK(coords_dim2[2] == 4);
+  if (use_refactored_sparse_global_order_reader()) {
+    CHECK(a1_size == 2 * sizeof(int));
+    check_counts(span(a1, 2), {0, 0, 0, 0, 0, 0, 1, 1});
+    CHECK(coords_size == 2 * sizeof(uint64_t));
+    check_counts(span(coords_dim1, 2), {0, 0, 0, 2});
+    check_counts(span(coords_dim2, 2), {0, 0, 0, 1, 1});
+  } else {
+    CHECK(a1_size == 3 * sizeof(int));
+    CHECK(a1[0] == 5);
+    CHECK(a1[1] == 6);
+    CHECK(a1[2] == 7);
+    CHECK(coords_size == 3 * sizeof(uint64_t));
+    CHECK(coords_dim1[0] == 4);
+    CHECK(coords_dim2[0] == 2);
+    CHECK(coords_dim1[1] == 3);
+    CHECK(coords_dim2[1] == 3);
+    CHECK(coords_dim1[2] == 3);
+    CHECK(coords_dim2[2] == 4);
+  }
 
   // Close array
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
@@ -3478,22 +3476,10 @@ TEST_CASE_METHOD(
   REQUIRE(status == TILEDB_COMPLETED);
 
   CHECK(a1_size == 5 * sizeof(int));
-  CHECK(a1[0] == 1);
-  CHECK(a1[1] == 2);
-  CHECK(a1[2] == 5);
-  CHECK(a1[3] == 6);
-  CHECK(a1[4] == 7);
+  check_counts(span(a1, 5), {0, 1, 1, 0, 0, 1, 1, 1});
   CHECK(coords_size == 5 * sizeof(uint64_t));
-  CHECK(coords_dim1[0] == 1);
-  CHECK(coords_dim2[0] == 2);
-  CHECK(coords_dim1[1] == 1);
-  CHECK(coords_dim2[1] == 4);
-  CHECK(coords_dim1[2] == 4);
-  CHECK(coords_dim2[2] == 2);
-  CHECK(coords_dim1[3] == 3);
-  CHECK(coords_dim2[3] == 3);
-  CHECK(coords_dim1[4] == 3);
-  CHECK(coords_dim2[4] == 4);
+  check_counts(span(coords_dim1, 5), {0, 2, 0, 2, 1});
+  check_counts(span(coords_dim2, 5), {0, 0, 2, 1, 2});
 
   // Close array
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);

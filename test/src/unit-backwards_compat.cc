@@ -684,6 +684,10 @@ TEST_CASE(
 TEST_CASE(
     "Backwards compatibility: Write to an array of older version",
     "[backwards-compat][write-to-older-version]") {
+  if constexpr (is_experimental_build) {
+    return;
+  }
+
   std::string old_array_name(arrays_dir + "/non_split_coords_v1_4_0");
   Context ctx;
   std::string fragment_uri;
@@ -724,6 +728,8 @@ TEST_CASE(
       REQUIRE(a_read[i] == i + 1);
     }
   } catch (const std::exception& e) {
+    std::cerr << "Unexpected exception in unit-backwards_compat: " << e.what()
+              << std::endl;
     CHECK(false);
   }
 }

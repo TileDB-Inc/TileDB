@@ -122,6 +122,12 @@ extern const std::string coords;
 /** Special name reserved for the timestamp attribute. */
 extern const std::string timestamps;
 
+/** Special name reserved for the delete timestamp attribute. */
+extern const std::string delete_timestamps;
+
+/** Special name reserved for the delete condition name attribute. */
+extern const std::string delete_condition_names;
+
 /** The size of a timestamp cell. */
 extern const uint64_t timestamp_size;
 
@@ -197,6 +203,9 @@ extern const std::string ok_file_suffix;
 /** Suffix for the special write files used in TileDB. */
 extern const std::string write_file_suffix;
 
+/** Suffix for the special delete files used in TileDB. */
+extern const std::string delete_file_suffix;
+
 /** Suffix for the special metadata files used in TileDB. */
 extern const std::string meta_file_suffix;
 
@@ -250,6 +259,9 @@ extern const std::string query_type_read_str;
 
 /** TILEDB_WRITE Query String **/
 extern const std::string query_type_write_str;
+
+/** TILEDB_DELETE Query String **/
+extern const std::string query_type_delete_str;
 
 /** TILEDB_FAILED Query String **/
 extern const std::string query_status_failed_str;
@@ -350,6 +362,9 @@ extern const std::string filter_checksum_sha256_str;
 /** String describing FILTER_DICTIONARY. */
 extern const std::string filter_dictionary_str;
 
+/** String describing FILTER_SCALE_FLOAT. */
+extern const std::string filter_scale_float_str;
+
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;
 
@@ -359,6 +374,15 @@ extern const std::string filter_option_bit_width_max_window_str;
 /** The string representation for FilterOption type positive_delta_max_window.
  */
 extern const std::string filter_option_positive_delta_max_window_str;
+
+/** The string representation for FilterOption type scale_float_bytewidth. */
+extern const std::string filter_option_scale_float_bytewidth;
+
+/** The string representation for FilterOption type scale_float_factor. */
+extern const std::string filter_option_scale_float_factor;
+
+/** The string representation for FilterOption type scale_float_offset. */
+extern const std::string filter_option_scale_float_offset;
 
 /** The string representation for type int32. */
 extern const std::string int32_str;
@@ -510,6 +534,15 @@ extern const std::string hilbert_str;
 /** The string representation of null. */
 extern const std::string null_str;
 
+/** The string representation of unordered label. */
+extern const std::string label_unordered_str;
+
+/** The string representation of increasing order label. */
+extern const std::string label_increasing_str;
+
+/** The string representation of decreasing order label. */
+extern const std::string label_decreasing_str;
+
 /** The string representation for object type invalid. */
 extern const std::string object_type_invalid_str;
 
@@ -560,6 +593,9 @@ extern const uint32_t back_compat_writes_min_format_version;
 
 /** The lowest version supported for consolidation with timestamps. */
 extern const uint32_t consolidation_with_timestamps_min_version;
+
+/** The lowest version supported for deletes. */
+extern const uint32_t deletes_min_version;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;

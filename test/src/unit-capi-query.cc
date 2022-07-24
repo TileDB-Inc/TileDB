@@ -674,7 +674,7 @@ TEST_CASE_METHOD(
   tiledb_array_t* rarray;
   rc = tiledb_query_get_array(ctx_, query, &rarray);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(rarray->array_ != array->array_);
+  CHECK(rarray->array_ == array->array_);
 
   tiledb_array_schema_t* rschema;
   rc = tiledb_array_get_schema(ctx_, rarray, &rschema);

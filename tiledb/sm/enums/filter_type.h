@@ -50,7 +50,7 @@ namespace sm {
  */
 enum class FilterType : uint8_t {
 #define TILEDB_FILTER_TYPE_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
+#include "tiledb/api/c_api/filter/filter_api_enum.h"
 #undef TILEDB_FILTER_TYPE_ENUM
   /** Internally used encryption with AES-256-GCM. */
   INTERNAL_FILTER_AES_256_GCM = 11,
@@ -87,6 +87,8 @@ inline const std::string& filter_type_str(FilterType filter_type) {
       return constants::filter_checksum_sha256_str;
     case FilterType::FILTER_DICTIONARY:
       return constants::filter_dictionary_str;
+    case FilterType::FILTER_SCALE_FLOAT:
+      return constants::filter_scale_float_str;
     default:
       return constants::empty_str;
   }
@@ -123,6 +125,8 @@ inline Status filter_type_enum(
     *filter_type = FilterType::FILTER_CHECKSUM_SHA256;
   else if (filter_type_str == constants::filter_dictionary_str)
     *filter_type = FilterType::FILTER_DICTIONARY;
+  else if (filter_type_str == constants::filter_scale_float_str)
+    *filter_type = FilterType::FILTER_SCALE_FLOAT;
   else {
     return Status_Error("Invalid FilterType " + filter_type_str);
   }

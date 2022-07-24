@@ -66,6 +66,16 @@ extern std::mutex catch2_macro_mutex;
     REQUIRE(a);                                           \
   }
 
+// A variant of the CHECK macro for checking C API return value equals
+// TILEDB_OK.
+#define CHECK_TILEDB_OK(a) \
+  { CHECK(a == TILEDB_OK); }
+
+// A variant of the REQUIRE macro for checking C API return value equals
+// TILEDB_OK.
+#define REQUIRE_TILEDB_OK(a) \
+  { REQUIRE(a == TILEDB_OK); }
+
 namespace tiledb {
 
 namespace sm {
@@ -323,7 +333,7 @@ void create_azure_container(
  */
 template <class T>
 void create_subarray(
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
@@ -342,7 +352,7 @@ void create_subarray(
 template <class T>
 void create_subarray(
     tiledb_ctx_t* ctx,
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
@@ -691,6 +701,12 @@ std::string get_fragment_dir(std::string array_dir);
  * Gets the commit directory from the array directory.
  */
 std::string get_commit_dir(std::string array_dir);
+
+/**
+ * Check count of values against a vector of expected counts for an array.
+ */
+template <class T>
+void check_counts(span<T> vals, std::vector<uint64_t> expected);
 
 }  // End of namespace test
 

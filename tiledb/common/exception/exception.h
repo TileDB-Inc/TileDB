@@ -49,12 +49,12 @@ class StatusException : public std::exception {
   /**
    * Vicinity where exception originated
    */
-  const std::string origin_;
+  std::string origin_;
 
   /**
    * Specific error message
    */
-  const std::string message_;
+  std::string message_;
 
   /**
    * Text returned by `what()`
@@ -144,11 +144,11 @@ class StatusException : public std::exception {
   /// Default move constructor
   StatusException(StatusException&&) = default;
 
-  /// Deleted copy assignment
-  StatusException& operator=(const StatusException&) = delete;
+  /// Default copy assignment
+  StatusException& operator=(const StatusException&) = default;
 
-  /// Deleted move assignment
-  StatusException& operator=(StatusException&&) = delete;
+  /// Default move assignment
+  StatusException& operator=(StatusException&&) = default;
 
   /**
    * Explanatory text about the exception.
@@ -156,6 +156,16 @@ class StatusException : public std::exception {
    * @return pointer to internal string containing the text
    */
   virtual const char* what() const noexcept override;
+
+  /**
+   * Extract a `Status` object from this exception.
+   *
+   * The lifespan of the status must be shorter than that of this exception from
+   * which it is extracted.
+   */
+  Status extract_status() const {
+    return {origin_, message_};
+  }
 };
 
 /**

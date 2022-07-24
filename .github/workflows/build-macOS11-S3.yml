@@ -96,11 +96,13 @@ jobs:
           bootstrap_args="${bootstrap_args} --enable-s3";
           bootstrap_args="${bootstrap_args} --enable-tools";
           bootstrap_args="${bootstrap_args} --enable-release-symbols";
-          
+
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/regression/tiledb_regression -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+
+          source $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
 
           # Kill the running Minio server, OSX only because Linux runs it within
           # docker.

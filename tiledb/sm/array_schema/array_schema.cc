@@ -240,7 +240,7 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
     return dim_num * coord_size;
   }
 
-  if (name == constants::timestamps) {
+  if (name == constants::timestamps || name == constants::delete_timestamps) {
     return constants::timestamp_size;
   }
 
@@ -266,13 +266,16 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
 
 unsigned int ArraySchema::cell_val_num(const std::string& name) const {
   // Special zipped coordinates
-  if (name == constants::coords || name == constants::timestamps)
+  if (name == constants::coords || name == constants::timestamps ||
+      name == constants::delete_timestamps) {
     return 1;
+  }
 
   // Attribute
   auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end())
+  if (attr_it != attribute_map_.end()) {
     return attr_it->second->cell_val_num();
+  }
 
   // Dimension
   auto dim_it = dim_map_.find(name);
@@ -343,7 +346,8 @@ Status ArraySchema::check_attributes(
 }
 
 const FilterPipeline& ArraySchema::filters(const std::string& name) const {
-  if (name == constants::coords || name == constants::timestamps)
+  if (name == constants::coords || name == constants::timestamps ||
+      name == constants::delete_timestamps)
     return coords_filters();
 
   // Attribute
@@ -456,7 +460,7 @@ bool ArraySchema::is_dim(const std::string& name) const {
 
 bool ArraySchema::is_field(const std::string& name) const {
   return is_attr(name) || is_dim(name) || name == constants::coords ||
-         name == constants::timestamps;
+         name == constants::timestamps || name == constants::delete_timestamps;
 }
 
 bool ArraySchema::is_nullable(const std::string& name) const {
@@ -531,16 +535,19 @@ Layout ArraySchema::tile_order() const {
 
 Datatype ArraySchema::type(const std::string& name) const {
   // Special zipped coordinates attribute
-  if (name == constants::coords)
+  if (name == constants::coords) {
     return domain_->dimension_ptr(0)->type();
+  }
 
-  if (name == constants::timestamps)
+  if (name == constants::timestamps || name == constants::delete_timestamps) {
     return constants::timestamp_type;
+  }
 
   // Attribute
   auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end())
+  if (attr_it != attribute_map_.end()) {
     return attr_it->second->type();
+  }
 
   // Dimension
   auto dim_it = dim_map_.find(name);
@@ -550,7 +557,8 @@ Datatype ArraySchema::type(const std::string& name) const {
 
 bool ArraySchema::var_size(const std::string& name) const {
   // Special case for zipped coordinates
-  if (name == constants::coords || name == constants::timestamps)
+  if (name == constants::coords || name == constants::timestamps ||
+      name == constants::delete_timestamps)
     return false;
 
   // Attribute

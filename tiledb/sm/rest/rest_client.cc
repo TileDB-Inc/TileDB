@@ -718,9 +718,10 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
       &returned_data,
       cache_key));
 
-  if (returned_data.data() == nullptr || returned_data.size() == 0)
+  if (returned_data.data() == nullptr || returned_data.size() == 0) {
     return LOG_STATUS(
         Status_RestError("Error finalizing query; server returned no data."));
+  }
 
   // Deserialize data returned
   returned_data.reset_offset();
@@ -813,8 +814,9 @@ Status RestClient::subarray_to_str(
 Status RestClient::update_attribute_buffer_sizes(
     const serialization::CopyState& copy_state, Query* query) const {
   // Applicable only to reads
-  if (query->type() != QueryType::READ)
+  if (query->type() != QueryType::READ) {
     return Status::Ok();
+  }
 
   for (const auto& cit : copy_state) {
     const auto& name = cit.first;
@@ -836,9 +838,10 @@ Status RestClient::update_attribute_buffer_sizes(
 }
 
 Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
-  if (query == nullptr)
+  if (query == nullptr) {
     return LOG_STATUS(Status_RestError(
         "Error getting query estimated result size from REST; Query is null."));
+  }
 
   // Get array
   const Array* array = query->array();
@@ -879,9 +882,10 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
       &serialized,
       &returned_data,
       cache_key));
-  if (returned_data.data() == nullptr || returned_data.size() == 0)
+  if (returned_data.data() == nullptr || returned_data.size() == 0) {
     return LOG_STATUS(Status_RestError(
         "Error getting array metadata from REST; server returned no data."));
+  }
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
@@ -927,9 +931,10 @@ Status RestClient::post_array_schema_evolution_to_rest(
 }
 
 Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
-  if (group == nullptr)
+  if (group == nullptr) {
     return LOG_STATUS(Status_RestError(
         "Error posting group metadata from REST; group is null."));
+  }
 
   Buffer buff;
   RETURN_NOT_OK(serialization::group_metadata_serialize(
@@ -957,9 +962,10 @@ Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
       &serialized,
       &returned_data,
       cache_key));
-  if (returned_data.data() == nullptr || returned_data.size() == 0)
+  if (returned_data.data() == nullptr || returned_data.size() == 0) {
     return LOG_STATUS(Status_RestError(
         "Error getting group metadata from REST; server returned no data."));
+  }
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
@@ -968,9 +974,10 @@ Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
 }
 
 Status RestClient::put_group_metadata_to_rest(const URI& uri, Group* group) {
-  if (group == nullptr)
+  if (group == nullptr) {
     return LOG_STATUS(Status_RestError(
         "Error posting group metadata to REST; group is null."));
+  }
 
   Buffer buff;
   RETURN_NOT_OK(serialization::group_metadata_serialize(
@@ -996,9 +1003,10 @@ Status RestClient::put_group_metadata_to_rest(const URI& uri, Group* group) {
 }
 
 Status RestClient::post_group_create_to_rest(const URI& uri, Group* group) {
-  if (group == nullptr)
+  if (group == nullptr) {
     return LOG_STATUS(
         Status_RestError("Error posting group to REST; group is null."));
+  }
 
   Buffer buff;
   RETURN_NOT_OK(
@@ -1023,9 +1031,10 @@ Status RestClient::post_group_create_to_rest(const URI& uri, Group* group) {
 }
 
 Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
-  if (group == nullptr)
+  if (group == nullptr) {
     return LOG_STATUS(
         Status_RestError("Error posting group to REST; group is null."));
+  }
 
   Buffer buff;
   RETURN_NOT_OK(
@@ -1065,9 +1074,10 @@ Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
 }
 
 Status RestClient::patch_group_to_rest(const URI& uri, Group* group) {
-  if (group == nullptr)
+  if (group == nullptr) {
     return LOG_STATUS(
         Status_RestError("Error patching group to REST; group is null."));
+  }
 
   Buffer buff;
   RETURN_NOT_OK(

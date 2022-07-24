@@ -3,9 +3,11 @@
 using Json = import "/capnp/compat/json.capnp";
 using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("tiledb::sm::serialization::capnp");
-using Go = import "/go.capnp";
-$Go.package("capnp_models");
-$Go.import("capnp_models");
+
+# ** un-comment below for Go generator use **
+#using Go = import "/go.capnp";
+#$Go.package("capnp_models");
+#$Go.import("capnp_models");
 
 struct DomainArray {
   int8 @0 :List(Int8);
@@ -414,6 +416,29 @@ struct ConditionClause {
   # The comparison operation
 }
 
+struct ASTNode {
+  # A representation of the AST representing a query condition
+  isExpression @0 :Bool;
+  # True if node is an expression/compound node
+
+  # Value node fields
+  fieldName @1 :Text;
+  # The name of the field this clause applies to
+
+  value @2 :Data;
+  # The comparison value
+
+  op @3 :Text;
+  # The comparison operation
+
+  # Expression node fields
+  children @4 :List(ASTNode);
+  # A list of children 
+
+  combinationOp @5 :Text;
+  # The combination logical operator
+}
+
 struct Condition {
   # The query condition
 
@@ -422,6 +447,9 @@ struct Condition {
 
   clauseCombinationOps @1 :List(Text);
   # The operation that combines each condition
+
+  tree @2 :ASTNode;
+  # The AST representing this condition
 }
 
 struct QueryReader {

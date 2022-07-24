@@ -138,7 +138,7 @@ class Query {
    */
   Query(
       StorageManager* storage_manager,
-      Array* array,
+      shared_ptr<Array> array,
       URI fragment_uri = URI(""));
 
   /** Destructor. */
@@ -339,6 +339,11 @@ class Query {
    */
   Status get_written_fragment_timestamp_range(
       uint32_t idx, uint64_t* t1, uint64_t* t2) const;
+
+  /** Returns the array's smart pointer. */
+  inline shared_ptr<Array> array_shared() {
+    return array_shared_;
+  }
 
   /** Returns the array. */
   const Array* array() const;
@@ -878,13 +883,16 @@ class Query {
   shared_ptr<Buffer> rest_scratch() const;
 
   /** Use the refactored dense reader or not. */
-  bool use_refactored_dense_reader();
+  bool use_refactored_dense_reader(
+      const ArraySchema& array_schema, bool all_dense);
 
   /** Use the refactored sparse global order reader or not. */
-  bool use_refactored_sparse_global_order_reader();
+  bool use_refactored_sparse_global_order_reader(
+      Layout layout, const ArraySchema& array_schema);
 
   /** Use the refactored sparse unordered with dups reader or not. */
-  bool use_refactored_sparse_unordered_with_dups_reader();
+  bool use_refactored_sparse_unordered_with_dups_reader(
+      Layout layout, const ArraySchema& array_schema);
 
   /** Returns if all ranges for this query are non overlapping. */
   tuple<Status, optional<bool>> non_overlapping_ranges();
@@ -894,7 +902,12 @@ class Query {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array the query is associated with. */
+  /** A smart pointer to the array the query is associated with.
+   * Ensures that the Array object exists as long as the Query object exists. */
+  shared_ptr<Array> array_shared_;
+
+  /** The array the query is associated with.
+   * Cached copy of array_shared_.get(). */
   Array* array_;
 
   /** The array schema. */

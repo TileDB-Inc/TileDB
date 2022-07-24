@@ -44,6 +44,8 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class WriterTile;
+
 /**
  * Sum structure used to bind a type and sum type to a sum and sum_nullable
  * functions.
@@ -55,7 +57,7 @@ struct Sum {
    *
    * @param tile Fixed data tile.
    */
-  static ByteVec sum(Tile* tile);
+  static ByteVec sum(Tile& tile);
 
   /**
    * Compute the sum of a nullable tile.
@@ -63,7 +65,7 @@ struct Sum {
    * @param tile Fixed data tile.
    * @param tile_validity Validity tile.
    */
-  static ByteVec sum_nullable(Tile* tile, Tile* tile_validity);
+  static ByteVec sum_nullable(const Tile& tile, const Tile& tile_validity);
 };
 
 /**
@@ -71,8 +73,8 @@ struct Sum {
  */
 template <typename T>
 struct Sum<T, int64_t> {
-  static ByteVec sum(Tile* tile);
-  static ByteVec sum_nullable(Tile* tile, Tile* tile_validity);
+  static ByteVec sum(const Tile& tile);
+  static ByteVec sum_nullable(const Tile& tile, const Tile& tile_validity);
 };
 
 /**
@@ -80,8 +82,8 @@ struct Sum<T, int64_t> {
  */
 template <typename T>
 struct Sum<T, uint64_t> {
-  static ByteVec sum(Tile* tile);
-  static ByteVec sum_nullable(Tile* tile, Tile* tile_validity);
+  static ByteVec sum(const Tile& tile);
+  static ByteVec sum_nullable(const Tile& tile, const Tile& tile_validity);
 };
 
 /**
@@ -89,8 +91,8 @@ struct Sum<T, uint64_t> {
  */
 template <typename T>
 struct Sum<T, double> {
-  static ByteVec sum(Tile* tile);
-  static ByteVec sum_nullable(Tile* tile, Tile* tile_validity);
+  static ByteVec sum(const Tile& tile);
+  static ByteVec sum_nullable(const Tile& tile, const Tile& tile_validity);
 };
 
 // Declare static values to point to min/max default values.
@@ -167,7 +169,7 @@ class TileMetadataGenerator {
    */
   template <class T>
   static const tuple<void*, void*> min_max(
-      const Tile* tile, const uint64_t cell_size);
+      const Tile& tile, const uint64_t cell_size);
 
   /**
    * Returns the min and max of a fixed data tile with nullable values.
@@ -181,7 +183,7 @@ class TileMetadataGenerator {
    */
   template <class T>
   static const tuple<void*, void*, uint64_t> min_max_nullable(
-      const Tile* tile, const Tile* tile_validity, const uint64_t cell_size);
+      const Tile& tile, const Tile& tile_validity, const uint64_t cell_size);
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -206,21 +208,11 @@ class TileMetadataGenerator {
   /* ********************************* */
 
   /**
-   * Returns the metadata.
-   *
-   * @return min, min_size, max, max_size, sum, null count.
-   */
-  tuple<const void*, uint64_t, const void*, uint64_t, const ByteVec*, uint64_t>
-  metadata() const;
-
-  /**
    * Compute metatada.
    *
-   * @param tile The fixed size tile.
-   * @param tile_var The var size tile.
-   * @param tile_validity The validity tile.
+   * @param tile The tile.
    */
-  void process_tile(Tile* tile, Tile* tile_var, Tile* tile_validity);
+  void process_tile(WriterTile& tile);
 
  private:
   /* ********************************* */
@@ -264,12 +256,10 @@ class TileMetadataGenerator {
   /**
    * Process var size attribute.
    *
-   * @param tile The fixed size tile.
-   * @param tile_var The var size tile.
-   * @param tile_validity The validity tile.
+   * @param tile The tile.
    */
 
-  void process_tile_var(Tile* tile, Tile* tile_var, Tile* tile_validity);
+  void process_tile_var(WriterTile& tile);
 
   /**
    * Process fixed size attribute.
@@ -278,7 +268,7 @@ class TileMetadataGenerator {
    * @param tile_validity The validity tile.
    */
   template <class T>
-  void process_tile(Tile* tile, Tile* tile_validity);
+  void process_tile(WriterTile& tile);
 
   /**
    * Min max function for var sized attributes.

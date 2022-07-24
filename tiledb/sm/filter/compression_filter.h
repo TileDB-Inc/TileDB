@@ -148,7 +148,7 @@ class CompressionFilter : public Filter {
   int level_;
 
   /** The format version. */
-  int version_;
+  uint32_t version_;
 
   /** The default filter compression level. */
   static constexpr int default_level_ = -30000;

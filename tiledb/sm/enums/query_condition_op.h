@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 using namespace tiledb::common;
 
@@ -92,6 +93,50 @@ inline Status query_condition_op_enum(
     return Status_Error("Invalid QueryConditionOp " + query_condition_op_str);
   }
   return Status::Ok();
+}
+
+inline void ensure_qc_op_is_valid(QueryConditionOp query_condition_op) {
+  auto qc_op_enum{::stdx::to_underlying(query_condition_op)};
+  if (qc_op_enum > 5) {
+    throw std::runtime_error(
+        "Invalid Query Condition Op " + std::to_string(qc_op_enum));
+  }
+}
+
+inline void ensure_qc_op_string_is_valid(const std::string& qc_op_str) {
+  QueryConditionOp qc_op = QueryConditionOp::LT;
+  Status st{query_condition_op_enum(qc_op_str, &qc_op)};
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "Invalid Query Condition Op string \"" + qc_op_str + "\"");
+  }
+  ensure_qc_op_is_valid(qc_op);
+}
+
+/** Returns the negated op given a query condition op. */
+inline QueryConditionOp negate_query_condition_op(const QueryConditionOp op) {
+  switch (op) {
+    case QueryConditionOp::LT:
+      return QueryConditionOp::GE;
+
+    case QueryConditionOp::GT:
+      return QueryConditionOp::LE;
+
+    case QueryConditionOp::GE:
+      return QueryConditionOp::LT;
+
+    case QueryConditionOp::LE:
+      return QueryConditionOp::GT;
+
+    case QueryConditionOp::NE:
+      return QueryConditionOp::EQ;
+
+    case QueryConditionOp::EQ:
+      return QueryConditionOp::NE;
+
+    default:
+      throw std::runtime_error("negate_query_condition_op: Invalid op.");
+  }
 }
 
 }  // namespace sm

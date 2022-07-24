@@ -46,6 +46,7 @@
 #include "tiledb/common/unique_rwlock.h"
 #include "tiledb/sm/filesystem/gcs.h"
 #include "tiledb/sm/global_state/global_state.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -351,9 +352,11 @@ Status GCS::remove_dir(const URI& uri) const {
 
   std::vector<std::string> paths;
   RETURN_NOT_OK(ls(uri, &paths, ""));
-  for (const auto& path : paths) {
-    RETURN_NOT_OK(remove_object(URI(path)));
-  }
+  auto status = parallel_for(thread_pool_, 0, paths.size(), [&](size_t i) {
+    RETURN_NOT_OK(remove_object(URI(paths[i])));
+    return Status::Ok();
+  });
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -437,7 +440,7 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
     }
 
     auto& results = object_metadata.value();
-    const static std::string gcs_prefix = uri_dir.is_gcs() ? "gcs://" : "gs://";
+    const std::string gcs_prefix = uri_dir.is_gcs() ? "gcs://" : "gs://";
 
     if (absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
             results)) {
@@ -1160,7 +1163,7 @@ Status GCS::parse_gcs_uri(
   assert(uri.is_gcs());
   const std::string uri_str = uri.to_string();
 
-  const static std::string gcs_prefix =
+  const std::string gcs_prefix =
       (uri_str.rfind("gcs://", 0) == 0) ? "gcs://" : "gs://";
   assert(uri_str.rfind(gcs_prefix, 0) == 0);
 

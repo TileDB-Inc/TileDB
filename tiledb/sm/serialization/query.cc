@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,6 +31,8 @@
  * This file defines serialization for the Query class
  */
 
+#include <sstream>
+
 // clang-format off
 #ifdef TILEDB_SERIALIZATION
 #include <capnp/compat/json.h>
@@ -42,6 +44,7 @@
 #endif
 // clang-format on
 
+#include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
@@ -57,11 +60,11 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/dense_reader.h"
-#include "tiledb/sm/query/reader.h"
-#include "tiledb/sm/query/sparse_global_order_reader.h"
-#include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
-#include "tiledb/sm/query/writer_base.h"
+#include "tiledb/sm/query/readers/dense_reader.h"
+#include "tiledb/sm/query/legacy/reader.h"
+#include "tiledb/sm/query/readers/sparse_global_order_reader.h"
+#include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
+#include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -609,43 +612,163 @@ Status dense_read_state_from_capnp(
   return Status::Ok();
 }
 
+/**
+ * @brief Validation function for the field name of an AST node.
+ *
+ * @param field_name Query Condition AST node field name.
+ */
+void ensure_qc_field_name_is_valid(const std::string& field_name) {
+  if (field_name == "") {
+    throw std::runtime_error(
+        "Invalid Query Condition field name " + field_name);
+  }
+}
+
+/**
+ * @brief Validation function for the condition value of an AST node.
+ *
+ * @param data Query Condition AST node condition value byte vector start.
+ * @param size The number of bytes in the byte vector.
+ */
+void ensure_qc_condition_value_is_valid(const void* data, size_t size) {
+  if (size != 0 && data == nullptr) {
+    // Getting the address of data in string form.
+    std::ostringstream address;
+    address << data;
+    std::string address_name = address.str();
+    throw std::runtime_error(
+        "Invalid Query Condition condition value " + address_name +
+        " with size " + std::to_string(size));
+  }
+}
+
+/**
+ * @brief Validation function for the capnp representation of the
+ * condition value of an AST node.
+ *
+ * @param vec The vector representing the Query Condition AST node
+ * condition vector.
+ */
+void ensure_qc_capnp_condition_value_is_valid(const kj::Vector<uint8_t>& vec) {
+  ensure_qc_condition_value_is_valid(vec.begin(), vec.size());
+}
+
+static Status condition_ast_to_capnp(
+    const tdb_unique_ptr<ASTNode>& node, capnp::ASTNode::Builder* ast_builder) {
+  if (!node->is_expr()) {
+    // Store the boolean expression tag.
+    ast_builder->setIsExpression(false);
+
+    // Validate and store the field name.
+    const std::string field_name = node->get_field_name();
+    ensure_qc_field_name_is_valid(field_name);
+    ast_builder->setFieldName(field_name);
+
+    // Copy the condition value into a capnp vector of bytes.
+    const UntypedDatumView& value = node->get_condition_value_view();
+    auto capnpValue = kj::Vector<uint8_t>();
+    capnpValue.addAll(kj::ArrayPtr<uint8_t>(
+        const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.content())),
+        value.size()));
+
+    // Validate and store the condition value vector of bytes.
+    ensure_qc_capnp_condition_value_is_valid(capnpValue);
+    ast_builder->setValue(capnpValue.asPtr());
+
+    // Validate and store the query condition op.
+    const std::string op_str = query_condition_op_str(node->get_op());
+    ensure_qc_op_string_is_valid(op_str);
+    ast_builder->setOp(op_str);
+  } else {
+    // Store the boolean expression tag.
+    ast_builder->setIsExpression(true);
+
+    // We assume that the serialized values of the child nodes are validated
+    // properly.
+    auto children_builder =
+        ast_builder->initChildren(node->get_children().size());
+
+    for (size_t i = 0; i < node->get_children().size(); ++i) {
+      auto child_builder = children_builder[i];
+      condition_ast_to_capnp(node->get_children()[i], &child_builder);
+    }
+
+    // Validate and store the query condition combination op.
+    const std::string op_str =
+        query_condition_combination_op_str(node->get_combination_op());
+    ensure_qc_combo_op_string_is_valid(op_str);
+    ast_builder->setCombinationOp(op_str);
+  }
+  return Status::Ok();
+}
+
+static void clause_to_capnp(
+    const tdb_unique_ptr<ASTNode>& node,
+    capnp::ConditionClause::Builder* clause_builder) {
+  // Validate and store the field name.
+  std::string field_name = node->get_field_name();
+  ensure_qc_field_name_is_valid(field_name);
+  clause_builder->setFieldName(field_name);
+
+  // Copy the condition value into a capnp vector of bytes.
+  const UntypedDatumView& value = node->get_condition_value_view();
+  auto capnpValue = kj::Vector<uint8_t>();
+  capnpValue.addAll(kj::ArrayPtr<uint8_t>(
+      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.content())),
+      value.size()));
+
+  // Validate and store the condition value vector of bytes.
+  ensure_qc_capnp_condition_value_is_valid(capnpValue);
+  clause_builder->setValue(capnpValue.asPtr());
+
+  // Validate and store the query condition op.
+  const std::string op_str = query_condition_op_str(node->get_op());
+  ensure_qc_op_string_is_valid(op_str);
+  clause_builder->setOp(op_str);
+}
+
 Status condition_to_capnp(
     const QueryCondition& condition,
     capnp::Condition::Builder* condition_builder) {
-  // Serialize the clauses.
-  const std::vector<QueryCondition::Clause> clauses = condition.clauses();
-  assert(!clauses.empty());
-  auto clause_builder = condition_builder->initClauses(clauses.size());
-  for (size_t i = 0; i < clauses.size(); ++i) {
-    clause_builder[i].setFieldName(clauses[i].field_name_);
+  const tdb_unique_ptr<ASTNode>& ast = condition.ast();
+  assert(!condition.empty());
 
-    // Copy the condition value into a capnp vector of bytes.
-    const ByteVecValue value = clauses[i].condition_value_data_;
-    auto capnpValue = kj::Vector<uint8_t>();
-    capnpValue.addAll(kj::ArrayPtr<uint8_t>(
-        const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.data())),
-        value.size()));
+  // Validate and store the query condition AST.
+  auto ast_builder = condition_builder->initTree();
+  RETURN_NOT_OK(condition_ast_to_capnp(ast, &ast_builder));
 
-    // Store the condition value vector of bytes.
-    clause_builder[i].setValue(capnpValue.asPtr());
+  // For backwards compatability, we should also set the clauses and combination
+  // ops vectors when the current query condition.
+  if (ast->is_backwards_compatible()) {
+    if (ast->is_expr()) {
+      // We assume that the serialized values of the clauses are validated
+      // properly.
+      const std::vector<tdb_unique_ptr<ASTNode>>& clauses_vec =
+          ast->get_children();
+      auto clauses_builder = condition_builder->initClauses(clauses_vec.size());
+      for (size_t i = 0; i < clauses_vec.size(); ++i) {
+        auto clause_builder = clauses_builder[i];
+        clause_to_capnp(clauses_vec[i], &clause_builder);
+      }
 
-    const std::string op_str = query_condition_op_str(clauses[i].op_);
-    clause_builder[i].setOp(op_str);
-  }
-
-  // Serialize the combination ops.
-  const std::vector<QueryConditionCombinationOp> combination_ops =
-      condition.combination_ops();
-  if (!combination_ops.empty()) {
-    auto combination_ops_builder =
-        condition_builder->initClauseCombinationOps(combination_ops.size());
-    for (size_t i = 0; i < combination_ops.size(); ++i) {
-      const std::string op_str =
-          query_condition_combination_op_str(combination_ops[i]);
-      combination_ops_builder.set(i, op_str);
+      // Validating and storing the combination op vector.
+      if (clauses_vec.size() > 1) {
+        auto combination_ops_builder =
+            condition_builder->initClauseCombinationOps(clauses_vec.size() - 1);
+        for (size_t i = 0; i < clauses_vec.size() - 1; ++i) {
+          const std::string op_str = query_condition_combination_op_str(
+              QueryConditionCombinationOp::AND);
+          ensure_qc_combo_op_string_is_valid(op_str);
+          combination_ops_builder.set(i, op_str);
+        }
+      }
+    } else {
+      // We assume the serialized value of the clause is verified properly.
+      auto clauses_builder = condition_builder->initClauses(1);
+      auto clause_builder = clauses_builder[0];
+      clause_to_capnp(ast, &clause_builder);
     }
   }
-
   return Status::Ok();
 }
 
@@ -752,42 +875,101 @@ Status dense_reader_to_capnp(
   return Status::Ok();
 }
 
+tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
+    const capnp::ASTNode::Reader& ast_reader) {
+  if (!ast_reader.getIsExpression()) {
+    // Getting and validating the field name.
+    std::string field_name = ast_reader.getFieldName();
+    ensure_qc_field_name_is_valid(field_name);
+
+    // Getting and validating the condition value.
+    auto condition_value = ast_reader.getValue();
+    const void* data =
+        static_cast<const void*>(condition_value.asBytes().begin());
+    size_t size = condition_value.size();
+    ensure_qc_condition_value_is_valid(data, size);
+
+    // Getting and validating the query condition operator.
+    QueryConditionOp op = QueryConditionOp::LT;
+    Status s = query_condition_op_enum(ast_reader.getOp(), &op);
+    if (!s.ok()) {
+      throw std::runtime_error(
+          "condition_ast_from_capnp: query_condition_op_enum failed.");
+    }
+    ensure_qc_op_is_valid(op);
+
+    return tdb_unique_ptr<ASTNode>(
+        tdb_new(ASTNodeVal, field_name, data, size, op));
+  }
+
+  // Getting and validating the query condition combination operator.
+  std::string combination_op_str = ast_reader.getCombinationOp();
+  QueryConditionCombinationOp combination_op = QueryConditionCombinationOp::AND;
+  Status s =
+      query_condition_combination_op_enum(combination_op_str, &combination_op);
+  if (!s.ok()) {
+    throw std::runtime_error(
+        "condition_ast_from_capnp: query_condition_combination_op_enum "
+        "failed.");
+  }
+  ensure_qc_combo_op_is_valid(combination_op);
+
+  // We assume that the deserialized values of the child nodes are validated
+  // properly.
+  std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
+  for (const auto child : ast_reader.getChildren()) {
+    ast_nodes.push_back(condition_ast_from_capnp(child));
+  }
+  return tdb_unique_ptr<ASTNode>(
+      tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
+}
+
 Status condition_from_capnp(
     const capnp::Condition::Reader& condition_reader,
     QueryCondition* const condition) {
-  // Deserialize the clauses.
-  std::vector<QueryCondition::Clause> clauses;
-  assert(condition_reader.hasClauses());
-  for (const auto clause : condition_reader.getClauses()) {
-    std::string field_name = clause.getFieldName();
+  if (condition_reader.hasClauses()) {  // coming from older API
+    // Accumulating the AST value nodes from the clause list.
+    std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
+    for (const auto clause : condition_reader.getClauses()) {
+      // Getting and validating the field name.
+      std::string field_name = clause.getFieldName();
+      ensure_qc_field_name_is_valid(field_name);
 
-    auto condition_value = clause.getValue();
+      // Getting and validating the condition value.
+      auto condition_value = clause.getValue();
+      const void* data =
+          static_cast<const void*>(condition_value.asBytes().begin());
+      size_t size = condition_value.size();
+      ensure_qc_condition_value_is_valid(data, size);
 
-    QueryConditionOp op = QueryConditionOp::LT;
-    RETURN_NOT_OK(query_condition_op_enum(clause.getOp(), &op));
+      // Getting and validating the query condition operator.
+      QueryConditionOp op = QueryConditionOp::LT;
+      Status s = query_condition_op_enum(clause.getOp(), &op);
+      if (!s.ok()) {
+        throw std::runtime_error(
+            "condition_ast_from_capnp: query_condition_op_enum failed.");
+      }
+      ensure_qc_op_is_valid(op);
 
-    clauses.emplace_back(
-        std::move(field_name),
-        condition_value.asBytes().begin(),
-        condition_value.size(),
-        op);
-  }
-  condition->set_clauses(std::move(clauses));
-
-  // Deserialize the combination ops.
-  if (condition_reader.hasClauseCombinationOps()) {
-    std::vector<QueryConditionCombinationOp> combination_ops;
-    for (const auto combination_op_str :
-         condition_reader.getClauseCombinationOps()) {
-      QueryConditionCombinationOp combination_op =
-          QueryConditionCombinationOp::AND;
-      RETURN_NOT_OK(query_condition_combination_op_enum(
-          combination_op_str, &combination_op));
-      combination_ops.emplace_back(combination_op);
+      ast_nodes.push_back(tdb_unique_ptr<ASTNode>(
+          tdb_new(ASTNodeVal, field_name, data, size, op)));
     }
-    condition->set_combination_ops(std::move(combination_ops));
-  }
 
+    // Constructing the tree from the list of AST nodes.
+    assert(ast_nodes.size() > 0);
+    if (ast_nodes.size() == 1) {
+      condition->set_ast(std::move(ast_nodes[0]));
+    } else {
+      auto tree_ptr = tdb_unique_ptr<ASTNode>(tdb_new(
+          ASTNodeExpr, std::move(ast_nodes), QueryConditionCombinationOp::AND));
+      condition->set_ast(std::move(tree_ptr));
+    }
+  } else if (condition_reader.hasTree()) {
+    // Constructing the query condition from the AST representation.
+    // We assume that the deserialized values of the AST are validated properly.
+    auto ast_reader = condition_reader.getTree();
+    condition->set_ast(condition_ast_from_capnp(ast_reader));
+  }
   return Status::Ok();
 }
 
@@ -981,15 +1163,23 @@ Status query_to_capnp(
   auto layout = query.layout();
   auto type = query.type();
   auto array = query.array();
+  auto query_type = query.type();
 
-  if (layout == Layout::GLOBAL_ORDER && query.type() == QueryType::WRITE)
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE) {
+    return LOG_STATUS(
+        Status_SerializationError("Cannot serialize; Unsupported query type."));
+  }
+
+  if (layout == Layout::GLOBAL_ORDER && query_type == QueryType::WRITE) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; global order "
                                   "serialization not supported for writes."));
+  }
 
-  if (array == nullptr)
+  if (array == nullptr) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; array is null."));
+  }
 
   const auto& schema = query.array_schema();
 
@@ -1061,9 +1251,8 @@ Status query_to_capnp(
     bool all_dense = true;
     for (auto& frag_md : array->fragment_metadata())
       all_dense &= frag_md->dense();
-    if (query.use_refactored_sparse_unordered_with_dups_reader() &&
-        !schema.dense() && layout == Layout::UNORDERED &&
-        schema.allows_dups()) {
+    if (query.use_refactored_sparse_unordered_with_dups_reader(
+            layout, schema)) {
       auto builder = query_builder->initReaderIndex();
 
       auto&& [st, non_overlapping_ranges]{query.non_overlapping_ranges()};
@@ -1087,20 +1276,31 @@ Status query_to_capnp(
         query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
         RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
       }
-    } else if (
-        query.use_refactored_sparse_global_order_reader() && !schema.dense() &&
-        (layout == Layout::GLOBAL_ORDER ||
-         (layout == Layout::UNORDERED && query.subarray()->range_num() <= 1))) {
+    } else if (query.use_refactored_sparse_global_order_reader(
+                   layout, schema)) {
       auto builder = query_builder->initReaderIndex();
-      auto reader = (SparseGlobalOrderReader*)query.strategy();
 
-      query_builder->setVarOffsetsMode(reader->offsets_mode());
-      query_builder->setVarOffsetsAddExtraElement(
-          reader->offsets_extra_element());
-      query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
-      RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
-    } else if (
-        query.use_refactored_dense_reader() && all_dense && schema.dense()) {
+      auto&& [st, non_overlapping_ranges]{query.non_overlapping_ranges()};
+      RETURN_NOT_OK(st);
+
+      if (*non_overlapping_ranges) {
+        auto reader = (SparseGlobalOrderReader<uint8_t>*)query.strategy();
+
+        query_builder->setVarOffsetsMode(reader->offsets_mode());
+        query_builder->setVarOffsetsAddExtraElement(
+            reader->offsets_extra_element());
+        query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
+        RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+      } else {
+        auto reader = (SparseGlobalOrderReader<uint64_t>*)query.strategy();
+
+        query_builder->setVarOffsetsMode(reader->offsets_mode());
+        query_builder->setVarOffsetsAddExtraElement(
+            reader->offsets_extra_element());
+        query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
+        RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+      }
+    } else if (query.use_refactored_dense_reader(schema, all_dense)) {
       auto builder = query_builder->initDenseReader();
       auto reader = (DenseReader*)query.strategy();
 
@@ -1158,17 +1358,24 @@ Status query_from_capnp(
   auto array = query->array();
   const auto& schema = query->array_schema();
 
-  if (array == nullptr)
+  if (array == nullptr) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; array pointer is null."));
+  }
 
   // Deserialize query type (sanity check).
   QueryType query_type = QueryType::READ;
   RETURN_NOT_OK(query_type_enum(query_reader.getType().cStr(), &query_type));
-  if (query_type != type)
+  if (query_type != type) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; Query opened for " + query_type_str(type) +
         " but got serialized type for " + query_reader.getType().cStr()));
+  }
+
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE) {
+    return LOG_STATUS(Status_SerializationError(
+        "Cannot deserialize; Unsupported query type."));
+  }
 
   // Deserialize layout.
   Layout layout = Layout::UNORDERED;
@@ -1189,9 +1396,10 @@ Status query_from_capnp(
   }
 
   // Deserialize and set attribute buffers.
-  if (!query_reader.hasAttributeBufferHeaders())
+  if (!query_reader.hasAttributeBufferHeaders()) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; no attribute buffer headers in message."));
+  }
 
   auto buffer_headers = query_reader.getAttributeBufferHeaders();
   auto attribute_buffer_start = static_cast<char*>(buffer_start);
@@ -1619,31 +1827,57 @@ Status query_from_capnp(
   // heterogeneous coordinate changes
   if (type == QueryType::READ) {
     if (query_reader.hasReaderIndex() && !schema.dense() &&
-        layout == Layout::GLOBAL_ORDER) {
+        (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED)) {
       // Strategy needs to be cleared here to create the correct reader.
       query->clear_strategy();
       RETURN_NOT_OK(query->set_layout_unsafe(layout));
 
+      auto&& [st, non_overlapping_ranges]{query->non_overlapping_ranges()};
+      RETURN_NOT_OK(st);
+
       auto reader_reader = query_reader.getReaderIndex();
-      auto reader = (SparseGlobalOrderReader*)query->strategy();
 
-      if (query_reader.hasVarOffsetsMode()) {
+      if (*non_overlapping_ranges) {
+        auto reader = (SparseGlobalOrderReader<uint8_t>*)query->strategy();
+
+        if (query_reader.hasVarOffsetsMode()) {
+          RETURN_NOT_OK(
+              reader->set_offsets_mode(query_reader.getVarOffsetsMode()));
+        }
+
+        RETURN_NOT_OK(reader->set_offsets_extra_element(
+            query_reader.getVarOffsetsAddExtraElement()));
+
+        if (query_reader.getVarOffsetsBitsize() > 0) {
+          RETURN_NOT_OK(
+              reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
+        }
+
+        RETURN_NOT_OK(reader->initialize_memory_budget());
+
         RETURN_NOT_OK(
-            reader->set_offsets_mode(query_reader.getVarOffsetsMode()));
-      }
+            index_reader_from_capnp(schema, reader_reader, query, reader));
+      } else {
+        auto reader = (SparseGlobalOrderReader<uint64_t>*)query->strategy();
 
-      RETURN_NOT_OK(reader->set_offsets_extra_element(
-          query_reader.getVarOffsetsAddExtraElement()));
+        if (query_reader.hasVarOffsetsMode()) {
+          RETURN_NOT_OK(
+              reader->set_offsets_mode(query_reader.getVarOffsetsMode()));
+        }
 
-      if (query_reader.getVarOffsetsBitsize() > 0) {
+        RETURN_NOT_OK(reader->set_offsets_extra_element(
+            query_reader.getVarOffsetsAddExtraElement()));
+
+        if (query_reader.getVarOffsetsBitsize() > 0) {
+          RETURN_NOT_OK(
+              reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
+        }
+
+        RETURN_NOT_OK(reader->initialize_memory_budget());
+
         RETURN_NOT_OK(
-            reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
+            index_reader_from_capnp(schema, reader_reader, query, reader));
       }
-
-      RETURN_NOT_OK(reader->initialize_memory_budget());
-
-      RETURN_NOT_OK(
-          index_reader_from_capnp(schema, reader_reader, query, reader));
     } else if (
         query_reader.hasReaderIndex() && !schema.dense() &&
         layout == Layout::UNORDERED && schema.allows_dups()) {

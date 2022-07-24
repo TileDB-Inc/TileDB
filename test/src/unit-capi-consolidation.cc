@@ -138,10 +138,7 @@ struct ConsolidationFx {
       uint64_t end = UINT64_MAX);
   void consolidate_sparse_heterogeneous();
   void consolidate_sparse_string();
-  void vacuum_dense(
-      const std::string& mode = "fragments",
-      uint64_t start = 0,
-      uint64_t end = UINT64_MAX);
+  void vacuum_dense(const std::string& mode = "fragments");
   void vacuum_sparse(
       const std::string& mode = "fragments",
       uint64_t start = 0,
@@ -4351,8 +4348,7 @@ void ConsolidationFx::consolidate_sparse_string() {
   REQUIRE(rc == TILEDB_OK);
 }
 
-void ConsolidationFx::vacuum_dense(
-    const std::string& mode, uint64_t start, uint64_t end) {
+void ConsolidationFx::vacuum_dense(const std::string& mode) {
   int rc;
   tiledb_config_t* cfg;
   tiledb_error_t* err = nullptr;
@@ -4361,15 +4357,6 @@ void ConsolidationFx::vacuum_dense(
   rc = tiledb_config_set(cfg, "sm.vacuum.mode", mode.c_str(), &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
-  rc = tiledb_config_set(
-      cfg, "sm.vacuum.timestamp_start", std::to_string(start).c_str(), &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-  rc = tiledb_config_set(
-      cfg, "sm.vacuum.timestamp_end", std::to_string(end).c_str(), &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-
   rc = tiledb_array_vacuum(ctx_, DENSE_ARRAY_NAME, cfg);
   REQUIRE(rc == TILEDB_OK);
 
@@ -4730,6 +4717,17 @@ TEST_CASE_METHOD(
   tiledb_error_free(&error);
   rc = tiledb_config_set(
       config, "sm.consolidation.buffer_size", "10000000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  // Test purge deleted cells
+  rc = tiledb_config_set(
+      config, "sm.consolidation.purge_deleted_cells", "1", &error);
+  REQUIRE(rc == TILEDB_ERR);
+  REQUIRE(error != nullptr);
+  tiledb_error_free(&error);
+  rc = tiledb_config_set(
+      config, "sm.consolidation.purge_deleted_cells", "true", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -6437,10 +6435,7 @@ TEST_CASE_METHOD(
     consolidate_dense("fragments", start2, end2);
     CHECK(get_num_fragments_to_vacuum_dense() == 4);
 
-    vacuum_dense("fragments", start1, end1);
-    CHECK(get_num_fragments_to_vacuum_dense() == 2);
-
-    vacuum_dense("fragments", start2, end2);
+    vacuum_dense("fragments");
     CHECK(get_num_fragments_to_vacuum_dense() == 0);
   }
 
@@ -6468,14 +6463,7 @@ TEST_CASE_METHOD(
     get_array_meta_files_dense(array_meta_files);
     CHECK(array_meta_files.size() == 7);
 
-    vacuum_dense("array_meta", start1, end1);
-
-    get_array_meta_vac_files_dense(array_meta_vac_files);
-    CHECK(array_meta_vac_files.size() == 1);
-    get_array_meta_files_dense(array_meta_files);
-    CHECK(array_meta_files.size() == 5);
-
-    vacuum_dense("array_meta", start2, end2);
+    vacuum_dense("array_meta");
 
     get_array_meta_vac_files_dense(array_meta_vac_files);
     CHECK(array_meta_vac_files.size() == 0);
@@ -6760,6 +6748,10 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse, commits, mixed versions",
     "[capi][consolidation][commits][mixed-versions]") {
+  if constexpr (is_experimental_build) {
+    return;
+  }
+
   remove_sparse_array();
 
   // Get the v11 sparse array.
