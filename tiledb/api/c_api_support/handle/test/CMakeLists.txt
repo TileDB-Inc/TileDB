@@ -1,6 +1,5 @@
 #
-# test/regression/CMakeLists.txt
-#
+# tiledb/api/proxy/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -25,42 +24,21 @@
 # THE SOFTWARE.
 #
 
+add_executable(unit_capi_handle EXCLUDE_FROM_ALL)
 find_package(Catch_EP REQUIRED)
+target_link_libraries(unit_capi_handle PUBLIC Catch2::Catch2)
 
-set(SOURCES
-  targets/sc-12024.cc
-  targets/sc-15387.cc
-  targets/sc-18836.cc
-)
+# Sources for code under test
+target_link_libraries(unit_capi_handle PUBLIC handle)
 
-if (TILEDB_SERIALIZATION)
-  list(APPEND SOURCES targets/sc-18250.cc)
-endif()
-
-add_executable(tiledb_regression
-  EXCLUDE_FROM_ALL
-  regression.cc
-  ${SOURCES}
-)
-
-if (NOT MSVC)
-  target_compile_options(tiledb_regression PRIVATE -Wno-deprecated-declarations)
-endif()
-
-target_link_libraries(tiledb_regression
-  PUBLIC
-    Catch2::Catch2
-    local_install
-    tiledb_shared
-)
-
-target_include_directories(tiledb_regression
-  PRIVATE
-    ${CMAKE_INSTALL_PREFIX}/include
+# Sources for tests
+target_sources(unit_capi_handle PUBLIC
+    main.cc
+    unit_handle.cc
 )
 
 add_test(
-  NAME "tiledb_regression"
-  COMMAND $<TARGET_FILE:tiledb_regression> --durations=yes
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    NAME "unit_capi_handle"
+    COMMAND $<TARGET_FILE:unit_capi_handle>
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )

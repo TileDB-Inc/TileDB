@@ -1,6 +1,5 @@
 #
-# test/regression/CMakeLists.txt
-#
+# tiledb/api/handle/CMakeLists.txt
 #
 # The MIT License
 #
@@ -25,42 +24,13 @@
 # THE SOFTWARE.
 #
 
-find_package(Catch_EP REQUIRED)
-
-set(SOURCES
-  targets/sc-12024.cc
-  targets/sc-15387.cc
-  targets/sc-18836.cc
+include(common NO_POLICY_SCOPE)
+list(APPEND SOURCES
+    handle.cc
 )
+gather_sources(${SOURCES})
 
-if (TILEDB_SERIALIZATION)
-  list(APPEND SOURCES targets/sc-18250.cc)
-endif()
+add_library(handle OBJECT handle.cc)
+target_link_libraries(handle PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
-add_executable(tiledb_regression
-  EXCLUDE_FROM_ALL
-  regression.cc
-  ${SOURCES}
-)
-
-if (NOT MSVC)
-  target_compile_options(tiledb_regression PRIVATE -Wno-deprecated-declarations)
-endif()
-
-target_link_libraries(tiledb_regression
-  PUBLIC
-    Catch2::Catch2
-    local_install
-    tiledb_shared
-)
-
-target_include_directories(tiledb_regression
-  PRIVATE
-    ${CMAKE_INSTALL_PREFIX}/include
-)
-
-add_test(
-  NAME "tiledb_regression"
-  COMMAND $<TARGET_FILE:tiledb_regression> --durations=yes
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+add_test_subdirectory()

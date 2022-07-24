@@ -1,6 +1,5 @@
 #
-# test/regression/CMakeLists.txt
-#
+# tiledb/api/c_api/filter/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -25,42 +24,25 @@
 # THE SOFTWARE.
 #
 
+include(common NO_POLICY_SCOPE)
+
+add_executable(unit_capi_filter EXCLUDE_FROM_ALL)
 find_package(Catch_EP REQUIRED)
+target_link_libraries(unit_capi_filter PUBLIC Catch2::Catch2)
+# target_link_libraries(unit_capi_filter PUBLIC capi_filter)
+#
+# INCOMPLETE: This unit test runner does not link at present if capi_filter is
+# a dependency because there's no `context` object library to link to.
+#
 
-set(SOURCES
-  targets/sc-12024.cc
-  targets/sc-15387.cc
-  targets/sc-18836.cc
-)
-
-if (TILEDB_SERIALIZATION)
-  list(APPEND SOURCES targets/sc-18250.cc)
-endif()
-
-add_executable(tiledb_regression
-  EXCLUDE_FROM_ALL
-  regression.cc
-  ${SOURCES}
-)
-
-if (NOT MSVC)
-  target_compile_options(tiledb_regression PRIVATE -Wno-deprecated-declarations)
-endif()
-
-target_link_libraries(tiledb_regression
-  PUBLIC
-    Catch2::Catch2
-    local_install
-    tiledb_shared
-)
-
-target_include_directories(tiledb_regression
-  PRIVATE
-    ${CMAKE_INSTALL_PREFIX}/include
+# Sources for tests
+target_sources(unit_capi_filter PUBLIC
+    # Only contains a single null test at present
+    unit_capi_filter.cc
 )
 
 add_test(
-  NAME "tiledb_regression"
-  COMMAND $<TARGET_FILE:tiledb_regression> --durations=yes
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    NAME "unit_capi_filter"
+    COMMAND $<TARGET_FILE:unit_capi_filter>
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
