@@ -109,7 +109,7 @@ typename SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state() {
   return &read_state_;
 }
 
-void SparseIndexReaderBase::init() {
+void SparseIndexReaderBase::init(bool skip_checks_serialization) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
     throw SparseIndexReaderBaseStatusException(
@@ -117,7 +117,7 @@ void SparseIndexReaderBase::init() {
         "set");
   }
 
-  if (buffers_.empty()) {
+  if (!skip_checks_serialization && buffers_.empty()) {
     throw SparseIndexReaderBaseStatusException(
         "Cannot initialize sparse global order reader; Buffers not set");
   }

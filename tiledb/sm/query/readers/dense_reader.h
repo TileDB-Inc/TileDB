@@ -96,7 +96,8 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition);
+      QueryCondition& condition,
+      bool skip_checks_serialization = false);
 
   /** Destructor. */
   ~DenseReader() = default;

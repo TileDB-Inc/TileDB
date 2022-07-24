@@ -551,14 +551,16 @@ class Query {
   /** Processes a query. */
   Status process();
 
-  /** Create the strategy. */
-  Status create_strategy();
-
   /** Gets the strategy of the query. */
-  IQueryStrategy* strategy();
+  IQueryStrategy* strategy(bool skip_checks_serialization = false);
 
-  /** Remove the current strategy. Used by serialization. */
-  void clear_strategy();
+  /**
+   * Switch the strategy depending on layout. Used by serialization.
+   *
+   * @param layout New layout
+   * @return Status
+   */
+  Status reset_strategy_with_layout(Layout layout);
 
   /**
    * Disables checking the global order and coordinate duplicates. Applicable
@@ -799,11 +801,6 @@ class Query {
       std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size);
 
   /**
-   * Sets the cell layout of the query without performing any checks.
-   */
-  Status set_layout_unsafe(Layout layout);
-
-  /**
    * Sets the cell layout of the query.
    */
   Status set_layout(Layout layout);
@@ -1012,6 +1009,13 @@ class Query {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /**
+   * Create the strategy.
+   *
+   * @param skip_checks_serialization Skip checks during serialization.
+   */
+  Status create_strategy(bool skip_checks_serialization = false);
 
   Status check_set_fixed_buffer(const std::string& name);
 

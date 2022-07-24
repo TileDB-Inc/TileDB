@@ -75,7 +75,8 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition)
+    QueryCondition& condition,
+    bool skip_checks_serialization)
     : SparseIndexReaderBase(
           stats,
           logger->clone("SparseUnorderedWithDupsReader", ++logger_id_),
@@ -86,7 +87,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           subarray,
           layout,
           condition) {
-  SparseIndexReaderBase::init();
+  SparseIndexReaderBase::init(skip_checks_serialization);
 
   // Initialize memory budget variables.
   if (!initialize_memory_budget().ok()) {
@@ -1622,7 +1623,8 @@ template SparseUnorderedWithDupsReader<uint8_t>::SparseUnorderedWithDupsReader(
     std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,
-    QueryCondition&);
+    QueryCondition&,
+    bool);
 template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
     stats::Stats*,
     shared_ptr<Logger>,
@@ -1632,7 +1634,8 @@ template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
     std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,
-    QueryCondition&);
+    QueryCondition&,
+    bool);
 
 }  // namespace sm
 }  // namespace tiledb

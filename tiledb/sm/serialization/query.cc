@@ -983,7 +983,6 @@ Status reader_from_capnp(
   // Layout
   Layout layout = Layout::ROW_MAJOR;
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
-  RETURN_NOT_OK(query->set_layout_unsafe(layout));
 
   // Subarray
   Subarray subarray(array, layout, query->stats(), dummy_logger, false);
@@ -1259,7 +1258,8 @@ Status query_to_capnp(
       RETURN_NOT_OK(st);
 
       if (*non_overlapping_ranges) {
-        auto reader = (SparseUnorderedWithDupsReader<uint8_t>*)query.strategy();
+        auto reader =
+            (SparseUnorderedWithDupsReader<uint8_t>*)query.strategy(true);
 
         query_builder->setVarOffsetsMode(reader->offsets_mode());
         query_builder->setVarOffsetsAddExtraElement(
@@ -1268,7 +1268,7 @@ Status query_to_capnp(
         RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
       } else {
         auto reader =
-            (SparseUnorderedWithDupsReader<uint64_t>*)query.strategy();
+            (SparseUnorderedWithDupsReader<uint64_t>*)query.strategy(true);
 
         query_builder->setVarOffsetsMode(reader->offsets_mode());
         query_builder->setVarOffsetsAddExtraElement(
@@ -1284,7 +1284,7 @@ Status query_to_capnp(
       RETURN_NOT_OK(st);
 
       if (*non_overlapping_ranges) {
-        auto reader = (SparseGlobalOrderReader<uint8_t>*)query.strategy();
+        auto reader = (SparseGlobalOrderReader<uint8_t>*)query.strategy(true);
 
         query_builder->setVarOffsetsMode(reader->offsets_mode());
         query_builder->setVarOffsetsAddExtraElement(
@@ -1292,7 +1292,7 @@ Status query_to_capnp(
         query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
         RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
       } else {
-        auto reader = (SparseGlobalOrderReader<uint64_t>*)query.strategy();
+        auto reader = (SparseGlobalOrderReader<uint64_t>*)query.strategy(true);
 
         query_builder->setVarOffsetsMode(reader->offsets_mode());
         query_builder->setVarOffsetsAddExtraElement(
@@ -1302,7 +1302,7 @@ Status query_to_capnp(
       }
     } else if (query.use_refactored_dense_reader(schema, all_dense)) {
       auto builder = query_builder->initDenseReader();
-      auto reader = (DenseReader*)query.strategy();
+      auto reader = (DenseReader*)query.strategy(true);
 
       query_builder->setVarOffsetsMode(reader->offsets_mode());
       query_builder->setVarOffsetsAddExtraElement(
@@ -1311,7 +1311,7 @@ Status query_to_capnp(
       RETURN_NOT_OK(dense_reader_to_capnp(query, *reader, &builder));
     } else {
       auto builder = query_builder->initReader();
-      auto reader = (Reader*)query.strategy();
+      auto reader = (Reader*)query.strategy(true);
 
       query_builder->setVarOffsetsMode(reader->offsets_mode());
       query_builder->setVarOffsetsAddExtraElement(
@@ -1321,7 +1321,7 @@ Status query_to_capnp(
     }
   } else {
     auto builder = query_builder->initWriter();
-    auto writer = (WriterBase*)query.strategy();
+    auto writer = (WriterBase*)query.strategy(true);
 
     query_builder->setVarOffsetsMode(writer->offsets_mode());
     query_builder->setVarOffsetsAddExtraElement(
@@ -1380,7 +1380,7 @@ Status query_from_capnp(
   // Deserialize layout.
   Layout layout = Layout::UNORDERED;
   RETURN_NOT_OK(layout_enum(query_reader.getLayout().cStr(), &layout));
-  RETURN_NOT_OK(query->set_layout_unsafe(layout));
+  RETURN_NOT_OK(query->reset_strategy_with_layout(layout));
 
   // Deserialize array instance.
   RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
@@ -1828,10 +1828,6 @@ Status query_from_capnp(
   if (type == QueryType::READ) {
     if (query_reader.hasReaderIndex() && !schema.dense() &&
         (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED)) {
-      // Strategy needs to be cleared here to create the correct reader.
-      query->clear_strategy();
-      RETURN_NOT_OK(query->set_layout_unsafe(layout));
-
       auto&& [st, non_overlapping_ranges]{query->non_overlapping_ranges()};
       RETURN_NOT_OK(st);
 
@@ -1881,10 +1877,6 @@ Status query_from_capnp(
     } else if (
         query_reader.hasReaderIndex() && !schema.dense() &&
         layout == Layout::UNORDERED && schema.allows_dups()) {
-      // Strategy needs to be cleared here to create the correct reader.
-      query->clear_strategy();
-      RETURN_NOT_OK(query->set_layout_unsafe(layout));
-
       auto&& [st, non_overlapping_ranges]{query->non_overlapping_ranges()};
       RETURN_NOT_OK(st);
 
@@ -1934,10 +1926,6 @@ Status query_from_capnp(
             index_reader_from_capnp(schema, reader_reader, query, reader));
       }
     } else if (query_reader.hasDenseReader()) {
-      // Strategy needs to be cleared here to create the correct reader.
-      query->clear_strategy();
-      RETURN_NOT_OK(query->set_layout_unsafe(layout));
-
       auto reader_reader = query_reader.getDenseReader();
       auto reader = (DenseReader*)query->strategy();
 

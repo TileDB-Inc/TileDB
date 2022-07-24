@@ -78,7 +78,8 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     Subarray& subarray,
     Layout layout,
     QueryCondition& condition,
-    bool consolidation_with_timestamps)
+    bool consolidation_with_timestamps,
+    bool skip_checks_serialization)
     : SparseIndexReaderBase(
           stats,
           logger->clone("SparseGlobalOrderReader", ++logger_id_),
@@ -94,7 +95,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     , memory_used_for_qc_tiles_(array->fragment_metadata().size())
     , consolidation_with_timestamps_(consolidation_with_timestamps)
     , last_cells_(array->fragment_metadata().size()) {
-  SparseIndexReaderBase::init();
+  SparseIndexReaderBase::init(skip_checks_serialization);
 
   // Initialize memory budget variables.
   if (!initialize_memory_budget().ok()) {
@@ -1734,6 +1735,7 @@ template SparseGlobalOrderReader<uint8_t>::SparseGlobalOrderReader(
     Subarray&,
     Layout,
     QueryCondition&,
+    bool,
     bool);
 template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
     stats::Stats*,
@@ -1745,6 +1747,7 @@ template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
     Subarray&,
     Layout,
     QueryCondition&,
+    bool,
     bool);
 
 }  // namespace sm

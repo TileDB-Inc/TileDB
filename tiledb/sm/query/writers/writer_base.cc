@@ -85,7 +85,8 @@ WriterBase::WriterBase(
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
-    URI fragment_uri)
+    URI fragment_uri,
+    bool skip_checks_serialization)
     : StrategyBase(
           stats,
           logger->clone("Writer", ++logger_id_),
@@ -110,7 +111,7 @@ WriterBase::WriterBase(
         "Cannot initialize query; Storage manager not set");
   }
 
-  if (buffers_.empty()) {
+  if (!skip_checks_serialization && buffers_.empty()) {
     throw WriterBaseStatusException(
         "Cannot initialize writer; Buffers not set");
   }
@@ -192,7 +193,9 @@ WriterBase::WriterBase(
   }
 
   check_subarray();
-  check_buffer_sizes();
+  if (!skip_checks_serialization) {
+    check_buffer_sizes();
+  }
 
   optimize_layout_for_1D();
   check_var_attr_offsets();

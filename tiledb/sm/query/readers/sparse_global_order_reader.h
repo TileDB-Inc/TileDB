@@ -76,7 +76,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       Subarray& subarray,
       Layout layout,
       QueryCondition& condition,
-      bool consolidation_with_timestamps);
+      bool consolidation_with_timestamps,
+      bool skip_checks_serialization = false);
 
   /** Destructor. */
   ~SparseGlobalOrderReader() = default;

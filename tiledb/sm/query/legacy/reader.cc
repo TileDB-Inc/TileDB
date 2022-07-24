@@ -110,7 +110,8 @@ Reader::Reader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition)
+    QueryCondition& condition,
+    bool skip_checks_serialization)
     : ReaderBase(
           stats,
           logger->clone("Reader", ++logger_id_),
@@ -127,11 +128,12 @@ Reader::Reader(
         "Cannot initialize reader; Storage manager not set");
   }
 
-  if (buffers_.empty()) {
+  if (!skip_checks_serialization && buffers_.empty()) {
     throw ReaderStatusException("Cannot initialize reader; Buffers not set");
   }
 
-  if (array_schema_.dense() && !subarray_.is_set()) {
+  if (!skip_checks_serialization && array_schema_.dense() &&
+      !subarray_.is_set()) {
     throw ReaderStatusException(
         "Cannot initialize reader; Dense reads must have a subarray set");
   }
