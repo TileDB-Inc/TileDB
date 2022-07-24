@@ -104,16 +104,6 @@ class ConsistencyController {
   /** Returns true if the array is open, i.e. registered in the multimap. */
   bool is_open(const URI uri);
 
-  /**
-   * Returns true if the given URIs have the same "prefix" and could
-   * potentially intersect one another.
-   * i.e. The second URI is an element of the first (or vice versa).
-   *
-   * Note: The order of the arguments does not matter;
-   * the API is checking for working tree intersection.
-   */
-  bool is_element_of(const URI uri, const URI intersecting_uri);
-
  private:
   /**
    * Wrapper around a multimap registration operation.

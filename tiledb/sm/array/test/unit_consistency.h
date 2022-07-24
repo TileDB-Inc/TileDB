@@ -43,6 +43,7 @@
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -77,10 +78,6 @@ class WhiteboxConsistencyController : public ConsistencyController {
 
   bool is_open(const URI uri) {
     return ConsistencyController::is_open(uri);
-  }
-
-  bool is_element_of(URI uri1, URI uri2) {
-    return ConsistencyController::is_element_of(uri1, uri2);
   }
 
   size_t registry_size() {

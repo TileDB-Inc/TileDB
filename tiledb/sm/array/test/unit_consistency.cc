@@ -76,12 +76,14 @@ TEST_CASE(
   // Check registration
   REQUIRE(x.registry_size() == 1);
   REQUIRE(x.is_open(uri) == true);
-  REQUIRE(x.is_element_of(uri_empty, uri) == false);
+  REQUIRE(tiledb::sm::utils::parse::is_element_of(uri_empty, uri) == false);
 
   // Ensure a non-registered URI is not registered
   const URI uri_not_contained = URI("not_contained");
   REQUIRE(x.is_open(uri_not_contained) == false);
-  REQUIRE(x.is_element_of(uri_empty, uri_not_contained) == false);
+  REQUIRE(
+      tiledb::sm::utils::parse::is_element_of(uri_empty, uri_not_contained) ==
+      false);
 
   // Deregister uri
   x.deregister_array(iter);
@@ -92,7 +94,7 @@ TEST_CASE(
   iter = x.register_array(uri, *array);
   REQUIRE(x.registry_size() == 1);
   REQUIRE(x.is_open(uri) == true);
-  REQUIRE(x.is_element_of(uri_empty, uri) == false);
+  REQUIRE(tiledb::sm::utils::parse::is_element_of(uri_empty, uri) == false);
 
   // Deregister
   x.deregister_array(iter);
@@ -120,7 +122,7 @@ TEST_CASE(
   REQUIRE(x.registry_size() == 1);
   REQUIRE(x.is_open(uri_empty) == false);
   REQUIRE(x.is_open(uri) == true);
-  REQUIRE(x.is_element_of(uri_empty, uri) == false);
+  REQUIRE(tiledb::sm::utils::parse::is_element_of(uri_empty, uri) == false);
 }
 
 TEST_CASE(
@@ -174,7 +176,7 @@ TEST_CASE(
   tdb_unique_ptr<Array> array = x.open_array(uri, &sm);
   REQUIRE(x.registry_size() == 1);
   REQUIRE(x.is_open(uri) == true);
-  REQUIRE(x.is_element_of(uri, uri) == true);
+  REQUIRE(tiledb::sm::utils::parse::is_element_of(uri, uri) == true);
 
   // Deregister array
   array.get()->close();
@@ -211,7 +213,9 @@ TEST_CASE(
     REQUIRE(x.registry_size() == count);
     REQUIRE(x.is_open(uri) == true);
     if (count % 2 == 0)
-      REQUIRE(x.is_element_of(uri, uris[count - 1]) == true);
+      REQUIRE(
+          tiledb::sm::utils::parse::is_element_of(uri, uris[count - 1]) ==
+          true);
   }
 
   // Deregister arrays
