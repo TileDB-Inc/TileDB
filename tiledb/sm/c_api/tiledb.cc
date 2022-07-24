@@ -5760,17 +5760,16 @@ int32_t tiledb_deserialize_array_schema(
     return TILEDB_OOM;
   }
 
-  auto&& [st, array_schema_des] =
-      tiledb::sm::serialization::array_schema_deserialize(
-          (tiledb::sm::SerializationType)serialize_type, *buffer->buffer_);
-  if (!st.ok()) {
-    LOG_STATUS(st);
-    save_error(ctx, st);
+  try {
+    (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
+        HERE(),
+        tiledb::sm::serialization::array_schema_deserialize(
+            (tiledb::sm::SerializationType)serialize_type, *buffer->buffer_));
+  } catch (...) {
     delete *array_schema;
     *array_schema = nullptr;
     return TILEDB_ERR;
   }
-  (*array_schema)->array_schema_ = array_schema_des.value();
 
   return TILEDB_OK;
 }
