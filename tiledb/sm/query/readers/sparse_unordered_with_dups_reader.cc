@@ -973,8 +973,12 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_timestamp_data_tile(
     uint8_t* buffer) {
   // Get source buffers.
   const auto tile_tuple = rt->tile_tuple(constants::timestamps);
-  const auto t = &std::get<0>(*tile_tuple);
-  const auto src_buff = t->data_as<uint8_t>();
+  Tile* t = nullptr;
+  uint8_t* src_buff = nullptr;
+  if (tile_tuple != nullptr) {
+    t = &std::get<0>(*tile_tuple);
+    src_buff = t->data_as<uint8_t>();
+  }
   const uint64_t cell_size = constants::timestamp_size;
 
   if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
@@ -1007,8 +1011,12 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_timestamp_data_tile(
   auto timer_se = stats_->start_timer("copy_timestamps_tiles");
   // Get source buffers.
   const auto tile_tuple = rt->tile_tuple(constants::timestamps);
-  const auto t = &std::get<0>(*tile_tuple);
-  const auto src_buff = t->data_as<uint8_t>();
+  Tile* t = nullptr;
+  uint8_t* src_buff = nullptr;
+  if (tile_tuple != nullptr) {
+    t = &std::get<0>(*tile_tuple);
+    src_buff = t->data_as<uint8_t>();
+  }
   const uint64_t cell_size = constants::timestamp_size;
   auto frag_timestamp = fragment_timestamp(rt);
 
@@ -1250,8 +1258,9 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         // For dimensions, when we have a subarray, tiles are already all
         // loaded in memory.
         if ((subarray_.is_set() && array_schema_.is_dim(name)) ||
-            condition_.field_names().count(name) != 0 || is_timestamps)
+            qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps) {
           return Status::Ok();
+        }
 
         // Get the size for all tiles.
         uint64_t idx = 0;
@@ -1483,7 +1492,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         for (const auto& idx : *index_to_copy) {
           const auto& name_to_clear = names[idx];
           const auto is_dim_to_clear = array_schema_.is_dim(name_to_clear);
-          if (condition_.field_names().count(name_to_clear) == 0 &&
+          if (qc_loaded_attr_names_set_.count(name_to_clear) == 0 &&
               (!subarray_.is_set() || !is_dim_to_clear)) {
             clear_tiles(name_to_clear, result_tiles, new_result_tiles_size);
           }

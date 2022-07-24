@@ -205,12 +205,14 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
 
   // Handle timestamps tile
   if (name == constants::timestamps) {
-    return timestamps_tile_.has_value() ? &*timestamps_tile_ : nullptr;
+    return timestamps_tile_.has_value() ? &timestamps_tile_.value() : nullptr;
   }
 
   // Handle delete timestamps tile
   if (name == constants::delete_timestamps) {
-    return &*delete_timestamps_tile_;
+    return delete_timestamps_tile_.has_value() ?
+               &delete_timestamps_tile_.value() :
+               nullptr;
   }
 
   // Handle attribute tile

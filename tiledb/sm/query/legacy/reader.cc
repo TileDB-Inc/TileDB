@@ -986,8 +986,9 @@ Status Reader::copy_partitioned_fixed_cells(
     const bool split_buffer_for_zipped_coords =
         array_schema_.is_dim(*name) && cs.tile_->stores_zipped_coords();
     if ((cs.tile_ == nullptr || cs.tile_->tile_tuple(*name) == nullptr) &&
-        !split_buffer_for_zipped_coords) {  // Empty range or attributed added
-                                            // in schema evolution
+        !split_buffer_for_zipped_coords &&
+        !is_timestamps) {  // Empty range or attributed added
+                           // in schema evolution
       auto bytes_to_copy = cs_length * cell_size;
       auto fill_num = bytes_to_copy / fill_value_size;
       for (uint64_t j = 0; j < fill_num; ++j) {
