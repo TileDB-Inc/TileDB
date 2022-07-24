@@ -201,9 +201,11 @@ ul.task-list{list-style: none;}
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#storage-format" id="toc-storage-format" class="nav-link active" data-scroll-target="#storage-format">Storage Format</a>
+  <li><a href="#api" id="toc-api" class="nav-link active" data-scroll-target="#api">API</a>
   <ul class="collapse">
-  <li><a href="#out-of-scope" id="toc-out-of-scope" class="nav-link" data-scroll-target="#out-of-scope">Out of scope</a></li>
+  <li><a href="#c-api" id="toc-c-api" class="nav-link" data-scroll-target="#c-api">C API</a></li>
+  <li><a href="#c-api-support" id="toc-c-api-support" class="nav-link" data-scroll-target="#c-api-support">C API Support</a></li>
+  <li><a href="#c-api-1" id="toc-c-api-1" class="nav-link" data-scroll-target="#c-api-1">C++ API</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -213,22 +215,23 @@ ul.task-list{list-style: none;}
 
 
 
-<section id="storage-format" class="level1">
-<h1>Storage Format</h1>
-<p>TileDB arrays are stored within a directory structure on some object store or file system. The information of an array is stored in three different forms. The data of the database is within files, of course, but there’s also necessary information in other places.</p>
-<ul>
-<li><strong>Directory.</strong> Certain files and other directories must be present or may be present within the content of a directory.</li>
-<li><strong>File Name.</strong> File names are an encoded set of fields.</li>
-<li><strong>File.</strong> Each type of file has its own data layout.</li>
-</ul>
-<p>Each of these entities may be regarded as having syntax and semantics: what a valid entity is and what it means. The scope of this directory is to support these two aspects of array storage.</p>
-<section id="out-of-scope" class="level2">
-<h2 class="anchored" data-anchor-id="out-of-scope">Out of scope</h2>
-<p>Here’s a partial list of concerns that are out of scope:</p>
-<ul>
-<li><strong>Storage access.</strong> Nothing in this directory has direct access to an object store or a file system. A user of these classes must provide the results of a storage operation to this code for parsing and interpretation.</li>
-<li><strong>State maintenance.</strong> This code has the notion of an “array in a directory”, but it does not provide any notion of “the current state” of an array in storage. The concept here is that of an array a data type, not as a variable of that data type.</li>
-</ul>
+<section id="api" class="level2">
+<h2 class="anchored" data-anchor-id="api">API</h2>
+<p>This directory is the (future) home of the C API and the C++ API. The API’s are the leaves of the dependency tree insofar as code organization is concerned. API code may reference anything in the code base, but nothing here should be referenced by anything but user code.</p>
+<p>Also included here are API support functions and API-specific tests. The scope of tests are those that exercise the API narrowly, that is, unit tests of the API code itself insofar as it’s possible to write them. They should be more than unit tests of the major classes they use but less than full integration tests of the library.</p>
+<p>Functions outside of the API itself should be defined in <code>namespace tiledb::api</code>.</p>
+<section id="c-api" class="level3">
+<h3 class="anchored" data-anchor-id="c-api">C API</h3>
+<p>The C API has started to move to this directory and is currently in transition.</p>
+<p>This directory is for declaration and definition of C API functions, but is not for any common infrastructure they share.</p>
+</section>
+<section id="c-api-support" class="level3">
+<h3 class="anchored" data-anchor-id="c-api-support">C API Support</h3>
+<p>This directory contains support code shared generally between implementations of C API functions.</p>
+</section>
+<section id="c-api-1" class="level3">
+<h3 class="anchored" data-anchor-id="c-api-1">C++ API</h3>
+<p>The C++ API has not yet moved to this directory.</p>
 
 
 </section>
