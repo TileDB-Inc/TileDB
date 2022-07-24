@@ -35,18 +35,13 @@ option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST serve
 
 # Include TileDB core header directories
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+
 # Include the C API directory so that the C++ 'tiledb' file can directly
 # include "tiledb.h".
 list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../tiledb/sm/c_api")
 
-#set(TILEDB_MSYS_HANDLE_LEAKAGE_SOURCES
-#  src/helpers.h
-#  src/helpers-dimension.h
-#  )
-
 message(STATUS "CMAKE_CURRENT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}")
 list(APPEND TILEDB_MSYS_HANDLE_LEAKAGE_SOURCES
-#  "performance/msys_handle_leakage/unit-cppapi-consolidation-with-timestamps.cc"
   "msys_handle_leakage/unit-cppapi-consolidation-with-timestamps.cc"
 )
 
