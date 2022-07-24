@@ -295,7 +295,10 @@ class SparseIndexReaderBase : public ReaderBase {
   bool elements_mode_;
 
   /** Names of dim/attr loaded for query condition. */
-  std::vector<std::string> qc_loaded_names_;
+  std::vector<std::string> qc_loaded_attr_names_;
+
+  /** Names of dim/attr loaded for query condition. */
+  std::unordered_set<std::string> qc_loaded_attr_names_set_;
 
   /* Are the users buffers full. */
   bool buffers_full_;
