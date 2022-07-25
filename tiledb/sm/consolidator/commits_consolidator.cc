@@ -79,17 +79,17 @@ Status CommitsConsolidator::consolidate(
   }
 
   // Get the array uri to consolidate from the array directory.
-  ArrayDirectory array_dir;
-  try {
-    array_dir = ArrayDirectory(
-        storage_manager_->vfs(),
-        storage_manager_->compute_tp(),
-        URI(array_name),
-        0,
-        utils::time::timestamp_now_ms(),
-        ArrayDirectoryMode::COMMITS);
-  } catch (const std::logic_error& le) {
-    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+  auto array_dir = ArrayDirectory(
+      storage_manager_->vfs(),
+      storage_manager_->compute_tp(),
+      URI(array_name),
+      0,
+      utils::time::timestamp_now_ms(),
+      ArrayDirectoryMode::COMMITS);
+
+  // Don't try to consolidate empty array
+  if (array_dir.commit_uris_to_consolidate().size() == 0) {
+    return Status::Ok();
   }
 
   // Get the file name.

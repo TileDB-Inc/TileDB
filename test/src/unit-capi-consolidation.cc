@@ -6482,6 +6482,10 @@ TEST_CASE_METHOD(
   remove_dense_array();
   create_dense_array();
 
+  SECTION("- consolidate empty") {
+    consolidate_dense("commits");
+  }
+
   SECTION("- write full, subarray") {
     // Consolidation works.
     write_dense_full();
