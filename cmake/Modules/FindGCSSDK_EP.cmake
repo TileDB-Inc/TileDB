@@ -43,11 +43,58 @@ set(GCSSDK_DIR "${TILEDB_EP_INSTALL_PREFIX}")
 # The storage client is installed as the cmake package storage_client
 # TODO: This should be replaced with proper find_package as google installs cmake targets for the subprojects
 if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
-  find_package(storage_client
+#  find_package(storage_client
+  #set(abslpath d:/dev/tiledb/gh.sc-17498-upd-gcs.git/bld.vs22.A/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/absl)
+  #set(absl_DIR "${abslpath}")
+  # TBD: Do artifacts of these need to get 'installed' into tiledb location to be included with distribution as well?
+  #set(absl_DIR "${CMAKE_BINARY_DIR}/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/absl")
+  #set(nlohmann_jsonConfig_DIR "${CMAKE_BINARY_DIR}/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/nlohmann_json")
+  #set(benchmark_DIR "${CMAKE_BINARY_DIR}/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/benchmark")
+  #set(Crc32c_DIR "${CMAKE_BINARY_DIR}/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/Crc32c")
+  #set(CURL_DIR "${CMAKE_BINARY_DIR}/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/CURL")
+  #set(gRPC_DIR "${CMAKE_BINARY_DIR}/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/gRPC")
+  #set(GTest_DIR "${CMAKE_BINARY_DIR}/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/GTest")
+  #set(re2_DIR "${CMAKE_BINARY_DIR}/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/re2")
+
+  set(absl_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/absl")
+  set(nlohmann_json_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/nlohmann_json")
+  set(benchmark_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/benchmark")
+  set(Crc32c_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/Crc32c")
+  set(CURL_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/CURL")
+  set(gRPC_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/gRPC")
+  set(GTest_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/GTest")
+  set(re2_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/re2")
+  message(STATUS "absl_DIR is ${absl_DIR}")
+  message(STATUS "nlohmann_json_DIR is ${nlohmann_json_DIR}")
+  message(STATUS "benchmark_DIR is ${benchmark_DIR}")
+  message(STATUS "Crc32c_DIR is ${Crc32c_DIR}")
+  message(STATUS "CURL_DIR is ${CURL_DIR}")
+  message(STATUS "gRPC_DIR is ${gRPC_DIR}")
+  message(STATUS "GTest_DIR is ${GTest_DIR}")
+  message(STATUS "re2_DIR is ${re2_DIR}")
+  # TBD: Will this satisfy gcs need? seems openssl not part of what gcs installs in build via vcpkg...
+  # "unimplemented on windows" ... find_package(OpenSSL_EP)
+  # TBD: There is an openssl.pc, but not an opensslConfig.cmake, will this still work? somehow the 
+  # google buildis finding openssl, the outside experimental build I did contained a (very small) openssl.lib,
+  # but the build incorp'd into the external project below does -not- seem to have that...
+#  set(openssl_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/openssl")
+#  find_package(openssl 
+#    PATHS ${TILEDB_OPENSSL_DIR}
+#      ${openssl_DIR}
+#    )
+  set(VCPKG_INSTALLED_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed")
+  find_package(OpenSSL
+    PATHS ${TILEDB_OPENSSL_DIR}
+      ${openssl_DIR}
+    )
+  find_package(google_cloud_cpp_storage CONFIG
+#  find_package(google_cloud_cpp::storage CONFIG
     PATHS ${TILEDB_EP_INSTALL_PREFIX}
           ${TILEDB_DEPS_NO_DEFAULT_PATH}
+#          ${TILEDB_EP_BASE}/src/ep_gcssdk
   )
-  set(GCSSDK_FOUND ${storage_client_FOUND})
+#  set(GCSSDK_FOUND ${storage_client_FOUND})
+  set(GCSSDK_FOUND ${google_cloud_cpp_storage_FOUND})
 endif()
 
 if (NOT GCSSDK_FOUND)
@@ -70,23 +117,48 @@ if (NOT GCSSDK_FOUND)
     include(ProcessorCount)
     processorcount(NCPU)
 
+    if(WIN32)
+      find_package(Git REQUIRED)
+      # can use ${GIT_EXECUTABLE}
+      #set(TDB_PREP_ENV "set VCPKG_ROOT=%cd%/tdb.vcpkg/vcpkg &&")
+      set(TDB_PREP_ENV "VCPKG_ROOT=%cd%/tdb.vcpkg/vcpkg &&")
+      #set(TDB_VCPKG_TOOLCHAIN_PATH "%VCPKG_ROOT%/tdb.vcpkg/vcpkg/scripts/buildsystem/vcpkg.cmake")
+      #set(TDB_VCPKG_TOOLCHAIN_PATH "${TILEDB_EP_BASE}/src/ep_gcssdk/tdb.vcpkg/vcpkg/scripts/buildsystem/vcpkg.cmake")
+      set(TDB_VCPKG_TOOLCHAIN_PATH "${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    else()
+      set(TDB_PREP_ENV "VCPKG_ROOT=`pwd`/tdb.vcpkg/vcpkg")
+      #set(TDB_VCPKG_TOOLCHAIN_PATH "$${VCPKG_ROOT}/tdb.vcpkg/vcpkg/scripts/buildsystem/vcpkg.cmake")
+      #set(TDB_VCPKG_TOOLCHAIN_PATH "${TILEDB_EP_BASE}/src/ep_gcssdk/tdb.vcpkg/vcpkg/scripts/buildsystem/vcpkg.cmake")
+      set(TDB_VCPKG_TOOLCHAIN_PATH "${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    endif()
+    #TBD: will this reach far enough 'out' that vcpkg finds its own stuff, also possibly negating
+    #need for the various machinations used to temporarily set it below so gcssdk builds (which it
+    #has been doing, but tiledb now failing to find vcpkg absl for one...)
+    #set(env{VCPKG_ROOT} "${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    set(env{VCPKG_ROOT} "${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg/")
+
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_gcssdk.zip
-      URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.22.0.zip"
-      URL_HASH SHA1=d4e14faef4095289b06f5ffe57d33a14574a7055
+      #URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.22.0.zip"
+      #URL_HASH SHA1=d4e14faef4095289b06f5ffe57d33a14574a7055
+      URL "https://github.com/googleapis/google-cloud-cpp/archive/v2.0.0.zip"
+      URL_HASH SHA1=96301fbb20e82043bbb46ca4232d568b4b7c1fa7
       BUILD_IN_SOURCE 1
-      PATCH_COMMAND
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch &&
+#      PATCH_COMMAND
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch &&
         #The following patch is on top of a patch already done in build.patch above, application order is important!
         #does add_compile_options() hoping for
         #"These options are used when compiling targets from the current directory and below."
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/v1.22.0.CMakelists.txt.openssl3md5deprecationmitigation.patch
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/v1.22.0.CMakelists.txt.openssl3md5deprecationmitigation.patch
       CONFIGURE_COMMAND
-         ${CMAKE_COMMAND} -Hsuper -Bcmake-out
+         #${CMAKE_COMMAND} -Hsuper -Bcmake-out
+         #${TDB_PREP_ENV} ${CMAKE_COMMAND} -H. -Bcmake-out/ -DCMAKE_TOOLCHAIN_FILE=./tdb.vcpkg/scripts/buildsystem/vcpkg.cmake
+         #${CMAKE_COMMAND} -E env ${TDB_PREP_ENV} ${CMAKE_COMMAND} -H. -Bcmake-out/ -DCMAKE_TOOLCHAIN_FILE=./tdb.vcpkg/vcpkg/scripts/buildsystem/vcpkg.cmake
+         ${CMAKE_COMMAND} -E env ${TDB_PREP_ENV} ${CMAKE_COMMAND} --trace -H. -Bcmake-out/ -DCMAKE_TOOLCHAIN_FILE=${TDB_VCPKG_TOOLCHAIN_PATH}
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DBUILD_SHARED_LIBS=OFF
         -DBUILD_SAMPLES=OFF
@@ -106,9 +178,12 @@ if (NOT GCSSDK_FOUND)
         -DGOOGLE_CLOUD_CPP_EXTERNAL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
-      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
+      #BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
+      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out
       # There is no install command, the build process installs the libraries
-      INSTALL_COMMAND ""
+      # ... no longer seems to for 2.0.0, but still no install command... what's the vcpkg way of locating?
+      #INSTALL_COMMAND ""
+      INSTALL_COMMAND ${CMAKE_COMMAND} --build cmake-out --target install
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE
@@ -117,10 +192,93 @@ if (NOT GCSSDK_FOUND)
       DEPENDS ${DEPENDS}
     )
 
+    if(WIN32)
+      #set(psargs "$env{VCPKG_ROOT}=$env{CD}/tdb.vcpkg/vcpkg" && echo "vcpkg_root is $env{VCPKG_ROOT}" && "$env{VCPKG_ROOT}/bootstrap-vcpkg.ps1" -disableMetrics)
+      #set(psargs "$$env{VCPKG_ROOT}=$env{CD}/tdb.vcpkg/vcpkg && echo vcpkg_root is $$env{VCPKG_ROOT} && $$env{VCPKG_ROOT}/bootstrap-vcpkg.ps1 -disableMetrics")
+      set(arg1 set VCPKG_ROOT=""${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg"" > tdb.bootstrap.vcpkg.bat)
+      ExternalProject_Add_Step(ep_gcssdk gcssdk_prep_vcpkg
+        DEPENDERS configure
+        DEPENDEES download
+        COMMAND cmd /c mkdir tdb.vcpkg
+        COMMAND echo before git clone
+        COMMAND git -C tdb.vcpkg clone https://github.com/microsoft/vcpkg.git
+        #COMMAND set VCPKG_ROOT=%cd%/tdb.vcpkg/vcpkg 
+        #COMMAND powershell %VCPKG_ROOT%/bootstrap-vcpkg.ps1 -disableMetrics
+        #TBD: will the %cd% be interp'd before passing into powershell?
+        #COMMAND powershell "$env{VCPKG_ROOT}=$env{CD}/tdb.vcpkg/vcpkg" && echo "vcpkg_root is $env{VCPKG_ROOT}" && "$env{VCPKG_ROOT}/bootstrap-vcpkg.ps1" -disableMetrics
+        #COMMAND powershell "${psargs}"
+
+        COMMAND echo setting up tdb.bootstrap.vcpkg.bat file
+        #COMMAND echo set VCPKG_ROOT=%cd%/tdb.vcpkg/vcpkg > tdb.bootstrap.vcpkg.bat
+        #COMMAND echo set VCPKG_ROOT=""${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg"" > tdb.bootstrap.vcpkg.bat
+        COMMAND echo set VCPKG_ROOT=${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg > tdb.bootstrap.vcpkg.bat
+        #COMMAND echo ${arg1}
+        
+        COMMAND echo SET >> tdb.bootstrap.vcpkg.bat
+        #COMMAND echo powershell %VCPKG_ROOT%/bootstrap-vcpkg.ps1 -disableMetrics >> tdb.bootstrap.vcpkg.bat
+        #COMMAND echo powershell $env{VCPKG_ROOT}/bootstrap-vcpkg.ps1 -disableMetrics >> tdb.bootstrap.vcpkg.bat
+        #COMMAND echo powershell ${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg/bootstrap-vcpkg.ps1 -disableMetrics >> tdb.bootstrap.vcpkg.bat
+        COMMAND echo ${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg/bootstrap-vcpkg.bat -disableMetrics >> tdb.bootstrap.vcpkg.bat
+        #COMMAND echo "$\{VCPKG_ROOT\}/bootstrap-vcpkg.sh" >> tdb.bootstrap.vcpkg.sh
+        #COMMAND type ./tdb.bootstrap.vcpkg.bat && echo "------------"
+        COMMAND echo "following is contents of ./tdb.bootstrap.vcpkg.bat"
+        #COMMAND cmd /c "type ./tdb.bootstrap.vcpkg.bat"
+        #?syntax of command incorrect? yes, doesn't like '/'... COMMAND type ./tdb.bootstrap.vcpkg.bat
+        #COMMAND type .\tdb.bootstrap.vcpkg.bat
+        COMMAND echo "------------"
+        COMMAND echo before invoking ./tdb.bootstrap.vcpkg.bat, %cd%
+        #COMMAND cmd /C ".\tdb.bootstrap.vcpkg.bat" # doesn't '/', use '\'
+        COMMAND cmd /C "tdb.bootstrap.vcpkg.bat" # doesn't '/', use '\'
+
+        #COMMAND ${CMAKE_COMMAND} -H. -Bcmake-out/ -DCMAKE_TOOLCHAIN_FILE=$%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake
+        #COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
+      )
+    else()
+      
+      ExternalProject_Add_Step(ep_gcssdk gcssdk_prep_vcpkg 
+        DEPENDERS configure
+        DEPENDEES download
+        COMMAND mkdir tdb.vcpkg
+        COMMAND git -C tdb.vcpkg clone https://github.com/microsoft/vcpkg.git
+        COMMAND pwd
+        COMMAND ls -l
+        COMMAND find . -name vcpkg.cmake
+        COMMAND echo "export VCPKG_ROOT=`pwd`/tdb.vcpkg/vcpkg" > tdb.bootstrap.vcpkg.sh
+        COMMAND echo printenv >> tdb.bootstrap.vcpkg.sh
+        #COMMAND echo "$${VCPKG_ROOT}/bootstrap-vcpkg.sh" >> tdb.bootstrap.vcpkg.sh
+        #COMMAND echo "${VCPKG_ROOT}/bootstrap-vcpkg.sh" >> tdb.bootstrap.vcpkg.sh
+        #COMMAND echo "$$VCPKG_ROOT/bootstrap-vcpkg.sh" >> tdb.bootstrap.vcpkg.sh
+        COMMAND echo "$\{VCPKG_ROOT}/bootstrap-vcpkg.sh -disableMetrics" >> tdb.bootstrap.vcpkg.sh
+        #COMMAND echo "$\{VCPKG_ROOT\}/bootstrap-vcpkg.sh" >> tdb.bootstrap.vcpkg.sh
+        COMMAND cat ./tdb.bootstrap.vcpkg.sh && echo "------------"
+        COMMAND bash ./tdb.bootstrap.vcpkg.sh
+        #COMMAND export VCPKG_ROOT=`pwd`/tdb.vcpkg/vcpkg && printenv && echo vcpkg_root is $VCPKG_ROOT && pwd && ls -l && find tdb.vcpkg -name bootstrap-vcpkg.sh && $VCPKG_ROOT/bootstrap-vcpkg.sh
+        #COMMAND export VCPKG_ROOT=`pwd`/tdb.vcpkg/vcpkg && printenv && echo [[vcpkg_root is ${VCPKG_ROOT}]] && pwd && ls -l && find tdb.vcpkg -name bootstrap-vcpkg.sh && [[${VCPKG_ROOT}/bootstrap-vcpkg.sh]]
+        #COMMAND export VCPKG_ROOT=`pwd`/tdb.vcpkg/vcpkg && printenv && echo vcpkg_root is $$VCPKG_ROOT && pwd && ls -l && find tdb.vcpkg -name bootstrap-vcpkg.sh && $$VCPKG_ROOT/bootstrap-vcpkg.sh
+        #COMMAND export VCPKG_ROOT=$(pwd)/tdb.vcpkg/vcpkg && printenv && echo vcpkg_root is $VCPKG_ROOT && pwd && ls -l && find tdb.vcpkg -name bootstrap-vcpkg.sh && $VCPKG_ROOT/bootstrap-vcpkg.sh
+        #COMMAND ${CMAKE_COMMAND} -H. -Bcmake-out/ -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+        #COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
+      )
+    endif()
+
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_gcssdk)
     list(APPEND FORWARD_EP_CMAKE_ARGS
       -DTILEDB_GCSSDK_EP_BUILT=TRUE
+      # At what point might there be conflicts with multiple toolchain files?
+      -DCMAKE_TOOLCHAIN_FILE=${TDB_VCPKG_TOOLCHAIN_PATH}
     )
+    # TDB: parameterize if this works to find absl...
+    set(abslpath d:/dev/tiledb/gh.sc-17498-upd-gcs.git/bld.vs22.A/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/absl)
+    #string(replace "\\" "/" abslpath ${abslpath})
+    message(STATUS "abslpath is ${abslpath}")
+    list(APPEND CMAKE_MODULE_PATH 
+       "${TILEDB_EP_INSTALL_PREFIX}/lib/cmake"
+#       "${abslpath}"
+       )
+    list(APPEND CMAKE_PREFIX_PATH "${abslpath}")
+    set(absl_DIR "${abslpath}")
+    set(abslpath d:/dev/tiledb/gh.sc-17498-upd-gcs.git/bld.vs22.A/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/absl)
+    set(absl_DIR "${abslpath}")
   else()
     message(FATAL_ERROR "Unable to find GCSSDK")
   endif()
@@ -128,15 +286,19 @@ endif()
 
 # If we found the SDK but it didn't have a cmake target build them
 if (GCSSDK_FOUND AND NOT TARGET storage_client)
+#if (GCSSDK_FOUND AND NOT TARGET google_cloud_cpp::storage)
   # Build a list of all GCS libraries to link with.
-  list(APPEND GCSSDK_LINKED_LIBS "storage_client"
+  #list(APPEND GCSSDK_LINKED_LIBS "storage_client"
+  list(APPEND GCSSDK_LINKED_LIBS "google_cloud_cpp_storage" #"storage_client"
                                  "google_cloud_cpp_common"
                                  "crc32c")
 
   foreach (LIB ${GCSSDK_LINKED_LIBS})
     find_library(GCS_FOUND_${LIB}
       NAMES lib${LIB}${CMAKE_STATIC_LIBRARY_SUFFIX}
-      PATHS ${TILEDB_EP_INSTALL_PREFIX}
+      PATHS 
+        ${TILEDB_EP_INSTALL_PREFIX} 
+#        ${TILEDB_EP_BASE}/src/ep_gcssdk
       PATH_SUFFIXES lib lib64
       ${TILEDB_DEPS_NO_DEFAULT_PATH}
     )
@@ -148,10 +310,14 @@ if (GCSSDK_FOUND AND NOT TARGET storage_client)
     endif()
   endforeach ()
 
-  if (NOT TARGET storage_client)
-    add_library(storage_client UNKNOWN IMPORTED)
-    set_target_properties(storage_client PROPERTIES
-      IMPORTED_LOCATION "${GCS_FOUND_storage_client};${GCS_FOUND_google_cloud_cpp_common};${GCS_FOUND_crc32c}"
+#  if (NOT TARGET storage_client)
+  if (NOT TARGET google_cloud_cpp_storage)
+#    add_library(storage_client UNKNOWN IMPORTED)
+    add_library(google_cloud_cpp_storage UNKNOWN IMPORTED)
+#    set_target_properties(storage_client PROPERTIES
+#      IMPORTED_LOCATION "${GCS_FOUND_storage_client};${GCS_FOUND_google_cloud_cpp_common};${GCS_FOUND_crc32c}"
+    set_target_properties(google_cloud_cpp_storage PROPERTIES
+      IMPORTED_LOCATION "${GCS_FOUND_google_cloud_cpp_storage};${GCS_FOUND_google_cloud_cpp_common};${GCS_FOUND_crc32c}"
       INTERFACE_INCLUDE_DIRECTORIES ${TILEDB_EP_INSTALL_PREFIX}/include
     )
   endif()

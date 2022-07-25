@@ -182,6 +182,30 @@ set(TILEDB_EXPERIMENTAL_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/experimental")
 
 # Perform superbuild config and exit.
 if (TILEDB_SUPERBUILD)
+  if(0)
+  if(TILEDB_GCS)
+    # gcs sdk from our use of v2.0.0 is building on top of vcpkg which findgcs... pulls and then
+    # the gcssdk build process does whatever it needs to, i.e. is apparently using vcpkg to provide
+    # what earlier gcssdk super build support pulled in.
+    # from https://vcpkg.readthedocs.io/en/latest/users/integration/
+    # "The CMAKE_TOOLCHAIN_FILE setting simply must be set before the project() directive is first called."
+    # ----
+    # <sigh>, apparently can't set a toolchain file in 'good faith'...
+    # CMake Error at C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.22/Modules/CMakeDetermineSystem.cmake:130 (message):
+    #Could not find toolchain file:
+    #D:/dev/tiledb/gh.sc-17498-upd-gcs.git/bld.vs22.A/tdb.vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake
+    #
+    #if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+      set(ENV{VCPKG_ROOT} "${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg")
+      set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+          CACHE STRING "")
+      message(STATUS "setting CMAKE_TOOLCHAIN_FILE to $ENV{CMAKE_TOOLCHAIN_FILE}")
+    else()
+      message(STATUS "CMAKE_TOOLCHAIN_FILE already set, is $ENV{CMAKE_TOOLCHAIN_FILE}")
+    endif()
+  endif()
+  endif()
   project(TileDB-Superbuild)
   message(STATUS "Starting TileDB superbuild.")
   include("cmake/TileDB-Superbuild.cmake")
@@ -190,6 +214,34 @@ if (TILEDB_SUPERBUILD)
   # superbuild off. Thus we stop processing this file here, knowing that we'll
   # come back later.
   return()
+endif()
+
+if(TILEDB_GCS)
+  # gcs sdk from our use of v2.0.0 is building on top of vcpkg which findgcs... pulls and then
+  # the gcssdk build process does whatever it needs to, i.e. is apparently using vcpkg to provide
+  # what earlier gcssdk super build support pulled in.
+  # from https://vcpkg.readthedocs.io/en/latest/users/integration/
+  # "The CMAKE_TOOLCHAIN_FILE setting simply must be set before the project() directive is first called."
+  # Also "All vcpkg-affecting variables must be defined before the first project() directive, such as via the command line or set() statements."
+  # which includes VCPKG_INSTALLED_DIR as well, being used trying to find the libraries build/used by gcs build...
+  # ----
+  # <sigh>, apparently can't set a toolchain file in 'good faith'...
+  # CMake Error at C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.22/Modules/CMakeDetermineSystem.cmake:130 (message):
+  #Could not find toolchain file:
+  #D:/dev/tiledb/gh.sc-17498-upd-gcs.git/bld.vs22.A/tdb.vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake
+  #
+  #if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+  # SO, apparently defined, but not pop'd...?
+  if(NOT DEFINED CMAKE_TOOLCHAIN_FILE OR NOT CMAKE_TOOLCHAIN_FILE)
+    set(ENV{VCPKG_ROOT} "${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg")
+    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        CACHE STRING "")
+#    set(VCPKG_INSTALLED_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed")
+    message(STATUS "setting CMAKE_TOOLCHAIN_FILE to ${CMAKE_TOOLCHAIN_FILE}")
+  else()
+    message(STATUS "CMAKE_TOOLCHAIN_FILE already set, is ${CMAKE_TOOLCHAIN_FILE}")
+  endif()
+  set(VCPKG_INSTALLED_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed")
 endif()
 
 project(TileDB)
