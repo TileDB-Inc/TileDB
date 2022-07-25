@@ -46,44 +46,48 @@ std::string range_str(const Range& range, const tiledb::sm::Datatype type) {
   std::stringstream ss;
   switch (type) {
     case sm::Datatype::INT8:
-      ss << "[" << std::to_string(range.typed_data<int8_t>()[0]) << ", "
-         << std::to_string(range.typed_data<int8_t>()[1]) << "]";
+      // Convert int8 to int16 to guarantee it is interpreted as an integer and
+      // not a character on string conversion.
+      ss << "[" << static_cast<int16_t>(range.typed_data<int8_t>()[0]) << ", "
+         << static_cast<int16_t>(range.typed_data<int8_t>()[1]) << "]";
       break;
     case sm::Datatype::UINT8:
-      ss << "[" << std::to_string(range.typed_data<uint8_t>()[0]) << ", "
-         << std::to_string(range.typed_data<uint8_t>()[1]) << "]";
+      // Convert uint8 to uint16 to guarantee it is interpreted as an integer
+      // and not a character on string conversion.
+      ss << "[" << static_cast<uint16_t>(range.typed_data<uint8_t>()[0]) << ", "
+         << static_cast<uint16_t>(range.typed_data<uint8_t>()[1]) << "]";
       break;
     case sm::Datatype::INT16:
-      ss << "[" << ((int16_t*)range.data())[0] << ", "
-         << ((int16_t*)range.data())[1] << "]";
+      ss << "[" << range.typed_data<int16_t>()[0] << ", "
+         << range.typed_data<int16_t>()[1] << "]";
       break;
     case sm::Datatype::UINT16:
-      ss << "[" << ((uint16_t*)range.data())[0] << ", "
-         << ((uint16_t*)range.data())[1] << "]";
+      ss << "[" << range.typed_data<uint16_t>()[0] << ", "
+         << range.typed_data<uint16_t>()[1] << "]";
       break;
     case sm::Datatype::INT32:
-      ss << "[" << ((int32_t*)range.data())[0] << ", "
-         << ((int32_t*)range.data())[1] << "]";
+      ss << "[" << range.typed_data<int32_t>()[0] << ", "
+         << range.typed_data<int32_t>()[1] << "]";
       break;
     case sm::Datatype::UINT32:
-      ss << "[" << ((uint32_t*)range.data())[0] << ", "
-         << ((uint32_t*)range.data())[1] << "]";
+      ss << "[" << range.typed_data<uint32_t>()[0] << ", "
+         << range.typed_data<uint32_t>()[1] << "]";
       break;
     case sm::Datatype::INT64:
-      ss << "[" << ((int64_t*)range.data())[0] << ", "
-         << ((int64_t*)range.data())[1] << "]";
+      ss << "[" << range.typed_data<int64_t>()[0] << ", "
+         << range.typed_data<int64_t>()[1] << "]";
       break;
     case sm::Datatype::UINT64:
-      ss << "[" << ((uint64_t*)range.data())[0] << ", "
-         << ((uint64_t*)range.data())[1] << "]";
+      ss << "[" << range.typed_data<uint64_t>()[0] << ", "
+         << range.typed_data<uint64_t>()[1] << "]";
       break;
     case sm::Datatype::FLOAT32:
-      ss << "[" << ((float*)range.data())[0] << ", "
-         << ((float*)range.data())[1] << "]";
+      ss << "[" << range.typed_data<float>()[0] << ", "
+         << range.typed_data<float>()[1] << "]";
       break;
     case sm::Datatype::FLOAT64:
-      ss << "[" << ((double*)range.data())[0] << ", "
-         << ((double*)range.data())[1] << "]";
+      ss << "[" << range.typed_data<double>()[0] << ", "
+         << range.typed_data<double>()[1] << "]";
       break;
     case sm::Datatype::DATETIME_YEAR:
     case sm::Datatype::DATETIME_MONTH:
@@ -107,8 +111,8 @@ std::string range_str(const Range& range, const tiledb::sm::Datatype type) {
     case sm::Datatype::TIME_PS:
     case sm::Datatype::TIME_FS:
     case sm::Datatype::TIME_AS:
-      ss << "[" << ((int64_t*)range.data())[0] << ", "
-         << ((int64_t*)range.data())[1] << "]";
+      ss << "[" << ((int64_t*)range.typed_data<int64_t>())[0] << ", "
+         << ((int64_t*)range.typed_data<int64_t>())[1] << "]";
       break;
     case sm::Datatype::STRING_ASCII:
       ss << "[" << std::string(range.start_str()) << ", "

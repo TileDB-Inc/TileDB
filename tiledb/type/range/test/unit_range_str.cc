@@ -42,7 +42,7 @@ using namespace tiledb::sm;
 
 TEMPLATE_TEST_CASE_SIG(
     "Test range_str for unsigned int types",
-    "[range][!mayfail]",
+    "[range]",
     ((typename T, Datatype D), T, D),
     (uint8_t, Datatype::UINT8),
     (uint16_t, Datatype::UINT16),
@@ -56,7 +56,7 @@ TEMPLATE_TEST_CASE_SIG(
 
 TEMPLATE_TEST_CASE_SIG(
     "Test range_str for signed int types",
-    "[range][!mayfail]",
+    "[range]",
     ((typename T, Datatype D), T, D),
     (int8_t, Datatype::INT8),
     (int16_t, Datatype::INT16),
@@ -70,7 +70,7 @@ TEMPLATE_TEST_CASE_SIG(
 
 TEMPLATE_TEST_CASE_SIG(
     "Test range_str for floating-point types",
-    "[range][!mayfail]",
+    "[range][!mayfail]",  // Allow failure for inconsistent float rep.
     ((typename T, Datatype D), T, D),
     (float, Datatype::FLOAT32),
     (double, Datatype::FLOAT64)) {
