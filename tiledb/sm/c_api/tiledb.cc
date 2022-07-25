@@ -4248,7 +4248,7 @@ int32_t tiledb_array_create(
   }
 
   // Create any dimension labels in the array.
-  if (is_experimental_build) {
+  if constexpr (is_experimental_build) {
     // Check no dimension labels with REST
     if (uri.is_tiledb() && array_schema->array_schema_->dim_label_num() > 0)
       throw StatusException(Status_Error(
