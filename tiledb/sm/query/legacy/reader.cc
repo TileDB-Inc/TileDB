@@ -959,9 +959,11 @@ Status Reader::copy_partitioned_fixed_cells(
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
   auto cell_size = array_schema_.cell_size(*name);
+  const auto is_attr = array_schema_.is_attr(*name);
+  const auto is_dim = array_schema_.is_dim(*name);
   ByteVecValue fill_value;
   uint8_t fill_value_validity = 0;
-  if (array_schema_.is_attr(*name)) {
+  if (is_attr) {
     fill_value = array_schema_.attribute(*name)->fill_value();
     fill_value_validity = array_schema_.attribute(*name)->fill_value_validity();
   }
@@ -983,16 +985,17 @@ Status Reader::copy_partitioned_fixed_cells(
 
     // First we check if this is an older (pre TileDB 2.0) array with zipped
     // coordinates and the user has requested split buffer if so we should
-    // proceed to copying the tile If not, and there is no tile or the tile is
+    // proceed to copying the tile. If not, and there is no tile or the tile is
     // empty for the field then this is a read of an older fragment in schema
     // evolution. In that case we want to set the field to fill values for this
     // for this tile.
     const bool split_buffer_for_zipped_coords =
-        array_schema_.is_dim(*name) && cs.tile_->stores_zipped_coords();
-    if ((cs.tile_ == nullptr || cs.tile_->tile_tuple(*name) == nullptr) &&
-        !split_buffer_for_zipped_coords &&
-        !is_timestamps) {  // Empty range or attributed added
-                           // in schema evolution
+        is_dim && cs.tile_->stores_zipped_coords();
+    const bool field_not_present =
+        (is_dim || is_attr) && cs.tile_->tile_tuple(*name) == nullptr;
+    if ((cs.tile_ == nullptr || field_not_present) &&
+        !split_buffer_for_zipped_coords) {  // Empty range or attributed added
+                                            // in schema evolution
       auto bytes_to_copy = cs_length * cell_size;
       auto fill_num = bytes_to_copy / fill_value_size;
       for (uint64_t j = 0; j < fill_num; ++j) {

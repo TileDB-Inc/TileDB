@@ -1311,11 +1311,9 @@ Status SparseGlobalOrderReader<BitmapType>::copy_timestamps_tiles(
             static_cast<uint64_t*>(query_buffer.buffer_) + dest_cell_offset;
 
         if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
-          // Get source buffers.
+          // Copy tile.
           const auto tile_tuple = rt->tile_tuple(constants::timestamps);
           const auto t = &tile_tuple->fixed_tile();
-
-          // Copy tile.
           const auto src_buff = t->template data_as<uint8_t>();
           memcpy(
               buffer,
