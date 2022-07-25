@@ -73,12 +73,11 @@ Status array_schema_to_capnp(
  * Deserialize an array schema from a cap'n proto object
  *
  * @param schema_reader Cap'n proto object
- * @param array_schema array schema to deserialize to
- * @return Status
+ * @param uri A URI object
+ * @return a new ArraySchema
  */
-Status array_schema_from_capnp(
-    const capnp::ArraySchema::Reader& schema_reader,
-    tdb_unique_ptr<ArraySchema>* array_schema);
+ArraySchema array_schema_from_capnp(
+    const capnp::ArraySchema::Reader& schema_reader, const URI& uri);
 
 #endif  // TILEDB_SERIALIZATION
 
@@ -97,7 +96,7 @@ Status array_schema_serialize(
     Buffer* serialized_buffer,
     const bool client_side);
 
-tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
+ArraySchema array_schema_deserialize(
     SerializationType serialize_type, const Buffer& serialized_buffer);
 
 Status nonempty_domain_serialize(

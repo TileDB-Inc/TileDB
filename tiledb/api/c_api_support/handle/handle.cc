@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/query/delete_condition/test/main.cc
+ * @file tiledb/api/handle/handle.cc
  *
  * @section LICENSE
  *
@@ -26,9 +26,8 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This file defines a test `main()`
  */
 
-#define CATCH_CONFIG_MAIN
-#include <catch.hpp>
+#include "handle.h"
+
+namespace tiledb::api {}  // namespace tiledb::api

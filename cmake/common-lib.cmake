@@ -155,3 +155,12 @@ function(get_gathered VAR)
     retrieve_from(X ACCUMULATOR GATHERED_SOURCES)
     set(${VAR} ${X} PARENT_SCOPE)
 endfunction()
+
+#
+# Conditionally include the test subdirectory
+#
+function(add_test_subdirectory)
+  if (TILEDB_TESTS)
+    add_subdirectory(test)
+  endif()
+endfunction()

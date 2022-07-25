@@ -94,7 +94,6 @@ WriterBase::WriterBase(
     , check_coord_oob_(false)
     , check_global_order_(false)
     , dedup_coords_(false)
-    , initialized_(false)
     , written_fragment_info_(written_fragment_info) {
   fragment_uri_ = fragment_uri;
 }
@@ -250,7 +249,6 @@ Status WriterBase::init() {
 
   optimize_layout_for_1D();
   RETURN_NOT_OK(check_var_attr_offsets());
-  initialized_ = true;
 
   return Status::Ok();
 }
@@ -601,10 +599,11 @@ Status WriterBase::create_fragment(
   if (!fragment_uri_.to_string().empty()) {
     uri = fragment_uri_;
   } else {
-    std::string new_fragment_str;
     auto write_version = array_->array_schema_latest().write_version();
-    RETURN_NOT_OK(
-        new_fragment_name(timestamp, write_version, &new_fragment_str));
+    auto&& [st, new_fragment_name_opt] =
+        new_fragment_name(timestamp, write_version);
+    RETURN_NOT_OK(st);
+    auto& new_fragment_str = *new_fragment_name_opt;
 
     auto& array_dir = array_->array_directory();
     auto frag_uri = array_dir.get_fragments_dir(write_version);
@@ -787,23 +786,6 @@ Status WriterBase::init_tiles(
         type));
   }
 
-  return Status::Ok();
-}
-
-Status WriterBase::new_fragment_name(
-    uint64_t timestamp, uint32_t format_version, std::string* frag_uri) const {
-  timestamp = (timestamp != 0) ? timestamp : utils::time::timestamp_now_ms();
-
-  if (frag_uri == nullptr)
-    return Status_WriterError("Null fragment uri argument.");
-  std::string uuid;
-  frag_uri->clear();
-  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
-  std::stringstream ss;
-  ss << "/__" << timestamp << "_" << timestamp << "_" << uuid << "_"
-     << format_version;
-
-  *frag_uri = ss.str();
   return Status::Ok();
 }
 

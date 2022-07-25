@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/query/delete_condition/serialization.h
+ * @file tiledb/sm/query/deletes_and_updates/test/main.cc
  *
  * @section LICENSE
  *
@@ -27,37 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file contains functions for parsing URIs for storage of an array.
+ * This file defines a test `main()`
  */
 
-#ifndef TILEDB_PARSE_URI_H
-#define TILEDB_PARSE_URI_H
-
-#include "tiledb/common/common.h"
-#include "tiledb/common/status.h"
-#include "tiledb/sm/query/query_condition.h"
-
-namespace tiledb::sm::delete_condition::serialize {
-
-enum class NodeType : uint8_t { EXPRESSION = 0, VALUE };
-
-/**
- * Serializes the delete condition.
- *
- * @param query_condition Query condition to serialize.
- * @return Serialized query condition.
- */
-std::vector<uint8_t> serialize_delete_condition(
-    const QueryCondition& query_condition);
-
-/**
- * Serializes the delete condition.
- *
- * @param buff Serialized query condition.
- * @return Deserialized query condition.
- */
-QueryCondition deserialize_delete_condition(const std::vector<uint8_t>& buff);
-
-}  // namespace tiledb::sm::delete_condition::serialize
-
-#endif  // TILEDB_PARSE_URI_H
+#define CATCH_CONFIG_MAIN
+#include <catch.hpp>
