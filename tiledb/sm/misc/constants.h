@@ -260,6 +260,9 @@ extern const std::string query_type_read_str;
 /** TILEDB_WRITE Query String **/
 extern const std::string query_type_write_str;
 
+/** TILEDB_DELETE Query String **/
+extern const std::string query_type_delete_str;
+
 /** TILEDB_FAILED Query String **/
 extern const std::string query_status_failed_str;
 
@@ -582,6 +585,9 @@ extern const std::string vfsmode_append_str;
 /** The TileDB library version in format { major, minor, revision }. */
 extern const int32_t library_version[3];
 
+/** The TileDB serialization base format version number. */
+extern const uint32_t base_format_version;
+
 /** The TileDB serialization format version number. */
 extern const uint32_t format_version;
 
@@ -590,6 +596,9 @@ extern const uint32_t back_compat_writes_min_format_version;
 
 /** The lowest version supported for consolidation with timestamps. */
 extern const uint32_t consolidation_with_timestamps_min_version;
+
+/** The lowest version supported for deletes. */
+extern const uint32_t deletes_min_version;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;

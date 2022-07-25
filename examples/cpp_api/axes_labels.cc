@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -173,10 +173,14 @@ void read_data_array_with_label(
   // Prepare the label array for reading
   tiledb::Array label_array(ctx, labels_array_uri, TILEDB_READ);
 
+  // Set the subarray
+  tiledb::Subarray subarray(ctx, label_array);
+  subarray.add_range(0, label, label);
+
   // Prepare the query
   tiledb::Query label_query(ctx, label_array, TILEDB_READ);
   // Slice only the label passed in
-  label_query.add_range(0, label, label);
+  label_query.set_subarray(subarray);
 
   // Prepare the vector that will hold the result.
   // We only will fetch the id/timestamp
@@ -192,6 +196,8 @@ void read_data_array_with_label(
   label_query.submit();
   label_array.close();
 
+  tiledb::Subarray data_subarray(ctx, data_array);
+
   // Loop through the label results to set ranges for the data query
   auto label_result_num = label_query.result_buffer_elements()["id"];
   for (uint64_t r = 0; r < label_result_num.second; r++) {
@@ -199,8 +205,8 @@ void read_data_array_with_label(
     int64_t j = timestamps_coords[r];
     std::cout << "Adding range for point (" << i << ", " << j << ")"
               << std::endl;
-    data_query.add_range(0, i, i);
-    data_query.add_range(1, j, j);
+    data_subarray.add_range(0, i, i);
+    data_subarray.add_range(1, j, j);
   }
 
   // Setup the data query's buffers
@@ -214,8 +220,8 @@ void read_data_array_with_label(
       .set_data_buffer("timestamp", timestamps)
       .set_data_buffer("weight", weights)
       .set_data_buffer("element", elements)
-      .set_offsets_buffer("element", element_offsets);
-
+      .set_offsets_buffer("element", element_offsets)
+      .set_subarray(data_subarray);
   // Submit the query and close the array.
   data_query.submit();
   data_array.close();

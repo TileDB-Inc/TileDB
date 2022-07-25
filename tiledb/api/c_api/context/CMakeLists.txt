@@ -1,5 +1,5 @@
 #
-# tiledb/storage_format/delete_condition/CMakeLists.txt
+# tiledb/api/c_api/context/CMakeLists.txt
 #
 # The MIT License
 #
@@ -22,25 +22,24 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+#
 
 include(common NO_POLICY_SCOPE)
 
-if (TILEDB_TESTS)
-    add_executable(unit_delete_condition EXCLUDE_FROM_ALL)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_delete_condition PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_delete_condition PUBLIC ast_test_support_lib)
+list(APPEND SOURCES
+    context_api.cc
+)
+gather_sources(${SOURCES})
 
-    # Sources for tests
-    target_sources(unit_delete_condition PUBLIC test/main.cc test/unit_delete_condition.cc serialization.cc)
+#
+# Object library for other units to depend upon
+#
+add_library(capi_context OBJECT ${SOURCES})
+target_link_libraries(capi_context PUBLIC export)
 
-    # The dependencies can't yet be factored into separate object libraries
-    target_link_libraries(unit_delete_condition PUBLIC TILEDB_CORE_OBJECTS)
-    target_link_libraries(unit_delete_condition PUBLIC TILEDB_CORE_OBJECTS_ILIB)
-
-    add_test(
-        NAME "unit_delete_condition"
-        COMMAND $<TARGET_FILE:unit_delete_condition>
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-endif()
+#
+# UNFINISHED
+#
+# There is no `context` object library at this time. It's a precondition for
+# be able to have a `capi_context` object library.
+#

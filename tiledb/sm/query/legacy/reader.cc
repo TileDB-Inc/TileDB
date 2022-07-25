@@ -397,7 +397,7 @@ Status Reader::compute_range_result_coords(
         array_->timestamp_start(), array_->timestamp_end_opened_at());
     if (frag_meta->has_timestamps() && partial_overlap) {
       RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
-          *(frag_meta->array_schema().get()), *tile, result_bitmap, nullptr));
+          *(frag_meta->array_schema().get()), *tile, result_bitmap));
     }
 
     // Gather results
@@ -1748,7 +1748,7 @@ Status Reader::get_all_result_coords(
       partial_overlap) {
     std::vector<uint8_t> result_bitmap(coords_num, 1);
     RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
-        *(frag_meta->array_schema().get()), *tile, result_bitmap, nullptr));
+        *(frag_meta->array_schema().get()), *tile, result_bitmap));
 
     for (uint64_t i = 0; i < coords_num; ++i) {
       if (result_bitmap[i]) {

@@ -224,8 +224,11 @@ RestClient::get_array_schema_from_rest(const URI& uri) {
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK_TUPLE(
       ensure_json_null_delimited_string(&returned_data), nullopt);
-  return serialization::array_schema_deserialize(
-      serialization_type_, returned_data);
+  return {Status::Ok(),
+          make_shared<ArraySchema>(
+              HERE(),
+              serialization::array_schema_deserialize(
+                  serialization_type_, returned_data))};
 }
 
 Status RestClient::post_array_schema_to_rest(

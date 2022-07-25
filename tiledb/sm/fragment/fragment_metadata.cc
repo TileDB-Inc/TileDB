@@ -4255,7 +4255,6 @@ Status FragmentMetadata::write_generic_tile_to_file(
       0,
       buff.data(),
       buff.size());
-  buff.disown_data();
 
   GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
   RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key, nbytes));

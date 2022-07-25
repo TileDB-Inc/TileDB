@@ -1303,8 +1303,7 @@ TEST_CASE_METHOD(
   auto&& [array, fragments] = open_default_array_1d_with_fragments();
 
   // Make a vector of tiles.
-  UnorderedWithDupsResultTile<uint64_t> result_tile(
-      0, 0, array->array_->array_schema_latest());
+  UnorderedWithDupsResultTile<uint64_t> result_tile(0, 0, *fragments[0]);
   std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
   rt.push_back(std::move(result_tile));
 
@@ -1312,7 +1311,7 @@ TEST_CASE_METHOD(
   }
 
   SECTION("- With bitmap") {
-    rt[0].bitmap_.resize(5, 1);
+    rt[0].alloc_bitmap();
   }
 
   // Create the result_tiles pointer vector.
@@ -1371,12 +1370,10 @@ TEST_CASE_METHOD(
   auto&& [array, fragments] = open_default_array_1d_with_fragments();
 
   // Make a vector of tiles.
-  UnorderedWithDupsResultTile<uint64_t> result_tile(
-      0, 0, array->array_->array_schema_latest());
+  UnorderedWithDupsResultTile<uint64_t> result_tile(0, 0, *fragments[0]);
   std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
   rt.push_back(std::move(result_tile));
-  rt[0].bitmap_.resize(5);
-  rt[0].bitmap_ = {0, 1, 2, 0, 2};
+  rt[0].bitmap() = {0, 1, 2, 0, 2};
 
   // Create the result_tiles pointer vector.
   std::vector<ResultTile*> result_tiles(rt.size());
@@ -1433,8 +1430,7 @@ TEST_CASE_METHOD(
   auto&& [array, fragments] = open_default_array_1d_with_fragments();
 
   // Make a vector of tiles.
-  UnorderedWithDupsResultTile<uint64_t> result_tile(
-      0, 0, array->array_->array_schema_latest());
+  UnorderedWithDupsResultTile<uint64_t> result_tile(0, 0, *fragments[0]);
   std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
   rt.push_back(std::move(result_tile));
 
@@ -1442,7 +1438,7 @@ TEST_CASE_METHOD(
   }
 
   SECTION("- With bitmap") {
-    rt[0].bitmap_.resize(5, 1);
+    rt[0].alloc_bitmap();
   }
 
   // Create the result_tiles pointer vector.

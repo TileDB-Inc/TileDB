@@ -2316,6 +2316,8 @@ class Query {
         return "READ";
       case TILEDB_WRITE:
         return "WRITE";
+      case TILEDB_DELETE:
+        return "DELETE";
     }
     return "";  // silence error
   }
