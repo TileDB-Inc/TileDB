@@ -271,8 +271,8 @@ Status Reader::load_initial_data() {
   }
 
   // Load delete conditions.
-  auto&& [st, delete_conditions] = storage_manager_->load_delete_conditions(
-      array_->array_directory(), *array_->encryption_key());
+  auto&& [st, delete_conditions] =
+      storage_manager_->load_delete_conditions(*array_);
   RETURN_CANCEL_OR_ERROR(st);
   delete_conditions_ = std::move(*delete_conditions);
 
@@ -290,7 +290,7 @@ Status Reader::load_initial_data() {
   }
 
   // Legacy reader always uses timestamped conditions. As we process all cell
-  // slabs at once and they could be from fagments consolidated with
+  // slabs at once and they could be from fragments consolidated with
   // timestamps, there is not way to know if we need the regular condition
   // or the timestamped condition. This reader will have worst performance
   // for deletes.
@@ -298,14 +298,10 @@ Status Reader::load_initial_data() {
 
   // Make a list of dim/attr that will be loaded for query condition.
   if (!condition_.empty()) {
-    for (auto& name : condition_.field_names()) {
-      qc_loaded_attr_names_set_.insert(name);
-    }
+    qc_loaded_attr_names_set_.merge(condition_.field_names());
   }
   for (auto delete_condition : delete_conditions_) {
-    for (auto& name : delete_condition.field_names()) {
-      qc_loaded_attr_names_set_.insert(name);
-    }
+    qc_loaded_attr_names_set_.merge(delete_condition.field_names());
   }
 
   initial_data_loaded_ = true;

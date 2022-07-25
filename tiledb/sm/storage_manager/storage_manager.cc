@@ -1588,9 +1588,8 @@ Status StorageManager::load_array_metadata(
 }
 
 tuple<Status, optional<std::vector<QueryCondition>>>
-StorageManager::load_delete_conditions(
-    const ArrayDirectory& array_dir, const EncryptionKey& enc_key) {
-  auto& locations = array_dir.delete_tiles_location();
+StorageManager::load_delete_conditions(const Array& array) {
+  auto& locations = array.array_directory().delete_tiles_location();
   auto delete_conditions = std::vector<QueryCondition>(locations.size());
 
   auto status = parallel_for(compute_tp_, 0, locations.size(), [&](size_t i) {
@@ -1601,13 +1600,15 @@ StorageManager::load_delete_conditions(
         0, condition_marker.length() - constants::delete_file_suffix.length());
 
     // Read the condition from storage.
-    auto&& [st, buff_opt] =
-        load_data_from_generic_tile(uri, locations[i].offset(), enc_key);
+    auto&& [st, buff_opt] = load_data_from_generic_tile(
+        uri, locations[i].offset(), *array.encryption_key());
     RETURN_NOT_OK(st);
 
     delete_conditions[i] =
         tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
             condition_marker, buff_opt->data(), buff_opt->size());
+
+    delete_conditions[i].check(array.array_schema_latest());
     return Status::Ok();
   });
   RETURN_NOT_OK_TUPLE(status, nullopt);

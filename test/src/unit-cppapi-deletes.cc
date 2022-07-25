@@ -293,12 +293,9 @@ void DeletesFx::check_delete_conditions(
         ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
   }
   auto array_ptr = array->ptr()->array_;
-  auto& array_dir = array_ptr->array_directory();
-  auto& enc_key = *array_ptr->encryption_key();
 
   // Load delete conditions.
-  auto&& [st, delete_conditions] =
-      sm_->load_delete_conditions(array_dir, enc_key);
+  auto&& [st, delete_conditions] = sm_->load_delete_conditions(*array_ptr);
   REQUIRE(st.ok());
   REQUIRE(delete_conditions->size() == qcs.size());
 
