@@ -116,13 +116,6 @@ class ResultTile {
       return validity_tile_;
     }
 
-    /** Clear the content of the tuple. */
-    void clear_data() {
-      fixed_tile_.clear_data();
-      var_tile_.clear_data();
-      validity_tile_.clear_data();
-    }
-
    private:
     /** Stores the fixed data tile. */
     Tile fixed_tile_;
@@ -453,13 +446,13 @@ class ResultTile {
   optional<TileTuple> delete_timestamps_tile_;
 
   /** The zipped coordinates tile. */
-  TileTuple coords_tile_;
+  optional<TileTuple> coords_tile_;
 
   /**
    * The separate coordinate tiles along with their names, sorted on the
    * dimension order.
    */
-  std::vector<std::pair<std::string, TileTuple>> coord_tiles_;
+  std::vector<std::pair<std::string, optional<TileTuple>>> coord_tiles_;
 
   /**
    * Stores the appropriate templated compute_results_dense() function based for
