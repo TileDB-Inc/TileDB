@@ -995,8 +995,8 @@ Status DenseReader::copy_fixed_tiles(
         auto dest_validity_ptr = dst_val_buf + cell_offset;
 
         // Get the tile buffers.
-        const Tile* const tile = &std::get<0>(*tile_tuples[fd]);
-        const Tile* const tile_nullable = &std::get<2>(*tile_tuples[fd]);
+        const Tile* const tile = &tile_tuples[fd]->fixed_tile();
+        const Tile* const tile_nullable = &tile_tuples[fd]->validity_tile();
 
         auto src_offset = iter.pos_in_tile() + start * stride;
 
@@ -1187,15 +1187,15 @@ Status DenseReader::copy_offset_tiles(
         auto dest_validity_ptr = dst_val_buf + cell_offset;
 
         // Get the tile buffers.
-        const Tile* const t_var = &std::get<1>(*tile_tuples[fd]);
+        const Tile* const t_var = &tile_tuples[fd]->var_tile();
 
         // Setup variables for the copy.
         auto src_buff =
-            static_cast<uint64_t*>(std::get<0>(*tile_tuples[fd]).data()) +
+            static_cast<uint64_t*>(tile_tuples[fd]->fixed_tile().data()) +
             start * stride + src_cell;
         auto src_buff_validity =
             nullable ?
-                static_cast<uint8_t*>(std::get<2>(*tile_tuples[fd]).data()) +
+                static_cast<uint8_t*>(tile_tuples[fd]->validity_tile().data()) +
                     start + src_cell :
                 nullptr;
         auto div = elements_mode_ ? data_type_size : 1;

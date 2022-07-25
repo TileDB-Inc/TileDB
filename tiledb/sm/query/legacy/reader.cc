@@ -1194,8 +1194,8 @@ Status Reader::compute_var_cell_destinations(
     uint64_t tile_var_size = 0;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(name);
-      const auto& tile = std::get<0>(*tile_tuple);
-      const auto& tile_var = std::get<1>(*tile_tuple);
+      const auto& tile = tile_tuple->fixed_tile();
+      const auto& tile_var = tile_tuple->var_tile();
 
       // Get the internal buffer to the offset values.
       tile_offsets = (uint64_t*)tile.data();
@@ -1302,9 +1302,9 @@ Status Reader::copy_partitioned_var_cells(
     uint64_t tile_cell_num = 0;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(*name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(*name);
-      Tile* const tile = &std::get<0>(*tile_tuple);
-      tile_var = &std::get<1>(*tile_tuple);
-      tile_validity = &std::get<2>(*tile_tuple);
+      Tile* const tile = &tile_tuple->fixed_tile();
+      tile_var = &tile_tuple->var_tile();
+      tile_validity = &tile_tuple->validity_tile();
 
       // Get the internal buffer to the offset values.
       tile_offsets = (uint64_t*)tile->data();

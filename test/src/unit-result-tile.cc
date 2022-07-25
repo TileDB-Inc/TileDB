@@ -191,7 +191,7 @@ TEST_CASE_METHOD(
   if (!first_dim) {
     rt.init_coord_tile("d1", 0);
     auto tile_tuple = rt.tile_tuple("d1");
-    Tile* const t = &std::get<0>(*tile_tuple);
+    Tile* const t = &tile_tuple->fixed_tile();
     t->init_unfiltered(
         constants::format_version,
         constants::cell_var_offset_type,
@@ -202,8 +202,8 @@ TEST_CASE_METHOD(
 
   rt.init_coord_tile(dim_name, dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
-  Tile* const t = &std::get<0>(*tile_tuple);
-  Tile* const t_var = &std::get<1>(*tile_tuple);
+  Tile* const t = &tile_tuple->fixed_tile();
+  Tile* const t_var = &tile_tuple->var_tile();
 
   // Initialize offsets, use 1 character strings.
   t->init_unfiltered(
@@ -281,7 +281,7 @@ TEST_CASE_METHOD(
   if (!first_dim) {
     rt.init_coord_tile("d1", 0);
     auto tile_tuple = rt.tile_tuple("d1");
-    Tile* const t = &std::get<0>(*tile_tuple);
+    Tile* const t = &tile_tuple->fixed_tile();
     t->init_unfiltered(
         constants::format_version,
         constants::cell_var_offset_type,
@@ -292,8 +292,8 @@ TEST_CASE_METHOD(
 
   rt.init_coord_tile(dim_name, dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
-  Tile* const t = &std::get<0>(*tile_tuple);
-  Tile* const t_var = &std::get<1>(*tile_tuple);
+  Tile* const t = &tile_tuple->fixed_tile();
+  Tile* const t_var = &tile_tuple->var_tile();
 
   // Initialize offsets, use 1 character strings.
   t->init_unfiltered(

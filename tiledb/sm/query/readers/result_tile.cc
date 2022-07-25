@@ -113,16 +113,16 @@ bool ResultTile::operator==(const ResultTile& rt) const {
 }
 
 uint64_t ResultTile::cell_num() const {
-  if (!std::get<0>(coord_tiles_[0].second).empty())
-    return std::get<0>(coord_tiles_[0].second).cell_num();
+  if (!coord_tiles_[0].second.fixed_tile().empty())
+    return coord_tiles_[0].second.fixed_tile().cell_num();
 
-  if (!std::get<0>(coords_tile_).empty())
-    return std::get<0>(coords_tile_).cell_num();
+  if (!coords_tile_.fixed_tile().empty())
+    return coords_tile_.fixed_tile().cell_num();
 
   if (!attr_tiles_.empty()) {
     for (const auto& attr : attr_tiles_) {
       if (attr.second.has_value()) {
-        return std::get<0>(attr.second.value()).cell_num();
+        return attr.second.value().fixed_tile().cell_num();
       }
     }
   }
@@ -133,24 +133,24 @@ uint64_t ResultTile::cell_num() const {
 void ResultTile::erase_tile(const std::string& name) {
   // Handle zipped coordinates tiles
   if (name == constants::coords) {
-    coords_tile_ = TileTuple(Tile(), Tile(), Tile());
+    coords_tile_.clear_data();
     return;
   }
 
   if (name == constants::timestamps) {
-    timestamps_tile_ = TileTuple(Tile(), Tile(), Tile());
+    timestamps_tile_.reset();
     return;
   }
 
   if (name == constants::delete_timestamps) {
-    delete_timestamps_tile_ = TileTuple(Tile(), Tile(), Tile());
+    delete_timestamps_tile_.reset();
     return;
   }
 
   // Handle dimension tile
   for (auto& ct : coord_tiles_) {
     if (ct.first == name) {
-      ct.second = TileTuple(Tile(), Tile(), Tile());
+      ct.second.clear_data();
       return;
     }
   }
@@ -158,7 +158,7 @@ void ResultTile::erase_tile(const std::string& name) {
   // Handle attribute tile
   for (auto& at : attr_tiles_) {
     if (at.first == name) {
-      at.second = TileTuple(Tile(), Tile(), Tile());
+      at.second->clear_data();
       return;
     }
   }
@@ -171,27 +171,26 @@ void ResultTile::init_attr_tile(const std::string& name) {
   }
 
   if (name == constants::timestamps) {
-    timestamps_tile_ = TileTuple(Tile(), Tile(), Tile());
+    timestamps_tile_ = TileTuple();
     return;
   }
 
   if (name == constants::delete_timestamps) {
-    delete_timestamps_tile_ = TileTuple(Tile(), Tile(), Tile());
+    delete_timestamps_tile_ = TileTuple();
     return;
   }
 
   // Handle attributes
   for (auto& at : attr_tiles_) {
     if (at.first == name && at.second == nullopt) {
-      at.second = TileTuple(Tile(), Tile(), Tile());
+      at.second = TileTuple();
       return;
     }
   }
 }
 
 void ResultTile::init_coord_tile(const std::string& name, unsigned dim_idx) {
-  coord_tiles_[dim_idx] = std::pair<std::string, TileTuple>(
-      name, TileTuple(Tile(), Tile(), Tile()));
+  coord_tiles_[dim_idx] = std::pair<std::string, TileTuple>(name, TileTuple());
 
   // When at least one unzipped coordinate has been initialized, we will
   // use the unzipped `coord()` implementation.
@@ -232,26 +231,26 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
 }
 
 const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
-  const auto& coord_tile = std::get<0>(coord_tiles_[dim_idx].second);
+  const auto& coord_tile = coord_tiles_[dim_idx].second.fixed_tile();
   const uint64_t offset = pos * coord_tile.cell_size();
   void* const ret = static_cast<char*>(coord_tile.data()) + offset;
   return ret;
 }
 
 const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
-  auto coords_size = std::get<0>(coords_tile_).cell_size();
+  auto coords_size = coords_tile_.fixed_tile().cell_size();
   auto coord_size =
-      coords_size / std::get<0>(coords_tile_).zipped_coords_dim_num();
+      coords_size / coords_tile_.fixed_tile().zipped_coords_dim_num();
   const uint64_t offset = pos * coords_size + dim_idx * coord_size;
   void* const ret =
-      static_cast<char*>(std::get<0>(coords_tile_).data()) + offset;
+      static_cast<char*>(coords_tile_.fixed_tile().data()) + offset;
   return ret;
 }
 
 std::string_view ResultTile::coord_string(
     uint64_t pos, unsigned dim_idx) const {
-  const auto& coord_tile_off = std::get<0>(coord_tiles_[dim_idx].second);
-  const auto& coord_tile_val = std::get<1>(coord_tiles_[dim_idx].second);
+  const auto& coord_tile_off = coord_tiles_[dim_idx].second.fixed_tile();
+  const auto& coord_tile_val = coord_tiles_[dim_idx].second.var_tile();
   auto cell_num = coord_tile_off.cell_num();
   auto val_size = coord_tile_val.size();
 
@@ -277,13 +276,13 @@ std::string_view ResultTile::coord_string(
 
 uint64_t ResultTile::coord_size(unsigned dim_idx) const {
   // Handle zipped coordinate tiles
-  if (!std::get<0>(coords_tile_).empty())
-    return std::get<0>(coords_tile_).cell_size() /
-           std::get<0>(coords_tile_).zipped_coords_dim_num();
+  if (!coords_tile_.fixed_tile().empty())
+    return coords_tile_.fixed_tile().cell_size() /
+           coords_tile_.fixed_tile().zipped_coords_dim_num();
 
   // Handle separate coordinate tiles
   assert(dim_idx < coord_tiles_.size());
-  return std::get<0>(coord_tiles_[dim_idx].second).cell_size();
+  return coord_tiles_[dim_idx].second.fixed_tile().cell_size();
 }
 
 bool ResultTile::same_coords(
@@ -307,7 +306,7 @@ bool ResultTile::same_coords(uint64_t pos_a, uint64_t pos_b) const {
 }
 
 uint64_t ResultTile::timestamp(uint64_t pos) {
-  const auto& tile = std::get<0>(*this->tile_tuple(constants::timestamps));
+  const auto& tile = this->tile_tuple(constants::timestamps)->fixed_tile();
   return tile.data_as<uint64_t>()[pos];
 }
 
@@ -341,24 +340,24 @@ Status ResultTile::read(
   // or coordinates have been fetched as zipped
   if ((!is_dim && name != constants::coords && !use_fragment_ts) ||
       (is_dim && !coord_tiles_[0].first.empty()) ||
-      (name == constants::coords && !std::get<0>(coords_tile_).empty())) {
-    const auto& tile = std::get<0>(*this->tile_tuple(name));
+      (name == constants::coords && !coords_tile_.fixed_tile().empty())) {
+    const auto& tile = this->tile_tuple(name)->fixed_tile();
     auto cell_size = tile.cell_size();
     auto nbytes = len * cell_size;
     auto offset = pos * cell_size;
     return tile.read(buffer, offset, nbytes);
   } else if (
       name == constants::coords && !coord_tiles_[0].first.empty() &&
-      std::get<0>(coords_tile_).empty()) {
+      coords_tile_.fixed_tile().empty()) {
     // Special case where zipped coordinates are requested, but the
     // result tile stores separate coordinates
     auto dim_num = coord_tiles_.size();
-    assert(std::get<0>(coords_tile_).empty());
+    assert(coords_tile_.fixed_tile().empty());
     auto buff = static_cast<unsigned char*>(buffer);
     auto buff_offset = 0;
     for (uint64_t c = 0; c < len; ++c) {
       for (unsigned d = 0; d < dim_num; ++d) {
-        auto& coord_tile = std::get<0>(coord_tiles_[d].second);
+        auto& coord_tile = coord_tiles_[d].second.fixed_tile();
         auto cell_size = coord_tile.cell_size();
         auto tile_offset = (pos + c) * cell_size;
         RETURN_NOT_OK(
@@ -376,7 +375,7 @@ Status ResultTile::read(
   } else {
     // Last case which is zipped coordinates but split buffers
     // This is only for backwards compatibility of pre format 5 (v2.0) arrays
-    assert(!std::get<0>(coords_tile_).empty());
+    assert(!coords_tile_.fixed_tile().empty());
     assert(name != constants::coords);
     int dim_offset = 0;
     for (uint32_t i = 0; i < domain_->dim_num(); ++i) {
@@ -386,12 +385,12 @@ Status ResultTile::read(
       }
     }
     auto buff = static_cast<unsigned char*>(buffer);
-    auto cell_size = std::get<0>(coords_tile_).cell_size();
+    auto cell_size = coords_tile_.fixed_tile().cell_size();
     auto dim_size = cell_size / domain_->dim_num();
     uint64_t offset = pos * cell_size + dim_size * dim_offset;
     for (uint64_t c = 0; c < len; ++c) {
-      RETURN_NOT_OK(std::get<0>(coords_tile_)
-                        .read(buff + (c * dim_size), offset, dim_size));
+      RETURN_NOT_OK(coords_tile_.fixed_tile().read(
+          buff + (c * dim_size), offset, dim_size));
       offset += cell_size;
     }
   };
@@ -406,8 +405,8 @@ Status ResultTile::read_nullable(
     uint64_t pos,
     uint64_t len,
     void* buffer_validity) {
-  const auto& tile = std::get<0>(*this->tile_tuple(name));
-  const auto& tile_validity = std::get<2>(*this->tile_tuple(name));
+  const auto& tile = this->tile_tuple(name)->fixed_tile();
+  const auto& tile_validity = this->tile_tuple(name)->validity_tile();
 
   auto cell_size = tile.cell_size();
   auto validity_cell_size = tile_validity.cell_size();
@@ -429,12 +428,12 @@ Status ResultTile::read_nullable(
 }
 
 bool ResultTile::stores_zipped_coords() const {
-  return !std::get<0>(coords_tile_).empty();
+  return !coords_tile_.fixed_tile().empty();
 }
 
 const Tile& ResultTile::zipped_coords_tile() const {
   assert(stores_zipped_coords());
-  return std::get<0>(coords_tile_);
+  return coords_tile_.fixed_tile();
 }
 
 const ResultTile::TileTuple& ResultTile::coord_tile(unsigned dim_idx) const {
@@ -462,7 +461,7 @@ void ResultTile::compute_results_dense(
 
   // Handle separate coordinate tiles
   if (!stores_zipped_coords) {
-    const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
+    const auto& coord_tile = result_tile->coord_tile(dim_idx).fixed_tile();
 
     auto coords = (const T*)coord_tile.data();
     T c;
@@ -482,7 +481,7 @@ void ResultTile::compute_results_dense(
               overwritten = true;
               for (unsigned d = 0; d < dim_num; ++d) {
                 const auto& coord_tile =
-                    std::get<0>(result_tile->coord_tile(dim_idx));
+                    result_tile->coord_tile(dim_idx).fixed_tile();
                 const T* const coords =
                     static_cast<const T*>(coord_tile.data());
                 auto c_d = coords[pos];
@@ -579,11 +578,11 @@ void ResultTile::compute_results_sparse<char>(
   const auto& coord_tile = result_tile->coord_tile(dim_idx);
 
   // Get offset buffer
-  const auto& coord_tile_off = std::get<0>(coord_tile);
+  const auto& coord_tile_off = coord_tile.fixed_tile();
   auto buff_off = static_cast<const uint64_t*>(coord_tile_off.data());
 
   // Get string buffer
-  const auto& coord_tile_str = std::get<1>(coord_tile);
+  const auto& coord_tile_str = coord_tile.var_tile();
   auto buff_str = static_cast<const char*>(coord_tile_str.data());
   auto buff_str_size = coord_tile_str.size();
 
@@ -742,7 +741,7 @@ void ResultTile::compute_results_sparse(
 
   // Handle separate coordinate tiles
   if (!stores_zipped_coords) {
-    const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
+    const auto& coord_tile = result_tile->coord_tile(dim_idx).fixed_tile();
     const T* const coords = static_cast<const T*>(coord_tile.data());
     for (uint64_t pos = 0; pos < coords_num; ++pos) {
       c = coords[pos];
@@ -857,11 +856,11 @@ void ResultTile::compute_results_count_sparse_string(
   const auto& coord_tile = result_tile->coord_tile(dim_idx);
 
   // Get offset buffer
-  const auto& coord_tile_off = std::get<0>(coord_tile);
+  const auto& coord_tile_off = coord_tile.fixed_tile();
   auto buff_off = static_cast<const uint64_t*>(coord_tile_off.data());
 
   // Get string buffer
-  const auto& coord_tile_str = std::get<1>(coord_tile);
+  const auto& coord_tile_str = coord_tile.var_tile();
   auto buff_str = static_cast<const char*>(coord_tile_str.data());
   auto buff_str_size = coord_tile_str.size();
 
@@ -1037,7 +1036,7 @@ void ResultTile::compute_results_count_sparse(
 
   // Handle separate coordinate tiles.
   if (!stores_zipped_coords) {
-    const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
+    const auto& coord_tile = result_tile->coord_tile(dim_idx).fixed_tile();
     const T* const coords = static_cast<const T*>(coord_tile.data());
     {
       // Iterate over all cells.

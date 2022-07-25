@@ -71,12 +71,68 @@ class Subarray;
 class ResultTile {
  public:
   /**
-   * For each fixed-sized attributes, the second tile in the tuple is ignored.
-   * For var-sized attributes, the first tile is the offsets tile and the second
-   * tile is the var-sized values tile. If the attribute is nullable, the third
-   * tile contains the validity vector.
+   * Class definition for the tile tuple.
    */
-  typedef tuple<Tile, Tile, Tile> TileTuple;
+  class TileTuple {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+
+    /** Default constructor. */
+    TileTuple() = default;
+
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+
+    /** @returns Fixed tile. */
+    Tile& fixed_tile() {
+      return fixed_tile_;
+    }
+
+    /** @returns Var tile. */
+    Tile& var_tile() {
+      return var_tile_;
+    }
+
+    /** @returns Validity tile. */
+    Tile& validity_tile() {
+      return validity_tile_;
+    }
+
+    /** @returns Fixed tile. */
+    const Tile& fixed_tile() const {
+      return fixed_tile_;
+    }
+
+    /** @returns Var tile. */
+    const Tile& var_tile() const {
+      return var_tile_;
+    }
+
+    /** @returns Validity tile. */
+    const Tile& validity_tile() const {
+      return validity_tile_;
+    }
+
+    /** Clear the content of the tuple. */
+    void clear_data() {
+      fixed_tile_.clear_data();
+      var_tile_.clear_data();
+      validity_tile_.clear_data();
+    }
+
+   private:
+    /** Stores the fixed data tile. */
+    Tile fixed_tile_;
+
+    /** Stores the var data tile. */
+    Tile var_tile_;
+
+    /** Stores the validity data tile. */
+    Tile validity_tile_;
+  };
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

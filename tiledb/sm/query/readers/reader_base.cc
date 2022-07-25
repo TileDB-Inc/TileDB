@@ -609,9 +609,9 @@ Status ReaderBase::read_tiles(
       }
 
       assert(tile_tuple != nullptr);
-      Tile* const t = &std::get<0>(*tile_tuple);
-      Tile* const t_var = &std::get<1>(*tile_tuple);
-      Tile* const t_validity = &std::get<2>(*tile_tuple);
+      Tile* const t = &tile_tuple->fixed_tile();
+      Tile* const t_var = &tile_tuple->var_tile();
+      Tile* const t_validity = &tile_tuple->validity_tile();
       if (!var_size) {
         if (nullable)
           RETURN_NOT_OK(
@@ -847,7 +847,7 @@ ReaderBase::load_tile_chunk_data(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
+        tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
       return {Status::Ok(), 0, 0, 0};
     }
 
@@ -856,9 +856,9 @@ ReaderBase::load_tile_chunk_data(
       return {Status::Ok(), 0, 0, 0};
     }
 
-    const auto t = &std::get<0>(*tile_tuple);
-    const auto t_var = &std::get<1>(*tile_tuple);
-    const auto t_validity = &std::get<2>(*tile_tuple);
+    const auto t = &tile_tuple->fixed_tile();
+    const auto t_var = &tile_tuple->var_tile();
+    const auto t_validity = &tile_tuple->validity_tile();
 
     auto&& [st, tile_size] = load_chunk_data(t, tile_chunk_data);
     RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
@@ -905,7 +905,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
+        tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
       return Status::Ok();
     }
 
@@ -914,9 +914,9 @@ Status ReaderBase::unfilter_tile_chunk_range(
       return Status::Ok();
     }
 
-    auto t = &std::get<0>(*tile_tuple);
-    auto t_var = &std::get<1>(*tile_tuple);
-    auto t_validity = &std::get<2>(*tile_tuple);
+    auto t = &tile_tuple->fixed_tile();
+    auto t_var = &tile_tuple->var_tile();
+    auto t_validity = &tile_tuple->validity_tile();
 
     // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
     // 't_var' for var-sized tiles.
@@ -994,7 +994,7 @@ Status ReaderBase::post_process_unfiltered_tile(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
+        tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
       return Status::Ok();
     }
 
@@ -1003,9 +1003,9 @@ Status ReaderBase::post_process_unfiltered_tile(
       return Status::Ok();
     }
 
-    auto t = &std::get<0>(*tile_tuple);
-    auto t_var = &std::get<1>(*tile_tuple);
-    auto t_validity = &std::get<2>(*tile_tuple);
+    auto t = &tile_tuple->fixed_tile();
+    auto t_var = &tile_tuple->var_tile();
+    auto t_validity = &tile_tuple->validity_tile();
 
     t->filtered_buffer().clear();
 
@@ -1400,7 +1400,7 @@ Status ReaderBase::unfilter_tiles(
           // Skip non-existent attributes/dimensions (e.g. coords in the
           // dense case).
           if (tile_tuple == nullptr ||
-              std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
+              tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
             return Status::Ok();
           }
 
@@ -1409,9 +1409,9 @@ Status ReaderBase::unfilter_tiles(
             return Status::Ok();
           }
 
-          auto& t = std::get<0>(*tile_tuple);
-          auto& t_var = std::get<1>(*tile_tuple);
-          auto& t_validity = std::get<2>(*tile_tuple);
+          auto& t = tile_tuple->fixed_tile();
+          auto& t_var = tile_tuple->var_tile();
+          auto& t_validity = tile_tuple->validity_tile();
 
           if (disable_cache_ == false) {
             logger_->info("using cache");
