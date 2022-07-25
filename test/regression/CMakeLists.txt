@@ -37,6 +37,10 @@ if (TILEDB_SERIALIZATION)
   list(APPEND SOURCES targets/sc-18250.cc)
 endif()
 
+if (TILEDB_CPP_API)
+  list(APPEND SOURCES targets/sc-19240_cppapi-vfs-exception.cc)
+endif()
+
 add_executable(tiledb_regression
   EXCLUDE_FROM_ALL
   regression.cc
