@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -90,12 +90,14 @@ void read_array() {
   query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
 
   // Add multi-range subarray to query
+  Subarray subarray(ctx, array);
   int row_0_start = 1, row_0_end = 2;
   int row_1_start = 4, row_1_end = 4;
   int col_0_start = 1, col_0_end = 4;
-  query.add_range(0, row_0_start, row_0_end)
+  subarray.add_range(0, row_0_start, row_0_end)
       .add_range(0, row_1_start, row_1_end)
       .add_range(1, col_0_start, col_0_end);
+  query.set_subarray(subarray);
 
   // Submit the query and close the array.
   query.submit();

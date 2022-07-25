@@ -343,16 +343,17 @@ StorageManager::array_open_for_writes(Array* array) {
               nullopt,
               nullopt};
     }
-  }
-  if (version > constants::format_version) {
-    std::stringstream err;
-    err << "Cannot open array for writes; Array format version (";
-    err << version;
-    err << ") is newer than library format version (";
-    err << constants::format_version << ")";
-    return {logger_->status(Status_StorageManagerError(err.str())),
-            nullopt,
-            nullopt};
+  } else {
+    if (version > constants::format_version) {
+      std::stringstream err;
+      err << "Cannot open array for writes; Array format version (";
+      err << version;
+      err << ") is newer than library format version (";
+      err << constants::format_version << ")";
+      return {logger_->status(Status_StorageManagerError(err.str())),
+              nullopt,
+              nullopt};
+    }
   }
 
   // Mark the array as open
@@ -1445,12 +1446,10 @@ StorageManager::load_array_schema_from_uri(
 
   // Deserialize
   ConstBuffer cbuff(&buffer);
-  auto deserialized_schema{ArraySchema::deserialize(&cbuff, schema_uri)};
-
-  // #TODO Update catch statement after later StatusException changes
   try {
     return {Status::Ok(),
-            make_shared<ArraySchema>(HERE(), deserialized_schema)};
+            make_shared<ArraySchema>(
+                HERE(), ArraySchema::deserialize(&cbuff, schema_uri))};
   } catch (const StatusException& e) {
     return {Status_StorageManagerError(e.what()), nullopt};
   }

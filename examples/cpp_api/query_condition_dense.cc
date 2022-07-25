@@ -183,6 +183,8 @@ void read_array_with_qc(Context& ctx, std::optional<QueryCondition> qc) {
 
   // Execute the read query.
   Array array(ctx, array_name, TILEDB_READ);
+  Subarray subarray(ctx, array);
+  subarray.add_range("index", 0, num_elems - 1);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_data)
@@ -191,7 +193,7 @@ void read_array_with_qc(Context& ctx, std::optional<QueryCondition> qc) {
       .set_offsets_buffer("b", b_data_offsets)
       .set_data_buffer("c", c_data)
       .set_data_buffer("d", d_data)
-      .add_range("index", 0, num_elems - 1);
+      .set_subarray(subarray);
   if (qc) {
     query.set_condition(qc.value());
   }
