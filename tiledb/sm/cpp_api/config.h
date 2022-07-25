@@ -307,14 +307,21 @@ class Config {
    *    Upper-bound on number of threads to allocate for IO-bound tasks. <br>
    *    **Default*: # cores
    * - `sm.vacuum.mode` <br>
-   *    The vacuuming mode, one of `fragments` (remove consolidated fragments),
-   *    `fragment_meta` (remove only consolidated fragment metadata), or
-   *    `array_meta` (remove consolidated array metadata files). <br>
-   *    **Default**: fragments
+   *    The vacuuming mode, one of
+   *    `commits` (remove only consolidated commit files),
+   *    `fragments` (remove only consolidated fragments),
+   *    `fragment_meta` (remove only consolidated fragment metadata),
+   *    `array_meta` (remove only consolidated array metadata files), or
+   *    `group_meta` (remove only consolidate group metadata only).
+   *    <br>
+   *    **Default**: "fragments"
    * - `sm.consolidation_mode` <br>
-   *    The consolidation mode, one of `fragments` (consolidate all fragments),
+   *    The consolidation mode, one of
+   *    `commits` (consolidate all commit files),
+   *    `fragments` (consolidate all fragments),
    *    `fragment_meta` (consolidate only fragment metadata footers to a single
-   *    file), or `array_meta` (consolidate array metadata only). <br>
+   * file), `array_meta` (consolidate array metadata only), or `group_meta`
+   * (consolidate group metadata only). <br>
    *    **Default**: "fragments"
    * - `sm.consolidation.amplification` <br>
    *    The factor by which the size of the dense fragment resulting

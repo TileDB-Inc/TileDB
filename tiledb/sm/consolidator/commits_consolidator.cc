@@ -125,17 +125,13 @@ Status CommitsConsolidator::vacuum(const char* array_name) {
   auto vfs = storage_manager_->vfs();
   auto compute_tp = storage_manager_->compute_tp();
   ArrayDirectory array_dir;
-  try {
-    array_dir = ArrayDirectory(
-        vfs,
-        compute_tp,
-        URI(array_name),
-        0,
-        utils::time::timestamp_now_ms(),
-        ArrayDirectoryMode::COMMITS);
-  } catch (const std::logic_error& le) {
-    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-  }
+  array_dir = ArrayDirectory(
+      vfs,
+      compute_tp,
+      URI(array_name),
+      0,
+      utils::time::timestamp_now_ms(),
+      ArrayDirectoryMode::COMMITS);
 
   const auto& commits_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
   const auto& consolidated_commits_uris_to_vacuum =
