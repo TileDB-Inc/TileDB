@@ -32,6 +32,7 @@
 
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
 #include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
@@ -147,7 +148,7 @@ TEST_CASE_METHOD(
 
   // Check the dimension label schema.
   URI label_uri{array_name + "/" + x_label_uri};
-  DimensionLabel dim_label(label_uri, ctx->ctx_->storage_manager());
+  DimensionLabel dim_label(label_uri, ctx->storage_manager());
   dim_label.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0);
   CHECK(dim_label.index_dimension()->type() == Datatype::UINT64);
   CHECK(dim_label.index_attribute()->type() == Datatype::UINT64);

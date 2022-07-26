@@ -4270,7 +4270,7 @@ int32_t tiledb_array_create(
                          "not external must have a schema."));
       tiledb::sm::create_dimension_label(
           uri.join_path(dim_label_ref.uri().to_string()),
-          *(ctx->ctx_->storage_manager()),
+          *(ctx->storage_manager()),
           dim_label_ref.schema());
     }
   }
