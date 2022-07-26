@@ -40,6 +40,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
@@ -810,6 +811,9 @@ ArraySchema array_schema_from_capnp(
     attributes.emplace_back(attr.value());
   }
 
+  // Placeholder for deserializing dimension label references
+  std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels{};
+
   // Set the range if we have two values
   // #TODO Add security validation
   std::pair<uint64_t, uint64_t> timestamp_range;
@@ -838,6 +842,7 @@ ArraySchema array_schema_from_capnp(
       tile_order,
       capacity,
       attributes,
+      dimension_labels,
       cell_var_offsets_filters,
       cell_validity_filters,
       coords_filters);
