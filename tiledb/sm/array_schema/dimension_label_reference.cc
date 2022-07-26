@@ -124,6 +124,8 @@ shared_ptr<DimensionLabelReference> DimensionLabelReference::deserialize(
     throw std::runtime_error(
         "[DimensionLabelReference::deserialize] Failed to load the dimension "
         "label datatype.");
+  auto label_type = static_cast<Datatype>(label_type_int);
+  ensure_datatype_is_valid(label_type);
   // Read label cell value number
   uint32_t label_cell_val_num;
   st = buff->read(&label_cell_val_num, sizeof(label_cell_val_num));
@@ -198,7 +200,7 @@ shared_ptr<DimensionLabelReference> DimensionLabelReference::deserialize(
       dim_id,
       name,
       URI(uri, !relative_uri),
-      static_cast<LabelOrder>(label_order_int),
+      deserialize_label_order(label_order_int),
       static_cast<Datatype>(label_type_int),
       label_cell_val_num,
       label_domain,

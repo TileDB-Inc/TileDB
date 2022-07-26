@@ -162,16 +162,16 @@ void DimensionLabel::load_schema() {
       &format_version_value));
   if (!format_version_value)
     throw std::runtime_error(
-        "Unable to load dimension label schema; Failed to read dimension label "
-        "schema format version.");
+        "[DimensionLabel::load_schema] Unable to load dimension label schema; "
+        "Failed to read dimension label schema format version.");
   if (datatype != Datatype::UINT32)
     throw std::runtime_error(
-        "Unable to load dimension label schema; Unexpected datatype for the "
-        "format version datatype.");
+        "[DimensionLabel::load_schema] Unable to load dimension label schema; "
+        "Unexpected datatype for the format version datatype.");
   if (value_num != 1)
     throw std::runtime_error(
-        "Unable to load dimension label schema; Unexpected number of values "
-        "for the format version.");
+        "[DimensionLabel::load_schema] Unable to load dimension label schema; "
+        "Unexpected number of values for the format version.");
   uint32_t format_version{*static_cast<const uint32_t*>(format_version_value)};
   if (format_version > 1)
     throw StatusException(
@@ -184,17 +184,18 @@ void DimensionLabel::load_schema() {
       "__label_order", &datatype, &value_num, &label_order_value));
   if (!label_order_value)
     throw std::runtime_error(
-        "Unable to load dimension label schema; Failed to read the label order "
-        "of the dimension label.");
+        "[DimensionLabel::load_schema] Unable to load dimension label schema; "
+        "Failed to read the label order of the dimension label.");
   if (datatype != Datatype::UINT8)
     throw std::runtime_error(
-        "Unable to load dimension label schema; Unexpected datatype for the "
-        "index attribute id.");
+        "[DimensionLabel::load_schema] Unable to load dimension label schema; "
+        "Unexpected datatype for the index attribute id.");
   if (value_num != 1)
     throw std::runtime_error(
-        "Unable to load dimension label schema; Unexpected number of values "
-        "for the index attribute id.");
-  LabelOrder label_order{*static_cast<const LabelOrder*>(label_order_value)};
+        "[DimensionLabel::load_schema] Unable to load dimension label schema; "
+        "Unexpected number of values for the index attribute id.");
+  auto label_order =
+      deserialize_label_order(*static_cast<const uint8_t*>(label_order_value));
   // - Close group
   throw_if_not_ok(label_group.close());
   // Get array schemas

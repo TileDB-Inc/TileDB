@@ -62,6 +62,20 @@ inline const std::string& label_order_str(LabelOrder order) {
   }
 }
 
+/**
+ * Converts an uint8_t value to a LabelOrder enum.
+ *
+ * Used for deserializing the label order. Throws an error if the label order's
+ * enumeration is not valid.
+ */
+inline LabelOrder deserialize_label_order(uint8_t label_order_int) {
+  if (label_order_int > 2)
+    throw std::runtime_error(
+        "[LabelOrder] Invalid LabelOrder enum " +
+        std::to_string(label_order_int));
+  return static_cast<LabelOrder>(label_order_int);
+}
+
 }  // namespace tiledb::sm
 
 #endif  // TILEDB_LABEL_ORDER_H
