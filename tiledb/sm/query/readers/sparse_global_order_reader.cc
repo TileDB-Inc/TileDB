@@ -56,6 +56,13 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
+class SparseGlobalOrderReaderStatusException : public StatusException {
+ public:
+  explicit SparseGlobalOrderReaderStatusException(const std::string& message)
+      : StatusException("SparseGlobalOrderReader", message) {
+  }
+};
+
 /* ****************************** */
 /*          CONSTRUCTORS          */
 /* ****************************** */
@@ -71,7 +78,8 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     Subarray& subarray,
     Layout layout,
     QueryCondition& condition,
-    bool consolidation_with_timestamps)
+    bool consolidation_with_timestamps,
+    bool skip_checks_serialization)
     : SparseIndexReaderBase(
           stats,
           logger->clone("SparseGlobalOrderReader", ++logger_id_),
@@ -87,6 +95,13 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     , memory_used_for_qc_tiles_(array->fragment_metadata().size())
     , consolidation_with_timestamps_(consolidation_with_timestamps)
     , last_cells_(array->fragment_metadata().size()) {
+  SparseIndexReaderBase::init(skip_checks_serialization);
+
+  // Initialize memory budget variables.
+  if (!initialize_memory_budget().ok()) {
+    throw SparseGlobalOrderReaderStatusException(
+        "Cannot initialize memory budget");
+  }
 }
 
 /* ****************************** */
@@ -104,16 +119,6 @@ QueryStatusDetailsReason
 SparseGlobalOrderReader<BitmapType>::status_incomplete_reason() const {
   return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
                         QueryStatusDetailsReason::REASON_NONE;
-}
-
-template <class BitmapType>
-Status SparseGlobalOrderReader<BitmapType>::init() {
-  RETURN_NOT_OK(SparseIndexReaderBase::init());
-
-  // Initialize memory budget variables.
-  RETURN_NOT_OK(initialize_memory_budget());
-
-  return Status::Ok();
 }
 
 template <class BitmapType>
@@ -1730,6 +1735,7 @@ template SparseGlobalOrderReader<uint8_t>::SparseGlobalOrderReader(
     Subarray&,
     Layout,
     QueryCondition&,
+    bool,
     bool);
 template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
     stats::Stats*,
@@ -1741,6 +1747,7 @@ template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
     Subarray&,
     Layout,
     QueryCondition&,
+    bool,
     bool);
 
 }  // namespace sm
