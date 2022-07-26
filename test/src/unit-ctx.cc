@@ -33,6 +33,7 @@
 
 #include "catch.hpp"
 #include "test/src/helpers.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
@@ -42,7 +43,7 @@
 TEST_CASE("C API: Test context tags", "[capi][ctx-tags]") {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-  tiledb::sm::StorageManager* sm = ctx->ctx_->storage_manager();
+  tiledb::sm::StorageManager* sm = ctx->storage_manager();
 
   // Check defaults
   REQUIRE(sm->tags().size() == 2);
@@ -71,7 +72,7 @@ TEST_CASE("C API: Test context tags", "[capi][ctx-tags]") {
 
 TEST_CASE("C++ API: Test context tags", "[cppapi][ctx-tags]") {
   tiledb::Context ctx;
-  tiledb::sm::StorageManager* sm = ctx.ptr().get()->ctx_->storage_manager();
+  tiledb::sm::StorageManager* sm = ctx.ptr().get()->storage_manager();
 
   // Check defaults
   REQUIRE(sm->tags().size() == 2);

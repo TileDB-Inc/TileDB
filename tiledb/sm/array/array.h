@@ -41,6 +41,7 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/array/consistency.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
@@ -58,8 +59,27 @@ class StorageManager;
 enum class QueryType : uint8_t;
 
 /**
+ * Free function that returns a reference to the ConsistencyController object.
+ */
+ConsistencyController& controller();
+
+/**
  * An array object to be opened for reads/writes. An ``Array`` instance
  * is associated with the timestamp it is opened at.
+ *
+ * @invariant is_opening_or_closing_ is false outside of the body of
+ * an open or close function.
+ *
+ * @invariant is_opening_or_closing_ is true when the class is either
+ * partially open or partially closed.
+ *
+ * @invariant atomicity must be maintained between the following:
+ * 1. an open Array.
+ * 2. the is_open_ flag.
+ * 3. the existence of a ConsistencySentry object, which represents
+ * open Array registration.
+ *
+ * @invariant mtx_ must not be locked outside of the scope of a member function.
  */
 class Array {
  public:
@@ -68,7 +88,10 @@ class Array {
   /* ********************************* */
 
   /** Constructor. */
-  Array(const URI& array_uri, StorageManager* storage_manager);
+  Array(
+      const URI& array_uri,
+      StorageManager* storage_manager,
+      ConsistencyController& cc = controller());
 
   /** Destructor. */
   ~Array() = default;
@@ -190,7 +213,7 @@ class Array {
   bool is_empty() const;
 
   /** Returns `true` if the array is open. */
-  bool is_open() const;
+  bool is_open();
 
   /** Returns `true` if the array is remote */
   bool is_remote() const;
@@ -407,6 +430,9 @@ class Array {
   /** `True` if the array has been opened. */
   std::atomic<bool> is_open_;
 
+  /** `True` if the array is currently in the process of opening or closing. */
+  std::atomic<bool> is_opening_or_closing_;
+
   /** The query type the array was opened for. */
   QueryType query_type_;
 
@@ -468,6 +494,18 @@ class Array {
   /** Memory tracker for the array. */
   MemoryTracker memory_tracker_;
 
+  /** A reference to the object which controls the present Array instance. */
+  ConsistencyController& consistency_controller_;
+
+  /** Lifespan maintenance of an open array in the ConsistencyController. */
+  std::optional<ConsistencySentry> consistency_sentry_;
+
+  /**
+   * Mutex that protects atomicity between the existence of the
+   * ConsistencySentry registration and the is_open_ flag.
+   */
+  std::mutex mtx_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -514,6 +552,15 @@ class Array {
 
   /** Computes the non-empty domain of the array. */
   Status compute_non_empty_domain();
+
+  /** Sets the array state as open. */
+  void set_array_open();
+
+  /** Sets the array state as closed.
+   *
+   * Note: the Sentry object will also be released upon Array destruction.
+   **/
+  void set_array_closed();
 };
 
 }  // namespace sm

@@ -92,7 +92,7 @@ class VFSFilebuf : public std::streambuf {
   VFSFilebuf& operator=(const VFSFilebuf&) = default;
   VFSFilebuf& operator=(VFSFilebuf&&) = default;
   ~VFSFilebuf() override {
-    close();
+    close(false);
   }
 
   /* ********************************* */
@@ -114,7 +114,7 @@ class VFSFilebuf : public std::streambuf {
   }
 
   /** Close a file. **/
-  VFSFilebuf* close();
+  VFSFilebuf* close(bool should_throw = true);
 
   /** Current opened URI. **/
   const std::string& get_uri() const {
@@ -318,7 +318,7 @@ class VFS {
    * // Create new file, truncating it if it exists.
    * buff.open("file.txt", std::ios::out);
    * std::ostream os(&buff);
-   * if (!os.good()) throw std::runtime_error("Error opening file);
+   * if (!os.good()) throw std::runtime_error("Error opening file");
    *
    * std::string str = "This will be written to the file.";
    *
@@ -631,10 +631,11 @@ inline VFSFilebuf* VFSFilebuf::open(
   return this;
 }
 
-inline VFSFilebuf* VFSFilebuf::close() {
+inline VFSFilebuf* VFSFilebuf::close(bool should_throw) {
   if (is_open()) {
     auto& ctx = vfs_.get().context();
-    ctx.handle_error(tiledb_vfs_close(ctx.ptr().get(), fh_.get()));
+    if (should_throw)
+      ctx.handle_error(tiledb_vfs_close(ctx.ptr().get(), fh_.get()));
   }
   uri_ = "";
   fh_ = nullptr;

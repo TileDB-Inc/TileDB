@@ -38,6 +38,9 @@ using namespace tiledb;
 int main() {
   // Create TileDB context
   Context ctx;
+  tiledb::VFS vfs(ctx);
+  if (vfs.is_dir("my_group"))
+    vfs.remove_dir("my_group");
 
   // Catch an error
   try {

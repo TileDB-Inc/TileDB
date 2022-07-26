@@ -36,6 +36,7 @@
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <algorithm>
 #include <functional>
@@ -144,6 +145,20 @@ std::unordered_set<std::string>& QueryCondition::field_names() const {
   }
 
   return field_names_;
+}
+
+uint64_t QueryCondition::condition_timestamp() const {
+  if (condition_marker_.empty()) {
+    return 0;
+  }
+
+  std::pair<uint64_t, uint64_t> timestamps;
+  if (!utils::parse::get_timestamp_range(URI(condition_marker_), &timestamps)
+           .ok()) {
+    throw std::logic_error("Error parsing condition marker.");
+  }
+
+  return timestamps.first;
 }
 
 /** Full template specialization for `char*` and `QueryConditionOp::LT`. */
@@ -345,6 +360,7 @@ struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::NE> {
 template <typename T, QueryConditionOp Op, typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
+    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
@@ -426,32 +442,49 @@ void QueryCondition::apply_ast_node(
           ++c;
         }
       } else {
-        const auto& tile = std::get<0>(*tile_tuple);
-        const char* buffer = static_cast<char*>(tile.data());
-        const uint64_t cell_size = tile.cell_size();
-        uint64_t buffer_offset = start * cell_size;
-        const uint64_t buffer_offset_inc = stride * cell_size;
-
-        // Iterate through each cell in this slab.
-        while (c < length) {
-          const bool null_cell =
-              nullable && buffer_validity[start + c * stride] == 0;
-
-          // Get the cell value.
-          const void* const cell_value =
-              null_cell ? nullptr : buffer + buffer_offset;
-          buffer_offset += buffer_offset_inc;
-
-          // Compare the cell value against the value in the value node.
+        // For fragments without timestamps, use the fragment first timestamp
+        // as a comparison value.
+        if (field_name == constants::timestamps && tile_tuple == nullptr) {
+          auto timestamp =
+              fragment_metadata[result_tile->frag_idx()]->first_timestamp();
           const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
-              cell_value,
-              cell_size,
+              &timestamp,
+              constants::timestamp_size,
               condition_value_content,
               condition_value_size);
+          while (c < length) {
+            result_cell_bitmap[starting_index + c] = combination_op(
+                result_cell_bitmap[starting_index + c], (uint8_t)cmp);
+            c++;
+          }
+        } else {
+          const auto& tile = std::get<0>(*tile_tuple);
+          const char* buffer = static_cast<char*>(tile.data());
+          const uint64_t cell_size = tile.cell_size();
+          uint64_t buffer_offset = start * cell_size;
+          const uint64_t buffer_offset_inc = stride * cell_size;
 
-          result_cell_bitmap[starting_index + c] = combination_op(
-              result_cell_bitmap[starting_index + c], (uint8_t)cmp);
-          ++c;
+          // Iterate through each cell in this slab.
+          while (c < length) {
+            const bool null_cell =
+                nullable && buffer_validity[start + c * stride] == 0;
+
+            // Get the cell value.
+            const void* const cell_value =
+                null_cell ? nullptr : buffer + buffer_offset;
+            buffer_offset += buffer_offset_inc;
+
+            // Compare the cell value against the value in the value node.
+            const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
+                cell_value,
+                cell_size,
+                condition_value_content,
+                condition_value_size);
+
+            result_cell_bitmap[starting_index + c] = combination_op(
+                result_cell_bitmap[starting_index + c], (uint8_t)cmp);
+            ++c;
+          }
         }
       }
     }
@@ -462,6 +495,7 @@ void QueryCondition::apply_ast_node(
 template <typename T, typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
+    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
@@ -473,6 +507,7 @@ void QueryCondition::apply_ast_node(
     case QueryConditionOp::LT:
       apply_ast_node<T, QueryConditionOp::LT, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -484,6 +519,7 @@ void QueryCondition::apply_ast_node(
     case QueryConditionOp::LE:
       apply_ast_node<T, QueryConditionOp::LE, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -495,6 +531,7 @@ void QueryCondition::apply_ast_node(
     case QueryConditionOp::GT:
       apply_ast_node<T, QueryConditionOp::GT, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -506,6 +543,7 @@ void QueryCondition::apply_ast_node(
     case QueryConditionOp::GE:
       apply_ast_node<T, QueryConditionOp::GE, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -517,6 +555,7 @@ void QueryCondition::apply_ast_node(
     case QueryConditionOp::EQ:
       apply_ast_node<T, QueryConditionOp::EQ, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -528,6 +567,7 @@ void QueryCondition::apply_ast_node(
     case QueryConditionOp::NE:
       apply_ast_node<T, QueryConditionOp::NE, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -549,6 +589,7 @@ template <typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
+    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
@@ -575,6 +616,7 @@ void QueryCondition::apply_ast_node(
     case Datatype::INT8: {
       apply_ast_node<int8_t, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -586,6 +628,7 @@ void QueryCondition::apply_ast_node(
     case Datatype::UINT8: {
       apply_ast_node<uint8_t, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -597,6 +640,7 @@ void QueryCondition::apply_ast_node(
     case Datatype::INT16: {
       apply_ast_node<int16_t, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -608,6 +652,7 @@ void QueryCondition::apply_ast_node(
     case Datatype::UINT16: {
       apply_ast_node<uint16_t, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -619,6 +664,7 @@ void QueryCondition::apply_ast_node(
     case Datatype::INT32: {
       apply_ast_node<int32_t, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -630,6 +676,7 @@ void QueryCondition::apply_ast_node(
     case Datatype::UINT32: {
       apply_ast_node<uint32_t, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -641,6 +688,7 @@ void QueryCondition::apply_ast_node(
     case Datatype::INT64: {
       apply_ast_node<int64_t, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -652,6 +700,7 @@ void QueryCondition::apply_ast_node(
     case Datatype::UINT64: {
       apply_ast_node<uint64_t, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -663,6 +712,7 @@ void QueryCondition::apply_ast_node(
     case Datatype::FLOAT32: {
       apply_ast_node<float, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -674,6 +724,7 @@ void QueryCondition::apply_ast_node(
     case Datatype::FLOAT64: {
       apply_ast_node<double, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -685,6 +736,7 @@ void QueryCondition::apply_ast_node(
     case Datatype::STRING_ASCII: {
       apply_ast_node<char*, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -697,6 +749,7 @@ void QueryCondition::apply_ast_node(
       if (var_size) {
         apply_ast_node<char*, CombinationOp>(
             node,
+            fragment_metadata,
             stride,
             var_size,
             nullable,
@@ -707,6 +760,7 @@ void QueryCondition::apply_ast_node(
       } else {
         apply_ast_node<char, CombinationOp>(
             node,
+            fragment_metadata,
             stride,
             var_size,
             nullable,
@@ -731,6 +785,7 @@ void QueryCondition::apply_ast_node(
     case Datatype::DATETIME_AS: {
       apply_ast_node<int64_t, CombinationOp>(
           node,
+          fragment_metadata,
           stride,
           var_size,
           nullable,
@@ -761,6 +816,7 @@ template <typename CombinationOp>
 void QueryCondition::apply_tree(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
+    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
@@ -769,6 +825,7 @@ void QueryCondition::apply_tree(
     apply_ast_node(
         node,
         array_schema,
+        fragment_metadata,
         stride,
         result_cell_slabs,
         combination_op,
@@ -799,6 +856,7 @@ void QueryCondition::apply_tree(
             apply_tree(
                 child,
                 array_schema,
+                fragment_metadata,
                 stride,
                 result_cell_slabs,
                 std::logical_and<uint8_t>(),
@@ -815,6 +873,7 @@ void QueryCondition::apply_tree(
             apply_tree(
                 child,
                 array_schema,
+                fragment_metadata,
                 stride,
                 result_cell_slabs,
                 std::logical_and<uint8_t>(),
@@ -838,6 +897,7 @@ void QueryCondition::apply_tree(
           apply_tree(
               child,
               array_schema,
+              fragment_metadata,
               stride,
               result_cell_slabs,
               std::logical_or<uint8_t>(),
@@ -862,6 +922,7 @@ void QueryCondition::apply_tree(
 
 Status QueryCondition::apply(
     const ArraySchema& array_schema,
+    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     std::vector<ResultCellSlab>& result_cell_slabs,
     const uint64_t stride) const {
   if (!tree_) {
@@ -877,6 +938,7 @@ Status QueryCondition::apply(
   apply_tree(
       tree_,
       array_schema,
+      fragment_metadata,
       stride,
       result_cell_slabs,
       std::logical_and<uint8_t>(),

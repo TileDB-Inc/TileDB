@@ -1289,10 +1289,6 @@ Status SparseGlobalOrderReader<BitmapType>::copy_timestamps_tiles(
             result_cell_slabs[i].tile_);
         const uint64_t cell_size = constants::timestamp_size;
 
-        // Get source buffers.
-        const auto tile_tuple = rt->tile_tuple(constants::timestamps);
-        const auto t = &std::get<0>(*tile_tuple);
-
         // Compute parallelization parameters.
         auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
             compute_parallelization_parameters(
@@ -1310,6 +1306,10 @@ Status SparseGlobalOrderReader<BitmapType>::copy_timestamps_tiles(
             static_cast<uint64_t*>(query_buffer.buffer_) + dest_cell_offset;
 
         if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
+          // Get source buffers.
+          const auto tile_tuple = rt->tile_tuple(constants::timestamps);
+          const auto t = &std::get<0>(*tile_tuple);
+
           // Copy tile.
           const auto src_buff = t->template data_as<uint8_t>();
           memcpy(
@@ -1359,7 +1359,7 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
         // For dimensions or query condition fields, tiles are already all
         // loaded in memory.
         if (array_schema_.is_dim(name) ||
-            condition_.field_names().count(name) != 0 || is_timestamps)
+            qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps)
           return Status::Ok();
 
         // Get the size for all tiles.
@@ -1638,7 +1638,7 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
         *buffers_[name].validity_vector_.buffer_size() = total_cells;
 
       // Clear tiles from memory.
-      if (!is_dim && condition_.field_names().count(name) == 0 &&
+      if (!is_dim && qc_loaded_attr_names_set_.count(name) == 0 &&
           name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);

@@ -90,6 +90,7 @@ void ResultTile::swap(ResultTile& tile) {
   std::swap(tile_idx_, tile.tile_idx_);
   std::swap(attr_tiles_, tile.attr_tiles_);
   std::swap(timestamps_tile_, tile.timestamps_tile_);
+  std::swap(delete_timestamps_tile_, tile.delete_timestamps_tile_);
   std::swap(coords_tile_, tile.coords_tile_);
   std::swap(coord_tiles_, tile.coord_tiles_);
   std::swap(compute_results_dense_func_, tile.compute_results_dense_func_);
@@ -205,12 +206,14 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
 
   // Handle timestamps tile
   if (name == constants::timestamps) {
-    return &*timestamps_tile_;
+    return timestamps_tile_.has_value() ? &timestamps_tile_.value() : nullptr;
   }
 
   // Handle delete timestamps tile
   if (name == constants::delete_timestamps) {
-    return &*delete_timestamps_tile_;
+    return delete_timestamps_tile_.has_value() ?
+               &delete_timestamps_tile_.value() :
+               nullptr;
   }
 
   // Handle attribute tile

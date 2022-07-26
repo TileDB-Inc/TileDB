@@ -61,6 +61,7 @@ using tiledb::common::make_shared;
  * The exception header also put `class Status` in scope.
  */
 #include "exception/exception.h"
+using tiledb::common::Status;
 using tiledb::common::StatusException;
 using tiledb::common::throw_if_not_ok;
 

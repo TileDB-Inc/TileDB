@@ -239,6 +239,13 @@ class Reader : public ReaderBase, public IQueryStrategy {
   /* ********************************* */
 
   /**
+   * Load data used for sparse reads.
+   *
+   * @return Status.
+   */
+  Status load_initial_data();
+
+  /**
    * Applies the query condition, `condition_`, to filter cell indexes
    * within `result_cell_slabs`. This mutates `result_cell_slabs`.
    *
