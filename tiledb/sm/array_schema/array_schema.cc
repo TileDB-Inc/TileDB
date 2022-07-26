@@ -677,10 +677,11 @@ Status ArraySchema::add_dimension_label(
     shared_ptr<const DimensionLabelSchema> dimension_label_schema,
     bool check_name,
     bool check_is_compatible) {
-  // Perform checks on validity and name.
+  // Check input schema is not null.
   if (dimension_label_schema == nullptr)
     return LOG_STATUS(Status_ArraySchemaError(
         "Cannot add dimension label; Input dimension label schema is null"));
+  // Check domain is set and `dim_id` is a valid dimension index.
   if (!domain_)
     return LOG_STATUS(
         Status_ArraySchemaError("Cannot add dimension label; Must set domain "
@@ -690,32 +691,44 @@ Status ArraySchema::add_dimension_label(
         "Cannot add a label to dimension " + std::to_string(dim_id) +
         "; Invalid dimension index. "));
   auto dim = domain_->dimension_ptr(dim_id);
+  // Check the dimension this label is being added to has an integer datatype.
   if (!(datatype_is_integer(dim->type()) || datatype_is_datetime(dim->type()) ||
         datatype_is_time(dim->type())))
     return LOG_STATUS(Status_ArraySchemaError(
         "Cannot add dimension label; Currently labels are not support on "
         "dimension with datatype Datatype::" +
         datatype_str(dim->type())));
+  // Check the dimension label is unique among attribute, dimension, and label
+  // names; except for possibly matching the name of the dimension it is being
+  // added to.
   if (check_name) {
+    // Skip attribute/dimension name check if the label name matches the name of
+    // the dimension it is added to, since the dimension names also must be
+    // unique.
     if (name != dim->name()) {
+      // Check no attribute with this name
       bool has_matching_name{false};
       RETURN_NOT_OK(has_attribute(name, &has_matching_name));
       if (has_matching_name)
         return LOG_STATUS(Status_ArraySchemaError(
             "Cannot add a dimension label with name '" + std::string(name) +
             "'. An attribute with that name already exists."));
+      // Check no dimension with this name
       RETURN_NOT_OK(domain_->has_dimension(name, &has_matching_name));
       if (has_matching_name)
         return LOG_STATUS(Status_ArraySchemaError(
             "Cannot add a dimension label with name '" + std::string(name) +
             "'. A different dimension with that name already exists."));
     }
+    // Check no other dimension label with this name.
     auto found = dimension_label_map_.find(name);
     if (found != dimension_label_map_.end())
       return LOG_STATUS(Status_ArraySchemaError(
           "Cannot add a dimension label with name '" + std::string(name) +
           "'. A different label with that name already exists."));
   }
+  // Check the datatype of the dimension label is consistent with the dimension
+  // it is being added to.
   if (check_is_compatible && !dimension_label_schema->is_compatible_label(dim))
     return LOG_STATUS(Status_ArraySchemaError(
         "Cannot add dimension label; The dimension label schema is not "
