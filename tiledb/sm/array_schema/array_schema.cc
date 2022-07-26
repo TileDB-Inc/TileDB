@@ -1127,6 +1127,7 @@ const std::string& ArraySchema::name() const {
 
 Status ArraySchema::check_attribute_dimension_label_names() const {
   std::set<std::string> names;
+  // Check attribute and dimension names are unique.
   auto dim_num = this->dim_num();
   uint64_t expected_unique_names{dim_num + attributes_.size()};
   for (auto attr : attributes_)
@@ -1137,17 +1138,22 @@ Status ArraySchema::check_attribute_dimension_label_names() const {
     return Status_ArraySchemaError(
         "Array schema check failed; Attributes and dimensions must have unique "
         "names");
+  // Check dimension label names are unique except at most 1 label / dimension
+  // that has the same name as the dimension it is on.
   expected_unique_names += dimension_labels_.size();
   std::vector<bool> label_with_dim_name(dim_num, false);
   for (const auto& label : dimension_labels_) {
     const auto& label_name = label->name();
     const auto dim_id = label->dimension_id();
+    // Check if the dimension label has the same name as the dimension
     if (label_name == domain_->dimension_ptr(dim_id)->name()) {
+      // Check if there is already a dimension label with that name.
       if (label_with_dim_name[dim_id])
         return Status_ArraySchemaError(
             "Array schema check failed; At most one dimension label can share "
             "a name with the dimension it is on");
-      --expected_unique_names;
+      --expected_unique_names;  // decrement number of unique name - this name
+                                // is not unique
       label_with_dim_name[dim_id] = true;
     } else {
       names.insert(label_name);
