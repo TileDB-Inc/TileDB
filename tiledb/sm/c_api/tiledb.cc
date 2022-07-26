@@ -3419,68 +3419,23 @@ int32_t tiledb_query_get_relevant_fragment_num(
   return TILEDB_OK;
 }
 
-int32_t tiledb_update_value_alloc(
-    tiledb_ctx_t* ctx,
-    const char* field_name,
-    const void* update_value,
-    uint64_t update_value_size,
-    tiledb_update_value_t** val) {
-  if (sanity_check(ctx) == TILEDB_ERR) {
-    *val = nullptr;
-    return TILEDB_ERR;
-  }
-
-  // Create update value struct
-  *val = new (std::nothrow) tiledb_update_value_t;
-  if (*val == nullptr) {
-    auto st = Status_Error(
-        "Failed to create TileDB update value object; Memory allocation "
-        "error");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create UpdateValue object
-  (*val)->update_value_ = new (std::nothrow) tiledb::sm::UpdateValue(
-      std::string(field_name), update_value, update_value_size);
-  if ((*val)->update_value_ == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB query condition object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    delete *val;
-    *val = nullptr;
-    return TILEDB_OOM;
-  }
-
-  // Success
-  return TILEDB_OK;
-}
-
-void tiledb_update_value_free(tiledb_update_value_t** update_value) {
-  if (update_value != nullptr && *update_value != nullptr) {
-    delete (*update_value)->update_value_;
-    (*update_value)->update_value_ = nullptr;
-
-    delete (*update_value);
-    *update_value = nullptr;
-  }
-}
-
 int32_t tiledb_query_add_update_value(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const tiledb_update_value_t* value) noexcept {
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) noexcept {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR ||
-      sanity_check(ctx, value) == TILEDB_ERR) {
+      sanity_check(ctx, query) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
-  // Set layout
+  // Add update value.
   if (SAVE_ERROR_CATCH(
-          ctx, query->query_->add_update_value(*value->update_value_))) {
+          ctx,
+          query->query_->add_update_value(
+              field_name, update_value, update_value_size))) {
     return TILEDB_ERR;
   }
 
@@ -9022,25 +8977,14 @@ int32_t tiledb_query_condition_combine(
 /*         UPDATE CONDITION       */
 /* ****************************** */
 
-int32_t tiledb_update_value_alloc(
-    tiledb_ctx_t* ctx,
-    const char* field_name,
-    const void* update_value,
-    uint64_t update_value_size,
-    tiledb_update_value_t** val) noexcept {
-  return api_entry<detail::tiledb_update_value_alloc>(
-      ctx, field_name, update_value, update_value_size, val);
-}
-
-void tiledb_update_value_free(tiledb_update_value_t** val) noexcept {
-  return api_entry_void<detail::tiledb_update_value_free>(val);
-}
-
 int32_t tiledb_query_add_update_value(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const tiledb_update_value_t* value) noexcept {
-  return api_entry<detail::tiledb_query_add_update_value>(ctx, query, value);
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) noexcept {
+  return api_entry<detail::tiledb_query_add_update_value>(
+      ctx, query, field_name, update_value, update_value_size);
 }
 
 /* ****************************** */

@@ -513,9 +513,6 @@ typedef struct tiledb_query_t tiledb_query_t;
 /** A TileDB query condition object. */
 typedef struct tiledb_query_condition_t tiledb_query_condition_t;
 
-/** A TileDB update value object. */
-typedef struct tiledb_update_value_t tiledb_update_value_t;
-
 /** A virtual filesystem object. */
 typedef struct tiledb_vfs_t tiledb_vfs_t;
 

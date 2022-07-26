@@ -553,7 +553,13 @@ class Query {
    * Returns the condition for filtering results in a read query.
    * @return QueryCondition
    */
-  const QueryCondition* condition() const;
+  const QueryCondition& condition() const;
+
+  /**
+   * Returns the update values for an update query.
+   * @return UpdateValues
+   */
+  const std::vector<UpdateValue>& update_values() const;
 
   /** Processes a query. */
   Status process();
@@ -832,10 +838,15 @@ class Query {
   /**
    * Adds an update value for an update query.
    *
-   * @param update_value The update value object.
+   * @param field_name The attribute name.
+   * @param update_value The value to set.
+   * @param update_value_size The byte size of `update_value`.
    * @return Status
    */
-  Status add_update_value(const UpdateValue& update_value);
+  Status add_update_value(
+      const char* field_name,
+      const void* update_value,
+      uint64_t update_value_size);
 
   /**
    * Set query status, needed for json deserialization

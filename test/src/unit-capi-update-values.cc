@@ -147,22 +147,11 @@ TEST_CASE_METHOD(
   // TODO: Add delete.
   tiledb_query_type_t type = GENERATE(TILEDB_READ, TILEDB_WRITE);
 
-  tiledb_update_value_t* update_value;
-  float val = 1.0f;
-  int rc =
-      tiledb_update_value_alloc(ctx_, "a", &val, sizeof(val), &update_value);
-  CHECK(rc == TILEDB_OK);
-
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, type);
   CHECK(rc == TILEDB_OK);
-
-  // Check the update value.
-  auto st =
-      update_value->update_value_->check(array->array_->array_schema_latest());
-  CHECK(st.ok());
 
   // Prepare query.
   tiledb_query_t* query;
@@ -170,15 +159,20 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Add the update value.
-  rc = tiledb_query_add_update_value(ctx_, query, update_value);
+  float val = 1.0f;
+  rc = tiledb_query_add_update_value(ctx_, query, "a", &val, sizeof(val));
   REQUIRE(rc == TILEDB_ERR);
+
+  // Check the update value.
+  // auto st =
+  //     query->query_->update_values()[0].check(array->array_->array_schema_latest());
+  // CHECK(st.ok());
 
   // Close array.
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up.
-  tiledb_update_value_free(&update_value);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
@@ -198,33 +192,36 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Invalid field name.
-  tiledb_update_value_t* update_value = nullptr;
+  // Prepare query.
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
 
   SECTION("Invalid field name") {
+    // Add the update value.
     float val = 1.0f;
-    rc = tiledb_update_value_alloc(ctx_, "g", &val, sizeof(val), &update_value);
-    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_add_update_value(ctx_, query, "g", &val, sizeof(val));
+    CHECK(rc == TILEDB_ERR);
   }
 
   SECTION("Invalid field size") {
     double val = 1.0;
-    rc = tiledb_update_value_alloc(ctx_, "g", &val, sizeof(val), &update_value);
-    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_add_update_value(ctx_, query, "g", &val, sizeof(val));
+    CHECK(rc == TILEDB_ERR);
   }
 
   SECTION("Nullptr on non nullable attribute") {
-    rc = tiledb_update_value_alloc(ctx_, "g", nullptr, 0, &update_value);
-    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_add_update_value(ctx_, query, "g", nullptr, 0);
+    CHECK(rc == TILEDB_ERR);
   }
 
   // Check the update value.
-  auto st =
-      update_value->update_value_->check(array->array_->array_schema_latest());
-  CHECK(!st.ok());
+  // auto st =
+  // query->query_->update_values()[0].check(array->array_->array_schema_latest());
+  // CHECK(!st.ok());
 
   // Clean up.
-  tiledb_update_value_free(&update_value);
+  tiledb_query_free(&query);
   tiledb_array_free(&array);
 
   remove_temp_dir();

@@ -115,10 +115,6 @@ struct tiledb_query_condition_t {
   tiledb::sm::QueryCondition* query_condition_ = nullptr;
 };
 
-struct tiledb_update_value_t {
-  tiledb::sm::UpdateValue* update_value_ = nullptr;
-};
-
 struct tiledb_vfs_t {
   tiledb::sm::VFS* vfs_ = nullptr;
 };

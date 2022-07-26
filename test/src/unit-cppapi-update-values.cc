@@ -57,20 +57,19 @@ TEST_CASE("C++ API: Test setting an update value", "[cppapi][update-value]") {
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array);
 
-  // Create update value.
-  int val = 1;
-  UpdateValue update_value(ctx, "a", &val, sizeof(val));
-  update_value.ptr()->update_value_->check(
-      array.ptr()->array_->array_schema_latest());
-
   // Set update value.
   bool exception = false;
   try {
-    update_value.add_to_query(query);
+    int val = 1;
+    QueryExperimental::add_update_value_to_query(
+        ctx, query, "a", &val, sizeof(val));
   } catch (std::exception&) {
     exception = true;
   }
   CHECK(exception == true);
+
+  // query.ptr()->query_->update_values()[0].check(
+  //    array.ptr()->array_->array_schema_latest());
 
   array.close();
 
