@@ -62,12 +62,17 @@ void xor_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
   schema.add_attribute(a);
   Array::create(xor_array_name, schema);
 
+  // The MSVC Windows compiler doesn't support std::uniform_int_distribution
+  // with type int8_t instantiation, so we use this little hack to generate the
+  // right type for our int distribution.
   std::random_device rd;
   std::mt19937 gen(rd());
   typedef typename std::conditional<
       is_windows && std::is_same<T, int8_t>::value,
       int16_t,
       T>::type DIST_TYPE;
+
+  // Setting up the random number generator for the XOR filter testing.
   std::uniform_int_distribution<DIST_TYPE> dis(
       std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
 

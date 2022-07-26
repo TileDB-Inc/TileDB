@@ -197,8 +197,9 @@ Status XORFilter::run_reverse(
 
     RETURN_NOT_OK(unshuffle_part<T>(&part, output_buf));
 
-    if (output_buf->owns_data())
+    if (output_buf->owns_data()) {
       output_buf->advance_size(part_size);
+    }
     output_buf->advance_offset(part_size);
     input->advance_offset(part_size);
   }
