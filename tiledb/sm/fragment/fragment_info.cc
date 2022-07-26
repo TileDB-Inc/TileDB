@@ -857,17 +857,12 @@ Status FragmentInfo::load(
 
   // Create an ArrayDirectory object and load
   auto timestamp_start = compute_anterior ? 0 : timestamp_start_;
-  ArrayDirectory array_dir;
-  try {
-    array_dir = ArrayDirectory(
-        storage_manager_->vfs(),
-        storage_manager_->compute_tp(),
-        array_uri_,
-        timestamp_start,
-        timestamp_end_);
-  } catch (const std::logic_error& le) {
-    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-  }
+  auto array_dir = ArrayDirectory(
+      storage_manager_->vfs(),
+      storage_manager_->compute_tp(),
+      array_uri_,
+      timestamp_start,
+      timestamp_end_);
 
   // Get the array schemas and fragment metadata.
   auto&& [st_schemas, array_schema_latest, array_schemas_all, fragment_metadata] =
