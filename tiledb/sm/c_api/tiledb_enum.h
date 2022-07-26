@@ -170,55 +170,6 @@
     TILEDB_LAYOUT_ENUM(HILBERT) = 4,
 #endif
 
-#ifdef TILEDB_FILTER_TYPE_ENUM
-    /** No-op filter */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,
-    /** Gzip compressor */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_GZIP) = 1,
-    /** Zstandard compressor */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_ZSTD) = 2,
-    /** LZ4 compressor */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_LZ4) = 3,
-    /** Run-length encoding compressor */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_RLE) = 4,
-    /** Bzip2 compressor */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BZIP2) = 5,
-    /** Double-delta compressor */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_DOUBLE_DELTA) = 6,
-    /** Bit width reduction filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BIT_WIDTH_REDUCTION) = 7,
-    /** Bitshuffle filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BITSHUFFLE) = 8,
-    /** Byteshuffle filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BYTESHUFFLE) = 9,
-    /** Positive-delta encoding filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_POSITIVE_DELTA) = 10,
-    /** MD5 checksum filter. Starts at 12 because 11 is used for encryption, see
-       tiledb/sm/enums/filter_type.h */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_CHECKSUM_MD5) = 12,
-    /** SHA256 checksum filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_CHECKSUM_SHA256) = 13,
-    /** Dictionary encoding filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_DICTIONARY) = 14,
-    /** Float scaling filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_SCALE_FLOAT) = 15,
-#endif
-
-#ifdef TILEDB_FILTER_OPTION_ENUM
-    /** Compression level. Type: `int32_t`. */
-    TILEDB_FILTER_OPTION_ENUM(COMPRESSION_LEVEL) = 0,
-    /** Max window length for bit width reduction. Type: `uint32_t`. */
-    TILEDB_FILTER_OPTION_ENUM(BIT_WIDTH_MAX_WINDOW) = 1,
-    /** Max window length for positive-delta encoding. Type: `uint32_t`. */
-    TILEDB_FILTER_OPTION_ENUM(POSITIVE_DELTA_MAX_WINDOW) = 2,
-    /** Bit width for float-scaling filter. Type: uint64_t. */
-    TILEDB_FILTER_OPTION_ENUM(SCALE_FLOAT_BYTEWIDTH) = 3,
-    /** Scale factor for float-scaling filter. Type: float64. */
-    TILEDB_FILTER_OPTION_ENUM(SCALE_FLOAT_FACTOR) = 4,
-    /** Offset for float-scaling filter. Type: float64. */
-    TILEDB_FILTER_OPTION_ENUM(SCALE_FLOAT_OFFSET) = 5,
-#endif
-
 #ifdef TILEDB_ENCRYPTION_TYPE_ENUM
     /** No encryption. */
     TILEDB_ENCRYPTION_TYPE_ENUM(NO_ENCRYPTION) = 0,

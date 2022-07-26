@@ -42,6 +42,7 @@ target_sources(compile_cancelable_tasks PRIVATE test/compile_cancelable_tasks_ma
 # `constants` object library
 #
 add_library(constants OBJECT constants.cc)
+target_link_libraries(constants PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 #
 # Test-compile of object library ensures link-completeness
 #
