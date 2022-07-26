@@ -103,7 +103,9 @@ TEST_CASE_METHOD(
       4096,
       false);
 
-  // Create and add dimension label schema.
+  // Create and add dimension label schema (both fixed and variable length
+  // examples).
+  auto label_type = GENERATE(TILEDB_FLOAT64, TILEDB_STRING_ASCII);
   double label_domain[] = {-10.0, 10.0};
   double label_tile_extent = 4.0;
   tiledb_dimension_label_schema_t* dim_label_schema;
@@ -113,10 +115,11 @@ TEST_CASE_METHOD(
       TILEDB_UINT64,
       x_domain,
       &x_tile_extent,
-      TILEDB_FLOAT64,
-      label_domain,
-      &label_tile_extent,
+      label_type,
+      (label_type == TILEDB_STRING_ASCII) ? nullptr : label_domain,
+      (label_type == TILEDB_STRING_ASCII) ? nullptr : &label_tile_extent,
       &dim_label_schema));
+
   REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
       ctx, array_schema, 0, "x", dim_label_schema));
   tiledb_dimension_label_schema_free(&dim_label_schema);
@@ -147,24 +150,25 @@ TEST_CASE_METHOD(
   tiledb_array_schema_free(&array_schema);
 
   // Check the dimension label schema.
+  auto label_datatype = static_cast<Datatype>(label_type);
   URI label_uri{array_name + "/" + x_label_uri};
   DimensionLabel dim_label(label_uri, ctx->storage_manager());
   dim_label.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0);
   CHECK(dim_label.index_dimension()->type() == Datatype::UINT64);
   CHECK(dim_label.index_attribute()->type() == Datatype::UINT64);
-  CHECK(dim_label.label_attribute()->type() == Datatype::FLOAT64);
-  CHECK(dim_label.label_attribute()->type() == Datatype::FLOAT64);
+  CHECK(dim_label.label_attribute()->type() == label_datatype);
+  CHECK(dim_label.label_attribute()->type() == label_datatype);
   const auto& indexed_array_schema =
       dim_label.indexed_array()->array_schema_latest();
   CHECK(indexed_array_schema.domain().dim_num() == 1);
   CHECK(indexed_array_schema.attribute_num() == 1);
   CHECK(indexed_array_schema.dimension_ptr(0)->type() == Datatype::UINT64);
-  CHECK(indexed_array_schema.attribute(0)->type() == Datatype::FLOAT64);
+  CHECK(indexed_array_schema.attribute(0)->type() == label_datatype);
   const auto& labelled_array_schema =
       dim_label.labelled_array()->array_schema_latest();
   CHECK(labelled_array_schema.domain().dim_num() == 1);
   CHECK(labelled_array_schema.attribute_num() == 1);
-  CHECK(labelled_array_schema.dimension_ptr(0)->type() == Datatype::FLOAT64);
+  CHECK(labelled_array_schema.dimension_ptr(0)->type() == label_datatype);
   CHECK(labelled_array_schema.attribute(0)->type() == Datatype::UINT64);
   dim_label.close();
 }

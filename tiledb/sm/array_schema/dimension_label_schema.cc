@@ -79,8 +79,10 @@ DimensionLabelSchema::DimensionLabelSchema(
   throw_if_not_ok(index_dims.back()->set_tile_extent(index_tile_extent));
   throw_if_not_ok(indexed_array_schema_->set_domain(make_shared<Domain>(
       HERE(), Layout::ROW_MAJOR, index_dims, Layout::ROW_MAJOR)));
-  throw_if_not_ok(indexed_array_schema_->add_attribute(
-      make_shared<Attribute>(HERE(), "label", label_type)));
+  auto label_attr = make_shared<Attribute>(HERE(), "label", label_type);
+  if (label_type == Datatype::STRING_ASCII)
+    label_attr->set_cell_val_num(constants::var_num);
+  throw_if_not_ok(indexed_array_schema_->add_attribute(label_attr));
   throw_if_not_ok(indexed_array_schema_->check());
   // Set-up labelled array
   std::vector<shared_ptr<Dimension>> label_dims{
