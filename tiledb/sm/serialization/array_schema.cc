@@ -189,18 +189,18 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
           tiledb::common::make_shared<CompressionFilter>(HERE(), type, level)};
     }
     case FilterType::FILTER_SCALE_FLOAT: {
-      if (!filter_reader.hasFloatScaleConfig()) {
-        throw std::logic_error(
-            "filter_from_capnp: float scale filter reader should have "
-            "FloatScaleConfig struct.");
+      if (filter_reader.hasFloatScaleConfig()) {
+        auto float_scale_config = filter_reader.getFloatScaleConfig();
+        double scale = float_scale_config.getScale();
+        double offset = float_scale_config.getOffset();
+        uint64_t byte_width = float_scale_config.getByteWidth();
+        return {Status::Ok(),
+                tiledb::common::make_shared<FloatScalingFilter>(
+                    HERE(), byte_width, scale, offset)};
       }
-      auto float_scale_config = filter_reader.getFloatScaleConfig();
-      double scale = float_scale_config.getScale();
-      double offset = float_scale_config.getOffset();
-      uint64_t byte_width = float_scale_config.getByteWidth();
+
       return {Status::Ok(),
-              tiledb::common::make_shared<FloatScalingFilter>(
-                  HERE(), byte_width, scale, offset)};
+              tiledb::common::make_shared<FloatScalingFilter>(HERE())};
     }
     case FilterType::FILTER_NONE:
       break;
