@@ -691,13 +691,6 @@ Status ArraySchema::add_dimension_label(
         "Cannot add a label to dimension " + std::to_string(dim_id) +
         "; Invalid dimension index. "));
   auto dim = domain_->dimension_ptr(dim_id);
-  // Check the dimension this label is being added to has an integer datatype.
-  if (!(datatype_is_integer(dim->type()) || datatype_is_datetime(dim->type()) ||
-        datatype_is_time(dim->type())))
-    return LOG_STATUS(Status_ArraySchemaError(
-        "Cannot add dimension label; Currently labels are not support on "
-        "dimension with datatype Datatype::" +
-        datatype_str(dim->type())));
   // Check the dimension label is unique among attribute, dimension, and label
   // names; except for possibly matching the name of the dimension it is being
   // added to.
@@ -750,7 +743,7 @@ Status ArraySchema::add_dimension_label(
       dimension_label_schema);
   dimension_labels_.emplace_back(dim_label);
   dimension_label_map_[name] = dim_label.get();
-  ++nlabel_internal_;
+  ++nlabel_internal_;  // WARNING: not atomic
   return Status::Ok();
 }
 

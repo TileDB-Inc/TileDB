@@ -120,6 +120,14 @@ DimensionLabelSchema::DimensionLabelSchema(
     throw std::invalid_argument(
         "Invalid dimension label schema; Labelled array must have exactly one "
         "attribute.");
+  // Check the data type of the index
+  auto index_type = indexed_array_schema_->dimension_ptr(0)->type();
+  if (!(datatype_is_integer(index_type) || datatype_is_datetime(index_type) ||
+        datatype_is_time(index_type)))
+    throw std::invalid_argument(
+        "Failed to create dimension label schema; Currently labels are not "
+        "support on dimensions with datatype Datatype::" +
+        datatype_str(index_type));
   // Check the types are consistent between the two arrays
   auto [is_ok, msg] = have_compatible_types(
       labelled_array_schema_->dimension_ptr(0),
