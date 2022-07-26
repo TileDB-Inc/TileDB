@@ -780,12 +780,11 @@ class StorageManager {
   /**
    * Loads the delete conditions from storage.
    *
-   * @param array_dir The array directory.
-   * @param enc_key The encryption key that may be needed to access the file.
+   * @param array The array.
    * @return Status, vector of the delete conditions.
    */
   tuple<Status, optional<std::vector<QueryCondition>>> load_delete_conditions(
-      const ArrayDirectory& array_dir, const EncryptionKey& enc_key);
+      const Array& array);
 
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;

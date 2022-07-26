@@ -77,7 +77,8 @@ ReaderBase::ReaderBase(
     , condition_(condition)
     , disable_cache_(false)
     , user_requested_timestamps_(false)
-    , use_timestamps_(false) {
+    , use_timestamps_(false)
+    , initial_data_loaded_(false) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
   timestamps_needed_for_deletes_.resize(fragment_metadata_.size());

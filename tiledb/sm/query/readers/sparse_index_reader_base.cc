@@ -74,7 +74,6 @@ SparseIndexReaderBase::SparseIndexReaderBase(
           subarray,
           layout,
           condition)
-    , initial_data_loaded_(false)
     , memory_budget_(0)
     , array_memory_tracker_(array->memory_tracker())
     , memory_used_for_coords_total_(0)
@@ -202,15 +201,16 @@ SparseIndexReaderBase::get_coord_tiles_size(
 }
 
 Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
-  if (initial_data_loaded_)
+  if (initial_data_loaded_) {
     return Status::Ok();
+  }
 
   auto timer_se = stats_->start_timer("load_initial_data");
   read_state_.done_adding_result_tiles_ = false;
 
   // Load delete conditions.
-  auto&& [st, delete_conditions] = storage_manager_->load_delete_conditions(
-      array_->array_directory(), *array_->encryption_key());
+  auto&& [st, delete_conditions] =
+      storage_manager_->load_delete_conditions(*array_);
   RETURN_CANCEL_OR_ERROR(st);
   delete_conditions_ = std::move(*delete_conditions);
   bool make_timestamped_conditions = need_timestamped_conditions();
