@@ -103,11 +103,6 @@ Status FloatScalingFilter::run_forward(
           return Status_FilterError(
               "FloatScalingFilter::run_forward: Floating point input is NaN.");
         }
-        case FP_SUBNORMAL: {
-          return Status_FilterError(
-              "FloatScalingFilter::run_forward: Floating point input is "
-              "denormalized.");
-        }
       }
       W converted_elem = static_cast<W>(
           round((elem - static_cast<T>(offset_)) / static_cast<T>(scale_)));

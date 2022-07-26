@@ -56,7 +56,7 @@ namespace sm {
  *
  * This filter is a lossy filter. This means that when using this filter, you
  * should expect some error when reading your data back. A couple cases where
- * this is evident is:
+ * this could be more noticeable is:
  * - when you have zeros in your data
  * - when your data does not fit into the byte width size you have specified
  */

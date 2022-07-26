@@ -83,9 +83,19 @@ struct FloatScalingFilterTestStruct {
 
     // Create the filter and set the scale, offset,and byte width.
     Filter f(ctx, TILEDB_FILTER_SCALE_FLOAT);
-    double scale = 2.53;
-    double offset = 0.138;
+
+    // Randomly picking out the scale and offset.
+    std::random_device rd_so;
+    std::mt19937 gen_so(rd_so());
+    std::uniform_real_distribution<double> dis_so(-64, 64);
+
+    double scale = dis_so(gen_so);
+    double offset = dis_so(gen_so);
     uint64_t byte_width = sizeof(W);
+
+    INFO(
+        "Scale: " + std::to_string(scale) + ", Offset: " +
+        std::to_string(offset) + ", Byte Width: " + std::to_string(byte_width));
 
     f.set_option(TILEDB_SCALE_FLOAT_BYTEWIDTH, &byte_width)
         .set_option(TILEDB_SCALE_FLOAT_FACTOR, &scale)

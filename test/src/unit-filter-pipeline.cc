@@ -3993,8 +3993,14 @@ void testing_float_scaling_filter(bool negative) {
       constants::format_version, t, tile_size, cell_size, dim_num);
 
   std::vector<FloatingType> float_result_vec;
-  double scale = 2.53;
-  double foffset = 0.31589;
+  std::random_device rd_so;
+  std::mt19937 gen_so(rd_so());
+  std::uniform_real_distribution<double> dis_so(
+      std::numeric_limits<IntType>::min(), std::numeric_limits<IntType>::max());
+
+  double scale = dis_so(gen_so);
+  double foffset = dis_so(gen_so);
+
   uint64_t byte_width = sizeof(IntType);
 
   std::random_device rd;
@@ -4083,8 +4089,14 @@ void testing_float_scaling_filter_zeros(FloatingType zero_val) {
   tile.init_unfiltered(
       constants::format_version, t, tile_size, cell_size, dim_num);
 
-  double scale = 2.53;
-  double foffset = 0.31589;
+  // Randomly picking out the scale and offset.
+  std::random_device rd_so;
+  std::mt19937 gen_so(rd_so());
+  std::uniform_real_distribution<double> dis_so(
+      std::numeric_limits<IntType>::min(), std::numeric_limits<IntType>::max());
+
+  double scale = dis_so(gen_so);
+  double foffset = dis_so(gen_so);
   uint64_t byte_width = sizeof(IntType);
 
   for (uint64_t i = 0; i < nelts; i++) {
@@ -4163,8 +4175,14 @@ void testing_float_scaling_filter_error(FloatingType error_val) {
   tile.init_unfiltered(
       constants::format_version, t, tile_size, cell_size, dim_num);
 
-  double scale = 2.53;
-  double foffset = 0.31589;
+  // Randomly picking out the scale and offset.
+  std::random_device rd_so;
+  std::mt19937 gen_so(rd_so());
+  std::uniform_real_distribution<double> dis_so(
+      std::numeric_limits<IntType>::min(), std::numeric_limits<IntType>::max());
+
+  double scale = dis_so(gen_so);
+  double foffset = dis_so(gen_so);
   uint64_t byte_width = sizeof(IntType);
 
   for (uint64_t i = 0; i < nelts; i++) {
@@ -4200,24 +4218,6 @@ TEMPLATE_TEST_CASE(
 }
 
 TEMPLATE_TEST_CASE(
-    "Filter: Test float scaling, denormalized array",
-    "[filter][float-scaling]",
-    int8_t,
-    int16_t,
-    int32_t,
-    int64_t) {
-  testing_float_scaling_filter_error<float, TestType>(
-      std::numeric_limits<float>::denorm_min());
-  testing_float_scaling_filter_error<double, TestType>(
-      std::numeric_limits<double>::denorm_min());
-
-  testing_float_scaling_filter_error<float, TestType>(
-      -1.0f * std::numeric_limits<float>::denorm_min());
-  testing_float_scaling_filter_error<double, TestType>(
-      -1.0f * std::numeric_limits<double>::denorm_min());
-}
-
-TEMPLATE_TEST_CASE(
     "Filter: Test float scaling, infinity array",
     "[filter][float-scaling]",
     int8_t,
@@ -4233,4 +4233,97 @@ TEMPLATE_TEST_CASE(
       -1.0f * std::numeric_limits<float>::infinity());
   testing_float_scaling_filter_error<double, TestType>(
       -1.0f * std::numeric_limits<double>::infinity());
+}
+
+template <typename FloatingType, typename IntType>
+void testing_float_scaling_filter_denorm(FloatingType denorm_val) {
+  tiledb::sm::Config config;
+
+  // Set up test data
+  const uint64_t nelts = 100;
+  const uint64_t tile_size = nelts * sizeof(FloatingType);
+  const uint64_t cell_size = sizeof(FloatingType);
+  const uint32_t dim_num = 0;
+
+  Tile tile;
+  Datatype t = Datatype::FLOAT32;
+  switch (sizeof(FloatingType)) {
+    case 4: {
+      t = Datatype::FLOAT32;
+    } break;
+    case 8: {
+      t = Datatype::FLOAT64;
+    } break;
+    default: {
+      INFO(
+          "testing_float_scaling_filter: passed floating type with size of not "
+          "4 bytes or 8 bytes.");
+      CHECK(false);
+    }
+  }
+
+  tile.init_unfiltered(
+      constants::format_version, t, tile_size, cell_size, dim_num);
+
+  // Randomly picking out the scale and offset.
+  std::random_device rd_so;
+  std::mt19937 gen_so(rd_so());
+  std::uniform_real_distribution<double> dis_so(
+      std::numeric_limits<IntType>::min(), std::numeric_limits<IntType>::max());
+
+  double scale = dis_so(gen_so);
+  double foffset = dis_so(gen_so);
+  uint64_t byte_width = sizeof(IntType);
+  IntType val = static_cast<IntType>(round(
+      (denorm_val - static_cast<FloatingType>(foffset)) /
+      static_cast<FloatingType>(scale)));
+  FloatingType new_val_float = static_cast<FloatingType>(
+      scale * static_cast<FloatingType>(val) + foffset);
+
+  for (uint64_t i = 0; i < nelts; i++) {
+    FloatingType f = denorm_val;
+    CHECK(tile.write(&f, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
+  }
+
+  FilterPipeline pipeline;
+  ThreadPool tp(4);
+  CHECK(pipeline.add_filter(FloatScalingFilter()).ok());
+  pipeline.get_filter<FloatScalingFilter>()->set_option(
+      FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width);
+  pipeline.get_filter<FloatScalingFilter>()->set_option(
+      FilterOption::SCALE_FLOAT_FACTOR, &scale);
+  pipeline.get_filter<FloatScalingFilter>()->set_option(
+      FilterOption::SCALE_FLOAT_OFFSET, &foffset);
+
+  CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
+
+  // Check new size and number of chunks
+  CHECK(tile.size() == 0);
+  CHECK(tile.filtered_buffer().size() != 0);
+  CHECK(tile.alloc_data(nelts * sizeof(FloatingType)).ok());
+  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
+  for (uint64_t i = 0; i < nelts; i++) {
+    FloatingType elt = 0.0f;
+    CHECK(tile.read(&elt, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
+    CHECK(elt - new_val_float < std::numeric_limits<FloatingType>::epsilon());
+  }
+}
+
+TEMPLATE_TEST_CASE(
+    "Filter: Test float scaling, denormalized array",
+    "[filter][float-scaling]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t) {
+  testing_float_scaling_filter_denorm<float, TestType>(
+      std::numeric_limits<float>::denorm_min());
+  testing_float_scaling_filter_denorm<double, TestType>(
+      std::numeric_limits<double>::denorm_min());
+
+  testing_float_scaling_filter_denorm<float, TestType>(
+      -1.0f * std::numeric_limits<float>::denorm_min());
+  testing_float_scaling_filter_denorm<double, TestType>(
+      -1.0f * std::numeric_limits<double>::denorm_min());
 }
