@@ -342,6 +342,11 @@ Status ArraySchema::check() const {
   if (!st.ok())
     return LOG_STATUS(st);
 
+  // Check all internal dimension labels have a schema set and the schema is
+  // compatible with the definition of the array it was added to.
+  //
+  // Note: external dimension labels do not need a schema since they are not
+  // created when the array is created.
   for (auto label : dimension_labels_) {
     if (!label->is_external()) {
       if (!label->has_schema())
