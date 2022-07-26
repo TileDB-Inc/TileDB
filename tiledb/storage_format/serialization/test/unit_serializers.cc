@@ -54,15 +54,14 @@ typedef tuple<
     TypesUnderTest;
 TEMPLATE_LIST_TEST_CASE(
     "Serializer/Deserializer Test", "[Serializer]", TypesUnderTest) {
-  Serializer null_serializer;
+  SizeComputationSerializer size_computation_serializer;
   TestType data = 1;
-  null_serializer.write(data);
-  REQUIRE(null_serializer.size() == sizeof(TestType));
+  size_computation_serializer.write(data);
+  REQUIRE(size_computation_serializer.size() == sizeof(TestType));
 
-  std::vector<uint8_t> buff(null_serializer.size());
+  std::vector<uint8_t> buff(size_computation_serializer.size());
   Serializer serializer(buff.data(), buff.size());
   serializer.write(data);
-  serializer.ensure_full_buffer_written();
 
   Deserializer deserializer(buff.data(), buff.size());
   auto read = deserializer.read<TestType>();

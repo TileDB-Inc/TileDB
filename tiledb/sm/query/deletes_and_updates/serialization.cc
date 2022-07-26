@@ -87,10 +87,10 @@ storage_size_t get_serialized_condition_size(
     return 0;
   }
 
-  Serializer serializer;
-  serialize_condition_impl(node, serializer);
+  SizeComputationSerializer size_computation_serializer;
+  serialize_condition_impl(node, size_computation_serializer);
 
-  return serializer.size();
+  return size_computation_serializer.size();
 }
 
 std::vector<uint8_t> serialize_condition(
@@ -100,7 +100,6 @@ std::vector<uint8_t> serialize_condition(
 
   Serializer serializer(ret.data(), ret.size());
   serialize_condition_impl(query_condition.ast(), serializer);
-  serializer.ensure_full_buffer_written();
 
   return ret;
 }

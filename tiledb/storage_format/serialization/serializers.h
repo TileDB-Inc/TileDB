@@ -39,21 +39,11 @@
 namespace tiledb::sm {
 
 /**
- * A serializer that allows to write data to a preallocated buffer. Once the
- * serialization is completed, the user should call ensure_full_buffer_written
- * to make sure the right buffer was allocated for serialization. The class can
- * also be created with no arguments to run serialization without copying the
- * data, which will be used to compute the required buffer size.
+ * A serializer that allows to write data to a preallocated buffer.
  */
 class Serializer {
  public:
-  /**
-   * Constructor with no buffer, used to compute required size.
-   */
-  Serializer()
-      : ptr_(nullptr)
-      , size_(0) {
-  }
+  Serializer() = delete;
 
   /**
    * Constructor using a preallocated buffer.
@@ -115,16 +105,6 @@ class Serializer {
   }
 
   /**
-   * Ensures the full data buffer was writter to. Should be called at the end
-   * of serialization.
-   */
-  void ensure_full_buffer_written() {
-    if (ptr_ && size_ != 0) {
-      throw std::logic_error("Didn't write full buffer.");
-    }
-  }
-
-  /**
    * Returns the size.
    */
   inline storage_size_t size() {
@@ -140,6 +120,19 @@ class Serializer {
 
   /* Size left to be written or total size. */
   storage_size_t size_;
+};
+
+/**
+ * A serializer that is used to compute the size of the data.
+ */
+class SizeComputationSerializer : public Serializer {
+ public:
+  /**
+   * Constructor with no buffer, used to compute required size.
+   */
+  SizeComputationSerializer()
+      : Serializer(nullptr, 0) {
+  }
 };
 
 /**

@@ -4165,14 +4165,14 @@ Status FragmentMetadata::store_rtree(
 
 Tile FragmentMetadata::write_rtree() {
   rtree_.build_tree();
-  Serializer null_serializer;
-  rtree_.serialize(null_serializer);
+  SizeComputationSerializer size_computation_serializer;
+  rtree_.serialize(size_computation_serializer);
 
   Tile tile;
   if (!tile.init_unfiltered(
                0,
                constants::generic_tile_datatype,
-               null_serializer.size(),
+               size_computation_serializer.size(),
                constants::generic_tile_cell_size,
                0)
            .ok()) {
@@ -4181,7 +4181,6 @@ Tile FragmentMetadata::write_rtree() {
 
   Serializer serializer(tile.data(), tile.size());
   rtree_.serialize(serializer);
-  serializer.ensure_full_buffer_written();
 
   return tile;
 }
