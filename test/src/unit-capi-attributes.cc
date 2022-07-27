@@ -30,7 +30,6 @@
  * Tests of C API for attributes.
  */
 
-#include <tiledb/sm/misc/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <iostream>

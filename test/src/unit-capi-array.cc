@@ -31,7 +31,6 @@
  * Tests of C API for (dense or sparse) array operations.
  */
 
-#include <tiledb/sm/misc/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <iostream>
