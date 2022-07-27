@@ -104,9 +104,10 @@ if (NOT AWSSDK_FOUND)
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_awssdk.zip
-      GIT_REPOSITORY "https://github.com/aws/aws-sdk-cpp"
+      GIT_REPOSITORY 
+        "https://github.com/aws/aws-sdk-cpp"
       GIT_TAG 1.9.291
-      GIT_SUBMODULES_RECURSE ON #TBD: Seems 'ON' may be default, is this needed? Is this correct?
+      GIT_SUBMODULES_RECURSE ON #may be default, specifying for certainty.
       PATCH_COMMAND
         ${CONDITIONAL_PATCH}
       CMAKE_ARGS
@@ -149,50 +150,14 @@ endif ()
 
 if (AWSSDK_FOUND)
   set(AWS_SERVICES s3)
-  # append these libs in an order manually, by trial and error, determined to support successful
-  # linking of dependencies on *nix.  (windows doesn't seem to care or 'just lucked out'.)
-  list(APPEND AWS_LINKED_LIBS #aws-c-common
-          aws-cpp-sdk-s3
-        aws-cpp-sdk-core
-        aws-crt-cpp
-        #AWSSDK::aws-c-auth
-        #AWSSDK::aws-c-cal
-        #AWSSDK::aws-c-common
-        #AWSSDK::aws-c-compression
-        aws-c-event-stream
-        #xAWSSDK::aws-c-io
-        aws-c-mqtt
-        aws-c-s3
-        aws-c-auth
-        aws-c-http
-        aws-c-compression
-        aws-checksums
-        aws-c-sdkutils
-        aws-crt-cpp
-        #xAWSSDK::aws-c-s3
-        aws-cpp-sdk-s3
-        aws-c-event-stream
-        aws-c-mqtt
-        aws-checksums
-        aws-c-auth
-        #AWSSDK::aws-c-http
-        aws-c-sdkutils
-        aws-c-io
-        aws-c-compression
-        aws-c-cal
-        aws-cpp-sdk-cognito-identity
-        aws-cpp-sdk-identity-management
-        aws-cpp-sdk-sts
-        aws-c-common
-        #s2n # There is a libs2n.a generated and in install/lib path... but not an INTERFACE, hmm...
+  AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICES AWS_LINKED_LIBS)
+  list(APPEND AWS_LINKED_LIBS
+          aws-cpp-sdk-identity-management
+          aws-cpp-sdk-sts
   )
-  if (NOT WIN32)
-    list(APPEND AWS_LINKED_LIBS #aws-c-common
-                              s2n # There is a libs2n.a generated and in install/lib path... but not an INTERFACE, hmm...
-    )
-  endif()
 
   set(TILEDB_AWS_LINK_TARGETS "")
+  message(STATUS "findaws, processing AWS_LINKED_LIBS (${AWS_LINKED_LIBS})")
   foreach (LIB ${AWS_LINKED_LIBS})
     if ((NOT ${LIB} MATCHES "aws-*" )
         AND (NOT LIB STREQUAL "s2n") )
