@@ -31,7 +31,7 @@ For fragment commits, the URIs is written delimited by a new line character:
 | :--- | :--- | :--- |
 | URI  followed by a new line character | `uint8_t[]` | URI |
 
-For delete commits, the URIs is written delimited by a new line character and then followed by the delete condition tile [tile](./tile.md), preceded by its size:
+For delete commits, the URIs is written delimited by a new line character and then followed by the delete condition [tile](./tile.md), preceded by its size:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |

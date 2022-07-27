@@ -236,7 +236,9 @@ Status ArrayDirectory::load() {
           fragment_meta_uris_v12_or_higher.end(),
           std::back_inserter(fragment_meta_uris_));
 
-      // Sort the delete commits by timestamp.
+      // Sort the delete commits by timestamp. Delete tiles locations come from
+      // both the consolidated file and the directory listing, and they might
+      // have interleaved times, so we need to sort.
       std::sort(delete_tiles_location_.begin(), delete_tiles_location_.end());
     }
   }
