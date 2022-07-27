@@ -56,10 +56,12 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter_create.h"
+#include "tiledb/sm/filter/float_scaling_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
 
+#include <cstring>
 #include <set>
 #include <string>
 
@@ -70,6 +72,67 @@ namespace sm {
 namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
+
+Status filter_to_capnp(
+    const Filter* filter, capnp::Filter::Builder* filter_builder) {
+  filter_builder->setType(filter_type_str(filter->type()));
+  switch (filter->type()) {
+    case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
+      uint32_t window;
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &window));
+      auto data = filter_builder->initData();
+      data.setUint32(window);
+      break;
+    }
+    case FilterType::FILTER_POSITIVE_DELTA: {
+      uint32_t window;
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::POSITIVE_DELTA_MAX_WINDOW, &window));
+      auto data = filter_builder->initData();
+      data.setUint32(window);
+      break;
+    }
+    case FilterType::FILTER_GZIP:
+    case FilterType::FILTER_ZSTD:
+    case FilterType::FILTER_LZ4:
+    case FilterType::FILTER_RLE:
+    case FilterType::FILTER_BZIP2:
+    case FilterType::FILTER_DOUBLE_DELTA:
+    case FilterType::FILTER_DICTIONARY: {
+      int32_t level;
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::COMPRESSION_LEVEL, &level));
+      auto data = filter_builder->initData();
+      data.setInt32(level);
+      break;
+    }
+    case FilterType::FILTER_SCALE_FLOAT: {
+      double scale, offset;
+      uint64_t byte_width;
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width));
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale));
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::SCALE_FLOAT_OFFSET, &offset));
+      auto config = filter_builder->initFloatScaleConfig();
+      config.setScale(scale);
+      config.setOffset(offset);
+      config.setByteWidth(byte_width);
+      break;
+    }
+    case FilterType::FILTER_NONE:
+    case FilterType::FILTER_BITSHUFFLE:
+    case FilterType::FILTER_BYTESHUFFLE:
+    case FilterType::FILTER_CHECKSUM_MD5:
+    case FilterType::FILTER_CHECKSUM_SHA256:
+    case FilterType::INTERNAL_FILTER_AES_256_GCM:
+      break;
+  }
+
+  return Status::Ok();
+}
 
 Status filter_pipeline_to_capnp(
     const FilterPipeline* filter_pipeline,
@@ -86,69 +149,28 @@ Status filter_pipeline_to_capnp(
   for (unsigned i = 0; i < num_filters; i++) {
     const auto* filter = filter_pipeline->get_filter(i);
     auto filter_builder = filter_list_builder[i];
-    filter_builder.setType(filter_type_str(filter->type()));
-
-    switch (filter->type()) {
-      case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
-        uint32_t window;
-        RETURN_NOT_OK(
-            filter->get_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &window));
-        auto data = filter_builder.initData();
-        data.setUint32(window);
-        break;
-      }
-      case FilterType::FILTER_POSITIVE_DELTA: {
-        uint32_t window;
-        RETURN_NOT_OK(filter->get_option(
-            FilterOption::POSITIVE_DELTA_MAX_WINDOW, &window));
-        auto data = filter_builder.initData();
-        data.setUint32(window);
-        break;
-      }
-      case FilterType::FILTER_GZIP:
-      case FilterType::FILTER_ZSTD:
-      case FilterType::FILTER_LZ4:
-      case FilterType::FILTER_RLE:
-      case FilterType::FILTER_BZIP2:
-      case FilterType::FILTER_DOUBLE_DELTA:
-      case FilterType::FILTER_DICTIONARY: {
-        int32_t level;
-        RETURN_NOT_OK(
-            filter->get_option(FilterOption::COMPRESSION_LEVEL, &level));
-        auto data = filter_builder.initData();
-        data.setInt32(level);
-        break;
-      }
-      case FilterType::FILTER_NONE:
-      case FilterType::FILTER_BITSHUFFLE:
-      case FilterType::FILTER_BYTESHUFFLE:
-      case FilterType::FILTER_CHECKSUM_MD5:
-      case FilterType::FILTER_CHECKSUM_SHA256:
-      case FilterType::INTERNAL_FILTER_AES_256_GCM:
-      case FilterType::FILTER_SCALE_FLOAT:
-        break;
-    }
+    filter_to_capnp(filter, &filter_builder);
   }
 
   return Status::Ok();
 }
 
-static tuple<Status, optional<shared_ptr<Filter>>> filter_constructor(
-    capnp::Filter::Reader reader) {
+tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
+    const capnp::Filter::Reader& filter_reader) {
   FilterType type = FilterType::FILTER_NONE;
   RETURN_NOT_OK_TUPLE(
-      filter_type_enum(reader.getType().cStr(), &type), nullopt);
+      filter_type_enum(filter_reader.getType().cStr(), &type), nullopt);
 
   switch (type) {
     case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
-      auto data = reader.getData();
+      auto data = filter_reader.getData();
       uint32_t window = data.getUint32();
       return {
           Status::Ok(),
           tiledb::common::make_shared<BitWidthReductionFilter>(HERE(), window)};
     }
     case FilterType::FILTER_POSITIVE_DELTA: {
-      auto data = reader.getData();
+      auto data = filter_reader.getData();
       uint32_t window = data.getUint32();
       return {Status::Ok(),
               tiledb::common::make_shared<PositiveDeltaFilter>(HERE(), window)};
@@ -160,11 +182,25 @@ static tuple<Status, optional<shared_ptr<Filter>>> filter_constructor(
     case FilterType::FILTER_BZIP2:
     case FilterType::FILTER_DOUBLE_DELTA:
     case FilterType::FILTER_DICTIONARY: {
-      auto data = reader.getData();
+      auto data = filter_reader.getData();
       int32_t level = data.getInt32();
       return {
           Status::Ok(),
           tiledb::common::make_shared<CompressionFilter>(HERE(), type, level)};
+    }
+    case FilterType::FILTER_SCALE_FLOAT: {
+      if (filter_reader.hasFloatScaleConfig()) {
+        auto float_scale_config = filter_reader.getFloatScaleConfig();
+        double scale = float_scale_config.getScale();
+        double offset = float_scale_config.getOffset();
+        uint64_t byte_width = float_scale_config.getByteWidth();
+        return {Status::Ok(),
+                tiledb::common::make_shared<FloatScalingFilter>(
+                    HERE(), byte_width, scale, offset)};
+      }
+
+      return {Status::Ok(),
+              tiledb::common::make_shared<FloatScalingFilter>(HERE())};
     }
     case FilterType::FILTER_NONE:
       break;
@@ -209,7 +245,7 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
   std::vector<shared_ptr<Filter>> filter_list;
   auto filter_list_reader = filter_pipeline_reader.getFilters();
   for (auto filter_reader : filter_list_reader) {
-    auto&& [st_f, filter]{filter_constructor(filter_reader)};
+    auto&& [st_f, filter]{filter_from_capnp(filter_reader)};
     RETURN_NOT_OK_TUPLE(st_f, nullopt);
     filter_list.push_back(filter.value());
   }

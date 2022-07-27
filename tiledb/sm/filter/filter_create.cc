@@ -170,15 +170,17 @@ tiledb::sm::FilterCreate::deserialize(
     case FilterType::FILTER_CHECKSUM_SHA256:
       return {Status::Ok(), make_shared<ChecksumSHA256Filter>(HERE())};
     case FilterType::FILTER_SCALE_FLOAT: {
-      FloatScalingFilter::Metadata metadata;
-      st = buff->read(&metadata, sizeof(FloatScalingFilter::Metadata));
+      FloatScalingFilter::FilterConfig filter_config;
+      st = buff->read(&filter_config, sizeof(FloatScalingFilter::FilterConfig));
       if (!st.ok()) {
         return {st, nullopt};
       } else {
-        return {
-            Status::Ok(),
-            make_shared<FloatScalingFilter>(
-                HERE(), metadata.byte_width, metadata.scale, metadata.offset)};
+        return {Status::Ok(),
+                make_shared<FloatScalingFilter>(
+                    HERE(),
+                    filter_config.byte_width,
+                    filter_config.scale,
+                    filter_config.offset)};
       }
     };
     default:
