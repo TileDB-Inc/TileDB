@@ -230,7 +230,8 @@ ul.task-list{list-style: none;}
 <li><code>uuid</code> is a unique identifier</li>
 <li><code>v</code> is the format version</li>
 </ul>
-<p>There may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits URIs delimited by a new line character. The URI is the relative URI based on the top level array URI.</p>
+<p>There may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits or delete commits. | <strong>Field</strong> | <strong>Type</strong> | <strong>Description</strong> | | :— | :— | :— | | Commit 1 | <code>uint8_t[]</code> | Commit 1 | | … | … | … | | Commit N | <code>uint8_t[]</code> | Commit N |</p>
+<p>For fragment commits, the URIs is written delimited by a new line character:</p>
 <table class="table">
 <thead>
 <tr class="header">
@@ -241,19 +242,36 @@ ul.task-list{list-style: none;}
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">URI 1 followed by a new line character</td>
+<td style="text-align: left;">URI followed by a new line character</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">URI 1</td>
+<td style="text-align: left;">URI</td>
+</tr>
+</tbody>
+</table>
+<p>For delete commits, the URIs is written delimited by a new line character and then followed by the delete condition <a href="../format_spec/tile.html">tile</a>, preceded by its size:</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">URI followed by a new line character</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">URI</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">…</td>
-<td style="text-align: left;">…</td>
-<td style="text-align: left;">…</td>
+<td style="text-align: left;">Delete condition size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Delete condition size</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">URI N followed by a new line character</td>
+<td style="text-align: left;">Delete condition tile</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">URI N</td>
+<td style="text-align: left;">Delete condition tile</td>
 </tr>
 </tbody>
 </table>
