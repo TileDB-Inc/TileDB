@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/consolidator/commits_consolidator.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -98,19 +99,52 @@ Status CommitsConsolidator::consolidate(
       to_consolidate.front(), to_consolidate.back(), write_version);
   RETURN_NOT_OK(st1);
 
-  // Write consolidated file, URIs are relative to the array URI.
-  std::stringstream ss;
-  auto base_uri_size = array_dir.uri().to_string().size();
-  for (const auto& uri : to_consolidate) {
-    ss << uri.to_string().substr(base_uri_size) << "\n";
+  // Compute size of consolidated file. Save the sizes of the files to re-use
+  // below.
+  storage_size_t total_size = 0;
+  const auto base_uri_size = array_dir.uri().to_string().size();
+  std::vector<storage_size_t> file_sizes(to_consolidate.size());
+  for (uint64_t i = 0; i < to_consolidate.size(); i++) {
+    const auto& uri = to_consolidate[i];
+    total_size += uri.to_string().size() - base_uri_size + 1;
+
+    // If the file is a delete, add the file size to the count and the size of
+    // the size variable.
+    if (stdx::string::ends_with(
+            uri.to_string(), constants::delete_file_suffix)) {
+      RETURN_NOT_OK(storage_manager_->vfs()->file_size(uri, &file_sizes[i]));
+      total_size += file_sizes[i];
+      total_size += sizeof(storage_size_t);
+    }
   }
 
-  auto data = ss.str();
+  // Write consolidated file, URIs are relative to the array URI.
+  std::vector<uint8_t> data(total_size);
+  storage_size_t file_index = 0;
+  for (uint64_t i = 0; i < to_consolidate.size(); i++) {
+    // Add the uri.
+    const auto& uri = to_consolidate[i];
+    std::string relavite_uri = uri.to_string().substr(base_uri_size) + "\n";
+    memcpy(&data[file_index], relavite_uri.data(), relavite_uri.size());
+    file_index += relavite_uri.size();
+
+    // For deletes, read the delete condition to the output file.
+    if (stdx::string::ends_with(
+            uri.to_string(), constants::delete_file_suffix)) {
+      memcpy(&data[file_index], &file_sizes[i], sizeof(storage_size_t));
+      file_index += sizeof(storage_size_t);
+      RETURN_NOT_OK(storage_manager_->vfs()->read(
+          uri, 0, &data[file_index], file_sizes[i]));
+      file_index += file_sizes[i];
+    }
+  }
+
+  // Write the file to storage.
   URI consolidated_commits_uri =
       array_dir.get_commits_dir(write_version)
           .join_path(name.value() + constants::con_commits_file_suffix);
   RETURN_NOT_OK(storage_manager_->vfs()->write(
-      consolidated_commits_uri, data.c_str(), data.size()));
+      consolidated_commits_uri, data.data(), data.size()));
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(consolidated_commits_uri));
 
   return Status::Ok();
