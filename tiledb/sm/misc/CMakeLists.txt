@@ -145,17 +145,21 @@ if (TILEDB_TESTS)
      "${libmagic_INCLUDE_DIR}"
   )
 
-    add_executable(unit_misc EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_misc PRIVATE math)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_misc PUBLIC Catch2::Catch2)
+  add_executable(unit_misc EXCLUDE_FROM_ALL)
+  target_link_libraries(unit_misc PRIVATE math)
+  find_package(Catch_EP REQUIRED)
+  target_link_libraries(unit_misc PUBLIC Catch2::Catch2)
+  target_include_directories(unit_misc
+    PRIVATE
+    "${CMAKE_SOURCE_DIR}"
+  )
 
-    # Sources for tests
-    target_sources(unit_misc PUBLIC test/main.cc test/unit_math.cc test/unit_hilbert.cc)
+  # Sources for tests
+  target_sources(unit_misc PUBLIC test/main.cc test/unit_math.cc test/unit_hilbert.cc)
 
-    add_test(
-        NAME "unit_misc"
-        COMMAND $<TARGET_FILE:unit_misc>
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
+  add_test(
+      NAME "unit_misc"
+      COMMAND $<TARGET_FILE:unit_misc>
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  )
 endif()

@@ -38,7 +38,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/query/ast/query_ast.h"
 
-#include "catch.hpp"
+#include <tiledb/sm/misc/tdb_catch.h>
 
 using namespace tiledb::sm;
 using namespace tiledb::test;

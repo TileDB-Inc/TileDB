@@ -30,7 +30,7 @@
  * Tests for TileDB's support for empty var length values at the C API level.
  */
 
-#include "catch.hpp"
+#include <tiledb/sm/misc/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/cpp_api/tiledb"

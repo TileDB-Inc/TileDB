@@ -30,7 +30,7 @@
  * Tests the UUID utility functions.
  */
 
-#include <catch.hpp>
+#include <tiledb/sm/misc/tdb_catch.h>
 #include <set>
 #include <thread>
 #include <vector>

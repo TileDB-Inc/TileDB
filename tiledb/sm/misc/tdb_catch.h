@@ -1,5 +1,5 @@
 /**
- * @file tiledb/common/exception/test/main.cc
+ * @file tdb_catch.h
  *
  * @section LICENSE
  *
@@ -27,9 +27,14 @@
  *
  * @section DESCRIPTION
  *
- * This file defines a test `main()`
+ * This file is a transitional wrapper for catch.hpp to accommodate known coming
+ * changes catch2 => catch3 header organization and providing the possibility of
+ * handling both until all build environments have moved to the catch3 versions.
  */
 
-#define CATCH_CONFIG_MAIN
-#include <tiledb/sm/misc/tdb_catch.h>
-#include "../exception.h"
+#ifndef TILEDB_MISC_TDB_CATCH_H
+#define TILEDB_MISC_TDB_CATCH_H
+
+#include <catch.hpp>
+
+#endif  // TILEDB_MISC_TDB_CATCH_H

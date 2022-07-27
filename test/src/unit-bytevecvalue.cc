@@ -37,7 +37,7 @@
 #include "test/src/helpers.h"
 #include "tiledb/sm/misc/types.h"
 
-#include "catch.hpp"
+#include <tiledb/sm/misc/tdb_catch.h>
 
 using namespace tiledb::sm;
 

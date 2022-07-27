@@ -30,7 +30,7 @@
  * Tests for the TileDB Arrow integration.
  */
 
-#include "catch.hpp"
+#include <tiledb/sm/misc/tdb_catch.h>
 #include "helpers.h"
 #include "tiledb/sm/cpp_api/arrowio"
 #include "tiledb/sm/cpp_api/tiledb"

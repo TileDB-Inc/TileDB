@@ -56,7 +56,7 @@
 #include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/tile/tile.h"
 
-#include <catch.hpp>
+#include <tiledb/sm/misc/tdb_catch.h>
 #include <functional>
 #include <random>
 

@@ -30,7 +30,7 @@
  * Tests the C++ API for array related functions.
  */
 
-#include "catch.hpp"
+#include <tiledb/sm/misc/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 

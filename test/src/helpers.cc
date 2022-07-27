@@ -31,7 +31,7 @@
  */
 
 #include "helpers.h"
-#include "catch.hpp"
+#include <tiledb/sm/misc/tdb_catch.h>
 #include "serialization_wrappers.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"

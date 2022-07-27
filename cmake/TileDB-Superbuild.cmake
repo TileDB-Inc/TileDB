@@ -133,6 +133,7 @@ endif()
 ExternalProject_Add(tiledb
   SOURCE_DIR ${PROJECT_SOURCE_DIR}
   CMAKE_ARGS
+    --trace
     -DTILEDB_SUPERBUILD=OFF
     ${INHERITED_CMAKE_ARGS}
     ${FORWARD_EP_CMAKE_ARGS}

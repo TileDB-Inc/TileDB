@@ -30,5 +30,5 @@
 
 #ifndef TILEDB_UNIT_FSM_H
 #define TILEDB_UNIT_FSM_H
-#include <catch.hpp>
+#include <tiledb/sm/misc/tdb_catch.h>
 #endif  // TILEDB_UNIT_FSM_H

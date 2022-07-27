@@ -34,7 +34,7 @@
 #ifndef TILEDB_UNIT_INTERVAL_H
 #define TILEDB_UNIT_INTERVAL_H
 
-#include <catch.hpp>
+#include <tiledb/sm/misc/tdb_catch.h>
 #include <cmath>
 #include <optional>
 

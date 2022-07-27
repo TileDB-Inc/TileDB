@@ -31,4 +31,4 @@
  */
 
 #define CATCH_CONFIG_MAIN
-#include <catch.hpp>
+#include <tiledb/sm/misc/tdb_catch.h>

@@ -28,4 +28,4 @@
  * @section DESCRIPTION
  */
 
-#include <catch.hpp>
+#include <tiledb/sm/misc/tdb_catch.h>

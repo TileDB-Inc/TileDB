@@ -34,7 +34,7 @@
 #ifndef TILEDB_UNIT_CONSISTENCY_H
 #define TILEDB_UNIT_CONSISTENCY_H
 
-#include <catch.hpp>
+#include <tiledb/sm/misc/tdb_catch.h>
 #include <iostream>
 
 #include "../array.h"

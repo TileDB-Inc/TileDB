@@ -30,7 +30,7 @@
  * Tests for query serialization/deserialization.
  */
 
-#include "catch.hpp"
+#include <tiledb/sm/misc/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/c_api/tiledb.h"

@@ -31,7 +31,7 @@
  * intersecting a range.
  */
 
-#include <catch.hpp>
+#include <tiledb/sm/misc/tdb_catch.h>
 #include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;

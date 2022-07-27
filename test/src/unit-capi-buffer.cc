@@ -31,7 +31,7 @@
  * Tests for TileDB's buffer C API.
  */
 
-#include "catch.hpp"
+#include <tiledb/sm/misc/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
 
 TEST_CASE("C API: Test buffer", "[capi][buffer]") {

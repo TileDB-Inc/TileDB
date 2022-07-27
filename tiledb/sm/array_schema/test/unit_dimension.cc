@@ -30,7 +30,7 @@
  * This file tests the Dimension class
  */
 
-#include <catch.hpp>
+#include <tiledb/sm/misc/tdb_catch.h>
 #include "../dimension.h"
 #include "tiledb/sm/enums/datatype.h"
 

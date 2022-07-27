@@ -26,7 +26,7 @@
  * THE SOFTWARE.
  */
 
-#include <catch.hpp>
+#include <tiledb/sm/misc/tdb_catch.h>
 #include "../exception.h"
 
 using namespace tiledb::common;

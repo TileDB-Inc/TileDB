@@ -30,7 +30,7 @@
  * Implement tests for spinlocks.
  */
 
-#include <catch.hpp>
+#include <tiledb/sm/misc/tdb_catch.h>
 #include <future>
 #include <mutex>
 #include <vector>
