@@ -116,8 +116,8 @@ static std::vector<std::string> port_state_strings<three_stage>{
  * @param event The event to stringify.
  * @return The string corresponding to the event.
  */
-template <class State>
-static inline auto str(State st);
+template <class PortState>
+static inline auto str(PortState st);
 
 template <>
 inline auto str(three_stage st) {
