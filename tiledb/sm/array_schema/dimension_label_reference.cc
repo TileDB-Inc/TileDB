@@ -66,16 +66,30 @@ DimensionLabelReference::DimensionLabelReference(
   if (uri.to_string().size() == 0)
     throw std::invalid_argument(
         "Invalid dimension label uri; Cannot set the URI to an emptry string.");
-  if (datatype_is_string(label_type)) {
+  ensure_dimension_datatype_is_valid(label_type);
+  if (label_type == Datatype::STRING_ASCII) {
     if (label_cell_val_num != constants::var_num)
       throw std::invalid_argument(
           "Invalid number of values per coordinate for the string dimension "
           "label.");
+    if (!label_domain.empty())
+      throw std::invalid_argument(
+          "Invalid domain; Setting the domain with type '" +
+          datatype_str(label_type) + "' is not allowed.");
   } else {
     if (label_cell_val_num != 1)
       throw std::invalid_argument(
-          "Invalid number of values per coordiante; Currently only on value "
+          "Invalid number of values per coordiante; Currently only one value "
           "per coordinate is supported for non-string dimension labels.");
+    if (label_domain.var_size())
+      throw std::invalid_argument(
+          "Invalid domain; The label domain for a dimension label with label "
+          "type '" +
+          datatype_str(label_type) + "cannot be variable.");
+    if (label_domain.size() != 2 * datatype_size(label_type))
+      throw std::invalid_argument(
+          "Invalid domain; The size of the label domain does not match the "
+          "size of the datatype.");
   }
   if (!is_external_ && !relative_uri_)
     throw std::invalid_argument(
@@ -138,7 +152,6 @@ shared_ptr<DimensionLabelReference> DimensionLabelReference::deserialize(
     buff->read(
         &label_type_int, sizeof(uint8_t), "the dimension label datatype");
     auto label_type = static_cast<Datatype>(label_type_int);
-    ensure_dimension_datatype_is_valid(label_type);
     // Read label cell value number
     uint32_t label_cell_val_num;
     buff->read(
