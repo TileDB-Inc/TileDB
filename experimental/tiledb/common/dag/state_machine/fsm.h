@@ -33,8 +33,8 @@
  *
  */
 
-#ifndef TILEDB_DAG_FSM3_H
-#define TILEDB_DAG_FSM3_H
+#ifndef TILEDB_DAG_FSM_H
+#define TILEDB_DAG_FSM_H
 
 #include <atomic>
 #include <iostream>
@@ -193,7 +193,7 @@ static inline auto str(State st);
 
 template <>
 inline auto str(three_port_enum_type st) {
-  return port_state_strings<PortState<three_stage>>[static_cast<int>(st)];
+  return port_state_strings<three_stage>[static_cast<int>(st)];
 }
 
 template <>
@@ -812,4 +812,4 @@ class PortFiniteStateMachine {
 
 }  // namespace tiledb::common
 
-#endif  // TILEDB_DAG_FSM3_H
+#endif  // TILEDB_DAG_FSM_H

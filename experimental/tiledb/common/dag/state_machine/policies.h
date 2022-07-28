@@ -35,8 +35,8 @@
  * @todo Remove the debugging code.
  */
 
-#ifndef TILEDB_DAG_POLICIES3_H
-#define TILEDB_DAG_POLICIES3_H
+#ifndef TILEDB_DAG_POLICIES_H
+#define TILEDB_DAG_POLICIES_H
 
 #include <array>
 #include <cassert>
@@ -112,13 +112,11 @@ namespace tiledb::common {
 #define _unused(x) x
 #endif
 
-#if 0
-template <class enumerator>
+template <class Mover, class enumerator>
 class AsyncPolicy;
 
-template <class enumerator>
+template <class Mover, class enumerator>
 class UnifiedAsyncPolicy;
-#endif
 
 /**
  * Base action policy. Includes items array and `register` and `deregister`
@@ -139,15 +137,8 @@ class BaseMover<three_stage, Block> {
 
  public:
   BaseMover() = default;
-  BaseMover(
-      item_type& source_init,
-      item_type& edge_init,
-      item_type& sink_init,
-      bool debug)
+  BaseMover(item_type& source_init, item_type& edge_init, item_type& sink_init)
       : items_{&source_init, &edge_init, &sink_init} {
-    if (debug) {
-      this->enable_debug();
-    }
   }
 
   /**
@@ -176,17 +167,19 @@ class BaseMover<three_stage, Block> {
   /**
    * @pre Called under lock
    */
-  inline void on_move(std::atomic<int>& event) {
-    auto state = this->state();
-    bool debug = this->debug_enabled();
+  template <class StateMachine>
+  inline void on_move(
+      const StateMachine& state_machine, std::atomic<int>& event) {
+    auto state = state_machine.state();
+    bool debug = state_machine.debug_enabled();
     CHECK(
         (state == PortState::st_010 || state == PortState::st_100 ||
          state == PortState::st_101 || state == PortState::st_110));
 
-    if (this->debug_enabled()) {
+    if (state_machine.debug_enabled()) {
       std::cout << event << "  "
                 << " source swapping items with " + str(state) + " and " +
-                       str(this->next_state())
+                       str(state_machine.next_state())
                 << std::endl;
 
       std::cout << event;
@@ -243,8 +236,9 @@ class BaseMover<three_stage, Block> {
       }
       std::cout << ")" << std::endl;
       std::cout << event << "  "
-                << " source done swapping items with " + str(this->state()) +
-                       " and " + str(this->next_state())
+                << " source done swapping items with " +
+                       str(state_machine.state()) + " and " +
+                       str(state_machine.next_state())
                 << std::endl;
       ++event;
     }
@@ -267,100 +261,99 @@ class BaseMover<two_stage, Block> {
       : items_{&source_init, &sink_init} {
   }
 
-                             /**
-                              * @pre Called under lock
-                              */
-                             void register_items(
-                                 item_type & source_item,
-                                 item_type& sink_item){items_[0] = &source_item;
-  items_[1] = &sink_item;
-}
+  /**
+   * @pre Called under lock
+   */
+  void register_items(item_type& source_item, item_type& sink_item) {
+    items_[0] = &source_item;
+    items_[1] = &sink_item;
+  }
 
   void deregister_items(item_type& source_item, item_type& sink_item) {
-  if (items_[0] != &source_item || items_[1] != &sink_item) {
-    throw std::runtime_error(
-        "Attempting to deregister source or sink items that were not "
-        "registered.");
+    if (items_[0] != &source_item || items_[1] != &sink_item) {
+      throw std::runtime_error(
+          "Attempting to deregister source or sink items that were not "
+          "registered.");
+    }
+    for (auto& j : items_) {
+      j->reset();
+    }
   }
-  for (auto& j : items_) {
-    j->reset();
-  }
-}
-
-/**
- * @pre Called under lock
- */
-template <class StateMachine>
-inline void on_move(
-    const StateMachine& state_machine, std::atomic<int>& event) {
-  auto state = state_machine.state();
-  bool debug = state_machine.debug_enabled();
-  CHECK(state == PortState::st_10);
 
   /**
-   * @todo Distinguish between source and sink
+   * @pre Called under lock
    */
-  moves_[0]++;
+  template <class StateMachine>
+  inline void on_move(
+      const StateMachine& state_machine, std::atomic<int>& event) {
+    auto state = state_machine.state();
+    bool debug = state_machine.debug_enabled();
+    CHECK(state == PortState::st_10);
 
-  if (state_machine.debug_enabled()) {
-    std::cout << event << "  "
-              << " source swapping items with " + str(state) + " and " +
-                     str(state_machine.next_state())
-              << std::endl;
+    /**
+     * @todo Distinguish between source and sink
+     */
+    moves_[0]++;
 
-    std::cout << event;
-    std::cout << "    "
-              << "Action on_move state = (";
-    for (auto& j : items_) {
-      //        print_types(j);
+    if (state_machine.debug_enabled()) {
+      std::cout << event << "  "
+                << " source swapping items with " + str(state) + " and " +
+                       str(state_machine.next_state())
+                << std::endl;
 
-      if constexpr (has_to_string_v<decltype(j->value())>) {
-        std::cout << " "
-                  << (j == nullptr && j->has_value() ?
-                          std::to_string(j->value()) :
-                          "no_value")
-                  << " ";
+      std::cout << event;
+      std::cout << "    "
+                << "Action on_move state = (";
+      for (auto& j : items_) {
+        //        print_types(j);
+
+        if constexpr (has_to_string_v<decltype(j->value())>) {
+          std::cout << " "
+                    << (j == nullptr && j->has_value() ?
+                            std::to_string(j->value()) :
+                            "no_value")
+                    << " ";
+        }
       }
+      std::cout << ") -> ";
     }
-    std::cout << ") -> ";
+
+    std::swap(*items_[0], *items_[1]);
+
+    if (debug) {
+      std::cout << "(";
+      for (auto& j : items_) {
+        if constexpr (has_to_string_v<decltype(j->value())>) {
+          std::cout << " "
+                    << (j == nullptr && j->has_value() ?
+                            std::to_string(j->value()) :
+                            "no_value")
+                    << " ";
+        }
+      }
+      std::cout << ")" << std::endl;
+      std::cout << event << "  "
+                << " source done swapping items with " +
+                       str(state_machine.state()) + " and " +
+                       str(state_machine.next_state())
+                << std::endl;
+      ++event;
+    }
   }
 
-  std::swap(*items_[0], *items_[1]);
-
-  if (debug) {
-    std::cout << "(";
-    for (auto& j : items_) {
-      if constexpr (has_to_string_v<decltype(j->value())>) {
-        std::cout << " "
-                  << (j == nullptr && j->has_value() ?
-                          std::to_string(j->value()) :
-                          "no_value")
-                  << " ";
-      }
-    }
-    std::cout << ")" << std::endl;
-    std::cout << event << "  "
-              << " source done swapping items with " +
-                     str(state_machine.state()) + " and " +
-                     str(state_machine.next_state())
-              << std::endl;
-    ++event;
+  size_t source_swaps() const {
+    return moves_[0];
   }
-}
+  size_t sink_swaps() const {
+    return moves_[1];
+  }
 
-size_t source_swaps() const {
-  return moves_[0];
-}
-size_t sink_swaps() const {
-  return moves_[1];
-}
-
-auto& source_item() {
-  return *items_[0];
-}
-auto& sink_item() {
-  return *items_[1];
-}
+  auto& source_item() {
+    return *items_[0];
+  }
+  auto& sink_item() {
+    return *items_[1];
+  }
 };
 
 // template <template <class> class Policy, class enumerator, class Block>
@@ -902,4 +895,4 @@ class DebugPolicyWithLock : public Mover {
 };
 
 }  // namespace tiledb::common
-#endif  // TILEDB_DAG_POLICIES3_H
+#endif  // TILEDB_DAG_POLICIES_H

@@ -1,5 +1,5 @@
 /**
- * @file helpers3.h
+ * @file helpers.h
  *
  * @section LICENSE
  *
@@ -31,12 +31,13 @@
  *
  */
 
-#ifndef TILEDB_DAG_TEST_HELPERS3_H
-#define TILEDB_DAG_TEST_HELPERS3_H
+#ifndef TILEDB_DAG_TEST_HELPERS_H
+#define TILEDB_DAG_TEST_HELPERS_H
 
 #include <random>
 #include <thread>
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#include "experimental/tiledb/common/dag/state_machine/policies.h"
 
 using namespace tiledb::common;
 
@@ -193,4 +194,4 @@ template <>
   return state;
 }
 
-#endif  // TILEDB_DAG_TEST_HELPERS3_H
+#endif  // TILEDB_DAG_TEST_HELPERS_H

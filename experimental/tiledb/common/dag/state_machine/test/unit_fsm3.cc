@@ -56,26 +56,59 @@ using namespace tiledb::common;
 
 // using PortStateMachine = NullStateMachine;
 
-using PortState3 = PortState<3>;
-using States3 = decltype(PortState<3>::done);
-using AsyncStateMachine3 = AsyncStateMachine<PortState3, size_t>;
-using UnifiedAsyncStateMachine3 = UnifiedAsyncStateMachine<PortState3, size_t>;
+using two_port_type = PortState<two_stage>;
+using two_state = decltype(PortState<two_stage>::done);
+
+using ItemMover3 = ItemMover<AsyncPolicy, three_stage, size_t>;
+using ItemMover2 = ItemMover<AsyncPolicy, two_stage, size_t>;
+using UnifiedItemMover3 = ItemMover<UnifiedAsyncPolicy, three_stage, size_t>;
+using UnifiedItemMover2 = ItemMover<UnifiedAsyncPolicy, two_stage, size_t>;
+
+using DebugPolicy3 =
+    DebugPolicy<ItemMover<DebugPolicy, three_stage, size_t>, three_stage>;
+using DebugPolicy2 =
+    DebugPolicy<ItemMover<DebugPolicy, two_stage, size_t>, two_stage>;
+
+using AsyncPolicy3 =
+    AsyncPolicy<ItemMover<AsyncPolicy, three_stage, size_t>, three_stage>;
+using AsyncPolicy2 =
+    AsyncPolicy<ItemMover<AsyncPolicy, two_stage, size_t>, two_stage>;
+
+using UnifiedAsyncPolicy3 = UnifiedAsyncPolicy<
+    ItemMover<UnifiedAsyncPolicy, three_stage, size_t>,
+    three_stage>;
+using UnifiedAsyncPolicy2 = UnifiedAsyncPolicy<
+    ItemMover<UnifiedAsyncPolicy, two_stage, size_t>,
+    two_stage>;
+
+using PortStateMachine3 = PortFiniteStateMachine<DebugPolicy3, three_stage>;
+using PortStateMachine2 = PortFiniteStateMachine<DebugPolicy2, two_stage>;
+
+using AsyncStateMachine3 = PortFiniteStateMachine<AsyncPolicy3, three_stage>;
+using AsyncStateMachine2 = PortFiniteStateMachine<AsyncPolicy2, two_stage>;
+
+using UnifiedAsyncStateMachine3 =
+    PortFiniteStateMachine<UnifiedAsyncPolicy3, three_stage>;
+using UnifiedAsyncStateMachine2 =
+    PortFiniteStateMachine<UnifiedAsyncPolicy2, two_stage>;
+
+using PortState3 = PortState<three_stage>;
+using States3 = decltype(PortState<three_stage>::done);
 
 /*
  * Use the `DebugStateMachine` to verify startup state and some simple
  * transitions.
  */
-using PortStateMachine = DebugStateMachine<PortState3, size_t>;
 
 TEST_CASE("Port FSM3: Construct", "[fsm3]") {
-  [[maybe_unused]] auto a = PortStateMachine{};
+  [[maybe_unused]] auto a = PortStateMachine3{};
 
   CHECK(a.state() == PortState3::st_000);
 }
 
 TEST_CASE("Port FSM3: Start up", "[fsm3]") {
   constexpr bool debug = false;
-  [[maybe_unused]] auto a = PortStateMachine{};
+  [[maybe_unused]] auto a = PortStateMachine3{};
 
   if (debug)
     a.enable_debug();
@@ -111,7 +144,7 @@ TEST_CASE("Port FSM3: Start up", "[fsm3]") {
  * transition sequences.
  */
 TEST_CASE("Port FSM3: Basic manual sequence", "[fsm3]") {
-  [[maybe_unused]] auto a = PortStateMachine{};
+  [[maybe_unused]] auto a = PortStateMachine3{};
   CHECK(a.state() == States3::st_000);
 
   SECTION("Two element tests") {
@@ -235,8 +268,7 @@ TEST_CASE(
   std::optional<size_t> source_item{0};
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a =
-      AsyncStateMachine3{source_item, edge_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover3{source_item, edge_item, sink_item};
 
   a.set_state(States3::st_000);
 
@@ -276,8 +308,7 @@ TEST_CASE(
   std::optional<size_t> source_item{0};
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a =
-      AsyncStateMachine3{source_item, edge_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover3{source_item, edge_item, sink_item};
 
   a.set_state(States3::st_000);
 
@@ -318,7 +349,7 @@ TEST_CASE(
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine3{source_item, edge_item, sink_item, debug};
+      UnifiedItemMover3{source_item, edge_item, sink_item};
 
   a.set_state(States3::st_000);
 
@@ -353,7 +384,7 @@ TEST_CASE(
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine3{source_item, edge_item, sink_item, debug};
+      UnifiedItemMover3{source_item, edge_item, sink_item};
 
   a.set_state(States3::st_000);
 
@@ -391,8 +422,7 @@ TEST_CASE(
   std::optional<size_t> source_item{0};
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a =
-      AsyncStateMachine3{source_item, edge_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover3{source_item, edge_item, sink_item};
 
   a.set_state(States3::st_000);
 
@@ -484,7 +514,7 @@ TEST_CASE(
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine3{source_item, edge_item, sink_item, debug};
+      UnifiedItemMover3{source_item, edge_item, sink_item};
 
   a.set_state(States3::st_000);
 
@@ -566,8 +596,7 @@ TEST_CASE(
   std::optional<size_t> source_item{0};
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a =
-      AsyncStateMachine3{source_item, edge_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover3{source_item, edge_item, sink_item};
 
   if (debug)
     a.enable_debug();
@@ -656,8 +685,7 @@ TEST_CASE(
   std::optional<size_t> source_item{0};
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine3{source_item, edge_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover3{source_item, edge_item, sink_item};
 
   a.set_state(States3::st_000);
 
@@ -742,8 +770,7 @@ TEST_CASE(
   std::optional<size_t> source_item{0};
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a =
-      AsyncStateMachine3{source_item, edge_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover3{source_item, edge_item, sink_item};
 
   a.set_state(States3::st_000);
 

@@ -52,6 +52,7 @@
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
+#include "shit.h"
 
 using namespace tiledb::common;
 
