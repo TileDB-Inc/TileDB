@@ -133,6 +133,7 @@ void DimensionLabel::open(
       encryption_key,
       key_length));
   load_schema();
+  query_type_ = query_type;
 }
 
 void DimensionLabel::open_without_fragments(
@@ -144,6 +145,7 @@ void DimensionLabel::open_without_fragments(
   throw_if_not_ok(labelled_array_->open_without_fragments(
       encryption_type, encryption_key, key_length));
   load_schema();
+  query_type_ = QueryType::READ;
 }
 
 void DimensionLabel::load_schema() {
@@ -208,14 +210,11 @@ void DimensionLabel::load_schema() {
 }
 
 QueryType DimensionLabel::query_type() const {
-  QueryType indexed_query_type;
-  throw_if_not_ok(indexed_array_->get_query_type(&indexed_query_type));
-  QueryType labelled_query_type;
-  throw_if_not_ok(labelled_array_->get_query_type(&labelled_query_type));
-  if (indexed_query_type != labelled_query_type)
-    throw std::runtime_error(
-        "Dimension label opened with inconsistent query types.");
-  return indexed_query_type;
+  if (query_type_.has_value())
+    return query_type_.value();
+  throw std::runtime_error(
+      "[DimensionLabel::query_type] No query type set; dimension label has "
+      "not been opened");
 }
 
 void create_dimension_label(

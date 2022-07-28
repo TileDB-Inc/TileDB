@@ -174,6 +174,8 @@ class DimensionLabel {
   /** Latest dimension label schema  */
   shared_ptr<DimensionLabelSchema> schema_;
 
+  optional<QueryType> query_type_;
+
   /*******************/
   /* Private methods */
   /*******************/
