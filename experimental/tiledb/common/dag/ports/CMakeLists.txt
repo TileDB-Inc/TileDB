@@ -27,6 +27,9 @@
 
 include(common NO_POLICY_SCOPE)
 
+option(CMAKE_EXPORT_COMPILE_COMMANDS "cmake compile commands" ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 list(APPEND PORT_SOURCES
     ports.cc
 )

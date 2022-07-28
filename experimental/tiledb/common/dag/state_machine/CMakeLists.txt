@@ -112,3 +112,43 @@ if (TILEDB_TESTS)
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
+
+
+#
+# Object library for other units to depend upon
+#
+#add_library(fxm OBJECT ${FXM_SOURCES})
+#target_link_libraries(fxm PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+
+#
+# Test-compile of object library ensures link-completeness
+#
+#add_executable(compile_fxm EXCLUDE_FROM_ALL)
+#target_link_libraries(compile_fxm PRIVATE fxm)
+#target_sources(compile_fxm PRIVATE test/compile_fxm_main.cc)
+
+if (TILEDB_TESTS)
+    add_executable(unit_fxm EXCLUDE_FROM_ALL)
+#    target_link_libraries(unit_fxm PUBLIC fxm)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_fxm PUBLIC Catch2::Catch2)
+#    target_link_libraries(unit_fxm PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_fxm PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_fxm PUBLIC
+            test/main.cc
+            test/unit_fxm.cc
+            )
+
+    add_test(
+            NAME "unit_fxm"
+            COMMAND $<TARGET_FILE:unit_fxm> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()
+
+
+

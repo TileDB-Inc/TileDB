@@ -33,6 +33,8 @@
 #ifndef TILEDB_DAG_EDGE_H
 #define TILEDB_DAG_EDGE_H
 
+#include <array>
+#include <type_traits>
 #include "experimental/tiledb/common/dag/ports/ports.h"
 
 namespace tiledb::common {
@@ -53,7 +55,10 @@ class Edge : public Source<Block, StateMachine>,
   using SourceBase = Source<Block, StateMachine>;
   using SinkBase = Source<Block, StateMachine>;
 
+  static_assert(StateMachine::port_state::N_ >= 2);
+
   std::optional<Block> item_{};
+  std::array<std::optional<Block>, StateMachine::port_state::N_ - 2> items_{};
 
  public:
   Edge(Source<Block, StateMachine>& from, Sink<Block, StateMachine>& to) {

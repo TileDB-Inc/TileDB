@@ -55,41 +55,57 @@
 
 using namespace tiledb::common;
 
-using PortState2 = PortState<2>;
-using States2 = decltype(PortState<2>::done);
-using AsyncStateMachine2 = AsyncStateMachine<PortState2, size_t>;
-using UnifiedAsyncStateMachine2 = UnifiedAsyncStateMachine<PortState2, size_t>;
+using two_port_type = PortState<two_stage>;
+using two_state = decltype(PortState<two_stage>::done);
+using PortStateMachine3 = PortFiniteStateMachine<
+    ItemMover<DebugPolicy, three_stage, size_t>,
+    three_stage>;
+using PortStateMachine2 = PortFiniteStateMachine<
+    ItemMover<DebugPolicy, two_stage, size_t>,
+    two_stage>;
 
-using PortState2Machine = DebugStateMachine<PortState2, size_t>;
+using AsyncStateMachine3 = PortFiniteStateMachine<
+    ItemMover<AsyncPolicy, three_stage, size_t>,
+    three_stage>;
+using AyncStateMachine2 = PortFiniteStateMachine<
+    ItemMover<AsyncPolicy, two_stage, size_t>,
+    two_stage>;
 
-/*
- * Use the `DebugStateMachine` to verify startup state and some simple
- * transitions.
- */
-using PortStateMachine = DebugStateMachine<PortState2, size_t>;
+using UnifiedAsyncStateMachine3 = PortFiniteStateMachine<
+    ItemMover<UnifiedAsyncPolicy, three_stage, size_t>,
+    three_stage>;
+using UnifiedAyncStateMachine2 = PortFiniteStateMachine<
+    ItemMover<UnifiedAsyncPolicy, two_stage, size_t>,
+    two_stage>;
 
-TEST_CASE("Port FSM: Construct PortStateMachine", "[fsm]") {
-  [[maybe_unused]] auto a = PortStateMachine{};
+using ItemMover3 = ItemMover<AsyncPolicy, three_stage, size_t>;
+using ItemMover2 = ItemMover<AsyncPolicy, two_stage, size_t>;
+using UnifiedItemMover3 = ItemMover<UnifiedAsyncPolicy, three_stage, size_t>;
+using UnifiedItemMover2 = ItemMover<UnifiedAsyncPolicy, two_stage, size_t>;
 
-  CHECK(a.state() == PortState2::st_00);
+#if 0
+TEST_CASE("Port FSM: Construct PortPolicy", "[fsm]") {
+  [[maybe_unused]] auto a = PortStateMachine2{};
+
+  CHECK(a.state() == two_port_type::st_00);
 }
 
 TEST_CASE("Port FSM: Copy, Move, etc", "[fsm]") {
-  [[maybe_unused]] auto a = PortStateMachine{};
-  std::vector<PortStateMachine> v;
+  [[maybe_unused]] auto a = PortStateMachine3{};
+  std::vector<PortStateMachine2> v;
   v.reserve(55);
 
-  [[maybe_unused]] auto b = AsyncStateMachine2{};
+  [[maybe_unused]] auto b = PortStateMachine2{};
 
-  std::vector<AsyncStateMachine2> w;
+  std::vector<PortStateMachine3> w;
   w.reserve(55);
 
   auto t = std::make_tuple(a, b);
   std::vector<decltype(t)> u;
   u.reserve(55);
 
-  auto foo = [](PortStateMachine&&) {};
-  auto bar = [](AsyncStateMachine2&&) {};
+  auto foo = [](PortStateMachine3&&) {};
+  auto bar = [](PortStateMachine2&&) {};
 
   foo(std::move(a));
   bar(std::move(b));
@@ -97,15 +113,15 @@ TEST_CASE("Port FSM: Copy, Move, etc", "[fsm]") {
 
 TEST_CASE("Port FSM: Start up", "[fsm]") {
   constexpr bool debug = false;
-  [[maybe_unused]] auto a = PortStateMachine{};
+  [[maybe_unused]] auto a = PortStateMachine2{};
 
   if (debug)
     a.enable_debug();
-  CHECK(a.state() == PortState2::st_00);
+  CHECK(a.state() == two_port_type::st_00);
 
   SECTION("start source") {
     a.do_fill(debug ? "start source" : "");
-    CHECK(a.state() == PortState2::st_10);
+    CHECK(a.state() == two_port_type::st_10);
   }
 
   SECTION("start sink") {
@@ -116,15 +132,17 @@ TEST_CASE("Port FSM: Start up", "[fsm]") {
     a.do_drain(debug ? "start sink (drain)" : "");
     CHECK(is_sink_empty(a.state()) == "");
   }
-}
 
+}
+#endif
+#if 0
 /*
- * Use the `DebugStateMachine` to verify startup state and some more involved
+ * Use the `DebugPolicy` to verify startup state and some more involved
  * transition sequences.
  */
 TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
-  [[maybe_unused]] auto a = PortStateMachine{};
-  CHECK(a.state() == PortState2::st_00);
+  [[maybe_unused]] auto a = PortStateMachine2{};
+  CHECK(a.state() == two_port_type::st_00);
 
   a.do_fill();
   CHECK(str(a.state()) == "st_10");
@@ -152,7 +170,7 @@ TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
   CHECK(str(a.state()) == "st_01");
 
   a.do_drain();
-  CHECK(a.state() == PortState2::st_00);
+  CHECK(a.state() == two_port_type::st_00);
 
   a.do_fill();
   CHECK(str(a.state()) == "st_10");
@@ -166,7 +184,7 @@ TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
   CHECK(str(a.state()) == "st_01");
 
   a.do_drain();
-  CHECK(a.state() == PortState2::st_00);
+  CHECK(a.state() == two_port_type::st_00);
 
   a.do_fill();
   CHECK(str(a.state()) == "st_10");
@@ -180,23 +198,24 @@ TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
   CHECK(str(a.state()) == "st_01");
 
   a.do_drain();
-  CHECK(a.state() == PortState2::st_00);
+  CHECK(a.state() == two_port_type::st_00);
 }
+
+#endif
 
 /**
  * Simple test of asynchrous state machine policy, launching an emulated source
  * client as an asynchronous task and running an emulated sink client in the
  * main thread. The test just runs one pass of each emulated client.
  */
-TEST_CASE(
-    "AsynchronousStateMachine: Asynchronous source and manual sink", "[fsm]") {
+TEST_CASE("AsynchronousPolicy: Asynchronous source and manual sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item, debug};
 
-  a.set_state(PortState2::st_00);
+  a.set_state(two_port_type::st_00);
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.do_fill(debug ? "async source (fill)" : "");
@@ -227,15 +246,14 @@ TEST_CASE(
  * client as an asynchronous task and running an emulated source client in the
  * main thread. The test just runs one pass of each emulated client.
  */
-TEST_CASE(
-    "AsynchronousStateMachine: Manual source and asynchronous sink", "[fsm]") {
+TEST_CASE("AsynchronousPolicy: Manual source and asynchronous sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item, debug};
 
-  a.set_state(PortState2::st_00);
+  a.set_state(two_port_type::st_00);
 
   auto fut_b = std::async(std::launch::async, [&]() {
     a.do_pull(debug ? "async sink (pull)" : "");
@@ -266,16 +284,14 @@ TEST_CASE(
  * client.
  */
 TEST_CASE(
-    "UnifiedAsynchronousStateMachine: Asynchronous source and manual sink",
-    "[fsm]") {
+    "UnifiedAsynchronousPolicy: Asynchronous source and manual sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item, debug};
 
-  a.set_state(PortState2::st_00);
+  a.set_state(two_port_type::st_00);
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.do_fill(debug ? "manual async source (fill)" : "");
@@ -300,16 +316,14 @@ TEST_CASE(
  * client.
  */
 TEST_CASE(
-    "UnifiedAsynchronousStateMachine: Manual source and asynchronous sink",
-    "[fsm]") {
+    "UnifiedAsynchronousPolicy: Manual source and asynchronous sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item, debug};
 
-  a.set_state(PortState2::st_00);
+  a.set_state(two_port_type::st_00);
 
   auto fut_b = std::async(std::launch::async, [&]() {
     a.do_pull(debug ? "manual async sink (pull)" : "");
@@ -338,15 +352,14 @@ TEST_CASE(
  * tasks in all combinations of orderings of task launch and waiting on futures.
  */
 TEST_CASE(
-    "AsynchronousStateMachine: Asynchronous source and asynchronous sink",
-    "[fsm]") {
+    "AsynchronousPolicy: Asynchronous source and asynchronous sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item, debug};
 
-  a.set_state(PortState2::st_00);
+  a.set_state(two_port_type::st_00);
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
@@ -427,17 +440,16 @@ TEST_CASE(
  * tasks in all combinations of orderings of task launch and waiting on futures.
  */
 TEST_CASE(
-    "UnifiedAsynchronousStateMachine: Asynchronous source and asynchronous "
+    "UnifiedAsynchronousPolicy: Asynchronous source and asynchronous "
     "sink",
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item, debug};
 
-  a.set_state(PortState2::st_00);
+  a.set_state(two_port_type::st_00);
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
@@ -509,19 +521,19 @@ TEST_CASE(
  * tasks in all combinations of orderings of task launch and waiting on futures.
  */
 TEST_CASE(
-    "AsynchronousStateMachine: Asynchronous source and asynchronous sink, n "
+    "AsynchronousPolicy: Asynchronous source and asynchronous sink, n "
     "iterations",
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item, debug};
 
   if (debug)
     a.enable_debug();
 
-  a.set_state(PortState2::st_00);
+  a.set_state(two_port_type::st_00);
 
   size_t rounds = 37;
   if (debug)
@@ -593,17 +605,16 @@ TEST_CASE(
  * tasks in all combinations of orderings of task launch and waiting on futures.
  */
 TEST_CASE(
-    "UnifiedAsynchronousStateMachine: Asynchronous source and asynchronous "
+    "UnifiedAsynchronousPolicy: Asynchronous source and asynchronous "
     "sink, n iterations",
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item, debug};
 
-  a.set_state(PortState2::st_00);
+  a.set_state(two_port_type::st_00);
 
   size_t rounds = 37;
   if (debug)
@@ -673,16 +684,16 @@ TEST_CASE(
  * Repeat of above test, but without sleeping for emulated tasks.
  */
 TEST_CASE(
-    "UnifiedAsynchronousStateMachine: Asynchronous source and asynchronous "
+    "UnifiedAsynchronousPolicy: Asynchronous source and asynchronous "
     "sink, n iterations, no sleeping",
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item, debug};
 
-  a.set_state(PortState2::st_00);
+  a.set_state(two_port_type::st_00);
 
   size_t rounds = 37;
   if (debug)
@@ -761,9 +772,9 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item, debug};
 
-  a.set_state(PortState2::st_00);
+  a.set_state(two_port_type::st_00);
 
   size_t rounds = 3379;
   if (debug)
@@ -788,8 +799,8 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       }
 
       // It doesn't seem we actually need these guards here?
-      // while (a.state() == PortState2::st_10 ||
-      //        a.state() == PortState2::st_11)// ;
+      // while (a.state() == two_port_type::st_10 ||
+      //        a.state() == two_port_type::st_11)// ;
 
       CHECK(is_source_empty(a.state()) == "");
 
@@ -827,8 +838,8 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       }
 
       // It doesn't seem we actually need these guards here?
-      // while (a.state() == PortState2::st_11 ||
-      //             a.state() == PortState2::st_01)
+      // while (a.state() == two_port_type::st_11 ||
+      //             a.state() == two_port_type::st_01)
       //        ;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
@@ -934,10 +945,9 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item, debug};
 
-  a.set_state(PortState2::st_00);
+  a.set_state(two_port_type::st_00);
 
   size_t rounds = 3379;
   if (debug)
@@ -960,8 +970,8 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      // while (a.state() == PortState2::st_10 ||
-      // a.state() == PortState2::st_11)
+      // while (a.state() == two_port_type::st_10 ||
+      // a.state() == two_port_type::st_11)
       // ;
 
       CHECK(is_source_empty(a.state()) == "");
@@ -983,8 +993,8 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
         std::cout << "sink node iteration " << n << std::endl;
       }
 
-      // while (a.state() == PortState2::st_11 ||
-      //             a.state() == PortState2::st_01)
+      // while (a.state() == two_port_type::st_11 ||
+      //             a.state() == two_port_type::st_01)
       //        ;
 
       a.do_pull(debug ? "async sink node" : "");

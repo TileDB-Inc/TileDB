@@ -45,10 +45,21 @@
 
 namespace tiledb::common {
 
+template <size_t num>
+struct stages {
+  constexpr static inline const size_t num_stages = num;
+};
+
+using three_stage = stages<3>;
+using two_stage = stages<2>;
+
+template <class enumerator>
+constexpr size_t num_stages_v = enumerator::num_stages;
+
 /**
  * An enum representing the different states of ports.  Forward declaration.
  */
-template <size_t N>
+template <class enumerator>
 struct PortState;
 
 /**
@@ -56,7 +67,7 @@ struct PortState;
  * intermediary..
  */
 template <>
-struct PortState<3> {
+struct PortState<three_stage> {
   enum {
     st_000,
     st_001,
@@ -77,10 +88,56 @@ struct PortState<3> {
  * An enum representing the different states of two bound ports.
  */
 template <>
-struct PortState<2> {
+struct PortState<two_stage> {
   enum { st_00, st_01, st_10, st_11, error, done };
   static constexpr const size_t N_ = 2;
 };
+namespace {
+template <class enumerator>
+struct port_state;
+
+template <>
+struct port_state<three_stage> {
+  using type = PortState<three_stage>;
+};
+
+template <>
+struct port_state<two_stage> {
+  using type = PortState<two_stage>;
+};
+
+template <class enumerator>
+struct port_state_enum;
+
+template <>
+struct port_state_enum<three_stage> {
+  using type = decltype(port_state<three_stage>::type::done);
+};
+
+template <>
+struct port_state_enum<two_stage> {
+  using type = decltype(port_state<two_stage>::type::done);
+};
+
+template <class enumerator>
+constexpr const size_t num_states = PortState<enumerator>::N_;
+
+}  // namespace
+
+template <class enumerator>
+using port_state_t = typename port_state<enumerator>::type;
+
+template <class enumerator>
+using port_state_enum_t = typename port_state_enum<enumerator>::type;
+
+using three_port_type = port_state_t<three_stage>;
+using two_port_type = port_state_t<two_stage>;
+
+using three_port_enum_type = port_state_enum_t<three_stage>;
+using two_port_enum_type = port_state_enum_t<two_stage>;
+
+template <class enumerator>
+using state_t = port_state_enum_t<enumerator>;
 
 namespace {
 template <class PortState>
@@ -102,7 +159,7 @@ template <class PortState>
 static std::vector<std::string> port_state_strings;
 
 template <>
-static std::vector<std::string> port_state_strings<PortState<2>>{
+static std::vector<std::string> port_state_strings<PortState<two_stage>>{
     "st_00",
     "st_01",
     "st_10",
@@ -112,7 +169,7 @@ static std::vector<std::string> port_state_strings<PortState<2>>{
 };
 
 template <>
-static std::vector<std::string> port_state_strings<PortState<3>>{
+static std::vector<std::string> port_state_strings<PortState<three_stage>>{
     "st_000",
     "st_001",
     "st_010",
@@ -135,14 +192,14 @@ template <class State>
 static inline auto str(State st);
 
 template <>
-inline auto str(decltype(PortState<3>::st_000) st) {
-  return port_state_strings<PortState<3>>[static_cast<int>(st)];
+inline auto str(three_port_enum_type st) {
+  return port_state_strings<three_port_enum_type>[static_cast<int>(st)];
 }
 
 template <>
-inline auto str(decltype(PortState<2>::st_00) st) {
-  return port_state_strings<PortState<2>>[static_cast<int>(st)];
-}
+inline auto str(two_port_enum_type st) {
+  return port_state_strings<two_port_enum_type>[static_cast<int>(st)];
+}  // namespace tiledb::common
 
 /**
  * enum class for the state machine events.
@@ -362,20 +419,27 @@ constexpr const PortAction entry_table<PortState, 3>[n_states<PortState>][n_even
  * @todo Use an aspect class (as another template argument) to effect callbacks
  * at each interesting point in the state machine.
  */
-template <class PortState, class ActionPolicy>
+
+template <class Policy, class enumerator>
 class PortFiniteStateMachine {
  private:
-  decltype(PortState::done) state_;
-  decltype(PortState::done) next_state_;
+  // using Mover::Mover;
+  // using enumerator = static_cast<decltype(*this)>::enumerator_type;
+  // using enumerator = etraits<Mover>;
+  // using enumerator = typename Mover::enumerator_type;
+
+  state_t<enumerator> state_;
+  state_t<enumerator> next_state_;
 
  public:
+  using port_state = PortState<enumerator>;
   using lock_type = std::unique_lock<std::mutex>;
 
   /**
    * Default constructor
    */
   PortFiniteStateMachine()
-      : state_(static_cast<decltype(PortState::done)>(0)) {
+      : state_(static_cast<state_t<enumerator>>(0)) {
   }
 
   /**
@@ -384,13 +448,12 @@ class PortFiniteStateMachine {
   PortFiniteStateMachine(const PortFiniteStateMachine&) {
   }
 
-/**
- * Return the current state
- */
-[[nodiscard]] inline auto
-state() const {
-  return state_;
-}
+  /**
+   * Return the current state
+   */
+  [[nodiscard]] inline auto state() const {
+    return state_;
+  }
 
   /**
    * Return the next state
@@ -425,15 +488,15 @@ state() const {
  protected:
   std::mutex mutex_;
 
- private:
   void event(PortEvent event, const std::string msg = "") {
     std::unique_lock lock(mutex_);
 
-    next_state_ = transition_table<PortState, PortState::N_>[to_index(state_)]
+    next_state_ =
+        transition_table<port_state, num_states<enumerator>>[to_index(state_)]
                                                             [to_index(event)];
-    auto exit_action{exit_table<PortState, PortState::N_>[to_index(state_)]
-                                                         [to_index(event)]};
-    auto entry_action{entry_table<PortState, PortState::N_>[to_index(
+    auto exit_action{exit_table<port_state, num_states<enumerator>>[to_index(
+        state_)][to_index(event)]};
+    auto entry_action{entry_table<port_state, num_states<enumerator>>[to_index(
         next_state_)][to_index(event)]};
 
     auto old_state = state_;
@@ -452,7 +515,7 @@ state() const {
       return;
     }
 
-    if (next_state_ == PortState::error) {
+    if (next_state_ == port_state_t<enumerator>::error) {
       std::cout << "\n"
                 << event_counter++
                 << " ERROR On event start: " + msg + " " + str(event) + ": " +
@@ -480,7 +543,7 @@ state() const {
         if (msg != "")
           std::cout << event_counter++
                     << "      " + msg + " exit about to ac_return" << std::endl;
-        static_cast<ActionPolicy&>(*this).on_ac_return(lock, event_counter);
+        static_cast<Policy*>(this)->on_ac_return(lock, event_counter);
         return;
         break;
 
@@ -489,14 +552,14 @@ state() const {
           std::cout << event_counter++
                     << "      " + msg + " exit about to source_move"
                     << std::endl;
-        static_cast<ActionPolicy&>(*this).on_source_move(lock, event_counter);
+        static_cast<Policy*>(this)->on_source_move(lock, event_counter);
         break;
 
       case PortAction::sink_move:
         if (msg != "")
           std::cout << event_counter++
                     << "      " + msg + " exit about to sink_move" << std::endl;
-        static_cast<ActionPolicy&>(*this).on_sink_move(lock, event_counter);
+        static_cast<Policy*>(this)->on_sink_move(lock, event_counter);
         break;
 
       case PortAction::source_wait:
@@ -504,14 +567,14 @@ state() const {
           std::cout << event_counter++
                     << "      " + msg + " exit about to source_wait"
                     << std::endl;
-        static_cast<ActionPolicy&>(*this).on_source_wait(lock, event_counter);
+        static_cast<Policy*>(this)->on_source_wait(lock, event_counter);
         break;
 
       case PortAction::sink_wait:
         if (msg != "")
           std::cout << event_counter++
                     << "      " + msg + " exit about to sink_wait" << std::endl;
-        static_cast<ActionPolicy&>(*this).on_sink_wait(lock, event_counter);
+        static_cast<Policy*>(this)->on_sink_wait(lock, event_counter);
         break;
 
       case PortAction::notify_source:
@@ -519,7 +582,7 @@ state() const {
           std::cout << event_counter++
                     << "      " + msg + " exit about to notify source"
                     << std::endl;
-        static_cast<ActionPolicy&>(*this).notify_source(lock, event_counter);
+        static_cast<Policy*>(this)->notify_source(lock, event_counter);
         break;
 
       case PortAction::notify_sink:
@@ -527,7 +590,7 @@ state() const {
           std::cout << event_counter++
                     << "      " + msg + " exit about to notify sink"
                     << std::endl;
-        static_cast<ActionPolicy&>(*this).notify_sink(lock, event_counter);
+        static_cast<Policy*>(this)->notify_sink(lock, event_counter);
         break;
 
       default:
@@ -554,8 +617,9 @@ state() const {
     /*
      * Update the entry_action in case next_state_ was changed.
      */
-    entry_action = entry_table<PortState, PortState::N_>[to_index(next_state_)]
-                                                        [to_index(event)];
+    entry_action =
+        entry_table<port_state, num_states<enumerator>>[to_index(next_state_)]
+                                                       [to_index(event)];
 
     if (msg != "" || debug_) {
       std::cout << event_counter++
@@ -579,7 +643,7 @@ state() const {
                     << "      " + msg + " entry about to ac_return"
                     << std::endl;
 
-        static_cast<ActionPolicy&>(*this).on_ac_return(lock, event_counter);
+        static_cast<Policy*>(this)->on_ac_return(lock, event_counter);
         return;
         break;
 
@@ -590,22 +654,22 @@ state() const {
                     << "      " + msg + " entry about to source_move"
                     << std::endl;
 
-        static_cast<ActionPolicy&>(*this).on_source_move(lock, event_counter);
+        static_cast<Policy*>(this)->on_source_move(lock, event_counter);
 
-        if constexpr (PortState::N_ == 2) {
-          state_ = PortState::st_01;
+        if constexpr (std::is_same_v<enumerator, two_port_type>) {
+          state_ = port_state_t<enumerator>::st_01;
 
-        } else if constexpr (PortState::N_ == 3) {
+        } else if constexpr (std::is_same_v<enumerator, three_port_type>) {
           switch (state_) {
-            case PortState::st_010:
+            case port_state_t<enumerator>::st_010:
               // Fall through
-            case PortState::st_100:
-              state_ = PortState::st_001;
+            case port_state_t<enumerator>::st_100:
+              state_ = port_state_t<enumerator>::st_001;
               break;
-            case PortState::st_110:
+            case port_state_t<enumerator>::st_110:
               // Fall through
-            case PortState::st_101:
-              state_ = PortState::st_011;
+            case port_state_t<enumerator>::st_101:
+              state_ = port_state_t<enumerator>::st_011;
               break;
             default:
               break;
@@ -621,21 +685,21 @@ state() const {
                     << "      " + msg + " entry about to sink_move"
                     << std::endl;
 
-        static_cast<ActionPolicy&>(*this).on_sink_move(lock, event_counter);
+        static_cast<Policy*>(this)->on_sink_move(lock, event_counter);
 
-        if constexpr (PortState::N_ == 2) {
-          state_ = PortState::st_01;
-        } else if constexpr (PortState::N_ == 3) {
+        if constexpr (port_state_t<enumerator>::N_ == 2) {
+          state_ = port_state_t<enumerator>::st_01;
+        } else if constexpr (port_state_t<enumerator>::N_ == 3) {
           switch (state_) {
-            case PortState::st_010:
+            case port_state_t<enumerator>::st_010:
               // Fall through
-            case PortState::st_100:
-              state_ = PortState::st_001;
+            case port_state_t<enumerator>::st_100:
+              state_ = port_state_t<enumerator>::st_001;
               break;
-            case PortState::st_110:
+            case port_state_t<enumerator>::st_110:
               // Fall through
-            case PortState::st_101:
-              state_ = PortState::st_011;
+            case port_state_t<enumerator>::st_101:
+              state_ = port_state_t<enumerator>::st_011;
               break;
             default:
               break;
@@ -649,7 +713,7 @@ state() const {
           std::cout << event_counter++
                     << "      " + msg + " exit about to source_wait"
                     << std::endl;
-        static_cast<ActionPolicy&>(*this).on_source_wait(lock, event_counter);
+        static_cast<Policy*>(this)->on_source_wait(lock, event_counter);
         break;
 
       case PortAction::sink_wait:
@@ -657,7 +721,7 @@ state() const {
           std::cout << event_counter++
                     << "      " + msg + " entry about to sink_wait"
                     << std::endl;
-        static_cast<ActionPolicy&>(*this).on_sink_wait(lock, event_counter);
+        static_cast<Policy*>(this)->on_sink_wait(lock, event_counter);
         break;
 
       case PortAction::notify_source:
@@ -665,7 +729,7 @@ state() const {
           std::cout << event_counter++
                     << "      " + msg + " entry about to notify source"
                     << std::endl;
-        static_cast<ActionPolicy&>(*this).notify_source(lock, event_counter);
+        static_cast<Policy*>(this)->notify_source(lock, event_counter);
         break;
 
       case PortAction::notify_sink:
@@ -673,7 +737,7 @@ state() const {
           std::cout << event_counter++
                     << "      " + msg + " entry about to notify sink"
                     << std::endl;
-        static_cast<ActionPolicy&>(*this).notify_sink(lock, event_counter);
+        static_cast<Policy*>(this)->notify_sink(lock, event_counter);
         break;
 
       default:
@@ -695,7 +759,7 @@ state() const {
   /**
    * Set state
    */
-  inline auto set_state(decltype(PortState::done) next_state_) {
+  inline auto set_state(state_t<enumerator> next_state_) {
     state_ = next_state_;
     return state_;
   }
@@ -703,46 +767,14 @@ state() const {
   /**
    * Set next state
    */
-  inline auto set_next_state(decltype(PortState::done) next_state) {
+  inline auto set_next_state(state_t<enumerator> next_state) {
     next_state_ = next_state;
     return next_state_;
   }
 
-  /**
-   * Invoke `source_fill` event
-   */
-  void do_fill(const std::string& msg = "") {
+  void a(const std::string& msg) {
     event(PortEvent::source_fill, msg);
   }
-
-  /**
-   * Invoke `source_push` event
-   */
-  void do_push(const std::string& msg = "") {
-    event(PortEvent::source_push, msg);
-  }
-
-  /**
-   * Invoke `sink_drain` event
-   */
-  void do_drain(const std::string& msg = "") {
-    event(PortEvent::sink_drain, msg);
-  }
-
-  /**
-   * Invoke `sink_pull` event
-   */
-  void do_pull(const std::string& msg = "") {
-    event(PortEvent::sink_pull, msg);
-  }
-
-  /**
-   * Invoke `shutdown` event
-   */
-  void do_shutdown(const std::string& msg = "") {
-    event(PortEvent::shutdown, msg);
-  }
-
   /**
    * Invoke `out_of_data` event
    */

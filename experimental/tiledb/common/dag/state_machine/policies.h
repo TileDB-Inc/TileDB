@@ -105,35 +105,35 @@ namespace tiledb::common {
  */
 // clang-format on
 
-template <class PortState, class T>
-class AsyncStateMachine;
+#if 0
+template <class enumerator>
+class AsyncPolicy;
 
-template <class PortState, class T>
-class UnifiedAsyncStateMachine;
+template <class enumerator>
+class UnifiedAsyncPolicy;
+#endif
 
+#if 1
 /**
  * Base action policy. Includes items array and `register` and `deregister`
  * functions.
  */
-template <class PortState, class T>
-class BaseStateMachine;
+template <class enumerator, class Block>
+class BaseMover;
 
-template <class T>
-class BaseStateMachine<PortState<3>, T> {
-  friend AsyncStateMachine<PortState<3>, T>;
-  friend UnifiedAsyncStateMachine<PortState<3>, T>;
+template <class Block>
+class BaseMover<three_stage, Block> {
+  using item_type = std::optional<Block>;
 
-  using ItemType = std::optional<T>;
-
-  std::array<ItemType*, 3> items_;
+  std::array<item_type*, 3> items_;
   std::array<size_t, 3> moves_;
 
-  using PortState = PortState<3>;
+  using PortState = PortState<three_stage>;
 
  public:
-  BaseStateMachine() = default;
-  BaseStateMachine(
-      ItemType& source_init, ItemType& edge_init, ItemType& sink_init)
+  BaseMover() = default;
+  BaseMover(
+      item_type& source_init, item_type& edge_init, item_type& sink_init, bool)
       : items_{&source_init, &edge_init, &sink_init} {
   }
 
@@ -141,14 +141,14 @@ class BaseStateMachine<PortState<3>, T> {
    * @pre Called under lock
    */
   void register_items(
-      ItemType& source_item, ItemType& edge_item, ItemType& sink_item) {
+      item_type& source_item, item_type& edge_item, item_type& sink_item) {
     items_[0] = &source_item;
     items_[1] = &edge_item;
     items_[2] = &sink_item;
   }
 
   void deregister_items(
-      ItemType& source_item, ItemType& edge_item, ItemType& sink_item) {
+      item_type& source_item, item_type& edge_item, item_type& sink_item) {
     if (items_[0] != &source_item || items_[1] != &edge_item ||
         items_[2] != &sink_item) {
       throw std::runtime_error(
@@ -163,19 +163,19 @@ class BaseStateMachine<PortState<3>, T> {
   /**
    * @pre Called under lock
    */
-  template <class StateMachine>
   inline void on_move(
-      const StateMachine& state_machine, std::atomic<int>& event) {
-    auto state = state_machine.state();
-    bool debug = state_machine.debug_enabled();
+      //      const StateMachine& state_machine,
+      std::atomic<int>& event) {
+    auto state = this->state();
+    bool debug = this->debug_enabled();
     CHECK(
         (state == PortState::st_010 || state == PortState::st_100 ||
          state == PortState::st_101 || state == PortState::st_110));
 
-    if (state_machine.debug_enabled()) {
+    if (this->debug_enabled()) {
       std::cout << event << "  "
                 << " source swapping items with " + str(state) + " and " +
-                       str(state_machine.next_state())
+                       str(this->next_state())
                 << std::endl;
 
       std::cout << event;
@@ -232,41 +232,37 @@ class BaseStateMachine<PortState<3>, T> {
       }
       std::cout << ")" << std::endl;
       std::cout << event << "  "
-                << " source done swapping items with " +
-                       str(state_machine.state()) + " and " +
-                       str(state_machine.next_state())
+                << " source done swapping items with " + str(this->state()) +
+                       " and " + str(this->next_state())
                 << std::endl;
       ++event;
     }
   }
 };
 
-template <class T>
-class BaseStateMachine<PortState<2>, T> {
-  friend AsyncStateMachine<PortState<2>, T>;
-  friend UnifiedAsyncStateMachine<PortState<2>, T>;
+template <class Block>
+class BaseMover<two_stage, Block> {
+  using PortState = two_port_type;
+  using item_type = std::optional<Block>;
 
-  using PortState = PortState<2>;
-  using ItemType = std::optional<T>;
-
-  std::array<ItemType*, 2> items_;
+  std::array<item_type*, 2> items_;
   std::array<size_t, 2> moves_{0, 0};
 
  public:
-  BaseStateMachine() = default;
-  BaseStateMachine(ItemType& source_init, ItemType& sink_init)
+  BaseMover() = default;
+  BaseMover(item_type& source_init, item_type& sink_init, bool)
       : items_{&source_init, &sink_init} {
   }
 
   /**
    * @pre Called under lock
    */
-  void register_items(ItemType& source_item, ItemType& sink_item) {
+  void register_items(item_type& source_item, item_type& sink_item) {
     items_[0] = &source_item;
     items_[1] = &sink_item;
   }
 
-  void deregister_items(ItemType& source_item, ItemType& sink_item) {
+  void deregister_items(item_type& source_item, item_type& sink_item) {
     if (items_[0] != &source_item || items_[1] != &sink_item) {
       throw std::runtime_error(
           "Attempting to deregister source or sink items that were not "
@@ -347,18 +343,128 @@ class BaseStateMachine<PortState<2>, T> {
     return *items_[1];
   }
 };
+#else
+
+template <template <class> class Policy, class Block>
+class BaseMover<Policy, two_stage, Block> {
+ public:
+  template <class M = enumerator>
+  BaseMover(
+      item_type& source_item,
+      item_type& sink_item,
+      bool debug = false,
+      : mover_type{source_item, sink_item} {
+    if (debug) {
+      state_machine->enable_debug();
+    }
+  }
+
+
+  void move() {
+  }
+};  // namespace tiledb::common
+
+template <template <class> class Policy, class Block>
+class BaseMover<Policy, three_stage, Block> {
+ public:
+  template <class M = enumerator>
+  BaseMover(
+      item_type& source_item,
+      item_type& edge_item,
+      item_type& sink_item,
+      bool debug = false,
+      typename std::enable_if_t<std::is_same_v<M, three_stage>, void**> =
+          nullptr)
+      : mover_type{source_item, edge_item, sink_item} {
+    if (debug) {
+      state_machine->enable_debug();
+    }
+  }
+
+  template <class M = enumerator>
+  BaseMover(
+      item_type& source_item,
+      item_type& sink_item,
+      bool debug = false,
+      typename std::enable_if_t<std::is_same_v<M, two_stage>, void**> = nullptr)
+      : mover_type{source_item, sink_item} {
+    if (debug) {
+      state_machine->enable_debug();
+    }
+  }
+
+  void move() {
+  }
+};
+#endif
+
+// template <template <class> class Policy, class enumerator, class Block>
+// class ItemMover : public BaseMover<enumerator, Block> {
+template <template <class, class> class Policy, class enumerator, class Block>
+class ItemMover
+    : public Policy<ItemMover<Policy, enumerator, Block>, enumerator>,
+      public BaseMover<enumerator, Block> {
+ public:
+  //  using BaseMover<enumerator, Block>::BaseMover<enumerator, Block>;
+  using BaseMover<enumerator, Block>::BaseMover;
+
+  using state_machine_type =
+      PortFiniteStateMachine<ItemMover<Policy, enumerator, Block>, enumerator>;
+  using stages_type = enumerator;
+  using enumerator_type = enumerator;
+
+  /**
+   * Invoke `source_fill` event
+   */
+  void do_fill(const std::string& msg = "") {
+    //    this->event(PortEvent::source_fill, msg);
+    this->a(msg);
+  }
+
+  /**
+   * Invoke `source_push` event
+   */
+  void do_push(const std::string& msg = "") {
+    this->event(PortEvent::source_push, msg);
+  }
+
+  /**
+   * Invoke `sink_drain` event
+   */
+  void do_drain(const std::string& msg = "") {
+    this->event(PortEvent::sink_drain, msg);
+  }
+
+  /**
+   * Invoke `sink_pull` event
+   */
+  void do_pull(const std::string& msg = "") {
+    this->event(PortEvent::sink_pull, msg);
+  }
+
+  /**
+   * Invoke `shutdown` event
+   */
+  void do_shutdown(const std::string& msg = "") {
+    this->event(PortEvent::shutdown, msg);
+  }
+
+  state_machine_type* get_state_machine() {
+    return static_cast<state_machine_type*>(*this);
+  }
+  auto get_state() {
+    return static_cast<state_machine_type*>(this)->state();
+  }
+};
 
 /**
  * Null action policy.  Verifies compilation of CRTP.  All functions except
  * registration are empty.
  */
-template <class PortState, class T>
-class NullStateMachine
-    : public BaseStateMachine<PortState, T>,
-      public PortFiniteStateMachine<PortState, NullStateMachine<PortState, T>> {
-  using BSM = BaseStateMachine<PortState, T>;
-  using FSM = PortFiniteStateMachine<PortState, NullStateMachine<PortState, T>>;
-  using lock_type = typename FSM::lock_type;
+template <class ItemMover>
+class NullPolicy : public ItemMover {
+  using mover_type = ItemMover;
+  using lock_type = typename mover_type::lock_type;
 
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
   }
@@ -378,54 +484,54 @@ class NullStateMachine
  * `on_source_move` and `on_sink_move`, both of which simply invoke
  * `std::move` on the cached items.
  */
-template <class PortState, class T>
-class ManualStateMachine : public BaseStateMachine<PortState, T>,
-                           public PortFiniteStateMachine<
-                               PortState,
-                               ManualStateMachine<PortState, T>> {
-  using BSM = BaseStateMachine<PortState, T>;
-  using FSM =
-      PortFiniteStateMachine<PortState, ManualStateMachine<PortState, T>>;
-  using lock_type = typename FSM::lock_type;
+template <class ItemMover>
+class ManualPolicy : public ItemMover {
+  using mover_type = ItemMover;
+  using state_machine_type = typename mover_type::state_machine_type;
+  using lock_type = typename mover_type::lock_type;
+
+  state_machine_type state_machine = mover_type::get_state_machine();
+
+  using enumerator = typename mover_type::enumerator_type;
 
  public:
-  ManualStateMachine() {
-    if constexpr (PortState::N_ == 2) {
-      CHECK(str(FSM::state()) == "st_00");
-    } else if constexpr (PortState::N_ == 3) {
-      CHECK(str(FSM::state()) == "st_000");
+  ManualPolicy() {
+    if constexpr (std::is_same_v<enumerator, two_port_type>) {
+      CHECK(str(mover_type::get_state()) == "st_00");
+    } else if constexpr (std::is_same_v<enumerator, three_port_type>) {
+      CHECK(str(mover_type::get_state()) == "st_000");
     }
   }
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
+    if (mover_type::debug_enabled())
       std::cout << "    "
                 << "Action return" << std::endl;
   }
   inline void on_source_move(lock_type&, std::atomic<int>& event) {
-    BSM::on_move(*this, event);
+    mover_type::move(*this, event);
   }
 
   inline void on_sink_move(lock_type&, std::atomic<int>& event) {
-    BSM::on_move(*this, event);
+    mover_type::move(*this, event);
   }
   inline void notify_source(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
+    if (state_machine->debug_enabled())
       std::cout << "    "
                 << "Action notify source" << std::endl;
   }
   inline void notify_sink(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
+    if (state_machine->debug_enabled())
       std::cout << "    "
                 << "Action notify source" << std::endl;
   }
   inline void on_source_wait(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
+    if (state_machine->debug_enabled())
       std::cout << "    "
                 << "Action source wait" << std::endl;
   }
 
   inline void on_sink_wait(lock_type&, std::atomic<int>&) {
-    if (FSM::debug_enabled())
+    if (state_machine->debug_enabled())
       std::cout << "    "
                 << "Action sink wait" << std::endl;
   }
@@ -449,164 +555,140 @@ class ManualStateMachine : public BaseStateMachine<PortState, T>,
  * actions so that the procession of steps is driven by the state machine rather
  * than the user of the state machine.
  */
-template <class PortState, class T>
-class AsyncStateMachine : public BaseStateMachine<PortState, T>,
-                          public PortFiniteStateMachine<
-                              PortState,
-                              AsyncStateMachine<PortState, T>> {
-  using BSM = BaseStateMachine<PortState, T>;
-  using FSM =
-      PortFiniteStateMachine<PortState, AsyncStateMachine<PortState, T>>;
-  //  std::mutex mutex_;
+
+template <class Mover, class enumerator>
+class AsyncPolicy
+    : public PortFiniteStateMachine<AsyncPolicy<Mover, enumerator>, enumerator>
+
+{
+  using mover_type = Mover;
+
+  //  using state_machine_type = typename mover_type::state_machine_type;
+  //  state_machine_type state_machine = mover_type::get_state_machine();
+
+  //  using lock_type = typename mover_type::lock_type;
+  //  using item_type = typename mover_type::item_type;
+
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;
 
-  using ItemType = typename BSM::ItemType;
-
  public:
-  using lock_type = typename FSM::lock_type;
-
-  //  template <your_stuff>
-  //  your_return_type_if_present yourfunction(
-  //      args,
-  //      typename enable_if<your_condition, void**>::type = nullptr) {  // ...
-  //  }
-
-  template <size_t M = PortState::N_>
-  AsyncStateMachine(
-      ItemType& source_item,
-      ItemType& edge_item,
-      ItemType& sink_item,
-      bool debug = false,
-      typename std::enable_if<(M == 3), void**>::type = nullptr)
-      : BSM{source_item, edge_item, sink_item} {
-    if (debug) {
-      FSM::enable_debug();
-    }
+  AsyncPolicy() = default;
+  AsyncPolicy(const AsyncPolicy&) {
   }
-
-  template <size_t M = PortState::N_>
-  AsyncStateMachine(
-      ItemType& source_item,
-      ItemType& sink_item,
-      bool debug = false,
-      typename std::enable_if<(M == 2), void**>::type = nullptr)
-      : BSM{source_item, sink_item} {
-    if (debug) {
-      FSM::enable_debug();
-    }
-  }
-
-  AsyncStateMachine() = default;
-  AsyncStateMachine(const AsyncStateMachine&) {
-  }
-  AsyncStateMachine(AsyncStateMachine&&) = default;
+  AsyncPolicy(AsyncPolicy&&) = default;
 
   /**
    * Function for handling `ac_return` action.
    */
+  template <class lock_type>
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
   }
 
   /**
    * Function for handling `notify_source` action.
    */
+  template <class lock_type>
   inline void notify_source(lock_type&, std::atomic<int>& event) {
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
       std::cout << event++ << "  "
                 << " sink notifying source (on_signal_source) with " +
-                       str(FSM::state()) + " and " + str(FSM::next_state())
+                       str(this->state()) + " and " + str(this->next_state())
                 << std::endl;
 
-    CHECK(is_sink_empty(FSM::state()) == "");
+    CHECK(is_sink_empty(this->state()) == "");
     source_cv_.notify_one();
   }
 
   /**
    * Function for handling `notify_sink` action.
    */
+  template <class lock_type>
   inline void notify_sink(lock_type&, std::atomic<int>& event) {
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
       std::cout << event++ << "  "
                 << " source notifying sink(on_signal_sink) with " +
-                       str(FSM::state()) + " and " + str(FSM::next_state())
+                       str(this->state()) + " and " + str(this->next_state())
                 << std::endl;
 
-    CHECK(is_source_full(FSM::state()) == "");
+    CHECK(is_source_full(this->state()) == "");
     sink_cv_.notify_one();
   }
 
   /**
    * Function for handling `sink_move` action.
    */
+  template <class lock_type>
   inline void on_sink_move(lock_type&, std::atomic<int>& event) {
-    BSM::on_move(*this, event);
-    BSM::moves_[PortState::N_ - 1]++;
+    static_cast<Mover*>(this)->on_move(*this, event);
   }
 
   /**
    * Function for handling `src_move` action.
    */
+  template <class lock_type>
   inline void on_source_move(lock_type&, std::atomic<int>& event) {
-    BSM::on_move(*this, event);
-    BSM::moves_[0]++;
+    static_cast<Mover*>(this)->on_move(*this, event);
   }
 
+  template <class lock_type>
   inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
-    if constexpr (PortState::N_ == 2) {
-      CHECK(str(FSM::state()) == "st_00");
-    } else if constexpr (PortState::N_ == 3) {
-      CHECK(str(FSM::state()) == "st_000");
+    if constexpr (std::is_same_v<enumerator, two_port_type>) {
+      CHECK(str(this->state()) == "st_00");
+    } else if (std::is_same_v<enumerator, three_port_type>) {
+      CHECK(str(this->state()) == "st_000");
     }
 
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
       std::cout << event++ << "  "
-                << " sink going to sleep on_sink_move with " + str(FSM::state())
+                << " sink going to sleep on_sink_move with " +
+                       str(this->state())
                 << std::endl;
     sink_cv_.wait(lock);
 
-    CHECK(is_sink_post_move(FSM::state()) == "");
+    CHECK(is_sink_post_move(this->state()) == "");
 
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
       std::cout << event++ << "  "
-                << " sink waking up on_sink_move with " + str(FSM::state()) +
-                       " and " + str(FSM::next_state())
+                << " sink waking up on_sink_move with " + str(this->state()) +
+                       " and " + str(this->next_state())
                 << std::endl;
 
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
       std::cout << event++ << "  "
-                << " sink leaving on_sink_move with " + str(FSM::state()) +
-                       " and " + str(FSM::next_state())
+                << " sink leaving on_sink_move with " + str(this->state()) +
+                       " and " + str(this->next_state())
                 << std::endl;
   }
 
+  template <class lock_type>
   inline void on_source_wait(lock_type& lock, std::atomic<int>& event) {
-    if constexpr (PortState::N_ == 2) {
-      CHECK(str(FSM::state()) == "st_11");
-    } else if constexpr (PortState::N_ == 3) {
-      CHECK(str(FSM::state()) == "st_111");
+    if constexpr (std::is_same_v<enumerator, two_port_type>) {
+      CHECK(str(this->state()) == "st_11");
+    } else if constexpr (std::is_same_v<enumerator, three_port_type>) {
+      CHECK(str(this->state()) == "st_111");
     }
 
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
       std::cout << event++ << "  "
                 << " source going to sleep on_source_move with " +
-                       str(FSM::state()) + " and " + str(FSM::next_state())
+                       str(this->state()) + " and " + str(this->next_state())
                 << std::endl;
 
     source_cv_.wait(lock);
 
-    CHECK(is_source_post_move(FSM::state()) == "");
+    CHECK(is_source_post_move(this->state()) == "");
 
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
       std::cout << event++ << "  "
-                << " source waking up to " + str(FSM::state()) + " and " +
-                       str(FSM::next_state())
+                << " source waking up to " + str(this->state()) + " and " +
+                       str(this->next_state())
                 << std::endl;
 
-    if (FSM::debug_enabled())
+    if (this->debug_enabled())
       std::cout << event++ << "  "
-                << " source leaving on_source_move with " + str(FSM::state()) +
-                       " and " + str(FSM::next_state())
+                << " source leaving on_source_move with " + str(this->state()) +
+                       " and " + str(this->next_state())
                 << std::endl;
   }
 };
@@ -614,7 +696,7 @@ class AsyncStateMachine : public BaseStateMachine<PortState, T>,
 /**
  * An asynchronous state machine class.  Implements on_sink_move and
  * on_source_move using locks and condition variables.  This class is similar
- * to `AsyncStateMachine`, but takes advantage of the fact that the notify and
+ * to `AsyncPolicy`, but takes advantage of the fact that the notify and
  * move functions are the same, and uses just a single implementation of them,
  * along with just a single condition variable
  *
@@ -624,58 +706,38 @@ class AsyncStateMachine : public BaseStateMachine<PortState, T>,
  * actions so that the procession of steps is driven by the state machine rather
  * than the user of the state machine.
  */
-template <class PortState, class T>
-class UnifiedAsyncStateMachine : public BaseStateMachine<PortState, T>,
-                                 public PortFiniteStateMachine<
-                                     PortState,
-                                     UnifiedAsyncStateMachine<PortState, T>> {
-  using BSM = BaseStateMachine<PortState, T>;
-  using FSM =
-      PortFiniteStateMachine<PortState, UnifiedAsyncStateMachine<PortState, T>>;
-  using lock_type = typename FSM::lock_type;
+template <class Mover, class enumerator>
+class UnifiedAsyncPolicy : public PortFiniteStateMachine<
+                               UnifiedAsyncPolicy<Mover, enumerator>,
+                               enumerator> {
   std::condition_variable cv_;
 
-  using ItemType = typename BSM::ItemType;
-
  public:
-  bool debug_{false};
+#if 0
+  using mover_type = Mover;
+  using state_machine_type = typename mover_type::state_machine_type;
+  using lock_type = typename mover_type::lock_type;
+  using enumerator = typename mover_type::enumerator_type;
+  state_machine_type state_machine = mover_type::get_state_machine();
 
-  template <size_t M = PortState::N_>
-  UnifiedAsyncStateMachine(
-      ItemType& source_item,
-      ItemType& edge_item,
-      ItemType& sink_item,
-      bool debug = false,
-      typename std::enable_if<(M == 3), void**>::type = nullptr)
-      : BSM{source_item, edge_item, sink_item} {
-    if (debug) {
-      FSM::enable_debug();
-    }
+  using item_type = typename mover_type::item_type;
+#endif
+
+  UnifiedAsyncPolicy() = default;
+  UnifiedAsyncPolicy(const UnifiedAsyncPolicy&) {
   }
-
-  template <size_t M = PortState::N_>
-  UnifiedAsyncStateMachine(
-      ItemType& source_item,
-      ItemType& sink_item,
-      bool debug = false,
-      typename std::enable_if<(M == 2), void**>::type = nullptr)
-      : BSM{source_item, sink_item} {
-    if (debug) {
-      FSM::enable_debug();
-    }
-  }
-
-  UnifiedAsyncStateMachine(const UnifiedAsyncStateMachine&) = default;
-  UnifiedAsyncStateMachine(UnifiedAsyncStateMachine&&) = default;
+  UnifiedAsyncPolicy(UnifiedAsyncPolicy&&) = default;
 
   /**
    * Function for handling `ac_return` action.
    */
-  inline void on_ac_return(lock_type&, int){};
+  template <class lock_type>
+  inline void on_ac_return(lock_type&, std::atomic<int>&){};
 
   /**
    * Single  notify function for source and sink.
    */
+  template <class lock_type>
   inline void do_notify(lock_type&, std::atomic<int>&) {
     cv_.notify_one();
   }
@@ -684,8 +746,9 @@ class UnifiedAsyncStateMachine : public BaseStateMachine<PortState, T>,
    * Function for handling `notify_source` action, invoking a `do_notify`
    * action.
    */
+  template <class lock_type>
   inline void notify_source(lock_type& lock, std::atomic<int>& event) {
-    if (debug_)
+    if (this->debug_enabled())
       std::cout << event++ << "  "
                 << " sink notifying source" << std::endl;
     do_notify(lock, event);
@@ -694,8 +757,9 @@ class UnifiedAsyncStateMachine : public BaseStateMachine<PortState, T>,
   /**
    * Function for handling `notify_sink` action, invoking a `do_notify` action.
    */
+  template <class lock_type>
   inline void notify_sink(lock_type& lock, std::atomic<int>& event) {
-    if (debug_)
+    if (this->debug_enabled())
       std::cout << event++ << "  "
                 << " source notifying sink" << std::endl;
     do_notify(lock, event);
@@ -704,14 +768,16 @@ class UnifiedAsyncStateMachine : public BaseStateMachine<PortState, T>,
   /**
    * Function for handling `source_move` action.
    */
+  template <class lock_type>
   inline void on_source_move(lock_type&, std::atomic<int>& event) {
-    BSM::on_move(*this, event);
+    static_cast<Mover*>(this)->on_move(*this, event);
   }
 
   /**
    * Function for handling `sink_move` action.  It simply calls the source
    * move action.
    */
+  template <class lock_type>
   inline void on_sink_move(lock_type& lock, std::atomic<int>& event) {
     on_source_move(lock, event);
   }
@@ -719,6 +785,7 @@ class UnifiedAsyncStateMachine : public BaseStateMachine<PortState, T>,
   /**
    * Function for handling `source_move` action.
    */
+  template <class lock_type>
   inline void on_source_wait(lock_type& lock, std::atomic<int>&) {
     cv_.wait(lock);
   }
@@ -727,6 +794,7 @@ class UnifiedAsyncStateMachine : public BaseStateMachine<PortState, T>,
    * Function for handling `sink_move` action.  It simply calls the source
    * move action.
    */
+  template <class lock_type>
   inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
     on_source_wait(lock, event);
   }
@@ -736,50 +804,58 @@ class UnifiedAsyncStateMachine : public BaseStateMachine<PortState, T>,
  * A simple debugging action policy that simply prints that an action has been
  * called.
  */
-template <class PortState, class T>
-class DebugStateMachine : public BaseStateMachine<PortState, T>,
-                          public PortFiniteStateMachine<
-                              PortState,
-                              DebugStateMachine<PortState, T>> {
-  using BSM = BaseStateMachine<PortState, T>;
-  using FSM =
-      PortFiniteStateMachine<PortState, DebugStateMachine<PortState, T>>;
-
-  using lock_type = typename FSM::lock_type;
+template <class Mover, class enumerator>
+class DebugPolicy : public PortFiniteStateMachine<
+                        DebugPolicy<Mover, enumerator>,
+                        enumerator> {
+#if 0
+  using mover_type = Mover;
+  using state_machine_type = typename mover_type::state_machine_type;
+  using lock_type = typename mover_type::lock_type;
+  using enumerator = typename mover_type::enumerator_type;
+  state_machine_type* state_machine = mover_type::get_state_machine();
+#endif
 
  public:
+  template <class lock_type>
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
     if (this->debug_enabled())
       std::cout << "    "
                 << "Action return" << std::endl;
   }
+  template <class lock_type>
   inline void on_source_move(lock_type&, std::atomic<int>&) {
     if (this->debug_enabled())
 
       std::cout << "    "
                 << "Action move source" << std::endl;
   }
+  template <class lock_type>
   inline void on_sink_move(lock_type&, std::atomic<int>&) {
     if (this->debug_enabled())
       std::cout << "    "
                 << "Action move sink" << std::endl;
   }
+  template <class lock_type>
   inline void on_source_wait(lock_type&, std::atomic<int>&) {
     if (this->debug_enabled())
 
       std::cout << "    "
                 << "Action source wait" << std::endl;
   }
+  template <class lock_type>
   inline void on_sink_wait(lock_type&, std::atomic<int>&) {
     if (this->debug_enabled())
       std::cout << "    "
                 << "Action sink wait" << std::endl;
   }
+  template <class lock_type>
   inline void notify_source(lock_type&, std::atomic<int>&) {
     if (this->debug_enabled())
       std::cout << "    "
                 << "Action notify source" << std::endl;
   }
+  template <class lock_type>
   inline void notify_sink(lock_type&, std::atomic<int>&) {
     if (this->debug_enabled())
       std::cout << "    "
@@ -791,13 +867,17 @@ class DebugStateMachine : public BaseStateMachine<PortState, T>,
  * Debug action policy with some non-copyable elements (to verify
  * compilation).
  */
-class DebugStateMachineWithLock
-    : public BaseStateMachine<PortState<2>, size_t>,
-      public PortFiniteStateMachine<PortState<2>, DebugStateMachineWithLock> {
+template <class Mover>
+class DebugPolicyWithLock : public Mover {
+  using mover_type = Mover;
+  using state_machine_type = typename mover_type::state_machine_type;
+  using lock_type = typename mover_type::lock_type;
+  using enumerator = typename mover_type::enumerator_type;
+
+  state_machine_type state_machine = mover_type::get_state_machine();
   std::mutex mutex_;
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;
-  using lock_type = std::unique_lock<std::mutex>;
 
  public:
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
