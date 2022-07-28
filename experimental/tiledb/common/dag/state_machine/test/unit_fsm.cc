@@ -213,7 +213,7 @@ TEST_CASE("AsynchronousPolicy: Asynchronous source and manual sink", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -251,7 +251,7 @@ TEST_CASE("AsynchronousPolicy: Manual source and asynchronous sink", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -289,7 +289,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -321,7 +321,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -357,7 +357,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -447,7 +447,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -528,7 +528,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item};
 
   if (debug)
     a.enable_debug();
@@ -612,7 +612,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -691,7 +691,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -772,13 +772,16 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item};
+  if (debug) {
+    a.enable_debug();
+  }
 
   a.set_state(two_port_type::st_00);
 
   size_t rounds = 3379;
   if (debug)
-    rounds = 3;
+    rounds = 333;
 
   std::vector<size_t> input(rounds);
   std::vector<size_t> output(rounds);
@@ -797,10 +800,6 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-
-      // It doesn't seem we actually need these guards here?
-      // while (a.state() == two_port_type::st_10 ||
-      //        a.state() == two_port_type::st_11)// ;
 
       CHECK(is_source_empty(a.state()) == "");
 
@@ -945,7 +944,7 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item, debug};
+  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 

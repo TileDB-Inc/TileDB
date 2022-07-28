@@ -39,6 +39,7 @@
 #define TILEDB_DAG_POLICIES3_H
 
 #include <array>
+#include <cassert>
 #include <optional>
 #include <string>
 #include <tuple>
@@ -104,7 +105,6 @@ namespace tiledb::common {
  * function, and are reset with a `deregister_items` function.
  */
 // clang-format on
-
 #if 0
 template <class enumerator>
 class AsyncPolicy;
@@ -113,7 +113,6 @@ template <class enumerator>
 class UnifiedAsyncPolicy;
 #endif
 
-#if 1
 /**
  * Base action policy. Includes items array and `register` and `deregister`
  * functions.
@@ -124,17 +123,24 @@ class BaseMover;
 template <class Block>
 class BaseMover<three_stage, Block> {
   using item_type = std::optional<Block>;
+  using PortState = PortState<three_stage>;
 
   std::array<item_type*, 3> items_;
-  std::array<size_t, 3> moves_;
 
-  using PortState = PortState<three_stage>;
+ protected:
+  std::array<size_t, 3> moves_;
 
  public:
   BaseMover() = default;
   BaseMover(
-      item_type& source_init, item_type& edge_init, item_type& sink_init, bool)
+      item_type& source_init,
+      item_type& edge_init,
+      item_type& sink_init,
+      bool debug)
       : items_{&source_init, &edge_init, &sink_init} {
+    if (debug) {
+      this->enable_debug();
+    }
   }
 
   /**
@@ -163,9 +169,7 @@ class BaseMover<three_stage, Block> {
   /**
    * @pre Called under lock
    */
-  inline void on_move(
-      //      const StateMachine& state_machine,
-      std::atomic<int>& event) {
+  inline void on_move(std::atomic<int>& event) {
     auto state = this->state();
     bool debug = this->debug_enabled();
     CHECK(
@@ -246,157 +250,111 @@ class BaseMover<two_stage, Block> {
   using item_type = std::optional<Block>;
 
   std::array<item_type*, 2> items_;
+
+ protected:
   std::array<size_t, 2> moves_{0, 0};
 
  public:
   BaseMover() = default;
-  BaseMover(item_type& source_init, item_type& sink_init, bool)
+  BaseMover(item_type& source_init, item_type& sink_init)
       : items_{&source_init, &sink_init} {
   }
 
-  /**
-   * @pre Called under lock
-   */
-  void register_items(item_type& source_item, item_type& sink_item) {
-    items_[0] = &source_item;
-    items_[1] = &sink_item;
-  }
+                             /**
+                              * @pre Called under lock
+                              */
+                             void register_items(
+                                 item_type & source_item,
+                                 item_type& sink_item){items_[0] = &source_item;
+  items_[1] = &sink_item;
+}
 
   void deregister_items(item_type& source_item, item_type& sink_item) {
-    if (items_[0] != &source_item || items_[1] != &sink_item) {
-      throw std::runtime_error(
-          "Attempting to deregister source or sink items that were not "
-          "registered.");
-    }
-    for (auto& j : items_) {
-      j->reset();
-    }
+  if (items_[0] != &source_item || items_[1] != &sink_item) {
+    throw std::runtime_error(
+        "Attempting to deregister source or sink items that were not "
+        "registered.");
   }
+  for (auto& j : items_) {
+    j->reset();
+  }
+}
+
+/**
+ * @pre Called under lock
+ */
+template <class StateMachine>
+inline void on_move(
+    const StateMachine& state_machine, std::atomic<int>& event) {
+  auto state = state_machine.state();
+  bool debug = state_machine.debug_enabled();
+  CHECK(state == PortState::st_10);
 
   /**
-   * @pre Called under lock
+   * @todo Distinguish between source and sink
    */
-  template <class StateMachine>
-  inline void on_move(
-      const StateMachine& state_machine, std::atomic<int>& event) {
-    auto state = state_machine.state();
-    bool debug = state_machine.debug_enabled();
-    CHECK(state == PortState::st_10);
+  moves_[0]++;
 
-    if (state_machine.debug_enabled()) {
-      std::cout << event << "  "
-                << " source swapping items with " + str(state) + " and " +
-                       str(state_machine.next_state())
-                << std::endl;
+  if (state_machine.debug_enabled()) {
+    std::cout << event << "  "
+              << " source swapping items with " + str(state) + " and " +
+                     str(state_machine.next_state())
+              << std::endl;
 
-      std::cout << event;
-      std::cout << "    "
-                << "Action on_move state = (";
-      for (auto& j : items_) {
-        //        print_types(j);
+    std::cout << event;
+    std::cout << "    "
+              << "Action on_move state = (";
+    for (auto& j : items_) {
+      //        print_types(j);
 
-        if constexpr (has_to_string_v<decltype(j->value())>) {
-          std::cout << " "
-                    << (j == nullptr && j->has_value() ?
-                            std::to_string(j->value()) :
-                            "no_value")
-                    << " ";
-        }
+      if constexpr (has_to_string_v<decltype(j->value())>) {
+        std::cout << " "
+                  << (j == nullptr && j->has_value() ?
+                          std::to_string(j->value()) :
+                          "no_value")
+                  << " ";
       }
-      std::cout << ") -> ";
     }
+    std::cout << ") -> ";
+  }
 
-    std::swap(*items_[0], *items_[1]);
+  std::swap(*items_[0], *items_[1]);
 
-    if (debug) {
-      std::cout << "(";
-      for (auto& j : items_) {
-        if constexpr (has_to_string_v<decltype(j->value())>) {
-          std::cout << " "
-                    << (j == nullptr && j->has_value() ?
-                            std::to_string(j->value()) :
-                            "no_value")
-                    << " ";
-        }
+  if (debug) {
+    std::cout << "(";
+    for (auto& j : items_) {
+      if constexpr (has_to_string_v<decltype(j->value())>) {
+        std::cout << " "
+                  << (j == nullptr && j->has_value() ?
+                          std::to_string(j->value()) :
+                          "no_value")
+                  << " ";
       }
-      std::cout << ")" << std::endl;
-      std::cout << event << "  "
-                << " source done swapping items with " +
-                       str(state_machine.state()) + " and " +
-                       str(state_machine.next_state())
-                << std::endl;
-      ++event;
     }
+    std::cout << ")" << std::endl;
+    std::cout << event << "  "
+              << " source done swapping items with " +
+                     str(state_machine.state()) + " and " +
+                     str(state_machine.next_state())
+              << std::endl;
+    ++event;
   }
+}
 
-  size_t source_swaps() const {
-    return moves_[0];
-  }
-  size_t sink_swaps() const {
-    return moves_[1];
-  }
+size_t source_swaps() const {
+  return moves_[0];
+}
+size_t sink_swaps() const {
+  return moves_[1];
+}
 
-  auto& source_item() {
-    return *items_[0];
-  }
-  auto& sink_item() {
-    return *items_[1];
-  }
+auto& source_item() {
+  return *items_[0];
+}
+auto& sink_item() {
+  return *items_[1];
+}
 };
-#else
-
-template <template <class> class Policy, class Block>
-class BaseMover<Policy, two_stage, Block> {
- public:
-  template <class M = enumerator>
-  BaseMover(
-      item_type& source_item,
-      item_type& sink_item,
-      bool debug = false,
-      : mover_type{source_item, sink_item} {
-    if (debug) {
-      state_machine->enable_debug();
-    }
-  }
-
-
-  void move() {
-  }
-};  // namespace tiledb::common
-
-template <template <class> class Policy, class Block>
-class BaseMover<Policy, three_stage, Block> {
- public:
-  template <class M = enumerator>
-  BaseMover(
-      item_type& source_item,
-      item_type& edge_item,
-      item_type& sink_item,
-      bool debug = false,
-      typename std::enable_if_t<std::is_same_v<M, three_stage>, void**> =
-          nullptr)
-      : mover_type{source_item, edge_item, sink_item} {
-    if (debug) {
-      state_machine->enable_debug();
-    }
-  }
-
-  template <class M = enumerator>
-  BaseMover(
-      item_type& source_item,
-      item_type& sink_item,
-      bool debug = false,
-      typename std::enable_if_t<std::is_same_v<M, two_stage>, void**> = nullptr)
-      : mover_type{source_item, sink_item} {
-    if (debug) {
-      state_machine->enable_debug();
-    }
-  }
-
-  void move() {
-  }
-};
-#endif
 
 // template <template <class> class Policy, class enumerator, class Block>
 // class ItemMover : public BaseMover<enumerator, Block> {
@@ -417,14 +375,19 @@ class ItemMover
    * Invoke `source_fill` event
    */
   void do_fill(const std::string& msg = "") {
-    //    this->event(PortEvent::source_fill, msg);
-    this->a(msg);
+    if (this->debug_enabled())
+      std::cout << "  -- filling" << std::endl;
+
+    this->event(PortEvent::source_fill, msg);
   }
 
   /**
    * Invoke `source_push` event
    */
   void do_push(const std::string& msg = "") {
+    if (this->debug_enabled())
+      std::cout << "  -- pushing" << std::endl;
+
     this->event(PortEvent::source_push, msg);
   }
 
@@ -432,6 +395,9 @@ class ItemMover
    * Invoke `sink_drain` event
    */
   void do_drain(const std::string& msg = "") {
+    if (this->debug_enabled())
+      std::cout << "  -- draining" << std::endl;
+
     this->event(PortEvent::sink_drain, msg);
   }
 
@@ -439,6 +405,9 @@ class ItemMover
    * Invoke `sink_pull` event
    */
   void do_pull(const std::string& msg = "") {
+    if (this->debug_enabled())
+      std::cout << "  -- pulling" << std::endl;
+
     this->event(PortEvent::sink_pull, msg);
   }
 
@@ -566,7 +535,9 @@ class AsyncPolicy
   //  using state_machine_type = typename mover_type::state_machine_type;
   //  state_machine_type state_machine = mover_type::get_state_machine();
 
-  //  using lock_type = typename mover_type::lock_type;
+  using lock_type = typename PortFiniteStateMachine<
+      AsyncPolicy<Mover, enumerator>,
+      enumerator>::lock_type;
   //  using item_type = typename mover_type::item_type;
 
   std::condition_variable sink_cv_;
@@ -581,15 +552,14 @@ class AsyncPolicy
   /**
    * Function for handling `ac_return` action.
    */
-  template <class lock_type>
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
   }
 
   /**
    * Function for handling `notify_source` action.
    */
-  template <class lock_type>
-  inline void notify_source(lock_type&, std::atomic<int>& event) {
+  inline void notify_source(lock_type& lock, std::atomic<int>& event) {
+    assert(lock.owns_lock());
     if (this->debug_enabled())
       std::cout << event++ << "  "
                 << " sink notifying source (on_signal_source) with " +
@@ -603,8 +573,9 @@ class AsyncPolicy
   /**
    * Function for handling `notify_sink` action.
    */
-  template <class lock_type>
-  inline void notify_sink(lock_type&, std::atomic<int>& event) {
+  inline void notify_sink(lock_type& lock, std::atomic<int>& event) {
+    assert(lock.owns_lock());
+
     if (this->debug_enabled())
       std::cout << event++ << "  "
                 << " source notifying sink(on_signal_sink) with " +
@@ -618,21 +589,36 @@ class AsyncPolicy
   /**
    * Function for handling `sink_move` action.
    */
-  template <class lock_type>
-  inline void on_sink_move(lock_type&, std::atomic<int>& event) {
+  inline void on_sink_move(lock_type& lock, std::atomic<int>& event) {
+    assert(lock.owns_lock());
+
+    if (this->debug_enabled())
+      std::cout << event++ << "  "
+                << " sink moving (on_sink_move) with " + str(this->state()) +
+                       " and " + str(this->next_state())
+                << std::endl;
+
     static_cast<Mover*>(this)->on_move(*this, event);
   }
 
   /**
    * Function for handling `src_move` action.
    */
-  template <class lock_type>
-  inline void on_source_move(lock_type&, std::atomic<int>& event) {
+  inline void on_source_move(lock_type& lock, std::atomic<int>& event) {
+    assert(lock.owns_lock());
+
+    if (this->debug_enabled())
+      std::cout << event++ << "  "
+                << " source moving (on_source_move) with " +
+                       str(this->state()) + " and " + str(this->next_state())
+                << std::endl;
+
     static_cast<Mover*>(this)->on_move(*this, event);
   }
 
-  template <class lock_type>
   inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
+    assert(lock.owns_lock());
+
     if constexpr (std::is_same_v<enumerator, two_port_type>) {
       CHECK(str(this->state()) == "st_00");
     } else if (std::is_same_v<enumerator, three_port_type>) {
@@ -661,8 +647,9 @@ class AsyncPolicy
                 << std::endl;
   }
 
-  template <class lock_type>
   inline void on_source_wait(lock_type& lock, std::atomic<int>& event) {
+    assert(lock.owns_lock());
+
     if constexpr (std::is_same_v<enumerator, two_port_type>) {
       CHECK(str(this->state()) == "st_11");
     } else if constexpr (std::is_same_v<enumerator, three_port_type>) {

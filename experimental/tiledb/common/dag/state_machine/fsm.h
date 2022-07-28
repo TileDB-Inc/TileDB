@@ -155,11 +155,11 @@ constexpr unsigned short n_states = to_index(PortState::done) + 1;
 /**
  * Strings for each enum member, for debugging.
  */
-template <class PortState>
+template <class enumeration>
 static std::vector<std::string> port_state_strings;
 
 template <>
-static std::vector<std::string> port_state_strings<PortState<two_stage>>{
+static std::vector<std::string> port_state_strings<two_stage>{
     "st_00",
     "st_01",
     "st_10",
@@ -169,7 +169,7 @@ static std::vector<std::string> port_state_strings<PortState<two_stage>>{
 };
 
 template <>
-static std::vector<std::string> port_state_strings<PortState<three_stage>>{
+static std::vector<std::string> port_state_strings<three_stage>{
     "st_000",
     "st_001",
     "st_010",
@@ -193,13 +193,13 @@ static inline auto str(State st);
 
 template <>
 inline auto str(three_port_enum_type st) {
-  return port_state_strings<three_port_enum_type>[static_cast<int>(st)];
+  return port_state_strings<PortState<three_stage>>[static_cast<int>(st)];
 }
 
 template <>
 inline auto str(two_port_enum_type st) {
-  return port_state_strings<two_port_enum_type>[static_cast<int>(st)];
-}  // namespace tiledb::common
+  return port_state_strings<two_stage>[static_cast<int>(st)];
+}
 
 /**
  * enum class for the state machine events.
@@ -656,10 +656,9 @@ class PortFiniteStateMachine {
 
         static_cast<Policy*>(this)->on_source_move(lock, event_counter);
 
-        if constexpr (std::is_same_v<enumerator, two_port_type>) {
+        if constexpr (std::is_same_v<enumerator, two_stage>) {
           state_ = port_state_t<enumerator>::st_01;
-
-        } else if constexpr (std::is_same_v<enumerator, three_port_type>) {
+        } else if constexpr (std::is_same_v<enumerator, three_stage>) {
           switch (state_) {
             case port_state_t<enumerator>::st_010:
               // Fall through
@@ -674,6 +673,9 @@ class PortFiniteStateMachine {
             default:
               break;
           }
+        } else {
+          std::cout << "should not be here" << std::endl;
+          assert(false);
         }
 
         break;
@@ -687,9 +689,9 @@ class PortFiniteStateMachine {
 
         static_cast<Policy*>(this)->on_sink_move(lock, event_counter);
 
-        if constexpr (port_state_t<enumerator>::N_ == 2) {
+        if constexpr (std::is_same_v<enumerator, two_stage>) {
           state_ = port_state_t<enumerator>::st_01;
-        } else if constexpr (port_state_t<enumerator>::N_ == 3) {
+        } else if constexpr (std::is_same_v<enumerator, three_stage>) {
           switch (state_) {
             case port_state_t<enumerator>::st_010:
               // Fall through
@@ -704,6 +706,9 @@ class PortFiniteStateMachine {
             default:
               break;
           }
+        } else {
+          std::cout << "should not be here" << std::endl;
+          assert(false);
         }
 
         break;
@@ -711,7 +716,7 @@ class PortFiniteStateMachine {
       case PortAction::source_wait:
         if (msg != "")
           std::cout << event_counter++
-                    << "      " + msg + " exit about to source_wait"
+                    << "      " + msg + " entry about to source_wait"
                     << std::endl;
         static_cast<Policy*>(this)->on_source_wait(lock, event_counter);
         break;

@@ -25,6 +25,8 @@
 # THE SOFTWARE.
 #
 
+message(STATUS "+++++++ in dag")
+
 add_subdirectory(utils)
 add_subdirectory(execution)
 add_subdirectory(state_machine)

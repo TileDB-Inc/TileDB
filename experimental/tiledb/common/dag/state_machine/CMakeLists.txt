@@ -27,6 +27,8 @@
 
 include(common NO_POLICY_SCOPE)
 
+message(STATUS "+++++++ in state_machine")
+
 list(APPEND FSM_SOURCES
     fsm.cc
 )
@@ -67,6 +69,10 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_fsm> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+
+message(STATUS "+++++++ done unit_fsm")
+
+
 endif()
 
 
