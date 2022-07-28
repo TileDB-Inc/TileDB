@@ -52,12 +52,10 @@
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
-#include "shit.h"
 
 using namespace tiledb::common;
 
-using two_port_type = PortState<two_stage>;
-using two_state = decltype(PortState<two_stage>::done);
+using two_port_type = two_stage;
 
 using ItemMover3 = ItemMover<AsyncPolicy, three_stage, size_t>;
 using ItemMover2 = ItemMover<AsyncPolicy, two_stage, size_t>;

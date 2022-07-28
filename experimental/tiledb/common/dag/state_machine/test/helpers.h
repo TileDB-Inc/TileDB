@@ -77,8 +77,7 @@ template <class State>
 [[maybe_unused]] std::string is_source_empty(State st);
 
 template <>
-[[maybe_unused]] std::string is_source_empty(
-    decltype(PortState<three_stage>::st_000) st) {
+[[maybe_unused]] std::string is_source_empty(decltype(three_stage::st_000) st) {
   std::string state = str(st);
   if (state == "st_000" || state == "st_001" || state == "st_010" ||
       state == "st_011") {
@@ -88,7 +87,7 @@ template <>
 }
 
 [[maybe_unused]] static std::string is_source_full(
-    decltype(PortState<three_stage>::st_000) st) {
+    decltype(three_stage::st_000) st) {
   std::string state = str(st);
   if (state == "st_100" || state == "st_101" || state == "st_110" ||
       state == "st_111") {
@@ -98,7 +97,7 @@ template <>
 }
 
 [[maybe_unused]] static std::string is_source_post_move(
-    decltype(PortState<three_stage>::st_000) st) {
+    decltype(three_stage::st_000) st) {
   std::string state = str(st);
   if (state != "st_111") {
     return {};
@@ -107,7 +106,7 @@ template <>
 }
 
 [[maybe_unused]] static std::string is_sink_empty(
-    decltype(PortState<three_stage>::st_000) st) {
+    decltype(three_stage::st_000) st) {
   std::string state = str(st);
   if (state == "st_000" || state == "st_010" || state == "st_100" ||
       state == "st_110") {
@@ -117,7 +116,7 @@ template <>
 }
 
 [[maybe_unused]] static std::string is_sink_full(
-    decltype(PortState<three_stage>::st_000) st) {
+    decltype(three_stage::st_000) st) {
   std::string state = str(st);
   if (state == "st_001" || state == "st_011" || state == "st_101" ||
       state == "st_111") {
@@ -127,7 +126,7 @@ template <>
 }
 
 [[maybe_unused]] static std::string is_sink_post_move(
-    decltype(PortState<three_stage>::st_000) st) {
+    decltype(three_stage::st_000) st) {
   std::string state = str(st);
   if (state != "st_000") {
     return {};
@@ -140,8 +139,7 @@ template <>
  */
 
 template <>
-[[maybe_unused]] std::string is_source_empty(
-    decltype(PortState<two_stage>::st_00) st) {
+[[maybe_unused]] std::string is_source_empty(decltype(two_stage::st_00) st) {
   std::string state = str(st);
   if (state == "st_00" || state == "st_01") {
     return {};
@@ -150,7 +148,7 @@ template <>
 }
 
 [[maybe_unused]] static std::string is_source_full(
-    decltype(PortState<two_stage>::st_00) st) {
+    decltype(two_stage::st_00) st) {
   std::string state = str(st);
   if (state == "st_10" || state == "st_11") {
     return {};
@@ -159,7 +157,7 @@ template <>
 }
 
 [[maybe_unused]] static std::string is_source_post_move(
-    decltype(PortState<two_stage>::st_00) st) {
+    decltype(two_stage::st_00) st) {
   std::string state = str(st);
   if (state != "st_11") {
     return {};
@@ -168,7 +166,7 @@ template <>
 }
 
 [[maybe_unused]] static std::string is_sink_empty(
-    decltype(PortState<two_stage>::st_00) st) {
+    decltype(two_stage::st_00) st) {
   std::string state = str(st);
   if (state == "st_00" || state == "st_10") {
     return {};
@@ -177,7 +175,7 @@ template <>
 }
 
 [[maybe_unused]] static std::string is_sink_full(
-    decltype(PortState<two_stage>::st_00) st) {
+    decltype(two_stage::st_00) st) {
   std::string state = str(st);
   if (state == "st_01" || state == "st_11") {
     return {};
@@ -186,7 +184,7 @@ template <>
 }
 
 [[maybe_unused]] static std::string is_sink_post_move(
-    decltype(PortState<two_stage>::st_00) st) {
+    decltype(two_stage::st_00) st) {
   std::string state = str(st);
   if (state != "st_00") {
     return {};

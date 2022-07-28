@@ -45,101 +45,30 @@
 
 namespace tiledb::common {
 
-template <size_t num>
-struct stages {
-  constexpr static inline const size_t num_stages = num;
-};
-
-using three_stage = stages<3>;
-using two_stage = stages<2>;
-
-template <class enumerator>
-constexpr size_t num_stages_v = enumerator::num_stages;
-
 /**
- * An enum representing the different states of ports.  Forward declaration.
+ * An enum representing the different states of two bound ports, plus an
+ * intermediary.
  */
-template <class enumerator>
-struct PortState;
+namespace {
 
-/**
- * An enum representing the different states of two bound ports plus an
- * intermediary..
- */
-template <>
-struct PortState<three_stage> {
-  enum {
-    st_000,
-    st_001,
-    st_010,
-    st_011,
-    st_100,
-    st_101,
-    st_110,
-    st_111,
-    error,
-    done
-  };
-  //  constexpr operator int() { return static_cast<int>(st);}
-  static constexpr const size_t N_ = 3;
+enum class three_stage {
+  st_000,
+  st_001,
+  st_010,
+  st_011,
+  st_100,
+  st_101,
+  st_110,
+  st_111,
+  error,
+  done
 };
 
 /**
  * An enum representing the different states of two bound ports.
  */
-template <>
-struct PortState<two_stage> {
-  enum { st_00, st_01, st_10, st_11, error, done };
-  static constexpr const size_t N_ = 2;
-};
-namespace {
-template <class enumerator>
-struct port_state;
+enum class two_stage { st_00, st_01, st_10, st_11, error, done };
 
-template <>
-struct port_state<three_stage> {
-  using type = PortState<three_stage>;
-};
-
-template <>
-struct port_state<two_stage> {
-  using type = PortState<two_stage>;
-};
-
-template <class enumerator>
-struct port_state_enum;
-
-template <>
-struct port_state_enum<three_stage> {
-  using type = decltype(port_state<three_stage>::type::done);
-};
-
-template <>
-struct port_state_enum<two_stage> {
-  using type = decltype(port_state<two_stage>::type::done);
-};
-
-template <class enumerator>
-constexpr const size_t num_states = PortState<enumerator>::N_;
-
-}  // namespace
-
-template <class enumerator>
-using port_state_t = typename port_state<enumerator>::type;
-
-template <class enumerator>
-using port_state_enum_t = typename port_state_enum<enumerator>::type;
-
-using three_port_type = port_state_t<three_stage>;
-using two_port_type = port_state_t<two_stage>;
-
-using three_port_enum_type = port_state_enum_t<three_stage>;
-using two_port_enum_type = port_state_enum_t<two_stage>;
-
-template <class enumerator>
-using state_t = port_state_enum_t<enumerator>;
-
-namespace {
 template <class PortState>
 constexpr unsigned short to_index(PortState x) {
   return static_cast<unsigned short>(x);
@@ -149,13 +78,12 @@ constexpr unsigned short to_index(PortState x) {
  * Number of states in the Port state machine
  */
 template <class PortState>
-constexpr unsigned short n_states = to_index(PortState::done) + 1;
-}  // namespace
+constexpr unsigned short num_states = to_index(PortState::done) + 1;
 
 /**
  * Strings for each enum member, for debugging.
  */
-template <class enumeration>
+template <class PortState>
 static std::vector<std::string> port_state_strings;
 
 template <>
@@ -192,12 +120,12 @@ template <class State>
 static inline auto str(State st);
 
 template <>
-inline auto str(three_port_enum_type st) {
+inline auto str(three_stage st) {
   return port_state_strings<three_stage>[static_cast<int>(st)];
 }
 
 template <>
-inline auto str(two_port_enum_type st) {
+inline auto str(two_stage st) {
   return port_state_strings<two_stage>[static_cast<int>(st)];
 }
 
@@ -295,35 +223,39 @@ static auto inline str(PortAction ac) {
  * Tables for state transitions, exit events, and entry events.  Indexed by
  * state and event.
  */
-namespace {
-
 // clang-format off
 
-template<class PortState, size_t N>
-constexpr const PortState transition_table[n_states<PortState>][n_events];
-
-template<class PortState, size_t N>
-constexpr const PortAction exit_table[n_states<PortState>][n_events];
-
-template<class PortState, size_t N>
-constexpr const PortAction entry_table[n_states<PortState>][n_events];
-
 
 template<class PortState>
-constexpr const decltype(PortState::done) transition_table<PortState, 2>[n_states<PortState>][n_events] {
+// constexpr const 
+PortState transition_table[num_states<PortState>][n_events];
+
+template<class PortState>
+// constexpr const 
+PortAction exit_table[num_states<PortState>][n_events];
+
+template<class PortState>
+//constexpr const 
+PortAction entry_table[num_states<PortState>][n_events];
+
+
+
+template<>
+constexpr const two_stage
+transition_table<two_stage>[num_states<two_stage>][n_events] {
   /* source_sink */ /* source_fill */        /* source_push */       /* sink_drain */        /* sink_pull */        /* shutdown */
 
-  /* st_00 */ { PortState::st_10, PortState::st_00, PortState::error,       PortState::st_00, PortState::error },
-  /* st_01  */ { PortState::st_11,  PortState::st_01,  PortState::st_00, PortState::st_01,  PortState::error },
-  /* st_10  */ { PortState::error,      PortState::st_01,  PortState::error,       PortState::st_01,  PortState::error },
-  /* st_11   */ { PortState::error,      PortState::st_11,   PortState::st_10,  PortState::st_11,   PortState::error },
+  /* st_00 */ { two_stage::st_10, two_stage::st_00, two_stage::error,       two_stage::st_00, two_stage::error },
+  /* st_01  */ { two_stage::st_11,  two_stage::st_01,  two_stage::st_00, two_stage::st_01,  two_stage::error },
+  /* st_10  */ { two_stage::error,      two_stage::st_01,  two_stage::error,       two_stage::st_01,  two_stage::error },
+  /* st_11   */ { two_stage::error,      two_stage::st_11,   two_stage::st_10,  two_stage::st_11,   two_stage::error },
 
-  /* error       */ { PortState::error,      PortState::error,       PortState::error,       PortState::error,       PortState::error },
-  /* done        */ { PortState::error,      PortState::error,       PortState::error,       PortState::error,       PortState::error },
+  /* error       */ { two_stage::error,      two_stage::error,       two_stage::error,       two_stage::error,       two_stage::error },
+  /* done        */ { two_stage::error,      two_stage::error,       two_stage::error,       two_stage::error,       two_stage::error },
 };
 
-template<class PortState>
-constexpr const PortAction exit_table<PortState,2>[n_states<PortState>][n_events] {
+template<>
+constexpr const PortAction exit_table<two_stage>[num_states<two_stage>][n_events] {
   /* source_sink */ /* source_fill */   /* source_push */      /* sink_drain */  /* sink_pull */        /* shutdown */
 
   /* st_00 */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::sink_wait, PortAction::none },
@@ -335,8 +267,8 @@ constexpr const PortAction exit_table<PortState,2>[n_states<PortState>][n_events
   /* done        */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
 };
 
-template<class PortState>
-constexpr const PortAction entry_table<PortState,2> [n_states<PortState>][n_events] {
+template<>
+constexpr const PortAction entry_table<two_stage> [num_states<two_stage>][n_events] {
   /* source_sink */ /* source_fill */          /* source_push */      /* sink_drain */           /* sink_pull */        /* shutdown */
 
   /* st_00 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
@@ -349,25 +281,26 @@ constexpr const PortAction entry_table<PortState,2> [n_states<PortState>][n_even
 };
 
 
-template<class PortState>
-constexpr const decltype(PortState::done) transition_table<PortState, 3>[n_states<PortState>][n_events] {
+template<>
+constexpr const three_stage
+transition_table<three_stage>[num_states<three_stage>][n_events] {
   /* state  */  /* source_fill */   /* source_push */  /* sink_drain */   /* sink_pull */    /* shutdown */
 
-  /* st_000 */ { PortState::st_100, PortState::st_000, PortState::error,  PortState::st_000, PortState::error },
-  /* st_001 */ { PortState::st_101, PortState::st_001, PortState::st_000, PortState::st_001, PortState::error },
-  /* st_010 */ { PortState::st_110, PortState::st_001, PortState::error,  PortState::st_001, PortState::error },
-  /* st_011 */ { PortState::st_111, PortState::st_011, PortState::st_010, PortState::st_011, PortState::error },
-  /* st_100 */ { PortState::error,  PortState::st_001, PortState::error,  PortState::st_001, PortState::error },
-  /* st_101 */ { PortState::error,  PortState::st_011, PortState::st_100, PortState::st_011, PortState::error },
-  /* st_110 */ { PortState::error,  PortState::st_011, PortState::error,  PortState::st_011, PortState::error },
-  /* st_111 */ { PortState::error,  PortState::st_111, PortState::st_110, PortState::st_111, PortState::error },
+  /* st_000 */ { three_stage::st_100, three_stage::st_000, three_stage::error,  three_stage::st_000, three_stage::error },
+  /* st_001 */ { three_stage::st_101, three_stage::st_001, three_stage::st_000, three_stage::st_001, three_stage::error },
+  /* st_010 */ { three_stage::st_110, three_stage::st_001, three_stage::error,  three_stage::st_001, three_stage::error },
+  /* st_011 */ { three_stage::st_111, three_stage::st_011, three_stage::st_010, three_stage::st_011, three_stage::error },
+  /* st_100 */ { three_stage::error,  three_stage::st_001, three_stage::error,  three_stage::st_001, three_stage::error },
+  /* st_101 */ { three_stage::error,  three_stage::st_011, three_stage::st_100, three_stage::st_011, three_stage::error },
+  /* st_110 */ { three_stage::error,  three_stage::st_011, three_stage::error,  three_stage::st_011, three_stage::error },
+  /* st_111 */ { three_stage::error,  three_stage::st_111, three_stage::st_110, three_stage::st_111, three_stage::error },
 
-  /* error  */ { PortState::error,  PortState::error,  PortState::error,  PortState::error,  PortState::error },
-  /* done   */ { PortState::error,  PortState::error,  PortState::error,  PortState::error,  PortState::error },
+  /* error  */ { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error },
+  /* done   */ { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error },
 };
 
-template<class PortState>
-constexpr const PortAction exit_table<PortState,3>[n_states<PortState>][n_events] {
+template<>
+constexpr const PortAction exit_table<three_stage>[num_states<three_stage>][n_events] {
   /* state  */  /* source_fill */  /* source_push */        /* sink_drain */  /* sink_pull */        /* shutdown */
 
   /* st_000 */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::sink_wait, PortAction::none },
@@ -383,8 +316,8 @@ constexpr const PortAction exit_table<PortState,3>[n_states<PortState>][n_events
   /* done   */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
 };
 
-template<class PortState>
-constexpr const PortAction entry_table<PortState, 3>[n_states<PortState>][n_events] {
+template<>
+constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_events] {
   /* state  */  /* source_fill */         /* source_push */        /* sink_drain */           /* sink_pull */        /* shutdown */
 
   /* st_000 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
@@ -420,26 +353,21 @@ constexpr const PortAction entry_table<PortState, 3>[n_states<PortState>][n_even
  * at each interesting point in the state machine.
  */
 
-template <class Policy, class enumerator>
+template <class Policy, class PortState>
 class PortFiniteStateMachine {
  private:
-  // using Mover::Mover;
-  // using enumerator = static_cast<decltype(*this)>::enumerator_type;
-  // using enumerator = etraits<Mover>;
-  // using enumerator = typename Mover::enumerator_type;
-
-  state_t<enumerator> state_;
-  state_t<enumerator> next_state_;
+  PortState state_;
+  PortState next_state_;
 
  public:
-  using port_state = PortState<enumerator>;
+  using port_state = PortState;
   using lock_type = std::unique_lock<std::mutex>;
 
   /**
    * Default constructor
    */
   PortFiniteStateMachine()
-      : state_(static_cast<state_t<enumerator>>(0)) {
+      : state_(static_cast<PortState>(0)) {
   }
 
   /**
@@ -492,12 +420,10 @@ class PortFiniteStateMachine {
     std::unique_lock lock(mutex_);
 
     next_state_ =
-        transition_table<port_state, num_states<enumerator>>[to_index(state_)]
-                                                            [to_index(event)];
-    auto exit_action{exit_table<port_state, num_states<enumerator>>[to_index(
-        state_)][to_index(event)]};
-    auto entry_action{entry_table<port_state, num_states<enumerator>>[to_index(
-        next_state_)][to_index(event)]};
+        transition_table<port_state>[to_index(state_)][to_index(event)];
+    auto exit_action{exit_table<port_state>[to_index(state_)][to_index(event)]};
+    auto entry_action{
+        entry_table<port_state>[to_index(next_state_)][to_index(event)]};
 
     auto old_state = state_;
 
@@ -515,7 +441,7 @@ class PortFiniteStateMachine {
       return;
     }
 
-    if (next_state_ == port_state_t<enumerator>::error) {
+    if (next_state_ == PortState::error) {
       std::cout << "\n"
                 << event_counter++
                 << " ERROR On event start: " + msg + " " + str(event) + ": " +
@@ -618,8 +544,7 @@ class PortFiniteStateMachine {
      * Update the entry_action in case next_state_ was changed.
      */
     entry_action =
-        entry_table<port_state, num_states<enumerator>>[to_index(next_state_)]
-                                                       [to_index(event)];
+        entry_table<port_state>[to_index(next_state_)][to_index(event)];
 
     if (msg != "" || debug_) {
       std::cout << event_counter++
@@ -656,19 +581,19 @@ class PortFiniteStateMachine {
 
         static_cast<Policy*>(this)->on_source_move(lock, event_counter);
 
-        if constexpr (std::is_same_v<enumerator, two_stage>) {
-          state_ = port_state_t<enumerator>::st_01;
-        } else if constexpr (std::is_same_v<enumerator, three_stage>) {
+        if constexpr (std::is_same_v<PortState, two_stage>) {
+          state_ = PortState::st_01;
+        } else if constexpr (std::is_same_v<PortState, three_stage>) {
           switch (state_) {
-            case port_state_t<enumerator>::st_010:
+            case PortState::st_010:
               // Fall through
-            case port_state_t<enumerator>::st_100:
-              state_ = port_state_t<enumerator>::st_001;
+            case PortState::st_100:
+              state_ = PortState::st_001;
               break;
-            case port_state_t<enumerator>::st_110:
+            case PortState::st_110:
               // Fall through
-            case port_state_t<enumerator>::st_101:
-              state_ = port_state_t<enumerator>::st_011;
+            case PortState::st_101:
+              state_ = PortState::st_011;
               break;
             default:
               break;
@@ -689,19 +614,19 @@ class PortFiniteStateMachine {
 
         static_cast<Policy*>(this)->on_sink_move(lock, event_counter);
 
-        if constexpr (std::is_same_v<enumerator, two_stage>) {
-          state_ = port_state_t<enumerator>::st_01;
-        } else if constexpr (std::is_same_v<enumerator, three_stage>) {
+        if constexpr (std::is_same_v<PortState, two_stage>) {
+          state_ = PortState::st_01;
+        } else if constexpr (std::is_same_v<PortState, three_stage>) {
           switch (state_) {
-            case port_state_t<enumerator>::st_010:
+            case PortState::st_010:
               // Fall through
-            case port_state_t<enumerator>::st_100:
-              state_ = port_state_t<enumerator>::st_001;
+            case PortState::st_100:
+              state_ = PortState::st_001;
               break;
-            case port_state_t<enumerator>::st_110:
+            case PortState::st_110:
               // Fall through
-            case port_state_t<enumerator>::st_101:
-              state_ = port_state_t<enumerator>::st_011;
+            case PortState::st_101:
+              state_ = PortState::st_011;
               break;
             default:
               break;
@@ -764,7 +689,7 @@ class PortFiniteStateMachine {
   /**
    * Set state
    */
-  inline auto set_state(state_t<enumerator> next_state_) {
+  inline auto set_state(PortState next_state_) {
     state_ = next_state_;
     return state_;
   }
@@ -772,7 +697,7 @@ class PortFiniteStateMachine {
   /**
    * Set next state
    */
-  inline auto set_next_state(state_t<enumerator> next_state) {
+  inline auto set_next_state(PortState next_state) {
     next_state_ = next_state;
     return next_state_;
   }

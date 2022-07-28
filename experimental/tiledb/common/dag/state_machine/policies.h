@@ -112,23 +112,23 @@ namespace tiledb::common {
 #define _unused(x) x
 #endif
 
-template <class Mover, class enumerator>
+template <class Mover, class PortState>
 class AsyncPolicy;
 
-template <class Mover, class enumerator>
+template <class Mover, class PortState>
 class UnifiedAsyncPolicy;
 
 /**
  * Base action policy. Includes items array and `register` and `deregister`
  * functions.
  */
-template <class enumerator, class Block>
+template <class PortState, class Block>
 class BaseMover;
 
 template <class Block>
 class BaseMover<three_stage, Block> {
   using item_type = std::optional<Block>;
-  using PortState = PortState<three_stage>;
+  using PortState = three_stage;
 
   std::array<item_type*, 3> items_;
 
@@ -247,7 +247,7 @@ class BaseMover<three_stage, Block> {
 
 template <class Block>
 class BaseMover<two_stage, Block> {
-  using PortState = two_port_type;
+  using PortState = two_stage;
   using item_type = std::optional<Block>;
 
   std::array<item_type*, 2> items_;
@@ -288,7 +288,7 @@ class BaseMover<two_stage, Block> {
       const StateMachine& state_machine, std::atomic<int>& event) {
     auto state = state_machine.state();
     bool debug = state_machine.debug_enabled();
-    CHECK(state == PortState::st_10);
+    CHECK(state == two_stage::st_10);
 
     /**
      * @todo Distinguish between source and sink
@@ -356,24 +356,20 @@ class BaseMover<two_stage, Block> {
   }
 };
 
-// template <template <class> class Policy, class enumerator, class Block>
-// class ItemMover : public BaseMover<enumerator, Block> {
-template <template <class, class> class Policy, class enumerator, class Block>
-class ItemMover
-    : public Policy<ItemMover<Policy, enumerator, Block>, enumerator>,
-      public BaseMover<enumerator, Block> {
+// template <template <class> class Policy, class PortState, class Block>
+// class ItemMover : public BaseMover<PortState, Block> {
+template <template <class, class> class Policy, class PortState, class Block>
+class ItemMover : public Policy<ItemMover<Policy, PortState, Block>, PortState>,
+                  public BaseMover<PortState, Block> {
  public:
-  //  using BaseMover<enumerator, Block>::BaseMover<enumerator, Block>;
-  using BaseMover<enumerator, Block>::BaseMover;
+  //  using BaseMover<PortState, Block>::BaseMover<PortState, Block>;
+  using BaseMover<PortState, Block>::BaseMover;
 
   using state_machine_type = PortFiniteStateMachine<
-      Policy<ItemMover<Policy, enumerator, Block>, enumerator>,
-      enumerator>;
+      Policy<ItemMover<Policy, PortState, Block>, PortState>,
+      PortState>;
 
-  //      ItemMover<Policy, enumerator, Block>,
-  //        enumerator > ;
-  using stages_type = enumerator;
-  using enumerator_type = enumerator;
+  using port_state_type = PortState;
 
   /**
    * Invoke `source_fill` event
@@ -465,13 +461,13 @@ class ManualPolicy : public ItemMover {
 
   state_machine_type state_machine = mover_type::get_state_machine();
 
-  using enumerator = typename mover_type::enumerator_type;
+  using PortState = typename mover_type::port_state_type;
 
  public:
   ManualPolicy() {
-    if constexpr (std::is_same_v<enumerator, two_port_type>) {
+    if constexpr (std::is_same_v<PortState, two_stage>) {
       CHECK(str(mover_type::get_state()) == "st_00");
-    } else if constexpr (std::is_same_v<enumerator, three_port_type>) {
+    } else if constexpr (std::is_same_v<PortState, three_stage>) {
       CHECK(str(mover_type::get_state()) == "st_000");
     }
   }
@@ -529,9 +525,9 @@ class ManualPolicy : public ItemMover {
  * than the user of the state machine.
  */
 
-template <class Mover, class enumerator>
+template <class Mover, class PortState>
 class AsyncPolicy
-    : public PortFiniteStateMachine<AsyncPolicy<Mover, enumerator>, enumerator>
+    : public PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState>
 
 {
   using mover_type = Mover;
@@ -540,8 +536,8 @@ class AsyncPolicy
   //  state_machine_type state_machine = mover_type::get_state_machine();
 
   using lock_type = typename PortFiniteStateMachine<
-      AsyncPolicy<Mover, enumerator>,
-      enumerator>::lock_type;
+      AsyncPolicy<Mover, PortState>,
+      PortState>::lock_type;
   //  using item_type = typename mover_type::item_type;
 
   std::condition_variable sink_cv_;
@@ -624,9 +620,9 @@ class AsyncPolicy
   inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
     assert(lock.owns_lock());
 
-    if constexpr (std::is_same_v<enumerator, two_port_type>) {
+    if constexpr (std::is_same_v<PortState, two_stage>) {
       CHECK(str(this->state()) == "st_00");
-    } else if (std::is_same_v<enumerator, three_port_type>) {
+    } else if (std::is_same_v<PortState, three_stage>) {
       CHECK(str(this->state()) == "st_000");
     }
 
@@ -655,9 +651,9 @@ class AsyncPolicy
   inline void on_source_wait(lock_type& lock, std::atomic<int>& event) {
     assert(lock.owns_lock());
 
-    if constexpr (std::is_same_v<enumerator, two_port_type>) {
+    if constexpr (std::is_same_v<PortState, two_stage>) {
       CHECK(str(this->state()) == "st_11");
-    } else if constexpr (std::is_same_v<enumerator, three_port_type>) {
+    } else if constexpr (std::is_same_v<PortState, three_stage>) {
       CHECK(str(this->state()) == "st_111");
     }
 
@@ -698,10 +694,10 @@ class AsyncPolicy
  * actions so that the procession of steps is driven by the state machine rather
  * than the user of the state machine.
  */
-template <class Mover, class enumerator>
+template <class Mover, class PortState>
 class UnifiedAsyncPolicy : public PortFiniteStateMachine<
-                               UnifiedAsyncPolicy<Mover, enumerator>,
-                               enumerator> {
+                               UnifiedAsyncPolicy<Mover, PortState>,
+                               PortState> {
   std::condition_variable cv_;
 
  public:
@@ -709,7 +705,7 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
   using mover_type = Mover;
   using state_machine_type = typename mover_type::state_machine_type;
   using lock_type = typename mover_type::lock_type;
-  using enumerator = typename mover_type::enumerator_type;
+  using PortState = typename mover_type::PortState_type;
   state_machine_type state_machine = mover_type::get_state_machine();
 
   using item_type = typename mover_type::item_type;
@@ -796,15 +792,14 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
  * A simple debugging action policy that simply prints that an action has been
  * called.
  */
-template <class Mover, class enumerator>
-class DebugPolicy : public PortFiniteStateMachine<
-                        DebugPolicy<Mover, enumerator>,
-                        enumerator> {
+template <class Mover, class PortState>
+class DebugPolicy
+    : public PortFiniteStateMachine<DebugPolicy<Mover, PortState>, PortState> {
 #if 0
   using mover_type = Mover;
   using state_machine_type = typename mover_type::state_machine_type;
   using lock_type = typename mover_type::lock_type;
-  using enumerator = typename mover_type::enumerator_type;
+  using PortState = typename mover_type::PortState_type;
   state_machine_type* state_machine = mover_type::get_state_machine();
 #endif
 
@@ -864,7 +859,7 @@ class DebugPolicyWithLock : public Mover {
   using mover_type = Mover;
   using state_machine_type = typename mover_type::state_machine_type;
   using lock_type = typename mover_type::lock_type;
-  using enumerator = typename mover_type::enumerator_type;
+  using PortState = typename mover_type::PortState_type;
 
   state_machine_type state_machine = mover_type::get_state_machine();
   std::mutex mutex_;
