@@ -133,10 +133,13 @@ class Range {
     return range_.empty() ? nullptr : range_.data();
   }
 
-  /** Returns the pointer to the range as flattend bytes of the requested type.
+  /**
+   * Returns the pointer to the range as flattened bytes of the requested type.
    */
   template <typename T>
   inline const T* typed_data() const {
+    assert(!var_size_);
+    assert(range_.empty() || (range_.size() == 2 * sizeof(T)));
     return range_.empty() ? nullptr : (T*)range_.data();
   }
 
