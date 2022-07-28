@@ -2820,10 +2820,11 @@ Status global_write_state_from_capnp(
       auto reader = frag_meta_reader.getNonEmptyDomain();
       auto&& [status, ndrange] = utils::deserialize_non_empty_domain_rv(reader);
       RETURN_NOT_OK(status);
-      frag_meta->init_domain(*ndrange);
-      // init_domain only inits non_empty_domain for dense case
-      // we need to have this assignment here for sparse case to work
-      frag_meta->non_empty_domain() = std::move(*ndrange);
+      // Whilst sparse gets its domain calculated, dense needs to have it
+      // set here from the deserialized data
+      if (query.is_dense()) {
+        frag_meta->init_domain(*ndrange);
+      }
     }
   }
 
