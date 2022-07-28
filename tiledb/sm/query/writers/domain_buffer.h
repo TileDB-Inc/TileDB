@@ -159,7 +159,8 @@ class SingleCoord {
       std::vector<std::vector<uint8_t>> coords,
       std::vector<uint64_t> sizes,
       std::vector<uint64_t> single_offset)
-      : qb_(schema.dim_num())
+      : coords_(schema.dim_num())
+      , qb_(schema.dim_num())
       , sizes_(schema.dim_num() + 1)
       , single_offset_(1) {
     sizes_[schema.dim_num()] = sizeof(uint64_t);
