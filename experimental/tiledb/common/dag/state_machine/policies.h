@@ -105,6 +105,13 @@ namespace tiledb::common {
  * function, and are reset with a `deregister_items` function.
  */
 // clang-format on
+
+#ifdef NDEBUG
+#define _unused(x)
+#else
+#define _unused(x) x
+#endif
+
 #if 0
 template <class enumerator>
 class AsyncPolicy;
@@ -366,8 +373,12 @@ class ItemMover
   //  using BaseMover<enumerator, Block>::BaseMover<enumerator, Block>;
   using BaseMover<enumerator, Block>::BaseMover;
 
-  using state_machine_type =
-      PortFiniteStateMachine<ItemMover<Policy, enumerator, Block>, enumerator>;
+  using state_machine_type = PortFiniteStateMachine<
+      Policy<ItemMover<Policy, enumerator, Block>, enumerator>,
+      enumerator>;
+
+  //      ItemMover<Policy, enumerator, Block>,
+  //        enumerator > ;
   using stages_type = enumerator;
   using enumerator_type = enumerator;
 
@@ -558,7 +569,7 @@ class AsyncPolicy
   /**
    * Function for handling `notify_source` action.
    */
-  inline void notify_source(lock_type& lock, std::atomic<int>& event) {
+  inline void notify_source(lock_type& _unused(lock), std::atomic<int>& event) {
     assert(lock.owns_lock());
     if (this->debug_enabled())
       std::cout << event++ << "  "
@@ -573,7 +584,7 @@ class AsyncPolicy
   /**
    * Function for handling `notify_sink` action.
    */
-  inline void notify_sink(lock_type& lock, std::atomic<int>& event) {
+  inline void notify_sink(lock_type& _unused(lock), std::atomic<int>& event) {
     assert(lock.owns_lock());
 
     if (this->debug_enabled())
@@ -589,7 +600,7 @@ class AsyncPolicy
   /**
    * Function for handling `sink_move` action.
    */
-  inline void on_sink_move(lock_type& lock, std::atomic<int>& event) {
+  inline void on_sink_move(lock_type& _unused(lock), std::atomic<int>& event) {
     assert(lock.owns_lock());
 
     if (this->debug_enabled())
@@ -604,7 +615,8 @@ class AsyncPolicy
   /**
    * Function for handling `src_move` action.
    */
-  inline void on_source_move(lock_type& lock, std::atomic<int>& event) {
+  inline void on_source_move(
+      lock_type& _unused(lock), std::atomic<int>& event) {
     assert(lock.owns_lock());
 
     if (this->debug_enabled())

@@ -57,33 +57,40 @@ using namespace tiledb::common;
 
 using two_port_type = PortState<two_stage>;
 using two_state = decltype(PortState<two_stage>::done);
-using PortStateMachine3 = PortFiniteStateMachine<
-    ItemMover<DebugPolicy, three_stage, size_t>,
-    three_stage>;
-using PortStateMachine2 = PortFiniteStateMachine<
-    ItemMover<DebugPolicy, two_stage, size_t>,
-    two_stage>;
-
-using AsyncStateMachine3 = PortFiniteStateMachine<
-    ItemMover<AsyncPolicy, three_stage, size_t>,
-    three_stage>;
-using AyncStateMachine2 = PortFiniteStateMachine<
-    ItemMover<AsyncPolicy, two_stage, size_t>,
-    two_stage>;
-
-using UnifiedAsyncStateMachine3 = PortFiniteStateMachine<
-    ItemMover<UnifiedAsyncPolicy, three_stage, size_t>,
-    three_stage>;
-using UnifiedAyncStateMachine2 = PortFiniteStateMachine<
-    ItemMover<UnifiedAsyncPolicy, two_stage, size_t>,
-    two_stage>;
 
 using ItemMover3 = ItemMover<AsyncPolicy, three_stage, size_t>;
 using ItemMover2 = ItemMover<AsyncPolicy, two_stage, size_t>;
 using UnifiedItemMover3 = ItemMover<UnifiedAsyncPolicy, three_stage, size_t>;
 using UnifiedItemMover2 = ItemMover<UnifiedAsyncPolicy, two_stage, size_t>;
 
-#if 0
+using DebugPolicy3 =
+    DebugPolicy<ItemMover<DebugPolicy, three_stage, size_t>, three_stage>;
+using DebugPolicy2 =
+    DebugPolicy<ItemMover<DebugPolicy, two_stage, size_t>, two_stage>;
+
+using AsyncPolicy3 =
+    AsyncPolicy<ItemMover<AsyncPolicy, three_stage, size_t>, three_stage>;
+using AsyncPolicy2 =
+    AsyncPolicy<ItemMover<AsyncPolicy, two_stage, size_t>, two_stage>;
+
+using UnifiedAsyncPolicy3 = UnifiedAsyncPolicy<
+    ItemMover<UnifiedAsyncPolicy, three_stage, size_t>,
+    three_stage>;
+using UnifiedAsyncPolicy2 = UnifiedAsyncPolicy<
+    ItemMover<UnifiedAsyncPolicy, two_stage, size_t>,
+    two_stage>;
+
+using PortStateMachine3 = PortFiniteStateMachine<DebugPolicy3, three_stage>;
+using PortStateMachine2 = PortFiniteStateMachine<DebugPolicy2, two_stage>;
+
+using AsyncStateMachine3 = PortFiniteStateMachine<AsyncPolicy3, three_stage>;
+using AsyncStateMachine2 = PortFiniteStateMachine<AsyncPolicy2, two_stage>;
+
+using UnifiedAsyncStateMachine3 =
+    PortFiniteStateMachine<UnifiedAsyncPolicy3, three_stage>;
+using UnifiedAsyncStateMachine2 =
+    PortFiniteStateMachine<UnifiedAsyncPolicy2, two_stage>;
+
 TEST_CASE("Port FSM: Construct PortPolicy", "[fsm]") {
   [[maybe_unused]] auto a = PortStateMachine2{};
 
@@ -132,10 +139,8 @@ TEST_CASE("Port FSM: Start up", "[fsm]") {
     a.do_drain(debug ? "start sink (drain)" : "");
     CHECK(is_sink_empty(a.state()) == "");
   }
-
 }
-#endif
-#if 0
+
 /*
  * Use the `DebugPolicy` to verify startup state and some more involved
  * transition sequences.
@@ -200,8 +205,6 @@ TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
   a.do_drain();
   CHECK(a.state() == two_port_type::st_00);
 }
-
-#endif
 
 /**
  * Simple test of asynchrous state machine policy, launching an emulated source

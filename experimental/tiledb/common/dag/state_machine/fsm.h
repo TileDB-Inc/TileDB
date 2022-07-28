@@ -777,9 +777,19 @@ class PortFiniteStateMachine {
     return next_state_;
   }
 
-  void a(const std::string& msg) {
+  void do_fill(const std::string& msg = "") {
     event(PortEvent::source_fill, msg);
   }
+  void do_push(const std::string& msg = "") {
+    event(PortEvent::source_push, msg);
+  }
+  void do_pull(const std::string& msg = "") {
+    event(PortEvent::sink_pull, msg);
+  }
+  void do_drain(const std::string& msg = "") {
+    event(PortEvent::sink_drain, msg);
+  }
+
   /**
    * Invoke `out_of_data` event
    */
