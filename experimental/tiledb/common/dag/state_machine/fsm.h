@@ -111,7 +111,8 @@ static std::vector<std::string> port_state_strings<three_stage>{
 };
 
 /**
- * Function to convert a state to a string.
+ * Function to convert a state to a string.  Specializations exist for
+ * `two_stage` and `three_stage`.
  *
  * @param event The event to stringify.
  * @return The string corresponding to the event.
@@ -130,7 +131,8 @@ inline auto str(two_stage st) {
 }
 
 /**
- * enum class for the state machine events.
+ * enum class for the state machine events.  Does not depend on the number of
+ * states.
  */
 enum class PortEvent : unsigned short {
   source_fill,
@@ -223,68 +225,73 @@ static auto inline str(PortAction ac) {
  * Tables for state transitions, exit events, and entry events.  Indexed by
  * state and event.
  */
-// clang-format off
-
-
-template<class PortState>
-// constexpr const 
+template <class PortState>
 PortState transition_table[num_states<PortState>][n_events];
 
-template<class PortState>
-// constexpr const 
+template <class PortState>
 PortAction exit_table[num_states<PortState>][n_events];
 
-template<class PortState>
-//constexpr const 
+template <class PortState>
 PortAction entry_table[num_states<PortState>][n_events];
 
-
-
+// clang-format off
+/**
+ * Specialization of `transition_table` for `two_stage`.
+ */
 template<>
 constexpr const two_stage
 transition_table<two_stage>[num_states<two_stage>][n_events] {
-  /* source_sink */ /* source_fill */        /* source_push */       /* sink_drain */        /* sink_pull */        /* shutdown */
+  /* state */   /* source_fill */ /* source_push */ /* sink_drain */  /* sink_pull */   /* shutdown */
 
-  /* st_00 */ { two_stage::st_10, two_stage::st_00, two_stage::error,       two_stage::st_00, two_stage::error },
-  /* st_01  */ { two_stage::st_11,  two_stage::st_01,  two_stage::st_00, two_stage::st_01,  two_stage::error },
-  /* st_10  */ { two_stage::error,      two_stage::st_01,  two_stage::error,       two_stage::st_01,  two_stage::error },
-  /* st_11   */ { two_stage::error,      two_stage::st_11,   two_stage::st_10,  two_stage::st_11,   two_stage::error },
+  /* st_00 */ { two_stage::st_10, two_stage::st_00, two_stage::error, two_stage::st_00, two_stage::error },
+  /* st_01 */ { two_stage::st_11, two_stage::st_01, two_stage::st_00, two_stage::st_01, two_stage::error },
+  /* st_10 */ { two_stage::error, two_stage::st_01, two_stage::error, two_stage::st_01, two_stage::error },
+  /* st_11 */ { two_stage::error, two_stage::st_11, two_stage::st_10, two_stage::st_11, two_stage::error },
 
-  /* error       */ { two_stage::error,      two_stage::error,       two_stage::error,       two_stage::error,       two_stage::error },
-  /* done        */ { two_stage::error,      two_stage::error,       two_stage::error,       two_stage::error,       two_stage::error },
+  /* error */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
+  /* done  */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
 };
 
+/**
+ * Specialization of `exit_table` for `two_stage`.
+ */
 template<>
 constexpr const PortAction exit_table<two_stage>[num_states<two_stage>][n_events] {
-  /* source_sink */ /* source_fill */   /* source_push */      /* sink_drain */  /* sink_pull */        /* shutdown */
+  /* state */   /* source_fill */ /* source_push */        /* sink_drain */  /* sink_pull */        /* shutdown */
 
   /* st_00 */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::sink_wait, PortAction::none },
-  /* st_01  */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
-  /* st_10  */ { PortAction::none, PortAction::source_move, PortAction::none, PortAction::sink_move, PortAction::none },
-  /* st_11   */ { PortAction::none, PortAction::source_wait, PortAction::none, PortAction::none,      PortAction::none },
+  /* st_01 */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
+  /* st_10 */ { PortAction::none, PortAction::source_move, PortAction::none, PortAction::sink_move, PortAction::none },
+  /* st_11 */ { PortAction::none, PortAction::source_wait, PortAction::none, PortAction::none,      PortAction::none },
 
-  /* error       */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
-  /* done        */ { PortAction::none, PortAction::none,      PortAction::none, PortAction::none,      PortAction::none },
+  /* error */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
+  /* done  */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
 };
 
+/**
+ * Specialization of `entry_table` for `two_stage`.
+ */
 template<>
 constexpr const PortAction entry_table<two_stage> [num_states<two_stage>][n_events] {
-  /* source_sink */ /* source_fill */          /* source_push */      /* sink_drain */           /* sink_pull */        /* shutdown */
+  /* state */   /* source_fill */        /* source_push */        /* sink_drain */           /* sink_pull */        /* shutdown */
 
   /* st_00 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
-  /* st_01  */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
-  /* st_10  */ { PortAction::notify_sink, PortAction::source_move, PortAction::notify_source, PortAction::sink_move, PortAction::none },
-  /* st_11   */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
+  /* st_01 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
+  /* st_10 */ { PortAction::notify_sink, PortAction::source_move, PortAction::notify_source, PortAction::sink_move, PortAction::none },
+  /* st_11 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
 
-  /* error       */ { PortAction::none,        PortAction::none,      PortAction::none,          PortAction::none,      PortAction::none },
-  /* done        */ { PortAction::none,        PortAction::none,      PortAction::none,          PortAction::none,      PortAction::none },
+  /* error */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
+  /* done  */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
 };
 
 
+/**
+ * Specialization of `transition_table` for `three_stage`.
+ */
 template<>
 constexpr const three_stage
 transition_table<three_stage>[num_states<three_stage>][n_events] {
-  /* state  */  /* source_fill */   /* source_push */  /* sink_drain */   /* sink_pull */    /* shutdown */
+  /* state  */   /* source_fill */    /* source_push */    /* sink_drain */     /* sink_pull */      /* shutdown */
 
   /* st_000 */ { three_stage::st_100, three_stage::st_000, three_stage::error,  three_stage::st_000, three_stage::error },
   /* st_001 */ { three_stage::st_101, three_stage::st_001, three_stage::st_000, three_stage::st_001, three_stage::error },
@@ -299,6 +306,9 @@ transition_table<three_stage>[num_states<three_stage>][n_events] {
   /* done   */ { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error },
 };
 
+/**
+ * Specialization of `exit_table` for `three_stage`.
+ */
 template<>
 constexpr const PortAction exit_table<three_stage>[num_states<three_stage>][n_events] {
   /* state  */  /* source_fill */  /* source_push */        /* sink_drain */  /* sink_pull */        /* shutdown */
@@ -316,6 +326,9 @@ constexpr const PortAction exit_table<three_stage>[num_states<three_stage>][n_ev
   /* done   */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
 };
 
+/**
+ * Specialization of `entry_table` for `three_stage`.
+ */
 template<>
 constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_events] {
   /* state  */  /* source_fill */         /* source_push */        /* sink_drain */           /* sink_pull */        /* shutdown */
