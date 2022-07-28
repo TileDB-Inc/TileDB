@@ -28,8 +28,9 @@
  * @section DESCRIPTION
  *
  *
- * This file defines the operation of a finite state machine with 2^3 states,
- * one state for each binary number in [0, 2^3).
+ * This file defines the operation of a finite state machine, parameterized to
+ * accommodate 2 stage or 3 stage data transfer, i.e., 4 or 8 states.  Each
+ * state corresponds to a binary number in [0, 2^N) (for N = 2 or N = 3).
  *
  */
 
@@ -47,7 +48,8 @@ namespace tiledb::common {
 
 /**
  * An enum representing the different states of two bound ports, plus an
- * intermediary.
+ * intermediary. Since it is useful to consider the states as binary numbers, we
+ * start our numbering of states with state 0 as enum 0.
  */
 namespace {
 
@@ -66,6 +68,8 @@ enum class three_stage {
 
 /**
  * An enum representing the different states of two bound ports.
+ * Since it is useful to consider the states as binary numbers, we
+ * start our numbering of states with state 0 as enum 0.
  */
 enum class two_stage { st_00, st_01, st_10, st_11, error, done };
 
@@ -284,7 +288,6 @@ constexpr const PortAction entry_table<two_stage> [num_states<two_stage>][n_even
   /* done  */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
 };
 
-
 /**
  * Specialization of `transition_table` for `three_stage`.
  */
@@ -350,22 +353,31 @@ constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_e
 }  // namespace
 
 /**
- * Class template representing states of a bound source and sink node.  The
- * class is agnostic as to how the actions are actually implemented by the users
- * of the the state machine.  A policy class is used by the
- * `PortFinitStateMachine` to realize the specific state transition actions.
+ * Class template representing states of a bound source and sink node (in the
+ * two stage case) or the states of a bound source, sink node, and intermediary
+ * (in the three stage case).  The class supplies an `event` function for
+ * effecting state transitions (including application of exit and entry
+ * functions).  The class is agnostic as to how the actions are actually
+ * implemented by the users of the state machine.  A policy class is used by the
+ * `PortFinitStateMachine` to realize the specific state transition actions.  It
+ * is assumed the the Policy class inherits from `PortFiniteStateMachine` using
+ * CRTP.
  *
- * The `ActionPolicy` class is expected to use the `FiniteStateMachine` class
- * using CRTP. Documentation about action policy classes can be found in
- * policies.h.
+ * Extended documentation for the operation of the state machine for the
+ * two-stage case can be found in * fsm.md.
+ *
+ * The `Policy` class is expected to use the `PortFiniteStateMachine` class
+ * using CRTP so that functions provided by the `Policy` class are available to
+ * the `PortFiniteStateMachine`. Documentation about action policy classes can
+ * be found in policies.h.
  *
  * @note There is a fair amount of debugging code inserted into the class at the
  * moment.
  *
  * @todo Use an aspect class (as another template argument) to effect callbacks
- * at each interesting point in the state machine.
+ * at each interesting point in the state machine (such as debugging
+ * statements).
  */
-
 template <class Policy, class PortState>
 class PortFiniteStateMachine {
  private:
@@ -376,15 +388,20 @@ class PortFiniteStateMachine {
   using port_state = PortState;
   using lock_type = std::unique_lock<std::mutex>;
 
+  void foo() {
+  }
+
   /**
    * Default constructor
    */
   PortFiniteStateMachine()
-      : state_(static_cast<PortState>(0)) {
+      : state_(static_cast<port_state>(0)) {
   }
 
   /**
-   * Copy constructor -- completely bogus, but needed for move requirement
+   * Copy constructor -- completely bogus, but needed for move requirement.
+   * `PortFiniteStateMachine` objects cannot actually be copied because of its
+   * `mutex` member.
    */
   PortFiniteStateMachine(const PortFiniteStateMachine&) {
   }
@@ -404,6 +421,13 @@ class PortFiniteStateMachine {
   }
 
  private:
+  // Used for debugging.
+  inline static std::atomic<int> event_counter{};
+  bool debug_{false};
+
+  std::mutex mutex_;
+
+ protected:
   /**
    * Function to handle state transitions based on external events.
    *
@@ -411,27 +435,24 @@ class PortFiniteStateMachine {
    * may use the lock (for example, to wait on condition variables,
    * so the lock is passed to each action.
    *
-   * Todo: Make event() private and create do_fill(), do_push(),
-   * do_drain(), and do_pull() as public members.
+   * Note that even processing proceeds as:
+   *  - Process exit function for current state
+   *  - Transition to new state
+   *  - Process entry function for new state
    *
    * Some code that prints state information is currently included for
    * debugging purposes.
    *
    * @param event The event to be processed
-   * @param event msg A debugging string to preface printout information for
+   * @param msg A debugging string to preface printout information for
    * the state transition
    */
-
-  // Used for debugging.
-  inline static std::atomic<int> event_counter{};
-  bool debug_{false};
-
- protected:
-  std::mutex mutex_;
-
   void event(PortEvent event, const std::string msg = "") {
     std::unique_lock lock(mutex_);
 
+    /*
+     * Look up next state, along with exit and entry action.
+     */
     next_state_ =
         transition_table<port_state>[to_index(state_)][to_index(event)];
     auto exit_action{exit_table<port_state>[to_index(state_)][to_index(event)]};
@@ -454,7 +475,7 @@ class PortFiniteStateMachine {
       return;
     }
 
-    if (next_state_ == PortState::error) {
+    if (next_state_ == port_state::error) {
       std::cout << "\n"
                 << event_counter++
                 << " ERROR On event start: " + msg + " " + str(event) + ": " +
@@ -472,7 +493,10 @@ class PortFiniteStateMachine {
     }
 
     /**
-     * Perform any exit actions.
+     * Perform any exit actions.  Based on the exit action in the exit action
+     * table, we dispatch to a function provided by the policy.  Since Policy is
+     * assumed to be derived from this class, we use a `static_cast` to
+     * `Policy*` on `this`.
      */
     switch (exit_action) {
       case PortAction::none:
@@ -521,7 +545,7 @@ class PortFiniteStateMachine {
           std::cout << event_counter++
                     << "      " + msg + " exit about to notify source"
                     << std::endl;
-        static_cast<Policy*>(this)->notify_source(lock, event_counter);
+        static_cast<Policy*>(this)->on_notify_source(lock, event_counter);
         break;
 
       case PortAction::notify_sink:
@@ -529,7 +553,7 @@ class PortFiniteStateMachine {
           std::cout << event_counter++
                     << "      " + msg + " exit about to notify sink"
                     << std::endl;
-        static_cast<Policy*>(this)->notify_sink(lock, event_counter);
+        static_cast<Policy*>(this)->on_notify_sink(lock, event_counter);
         break;
 
       default:
@@ -548,13 +572,14 @@ class PortFiniteStateMachine {
     }
 
     /*
-     * Assign new state.  Note that next_state_ may have been changed by one of
-     * the actions above (in particular, wait or move).
+     * Assign new state.
      */
     state_ = next_state_;
 
     /*
-     * Update the entry_action in case next_state_ was changed.
+     * Update the entry_action in case we have come back from a wait.
+     *
+     * (Will the behavior of this change with different scheduling?)
      */
     entry_action =
         entry_table<port_state>[to_index(next_state_)][to_index(event)];
@@ -594,19 +619,22 @@ class PortFiniteStateMachine {
 
         static_cast<Policy*>(this)->on_source_move(lock, event_counter);
 
-        if constexpr (std::is_same_v<PortState, two_stage>) {
-          state_ = PortState::st_01;
-        } else if constexpr (std::is_same_v<PortState, three_stage>) {
+        /*
+         * If we do a move on entry, we need to fix up the state.
+         */
+        if constexpr (std::is_same_v<port_state, two_stage>) {
+          state_ = port_state::st_01;
+        } else if constexpr (std::is_same_v<port_state, three_stage>) {
           switch (state_) {
-            case PortState::st_010:
+            case port_state::st_010:
               // Fall through
-            case PortState::st_100:
-              state_ = PortState::st_001;
+            case port_state::st_100:
+              state_ = port_state::st_001;
               break;
-            case PortState::st_110:
+            case port_state::st_110:
               // Fall through
-            case PortState::st_101:
-              state_ = PortState::st_011;
+            case port_state::st_101:
+              state_ = port_state::st_011;
               break;
             default:
               break;
@@ -627,19 +655,22 @@ class PortFiniteStateMachine {
 
         static_cast<Policy*>(this)->on_sink_move(lock, event_counter);
 
-        if constexpr (std::is_same_v<PortState, two_stage>) {
-          state_ = PortState::st_01;
-        } else if constexpr (std::is_same_v<PortState, three_stage>) {
+        /*
+         * If we do a move on entry, we need to fix up the state.
+         */
+        if constexpr (std::is_same_v<port_state, two_stage>) {
+          state_ = port_state::st_01;
+        } else if constexpr (std::is_same_v<port_state, three_stage>) {
           switch (state_) {
-            case PortState::st_010:
+            case port_state::st_010:
               // Fall through
-            case PortState::st_100:
-              state_ = PortState::st_001;
+            case port_state::st_100:
+              state_ = port_state::st_001;
               break;
-            case PortState::st_110:
+            case port_state::st_110:
               // Fall through
-            case PortState::st_101:
-              state_ = PortState::st_011;
+            case port_state::st_101:
+              state_ = port_state::st_011;
               break;
             default:
               break;
@@ -672,7 +703,7 @@ class PortFiniteStateMachine {
           std::cout << event_counter++
                     << "      " + msg + " entry about to notify source"
                     << std::endl;
-        static_cast<Policy*>(this)->notify_source(lock, event_counter);
+        static_cast<Policy*>(this)->on_notify_source(lock, event_counter);
         break;
 
       case PortAction::notify_sink:
@@ -680,7 +711,7 @@ class PortFiniteStateMachine {
           std::cout << event_counter++
                     << "      " + msg + " entry about to notify sink"
                     << std::endl;
-        static_cast<Policy*>(this)->notify_sink(lock, event_counter);
+        static_cast<Policy*>(this)->on_notify_sink(lock, event_counter);
         break;
 
       default:
@@ -700,49 +731,73 @@ class PortFiniteStateMachine {
 
  public:
   /**
-   * Set state
+   * Set state.
    */
-  inline auto set_state(PortState next_state_) {
+  inline auto set_state(port_state next_state_) {
     state_ = next_state_;
     return state_;
   }
 
   /**
-   * Set next state
+   * Set next state.
    */
-  inline auto set_next_state(PortState next_state) {
+  inline auto set_next_state(port_state next_state) {
     next_state_ = next_state;
     return next_state_;
   }
 
+  /**
+   * Invoke `do_fill` event.
+   */
   void do_fill(const std::string& msg = "") {
     event(PortEvent::source_fill, msg);
   }
+
+  /**
+   * Invoke `do_push` event.
+   */
   void do_push(const std::string& msg = "") {
     event(PortEvent::source_push, msg);
   }
+
+  /**
+   * Invoke `do_pull` event.
+   */
   void do_pull(const std::string& msg = "") {
     event(PortEvent::sink_pull, msg);
   }
+
+  /**
+   * Invoke `do_drain` event.
+   */
   void do_drain(const std::string& msg = "") {
     event(PortEvent::sink_drain, msg);
   }
 
   /**
-   * Invoke `out_of_data` event
+   * Invoke `out_of_data` event.
    */
   void out_of_data(const std::string&) {
     // unimplemented
   }
 
+  /**
+   * Turn on debugging output.
+   */
   void enable_debug() {
     debug_ = true;
   }
 
+  /**
+   * Turn off debugging output.
+   */
   void disable_debug() {
     debug_ = false;
   }
 
+  /**
+   * Check if debugging has been enabled.
+   */
   constexpr inline bool debug_enabled() const {
     return debug_;
   }

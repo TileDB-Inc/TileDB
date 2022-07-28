@@ -57,61 +57,51 @@ using namespace tiledb::common;
 
 using two_port_type = two_stage;
 
-using ItemMover3 = ItemMover<AsyncPolicy, three_stage, size_t>;
-using ItemMover2 = ItemMover<AsyncPolicy, two_stage, size_t>;
-using UnifiedItemMover3 = ItemMover<UnifiedAsyncPolicy, three_stage, size_t>;
-using UnifiedItemMover2 = ItemMover<UnifiedAsyncPolicy, two_stage, size_t>;
+using DebugMover3 = ItemMover<DebugPolicy, three_stage, size_t>;
+using DebugMover2 = ItemMover<DebugPolicy, two_stage, size_t>;
+using AsyncMover3 = ItemMover<AsyncPolicy, three_stage, size_t>;
+using AsyncMover2 = ItemMover<AsyncPolicy, two_stage, size_t>;
+using UnifiedAsyncMover3 = ItemMover<UnifiedAsyncPolicy, three_stage, size_t>;
+using UnifiedAsyncMover2 = ItemMover<UnifiedAsyncPolicy, two_stage, size_t>;
 
-using DebugPolicy3 =
-    DebugPolicy<ItemMover<DebugPolicy, three_stage, size_t>, three_stage>;
-using DebugPolicy2 =
-    DebugPolicy<ItemMover<DebugPolicy, two_stage, size_t>, two_stage>;
+using DebugPolicy3 = DebugPolicy<DebugMover3, three_stage>;
+using DebugPolicy2 = DebugPolicy<DebugMover2, two_stage>;
+using AsyncPolicy3 = AsyncPolicy<AsyncMover3, three_stage>;
+using AsyncPolicy2 = AsyncPolicy<AsyncMover2, two_stage>;
+using UnifiedAsyncPolicy3 = UnifiedAsyncPolicy<UnifiedAsyncMover3, three_stage>;
+using UnifiedAsyncPolicy2 = UnifiedAsyncPolicy<UnifiedAsyncMover2, two_stage>;
 
-using AsyncPolicy3 =
-    AsyncPolicy<ItemMover<AsyncPolicy, three_stage, size_t>, three_stage>;
-using AsyncPolicy2 =
-    AsyncPolicy<ItemMover<AsyncPolicy, two_stage, size_t>, two_stage>;
-
-using UnifiedAsyncPolicy3 = UnifiedAsyncPolicy<
-    ItemMover<UnifiedAsyncPolicy, three_stage, size_t>,
-    three_stage>;
-using UnifiedAsyncPolicy2 = UnifiedAsyncPolicy<
-    ItemMover<UnifiedAsyncPolicy, two_stage, size_t>,
-    two_stage>;
-
-using PortStateMachine3 = PortFiniteStateMachine<DebugPolicy3, three_stage>;
-using PortStateMachine2 = PortFiniteStateMachine<DebugPolicy2, two_stage>;
-
+using DebugStateMachine3 = PortFiniteStateMachine<DebugPolicy3, three_stage>;
+using DebugStateMachine2 = PortFiniteStateMachine<DebugPolicy2, two_stage>;
 using AsyncStateMachine3 = PortFiniteStateMachine<AsyncPolicy3, three_stage>;
 using AsyncStateMachine2 = PortFiniteStateMachine<AsyncPolicy2, two_stage>;
-
 using UnifiedAsyncStateMachine3 =
     PortFiniteStateMachine<UnifiedAsyncPolicy3, three_stage>;
 using UnifiedAsyncStateMachine2 =
     PortFiniteStateMachine<UnifiedAsyncPolicy2, two_stage>;
 
 TEST_CASE("Port FSM: Construct PortPolicy", "[fsm]") {
-  [[maybe_unused]] auto a = PortStateMachine2{};
+  [[maybe_unused]] auto a = DebugStateMachine2{};
 
   CHECK(a.state() == two_port_type::st_00);
 }
 
 TEST_CASE("Port FSM: Copy, Move, etc", "[fsm]") {
-  [[maybe_unused]] auto a = PortStateMachine3{};
-  std::vector<PortStateMachine2> v;
+  [[maybe_unused]] auto a = DebugStateMachine3{};
+  std::vector<DebugStateMachine2> v;
   v.reserve(55);
 
-  [[maybe_unused]] auto b = PortStateMachine2{};
+  [[maybe_unused]] auto b = DebugStateMachine2{};
 
-  std::vector<PortStateMachine3> w;
+  std::vector<DebugStateMachine3> w;
   w.reserve(55);
 
   auto t = std::make_tuple(a, b);
   std::vector<decltype(t)> u;
   u.reserve(55);
 
-  auto foo = [](PortStateMachine3&&) {};
-  auto bar = [](PortStateMachine2&&) {};
+  auto foo = [](DebugStateMachine3&&) {};
+  auto bar = [](DebugStateMachine2&&) {};
 
   foo(std::move(a));
   bar(std::move(b));
@@ -119,7 +109,7 @@ TEST_CASE("Port FSM: Copy, Move, etc", "[fsm]") {
 
 TEST_CASE("Port FSM: Start up", "[fsm]") {
   constexpr bool debug = false;
-  [[maybe_unused]] auto a = PortStateMachine2{};
+  [[maybe_unused]] auto a = DebugStateMachine2{};
 
   if (debug)
     a.enable_debug();
@@ -145,7 +135,7 @@ TEST_CASE("Port FSM: Start up", "[fsm]") {
  * transition sequences.
  */
 TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
-  [[maybe_unused]] auto a = PortStateMachine2{};
+  [[maybe_unused]] auto a = DebugStateMachine2{};
   CHECK(a.state() == two_port_type::st_00);
 
   a.do_fill();
@@ -215,7 +205,7 @@ TEST_CASE("AsynchronousPolicy: Asynchronous source and manual sink", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -253,7 +243,7 @@ TEST_CASE("AsynchronousPolicy: Manual source and asynchronous sink", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -291,7 +281,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -323,7 +313,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -359,7 +349,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -449,7 +439,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -530,7 +520,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
 
   if (debug)
     a.enable_debug();
@@ -614,7 +604,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -693,7 +683,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 
@@ -774,7 +764,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
   if (debug) {
     a.enable_debug();
   }
@@ -946,7 +936,7 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedItemMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
 
   a.set_state(two_port_type::st_00);
 

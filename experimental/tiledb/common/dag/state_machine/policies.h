@@ -1,5 +1,5 @@
 /**
- * @file policies3.h
+ * @file policies.h
  *
  * @section LICENSE
  *
@@ -27,9 +27,9 @@
  *
  * @section DESCRIPTION
  *
- * Implementation of finite state machine policies3.
+ * Implementation of finite state machine policies.
  *
- * The different policies3 currently include an extensive amount of debugging
+ * The different policies currently include an extensive amount of debugging
  * code.
  *
  * @todo Remove the debugging code.
@@ -52,57 +52,88 @@ namespace tiledb::common {
 // clang-format off
 /**
  *
- * State machine policies3 work with the `PortFiniteStateMachine` class template to
+ * State machine policies work with the `PortFiniteStateMachine` class template to
  * mix in functions associated with various entry and exit actions invoked when
  * processing state transition events.  The policy classes defined here use CRTP
  * to effect the mixins.
  *
- * Although we call these "policy" classes, when used with CRTP, we actually end
- * up using the "policy" class as the state machine. Consider `AsyncStateMachine:`
- * declared as:
- * ```c++
- * template <class T>
- * class AsyncStateMachine : public PortFiniteStateMachine<AsyncStateMachine<T>>;
- * ```
- * To use the state machine in fsm.h with the `AsyncStateMachine` policy to
- * transfer integers (say), we use
- * ```c++
- * AsyncStateMachine<int>
- * ```
- * as the state machine class.
+ * The policy classes themselves are in turn paramterized by a data mover class, which
+ * is the class responsible for actually transferring data from a source to a sink (or
+ * from a source to a sink along an edge).  The data mover class also inherits from
+ * the policy class using CRTP.  Thus, we have the data mover inheriting from the
+ * policy, which inherits from the state machine -- and the state machine being
+ * parameterized by the policy, and the policy being parameterized by the data mover.
  *
- * Currently, the actions defined for use by the PortFiniteStateMachine class, and
- * associated mixin functions are
+ * With this chain of classes, the final class in the chain (the data mover) is what the ports use. 
+ *
+ * @example
+ *
+ * Consider the following declarations (of a data mover, a policy, and the state machine):
+ * ```
+ * template <template <class, class> class Policy, class PortState, class Block>
+ * class ItemMover;
+ * 
+ * template <class Mover, class PortState>
+ * class AsyncPolicy;
+ *
+ * template <class Policy, class PortState>
+ * class PortFiniteStateMachine;
+ * ```
+ *
+ * We can construct a concrete classs for data movement as follows:
+ * ```
+ * using Mover = ItemMover<AsyncPolicy, two_stage, size_t>;
+ * ```
+ *
+ * If for some reason we also wanted explicit Policy or Machine classes (though 
+ * we probably wouldn't except for debugging), we could do so:
+ *```
+ * using Policy = AsyncPolicy<Mover, two_stage>;
+ * using Machine = PortFiniteStateMachine<Policy, two_stage>;
+ *```
+ * Note that because of CRTP, defining a concrete policy class requires a concrete 
+ * data mover class.  Note also that even though `two_stage` is part of the `Mover` 
+ * class, we still have to pass it explicitly along up (down?) the stack because of 
+ * some of the instantiation details of CRTP.)
+ *
+ * Currently, the policy actions defined for use by the PortFiniteStateMachine class,
+ * and associated mixin functions (provided by the policy class) are
  *   ac_return: on_ac_return()
  *   src_move: on_source_move()
  *   sink_move: on_sink_move()
  *   notify_source: on_notify_source()
  *   notify_sink: on_notify_sink()
+ *   source_wait: on_source_wait()
+ *   sink_wait: on_sink_wait()
  *
- * NB: With our current approach, we seem to really only need a single move function
- * and a single notify function, so we may be able to condense this in the future.
+ * NB: With our current approach, we seem to really only need single functions for 
+ * wait, notify, and move, so we may be able to condense this in the future.
  * For potential future flexibility, we are leaving separate source and sink versions
- * for now.  The `UnifiedAsyncStateMachine` tests out this idea.
+ * for now. The `UnifiedAsyncStateMachine` tests out this idea by using a single
+ * implementation of move for both source_move and sink_move, a single implementation
+ * of notify for both notify_source and notify_sink, and a single implementation of
+ * wait for both source_wait and sink_wait.
  *
  * With our definition of the state machine (see fsm.h), these actions have the
  * following functionality:
  *   on_ac_return(): empty function at the moment.
- *   on_source_move(): if state is full_empty, notify sink and move, otherwise, notify sink and wait.
- *   on_sink_move(): if state is full_empty, notify source and move, otherwise, notify source and wait.
+ *   on_source_move(): invoke move function associated with data mover
+ *   on_sink_move(): invoke move function associated with data mover
  *   on_notify_source(): notify sink
  *   on_notify_sink(): notify source
+ *   on_source_wait(): put source into waiting state
+ *   on_sink_wait(): put sink into waiting state
  *
- * The implementation of `AsyncStateMachine` currently uses locks and condition
- * variable for effecting the wait (and notify) functions.
+ * The implementations of `AsyncStateMachine` and `UnifiedAsyncStateMachine` 
+ * currently use locks and condition variable for effecting the wait (and notify) functions.
  *
  * A crucial piece of functionality in these classes is the move operation that may take place.
  * When operating with `Source` and `Sink` ports, we need to be able to move the item_ member
  * variables associated with the `Source` and a `Sink` that are bound to each other.  To
- * enable this, the state machine policies3 maintatin pointers to items.  When moving is
- * required, `std::move` is invoked on the pointed-to items.  (This has been tested for
- * integer items when testing just the state machines as weill as with `std::optional` items
- * when testing the ports.)  These internal pointers are initialized with a `register_items`
- * function, and are reset with a `deregister_items` function.
+ * enable this, the data mover maintains pointers to items (which items are assumed to be
+ * `std::optional` of some underlying type.  When moving is required, `std::swap` is invoked 
+ * between an empty item and a full item.  These internal pointers are initialized with a 
+ * `register_items` function, and are reset with a `deregister_items` function.
  */
 // clang-format on
 
@@ -119,20 +150,27 @@ template <class Mover, class PortState>
 class UnifiedAsyncPolicy;
 
 /**
- * Base action policy. Includes items array and `register` and `deregister`
- * functions.
+ * Base class for data movers.  The base class contains the actual data items as
+ * well as an `on_move` member functions for moving data along the pipeline.
  */
-template <class PortState, class Block>
+template <class Mover, class PortState, class Block>
 class BaseMover;
 
-template <class Block>
-class BaseMover<three_stage, Block> {
+/**
+ * Specialization of the `BaseMover` class for three stages.
+ */
+template <class Mover, class Block>
+class BaseMover<Mover, three_stage, Block> {
   using item_type = std::optional<Block>;
   using PortState = three_stage;
 
   std::array<item_type*, 3> items_;
 
  protected:
+  /**
+   * Record keeping of how many moves are made.  Used for diagnostics and
+   * debugging.
+   */
   std::array<size_t, 3> moves_;
 
  public:
@@ -142,7 +180,11 @@ class BaseMover<three_stage, Block> {
   }
 
   /**
-   * @pre Called under lock
+   * Register items to be moved with the data mover.  In the context of TileDB
+   * task graph, this will generally be a source, an edge intermediary, and a
+   * sink.
+   *
+   * @pre Called under lock.
    */
   void register_items(
       item_type& source_item, item_type& edge_item, item_type& sink_item) {
@@ -151,6 +193,11 @@ class BaseMover<three_stage, Block> {
     items_[2] = &sink_item;
   }
 
+  /**
+   * Deegister items.
+   *
+   * @pre Called under lock.
+   */
   void deregister_items(
       item_type& source_item, item_type& edge_item, item_type& sink_item) {
     if (items_[0] != &source_item || items_[1] != &edge_item ||
@@ -165,21 +212,23 @@ class BaseMover<three_stage, Block> {
   }
 
   /**
+   * Do the actual data movement.  We move all items in the pipeline towards
+   * the end so that there are no "holes".
+   *
    * @pre Called under lock
    */
-  template <class StateMachine>
-  inline void on_move(
-      const StateMachine& state_machine, std::atomic<int>& event) {
-    auto state = state_machine.state();
-    bool debug = state_machine.debug_enabled();
+  inline void on_move(std::atomic<int>& event) {
+    //    auto state = this->state();
+    auto state = this->state();
+    bool debug = this->debug_enabled();
     CHECK(
         (state == PortState::st_010 || state == PortState::st_100 ||
          state == PortState::st_101 || state == PortState::st_110));
 
-    if (state_machine.debug_enabled()) {
+    if (this->debug_enabled()) {
       std::cout << event << "  "
                 << " source swapping items with " + str(state) + " and " +
-                       str(state_machine.next_state())
+                       str(this->next_state())
                 << std::endl;
 
       std::cout << event;
@@ -236,17 +285,19 @@ class BaseMover<three_stage, Block> {
       }
       std::cout << ")" << std::endl;
       std::cout << event << "  "
-                << " source done swapping items with " +
-                       str(state_machine.state()) + " and " +
-                       str(state_machine.next_state())
+                << " source done swapping items with " + str(this->state()) +
+                       " and " + str(this->next_state())
                 << std::endl;
       ++event;
     }
   }
 };
 
-template <class Block>
-class BaseMover<two_stage, Block> {
+/**
+ * Specialization of the `BaseMover` class for two stages.
+ */
+template <class Mover, class Block>
+class BaseMover<Mover, two_stage, Block> {
   using PortState = two_stage;
   using item_type = std::optional<Block>;
 
@@ -262,6 +313,9 @@ class BaseMover<two_stage, Block> {
   }
 
   /**
+   * Register items with data mover.  In the context of TileDB
+   * task graph, this will generally be a source and a sink.
+   *
    * @pre Called under lock
    */
   void register_items(item_type& source_item, item_type& sink_item) {
@@ -269,6 +323,9 @@ class BaseMover<two_stage, Block> {
     items_[1] = &sink_item;
   }
 
+  /**
+   * Deregister the items.
+   */
   void deregister_items(item_type& source_item, item_type& sink_item) {
     if (items_[0] != &source_item || items_[1] != &sink_item) {
       throw std::runtime_error(
@@ -281,24 +338,27 @@ class BaseMover<two_stage, Block> {
   }
 
   /**
+   * Do the actual data movement.  We move all items in the pipeline towards
+   * the end so that there are no "holes".
+   *
    * @pre Called under lock
    */
-  template <class StateMachine>
-  inline void on_move(
-      const StateMachine& state_machine, std::atomic<int>& event) {
-    auto state = state_machine.state();
-    bool debug = state_machine.debug_enabled();
+  inline void on_move(std::atomic<int>& event) {
+    auto state = static_cast<Mover*>(this)->state();
+    bool debug = static_cast<Mover*>(this)->debug_enabled();
     CHECK(state == two_stage::st_10);
 
     /**
+     * Increment the move count.
+     *
      * @todo Distinguish between source and sink
      */
     moves_[0]++;
 
-    if (state_machine.debug_enabled()) {
+    if (static_cast<Mover*>(this)->debug_enabled()) {
       std::cout << event << "  "
                 << " source swapping items with " + str(state) + " and " +
-                       str(state_machine.next_state())
+                       str(static_cast<Mover*>(this)->next_state())
                 << std::endl;
 
       std::cout << event;
@@ -334,16 +394,20 @@ class BaseMover<two_stage, Block> {
       std::cout << ")" << std::endl;
       std::cout << event << "  "
                 << " source done swapping items with " +
-                       str(state_machine.state()) + " and " +
-                       str(state_machine.next_state())
+                       str(static_cast<Mover*>(this)->state()) + " and " +
+                       str(static_cast<Mover*>(this)->next_state())
                 << std::endl;
       ++event;
     }
   }
 
+  /**
+   * Diagnostic functions for counting numbers of swaps (moves).
+   */
   size_t source_swaps() const {
     return moves_[0];
   }
+
   size_t sink_swaps() const {
     return moves_[1];
   }
@@ -351,23 +415,26 @@ class BaseMover<two_stage, Block> {
   auto& source_item() {
     return *items_[0];
   }
+
   auto& sink_item() {
     return *items_[1];
   }
 };
 
-// template <template <class> class Policy, class PortState, class Block>
-// class ItemMover : public BaseMover<PortState, Block> {
+/**
+ * Class template for moving data between end ports (perhaps via an edge)
+ * in TileDB task graph.
+ *
+ * @tparam Policy The policy that uses the `ItemMover` for its implementation
+ * of event actions provided to the `PortFiniteStateMachine`.
+ */
 template <template <class, class> class Policy, class PortState, class Block>
-class ItemMover : public Policy<ItemMover<Policy, PortState, Block>, PortState>,
-                  public BaseMover<PortState, Block> {
+class ItemMover
+    : public Policy<ItemMover<Policy, PortState, Block>, PortState>,
+      public BaseMover<ItemMover<Policy, PortState, Block>, PortState, Block> {
  public:
-  //  using BaseMover<PortState, Block>::BaseMover<PortState, Block>;
-  using BaseMover<PortState, Block>::BaseMover;
-
-  using state_machine_type = PortFiniteStateMachine<
-      Policy<ItemMover<Policy, PortState, Block>, PortState>,
-      PortState>;
+  using Mover = ItemMover<Policy, PortState, Block>;
+  using BaseMover<Mover, PortState, Block>::BaseMover;
 
   using port_state_type = PortState;
 
@@ -375,7 +442,7 @@ class ItemMover : public Policy<ItemMover<Policy, PortState, Block>, PortState>,
    * Invoke `source_fill` event
    */
   void do_fill(const std::string& msg = "") {
-    if (this->debug_enabled())
+    if (static_cast<Mover*>(this)->debug_enabled())
       std::cout << "  -- filling" << std::endl;
 
     this->event(PortEvent::source_fill, msg);
@@ -418,12 +485,16 @@ class ItemMover : public Policy<ItemMover<Policy, PortState, Block>, PortState>,
     this->event(PortEvent::shutdown, msg);
   }
 
-  state_machine_type* get_state_machine() {
-    return static_cast<state_machine_type*>(*this);
-  }
-  auto get_state() {
-    return static_cast<state_machine_type*>(this)->state();
-  }
+  //  using state_machine_type = PortFiniteStateMachine<
+  //      Policy<ItemMover<Policy, PortState, Block>, PortState>,
+  //      PortState>;
+  //
+  //  state_machine_type* get_state_machine() {
+  //    return static_cast<state_machine_type*>(*this);
+  //  }
+  //  auto get_state() {
+  //    return static_cast<state_machine_type*>(this)->state();
+  //  }
 };
 
 /**
@@ -441,9 +512,9 @@ class NullPolicy : public ItemMover {
   }
   inline void on_sink_move(lock_type&, std::atomic<int>&) {
   }
-  inline void notify_source(lock_type&, std::atomic<int>&) {
+  inline void on_notify_source(lock_type&, std::atomic<int>&) {
   }
-  inline void notify_sink(lock_type&, std::atomic<int>&) {
+  inline void on_notify_sink(lock_type&, std::atomic<int>&) {
   }
 };
 
@@ -483,12 +554,12 @@ class ManualPolicy : public ItemMover {
   inline void on_sink_move(lock_type&, std::atomic<int>& event) {
     mover_type::move(*this, event);
   }
-  inline void notify_source(lock_type&, std::atomic<int>&) {
+  inline void on_notify_source(lock_type&, std::atomic<int>&) {
     if (state_machine->debug_enabled())
       std::cout << "    "
                 << "Action notify source" << std::endl;
   }
-  inline void notify_sink(lock_type&, std::atomic<int>&) {
+  inline void on_notify_sink(lock_type&, std::atomic<int>&) {
     if (state_machine->debug_enabled())
       std::cout << "    "
                 << "Action notify source" << std::endl;
@@ -507,8 +578,8 @@ class ManualPolicy : public ItemMover {
 };
 
 /**
- * An asynchronous state machine class.  Implements on_sink_move and
- * on_source_move using locks and condition variables.
+ * An asynchronous policy class.  Implements wait and notify functions
+ * using locks and condition variables.
  *
  * It is assumed that the source and sink are running as separate asynchronous
  * tasks (in this case, effected by `std::async`).
@@ -531,14 +602,9 @@ class AsyncPolicy
 
 {
   using mover_type = Mover;
-
-  //  using state_machine_type = typename mover_type::state_machine_type;
-  //  state_machine_type state_machine = mover_type::get_state_machine();
-
-  using lock_type = typename PortFiniteStateMachine<
-      AsyncPolicy<Mover, PortState>,
-      PortState>::lock_type;
-  //  using item_type = typename mover_type::item_type;
+  using state_machine_type =
+      PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState>;
+  using lock_type = typename state_machine_type::lock_type;
 
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;
@@ -558,7 +624,8 @@ class AsyncPolicy
   /**
    * Function for handling `notify_source` action.
    */
-  inline void notify_source(lock_type& _unused(lock), std::atomic<int>& event) {
+  inline void on_notify_source(
+      lock_type& _unused(lock), std::atomic<int>& event) {
     assert(lock.owns_lock());
     if (this->debug_enabled())
       std::cout << event++ << "  "
@@ -573,7 +640,8 @@ class AsyncPolicy
   /**
    * Function for handling `notify_sink` action.
    */
-  inline void notify_sink(lock_type& _unused(lock), std::atomic<int>& event) {
+  inline void on_notify_sink(
+      lock_type& _unused(lock), std::atomic<int>& event) {
     assert(lock.owns_lock());
 
     if (this->debug_enabled())
@@ -598,11 +666,11 @@ class AsyncPolicy
                        " and " + str(this->next_state())
                 << std::endl;
 
-    static_cast<Mover*>(this)->on_move(*this, event);
+    static_cast<Mover*>(this)->on_move(event);
   }
 
   /**
-   * Function for handling `src_move` action.
+   * Function for handling `source_move` action.
    */
   inline void on_source_move(
       lock_type& _unused(lock), std::atomic<int>& event) {
@@ -614,9 +682,12 @@ class AsyncPolicy
                        str(this->state()) + " and " + str(this->next_state())
                 << std::endl;
 
-    static_cast<Mover*>(this)->on_move(*this, event);
+    static_cast<Mover*>(this)->on_move(event);
   }
 
+  /**
+   * Function for handling `sink_wait` action.
+   */
   inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
     assert(lock.owns_lock());
 
@@ -648,6 +719,9 @@ class AsyncPolicy
                 << std::endl;
   }
 
+  /**
+   * Function for handling `source_wait` action.
+   */
   inline void on_source_wait(lock_type& lock, std::atomic<int>& event) {
     assert(lock.owns_lock());
 
@@ -682,9 +756,9 @@ class AsyncPolicy
 };
 
 /**
- * An asynchronous state machine class.  Implements on_sink_move and
+ * An asynchronous policy class.  Implements on_sink_move and
  * on_source_move using locks and condition variables.  This class is similar
- * to `AsyncPolicy`, but takes advantage of the fact that the notify and
+ * to `AsyncPolicy`, but takes advantage of the fact that the wait, notify, and
  * move functions are the same, and uses just a single implementation of them,
  * along with just a single condition variable
  *
@@ -701,16 +775,6 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
   std::condition_variable cv_;
 
  public:
-#if 0
-  using mover_type = Mover;
-  using state_machine_type = typename mover_type::state_machine_type;
-  using lock_type = typename mover_type::lock_type;
-  using PortState = typename mover_type::PortState_type;
-  state_machine_type state_machine = mover_type::get_state_machine();
-
-  using item_type = typename mover_type::item_type;
-#endif
-
   UnifiedAsyncPolicy() = default;
   UnifiedAsyncPolicy(const UnifiedAsyncPolicy&) {
   }
@@ -732,10 +796,10 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
 
   /**
    * Function for handling `notify_source` action, invoking a `do_notify`
-   * action.
+   * function.
    */
   template <class lock_type>
-  inline void notify_source(lock_type& lock, std::atomic<int>& event) {
+  inline void on_notify_source(lock_type& lock, std::atomic<int>& event) {
     if (this->debug_enabled())
       std::cout << event++ << "  "
                 << " sink notifying source" << std::endl;
@@ -743,10 +807,11 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
   }
 
   /**
-   * Function for handling `notify_sink` action, invoking a `do_notify` action.
+   * Function for handling `notify_sink` action, invoking a `do_notify`
+   * function.
    */
   template <class lock_type>
-  inline void notify_sink(lock_type& lock, std::atomic<int>& event) {
+  inline void on_notify_sink(lock_type& lock, std::atomic<int>& event) {
     if (this->debug_enabled())
       std::cout << event++ << "  "
                 << " source notifying sink" << std::endl;
@@ -758,7 +823,7 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
    */
   template <class lock_type>
   inline void on_source_move(lock_type&, std::atomic<int>& event) {
-    static_cast<Mover*>(this)->on_move(*this, event);
+    static_cast<Mover*>(this)->on_move(event);
   }
 
   /**
@@ -779,8 +844,8 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
   }
 
   /**
-   * Function for handling `sink_move` action.  It simply calls the source
-   * move action.
+   * Function for handling `sink_wait` action.  It simply calls the source
+   * wait action.
    */
   template <class lock_type>
   inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
@@ -789,20 +854,12 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
 };
 
 /**
- * A simple debugging action policy that simply prints that an action has been
- * called.
+ * A simple action policy useful for debugging that simply prints that an
+ * action has been called.
  */
 template <class Mover, class PortState>
 class DebugPolicy
     : public PortFiniteStateMachine<DebugPolicy<Mover, PortState>, PortState> {
-#if 0
-  using mover_type = Mover;
-  using state_machine_type = typename mover_type::state_machine_type;
-  using lock_type = typename mover_type::lock_type;
-  using PortState = typename mover_type::PortState_type;
-  state_machine_type* state_machine = mover_type::get_state_machine();
-#endif
-
  public:
   template <class lock_type>
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
@@ -837,13 +894,13 @@ class DebugPolicy
                 << "Action sink wait" << std::endl;
   }
   template <class lock_type>
-  inline void notify_source(lock_type&, std::atomic<int>&) {
+  inline void on_notify_source(lock_type&, std::atomic<int>&) {
     if (this->debug_enabled())
       std::cout << "    "
                 << "Action notify source" << std::endl;
   }
   template <class lock_type>
-  inline void notify_sink(lock_type&, std::atomic<int>&) {
+  inline void on_notify_sink(lock_type&, std::atomic<int>&) {
     if (this->debug_enabled())
       std::cout << "    "
                 << "Action notify sink" << std::endl;
@@ -879,11 +936,11 @@ class DebugPolicyWithLock : public Mover {
     std::cout << "    "
               << "Action move sink" << std::endl;
   }
-  inline void notify_source(lock_type&, std::atomic<int>&) {
+  inline void on_notify_source(lock_type&, std::atomic<int>&) {
     std::cout << "    "
               << "Action notify source" << std::endl;
   }
-  inline void notify_sink(lock_type&, std::atomic<int>&) {
+  inline void on_notify_sink(lock_type&, std::atomic<int>&) {
     std::cout << "    "
               << "Action notify sink" << std::endl;
   }
