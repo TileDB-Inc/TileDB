@@ -60,6 +60,7 @@ TEST_CASE(
                                 Datatype::FLOAT64,
                                 1,
                                 Range(&domain[0], 2 * sizeof(double)),
+                                nullptr,
                                 is_external,
                                 is_relative};
   Buffer buffer{};

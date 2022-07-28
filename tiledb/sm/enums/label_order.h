@@ -68,12 +68,18 @@ inline const std::string& label_order_str(LabelOrder order) {
  * Used for deserializing the label order. Throws an error if the label order's
  * enumeration is not valid.
  */
-inline LabelOrder deserialize_label_order(uint8_t label_order_int) {
-  if (label_order_int > 2)
-    throw std::runtime_error(
-        "[LabelOrder] Invalid LabelOrder enum " +
-        std::to_string(label_order_int));
-  return static_cast<LabelOrder>(label_order_int);
+inline LabelOrder label_order_from_int(uint8_t label_order_int) {
+  auto label_order = LabelOrder(label_order_int);
+  switch (label_order) {
+    case LabelOrder::UNORDERED_LABELS:
+    case LabelOrder::INCREASING_LABELS:
+    case LabelOrder::DECREASING_LABELS:
+      return label_order;
+    default:
+      throw std::runtime_error(
+          "Invalid LabelOrder( " +
+          std::to_string(static_cast<uint16_t>(label_order_int)) + ")");
+  }
 }
 
 }  // namespace tiledb::sm

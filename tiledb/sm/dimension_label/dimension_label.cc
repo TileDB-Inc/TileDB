@@ -197,7 +197,7 @@ void DimensionLabel::load_schema() {
         "[DimensionLabel::load_schema] Unable to load dimension label schema; "
         "Unexpected number of values for the index attribute id.");
   auto label_order =
-      deserialize_label_order(*static_cast<const uint8_t*>(label_order_value));
+      label_order_from_int(*static_cast<const uint8_t*>(label_order_value));
   // - Close group
   throw_if_not_ok(label_group.close());
   // Get array schemas

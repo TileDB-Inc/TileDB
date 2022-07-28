@@ -94,6 +94,7 @@ class DimensionLabelReference {
       Datatype label_type,
       uint32_t label_cell_val_num,
       const Range& label_domain,
+      shared_ptr<const DimensionLabelSchema> schema,
       bool is_external,
       bool relative_uri);
 
