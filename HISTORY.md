@@ -81,6 +81,24 @@
 ## Test only changes
 * Adding tests to count VFS calls on array open. [#3358](https://github.com/TileDB-Inc/TileDB/pull/3358)
 
+
+# TileDB v2.10.2 Release Notes
+
+## Bug fixes
+
+* Close magic resources [#3319](https://github.com/TileDB-Inc/TileDB/pull/3319)
+* Correct simple typo in assignment [#3335](https://github.com/TileDB-Inc/TileDB/pull/3335)
+* Datatype for domain must be serialized for backwards client compatibility [#3343](https://github.com/TileDB-Inc/TileDB/pull/3343)
+* Sparse global order reader: disable reader for reads with qc. [#3342](https://github.com/TileDB-Inc/TileDB/pull/3342)
+* Fix issue with sparse unordered without duplicates query deserialization to use Indexed Reader [#3347](https://github.com/TileDB-Inc/TileDB/pull/3347)
+
+
+# TileDB v2.10.1 Release Notes
+
+## Bug fixes
+* compute_results_count_sparse_string: using cached ranges properly. [#3314](https://github.com/TileDB-Inc/TileDB/pull/3314)
+
+
 # TileDB v2.10.0 Release Notes
 
 **Full Changelog**: https://github.com/TileDB-Inc/TileDB/compare/2.9.0...2.10.0
