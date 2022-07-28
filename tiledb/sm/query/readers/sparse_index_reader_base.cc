@@ -242,9 +242,14 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
         read_state_.frag_idx_,
         &result_tile_ranges_));
 
-    for (auto frag_result_tile_ranges : result_tile_ranges_) {
-      memory_used_result_tile_ranges_ += frag_result_tile_ranges.size() *
-                                         sizeof(std::pair<uint64_t, uint64_t>);
+    // Compute the size of the tile ranges structure and mark empty fragments
+    // as fully loaded.
+    for (uint64_t i = 0; i < result_tile_ranges_.size(); i++) {
+      memory_used_result_tile_ranges_ +=
+          result_tile_ranges_[i].size() * sizeof(std::pair<uint64_t, uint64_t>);
+      if (result_tile_ranges_[i].size() == 0) {
+        all_tiles_loaded_[i] = true;
+      }
     }
 
     if (memory_used_result_tile_ranges_ >
