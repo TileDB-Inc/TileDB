@@ -26,6 +26,7 @@ CAPNP_DECLARE_SCHEMA(95e26a84d32d8223);
 CAPNP_DECLARE_SCHEMA(a2a652536db09fa0);
 CAPNP_DECLARE_SCHEMA(de030f447664754c);
 CAPNP_DECLARE_SCHEMA(fa787661cd3563a4);
+CAPNP_DECLARE_SCHEMA(fda1cb9663a55b70);
 CAPNP_DECLARE_SCHEMA(e7175047415b3f97);
 CAPNP_DECLARE_SCHEMA(9ceaf832b3ab897f);
 CAPNP_DECLARE_SCHEMA(bc4583f733eac4f5);
@@ -299,6 +300,23 @@ struct Error {
   };
 };
 
+struct FloatScaleConfig {
+  FloatScaleConfig() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(fda1cb9663a55b70, 3, 0)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
 struct Filter {
   Filter() = delete;
 
@@ -308,7 +326,7 @@ struct Filter {
   struct Data;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(e7175047415b3f97, 2, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(e7175047415b3f97, 2, 3)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -339,7 +357,7 @@ struct Filter::Data {
   };
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(9ceaf832b3ab897f, 2, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(9ceaf832b3ab897f, 2, 3)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -3091,6 +3109,108 @@ class Error::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
+class FloatScaleConfig::Reader {
+ public:
+  typedef FloatScaleConfig Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline double getScale() const;
+
+  inline double getOffset() const;
+
+  inline ::uint64_t getByteWidth() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class FloatScaleConfig::Builder {
+ public:
+  typedef FloatScaleConfig Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline double getScale();
+  inline void setScale(double value);
+
+  inline double getOffset();
+  inline void setOffset(double value);
+
+  inline ::uint64_t getByteWidth();
+  inline void setByteWidth(::uint64_t value);
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class FloatScaleConfig::Pipeline {
+ public:
+  typedef FloatScaleConfig Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 class Filter::Reader {
  public:
   typedef Filter Reads;
@@ -3114,6 +3234,10 @@ class Filter::Reader {
   inline ::capnp::Text::Reader getType() const;
 
   inline typename Data::Reader getData() const;
+
+  inline bool hasFloatScaleConfig() const;
+  inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Reader
+  getFloatScaleConfig() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -3164,6 +3288,19 @@ class Filter::Builder {
   inline typename Data::Builder getData();
   inline typename Data::Builder initData();
 
+  inline bool hasFloatScaleConfig();
+  inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Builder
+  getFloatScaleConfig();
+  inline void setFloatScaleConfig(
+      ::tiledb::sm::serialization::capnp::FloatScaleConfig::Reader value);
+  inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Builder
+  initFloatScaleConfig();
+  inline void adoptFloatScaleConfig(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::FloatScaleConfig>&&
+          value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FloatScaleConfig>
+  disownFloatScaleConfig();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -3186,6 +3323,8 @@ class Filter::Pipeline {
   }
 
   inline typename Data::Pipeline getData();
+  inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Pipeline
+  getFloatScaleConfig();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -12183,6 +12322,48 @@ inline ::capnp::Orphan<::capnp::Text> Error::Builder::disownMessage() {
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
+inline double FloatScaleConfig::Reader::getScale() const {
+  return _reader.getDataField<double>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline double FloatScaleConfig::Builder::getScale() {
+  return _builder.getDataField<double>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void FloatScaleConfig::Builder::setScale(double value) {
+  _builder.setDataField<double>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline double FloatScaleConfig::Reader::getOffset() const {
+  return _reader.getDataField<double>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline double FloatScaleConfig::Builder::getOffset() {
+  return _builder.getDataField<double>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void FloatScaleConfig::Builder::setOffset(double value) {
+  _builder.setDataField<double>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t FloatScaleConfig::Reader::getByteWidth() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t FloatScaleConfig::Builder::getByteWidth() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void FloatScaleConfig::Builder::setByteWidth(::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
 inline bool Filter::Reader::hasType() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -12242,6 +12423,63 @@ inline typename Filter::Data::Builder Filter::Builder::initData() {
   _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS).clear();
   return typename Filter::Data::Builder(_builder);
 }
+inline bool Filter::Reader::hasFloatScaleConfig() const {
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Filter::Builder::hasFloatScaleConfig() {
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Reader
+Filter::Reader::getFloatScaleConfig() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FloatScaleConfig>::get(
+          _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Builder
+Filter::Builder::getFloatScaleConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FloatScaleConfig>::get(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Pipeline
+Filter::Pipeline::getFloatScaleConfig() {
+  return ::tiledb::sm::serialization::capnp::FloatScaleConfig::Pipeline(
+      _typeless.getPointerField(2));
+}
+#endif  // !CAPNP_LITE
+inline void Filter::Builder::setFloatScaleConfig(
+    ::tiledb::sm::serialization::capnp::FloatScaleConfig::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FloatScaleConfig>::set(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Builder
+Filter::Builder::initFloatScaleConfig() {
+  return ::capnp::_::PointerHelpers<
+      ::tiledb::sm::serialization::capnp::FloatScaleConfig>::
+      init(_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void Filter::Builder::adoptFloatScaleConfig(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::FloatScaleConfig>&&
+        value) {
+  ::capnp::_::PointerHelpers<
+      ::tiledb::sm::serialization::capnp::FloatScaleConfig>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FloatScaleConfig>
+Filter::Builder::disownFloatScaleConfig() {
+  return ::capnp::_::PointerHelpers<
+      ::tiledb::sm::serialization::capnp::FloatScaleConfig>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
 inline ::tiledb::sm::serialization::capnp::Filter::Data::Which
 Filter::Data::Reader::which() const {
   return _reader.getDataField<Which>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
