@@ -632,7 +632,8 @@ class PortFiniteStateMachine {
         static_cast<Policy*>(this)->on_source_move(lock, event_counter);
 
         /*
-         * If we do a move on entry, we need to fix up the state.
+         * If we do a move on entry, we need to fix up the state, since we have
+         * already passed the state transition step.
          */
         if constexpr (std::is_same_v<port_state, two_stage>) {
           state_ = port_state::st_01;
@@ -757,6 +758,12 @@ class PortFiniteStateMachine {
     next_state_ = next_state;
     return next_state_;
   }
+
+  /**
+   * Functions for invoking events in the StateMachine.  In general, clients of
+   * the StateMachine will be using it via a mover class.  These are here to
+   * enable direct testing of the state machine.
+   */
 
   /**
    * Invoke `do_fill` event.

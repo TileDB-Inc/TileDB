@@ -245,6 +245,9 @@ class BaseMover<Mover, three_stage, Block> {
       std::cout << ") -> ";
     }
 
+    /*
+     * Do the moves, always pushing all elements as far forward as possible.
+     */
     switch (state) {
       case PortState::st_101:
         CHECK(*(items_[0]) != EMPTY_SINK);
@@ -292,6 +295,13 @@ class BaseMover<Mover, three_stage, Block> {
       ++event;
     }
   }
+
+ private:
+  void debug_msg(const std::string& msg) {
+    if (static_cast<Mover*>(this)->debug_enabled()) {
+      std::cout << msg << std::endl;
+    }
+  }
 };
 
 /**
@@ -302,9 +312,15 @@ class BaseMover<Mover, two_stage, Block> {
   using PortState = two_stage;
   using item_type = std::optional<Block>;
 
+  /*
+   * Array to hold pointers to items we will be responsible for moving.
+   */
   std::array<item_type*, 2> items_;
 
  protected:
+  /*
+   * Array to hold move counts.  Used for diagnostics and profiling.
+   */
   std::array<size_t, 2> moves_{0, 0};
 
  public:
@@ -340,7 +356,8 @@ class BaseMover<Mover, two_stage, Block> {
 
   /**
    * Do the actual data movement.  We move all items in the pipeline towards
-   * the end so that there are no "holes".
+   * the end so that there are no "holes".  In the case of two stages this
+   * basically means that we are in state 10 and we swap to state 01.
    *
    * @pre Called under lock
    */
@@ -427,7 +444,23 @@ class BaseMover<Mover, two_stage, Block> {
  * in TileDB task graph.
  *
  * @tparam Policy The policy that uses the `ItemMover` for its implementation
- * of event actions provided to the `PortFiniteStateMachine`.
+ * of event actions provided to the `PortFiniteStateMachine`.  Note that
+ * `Policy` is a template template, taking `ItemMover` and `PortState` as
+ * template parameters.
+ * @tparam PortState The type of the states that will be used by the `ItemMover`
+ * (and the Policy, and the StateMachine)
+ * @tparam Block The type of data to be moved.  Note that the mover assumes that
+ * underlying items are `std::optional<Block>`.  The mover maintains pointers to
+ * each of the underlying items.  Data movement is accomplished by using
+ * `std::swap` on the things being pointed to (i.e., on the underlying items of
+ * `std::optional<Block>`).  This should be fairly lightweight.
+ *
+ * `ItemMover` inherits from `Policy`, which takes `ItemMover` as a template
+ * parameter (CRTP). `ItemMover` also inherits from `BaseMover`, which
+ * implements all of the actual data movement. Clients of the `ItemMover`
+ * activate its actions by calling the member functions `do_fill`, `do_push`,
+ * `do_drain`, and `do_pull`, which correspond to actions in the
+ * `PortFiniteStateMachine`.
  */
 template <template <class, class> class Policy, class PortState, class Block>
 class ItemMover
@@ -445,8 +478,7 @@ class ItemMover
    * Invoke `source_fill` event
    */
   void do_fill(const std::string& msg = "") {
-    if (static_cast<Mover*>(this)->debug_enabled())
-      std::cout << "  -- filling" << std::endl;
+    debug_msg("    -- filling");
 
     this->event(PortEvent::source_fill, msg);
   }
@@ -455,8 +487,7 @@ class ItemMover
    * Invoke `source_push` event
    */
   void do_push(const std::string& msg = "") {
-    if (this->debug_enabled())
-      std::cout << "  -- pushing" << std::endl;
+    debug_msg("  -- pushing");
 
     this->event(PortEvent::source_push, msg);
   }
@@ -465,8 +496,7 @@ class ItemMover
    * Invoke `sink_drain` event
    */
   void do_drain(const std::string& msg = "") {
-    if (this->debug_enabled())
-      std::cout << "  -- draining" << std::endl;
+    debug_msg("  -- draining");
 
     this->event(PortEvent::sink_drain, msg);
   }
@@ -475,8 +505,7 @@ class ItemMover
    * Invoke `sink_pull` event
    */
   void do_pull(const std::string& msg = "") {
-    if (this->debug_enabled())
-      std::cout << "  -- pulling" << std::endl;
+    debug_msg("  -- pulling");
 
     this->event(PortEvent::sink_pull, msg);
   }
@@ -498,6 +527,12 @@ class ItemMover
   //  auto get_state() {
   //    return static_cast<state_machine_type*>(this)->state();
   //  }
+ private:
+  void debug_msg(const std::string& msg) {
+    if (static_cast<Mover*>(this)->debug_enabled()) {
+      std::cout << msg << std::endl;
+    }
+  }
 };
 
 /**
@@ -551,9 +586,7 @@ class ManualPolicy
     }
   }
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
-    if (this->debug_enabled())
-      std::cout << "    "
-                << "Action return" << std::endl;
+    debug_msg("Action return");
   }
   inline void on_source_move(lock_type&, std::atomic<int>& event) {
     static_cast<Mover*>(this)->on_move(event);
@@ -563,25 +596,24 @@ class ManualPolicy
     static_cast<Mover*>(this)->on_move(event);
   }
   inline void on_notify_source(lock_type&, std::atomic<int>&) {
-    if (this->debug_enabled())
-      std::cout << "    "
-                << "Action notify source" << std::endl;
+    debug_msg("Action notify source");
   }
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
-    if (this->debug_enabled())
-      std::cout << "    "
-                << "Action notify source" << std::endl;
+    debug_msg("Action notify source");
   }
   inline void on_source_wait(lock_type&, std::atomic<int>&) {
-    if (this->debug_enabled())
-      std::cout << "    "
-                << "Action source wait" << std::endl;
+    debug_msg("Action source wait");
   }
 
   inline void on_sink_wait(lock_type&, std::atomic<int>&) {
-    if (this->debug_enabled())
-      std::cout << "    "
-                << "Action sink wait" << std::endl;
+    debug_msg("Action sink wait");
+  }
+
+ private:
+  void debug_msg(const std::string& msg) {
+    if (static_cast<Mover*>(this)->debug_enabled()) {
+      std::cout << msg << std::endl;
+    }
   }
 };
 
@@ -635,11 +667,10 @@ class AsyncPolicy
   inline void on_notify_source(
       lock_type& _unused(lock), std::atomic<int>& event) {
     assert(lock.owns_lock());
-    if (this->debug_enabled())
-      std::cout << event++ << "  "
-                << " sink notifying source (on_signal_source) with " +
-                       str(this->state()) + " and " + str(this->next_state())
-                << std::endl;
+    debug_msg(
+        std::to_string(event++) +
+        "    sink notifying source (on_signal_source) with " +
+        str(this->state()) + " and " + str(this->next_state()));
 
     CHECK(is_sink_empty(this->state()) == "");
     source_cv_.notify_one();
@@ -652,11 +683,10 @@ class AsyncPolicy
       lock_type& _unused(lock), std::atomic<int>& event) {
     assert(lock.owns_lock());
 
-    if (this->debug_enabled())
-      std::cout << event++ << "  "
-                << " source notifying sink(on_signal_sink) with " +
-                       str(this->state()) + " and " + str(this->next_state())
-                << std::endl;
+    debug_msg(
+        std::to_string(event++) +
+        "    source notifying sink(on_signal_sink) with " + str(this->state()) +
+        " and " + str(this->next_state()));
 
     CHECK(is_source_full(this->state()) == "");
     sink_cv_.notify_one();
@@ -668,11 +698,9 @@ class AsyncPolicy
   inline void on_sink_move(lock_type& _unused(lock), std::atomic<int>& event) {
     assert(lock.owns_lock());
 
-    if (this->debug_enabled())
-      std::cout << event++ << "  "
-                << " sink moving (on_sink_move) with " + str(this->state()) +
-                       " and " + str(this->next_state())
-                << std::endl;
+    debug_msg(
+        std::to_string(event++) + "    sink moving (on_sink_move) with " +
+        str(this->state()) + " and " + str(this->next_state()));
 
     static_cast<Mover*>(this)->on_move(event);
   }
@@ -684,11 +712,9 @@ class AsyncPolicy
       lock_type& _unused(lock), std::atomic<int>& event) {
     assert(lock.owns_lock());
 
-    if (this->debug_enabled())
-      std::cout << event++ << "  "
-                << " source moving (on_source_move) with " +
-                       str(this->state()) + " and " + str(this->next_state())
-                << std::endl;
+    debug_msg(
+        std::to_string(event++) + "    source moving (on_source_move) with " +
+        str(this->state()) + " and " + str(this->next_state()));
 
     static_cast<Mover*>(this)->on_move(event);
   }
@@ -705,26 +731,20 @@ class AsyncPolicy
       CHECK(str(this->state()) == "st_000");
     }
 
-    if (this->debug_enabled())
-      std::cout << event++ << "  "
-                << " sink going to sleep on_sink_move with " +
-                       str(this->state())
-                << std::endl;
+    debug_msg(
+        std::to_string(event++) + "    sink going to sleep on_sink_move with " +
+        str(this->state()));
     sink_cv_.wait(lock);
 
     CHECK(is_sink_post_move(this->state()) == "");
 
-    if (this->debug_enabled())
-      std::cout << event++ << "  "
-                << " sink waking up on_sink_move with " + str(this->state()) +
-                       " and " + str(this->next_state())
-                << std::endl;
+    debug_msg(
+        std::to_string(event++) + "    sink waking up on_sink_move with " +
+        str(this->state()) + " and " + str(this->next_state()));
 
-    if (this->debug_enabled())
-      std::cout << event++ << "  "
-                << " sink leaving on_sink_move with " + str(this->state()) +
-                       " and " + str(this->next_state())
-                << std::endl;
+    debug_msg(
+        std::to_string(event++) + "    sink leaving on_sink_move with " +
+        str(this->state()) + " and " + str(this->next_state()));
   }
 
   /**
@@ -739,27 +759,29 @@ class AsyncPolicy
       CHECK(str(this->state()) == "st_111");
     }
 
-    if (this->debug_enabled())
-      std::cout << event++ << "  "
-                << " source going to sleep on_source_move with " +
-                       str(this->state()) + " and " + str(this->next_state())
-                << std::endl;
+    debug_msg(
+        std::to_string(event++) +
+        "    source going to sleep on_source_move with " + str(this->state()) +
+        " and " + str(this->next_state()));
 
     source_cv_.wait(lock);
 
     CHECK(is_source_post_move(this->state()) == "");
 
-    if (this->debug_enabled())
-      std::cout << event++ << "  "
-                << " source waking up to " + str(this->state()) + " and " +
-                       str(this->next_state())
-                << std::endl;
+    debug_msg(
+        std::to_string(event++) + "    source waking up to " +
+        str(this->state()) + " and " + str(this->next_state()));
 
-    if (this->debug_enabled())
-      std::cout << event++ << "  "
-                << " source leaving on_source_move with " + str(this->state()) +
-                       " and " + str(this->next_state())
-                << std::endl;
+    debug_msg(
+        std::to_string(event++) + "    source leaving on_source_move with " +
+        str(this->state()) + " and " + str(this->next_state()));
+  }
+
+ private:
+  void debug_msg(const std::string& msg) {
+    if (static_cast<Mover*>(this)->debug_enabled()) {
+      std::cout << msg << std::endl;
+    }
   }
 };
 
@@ -810,9 +832,7 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
    * function.
    */
   inline void on_notify_source(lock_type& lock, std::atomic<int>& event) {
-    if (this->debug_enabled())
-      std::cout << event++ << "  "
-                << " sink notifying source" << std::endl;
+    debug_msg(std::to_string(event++) + "    sink notifying source");
     do_notify(lock, event);
   }
 
@@ -821,9 +841,7 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
    * function.
    */
   inline void on_notify_sink(lock_type& lock, std::atomic<int>& event) {
-    if (this->debug_enabled())
-      std::cout << event++ << "  "
-                << " source notifying sink" << std::endl;
+    debug_msg(std::to_string(event++) + "    source notifying sink");
     do_notify(lock, event);
   }
 
@@ -856,6 +874,13 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
   inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
     on_source_wait(lock, event);
   }
+
+ private:
+  void debug_msg(const std::string& msg) {
+    if (static_cast<Mover*>(this)->debug_enabled()) {
+      std::cout << msg << std::endl;
+    }
+  }
 };
 
 /**
@@ -865,50 +890,40 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
 template <class Mover, class PortState>
 class DebugPolicy
     : public PortFiniteStateMachine<DebugPolicy<Mover, PortState>, PortState> {
+  void debug_msg(const std::string& msg) {
+    if (static_cast<Mover*>(this)->debug_enabled()) {
+      std::cout << msg << std::endl;
+    }
+  }
+
  public:
   template <class lock_type>
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
-    if (this->debug_enabled())
-      std::cout << "    "
-                << "Action return" << std::endl;
+    debug_msg("    Action return");
   }
   template <class lock_type>
   inline void on_source_move(lock_type&, std::atomic<int>&) {
-    if (this->debug_enabled())
-
-      std::cout << "    "
-                << "Action move source" << std::endl;
+    debug_msg("    Action move source");
   }
   template <class lock_type>
   inline void on_sink_move(lock_type&, std::atomic<int>&) {
-    if (this->debug_enabled())
-      std::cout << "    "
-                << "Action move sink" << std::endl;
+    debug_msg("    Action move sink");
   }
   template <class lock_type>
   inline void on_source_wait(lock_type&, std::atomic<int>&) {
-    if (this->debug_enabled())
-
-      std::cout << "    "
-                << "Action source wait" << std::endl;
+    debug_msg("    Action source wait");
   }
   template <class lock_type>
   inline void on_sink_wait(lock_type&, std::atomic<int>&) {
-    if (this->debug_enabled())
-      std::cout << "    "
-                << "Action sink wait" << std::endl;
+    debug_msg("    Action sink wait");
   }
   template <class lock_type>
   inline void on_notify_source(lock_type&, std::atomic<int>&) {
-    if (this->debug_enabled())
-      std::cout << "    "
-                << "Action notify source" << std::endl;
+    debug_msg("    Action notify source");
   }
   template <class lock_type>
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
-    if (this->debug_enabled())
-      std::cout << "    "
-                << "Action notify sink" << std::endl;
+    debug_msg("    Action notify sink");
   }
 };
 
@@ -930,24 +945,26 @@ class DebugPolicyWithLock : public Mover {
 
  public:
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action return" << std::endl;
+    debug_msg("    Action return");
   }
   inline void on_source_move(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action move source" << std::endl;
+    debug_msg("    Action move source");
   }
   inline void on_sink_move(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action move sink" << std::endl;
+    debug_msg("    Action move sink");
   }
   inline void on_notify_source(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action notify source" << std::endl;
+    debug_msg("    Action notify source");
   }
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
-    std::cout << "    "
-              << "Action notify sink" << std::endl;
+    debug_msg("    Action notify sink");
+  }
+
+ private:
+  void debug_msg(const std::string& msg) {
+    if (static_cast<Mover*>(this)->debug_enabled()) {
+      std::cout << msg << std::endl;
+    }
   }
 };
 

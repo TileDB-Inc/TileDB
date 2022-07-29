@@ -94,6 +94,10 @@ using part_info =
     std::tuple<size_t, size_t, size_t, std::shared_ptr<std::vector<bool_t>>>;
 using prime_info = std::tuple<size_t, std::shared_ptr<std::vector<size_t>>>;
 
+/**
+ * Takes a vector of "bool" (which may be actual bool, or may be char) and
+ * extracts the indicated prime numbers.
+ */
 template <class bool_t>
 auto sieve_to_primes(std::vector<bool_t>& sieve) {
   std::vector<size_t> primes;

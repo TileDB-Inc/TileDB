@@ -57,27 +57,27 @@
 using namespace tiledb::common;
 
 TEST_CASE("Port FSM: Construct PortPolicy", "[fsm]") {
-  [[maybe_unused]] auto a = DebugStateMachine2{};
+  [[maybe_unused]] auto a = DebugStateMachine2<size_t>{};
 
   CHECK(a.state() == two_stage::st_00);
 }
 
 TEST_CASE("Port FSM: Copy, Move, etc", "[fsm]") {
-  [[maybe_unused]] auto a = DebugStateMachine3{};
-  std::vector<DebugStateMachine2> v;
+  [[maybe_unused]] auto a = DebugStateMachine3<size_t>{};
+  std::vector<DebugStateMachine2<size_t>> v;
   v.reserve(55);
 
-  [[maybe_unused]] auto b = DebugStateMachine2{};
+  [[maybe_unused]] auto b = DebugStateMachine2<size_t>{};
 
-  std::vector<DebugStateMachine3> w;
+  std::vector<DebugStateMachine3<size_t>> w;
   w.reserve(55);
 
   auto t = std::make_tuple(a, b);
   std::vector<decltype(t)> u;
   u.reserve(55);
 
-  auto foo = [](DebugStateMachine3&&) {};
-  auto bar = [](DebugStateMachine2&&) {};
+  auto foo = [](DebugStateMachine3<size_t>&&) {};
+  auto bar = [](DebugStateMachine2<size_t>&&) {};
 
   foo(std::move(a));
   bar(std::move(b));
@@ -85,7 +85,7 @@ TEST_CASE("Port FSM: Copy, Move, etc", "[fsm]") {
 
 TEST_CASE("Port FSM: Start up", "[fsm]") {
   constexpr bool debug = false;
-  [[maybe_unused]] auto a = DebugStateMachine2{};
+  [[maybe_unused]] auto a = DebugStateMachine2<size_t>{};
 
   if (debug)
     a.enable_debug();
@@ -111,7 +111,7 @@ TEST_CASE("Port FSM: Start up", "[fsm]") {
  * transition sequences.
  */
 TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
-  [[maybe_unused]] auto a = DebugStateMachine2{};
+  [[maybe_unused]] auto a = DebugStateMachine2<size_t>{};
   CHECK(a.state() == two_stage::st_00);
 
   a.do_fill();
@@ -181,7 +181,7 @@ TEST_CASE("AsynchronousPolicy: Asynchronous source and manual sink", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
 
   a.set_state(two_stage::st_00);
 
@@ -219,7 +219,7 @@ TEST_CASE("AsynchronousPolicy: Manual source and asynchronous sink", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
 
   a.set_state(two_stage::st_00);
 
@@ -257,7 +257,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2<size_t>{source_item, sink_item};
 
   a.set_state(two_stage::st_00);
 
@@ -289,7 +289,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2<size_t>{source_item, sink_item};
 
   a.set_state(two_stage::st_00);
 
@@ -325,7 +325,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
 
   a.set_state(two_stage::st_00);
 
@@ -415,7 +415,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2<size_t>{source_item, sink_item};
 
   a.set_state(two_stage::st_00);
 
@@ -496,7 +496,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
 
   if (debug)
     a.enable_debug();
@@ -580,7 +580,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2<size_t>{source_item, sink_item};
 
   a.set_state(two_stage::st_00);
 
@@ -659,7 +659,7 @@ TEST_CASE(
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
 
   a.set_state(two_stage::st_00);
 
@@ -740,7 +740,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
   if (debug) {
     a.enable_debug();
   }
@@ -912,7 +912,7 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2<size_t>{source_item, sink_item};
 
   a.set_state(two_stage::st_00);
 
