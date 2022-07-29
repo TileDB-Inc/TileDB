@@ -194,12 +194,11 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
         throw std::runtime_error(
             "[FilterCreate::deserialize] Failed to load FloatScaling metadata");
       } else {
-        return {Status::Ok(),
-                make_shared<FloatScalingFilter>(
+        return make_shared<FloatScalingFilter>(
                     HERE(),
                     filter_config.byte_width,
                     filter_config.scale,
-                    filter_config.offset)};
+                    filter_config.offset);
       }
     };
     default:
