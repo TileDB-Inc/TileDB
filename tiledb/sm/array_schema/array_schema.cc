@@ -850,39 +850,15 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
     throw std::runtime_error(
         "[ArraySchema::deserialize] Failed to load capacity.");
 
-  // Load coords filters
+  // Load filters
   // Note: Security validation delegated to invoked API
-  // #TODO Add security validation
-  auto&& [st_coords_filters, coords_filters]{
-      FilterPipeline::deserialize(buff, version)};
-  if (!st_coords_filters.ok()) {
-    throw std::runtime_error(
-        "[ArraySchema::deserialize] Cannot deserialize coords filters.");
-  }
-
-  // Load offsets filters
-  // Note: Security validation delegated to invoked API
-  // #TODO Add security validation
-  auto&& [st_cell_var_filters, cell_var_filters]{
-      FilterPipeline::deserialize(buff, version)};
-  if (!st_coords_filters.ok()) {
-    throw std::runtime_error(
-        "[ArraySchema::deserialize] Cannot deserialize cell var filters.");
-  }
-
-  // Load validity filters
-  // Note: Security validation delegated to invoked API
-  // #TODO Add security validation
+  auto coords_filters{FilterPipeline::deserialize(buff, version)};
+  auto cell_var_filters{FilterPipeline::deserialize(buff, version)};
   FilterPipeline cell_validity_filters;
   if (version >= 7) {
-    auto&& [st_cell_validity_filters, cell_validity_filters_deserialized]{
+    auto cell_validity_filters_deserialized{
         FilterPipeline::deserialize(buff, version)};
-    if (!st_cell_validity_filters.ok()) {
-      throw std::runtime_error(
-          "[ArraySchema::deserialize] Cannot deserialize cell validity "
-          "filters.");
-    }
-    cell_validity_filters = cell_validity_filters_deserialized.value();
+    cell_validity_filters = cell_validity_filters_deserialized;
   }
 
   // Load domain
@@ -953,9 +929,7 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
 
   // Populate timestamp range
   std::pair<uint64_t, uint64_t> timestamp_range;
-  st = utils::parse::get_timestamp_range(uri, &timestamp_range);
-  if (!st.ok())
-    throw StatusException(st);
+  throw_if_not_ok(utils::parse::get_timestamp_range(uri, &timestamp_range));
 
   // Set schema name
   std::string name = uri.last_path_part();
@@ -974,9 +948,9 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
       capacity,
       attributes,
       dimension_labels,
-      cell_var_filters.value(),
+      cell_var_filters,
       cell_validity_filters,
-      coords_filters.value());
+      coords_filters);
 }
 
 Status ArraySchema::init() {

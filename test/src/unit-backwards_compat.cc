@@ -132,16 +132,9 @@ TEST_CASE(
     "[backwards-compat]") {
   Context ctx;
   std::string array_uri(arrays_dir + "/dense_array_v1_3_0");
-  try {
-    Array array(ctx, array_uri, TILEDB_READ);
-    REQUIRE(false);
-  } catch (const TileDBError& e) {
-    // Check correct exception type and error message.
-    std::string msg(e.what());
-    REQUIRE(msg.find("Error: Read buffer overflow") != std::string::npos);
-  } catch (const std::exception& e) {
-    REQUIRE(false);
-  }
+  REQUIRE_THROWS_WITH(
+      Array(ctx, array_uri, TILEDB_READ),
+      Catch::Contains("Failed to load maximum tile chunk size"));
 }
 
 template <typename T>

@@ -133,11 +133,8 @@ tuple<Status, optional<Attribute>> Attribute::deserialize(
   RETURN_NOT_OK_TUPLE(buff->read(&cell_val_num, sizeof(uint32_t)), nullopt);
 
   // Load filter pipeline
-  auto&& [st_filterpipeline, filterpipeline]{
-      FilterPipeline::deserialize(buff, version)};
-  if (!st_filterpipeline.ok()) {
-    return {st_filterpipeline, nullopt};
-  }
+  // Note: Security validation delegated to invoked API
+  auto filterpipeline{FilterPipeline::deserialize(buff, version)};
 
   // Load fill value
   uint64_t fill_value_size = 0;
@@ -174,7 +171,7 @@ tuple<Status, optional<Attribute>> Attribute::deserialize(
               datatype,
               nullable,
               cell_val_num,
-              filterpipeline.value(),
+              filterpipeline,
               fill_value,
               fill_value_validity)};
 }

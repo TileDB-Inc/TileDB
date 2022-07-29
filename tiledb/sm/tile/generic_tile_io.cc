@@ -159,10 +159,14 @@ GenericTileIO::read_generic_tile_header(
           header.filter_pipeline_size),
       nullopt);
   ConstBuffer cbuf(header_buff->data(), header_buff->size());
-  auto&& [st_filterpipeline, filterpipeline]{
-      FilterPipeline::deserialize(&cbuf, header.version_number)};
-  RETURN_NOT_OK_TUPLE(st_filterpipeline, nullopt);
-  header.filters = filterpipeline.value();
+
+  try {
+    auto filterpipeline{
+        FilterPipeline::deserialize(&cbuf, header.version_number)};
+    header.filters = filterpipeline;
+  } catch (std::exception& e) {
+    return {Status_Error(e.what()), nullopt};
+  }
 
   return {Status::Ok(), header};
 }
