@@ -33,35 +33,30 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label_schema.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/group/group_v1.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-DimensionLabel::DimensionLabel(
-    const URI& indexed_array_uri,
-    const URI& labelled_array_uri,
-    StorageManager* storage_manager,
-    LabelOrder label_order,
-    const DimensionLabelSchema::attribute_size_type label_attr_id,
-    const DimensionLabelSchema::attribute_size_type index_attr_id)
-    : indexed_array_(
-          make_shared<Array>(HERE(), indexed_array_uri, storage_manager))
-    , labelled_array_(
-          make_shared<Array>(HERE(), labelled_array_uri, storage_manager))
-    , label_order_(label_order)
-    , label_attr_id_(label_attr_id)
-    , index_attr_id_(index_attr_id)
+DimensionLabel::DimensionLabel(const URI& uri, StorageManager* storage_manager)
+    : uri_(uri)
+    , storage_manager_(storage_manager)
+    , indexed_array_(make_shared<Array>(
+          HERE(), uri.join_path(indexed_array_name), storage_manager))
+    , labelled_array_(make_shared<Array>(
+          HERE(), uri.join_path(labelled_array_name), storage_manager))
     , schema_{nullptr} {
 }
 
-Status DimensionLabel::close() {
-  RETURN_NOT_OK(indexed_array_->close());
-  RETURN_NOT_OK(labelled_array_->close());
-  return Status::Ok();
+void DimensionLabel::close() {
+  throw_if_not_ok(indexed_array_->close());
+  throw_if_not_ok(labelled_array_->close());
 }
 
 const Attribute* DimensionLabel::index_attribute() const {
@@ -92,75 +87,174 @@ const Dimension* DimensionLabel::label_dimension() const {
   return schema_->label_dimension();
 }
 
-Status DimensionLabel::open(
+LabelOrder DimensionLabel::label_order() const {
+  if (!schema_)
+    throw std::logic_error(
+        "DimensionLabel schema does not exist. DimensionLabel must be opened.");
+  return schema_->label_order();
+}
+
+void DimensionLabel::open(
     QueryType query_type,
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  RETURN_NOT_OK(indexed_array_->open(
-      query_type, encryption_type, encryption_key, key_length));
-  RETURN_NOT_OK(labelled_array_->open(
-      query_type, encryption_type, encryption_key, key_length));
-  RETURN_NOT_OK(load_schema());
-  return Status::Ok();
+  // Explicitly set timestamp so it's the same for both arrays.
+  uint64_t timestamp_start{0};
+  uint64_t timestamp_end{utils::time::timestamp_now_ms()};
+  return open(
+      query_type,
+      timestamp_start,
+      timestamp_end,
+      encryption_type,
+      encryption_key,
+      key_length);
 }
 
-Status DimensionLabel::open(
+void DimensionLabel::open(
     QueryType query_type,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  RETURN_NOT_OK(indexed_array_->open(
+  throw_if_not_ok(indexed_array_->open(
       query_type,
       timestamp_start,
       timestamp_end,
       encryption_type,
       encryption_key,
       key_length));
-  RETURN_NOT_OK(labelled_array_->open(
+  throw_if_not_ok(labelled_array_->open(
       query_type,
       timestamp_start,
       timestamp_end,
       encryption_type,
       encryption_key,
       key_length));
-  RETURN_NOT_OK(load_schema());
-  return Status::Ok();
+  load_schema();
+  query_type_ = query_type;
 }
 
-Status DimensionLabel::open_without_fragments(
+void DimensionLabel::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  RETURN_NOT_OK(indexed_array_->open_without_fragments(
+  throw_if_not_ok(indexed_array_->open_without_fragments(
       encryption_type, encryption_key, key_length));
-  RETURN_NOT_OK(labelled_array_->open_without_fragments(
+  throw_if_not_ok(labelled_array_->open_without_fragments(
       encryption_type, encryption_key, key_length));
-  RETURN_NOT_OK(load_schema());
-  return Status::Ok();
+  load_schema();
+  query_type_ = QueryType::READ;
 }
 
-Status DimensionLabel::load_schema() {
+void DimensionLabel::load_schema() {
+  // Get dimension label schema metadata
+  GroupV1 label_group{uri_, storage_manager_};
+  throw_if_not_ok(label_group.open(QueryType::READ));
+
+  Datatype datatype;
+  uint32_t value_num;
+  // - Read format version.
+  const void* format_version_value;
+  throw_if_not_ok(label_group.get_metadata(
+      "__dimension_label_format_version",
+      &datatype,
+      &value_num,
+      &format_version_value));
+  if (!format_version_value)
+    throw std::runtime_error(
+        "[DimensionLabel::load_schema] Unable to load dimension label schema; "
+        "Failed to read dimension label schema format version.");
+  if (datatype != Datatype::UINT32)
+    throw std::runtime_error(
+        "[DimensionLabel::load_schema] Unable to load dimension label schema; "
+        "Unexpected datatype for the format version datatype.");
+  if (value_num != 1)
+    throw std::runtime_error(
+        "[DimensionLabel::load_schema] Unable to load dimension label schema; "
+        "Unexpected number of values for the format version.");
+  uint32_t format_version{*static_cast<const uint32_t*>(format_version_value)};
+  if (format_version > 1)
+    throw StatusException(
+        "DimensionLabel",
+        "Cannot load dimension label schema. Version is newer than current "
+        "library version.");
+  // - Read label order
+  const void* label_order_value;
+  throw_if_not_ok(label_group.get_metadata(
+      "__label_order", &datatype, &value_num, &label_order_value));
+  if (!label_order_value)
+    throw std::runtime_error(
+        "[DimensionLabel::load_schema] Unable to load dimension label schema; "
+        "Failed to read the label order of the dimension label.");
+  if (datatype != Datatype::UINT8)
+    throw std::runtime_error(
+        "[DimensionLabel::load_schema] Unable to load dimension label schema; "
+        "Unexpected datatype for the index attribute id.");
+  if (value_num != 1)
+    throw std::runtime_error(
+        "[DimensionLabel::load_schema] Unable to load dimension label schema; "
+        "Unexpected number of values for the index attribute id.");
+  auto label_order =
+      label_order_from_int(*static_cast<const uint8_t*>(label_order_value));
+  // - Close group
+  throw_if_not_ok(label_group.close());
+  // Get array schemas
   auto&& [label_status, label_schema] = labelled_array_->get_array_schema();
-  if (!label_status.ok())
-    return label_status;
+  throw_if_not_ok(label_status);
   auto&& [index_status, index_schema] = indexed_array_->get_array_schema();
-  if (!index_status.ok())
-    return index_status;
-  try {
-    schema_ = make_shared<DimensionLabelSchema>(
-        HERE(),
-        label_order_,
-        index_schema.value(),
-        label_schema.value(),
-        label_attr_id_,
-        index_attr_id_);
-  } catch (std::invalid_argument& except) {
-    return Status_DimensionLabelError(except.what());
-  }
-  return Status::Ok();
+  throw_if_not_ok(index_status);
+  schema_ = make_shared<DimensionLabelSchema>(
+      HERE(), label_order, index_schema.value(), label_schema.value());
+}
+
+QueryType DimensionLabel::query_type() const {
+  if (query_type_.has_value())
+    return query_type_.value();
+  throw std::runtime_error(
+      "[DimensionLabel::query_type] No query type set; dimension label has "
+      "not been opened");
+}
+
+void create_dimension_label(
+    const URI& uri,
+    StorageManager& storage_manager,
+    const DimensionLabelSchema& schema) {
+  // Create the group for the dimension label.
+  storage_manager.group_create(uri.to_string());
+  // Create the arrays inside the group.
+  EncryptionKey key;
+  key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0);
+  std::optional<std::string> indexed_array_name{
+      DimensionLabel::indexed_array_name};
+  storage_manager.array_create(
+      uri.join_path(indexed_array_name.value()),
+      schema.indexed_array_schema(),
+      key);
+  std::optional<std::string> labelled_array_name{
+      DimensionLabel::labelled_array_name};
+  storage_manager.array_create(
+      uri.join_path(labelled_array_name.value()),
+      schema.labelled_array_schema(),
+      key);
+  // Open dimension label group.
+  GroupV1 label_group{uri, &storage_manager};
+  label_group.open(QueryType::WRITE);
+  // Add metadata to group.
+  const uint32_t format_version{1};
+  label_group.put_metadata(
+      "__dimension_label_format_version", Datatype::UINT32, 1, &format_version);
+  uint8_t label_order_int{static_cast<uint8_t>(schema.label_order())};
+  label_group.put_metadata(
+      "__label_order", Datatype::UINT8, 1, &label_order_int);
+  // Add arrays to group.
+  label_group.mark_member_for_addition(
+      URI(indexed_array_name.value(), false), true, indexed_array_name);
+  label_group.mark_member_for_addition(
+      URI(labelled_array_name.value(), false), true, labelled_array_name);
+  // Close group.
+  label_group.close();
 }
 
 }  // namespace tiledb::sm

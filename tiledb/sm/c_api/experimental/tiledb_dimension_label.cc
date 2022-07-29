@@ -27,14 +27,57 @@
  */
 
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
+#include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/api_exception_safety.h"
 #include "tiledb/sm/c_api/experimental/api_exception_safety.h"
 #include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/c_api/tiledb_experimental.h"
+#include "tiledb/sm/dimension_label/dimension_label.h"
+#include "tiledb/sm/group/group_v1.h"
+#include "tiledb/sm/rest/rest_client.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::common::detail {
+
+int32_t tiledb_array_schema_add_dimension_label(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    uint32_t dim_id,
+    const char* name,
+    tiledb_dimension_label_schema_t* dim_label_schema) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array_schema) ||
+      sanity_check(ctx, dim_label_schema))
+    return TILEDB_ERR;
+  /** Note: The call to make_shared creates a copy of the array schemas and
+   * the user-visible handles no longer refere to the same objects in the
+   *array schema.
+   **/
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array_schema->array_schema_->add_dimension_label(
+              dim_id,
+              name,
+              make_shared<tiledb::sm::DimensionLabelSchema>(
+                  HERE(), dim_label_schema->dim_label_schema_.get()))))
+    return TILEDB_ERR;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_schema_has_dimension_label(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    const char* name,
+    int32_t* has_dim_label) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+  bool is_dim_label = array_schema->array_schema_->is_dim_label(name);
+  *has_dim_label = is_dim_label ? 1 : 0;
+  return TILEDB_OK;
+}
 
 int32_t tiledb_dimension_label_schema_alloc(
     tiledb_ctx_t* ctx,
@@ -93,6 +136,25 @@ void tiledb_dimension_label_schema_free(
 }
 
 }  // namespace tiledb::common::detail
+
+int32_t tiledb_array_schema_add_dimension_label(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    uint32_t dim_id,
+    const char* name,
+    tiledb_dimension_label_schema_t* dim_label_schema) noexcept {
+  return api_entry<detail::tiledb_array_schema_add_dimension_label>(
+      ctx, array_schema, dim_id, name, dim_label_schema);
+}
+
+int32_t tiledb_array_schema_has_dimension_label(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    const char* name,
+    int32_t* has_dim_label) noexcept {
+  return api_entry<detail::tiledb_array_schema_has_dimension_label>(
+      ctx, array_schema, name, has_dim_label);
+}
 
 int32_t tiledb_dimension_label_schema_alloc(
     tiledb_ctx_t* ctx,
