@@ -279,8 +279,8 @@ class Sink {
    *
    * @pre Both source and sink are unattached
    */
-  template <class Bl, class St>
-  friend inline void attach(Source<Bl, St>& source, Sink<Bl, St>& sink);
+  template <class St, class Bl>
+  friend inline void attach(Source<St, Bl>& source, Sink<St, Bl>& sink);
 
   friend inline void attach(
       Source<Mover, Block>& source, Sink<Mover, Block>& sink) {

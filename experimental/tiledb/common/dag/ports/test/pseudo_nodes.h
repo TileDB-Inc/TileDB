@@ -72,9 +72,9 @@ class generator {
  * Prototype source node class.  Constructed with a function that creates
  * Blocks.
  */
-template <class Block, class StateMachine>
-class ProducerNode : public Source<Block, StateMachine> {
-  using Base = Source<Block, StateMachine>;
+template <class Mover, class Block>
+class ProducerNode : public Source<Mover, Block> {
+  using Base = Source<Mover, Block>;
   // This causes initialization problems
   //  std::atomic<size_t> i_{0};
   size_t N_{0};
@@ -189,12 +189,12 @@ class consumer {
 /**
  * A proto consumer node.  Constructed with a function that accepts Blocks.
  */
-template <class Block, class StateMachine>
-class ConsumerNode : public Sink<Block, StateMachine> {
+template <class Mover, class Block>
+class ConsumerNode : public Sink<Mover, Block> {
   std::function<void(Block&)> f_;
 
  public:
-  using Base = Sink<Block, StateMachine>;
+  using Base = Sink<Mover, Block>;
 
  public:
   /**
@@ -204,11 +204,15 @@ class ConsumerNode : public Sink<Block, StateMachine> {
    */
   template <class Function>
   explicit ConsumerNode(
-      Function&& f,
+      Function&& f
+      /*
+,
       typename std::enable_if<
           std::is_function_v<std::remove_reference_t<decltype(f)>> ||
               std::is_bind_expression_v<std::remove_reference_t<decltype(f)>>,
           void**>::type = nullptr)
+      */
+      )
       : f_{std::forward<Function>(f)} {
   }
 
@@ -277,15 +281,15 @@ class ConsumerNode : public Sink<Block, StateMachine> {
  * accepts an item and returns an item.
  */
 template <
+    class SinkMover,
     class BlockIn,
-    class BlockOut,
-    class SinkStateMachine,  // Input
-    class SourceStateMachine = SinkStateMachine>
-class FunctionNode : public Source<BlockOut, SourceStateMachine>,
-                     public Sink<BlockIn, SinkStateMachine> {
+    class SourceMover = SinkMover,
+    class BlockOut = BlockIn>
+class FunctionNode : public Source<SourceMover, BlockOut>,
+                     public Sink<SinkMover, BlockIn> {
   std::function<BlockOut(BlockIn)> f_;
-  using SourceBase = Source<BlockOut, SourceStateMachine>;
-  using SinkBase = Sink<BlockIn, SinkStateMachine>;
+  using SourceBase = Source<SourceMover, BlockOut>;
+  using SinkBase = Sink<SinkMover, BlockIn>;
 
  public:
   template <class Function>
