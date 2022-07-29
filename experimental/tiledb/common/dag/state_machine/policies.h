@@ -219,16 +219,16 @@ class BaseMover<Mover, three_stage, Block> {
    */
   inline void on_move(std::atomic<int>& event) {
     //    auto state = this->state();
-    auto state = this->state();
-    bool debug = this->debug_enabled();
+    auto state = static_cast<Mover*>(this)->state();
+    bool debug = static_cast<Mover*>(this)->debug_enabled();
     CHECK(
         (state == PortState::st_010 || state == PortState::st_100 ||
          state == PortState::st_101 || state == PortState::st_110));
 
-    if (this->debug_enabled()) {
+    if (static_cast<Mover*>(this)->debug_enabled()) {
       std::cout << event << "  "
                 << " source swapping items with " + str(state) + " and " +
-                       str(this->next_state())
+                       str(static_cast<Mover*>(this)->next_state())
                 << std::endl;
 
       std::cout << event;
@@ -285,8 +285,9 @@ class BaseMover<Mover, three_stage, Block> {
       }
       std::cout << ")" << std::endl;
       std::cout << event << "  "
-                << " source done swapping items with " + str(this->state()) +
-                       " and " + str(this->next_state())
+                << " source done swapping items with " +
+                       str(static_cast<Mover*>(this)->state()) + " and " +
+                       str(static_cast<Mover*>(this)->next_state())
                 << std::endl;
       ++event;
     }
@@ -542,9 +543,9 @@ class ManualPolicy
  public:
   ManualPolicy() {
     if constexpr (std::is_same_v<PortState, two_stage>) {
-      CHECK(str(mover_type::get_state()) == "st_00");
+      CHECK(str(static_cast<Mover*>(this)->state()) == "st_00");
     } else if constexpr (std::is_same_v<PortState, three_stage>) {
-      CHECK(str(mover_type::get_state()) == "st_000");
+      CHECK(str(static_cast<Mover*>(this)->get_state()) == "st_000");
     }
   }
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
@@ -553,11 +554,11 @@ class ManualPolicy
                 << "Action return" << std::endl;
   }
   inline void on_source_move(lock_type&, std::atomic<int>& event) {
-    mover_type::move(*this, event);
+    static_cast<Mover*>(this)->on_move(event);
   }
 
   inline void on_sink_move(lock_type&, std::atomic<int>& event) {
-    mover_type::move(*this, event);
+    static_cast<Mover*>(this)->on_move(event);
   }
   inline void on_notify_source(lock_type&, std::atomic<int>&) {
     if (this->debug_enabled())

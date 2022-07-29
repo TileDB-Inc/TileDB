@@ -34,27 +34,16 @@
 #include <future>
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
+#include "experimental/tiledb/common/dag/state_machine/test/types.h"
 
 using namespace tiledb::common;
-
-template <class T>
-using AsyncStateMachine2 = AsyncStateMachine<PortState<2>, T>;
-
-template <class T>
-using DebugStateMachine2 = DebugStateMachine<PortState<2>, T>;
-
-template <class T>
-using NullStateMachine2 = NullStateMachine<PortState<2>, T>;
-
-template <class T>
-using ManualStateMachine2 = ManualStateMachine<PortState<2>, T>;
 
 /**
  * Test attaching of Source and Sink ports.
  */
 TEST_CASE("Ports: Test attach ports", "[ports]") {
-  Source<int, NullStateMachine2<int>> left;
-  Sink<int, NullStateMachine2<int>> right;
+  Source<NullMover2, size_t> left;
+  Sink<NullMover2, size_t> right;
   attach(left, right);
 }
 
@@ -89,8 +78,8 @@ void test_connections(source_type& pn, sink_type& cn) {
  * Test exception when trying to attach already bound ports.
  */
 TEST_CASE("Ports: Test exceptions", "[ports]") {
-  auto pn = Source<size_t, NullStateMachine2<size_t>>{};
-  auto cn = Sink<size_t, NullStateMachine2<size_t>>{};
+  auto pn = Source<NullMover2, size_t>{};
+  auto cn = Sink<NullMover2, size_t>{};
 
   attach(pn, cn);
 
@@ -103,8 +92,8 @@ TEST_CASE("Ports: Test exceptions", "[ports]") {
  * Test operation of inject and extract.
  */
 TEST_CASE("Ports: Manual set source port values", "[ports]") {
-  Source<size_t, NullStateMachine2<size_t>> source;
-  Sink<size_t, NullStateMachine2<size_t>> sink;
+  Source<NullMover2, size_t> source;
+  Sink<NullMover2, size_t> sink;
 
   SECTION("set source in bound pair") {
     attach(source, sink);
@@ -125,8 +114,8 @@ TEST_CASE("Ports: Manual set source port values", "[ports]") {
  * Test operation of inject and extract.
  */
 TEST_CASE("Ports: Manual extract sink values", "[ports]") {
-  Source<size_t, NullStateMachine2<size_t>> source;
-  Sink<size_t, NullStateMachine2<size_t>> sink;
+  Source<NullMover2, size_t> source;
+  Sink<NullMover2, size_t> sink;
 
   SECTION("set source in unbound pair") {
     CHECK(sink.extract().has_value() == false);
@@ -143,12 +132,12 @@ TEST_CASE("Ports: Manual extract sink values", "[ports]") {
 
 /**
  * Test that we can inject, transfer, and extract data items from Source and
- * Sink with ManualStateMachine2.
+ * Sink with ManualMover2.
  *
  */
 TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
-  Source<size_t, ManualStateMachine2<size_t>> source;
-  Sink<size_t, ManualStateMachine2<size_t>> sink;
+  Source<ManualMover2, size_t> source;
+  Sink<ManualMover2, size_t> sink;
 
   attach(source, sink);
 
@@ -208,13 +197,13 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
 
 /**
  * Test that we can inject and extract data items from Source and Sink with
- * AsyncStateMachine.
+ * AsyncMover.
  *
  */
 TEST_CASE(
     "Ports: Manual transfer from Source to Sink, async policy", "[ports]") {
-  Source<size_t, AsyncStateMachine2<size_t>> source;
-  Sink<size_t, AsyncStateMachine2<size_t>> sink;
+  Source<AsyncMover2, size_t> source;
+  Sink<AsyncMover2, size_t> sink;
 
   attach(source, sink);
 
@@ -242,8 +231,8 @@ TEST_CASE(
  * launching the tasks and waiting on their futures.
  */
 TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
-  Source<size_t, AsyncStateMachine2<size_t>> source;
-  Sink<size_t, AsyncStateMachine2<size_t>> sink;
+  Source<AsyncMover2, size_t> source;
+  Sink<AsyncMover2, size_t> sink;
 
   attach(source, sink);
 
@@ -305,8 +294,8 @@ TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
 TEST_CASE("Ports: Async pass n integers", "[ports]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  Source<size_t, AsyncStateMachine2<size_t>> source;
-  Sink<size_t, AsyncStateMachine2<size_t>> sink;
+  Source<AsyncMover2, size_t> source;
+  Sink<AsyncMover2, size_t> sink;
 
   attach(source, sink);
 
