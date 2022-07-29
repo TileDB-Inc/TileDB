@@ -189,7 +189,7 @@ TEST_CASE_METHOD(
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
-    rt.init_coord_tile("d1", 0);
+    rt.init_coord_tile("d1", true, 0);
     auto tile_tuple = rt.tile_tuple("d1");
     Tile* const t = &tile_tuple->fixed_tile();
     t->init_unfiltered(
@@ -200,7 +200,7 @@ TEST_CASE_METHOD(
         0);
   }
 
-  rt.init_coord_tile(dim_name, dim_idx);
+  rt.init_coord_tile(dim_name, true, dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
   Tile* const t = &tile_tuple->fixed_tile();
   Tile* const t_var = &tile_tuple->var_tile();
@@ -279,7 +279,7 @@ TEST_CASE_METHOD(
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
-    rt.init_coord_tile("d1", 0);
+    rt.init_coord_tile("d1", true, 0);
     auto tile_tuple = rt.tile_tuple("d1");
     Tile* const t = &tile_tuple->fixed_tile();
     t->init_unfiltered(
@@ -290,7 +290,7 @@ TEST_CASE_METHOD(
         0);
   }
 
-  rt.init_coord_tile(dim_name, dim_idx);
+  rt.init_coord_tile(dim_name, true, dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
   Tile* const t = &tile_tuple->fixed_tile();
   Tile* const t_var = &tile_tuple->var_tile();

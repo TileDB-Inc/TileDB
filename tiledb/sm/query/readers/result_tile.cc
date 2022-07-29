@@ -166,34 +166,37 @@ void ResultTile::erase_tile(const std::string& name) {
   }
 }
 
-void ResultTile::init_attr_tile(const std::string& name) {
+void ResultTile::init_attr_tile(
+    const std::string& name, bool var_size, bool nullable) {
   // Nothing to do for the special zipped coordinates tile
   if (name == constants::coords) {
-    coords_tile_ = TileTuple();
+    coords_tile_ = TileTuple(false, false);
     return;
   }
 
   if (name == constants::timestamps) {
-    timestamps_tile_ = TileTuple();
+    timestamps_tile_ = TileTuple(false, false);
     return;
   }
 
   if (name == constants::delete_timestamps) {
-    delete_timestamps_tile_ = TileTuple();
+    delete_timestamps_tile_ = TileTuple(false, false);
     return;
   }
 
   // Handle attributes
   for (auto& at : attr_tiles_) {
     if (at.first == name && at.second == nullopt) {
-      at.second = TileTuple();
+      at.second = TileTuple(var_size, nullable);
       return;
     }
   }
 }
 
-void ResultTile::init_coord_tile(const std::string& name, unsigned dim_idx) {
-  coord_tiles_[dim_idx] = std::pair<std::string, TileTuple>(name, TileTuple());
+void ResultTile::init_coord_tile(
+    const std::string& name, bool var_size, unsigned dim_idx) {
+  coord_tiles_[dim_idx] =
+      std::pair<std::string, TileTuple>(name, TileTuple(var_size, false));
 
   // When at least one unzipped coordinate has been initialized, we will
   // use the unzipped `coord()` implementation.

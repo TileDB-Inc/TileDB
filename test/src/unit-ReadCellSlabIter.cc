@@ -170,7 +170,7 @@ void set_result_tile_dim(
     std::string dim,
     uint64_t dim_idx,
     std::vector<uint64_t> v) {
-  result_tile.init_coord_tile(dim, dim_idx);
+  result_tile.init_coord_tile(dim, false, dim_idx);
 
   uint64_t* data =
       static_cast<uint64_t*>(tdb_malloc(v.size() * sizeof(uint64_t)));

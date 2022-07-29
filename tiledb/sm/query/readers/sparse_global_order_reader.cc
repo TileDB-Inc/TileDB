@@ -1058,11 +1058,10 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
 
         // Get source buffers.
         const auto tile_tuple = rt->tile_tuple(name);
-        const auto t = &tile_tuple->fixed_tile();
-        const auto t_var = &tile_tuple->var_tile();
-        const auto src_buff = t->template data_as<uint64_t>();
-        const auto src_var_buff = t_var->template data_as<char>();
-        const auto t_val = &tile_tuple->validity_tile();
+        const auto& t = tile_tuple->fixed_tile();
+        const auto& t_var = tile_tuple->var_tile();
+        const auto src_buff = t.template data_as<uint64_t>();
+        const auto src_var_buff = t_var.template data_as<char>();
         const auto cell_num =
             fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
 
@@ -1096,13 +1095,14 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
         // Copy last cell.
         if (max_pos == cell_num) {
           *buffer =
-              (OffType)(t_var->size() - src_buff[max_pos - 1]) / offset_div;
+              (OffType)(t_var.size() - src_buff[max_pos - 1]) / offset_div;
           *var_data_buffer = src_var_buff + src_buff[max_pos - 1];
         }
 
         // Copy nullable values.
         if (nullable) {
-          const auto src_val_buff = t_val->template data_as<uint8_t>();
+          const auto& t_val = tile_tuple->validity_tile();
+          const auto src_val_buff = t_val.template data_as<uint8_t>();
           for (uint64_t c = min_pos; c < max_pos; c++) {
             *val_buffer = src_val_buff[c];
             val_buffer++;
@@ -1223,9 +1223,8 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
         const auto tile_tuple = stores_zipped_coords ?
                                     rt->tile_tuple(constants::coords) :
                                     rt->tile_tuple(name);
-        const auto t = &tile_tuple->fixed_tile();
-        const auto src_buff = t->template data_as<uint8_t>();
-        const auto t_val = &tile_tuple->validity_tile();
+        const auto& t = tile_tuple->fixed_tile();
+        const auto src_buff = t.template data_as<uint8_t>();
 
         // Compute parallelization parameters.
         auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
@@ -1261,7 +1260,8 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
         }
 
         if (nullable) {
-          const auto src_val_buff = t_val->template data_as<uint8_t>();
+          const auto& t_val = tile_tuple->validity_tile();
+          const auto src_val_buff = t_val.template data_as<uint8_t>();
           memcpy(val_buffer, src_val_buff + min_pos, max_pos - min_pos);
         }
 

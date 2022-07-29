@@ -80,7 +80,18 @@ class ResultTile {
     /* ********************************* */
 
     /** Default constructor. */
-    TileTuple() = default;
+    TileTuple() = delete;
+
+    /** Constructor with var_size and nullable parameters. */
+    TileTuple(bool var_size, bool nullable) {
+      if (var_size) {
+        var_tile_ = Tile();
+      }
+
+      if (nullable) {
+        validity_tile_ = Tile();
+      }
+    }
 
     /* ********************************* */
     /*                API                */
@@ -93,12 +104,12 @@ class ResultTile {
 
     /** @returns Var tile. */
     Tile& var_tile() {
-      return var_tile_;
+      return var_tile_.value();
     }
 
     /** @returns Validity tile. */
     Tile& validity_tile() {
-      return validity_tile_;
+      return validity_tile_.value();
     }
 
     /** @returns Fixed tile. */
@@ -108,12 +119,12 @@ class ResultTile {
 
     /** @returns Var tile. */
     const Tile& var_tile() const {
-      return var_tile_;
+      return var_tile_.value();
     }
 
     /** @returns Validity tile. */
     const Tile& validity_tile() const {
-      return validity_tile_;
+      return validity_tile_.value();
     }
 
    private:
@@ -121,10 +132,10 @@ class ResultTile {
     Tile fixed_tile_;
 
     /** Stores the var data tile. */
-    Tile var_tile_;
+    optional<Tile> var_tile_;
 
     /** Stores the validity data tile. */
-    Tile validity_tile_;
+    optional<Tile> validity_tile_;
   };
 
   /* ********************************* */
@@ -185,10 +196,11 @@ class ResultTile {
   void erase_tile(const std::string& name);
 
   /** Initializes the result tile for the given attribute. */
-  void init_attr_tile(const std::string& name);
+  void init_attr_tile(const std::string& name, bool var_size, bool nullable);
 
   /** Initializes the result tile for the given dimension name and index. */
-  void init_coord_tile(const std::string& name, unsigned dim_idx);
+  void init_coord_tile(
+      const std::string& name, bool var_size, unsigned dim_idx);
 
   /** Returns the tile pair for the input attribute or dimension. */
   TileTuple* tile_tuple(const std::string& name);

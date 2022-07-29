@@ -1616,7 +1616,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile<char*>(field_name, cells, type, array_schema, &result_tile);
 }
@@ -1649,7 +1649,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile<T>(field_name, cells, type, array_schema, &result_tile);
 }
@@ -1726,7 +1726,7 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
@@ -2296,7 +2296,7 @@ void test_apply_dense<char*>(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile_dense<char*>(
       field_name, cells, type, array_schema, &result_tile);
@@ -2335,7 +2335,7 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile_dense<T>(field_name, cells, type, array_schema, &result_tile);
 }
@@ -2413,7 +2413,7 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
@@ -2972,7 +2972,7 @@ void test_apply_sparse<char*>(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile_sparse<char*>(
       field_name, cells, type, array_schema, &result_tile);
@@ -3011,7 +3011,7 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile_sparse<T>(
       field_name, cells, type, array_schema, &result_tile);
@@ -3716,7 +3716,7 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, false, false);
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
 
@@ -4015,7 +4015,7 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, true, false);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &tile_tuple->var_tile();
@@ -4299,7 +4299,7 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, false, true);
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
 
@@ -4392,7 +4392,7 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 

@@ -1307,7 +1307,7 @@ Status Reader::copy_partitioned_var_cells(
       const auto tile_tuple = cs.tile_->tile_tuple(*name);
       Tile* const tile = &tile_tuple->fixed_tile();
       tile_var = &tile_tuple->var_tile();
-      tile_validity = &tile_tuple->validity_tile();
+      tile_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
       // Get the internal buffer to the offset values.
       tile_offsets = (uint64_t*)tile->data();

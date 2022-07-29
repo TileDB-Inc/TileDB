@@ -598,20 +598,21 @@ Status ReaderBase::read_tiles(
         const uint64_t dim_num = array_schema->dim_num();
         for (uint64_t d = 0; d < dim_num; ++d) {
           if (array_schema->dimension_ptr(d)->name() == name) {
-            tile->init_coord_tile(name, d);
+            tile->init_coord_tile(name, var_size, d);
             break;
           }
         }
         tile_tuple = tile->tile_tuple(name);
       } else {
-        tile->init_attr_tile(name);
+        tile->init_attr_tile(name, var_size, nullable);
         tile_tuple = tile->tile_tuple(name);
       }
 
       assert(tile_tuple != nullptr);
       Tile* const t = &tile_tuple->fixed_tile();
-      Tile* const t_var = &tile_tuple->var_tile();
-      Tile* const t_validity = &tile_tuple->validity_tile();
+      Tile* const t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+      Tile* const t_validity =
+          nullable ? &tile_tuple->validity_tile() : nullptr;
       if (!var_size) {
         if (nullable)
           RETURN_NOT_OK(
@@ -857,8 +858,8 @@ ReaderBase::load_tile_chunk_data(
     }
 
     const auto t = &tile_tuple->fixed_tile();
-    const auto t_var = &tile_tuple->var_tile();
-    const auto t_validity = &tile_tuple->validity_tile();
+    const auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+    const auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
     auto&& [st, tile_size] = load_chunk_data(t, tile_chunk_data);
     RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
@@ -915,8 +916,8 @@ Status ReaderBase::unfilter_tile_chunk_range(
     }
 
     auto t = &tile_tuple->fixed_tile();
-    auto t_var = &tile_tuple->var_tile();
-    auto t_validity = &tile_tuple->validity_tile();
+    auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+    auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
     // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
     // 't_var' for var-sized tiles.
@@ -1003,22 +1004,21 @@ Status ReaderBase::post_process_unfiltered_tile(
       return Status::Ok();
     }
 
-    auto t = &tile_tuple->fixed_tile();
-    auto t_var = &tile_tuple->var_tile();
-    auto t_validity = &tile_tuple->validity_tile();
+    auto& t = tile_tuple->fixed_tile();
+    t.filtered_buffer().clear();
 
-    t->filtered_buffer().clear();
-
-    zip_tile_coordinates(name, t);
+    zip_tile_coordinates(name, &t);
 
     if (var_size) {
-      t_var->filtered_buffer().clear();
-      zip_tile_coordinates(name, t_var);
+      auto& t_var = tile_tuple->var_tile();
+      t_var.filtered_buffer().clear();
+      zip_tile_coordinates(name, &t_var);
     }
 
     if (nullable) {
-      t_validity->filtered_buffer().clear();
-      zip_tile_coordinates(name, t_validity);
+      auto& t_validity = tile_tuple->validity_tile();
+      t_validity.filtered_buffer().clear();
+      zip_tile_coordinates(name, &t_validity);
     }
   }
 
@@ -1409,9 +1409,10 @@ Status ReaderBase::unfilter_tiles(
             return Status::Ok();
           }
 
-          auto& t = tile_tuple->fixed_tile();
-          auto& t_var = tile_tuple->var_tile();
-          auto& t_validity = tile_tuple->validity_tile();
+          Tile* const t = &tile_tuple->fixed_tile();
+          Tile* const t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+          Tile* const t_validity =
+              nullable ? &tile_tuple->validity_tile() : nullptr;
 
           if (disable_cache_ == false) {
             logger_->info("using cache");
@@ -1425,14 +1426,14 @@ Status ReaderBase::unfilter_tiles(
                 fragment->file_offset(name, tile_idx, &tile_attr_offset));
 
             // Cache 't'.
-            if (t.filtered() && !disable_cache_) {
+            if (t->filtered() && !disable_cache_) {
               // Store the filtered buffer in the tile cache.
               RETURN_NOT_OK(storage_manager_->write_to_cache(
-                  *tile_attr_uri, tile_attr_offset, t.filtered_buffer()));
+                  *tile_attr_uri, tile_attr_offset, t->filtered_buffer()));
             }
 
             // Cache 't_var'.
-            if (var_size && t_var.filtered() && !disable_cache_) {
+            if (var_size && t_var->filtered() && !disable_cache_) {
               auto&& [status, tile_attr_var_uri] = fragment->var_uri(name);
               RETURN_NOT_OK(status);
 
@@ -1444,11 +1445,11 @@ Status ReaderBase::unfilter_tiles(
               RETURN_NOT_OK(storage_manager_->write_to_cache(
                   *tile_attr_var_uri,
                   tile_attr_var_offset,
-                  t_var.filtered_buffer()));
+                  t_var->filtered_buffer()));
             }
 
             // Cache 't_validity'.
-            if (nullable && t_validity.filtered() && !disable_cache_) {
+            if (nullable && t_validity->filtered() && !disable_cache_) {
               auto&& [status, tile_attr_validity_uri] =
                   fragment->validity_uri(name);
               RETURN_NOT_OK(status);
@@ -1461,7 +1462,7 @@ Status ReaderBase::unfilter_tiles(
               RETURN_NOT_OK(storage_manager_->write_to_cache(
                   *tile_attr_validity_uri,
                   tile_attr_validity_offset,
-                  t_validity.filtered_buffer()));
+                  t_validity->filtered_buffer()));
             }
           }
 
@@ -1469,15 +1470,14 @@ Status ReaderBase::unfilter_tiles(
           // 't_var' for var-sized tiles.
           if (!var_size) {
             if (!nullable)
-              RETURN_NOT_OK(unfilter_tile(name, &t));
+              RETURN_NOT_OK(unfilter_tile(name, t));
             else
-              RETURN_NOT_OK(unfilter_tile_nullable(name, &t, &t_validity));
+              RETURN_NOT_OK(unfilter_tile_nullable(name, t, t_validity));
           } else {
             if (!nullable)
-              RETURN_NOT_OK(unfilter_tile(name, &t, &t_var));
+              RETURN_NOT_OK(unfilter_tile(name, t, t_var));
             else
-              RETURN_NOT_OK(
-                  unfilter_tile_nullable(name, &t, &t_var, &t_validity));
+              RETURN_NOT_OK(unfilter_tile_nullable(name, t, t_var, t_validity));
           }
         }
 
