@@ -38,6 +38,7 @@
 #include "experimental/tiledb/common/dag/data_block/data_block.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#include "experimental/tiledb/common/dag/state_machine/item_mover.h"
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
 
 using namespace tiledb::common;

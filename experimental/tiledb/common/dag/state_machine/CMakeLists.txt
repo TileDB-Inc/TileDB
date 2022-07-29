@@ -75,49 +75,87 @@ message(STATUS "+++++++ done unit_fsm")
 
 endif()
 
+#
+# Object library for other units to depend upon
+#
+#add_library(policies OBJECT ${POLICIES_SOURCES})
+#target_link_libraries(policies PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_policies EXCLUDE_FROM_ALL)
+#target_link_libraries(compile_policies PRIVATE policies)
+target_sources(compile_policies PRIVATE test/compile_policies_main.cc)
+
+if (TILEDB_TESTS)
+    add_executable(unit_policies EXCLUDE_FROM_ALL)
+#    target_link_libraries(unit_policies PUBLIC policies)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_policies PUBLIC Catch2::Catch2)
+#    target_link_libraries(unit_policies PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_policies PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_policies PUBLIC
+            test/main.cc
+            test/unit_policies.cc
+            )
+
+    add_test(
+            NAME "unit_policies"
+            COMMAND $<TARGET_FILE:unit_policies> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+message(STATUS "+++++++ done unit_policies")
 
 
-list(APPEND FSM3_SOURCES
-    fsm.cc
-)
-gather_sources(${FSM3_SOURCES})
+endif()
 
 
 #
 # Object library for other units to depend upon
 #
-add_library(fsm3 OBJECT ${FSM3_SOURCES})
-target_link_libraries(fsm3 PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+#add_library(item_mover OBJECT ${ITEM_MOVER_SOURCES})
+#target_link_libraries(item_mover PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
 #
-# add_executable(compile_fsm3 EXCLUDE_FROM_ALL)
-# target_link_libraries(compile_fsm3 PRIVATE fsm3)
-# target_sources(compile_fsm3 PRIVATE test/compile_fsm3_main.cc)
+add_executable(compile_item_mover EXCLUDE_FROM_ALL)
+target_link_libraries(compile_item_mover PRIVATE item_mover)
+target_sources(compile_item_mover PRIVATE test/compile_item_mover_main.cc)
 
 if (TILEDB_TESTS)
-    add_executable(unit_fsm3 EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_fsm3 PUBLIC fsm3)
+    add_executable(unit_item_mover EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_item_mover PUBLIC item_mover)
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_fsm3 PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_fsm3 PUBLIC $<TARGET_OBJECTS:thread_pool>)
+    target_link_libraries(unit_item_mover PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_item_mover PUBLIC $<TARGET_OBJECTS:thread_pool>)
 
     # Sources for code elsewhere required for tests
-    target_sources(unit_fsm3 PUBLIC ${DEPENDENT_SOURCES})
+    target_sources(unit_item_mover PUBLIC ${DEPENDENT_SOURCES})
 
     # Sources for tests
-    target_sources(unit_fsm3 PUBLIC
+    target_sources(unit_item_mover PUBLIC
             test/main.cc
-            test/unit_fsm3.cc
+            test/unit_item_mover.cc
             )
 
     add_test(
-            NAME "unit_fsm3"
-            COMMAND $<TARGET_FILE:unit_fsm3> --durations=yes
+            NAME "unit_item_mover"
+            COMMAND $<TARGET_FILE:unit_item_mover> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+
+message(STATUS "+++++++ done unit_item_mover")
+
+
 endif()
+
 
 
 #

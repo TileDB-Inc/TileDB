@@ -33,6 +33,7 @@
 #define TILEDB_DAG_TYPES_HP
 
 #include "../fsm.h"
+#include "../item_mover.h"
 #include "../policies.h"
 
 namespace tiledb::common {

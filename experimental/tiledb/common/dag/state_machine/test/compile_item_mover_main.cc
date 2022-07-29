@@ -30,17 +30,15 @@
 #include "../policies.h"
 #include "./types.h"
 
-using namespace tiledb::common;
-
 int main() {
-  (void)sizeof(NullStateMachine3<size_t>);
-  (void)sizeof(NullStateMachine2<size_t>);
-  (void)sizeof(DebugStateMachine3<size_t>);
-  (void)sizeof(DebugStateMachine2<size_t>);
-  (void)sizeof(ManualStateMachine3<size_t>);
-  (void)sizeof(ManualStateMachine2<size_t>);
-  (void)sizeof(AsyncStateMachine3<size_t>);
-  (void)sizeof(AsyncStateMachine2<size_t>);
-  (void)sizeof(UnifiedAsyncStateMachine3<size_t>);
-  (void)sizeof(UnifiedAsyncStateMachine2<size_t>);
+  (void)sizeof(NullMover3<size_t>);
+  (void)sizeof(NullMover2<size_t>);
+  (void)sizeof(DebugMover3<size_t>);
+  (void)sizeof(DebugMover2<size_t>);
+  (void)sizeof(ManualMover3<size_t>);
+  (void)sizeof(ManualMover2<size_t>);
+  (void)sizeof(AsyncMover3<size_t>);
+  (void)sizeof(AsyncMover2<size_t>);
+  (void)sizeof(UnifiedAsyncMover3<size_t>);
+  (void)sizeof(UnifiedAsyncMover2<size_t>);
 }

@@ -51,7 +51,6 @@ namespace tiledb::common {
  * intermediary. Since it is useful to consider the states as binary numbers, we
  * start our numbering of states with state 0 as enum 0.
  */
-namespace {
 
 enum class three_stage {
   st_000,
@@ -84,6 +83,7 @@ constexpr unsigned short to_index(PortState x) {
 template <class PortState>
 constexpr unsigned short num_states = to_index(PortState::done) + 1;
 
+#if 0
 /**
  * Number of stages represented by the state machine.
  */
@@ -95,6 +95,7 @@ constexpr const unsigned short num_stages<three_stage> = 3;
 
 template <>
 constexpr const unsigned short num_stages<two_stage> = 2;
+#endif
 
 /**
  * Strings for each enum member, for debugging.
@@ -237,6 +238,7 @@ static auto inline str(PortAction ac) {
   return action_strings[static_cast<int>(ac)];
 }
 
+namespace {
 /**
  * Tables for state transitions, exit events, and entry events.  Indexed by
  * state and event.
@@ -361,9 +363,7 @@ constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_e
   /* done   */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
 };
 // clang-format on
-
 }  // namespace
-
 /**
  * Class template representing states of a bound source and sink node (in the
  * two stage case) or the states of a bound source, sink node, and intermediary
@@ -385,6 +385,9 @@ constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_e
  *
  * @note There is a fair amount of debugging code inserted into the class at the
  * moment.
+ *
+ * @todo Clean up the debugging code as we gain more confidence/experiene with
+ * the state machine (et al).
  *
  * @todo Use an aspect class (as another template argument) to effect callbacks
  * at each interesting point in the state machine (such as debugging

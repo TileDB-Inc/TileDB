@@ -1,5 +1,5 @@
 /**
- * @file experimental/tiledb/common/thread_pool/test/unit_fsm3.h
+ * @file compile_policies.cc
  *
  * @section LICENSE
  *
@@ -24,11 +24,21 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
  */
 
-#ifndef TILEDB_UNIT_FSM3_H
-#define TILEDB_UNIT_FSM3_H
-#include <catch.hpp>
-#endif  // TILEDB_UNIT_FSM3_H
+#include "../fsm.h"
+#include "../policies.h"
+#include "./types.h"
+
+int main() {
+  (void)sizeof(NullPolicy3<size_t>);
+  (void)sizeof(NullPolicy2<size_t>);
+  (void)sizeof(DebugPolicy3<size_t>);
+  (void)sizeof(DebugPolicy2<size_t>);
+  (void)sizeof(ManualPolicy3<size_t>);
+  (void)sizeof(ManualPolicy2<size_t>);
+  (void)sizeof(AsyncPolicy3<size_t>);
+  (void)sizeof(AsyncPolicy2<size_t>);
+  (void)sizeof(UnifiedAsyncPolicy3<size_t>);
+  (void)sizeof(UnifiedAsyncPolicy2<size_t>);
+}

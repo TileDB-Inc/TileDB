@@ -1,5 +1,5 @@
 /**
- * @file compile_fsm_main.cc
+ * @file unit_fsm.cc
  *
  * @section LICENSE
  *
@@ -24,23 +24,16 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * Tests the ports finite state machine.
+ *
+ * The different tests currently include an extensive amount of debugging code.
+ * There is also a significant amount of cut-and-paste repeated code.
+ *
+ * @todo Remove the debugging code.
+ * @todo Refactor tests to remove duplicate code.
+ *
  */
-
-#include "../fsm.h"
-#include "../policies.h"
-#include "./types.h"
-
-using namespace tiledb::common;
-
-int main() {
-  (void)sizeof(NullStateMachine3<size_t>);
-  (void)sizeof(NullStateMachine2<size_t>);
-  (void)sizeof(DebugStateMachine3<size_t>);
-  (void)sizeof(DebugStateMachine2<size_t>);
-  (void)sizeof(ManualStateMachine3<size_t>);
-  (void)sizeof(ManualStateMachine2<size_t>);
-  (void)sizeof(AsyncStateMachine3<size_t>);
-  (void)sizeof(AsyncStateMachine2<size_t>);
-  (void)sizeof(UnifiedAsyncStateMachine3<size_t>);
-  (void)sizeof(UnifiedAsyncStateMachine2<size_t>);
-}
+#include "unit_policies.h"

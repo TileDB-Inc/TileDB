@@ -39,7 +39,7 @@
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
 
-using namespace tiledb::common;
+namespace tiledb::common {
 
 /**
  * Some constants for testing / debugging transferring data from source to
@@ -74,7 +74,21 @@ const int EMPTY_SINK = 7654321;
  * the CHECK will print its value in the diagnostic message.
  */
 template <class State>
-[[maybe_unused]] std::string is_source_empty(State st);
+[[maybe_unused]] static std::string is_source_empty(State st);
+
+template <class State>
+[[maybe_unused]] static std::string is_source_full(State st);
+
+template <class State>
+[[maybe_unused]] static std::string is_sink_empty(State st);
+
+template <class State>
+[[maybe_unused]] static std::string is_sink_full(State st);
+
+template <class State>
+[[maybe_unused]] static std::string is_source_post_move(State st);
+template <class State>
+[[maybe_unused]] static std::string is_sink_post_move(State st);
 
 template <>
 [[maybe_unused]] std::string is_source_empty(decltype(three_stage::st_000) st) {
@@ -86,8 +100,8 @@ template <>
   return state;
 }
 
-[[maybe_unused]] static std::string is_source_full(
-    decltype(three_stage::st_000) st) {
+template <>
+[[maybe_unused]] std::string is_source_full(decltype(three_stage::st_000) st) {
   std::string state = str(st);
   if (state == "st_100" || state == "st_101" || state == "st_110" ||
       state == "st_111") {
@@ -96,7 +110,8 @@ template <>
   return state;
 }
 
-[[maybe_unused]] static std::string is_source_post_move(
+template <>
+[[maybe_unused]] std::string is_source_post_move(
     decltype(three_stage::st_000) st) {
   std::string state = str(st);
   if (state != "st_111") {
@@ -125,7 +140,8 @@ template <>
   return state;
 }
 
-[[maybe_unused]] static std::string is_sink_post_move(
+template <>
+[[maybe_unused]] std::string is_sink_post_move(
     decltype(three_stage::st_000) st) {
   std::string state = str(st);
   if (state != "st_000") {
@@ -147,8 +163,8 @@ template <>
   return state;
 }
 
-[[maybe_unused]] static std::string is_source_full(
-    decltype(two_stage::st_00) st) {
+template <>
+[[maybe_unused]] std::string is_source_full(decltype(two_stage::st_00) st) {
   std::string state = str(st);
   if (state == "st_10" || state == "st_11") {
     return {};
@@ -156,7 +172,8 @@ template <>
   return state;
 }
 
-[[maybe_unused]] static std::string is_source_post_move(
+template <>
+[[maybe_unused]] std::string is_source_post_move(
     decltype(two_stage::st_00) st) {
   std::string state = str(st);
   if (state != "st_11") {
@@ -165,8 +182,8 @@ template <>
   return state;
 }
 
-[[maybe_unused]] static std::string is_sink_empty(
-    decltype(two_stage::st_00) st) {
+template <>
+[[maybe_unused]] std::string is_sink_empty(decltype(two_stage::st_00) st) {
   std::string state = str(st);
   if (state == "st_00" || state == "st_10") {
     return {};
@@ -174,8 +191,8 @@ template <>
   return state;
 }
 
-[[maybe_unused]] static std::string is_sink_full(
-    decltype(two_stage::st_00) st) {
+template <>
+[[maybe_unused]] std::string is_sink_full(decltype(two_stage::st_00) st) {
   std::string state = str(st);
   if (state == "st_01" || state == "st_11") {
     return {};
@@ -183,13 +200,13 @@ template <>
   return state;
 }
 
-[[maybe_unused]] static std::string is_sink_post_move(
-    decltype(two_stage::st_00) st) {
+template <>
+[[maybe_unused]] std::string is_sink_post_move(decltype(two_stage::st_00) st) {
   std::string state = str(st);
   if (state != "st_00") {
     return {};
   }
   return state;
 }
-
+}  // namespace tiledb::common
 #endif  // TILEDB_DAG_TEST_HELPERS_H
