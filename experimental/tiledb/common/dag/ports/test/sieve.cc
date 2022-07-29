@@ -261,34 +261,34 @@ template <class... Ts>
 using the = std::vector<std::tuple<Ts...>>;
 
 template <class Block>
-using AsyncStateMachine2 = AsyncStateMachine<PortState<2>, Block>;
+using AsyncMover2 = ItemMover<AsyncPolicy, two_stage, Block>;
 
-template <template <class> class AsyncStateMachine, class bool_t>
+template <template <class> class AsyncMover, class bool_t>
 using GraphType =
-    the<ProducerNode<size_t, AsyncStateMachine<size_t>>,
+    the<ProducerNode<AsyncMover<size_t>, size_t>,
 
         FunctionNode<
+            AsyncMover<size_t>,
             size_t,
-            part_info<bool_t>,
-            AsyncStateMachine<size_t>,
-            AsyncStateMachine<part_info<bool_t>>>,
+            AsyncMover<part_info<bool_t>>,
+            part_info<bool_t>>,
 
         FunctionNode<
+            AsyncMover<part_info<bool_t>>,
             part_info<bool_t>,
-            part_info<bool_t>,
-            AsyncStateMachine<part_info<bool_t>>,
-            AsyncStateMachine<part_info<bool_t>>>,
+            AsyncMover<part_info<bool_t>>,
+            part_info<bool_t>>,
 
         FunctionNode<
+            AsyncMover<part_info<bool_t>>,
             part_info<bool_t>,
-            prime_info,
-            AsyncStateMachine<part_info<bool_t>>,
-            AsyncStateMachine<prime_info>>,
+            AsyncMover<prime_info>,
+            prime_info>,
 
-        ConsumerNode<prime_info, AsyncStateMachine<prime_info>>>;  //    thingo;
+        ConsumerNode<AsyncMover<prime_info>, prime_info>>;  //    thingo;
 
 template <class bool_t>
-GraphType<AsyncStateMachine2, bool_t> graph;
+GraphType<AsyncMover2, bool_t> graph;
 
 /**
  * Main sieve function
