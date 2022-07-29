@@ -35,7 +35,7 @@ Value nodes have the following on disk format:
 | :--- | :--- | :--- |
 | Node type | `uint8_t` | 1 for value node |
 | Op | `uint8_t` | LT(0), LE(1), GT(2), GE(3), EQ(4), NE(5) |
-| Field name size | `uint64_t` | Size of the field name |
+| Field name size | `uint32_t` | Size of the field name |
 | Field name value | `uint8_t[]` | Field name value |
 | Value size | `uint64_t` | Value size |
 | Value content | `uint8_t[]` | Value |
