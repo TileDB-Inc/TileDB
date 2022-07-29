@@ -67,19 +67,7 @@ class Serializer {
    */
   template <class T>
   void write(const T& v) {
-    if (!ptr_) {
-      size_ += sizeof(T);
-      return;
-    }
-
-    if (sizeof(T) > size_) {
-      throw std::logic_error(
-          "Writting serialized data past end of allocated size.");
-    }
-
-    memcpy(ptr_, &v, sizeof(T));
-    ptr_ += sizeof(T);
-    size_ -= sizeof(T);
+    write(&v, sizeof(v));
   }
 
   /**
@@ -89,6 +77,7 @@ class Serializer {
    * @param size size of the data.
    */
   void write(const void* data, storage_size_t size) {
+    // Size compute mode.
     if (!ptr_) {
       size_ += size;
       return;
@@ -96,7 +85,7 @@ class Serializer {
 
     if (size > size_) {
       throw std::logic_error(
-          "Writting serialized data past end of allocated size.");
+          "Writing serialized data past end of allocated size.");
     }
 
     memcpy(ptr_, data, size);

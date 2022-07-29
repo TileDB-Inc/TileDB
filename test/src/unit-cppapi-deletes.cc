@@ -336,7 +336,7 @@ bool DeletesFx::is_array(const std::string& array_name) {
 
 TEST_CASE_METHOD(
     DeletesFx,
-    "CPP API: Test writting delete condition",
+    "CPP API: Test writing delete condition",
     "[cppapi][deletes][write-check]") {
   remove_sparse_array();
 
@@ -365,7 +365,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DeletesFx,
-    "CPP API: Test writting invalid delete condition",
+    "CPP API: Test writing invalid delete condition",
     "[cppapi][deletes][write-check][invalid]") {
   remove_sparse_array();
   create_sparse_array();
