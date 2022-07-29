@@ -55,6 +55,8 @@ inline const std::string& query_type_str(QueryType query_type) {
       return constants::query_type_read_str;
     case QueryType::WRITE:
       return constants::query_type_write_str;
+    case QueryType::WRITE_EXCLUSIVE:
+      return constants::query_type_write_exclusive_str;
     case QueryType::DELETE:
       return constants::query_type_delete_str;
     default:
@@ -69,6 +71,8 @@ inline Status query_type_enum(
     *query_type = QueryType::READ;
   else if (query_type_str == constants::query_type_write_str)
     *query_type = QueryType::WRITE;
+  else if (query_type_str == constants::query_type_write_exclusive_str)
+    *query_type = QueryType::WRITE_EXCLUSIVE;
   else if (query_type_str == constants::query_type_delete_str)
     *query_type = QueryType::DELETE;
   else {

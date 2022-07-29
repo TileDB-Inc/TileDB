@@ -814,7 +814,7 @@ class Subarray {
       ThreadPool* compute_tp);
 
   /** Retrieves the query type of the subarray's array. */
-  Status get_query_type(QueryType* type) const;
+  QueryType get_query_type() const;
 
   /**
    * Returns the range coordinates (for all dimensions) given a flattened

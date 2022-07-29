@@ -64,16 +64,18 @@ class WhiteboxConsistencyController : public ConsistencyController {
   WhiteboxConsistencyController() = default;
   ~WhiteboxConsistencyController() = default;
 
-  entry_type register_array(const URI uri, Array& array) {
-    return ConsistencyController::register_array(uri, array);
+  entry_type register_array(
+      const URI uri, Array& array, const QueryType& query_type) {
+    return ConsistencyController::register_array(uri, array, query_type);
   }
 
   void deregister_array(entry_type entry) {
     ConsistencyController::deregister_array(entry);
   }
 
-  ConsistencySentry make_sentry(const URI uri, Array& array) {
-    return ConsistencyController::make_sentry(uri, array);
+  ConsistencySentry make_sentry(
+      const URI uri, Array& array, const QueryType& query_type) {
+    return ConsistencyController::make_sentry(uri, array, query_type);
   }
 
   bool is_open(const URI uri) {
@@ -84,7 +86,7 @@ class WhiteboxConsistencyController : public ConsistencyController {
     return ConsistencyController::array_registry_.size();
   }
 
-  tdb_unique_ptr<Array> open_array(const URI uri, StorageManager* sm) {
+  tdb_unique_ptr<Array> create_array(const URI uri, StorageManager* sm) {
     // Create Domain
     std::vector<uint64_t> dim_dom = {0, 1};
     uint64_t tile_extent = 1;
@@ -116,8 +118,15 @@ class WhiteboxConsistencyController : public ConsistencyController {
     }
     tdb_unique_ptr<Array> array(new Array{uri, sm, *this});
 
+    return array;
+  }
+
+  tdb_unique_ptr<Array> open_array(const URI uri, StorageManager* sm) {
+    // Create array
+    tdb_unique_ptr<Array> array{create_array(uri, sm)};
+
     // Open the array
-    st =
+    Status st =
         array->open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0);
     if (!st.ok()) {
       throw std::runtime_error(

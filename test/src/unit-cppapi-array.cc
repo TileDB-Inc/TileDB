@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "helpers.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
@@ -678,6 +679,98 @@ TEST_CASE(
   CHECK(tiledb::test::num_fragments(array_name) == 4);
   Array::vacuum(ctx, array_name);
   CHECK(tiledb::test::num_fragments(array_name) == 1);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Deletion of sequential fragment writes",
+    "[cppapi][fragments][delete]") {
+  /* Note: An array must be open, in WRITE_EXCLUSIVE mode to delete_fragments */
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string array_name = "cpp_unit_array";
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "d", {{0, 11}}, 12));
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  std::vector<int> data = {0, 1};
+  uint64_t timestamp_start = 0;
+  uint64_t timestamp_end = UINT64_MAX;
+  tiledb::Array::create(array_name, schema);
+
+  SECTION("WRITE") {
+    auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
+    auto query = tiledb::Query(ctx, array, TILEDB_WRITE);
+    query.set_data_buffer("a", data).set_subarray({0, 1}).submit();
+    query.set_data_buffer("a", data).set_subarray({2, 3}).submit();
+    query.set_data_buffer("a", data).set_subarray({4, 5}).submit();
+    query.finalize();
+
+    // Delete fragments
+    CHECK(tiledb::test::num_fragments(array_name) == 3);
+    REQUIRE_THROWS_WITH(
+        array.delete_fragments(array_name, timestamp_start, timestamp_end),
+        Catch::Contains("Query type must be WRITE_EXCLUSIVE"));
+    CHECK(tiledb::test::num_fragments(array_name) == 3);
+    array.close();
+  }
+
+  SECTION("WRITE_EXCLUSIVE") {
+    auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE_EXCLUSIVE);
+    auto query = tiledb::Query(ctx, array, TILEDB_WRITE_EXCLUSIVE);
+    query.set_data_buffer("a", data).set_subarray({0, 1}).submit();
+    query.set_data_buffer("a", data).set_subarray({2, 3}).submit();
+    query.set_data_buffer("a", data).set_subarray({4, 5}).submit();
+    query.finalize();
+    CHECK(tiledb::test::num_fragments(array_name) == 3);
+
+    SECTION("no consolidation") {
+      // Delete fragments
+      array.delete_fragments(array_name, timestamp_start, timestamp_end);
+      CHECK(tiledb::test::num_fragments(array_name) == 0);
+      array.close();
+    }
+
+    SECTION("consolidation") {
+      array.close();
+
+      // Consolidate and reopen array
+      Array::consolidate(ctx, array_name);
+      CHECK(tiledb::test::num_fragments(array_name) == 4);
+      array.open(TILEDB_WRITE_EXCLUSIVE);
+      CHECK(tiledb::test::num_fragments(array_name) == 4);
+
+      // Check commits directory after consolidation
+      int vac_file_count = 0;
+      std::string commit_dir = tiledb::test::get_commit_dir(array_name);
+      std::vector<std::string> commits{vfs.ls(commit_dir)};
+      for (auto commit : commits) {
+        if (tiledb::sm::utils::parse::ends_with(
+                commit, tiledb::sm::constants::vacuum_file_suffix))
+          vac_file_count++;
+      }
+      CHECK(commits.size() == 5);
+      CHECK(vac_file_count == 1);
+
+      // Delete fragments
+      array.delete_fragments(array_name, timestamp_start, timestamp_end);
+      CHECK(tiledb::test::num_fragments(array_name) == 0);
+
+      // Check commits directory after deletion
+      commits = vfs.ls(commit_dir);
+      CHECK(commits.size() == 1);
+      CHECK(!tiledb::sm::utils::parse::ends_with(
+          commits[0], tiledb::sm::constants::vacuum_file_suffix));
+    }
+  }
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);

@@ -353,9 +353,9 @@ Status Subarray::add_range(
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
 
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == QueryType::WRITE) {
+  QueryType array_query_type{array_->get_query_type()};
+  if (array_query_type == QueryType::WRITE ||
+      array_query_type == QueryType::WRITE_EXCLUSIVE) {
     if (!array_->array_schema_latest().dense()) {
       return LOG_STATUS(Status_SubarrayError(
           "Adding a subarray range to a write query is not "
@@ -369,7 +369,8 @@ Status Subarray::add_range(
   }
 
   if (array_query_type != QueryType::READ &&
-      array_query_type != QueryType::WRITE) {
+      array_query_type != QueryType::WRITE &&
+      array_query_type != QueryType::WRITE_EXCLUSIVE) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Unsupported query type"));
   }
@@ -408,9 +409,9 @@ Status Subarray::add_point_ranges(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
   }
 
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == QueryType::WRITE) {
+  QueryType array_query_type{array_->get_query_type()};
+  if (array_query_type == QueryType::WRITE ||
+      array_query_type == QueryType::WRITE_EXCLUSIVE) {
     if (!array_->array_schema_latest().dense()) {
       return LOG_STATUS(Status_SubarrayError(
           "Adding a subarray range to a write query is not "
@@ -424,7 +425,8 @@ Status Subarray::add_point_ranges(
   }
 
   if (array_query_type != QueryType::READ &&
-      array_query_type != QueryType::WRITE) {
+      array_query_type != QueryType::WRITE &&
+      array_query_type != QueryType::WRITE_EXCLUSIVE) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Unsupported query type"));
   }
@@ -500,8 +502,7 @@ Status Subarray::add_range_var(
         Status_SubarrayError("Cannot add range; Range must be variable-sized"));
   }
 
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  QueryType array_query_type{array_->get_query_type()};
   if (array_query_type != QueryType::READ) {
     return LOG_STATUS(Status_SubarrayError(
         "Cannot add range; Function applicable only to reads"));
@@ -609,8 +610,7 @@ void Subarray::get_label_range_var_size(
 
 Status Subarray::get_range_var(
     unsigned dim_idx, uint64_t range_idx, void* start, void* end) const {
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  QueryType array_query_type{array_->get_query_type()};
   if (array_query_type != QueryType::READ) {
     return LOG_STATUS(Status_SubarrayError(
         "Getting a var range for an unsupported query type"));
@@ -647,9 +647,9 @@ Status Subarray::get_range(
     const void** start,
     const void** end,
     const void** stride) const {
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == QueryType::WRITE) {
+  QueryType array_query_type{array_->get_query_type()};
+  if (array_query_type == QueryType::WRITE ||
+      array_query_type == QueryType::WRITE_EXCLUSIVE) {
     if (!array_->array_schema_latest().dense())
       return LOG_STATUS(
           Status_SubarrayError("Getting a range from a write query is not "
@@ -862,12 +862,12 @@ bool Subarray::empty() const {
   return range_num() == 0;
 }
 
-Status Subarray::get_query_type(QueryType* type) const {
+QueryType Subarray::get_query_type() const {
   if (array_ == nullptr)
-    return logger_->status(Status_SubarrayError(
+    throw StatusException(Status_SubarrayError(
         "Cannot get query type from array; Invalid array"));
 
-  return array_->get_query_type(type);
+  return array_->get_query_type();
 }
 
 Status Subarray::get_range(
@@ -953,9 +953,9 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
     return LOG_STATUS(Status_SubarrayError(msg.str()));
   }
 
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == QueryType::WRITE &&
+  QueryType array_query_type{array_->get_query_type()};
+  if ((array_query_type == QueryType::WRITE ||
+       array_query_type == QueryType::WRITE_EXCLUSIVE) &&
       !array_->array_schema_latest().dense()) {
     return LOG_STATUS(
         Status_SubarrayError("Getting the number of ranges from a write query "
@@ -963,7 +963,8 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
   }
 
   if (array_query_type != QueryType::READ &&
-      array_query_type != QueryType::WRITE) {
+      array_query_type != QueryType::WRITE &&
+      array_query_type != QueryType::WRITE_EXCLUSIVE) {
     return LOG_STATUS(
         Status_SubarrayError("Getting the number of ranges for an unsupported "
                              "query type"));
@@ -1059,8 +1060,7 @@ void Subarray::set_layout(Layout layout) {
 Status Subarray::set_config(const Config& config) {
   config_ = config;
 
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  QueryType array_query_type{array_->get_query_type()};
 
   if (array_query_type == QueryType::READ) {
     bool found = false;
@@ -1170,11 +1170,9 @@ Status Subarray::get_est_result_size_internal(
 
 Status Subarray::get_est_result_size(
     const char* name, uint64_t* size, StorageManager* storage_manager) {
-  QueryType array_query_type;
   // Note: various items below expect array open, get_query_type() providing
   // that audit.
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-
+  QueryType array_query_type{array_->get_query_type()};
   if (array_query_type != QueryType::READ) {
     return LOG_STATUS(Status_SubarrayError(
         "Cannot get estimated result size; unsupported query type"));

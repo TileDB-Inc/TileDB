@@ -32,6 +32,7 @@
 
 #include <iostream>
 
+#include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array/consistency.h"
 
 using namespace tiledb::common;
@@ -57,17 +58,33 @@ ConsistencySentry::~ConsistencySentry() {
 }
 
 ConsistencySentry ConsistencyController::make_sentry(
-    const URI uri, Array& array) {
-  return ConsistencySentry{*this, register_array(uri, array)};
+    const URI uri, Array& array, const QueryType& query_type) {
+  return ConsistencySentry{*this, register_array(uri, array, query_type)};
 }
 
 ConsistencyController::entry_type ConsistencyController::register_array(
-    const URI uri, Array& array) {
+    const URI uri, Array& array, const QueryType& query_type) {
   if (uri.empty()) {
     throw std::runtime_error(
         "[ConsistencyController::register_array] URI cannot be empty.");
   }
+
   std::lock_guard<std::mutex> lock(mtx_);
+  if (this->is_open(uri)) {
+    if (query_type == QueryType::WRITE_EXCLUSIVE) {
+      throw std::runtime_error(
+          "[ConsistencyController::register_array] Array already open; must "
+          "close array before opening for exclusive write.");
+    } else {
+      auto iter = array_registry_.find(uri);
+      if (iter->second.get_query_type() == QueryType::WRITE_EXCLUSIVE) {
+        throw std::runtime_error(
+            "[ConsistencyController::register_array] Must close array opened "
+            "for exclusive write before opening an array at the same address.");
+      }
+    }
+  }
+
   return array_registry_.insert({uri, array});
 }
 

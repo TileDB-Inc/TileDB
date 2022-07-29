@@ -1211,11 +1211,15 @@ Status query_to_capnp(
 
   if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
       query_type != QueryType::DELETE) {
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
+      query_type != QueryType::WRITE_EXCLUSIVE) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; Unsupported query type."));
   }
 
-  if (layout == Layout::GLOBAL_ORDER && query_type == QueryType::WRITE) {
+  if (layout == Layout::GLOBAL_ORDER &&
+      (query_type == QueryType::WRITE ||
+       query_type == QueryType::WRITE_EXCLUSIVE)) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; global order "
                                   "serialization not supported for writes."));
@@ -1378,6 +1382,8 @@ Status query_from_capnp(
 
   if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
       query_type != QueryType::DELETE) {
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
+      query_type != QueryType::WRITE_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; Unsupported query type."));
   }
@@ -1956,6 +1962,7 @@ Status query_serialize(
     // Determine whether we should be serializing the buffer data.
     const bool serialize_buffers =
         (clientside && query->type() == QueryType::WRITE) ||
+        (clientside && query->type() == QueryType::WRITE_EXCLUSIVE) ||
         (!clientside && query->type() == QueryType::READ);
 
     switch (serialize_type) {
