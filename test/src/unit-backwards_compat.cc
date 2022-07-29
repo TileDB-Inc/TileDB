@@ -133,9 +133,8 @@ TEST_CASE(
   Context ctx;
   std::string array_uri(arrays_dir + "/dense_array_v1_3_0");
   REQUIRE_THROWS_WITH(
-    Array(ctx, array_uri, TILEDB_READ),
-    Catch::Contains("Failed to load maximum tile chunk size")
-  );
+      Array(ctx, array_uri, TILEDB_READ),
+      Catch::Contains("Failed to load maximum tile chunk size"));
 }
 
 template <typename T>

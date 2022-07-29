@@ -195,10 +195,10 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
             "[FilterCreate::deserialize] Failed to load FloatScaling metadata");
       } else {
         return make_shared<FloatScalingFilter>(
-                    HERE(),
-                    filter_config.byte_width,
-                    filter_config.scale,
-                    filter_config.offset);
+            HERE(),
+            filter_config.byte_width,
+            filter_config.scale,
+            filter_config.offset);
       }
     };
     default:
