@@ -501,10 +501,12 @@ class ItemMover
  * Null action policy.  Verifies compilation of CRTP.  All functions except
  * registration are empty.
  */
-template <class ItemMover>
-class NullPolicy : public ItemMover {
-  using mover_type = ItemMover;
-  using lock_type = typename mover_type::lock_type;
+template <class Mover, class PortState>
+class NullPolicy
+    : public PortFiniteStateMachine<NullPolicy<Mover, PortState>, PortState> {
+  using state_machine_type =
+      PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState>;
+  using lock_type = typename state_machine_type::lock_type;
 
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
   }
@@ -516,6 +518,10 @@ class NullPolicy : public ItemMover {
   }
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
   }
+  inline void on_source_wait(lock_type&, std::atomic<int>&) {
+  }
+  inline void on_sink_wait(lock_type&, std::atomic<int>&) {
+  }
 };
 
 /**
@@ -524,15 +530,14 @@ class NullPolicy : public ItemMover {
  * `on_source_move` and `on_sink_move`, both of which simply invoke
  * `std::move` on the cached items.
  */
-template <class ItemMover>
-class ManualPolicy : public ItemMover {
-  using mover_type = ItemMover;
-  using state_machine_type = typename mover_type::state_machine_type;
-  using lock_type = typename mover_type::lock_type;
+template <class Mover, class PortState>
+class ManualPolicy
+    : public PortFiniteStateMachine<ManualPolicy<Mover, PortState>, PortState> {
+  using state_machine_type =
+      PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState>;
+  using lock_type = typename state_machine_type::lock_type;
 
-  state_machine_type state_machine = mover_type::get_state_machine();
-
-  using PortState = typename mover_type::port_state_type;
+  using mover_type = Mover;
 
  public:
   ManualPolicy() {
@@ -543,7 +548,7 @@ class ManualPolicy : public ItemMover {
     }
   }
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
-    if (mover_type::debug_enabled())
+    if (this->debug_enabled())
       std::cout << "    "
                 << "Action return" << std::endl;
   }
@@ -555,23 +560,23 @@ class ManualPolicy : public ItemMover {
     mover_type::move(*this, event);
   }
   inline void on_notify_source(lock_type&, std::atomic<int>&) {
-    if (state_machine->debug_enabled())
+    if (this->debug_enabled())
       std::cout << "    "
                 << "Action notify source" << std::endl;
   }
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
-    if (state_machine->debug_enabled())
+    if (this->debug_enabled())
       std::cout << "    "
                 << "Action notify source" << std::endl;
   }
   inline void on_source_wait(lock_type&, std::atomic<int>&) {
-    if (state_machine->debug_enabled())
+    if (this->debug_enabled())
       std::cout << "    "
                 << "Action source wait" << std::endl;
   }
 
   inline void on_sink_wait(lock_type&, std::atomic<int>&) {
-    if (state_machine->debug_enabled())
+    if (this->debug_enabled())
       std::cout << "    "
                 << "Action sink wait" << std::endl;
   }
@@ -772,6 +777,11 @@ template <class Mover, class PortState>
 class UnifiedAsyncPolicy : public PortFiniteStateMachine<
                                UnifiedAsyncPolicy<Mover, PortState>,
                                PortState> {
+  using mover_type = Mover;
+  using state_machine_type =
+      PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState>;
+  using lock_type = typename state_machine_type::lock_type;
+
   std::condition_variable cv_;
 
  public:
@@ -783,13 +793,11 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
   /**
    * Function for handling `ac_return` action.
    */
-  template <class lock_type>
   inline void on_ac_return(lock_type&, std::atomic<int>&){};
 
   /**
    * Single  notify function for source and sink.
    */
-  template <class lock_type>
   inline void do_notify(lock_type&, std::atomic<int>&) {
     cv_.notify_one();
   }
@@ -798,7 +806,6 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
    * Function for handling `notify_source` action, invoking a `do_notify`
    * function.
    */
-  template <class lock_type>
   inline void on_notify_source(lock_type& lock, std::atomic<int>& event) {
     if (this->debug_enabled())
       std::cout << event++ << "  "
@@ -810,7 +817,6 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
    * Function for handling `notify_sink` action, invoking a `do_notify`
    * function.
    */
-  template <class lock_type>
   inline void on_notify_sink(lock_type& lock, std::atomic<int>& event) {
     if (this->debug_enabled())
       std::cout << event++ << "  "
@@ -821,7 +827,6 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
   /**
    * Function for handling `source_move` action.
    */
-  template <class lock_type>
   inline void on_source_move(lock_type&, std::atomic<int>& event) {
     static_cast<Mover*>(this)->on_move(event);
   }
@@ -830,7 +835,6 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
    * Function for handling `sink_move` action.  It simply calls the source
    * move action.
    */
-  template <class lock_type>
   inline void on_sink_move(lock_type& lock, std::atomic<int>& event) {
     on_source_move(lock, event);
   }
@@ -838,7 +842,6 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
   /**
    * Function for handling `source_move` action.
    */
-  template <class lock_type>
   inline void on_source_wait(lock_type& lock, std::atomic<int>&) {
     cv_.wait(lock);
   }
@@ -847,7 +850,6 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
    * Function for handling `sink_wait` action.  It simply calls the source
    * wait action.
    */
-  template <class lock_type>
   inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
     on_source_wait(lock, event);
   }

@@ -92,9 +92,9 @@ target_link_libraries(fsm3 PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 #
 # Test-compile of object library ensures link-completeness
 #
-add_executable(compile_fsm3 EXCLUDE_FROM_ALL)
-target_link_libraries(compile_fsm3 PRIVATE fsm3)
-target_sources(compile_fsm3 PRIVATE test/compile_fsm3_main.cc)
+# add_executable(compile_fsm3 EXCLUDE_FROM_ALL)
+# target_link_libraries(compile_fsm3 PRIVATE fsm3)
+# target_sources(compile_fsm3 PRIVATE test/compile_fsm3_main.cc)
 
 if (TILEDB_TESTS)
     add_executable(unit_fsm3 EXCLUDE_FROM_ALL)

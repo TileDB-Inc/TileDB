@@ -49,19 +49,15 @@ namespace tiledb::common {
  *
  * Edges implement a demand-pull pattern for synchronization.
  */
-template <class Block, class StateMachine>
-class Edge : public Source<Block, StateMachine>,
-             public Sink<Block, StateMachine> {
-  using SourceBase = Source<Block, StateMachine>;
-  using SinkBase = Source<Block, StateMachine>;
-
-  static_assert(StateMachine::port_state::N_ >= 2);
+template <class Mover, class Block>
+class Edge : public Source<Mover, Block>, public Sink<Mover, Block> {
+  using SourceBase = Source<Mover, Block>;
+  using SinkBase = Source<Mover, Block>;
 
   std::optional<Block> item_{};
-  std::array<std::optional<Block>, StateMachine::port_state::N_ - 2> items_{};
 
  public:
-  Edge(Source<Block, StateMachine>& from, Sink<Block, StateMachine>& to) {
+  Edge(Source<Mover, Block>& from, Sink<Mover, Block>& to) {
     attach(*this, to);
     attach(from, *this);
   }

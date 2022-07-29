@@ -52,38 +52,14 @@
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
+#include "types.h"
 
 using namespace tiledb::common;
-
-using two_port_type = two_stage;
-
-using DebugMover3 = ItemMover<DebugPolicy, three_stage, size_t>;
-using DebugMover2 = ItemMover<DebugPolicy, two_stage, size_t>;
-using AsyncMover3 = ItemMover<AsyncPolicy, three_stage, size_t>;
-using AsyncMover2 = ItemMover<AsyncPolicy, two_stage, size_t>;
-using UnifiedAsyncMover3 = ItemMover<UnifiedAsyncPolicy, three_stage, size_t>;
-using UnifiedAsyncMover2 = ItemMover<UnifiedAsyncPolicy, two_stage, size_t>;
-
-using DebugPolicy3 = DebugPolicy<DebugMover3, three_stage>;
-using DebugPolicy2 = DebugPolicy<DebugMover2, two_stage>;
-using AsyncPolicy3 = AsyncPolicy<AsyncMover3, three_stage>;
-using AsyncPolicy2 = AsyncPolicy<AsyncMover2, two_stage>;
-using UnifiedAsyncPolicy3 = UnifiedAsyncPolicy<UnifiedAsyncMover3, three_stage>;
-using UnifiedAsyncPolicy2 = UnifiedAsyncPolicy<UnifiedAsyncMover2, two_stage>;
-
-using DebugStateMachine3 = PortFiniteStateMachine<DebugPolicy3, three_stage>;
-using DebugStateMachine2 = PortFiniteStateMachine<DebugPolicy2, two_stage>;
-using AsyncStateMachine3 = PortFiniteStateMachine<AsyncPolicy3, three_stage>;
-using AsyncStateMachine2 = PortFiniteStateMachine<AsyncPolicy2, two_stage>;
-using UnifiedAsyncStateMachine3 =
-    PortFiniteStateMachine<UnifiedAsyncPolicy3, three_stage>;
-using UnifiedAsyncStateMachine2 =
-    PortFiniteStateMachine<UnifiedAsyncPolicy2, two_stage>;
 
 TEST_CASE("Port FSM: Construct PortPolicy", "[fsm]") {
   [[maybe_unused]] auto a = DebugStateMachine2{};
 
-  CHECK(a.state() == two_port_type::st_00);
+  CHECK(a.state() == two_stage::st_00);
 }
 
 TEST_CASE("Port FSM: Copy, Move, etc", "[fsm]") {
@@ -113,11 +89,11 @@ TEST_CASE("Port FSM: Start up", "[fsm]") {
 
   if (debug)
     a.enable_debug();
-  CHECK(a.state() == two_port_type::st_00);
+  CHECK(a.state() == two_stage::st_00);
 
   SECTION("start source") {
     a.do_fill(debug ? "start source" : "");
-    CHECK(a.state() == two_port_type::st_10);
+    CHECK(a.state() == two_stage::st_10);
   }
 
   SECTION("start sink") {
@@ -136,7 +112,7 @@ TEST_CASE("Port FSM: Start up", "[fsm]") {
  */
 TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
   [[maybe_unused]] auto a = DebugStateMachine2{};
-  CHECK(a.state() == two_port_type::st_00);
+  CHECK(a.state() == two_stage::st_00);
 
   a.do_fill();
   CHECK(str(a.state()) == "st_10");
@@ -164,7 +140,7 @@ TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
   CHECK(str(a.state()) == "st_01");
 
   a.do_drain();
-  CHECK(a.state() == two_port_type::st_00);
+  CHECK(a.state() == two_stage::st_00);
 
   a.do_fill();
   CHECK(str(a.state()) == "st_10");
@@ -178,7 +154,7 @@ TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
   CHECK(str(a.state()) == "st_01");
 
   a.do_drain();
-  CHECK(a.state() == two_port_type::st_00);
+  CHECK(a.state() == two_stage::st_00);
 
   a.do_fill();
   CHECK(str(a.state()) == "st_10");
@@ -192,7 +168,7 @@ TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
   CHECK(str(a.state()) == "st_01");
 
   a.do_drain();
-  CHECK(a.state() == two_port_type::st_00);
+  CHECK(a.state() == two_stage::st_00);
 }
 
 /**
@@ -207,7 +183,7 @@ TEST_CASE("AsynchronousPolicy: Asynchronous source and manual sink", "[fsm]") {
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
 
-  a.set_state(two_port_type::st_00);
+  a.set_state(two_stage::st_00);
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.do_fill(debug ? "async source (fill)" : "");
@@ -245,7 +221,7 @@ TEST_CASE("AsynchronousPolicy: Manual source and asynchronous sink", "[fsm]") {
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
 
-  a.set_state(two_port_type::st_00);
+  a.set_state(two_stage::st_00);
 
   auto fut_b = std::async(std::launch::async, [&]() {
     a.do_pull(debug ? "async sink (pull)" : "");
@@ -283,7 +259,7 @@ TEST_CASE(
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
 
-  a.set_state(two_port_type::st_00);
+  a.set_state(two_stage::st_00);
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.do_fill(debug ? "manual async source (fill)" : "");
@@ -315,7 +291,7 @@ TEST_CASE(
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
 
-  a.set_state(two_port_type::st_00);
+  a.set_state(two_stage::st_00);
 
   auto fut_b = std::async(std::launch::async, [&]() {
     a.do_pull(debug ? "manual async sink (pull)" : "");
@@ -351,7 +327,7 @@ TEST_CASE(
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
 
-  a.set_state(two_port_type::st_00);
+  a.set_state(two_stage::st_00);
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
@@ -441,7 +417,7 @@ TEST_CASE(
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
 
-  a.set_state(two_port_type::st_00);
+  a.set_state(two_stage::st_00);
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
@@ -525,7 +501,7 @@ TEST_CASE(
   if (debug)
     a.enable_debug();
 
-  a.set_state(two_port_type::st_00);
+  a.set_state(two_stage::st_00);
 
   size_t rounds = 37;
   if (debug)
@@ -606,7 +582,7 @@ TEST_CASE(
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
 
-  a.set_state(two_port_type::st_00);
+  a.set_state(two_stage::st_00);
 
   size_t rounds = 37;
   if (debug)
@@ -685,7 +661,7 @@ TEST_CASE(
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = AsyncMover2{source_item, sink_item};
 
-  a.set_state(two_port_type::st_00);
+  a.set_state(two_stage::st_00);
 
   size_t rounds = 37;
   if (debug)
@@ -769,7 +745,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
     a.enable_debug();
   }
 
-  a.set_state(two_port_type::st_00);
+  a.set_state(two_stage::st_00);
 
   size_t rounds = 3379;
   if (debug)
@@ -829,8 +805,8 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       }
 
       // It doesn't seem we actually need these guards here?
-      // while (a.state() == two_port_type::st_11 ||
-      //             a.state() == two_port_type::st_01)
+      // while (a.state() == two_stage::st_11 ||
+      //             a.state() == two_stage::st_01)
       //        ;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
@@ -938,7 +914,7 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a = UnifiedAsyncMover2{source_item, sink_item};
 
-  a.set_state(two_port_type::st_00);
+  a.set_state(two_stage::st_00);
 
   size_t rounds = 3379;
   if (debug)
@@ -961,8 +937,8 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      // while (a.state() == two_port_type::st_10 ||
-      // a.state() == two_port_type::st_11)
+      // while (a.state() == two_stage::st_10 ||
+      // a.state() == two_stage::st_11)
       // ;
 
       CHECK(is_source_empty(a.state()) == "");
@@ -984,8 +960,8 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
         std::cout << "sink node iteration " << n << std::endl;
       }
 
-      // while (a.state() == two_port_type::st_11 ||
-      //             a.state() == two_port_type::st_01)
+      // while (a.state() == two_stage::st_11 ||
+      //             a.state() == two_stage::st_01)
       //        ;
 
       a.do_pull(debug ? "async sink node" : "");

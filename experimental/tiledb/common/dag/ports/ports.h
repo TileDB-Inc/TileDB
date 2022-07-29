@@ -61,18 +61,18 @@
 #include <mutex>
 #include <optional>
 
-//#include "fsm.h"
-//#include "policies.h"
+// #include "fsm.h"
+// #include "policies.h"
 
 #include "../utils/print_types.h"
 
 namespace tiledb::common {
 
 /* Forward declarations */
-template <class Block, class StateMachine>
+template <class Mover, class Block>
 class Source;
 
-template <class Block, class StateMachine>
+template <class Mover, class Block>
 class Sink;
 
 /**
@@ -80,9 +80,9 @@ class Sink;
  *
  * Source objects have two states: empty and full.
  */
-template <class Block, class StateMachine>
+template <class Mover, class Block>
 class Source {
-  friend class Sink<Block, StateMachine>;
+  friend class Sink<Mover, Block>;
 
  public:
   std::optional<Block> item_{};
@@ -90,13 +90,13 @@ class Source {
   /**
    * The correspondent Sink, if any
    */
-  Sink<Block, StateMachine>* correspondent_{nullptr};
+  Sink<Mover, Block>* correspondent_{nullptr};
 
   /**
    * The finite state machine controlling data transfer between Source and Sink.
    * Shared between Source and Sink.
    */
-  std::shared_ptr<StateMachine> state_machine_;
+  std::shared_ptr<Mover> item_mover_;
 
   Source() = default;
   Source(const Source& rhs) = delete;
@@ -118,7 +118,7 @@ class Source {
    *
    * @pre Called under lock
    */
-  bool is_attached_to(Sink<Block, StateMachine>* sink) const {
+  bool is_attached_to(Sink<Mover, Block>* sink) const {
     return correspondent_ != nullptr && correspondent_ == sink;
   }
 
@@ -138,7 +138,7 @@ class Source {
   }
 
  public:
-  StateMachine* get_state_machine() {
+  Mover* get_state_machine() {
     return (correspondent_->get_state_machine());
   }
 
@@ -148,7 +148,7 @@ class Source {
     }
     std::scoped_lock lock(correspondent_->mutex_);
     item_ = value;
-    // correspondent_->state_machine_->do_fill();
+    // correspondent_->item_mover_->do_fill();
 
     return true;
   }
@@ -168,11 +168,11 @@ class Source {
  * A data flow sink, used by both edges and nodes.
  *
  * Sink objects have two states: empty and full.  Their functionality is
- * determined by the states (and policies) of the `StateMachine`.
+ * determined by the states (and policies) of the `Mover`.
  */
-template <class Block, class StateMachine>
+template <class Mover, class Block>
 class Sink {
-  friend class Source<Block, StateMachine>;
+  friend class Source<Mover, Block>;
 
   /**
    * @inv If an item is present, `try_receive` will succeed.
@@ -182,13 +182,13 @@ class Sink {
   /**
    * The correspondent Source, if any
    */
-  Source<Block, StateMachine>* correspondent_{nullptr};
+  Source<Mover, Block>* correspondent_{nullptr};
 
   /**
    * The finite state machine controlling data transfer between Source and Sink.
    * Shared between Source and Sink.
    */
-  std::shared_ptr<StateMachine> state_machine_;
+  std::shared_ptr<Mover> item_mover_;
 
  public:
   Sink() = default;
@@ -198,8 +198,8 @@ class Sink {
   Sink& operator=(const Sink& rhs) = delete;
   Sink& operator=(Sink&& rhs) = delete;
 
-  StateMachine* get_state_machine() {
-    return state_machine_.get();
+  Mover* get_state_machine() {
+    return item_mover_.get();
   }
 
  private:
@@ -227,7 +227,7 @@ class Sink {
    *
    * @pre Called under lock
    */
-  bool is_attached_to(Source<Block, StateMachine>* source) const {
+  bool is_attached_to(Source<Mover, Block>* source) const {
     return correspondent_ != nullptr && correspondent_ == source;
   }
 
@@ -236,16 +236,16 @@ class Sink {
    *
    * @pre Called under lock
    */
-  void attach(Source<Block, StateMachine>& predecessor) {
+  void attach(Source<Mover, Block>& predecessor) {
     if (is_attached() || predecessor.is_attached()) {
       throw std::runtime_error(
           "Sink attempting to attach to already attached correspondent");
     } else {
       correspondent_ = &predecessor;
       predecessor.correspondent_ = this;
-      state_machine_ = std::make_shared<StateMachine>();
-      correspondent_->state_machine_ = state_machine_;
-      state_machine_->register_items(correspondent_->item_, item_);
+      item_mover_ = std::make_shared<Mover>();
+      correspondent_->item_mover_ = item_mover_;
+      item_mover_->register_items(correspondent_->item_, item_);
     }
   }
 
@@ -260,9 +260,9 @@ class Sink {
       throw std::runtime_error(
           "Attempting to unattach unattached correspondent");
     } else {
-      state_machine_->deregister_items(correspondent_->item_, item_);
-      state_machine_.reset();
-      correspondent_->state_machine_.reset();
+      item_mover_->deregister_items(correspondent_->item_, item_);
+      item_mover_.reset();
+      correspondent_->item_mover_.reset();
       correspondent_->remove_attachment();
       correspondent_ = nullptr;
     }
@@ -283,7 +283,7 @@ class Sink {
   friend inline void attach(Source<Bl, St>& source, Sink<Bl, St>& sink);
 
   friend inline void attach(
-      Source<Block, StateMachine>& source, Sink<Block, StateMachine>& sink) {
+      Source<Mover, Block>& source, Sink<Mover, Block>& sink) {
     std::scoped_lock lock(sink.mutex_);
     if (source.is_attached() || sink.is_attached()) {
       throw std::logic_error("Improperly attached in attach");
@@ -307,7 +307,7 @@ class Sink {
   friend inline void unattach(Source<Bl, St>& source, Sink<Bl, St>& sink);
 
   friend inline void unattach(
-      Source<Block, StateMachine>& source, Sink<Block, StateMachine>& sink) {
+      Source<Mover, Block>& source, Sink<Mover, Block>& sink) {
     std::scoped_lock lock(sink.mutex_);
     if (source.is_attached() && sink.is_attached()) {
       sink.unattach();
@@ -340,16 +340,16 @@ class Sink {
  *
  * @pre Both source and sink are unattached
  */
-template <class Block, class StateMachine>
+template <class Mover, class Block>
 inline void attach(
-    Sink<Block, StateMachine>& sink, Source<Block, StateMachine>& source) {
+    Sink<Mover, Block>& sink, Source<Mover, Block>& source) {
   attach(source, sink);
 }
 
 #if 0
-template <class Block, class StateMachine>
+template <class Mover, class Block>
 inline void attach(
-    Source<Block, StateMachine>& source, Sink<Block, StateMachine>& sink) {
+    Source<Mover, Block>& source, Sink<Mover, Block>& sink) {
   sink.attach(source);
 }
 #endif
@@ -362,9 +362,9 @@ inline void attach(
  *
  * @pre `source` and `sink` are in a correspondent relationship.
  */
-template <class Block, class StateMachine>
+template <class Mover, class Block>
 inline void unattach(
-    Sink<Block, StateMachine>& sink, Source<Block, StateMachine>& source) {
+    Sink<Mover, Block>& sink, Source<Mover, Block>& source) {
   unattach(source, sink);
 }
 

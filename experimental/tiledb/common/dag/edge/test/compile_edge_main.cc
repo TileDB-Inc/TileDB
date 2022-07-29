@@ -29,15 +29,16 @@
 #include "../edge.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
+#include "experimental/tiledb/common/dag/state_machine/test/types.h"
 
 using namespace tiledb::common;
 int main() {
-  (void)sizeof(Edge<size_t, NullStateMachine<PortState<2>, size_t>>);
-  (void)sizeof(Edge<size_t, BaseStateMachine<PortState<2>, size_t>>);
-  (void)sizeof(Edge<size_t, NullStateMachine<PortState<2>, size_t>>);
-  (void)sizeof(Edge<size_t, ManualStateMachine<PortState<2>, size_t>>);
-  (void)sizeof(Edge<size_t, AsyncStateMachine<PortState<2>, size_t>>);
-  (void)sizeof(Edge<size_t, UnifiedAsyncStateMachine<PortState<2>, size_t>>);
-  (void)sizeof(Edge<size_t, DebugStateMachine<PortState<2>, size_t>>);
-  (void)sizeof(DebugStateMachineWithLock);
+  (void)sizeof(Edge<NullMover2, size_t>);
+  (void)sizeof(Edge<NullMover3, size_t>);
+  (void)sizeof(Edge<DebugMover2, size_t>);
+  (void)sizeof(Edge<DebugMover3, size_t>);
+  (void)sizeof(Edge<ManualMover2, size_t>);
+  (void)sizeof(Edge<ManualMover3, size_t>);
+  (void)sizeof(Edge<AsyncMover2, size_t>);
+  (void)sizeof(Edge<AsyncMover3, size_t>);
 }

@@ -79,10 +79,22 @@ constexpr unsigned short to_index(PortState x) {
 }
 
 /**
- * Number of states in the Port state machine
+ * Number of states in the Port state machine.
  */
 template <class PortState>
 constexpr unsigned short num_states = to_index(PortState::done) + 1;
+
+/**
+ * Number of stages represented by the state machine.
+ */
+template <class PortState>
+unsigned short num_stages = 0;
+
+template <>
+constexpr const unsigned short num_stages<three_stage> = 3;
+
+template <>
+constexpr const unsigned short num_stages<two_stage> = 2;
 
 /**
  * Strings for each enum member, for debugging.
