@@ -67,7 +67,7 @@ using AsyncMover2 = ItemMover<AsyncPolicy, two_stage, T>;
 
 template <class PortState>
 void simple_graph() {
-  // Define graph node types.  This is not ideal, but it seems difficult to
+  // Define graph node types.  This is not scalable, but it seems difficult to
   // replicate a partial type alias inside of a function (which we need to do
   // here since the Mover depends on the functions PortState template parameter.
   // Will have to see if this makes trouble in practice.  Otherwise we can
@@ -78,7 +78,8 @@ void simple_graph() {
   // class Source;
   //
   // In that case, we would write things as Source<Mover<Block>> rather than
-  // Source<Mover, Block>
+  // Source<Mover, Block> (or maybe Source<Mover<Block>, Block> if the compiler
+  // is not happy with Source<Mover<Block>>).
 
   using Producer = std::conditional_t<
       std::is_same_v<PortState, two_stage>,
@@ -367,5 +368,5 @@ void simple_graph() {
 TEST_CASE(
     "Concurrency: Test level of concurrency for simple graphs", "[ports]") {
   simple_graph<two_stage>();
-  //  simple_graph<3>();
+  //  simple_graph<three_stage>();
 }
