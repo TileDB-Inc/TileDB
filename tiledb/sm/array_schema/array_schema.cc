@@ -98,6 +98,8 @@ ArraySchema::ArraySchema(ArrayType array_type)
 ArraySchema::ArraySchema(
     URI uri,
     uint32_t version,
+    std::pair<uint64_t, uint64_t> timestamp_range,
+    std::string name,
     ArrayType array_type,
     bool allows_dups,
     shared_ptr<Domain> domain,
@@ -110,6 +112,8 @@ ArraySchema::ArraySchema(
     FilterPipeline coords_filters)
     : uri_(uri)
     , version_(version)
+    , timestamp_range_(timestamp_range)
+    , name_(name)
     , array_type_(array_type)
     , allows_dups_(allows_dups)
     , domain_(domain)
@@ -121,13 +125,6 @@ ArraySchema::ArraySchema(
     , cell_validity_filters_(cell_validity_filters)
     , coords_filters_(coords_filters) {
   Status st;
-  // Populate timestamp range
-  st = utils::parse::get_timestamp_range(uri_, &timestamp_range_);
-  if (!st.ok())
-    throw StatusException(st);
-
-  // Set schema name
-  name_ = uri_.last_path_part();
 
   // Create dimension map
   dim_map_.clear();
@@ -138,8 +135,10 @@ ArraySchema::ArraySchema(
 
   // Create attribute map
   if (!attributes_.empty()) {
-    auto attr = attributes_.back().get();
-    attribute_map_[attr->name()] = attr;
+    for (auto attr_iter : attributes_) {
+      auto attr = attr_iter.get();
+      attribute_map_[attr->name()] = attr;
+    }
   }
 
   st = check_double_delta_compressor(coords_filters_);
@@ -655,9 +654,11 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
   if (!st.ok())
     throw std::runtime_error(
         "[ArraySchema::deserialize] Failed to load array type.");
-  if (!array_type_is_valid(array_type_loaded).ok())
-    throw StatusException(Status_ArraySchemaError(
-        "[ArraySchema::deserialize] Invalid array type."));
+  try {
+    ensure_array_type_is_valid(array_type_loaded);
+  } catch (std::exception& e) {
+    std::throw_with_nested(std::runtime_error("[ArraySchema::deserialize] "));
+  }
   ArrayType array_type = ArrayType(array_type_loaded);
 
   // Load tile order
@@ -755,10 +756,21 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
     }
   }
 
+  // Populate timestamp range
+  std::pair<uint64_t, uint64_t> timestamp_range;
+  st = utils::parse::get_timestamp_range(uri, &timestamp_range);
+  if (!st.ok())
+    throw StatusException(st);
+
+  // Set schema name
+  std::string name = uri.last_path_part();
+
   // Success
   return ArraySchema(
       uri,
       version,
+      timestamp_range,
+      name,
       array_type,
       allows_dups,
       domain.value(),

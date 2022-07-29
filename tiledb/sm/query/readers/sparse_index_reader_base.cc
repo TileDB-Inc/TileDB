@@ -50,6 +50,13 @@
 namespace tiledb {
 namespace sm {
 
+class SparseIndexReaderBaseStatusException : public StatusException {
+ public:
+  explicit SparseIndexReaderBaseStatusException(const std::string& message)
+      : StatusException("SparseIndexReaderBase", message) {
+  }
+};
+
 /* ****************************** */
 /*          CONSTRUCTORS          */
 /* ****************************** */
@@ -74,7 +81,6 @@ SparseIndexReaderBase::SparseIndexReaderBase(
           subarray,
           layout,
           condition)
-    , initial_data_loaded_(false)
     , memory_budget_(0)
     , array_memory_tracker_(array->memory_tracker())
     , memory_used_for_coords_total_(0)
@@ -102,45 +108,55 @@ typename SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state() {
   return &read_state_;
 }
 
-Status SparseIndexReaderBase::init() {
+void SparseIndexReaderBase::init(bool skip_checks_serialization) {
   // Sanity checks
-  if (storage_manager_ == nullptr)
-    return logger_->status(Status_ReaderError(
+  if (storage_manager_ == nullptr) {
+    throw SparseIndexReaderBaseStatusException(
         "Cannot initialize sparse global order reader; Storage manager not "
-        "set"));
-  if (buffers_.empty())
-    return logger_->status(Status_ReaderError(
-        "Cannot initialize sparse global order reader; Buffers not set"));
+        "set");
+  }
+
+  if (!skip_checks_serialization && buffers_.empty()) {
+    throw SparseIndexReaderBaseStatusException(
+        "Cannot initialize sparse global order reader; Buffers not set");
+  }
 
   // Check subarray
-  RETURN_NOT_OK(check_subarray());
+  check_subarray();
 
   // Load offset configuration options.
   bool found = false;
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    return logger_->status(
-        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
-                           "format in configuration"));
+    throw SparseIndexReaderBaseStatusException(
+        "Cannot initialize reader; Unsupported offsets format in "
+        "configuration");
   }
   elements_mode_ = offsets_format_mode_ == "elements";
 
-  RETURN_NOT_OK(config_.get<bool>(
-      "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
+  if (!config_
+           .get<bool>(
+               "sm.var_offsets.extra_element", &offsets_extra_element_, &found)
+           .ok()) {
+    throw SparseIndexReaderBaseStatusException("Cannot get setting");
+  }
   assert(found);
-  RETURN_NOT_OK(config_.get<uint32_t>(
-      "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
+
+  if (!config_
+           .get<uint32_t>("sm.var_offsets.bitsize", &offsets_bitsize_, &found)
+           .ok()) {
+    throw SparseIndexReaderBaseStatusException("Cannot get setting");
+  }
+  assert(found);
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    return logger_->status(
-        Status_ReaderError("Cannot initialize reader; "
-                           "Unsupported offsets bitsize in configuration"));
+    throw SparseIndexReaderBaseStatusException(
+        "Cannot initialize reader; Unsupported offsets bitsize in "
+        "configuration");
   }
 
   // Check the validity buffer sizes.
-  RETURN_NOT_OK(check_validity_buffer_sizes());
-
-  return Status::Ok();
+  check_validity_buffer_sizes();
 }
 
 uint64_t SparseIndexReaderBase::cells_copied(
@@ -189,8 +205,8 @@ SparseIndexReaderBase::get_coord_tiles_size(
 
   // Compute query condition tile sizes.
   uint64_t tiles_size_qc = 0;
-  if (!qc_loaded_names_.empty()) {
-    for (auto& name : qc_loaded_names_) {
+  if (!qc_loaded_attr_names_.empty()) {
+    for (auto& name : qc_loaded_attr_names_) {
       // Calculate memory consumption for this tile.
       auto&& [st, tile_size] = get_attribute_tile_size(name, f, t);
       RETURN_NOT_OK_TUPLE(st, nullopt);
@@ -202,21 +218,43 @@ SparseIndexReaderBase::get_coord_tiles_size(
 }
 
 Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
-  if (initial_data_loaded_)
+  if (initial_data_loaded_) {
     return Status::Ok();
+  }
 
   auto timer_se = stats_->start_timer("load_initial_data");
   read_state_.done_adding_result_tiles_ = false;
 
+  // Load delete conditions.
+  auto&& [st, delete_conditions] =
+      storage_manager_->load_delete_conditions(*array_);
+  RETURN_CANCEL_OR_ERROR(st);
+  delete_conditions_ = std::move(*delete_conditions);
+  bool make_timestamped_conditions = need_timestamped_conditions();
+
+  if (make_timestamped_conditions) {
+    RETURN_CANCEL_OR_ERROR(generate_timestamped_conditions());
+  }
+
   // Make a list of dim/attr that will be loaded for query condition.
-  if (!initial_data_loaded_) {
-    if (!condition_.empty()) {
-      for (auto& name : condition_.field_names()) {
-        if (!array_schema_.is_dim(name) || !include_coords) {
-          qc_loaded_names_.emplace_back(name);
-        }
+  if (!condition_.empty()) {
+    for (auto& name : condition_.field_names()) {
+      if (!array_schema_.is_dim(name) || !include_coords) {
+        qc_loaded_attr_names_set_.insert(name);
       }
     }
+  }
+  for (auto delete_condition : delete_conditions_) {
+    for (auto& name : delete_condition.field_names()) {
+      if (!array_schema_.is_dim(name) || !include_coords) {
+        qc_loaded_attr_names_set_.insert(name);
+      }
+    }
+  }
+
+  qc_loaded_attr_names_.reserve(qc_loaded_attr_names_set_.size());
+  for (auto& name : qc_loaded_attr_names_set_) {
+    qc_loaded_attr_names_.emplace_back(name);
   }
 
   // For easy reference.
@@ -296,7 +334,8 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   const bool partial_consol_fragment_overlap =
       partial_consolidated_fragment_overlap();
   use_timestamps_ = partial_consol_fragment_overlap ||
-                    !array_schema_.allows_dups() || user_requested_timestamps_;
+                    !array_schema_.allows_dups() ||
+                    user_requested_timestamps_ || make_timestamped_conditions;
 
   // Add partial overlap condition, if required.
   if (partial_consol_fragment_overlap) {
@@ -351,12 +390,12 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::timestamps, result_tiles));
   }
 
-  if (!condition_.empty()) {
+  if (!qc_loaded_attr_names_.empty()) {
     // Read and unfilter tiles for query condition.
     RETURN_CANCEL_OR_ERROR(
-        read_attribute_tiles(qc_loaded_names_, result_tiles));
+        read_attribute_tiles(qc_loaded_attr_names_, result_tiles));
 
-    for (const auto& name : qc_loaded_names_) {
+    for (const auto& name : qc_loaded_attr_names_) {
       RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
     }
   }
@@ -525,7 +564,7 @@ Status SparseIndexReaderBase::apply_query_condition(
     std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("apply_query_condition");
 
-  if (!condition_.empty() || use_timestamps_) {
+  if (!condition_.empty() || !delete_conditions_.empty() || use_timestamps_) {
     // Process all tiles in parallel.
     auto status = parallel_for(
         storage_manager_->compute_tp(),
@@ -553,13 +592,48 @@ Status SparseIndexReaderBase::apply_query_condition(
             rt->count_cells();
           }
 
-          // Compute the result of the query condition for this tile.
-          if (!condition_.empty()) {
+          // Make sure we have a condition bitmap if needed.
+          if (!condition_.empty() || !delete_conditions_.empty()) {
             rt->ensure_bitmap_for_query_condition();
+          }
+
+          // Compute the result of the query condition for this tile
+          if (!condition_.empty()) {
             RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
                 *(frag_meta->array_schema().get()), *rt, rt->bitmap_with_qc()));
             if (array_schema_.allows_dups()) {
               rt->count_cells();
+            }
+          }
+
+          // Apply delete conditions.
+          if (!delete_conditions_.empty()) {
+            for (uint64_t i = 0; i < delete_conditions_.size(); i++) {
+              auto delete_timestamp =
+                  delete_conditions_[i].condition_timestamp();
+
+              // Check the delete condition timestamp is after the fragment
+              // start.
+              if (delete_timestamp >= frag_meta->timestamp_range().first) {
+                // Apply timestamped condition or regular condition.
+                if (!frag_meta->has_timestamps() ||
+                    delete_timestamp > frag_meta->timestamp_range().second) {
+                  RETURN_NOT_OK(delete_conditions_[i].apply_sparse<BitmapType>(
+                      *(frag_meta->array_schema().get()),
+                      *rt,
+                      rt->bitmap_with_qc()));
+                } else {
+                  RETURN_NOT_OK(timestamped_delete_conditions_[i]
+                                    .apply_sparse<BitmapType>(
+                                        *(frag_meta->array_schema().get()),
+                                        *rt,
+                                        rt->bitmap_with_qc()));
+                }
+
+                if (array_schema_.allows_dups()) {
+                  rt->count_cells();
+                }
+              }
             }
           }
 

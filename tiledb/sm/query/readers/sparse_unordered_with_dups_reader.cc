@@ -53,6 +53,14 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
+class SparseUnorderedWithDupsReaderStatusException : public StatusException {
+ public:
+  explicit SparseUnorderedWithDupsReaderStatusException(
+      const std::string& message)
+      : StatusException("SparseUnorderedWithDupsReader", message) {
+  }
+};
+
 /* ****************************** */
 /*          CONSTRUCTORS          */
 /* ****************************** */
@@ -67,7 +75,8 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition)
+    QueryCondition& condition,
+    bool skip_checks_serialization)
     : SparseIndexReaderBase(
           stats,
           logger->clone("SparseUnorderedWithDupsReader", ++logger_id_),
@@ -78,6 +87,13 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           subarray,
           layout,
           condition) {
+  SparseIndexReaderBase::init(skip_checks_serialization);
+
+  // Initialize memory budget variables.
+  if (!initialize_memory_budget().ok()) {
+    throw SparseUnorderedWithDupsReaderStatusException(
+        "Cannot initialize memory budget");
+  }
 }
 
 /* ****************************** */
@@ -101,16 +117,6 @@ SparseUnorderedWithDupsReader<BitmapType>::status_incomplete_reason() const {
   return result_tiles_.empty() ?
              QueryStatusDetailsReason::REASON_MEMORY_BUDGET :
              QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE;
-}
-
-template <class BitmapType>
-Status SparseUnorderedWithDupsReader<BitmapType>::init() {
-  RETURN_NOT_OK(SparseIndexReaderBase::init());
-
-  // Initialize memory budget variables.
-  RETURN_NOT_OK(initialize_memory_budget());
-
-  return Status::Ok();
 }
 
 template <class BitmapType>
@@ -973,8 +979,12 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_timestamp_data_tile(
     uint8_t* buffer) {
   // Get source buffers.
   const auto tile_tuple = rt->tile_tuple(constants::timestamps);
-  const auto t = &std::get<0>(*tile_tuple);
-  const auto src_buff = t->data_as<uint8_t>();
+  Tile* t = nullptr;
+  uint8_t* src_buff = nullptr;
+  if (tile_tuple != nullptr) {
+    t = &std::get<0>(*tile_tuple);
+    src_buff = t->data_as<uint8_t>();
+  }
   const uint64_t cell_size = constants::timestamp_size;
 
   if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
@@ -1007,8 +1017,12 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_timestamp_data_tile(
   auto timer_se = stats_->start_timer("copy_timestamps_tiles");
   // Get source buffers.
   const auto tile_tuple = rt->tile_tuple(constants::timestamps);
-  const auto t = &std::get<0>(*tile_tuple);
-  const auto src_buff = t->data_as<uint8_t>();
+  Tile* t = nullptr;
+  uint8_t* src_buff = nullptr;
+  if (tile_tuple != nullptr) {
+    t = &std::get<0>(*tile_tuple);
+    src_buff = t->data_as<uint8_t>();
+  }
   const uint64_t cell_size = constants::timestamp_size;
   auto frag_timestamp = fragment_timestamp(rt);
 
@@ -1250,8 +1264,9 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         // For dimensions, when we have a subarray, tiles are already all
         // loaded in memory.
         if ((subarray_.is_set() && array_schema_.is_dim(name)) ||
-            condition_.field_names().count(name) != 0 || is_timestamps)
+            qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps) {
           return Status::Ok();
+        }
 
         // Get the size for all tiles.
         uint64_t idx = 0;
@@ -1483,7 +1498,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         for (const auto& idx : *index_to_copy) {
           const auto& name_to_clear = names[idx];
           const auto is_dim_to_clear = array_schema_.is_dim(name_to_clear);
-          if (condition_.field_names().count(name_to_clear) == 0 &&
+          if (qc_loaded_attr_names_set_.count(name_to_clear) == 0 &&
               (!subarray_.is_set() || !is_dim_to_clear)) {
             clear_tiles(name_to_clear, result_tiles, new_result_tiles_size);
           }
@@ -1520,7 +1535,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         *query_buffer.validity_vector_.buffer_size() = total_cells;
 
       // Clear tiles from memory.
-      if (condition_.field_names().count(name) == 0 &&
+      if (qc_loaded_attr_names_set_.count(name) == 0 &&
           (!subarray_.is_set() || !is_dim) && name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);
@@ -1617,7 +1632,8 @@ template SparseUnorderedWithDupsReader<uint8_t>::SparseUnorderedWithDupsReader(
     std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,
-    QueryCondition&);
+    QueryCondition&,
+    bool);
 template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
     stats::Stats*,
     shared_ptr<Logger>,
@@ -1627,7 +1643,8 @@ template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
     std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,
-    QueryCondition&);
+    QueryCondition&,
+    bool);
 
 }  // namespace sm
 }  // namespace tiledb
