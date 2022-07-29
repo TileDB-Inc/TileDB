@@ -1124,7 +1124,7 @@ Status Query::disable_checks_consolidation() {
         "Cannot disable checks for consolidation after initialization"));
   }
 
-  if (type_ != QueryType::WRITE) {
+  if (type_ != QueryType::WRITE && type_ != QueryType::WRITE_EXCLUSIVE) {
     return logger_->status(Status_QueryError(
         "Cannot disable checks for consolidation; Applicable only to writes"));
   }
@@ -1155,7 +1155,7 @@ void Query::set_processed_conditions(
 }
 
 Status Query::check_buffer_names() {
-  if (type_ == QueryType::WRITE) {
+  if (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE) {
     // If the array is sparse, the coordinates must be provided
     if (!array_schema_->dense() && !coords_info_.has_coords_)
       return logger_->status(Status_WriterError(
@@ -1190,7 +1190,7 @@ Status Query::check_buffer_names() {
 }
 
 Status Query::create_strategy(bool skip_checks_serialization) {
-  if (type_ == QueryType::WRITE) {
+  if (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE) {
     if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           OrderedWriter,

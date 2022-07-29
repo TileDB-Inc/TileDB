@@ -229,19 +229,19 @@ Status Array::delete_fragments(
   // Check that query type is WRITE_EXCLUSIVE
   if (query_type_ != QueryType::WRITE_EXCLUSIVE) {
     return LOG_STATUS(Status_ArrayError(
-        "Cannot delete fragments; Query type must be WRITE_EXCLUSIVE"));
+        "[Array::delete_fragments] Query type must be WRITE_EXCLUSIVE"));
   }
 
   // Check that array is open
   if (!is_open() && !controller().is_open(uri)) {
     return LOG_STATUS(
-        Status_ArrayError("Cannot delete fragments; Array is closed"));
+        Status_ArrayError("[Array::delete_fragments] Array is closed"));
   }
 
   // Check that array is not in the process of opening or closing
   if (is_opening_or_closing_) {
     return LOG_STATUS(Status_ArrayError(
-        "Cannot delete fragments; "
+        "[Array::delete_fragments] "
         "May not perform simultaneous open or close operations."));
   }
 

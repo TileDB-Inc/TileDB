@@ -317,14 +317,6 @@ Status FragmentConsolidator::vacuum(
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
-  auto array_dir = ArrayDirectory(
-      vfs,
-      compute_tp,
-      URI(array_name),
-      0,
-      std::numeric_limits<uint64_t>::max(),
-      ArrayDirectoryMode::VACUUM_FRAGMENTS);
-
   auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
   const auto& fragment_uris_to_vacuum =
       filtered_fragment_uris.fragment_uris_to_vacuum();

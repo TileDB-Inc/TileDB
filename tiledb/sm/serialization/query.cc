@@ -1210,8 +1210,7 @@ Status query_to_capnp(
   auto query_type = query.type();
 
   if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
-      query_type != QueryType::DELETE) {
-  if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
+      query_type != QueryType::DELETE &&
       query_type != QueryType::WRITE_EXCLUSIVE) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; Unsupported query type."));
@@ -1381,8 +1380,7 @@ Status query_from_capnp(
   }
 
   if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
-      query_type != QueryType::DELETE) {
-  if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
+      query_type != QueryType::DELETE &&
       query_type != QueryType::WRITE_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; Unsupported query type."));
