@@ -57,12 +57,9 @@
 
 using namespace tiledb::common;
 
-template <size_t N23>
+template <class PortState>
 void simple_graph() {
-  using PortStateN = PortState<N23>;
-  using AsyncStateMachineN = AsyncStateMachine<PortStateN, size_t>;
-  //  using UnifiedAsyncStateMachineN =
-  //      UnifiedAsyncStateMachine<PortStateN, size_t>;
+  using Mover = ItemMover<AsyncPolicy, PortState, size_t>;
 
   bool debug = true;
 
@@ -78,7 +75,7 @@ void simple_graph() {
     std::atomic<size_t> i{0};
     size_t num_nodes{0};
 
-    ProducerNode<size_t, AsyncStateMachineN> q([&]() {
+    ProducerNode<Mover, size_t> q([&]() {
       timestamps[time_index++] = {
           time_index,
           "start",
@@ -101,7 +98,7 @@ void simple_graph() {
       return i++;
     });
 
-    ConsumerNode<size_t, AsyncStateMachineN> r([&](size_t) {
+    ConsumerNode<Mover, size_t> r([&](size_t) {
       timestamps[time_index++] = {
           time_index,
           "start",
@@ -122,30 +119,27 @@ void simple_graph() {
               .count()};
     });
 
-    FunctionNode<size_t, size_t, AsyncStateMachineN, AsyncStateMachineN> t(
-        [&](size_t) {
-          timestamps[time_index++] = {
-              time_index,
-              "start",
-              2,
-              std::chrono::duration_cast<std::chrono::milliseconds>(
-                  (time_t)std::chrono::high_resolution_clock::now() -
-                  start_time)
-                  .count()};
+    FunctionNode<Mover, size_t> t([&](size_t) {
+      timestamps[time_index++] = {
+          time_index,
+          "start",
+          2,
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              (time_t)std::chrono::high_resolution_clock::now() - start_time)
+              .count()};
 
-          std::this_thread::sleep_for(
-              std::chrono::milliseconds(static_cast<size_t>(fun_delay)));
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(static_cast<size_t>(fun_delay)));
 
-          timestamps[time_index++] = {
-              time_index,
-              "stop",
-              2,
-              std::chrono::duration_cast<std::chrono::milliseconds>(
-                  (time_t)std::chrono::high_resolution_clock::now() -
-                  start_time)
-                  .count()};
-          return 0UL;
-        });
+      timestamps[time_index++] = {
+          time_index,
+          "stop",
+          2,
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              (time_t)std::chrono::high_resolution_clock::now() - start_time)
+              .count()};
+      return 0UL;
+    });
 
     size_t rounds = 5;
 
@@ -335,6 +329,6 @@ void simple_graph() {
 
 TEST_CASE(
     "Concurrency: Test level of concurrency for simple graphs", "[ports]") {
-  simple_graph<2>();
+  simple_graph<two_stage>();
   //  simple_graph<3>();
 }
