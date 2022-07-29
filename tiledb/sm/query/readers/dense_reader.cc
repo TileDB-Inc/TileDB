@@ -1222,8 +1222,7 @@ Status DenseReader::copy_offset_tiles(
               static_cast<uint8_t*>(tile_tuples[fd]->validity_tile().data()) +
               start + src_cell;
 
-          i = 0;
-          for (; i < end - start; ++i) {
+          for (i = 0; i < end - start; ++i) {
             dest_validity_ptr[start + i] = src_buff_validity[i * stride];
           }
 
