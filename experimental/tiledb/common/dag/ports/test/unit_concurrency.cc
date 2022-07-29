@@ -53,13 +53,46 @@
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
+#include "experimental/tiledb/common/dag/utils/print_types.h"
 #include "pseudo_nodes.h"
 
 using namespace tiledb::common;
 
+template <class T>
+using AsyncMover3 = ItemMover<AsyncPolicy, three_stage, T>;
+
+template <class T>
+using AsyncMover2 = ItemMover<AsyncPolicy, two_stage, T>;
+
 template <class PortState>
 void simple_graph() {
-  using Mover = ItemMover<AsyncPolicy, PortState, size_t>;
+  // Define graph node types.  This is not ideal, but it seems difficult to
+  // replicate a partial type alias inside of a function (which we need to do
+  // here since the Mover depends on the functions PortState template parameter.
+  // Will have to see if this makes trouble in practice.  Otherwise we can
+  // refactor the Source/Sink/Node interface to just take normal parameters,
+  // e.g.,
+  //
+  // template <class Mover, class Block = Mover::block_type>
+  // class Source;
+  //
+  // In that case, we would write things as Source<Mover<Block>> rather than
+  // Source<Mover, Block>
+
+  using Producer = std::conditional_t<
+      std::is_same_v<PortState, two_stage>,
+      ProducerNode<AsyncMover2, size_t>,
+      ProducerNode<AsyncMover3, size_t>>;
+
+  using Consumer = std::conditional_t<
+      std::is_same_v<PortState, two_stage>,
+      ConsumerNode<AsyncMover2, size_t>,
+      ConsumerNode<AsyncMover3, size_t>>;
+
+  using Function = std::conditional_t<
+      std::is_same_v<PortState, two_stage>,
+      FunctionNode<AsyncMover2, size_t>,
+      FunctionNode<AsyncMover3, size_t>>;
 
   bool debug = true;
 
@@ -75,30 +108,33 @@ void simple_graph() {
     std::atomic<size_t> i{0};
     size_t num_nodes{0};
 
-    ProducerNode<Mover, size_t> q([&]() {
-      timestamps[time_index++] = {
-          time_index,
-          "start",
-          0,
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              (time_t)std::chrono::high_resolution_clock::now() - start_time)
-              .count()};
+    Producer /*Node<Mover, size_t> */
+        q([&]() {
+          timestamps[time_index++] = {
+              time_index,
+              "start",
+              0,
+              std::chrono::duration_cast<std::chrono::milliseconds>(
+                  (time_t)std::chrono::high_resolution_clock::now() -
+                  start_time)
+                  .count()};
 
-      std::this_thread::sleep_for(
-          std::chrono::milliseconds(static_cast<size_t>(source_delay)));
+          std::this_thread::sleep_for(
+              std::chrono::milliseconds(static_cast<size_t>(source_delay)));
 
-      timestamps[time_index++] = {
-          time_index,
-          "stop",
-          0,
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              (time_t)std::chrono::high_resolution_clock::now() - start_time)
-              .count()};
+          timestamps[time_index++] = {
+              time_index,
+              "stop",
+              0,
+              std::chrono::duration_cast<std::chrono::milliseconds>(
+                  (time_t)std::chrono::high_resolution_clock::now() -
+                  start_time)
+                  .count()};
 
-      return i++;
-    });
+          return i++;
+        });
 
-    ConsumerNode<Mover, size_t> r([&](size_t) {
+    Consumer /*Node<Mover, size_t>*/ r([&](size_t) {
       timestamps[time_index++] = {
           time_index,
           "start",
@@ -119,7 +155,7 @@ void simple_graph() {
               .count()};
     });
 
-    FunctionNode<Mover, size_t> t([&](size_t) {
+    Function /*Node<Mover, size_t>*/ t([&](size_t) {
       timestamps[time_index++] = {
           time_index,
           "start",

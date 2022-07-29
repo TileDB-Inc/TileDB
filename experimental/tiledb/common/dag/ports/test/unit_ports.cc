@@ -39,6 +39,16 @@
 using namespace tiledb::common;
 
 /**
+ * Verify various API approaches
+ */
+TEST_CASE("Ports: Verify various API approaches", "[ports]") {
+  Source<NullMover2, size_t> left_0;
+  Sink<NullMover2, size_t> right_0;
+  Source<AsyncMover2, size_t> left_1;
+  Sink<AsyncMover2, size_t> right_1;
+}
+
+/**
  * Test attaching of Source and Sink ports.
  */
 TEST_CASE("Ports: Test attach ports", "[ports]") {

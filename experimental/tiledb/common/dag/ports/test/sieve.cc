@@ -264,28 +264,16 @@ template <class Block>
 using AsyncMover2 = ItemMover<AsyncPolicy, two_stage, Block>;
 
 template <template <class> class AsyncMover, class bool_t>
-using GraphType =
-    the<ProducerNode<AsyncMover<size_t>, size_t>,
+using GraphType = the<
+    ProducerNode<AsyncMover, size_t>,
 
-        FunctionNode<
-            AsyncMover<size_t>,
-            size_t,
-            AsyncMover<part_info<bool_t>>,
-            part_info<bool_t>>,
+    FunctionNode<AsyncMover, size_t, AsyncMover, part_info<bool_t>>,
 
-        FunctionNode<
-            AsyncMover<part_info<bool_t>>,
-            part_info<bool_t>,
-            AsyncMover<part_info<bool_t>>,
-            part_info<bool_t>>,
+    FunctionNode<AsyncMover, part_info<bool_t>, AsyncMover, part_info<bool_t>>,
 
-        FunctionNode<
-            AsyncMover<part_info<bool_t>>,
-            part_info<bool_t>,
-            AsyncMover<prime_info>,
-            prime_info>,
+    FunctionNode<AsyncMover, part_info<bool_t>, AsyncMover, prime_info>,
 
-        ConsumerNode<AsyncMover<prime_info>, prime_info>>;  //    thingo;
+    ConsumerNode<AsyncMover, prime_info>>;  //    thingo;
 
 template <class bool_t>
 GraphType<AsyncMover2, bool_t> graph;

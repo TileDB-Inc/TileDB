@@ -37,40 +37,73 @@
 
 namespace tiledb::common {
 
-using NullMover3 = ItemMover<NullPolicy, three_stage, size_t>;
-using NullMover2 = ItemMover<NullPolicy, two_stage, size_t>;
-using DebugMover3 = ItemMover<DebugPolicy, three_stage, size_t>;
-using DebugMover2 = ItemMover<DebugPolicy, two_stage, size_t>;
-using ManualMover3 = ItemMover<ManualPolicy, three_stage, size_t>;
-using ManualMover2 = ItemMover<ManualPolicy, two_stage, size_t>;
-using AsyncMover3 = ItemMover<AsyncPolicy, three_stage, size_t>;
-using AsyncMover2 = ItemMover<AsyncPolicy, two_stage, size_t>;
-using UnifiedAsyncMover3 = ItemMover<UnifiedAsyncPolicy, three_stage, size_t>;
-using UnifiedAsyncMover2 = ItemMover<UnifiedAsyncPolicy, two_stage, size_t>;
+template <class T>
+using NullMover3 = ItemMover<NullPolicy, three_stage, T>;
+template <class T>
+using NullMover2 = ItemMover<NullPolicy, two_stage, T>;
+template <class T>
+using DebugMover3 = ItemMover<DebugPolicy, three_stage, T>;
+template <class T>
+using DebugMover2 = ItemMover<DebugPolicy, two_stage, T>;
+template <class T>
+using ManualMover3 = ItemMover<ManualPolicy, three_stage, T>;
+template <class T>
+using ManualMover2 = ItemMover<ManualPolicy, two_stage, T>;
+template <class T>
+using AsyncMover3 = ItemMover<AsyncPolicy, three_stage, T>;
+template <class T>
+using AsyncMover2 = ItemMover<AsyncPolicy, two_stage, T>;
+template <class T>
+using UnifiedAsyncMover3 = ItemMover<UnifiedAsyncPolicy, three_stage, T>;
+template <class T>
+using UnifiedAsyncMover2 = ItemMover<UnifiedAsyncPolicy, two_stage, T>;
 
-using NullPolicy3 = NullPolicy<NullMover3, three_stage>;
-using NullPolicy2 = NullPolicy<NullMover2, two_stage>;
-using DebugPolicy3 = DebugPolicy<DebugMover3, three_stage>;
-using DebugPolicy2 = DebugPolicy<DebugMover2, two_stage>;
-using ManualPolicy3 = ManualPolicy<ManualMover3, three_stage>;
-using ManualPolicy2 = ManualPolicy<ManualMover2, two_stage>;
-using AsyncPolicy3 = AsyncPolicy<AsyncMover3, three_stage>;
-using AsyncPolicy2 = AsyncPolicy<AsyncMover2, two_stage>;
-using UnifiedAsyncPolicy3 = UnifiedAsyncPolicy<UnifiedAsyncMover3, three_stage>;
-using UnifiedAsyncPolicy2 = UnifiedAsyncPolicy<UnifiedAsyncMover2, two_stage>;
+template <class T>
+using NullPolicy3 = NullPolicy<NullMover3<T>, three_stage>;
+template <class T>
+using NullPolicy2 = NullPolicy<NullMover2<T>, two_stage>;
+template <class T>
+using DebugPolicy3 = DebugPolicy<DebugMover3<T>, three_stage>;
+template <class T>
+using DebugPolicy2 = DebugPolicy<DebugMover2<T>, two_stage>;
+template <class T>
+using ManualPolicy3 = ManualPolicy<ManualMover3<T>, three_stage>;
+template <class T>
+using ManualPolicy2 = ManualPolicy<ManualMover2<T>, two_stage>;
+template <class T>
+using AsyncPolicy3 = AsyncPolicy<AsyncMover3<T>, three_stage>;
+template <class T>
+using AsyncPolicy2 = AsyncPolicy<AsyncMover2<T>, two_stage>;
+template <class T>
+using UnifiedAsyncPolicy3 =
+    UnifiedAsyncPolicy<UnifiedAsyncMover3<T>, three_stage>;
+template <class T>
+using UnifiedAsyncPolicy2 =
+    UnifiedAsyncPolicy<UnifiedAsyncMover2<T>, two_stage>;
 
-using NullStateMachine3 = PortFiniteStateMachine<NullPolicy3, three_stage>;
-using NullStateMachine2 = PortFiniteStateMachine<NullPolicy2, two_stage>;
-using DebugStateMachine3 = PortFiniteStateMachine<DebugPolicy3, three_stage>;
-using DebugStateMachine2 = PortFiniteStateMachine<DebugPolicy2, two_stage>;
-using ManualStateMachine3 = PortFiniteStateMachine<ManualPolicy3, three_stage>;
-using ManualStateMachine2 = PortFiniteStateMachine<ManualPolicy2, two_stage>;
-using AsyncStateMachine3 = PortFiniteStateMachine<AsyncPolicy3, three_stage>;
-using AsyncStateMachine2 = PortFiniteStateMachine<AsyncPolicy2, two_stage>;
+template <class T>
+using NullStateMachine3 = PortFiniteStateMachine<NullPolicy3<T>, three_stage>;
+template <class T>
+using NullStateMachine2 = PortFiniteStateMachine<NullPolicy2<T>, two_stage>;
+template <class T>
+using DebugStateMachine3 = PortFiniteStateMachine<DebugPolicy3<T>, three_stage>;
+template <class T>
+using DebugStateMachine2 = PortFiniteStateMachine<DebugPolicy2<T>, two_stage>;
+template <class T>
+using ManualStateMachine3 =
+    PortFiniteStateMachine<ManualPolicy3<T>, three_stage>;
+template <class T>
+using ManualStateMachine2 = PortFiniteStateMachine<ManualPolicy2<T>, two_stage>;
+template <class T>
+using AsyncStateMachine3 = PortFiniteStateMachine<AsyncPolicy3<T>, three_stage>;
+template <class T>
+using AsyncStateMachine2 = PortFiniteStateMachine<AsyncPolicy2<T>, two_stage>;
+template <class T>
 using UnifiedAsyncStateMachine3 =
-    PortFiniteStateMachine<UnifiedAsyncPolicy3, three_stage>;
+    PortFiniteStateMachine<UnifiedAsyncPolicy3<T>, three_stage>;
+template <class T>
 using UnifiedAsyncStateMachine2 =
-    PortFiniteStateMachine<UnifiedAsyncPolicy2, two_stage>;
+    PortFiniteStateMachine<UnifiedAsyncPolicy2<T>, two_stage>;
 
 }  // namespace tiledb::common
 #endif  // TILEDB_DAG_TYPES_HP

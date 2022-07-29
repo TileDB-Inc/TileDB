@@ -40,19 +40,14 @@
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
 
-template <class T>
-using AsyncStateMachine2 = AsyncStateMachine<PortState<2>, T>;
-
-template <class T>
-using DebugStateMachine2 = DebugStateMachine<PortState<2>, T>;
-
-template <class T>
-using NullStateMachine2 = NullStateMachine<PortState<2>, T>;
-
-template <class T>
-using ManualStateMachine2 = ManualStateMachine<PortState<2>, T>;
-
 using namespace tiledb::common;
+
+template <class Block>
+using AsyncMover2 = ItemMover<AsyncPolicy, two_stage, Block>;
+template <class Block>
+using ManualMover2 = ItemMover<ManualPolicy, two_stage, Block>;
+template <class Block>
+using NullMover2 = ItemMover<NullPolicy, two_stage, Block>;
 
 [[maybe_unused]] constexpr const size_t test_chunk_size = 1024 * 1024 * 4;
 
@@ -62,8 +57,8 @@ using namespace tiledb::common;
 TEST_CASE(
     "BlocksAndPorts: Create Source and Sink with DataBlock",
     "[blocks_and_ports]") {
-  auto pn = Source<DataBlock, NullStateMachine2<DataBlock>>{};
-  auto cn = Sink<DataBlock, NullStateMachine2<DataBlock>>{};
+  auto pn = Source<NullMover2, DataBlock>{};
+  auto cn = Sink<NullMover2, DataBlock>{};
 
   attach(pn, cn);
 }
@@ -73,8 +68,8 @@ TEST_CASE(
  */
 TEST_CASE(
     "BlocksAndPorts: Manual set source port values", "[blocks_and_ports]") {
-  auto source = Source<DataBlock, NullStateMachine2<DataBlock>>{};
-  auto sink = Sink<DataBlock, NullStateMachine2<DataBlock>>{};
+  auto source = Source<NullMover2, DataBlock>{};
+  auto sink = Sink<NullMover2, DataBlock>{};
 
   DataBlock x{DataBlock::max_size()};
   DataBlock y{DataBlock::max_size()};
@@ -148,8 +143,8 @@ bool check_zeroized(DataBlock& x) {
  * Test operation of inject and extract.
  */
 TEST_CASE("BlocksAndPorts: Manual extract sink values", "[blocks_and_ports]") {
-  auto source = Source<DataBlock, NullStateMachine2<DataBlock>>{};
-  auto sink = Sink<DataBlock, NullStateMachine2<DataBlock>>{};
+  auto source = Source<NullMover2, DataBlock>{};
+  auto sink = Sink<NullMover2, DataBlock>{};
 
   DataBlock x{DataBlock::max_size()};
   DataBlock y{DataBlock::max_size()};
@@ -178,14 +173,14 @@ TEST_CASE("BlocksAndPorts: Manual extract sink values", "[blocks_and_ports]") {
 
 /**
  * Test that we can inject, transfer, and extract data items from Source and
- * Sink with ManualStateMachine2.
+ * Sink with ManualMover2.
  *
  */
 TEST_CASE(
     "BlocksAndPorts: Manual transfer from Source to Sink",
     "[blocks_and_ports]") {
-  Source<DataBlock, ManualStateMachine2<DataBlock>> source;
-  Sink<DataBlock, ManualStateMachine2<DataBlock>> sink;
+  Source<ManualMover2, DataBlock> source;
+  Sink<ManualMover2, DataBlock> sink;
 
   DataBlock x{DataBlock::max_size()};
   DataBlock y{DataBlock::max_size()};
@@ -266,14 +261,14 @@ TEST_CASE(
 
 /**
  * Test that we can inject and extract data items from Source and Sink with
- * AsyncStateMachine.
+ * AsyncMover.
  *
  */
 TEST_CASE(
     "BlocksAndPorts: Manual transfer from Source to Sink, async policy",
     "[blocks_and_ports]") {
-  Source<DataBlock, AsyncStateMachine2<DataBlock>> source;
-  Sink<DataBlock, AsyncStateMachine2<DataBlock>> sink;
+  Source<AsyncMover2, DataBlock> source;
+  Sink<AsyncMover2, DataBlock> sink;
 
   DataBlock x{DataBlock::max_size()};
   DataBlock y{DataBlock::max_size()};
@@ -316,8 +311,8 @@ TEST_CASE(
 TEST_CASE(
     "BlocksAndPorts: Async transfer from Source to Sink",
     "[blocks_and_ports]") {
-  Source<DataBlock, AsyncStateMachine2<DataBlock>> source;
-  Sink<DataBlock, AsyncStateMachine2<DataBlock>> sink;
+  Source<AsyncMover2, DataBlock> source;
+  Sink<AsyncMover2, DataBlock> sink;
 
   DataBlock x{DataBlock::max_size()};
   DataBlock y{DataBlock::max_size()};
@@ -393,8 +388,8 @@ TEST_CASE(
 TEST_CASE("BlocksAndPorts: Async pass n blocks", "[blocks_and_ports]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  Source<DataBlock, AsyncStateMachine2<DataBlock>> source;
-  Sink<DataBlock, AsyncStateMachine2<DataBlock>> sink;
+  Source<AsyncMover2, DataBlock> source;
+  Sink<AsyncMover2, DataBlock> sink;
 
   attach(source, sink);
 

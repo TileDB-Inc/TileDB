@@ -439,6 +439,8 @@ class ItemMover
 
   using port_state_type = PortState;
 
+  using block_type = Block;
+
   /**
    * Invoke `source_fill` event
    */

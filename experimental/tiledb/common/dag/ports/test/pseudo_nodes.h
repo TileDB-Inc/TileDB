@@ -72,9 +72,10 @@ class generator {
  * Prototype source node class.  Constructed with a function that creates
  * Blocks.
  */
-template <class Mover, class Block>
-class ProducerNode : public Source<Mover, Block> {
-  using Base = Source<Mover, Block>;
+template <template <class> class Mover_T, class Block>
+class ProducerNode : public Source<Mover_T, Block> {
+  using Base = Source<Mover_T, Block>;
+  using source_type = Source<Mover_T, Block>;
   // This causes initialization problems
   //  std::atomic<size_t> i_{0};
   size_t N_{0};
@@ -129,7 +130,7 @@ class ProducerNode : public Source<Mover, Block> {
     //  { state == st_00 ∨ state == st_01 }
     //  produce source item
     //  inject source item
-    auto state_machine = Base::get_state_machine();
+    auto state_machine = this->get_state_machine();
 
     Base::inject(f_());
     state_machine->do_fill();
@@ -189,12 +190,12 @@ class consumer {
 /**
  * A proto consumer node.  Constructed with a function that accepts Blocks.
  */
-template <class Mover, class Block>
-class ConsumerNode : public Sink<Mover, Block> {
+template <template <class> class Mover_T, class Block>
+class ConsumerNode : public Sink<Mover_T, Block> {
   std::function<void(Block&)> f_;
 
  public:
-  using Base = Sink<Mover, Block>;
+  using Base = Sink<Mover_T, Block>;
 
  public:
   /**
@@ -237,7 +238,7 @@ class ConsumerNode : public Sink<Mover, Block> {
     //  while (!sink_is_empty())
     //    ;
     //  { state == st_00 ∨ state == st_10 }
-    auto state_machine = Base::get_state_machine();
+    auto state_machine = this->get_state_machine();
 
     state_machine->do_pull();
     //  { state == st_01 ∨ state == st_11 }
@@ -281,15 +282,16 @@ class ConsumerNode : public Sink<Mover, Block> {
  * accepts an item and returns an item.
  */
 template <
-    class SinkMover,
+    template <class>
+    class SinkMover_T,
     class BlockIn,
-    class SourceMover = SinkMover,
+    template <class> class SourceMover_T = SinkMover_T,
     class BlockOut = BlockIn>
-class FunctionNode : public Source<SourceMover, BlockOut>,
-                     public Sink<SinkMover, BlockIn> {
+class FunctionNode : public Source<SourceMover_T, BlockOut>,
+                     public Sink<SinkMover_T, BlockIn> {
   std::function<BlockOut(BlockIn)> f_;
-  using SourceBase = Source<SourceMover, BlockOut>;
-  using SinkBase = Sink<SinkMover, BlockIn>;
+  using SourceBase = Source<SourceMover_T, BlockOut>;
+  using SinkBase = Sink<SinkMover_T, BlockIn>;
 
  public:
   template <class Function>
