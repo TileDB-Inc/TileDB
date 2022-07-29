@@ -33,7 +33,7 @@
 #include "unit_thread_pool.h"
 
 #include <stdint.h>
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include <atomic>
 #include <cstdio>
 #include <iostream>

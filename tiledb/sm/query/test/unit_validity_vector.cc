@@ -32,7 +32,7 @@
 
 #include "tiledb/sm/query/validity_vector.h"
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include <iostream>
 
 using namespace std;

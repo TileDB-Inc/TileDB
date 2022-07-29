@@ -32,7 +32,7 @@
 
 #include "tiledb/sm/array/array_directory.h"
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include <iostream>
 
 using namespace tiledb::common;

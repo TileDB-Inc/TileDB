@@ -99,7 +99,7 @@ after  70
   */
 
 #define CATCH_CONFIG_RUNNER
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 
 #include <cstdlib>
 #include <iostream>

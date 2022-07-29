@@ -31,7 +31,7 @@
  * array schemas.
  */
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"

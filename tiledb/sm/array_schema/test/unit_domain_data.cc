@@ -30,7 +30,7 @@
  * This file defines a test `main()`
  */
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include "../domain_typed_data_view.h"
 #include "../dynamic_array.h"
 /*

@@ -30,7 +30,7 @@
  * This file unit-tests class BufferLRUCache.
  */
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/cache/buffer_lru_cache.h"
 #include "tiledb/sm/tile/filtered_buffer.h"

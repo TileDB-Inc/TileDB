@@ -31,7 +31,7 @@
  * Tests for class TileDomain.
  */
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/array_schema/tile_domain.h"
 
 using namespace tiledb::sm;

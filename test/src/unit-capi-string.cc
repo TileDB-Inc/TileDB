@@ -31,7 +31,7 @@
  * Tests for TileDB's string support at the C API level.
  */
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 

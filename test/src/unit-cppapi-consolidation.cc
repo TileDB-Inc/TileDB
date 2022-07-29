@@ -30,7 +30,7 @@
  * Consolidation tests with the C++ API.
  */
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include "helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 

@@ -35,7 +35,7 @@
 #include <vector>
 #include "external/include/span/span.hpp"
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include "experimental/tiledb/common/dag/utils/range_join.h"
 
 using namespace tiledb::common;

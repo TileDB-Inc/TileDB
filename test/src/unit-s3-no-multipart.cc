@@ -32,7 +32,7 @@
 
 #ifdef HAVE_S3
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"

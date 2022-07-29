@@ -38,7 +38,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 
 using namespace tiledb;
 using namespace tiledb::common;

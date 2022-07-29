@@ -3,7 +3,7 @@
 #include <tiledb/tiledb>
 #include <future>
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 
 using namespace tiledb;
 

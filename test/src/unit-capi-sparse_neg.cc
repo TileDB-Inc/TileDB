@@ -30,7 +30,7 @@
  * Tests of C API for sparse arrays with negative domains.
  */
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
 #ifdef _WIN32

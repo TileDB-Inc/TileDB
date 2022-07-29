@@ -30,7 +30,7 @@
  * Tests the C++ API for filter related functions.
  */
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
 
 static void check_filters(

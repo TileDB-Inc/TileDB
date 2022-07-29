@@ -30,7 +30,7 @@
  * This file tests the Consistency class
  */
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include <iostream>
 
 #include "unit_consistency.h"

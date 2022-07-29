@@ -34,7 +34,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include <iostream>
 
 using namespace tiledb::test;

@@ -29,7 +29,7 @@
  */
 
 #define CATCH_CONFIG_MAIN
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 //#include "../filter_api_external.h"
 // Disabled until we have a context object library that will allow linking
 

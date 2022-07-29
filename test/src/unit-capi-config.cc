@@ -30,7 +30,7 @@
  * Tests the C API config object.
  */
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <tiledb/sm/misc/constants.h>

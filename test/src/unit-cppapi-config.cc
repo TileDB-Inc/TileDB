@@ -32,7 +32,7 @@
 
 #include <thread>
 
-#include <tiledb/sm/misc/tdb_catch.h>
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
