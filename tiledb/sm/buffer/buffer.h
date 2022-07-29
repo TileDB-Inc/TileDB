@@ -89,6 +89,27 @@ class BufferBase {
   Status read(void* destination, uint64_t nbytes);
 
   /**
+   * Wraps the read function, converting Status error to a runtime exception
+   * using the name of the requested variable.
+   *
+   * If read failed, a runtime exception will be throw with the message:
+   *
+   *   "Failed to load " + variable_description + "."
+   *
+   * @param destination The buffer to read the data into.
+   * @param nbytes The number of bytes to read.
+   * @param variable_description Name of the variable to use if read fails.
+   */
+  inline void read(
+      void* destination,
+      uint64_t nbytes,
+      const std::string& variable_description) {
+    auto st = read(destination, nbytes);
+    if (!st.ok())
+      throw std::runtime_error("Failed to load " + variable_description + ".");
+  }
+
+  /**
    * Reads from the local data at an offset into the input buffer.
    *
    * @param destination The buffer to read the data into.

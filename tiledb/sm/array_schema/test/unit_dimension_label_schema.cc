@@ -57,14 +57,10 @@ TEST_CASE(
       ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
   REQUIRE(labelled_array_schema->check().ok());
   // Create dimension label schema
-  DimensionLabelSchema::attribute_size_type label_attr_id{0};
-  DimensionLabelSchema::attribute_size_type index_attr_id{0};
   REQUIRE_NOTHROW(DimensionLabelSchema(
       LabelOrder::INCREASING_LABELS,
       indexed_array_schema,
-      labelled_array_schema,
-      label_attr_id,
-      index_attr_id));
+      labelled_array_schema));
 }
 
 TEST_CASE(
@@ -90,14 +86,10 @@ TEST_CASE(
         ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
     REQUIRE(labelled_array_schema->check().ok());
     // Create dimension label schema
-    DimensionLabelSchema::attribute_size_type label_attr_id{0};
-    DimensionLabelSchema::attribute_size_type index_attr_id{0};
     REQUIRE_THROWS(DimensionLabelSchema(
         LabelOrder::INCREASING_LABELS,
         indexed_array_schema,
-        labelled_array_schema,
-        label_attr_id,
-        index_attr_id));
+        labelled_array_schema));
   }
 
   SECTION("Mismatched label definition") {
@@ -120,14 +112,10 @@ TEST_CASE(
         ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
     REQUIRE(labelled_array_schema->check().ok());
     // Create dimension label schema
-    DimensionLabelSchema::attribute_size_type label_attr_id{0};
-    DimensionLabelSchema::attribute_size_type index_attr_id{0};
     REQUIRE_THROWS(DimensionLabelSchema(
         LabelOrder::INCREASING_LABELS,
         indexed_array_schema,
-        labelled_array_schema,
-        label_attr_id,
-        index_attr_id));
+        labelled_array_schema));
   }
 
   SECTION("Too many dimensions on index array") {
@@ -151,14 +139,10 @@ TEST_CASE(
         ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
     REQUIRE(labelled_array_schema->check().ok());
     // Create dimension label schema
-    DimensionLabelSchema::attribute_size_type label_attr_id{0};
-    DimensionLabelSchema::attribute_size_type index_attr_id{0};
     REQUIRE_THROWS(DimensionLabelSchema(
         LabelOrder::INCREASING_LABELS,
         indexed_array_schema,
-        labelled_array_schema,
-        label_attr_id,
-        index_attr_id));
+        labelled_array_schema));
   }
 
   SECTION("Too many dimensions on label array") {
@@ -183,23 +167,20 @@ TEST_CASE(
         ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
     REQUIRE(labelled_array_schema->check().ok());
     // Create dimension label schema
-    DimensionLabelSchema::attribute_size_type label_attr_id{0};
-    DimensionLabelSchema::attribute_size_type index_attr_id{0};
     REQUIRE_THROWS(DimensionLabelSchema(
         LabelOrder::INCREASING_LABELS,
         indexed_array_schema,
-        labelled_array_schema,
-        label_attr_id,
-        index_attr_id));
+        labelled_array_schema));
   }
 
-  SECTION("Invalid label attribute ID") {
+  SECTION("Too many label attributes") {
     // Create indexed array schema
     std::vector<shared_ptr<Dimension>> indexed_array_dims{
         test::make_dimension<uint64_t>("dim0", Datatype::UINT64, 1, 0, 10, 11)};
     std::vector<shared_ptr<Attribute>> indexed_array_attrs{
+        test::make_attribute<uint64_t>("label0", Datatype::UINT64, false, 1, 0),
         test::make_attribute<uint64_t>(
-            "label0", Datatype::UINT64, false, 1, 0)};
+            "label1", Datatype::UINT64, false, 1, 0)};
     auto indexed_array_schema = test::make_array_schema(
         ArrayType::DENSE, indexed_array_dims, indexed_array_attrs);
     REQUIRE(indexed_array_schema->check().ok());
@@ -213,17 +194,13 @@ TEST_CASE(
         ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
     REQUIRE(labelled_array_schema->check().ok());
     // Create dimension label schema
-    DimensionLabelSchema::attribute_size_type label_attr_id{1};
-    DimensionLabelSchema::attribute_size_type index_attr_id{0};
     REQUIRE_THROWS(DimensionLabelSchema(
         LabelOrder::INCREASING_LABELS,
         indexed_array_schema,
-        labelled_array_schema,
-        label_attr_id,
-        index_attr_id));
+        labelled_array_schema));
   }
 
-  SECTION("Invalid index attribute ID") {
+  SECTION("Too many index attributes") {
     // Create indexed array schema
     std::vector<shared_ptr<Dimension>> indexed_array_dims{
         test::make_dimension<uint64_t>("dim0", Datatype::UINT64, 1, 0, 10, 11)};
@@ -236,21 +213,19 @@ TEST_CASE(
     // Create labelled array schema uint64_t label_domain[2] = {20, 30};
     std::vector<shared_ptr<Dimension>> labelled_array_dims{
         test::make_dimension<uint64_t>(
-            "label0", Datatype::UINT64, 1, 10, 20, 11)};
+            "label0", Datatype::UINT64, 1, 10, 20, 11),
+        test::make_dimension<uint64_t>(
+            "label1", Datatype::UINT64, 1, 10, 20, 11)};
     std::vector<shared_ptr<Attribute>> labelled_array_attrs{
         test::make_attribute<uint64_t>("dim0", Datatype::UINT64, false, 1, 0)};
     auto labelled_array_schema = test::make_array_schema(
         ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
     REQUIRE(labelled_array_schema->check().ok());
     // Create dimension label schema
-    DimensionLabelSchema::attribute_size_type label_attr_id{0};
-    DimensionLabelSchema::attribute_size_type index_attr_id{1};
     REQUIRE_THROWS(DimensionLabelSchema(
         LabelOrder::INCREASING_LABELS,
         indexed_array_schema,
-        labelled_array_schema,
-        label_attr_id,
-        index_attr_id));
+        labelled_array_schema));
   }
 }
 
