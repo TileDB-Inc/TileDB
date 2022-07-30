@@ -209,28 +209,29 @@ if (AWSSDK_FOUND)
   # append these libs in an order manually, by trial and error, determined to support successful
   # linking of dependencies on *nix.  (windows doesn't seem to care or 'just lucked out'.)
   list(APPEND AWS_LINKED_LIBS
-          aws-cpp-sdk-s3
-        aws-cpp-sdk-core
-        aws-crt-cpp
-        aws-c-event-stream
-        aws-c-mqtt
+#seems not needed...        aws-cpp-sdk-s3
+        aws-cpp-sdk-core # needed,  unresolved external symbol "public: class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > __cdecl Aws::Client::AWSClient::GeneratePresignedUrl(class Aws::Http::URI &,enum Aws::Http::HttpMethod,char const *,__int64)const
+#        aws-crt-cpp
+#seems not needed...        aws-c-event-stream
+#seems not needed...        aws-c-mqtt
         aws-c-s3
-        aws-c-auth
+        aws-c-auth  # needed for *nix, maybe not for windows?
         aws-c-http
-        aws-c-compression
-        aws-checksums
-        aws-c-sdkutils
+#seems not needed        aws-c-compression
+#seems not needed        aws-checksums
+#seems not needed        aws-c-sdkutils
         aws-crt-cpp
         aws-cpp-sdk-s3
         aws-c-event-stream
         aws-c-mqtt
         aws-checksums
-        aws-c-auth
+        # is this needed twice? cmake was eliminating some dups anyway, keeping first one encountered...
+#        aws-c-auth
         aws-c-sdkutils
         aws-c-io
         aws-c-compression
         aws-c-cal
-        aws-cpp-sdk-cognito-identity
+#seems not needed        aws-cpp-sdk-cognito-identity
         aws-cpp-sdk-identity-management
         aws-cpp-sdk-sts
         aws-c-common
