@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -147,7 +147,10 @@ void read_array() {
   tiledb_array_open(ctx, array, TILEDB_READ);
 
   // Read entire array
-  int subarray[] = {1, 4, 1, 4};
+  tiledb_subarray_t *subarray;
+  tiledb_subarray_alloc(ctx, array, &subarray);
+  uint64_t subarray_v[] = {1, 4, 1, 4};
+  tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
 
   // Set maximum buffer sizes
   uint64_t coords_size = 16;
@@ -161,7 +164,7 @@ void read_array() {
   // Create query
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
-  tiledb_query_set_subarray(ctx, query, subarray);
+  tiledb_query_set_subarray_t(ctx, query, subarray);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_data_buffer(ctx, query, "a", data, &data_size);
   tiledb_query_set_data_buffer(ctx, query, "rows", coords_rows, &coords_size);
@@ -194,6 +197,7 @@ void read_array() {
   free((void*)coords_rows);
   free((void*)coords_cols);
   free((void*)data);
+  tiledb_subarray_free(&subarray);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);

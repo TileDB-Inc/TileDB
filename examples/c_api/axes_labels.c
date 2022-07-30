@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -247,9 +247,11 @@ void read_data_array_with_label(
   tiledb_query_alloc(ctx, label_array, TILEDB_READ, &label_query);
 
   // Slice only the label passed in
+  tiledb_subarray_t *label_subarray;
+  tiledb_subarray_alloc(ctx, label_array, &label_subarray);
   uint64_t label_size = strlen(label);
-  tiledb_query_add_range_var(
-      ctx, label_query, 0, label, label_size, label, label_size);
+  tiledb_subarray_add_range_var(ctx, label_subarray, 0, label, label_size, label, label_size);
+  tiledb_query_set_subarray_t(ctx, label_query, label_subarray);
 
   // Prepare the vector that will hold the result.
   // We only will fetch the id/timestamp
@@ -270,13 +272,17 @@ void read_data_array_with_label(
   // Close array
   tiledb_array_close(ctx, label_array);
 
+  tiledb_subarray_t *data_subarray;
+  tiledb_subarray_alloc(ctx, data_array, &data_subarray);
+  tiledb_query_set_subarray_t(ctx, data_query, data_subarray);
+
   // Loop through the label results to set ranges for the data query
   for (uint64_t r = 0; r < ids_coords_size / sizeof(int32_t); r++) {
     int32_t i = ids_coords[r];
     int64_t j = timestamps_coords[r];
     printf("Adding range for point ( %d, %" PRId64 ")\n", i, j);
-    tiledb_query_add_range(ctx, data_query, 0, &i, &i, NULL);
-    tiledb_query_add_range(ctx, data_query, 1, &j, &j, NULL);
+    tiledb_subarray_add_range(ctx, data_subarray, 0,  &i, &i, NULL);
+    tiledb_subarray_add_range(ctx, data_subarray, 1,  &j, &j, NULL);
   }
 
   // Setup the data query's buffers
@@ -301,6 +307,7 @@ void read_data_array_with_label(
       ctx, data_query, "element", element_offsets, &element_offsets_size);
   tiledb_query_set_data_buffer(
       ctx, data_query, "weight", weights, &weights_size);
+  tiledb_query_set_subarray_t(ctx, data_query, data_subarray);
 
   // Submit the query and close the array.
   tiledb_query_submit(ctx, data_query);
@@ -327,8 +334,10 @@ void read_data_array_with_label(
   }
 
   // Free resources
+  tiledb_subarray_free(&label_subarray);
   tiledb_array_free(&label_array);
   tiledb_query_free(&label_query);
+  tiledb_subarray_free(&data_subarray);
   tiledb_array_free(&data_array);
   tiledb_query_free(&data_query);
 }
