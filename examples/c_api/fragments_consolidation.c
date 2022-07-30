@@ -99,7 +99,7 @@ void write_array_1() {
   uint64_t data_size = sizeof(data);
 
   // Write in subarray [1,2], [1,4]
-  tiledb_subarray_t *subarray;
+  tiledb_subarray_t* subarray;
   tiledb_subarray_alloc(ctx, array, &subarray);
   int subarray_v[] = {1, 2, 1, 4};
   tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
@@ -139,7 +139,7 @@ void write_array_2() {
   uint64_t data_size = sizeof(data);
 
   // Write in subarray [2,3], [2,3]
-  tiledb_subarray_t *subarray;
+  tiledb_subarray_t* subarray;
   tiledb_subarray_alloc(ctx, array, &subarray);
   int subarray_v[] = {2, 3, 2, 3};
   tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
@@ -212,7 +212,7 @@ void read_array() {
   tiledb_array_open(ctx, array, TILEDB_READ);
 
   // Read entire array
-  tiledb_subarray_t *subarray;
+  tiledb_subarray_t* subarray;
   tiledb_subarray_alloc(ctx, array, &subarray);
   int subarray_v[] = {1, 4, 1, 4};
   tiledb_subarray_set_subarray(ctx, subarray, subarray_v);

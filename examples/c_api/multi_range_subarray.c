@@ -139,7 +139,7 @@ void read_array() {
   tiledb_query_set_data_buffer(ctx, query, "a", data, &data_size);
 
   // Create subarray
-  tiledb_subarray_t *subarray;
+  tiledb_subarray_t* subarray;
   tiledb_subarray_alloc(ctx, array, &subarray);
   tiledb_query_set_subarray_t(ctx, query, subarray);
 

@@ -247,10 +247,11 @@ void read_data_array_with_label(
   tiledb_query_alloc(ctx, label_array, TILEDB_READ, &label_query);
 
   // Slice only the label passed in
-  tiledb_subarray_t *label_subarray;
+  tiledb_subarray_t* label_subarray;
   tiledb_subarray_alloc(ctx, label_array, &label_subarray);
   uint64_t label_size = strlen(label);
-  tiledb_subarray_add_range_var(ctx, label_subarray, 0, label, label_size, label, label_size);
+  tiledb_subarray_add_range_var(
+      ctx, label_subarray, 0, label, label_size, label, label_size);
   tiledb_query_set_subarray_t(ctx, label_query, label_subarray);
 
   // Prepare the vector that will hold the result.
@@ -272,7 +273,7 @@ void read_data_array_with_label(
   // Close array
   tiledb_array_close(ctx, label_array);
 
-  tiledb_subarray_t *data_subarray;
+  tiledb_subarray_t* data_subarray;
   tiledb_subarray_alloc(ctx, data_array, &data_subarray);
   tiledb_query_set_subarray_t(ctx, data_query, data_subarray);
 
@@ -281,8 +282,8 @@ void read_data_array_with_label(
     int32_t i = ids_coords[r];
     int64_t j = timestamps_coords[r];
     printf("Adding range for point ( %d, %" PRId64 ")\n", i, j);
-    tiledb_subarray_add_range(ctx, data_subarray, 0,  &i, &i, NULL);
-    tiledb_subarray_add_range(ctx, data_subarray, 1,  &j, &j, NULL);
+    tiledb_subarray_add_range(ctx, data_subarray, 0, &i, &i, NULL);
+    tiledb_subarray_add_range(ctx, data_subarray, 1, &j, &j, NULL);
   }
 
   // Setup the data query's buffers

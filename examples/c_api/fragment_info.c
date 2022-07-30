@@ -98,7 +98,7 @@ void write_array() {
   uint64_t data_size = sizeof(data);
 
   // Write in subarray [1,2], [1,4]
-  tiledb_subarray_t *subarray;
+  tiledb_subarray_t* subarray;
   tiledb_subarray_alloc(ctx, array, &subarray);
   int subarray_v[] = {1, 2, 1, 4};
   tiledb_subarray_set_subarray(ctx, subarray, subarray_v);

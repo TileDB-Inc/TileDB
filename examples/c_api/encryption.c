@@ -151,7 +151,7 @@ void read_array() {
   tiledb_config_free(&cfg);
 
   // Slice only rows 1, 2 and cols 2, 3, 4
-  tiledb_subarray_t *subarray;
+  tiledb_subarray_t* subarray;
   tiledb_subarray_alloc(ctx, array, &subarray);
   int32_t subarray_v[] = {1, 2, 2, 4};
   tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
