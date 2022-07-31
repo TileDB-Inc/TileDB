@@ -312,6 +312,14 @@ Status Reader::load_initial_data() {
     qc_loaded_attr_names_set_.merge(delete_condition.field_names());
   }
 
+  // Add delete timestamps condition.
+  RETURN_NOT_OK(add_delete_timestamps_condition());
+
+  // Load processed conditions from fragment metadata.
+  if (delete_conditions_.size() > 0) {
+    load_processed_conditions();
+  }
+
   initial_data_loaded_ = true;
 
   return Status::Ok();
@@ -358,6 +366,13 @@ Status Reader::apply_query_condition(
       RETURN_NOT_OK(timestamped_delete_conditions_[i].apply(
           array_schema_, fragment_metadata_, result_cell_slabs, stride));
     }
+  }
+
+  // Process the delete timestamps condition, if required.
+  if (!delete_timestamps_condition_.empty()) {
+    // Remove cells with partial overlap from the bitmap.
+    RETURN_NOT_OK(delete_timestamps_condition_.apply(
+        array_schema_, fragment_metadata_, result_cell_slabs, stride));
   }
 
   return Status::Ok();
@@ -459,9 +474,7 @@ Status Reader::compute_range_result_coords(
 
     // Apply partial overlap condition, if required.
     const auto frag_meta = fragment_metadata_[tile->frag_idx()];
-    const bool partial_overlap = frag_meta->partial_time_overlap(
-        array_->timestamp_start(), array_->timestamp_end_opened_at());
-    if (frag_meta->has_timestamps() && partial_overlap) {
+    if (process_partial_timestamps(*frag_meta)) {
       RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
           *(frag_meta->array_schema().get()), *tile, result_bitmap));
     }
@@ -1657,6 +1670,18 @@ Status Reader::compute_result_coords(
     RETURN_CANCEL_OR_ERROR(read_attribute_tiles(timestamps, tmp_result_tiles));
     RETURN_CANCEL_OR_ERROR(
         unfilter_tiles(constants::timestamps, tmp_result_tiles));
+  }
+
+  // Read and unfilter delete timestamps.
+  {
+    std::vector<std::string> delete_timestamps = {constants::delete_timestamps};
+    RETURN_CANCEL_OR_ERROR(load_tile_offsets(
+        read_state_.partitioner_.subarray(), delete_timestamps));
+
+    RETURN_CANCEL_OR_ERROR(
+        read_attribute_tiles(delete_timestamps, tmp_result_tiles));
+    RETURN_CANCEL_OR_ERROR(
+        unfilter_tiles(constants::delete_timestamps, tmp_result_tiles));
   }
 
   // Compute the read coordinates for all fragments for each subarray range.

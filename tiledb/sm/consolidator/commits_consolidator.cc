@@ -124,9 +124,9 @@ Status CommitsConsolidator::consolidate(
   for (uint64_t i = 0; i < to_consolidate.size(); i++) {
     // Add the uri.
     const auto& uri = to_consolidate[i];
-    std::string relavite_uri = uri.to_string().substr(base_uri_size) + "\n";
-    memcpy(&data[file_index], relavite_uri.data(), relavite_uri.size());
-    file_index += relavite_uri.size();
+    std::string relative_uri = uri.to_string().substr(base_uri_size) + "\n";
+    memcpy(&data[file_index], relative_uri.data(), relative_uri.size());
+    file_index += relative_uri.size();
 
     // For deletes, read the delete condition to the output file.
     if (stdx::string::ends_with(

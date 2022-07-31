@@ -151,6 +151,7 @@ class ArrayDirectory {
     std::vector<TimestampedURI> fragment_uris_;
   };
 
+ public:
   /**
    * Class to return a location of a delete tile, which is file URI/offset.
    */
@@ -163,11 +164,16 @@ class ArrayDirectory {
     /**
      * Constructor.
      */
-    DeleteTileLocation(const URI& uri, const storage_size_t offset)
+    DeleteTileLocation(
+        const URI& uri,
+        const std::string condition_marker,
+        const storage_size_t offset)
         : uri_(uri)
+        , condition_marker_(condition_marker)
         , offset_(offset) {
       std::pair<uint64_t, uint64_t> timestamps;
-      if (!utils::parse::get_timestamp_range(uri, &timestamps).ok()) {
+      if (!utils::parse::get_timestamp_range(URI(condition_marker), &timestamps)
+               .ok()) {
         throw std::logic_error("Error parsing uri.");
       }
 
@@ -188,8 +194,16 @@ class ArrayDirectory {
       return uri_;
     }
 
+    inline const std::string& condition_marker() const {
+      return condition_marker_;
+    }
+
     inline uint64_t offset() const {
       return offset_;
+    }
+
+    inline uint64_t timestamp() const {
+      return timestamp_;
     }
 
    private:
@@ -200,6 +214,9 @@ class ArrayDirectory {
     /** The URIs of the file. */
     URI uri_;
 
+    /** The condition marker. */
+    std::string condition_marker_;
+
     /** The offset within the file. */
     uint64_t offset_;
 
@@ -207,7 +224,6 @@ class ArrayDirectory {
     uint64_t timestamp_;
   };
 
- public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -278,6 +294,10 @@ class ArrayDirectory {
 
   /** Returns the location of delete tiles. */
   const std::vector<DeleteTileLocation>& delete_tiles_location() const;
+
+  /** Set the location of delete tiles, used by consolidation */
+  void set_delete_tiles_location(
+      const std::vector<DeleteTileLocation>& delete_tiles_location);
 
   /** Returns the URI to store fragments. */
   URI get_fragments_dir(uint32_t write_version) const;

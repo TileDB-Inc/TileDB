@@ -1605,9 +1605,6 @@ StorageManager::load_delete_conditions(const Array& array) {
   auto status = parallel_for(compute_tp_, 0, locations.size(), [&](size_t i) {
     // Get condition marker.
     auto& uri = locations[i].uri();
-    auto condition_marker = uri.last_path_part();
-    condition_marker = condition_marker.substr(
-        0, condition_marker.length() - constants::delete_file_suffix.length());
 
     // Read the condition from storage.
     auto&& [st, tile_opt] = load_data_from_generic_tile(
@@ -1616,7 +1613,9 @@ StorageManager::load_delete_conditions(const Array& array) {
 
     delete_conditions[i] =
         tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
-            condition_marker, tile_opt->data(), tile_opt->size());
+            locations[i].condition_marker(),
+            tile_opt->data(),
+            tile_opt->size());
 
     delete_conditions[i].check(array.array_schema_latest());
     return Status::Ok();
@@ -2215,7 +2214,7 @@ tuple<Status, optional<Tile>> StorageManager::load_data_from_generic_tile(
     }
 
     auto&& [st1, tile_opt] =
-        tile_io.read_generic(0, encryption_key_cfg, config_);
+        tile_io.read_generic(offset, encryption_key_cfg, config_);
     RETURN_NOT_OK_TUPLE(st1, nullopt);
 
     return {Status::Ok(), std::move(*tile_opt)};

@@ -301,9 +301,20 @@ class SparseIndexReaderBase : public ReaderBase {
   /** List of tiles to ignore. */
   std::unordered_set<IgnoredTile, ignored_tile_hash> ignored_tiles_;
 
+  /** Include delete metadata in the results (for consolidation only). */
+  bool include_delete_meta_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
+
+  /**
+   * Returns if there is any condition to be applied post deduplication.
+   *
+   * @param frag_meta Fragment metadata.
+   * @return true if there is any condition to be applied post deduplication.
+   */
+  bool has_post_deduplication_conditions(FragmentMetadata& frag_meta);
 
   /**
    * Return how many cells were copied to the users buffers so far.

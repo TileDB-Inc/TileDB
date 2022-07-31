@@ -304,6 +304,11 @@ ArrayDirectory::delete_tiles_location() const {
   return delete_tiles_location_;
 }
 
+void ArrayDirectory::set_delete_tiles_location(
+    const std::vector<DeleteTileLocation>& delete_tiles_location) {
+  delete_tiles_location_ = delete_tiles_location;
+}
+
 URI ArrayDirectory::get_fragments_dir(uint32_t write_version) const {
   if (write_version < 12) {
     return uri_;
@@ -470,7 +475,11 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
       if (timestamps_overlap(delete_timestamp_range, false)) {
         if (consolidated_commit_uris_set_.count(commits_dir_uris[i].c_str()) ==
             0) {
-          delete_tiles_location_.emplace_back(commits_dir_uris[i], 0);
+          const auto base_uri_size = uri_.to_string().size();
+          delete_tiles_location_.emplace_back(
+              commits_dir_uris[i],
+              commits_dir_uris[i].to_string().substr(base_uri_size),
+              0);
         }
       }
     }
@@ -531,33 +540,32 @@ ArrayDirectory::load_consolidated_commit_uris(
       RETURN_NOT_OK_TUPLE(
           vfs_->read(uri, 0, &names[0], size), nullopt, nullopt);
       std::stringstream ss(names);
-      for (std::string uri_str; std::getline(ss, uri_str);) {
-        if (ignore_set.count(uri_str) == 0) {
-          uris_set.emplace(uri_.to_string() + uri_str);
+      for (std::string condition_marker; std::getline(ss, condition_marker);) {
+        if (ignore_set.count(condition_marker) == 0) {
+          uris_set.emplace(uri_.to_string() + condition_marker);
         }
 
         // If we have a delete, process the condition tile
-        if (stdx::string::ends_with(uri_str, constants::delete_file_suffix)) {
+        if (stdx::string::ends_with(
+                condition_marker, constants::delete_file_suffix)) {
           storage_size_t size = 0;
           ss.read(
               static_cast<char*>(static_cast<void*>(&size)),
               sizeof(storage_size_t));
           auto pos = ss.tellg();
-          pos += sizeof(storage_size_t);
 
           // Get the start and end timestamp for this delete
           std::pair<uint64_t, uint64_t> delete_timestamp_range;
-          URI full_delete_uri = uri_.join_path(uri_str);
           RETURN_NOT_OK_TUPLE(
               utils::parse::get_timestamp_range(
-                  full_delete_uri, &delete_timestamp_range),
+                  URI(condition_marker), &delete_timestamp_range),
               nullopt,
               nullopt);
 
           // Add the delete tile location if it overlaps the open start/end
           // times
           if (timestamps_overlap(delete_timestamp_range, false)) {
-            delete_tiles_location_.emplace_back(full_delete_uri, pos);
+            delete_tiles_location_.emplace_back(uri, condition_marker, pos);
           }
           pos += size;
           ss.seekg(pos);

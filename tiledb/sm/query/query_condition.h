@@ -41,13 +41,15 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/ast/query_ast.h"
-#include "tiledb/sm/query/readers/result_cell_slab.h"
-#include "tiledb/sm/query/readers/result_tile.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+class FragmentMetadata;
+struct ResultCellSlab;
+class ResultTile;
 
 enum class QueryConditionCombinationOp : uint8_t;
 
@@ -59,6 +61,9 @@ class QueryCondition {
 
   /** Default constructor. */
   QueryCondition();
+
+  /** Constructor from a marker. */
+  QueryCondition(const std::string& condition_marker);
 
   /** Constructor from a tree. */
   QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree);
@@ -217,6 +222,16 @@ class QueryCondition {
    */
   const tdb_unique_ptr<ASTNode>& ast() const;
 
+  /**
+   * Returns the condition marker.
+   */
+  const std::string& condition_marker() const;
+
+  /**
+   * Returns the condition marker hash.
+   */
+  size_t condition_marker_hash() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE DATATYPES         */
@@ -246,6 +261,9 @@ class QueryCondition {
   /* ********************************* */
   /** Marker used to reference which file the condition came from. */
   std::string condition_marker_;
+
+  /** Hash of `condition_marker_`. */
+  size_t condition_marker_hash_;
 
   /** AST Tree structure representing the condition. **/
   tdb_unique_ptr<tiledb::sm::ASTNode> tree_{};

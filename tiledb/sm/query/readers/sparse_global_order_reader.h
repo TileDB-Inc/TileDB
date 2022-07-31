@@ -232,8 +232,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * Process fragments with timestamps to deduplicate entries.
    * This removes cells across tiles.
    *
-   * @param result_tiles Result tiles to process.
-   *
    * @return Status.
    */
   Status dedup_fragments_with_timestamps();
@@ -416,6 +414,22 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @return Status.
    */
   Status copy_timestamps_tiles(
+      const uint64_t num_range_threads,
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      const std::vector<uint64_t>& cell_offsets,
+      QueryBuffer& query_buffer);
+
+  /**
+   * Copy delete metadata tiles.
+   *
+   * @param num_range_threads Total number of range threads.
+   * @param result_cell_slabs Result cell slabs to process.
+   * @param cell_offsets Cell offset per result tile.
+   * @param query_buffer Query buffer to operate on.
+   *
+   * @return Status.
+   */
+  Status copy_delete_meta_tiles(
       const uint64_t num_range_threads,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       const std::vector<uint64_t>& cell_offsets,

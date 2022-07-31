@@ -260,6 +260,10 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
     return constants::timestamp_size;
   }
 
+  if (name == constants::delete_condition_marker_hash) {
+    return sizeof(size_t);
+  }
+
   // Attribute
   auto attr_it = attribute_map_.find(name);
   if (attr_it != attribute_map_.end()) {
@@ -281,9 +285,10 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
 }
 
 unsigned int ArraySchema::cell_val_num(const std::string& name) const {
-  // Special zipped coordinates
+  // Special attributes
   if (name == constants::coords || name == constants::timestamps ||
-      name == constants::delete_timestamps) {
+      name == constants::delete_timestamps ||
+      name == constants::delete_condition_marker_hash) {
     return 1;
   }
 
@@ -381,7 +386,8 @@ Status ArraySchema::check_attributes(
 
 const FilterPipeline& ArraySchema::filters(const std::string& name) const {
   if (name == constants::coords || name == constants::timestamps ||
-      name == constants::delete_timestamps)
+      name == constants::delete_timestamps ||
+      name == constants::delete_condition_marker_hash)
     return coords_filters();
 
   // Attribute
@@ -620,6 +626,10 @@ Datatype ArraySchema::type(const std::string& name) const {
     return constants::timestamp_type;
   }
 
+  if (name == constants::delete_condition_marker_hash) {
+    return constants::delete_condition_marker_hash_type;
+  }
+
   // Attribute
   auto attr_it = attribute_map_.find(name);
   if (attr_it != attribute_map_.end()) {
@@ -635,7 +645,8 @@ Datatype ArraySchema::type(const std::string& name) const {
 bool ArraySchema::var_size(const std::string& name) const {
   // Special case for zipped coordinates
   if (name == constants::coords || name == constants::timestamps ||
-      name == constants::delete_timestamps)
+      name == constants::delete_timestamps ||
+      name == constants::delete_condition_marker_hash)
     return false;
 
   // Attribute
