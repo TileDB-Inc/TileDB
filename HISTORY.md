@@ -31,6 +31,7 @@
 * Use sparse global ordered reader for unordered queries with no dups. [#3207](https://github.com/TileDB-Inc/TileDB/pull/3207)
 * compute_results_count_sparse_string: using cached ranges properly. [#3314](https://github.com/TileDB-Inc/TileDB/pull/3314)
 * GCS/AWS: remove unnecessary classA operations. [#3323](https://github.com/TileDB-Inc/TileDB/pull/3323)
+* Reduce the number of requests in dir_size [#3382](https://github.com/TileDB-Inc/TileDB/pull/3382)
 
 ### Internal
 * Add DataBlocks, port finite state machine, and other DAG infrastructure [#3328](https://github.com/TileDB-Inc/TileDB/pull/3328)
@@ -38,7 +39,9 @@
 * Replace unnecessary uses of `std::unique_lock` and `std::scope_lock` with `std::lock_guard`. [#3340](https://github.com/TileDB-Inc/TileDB/pull/3340)
 * Deletes: implement negate for query condition. [#3299](https://github.com/TileDB-Inc/TileDB/pull/3299)
 * Deletes: adding configuration parameter for purging deleted cells. [#3334](https://github.com/TileDB-Inc/TileDB/pull/3334)
+
 ## Defects removed
+* Sparse refactored readers, mark empty fragments as fully loaded early. [#3394](https://github.com/TileDB-Inc/TileDB/pull/3394)
 * Fix printing of TILEDB_BOOL attributes in `Attribute::Dump`. [#3251](https://github.com/TileDB-Inc/TileDB/pull/3251)
 * Store compression filter's version as uint32. [#3341](https://github.com/TileDB-Inc/TileDB/pull/3341)
 * Sparse global order reader: consider qc results after deduplication. [#3350](https://github.com/TileDB-Inc/TileDB/pull/3350)
