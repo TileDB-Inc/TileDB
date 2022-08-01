@@ -595,15 +595,13 @@ Status ArraySchema::serialize(Buffer* buff) const {
 
   // Experimental: Write dimension labels
   if constexpr (is_experimental_build) {
-    if (version >= 15) {
-      auto label_num = static_cast<uint32_t>(dimension_labels_.size());
-      if (label_num != dimension_labels_.size())
-        return Status_ArraySchemaError(
-            "Overflow when attempting to serialize label number.");
-      buff->write(&label_num, sizeof(uint32_t));
-      for (auto& label : dimension_labels_)
-        label->serialize(buff, version);
-    }
+    auto label_num = static_cast<uint32_t>(dimension_labels_.size());
+    if (label_num != dimension_labels_.size())
+      return Status_ArraySchemaError(
+          "Overflow when attempting to serialize label number.");
+    buff->write(&label_num, sizeof(uint32_t));
+    for (auto& label : dimension_labels_)
+      label->serialize(buff, version);
   }
   return Status::Ok();
 }
@@ -893,7 +891,7 @@ ArraySchema ArraySchema::deserialize(ConstBuffer* buff, const URI& uri) {
   // Experimental: Load dimension labels
   std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels;
   if constexpr (is_experimental_build) {
-    if (version >= 15) {
+    if (version == constants::format_version) {
       uint32_t label_num;
       st = buff->read(&label_num, sizeof(uint32_t));
       if (!st.ok())
