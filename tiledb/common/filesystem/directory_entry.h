@@ -74,6 +74,7 @@ class directory_entry {
    *
    * @param p The path of the entry
    * @param size The size of the filesystem entry
+   * @param is_directory Value indicating if the entry is a dir or not
    */
   directory_entry(const std::string& p, uintmax_t size, bool is_directory)
       : path_(p)
