@@ -359,12 +359,12 @@ tuple<Status, optional<std::vector<directory_entry>>> Win::ls_with_sizes(
       std::string file_path =
           path + (ends_with_slash ? "" : "\\") + find_data.cFileName;
       if (is_dir(file_path)) {
-        entries.emplace_back(file_path, 0);
+        entries.emplace_back(file_path, 0, true);
       } else {
         ULARGE_INTEGER size;
         size.LowPart = find_data.nFileSizeLow;
         size.HighPart = find_data.nFileSizeHigh;
-        entries.emplace_back(file_path, size.QuadPart);
+        entries.emplace_back(file_path, size.QuadPart, false);
       }
     }
 
