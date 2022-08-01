@@ -74,10 +74,12 @@ class directory_entry {
    *
    * @param p The path of the entry
    * @param size The size of the filesystem entry
+   * @param is_directory Value indicating if the entry is a dir or not
    */
-  directory_entry(const std::string& p, uintmax_t size)
+  directory_entry(const std::string& p, uintmax_t size, bool is_directory)
       : path_(p)
-      , size_(size) {
+      , size_(size)
+      , is_directory_(is_directory) {
   }
 
   /** Destructor. */
@@ -115,6 +117,13 @@ class directory_entry {
     return size_;
   }
 
+  /**
+   * @return Checks whether the directory entry points to a directory
+   */
+  bool is_directory() const {
+    return is_directory_;
+  }
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
@@ -125,6 +134,9 @@ class directory_entry {
 
   /** The size of a filesystem entry */
   uintmax_t size_;
+
+  /** Stores whether the filesystem entry points to a directory */
+  bool is_directory_;
 };
 
 }  // namespace tiledb::common::filesystem

@@ -557,9 +557,9 @@ tuple<Status, optional<std::vector<directory_entry>>> HDFS::ls_with_sizes(
       path = std::string("hdfs://") + path;
     }
     if (fileList[i].mKind == kObjectKindDirectory) {
-      entries.emplace_back(path, 0);
+      entries.emplace_back(path, 0, true);
     } else {
-      entries.emplace_back(path, fileList[i].mSize);
+      entries.emplace_back(path, fileList[i].mSize, false);
     }
   }
   libhdfs_->hdfsFreeFileInfo(fileList, numEntries);
