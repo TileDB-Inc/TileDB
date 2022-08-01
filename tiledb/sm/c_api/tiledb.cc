@@ -5879,8 +5879,8 @@ int32_t tiledb_deserialize_array_open(
 
   // Allocate an array object
   try {
-    (*array)->array_ = make_shared<tiledb::sm::Array>(
-        HERE(), uri, ctx->ctx_->storage_manager());
+    (*array)->array_ =
+        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation "

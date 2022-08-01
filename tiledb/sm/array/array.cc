@@ -132,13 +132,15 @@ Status Array::open_without_fragments(
     uint32_t key_length) {
   Status st;
   // Checks
-  if (is_open())
+  if (is_open()) {
     return LOG_STATUS(Status_ArrayError(
         "Cannot open array without fragments; Array already open"));
-  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
+  }
+  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION) {
     return LOG_STATUS(
         Status_ArrayError("Cannot open array without fragments; encrypted "
                           "remote arrays are not supported."));
+  }
 
   metadata_.clear();
   metadata_loaded_ = false;
@@ -155,14 +157,16 @@ Status Array::open_without_fragments(
 
     // Copy the key bytes.
     st = encryption_key_->set_key(encryption_type, encryption_key, key_length);
-    if (!st.ok())
+    if (!st.ok()) {
       throw StatusException(st);
+    }
 
     if (remote_) {
       auto rest_client = storage_manager_->rest_client();
-      if (rest_client == nullptr)
+      if (rest_client == nullptr) {
         throw Status_ArrayError(
             "Cannot open array; remote array with no REST client.");
+      }
       /* #TODO Change get_array_schema_from_rest function signature to
         throw instead of return Status */
       if (!use_refactored_array_open()) {
@@ -273,8 +277,9 @@ Status Array::open(
       encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
       assert(found);
       auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
-      if (!st.ok())
+      if (!st.ok()) {
         throw StatusException(st);
+      }
       encryption_type = et.value();
 
       if (EncryptionKey::is_valid_key_length(
@@ -292,14 +297,16 @@ Status Array::open(
       }
     }
 
-    if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
+    if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION) {
       throw Status_ArrayError(
           "Cannot open array; encrypted remote arrays are not supported.");
+    }
 
     // Copy the key bytes.
     st = encryption_key_->set_key(encryption_type, encryption_key, key_length);
-    if (!st.ok())
+    if (!st.ok()) {
       throw StatusException(st);
+    }
 
     if (timestamp_end_opened_at_ == UINT64_MAX) {
       if (query_type == QueryType::READ) {
@@ -314,9 +321,10 @@ Status Array::open(
 
     if (remote_) {
       auto rest_client = storage_manager_->rest_client();
-      if (rest_client == nullptr)
+      if (rest_client == nullptr) {
         throw Status_ArrayError(
             "Cannot open array; remote array with no REST client.");
+      }
       if (!use_refactored_array_open()) {
         auto&& [st, array_schema_latest] =
             rest_client->get_array_schema_from_rest(array_uri_);
@@ -330,7 +338,7 @@ Status Array::open(
           throw StatusException(st);
         }
       }
-    } else {
+    } else if (query_type == QueryType::READ) {
       array_dir_ = ArrayDirectory(
           storage_manager_->vfs(),
           storage_manager_->compute_tp(),
@@ -340,8 +348,9 @@ Status Array::open(
 
       auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
           storage_manager_->array_open_for_reads(this);
-      if (!st.ok())
+      if (!st.ok()) {
         throw StatusException(st);
+      }
       // Set schemas
       array_schema_latest_ = array_schema_latest.value();
       array_schemas_all_ = array_schemas.value();
@@ -357,8 +366,9 @@ Status Array::open(
 
       auto&& [st, array_schema_latest, array_schemas] =
           storage_manager_->array_open_for_writes(this);
-      if (!st.ok())
+      if (!st.ok()) {
         throw StatusException(st);
+      }
 
       // Set schemas
       array_schema_latest_ = array_schema_latest.value();
