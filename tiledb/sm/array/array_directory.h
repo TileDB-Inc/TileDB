@@ -37,6 +37,7 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <unordered_map>
 
@@ -165,10 +166,20 @@ class ArrayDirectory {
     DeleteTileLocation(const URI& uri, const storage_size_t offset)
         : uri_(uri)
         , offset_(offset) {
+      std::pair<uint64_t, uint64_t> timestamps;
+      if (!utils::parse::get_timestamp_range(uri, &timestamps).ok()) {
+        throw std::logic_error("Error parsing uri.");
+      }
+
+      timestamp_ = timestamps.first;
     }
 
     /** Destructor. */
     ~DeleteTileLocation() = default;
+
+    bool operator<(const DeleteTileLocation& rhs) const {
+      return (timestamp_ < rhs.timestamp_);
+    }
 
     /* ********************************* */
     /*                API                */
@@ -191,6 +202,9 @@ class ArrayDirectory {
 
     /** The offset within the file. */
     uint64_t offset_;
+
+    /** Stores the timestamp of the delete for sorting. */
+    uint64_t timestamp_;
   };
 
  public:

@@ -71,17 +71,15 @@ TEST_CASE(
   buffer_offset<uint32_t, 5>(p) = max_window_size0;
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_filter, filter1]{
+  auto filter1{
       FilterCreate::deserialize(&constbuffer, constants::format_version)};
-  REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter1.value()->type() == filtertype0);
+  CHECK(filter1->type() == filtertype0);
 
   uint32_t max_window_size1 = 0;
   REQUIRE(
-      filter1.value()
-          ->get_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &max_window_size1)
+      filter1->get_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &max_window_size1)
           .ok());
   CHECK(max_window_size0 == max_window_size1);
 }
@@ -96,12 +94,11 @@ TEST_CASE(
   buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_filter, filter1]{
+  auto filter1{
       FilterCreate::deserialize(&constbuffer, constants::format_version)};
-  REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter1.value()->type() == filtertype0);
+  CHECK(filter1->type() == filtertype0);
 }
 
 TEST_CASE(
@@ -114,12 +111,11 @@ TEST_CASE(
   buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_filter, filter1]{
+  auto filter1{
       FilterCreate::deserialize(&constbuffer, constants::format_version)};
-  REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter1.value()->type() == filtertype0);
+  CHECK(filter1->type() == filtertype0);
 }
 
 TEST_CASE(
@@ -132,12 +128,11 @@ TEST_CASE(
   buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_filter, filter1]{
+  auto filter1{
       FilterCreate::deserialize(&constbuffer, constants::format_version)};
-  REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter1.value()->type() == filtertype0);
+  CHECK(filter1->type() == filtertype0);
 }
 
 TEST_CASE(
@@ -150,12 +145,11 @@ TEST_CASE(
   buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_filter, filter1]{
+  auto filter1{
       FilterCreate::deserialize(&constbuffer, constants::format_version)};
-  REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter1.value()->type() == filtertype0);
+  CHECK(filter1->type() == filtertype0);
 }
 
 TEST_CASE(
@@ -168,12 +162,11 @@ TEST_CASE(
   buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_filter, filter1]{
+  auto filter1{
       FilterCreate::deserialize(&constbuffer, constants::format_version)};
-  REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter1.value()->type() == filtertype0);
+  CHECK(filter1->type() == filtertype0);
 }
 
 TEST_CASE(
@@ -203,12 +196,11 @@ TEST_CASE(
     buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(compressor0);
 
     ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-    auto&& [st_filter, filter1]{
+    auto filter1{
         FilterCreate::deserialize(&constbuffer, constants::format_version)};
-    REQUIRE(st_filter.ok());
 
     // Check type
-    CHECK(filter1.value()->type() == filtertype0);
+    CHECK(filter1->type() == filtertype0);
   }
 
   SECTION("gzip") {
@@ -225,17 +217,15 @@ TEST_CASE(
     buffer_offset<int32_t, 6>(p) = level0;
 
     ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-    auto&& [st_filter, filter1]{
+    auto filter1{
         FilterCreate::deserialize(&constbuffer, constants::format_version)};
-    REQUIRE(st_filter.ok());
 
     // Check type
-    CHECK(filter1.value()->type() == filtertype0);
+    CHECK(filter1->type() == filtertype0);
 
     int compressionlevel1 = 0;
     REQUIRE(
-        filter1.value()
-            ->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
+        filter1->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
             .ok());
     CHECK(level0 == compressionlevel1);
   }
@@ -255,17 +245,15 @@ TEST_CASE(
     buffer_offset<int32_t, 6>(p) = level0;
 
     ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-    auto&& [st_filter, filter1]{
+    auto filter1{
         FilterCreate::deserialize(&constbuffer, constants::format_version)};
-    REQUIRE(st_filter.ok());
 
     // Check type
-    CHECK(filter1.value()->type() == filtertype0);
+    CHECK(filter1->type() == filtertype0);
 
     int compressionlevel1 = 0;
     REQUIRE(
-        filter1.value()
-            ->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
+        filter1->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
             .ok());
     CHECK(level0 == compressionlevel1);
   }
@@ -285,17 +273,15 @@ TEST_CASE(
     buffer_offset<int32_t, 6>(p) = level0;
 
     ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-    auto&& [st_filter, filter1]{
+    auto filter1{
         FilterCreate::deserialize(&constbuffer, constants::format_version)};
-    REQUIRE(st_filter.ok());
 
     // Check type
-    CHECK(filter1.value()->type() == filtertype0);
+    CHECK(filter1->type() == filtertype0);
 
     int compressionlevel1 = 0;
     REQUIRE(
-        filter1.value()
-            ->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
+        filter1->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
             .ok());
     CHECK(level0 == compressionlevel1);
   }
@@ -315,17 +301,15 @@ TEST_CASE(
     buffer_offset<int32_t, 6>(p) = level0;
 
     ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-    auto&& [st_filter, filter1]{
+    auto filter1{
         FilterCreate::deserialize(&constbuffer, constants::format_version)};
-    REQUIRE(st_filter.ok());
 
     // Check type
-    CHECK(filter1.value()->type() == filtertype0);
+    CHECK(filter1->type() == filtertype0);
 
     int compressionlevel1 = 0;
     REQUIRE(
-        filter1.value()
-            ->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
+        filter1->get_option(FilterOption::COMPRESSION_LEVEL, &compressionlevel1)
             .ok());
     CHECK(level0 == compressionlevel1);
   }
@@ -340,12 +324,11 @@ TEST_CASE("Filter: Test noop filter deserialization", "[filter][noop]") {
   buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_filter, filter1]{
+  auto filter1{
       FilterCreate::deserialize(&constbuffer, constants::format_version)};
-  REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter1.value()->type() == filtertype0);
+  CHECK(filter1->type() == filtertype0);
 }
 
 TEST_CASE(
@@ -359,15 +342,14 @@ TEST_CASE(
   buffer_offset<uint32_t, 1>(p) = sizeof(uint32_t);  // metadata_length
   buffer_offset<uint32_t, 5>(p) = max_window_size0;
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_filter, filter1]{
+  auto filter1{
       FilterCreate::deserialize(&constbuffer, constants::format_version)};
-  REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter1.value()->type() == filtertype0);
+  CHECK(filter1->type() == filtertype0);
 
   uint32_t max_window_size1 = 0;
-  REQUIRE(filter1.value()
+  REQUIRE(filter1
               ->get_option(
                   FilterOption::POSITIVE_DELTA_MAX_WINDOW, &max_window_size1)
               .ok());
@@ -394,25 +376,19 @@ TEST_CASE(
   buffer_offset<uint64_t, 21>(p) = byte_width0;
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_filter, filter1]{
+  auto filter1{
       FilterCreate::deserialize(&constbuffer, constants::format_version)};
-  REQUIRE(st_filter.ok());
-  CHECK(filter1.value()->type() == filtertype0);
+  CHECK(filter1->type() == filtertype0);
   double scale1 = 0.0;
-  REQUIRE(filter1.value()
-              ->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale1)
-              .ok());
+  REQUIRE(filter1->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale1).ok());
   CHECK(scale0 == scale1);
 
   double offset1 = 0.0;
-  REQUIRE(filter1.value()
-              ->get_option(FilterOption::SCALE_FLOAT_OFFSET, &offset1)
-              .ok());
+  REQUIRE(filter1->get_option(FilterOption::SCALE_FLOAT_OFFSET, &offset1).ok());
   CHECK(offset0 == offset1);
 
   uint64_t byte_width1 = 0;
-  REQUIRE(filter1.value()
-              ->get_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width1)
+  REQUIRE(filter1->get_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width1)
               .ok());
   CHECK(byte_width0 == byte_width1);
 }

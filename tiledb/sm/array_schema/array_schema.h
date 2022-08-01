@@ -53,11 +53,14 @@ class Attribute;
 class Buffer;
 class ConstBuffer;
 class Dimension;
+class DimensionLabelReference;
+class DimensionLabelSchema;
 class Domain;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
 enum class Datatype : uint8_t;
+enum class LabelOrder : uint8_t;
 enum class Layout : uint8_t;
 
 /** Specifies the array schema. */
@@ -77,6 +80,12 @@ class ArraySchema {
    * indices.
    */
   using attribute_size_type = unsigned int;
+
+  /**
+   * Size type for the number of dimension labels in an array and for
+   * label indices.
+   */
+  using dimension_label_size_type = unsigned int;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -118,6 +127,7 @@ class ArraySchema {
       Layout tile_order,
       uint64_t capacity,
       std::vector<shared_ptr<const Attribute>> attributes,
+      std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels,
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
       FilterPipeline coords_filters);
@@ -212,6 +222,18 @@ class ArraySchema {
   /** True if the array is dense. */
   bool dense() const;
 
+  /** Returns the i-th dimension label. */
+  const DimensionLabelReference& dimension_label_reference(
+      dimension_label_size_type i) const;
+
+  /**
+   * Returns the selected dimension label.
+   *
+   * A status exception is thrown if the dimension label does not exist.
+   */
+  const DimensionLabelReference& dimension_label_reference(
+      const std::string& name) const;
+
   /** Returns the i-th dimension. */
   const Dimension* dimension_ptr(dimension_size_type i) const;
 
@@ -226,6 +248,9 @@ class ArraySchema {
 
   /** Returns the dimension types. */
   std::vector<Datatype> dim_types() const;
+
+  /** Returns the number of dimension labels. */
+  dimension_label_size_type dim_label_num() const;
 
   /** Returns the number of dimensions. */
   dimension_size_type dim_num() const;
@@ -248,6 +273,9 @@ class ArraySchema {
 
   /** Returns true if the input name is a dimension. */
   bool is_dim(const std::string& name) const;
+
+  /** Returns true if the input name is a dimension label. */
+  bool is_dim_label(const std::string& name) const;
 
   /** Returns true if the input name is a dimension, attribute or coords. */
   bool is_field(const std::string& name) const;
@@ -291,6 +319,24 @@ class ArraySchema {
    */
   Status add_attribute(
       shared_ptr<const Attribute> attr, bool check_special = true);
+
+  /**
+   * Adds a dimension label to the array schema.
+   *
+   * @param dim_id The index of the dimension the label applied to.
+   * @param name The name of the dimension label.
+   * @param dimension_label_schema The schema of the dimension label.
+   * @param check_name If ``true``, check the name does not conflict with other
+   * labels, attributes, or dimensions.
+   * @param check_is_compatible If ``true``, check the schema of the dimension
+   * label is compatible with the defintion of the dimension.
+   **/
+  Status add_dimension_label(
+      dimension_size_type dim_id,
+      const std::string& name,
+      shared_ptr<const DimensionLabelSchema> dimension_label_schema,
+      bool check_name = true,
+      bool check_is_compatible = true);
 
   /**
    * Drops an attribute.
@@ -456,6 +502,13 @@ class ArraySchema {
    * Maintains lifespan for elements in both attributes_ and attribute_map_. */
   std::vector<shared_ptr<const Attribute>> attributes_;
 
+  /** The array dimension labels. */
+  std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels_;
+
+  /** A map from the dimension label names to the label schemas. */
+  std::unordered_map<std::string, const DimensionLabelReference*>
+      dimension_label_map_;
+
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;
 
@@ -468,6 +521,14 @@ class ArraySchema {
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
 
+  /**
+   * Number of internal dimension labels - used for constructing label URI.
+   *
+   * WARNING: This is only for array schema construction. It is not
+   * loaded from file when loading the array.
+   **/
+  dimension_label_size_type nlabel_internal_ = 0;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -476,7 +537,7 @@ class ArraySchema {
    * Returns false if the union of attribute and dimension names contain
    * duplicates.
    */
-  bool check_attribute_dimension_names() const;
+  Status check_attribute_dimension_label_names() const;
 
   /**
    * Returns error if double delta compression is used in the zipped

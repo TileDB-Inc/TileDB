@@ -58,16 +58,20 @@ namespace sm {
 class FloatScalingFilter : public Filter {
  public:
   /** Struct used for serialization and deserialization from disk. */
-  struct Metadata {
+  struct FilterConfig {
     double scale;
     double offset;
     uint64_t byte_width;
   };
   /**
-   * Default cnstructor.
+   * Default constructor. Default settings for Float Scaling Filter are
+   * scale = 1.0f, offset = 0.0f, and bit_width = 8.
    */
   FloatScalingFilter()
-      : Filter(FilterType::FILTER_SCALE_FLOAT) {
+      : Filter(FilterType::FILTER_SCALE_FLOAT)
+      , scale_(1.0f)
+      , offset_(0.0f)
+      , byte_width_(8) {
   }
 
   /**

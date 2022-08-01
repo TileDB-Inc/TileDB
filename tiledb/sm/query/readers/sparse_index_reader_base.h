@@ -224,9 +224,10 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Initializes the reader.
    *
+   * @param skip_checks_serialization Skip checks during serialization.
    * @return Status.
    */
-  Status init();
+  void init(bool skip_checks_serialization);
 
   /**
    * Resize the output buffers to the correct size after copying.
@@ -257,9 +258,6 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
    * set. */
   std::vector<std::vector<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
-
-  /** Have ve loaded the initial data. */
-  bool initial_data_loaded_;
 
   /** Total memory budget. */
   uint64_t memory_budget_;
@@ -296,9 +294,6 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Names of dim/attr loaded for query condition. */
   std::vector<std::string> qc_loaded_attr_names_;
-
-  /** Names of dim/attr loaded for query condition. */
-  std::unordered_set<std::string> qc_loaded_attr_names_set_;
 
   /* Are the users buffers full. */
   bool buffers_full_;

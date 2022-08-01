@@ -56,6 +56,13 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
+class SparseGlobalOrderReaderStatusException : public StatusException {
+ public:
+  explicit SparseGlobalOrderReaderStatusException(const std::string& message)
+      : StatusException("SparseGlobalOrderReader", message) {
+  }
+};
+
 /* ****************************** */
 /*          CONSTRUCTORS          */
 /* ****************************** */
@@ -71,7 +78,8 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     Subarray& subarray,
     Layout layout,
     QueryCondition& condition,
-    bool consolidation_with_timestamps)
+    bool consolidation_with_timestamps,
+    bool skip_checks_serialization)
     : SparseIndexReaderBase(
           stats,
           logger->clone("SparseGlobalOrderReader", ++logger_id_),
@@ -87,6 +95,13 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     , memory_used_for_qc_tiles_(array->fragment_metadata().size())
     , consolidation_with_timestamps_(consolidation_with_timestamps)
     , last_cells_(array->fragment_metadata().size()) {
+  SparseIndexReaderBase::init(skip_checks_serialization);
+
+  // Initialize memory budget variables.
+  if (!initialize_memory_budget().ok()) {
+    throw SparseGlobalOrderReaderStatusException(
+        "Cannot initialize memory budget");
+  }
 }
 
 /* ****************************** */
@@ -104,16 +119,6 @@ QueryStatusDetailsReason
 SparseGlobalOrderReader<BitmapType>::status_incomplete_reason() const {
   return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
                         QueryStatusDetailsReason::REASON_NONE;
-}
-
-template <class BitmapType>
-Status SparseGlobalOrderReader<BitmapType>::init() {
-  RETURN_NOT_OK(SparseIndexReaderBase::init());
-
-  // Initialize memory budget variables.
-  RETURN_NOT_OK(initialize_memory_budget());
-
-  return Status::Ok();
 }
 
 template <class BitmapType>
@@ -1289,10 +1294,6 @@ Status SparseGlobalOrderReader<BitmapType>::copy_timestamps_tiles(
             result_cell_slabs[i].tile_);
         const uint64_t cell_size = constants::timestamp_size;
 
-        // Get source buffers.
-        const auto tile_tuple = rt->tile_tuple(constants::timestamps);
-        const auto t = &std::get<0>(*tile_tuple);
-
         // Compute parallelization parameters.
         auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
             compute_parallelization_parameters(
@@ -1310,6 +1311,10 @@ Status SparseGlobalOrderReader<BitmapType>::copy_timestamps_tiles(
             static_cast<uint64_t*>(query_buffer.buffer_) + dest_cell_offset;
 
         if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
+          // Get source buffers.
+          const auto tile_tuple = rt->tile_tuple(constants::timestamps);
+          const auto t = &std::get<0>(*tile_tuple);
+
           // Copy tile.
           const auto src_buff = t->template data_as<uint8_t>();
           memcpy(
@@ -1730,6 +1735,7 @@ template SparseGlobalOrderReader<uint8_t>::SparseGlobalOrderReader(
     Subarray&,
     Layout,
     QueryCondition&,
+    bool,
     bool);
 template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
     stats::Stats*,
@@ -1741,6 +1747,7 @@ template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
     Subarray&,
     Layout,
     QueryCondition&,
+    bool,
     bool);
 
 }  // namespace sm

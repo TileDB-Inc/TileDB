@@ -42,10 +42,10 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-/** Defines the query statuses. */
+/** Defines the ordering of data in a dimension label. */
 enum class LabelOrder : uint8_t {
 #define TILEDB_LABEL_ORDER_ENUM(id) id
-#include "tiledb/sm/c_api/experimental/tiledb_enum.h"
+#include "tiledb/sm/c_api/experimental/tiledb_enum_experimental.h"
 #undef TILEDB_LABEL_ORDER_ENUM
 };
 
@@ -59,6 +59,26 @@ inline const std::string& label_order_str(LabelOrder order) {
       return constants::label_decreasing_str;
     default:
       return constants::empty_str;
+  }
+}
+
+/**
+ * Converts an uint8_t value to a LabelOrder enum.
+ *
+ * Used for deserializing the label order. Throws an error if the label order's
+ * enumeration is not valid.
+ */
+inline LabelOrder label_order_from_int(uint8_t label_order_int) {
+  auto label_order = LabelOrder(label_order_int);
+  switch (label_order) {
+    case LabelOrder::UNORDERED_LABELS:
+    case LabelOrder::INCREASING_LABELS:
+    case LabelOrder::DECREASING_LABELS:
+      return label_order;
+    default:
+      throw std::runtime_error(
+          "Invalid LabelOrder( " +
+          std::to_string(static_cast<uint16_t>(label_order_int)) + ")");
   }
 }
 

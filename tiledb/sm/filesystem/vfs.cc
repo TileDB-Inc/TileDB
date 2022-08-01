@@ -190,22 +190,19 @@ Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
 
   // Get all files in the tree rooted at `dir_name` and add their sizes
   *dir_size = 0;
-  uint64_t size;
   std::list<URI> to_ls;
-  bool is_file;
   to_ls.push_front(dir_name);
   do {
     auto uri = to_ls.front();
     to_ls.pop_front();
-    std::vector<URI> children;
-    RETURN_NOT_OK(ls(uri, &children));
-    for (const auto& child : children) {
-      RETURN_NOT_OK(this->is_file(child, &is_file));
-      if (is_file) {
-        RETURN_NOT_OK(file_size(child, &size));
-        *dir_size += size;
+    auto&& [st, children] = ls_with_sizes(uri);
+    RETURN_NOT_OK(st);
+
+    for (const auto& child : *children) {
+      if (!child.is_directory()) {
+        *dir_size += child.file_size();
       } else {
-        to_ls.push_back(child);
+        to_ls.push_back(URI(child.path().native()));
       }
     }
   } while (!to_ls.empty());

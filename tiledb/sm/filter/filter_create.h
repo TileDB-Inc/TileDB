@@ -56,9 +56,11 @@ class FilterCreate {
    * @param buff The buffer to deserialize from.
    * @param encryption_key.
    * @param version Array schema version
-   * @return Status and Filter
+   * @return Filter
+   *
+   * @pre version has been validated by ArraySchema::deserialize
    */
-  static tuple<Status, optional<shared_ptr<Filter>>> deserialize(
+  static shared_ptr<Filter> deserialize(
       ConstBuffer* buff,
       const EncryptionKey& encryption_key,
       const uint32_t version);
@@ -68,9 +70,11 @@ class FilterCreate {
    *
    * @param buff The buffer to deserialize from.
    * @param version Array schema version
-   * @return Status and Filter
+   * @return Filter
+   *
+   * @pre version has been validated by ArraySchema::deserialize
    */
-  static tuple<Status, optional<shared_ptr<Filter>>> deserialize(
+  static shared_ptr<Filter> deserialize(
       ConstBuffer* buff, const uint32_t version);
 };
 

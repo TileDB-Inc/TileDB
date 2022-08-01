@@ -82,6 +82,7 @@ struct DeletesFx {
       uint64_t timestamp,
       bool encrypt = false);
   void consolidate_sparse(bool vacuum = false);
+  void consolidate_commits_sparse(bool vacuum);
   void write_delete_condition(
       QueryCondition& qc,
       uint64_t timestamp,
@@ -234,6 +235,15 @@ void DeletesFx::read_sparse(
 
 void DeletesFx::consolidate_sparse(bool vacuum) {
   auto config = ctx_.config();
+
+  if (vacuum) {
+    REQUIRE_NOTHROW(Array::vacuum(ctx_, SPARSE_ARRAY_NAME, &config));
+  }
+}
+
+void DeletesFx::consolidate_commits_sparse(bool vacuum) {
+  auto config = ctx_.config();
+  config["sm.consolidation.mode"] = "commits";
   Array::consolidate(ctx_, SPARSE_ARRAY_NAME, &config);
 
   if (vacuum) {
@@ -294,12 +304,9 @@ void DeletesFx::check_delete_conditions(
         ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
   }
   auto array_ptr = array->ptr()->array_;
-  auto& array_dir = array_ptr->array_directory();
-  auto& enc_key = *array_ptr->encryption_key();
 
   // Load delete conditions.
-  auto&& [st, delete_conditions] =
-      sm_->load_delete_conditions(array_dir, enc_key);
+  auto&& [st, delete_conditions] = sm_->load_delete_conditions(*array_ptr);
   REQUIRE(st.ok());
   REQUIRE(delete_conditions->size() == qcs.size());
 
@@ -329,7 +336,7 @@ bool DeletesFx::is_array(const std::string& array_name) {
 
 TEST_CASE_METHOD(
     DeletesFx,
-    "CPP API: Test writting delete condition",
+    "CPP API: Test writing delete condition",
     "[cppapi][deletes][write-check]") {
   remove_sparse_array();
 
@@ -358,7 +365,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DeletesFx,
-    "CPP API: Test writting invalid delete condition",
+    "CPP API: Test writing invalid delete condition",
     "[cppapi][deletes][write-check][invalid]") {
   remove_sparse_array();
   create_sparse_array();
@@ -376,7 +383,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test open for delete invalid version",
-    "[cppapi][deletes][][invalid-version]") {
+    "[cppapi][deletes][invalid-version]") {
   if constexpr (is_experimental_build) {
     return;
   }
@@ -415,12 +422,17 @@ TEST_CASE_METHOD(
 
   // Write condition.
   write_delete_condition(qc, 3);
-
   // Write another fragment that will not be affected by the condition.
   write_sparse({1}, {4}, {4}, 5);
 
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  if (legacy) {
+    set_legacy();
+  }
+
   // Reading before the delete condition timestamp.
-  uint64_t buffer_size = 4;
+  uint64_t buffer_size = legacy ? 100 : 4;
   std::string stats;
   std::vector<int> a1(buffer_size);
   std::vector<uint64_t> dim1(buffer_size);
@@ -435,7 +447,7 @@ TEST_CASE_METHOD(
   CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
 
   // Reading after delete condition timestamp.
-  buffer_size = 2;
+  buffer_size = legacy ? 100 : 2;
   std::vector<int> a1_2(buffer_size);
   std::vector<uint64_t> dim1_2(buffer_size);
   std::vector<uint64_t> dim2_2(buffer_size);
@@ -451,7 +463,7 @@ TEST_CASE_METHOD(
       c_dim2_2.data(), dim2_2.data(), c_dim2_2.size() * sizeof(uint64_t)));
 
   // Reading after new fragment.
-  buffer_size = 3;
+  buffer_size = legacy ? 100 : 3;
   std::vector<int> a1_3(buffer_size);
   std::vector<uint64_t> dim1_3(buffer_size);
   std::vector<uint64_t> dim2_3(buffer_size);
@@ -495,8 +507,14 @@ TEST_CASE_METHOD(
   // Write condition.
   write_delete_condition(qc, 3);
 
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  if (legacy) {
+    set_legacy();
+  }
+
   // Reading before the delete condition timestamp.
-  uint64_t buffer_size = 4;
+  uint64_t buffer_size = legacy ? 100 : 4;
   std::string stats;
   std::vector<int> a1(buffer_size);
   std::vector<uint64_t> dim1(buffer_size);
@@ -511,7 +529,7 @@ TEST_CASE_METHOD(
   CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
 
   // Reading after delete condition timestamp.
-  buffer_size = 2;
+  buffer_size = legacy ? 100 : 2;
   std::vector<int> a1_2(buffer_size);
   std::vector<uint64_t> dim1_2(buffer_size);
   std::vector<uint64_t> dim2_2(buffer_size);
@@ -527,7 +545,7 @@ TEST_CASE_METHOD(
       c_dim2_2.data(), dim2_2.data(), c_dim2_2.size() * sizeof(uint64_t)));
 
   // Reading after new fragment.
-  buffer_size = 3;
+  buffer_size = legacy ? 100 : 3;
   std::vector<int> a1_3(buffer_size);
   std::vector<uint64_t> dim1_3(buffer_size);
   std::vector<uint64_t> dim2_3(buffer_size);
@@ -569,8 +587,14 @@ TEST_CASE_METHOD(
   // Write condition.
   write_delete_condition(qc, 5);
 
+  // Test read for both refactored and legacy.
+  bool legacy = GENERATE(true, false);
+  if (legacy) {
+    set_legacy();
+  }
+
   // Reading.
-  uint64_t buffer_size = allows_dups ? 4 : 3;
+  uint64_t buffer_size = legacy ? 100 : (allows_dups ? 4 : 3);
   std::string stats;
   std::vector<int> a1(buffer_size);
   std::vector<uint64_t> dim1(buffer_size);
@@ -598,4 +622,54 @@ TEST_CASE_METHOD(
   }
 
   remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    DeletesFx,
+    "CPP API: Deletes, commits consolidation",
+    "[cppapi][deletes][commits][consolidation]") {
+  remove_sparse_array();
+
+  create_sparse_array();
+
+  bool vacuum = GENERATE(false, true);
+
+  // Write fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+
+  // Define query condition (a1 < 2).
+  QueryCondition qc(ctx_);
+  int32_t val = 2;
+  qc.init("a1", &val, sizeof(int32_t), TILEDB_LT);
+
+  // Write condition.
+  write_delete_condition(qc, 3);
+
+  // Write fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 5);
+
+  // Define query condition (a1 > 4).
+  QueryCondition qc2(ctx_);
+  int32_t val2 = 4;
+  qc2.init("a1", &val2, sizeof(int32_t), TILEDB_GT);
+
+  // Write condition.
+  write_delete_condition(qc2, 7);
+
+  consolidate_commits_sparse(vacuum);
+
+  check_delete_conditions({qc}, 4);
+
+  check_delete_conditions({qc, qc2}, 8);
+
+  // Define query condition (a1 == 9).
+  QueryCondition qc3(ctx_);
+  int32_t val3 = 9;
+  qc3.init("a1", &val3, sizeof(int32_t), TILEDB_EQ);
+
+  // Write one more condition, in between the existing conditions, this will
+  // ensure the conditions get sorted.
+  write_delete_condition(qc3, 4);
+
+  check_delete_conditions({qc, qc3, qc2}, 8);
 }

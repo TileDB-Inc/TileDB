@@ -33,6 +33,7 @@
 #ifndef TILEDB_VFS_HELPERS_H
 #define TILEDB_VFS_HELPERS_H
 
+#include "catch.hpp"
 #include "test/src/helpers.h"
 
 #ifdef _WIN32
@@ -539,6 +540,56 @@ class SupportedFsMem : public SupportedFs {
 
   /** The directory name of the Mem filesystem. */
   std::string temp_dir_;
+};
+
+/**
+ * Fixture for creating a temporary directory for a test case. This fixture
+ * also manages the context and virtual file system for the test case.
+ */
+struct TemporaryDirectoryFixture {
+ public:
+  /** Fixture constructor. */
+  TemporaryDirectoryFixture()
+      : supported_filesystems_(vfs_test_get_fs_vec()) {
+    // Initialize virtual filesystem and context.
+    REQUIRE(vfs_test_init(supported_filesystems_, &ctx, &vfs_).ok());
+
+    // Create temporary directory based on the supported filesystem
+#ifdef _WIN32
+    SupportedFsLocal windows_fs;
+    temp_dir_ = windows_fs.file_prefix() + windows_fs.temp_dir();
+#else
+    SupportedFsLocal posix_fs;
+    temp_dir_ = posix_fs.file_prefix() + posix_fs.temp_dir();
+#endif
+    create_dir(temp_dir_, ctx, vfs_);
+  }
+
+  /** Fixture destructor. */
+  ~TemporaryDirectoryFixture() {
+    remove_dir(temp_dir_, ctx, vfs_);
+    tiledb_ctx_free(&ctx);
+    tiledb_vfs_free(&vfs_);
+  }
+
+  /** Create a new array. */
+  std::string fullpath(std::string&& name) {
+    return temp_dir_ + name;
+  }
+
+ protected:
+  /** TileDB context */
+  tiledb_ctx_t* ctx;
+
+  /** Name of the temporary directory to use for this test */
+  std::string temp_dir_;
+
+ private:
+  /** Virtual file system */
+  tiledb_vfs_t* vfs_;
+
+  /** Vector of supported filesystems. Used to initialize ``vfs_``. */
+  const std::vector<std::unique_ptr<SupportedFs>> supported_filesystems_;
 };
 
 }  // End of namespace test
