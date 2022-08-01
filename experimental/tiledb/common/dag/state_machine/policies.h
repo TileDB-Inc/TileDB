@@ -192,7 +192,7 @@ class ManualPolicy
     if constexpr (std::is_same_v<PortState, two_stage>) {
       CHECK(str(static_cast<Mover*>(this)->state()) == "st_00");
     } else if constexpr (std::is_same_v<PortState, three_stage>) {
-      CHECK(str(static_cast<Mover*>(this)->get_state()) == "st_000");
+      CHECK(str(static_cast<Mover*>(this)->state()) == "st_000");
     }
   }
   inline void on_ac_return(lock_type&, std::atomic<int>&) {

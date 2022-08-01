@@ -233,7 +233,7 @@ TEST_CASE(
 }
 
 /**
- * Test that we can asynchronously transfer a value from Source to Sik.
+ * Test that we can asynchronously transfer a value from Source to Sink.
  *
  * The test creates an asynchronous task for a source node client and for a sync
  * node client, and launches them separately using `std::async`.  To create
@@ -301,7 +301,7 @@ TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
  * different interleavings of the tasks, we use all combinations of ordering for
  * launching the tasks and waiting on their futures.
  */
-TEST_CASE("Ports: Async pass n integers", "[ports]") {
+TEST_CASE("Ports: Async pass n integers, random delays", "[ports]") {
   [[maybe_unused]] constexpr bool debug = false;
 
   Source<AsyncMover2, size_t> source;
@@ -401,6 +401,127 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
       state_machine->do_drain(debug ? "async sink node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    }
+  };
+  SECTION("test source launch, sink launch, source get, sink get") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("test source launch, sink launch, sink get, source get") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+    fut_b.get();
+    fut_a.get();
+  }
+
+  SECTION("test sink launch, source launch, source get, sink get") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("test sink launch, source launch, sink get, source get") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+    fut_b.get();
+    fut_a.get();
+  }
+
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    for (size_t j = 0; j < input.size(); ++j) {
+      if (input[j] != output[j]) {
+        std::cout << j << " (" << input[j] << ", " << output[j] << ")"
+                  << std::endl;
+      }
+    }
+  }
+
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    auto iter = std::find_first_of(
+        input.begin(),
+        input.end(),
+        output.begin(),
+        output.end(),
+        std::not_equal_to<size_t>());
+    if (iter != input.end()) {
+      size_t k = iter - input.begin();
+      std::cout << k << " (" << input[k] << ", " << output[k] << ")"
+                << std::endl;
+    } else {
+      std::cout << "this should not happen" << std::endl;
+    }
+  }
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()));
+}
+
+/**
+ * Repeat above test but without delays.
+ *
+ * The test creates an asynchronous task for a source node client and for a sync
+ * node client, and launches them separately using `std::async`.  To create
+ * different interleavings of the tasks, we use all combinations of ordering for
+ * launching the tasks and waiting on their futures.
+ */
+TEST_CASE("Ports: Async pass n integers", "[ports]") {
+  [[maybe_unused]] constexpr bool debug = false;
+
+  Source<AsyncMover2, size_t> source;
+  Sink<AsyncMover2, size_t> sink;
+
+  attach(source, sink);
+
+  auto state_machine = sink.get_mover();
+  CHECK(str(state_machine->state()) == "st_00");
+
+  size_t rounds = 3379;
+  if (debug)
+    rounds = 3;
+
+  std::vector<size_t> input(rounds);
+  std::vector<size_t> output(rounds);
+
+  std::iota(input.begin(), input.end(), 19);
+  std::fill(output.begin(), output.end(), 0);
+  auto i = input.begin();
+  auto j = output.begin();
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
+
+  [[maybe_unused]] size_t b;
+
+  auto source_node = [&]() {
+    size_t n = rounds;
+
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+
+      CHECK(is_source_empty(state_machine->state()) == "");
+      source.inject(*i++);
+      CHECK(is_source_empty(state_machine->state()) == "");
+      state_machine->do_fill(debug ? "async source node" : "");
+      state_machine->do_push(debug ? "async source node" : "");
+    }
+  };
+
+  auto sink_node = [&]() {
+    size_t n = rounds;
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+      state_machine->do_pull(debug ? "async sink node" : "");
+      CHECK(is_sink_full(state_machine->state()) == "");
+      *j++ = *(sink.extract());
+
+      CHECK(is_sink_full(state_machine->state()) == "");
+      state_machine->do_drain(debug ? "async sink node" : "");
     }
   };
   SECTION("test source launch, sink launch, source get, sink get") {
