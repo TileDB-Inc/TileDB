@@ -41,6 +41,9 @@ There can be any number of fragments in an array. The fragment folder contains:
 * A single [fragment metadata file](#fragment-metadata-file) named `__fragment_metadata.tdb`. 
 * Any number of [data files](#data-file). For each fixed-sized attribute `foo1` (or dimension `bar1`), there is a single data file `a0.tdb` (`d0.tdb`) containing the values along this attribute (dimension). For every var-sized attribute `foo2` (or dimensions `bar2`), there are two data files; `a1_var.tdb` (`d1_var.tdb`) containing the var-sized values of the attribute (dimension) and `a1.tdb` (`d1.tdb`) containing the starting offsets of each value in `a1_var.tdb` (`d1_var.rdb`). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, `foo3`, will have an additional file `a2_validity.tdb` that contains its validity vector.
 * The names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.
+* The timestamp fixed attribute (`t.tdb`) is, for fragments consolidated with timestamps, the time at which a cell was added.
+* The delete timestamp fixed attribute (`dt.tdb`) is, for fragments consolidated with delete conditions, the time at which a cell was deleted.
+* The delete condition marker hash fixed attribute (`dcmh.tdb`) is, for fragments consolidated with delete conditions, the hash of the delete condition marker that deleted the cell.
 
 ## Fragment Metadata File 
 
@@ -61,18 +64,20 @@ The fragment metadata file has the following on-disk format:
 | Validity tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized validity tile offsets for attribute/dimension 1 |
 | … | … | … |
 | Validity tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized validity tile offsets for attribute/dimension N |
-| Tile mins for attribute/dimension 1 | [Tile mins/maxs](#tile-mins-maxs) | The serialized mins for attribute/dimension 1 |
+| Tile mins for attribute/dimension 1 | [Tile Mins/Maxs](#tile-mins-maxs) | The serialized mins for attribute/dimension 1 |
 | … | … | … |
-| Variable mins for attribute/dimension N | [Tile mins/maxs](#tile-mins-maxs) | The serialized mins for attribute/dimension N |
-| Tile maxs for attribute/dimension 1 | [Tile mins/maxs](#tile-mins-maxs) | The serialized maxs for attribute/dimension 1 |
+| Variable mins for attribute/dimension N | [Tile Mins/Maxs](#tile-mins-maxs) | The serialized mins for attribute/dimension N |
+| Tile maxs for attribute/dimension 1 | [Tile Mins/Maxs](#tile-mins-maxs) | The serialized maxs for attribute/dimension 1 |
 | … | … | … |
-| Variable maxs for attribute/dimension N | [Tile mins/maxs](#tile-mins-maxs) | The serialized maxs for attribute/dimension N |
-| Tile sums for attribute/dimension 1 | [Tile sums](#tile-sums) | The serialized sums for attribute/dimension 1 |
+| Variable maxs for attribute/dimension N | [Tile Mins/Maxs](#tile-mins-maxs) | The serialized maxs for attribute/dimension N |
+| Tile sums for attribute/dimension 1 | [Tile Sums](#tile-sums) | The serialized sums for attribute/dimension 1 |
 | … | … | … |
-| Variable sums for attribute/dimension N | [Tile sums](#tile-sums) | The serialized sums for attribute/dimension N |
-| Tile null counts for attribute/dimension 1 | [Tile null count](#tile-null-count) | The serialized null counts for attribute/dimension 1 |
+| Variable sums for attribute/dimension N | [Tile Sums](#tile-sums) | The serialized sums for attribute/dimension N |
+| Tile null counts for attribute/dimension 1 | [Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension 1 |
 | … | … | … |
-| Variable maxs for attribute/dimension N | [[Tile null count](#tile-null-count) | The serialized null counts for attribute/dimension N |
+| Variable maxs for attribute/dimension N | [[Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension N |
+| Fragment min, max, sum, null count | [[Tile Fragment Min Max Sum Null Count](#tile-fragment-min-max-sum-null-count) | The serialized fragment min max sum null count |
+| Processed conditions | [[Tile Processed Conditions](#tile-processed-conditions) | The serialized processed conditions |
 | Metadata footer | [Footer](#footer) | Basic metadata gathered in the footer |
 
 ### R-Tree
@@ -165,6 +170,8 @@ The tile sums is a [generic tile](./generic_tile.md) with the following internal
 | … | … | … |
 | Value N | `uint64_t` | Sum N |
 
+### Tile Null Count
+
 The tile null count is a [generic tile](./generic_tile.md) with the following internal format:
 
 | **Field** | **Type** | **Description** |
@@ -173,6 +180,8 @@ The tile null count is a [generic tile](./generic_tile.md) with the following in
 | Value 1 | `uint64_t` | Count 1 |
 | … | … | … |
 | Value N | `uint64_t` | Count N |
+
+### Tile Fragment Min Max Sum Null Count
 
 The fragment min max sum null count is a [generic tile](./generic_tile.md) with the following internal format:
 
@@ -191,6 +200,8 @@ The fragment min max sum null count is a [generic tile](./generic_tile.md) with 
 | Max value | `uint8_t` | Buffer for max value for attribute/dimension N |
 | Sum | `uint64_t` | Sum value for attribute/dimension N |
 | Null count | `uint64_t` | Null count value for attribute/dimension N |
+
+### Tile Processed Conditions
 
 The processed conditions is a [generic tile](./generic_tile.md) and is the list of delete/update conditions that have already been applied for this fragment and don't need to be applied again, in no particular order, with the following internal format:
 
