@@ -66,28 +66,18 @@ Status Filter::set_option(FilterOption option, const void* value) {
 // filter type (uint8_t)
 // filter metadata num bytes (uint32_t -- may be 0)
 // filter metadata (char[])
-Status Filter::serialize(Buffer* buff) const {
+void Filter::serialize(Serializer& serializer) const {
   auto type = static_cast<uint8_t>(type_);
-  RETURN_NOT_OK(buff->write(&type, sizeof(uint8_t)));
-
-  // Save a pointer to store the actual length of the metadata.
-  uint32_t metadata_len = 0;
-  auto metadata_length_offset = buff->offset();
-  RETURN_NOT_OK(buff->write(&metadata_len, sizeof(uint32_t)));
-
-  // Filter-specific serialization
-  uint64_t buff_size = buff->size();
-  RETURN_NOT_OK(serialize_impl(buff));
+  serializer.write(type);
 
   // Compute and write metadata length
-  if (buff->size() < buff_size ||
-      buff->size() - buff_size > std::numeric_limits<uint32_t>::max())
-    return LOG_STATUS(Status_FilterError("Filter metadata exceeds max length"));
-  metadata_len = static_cast<uint32_t>(buff->size() - buff_size);
-  std::memcpy(
-      buff->data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
+  SizeComputationSerializer size_computation_serializer;
+  serialize_impl(size_computation_serializer);
+  uint32_t md_length = size_computation_serializer.size();
+  serializer.write(md_length);
 
-  return Status::Ok();
+  // Filter-specific serialization
+  serialize_impl(serializer);
 }
 
 Status Filter::get_option_impl(FilterOption option, void* value) const {
@@ -102,9 +92,7 @@ Status Filter::set_option_impl(FilterOption option, const void* value) {
   return LOG_STATUS(Status_FilterError("Filter does not support options."));
 }
 
-Status Filter::serialize_impl(Buffer* buff) const {
-  (void)buff;
-  return Status::Ok();
+void Filter::serialize_impl(Serializer&) const {
 }
 
 FilterType Filter::type() const {

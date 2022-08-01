@@ -411,9 +411,8 @@ PositiveDeltaFilter* PositiveDeltaFilter::clone_impl() const {
   return clone;
 }
 
-Status PositiveDeltaFilter::serialize_impl(Buffer* buff) const {
-  RETURN_NOT_OK(buff->write(&max_window_size_, sizeof(uint32_t)));
-  return Status::Ok();
+void PositiveDeltaFilter::serialize_impl(Serializer& serializer) const {
+  serializer.write(max_window_size_);
 }
 
 }  // namespace sm

@@ -984,6 +984,17 @@ class StorageManager {
       const URI& uri,
       const EncryptionKey& encryption_key);
 
+  /**
+   * Stores data into persistent storage.
+   *
+   * @param tile Tile to store.
+   * @param uri The object URI.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  Status store_data_to_generic_tile(
+      Tile& tile, const URI& uri, const EncryptionKey& encryption_key);
+
   /** Closes a file, flushing its contents to persistent storage. */
   Status close_file(const URI& uri);
 
@@ -1007,15 +1018,6 @@ class StorageManager {
    */
   Status write_to_cache(
       const URI& uri, uint64_t offset, const FilteredBuffer& buffer) const;
-
-  /**
-   * Writes the contents of a buffer into a URI file.
-   *
-   * @param uri The file to write into.
-   * @param buffer The buffer to write.
-   * @return Status.
-   */
-  Status write(const URI& uri, Buffer* buffer) const;
 
   /**
    * Writes the input data into a URI file.

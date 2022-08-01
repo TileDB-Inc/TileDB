@@ -142,13 +142,13 @@ class Dimension {
   /**
    * Populates the object members from the data in the input binary buffer.
    *
-   * @param buff The buffer to deserialize from.
+   * @param deserializer The deserializer to deserialize from.
    * @param type The type of the dimension.
    * @param version The array schema version.
-   * @return Status and Dimension
+   * @return Dimension
    */
-  static tuple<Status, optional<shared_ptr<Dimension>>> deserialize(
-      ConstBuffer* buff, uint32_t version, Datatype type);
+  static shared_ptr<Dimension> deserialize(
+      Deserializer& deserializer, uint32_t version, Datatype type);
 
   /** Returns the domain. */
   const Range& domain() const;
@@ -686,11 +686,11 @@ class Dimension {
   /**
    * Serializes the object members into a binary buffer.
    *
-   * @param buff The buffer to serialize the data into.
+   * @param serializer The object the dimension is serialized into.
    * @param version The array schema version
    * @return Status
    */
-  Status serialize(Buffer* buff, uint32_t version);
+  void serialize(Serializer& serializer, uint32_t version) const;
 
   /** Sets the domain. */
   Status set_domain(const void* domain);

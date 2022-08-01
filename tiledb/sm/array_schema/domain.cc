@@ -329,38 +329,28 @@ void Domain::crop_ndrange(NDRange* ndrange) const {
     dimension_ptrs_[d]->crop_range(&(*ndrange)[d]);
 }
 
-tuple<Status, optional<shared_ptr<Domain>>> Domain::deserialize(
-    ConstBuffer* buff, uint32_t version, Layout cell_order, Layout tile_order) {
+shared_ptr<Domain> Domain::deserialize(
+    Deserializer& deserializer,
+    uint32_t version,
+    Layout cell_order,
+    Layout tile_order) {
   Status st;
   // Load type
   Datatype type = Datatype::INT32;
   if (version < 5) {
-    uint8_t type_c;
-    st = buff->read(&type_c, sizeof(uint8_t));
-    if (!st.ok()) {
-      return {st, nullopt};
-    }
+    auto type_c = deserializer.read<uint8_t>();
     type = static_cast<Datatype>(type_c);
   }
 
   std::vector<shared_ptr<Dimension>> dimensions;
-  uint32_t dim_num;
-  // Load dimensions
-  st = buff->read(&dim_num, sizeof(uint32_t));
-  if (!st.ok()) {
-    return {st, nullopt};
-  }
+  auto dim_num = deserializer.read<uint32_t>();
   for (uint32_t i = 0; i < dim_num; ++i) {
-    auto&& [st_dim, dim]{Dimension::deserialize(buff, version, type)};
-    if (!st_dim.ok()) {
-      return {Status_DomainError("Cannot deserialize dimension."), nullopt};
-    }
-    dimensions.emplace_back(std::move(dim.value()));
+    auto dim{Dimension::deserialize(deserializer, version, type)};
+    dimensions.emplace_back(std::move(dim));
   }
 
-  return {Status::Ok(),
-          tiledb::common::make_shared<Domain>(
-              HERE(), cell_order, dimensions, tile_order)};
+  return tiledb::common::make_shared<Domain>(
+      HERE(), cell_order, dimensions, tile_order);
 }
 
 const Range& Domain::domain(unsigned i) const {
@@ -596,13 +586,12 @@ bool Domain::null_tile_extents() const {
 // dimension #1
 // dimension #2
 // ...
-Status Domain::serialize(Buffer* buff, uint32_t version) {
+void Domain::serialize(Serializer& serializer, uint32_t version) const {
   // Write dimensions
-  RETURN_NOT_OK(buff->write(&dim_num_, sizeof(uint32_t)));
-  for (const auto& dim : dimensions_)
-    RETURN_NOT_OK(dim->serialize(buff, version));
-
-  return Status::Ok();
+  serializer.write(dim_num_);
+  for (const auto& dim : dimensions_) {
+    dim->serialize(serializer, version);
+  }
 }
 
 Status Domain::set_null_tile_extents_to_range() {
@@ -1075,6 +1064,7 @@ uint64_t Domain::get_tile_pos_row(const T* domain, const T* tile_coords) const {
   return pos;
 }
 
+// Explicit template instantiations
 template void Domain::get_next_tile_coords<int>(
     const int* domain, int* tile_coords) const;
 template void Domain::get_next_tile_coords<int64_t>(

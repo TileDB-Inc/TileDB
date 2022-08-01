@@ -644,15 +644,13 @@ uint64_t CompressionFilter::overhead(const Tile& tile, uint64_t nbytes) const {
   }
 }
 
-Status CompressionFilter::serialize_impl(Buffer* buff) const {
+void CompressionFilter::serialize_impl(Serializer& serializer) const {
   if (compressor_ == Compressor::NO_COMPRESSION) {
-    return Status::Ok();
+    return;
   }
   auto compressor_char = static_cast<uint8_t>(compressor_);
-  RETURN_NOT_OK(buff->write(&compressor_char, sizeof(uint8_t)));
-  RETURN_NOT_OK(buff->write(&level_, sizeof(int32_t)));
-
-  return Status::Ok();
+  serializer.write(compressor_char);
+  serializer.write(level_);
 }
 
 void CompressionFilter::init_compression_resource_pool(uint64_t size) {

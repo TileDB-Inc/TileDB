@@ -111,42 +111,33 @@ unsigned int Attribute::cell_val_num() const {
   return cell_val_num_;
 }
 
-tuple<Status, optional<Attribute>> Attribute::deserialize(
-    ConstBuffer* buff, const uint32_t version) {
+Attribute Attribute::deserialize(
+    Deserializer& deserializer, const uint32_t version) {
   // Load attribute name
-  uint32_t attribute_name_size;
-  RETURN_NOT_OK_TUPLE(
-      buff->read(&attribute_name_size, sizeof(uint32_t)), nullopt);
-
-  std::string name;
-  name.resize(attribute_name_size);
-  RETURN_NOT_OK_TUPLE(buff->read(&name[0], attribute_name_size), nullopt);
+  auto attribute_name_size = deserializer.read<uint32_t>();
+  std::string name(
+      deserializer.get_ptr<char>(attribute_name_size), attribute_name_size);
 
   // Load type
-  uint8_t type;
-  RETURN_NOT_OK_TUPLE(buff->read(&type, sizeof(uint8_t)), nullopt);
+  auto type = deserializer.read<uint8_t>();
 
   Datatype datatype = static_cast<Datatype>(type);
 
   // Load cell_val_num
-  uint32_t cell_val_num;
-  RETURN_NOT_OK_TUPLE(buff->read(&cell_val_num, sizeof(uint32_t)), nullopt);
+  auto cell_val_num = deserializer.read<uint32_t>();
 
   // Load filter pipeline
-  // Note: Security validation delegated to invoked API
-  auto filterpipeline{FilterPipeline::deserialize(buff, version)};
+  auto filterpipeline{FilterPipeline::deserialize(deserializer, version)};
 
   // Load fill value
   uint64_t fill_value_size = 0;
   ByteVecValue fill_value;
   if (version >= 6) {
-    RETURN_NOT_OK_TUPLE(
-        buff->read(&fill_value_size, sizeof(uint64_t)), nullopt);
+    fill_value_size = deserializer.read<uint64_t>();
     assert(fill_value_size > 0);
     fill_value.resize(fill_value_size);
     fill_value.shrink_to_fit();
-    RETURN_NOT_OK_TUPLE(
-        buff->read(fill_value.data(), fill_value_size), nullopt);
+    deserializer.read(fill_value.data(), fill_value_size);
   } else {
     fill_value = default_fill_value(datatype, cell_val_num);
   }
@@ -154,26 +145,23 @@ tuple<Status, optional<Attribute>> Attribute::deserialize(
   // Load nullable flag
   bool nullable = false;
   if (version >= 7) {
-    RETURN_NOT_OK_TUPLE(buff->read(&nullable, sizeof(bool)), nullopt);
+    nullable = deserializer.read<bool>();
   }
 
   // Load validity fill value
   uint8_t fill_value_validity = 0;
   if (version >= 7) {
-    RETURN_NOT_OK_TUPLE(
-        buff->read(&fill_value_validity, sizeof(uint8_t)), nullopt);
+    fill_value_validity = deserializer.read<uint8_t>();
   }
 
-  return {Status::Ok(),
-          optional<Attribute>(
-              std::in_place,
-              name,
-              datatype,
-              nullable,
-              cell_val_num,
-              filterpipeline,
-              fill_value,
-              fill_value_validity)};
+  return Attribute(
+      name,
+      datatype,
+      nullable,
+      cell_val_num,
+      filterpipeline,
+      fill_value,
+      fill_value_validity);
 }
 void Attribute::dump(FILE* out) const {
   if (out == nullptr)
@@ -216,39 +204,40 @@ const std::string& Attribute::name() const {
 // fill_value (uint8_t[])
 // nullable (bool)
 // fill_value_validity (uint8_t)
-const Status Attribute::serialize(Buffer* buff, const uint32_t version) const {
+void Attribute::serialize(
+    Serializer& serializer, const uint32_t version) const {
   // Write attribute name
   auto attribute_name_size = (uint32_t)name_.size();
-  RETURN_NOT_OK(buff->write(&attribute_name_size, sizeof(uint32_t)));
-  RETURN_NOT_OK(buff->write(name_.c_str(), attribute_name_size));
+  serializer.write(attribute_name_size);
+  serializer.write(name_.data(), attribute_name_size);
 
   // Write type
   auto type = (uint8_t)type_;
-  RETURN_NOT_OK(buff->write(&type, sizeof(uint8_t)));
+  serializer.write(type);
 
   // Write cell_val_num_
-  RETURN_NOT_OK(buff->write(&cell_val_num_, sizeof(uint32_t)));
+  serializer.write(cell_val_num_);
 
   // Write filter pipeline
-  RETURN_NOT_OK(filters_.serialize(buff));
+  filters_.serialize(serializer);
 
   // Write fill value
   if (version >= 6) {
     auto fill_value_size = (uint64_t)fill_value_.size();
     assert(fill_value_size != 0);
-    RETURN_NOT_OK(buff->write(&fill_value_size, sizeof(uint64_t)));
-    RETURN_NOT_OK(buff->write(fill_value_.data(), fill_value_.size()));
+    serializer.write(fill_value_size);
+    serializer.write(fill_value_.data(), fill_value_.size());
   }
 
   // Write nullable
-  if (version >= 7)
-    RETURN_NOT_OK(buff->write(&nullable_, sizeof(bool)));
+  if (version >= 7) {
+    serializer.write(nullable_);
+  }
 
   // Write validity fill value
-  if (version >= 7)
-    RETURN_NOT_OK(buff->write(&fill_value_validity_, sizeof(uint8_t)));
-
-  return Status::Ok();
+  if (version >= 7) {
+    serializer.write(fill_value_validity_);
+  }
 }
 
 Status Attribute::set_cell_val_num(unsigned int cell_val_num) {

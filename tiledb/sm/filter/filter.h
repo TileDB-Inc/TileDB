@@ -36,6 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
 
@@ -164,10 +165,10 @@ class Filter {
   /**
    * Serializes the filter metadata into a binary buffer.
    *
-   * @param buff The buffer to serialize the data into.
+   * @param serializer The object to serialized into.
    * @return Status
    */
-  Status serialize(Buffer* buff) const;
+  void serialize(Serializer& serializer) const;
 
   /** Returns the filter type. */
   FilterType type() const;
@@ -197,9 +198,8 @@ class Filter {
    * implement this method.
    *
    * @param buff The buffer to serialize the data into.
-   * @return Status
    */
-  virtual Status serialize_impl(Buffer* buff) const;
+  virtual void serialize_impl(Serializer& serializer) const;
 };
 
 }  // namespace sm
