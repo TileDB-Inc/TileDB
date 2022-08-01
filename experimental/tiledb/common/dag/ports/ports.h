@@ -63,8 +63,7 @@
 
 // #include "fsm.h"
 // #include "policies.h"
-
-#include "../utils/print_types.h"
+// #include "../utils/print_types.h"
 
 namespace tiledb::common {
 
@@ -74,7 +73,6 @@ class Source;
 
 template <template <class> class Mover_T, class Block>
 class Sink;
-
 
 /**
  * A data flow source, used by both edges and nodes.
@@ -143,8 +141,11 @@ class Source {
   }
 
  public:
+  /**
+   * Get the data mover associated with this Source.  Used only for testing.
+   */
   mover_type* get_mover() {
-    return (correspondent_->get_mover());
+    return item_mover_.get();
   }
 
   bool inject(const Block& value) {
@@ -153,7 +154,7 @@ class Source {
     }
     std::scoped_lock lock(correspondent_->mutex_);
     item_ = value;
-    // correspondent_->item_mover_->do_fill();
+    // item_mover_->do_fill();
 
     return true;
   }
@@ -167,7 +168,7 @@ class Source {
 
     return ret;
   }
-};  // namespace tiledb::common
+};
 
 /**
  * A data flow sink, used by both edges and nodes.
@@ -182,7 +183,6 @@ class Sink {
   using mover_type = Mover_T<Block>;
   using source_type = Source<Mover_T, Block>;
   using sink_type = Sink<Mover_T, Block>;
-
 
   /**
    * @inv If an item is present, `try_receive` will succeed.
@@ -208,6 +208,9 @@ class Sink {
   Sink& operator=(const Sink& rhs) = delete;
   Sink& operator=(Sink&& rhs) = delete;
 
+  /**
+   * Get the data mover associated with this Sink.  Used only for testing.
+   */
   mover_type* get_mover() {
     return item_mover_.get();
   }
@@ -215,8 +218,8 @@ class Sink {
  private:
   /**
    * Mutex shared by a correspondent pair. It's arbitratily defined in only the
-   * Sink. Protects attachment of Source and Sink. Protection of data transfer
-   * is accomplished in the finite state machine.
+   * Sink and only protects attachment of Source and Sink. Protection of data
+   * transfer is accomplished in the finite state machine.
    *
    * @todo Are there other Source / Sink functions that need to be protected?
    */
@@ -253,9 +256,12 @@ class Sink {
     } else {
       correspondent_ = &predecessor;
       predecessor.correspondent_ = this;
-      item_mover_ = std::make_shared<mover_type>();
-      correspondent_->item_mover_ = item_mover_;
-      item_mover_->register_items(correspondent_->item_, item_);
+
+      if constexpr (mover_type::is_direct_connection()) {
+        item_mover_ = std::make_shared<mover_type>();
+        correspondent_->item_mover_ = item_mover_;
+        item_mover_->register_items(correspondent_->item_, item_);
+      }
     }
   }
 
@@ -270,7 +276,9 @@ class Sink {
       throw std::runtime_error(
           "Attempting to unattach unattached correspondent");
     } else {
-      item_mover_->deregister_items(correspondent_->item_, item_);
+      if constexpr (mover_type::is_direct_connection()) {
+        item_mover_->deregister_items(correspondent_->item_, item_);
+      }
       item_mover_.reset();
       correspondent_->item_mover_.reset();
       correspondent_->remove_attachment();
@@ -290,10 +298,10 @@ class Sink {
    * @pre Both source and sink are unattached
    */
   template <template <class> class Mver_T, class Blck>
-  friend inline void attach(Source<Mver_T, Blck>& source, Sink<Mver_T, Blck>& sink);
-
   friend inline void attach(
-			    source_type& source, sink_type& sink) {
+      Source<Mver_T, Blck>& source, Sink<Mver_T, Blck>& sink);
+
+  friend inline void attach(source_type& source, sink_type& sink) {
     std::scoped_lock lock(sink.mutex_);
     if (source.is_attached() || sink.is_attached()) {
       throw std::logic_error("Improperly attached in attach");
@@ -314,7 +322,8 @@ class Sink {
    * @pre `source` and `sink` are in a correspondent relationship.
    */
   template <template <class> class Mver_T, class Blck>
-  friend inline void unattach(Source<Mver_T, Blck>& source, Sink<Mver_T, Blck>& sink);
+  friend inline void unattach(
+      Source<Mver_T, Blck>& source, Sink<Mver_T, Blck>& sink);
 
   friend inline void unattach(
       Source<Mover_T, Block>& source, Sink<Mover_T, Block>& sink) {
@@ -334,6 +343,7 @@ class Sink {
     item_ = value;
     return true;
   }
+
   std::optional<Block> extract() {
     if (!is_attached()) {
       return {};
@@ -351,8 +361,7 @@ class Sink {
  * @pre Both source and sink are unattached
  */
 template <template <class> class Mover_T, class Block>
-inline void attach(
-    Sink<Mover_T, Block>& sink, Source<Mover_T, Block>& source) {
+inline void attach(Sink<Mover_T, Block>& sink, Source<Mover_T, Block>& source) {
   attach(source, sink);
 }
 

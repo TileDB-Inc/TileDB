@@ -43,10 +43,6 @@
 #include <optional>
 #include <string>
 #include <tuple>
-#include "experimental/tiledb/common/dag/state_machine/fsm.h"
-#include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
-#include "experimental/tiledb/common/dag/utils/print_types.h"
-#include "experimental/tiledb/common/dag/utils/traits.h"
 
 namespace tiledb::common {
 
@@ -552,7 +548,6 @@ class DebugPolicyWithLock : public Mover {
   using lock_type = typename mover_type::lock_type;
   using PortState = typename mover_type::PortState_type;
 
-  state_machine_type state_machine = mover_type::get_mover();
   std::mutex mutex_;
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;

@@ -44,7 +44,6 @@
 #include <string>
 #include <tuple>
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
-#include "experimental/tiledb/common/dag/utils/print_types.h"
 #include "experimental/tiledb/common/dag/utils/traits.h"
 
 namespace tiledb::common {
@@ -141,7 +140,6 @@ class BaseMover<Mover, three_stage, Block> {
       std::cout << "    "
                 << "Action on_move state = (";
       for (auto& j : items_) {
-        // print_types(j);
         std::cout << " "
                   << (j == nullptr && j->has_value() ?
                           std::to_string(j->value()) :
@@ -200,6 +198,10 @@ class BaseMover<Mover, three_stage, Block> {
                 << std::endl;
       ++event;
     }
+  }
+
+  constexpr inline static bool is_direct_connection() {
+    return false;
   }
 
  private:
@@ -323,6 +325,10 @@ class BaseMover<Mover, two_stage, Block> {
                 << std::endl;
       ++event;
     }
+  }
+
+  constexpr inline static bool is_direct_connection() {
+    return true;
   }
 
   /**
