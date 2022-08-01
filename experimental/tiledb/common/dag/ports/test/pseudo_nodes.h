@@ -130,7 +130,7 @@ class ProducerNode : public Source<Mover_T, Block> {
     //  { state == st_00 ∨ state == st_01 }
     //  produce source item
     //  inject source item
-    auto state_machine = this->get_state_machine();
+    auto state_machine = this->get_mover();
 
     Base::inject(f_());
     state_machine->do_fill();
@@ -238,7 +238,7 @@ class ConsumerNode : public Sink<Mover_T, Block> {
     //  while (!sink_is_empty())
     //    ;
     //  { state == st_00 ∨ state == st_10 }
-    auto state_machine = this->get_state_machine();
+    auto state_machine = this->get_mover();
 
     state_machine->do_pull();
     //  { state == st_01 ∨ state == st_11 }
@@ -321,8 +321,8 @@ class FunctionNode : public Source<SourceMover_T, BlockOut>,
   FunctionNode(FunctionNode&&) = default;
 
   void run() {
-    auto source_state_machine = SourceBase::get_state_machine();
-    auto sink_state_machine = SinkBase::get_state_machine();
+    auto source_state_machine = SourceBase::get_mover();
+    auto sink_state_machine = SinkBase::get_mover();
 
     sink_state_machine->do_pull();
 

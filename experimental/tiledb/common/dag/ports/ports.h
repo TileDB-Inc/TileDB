@@ -143,8 +143,8 @@ class Source {
   }
 
  public:
-  mover_type* get_state_machine() {
-    return (correspondent_->get_state_machine());
+  mover_type* get_mover() {
+    return (correspondent_->get_mover());
   }
 
   bool inject(const Block& value) {
@@ -208,7 +208,7 @@ class Sink {
   Sink& operator=(const Sink& rhs) = delete;
   Sink& operator=(Sink&& rhs) = delete;
 
-  mover_type* get_state_machine() {
+  mover_type* get_mover() {
     return item_mover_.get();
   }
 

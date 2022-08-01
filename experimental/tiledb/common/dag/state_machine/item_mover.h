@@ -427,7 +427,7 @@ class ItemMover
   //      Policy<ItemMover<Policy, PortState, Block>, PortState>,
   //      PortState>;
   //
-  //  state_machine_type* get_state_machine() {
+  //  state_machine_type* get_mover() {
   //    return static_cast<state_machine_type*>(*this);
   //  }
   //  auto get_state() {

@@ -198,7 +198,7 @@ TEST_CASE(
 
   attach(source, sink);
 
-  auto state_machine = sink.get_state_machine();
+  auto state_machine = sink.get_mover();
   // state_machine->enable_debug();
 
   CHECK(str(state_machine->state()) == "st_00");
@@ -286,7 +286,7 @@ TEST_CASE(
 
   attach(source, sink);
 
-  auto state_machine = sink.get_state_machine();
+  auto state_machine = sink.get_mover();
   CHECK(str(state_machine->state()) == "st_00");
 
   SECTION("test injection") {
@@ -330,7 +330,7 @@ TEST_CASE(
 
   attach(source, sink);
 
-  auto state_machine = sink.get_state_machine();
+  auto state_machine = sink.get_mover();
   CHECK(str(state_machine->state()) == "st_00");
 
   std::optional<DataBlock> b;
@@ -394,7 +394,7 @@ TEST_CASE("BlocksAndPorts: Async pass n blocks", "[blocks_and_ports]") {
 
   attach(source, sink);
 
-  auto state_machine = sink.get_state_machine();
+  auto state_machine = sink.get_mover();
   CHECK(str(state_machine->state()) == "st_00");
 
   size_t rounds = 337;
