@@ -1180,7 +1180,7 @@ TEST_CASE_METHOD(
     "[global-order-write][serialization][dense]") {
   ArraySchema schema(ctx, TILEDB_DENSE);
   Domain domain(ctx);
-  domain.add_dimension(Dimension::create<uint64_t>(ctx, "d1", {0, 100}, 2));
+  domain.add_dimension(Dimension::create<uint64_t>(ctx, "d1", {0, 200}, 2));
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<uint32_t>(ctx, "a1"));
   schema.add_attribute(
@@ -1231,13 +1231,15 @@ TEST_CASE_METHOD(
         "a3", a3_data.data() + begin * 4, (end - begin + 1) * 4);
     query.set_offsets_buffer("a3", a3_offsets.data() + begin, end - begin + 1);
     begin += chunk_size;
-    end = std::min(ncells - 1, end + chunk_size);
+    end = std::min(last_space_tile, end + chunk_size);
 
     // Simulate REST submit()
-    test::submit_serialized_query(ctx, query);
+    if (begin < end) {
+      test::submit_serialized_query(ctx, query);
+    }
   }
 
-  test::finalize_serialized_query(ctx, query);
+  test::submit_and_finalize_serialized_query(ctx, query);
 
   REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
