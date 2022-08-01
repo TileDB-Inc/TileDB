@@ -44,6 +44,8 @@
 #include <string>
 #include <tuple>
 
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+
 namespace tiledb::common {
 
 // clang-format off

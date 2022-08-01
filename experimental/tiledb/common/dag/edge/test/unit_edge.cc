@@ -38,6 +38,20 @@
  *
  */
 
+#include "unit_edge.h"
+#include "experimental/tiledb/common/dag/edge/edge.h"
+#include "experimental/tiledb/common/dag/ports/ports.h"
+#include "experimental/tiledb/common/dag/state_machine/policies.h"
+#include "experimental/tiledb/common/dag/state_machine/test/types.h"
+
+using namespace tiledb::common;
+
+TEST_CASE("Attach a Source and Sink with an Edge", "[edge") {
+  Source<NullMover3, size_t> left;
+  Sink<NullMover3, size_t> right;
+  Edge<NullMover3, size_t> mid(left, right);
+}
+
 #if 0
 
 /**

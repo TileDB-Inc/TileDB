@@ -87,6 +87,13 @@ class Source {
   using source_type = Source<Mover_T, Block>;
   using sink_type = Sink<Mover_T, Block>;
 
+ protected:
+  /**
+   * The finite state machine controlling data transfer between Source and Sink.
+   * Shared between Source and Sink.
+   */
+  std::shared_ptr<mover_type> item_mover_;
+
  public:
   std::optional<Block> item_{};
 
@@ -94,12 +101,6 @@ class Source {
    * The correspondent Sink, if any
    */
   sink_type* correspondent_{nullptr};
-
-  /**
-   * The finite state machine controlling data transfer between Source and Sink.
-   * Shared between Source and Sink.
-   */
-  std::shared_ptr<mover_type> item_mover_;
 
   Source() = default;
   Source(const Source& rhs) = delete;
@@ -154,7 +155,6 @@ class Source {
     }
     std::scoped_lock lock(correspondent_->mutex_);
     item_ = value;
-    // item_mover_->do_fill();
 
     return true;
   }
@@ -194,6 +194,7 @@ class Sink {
    */
   source_type* correspondent_{nullptr};
 
+ protected:
   /**
    * The finite state machine controlling data transfer between Source and Sink.
    * Shared between Source and Sink.
@@ -261,8 +262,32 @@ class Sink {
         item_mover_ = std::make_shared<mover_type>();
         correspondent_->item_mover_ = item_mover_;
         item_mover_->register_items(correspondent_->item_, item_);
+      } else {
+        throw std::logic_error("not direct connection");
       }
     }
+  }
+
+  void attach(
+      source_type& predecessor,
+      sink_type& edge_sink,
+      source_type& edge_source) {
+    if (!edge_sink.item_mover_) {
+      throw std::logic_error("no item mover on edge");
+    }
+    if (edge_sink.item_mover_ != edge_source.item_mover_) {
+      throw std::logic_error("bad item movers on edge");
+    }
+    if (predecessor.item_mover_ || item_mover_) {
+      throw std::logic_error("bad item mover(s) already set");
+    }
+    predecessor.item_mover_ = item_mover_ = edge_sink.item_mover_;
+    correspondent_ = &edge_source;
+    edge_source.correspondent_ = this;
+    predecessor.correspondent_ = &edge_sink;
+    edge_sink.correspondent_ = &predecessor;
+
+    item_mover_->register_items(predecessor.item_, edge_sink.item_, item_);
   }
 
   /**
@@ -308,6 +333,42 @@ class Sink {
     }
     sink.attach(source);
     if (!source.is_attached_to(&sink) || !sink.is_attached_to(&source)) {
+      throw std::logic_error("Improperly attached in attach");
+    }
+  }
+
+  /**
+   * Free functions for attachment / unattachment Source and Sink.
+   */
+
+  /**
+   * Assign sink as correspondent to source and vice versa.  Acquires lock
+   * before calling any member functions.
+   *
+   * @pre Both source and sink are unattached
+   */
+  template <template <class> class Mver_T, class Blck>
+  friend inline void attach(
+      Source<Mver_T, Blck>& source,
+      Sink<Mver_T, Blck>& edge_sink,
+      Source<Mver_T, Blck>& edge_source,
+      Sink<Mver_T, Blck>& sink);
+
+  friend inline void attach(
+      source_type& source,
+      sink_type& edge_sink,
+      source_type& edge_source,
+      sink_type& sink) {
+    std::scoped_lock lock(sink.mutex_);
+    if (source.is_attached() || sink.is_attached() ||
+        edge_source.is_attached() || edge_sink.is_attached()) {
+      throw std::logic_error("Improperly attached in attach");
+    }
+    sink.attach(source, edge_sink, edge_source);
+    if (!source.is_attached_to(&edge_sink) ||
+        !sink.is_attached_to(&edge_source) ||
+        !edge_source.is_attached_to(&sink) ||
+        !edge_sink.is_attached_to(&source)) {
       throw std::logic_error("Improperly attached in attach");
     }
   }

@@ -60,13 +60,10 @@ class Edge : public Source<Mover_T, Block>, public Sink<Mover_T, Block> {
 
  public:
   Edge(source_type& from, sink_type& to) {
-    attach(*this, to);
-    attach(from, *this);
-
     item_mover_ = std::make_shared<mover_type>();
-    from.item_mover_ = item_mover_;
-    to.item_mover_ = item_mover_;
-    item_mover_->register_items(from.item_, item_, to.item_);
+    source_type::item_mover_ = sink_type::item_mover_ = item_mover_;
+
+    attach(from, *this, *this, to);
   }
 };
 
