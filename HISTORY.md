@@ -13,6 +13,11 @@
   due to format changes.
   *Backward read-compatibility is unaffected, and is tested for each release.*
 
+## Potential change
+* **If you have a use-case with tiles larger than 64 MB (in-memory), please get in touch.**
+  In order to facilitate improved memory usage and i/o processing performance, we are
+  considering a default upper-bound on tile size in a future version.
+
 ## New features
 * Floating point scaling filter
  ([#3243](https://github.com/TileDB-Inc/TileDB/pull/3243),
