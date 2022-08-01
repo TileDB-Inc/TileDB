@@ -161,6 +161,17 @@ class ReaderBase : public StrategyBase {
   /** The query condition. */
   QueryCondition& condition_;
 
+  /** The delete conditions. */
+  std::vector<QueryCondition> delete_conditions_;
+
+  /**
+   * Timestamped delete conditions. This the same as delete_conditions_ but
+   * adds a conditional in the condition with the timestamp of the condition.
+   * It will be used to process fragments with timestamps when a delete
+   * condition timestamp falls within the fragment timestamps.
+   */
+  std::vector<QueryCondition> timestamped_delete_conditions_;
+
   /** The fragment metadata that the reader will focus on. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
 
@@ -182,6 +193,18 @@ class ReaderBase : public StrategyBase {
    */
   bool use_timestamps_;
 
+  /**
+   * Boolean, per fragment, to specify that we need to load timestamps for
+   * deletes. This matches the fragments in 'fragment_metadata_'
+   */
+  std::vector<bool> timestamps_needed_for_deletes_;
+
+  /** Names of dim/attr loaded for query condition. */
+  std::unordered_set<std::string> qc_loaded_attr_names_set_;
+
+  /** Have we loaded the initial data. */
+  bool initial_data_loaded_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -198,6 +221,20 @@ class ReaderBase : public StrategyBase {
       const std::string& name,
       const std::vector<ResultTile*>& result_tiles,
       const uint64_t min_result_tile = 0) const;
+
+  /**
+   * Is there a need to build timestamped conditions for deletes.
+   *
+   * @return true if the conditions need to be generated.
+   */
+  bool need_timestamped_conditions();
+
+  /**
+   * Generates timestamped conditions for deletes.
+   *
+   * @return Status.
+   */
+  Status generate_timestamped_conditions();
 
   /**
    * Resets the buffer sizes to the original buffer sizes. This is because

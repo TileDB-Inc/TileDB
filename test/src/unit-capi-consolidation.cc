@@ -6956,3 +6956,29 @@ TEST_CASE_METHOD(
   // Clean up
   remove_sparse_array();
 }
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidation, empty array",
+    "[capi][consolidation][empty]") {
+  auto sparse = GENERATE(true, false);
+  auto mode = GENERATE(
+      std::string("commits"),
+      std::string("fragment_meta"),
+      std::string("fragments"),
+      std::string("array_meta"));
+
+  if (sparse) {
+    remove_sparse_array();
+    create_sparse_array();
+    consolidate_sparse(mode);
+    vacuum_sparse(mode);
+    remove_sparse_array();
+  } else {
+    remove_dense_array();
+    create_dense_array();
+    consolidate_dense(mode);
+    vacuum_dense(mode);
+    remove_dense_array();
+  }
+}

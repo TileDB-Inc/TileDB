@@ -265,19 +265,65 @@ void Reader::reset() {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
+Status Reader::load_initial_data() {
+  if (initial_data_loaded_) {
+    return Status::Ok();
+  }
+
+  // Load delete conditions.
+  auto&& [st, delete_conditions] =
+      storage_manager_->load_delete_conditions(*array_);
+  RETURN_CANCEL_OR_ERROR(st);
+  delete_conditions_ = std::move(*delete_conditions);
+
+  // Set timestamps variables
+  user_requested_timestamps_ = buffers_.count(constants::timestamps) != 0 ||
+                               delete_conditions_.size() > 0;
+  const bool partial_consol_fragment_overlap =
+      partial_consolidated_fragment_overlap();
+  use_timestamps_ = partial_consol_fragment_overlap ||
+                    !array_schema_.allows_dups() || user_requested_timestamps_;
+
+  // Add partial overlap condition for timestamps, if required.
+  if (partial_consol_fragment_overlap) {
+    RETURN_NOT_OK(add_partial_overlap_condition());
+  }
+
+  // Legacy reader always uses timestamped conditions. As we process all cell
+  // slabs at once and they could be from fragments consolidated with
+  // timestamps, there is not way to know if we need the regular condition
+  // or the timestamped condition. This reader will have worst performance
+  // for deletes.
+  RETURN_CANCEL_OR_ERROR(generate_timestamped_conditions());
+
+  // Make a list of dim/attr that will be loaded for query condition.
+  if (!condition_.empty()) {
+    qc_loaded_attr_names_set_.merge(condition_.field_names());
+  }
+  for (auto delete_condition : delete_conditions_) {
+    qc_loaded_attr_names_set_.merge(delete_condition.field_names());
+  }
+
+  initial_data_loaded_ = true;
+
+  return Status::Ok();
+}
+
 Status Reader::apply_query_condition(
     std::vector<ResultCellSlab>& result_cell_slabs,
     std::vector<ResultTile*>& result_tiles,
     Subarray& subarray,
     uint64_t stride) {
-  if (condition_.empty() || result_cell_slabs.empty())
+  if ((condition_.empty() && delete_conditions_.empty()) ||
+      result_cell_slabs.empty()) {
     return Status::Ok();
+  }
 
   // To evaluate the query condition, we need to read tiles for the
   // attributes used in the query condition. Build a map of attribute
   // names to read.
   std::unordered_map<std::string, ProcessTileFlags> names;
-  for (const auto& condition_name : condition_.field_names()) {
+  for (const auto& condition_name : qc_loaded_attr_names_set_) {
     names[condition_name] = ProcessTileFlag::READ;
   }
 
@@ -292,7 +338,19 @@ Status Reader::apply_query_condition(
   if (stride == UINT64_MAX)
     stride = 1;
 
-  RETURN_NOT_OK(condition_.apply(array_schema_, result_cell_slabs, stride));
+  if (!condition_.empty()) {
+    RETURN_NOT_OK(condition_.apply(
+        array_schema_, fragment_metadata_, result_cell_slabs, stride));
+  }
+
+  // Apply delete conditions.
+  if (!delete_conditions_.empty()) {
+    for (uint64_t i = 0; i < delete_conditions_.size(); i++) {
+      // For legacy, always run the timestamped condition.
+      RETURN_NOT_OK(timestamped_delete_conditions_[i].apply(
+          array_schema_, fragment_metadata_, result_cell_slabs, stride));
+    }
+  }
 
   return Status::Ok();
 }
@@ -765,7 +823,7 @@ Status Reader::copy_attribute_values(
     // flag it to copy because we have already preloaded the offsets
     // and read the tiles in `apply_query_condition`.
     ProcessTileFlags flags = ProcessTileFlag::COPY;
-    if (condition_.field_names().count(name) == 0) {
+    if (qc_loaded_attr_names_set_.count(name) == 0) {
       flags |= ProcessTileFlag::READ;
     }
 
@@ -924,8 +982,9 @@ Status Reader::copy_partitioned_fixed_cells(
     const bool split_buffer_for_zipped_coords =
         array_schema_.is_dim(*name) && cs.tile_->stores_zipped_coords();
     if ((cs.tile_ == nullptr || cs.tile_->tile_tuple(*name) == nullptr) &&
-        !split_buffer_for_zipped_coords) {  // Empty range or attributed added
-                                            // in schema evolution
+        !split_buffer_for_zipped_coords &&
+        !is_timestamps) {  // Empty range or attributed added
+                           // in schema evolution
       auto bytes_to_copy = cs_length * cell_size;
       auto fill_num = bytes_to_copy / fill_value_size;
       for (uint64_t j = 0; j < fill_num; ++j) {
@@ -1905,28 +1964,20 @@ Status Reader::sort_result_coords(
 }
 
 Status Reader::sparse_read() {
+  // Load initial data.
+  RETURN_NOT_OK(load_initial_data());
+
   // Compute result coordinates from the sparse fragments
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
   std::vector<ResultCoords> result_coords;
   std::vector<ResultTile> sparse_result_tiles;
 
-  // Set timestamps variables
-  user_requested_timestamps_ = buffers_.count(constants::timestamps) != 0;
-  const bool partial_consol_fragment_overlap =
-      partial_consolidated_fragment_overlap();
-  use_timestamps_ = partial_consol_fragment_overlap ||
-                    !array_schema_.allows_dups() || user_requested_timestamps_;
-
-  // Add partial overlap condition for timestamps, if required.
-  if (partial_consol_fragment_overlap) {
-    RETURN_NOT_OK(add_partial_overlap_condition());
-  }
-
   RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
   std::vector<ResultTile*> result_tiles;
-  for (auto& srt : sparse_result_tiles)
+  for (auto& srt : sparse_result_tiles) {
     result_tiles.push_back(&srt);
+  }
 
   // Compute result cell slabs
   std::vector<ResultCellSlab> result_cell_slabs;

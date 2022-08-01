@@ -145,9 +145,15 @@ class QueryCondition {
   std::unordered_set<std::string>& field_names() const;
 
   /**
+   * Returns the timestamp for this condition.
+   */
+  uint64_t condition_timestamp() const;
+
+  /**
    * Applies this query condition to `result_cell_slabs`.
    *
    * @param array_schema The array schema associated with `result_cell_slabs`.
+   * @param fragment_metadata The fragment metadata.
    * @param result_cell_slabs The cell slabs to filter. Mutated to remove cell
    *   slabs that do not meet the criteria in this query condition.
    * @param stride The stride between cells.
@@ -155,6 +161,7 @@ class QueryCondition {
    */
   Status apply(
       const ArraySchema& array_schema,
+      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       std::vector<ResultCellSlab>& result_cell_slabs,
       uint64_t stride) const;
 
@@ -255,6 +262,7 @@ class QueryCondition {
    * templated for a query condition operator.
    *
    * @param node The value node to apply.
+   * @param fragment_metadata The fragment metadata.
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
    * @param nullable The attribute is nullable or not.
@@ -266,6 +274,7 @@ class QueryCondition {
   template <typename T, QueryConditionOp Op, typename CombinationOp>
   void apply_ast_node(
       const tdb_unique_ptr<ASTNode>& node,
+      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
@@ -278,6 +287,7 @@ class QueryCondition {
    * Applies a value node on primitive-typed result cell slabs.
    *
    * @param node The value node to apply.
+   * @param fragment_metadata The fragment metadata.
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
    * @param nullable The attribute is nullable or not.
@@ -289,6 +299,7 @@ class QueryCondition {
   template <typename T, typename CombinationOp>
   void apply_ast_node(
       const tdb_unique_ptr<ASTNode>& node,
+      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
@@ -303,6 +314,7 @@ class QueryCondition {
    *
    * @param node The value node to apply.
    * @param array_schema The current array schema.
+   * @param fragment_metadata The fragment metadata.
    * @param stride The stride between cells.
    * @param combination_op The combination op.
    * @param result_cell_bitmap The input cell bitmap.
@@ -312,6 +324,7 @@ class QueryCondition {
   void apply_ast_node(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
+      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
@@ -323,6 +336,7 @@ class QueryCondition {
    *
    * @param node The node to apply.
    * @param array_schema The array schema associated with `result_cell_slabs`.
+   * @param fragment_metadata The fragment metadata.
    * @param stride The stride between cells.
    * @param combination_op The combination op.
    * @param result_cell_bitmap A bitmap representation of cell slabs to filter.
@@ -334,6 +348,7 @@ class QueryCondition {
   void apply_tree(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
+      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,

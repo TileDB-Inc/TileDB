@@ -43,7 +43,17 @@ namespace tiledb {
 namespace sm {
 
 /**
- * TODO: header comment
+ * The XOR filter stores the input data passed into it as the starting
+ * element and all the differences between the consecutive pairs of
+ * elements.
+ *
+ * On write, the XOR filter stores an array of integers (with size n) by storing
+ * the starting element and then storing the difference between the next
+ * n-1 consecutive pairs of elements.
+ *
+ * On read, the XOR filter reverses this transformation and returns the values
+ * of the original elements.
+ *
  */
 class XORFilter : public Filter {
  public:
@@ -58,8 +68,9 @@ class XORFilter : public Filter {
   void dump(FILE* out) const override;
 
   /**
-   * Run forward.
-   * TODO: Comment
+   * Run forward. Takes input data parts, and per part it stores the first
+   * element in the part, and then the differences of each consecutive pair
+   * of elements.
    */
   Status run_forward(
       const Tile& tile,
@@ -70,8 +81,9 @@ class XORFilter : public Filter {
       FilterBuffer* output) const override;
 
   /**
-   * Run reverse.
-   * TODO: comment
+   * Run reverse. Takes input data parts, and per part it reverses the
+   * transformation in run_forward, returning the original input array passed in
+   * run_forward.
    */
   Status run_reverse(
       const Tile& tile,
@@ -83,6 +95,9 @@ class XORFilter : public Filter {
       const Config& config) const override;
 
  private:
+  /**
+   * Run forward, templated on the tile type.
+   */
   template <typename T>
   Status run_forward(
       FilterBuffer* input_metadata,
@@ -90,6 +105,9 @@ class XORFilter : public Filter {
       FilterBuffer* output_metadata,
       FilterBuffer* output) const;
 
+  /**
+   * Run reverse, templated on the tile type.
+   */
   template <typename T>
   Status run_reverse(
       FilterBuffer* input_metadata,
@@ -97,9 +115,18 @@ class XORFilter : public Filter {
       FilterBuffer* output_metadata,
       FilterBuffer* output) const;
 
+  /**
+   * Shuffles the input buffer by storing the first element, then
+   * storing the differences between each consecutive element pair.
+   */
   template <typename T>
   Status shuffle_part(const ConstBuffer* part, Buffer* output) const;
 
+  /**
+   * Unshuffles the input buffer by restoring the input buffer (which
+   * contains the starting element and the differences between each
+   * consecutive element pair) to the original array.
+   */
   template <typename T>
   Status unshuffle_part(const ConstBuffer* part, Buffer* output) const;
 
