@@ -1,3 +1,14 @@
+# TileDB v2.10.3 Release Notes
+
+## Improvements
+
+* Sparse refactored readers, mark empty fragments as fully loaded early. [#3394](https://github.com/TileDB-Inc/TileDB/pull/3394)
+
+## Bug fixes
+
+* Fix SC-19287: segfault due to deref nonexistent filestore key [#3359](https://github.com/TileDB-Inc/TileDB/pull/3359)
+* Bug Fix: Wrong results when using OR condition with nullable attributes [#3308](https://github.com/TileDB-Inc/TileDB/pull/3308)
+
 # TileDB v2.10.2 Release Notes
 
 ## Bug fixes
