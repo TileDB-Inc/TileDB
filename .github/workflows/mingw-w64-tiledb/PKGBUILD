@@ -43,7 +43,7 @@ build() {
     ..
   make
   make -C tiledb
-  
+
 # in a local environ, can build to demo/check for previously seen (windows event) handle leakge
 # apparently due to issues with mingw std library implementation.
 # note that with S3 enabled above, and minio not running, the aws sdk may fatally error on exit.
