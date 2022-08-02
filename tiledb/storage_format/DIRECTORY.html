@@ -204,6 +204,7 @@ ul.task-list{list-style: none;}
   <li><a href="#storage-format" id="toc-storage-format" class="nav-link active" data-scroll-target="#storage-format">Storage Format</a>
   <ul class="collapse">
   <li><a href="#out-of-scope" id="toc-out-of-scope" class="nav-link" data-scroll-target="#out-of-scope">Out of scope</a></li>
+  <li><a href="#useful-information" id="toc-useful-information" class="nav-link" data-scroll-target="#useful-information">Useful Information</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -228,6 +229,21 @@ ul.task-list{list-style: none;}
 <ul>
 <li><strong>Storage access.</strong> Nothing in this directory has direct access to an object store or a file system. A user of these classes must provide the results of a storage operation to this code for parsing and interpretation.</li>
 <li><strong>State maintenance.</strong> This code has the notion of an “array in a directory”, but it does not provide any notion of “the current state” of an array in storage. The concept here is that of an array a data type, not as a variable of that data type.</li>
+</ul>
+</section>
+<section id="useful-information" class="level2">
+<h2 class="anchored" data-anchor-id="useful-information">Useful Information</h2>
+<p>The following is the list of Datatypes that are <strong>not</strong> supported by the Dimension class. Please note that this information is repeated in the C API, C++ API, and the Dimension class.</p>
+<ul>
+<li>TILEDB_CHAR</li>
+<li>TILEDB_BLOB</li>
+<li>TILEDB_BOOL</li>
+<li>TILEDB_STRING_UTF8</li>
+<li>TILEDB_STRING_UTF16</li>
+<li>TILEDB_STRING_UTF32</li>
+<li>TILEDB_STRING_UCS2</li>
+<li>TILEDB_STRING_UCS4</li>
+<li>TILEDB_ANY</li>
 </ul>
 
 
