@@ -715,6 +715,46 @@ Status Query::submit_and_finalize() {
   return Status::Ok();
 }
 
+Status Query::check_tile_alignment() const {
+  // Only applicable for remote global order writes
+  if (!array_->is_remote() || type_ != QueryType::WRITE ||
+      layout_ != Layout::GLOBAL_ORDER) {
+    return Status::Ok();
+  }
+
+  auto& first_attr_name = buffers_.begin()->first;
+  auto& first_buffer = buffers_.begin()->second;
+  const bool is_var_size = array_schema_->var_size(first_attr_name);
+
+  uint64_t capacity = array_schema_->capacity();
+  if (array_schema_->dense()) {
+    auto first_dimension = array_schema_->dimension_ptr(0);
+    // TODO: limiting tile_extent to unsigned integral type is probably
+    // incorrect
+    capacity = *(const uint64_t*)(first_dimension->tile_extent().data());
+  }
+  bool buffers_tile_aligned = true;
+  if (is_var_size) {
+    if ((*first_buffer.buffer_size_ / constants::cell_var_offset_size) %
+        capacity) {
+      buffers_tile_aligned = false;
+    }
+  } else {
+    uint64_t cell_size = array_schema_->cell_size(first_attr_name);
+    if ((*first_buffer.buffer_size_ / cell_size) % capacity) {
+      buffers_tile_aligned = false;
+    }
+  }
+  if (!buffers_tile_aligned) {
+    return Status_WriterError(
+        "Tile alignment check failed; Input buffers "
+        "need to be tile-aligned for remote global "
+        "order writes.");
+  }
+
+  return Status::Ok();
+}
+
 Status Query::get_buffer(
     const char* name, void** buffer, uint64_t** buffer_size) const {
   // Check attribute
@@ -2341,6 +2381,10 @@ Status Query::submit() {
     if (status_ == QueryStatus::UNINITIALIZED) {
       RETURN_NOT_OK(create_strategy());
     }
+
+    // Check that input buffers are tile-aligned for remote global order writes
+    RETURN_NOT_OK(check_tile_alignment());
+
     return rest_client->submit_query_to_rest(array_->array_uri(), this);
   }
   RETURN_NOT_OK(init());

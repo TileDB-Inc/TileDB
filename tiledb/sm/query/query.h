@@ -1148,6 +1148,13 @@ class Query {
       void** buffer_val,
       uint64_t** buffer_val_size,
       const ValidityVector** validity_vector) const;
+
+  /**
+   * Check if input buffers are tile aligned. This function should be called
+   * only for remote global order writes and it should enforce tile alignment
+   * for both dense and sparse arrays.
+   */
+  Status check_tile_alignment() const;
 };
 
 }  // namespace sm

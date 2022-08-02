@@ -306,13 +306,6 @@ class GlobalOrderWriter : public WriterBase {
       const std::string& name,
       const std::set<uint64_t>& coord_dups,
       WriterTileVector* tiles) const;
-
-  /**
-   * Check if input buffers are tile aligned. This function should be called
-   * only for remote global order writes and it should enforce tile alignment
-   * for both dense and sparse arrays.
-   */
-  Status check_tile_alignment() const;
 };
 
 }  // namespace sm
