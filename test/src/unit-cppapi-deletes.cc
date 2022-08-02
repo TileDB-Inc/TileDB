@@ -672,4 +672,6 @@ TEST_CASE_METHOD(
   write_delete_condition(qc3, 4);
 
   check_delete_conditions({qc, qc3, qc2}, 8);
+
+  remove_sparse_array();
 }

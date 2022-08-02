@@ -395,7 +395,7 @@ void QueryCondition::apply_ast_node(
       uint8_t* buffer_validity = nullptr;
 
       if (nullable) {
-        const auto& tile_validity = std::get<2>(*tile_tuple);
+        const auto& tile_validity = tile_tuple->validity_tile();
         buffer_validity = static_cast<uint8_t*>(tile_validity.data());
       }
 
@@ -404,11 +404,11 @@ void QueryCondition::apply_ast_node(
       uint64_t c = 0;
 
       if (var_size) {
-        const auto& tile = std::get<1>(*tile_tuple);
+        const auto& tile = tile_tuple->var_tile();
         const char* buffer = static_cast<char*>(tile.data());
         const uint64_t buffer_size = tile.size();
 
-        const auto& tile_offsets = std::get<0>(*tile_tuple);
+        const auto& tile_offsets = tile_tuple->fixed_tile();
         const uint64_t* buffer_offsets =
             static_cast<uint64_t*>(tile_offsets.data());
         const uint64_t buffer_offsets_el =
@@ -458,7 +458,7 @@ void QueryCondition::apply_ast_node(
             c++;
           }
         } else {
-          const auto& tile = std::get<0>(*tile_tuple);
+          const auto& tile = tile_tuple->fixed_tile();
           const char* buffer = static_cast<char*>(tile.data());
           const uint64_t cell_size = tile.cell_size();
           uint64_t buffer_offset = start * cell_size;
@@ -990,17 +990,17 @@ void QueryCondition::apply_ast_node_dense(
   const auto tile_tuple = result_tile->tile_tuple(field_name);
   uint8_t* buffer_validity = nullptr;
   if (nullable) {
-    const auto& tile_validity = std::get<2>(*tile_tuple);
+    const auto& tile_validity = tile_tuple->validity_tile();
     buffer_validity = static_cast<uint8_t*>(tile_validity.data()) + src_cell;
   }
 
   if (var_size) {
     // Get var data buffer and tile offsets buffer.
-    const auto& tile = std::get<1>(*tile_tuple);
+    const auto& tile = tile_tuple->var_tile();
     const char* buffer = static_cast<char*>(tile.data());
     const uint64_t buffer_size = tile.size();
 
-    const auto& tile_offsets = std::get<0>(*tile_tuple);
+    const auto& tile_offsets = tile_tuple->fixed_tile();
     const uint64_t* buffer_offsets =
         static_cast<uint64_t*>(tile_offsets.data()) + src_cell;
     const uint64_t buffer_offsets_el =
@@ -1034,7 +1034,7 @@ void QueryCondition::apply_ast_node_dense(
     }
   } else {
     // Get the fixed size data buffers.
-    const auto& tile = std::get<0>(*tile_tuple);
+    const auto& tile = tile_tuple->fixed_tile();
     const char* buffer = static_cast<char*>(tile.data());
     const uint64_t cell_size = tile.cell_size();
     uint64_t buffer_offset = (start + src_cell) * cell_size;
@@ -1171,7 +1171,7 @@ void QueryCondition::apply_ast_node_dense(
   // Process the validity buffer now.
   if (nullable && node->get_condition_value_view().content() == nullptr) {
     const auto tile_tuple = result_tile->tile_tuple(node->get_field_name());
-    const auto& tile_validity = std::get<2>(*tile_tuple);
+    const auto& tile_validity = tile_tuple->validity_tile();
     const auto buffer_validity =
         static_cast<uint8_t*>(tile_validity.data()) + src_cell;
 
@@ -1701,17 +1701,17 @@ void QueryCondition::apply_ast_node_sparse(
   // Check if the combination op = OR and the attribute is nullable.
   if constexpr (
       std::is_same_v<CombinationOp, QCMax<BitmapType>> && nullable::value) {
-    const auto& tile_validity = std::get<2>(*tile_tuple);
+    const auto& tile_validity = tile_tuple->validity_tile();
     buffer_validity = static_cast<uint8_t*>(tile_validity.data());
   }
 
   if (var_size) {
     // Get var data buffer and tile offsets buffer.
-    const auto& tile = std::get<1>(*tile_tuple);
+    const auto& tile = tile_tuple->var_tile();
     const char* buffer = static_cast<char*>(tile.data());
     const uint64_t buffer_size = tile.size();
 
-    const auto& tile_offsets = std::get<0>(*tile_tuple);
+    const auto& tile_offsets = tile_tuple->fixed_tile();
     const uint64_t* buffer_offsets =
         static_cast<uint64_t*>(tile_offsets.data());
     const uint64_t buffer_offsets_el =
@@ -1746,7 +1746,7 @@ void QueryCondition::apply_ast_node_sparse(
     }
   } else {
     // Get the fixed size data buffers.
-    const auto& tile = std::get<0>(*tile_tuple);
+    const auto& tile = tile_tuple->fixed_tile();
     const char* buffer = static_cast<char*>(tile.data());
     const uint64_t cell_size = tile.cell_size();
     const uint64_t buffer_el = tile.size() / cell_size;
@@ -1872,7 +1872,7 @@ void QueryCondition::apply_ast_node_sparse(
   // Process the validity buffer now.
   if (nullable) {
     const auto tile_tuple = result_tile.tile_tuple(node_field_name);
-    const auto& tile_validity = std::get<2>(*tile_tuple);
+    const auto& tile_validity = tile_tuple->validity_tile();
     const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
     const auto cell_num = result_tile.cell_num();
 

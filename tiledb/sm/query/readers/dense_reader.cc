@@ -995,8 +995,7 @@ Status DenseReader::copy_fixed_tiles(
         auto dest_validity_ptr = dst_val_buf + cell_offset;
 
         // Get the tile buffers.
-        const Tile* const tile = &std::get<0>(*tile_tuples[fd]);
-        const Tile* const tile_nullable = &std::get<2>(*tile_tuples[fd]);
+        const auto& tile = tile_tuples[fd]->fixed_tile();
 
         auto src_offset = iter.pos_in_tile() + start * stride;
 
@@ -1005,28 +1004,31 @@ Status DenseReader::copy_fixed_tiles(
         if (stride == 1) {
           std::memcpy(
               dest_ptr + cell_size * start,
-              tile->data_as<char>() + cell_size * src_offset,
+              tile.data_as<char>() + cell_size * src_offset,
               cell_size * (end - start + 1));
 
           if (nullable) {
+            const auto& tile_nullable = tile_tuples[fd]->validity_tile();
             std::memcpy(
                 dest_validity_ptr + start,
-                tile_nullable->data_as<char>() + src_offset,
+                tile_nullable.data_as<char>() + src_offset,
                 (end - start + 1));
           }
         } else {
           // Go cell by cell.
-          auto src = tile->data_as<char>() + cell_size * src_offset;
-          auto src_validity =
-              nullable ? tile_nullable->data_as<char>() + src_offset : nullptr;
+          auto src = tile.data_as<char>() + cell_size * src_offset;
           auto dest = dest_ptr + cell_size * start;
-          auto dest_validity = dest_validity_ptr + start;
           for (uint64_t i = 0; i < end - start + 1; ++i) {
             std::memcpy(dest, src, cell_size);
             src += cell_size * stride;
             dest += cell_size;
+          }
 
-            if (nullable) {
+          if (nullable) {
+            const auto& tile_nullable = tile_tuples[fd]->validity_tile();
+            auto src_validity = tile_nullable.data_as<char>() + src_offset;
+            auto dest_validity = dest_validity_ptr + start;
+            for (uint64_t i = 0; i < end - start + 1; ++i) {
               memcpy(dest_validity, src_validity, 1);
               src_validity += stride;
               dest_validity++;
@@ -1187,17 +1189,12 @@ Status DenseReader::copy_offset_tiles(
         auto dest_validity_ptr = dst_val_buf + cell_offset;
 
         // Get the tile buffers.
-        const Tile* const t_var = &std::get<1>(*tile_tuples[fd]);
+        const auto& t_var = tile_tuples[fd]->var_tile();
 
         // Setup variables for the copy.
         auto src_buff =
-            static_cast<uint64_t*>(std::get<0>(*tile_tuples[fd]).data()) +
+            static_cast<uint64_t*>(tile_tuples[fd]->fixed_tile().data()) +
             start * stride + src_cell;
-        auto src_buff_validity =
-            nullable ?
-                static_cast<uint8_t*>(std::get<2>(*tile_tuples[fd]).data()) +
-                    start + src_cell :
-                nullptr;
         auto div = elements_mode_ ? data_type_size : 1;
         auto dest = (OffType*)dest_ptr + start;
 
@@ -1207,28 +1204,29 @@ Status DenseReader::copy_offset_tiles(
         for (; i < end - start; ++i) {
           auto i_src = i * stride;
           dest[i] = (src_buff[i_src + 1] - src_buff[i_src]) / div;
-          var_data_buff[i + start] = t_var->data_as<char>() + src_buff[i_src];
-        }
-
-        if (nullable) {
-          i = 0;
-          for (; i < end - start; ++i) {
-            dest_validity_ptr[start + i] = src_buff_validity[i * stride];
-          }
+          var_data_buff[i + start] = t_var.data_as<char>() + src_buff[i_src];
         }
 
         // Copy the last value.
         if (start + src_cell + (end - start) * stride >=
             cell_num_per_tile - 1) {
-          dest[i] = (t_var->size() - src_buff[i * stride]) / div;
+          dest[i] = (t_var.size() - src_buff[i * stride]) / div;
         } else {
           auto i_src = i * stride;
           dest[i] = (src_buff[i_src + 1] - src_buff[i_src]) / div;
         }
-        var_data_buff[i + start] =
-            t_var->data_as<char>() + src_buff[i * stride];
+        var_data_buff[i + start] = t_var.data_as<char>() + src_buff[i * stride];
 
         if (nullable) {
+          auto src_buff_validity =
+              static_cast<uint8_t*>(tile_tuples[fd]->validity_tile().data()) +
+              start + src_cell;
+
+          for (i = 0; i < end - start; ++i) {
+            dest_validity_ptr[start + i] = src_buff_validity[i * stride];
+          }
+
+          // Copy last validity value.
           dest_validity_ptr[start + i] = src_buff_validity[i * stride];
         }
 
