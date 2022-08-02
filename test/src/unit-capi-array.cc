@@ -37,8 +37,8 @@
 #include <iostream>
 
 #include "catch.hpp"
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
 #include <Windows.h>
 #include "tiledb/sm/filesystem/win.h"

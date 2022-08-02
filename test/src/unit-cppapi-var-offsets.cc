@@ -32,7 +32,7 @@
  */
 
 #include "catch.hpp"
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;

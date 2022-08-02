@@ -30,7 +30,7 @@
  * Tests the C++ API functions for manipulating fragment information.
  */
 
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 #include <catch.hpp>

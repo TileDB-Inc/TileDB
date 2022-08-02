@@ -33,7 +33,7 @@
 #include <catch.hpp>
 
 #include "catch.hpp"
-#include "helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/tile/tile_metadata_generator.h"

@@ -30,7 +30,7 @@
  * Tests the `QueryCondition` class.
  */
 
-#include "test/src/ast_helpers.h"
+#include "test/support/src/ast_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"

@@ -31,7 +31,7 @@
  */
 
 #include "catch.hpp"
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/utils.h"
 #ifdef _WIN32
