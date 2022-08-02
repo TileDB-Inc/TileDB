@@ -109,91 +109,92 @@ set(TILEDB_TEST_SUPPORT_SOURCES
 set(TILEDB_UNIT_TEST_SOURCES
   src/helpers.h
   src/helpers-dimension.h
-  src/unit-azure.cc
+
+  #src/unit-azure.cc
   src/unit-backwards_compat.cc
-  src/unit-bufferlist.cc
-  src/unit-capi-any.cc
-  src/unit-capi-array.cc
-  src/unit-capi-array_schema.cc
-  src/unit-capi-async.cc
-  src/unit-capi-attributes.cc
-  src/unit-capi-buffer.cc
-  src/unit-capi-config.cc
-  src/unit-capi-context.cc
-  src/unit-capi-consolidation.cc
-  src/unit-capi-dense_array.cc
-  src/unit-capi-dense_array_2.cc
-  src/unit-capi-dense_neg.cc
-  src/unit-capi-dense_vector.cc
-  src/unit-capi-enum_values.cc
-  src/unit-capi-error.cc
-  src/unit-capi-filestore.cc
-  src/unit-capi-fill_values.cc
-  src/unit-capi-filter.cc
-  src/unit-capi-fragment_info.cc
-  src/unit-capi-group.cc
-  src/unit-capi-incomplete.cc
-  src/unit-capi-incomplete-2.cc
-  src/unit-capi-metadata.cc
-  src/unit-capi-nullable.cc
-  src/unit-capi-object_mgmt.cc
-  src/unit-capi-query.cc
-  src/unit-capi-query_2.cc
-  src/unit-capi-smoke-test.cc
-  src/unit-capi-sparse_array.cc
-  src/unit-capi-sparse_heter.cc
-  src/unit-capi-sparse_neg.cc
-  src/unit-capi-sparse_neg_2.cc
-  src/unit-capi-sparse_real.cc
-  src/unit-capi-sparse_real_2.cc
-  src/unit-capi-string.cc
-  src/unit-capi-string_dims.cc
-  src/unit-capi-uri.cc
-  src/unit-capi-version.cc
-  src/unit-capi-vfs.cc
-  src/unit-CellSlabIter.cc
-  src/unit-compression-dd.cc
-  src/unit-compression-rle.cc
-  src/unit-crypto.cc
-  src/unit-ctx.cc
-  src/unit-DenseTiler.cc
-  src/unit-dimension.cc
-  src/unit-domain.cc
-  src/unit-duplicates.cc
-  src/unit-empty-var-length.cc
-  src/unit-filter-buffer.cc
-  src/unit-filter-pipeline.cc
-  src/unit-global-order.cc
-  src/unit-gcs.cc
-  src/unit-gs.cc
-  src/unit-hdfs-filesystem.cc
-  src/unit-lru_cache.cc
-  src/unit-tile-metadata.cc
-  src/unit-tile-metadata-generator.cc
-  src/unit-bytevecvalue.cc
-  src/unit-ReadCellSlabIter.cc
-  src/unit-Reader.cc
-  src/unit-resource-pool.cc
-  src/unit-result-coords.cc
-  src/unit-result-tile.cc
-  src/unit-rtree.cc
-  src/unit-s3-no-multipart.cc
-  src/unit-s3.cc
-  src/unit-sparse-global-order-reader.cc
-  src/unit-sparse-unordered-with-dups-reader.cc
-  src/unit-status.cc
-  src/unit-Subarray.cc
-  src/unit-SubarrayPartitioner-dense.cc
-  src/unit-SubarrayPartitioner-error.cc
-  src/unit-SubarrayPartitioner-sparse.cc
-  src/unit-Tile.cc
-  src/unit-TileDomain.cc
-  src/unit-uuid.cc
-  src/unit-vfs.cc
-  src/unit-win-filesystem.cc
+  #src/unit-bufferlist.cc
+  #src/unit-capi-any.cc
+  #src/unit-capi-array.cc
+  #src/unit-capi-array_schema.cc
+  #src/unit-capi-async.cc
+  #src/unit-capi-attributes.cc
+  #src/unit-capi-buffer.cc
+  #src/unit-capi-config.cc
+  #src/unit-capi-context.cc
+  #src/unit-capi-consolidation.cc
+  #src/unit-capi-dense_array.cc
+  #src/unit-capi-dense_array_2.cc
+  #src/unit-capi-dense_neg.cc
+  #src/unit-capi-dense_vector.cc
+  #src/unit-capi-enum_values.cc
+  #src/unit-capi-error.cc
+  #src/unit-capi-filestore.cc
+  #src/unit-capi-fill_values.cc
+  #src/unit-capi-filter.cc
+  #src/unit-capi-fragment_info.cc
+  #src/unit-capi-group.cc
+  #src/unit-capi-incomplete.cc
+  #src/unit-capi-incomplete-2.cc
+  #src/unit-capi-metadata.cc
+  #src/unit-capi-nullable.cc
+  #src/unit-capi-object_mgmt.cc
+  #src/unit-capi-query.cc
+  #src/unit-capi-query_2.cc
+  #src/unit-capi-smoke-test.cc
+  #src/unit-capi-sparse_array.cc
+  #src/unit-capi-sparse_heter.cc
+  #src/unit-capi-sparse_neg.cc
+  #src/unit-capi-sparse_neg_2.cc
+  #src/unit-capi-sparse_real.cc
+  #src/unit-capi-sparse_real_2.cc
+  #src/unit-capi-string.cc
+  #src/unit-capi-string_dims.cc
+  #src/unit-capi-uri.cc
+  #src/unit-capi-version.cc
+  #src/unit-capi-vfs.cc
+  #src/unit-CellSlabIter.cc
+  #src/unit-compression-dd.cc
+  #src/unit-compression-rle.cc
+  #src/unit-crypto.cc
+  #src/unit-ctx.cc
+  #src/unit-DenseTiler.cc
+  #src/unit-dimension.cc
+  #src/unit-domain.cc
+  #src/unit-duplicates.cc
+  #src/unit-empty-var-length.cc
+  #src/unit-filter-buffer.cc
+  #src/unit-filter-pipeline.cc
+  #src/unit-global-order.cc
+  #src/unit-gcs.cc
+  #src/unit-gs.cc
+  #src/unit-hdfs-filesystem.cc
+  #src/unit-lru_cache.cc
+  #src/unit-tile-metadata.cc
+  #src/unit-tile-metadata-generator.cc
+  #src/unit-bytevecvalue.cc
+  #src/unit-ReadCellSlabIter.cc
+  #src/unit-Reader.cc
+  #src/unit-resource-pool.cc
+  #src/unit-result-coords.cc
+  #src/unit-result-tile.cc
+  #src/unit-rtree.cc
+  #src/unit-s3-no-multipart.cc
+  #src/unit-s3.cc
+  #src/unit-sparse-global-order-reader.cc
+  #src/unit-sparse-unordered-with-dups-reader.cc
+  #src/unit-status.cc
+  #src/unit-Subarray.cc
+  #src/unit-SubarrayPartitioner-dense.cc
+  #src/unit-SubarrayPartitioner-error.cc
+  #src/unit-SubarrayPartitioner-sparse.cc
+  #src/unit-Tile.cc
+  #src/unit-TileDomain.cc
+  #src/unit-uuid.cc
+  #src/unit-vfs.cc
+  #src/unit-win-filesystem.cc
   )
 
-if (TILEDB_CPP_API)
+if (FALSE) #TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-cppapi-array.cc
     src/unit-cppapi-checksum.cc
@@ -225,7 +226,7 @@ if (TILEDB_CPP_API)
   )
 endif()
 
-if (TILEDB_SERIALIZATION)
+if (FALSE) #TILEDB_SERIALIZATION)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-capi-serialized_queries.cc
     src/unit-capi-serialized_queries_using_subarray.cc
@@ -241,7 +242,7 @@ if (TILEDB_TESTS_ENABLE_REST)
   )
 endif()
 
-if (TILEDB_ARROW_TESTS)
+if (FALSE) #TILEDB_ARROW_TESTS)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-arrow.cc
     ${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
