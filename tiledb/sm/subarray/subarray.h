@@ -361,24 +361,6 @@ class Subarray {
       uint64_t end_size);
 
   /**
-   * Retrieves a label range from a dimension name in the form (start, end,
-   * stride).
-   *
-   * @param dim_idx The index of the dimension to the label name from.
-   * @param range_idx The id of the range to retrieve.
-   * @param start The range start to retrieve.
-   * @param end The range end to retrieve.
-   * @param stride The range stride to retrieve.
-   * @return Status
-   */
-  void get_label_range(
-      uint32_t dim_idx,
-      uint64_t range_idx,
-      const void** start,
-      const void** end,
-      const void** stride) const;
-
-  /**
    * Retrieves a range from a dimension label name in the form (start, end,
    * stride).
    *
@@ -389,7 +371,7 @@ class Subarray {
    * @param stride The range stride to retrieve.
    * @return Status
    */
-  void get_label_range_from_name(
+  void get_label_range(
       const std::string& label_name,
       uint64_t range_idx,
       const void** start,
@@ -397,33 +379,11 @@ class Subarray {
       const void** stride) const;
 
   /**
-   * Retrieves the number of ranges of the subarray set for the dimension label
-   * on a given dimension index.
-   */
-  void get_label_range_num(uint32_t dim_idx, uint64_t* range_num) const;
-
-  /**
    * Retrieves the number of ranges of the subarray for the given dimension
    * label name.
    */
-  void get_label_range_num_from_name(
+  void get_label_range_num(
       const std::string& label_name, uint64_t* range_num) const;
-
-  /**
-   * Retrieves a range's sizes for a variable-length dimension label at a given
-   * dimension index.
-   *
-   * @param dim_idx The dimension index to retrieve the range from.
-   * @param range_idx The id of the range to retrieve.
-   * @param start_size range start size in bytes
-   * @param end_size range end size in bytes
-   * @return Status
-   */
-  void get_label_range_var_size(
-      uint32_t dim_idx,
-      uint64_t range_idx,
-      uint64_t* start_size,
-      uint64_t* end_size) const;
 
   /**
    * Retrieves a range's sizes for a variable-length dimension label name
@@ -434,24 +394,11 @@ class Subarray {
    * @param end_size range end size in bytes
    * @return Status
    */
-  void get_label_range_var_size_from_name(
+  void get_label_range_var_size(
       const std::string& label_name,
       uint64_t range_idx,
       uint64_t* start_size,
       uint64_t* end_size) const;
-
-  /**
-   * Retrieves a range from a variable-length dimension name in the form (start,
-   * end).
-   *
-   * @param dim_idx The dimension name to retrieve the range from.
-   * @param range_idx The id of the range to retrieve.
-   * @param start The range start to retrieve.
-   * @param end The range end to retrieve.
-   * @return Status
-   */
-  void get_label_range_var(
-      uint32_t dim_idx, uint64_t range_idx, void* start, void* end) const;
 
   /**
    * Retrieves a range from a variable-length dimension label name in the form
@@ -463,7 +410,7 @@ class Subarray {
    * @param end The range end to retrieve.
    * @return Status
    */
-  void get_label_range_var_from_name(
+  void get_label_range_var(
       const std::string& label_name,
       uint64_t range_idx,
       void* start,

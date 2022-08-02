@@ -250,38 +250,6 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_label_range_var(
 
 /**
  * Retrieves a specific label range of the subarray from the ranges set for the
- * dimension label at the given dimension index.
- *
- * **Example:**
- *
- * @code{.c}
- * const void* start;
- * const void* end;
- * const void* stride;
- * tiledb_subarray_get_label_range(
- *     ctx, subarray, dim_idx, range_idx, &start, &end, &stride);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param subarray The subarray.
- * @param dim_idx The index of the dimension to retrieve the label range from.
- * @param range_idx The index of the range to retrieve.
- * @param start Receives the retrieved range start.
- * @param end Receives the received range end.
- * @param stride Receives the retrieved range stride.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_get_label_range(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    uint64_t range_idx,
-    const void** start,
-    const void** end,
-    const void** stride) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves a specific label range of the subarray from the ranges set for the
  * given dimension label name.
  *
  * **Example:**
@@ -290,7 +258,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_label_range(
  * const void* start;
  * const void* end;
  * const void* stride;
- * tiledb_subarray_get_label_range_from_name(
+ * tiledb_subarray_get_label_range(
  *     ctx, query, label_name, range_idx, &start, &end, &stride);
  * @endcode
  *
@@ -303,7 +271,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_label_range(
  * @param stride Receives the retrieved range stride.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_from_name(
+TILEDB_EXPORT int32_t tiledb_subarray_get_label_range(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* label_name,
@@ -314,37 +282,13 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_from_name(
 
 /**
  * Retrieves the number of label ranges set for the subarray for the
- * dimension label at the given dimension index.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t range_num;
- * tiledb_subarray_get_label_range_num(ctx, subarray, dim_idx, &range_num);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param subarray The subarray.
- * @param dim_idx The index of the dimension for which to retrieve number of
- * ranges.
- * @param range_num Receives the retrieved number of ranges.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_num(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    uint64_t* range_num) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the number of label ranges set for the subarray for the
  * dimension label with the given name.
  *
  * **Example:**
  *
  * @code{.c}
  * uint64_t range_num;
- * tiledb_subarray_get_label_range_num_from_name(
+ * tiledb_subarray_get_label_range_num(
  *     ctx, subarray, label_name, &range_num);
  * @endcode
  *
@@ -355,40 +299,11 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_num(
  * @param range_num Receives the retrieved number of ranges.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_num_from_name(
+TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_num(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* label_name,
     uint64_t* range_num) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves a specific range of the subarray along a given
- * variable-length dimension label at a given dimension index.
- *
- * **Example:**
- *
- * @code{.c}
- * const void* start;
- * const void* end;
- * tiledb_subarray_get_label_range_var(
- *     ctx, subarray, dim_idx, range_idx, &start, &end);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param subarray The subarray.
- * @param dim_idx The index of the dimension to retrieve the range from.
- * @param range_idx The index of the range to retrieve.
- * @param start Receives the retrieved range start.
- * @param end Receives the retrieved range end.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_var(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    uint64_t range_idx,
-    void* start,
-    void* end) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a specific range of the subarray for a
@@ -399,7 +314,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_var(
  * @code{.c}
  * const void* start;
  * const void* end;
- * tiledb_subarray_get_label_range_var_from_name(
+ * tiledb_subarray_get_label_range_var(
  *     ctx, subarray, label_name, range_idx, &start, &end);
  * @endcode
  *
@@ -411,42 +326,13 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_var(
  * @param end Receives the retrieved range end.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_var_from_name(
+TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_var(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* label_name,
     uint64_t range_idx,
     void* start,
     void* end) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves a range's start and end size for a given variable-length
- * dimension label at the given dimension index and range index.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t start_size;
- * uint64_t end_size;
- * tiledb_subarray_get_label_range_var_size(
- *     ctx, subarray, dim_idx, range_idx, &start_size, &end_size);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param subarray The subarray.
- * @param dim_idx The index of the dimension to retrieve the range from.
- * @param range_idx The index of the range to retrieve.
- * @param start_size Receives the retrieved range start size in bytes
- * @param end_size Receives the retrieved range end size in bytes
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_var_size(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    uint64_t range_idx,
-    uint64_t* start_size,
-    uint64_t* end_size) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves a range's start and end size for a given variable-length
@@ -458,7 +344,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_var_size(
  * @code{.c}
  * uint64_t start_size;
  * uint64_t end_size;
- * tiledb_subarray_get_label_range_var_size_from_name(
+ * tiledb_subarray_get_label_range_var_size(
  *     ctx, subarray, label_name, range_idx, &start_size, &end_size);
  * @endcode
  *
@@ -470,7 +356,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_var_size(
  * @param end_size Receives the retrieved range end size in bytes
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_var_size_from_name(
+TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_var_size(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* label_name,

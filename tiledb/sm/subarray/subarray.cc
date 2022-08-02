@@ -528,29 +528,6 @@ Status Subarray::add_range_var_by_name(
 }
 
 void Subarray::get_label_range(
-    unsigned dim_idx,
-    uint64_t range_idx,
-    const void** start,
-    const void** end,
-    const void** stride) const {
-  auto dim_num = array_->array_schema_latest().dim_num();
-  if (dim_idx >= dim_num)
-    throw StatusException(Status_SubarrayError(
-        "Cannot get label range; Invalid dimension index"));
-  if (!label_range_subset_[dim_idx].has_value())
-    throw StatusException(Status_SubarrayError(
-        "Cannot get label range; No label ranges set on dimension " +
-        std::to_string(dim_idx)));
-  if (range_idx >= label_range_subset_[dim_idx].ranges().size())
-    throw StatusException(
-        Status_SubarrayError("Cannot get label range; Invalid range index"));
-  const auto& range = label_range_subset_[dim_idx][range_idx];
-  *start = range.start_fixed();
-  *end = range.end_fixed();
-  *stride = nullptr;
-}
-
-void Subarray::get_label_range_from_name(
     const std::string& label_name,
     uint64_t range_idx,
     const void** start,
@@ -564,53 +541,24 @@ void Subarray::get_label_range_from_name(
     throw StatusException(Status_SubarrayError(
         "Cannot get label range; No ranges set on dimension label '" +
         label_name + "'"));
-  get_label_range(dim_idx, range_idx, start, end, stride);
+  const auto& range = label_range_subset_[dim_idx][range_idx];
+  *start = range.start_fixed();
+  *end = range.end_fixed();
+  *stride = nullptr;
 }
 
 void Subarray::get_label_range_num(
-    uint32_t dim_idx, uint64_t* range_num) const {
-  auto dim_num = array_->array_schema_latest().dim_num();
-  if (dim_idx >= dim_num)
-    throw StatusException(Status_SubarrayError(
-        "Cannot get number of label ranges; Invalid dimension index"));
-  *range_num = label_range_subset_[dim_idx].has_value() ?
-                   label_range_subset_[dim_idx].ranges().size() :
-                   0;
-}
-
-void Subarray::get_label_range_num_from_name(
     const std::string& label_name, uint64_t* range_num) const {
   auto dim_idx = array_->array_schema_latest()
                      .dimension_label_reference(label_name)
                      .dimension_id();
-  if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].name() != label_name) {
-    *range_num = 0;
-    return;
-  }
-  get_label_range_num(dim_idx, range_num);
+  *range_num = (label_range_subset_[dim_idx].has_value() &&
+                label_range_subset_[dim_idx].name() == label_name) ?
+                   label_range_subset_[dim_idx].ranges().size() :
+                   0;
 }
 
 void Subarray::get_label_range_var(
-    uint32_t dim_idx, uint64_t range_idx, void* start, void* end) const {
-  auto dim_num = array_->array_schema_latest().dim_num();
-  if (dim_idx >= dim_num)
-    throw StatusException(Status_SubarrayError(
-        "Cannot get label range; Invalid dimension index"));
-  if (!label_range_subset_[dim_idx].has_value())
-    throw StatusException(Status_SubarrayError(
-        "Cannot get label range; No label ranges set on "
-        "dimension " +
-        std::to_string(dim_idx)));
-  if (range_idx >= label_range_subset_[dim_idx].ranges().size())
-    throw StatusException(
-        Status_SubarrayError("Cannot get label range; Invalid range index"));
-  const auto& range = label_range_subset_[dim_idx][range_idx];
-  std::memcpy(start, range.start_str().data(), range.start_size());
-  std::memcpy(end, range.end_str().data(), range.end_size());
-}
-
-void Subarray::get_label_range_var_from_name(
     const std::string& label_name,
     uint64_t range_idx,
     void* start,
@@ -623,32 +571,12 @@ void Subarray::get_label_range_var_from_name(
     throw StatusException(Status_SubarrayError(
         "Cannot get label range; No ranges set on dimension label '" +
         label_name + "'"));
-  get_label_range_var(dim_idx, range_idx, start, end);
+  const auto& range = label_range_subset_[dim_idx][range_idx];
+  std::memcpy(start, range.start_str().data(), range.start_size());
+  std::memcpy(end, range.end_str().data(), range.end_size());
 }
 
 void Subarray::get_label_range_var_size(
-    uint32_t dim_idx,
-    uint64_t range_idx,
-    uint64_t* start,
-    uint64_t* end) const {
-  auto dim_num = array_->array_schema_latest().dim_num();
-  if (dim_idx >= dim_num)
-    throw StatusException(Status_SubarrayError(
-        "Cannot get label range size; Invalid dimension index"));
-  if (!label_range_subset_[dim_idx].has_value())
-    throw StatusException(Status_SubarrayError(
-        "Cannot get label range size; No label ranges set on "
-        "dimension " +
-        std::to_string(dim_idx)));
-  if (range_idx >= label_range_subset_[dim_idx].ranges().size())
-    throw StatusException(Status_SubarrayError(
-        "Cannot get label range size; Invalid range index"));
-  const auto& range = label_range_subset_[dim_idx][range_idx];
-  *start = range.start_size();
-  *end = range.end_size();
-}
-
-void Subarray::get_label_range_var_size_from_name(
     const std::string& label_name,
     uint64_t range_idx,
     uint64_t* start_size,
@@ -661,7 +589,9 @@ void Subarray::get_label_range_var_size_from_name(
     throw StatusException(Status_SubarrayError(
         "Cannot get label range size; No ranges set on dimension label '" +
         label_name + "'"));
-  get_label_range_var_size(dim_idx, range_idx, start_size, end_size);
+  const auto& range = label_range_subset_[dim_idx][range_idx];
+  *start_size = range.start_size();
+  *end_size = range.end_size();
 }
 
 Status Subarray::get_range_var(

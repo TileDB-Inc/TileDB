@@ -249,19 +249,14 @@ TEST_CASE_METHOD(
   // Check label range num is zero for all labels.
   uint64_t range_num{0};
   REQUIRE_TILEDB_OK(
-      tiledb_subarray_get_label_range_num(ctx, subarray, 0, &range_num));
+      tiledb_subarray_get_label_range_num(ctx, subarray, "x", &range_num));
   CHECK(range_num == 0);
-  REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_num_from_name(
-      ctx, subarray, "x", &range_num));
-  CHECK(range_num == 0);
-  REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_num_from_name(
-      ctx, subarray, "id", &range_num));
+  REQUIRE_TILEDB_OK(
+      tiledb_subarray_get_label_range_num(ctx, subarray, "id", &range_num));
   CHECK(range_num == 0);
   // Check for status error when fetching range num for non-existant labels.
-  auto rc = tiledb_subarray_get_label_range_num(ctx, subarray, 2, &range_num);
-  CHECK(rc != TILEDB_OK);
-  rc = tiledb_subarray_get_label_range_num_from_name(
-      ctx, subarray, "label1", &range_num);
+  auto rc =
+      tiledb_subarray_get_label_range_num(ctx, subarray, "label1", &range_num);
   CHECK(rc != TILEDB_OK);
 
   // Check error when adding range to non-existent label.
@@ -290,35 +285,20 @@ TEST_CASE_METHOD(
     REQUIRE_TILEDB_OK(
         tiledb_subarray_get_range_num(ctx, subarray, 0, &range_num));
     CHECK(range_num == 0);
-    // Check 1 label range set.
-    REQUIRE_TILEDB_OK(
-        tiledb_subarray_get_label_range_num(ctx, subarray, 0, &range_num));
-    CHECK(range_num == 1);
     // Check 1 label range set by name.
-    REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_num_from_name(
-        ctx, subarray, "x", &range_num));
+    REQUIRE_TILEDB_OK(
+        tiledb_subarray_get_label_range_num(ctx, subarray, "x", &range_num));
     CHECK(range_num == 1);
     // Check 0 label range set by name to other label on dim.
-    REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_num_from_name(
-        ctx, subarray, "id", &range_num));
+    REQUIRE_TILEDB_OK(
+        tiledb_subarray_get_label_range_num(ctx, subarray, "id", &range_num));
     CHECK(range_num == 0);
-    // Get range using index-based getter.
-    {
-      const void* r1_start{};
-      const void* r1_end{};
-      const void* r1_stride{};
-      REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range(
-          ctx, subarray, 0, 0, &r1_start, &r1_end, &r1_stride));
-      CHECK(r1_stride == nullptr);
-      CHECK(*static_cast<const double*>(r1_start) == r1[0]);
-      CHECK(*static_cast<const double*>(r1_end) == r1[1]);
-    }
     // Get range using name-based getter.
     {
       const void* r1_start{};
       const void* r1_end{};
       const void* r1_stride{};
-      REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_from_name(
+      REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range(
           ctx, subarray, "x", 0, &r1_start, &r1_end, &r1_stride));
       CHECK(r1_stride == nullptr);
       CHECK(*static_cast<const double*>(r1_start) == r1[0]);
@@ -358,40 +338,23 @@ TEST_CASE_METHOD(
     REQUIRE_TILEDB_OK(
         tiledb_subarray_get_range_num(ctx, subarray, 0, &range_num));
     CHECK(range_num == 0);
-    // Check 1 label range set.
-    REQUIRE_TILEDB_OK(
-        tiledb_subarray_get_label_range_num(ctx, subarray, 0, &range_num));
-    CHECK(range_num == 1);
     // Check 1 label range set by name.
-    REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_num_from_name(
-        ctx, subarray, "id", &range_num));
+    REQUIRE_TILEDB_OK(
+        tiledb_subarray_get_label_range_num(ctx, subarray, "id", &range_num));
     CHECK(range_num == 1);
     // Check 0 label range set by name to other label on dim.
-    REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_num_from_name(
-        ctx, subarray, "x", &range_num));
+    REQUIRE_TILEDB_OK(
+        tiledb_subarray_get_label_range_num(ctx, subarray, "x", &range_num));
     CHECK(range_num == 0);
-    // Get range by index.
-    {
-      uint64_t start_size{0};
-      uint64_t end_size{0};
-      REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_var_size(
-          ctx, subarray, 0, 0, &start_size, &end_size));
-      std::vector<char> start_data(start_size);
-      std::vector<char> end_data(end_size);
-      REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_var(
-          ctx, subarray, 0, 0, start_data.data(), end_data.data()));
-      CHECK(std::string(start_data.data(), start_data.size()) == start);
-      CHECK(std::string(end_data.data(), end_data.size()) == end);
-    }
     // Get range by name.
     {
       uint64_t start_size{0};
       uint64_t end_size{0};
-      REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_var_size_from_name(
+      REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_var_size(
           ctx, subarray, "id", 0, &start_size, &end_size));
       std::vector<char> start_data(start_size);
       std::vector<char> end_data(end_size);
-      REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_var_from_name(
+      REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_var(
           ctx, subarray, "id", 0, start_data.data(), end_data.data()));
       CHECK(std::string(start_data.data(), start_data.size()) == start);
       CHECK(std::string(end_data.data(), end_data.size()) == end);
