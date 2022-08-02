@@ -58,7 +58,7 @@ class Lidar {
    * @return Status
    */
   static Status compress(
-      int level, ConstBuffer* input_buffer, Buffer* output_buffer);
+      Datatype type, int level, ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Overloaded compression function with default compression level.
@@ -67,7 +67,7 @@ class Lidar {
    * @param output_buffer Output buffer to write to the compressed data.
    * @return Status
    */
-  static Status compress(ConstBuffer* input_buffer, Buffer* output_buffer);
+  static Status compress(Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Decompression function.
@@ -77,7 +77,7 @@ class Lidar {
    * @return Status
    */
   static Status decompress(
-      ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
+      Datatype type, ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 
   /** Returns the default compression level. */
   static int default_level() {
@@ -88,6 +88,9 @@ class Lidar {
   static uint64_t overhead(uint64_t nbytes);
 
   private:
+    template<typename T, typename W>
+    static Status compress(Datatype type, int level, ConstBuffer* input_buffer, Buffer* output_buffer);
+
     /** The default filter compression level. */
     static constexpr int default_level_ = -1;
 };

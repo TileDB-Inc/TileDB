@@ -33,25 +33,52 @@
 #include "tiledb/sm/compressors/lidar_compressor.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/datatype.h"
 
 #include <cmath>
+#include <vector>
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
 
+template<typename T, typename W>
 Status Lidar::compress(
-    int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
-  return Status::Ok();
+    Datatype type, int level, ConstBuffer* input_buffer, * output_buffer) {
+  std::vector<W> vals;
+  assert(input_buffer->size() & sizeof(W) == 0);
+  for (size_t i = 0; i < input_buffer->size()/sizeof(W); ++i) {
+    W val = input_buffer->value(i * sizeof(W));
+    vals.push_back(val);
+  }
+  // Sort values
+  std::sort(vals.begin(), vals.end());
+
+
 }
 
-Status Lidar::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
-    return Status::Ok();
+Status Lidar::compress(
+    Datatype type, int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
+  switch (type) {
+    case Datatype::FLOAT32: {
+      return compress<float, int32_t>(type, level, input_buffer, output_buffer);
+    }
+    case Datatype::FLOAT64: {
+      return compress<double, int64_t>(type, level, input_buffer, output_buffer);
+    }
+    default: {
+      return Status_CompressionError("Lidar::compress: attribute type is not a floating point type.")
+    }
+  }
+}
+
+Status Lidar::compress(Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer) {
+    return compress(type, default_level_, input_buffer, output_buffer);
 }
 
 Status Lidar::decompress(
-    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
+    Datatype type, ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   return Status::Ok();
 }
 
