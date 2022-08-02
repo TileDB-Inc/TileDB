@@ -597,10 +597,11 @@ void ArraySchema::serialize(Serializer& serializer) const {
   // Experimental: Write dimension labels
   if constexpr (is_experimental_build) {
     auto label_num = static_cast<uint32_t>(dimension_labels_.size());
-    if (label_num != dimension_labels_.size())
+    if (label_num != dimension_labels_.size()) {
       throw StatusException(Status_ArraySchemaError(
           "Overflow when attempting to serialize label number."));
-    serializer.write(&label_num);
+    }
+    serializer.write(label_num);
     for (auto& label : dimension_labels_) {
       label->serialize(serializer, version);
     }
