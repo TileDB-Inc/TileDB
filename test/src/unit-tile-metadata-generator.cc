@@ -30,9 +30,7 @@
  * Tests the TileMetadataGenerator class.
  */
 
-#include <catch.hpp>
-
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"

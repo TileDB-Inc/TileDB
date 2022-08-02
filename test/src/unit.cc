@@ -1,5 +1,5 @@
 #define CATCH_CONFIG_RUNNER
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 
 #include <cstdlib>
 #include <iostream>

@@ -33,7 +33,7 @@
 #include "test/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <iostream>
 
 using namespace tiledb;

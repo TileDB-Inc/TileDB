@@ -1,7 +1,7 @@
 #include <iostream>
 #include <tiledb/tiledb>
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 
 TEST_CASE(
     "C++ API: test exception handling in VFSFileBuf interface",

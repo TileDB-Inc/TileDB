@@ -31,7 +31,7 @@
  * Tests the C API version.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/constants.h"
 

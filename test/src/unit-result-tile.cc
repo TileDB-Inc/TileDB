@@ -42,7 +42,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <numeric>
 
 using namespace tiledb::sm;

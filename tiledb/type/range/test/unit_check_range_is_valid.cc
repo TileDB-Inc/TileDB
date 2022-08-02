@@ -31,7 +31,7 @@
  * validity.
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;

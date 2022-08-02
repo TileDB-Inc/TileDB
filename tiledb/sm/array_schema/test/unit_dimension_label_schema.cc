@@ -30,7 +30,7 @@
  * This file contains unit tests for the DimensionLabelSchema class
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 
 #include "tiledb/sm/array_schema/test/unit_array_schema_helper.h"
 

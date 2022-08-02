@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 
 #include "../bit_width_reduction_filter.h"
 #include "../bitshuffle_filter.h"

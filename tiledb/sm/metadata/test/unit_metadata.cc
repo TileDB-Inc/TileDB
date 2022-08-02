@@ -30,7 +30,7 @@
  * This file defines a test `main()`
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include "../metadata.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"

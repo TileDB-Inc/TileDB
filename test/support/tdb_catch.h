@@ -1,5 +1,5 @@
 /**
- * @file unit_is_experimental.cc
+ * @file tdb_catch.h
  *
  * @section LICENSE
  *
@@ -27,15 +27,14 @@
  *
  * @section DESCRIPTION
  *
- * This file tests`is_experimental_build=true` when
- * `TILEDB_EXPERIMENTAL_FEATURES=ON`
+ * This file is a transitional wrapper for catch.hpp to accommodate known coming
+ * changes catch2 => catch3 header organization and providing the possibility of
+ * handling both until all build environments have moved to the catch3 versions.
  */
 
-#include <test/support/tdb_catch.h>
-#include "tiledb/common/common.h"
+#ifndef TILEDB_MISC_TDB_CATCH_H
+#define TILEDB_MISC_TDB_CATCH_H
 
-using namespace tiledb::common;
+#include <catch.hpp>
 
-TEST_CASE("TILEDB_EXPERIMENTAL_FEATURES=ON") {
-  REQUIRE(is_experimental_build);
-}
+#endif  // TILEDB_MISC_TDB_CATCH_H

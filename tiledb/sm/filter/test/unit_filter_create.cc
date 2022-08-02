@@ -31,7 +31,7 @@
  *
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include "../filter_create.h"
 
 #include "../bit_width_reduction_filter.h"
