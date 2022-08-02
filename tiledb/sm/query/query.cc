@@ -673,6 +673,11 @@ Status Query::finalize() {
       return logger_->status(Status_QueryError(
           "Error in query finalize; remote array with no rest client."));
 
+    if (type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
+      return logger_->status(Status_QueryError(
+          "Error in query finalize; remote global order writes are only "
+          "allowed to call submit_and_finalize to submit the last tile"));
+    }
     return rest_client->finalize_query_to_rest(array_->array_uri(), this);
   }
 
