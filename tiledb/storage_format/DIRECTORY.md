@@ -12,11 +12,11 @@ Each of these entities may be regarded as having syntax and semantics: what a va
 Here's a partial list of concerns that are out of scope:
 
 * **Storage access.** Nothing in this directory has direct access to an object store or a file system. A user of these classes must provide the results of a storage operation to this code for parsing and interpretation.
-* **State maintenance.** This code has the notion of an "array in a directory", but it does not provide any notion of "the current state" of an array in storage. The concept here is that of an array a data type, not as a variable of that data type. 
+* **State maintenance.** This code has the notion of an "array in a directory", but it does not provide any notion of "the current state" of an array in storage. The concept here is that of an array a data type, not as a variable of that data type.
 
 ## Useful Information
-The following is the list of Datatypes that are **not** supported by the Dimension class. 
-Please note that this information is repeated in the C API, C++ API, and the Dimension class. 
+The following is the list of Datatypes that are **not** supported by the Dimension class.
+Please note that this information is repeated in the C API, C++ API, and the Dimension class.
 
 * TILEDB_CHAR
 * TILEDB_BLOB

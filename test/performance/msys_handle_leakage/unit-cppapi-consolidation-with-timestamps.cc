@@ -418,7 +418,7 @@ TEST_CASE_METHOD(
   auto timestamps_ptr =
       GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
-  uint64_t tstamp = 7;  
+  uint64_t tstamp = 7;
   SECTION("Read after all writes") {
     // Read after both writes - should see everything.
     tstamp = 7;

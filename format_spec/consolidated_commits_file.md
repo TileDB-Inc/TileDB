@@ -18,7 +18,7 @@ my_array                              # array folder
 * `uuid` is a unique identifier
 * `v` is the format version
 
-There may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits or delete commits. 
+There may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits or delete commits.
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Commit 1 | `uint8_t[]` | Commit 1 |
