@@ -1,27 +1,13 @@
 name: build-ubuntu-20.04-AZURE
 on:
-  push:
-    branches:
-      - dev
-      - release-*
-      - refs/tags/*
-    paths-ignore:
-      - '.github/workflows/quarto-render.yml'
-      - '_quarto.yml'
-      - 'quarto-materials/*'
-      - '**/.md'
-      - 'doc/source/conf.py'
-      - 'tiledb/sm/c_api/tiledb_version.h'
-  pull_request:
-    branches:
-      - '*'  # must quote since "*" is a YAML reserved character; we want a string
-    paths-ignore:
-      - '.github/workflows/quarto-render.yml'
-      - '_quarto.yml'
-      - 'quarto-materials/*'
-      - '**/.md'
-      - 'doc/source/conf.py'
-      - 'tiledb/sm/c_api/tiledb_version.h'
+  workflow_call:
+    inputs:
+      job_name:
+        description: 'Name of the job for display purposes'
+        default: ''
+        required: false
+        type: string
+
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
@@ -39,7 +25,7 @@ jobs:
           - ubuntu-20.04
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
-    name: Build - ${{matrix.os}} - AZURE
+    name: ${{matrix.os}} - ${{ inputs.job_name }}
     steps:
       - name: 'prep ubuntu for core dumps'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed

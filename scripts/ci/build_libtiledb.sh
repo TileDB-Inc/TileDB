@@ -38,7 +38,6 @@ echo "Bootstrapping with '$bootstrap_args'"
 $GITHUB_WORKSPACE/bootstrap $bootstrap_args
 
 make -j4
-make examples -j4
 make -C tiledb install
 
 cd $GITHUB_WORKSPACE/build
