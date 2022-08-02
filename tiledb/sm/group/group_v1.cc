@@ -48,10 +48,9 @@ GroupV1::GroupV1(const URI& group_uri, StorageManager* storage_manager)
 //   group_member #2
 //   ...
 Status GroupV1::serialize(Buffer* buff) {
-  RETURN_NOT_OK(
-      buff->write(&GroupV1::format_version_, sizeof(GroupV1::format_version_)));
+  RETURN_NOT_OK(buff->write(&GroupV1::format_version_, sizeof(uint32_t)));
   uint64_t group_member_num = members_.size();
-  RETURN_NOT_OK(buff->write(&group_member_num, sizeof(group_member_num)));
+  RETURN_NOT_OK(buff->write(&group_member_num, sizeof(uint64_t)));
   for (auto& it : members_) {
     RETURN_NOT_OK(it.second->serialize(buff));
   }
@@ -65,7 +64,7 @@ std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> GroupV1::deserialize(
 
   uint64_t member_count = 0;
   RETURN_NOT_OK_TUPLE(
-      buff->read(&member_count, sizeof(member_count)), std::nullopt);
+      buff->read(&member_count, sizeof(uint64_t)), std::nullopt);
 
   for (uint64_t i = 0; i < member_count; i++) {
     auto&& [st, member] = GroupMember::deserialize(buff);

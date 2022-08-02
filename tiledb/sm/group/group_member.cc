@@ -73,7 +73,7 @@ Status GroupMember::serialize(Buffer*) {
 std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
 GroupMember::deserialize(ConstBuffer* buff) {
   uint32_t version = 0;
-  RETURN_NOT_OK_TUPLE(buff->read(&version, sizeof(version)), std::nullopt);
+  RETURN_NOT_OK_TUPLE(buff->read(&version, sizeof(uint32_t)), std::nullopt);
   if (version == 1) {
     return GroupMemberV1::deserialize(buff);
   }
