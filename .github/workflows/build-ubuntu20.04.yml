@@ -1,0 +1,137 @@
+name: build-ubuntu-20.04
+on:
+  workflow_call:
+    inputs:
+      ci_backend:
+        description: 'Name of the job backend/target'
+        default: ''
+        required: false
+        type: string
+      ci_option:
+        description: 'Name of the job option for display'
+        default: ''
+        required: false
+        type: string
+      bootstrap_args:
+        default: ''
+        required: true
+        type: string
+      matrix_image:
+        default: ''
+        required: true
+        type: string
+
+env:
+  BACKWARDS_COMPATIBILITY_ARRAYS: OFF
+  TILEDB_CI_BACKEND: ${{ inputs.ci_backend }}
+  TILEDB_CI_OS: runner.os
+  CXX: g++
+  bootstrap_args: ${{ inputs.bootstrap_args }}
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os:
+          - ${{ inputs.matrix_image }}
+    runs-on: ${{matrix.os}}
+
+    if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
+    timeout-minutes: 90
+    name: ${{matrix.os}} - ${{ inputs.ci_backend }}${{ inputs.ci_option }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: 'Ubuntu Prelim'
+        if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        run: ./scripts/ci/linux/prelim.sh
+        shell: bash
+
+      # Need this for virtualenv and arrow tests if enabled
+      - name: 'Install Python'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+          cache: 'pip'
+      - name: 'Set up Python dependencies'
+        run: |
+          set -e pipefail
+          python -m pip install --upgrade pip virtualenv
+          pip install pyarrow pybind11 numpy
+
+      - name: 'Build and test libtiledb'
+        id: test
+        shell: bash
+        run: |
+          set -e pipefail
+
+          source $GITHUB_WORKSPACE/scripts/ci/linux/build-services-start.sh
+
+          #####################################################
+          # Build libtiledb using `bootstrap_args` as set above
+
+          ###################################################
+          # Start helper processes, such as backend emulator
+          # if applicable
+
+          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
+
+          ###################################################
+          # Run tests
+
+          # Bypass Catch2 Framework stdout interception with awk on test output
+          ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/regression/tiledb_regression -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+
+          ###################################################
+          # Stop helper processes, if applicable
+
+          source $GITHUB_WORKSPACE/scripts/ci/linux/build-services-stop.sh
+
+          ###################################################
+          # Run Examples
+
+          source $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
+
+          ###################################################
+          # Build benchmark code
+
+          source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
+
+      - name: 'dump  core stacks'
+        if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        run: ./scripts/ci/linux/dump-core-stacks.sh
+
+      - name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+        if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        uses: actions/upload-artifact@v2
+        with:
+          retention-days: 10
+          name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
+          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn`
+          path: |
+            /var/lib/apport/coredump/
+
+      - name: 'Upload failure artifacts (macOS)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+        if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        uses: actions/upload-artifact@v2
+        with:
+          retention-days: 10
+          name: "${{ matrix.os }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
+          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn`
+          path: |
+            /cores/
+
+      - name: 'Test status check'
+        run: |
+          # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
+          # following the test run. If this variable is not set, the build should fail.
+          # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
+          if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
+            exit 1;
+          fi
+
+      - name: "Print log files (failed build only)"
+        run: |
+          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
+        if: ${{ failure() }} # only run this job if the build step failed

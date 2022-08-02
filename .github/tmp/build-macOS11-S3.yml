@@ -36,7 +36,7 @@ env:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ input.smatrix_os }}
     strategy:
       matrix:
         os:

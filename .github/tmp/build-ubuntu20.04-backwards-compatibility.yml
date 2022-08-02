@@ -1,5 +1,15 @@
 name: build-ubuntu-20.04-backwards-compatibility
 on:
+  workflow_call:
+    inputs:
+      job_name:
+        description: 'Name of the job for display purposes'
+        default: ''
+        required: false
+        type: string
+
+
+on:
   push:
     branches:
       - dev
@@ -40,49 +50,16 @@ jobs:
     timeout-minutes: 120
     name: Ubuntu-20.04-back-comp
     steps:
+      - uses: actions/checkout@v2
+
       - name: 'prep ubuntu for core dumps'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        run: |
-          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
-          ulimit -c
-          sudo apt-get update
-          sudo apt-get -y install gdb
-          if [[ -f $(which gdb) ]]; then
-            echo found $(which gdb)
-          else
-            echo tried to install gdb, but gdb not found!
-          fi
-          echo "core_pattern follows..."
-          cat /proc/sys/kernel/core_pattern
-          echo "...core_pattern above"
-
-      - name: cpuprocinfo
+        run: ./scripts/ci/linux/prelim.sh
         shell: bash
-        run: |
-          set -x
-          cat /proc/cpuinfo
 
-      - name: ubuntu lscpu
-        shell: bash
-        run: |
-          set -x
-          if [[ $(which lscpu) ]] ; then
-            lscpu
-          fi
-
-      - uses: actions/checkout@v2
       - name: 'Print env'
-        run: |
-          echo "'uname -s' is:"
-          echo "uname: " $(uname)
-          echo "uname -m: " $(uname -m)
-          echo "uname -r:" $(uname -r)
-          echo "uname -s: " $(uname -s)
-          echo "uname -v: " $(uname -v)
-          printenv
+        run: ./scripts/ci/linux/print-env.sh
         shell: bash
-        env:
-          TILEDB_COMPATIBILITY_VERSION: ${{ matrix.tiledb_version }}
 
       # Need this for virtualenv and arrow tests if enabled
       - uses: actions/setup-python@v2
