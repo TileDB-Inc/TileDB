@@ -163,11 +163,12 @@ void Subarray::add_label_range(
   if (label_range_subset_[dim_idx].has_value()) {
     // A label range has already been set on this dimension. Do the following:
     //  * Check this label is the same label that rangers were already set.
-    if (dim_label_ref.name() != label_range_subset_[dim_idx].name())
+    if (dim_label_ref.name() != label_range_subset_[dim_idx].name()) {
       throw StatusException(Status_SubarrayError(
           "Cannot add label range; Dimension is already to set to use "
           "dimension label '" +
           label_range_subset_[dim_idx].name()));
+    }
   } else {
     // A label range has not yet been set on this dimension. Do the following:
     //  * Verify no ranges explicitily set on the dimension.
@@ -175,10 +176,12 @@ void Subarray::add_label_range(
     //  * Clear implicitly set range from the dimension ranges.
     //  * Update is_default (tracks if the range on the dimension is the default
     //    value of the entire domain).
-    if (range_subset_[dim_label_ref.dimension_id()].is_explicitly_initialized())
+    if (range_subset_[dim_label_ref.dimension_id()]
+            .is_explicitly_initialized()) {
       throw StatusException(Status_SubarrayError(
           "Cannot add label range; Dimension '" + std::to_string(dim_idx) +
           "' already has ranges set to it."));
+    }
     label_range_subset_[dim_idx] =
         LabelRangeSubset(dim_label_ref, coalesce_ranges_);
     range_subset_[dim_label_ref.dimension_id()].clear();
@@ -193,14 +196,16 @@ void Subarray::add_label_range(
   auto&& [error_status, oob_warning] =
       label_range_subset_[dim_idx].range_subset().add_range(
           range, read_range_oob_error);
-  if (!error_status.ok())
+  if (!error_status.ok()) {
     throw StatusException(Status_SubarrayError(
         "Cannot add label range for dimension label '" + dim_label_ref.name() +
         "'; " + error_status.message()));
-  if (oob_warning.has_value())
+  }
+  if (oob_warning.has_value()) {
     LOG_WARN(
         oob_warning.value() + " for dimension label '" + dim_label_ref.name() +
         "'");
+  }
 }
 
 void Subarray::add_label_range(
@@ -209,20 +214,23 @@ void Subarray::add_label_range(
     const void* end,
     const void* stride) {
   // Check input range data is valid data.
-  if (start == nullptr || end == nullptr)
+  if (start == nullptr || end == nullptr) {
     throw StatusException(
         Status_SubarrayError("Cannot add label range; Invalid range"));
-  if (stride != nullptr)
+  }
+  if (stride != nullptr) {
     throw StatusException(
         Status_SubarrayError("Cannot add label range; Setting range stride is "
                              "currently unsupported"));
+  }
   // Get dimension label range and check the label is in fact fixed-sized.
   const auto& dim_label_ref =
       array_->array_schema_latest().dimension_label_reference(label_name);
-  if (dim_label_ref.label_cell_val_num() == constants::var_num)
+  if (dim_label_ref.label_cell_val_num() == constants::var_num) {
     throw StatusException(
         Status_SubarrayError("Cannot add label range; Cannot add a fixed-sized "
                              "range to a variable sized dimension label"));
+  }
   // Add the label range to this subarray.
   return this->add_label_range(
       dim_label_ref,
@@ -246,10 +254,11 @@ void Subarray::add_label_range_var(
   // variable-sized.
   const auto& dim_label_ref =
       array_->array_schema_latest().dimension_label_reference(label_name);
-  if (dim_label_ref.label_cell_val_num() != constants::var_num)
+  if (dim_label_ref.label_cell_val_num() != constants::var_num) {
     throw StatusException(Status_SubarrayError(
         "Cannot add label range; Cannot add a variable-sized range to a "
         "fixed-sized dimension label"));
+  }
   // Add the label range to this subarray.
   return this->add_label_range(
       dim_label_ref,
@@ -537,10 +546,11 @@ void Subarray::get_label_range(
                      .dimension_label_reference(label_name)
                      .dimension_id();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].name() != label_name)
+      label_range_subset_[dim_idx].name() != label_name) {
     throw StatusException(Status_SubarrayError(
         "Cannot get label range; No ranges set on dimension label '" +
         label_name + "'"));
+  }
   const auto& range = label_range_subset_[dim_idx][range_idx];
   *start = range.start_fixed();
   *end = range.end_fixed();
@@ -567,10 +577,11 @@ void Subarray::get_label_range_var(
                      .dimension_label_reference(label_name)
                      .dimension_id();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].name() != label_name)
+      label_range_subset_[dim_idx].name() != label_name) {
     throw StatusException(Status_SubarrayError(
         "Cannot get label range; No ranges set on dimension label '" +
         label_name + "'"));
+  }
   const auto& range = label_range_subset_[dim_idx][range_idx];
   std::memcpy(start, range.start_str().data(), range.start_size());
   std::memcpy(end, range.end_str().data(), range.end_size());
@@ -585,10 +596,11 @@ void Subarray::get_label_range_var_size(
                      .dimension_label_reference(label_name)
                      .dimension_id();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].name() != label_name)
+      label_range_subset_[dim_idx].name() != label_name) {
     throw StatusException(Status_SubarrayError(
         "Cannot get label range size; No ranges set on dimension label '" +
         label_name + "'"));
+  }
   const auto& range = label_range_subset_[dim_idx][range_idx];
   *start_size = range.start_size();
   *end_size = range.end_size();
