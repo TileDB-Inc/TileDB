@@ -23,6 +23,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+
 include(common NO_POLICY_SCOPE)
 
 if (TILEDB_TESTS)
@@ -33,6 +35,8 @@ if (TILEDB_TESTS)
 
     # Sources for tests
     target_sources(unit_delete_condition PUBLIC test/main.cc test/unit_delete_condition.cc)
+
+    target_include_directories(unit_delete_condition PRIVATE "${TILEDB_CORE_INCLUDE_DIR}")
 
     # The dependencies can't yet be factored into separate object libraries
     target_link_libraries(unit_delete_condition PUBLIC TILEDB_CORE_OBJECTS)

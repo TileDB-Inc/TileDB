@@ -24,6 +24,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+
+set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+
 include(common NO_POLICY_SCOPE)
 
 list(APPEND SOURCES
@@ -50,6 +53,8 @@ if (TILEDB_TESTS)
     target_sources(unit_ast PUBLIC test/main.cc test/unit-query-ast.cc)
     target_link_libraries(unit_ast PRIVATE query_ast)
     target_link_libraries(unit_ast PRIVATE array_schema)
+
+    target_include_directories(unit_ast PRIVATE "${TILEDB_CORE_INCLUDE_DIR}")
 
     ################################################################
     #

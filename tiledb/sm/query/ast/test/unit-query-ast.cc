@@ -34,7 +34,7 @@
 #include <string>
 #include <vector>
 
-#include "test/src/ast_helpers.h"
+#include "test/support/src/ast_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/query/ast/query_ast.h"
 
