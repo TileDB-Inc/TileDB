@@ -227,10 +227,6 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
       return {Status::Ok(),
               tiledb::common::make_shared<EncryptionAES256GCMFilter>(HERE())};
     }
-    case FilterType::FILTER_SCALE_FLOAT: {
-      return {Status::Ok(),
-              tiledb::common::make_shared<FloatScalingFilter>(HERE())};
-    }
     case FilterType::FILTER_XOR: {
       return {Status::Ok(),
               tiledb::common::make_shared<XORFilter>(HERE())};
