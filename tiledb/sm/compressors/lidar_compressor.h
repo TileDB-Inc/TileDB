@@ -88,11 +88,13 @@ class Lidar {
   static uint64_t overhead(uint64_t nbytes);
 
   private:
-    template<typename T, typename W>
+    template<typename W>
     static Status compress(Datatype type, int level, ConstBuffer* input_buffer, Buffer* output_buffer);
 
     /** The default filter compression level. */
     static constexpr int default_level_ = -1;
+
+    static XORFilter xor_filter_;
 };
 
 }; // namespace sm
