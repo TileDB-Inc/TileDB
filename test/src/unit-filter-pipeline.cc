@@ -4087,25 +4087,16 @@ void testing_xor_filter() {
   tile.init_unfiltered(
       constants::format_version, t, tile_size, cell_size, dim_num);
 
-  // The MSVC Windows compiler doesn't support std::uniform_int_distribution
-  // with
-  // type int8_t instantiation, so we use this little hack to generate the right
-  // type for our int distribution.
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  typedef typename std::conditional<
-      is_windows && std::is_same<T, int8_t>::value,
-      int16_t,
-      T>::type DIST_TYPE;
-
+  
   // Setting up the random number generator for the XOR filter testing.
-  std::uniform_int_distribution<DIST_TYPE> dis(
+  std::mt19937 gen(0x57A672DE);
+  std::uniform_int_distribution<int64_t> dis(
       std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
 
   std::vector<T> results;
 
   for (uint64_t i = 0; i < nelts; i++) {
-    T val = dis(gen);
+    T val = static_cast<T>(dis(gen));
     CHECK(tile.write(&val, i * sizeof(T), sizeof(T)).ok());
     results.push_back(val);
   }

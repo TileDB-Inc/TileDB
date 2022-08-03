@@ -56,7 +56,9 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter_create.h"
+#include "tiledb/sm/filter/float_scaling_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
+#include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
 
@@ -188,6 +190,14 @@ static tuple<Status, optional<shared_ptr<Filter>>> filter_constructor(
     case FilterType::INTERNAL_FILTER_AES_256_GCM: {
       return {Status::Ok(),
               tiledb::common::make_shared<EncryptionAES256GCMFilter>(HERE())};
+    }
+    case FilterType::FILTER_SCALE_FLOAT: {
+      return {Status::Ok(),
+              tiledb::common::make_shared<FloatScalingFilter>(HERE())};
+    }
+    case FilterType::FILTER_XOR: {
+      return {Status::Ok(),
+              tiledb::common::make_shared<XORFilter>(HERE())};
     }
     default: {
       throw std::logic_error(

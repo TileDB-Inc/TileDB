@@ -111,6 +111,8 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
   REQUIRE(TILEDB_FILTER_CHECKSUM_MD5 == 12);
   REQUIRE(TILEDB_FILTER_CHECKSUM_SHA256 == 13);
   REQUIRE(TILEDB_FILTER_DICTIONARY == 14);
+  REQUIRE(TILEDB_FILTER_SCALE_FLOAT == 15);
+  REQUIRE(TILEDB_FILTER_XOR == 16);
 
   /** Filter option */
   REQUIRE(TILEDB_COMPRESSION_LEVEL == 0);
@@ -435,6 +437,15 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
       (tiledb_filter_type_from_str("DICTIONARY_ENCODING", &filter_type) ==
            TILEDB_OK &&
        filter_type == TILEDB_FILTER_DICTIONARY));
+  REQUIRE(
+      (tiledb_filter_type_from_str("SCALE_FLOAT", &filter_type) ==
+           TILEDB_OK &&
+       filter_type == TILEDB_FILTER_SCALE_FLOAT));
+  REQUIRE(
+      (tiledb_filter_type_from_str("XOR", &filter_type) ==
+           TILEDB_OK &&
+       filter_type == TILEDB_FILTER_XOR));
+  
 
   tiledb_filter_option_t filter_option;
   REQUIRE(
@@ -461,6 +472,18 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
       (tiledb_filter_option_from_str(
            "POSITIVE_DELTA_MAX_WINDOW", &filter_option) == TILEDB_OK &&
        filter_option == TILEDB_POSITIVE_DELTA_MAX_WINDOW));
+  REQUIRE(
+      (tiledb_filter_option_from_str(
+           "SCALE_FLOAT_BYTEWIDTH", &filter_option) == TILEDB_OK &&
+       filter_option == TILEDB_SCALE_FLOAT_BYTEWIDTH));
+  REQUIRE(
+      (tiledb_filter_option_from_str(
+           "SCALE_FLOAT_FACTOR", &filter_option) == TILEDB_OK &&
+       filter_option == TILEDB_SCALE_FLOAT_FACTOR));
+  REQUIRE(
+      (tiledb_filter_option_from_str(
+           "SCALE_FLOAT_OFFSET", &filter_option) == TILEDB_OK &&
+       filter_option == TILEDB_SCALE_FLOAT_OFFSET));
 
   tiledb_encryption_type_t encryption_type;
   REQUIRE(
