@@ -35,7 +35,6 @@
 
 #include <iostream>
 
-#include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
