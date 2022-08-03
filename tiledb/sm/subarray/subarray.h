@@ -1136,27 +1136,64 @@ class Subarray {
    */
   struct LabelRangeSubset {
    public:
-    LabelRangeSubset();
+    /**
+     * Default constructor
+     *
+     * Sets data to nullopt.
+     **/
+    LabelRangeSubset()
+        : label_range_subset_{nullopt} {
+    }
 
+    /**
+     * Constructor
+     *
+     * @param ref Dimension label reference to the label this will contain
+     * ranges for.
+     * @param coalesce_ranges Set if ranges should be combined when adjacent.
+     */
     LabelRangeSubset(
         const DimensionLabelReference& ref, bool coalesce_ranges = true);
 
+    /** Returns if the label range subset has a value. */
     inline bool has_value() const {
       return label_range_subset_.has_value();
     }
 
+    /**
+     * Returns the name of the dimension label the ranges are set on.
+     *
+     * Throws a bad optional access if the labl range is not set.
+     */
     inline const std::string& name() const {
       return std::get<0>(label_range_subset_.value());
     }
 
+    /**
+     * Returns the range subset.
+     *
+     * Throws a bad optional access if the labl range is not set.
+     */
     inline RangeSetAndSuperset& range_subset() {
       return std::get<1>(label_range_subset_.value());
     }
 
+    /**
+     * Access a range in the range subset.
+     *
+     * Throws a bad optional access if the labl range is not set.
+     *
+     * @param range_index The index of the range to access.
+     */
     inline const Range& operator[](const uint64_t range_index) const {
       return std::get<1>(label_range_subset_.value())[range_index];
     }
 
+    /**
+     * Returns a vector of all ranges set for this dimension label.
+     *
+     * Throws a bad optional access if the labl range is not set.
+     */
     inline const std::vector<Range>& ranges() const {
       return std::get<1>(label_range_subset_.value()).ranges();
     }

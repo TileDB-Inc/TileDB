@@ -3396,10 +3396,6 @@ template void Subarray::crop_to_tile<double>(
 /*         LABEL RANGE SUBSET        */
 /* ********************************* */
 
-Subarray::LabelRangeSubset::LabelRangeSubset()
-    : label_range_subset_{nullopt} {
-}
-
 Subarray::LabelRangeSubset::LabelRangeSubset(
     const DimensionLabelReference& ref, bool coalesce_ranges)
     : label_range_subset_{
