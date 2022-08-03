@@ -127,7 +127,12 @@ void xor_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
 }
 
 TEMPLATE_TEST_CASE(
-    "C++ API: XOR Filter list on array", "[cppapi][filter][xor]", int8_t) {
+    "C++ API: XOR Filter list on array",
+    "[cppapi][filter][xor]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t) {
   // Setup.
   Context ctx;
   VFS vfs(ctx);
