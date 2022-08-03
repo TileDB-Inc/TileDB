@@ -43,13 +43,12 @@ jobs:
         run: |
           bootstrap_args="${bootstrap_args}";
           bootstrap_args="${bootstrap_args} --enable-release-symbols";
-          #source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
-          echo "bootstrap args: " ${bootstrap_args}
+          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
-          cd $GITHUB_WORKSPACE
-          mkdir -p build/tiledb/test/
-          echo "echo 'hello, world'" > build/tiledb/test/tiledb_unit
-          chmod +x build/tiledb/test/tiledb_unit
+          #cd $GITHUB_WORKSPACE
+          #mkdir -p build/tiledb/test/
+          #echo "echo 'hello, world'" > build/tiledb/test/tiledb_unit
+          #chmod +x build/tiledb/test/tiledb_unit
 
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v3
@@ -105,7 +104,7 @@ jobs:
           ls -lah test/inputs/arrays/read_compatibility_test/${TILEDB_COMPATIBILITY_VERSION}/
 
           # Bypass Catch2 Framework stdout interception with awk on test output
-          sh ./tiledb/test/tiledb_unit -d yes "[backwards-compat]"| awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/tiledb_unit -d yes "[backwards-compat]"| awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
       - name: 'Test status check'
         run: |
