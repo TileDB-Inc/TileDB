@@ -164,10 +164,8 @@ if (AWSSDK_FOUND)
         aws-c-compression
         aws-checksums
         aws-c-sdkutils
-        aws-checksums
         aws-c-io
         aws-c-cal
-        aws-cpp-sdk-cognito-identity
         aws-cpp-sdk-identity-management
         aws-cpp-sdk-sts
         aws-c-common
