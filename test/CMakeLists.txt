@@ -203,6 +203,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-consolidation.cc
     src/unit-cppapi-consolidation-with-timestamps.cc
     src/unit-cppapi-datetimes.cc
+    src/unit-cppapi-deletes.cc
     src/unit-cppapi-time.cc
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
@@ -286,6 +287,8 @@ target_link_libraries(tiledb_unit
     tiledb_test_support_lib
 )
 
+target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)
+
 # need to properly link the signal chaining library for catch to work with the jni hdfs interface
 # see: https://docs.oracle.com/javase/9/vm/signal-chaining.htm
 if (TILEDB_HDFS)
@@ -300,8 +303,6 @@ if (TILEDB_HDFS)
     "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
     )
 endif()
-
-target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)
 
 if (TILEDB_S3)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_S3)
