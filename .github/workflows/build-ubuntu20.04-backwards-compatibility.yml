@@ -20,7 +20,7 @@ jobs:
         os:
           - ubuntu-20.04
     timeout-minutes: 120
-    name: Ubuntu-20.04-back-comp
+    name: Build tiledb_unit
     steps:
       - uses: actions/checkout@v2
 
@@ -67,9 +67,9 @@ jobs:
           - ubuntu-20.04
         # Note: v2_1_0 arrays were never created so its currently skipped
         # Note: This matrix is used to set the value of TILEDB_COMPATIBILITY_VERSION
-        tiledb_version: ["v1_4_0"] #, "v1_5_0", "v1_6_0", "v1_7_0", "v2_0_0", "v2_2_0", "v2_2_3", "v2_3_0", "v2_4_0", "v2_5_0", "v2_6_0", "v2_7_0", "v2_8_3", "v2_9_1"]
+        tiledb_version: ["v1_4_0", "v1_5_0", "v1_6_0", "v1_7_0", "v2_0_0", "v2_2_0", "v2_2_3", "v2_3_0", "v2_4_0", "v2_5_0", "v2_6_0", "v2_7_0", "v2_8_3", "v2_9_1"]
     timeout-minutes: 30
-    name: Ubuntu-20.04-back-comp
+    name: ${{ matrix.tiledb_version }}
     steps:
       - uses: actions/checkout@v2
 
