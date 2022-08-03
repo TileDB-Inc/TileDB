@@ -65,6 +65,8 @@ jobs:
         run: |
           set -e pipefail
 
+          ## ** NOTE: most of these steps must run in the same shell context **
+
           source $GITHUB_WORKSPACE/scripts/ci/linux/build-services-start.sh
 
           #####################################################

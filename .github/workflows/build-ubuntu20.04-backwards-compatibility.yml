@@ -79,6 +79,9 @@ jobs:
           name: tiledb_unit
           path: ${{ github.workspace }}/build/tiledb/test/
 
+      - name: Update tiledb_unit permissions
+        run: chmod +x $GITHUB_WORKSPACE/tiledb/test/tiledb_unit
+
       - name: 'Test backward compatibility'
         id: test
         env:
