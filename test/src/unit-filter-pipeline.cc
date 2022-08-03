@@ -4087,7 +4087,6 @@ void testing_xor_filter() {
   tile.init_unfiltered(
       constants::format_version, t, tile_size, cell_size, dim_num);
 
-  
   // Setting up the random number generator for the XOR filter testing.
   std::mt19937 gen(0x57A672DE);
   std::uniform_int_distribution<int64_t> dis(

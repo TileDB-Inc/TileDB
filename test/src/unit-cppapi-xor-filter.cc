@@ -30,7 +30,6 @@
  * Tests the C++ API for xor filter related functions.
  */
 
-#include <iostream>
 #include <random>
 #include <vector>
 
@@ -63,8 +62,6 @@ void xor_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
   schema.add_attribute(a);
   Array::create(xor_array_name, schema);
 
-  std::cout << "STOP ONE\n";
-
   // Setting up the random number generator for the XOR filter testing.
   std::mt19937 gen(0xADA65ED6);
   std::uniform_int_distribution<int64_t> dis(
@@ -85,8 +82,6 @@ void xor_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
     expected_a.push_back(f);
   }
 
-  std::cout << "STOP 2\n";
-
   tiledb_layout_t layout_type =
       array_type == TILEDB_SPARSE ? TILEDB_UNORDERED : TILEDB_ROW_MAJOR;
 
@@ -98,13 +93,9 @@ void xor_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
     query_w.set_data_buffer("rows", row_dims).set_data_buffer("cols", col_dims);
   }
 
-  std::cout << "STOP 2.5\n";
-
   query_w.submit();
   query_w.finalize();
   array_w.close();
-
-  std::cout << "STOP 3\n";
 
   // Open and read the entire array.
   std::vector<T> a_data_read(xor_dim_hi * xor_dim_hi, 0);
@@ -119,8 +110,6 @@ void xor_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
   }
 
   query_r.submit();
-
-  std::cout << "is this where we break?\n";
 
   // Check for results.
   size_t total_num_elements = static_cast<size_t>(xor_dim_hi * xor_dim_hi);
@@ -138,9 +127,7 @@ void xor_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
 }
 
 TEMPLATE_TEST_CASE(
-    "C++ API: XOR Filter list on array",
-    "[cppapi][filter][xor]",
-    int8_t) {
+    "C++ API: XOR Filter list on array", "[cppapi][filter][xor]", int8_t) {
   // Setup.
   Context ctx;
   VFS vfs(ctx);
