@@ -24,7 +24,7 @@ stages:
       strategy:
         matrix:
           macOS_azure:
-            imageName: 'macOS-10.15'
+            imageName: 'macos-11'
             TILEDB_AZURE: ON
             TILEDB_SERIALIZATION: ON
             CXX: clang++
@@ -72,13 +72,13 @@ stages:
        strategy:
          matrix:
            macOS:
-             imageName: 'macOS-10.15'
+             imageName: 'macos-11'
              CXX: clang++
              ARTIFACT_OS: 'macos'
              ARTIFACT_ARCH: 'x86_64'
              CMAKE_OSX_ARCHITECTURES: "x86_64"
            macOS_arm64:
-             imageName: 'macOS-10.15'
+             imageName: 'macos-11'
              CXX: clang++
              ARTIFACT_OS: 'macos'
              ARTIFACT_ARCH: 'arm64'

@@ -77,6 +77,9 @@ extern const std::string array_fragments_dir_name;
 /** The array commit directory name. */
 extern const std::string array_commits_dir_name;
 
+/** The array dimension labels directory name. */
+extern const std::string array_dimension_labels_dir_name;
+
 /** The default tile capacity. */
 extern const uint64_t capacity;
 

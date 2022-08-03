@@ -57,7 +57,7 @@
 #include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/tile/tile.h"
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <functional>
 #include <random>
 

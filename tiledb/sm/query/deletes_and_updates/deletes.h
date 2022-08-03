@@ -85,9 +85,6 @@ class Deletes : public StrategyBase, public IQueryStrategy {
     return QueryStatusDetailsReason::REASON_NONE;
   }
 
-  /** Initializes the delete. */
-  Status init();
-
   /** Initialize the memory budget variables. */
   Status initialize_memory_budget();
 

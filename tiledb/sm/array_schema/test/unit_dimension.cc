@@ -30,7 +30,7 @@
  * This file tests the Dimension class
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include "../dimension.h"
 #include "tiledb/sm/enums/datatype.h"
 
@@ -186,6 +186,75 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
   CHECK(dim.value()->type() == type);
   CHECK(dim.value()->cell_val_num() == constants::var_num);
   CHECK(dim.value()->var_size() == true);
+}
+
+TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
+  std::string dim_name = "dim";
+
+  SECTION("- valid and supported Datatypes") {
+    std::vector<Datatype> valid_supported_datatypes = {
+        Datatype::INT32,          Datatype::INT64,
+        Datatype::FLOAT32,        Datatype::FLOAT64,
+        Datatype::INT8,           Datatype::UINT8,
+        Datatype::INT16,          Datatype::UINT16,
+        Datatype::UINT32,         Datatype::UINT64,
+        Datatype::STRING_ASCII,   Datatype::DATETIME_YEAR,
+        Datatype::DATETIME_MONTH, Datatype::DATETIME_WEEK,
+        Datatype::DATETIME_DAY,   Datatype::DATETIME_HR,
+        Datatype::DATETIME_MIN,   Datatype::DATETIME_SEC,
+        Datatype::DATETIME_MS,    Datatype::DATETIME_US,
+        Datatype::DATETIME_NS,    Datatype::DATETIME_PS,
+        Datatype::DATETIME_FS,    Datatype::DATETIME_AS,
+        Datatype::TIME_HR,        Datatype::TIME_MIN,
+        Datatype::TIME_SEC,       Datatype::TIME_MS,
+        Datatype::TIME_US,        Datatype::TIME_NS,
+        Datatype::TIME_PS,        Datatype::TIME_FS,
+        Datatype::TIME_AS};
+
+    for (Datatype type : valid_supported_datatypes) {
+      try {
+        Dimension dim{dim_name, type};
+      } catch (...) {
+        throw std::logic_error("Uncaught exception in Dimension constructor");
+      }
+    }
+  }
+
+  SECTION("- valid and unsupported Datatypes") {
+    std::vector<Datatype> valid_unsupported_datatypes = {Datatype::CHAR,
+                                                         Datatype::BLOB,
+                                                         Datatype::BOOL,
+                                                         Datatype::STRING_UTF8,
+                                                         Datatype::STRING_UTF16,
+                                                         Datatype::STRING_UTF32,
+                                                         Datatype::STRING_UCS2,
+                                                         Datatype::STRING_UCS4,
+                                                         Datatype::ANY};
+
+    for (Datatype type : valid_unsupported_datatypes) {
+      try {
+        Dimension dim{dim_name, type};
+      } catch (std::exception& e) {
+        CHECK(
+            e.what() == "Datatype::" + datatype_str(type) +
+                            " is not a valid Dimension Datatype");
+      }
+    }
+  }
+
+  SECTION("- invalid Datatypes") {
+    std::vector<std::underlying_type_t<Datatype>> invalid_datatypes = {42, 100};
+
+    for (auto type : invalid_datatypes) {
+      try {
+        Dimension dim{dim_name, Datatype(type)};
+      } catch (std::exception& e) {
+        CHECK(
+            std::string(e.what()) ==
+            "[Dimension::ensure_datatype_is_supported] ");
+      }
+    }
+  }
 }
 
 typedef tuple<

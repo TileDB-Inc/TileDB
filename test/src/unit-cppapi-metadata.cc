@@ -45,7 +45,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <chrono>
 #include <iostream>
 #include <thread>

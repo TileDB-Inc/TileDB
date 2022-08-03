@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include "../handle.h"
 
 namespace tiledb::api {

@@ -231,6 +231,7 @@ if (TILEDB_SERIALIZATION)
     src/unit-capi-serialized_queries.cc
     src/unit-capi-serialized_queries_using_subarray.cc
     src/unit-QueryCondition-serialization.cc
+    src/unit-filter-serialization.cc
     src/unit-curl.cc
   )
 endif()

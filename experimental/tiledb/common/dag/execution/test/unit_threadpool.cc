@@ -30,7 +30,7 @@
  * Tests the threadpool class.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "experimental/tiledb/common/dag/execution/threadpool.h"
 
 // using namespace tiledb::common;

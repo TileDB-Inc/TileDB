@@ -46,14 +46,6 @@ jobs:
           printenv
         shell: bash
 
-      - name: 'Install system headers (OSX 10.14 only)'
-        run: |
-          set -e pipefail
-          open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
-          sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
-        shell: bash
-        if: ${{ runner.os == 'macOS' && env.imageName == 'macOS-10.14' }}
-
       - name: 'Build and run standalone unit tests'
         id: test
         run: |

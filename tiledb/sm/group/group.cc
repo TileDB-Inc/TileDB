@@ -660,7 +660,7 @@ Status Group::apply_and_serialize(Buffer* buff) {
 std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> Group::deserialize(
     ConstBuffer* buff, const URI& group_uri, StorageManager* storage_manager) {
   uint32_t version = 0;
-  RETURN_NOT_OK_TUPLE(buff->read(&version, sizeof(version)), std::nullopt);
+  RETURN_NOT_OK_TUPLE(buff->read(&version, sizeof(uint32_t)), std::nullopt);
   if (version == 1) {
     return GroupV1::deserialize(buff, group_uri, storage_manager);
   }

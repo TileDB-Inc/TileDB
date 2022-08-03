@@ -31,8 +31,8 @@
  * Tests the TileDB filestore C API.
  */
 
+#include <test/support/tdb_catch.h>
 #include <iostream>
-#include "catch.hpp"
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"

@@ -25,6 +25,8 @@
 # THE SOFTWARE.
 #
 
+set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+
 find_package(Catch_EP REQUIRED)
 
 set(SOURCES
@@ -61,6 +63,7 @@ target_link_libraries(tiledb_regression
 target_include_directories(tiledb_regression
   PRIVATE
     ${CMAKE_INSTALL_PREFIX}/include
+    "${TILEDB_CORE_INCLUDE_DIR}"
 )
 
 add_test(

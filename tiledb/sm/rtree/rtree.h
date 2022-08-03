@@ -39,6 +39,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/tile_overlap.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
 
@@ -88,7 +89,7 @@ class RTree {
   /* ********************************* */
 
   /** Builds the RTree bottom-up on the current leaf level. */
-  Status build_tree();
+  void build_tree();
 
   /** Frees the memory associated with the rtree. */
   uint64_t free_memory();
@@ -136,7 +137,7 @@ class RTree {
    * Serializes the contents of the object to the input buffer.
    * Note that `domain_` is not serialized in the buffer.
    */
-  Status serialize(Buffer* buff) const;
+  void serialize(Serializer& serializer) const;
 
   /**
    * Sets the RTree domain.
@@ -172,8 +173,8 @@ class RTree {
    * on the format version.
    * It also sets the input domain, as that is not serialized.
    */
-  Status deserialize(
-      ConstBuffer* cbuff, const Domain* domain, uint32_t version);
+  void deserialize(
+      Deserializer& deserializer, const Domain* domain, uint32_t version);
 
  private:
   /* ********************************* */
@@ -261,7 +262,7 @@ class RTree {
    *
    * Applicable to versions 1-4
    */
-  Status deserialize_v1_v4(ConstBuffer* cbuff, const Domain* domain);
+  void deserialize_v1_v4(Deserializer& deserializer, const Domain* domain);
 
   /**
    * Deserializes the contents of the object from the input buffer based
@@ -270,7 +271,7 @@ class RTree {
    *
    * Applicable to versions >= 5
    */
-  Status deserialize_v5(ConstBuffer* cbuff, const Domain* domain);
+  void deserialize_v5(Deserializer& deserializer, const Domain* domain);
 
   /**
    * Swaps the contents (all field values) of this RTree with the

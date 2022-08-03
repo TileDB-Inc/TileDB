@@ -111,10 +111,6 @@ Status Deletes::finalize() {
   return Status::Ok();
 }
 
-Status Deletes::init() {
-  return Status::Ok();
-}
-
 Status Deletes::initialize_memory_budget() {
   return Status::Ok();
 }

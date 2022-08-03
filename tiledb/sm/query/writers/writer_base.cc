@@ -62,6 +62,13 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
+class WriterBaseStatusException : public StatusException {
+ public:
+  explicit WriterBaseStatusException(const std::string& message)
+      : StatusException("WriterBase", message) {
+  }
+};
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -78,7 +85,8 @@ WriterBase::WriterBase(
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
-    URI fragment_uri)
+    URI fragment_uri,
+    bool skip_checks_serialization)
     : StrategyBase(
           stats,
           logger->clone("Writer", ++logger_id_),
@@ -96,6 +104,101 @@ WriterBase::WriterBase(
     , dedup_coords_(false)
     , written_fragment_info_(written_fragment_info) {
   fragment_uri_ = fragment_uri;
+
+  // Sanity checks
+  if (storage_manager_ == nullptr) {
+    throw WriterBaseStatusException(
+        "Cannot initialize query; Storage manager not set");
+  }
+
+  if (!skip_checks_serialization && buffers_.empty()) {
+    throw WriterBaseStatusException(
+        "Cannot initialize writer; Buffers not set");
+  }
+
+  if (array_schema_.dense() &&
+      (layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR)) {
+    for (const auto& b : buffers_) {
+      if (array_schema_.is_dim(b.first)) {
+        throw WriterBaseStatusException(
+            "Cannot initialize writer; Sparse coordinates for dense arrays "
+            "cannot be provided if the query layout is ROW_MAJOR or COL_MAJOR");
+      }
+    }
+  }
+
+  // Get configuration parameters
+  const char *check_coord_dups, *check_coord_oob, *check_global_order;
+  const char* dedup_coords;
+  if (!config_.get("sm.check_coord_dups", &check_coord_dups).ok()) {
+    throw WriterBaseStatusException("Cannot get setting");
+  }
+
+  if (!config_.get("sm.check_coord_oob", &check_coord_oob).ok()) {
+    throw WriterBaseStatusException("Cannot get setting");
+  }
+
+  if (!config_.get("sm.check_global_order", &check_global_order).ok()) {
+    throw WriterBaseStatusException("Cannot get setting");
+  }
+
+  if (!config_.get("sm.dedup_coords", &dedup_coords).ok()) {
+    throw WriterBaseStatusException("Cannot get setting");
+  }
+
+  assert(check_coord_dups != nullptr && dedup_coords != nullptr);
+  check_coord_dups_ =
+      disable_checks_consolidation_ ? false : !strcmp(check_coord_dups, "true");
+  check_coord_oob_ = !strcmp(check_coord_oob, "true");
+  check_global_order_ = disable_checks_consolidation_ ?
+                            false :
+                            !strcmp(check_global_order, "true");
+  dedup_coords_ = !strcmp(dedup_coords, "true");
+  bool found = false;
+  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
+  assert(found);
+  if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
+    throw WriterBaseStatusException(
+        "Cannot initialize writer; Unsupported offsets format in "
+        "configuration");
+  }
+  if (!config_
+           .get<bool>(
+               "sm.var_offsets.extra_element", &offsets_extra_element_, &found)
+           .ok()) {
+    throw WriterBaseStatusException("Cannot get setting");
+  }
+  assert(found);
+
+  if (!config_
+           .get<uint32_t>("sm.var_offsets.bitsize", &offsets_bitsize_, &found)
+           .ok()) {
+    throw WriterBaseStatusException("Cannot get setting");
+  }
+  assert(found);
+
+  if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
+    throw WriterBaseStatusException(
+        "Cannot initialize writer; Unsupported offsets bitsize in "
+        "configuration");
+  }
+
+  // Set a default subarray
+  if (!subarray_.is_set()) {
+    subarray_ = Subarray(array_, layout_, stats_, logger_);
+  }
+
+  if (offsets_extra_element_) {
+    check_extra_element();
+  }
+
+  check_subarray();
+  if (!skip_checks_serialization) {
+    check_buffer_sizes();
+  }
+
+  optimize_layout_for_1D();
+  check_var_attr_offsets();
 }
 
 WriterBase::~WriterBase() {
@@ -130,7 +233,7 @@ void WriterBase::set_dedup_coords(bool b) {
   dedup_coords_ = b;
 }
 
-Status WriterBase::check_var_attr_offsets() const {
+void WriterBase::check_var_attr_offsets() const {
   for (const auto& it : buffers_) {
     const auto& attr = it.first;
     if (!array_schema_.var_size(attr)) {
@@ -142,25 +245,27 @@ Status WriterBase::check_var_attr_offsets() const {
         get_offset_buffer_size(*it.second.buffer_size_);
     const uint64_t* buffer_val_size = it.second.buffer_var_size_;
     auto num_offsets = buffer_off_size / constants::cell_var_offset_size;
-    if (num_offsets == 0)
-      return Status::Ok();
+    if (num_offsets == 0) {
+      return;
+    }
 
     uint64_t prev_offset = get_offset_buffer_element(buffer_off, 0);
     // Allow the initial offset to be equal to the size, this indicates
     // the first and only value in the buffer is to be empty
-    if (prev_offset > *buffer_val_size)
-      return logger_->status(Status_WriterError(
+    if (prev_offset > *buffer_val_size) {
+      throw WriterBaseStatusException(
           "Invalid offsets for attribute " + attr + "; offset " +
           std::to_string(prev_offset) + " specified for buffer of size " +
-          std::to_string(*buffer_val_size)));
+          std::to_string(*buffer_val_size));
+    }
 
     for (uint64_t i = 1; i < num_offsets; i++) {
       uint64_t cur_offset = get_offset_buffer_element(buffer_off, i);
       if (cur_offset < prev_offset)
-        return logger_->status(Status_WriterError(
+        throw WriterBaseStatusException(
             "Invalid offsets for attribute " + attr +
             "; offsets must be given in "
-            "strictly ascending order."));
+            "strictly ascending order.");
 
       // Allow the last offset(s) to be equal to the size, this indicates the
       // last value(s) are to be empty
@@ -169,88 +274,15 @@ Status WriterBase::check_var_attr_offsets() const {
            get_offset_buffer_element(
                buffer_off, (i < num_offsets - 1 ? i + 1 : i)) !=
                *buffer_val_size))
-        return logger_->status(Status_WriterError(
+        throw WriterBaseStatusException(
             "Invalid offsets for attribute " + attr + "; offset " +
             std::to_string(cur_offset) + " specified at index " +
             std::to_string(i) + " for buffer of size " +
-            std::to_string(*buffer_val_size)));
+            std::to_string(*buffer_val_size));
 
       prev_offset = cur_offset;
     }
   }
-
-  return Status::Ok();
-}
-
-Status WriterBase::init() {
-  // Sanity checks
-  if (storage_manager_ == nullptr)
-    return logger_->status(
-        Status_WriterError("Cannot initialize query; Storage manager not set"));
-  if (buffers_.empty())
-    return logger_->status(
-        Status_WriterError("Cannot initialize writer; Buffers not set"));
-  if (array_schema_.dense() &&
-      (layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR)) {
-    for (const auto& b : buffers_) {
-      if (array_schema_.is_dim(b.first)) {
-        return logger_->status(Status_WriterError(
-            "Cannot initialize writer; Sparse coordinates "
-            "for dense arrays cannot be provided "
-            "if the query layout is ROW_MAJOR or COL_MAJOR"));
-      }
-    }
-  }
-
-  // Get configuration parameters
-  const char *check_coord_dups, *check_coord_oob, *check_global_order;
-  const char* dedup_coords;
-  RETURN_NOT_OK(config_.get("sm.check_coord_dups", &check_coord_dups));
-  RETURN_NOT_OK(config_.get("sm.check_coord_oob", &check_coord_oob));
-  RETURN_NOT_OK(config_.get("sm.check_global_order", &check_global_order));
-  RETURN_NOT_OK(config_.get("sm.dedup_coords", &dedup_coords));
-  assert(check_coord_dups != nullptr && dedup_coords != nullptr);
-  check_coord_dups_ =
-      disable_checks_consolidation_ ? false : !strcmp(check_coord_dups, "true");
-  check_coord_oob_ = !strcmp(check_coord_oob, "true");
-  check_global_order_ = disable_checks_consolidation_ ?
-                            false :
-                            !strcmp(check_global_order, "true");
-  dedup_coords_ = !strcmp(dedup_coords, "true");
-  bool found = false;
-  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
-  assert(found);
-  if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    return logger_->status(
-        Status_WriterError("Cannot initialize writer; Unsupported offsets "
-                           "format in configuration"));
-  }
-  RETURN_NOT_OK(config_.get<bool>(
-      "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
-  assert(found);
-  RETURN_NOT_OK(config_.get<uint32_t>(
-      "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
-  if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    return logger_->status(
-        Status_WriterError("Cannot initialize writer; Unsupported offsets "
-                           "bitsize in configuration"));
-  }
-  assert(found);
-
-  // Set a default subarray
-  if (!subarray_.is_set())
-    subarray_ = Subarray(array_, layout_, stats_, logger_);
-
-  if (offsets_extra_element_)
-    RETURN_NOT_OK(check_extra_element());
-
-  RETURN_NOT_OK(check_subarray());
-  RETURN_NOT_OK(check_buffer_sizes());
-
-  optimize_layout_for_1D();
-  RETURN_NOT_OK(check_var_attr_offsets());
-
-  return Status::Ok();
 }
 
 Status WriterBase::initialize_memory_budget() {
@@ -299,11 +331,12 @@ Status WriterBase::calculate_hilbert_values(
   return Status::Ok();
 }
 
-Status WriterBase::check_buffer_sizes() const {
+void WriterBase::check_buffer_sizes() const {
   // This is applicable only to dense arrays and ordered layout
   if (!array_schema_.dense() ||
-      (layout_ != Layout::ROW_MAJOR && layout_ != Layout::COL_MAJOR))
-    return Status::Ok();
+      (layout_ != Layout::ROW_MAJOR && layout_ != Layout::COL_MAJOR)) {
+    return;
+  }
 
   auto cell_num = array_schema_.domain().cell_num(subarray_.ndrange(0));
   uint64_t expected_cell_num = 0;
@@ -331,7 +364,7 @@ Status WriterBase::check_buffer_sizes() const {
               "given for ";
         ss << "attribute '" << attr << "'";
         ss << " (" << expected_validity_num << " != " << cell_num << ")";
-        return logger_->status(Status_WriterError(ss.str()));
+        throw WriterBaseStatusException(ss.str());
       }
     } else {
       if (expected_cell_num != cell_num) {
@@ -339,12 +372,10 @@ Status WriterBase::check_buffer_sizes() const {
         ss << "Buffer sizes check failed; Invalid number of cells given for ";
         ss << "attribute '" << attr << "'";
         ss << " (" << expected_cell_num << " != " << cell_num << ")";
-        return logger_->status(Status_WriterError(ss.str()));
+        throw WriterBaseStatusException(ss.str());
       }
     }
   }
-
-  return Status::Ok();
 }
 
 Status WriterBase::check_coord_oob() const {
@@ -392,20 +423,19 @@ Status WriterBase::check_coord_oob() const {
   return Status::Ok();
 }
 
-Status WriterBase::check_subarray() const {
+void WriterBase::check_subarray() const {
   if (array_schema_.dense()) {
-    if (subarray_.range_num() != 1)
-      return LOG_STATUS(
-          Status_WriterError("Multi-range dense writes "
-                             "are not supported"));
+    if (subarray_.range_num() != 1) {
+      throw WriterBaseStatusException(
+          "Multi-range dense writes are not supported");
+    }
 
-    if (layout_ == Layout::GLOBAL_ORDER && !subarray_.coincides_with_tiles())
-      return logger_->status(
-          Status_WriterError("Cannot initialize query; In global writes for "
-                             "dense arrays, the subarray "
-                             "must coincide with the tile bounds"));
+    if (layout_ == Layout::GLOBAL_ORDER && !subarray_.coincides_with_tiles()) {
+      throw WriterBaseStatusException(
+          "Cannot initialize query; In global writes for dense arrays, the "
+          "subarray must coincide with the tile bounds");
+    }
   }
-  return Status::Ok();
 }
 
 void WriterBase::clear_coord_buffers() {
@@ -795,7 +825,7 @@ void WriterBase::optimize_layout_for_1D() {
     layout_ = array_schema_.cell_order();
 }
 
-Status WriterBase::check_extra_element() {
+void WriterBase::check_extra_element() {
   for (const auto& it : buffers_) {
     const auto& attr = it.first;
     if (!array_schema_.var_size(attr) || array_schema_.is_dim(attr))
@@ -812,15 +842,14 @@ Status WriterBase::check_extra_element() {
     const uint64_t last_offset =
         get_offset_buffer_element(buffer_off, num_offsets - 1);
 
-    if (last_offset != max_offset)
-      return logger_->status(Status_WriterError(
+    if (last_offset != max_offset) {
+      throw WriterBaseStatusException(
           "Invalid offsets for attribute " + attr +
           "; the last offset: " + std::to_string(last_offset) +
           " is not equal to the size of the data buffer: " +
-          std::to_string(max_offset)));
+          std::to_string(max_offset));
+    }
   }
-
-  return Status::Ok();
 }
 
 Status WriterBase::split_coords_buffer() {
