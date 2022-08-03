@@ -45,6 +45,8 @@ jobs:
           #source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
           echo "bootstrap args: " ${bootstrap_args}
 
+          cd $GITHUB_WORKSPACE
+          mkdir -p build/tiledb/test/
           cat "#!/bin/sh\necho 'hello, world'" > build/tiledb/test/tiledb_unit
           chmod +x build/tiledb/test/tiledb_unit
 
