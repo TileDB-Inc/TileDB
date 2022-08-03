@@ -33,7 +33,6 @@ jobs:
       matrix_image: ubuntu-20.04
       bootstrap_args: '--enable-azure --enable-release-symbols'
   backward_compat:
-    depends: ci1
     uses: ./.github/workflows/build-ubuntu20.04-backwards-compatibility.yml
   #ci2:
   #  uses: ./.github/workflows/build-ubuntu20.04.yml
