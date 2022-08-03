@@ -203,9 +203,9 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
             filter_config.scale,
             filter_config.offset);
       }
-    };
+    }
     case FilterType::FILTER_XOR: {
-      return {Status::Ok(), make_shared<XORFilter>(HERE())};
+      return make_shared<XORFilter>(HERE());
     }
     default:
       assert(false);
