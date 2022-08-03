@@ -31,7 +31,8 @@ jobs:
     with:
       ci_backend: AZURE
       matrix_image: ubuntu-20.04
-      bootstrap_args: '--enable-azure --enable-release-symbols'
+      #bootstrap_args: '--enable-azure --enable-release-symbols'
+      bootstrap_args: '' # RESTORE ABOVE BEFORE MERGE
   backward_compat:
     uses: ./.github/workflows/build-ubuntu20.04-backwards-compatibility.yml
   #ci2:

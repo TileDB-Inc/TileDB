@@ -80,7 +80,7 @@ jobs:
           path: ${{ github.workspace }}/build/tiledb/test/
 
       - name: Update tiledb_unit permissions
-        run: chmod +x $GITHUB_WORKSPACE/tiledb/test/tiledb_unit
+        run: chmod +x $GITHUB_WORKSPACE/build/tiledb/test/tiledb_unit
 
       - name: 'Test backward compatibility'
         id: test
