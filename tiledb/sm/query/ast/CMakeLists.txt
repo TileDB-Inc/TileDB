@@ -58,8 +58,8 @@ if (TILEDB_TESTS)
     ################################################################
 
     set(AST_TEST_SUPPORT_SOURCES
-      ${CMAKE_SOURCE_DIR}/test/src/ast_helpers.h
-      ${CMAKE_SOURCE_DIR}/test/src/ast_helpers.cc
+      ${CMAKE_SOURCE_DIR}/test/support/src/ast_helpers.h
+      ${CMAKE_SOURCE_DIR}/test/support/src/ast_helpers.cc
       )
 
     add_library(ast_test_support_lib EXCLUDE_FROM_ALL ${AST_TEST_SUPPORT_SOURCES})

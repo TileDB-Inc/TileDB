@@ -30,8 +30,8 @@
  * Tests the `ReadCellSlabIter` class.
  */
 
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"

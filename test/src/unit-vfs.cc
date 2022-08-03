@@ -30,9 +30,9 @@
  * Tests the `VFS` class.
  */
 
-#include <test/support/tdb_catch.h>
 #include <atomic>
-#include "test/src/helpers.h"
+#include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"

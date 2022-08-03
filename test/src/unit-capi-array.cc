@@ -31,13 +31,14 @@
  * Tests of C API for (dense or sparse) array operations.
  */
 
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <iostream>
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
 #include <Windows.h>
 #include "tiledb/sm/filesystem/win.h"
