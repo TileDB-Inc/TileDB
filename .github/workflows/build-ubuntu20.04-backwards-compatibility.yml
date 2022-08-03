@@ -74,6 +74,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: tiledb_unit
+          path: ${{ github.workspace }}/build/tiledb/test/
 
       - name: 'Test backward compatibility'
         id: test
