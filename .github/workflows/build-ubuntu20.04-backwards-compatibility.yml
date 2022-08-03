@@ -39,6 +39,7 @@ jobs:
 
       - name: 'Build tiledb_unit'
         id: build
+        shell: bash
         run: |
           bootstrap_args="${bootstrap_args}";
           bootstrap_args="${bootstrap_args} --enable-release-symbols";
@@ -47,7 +48,7 @@ jobs:
 
           cd $GITHUB_WORKSPACE
           mkdir -p build/tiledb/test/
-          cat "#!/bin/sh\necho 'hello, world'" > build/tiledb/test/tiledb_unit
+          echo "echo 'hello, world'" > build/tiledb/test/tiledb_unit
           chmod +x build/tiledb/test/tiledb_unit
 
       - name: 'Upload Artifact'
