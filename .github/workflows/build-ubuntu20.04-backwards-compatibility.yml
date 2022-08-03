@@ -59,7 +59,7 @@ jobs:
           retention-days: 1
 
   test:
-    depends: build
+    needs: build
     runs-on: ${{matrix.os}}
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     strategy:
