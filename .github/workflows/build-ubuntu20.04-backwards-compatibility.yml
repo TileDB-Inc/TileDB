@@ -74,13 +74,17 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: tiledb_unit
-          path: ${{ github.workspace }}/build/tiledb/test/
+          path: ${{ github.workspace }}/build/tiledb/test/tiledb_unit
 
       - name: 'Test backward compatibility'
         id: test
         env:
           TILEDB_COMPATIBILITY_VERSION: ${{ matrix.tiledb_version }}
         run: |
+          pwd
+          cd $GITHUB_WORKSPACE/build
+          pwd
+
           ulimit -c unlimited
           ulimit -c
 
