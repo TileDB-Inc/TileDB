@@ -273,10 +273,11 @@ Status Subarray::add_range(
     return logger_->status(Status_SubarrayError(
         "Cannot add range to dimension; Invalid dimension index"));
   }
-  if (label_range_subset_[dim_idx].has_value())
+  if (label_range_subset_[dim_idx].has_value()) {
     return logger_->status(Status_SubarrayError(
         "Cannot add range to to dimension; A range is already set on a "
         "dimension label for this dimension"));
+  }
 
   // Must reset the result size and tile overlap
   est_result_size_computed_ = false;
