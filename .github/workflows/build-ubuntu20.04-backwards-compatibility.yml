@@ -27,11 +27,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: 'prep ubuntu for core dumps'
-        if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        run: ./scripts/ci/linux/prelim.sh
-        shell: bash
-
       - name: 'Print env'
         run: ./scripts/ci/linux/print-env.sh
         shell: bash
@@ -45,11 +40,47 @@ jobs:
           python -m pip install --upgrade pip virtualenv
         shell: bash
 
-      - name: 'Build and test libtiledb'
+      - name: 'Build tiledb_unit'
+        id: build
+        run: |
+          bootstrap_args="${bootstrap_args}";
+          bootstrap_args="${bootstrap_args} --enable-release-symbols";
+          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
+
+          # Bypass Catch2 Framework stdout interception with awk on test output
+          # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/tiledb_unit -d yes "[backwards-compat]"| awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v3
+        with:
+          name: tiledb_unit
+          path: ./tiledb/test/tiledb_unit
+          retention-days: 1
+
+  test:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-20.04
+        # Note: v2_1_0 arrays were never created so its currently skipped
+        # Note: This matrix is used to set the value of TILEDB_COMPATIBILITY_VERSION
+        tiledb_version: ["v1_4_0", "v1_5_0", "v1_6_0", "v1_7_0", "v2_0_0", "v2_2_0", "v2_2_3", "v2_3_0", "v2_4_0", "v2_5_0", "v2_6_0", "v2_7_0", "v2_8_3", "v2_9_1"]
+    timeout-minutes: 30
+    name: Ubuntu-20.04-back-comp
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Download a single artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: tiledb_unit
+
+      - name: 'Test backward compatibility'
+        id: test
         env:
           TILEDB_COMPATIBILITY_VERSION: ${{ matrix.tiledb_version }}
-        id: test
-        run: |
+        run:
           ulimit -c unlimited
           ulimit -c
 
@@ -66,69 +97,7 @@ jobs:
           ls -lah test/inputs/arrays/read_compatibility_test/${TILEDB_COMPATIBILITY_VERSION}/
 
           #   name: 'Clone Unit-Test-Arrays'
-
-          bootstrap_args="${bootstrap_args}";
-          bootstrap_args="${bootstrap_args} --enable-release-symbols";
-          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
-
-          # Bypass Catch2 Framework stdout interception with awk on test output
-          # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes "[backwards-compat]"| awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
-
-      - name: 'dump  core stacks'
-        if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        run: |
-          # following contains answers with various possibilities for locating core files on various systems
-          # https://stackoverflow.com/questions/2065912/core-dumped-but-core-file-is-not-in-the-current-directory
-          pwd
-          if [[ ! $(find /var/lib/apport/coredump -name 'core.*') ]]; then
-            # if we don't find the core files where/as expected, then
-            # the artifacts won't get uploaded (haven't figured out how to
-            # dynamically specify location to upload action), but we
-            # can still present stack traces for the ones we find.
-            echo "core files not found where expected!"
-            if [[ $(find . -name 'core.*') ]]; then
-              echo "core files found at/under $(pwd)"
-              corefiles=$(find . -name 'core.*')
-            elif [[ $(find / -name 'core.*') ]]; then
-              echo "core founds found!"
-              corefiles=$(find / -name 'core.*')
-            else
-              echo "core files expected but not found!"
-              corefiles=
-            fi
-          else
-            corefiles=$(find /var/lib/apport/coredump -name 'core.*')
-          fi
-          ulimit -c
-          echo "ls -l /var/lib/apport/coredump"
-          ls -l /var/lib/apport/coredump
-          for f in $corefiles;
-            do
-              echo "stack trace for $f"
-              if [[ -f $(which gdb) ]]; then
-                dbgr=$(which gdb)
-                sudo $dbgr -q --core $f -ex "thread apply all bt" -ex "info registers" -ex "disassemble" -ex "quit"
-              #fi
-              # lldb ref'd here located by doing trial in runner with find / -name "*lldb*" and sifting through the results.
-              elif [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
-                dbgr="/usr/lib/llvm-11/bin/lldb"
-                sudo $dbgr -c $f --batch -o 'bt all' -o 'image list' -o 're r -a' -o 'di -F intel -f -m' -o 'quit'
-              else
-                echo "debugger not found in previously seen location!"
-                exit 1
-              fi
-            done;
-
-      - name: 'upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-        if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        uses: actions/upload-artifact@v2
-        with:
-          retention-days: 10
-          name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{matrix.tiledb_version}}"
-          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn`
-          path: |
-            /var/lib/apport/coredump/
 
       - name: 'Test status check'
         run: |
