@@ -44,7 +44,7 @@ jobs:
 
       - name: 'Ubuntu Prelim'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        run: ./scripts/ci/linux/prelim.sh
+        run: ./scripts/ci/posix/prelim.sh
         shell: bash
 
       # Need this for virtualenv and arrow tests if enabled
@@ -67,7 +67,7 @@ jobs:
 
           ## ** NOTE: most of these steps must run in the same shell context **
 
-          source $GITHUB_WORKSPACE/scripts/ci/linux/build-services-start.sh
+          source $GITHUB_WORKSPACE/scripts/ci/posix/build-services-start.sh
 
           #####################################################
           # Build libtiledb using `bootstrap_args` as set above
@@ -88,7 +88,7 @@ jobs:
           ###################################################
           # Stop helper processes, if applicable
 
-          source $GITHUB_WORKSPACE/scripts/ci/linux/build-services-stop.sh
+          source $GITHUB_WORKSPACE/scripts/ci/posix/build-services-stop.sh
 
           ###################################################
           # Build and run Examples
@@ -112,7 +112,7 @@ jobs:
 
       - name: 'Dump core stacks on failure'
         if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        run: ./scripts/ci/linux/dump-core-stacks.sh
+        run: ./scripts/ci/posix/dump-core-stacks.sh
 
       - name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
