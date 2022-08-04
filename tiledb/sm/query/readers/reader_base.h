@@ -178,6 +178,9 @@ class ReaderBase : public StrategyBase {
   /** Disable the tile cache or not. */
   bool disable_cache_;
 
+  /** Read directly from storage without batching. */
+  bool disable_batching_;
+
   /**
    * The condition to apply on results when there is partial time overlap
    * with at least one fragment

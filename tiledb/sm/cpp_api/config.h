@@ -463,6 +463,10 @@ class Config {
    * - `vfs.min_batch_gap` <br>
    *    The minimum number of bytes between two VFS read batches.<br>
    *    **Default**: 500KB
+   * - `vfs.disable_batching` <br>
+   *    **Experimental** <br>
+   *    Disables tile batching from VFS, making direct reads.<br>
+   *    **Default**: false
    * - `vfs.file.posix_file_permissions` <br>
    *    permissions to use for posix file system with file or dir creation.<br>
    *    **Default**: 644

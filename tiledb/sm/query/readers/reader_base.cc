@@ -83,12 +83,20 @@ ReaderBase::ReaderBase(
           layout)
     , condition_(condition)
     , disable_cache_(false)
+    , disable_batching_(false)
     , user_requested_timestamps_(false)
     , use_timestamps_(false)
     , initial_data_loaded_(false) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
   timestamps_needed_for_deletes_.resize(fragment_metadata_.size());
+
+  bool found = false;
+  if (!config_.get<bool>("vfs.disable_batching", &disable_batching_, &found)
+           .ok()) {
+    throw ReaderBaseStatusException("Cannot get disable batching setting");
+  }
+  assert(found);
 }
 
 /* ********************************* */
@@ -744,12 +752,21 @@ Status ReaderBase::read_tiles(
 
   // Enqueue all regions to be read.
   for (const auto& item : all_regions) {
-    RETURN_NOT_OK(storage_manager_->vfs()->read_all(
-        item.first,
-        item.second,
-        storage_manager_->io_tp(),
-        &tasks,
-        use_read_ahead));
+    if (disable_batching_) {
+      RETURN_NOT_OK(storage_manager_->vfs()->read_all_no_batching(
+          item.first,
+          item.second,
+          storage_manager_->io_tp(),
+          &tasks,
+          use_read_ahead));
+    } else {
+      RETURN_NOT_OK(storage_manager_->vfs()->read_all(
+          item.first,
+          item.second,
+          storage_manager_->io_tp(),
+          &tasks,
+          use_read_ahead));
+    }
   }
 
   // Wait for the reads to finish and check statuses.
