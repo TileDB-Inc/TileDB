@@ -110,3 +110,30 @@ if (TILEDB_TESTS)
 endif()
 
 
+
+# Tests for edges and pseudo_nodes
+
+if (TILEDB_TESTS)
+    add_executable(unit_edge_pseudo_nodes EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_edge_pseudo_nodes PUBLIC block_edge)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_edge_pseudo_nodes PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_edge_pseudo_nodes PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_edge_pseudo_nodes PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_edge_pseudo_nodes PUBLIC
+            test/main.cc
+            test/unit_edge_pseudo_nodes.cc
+            )
+
+    add_test(
+            NAME "unit_edge_pseudo_nodes"
+            COMMAND $<TARGET_FILE:unit_edge_pseudo_nodes> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()
+
+
