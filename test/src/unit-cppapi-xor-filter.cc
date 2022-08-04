@@ -63,7 +63,7 @@ void xor_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
   Array::create(xor_array_name, schema);
 
   // Setting up the random number generator for the XOR filter testing.
-  std::mt19937 gen(0xADA65ED6);
+  std::mt19937_64 gen(0xADA65ED6);
   std::uniform_int_distribution<int64_t> dis(
       std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
 
