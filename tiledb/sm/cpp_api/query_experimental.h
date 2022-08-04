@@ -1,11 +1,11 @@
 /**
- * @file   tiledb_experimental
+ * @file   query_experimental.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +27,32 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the experimental C++ API for TileDB.
+ * This file declares the C++ experimental API for the query.
  */
 
-#ifndef TILEDB_EXPERIMENTAL_CPP_H
-#define TILEDB_EXPERIMENTAL_CPP_H
+#ifndef TILEDB_CPP_API_QUERY_EXPERIMENTAL_H
+#define TILEDB_CPP_API_QUERY_EXPERIMENTAL_H
+#include "context.h"
+#include "tiledb.h"
 
-#include "array_schema_evolution.h"
-#include "group_experimental.h"
-#include "query_experimental.h"
+namespace tiledb {
+class QueryExperimental {
+ public:
+  /**
+   * Get the number of relevant fragments from the subarray. Should only be
+   * called after size estimation was asked for.
+   *
+   * @param ctx TileDB context.
+   * @param query Query object.
+   * @return Number of relevant fragments.
+   */
+  static uint64_t get_relevant_fragment_num(Context& ctx, const Query& query) {
+    uint64_t relevant_fragment_num = 0;
+    ctx.handle_error(tiledb_query_get_relevant_fragment_num(
+        ctx.ptr().get(), query.ptr().get(), &relevant_fragment_num));
+    return relevant_fragment_num;
+  }
+};
+}  // namespace tiledb
 
-#endif  // TILEDB_EXPERIMENTAL_CPP_H
+#endif  // TILEDB_CPP_API_QUERY_EXPERIMENTAL_H
