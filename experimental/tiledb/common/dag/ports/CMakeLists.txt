@@ -135,8 +135,17 @@ endif()
 # target_sources(compile_concurrency PRIVATE test/compile_concurrency_main.cc)
 
 if (TILEDB_TESTS)
-    add_executable(unit_concurrency EXCLUDE_FROM_ALL)
+
+   message(STATUS "*** Ports sanitizer ${SANITIZER}")
+
+    add_executable(unit_concurrency EXCLUDE_FROM_ALL
+      $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+    )
+
 #    target_link_libraries(unit_concurrency PUBLIC concurrency)
+
+    target_link_libraries(unit_concurrency PUBLIC TILEDB_CORE_OBJECTS_ILIB)
+
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_concurrency PUBLIC Catch2::Catch2)
 #    target_link_libraries(unit_concurrency PUBLIC $<TARGET_OBJECTS:thread_pool>)

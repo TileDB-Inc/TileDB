@@ -50,7 +50,7 @@
  * if the element is alive. Invariant: each element is registered with the
  * scheduler as either alive or quiescent.
  *
- * Todo: Refactor to use a Port base class.
+ * @todo: Refactor `Source` and `Sink` to use a Port base class.
  */
 
 #ifndef TILEDB_DAG_PORTS_H

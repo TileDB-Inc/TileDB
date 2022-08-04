@@ -28,6 +28,8 @@
  * @section DESCRIPTION
  *
  * This file declares the edge class for dag.
+ *
+ * @todo Use CTAD to get template arguments automatically for `Edge`.
  */
 
 #ifndef TILEDB_DAG_EDGE_H
@@ -54,6 +56,7 @@ class Edge : public Source<Mover_T, Block>, public Sink<Mover_T, Block> {
   using source_type = Source<Mover_T, Block>;
   using sink_type = Sink<Mover_T, Block>;
   using mover_type = Mover_T<Block>;
+  constexpr static bool edgeful = mover_type::edgeful;
 
   std::shared_ptr<mover_type> item_mover_;
   std::optional<Block> item_{};
@@ -63,7 +66,11 @@ class Edge : public Source<Mover_T, Block>, public Sink<Mover_T, Block> {
     item_mover_ = std::make_shared<mover_type>();
     source_type::item_mover_ = sink_type::item_mover_ = item_mover_;
 
-    attach(from, *this, *this, to);
+    if constexpr (edgeful) {
+      attach(from, *this, *this, to);
+    } else {
+      attach(from, to);
+    }
   }
 };
 

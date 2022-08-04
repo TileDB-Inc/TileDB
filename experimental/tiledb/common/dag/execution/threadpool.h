@@ -28,6 +28,13 @@
  * @section DESCRIPTION
  *
  * This file declares a threadpool with various parameterized capabilities.
+ *
+ * @todo Make `ThreadPool` non-copyable (and otherwise conformant to std
+ * execution contexts.
+ *
+ * @todo Provide a C++ executor interface as specified by proposals to the
+ * committee.
+ *
  */
 
 #ifndef TILEDB_THREADPOOL_H

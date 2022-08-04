@@ -207,6 +207,7 @@ void simple_graph() {
         std::cout << "Async node q, sync node r" << std::endl;
 
       num_nodes = 2;
+
       attach(q, r);
 
       auto fut_q = std::async(std::launch::async, fun_q);
@@ -366,7 +367,13 @@ void simple_graph() {
 }
 
 TEST_CASE(
-    "Concurrency: Test level of concurrency for simple graphs", "[ports]") {
+    "Concurrency: Test level of concurrency for simple three-stage graph",
+    "[ports]") {
+  simple_graph<three_stage>();
+}
+
+TEST_CASE(
+    "Concurrency: Test level of concurrency for simple two-stage graph",
+    "[ports]") {
   simple_graph<two_stage>();
-  //  simple_graph<three_stage>();
 }

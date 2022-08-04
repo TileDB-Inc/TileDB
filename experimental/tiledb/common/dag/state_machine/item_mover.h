@@ -32,6 +32,8 @@
  * The different policies currently include an extensive amount of debugging
  * code.
  *
+ * @todo Specialize for `void` Block type.
+ *
  * @todo Remove the debugging code.
  */
 
@@ -63,6 +65,10 @@ class BaseMover;
 
 /**
  * Specialization of the `BaseMover` class for three stages.
+ *
+ * @todo Specialize for `void` Block type.  (That we have to do the same thing
+ * for the ports is another reason to just keep the items actually in the
+ * `Mover`.)
  */
 template <class Mover, class Block>
 class BaseMover<Mover, three_stage, Block> {
@@ -72,6 +78,8 @@ class BaseMover<Mover, three_stage, Block> {
   std::array<item_type*, 3> items_;
 
  protected:
+  constexpr inline static bool edgeful = false;
+
   /**
    * Record keeping of how many moves are made.  Used for diagnostics and
    * debugging.
@@ -226,6 +234,8 @@ class BaseMover<Mover, two_stage, Block> {
   std::array<item_type*, 2> items_;
 
  protected:
+  constexpr inline static bool edgeful = false;
+
   /*
    * Array to hold move counts.  Used for diagnostics and profiling.
    */
@@ -381,10 +391,11 @@ class ItemMover
  public:
   using Mover = ItemMover<Policy, PortState, Block>;
   using BaseMover<Mover, PortState, Block>::BaseMover;
+  using Base = BaseMover<Mover, PortState, Block>;
 
   using port_state_type = PortState;
-
   using block_type = Block;
+  constexpr inline static bool edgeful = Base::edgeful;
 
   /**
    * Invoke `source_fill` event

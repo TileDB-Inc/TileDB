@@ -39,6 +39,8 @@
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
 #include "pseudo_nodes.h"
 
+#include "experimental/tiledb/common/dag/edge/edge.h"
+
 using namespace tiledb::common;
 
 /**
@@ -83,29 +85,47 @@ TEST_CASE(
   }
 }
 
-/**
- * Test that we can attach a producer and consumer node to each other.
- */
-TEST_CASE(
-    "Pseudo Nodes: Attach producer and consumer nodes", "[pseudo_nodes]") {
+template <class PortState>
+void attach_producer_and_consumer() {
   size_t N = 41;
 
+  static_assert(
+      std::is_same_v<PortState, two_stage> ||
+      std::is_same_v<PortState, three_stage>);
+
+  using Producer = std::conditional_t<
+      std::is_same_v<PortState, two_stage>,
+      ProducerNode<AsyncMover2, size_t>,
+      ProducerNode<AsyncMover3, size_t>>;
+
+  using Consumer = std::conditional_t<
+      std::is_same_v<PortState, two_stage>,
+      ConsumerNode<AsyncMover2, size_t>,
+      ConsumerNode<AsyncMover3, size_t>>;
+
+  using Function = std::conditional_t<
+      std::is_same_v<PortState, two_stage>,
+      FunctionNode<AsyncMover2, size_t>,
+      FunctionNode<AsyncMover3, size_t>>;
+
   SECTION("Attach trivial lambdas") {
-    ProducerNode<DebugMover2, size_t> left([]() -> int { return 0; });
-    ConsumerNode<DebugMover2, size_t> right([](int) -> void { return; });
+    Producer left([]() -> size_t { return 0UL; });
+    Consumer right([](size_t) -> void { return; });
 
     SECTION("left to right") {
-      attach(left, right);
+      Edge(left, right);
     }
     SECTION("right to left") {
-      attach(right, left);
+      if constexpr (std::is_same_v<PortState, two_stage>) {
+        attach(right, left);
+      }
     }
 
     SECTION("Attach 2") {
-      ProducerNode<AsyncMover2, size_t> foo{[]() { return 0UL; }};
-      ConsumerNode<AsyncMover2, size_t> bar{[](size_t) {}};
+      Producer foo{[]() { return 0UL; }};
+      Consumer bar{[](size_t) {}};
 
-      attach(foo, bar);
+      Edge(foo, bar);
     }
   }
 
@@ -116,8 +136,8 @@ TEST_CASE(
     std::back_insert_iterator<std::vector<size_t>> w(v);
     consumer<std::back_insert_iterator<std::vector<size_t>>> c(w);
 
-    ConsumerNode<AsyncMover2, size_t> r(c);
-    ProducerNode<AsyncMover2, size_t> p(g);
+    Consumer r(c);
+    Producer p(g);
 
     SECTION("Attach generator to consumer") {
       attach(p, r);
@@ -126,6 +146,15 @@ TEST_CASE(
       attach(r, p);
     }
   }
+}
+
+/**
+ * Test that we can attach a producer and consumer node to each other.
+ */
+TEST_CASE(
+    "Pseudo Nodes: Attach producer and consumer nodes", "[pseudo_nodes]") {
+  attach_producer_and_consumer<two_stage>();
+  attach_producer_and_consumer<three_stage>();
 }
 
 /**
