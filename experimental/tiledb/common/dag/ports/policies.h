@@ -672,7 +672,7 @@ class DebugStateMachine : public PortFiniteStateMachine<DebugStateMachine<T>> {
  */
 class DebugStateMachineWithLock
     : public PortFiniteStateMachine<DebugStateMachineWithLock> {
-  std::mutex(mutex_);
+  std::mutex mutex_;
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;
   using lock_type = std::unique_lock<std::mutex>;

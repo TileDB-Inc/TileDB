@@ -189,10 +189,10 @@ class DataBlockImpl {
     return span_t(data_, size_).rbegin();
   }
   const_reverse_iterator rbegin() const {
-    return data_t(data_, size_).rbegin();
+    return span_t(data_, size_).rbegin();
   }
   const_reverse_iterator crbegin() const {
-    return data_t(data_, size_).rbegin();
+    return span_t(data_, size_).rbegin();
   }
 
   iterator end() {
@@ -205,13 +205,13 @@ class DataBlockImpl {
     return data_ + size_;
   }
   reverse_iterator rend() {
-    return data_t(data_, size_).rend();
+    return span_t(data_, size_).rend();
   }
   const_reverse_iterator rend() const {
-    return data_t(data_, size_).rend();
+    return span_t(data_, size_).rend();
   }
   const_reverse_iterator crend() const {
-    return data_t(data_, size_).rend();
+    return span_t(data_, size_).rend();
   }
 
   reference back() {
