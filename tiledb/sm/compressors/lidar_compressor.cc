@@ -84,8 +84,7 @@ Status Lidar::compress(
 
   // Apply GZIP compressor.
   assert(output.num_buffers() == 1);
-  GZip::compress(level, &output.buffers()[0], output_buffer);
-  return Status::Ok();
+  return GZip::compress(level, &output.buffers()[0], output_buffer);
 }
 
 Status Lidar::compress(
@@ -107,17 +106,35 @@ Status Lidar::compress(Datatype type, ConstBuffer* input_buffer, Buffer* output_
     return compress(type, default_level_, input_buffer, output_buffer);
 }
 
+template<typename T, typename W>
+Status Lidar::decompress(ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
+  uint64_t bytes_left = output_buffer->free_space();
+  char gzip_output[bytes_left];
+  memset(gzip_output, 0, bytes_left);
+  PreallocatedBuffer gzip_output_buffer(gzip_output, bytes_left);
+
+  GZip::decompress(input_buffer, &gzip_output);
+
+  // 
+}
+
 Status Lidar::decompress(
     Datatype type, ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
-  (void)type;
-  (void)input_buffer;
-  (void)output_buffer;
-  return Status::Ok();
+  switch (type) {
+    case Datatype::FLOAT32: {
+      return decompress<float, int32_t>(input_buffer, output_buffer);
+    }
+    case Datatype::FLOAT64: {
+      return decompress<double, int64_t>(input_buffer, output_buffer);
+    }
+    default: {
+      return Status_CompressionError("Lidar::compress: attribute type is not a floating point type.");
+    }
+  }
 }
 
 uint64_t Lidar::overhead(uint64_t nbytes) {
-  (void)nbytes;
-  return 0;
+  return GZip::overhead(nbytes);
 }
 
 }  // namespace sm

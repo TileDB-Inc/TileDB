@@ -93,6 +93,9 @@ class Lidar {
     template<typename W>
     static Status compress(Datatype type, int level, ConstBuffer* input_buffer, Buffer* output_buffer);
 
+    template<typename T, typename W>
+    static Status decompress(ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
+
     /** The default filter compression level. */
     static constexpr int default_level_ = -1;
 
