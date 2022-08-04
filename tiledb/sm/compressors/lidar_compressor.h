@@ -100,6 +100,9 @@ class Lidar {
     static constexpr int default_level_ = -1;
 
     static XORFilter xor_filter_;
+
+    /** Thread pool for compute-bound tasks. */
+    static ThreadPool* compute_tp_;
 };
 
 }; // namespace sm

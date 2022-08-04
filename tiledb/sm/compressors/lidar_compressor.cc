@@ -36,7 +36,8 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/filter/filter_storage.h"
-#include "tiledb/sm/compressors/gzip_compressor.h"
+#include "tiledb/sm/compressors/bzip_compressor.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/filter/xor_filter.h"
 
@@ -50,22 +51,31 @@ namespace tiledb {
 namespace sm {
 
 template<typename W>
+struct LidarSortCmp {
+  bool operator()(const std::pair<W, size_t>& a, const std::pair<W, size_t>& b) const {
+    return a.first < b.first;
+  }
+};
+
+template<typename W>
 Status Lidar::compress(
     Datatype type, int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
   assert(sizeof(W) == 4 || sizeof(W) == 8);
-  assert((input_buffer->size() & sizeof(W)) == 0);
+  assert((input_buffer->size() % sizeof(W)) == 0 && input_buffer->size() > 0);
   std::vector<std::pair<W, size_t>> vals;
   for (size_t i = 0; i < input_buffer->size()/sizeof(W); ++i) {
     W val = input_buffer->value<W>(i * sizeof(W));
     vals.push_back(std::make_pair(val, i));
   }
   // Sort values
-  /// TODO: #include "tiledb/sm/misc/parallel_functions.h" parallel sort
-  std::sort(vals.begin(), vals.end());
+  parallel_sort(compute_tp_, vals.begin(), vals.end(), LidarSortCmp<W>());
 
+  W first_val = vals[0].first;
   std::vector<W> num_vals;
+  std::vector<size_t> positions;
   for (const auto &elem : vals) {
     num_vals.push_back(elem.first);
+    positions.push_back(elem.second);
   }
 
   // Apply XOR filter.
@@ -82,9 +92,17 @@ Status Lidar::compress(
   FilterBuffer output_metadata;
   xor_filter_.run_forward(tile, nullptr, &input, &input_metadata, &output, &output_metadata);
 
-  // Apply GZIP compressor.
   assert(output.num_buffers() == 1);
-  return GZip::compress(level, &output.buffers()[0], output_buffer);
+  Buffer bzip_output;
+  RETURN_NOT_OK(BZip::compress(level, &output.buffers()[0], &bzip_output));
+
+  // Write output to output buffer.
+  RETURN_NOT_OK(output_buffer->write(&first_val, sizeof(W)));
+  output_buffer->advance_offset(sizeof(W));
+  RETURN_NOT_OK(output_buffer->write(positions.data(), positions.size() * sizeof(size_t)));
+  output_buffer->advance_offset(positions.size() * sizeof(size_t));
+  RETURN_NOT_OK(output_buffer->write(&bzip_output));
+  return Status::Ok();
 }
 
 Status Lidar::compress(
@@ -108,14 +126,9 @@ Status Lidar::compress(Datatype type, ConstBuffer* input_buffer, Buffer* output_
 
 template<typename T, typename W>
 Status Lidar::decompress(ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
-  uint64_t bytes_left = output_buffer->free_space();
-  char gzip_output[bytes_left];
-  memset(gzip_output, 0, bytes_left);
-  PreallocatedBuffer gzip_output_buffer(gzip_output, bytes_left);
-
-  GZip::decompress(input_buffer, &gzip_output);
-
-  // 
+  (void)input_buffer;
+  (void)output_buffer;
+  return Status::Ok();
 }
 
 Status Lidar::decompress(
