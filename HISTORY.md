@@ -1,3 +1,15 @@
+# TileDB v2.10.4 Release Notes
+
+## Improvements
+
+* Adding experimental API for getting relevant fragments. [#3413](https://github.com/TileDB-Inc/TileDB/pull/3413)
+
+## API additions
+
+### C API
+
+* Add `tiledb_query_get_relevant_fragment_num` for experimental API to get relevant fragments. [#3413](https://github.com/TileDB-Inc/TileDB/pull/3413)
+
 # TileDB v2.10.3 Release Notes
 
 ## Improvements
