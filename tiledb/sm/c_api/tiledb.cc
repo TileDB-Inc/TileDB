@@ -3523,6 +3523,19 @@ int32_t tiledb_query_get_subarray_t(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_get_relevant_fragment_num(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    uint64_t* relevant_fragment_num) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *relevant_fragment_num =
+      query->query_->subarray()->relevant_fragments()->size();
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*         SUBARRAY               */
 /* ****************************** */
@@ -8757,6 +8770,14 @@ int32_t tiledb_query_get_subarray_t(
     const tiledb_query_t* query,
     tiledb_subarray_t** subarray) noexcept {
   return api_entry<detail::tiledb_query_get_subarray_t>(ctx, query, subarray);
+}
+
+int32_t tiledb_query_get_relevant_fragment_num(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    uint64_t* relevant_fragment_num) noexcept {
+  return api_entry<detail::tiledb_query_get_relevant_fragment_num>(
+      ctx, query, relevant_fragment_num);
 }
 
 /* ****************************** */

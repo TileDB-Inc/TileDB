@@ -752,7 +752,7 @@ TEST_CASE_METHOD(
   // Will only allow to load two tiles out of 3.
   Config cfg;
   cfg.set("sm.mem.total_budget", "10000");
-  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.4");
+  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.38");
   ctx_ = Context(cfg);
 
   std::string stats;
