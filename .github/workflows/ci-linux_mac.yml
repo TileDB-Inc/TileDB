@@ -1,4 +1,4 @@
-name: build-ubuntu-20.04
+name: CI (Linux and macOS)
 on:
   workflow_call:
     inputs:
