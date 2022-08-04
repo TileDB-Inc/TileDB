@@ -34,6 +34,7 @@
 #define TILEDB_DAG_DATA_BLOCK_H
 
 #include <cstddef>
+#include <memory>
 #include <vector>
 #include "external/include/span/span.hpp"
 #include "pool_allocator.h"
