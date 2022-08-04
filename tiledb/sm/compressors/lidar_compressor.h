@@ -34,6 +34,8 @@
 #define TILEDB_LIDAR_COMPRESSOR_H
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/filter/xor_filter.h"
 
 using namespace tiledb::common;
 
