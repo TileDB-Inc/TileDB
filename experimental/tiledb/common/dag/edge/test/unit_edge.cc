@@ -52,6 +52,15 @@
 using namespace tiledb::common;
 
 /**
+ * Attach an `Edge` to a `Source` and a `Sink`, two stage
+ */
+TEST_CASE("Edge: Attach a Source and Sink with a two stage Edge", "[edge") {
+  Source<NullMover2, size_t> left;
+  Sink<NullMover2, size_t> right;
+  Edge mid(left, right);
+}
+
+/**
  * Attach an `Edge` to a `Source` and a `Sink`
  */
 TEST_CASE("Edge: Attach a Source and Sink with an Edge", "[edge") {

@@ -78,7 +78,7 @@ class BaseMover<Mover, three_stage, Block> {
   std::array<item_type*, 3> items_;
 
  protected:
-  constexpr inline static bool edgeful = false;
+  constexpr inline static bool edgeful = true;
 
   /**
    * Record keeping of how many moves are made.  Used for diagnostics and

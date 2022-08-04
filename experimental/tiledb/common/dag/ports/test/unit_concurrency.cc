@@ -57,6 +57,8 @@
 #include "experimental/tiledb/common/dag/utils/print_types.h"
 #include "pseudo_nodes.h"
 
+#include "experimental/tiledb/common/dag/edge/edge.h"
+
 using namespace tiledb::common;
 
 template <class T>
@@ -208,7 +210,7 @@ void simple_graph() {
 
       num_nodes = 2;
 
-      attach(q, r);
+      Edge(q, r);
 
       auto fut_q = std::async(std::launch::async, fun_q);
 
@@ -226,7 +228,7 @@ void simple_graph() {
         std::cout << "Sync node q, async node r" << std::endl;
 
       num_nodes = 2;
-      attach(q, r);
+      Edge(q, r);
 
       auto fut_r = std::async(std::launch::async, fun_r);
 
@@ -245,8 +247,8 @@ void simple_graph() {
 
       num_nodes = 3;
 
-      attach(q, t);
-      attach(t, r);
+      Edge(q, t);
+      Edge(t, r);
 
       auto fut_q = std::async(std::launch::async, fun_q);
       auto fut_t = std::async(std::launch::async, fun_t);
@@ -267,8 +269,8 @@ void simple_graph() {
 
       num_nodes = 3;
 
-      attach(q, t);
-      attach(t, r);
+      Edge(q, t);
+      Edge(t, r);
 
       auto fut_r = std::async(std::launch::async, fun_r);
       auto fut_t = std::async(std::launch::async, fun_t);
@@ -367,13 +369,13 @@ void simple_graph() {
 }
 
 TEST_CASE(
-    "Concurrency: Test level of concurrency for simple three-stage graph",
-    "[ports]") {
-  simple_graph<three_stage>();
-}
-
-TEST_CASE(
     "Concurrency: Test level of concurrency for simple two-stage graph",
     "[ports]") {
   simple_graph<two_stage>();
+}
+
+TEST_CASE(
+    "Concurrency: Test level of concurrency for simple three-stage graph",
+    "[ports]") {
+  simple_graph<three_stage>();
 }
