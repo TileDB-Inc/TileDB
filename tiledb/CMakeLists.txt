@@ -481,7 +481,9 @@ add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
 # blosc link dependencies
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPTIONS})
 
-# Find OpenSSL first in case it's needed for S3 or Azure
+# Find OpenSSL first in case it's needed for S3 or Azure (or GCS v2.0.0+ requires too)
+# wonderful, cmake/Modules/FindGCSSDK_EP.cmake:88 (find_package)
+# "OpenSSL external project unimplemented on Windows."
 if (NOT WIN32)
   find_package(OpenSSL_EP REQUIRED)
 endif()
@@ -524,12 +526,17 @@ endif()
 # GCS dependencies
 if (TILEDB_GCS)
   message(STATUS "The TileDB library is compiled with GCS support.")
-  find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
+#  find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
+  find_package(GCSSDK_EP REQUIRED COMPONENTS storage)
+  message(STATUS "storage_FOUND ${storage_FOUND}, storage-NOTFOUND ${storage-NOTFOUND}")
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
-       storage_client
+       #storage_client
+       google-cloud-cpp::storage # v2.0.0+
+       #google_cloud_cpp_storage
   )
   add_definitions(-DHAVE_GCS)
+  message(STATUS "after setting interface google-cloud-cpp::storage")
 
   # work around for GCS finding the shared version of zlib: we will see the Zlib::Zlib
   # transitive linkage later, and we can use the correct version there.
@@ -537,11 +544,23 @@ if (TILEDB_GCS)
   unset(ZLIB_LIBRARIES)
   unset(ZLIB_INCLUDE_DIR)
 
-  get_target_property(_GCS_INTERFACE_LIBS storage_client INTERFACE_LINK_LIBRARIES)
+  #get_target_property(_GCS_INTERFACE_LIBS storage_client INTERFACE_LINK_LIBRARIES)
+  #get_target_property(_GCS_INTERFACE_LIBS google_cloud_cpp_storage INTERFACE_LINK_LIBRARIES)
+  get_target_property(_GCS_INTERFACE_LIBS google-cloud-cpp::storage INTERFACE_LINK_LIBRARIES)
   if ("ZLIB::ZLIB" IN_LIST _GCS_INTERFACE_LIBS)
     list(REMOVE_ITEM _GCS_INTERFACE_LIBS "ZLIB::ZLIB")
-    set_property(TARGET storage_client PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
+    #set_property(TARGET storage_client PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
+    #set_property(TARGET google_cloud_cpp_storage PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
+    set_property(TARGET google-cloud-cpp::storage PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
   endif()
+  # TBD: exploratory, gcssdk 2.0.0+
+  find_package(absl CONFIG REQUIRED
+    PATHS
+      ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows
+  )
+  # TBD: whats correct way, targets returned to set include directories?
+  #target_include_directories(TILEDB_CORE_OBJECTS_ILIB INTERFACE absl)
+  target_include_directories(TILEDB_CORE_OBJECTS PRIVATE "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/include")
 endif()
 
 # Libcurl
@@ -879,7 +898,8 @@ if (TILEDB_STATIC)
   append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
   append_dep_lib(AWSSDK::aws-cpp-sdk-identity-management)
   append_dep_lib(AzureSDK::AzureSDK)
-  append_dep_lib(GCSSDK::storage_client)
+  #append_dep_lib(GCSSDK::storage_client)
+  append_dep_lib(google-cloud-cpp::storage)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)

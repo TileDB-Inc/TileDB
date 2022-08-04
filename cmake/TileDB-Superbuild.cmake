@@ -130,6 +130,26 @@ endif()
 # Set up the regular build (i.e. non-superbuild).
 ############################################################
 
+if(TILEDB_GCS)
+  if(WIN32)
+    find_package(Git REQUIRED)
+    # can use ${GIT_EXECUTABLE}
+    #set(TDB_PREP_ENV "set VCPKG_ROOT=%cd%/tdb.vcpkg/vcpkg &&")
+    set(TDB_PREP_ENV "VCPKG_ROOT=%cd%/tdb.vcpkg/vcpkg &&")
+    #set(TDB_VCPKG_TOOLCHAIN_PATH "%VCPKG_ROOT%/tdb.vcpkg/vcpkg/scripts/buildsystem/vcpkg.cmake")
+    #set(TDB_VCPKG_TOOLCHAIN_PATH "${TILEDB_EP_BASE}/src/ep_gcssdk/tdb.vcpkg/vcpkg/scripts/buildsystem/vcpkg.cmake")
+    set(TDB_VCPKG_TOOLCHAIN_PATH "${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake")
+  else()
+    set(TDB_PREP_ENV "VCPKG_ROOT=`pwd`/tdb.vcpkg/vcpkg")
+    #set(TDB_VCPKG_TOOLCHAIN_PATH "$${VCPKG_ROOT}/tdb.vcpkg/vcpkg/scripts/buildsystem/vcpkg.cmake")
+    #set(TDB_VCPKG_TOOLCHAIN_PATH "${TILEDB_EP_BASE}/src/ep_gcssdk/tdb.vcpkg/vcpkg/scripts/buildsystem/vcpkg.cmake")
+    set(TDB_VCPKG_TOOLCHAIN_PATH "${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake")
+  endif()
+  set(TILEDB_USE_GCS_TOOLCHAIN "-DCMAKE_TOOLCHAIN_FILE=${TDB_VCPKG_TOOLCHAIN_PATH}")
+else()
+  set(TILEDB_USE_GCS_TOOLCHAIN "")
+endif()
+
 ExternalProject_Add(tiledb
   SOURCE_DIR ${PROJECT_SOURCE_DIR}
   # hi-jacking patch_command for diagnostics...
@@ -138,14 +158,19 @@ ExternalProject_Add(tiledb
     ${CMAKE_COMMAND} -E echo "FORWARD_EP_CMAKE_ARGS is ${FORWARD_EP_CMAKE_ARGS}, CMAKE_MODULE_PATH is ${CMAKE_MODULE_PATH}, VCPKG_ROOT is $ENV{VCPKG_ROOT}, CMAKE_PREFIX_PATH is ${CMAKE_PREFIX_PATH}, absl_DIR is ${absl_DIR}"
     #${CMAKE_COMMAND} -E echo "FORWARD_EP_CMAKE_ARGS is ${FORWARD_EP_CMAKE_ARGS}, CMAKE_MODULE_PATH is ${CMAKE_MODULE_PATH}, VCPKG_ROOT is $$env{VCPKG_ROOT}"
     #${CMAKE_COMMAND} -E echo "FORWARD_EP_CMAKE_ARGS is ${FORWARD_EP_CMAKE_ARGS}, CMAKE_MODULE_PATH is ${CMAKE_MODULE_PATH}, VCPKG_ROOT is ENV{VCPKG_ROOT}"
-  #CMAKE_ARGS
-  #  -DTILEDB_SUPERBUILD=OFF
-  #  ${INHERITED_CMAKE_ARGS}
-  #  ${FORWARD_EP_CMAKE_ARGS}
+  CMAKE_ARGS
+    -DTILEDB_SUPERBUILD=OFF
+    ${INHERITED_CMAKE_ARGS}
+    ${FORWARD_EP_CMAKE_ARGS}
+    # TBD: a problem when/if we possibly have need of multiple toolchains - there is a chain toolchain mode of some sort, but think 'buyin' needed somewhere...
+    ${TILEDB_USE_GCS_TOOLCHAIN}
   # VCPKG_ROOT added for when TILEDB_S3 active
   CONFIGURE_COMMAND
 #    ${CMAKE_COMMAND} -E env VCPKG_ROOT=${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg ${CMAKE_COMMAND} -DTILEDB_SUPERBUILD=OFF ${INHERITED_CMAKE_ARGS} ${FORWARD_EP_CMAKE_ARGS} ${CMAKE_SOURCE_DIR}/tiledb
-    ${CMAKE_COMMAND} -E env VCPKG_ROOT=${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg ${CMAKE_COMMAND} --trace -DTILEDB_SUPERBUILD=OFF ${INHERITED_CMAKE_ARGS} ${FORWARD_EP_CMAKE_ARGS} ${PROJECT_SOURCE_DIR}
+#    ${CMAKE_COMMAND} -E env VCPKG_ROOT=${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg ${CMAKE_COMMAND} -DTILEDB_SUPERBUILD=OFF ${INHERITED_CMAKE_ARGS} ${FORWARD_EP_CMAKE_ARGS} ${PROJECT_SOURCE_DIR}
+#    ${CMAKE_COMMAND} -E env VCPKG_ROOT=${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg ${CMAKE_COMMAND} --trace -DTILEDB_SUPERBUILD=OFF ${INHERITED_CMAKE_ARGS} ${FORWARD_EP_CMAKE_ARGS} ${PROJECT_SOURCE_DIR}
+#    ${CMAKE_COMMAND} -E env VCPKG_ROOT=${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg ${CMAKE_COMMAND} --trace-expand -DTILEDB_SUPERBUILD=OFF ${INHERITED_CMAKE_ARGS} ${FORWARD_EP_CMAKE_ARGS} ${PROJECT_SOURCE_DIR}
+#    ${CMAKE_COMMAND} -E env VCPKG_ROOT=${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg ${CMAKE_COMMAND} --debug-find -DTILEDB_SUPERBUILD=OFF ${INHERITED_CMAKE_ARGS} ${FORWARD_EP_CMAKE_ARGS} ${PROJECT_SOURCE_DIR}
   INSTALL_COMMAND ""
   BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/tiledb
   DEPENDS ${TILEDB_EXTERNAL_PROJECTS}
