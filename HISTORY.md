@@ -64,7 +64,8 @@
 ## API additions
 
 ### C API
-* New: `tiledb_fragment_info_get_total_cell_num` [#3234](https://github.com/TileDB-Inc/TileDB/pull/3273)
+* New (experimental): `tiledb_fragment_info_get_total_cell_num` [#3234](https://github.com/TileDB-Inc/TileDB/pull/3273)
+* New (experimental): `tiledb_query_get_relevant_fragment_num` [#3413](https://github.com/TileDB-Inc/TileDB/pull/3413)
 * Remove incorrect noexcept annotations from C API implementations in filestore API. [#3273](https://github.com/TileDB-Inc/TileDB/pull/3273)
 
 ## Test only changes
