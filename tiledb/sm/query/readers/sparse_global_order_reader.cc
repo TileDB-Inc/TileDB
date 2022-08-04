@@ -347,12 +347,12 @@ SparseGlobalOrderReader<BitmapType>::add_result_tile(
   // Adjust total memory used.
   {
     std::unique_lock<std::mutex> lck(mem_budget_mtx_);
-    memory_used_for_coords_total_ += tiles_size + sizeof(ResultTile);
+    memory_used_for_coords_total_ += tiles_size;
     memory_used_qc_tiles_total_ += tiles_size_qc;
   }
 
   // Adjust per fragment memory used.
-  memory_used_for_coords_[f] += tiles_size + sizeof(ResultTile);
+  memory_used_for_coords_[f] += tiles_size;
   memory_used_for_qc_tiles_[f] += tiles_size_qc;
 
   // Add the tile.
@@ -372,8 +372,9 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
 
   // Get the number of fragments to process.
   unsigned num_fragments_to_process = 0;
-  for (auto all_loaded : all_tiles_loaded_)
+  for (auto all_loaded : all_tiles_loaded_) {
     num_fragments_to_process += !all_loaded;
+  }
 
   per_fragment_memory_ =
       memory_budget_ * memory_budget_ratio_coords_ / num_fragments_to_process;
@@ -408,10 +409,18 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
                     f,
                     t);
 
-                if (result_tiles_[f].empty())
+                if (result_tiles_[f].empty()) {
+                  auto&& [st, tile_sizes] = get_coord_tiles_size(dim_num, f, t);
                   return logger_->status(Status_SparseGlobalOrderReaderError(
                       "Cannot load a single tile for fragment, increase memory "
-                      "budget"));
+                      "budget, tile size : " +
+                      std::to_string(tile_sizes.value().first) +
+                      ", per fragment memory " +
+                      std::to_string(per_fragment_memory_) + ", total budget " +
+                      std::to_string(memory_budget_) +
+                      " , num fragments to process " +
+                      std::to_string(num_fragments_to_process)));
+                }
                 return Status::Ok();
               }
 
@@ -455,10 +464,18 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
                   f,
                   t);
 
-              if (result_tiles_[f].empty())
+              if (result_tiles_[f].empty()) {
+                auto&& [st, tile_sizes] = get_coord_tiles_size(dim_num, f, t);
                 return logger_->status(Status_SparseGlobalOrderReaderError(
                     "Cannot load a single tile for fragment, increase memory "
-                    "budget"));
+                    "budget, tile size : " +
+                    std::to_string(tile_sizes.value().first) +
+                    ", per fragment memory " +
+                    std::to_string(per_fragment_memory_) + ", total budget " +
+                    std::to_string(memory_budget_) +
+                    " , num fragments to process " +
+                    std::to_string(num_fragments_to_process)));
+              }
               return Status::Ok();
             }
           }
@@ -1679,13 +1696,13 @@ Status SparseGlobalOrderReader<BitmapType>::remove_result_tile(
   }
 
   // Adjust per fragment memory usage.
-  memory_used_for_coords_[frag_idx] -= tiles_size + sizeof(ResultTile);
+  memory_used_for_coords_[frag_idx] -= tiles_size;
   memory_used_for_qc_tiles_[frag_idx] -= tiles_size_qc;
 
   // Adjust total memory usage.
   {
     std::unique_lock<std::mutex> lck(mem_budget_mtx_);
-    memory_used_for_coords_total_ -= tiles_size + sizeof(ResultTile);
+    memory_used_for_coords_total_ -= tiles_size;
     memory_used_qc_tiles_total_ -= tiles_size_qc;
   }
 
