@@ -34,6 +34,7 @@
 #include <limits>
 #include <thread>
 
+#include "tiledb/common/common.h"
 #include "tiledb/sm/c_api/tiledb_version.h"
 
 // Include files for platform path max definition.
@@ -88,6 +89,9 @@ const std::string array_commits_dir_name = "__commits";
 
 /** The fragment metadata file name. */
 const std::string fragment_metadata_filename = "__fragment_metadata.tdb";
+
+/** The array dimension labels directory name. */
+const std::string array_dimension_labels_dir_name = "__labels";
 
 /** The default tile capacity. */
 const uint64_t capacity = 10000;
@@ -273,6 +277,9 @@ const std::string query_type_read_str = "READ";
 
 /** TILEDB_WRITE Query String **/
 const std::string query_type_write_str = "WRITE";
+
+/** TILEDB_DELETE Query String **/
+const std::string query_type_delete_str = "DELETE";
 
 /** TILEDB_FAILED Query String **/
 const std::string query_status_failed_str = "FAILED";
@@ -599,14 +606,28 @@ const std::string vfsmode_append_str = "VFS_APPEND";
 const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
-/** The TileDB serialization format version number. */
-const uint32_t format_version = 15;
+/** The TileDB serialization base format version number. */
+const uint32_t base_format_version = 16;
+
+/**
+ * The TileDB serialization format version number.
+ *
+ * Conditionally set the high bit on the base_format_version to
+ * easily identify that the build is experimental.
+ **/
+const uint32_t format_version =
+    is_experimental_build ?
+        0b10000000000000000000000000000000 | base_format_version :
+        base_format_version;
 
 /** The lowest version supported for back compat writes. */
 const uint32_t back_compat_writes_min_format_version = 7;
 
 /** The lowest version supported for consolidation with timestamps. */
 const uint32_t consolidation_with_timestamps_min_version = 15;
+
+/** The lowest version supported for deletes. */
+const uint32_t deletes_min_version = 16;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;

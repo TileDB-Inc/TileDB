@@ -109,7 +109,8 @@ class GlobalOrderWriter : public WriterBase {
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       bool disable_checks_consolidation,
       Query::CoordsInfo& coords_info_,
-      URI fragment_uri = URI(""));
+      URI fragment_uri = URI(""),
+      bool skip_checks_serialization = false);
 
   /** Destructor. */
   ~GlobalOrderWriter();

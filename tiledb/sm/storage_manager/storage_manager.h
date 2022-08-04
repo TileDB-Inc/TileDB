@@ -65,6 +65,7 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class ArrayDirectory;
 class ArraySchema;
 class ArraySchemaEvolution;
 class Buffer;
@@ -78,9 +79,9 @@ class Metadata;
 class OpenArray;
 class MemoryTracker;
 class Query;
+class QueryCondition;
 class RestClient;
 class VFS;
-class ArrayDirectory;
 
 enum class EncryptionType : uint8_t;
 enum class ObjectType : uint8_t;
@@ -150,6 +151,14 @@ class StorageManager {
   Status array_close_for_writes(Array* array);
 
   /**
+   * Closes an array opened for deletes.
+   *
+   * @param array The array to be closed.
+   * @return Status
+   */
+  Status array_close_for_deletes(Array* array);
+
+  /**
    * Closes an group opened for reads.
    *
    * @param group The group to be closed.
@@ -178,11 +187,12 @@ class StorageManager {
    * Load data from persistent storage.
    *
    * @param uri The object URI.
+   * @param offset The offset into the file to read from.
    * @param encryption_key The encryption key to use.
-   * @return Status, Buffer with the data.
+   * @return Status, Tile with the data.
    */
-  tuple<Status, optional<Buffer>> load_data_from_generic_tile(
-      const URI& uri, const EncryptionKey& encryption_key);
+  tuple<Status, optional<Tile>> load_data_from_generic_tile(
+      const URI& uri, uint64_t offset, const EncryptionKey& encryption_key);
 
   /**
    * Load a group detail from URI
@@ -766,6 +776,15 @@ class StorageManager {
       const ArrayDirectory& array_dir,
       const EncryptionKey& encryption_key,
       Metadata* metadata);
+
+  /**
+   * Loads the delete conditions from storage.
+   *
+   * @param array The array.
+   * @return Status, vector of the delete conditions.
+   */
+  tuple<Status, optional<std::vector<QueryCondition>>> load_delete_conditions(
+      const Array& array);
 
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;

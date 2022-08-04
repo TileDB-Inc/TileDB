@@ -224,9 +224,10 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Initializes the reader.
    *
+   * @param skip_checks_serialization Skip checks during serialization.
    * @return Status.
    */
-  Status init();
+  void init(bool skip_checks_serialization);
 
   /**
    * Resize the output buffers to the correct size after copying.
@@ -257,9 +258,6 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
    * set. */
   std::vector<std::vector<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
-
-  /** Have ve loaded the initial data. */
-  bool initial_data_loaded_;
 
   /** Total memory budget. */
   uint64_t memory_budget_;
@@ -295,7 +293,7 @@ class SparseIndexReaderBase : public ReaderBase {
   bool elements_mode_;
 
   /** Names of dim/attr loaded for query condition. */
-  std::vector<std::string> qc_loaded_names_;
+  std::vector<std::string> qc_loaded_attr_names_;
 
   /* Are the users buffers full. */
   bool buffers_full_;
@@ -350,16 +348,6 @@ class SparseIndexReaderBase : public ReaderBase {
       bool include_coords, const std::vector<ResultTile*>& result_tiles);
 
   /**
-   * Allocate a tile bitmap if required for this tile.
-   *
-   * @param rt Result tile currently in process.
-   *
-   * @return Status.
-   */
-  template <class BitmapType>
-  Status allocate_tile_bitmap(ResultTileWithBitmap<BitmapType>* rt);
-
-  /**
    * Compute tile bitmaps.
    *
    * @param result_tiles Result tiles to process.
@@ -368,16 +356,6 @@ class SparseIndexReaderBase : public ReaderBase {
    * */
   template <class BitmapType>
   Status compute_tile_bitmaps(std::vector<ResultTile*>& result_tiles);
-
-  /**
-   * Count the number of cells in a bitmap.
-   *
-   * @param rt Result tile currently in process.
-   *
-   * @return Status.
-   */
-  template <class BitmapType>
-  Status count_tile_bitmap_cells(ResultTileWithBitmap<BitmapType>* rt);
 
   /**
    * Apply query condition.

@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/query/delete_condition/test/main.cc
+ * @file tiledb/api/c_api/filter/test/unit_capi_filter.cc
  *
  * @section LICENSE
  *
@@ -26,9 +26,12 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This file defines a test `main()`
  */
 
 #define CATCH_CONFIG_MAIN
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
+//#include "../filter_api_external.h"
+// Disabled until we have a context object library that will allow linking
+
+TEST_CASE("CAPI Filter: null") {
+}

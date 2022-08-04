@@ -76,7 +76,8 @@ OrderedWriter::OrderedWriter(
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
-    URI fragment_uri)
+    URI fragment_uri,
+    bool skip_checks_serialization)
     : WriterBase(
           stats,
           logger,
@@ -89,7 +90,8 @@ OrderedWriter::OrderedWriter(
           written_fragment_info,
           false,
           coords_info,
-          fragment_uri) {
+          fragment_uri,
+          skip_checks_serialization) {
 }
 
 OrderedWriter::~OrderedWriter() {
@@ -123,7 +125,6 @@ Status OrderedWriter::finalize() {
 }
 
 void OrderedWriter::reset() {
-  initialized_ = false;
 }
 
 /* ****************************** */

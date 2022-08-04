@@ -40,6 +40,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
@@ -56,10 +57,12 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter_create.h"
+#include "tiledb/sm/filter/float_scaling_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
 
+#include <cstring>
 #include <set>
 #include <string>
 
@@ -70,6 +73,67 @@ namespace sm {
 namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
+
+Status filter_to_capnp(
+    const Filter* filter, capnp::Filter::Builder* filter_builder) {
+  filter_builder->setType(filter_type_str(filter->type()));
+  switch (filter->type()) {
+    case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
+      uint32_t window;
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &window));
+      auto data = filter_builder->initData();
+      data.setUint32(window);
+      break;
+    }
+    case FilterType::FILTER_POSITIVE_DELTA: {
+      uint32_t window;
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::POSITIVE_DELTA_MAX_WINDOW, &window));
+      auto data = filter_builder->initData();
+      data.setUint32(window);
+      break;
+    }
+    case FilterType::FILTER_GZIP:
+    case FilterType::FILTER_ZSTD:
+    case FilterType::FILTER_LZ4:
+    case FilterType::FILTER_RLE:
+    case FilterType::FILTER_BZIP2:
+    case FilterType::FILTER_DOUBLE_DELTA:
+    case FilterType::FILTER_DICTIONARY: {
+      int32_t level;
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::COMPRESSION_LEVEL, &level));
+      auto data = filter_builder->initData();
+      data.setInt32(level);
+      break;
+    }
+    case FilterType::FILTER_SCALE_FLOAT: {
+      double scale, offset;
+      uint64_t byte_width;
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width));
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale));
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::SCALE_FLOAT_OFFSET, &offset));
+      auto config = filter_builder->initFloatScaleConfig();
+      config.setScale(scale);
+      config.setOffset(offset);
+      config.setByteWidth(byte_width);
+      break;
+    }
+    case FilterType::FILTER_NONE:
+    case FilterType::FILTER_BITSHUFFLE:
+    case FilterType::FILTER_BYTESHUFFLE:
+    case FilterType::FILTER_CHECKSUM_MD5:
+    case FilterType::FILTER_CHECKSUM_SHA256:
+    case FilterType::INTERNAL_FILTER_AES_256_GCM:
+      break;
+  }
+
+  return Status::Ok();
+}
 
 Status filter_pipeline_to_capnp(
     const FilterPipeline* filter_pipeline,
@@ -86,69 +150,28 @@ Status filter_pipeline_to_capnp(
   for (unsigned i = 0; i < num_filters; i++) {
     const auto* filter = filter_pipeline->get_filter(i);
     auto filter_builder = filter_list_builder[i];
-    filter_builder.setType(filter_type_str(filter->type()));
-
-    switch (filter->type()) {
-      case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
-        uint32_t window;
-        RETURN_NOT_OK(
-            filter->get_option(FilterOption::BIT_WIDTH_MAX_WINDOW, &window));
-        auto data = filter_builder.initData();
-        data.setUint32(window);
-        break;
-      }
-      case FilterType::FILTER_POSITIVE_DELTA: {
-        uint32_t window;
-        RETURN_NOT_OK(filter->get_option(
-            FilterOption::POSITIVE_DELTA_MAX_WINDOW, &window));
-        auto data = filter_builder.initData();
-        data.setUint32(window);
-        break;
-      }
-      case FilterType::FILTER_GZIP:
-      case FilterType::FILTER_ZSTD:
-      case FilterType::FILTER_LZ4:
-      case FilterType::FILTER_RLE:
-      case FilterType::FILTER_BZIP2:
-      case FilterType::FILTER_DOUBLE_DELTA:
-      case FilterType::FILTER_DICTIONARY: {
-        int32_t level;
-        RETURN_NOT_OK(
-            filter->get_option(FilterOption::COMPRESSION_LEVEL, &level));
-        auto data = filter_builder.initData();
-        data.setInt32(level);
-        break;
-      }
-      case FilterType::FILTER_NONE:
-      case FilterType::FILTER_BITSHUFFLE:
-      case FilterType::FILTER_BYTESHUFFLE:
-      case FilterType::FILTER_CHECKSUM_MD5:
-      case FilterType::FILTER_CHECKSUM_SHA256:
-      case FilterType::INTERNAL_FILTER_AES_256_GCM:
-      case FilterType::FILTER_SCALE_FLOAT:
-        break;
-    }
+    filter_to_capnp(filter, &filter_builder);
   }
 
   return Status::Ok();
 }
 
-static tuple<Status, optional<shared_ptr<Filter>>> filter_constructor(
-    capnp::Filter::Reader reader) {
+tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
+    const capnp::Filter::Reader& filter_reader) {
   FilterType type = FilterType::FILTER_NONE;
   RETURN_NOT_OK_TUPLE(
-      filter_type_enum(reader.getType().cStr(), &type), nullopt);
+      filter_type_enum(filter_reader.getType().cStr(), &type), nullopt);
 
   switch (type) {
     case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
-      auto data = reader.getData();
+      auto data = filter_reader.getData();
       uint32_t window = data.getUint32();
       return {
           Status::Ok(),
           tiledb::common::make_shared<BitWidthReductionFilter>(HERE(), window)};
     }
     case FilterType::FILTER_POSITIVE_DELTA: {
-      auto data = reader.getData();
+      auto data = filter_reader.getData();
       uint32_t window = data.getUint32();
       return {Status::Ok(),
               tiledb::common::make_shared<PositiveDeltaFilter>(HERE(), window)};
@@ -160,11 +183,25 @@ static tuple<Status, optional<shared_ptr<Filter>>> filter_constructor(
     case FilterType::FILTER_BZIP2:
     case FilterType::FILTER_DOUBLE_DELTA:
     case FilterType::FILTER_DICTIONARY: {
-      auto data = reader.getData();
+      auto data = filter_reader.getData();
       int32_t level = data.getInt32();
       return {
           Status::Ok(),
           tiledb::common::make_shared<CompressionFilter>(HERE(), type, level)};
+    }
+    case FilterType::FILTER_SCALE_FLOAT: {
+      if (filter_reader.hasFloatScaleConfig()) {
+        auto float_scale_config = filter_reader.getFloatScaleConfig();
+        double scale = float_scale_config.getScale();
+        double offset = float_scale_config.getOffset();
+        uint64_t byte_width = float_scale_config.getByteWidth();
+        return {Status::Ok(),
+                tiledb::common::make_shared<FloatScalingFilter>(
+                    HERE(), byte_width, scale, offset)};
+      }
+
+      return {Status::Ok(),
+              tiledb::common::make_shared<FloatScalingFilter>(HERE())};
     }
     case FilterType::FILTER_NONE:
       break;
@@ -209,7 +246,7 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
   std::vector<shared_ptr<Filter>> filter_list;
   auto filter_list_reader = filter_pipeline_reader.getFilters();
   for (auto filter_reader : filter_list_reader) {
-    auto&& [st_f, filter]{filter_constructor(filter_reader)};
+    auto&& [st_f, filter]{filter_from_capnp(filter_reader)};
     RETURN_NOT_OK_TUPLE(st_f, nullopt);
     filter_list.push_back(filter.value());
   }
@@ -664,88 +701,187 @@ Status array_schema_to_capnp(
   return Status::Ok();
 }
 
-Status array_schema_from_capnp(
-    const capnp::ArraySchema::Reader& schema_reader,
-    tdb_unique_ptr<ArraySchema>* array_schema) {
+// #TODO Add security validation on incoming URI
+ArraySchema array_schema_from_capnp(
+    const capnp::ArraySchema::Reader& schema_reader, const URI& uri) {
+  // Deserialize and validate array_type
   ArrayType array_type = ArrayType::DENSE;
-  RETURN_NOT_OK(array_type_enum(schema_reader.getArrayType(), &array_type));
-  array_schema->reset(tdb_new(ArraySchema, array_type));
+  Status st = array_type_enum(schema_reader.getArrayType(), &array_type);
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[Deserialization::array_schema_from_capnp] " +
+        std::string(schema_reader.getArrayType().cStr()) +
+        " is not a valid ArrayType identifer.");
+  }
 
-  Layout layout = Layout::ROW_MAJOR;
-  RETURN_NOT_OK(layout_enum(schema_reader.getTileOrder().cStr(), &layout));
-  (*array_schema)->set_tile_order(layout);
-  RETURN_NOT_OK(layout_enum(schema_reader.getCellOrder().cStr(), &layout));
+  try {
+    ensure_array_type_is_valid(std::underlying_type_t<ArrayType>(array_type));
+  } catch (std::exception& e) {
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::array_schema_from_capnp] "));
+  }
 
-  if (schema_reader.hasUri())
-    (*array_schema)->set_array_uri(URI(schema_reader.getUri().cStr()));
+  // Deserialize and validate tile_order
+  Layout tile_order = Layout::ROW_MAJOR;
+  st = layout_enum(schema_reader.getTileOrder().cStr(), &tile_order);
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[Deserialization::array_schema_from_capnp] " +
+        std::string(schema_reader.getTileOrder().cStr()) +
+        " is not a valid tile order identifer.");
+  }
 
-  (*array_schema)->set_cell_order(layout);
-  (*array_schema)->set_capacity(schema_reader.getCapacity());
-  (*array_schema)->set_allows_dups(schema_reader.getAllowsDuplicates());
+  try {
+    ensure_tile_order_is_valid(std::underlying_type_t<Layout>(tile_order));
+  } catch (std::exception& e) {
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::array_schema_from_capnp] "));
+  }
+
+  // Deserialize and validate cell_order
+  Layout cell_order = Layout::ROW_MAJOR;
+  st = layout_enum(schema_reader.getCellOrder().cStr(), &cell_order);
+  if (!st.ok()) {
+    throw std::runtime_error(
+        "[Deserialization::array_schema_from_capnp] " +
+        std::string(schema_reader.getCellOrder().cStr()) +
+        " is not a valid cell order identifer.");
+  }
+
+  try {
+    ensure_cell_order_is_valid(std::underlying_type_t<Layout>(cell_order));
+  } catch (std::exception& e) {
+    std::throw_with_nested(
+        std::runtime_error("[Deserialization::array_schema_from_capnp] "));
+  }
+
+  // Deserialize URI
+  // #TODO Add security validation
+  URI uri_deserialized = URI();
+  if (schema_reader.hasUri()) {
+    uri_deserialized = URI(schema_reader.getUri().cStr());
+  } else {
+    uri_deserialized = uri;
+  }
+
+  // Deserialize capacity
+  // #TODO Add security validation
+  uint64_t capacity = schema_reader.getCapacity();
+
+  // Deserialize allows_dups
+  // Note: No security validation is possible.
+  bool allows_dups = schema_reader.getAllowsDuplicates();
+
   // Pre 1.8 TileDB serialized the version as the library version
   // This would have been a list of size 3, so only set the version
   // if the list size is 1, meaning tiledb 1.8 or later
+  // #TODO Add security validation
+  uint32_t version = constants::format_version;
   if (schema_reader.hasVersion() && schema_reader.getVersion().size() == 1) {
-    (*array_schema)->set_version(schema_reader.getVersion()[0]);
+    version = schema_reader.getVersion()[0];
   }
 
+  // Deserialize domain
+  // Note: Security validation delegated to invoked API
   auto domain_reader = schema_reader.getDomain();
   auto domain{domain_from_capnp(domain_reader)};
-  RETURN_NOT_OK((*array_schema)->set_domain(domain));
 
   // Set coords filter pipelines
+  // Note: Security validation delegated to invoked API
+  // #TODO Add security validation
+  FilterPipeline coords_filters;
   if (schema_reader.hasCoordsFilterPipeline()) {
     auto reader = schema_reader.getCoordsFilterPipeline();
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
-    RETURN_NOT_OK(st_fp);
-    RETURN_NOT_OK(
-        (*array_schema)->set_coords_filter_pipeline(filters.value().get()));
+    if (!st_fp.ok()) {
+      throw std::runtime_error(
+          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+          "coords filters.");
+    }
+    coords_filters = *filters.value().get();
   }
 
   // Set offsets filter pipelines
+  // Note: Security validation delegated to invoked API
+  // #TODO Add security validation
+  FilterPipeline cell_var_offsets_filters;
   if (schema_reader.hasOffsetFilterPipeline()) {
     auto reader = schema_reader.getOffsetFilterPipeline();
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
-    RETURN_NOT_OK(st_fp);
-    RETURN_NOT_OK(
-        (*array_schema)
-            ->set_cell_var_offsets_filter_pipeline(filters.value().get()));
+    if (!st_fp.ok()) {
+      throw std::runtime_error(
+          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+          "offset filters.");
+    }
+    cell_var_offsets_filters = *filters.value().get();
   }
 
   // Set validity filter pipelines
+  // Note: Security validation delegated to invoked API
+  // #TODO Add security validation
+  FilterPipeline cell_validity_filters;
   if (schema_reader.hasValidityFilterPipeline()) {
     auto reader = schema_reader.getValidityFilterPipeline();
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
-    RETURN_NOT_OK(st_fp);
-    RETURN_NOT_OK(
-        (*array_schema)
-            ->set_cell_validity_filter_pipeline(filters.value().get()));
+    if (!st_fp.ok()) {
+      throw std::runtime_error(
+          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+          "validity filters.");
+    }
+    cell_validity_filters = *filters.value().get();
   }
 
   // Set attributes
+  // Note: Security validation delegated to invoked API
+  // #TODO Add security validation
   auto attributes_reader = schema_reader.getAttributes();
+  std::vector<shared_ptr<const Attribute>> attributes;
+  attributes.reserve(attributes_reader.size());
   for (auto attr_reader : attributes_reader) {
     auto&& [st_attr, attr]{attribute_from_capnp(attr_reader)};
-    RETURN_NOT_OK(st_attr);
-    RETURN_NOT_OK((*array_schema)->add_attribute(attr.value()));
+    if (!st_attr.ok()) {
+      throw std::runtime_error(
+          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+          "attributes.");
+    }
+    attributes.emplace_back(attr.value());
   }
+
+  // Placeholder for deserializing dimension label references
+  std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels{};
 
   // Set the range if we have two values
+  // #TODO Add security validation
+  std::pair<uint64_t, uint64_t> timestamp_range;
   if (schema_reader.hasTimestampRange() &&
       schema_reader.getTimestampRange().size() >= 2) {
-    const auto& timestamp_range = schema_reader.getTimestampRange();
-    (*array_schema)
-        ->set_timestamp_range(
-            std::make_pair(timestamp_range[0], timestamp_range[1]));
+    const auto& range = schema_reader.getTimestampRange();
+    timestamp_range = std::make_pair(range[0], range[1]);
   }
 
-  if (schema_reader.hasName())
-    (*array_schema)->set_name(schema_reader.getName().cStr());
+  // Deserialize the name
+  // #TODO Add security validation
+  std::string name;
+  if (schema_reader.hasName()) {
+    name = schema_reader.getName().cStr();
+  }
 
-  // Initialize
-  RETURN_NOT_OK((*array_schema)->init());
-
-  return Status::Ok();
+  return ArraySchema(
+      uri_deserialized,
+      version,
+      timestamp_range,
+      name,
+      array_type,
+      allows_dups,
+      make_shared<Domain>(HERE(), domain.get()),
+      cell_order,
+      tile_order,
+      capacity,
+      attributes,
+      dimension_labels,
+      cell_var_offsets_filters,
+      cell_validity_filters,
+      coords_filters);
 }
 
 Status array_schema_serialize(
@@ -802,27 +938,21 @@ Status array_schema_serialize(
   return Status::Ok();
 }
 
-tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
+ArraySchema array_schema_deserialize(
     SerializationType serialize_type, const Buffer& serialized_buffer) {
-  shared_ptr<ArraySchema> array_schema;
+  capnp::ArraySchema::Reader array_schema_reader;
+  ::capnp::MallocMessageBuilder message_builder;
 
   try {
-    tdb_unique_ptr<ArraySchema> decoded_array_schema = nullptr;
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
-        ::capnp::MallocMessageBuilder message_builder;
         capnp::ArraySchema::Builder array_schema_builder =
             message_builder.initRoot<capnp::ArraySchema>();
         json.decode(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             array_schema_builder);
-        capnp::ArraySchema::Reader array_schema_reader =
-            array_schema_builder.asReader();
-        RETURN_NOT_OK_TUPLE(
-            array_schema_from_capnp(array_schema_reader, &decoded_array_schema),
-            nullopt);
+        array_schema_reader = array_schema_builder.asReader();
         break;
       }
       case SerializationType::CAPNP: {
@@ -831,42 +961,26 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
         ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             serialized_buffer.size() / sizeof(::capnp::word)));
-        capnp::ArraySchema::Reader array_schema_reader =
-            reader.getRoot<capnp::ArraySchema>();
-        RETURN_NOT_OK_TUPLE(
-            array_schema_from_capnp(array_schema_reader, &decoded_array_schema),
-            nullopt);
+        array_schema_reader = reader.getRoot<capnp::ArraySchema>();
         break;
       }
       default: {
-        return {
-            LOG_STATUS(Status_SerializationError(
-                "Error deserializing array schema; Unknown serialization type "
-                "passed")),
-            nullopt};
+        throw StatusException(Status_SerializationError(
+            "Error deserializing array schema; Unknown serialization type "
+            "passed"));
       }
     }
-
-    if (decoded_array_schema == nullptr)
-      return {
-          LOG_STATUS(Status_SerializationError(
-              "Error serializing array schema; deserialized schema is null")),
-          nullopt};
-
-    array_schema = std::move(decoded_array_schema);
   } catch (kj::Exception& e) {
-    return {LOG_STATUS(Status_SerializationError(
-                "Error deserializing array schema; kj::Exception: " +
-                std::string(e.getDescription().cStr()))),
-            nullopt};
+    throw StatusException(Status_SerializationError(
+        "Error deserializing array schema; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
   } catch (std::exception& e) {
-    return {LOG_STATUS(Status_SerializationError(
-                "Error deserializing array schema; exception " +
-                std::string(e.what()))),
-            nullopt};
+    throw StatusException(Status_SerializationError(
+        "Error deserializing array schema; exception " +
+        std::string(e.what())));
   }
 
-  return {Status::Ok(), array_schema};
+  return array_schema_from_capnp(array_schema_reader, URI());
 }
 
 Status nonempty_domain_serialize(
@@ -1435,11 +1549,9 @@ Status array_schema_serialize(
       "Cannot serialize; serialization not enabled."));
 }
 
-tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
-    SerializationType, const Buffer&) {
-  return {LOG_STATUS(Status_SerializationError(
-              "Cannot serialize; serialization not enabled.")),
-          nullopt};
+ArraySchema array_schema_deserialize(SerializationType, const Buffer&) {
+  throw StatusException(Status_SerializationError(
+      "Cannot serialize; serialization not enabled."));
 }
 
 Status nonempty_domain_serialize(Array*, SerializationType, Buffer*) {

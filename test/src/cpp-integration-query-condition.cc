@@ -36,7 +36,7 @@
 #include <iostream>
 #include <vector>
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
 

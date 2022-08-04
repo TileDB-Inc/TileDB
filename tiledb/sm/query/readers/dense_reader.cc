@@ -52,6 +52,13 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
+class DenseReaderStatusException : public StatusException {
+ public:
+  explicit DenseReaderStatusException(const std::string& message)
+      : StatusException("DenseReader", message) {
+  }
+};
+
 /* ****************************** */
 /*          CONSTRUCTORS          */
 /* ****************************** */
@@ -65,7 +72,8 @@ DenseReader::DenseReader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition)
+    QueryCondition& condition,
+    bool skip_checks_serialization)
     : ReaderBase(
           stats,
           logger->clone("DenseReader", ++logger_id_),
@@ -77,6 +85,40 @@ DenseReader::DenseReader(
           layout,
           condition) {
   elements_mode_ = false;
+
+  // Sanity checks.
+  if (storage_manager_ == nullptr) {
+    throw DenseReaderStatusException(
+        "Cannot initialize dense reader; Storage manager not set");
+  }
+
+  if (!skip_checks_serialization && buffers_.empty()) {
+    throw DenseReaderStatusException(
+        "Cannot initialize dense reader; Buffers not set");
+  }
+
+  if (!skip_checks_serialization && !subarray_.is_set()) {
+    throw DenseReaderStatusException(
+        "Cannot initialize reader; Dense reads must have a subarray set");
+  }
+
+  // Check subarray.
+  check_subarray();
+
+  // Initialize the read state.
+  init_read_state();
+
+  // Check the validity buffer sizes.
+  check_validity_buffer_sizes();
+
+  bool found = false;
+  uint64_t tile_cache_size = 0;
+  if (!config_.get<uint64_t>("sm.tile_cache_size", &tile_cache_size, &found)
+           .ok()) {
+    throw DenseReaderStatusException("Cannot get setting");
+  }
+  assert(found);
+  disable_cache_ = tile_cache_size == 0;
 }
 
 /* ****************************** */
@@ -90,37 +132,6 @@ bool DenseReader::incomplete() const {
 QueryStatusDetailsReason DenseReader::status_incomplete_reason() const {
   return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
                         QueryStatusDetailsReason::REASON_NONE;
-}
-
-Status DenseReader::init() {
-  // Sanity checks.
-  if (storage_manager_ == nullptr)
-    return LOG_STATUS(Status_DenseReaderError(
-        "Cannot initialize dense reader; Storage manager not set"));
-  if (buffers_.empty())
-    return LOG_STATUS(Status_DenseReaderError(
-        "Cannot initialize dense reader; Buffers not set"));
-  if (!subarray_.is_set())
-    return LOG_STATUS(Status_ReaderError(
-        "Cannot initialize reader; Dense reads must have a subarray set"));
-
-  // Check subarray.
-  RETURN_NOT_OK(check_subarray());
-
-  // Initialize the read state.
-  RETURN_NOT_OK(init_read_state());
-
-  // Check the validity buffer sizes.
-  RETURN_NOT_OK(check_validity_buffer_sizes());
-
-  bool found = false;
-  uint64_t tile_cache_size = 0;
-  RETURN_NOT_OK(
-      config_.get<uint64_t>("sm.tile_cache_size", &tile_cache_size, &found));
-  assert(found);
-  disable_cache_ = tile_cache_size == 0;
-
-  return Status::Ok();
 }
 
 Status DenseReader::initialize_memory_budget() {
@@ -429,48 +440,58 @@ Status DenseReader::dense_read() {
   return Status::Ok();
 }
 
-Status DenseReader::init_read_state() {
+void DenseReader::init_read_state() {
   auto timer_se = stats_->start_timer("init_state");
 
   // Check subarray.
-  if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
-    return LOG_STATUS(
-        Status_ReaderError("Cannot initialize read "
-                           "state; Multi-range "
-                           "subarrays do not "
-                           "support global order"));
+  if (subarray_.layout() == Layout::GLOBAL_ORDER &&
+      subarray_.range_num() != 1) {
+    throw DenseReaderStatusException(
+        "Cannot initialize read state; Multi-range subarrays do not support "
+        "global order");
+  }
 
   // Get config values.
   bool found = false;
   uint64_t memory_budget = 0;
-  RETURN_NOT_OK(
-      config_.get<uint64_t>("sm.memory_budget", &memory_budget, &found));
+  if (!config_.get<uint64_t>("sm.memory_budget", &memory_budget, &found).ok()) {
+    throw DenseReaderStatusException("Cannot get setting");
+  }
   assert(found);
 
   uint64_t memory_budget_var = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.memory_budget_var", &memory_budget_var, &found));
+  if (!config_.get<uint64_t>("sm.memory_budget_var", &memory_budget_var, &found)
+           .ok()) {
+    throw DenseReaderStatusException("Cannot get setting");
+  }
   assert(found);
 
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    return LOG_STATUS(
-        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
-                           "format in configuration"));
+    throw DenseReaderStatusException(
+        "Cannot initialize reader; Unsupported offsets format in "
+        "configuration");
   }
   elements_mode_ = offsets_format_mode_ == "elements";
 
-  RETURN_NOT_OK(config_.get<bool>(
-      "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
+  if (!config_
+           .get<bool>(
+               "sm.var_offsets.extra_element", &offsets_extra_element_, &found)
+           .ok()) {
+    throw DenseReaderStatusException("Cannot get setting");
+  }
   assert(found);
 
-  RETURN_NOT_OK(config_.get<uint32_t>(
-      "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
+  if (!config_
+           .get<uint32_t>("sm.var_offsets.bitsize", &offsets_bitsize_, &found)
+           .ok()) {
+    throw DenseReaderStatusException("Cannot get setting");
+  }
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    return LOG_STATUS(
-        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
-                           "bitsize in configuration"));
+    throw DenseReaderStatusException(
+        "Cannot initialize reader; Unsupported offsets bitsize in "
+        "configuration");
   }
   assert(found);
 
@@ -492,7 +513,7 @@ Status DenseReader::init_read_state() {
   read_state_.overflowed_ = false;
   read_state_.unsplittable_ = false;
 
-  // Set result size budget.
+  // Set result size budget
   for (const auto& a : buffers_) {
     auto attr_name = a.first;
     auto buffer_size = a.second.buffer_size_;
@@ -500,22 +521,37 @@ Status DenseReader::init_read_state() {
     auto buffer_validity_size = a.second.validity_vector_.buffer_size();
     if (!array_schema_.var_size(attr_name)) {
       if (!array_schema_.is_nullable(attr_name)) {
-        RETURN_NOT_OK(read_state_.partitioner_.set_result_budget(
-            attr_name.c_str(), *buffer_size));
+        if (!read_state_.partitioner_
+                 .set_result_budget(attr_name.c_str(), *buffer_size)
+                 .ok()) {
+          throw DenseReaderStatusException("Cannot set result budget");
+        }
       } else {
-        RETURN_NOT_OK(read_state_.partitioner_.set_result_budget_nullable(
-            attr_name.c_str(), *buffer_size, *buffer_validity_size));
+        if (!read_state_.partitioner_
+                 .set_result_budget_nullable(
+                     attr_name.c_str(), *buffer_size, *buffer_validity_size)
+                 .ok()) {
+          throw DenseReaderStatusException("Cannot set result budget");
+        }
       }
     } else {
       if (!array_schema_.is_nullable(attr_name)) {
-        RETURN_NOT_OK(read_state_.partitioner_.set_result_budget(
-            attr_name.c_str(), *buffer_size, *buffer_var_size));
+        if (!read_state_.partitioner_
+                 .set_result_budget(
+                     attr_name.c_str(), *buffer_size, *buffer_var_size)
+                 .ok()) {
+          throw DenseReaderStatusException("Cannot set result budget");
+        }
       } else {
-        RETURN_NOT_OK(read_state_.partitioner_.set_result_budget_nullable(
-            attr_name.c_str(),
-            *buffer_size,
-            *buffer_var_size,
-            *buffer_validity_size));
+        if (!read_state_.partitioner_
+                 .set_result_budget_nullable(
+                     attr_name.c_str(),
+                     *buffer_size,
+                     *buffer_var_size,
+                     *buffer_validity_size)
+                 .ok()) {
+          throw DenseReaderStatusException("Cannot set result budget");
+        }
       }
     }
   }
@@ -523,8 +559,6 @@ Status DenseReader::init_read_state() {
   read_state_.unsplittable_ = false;
   read_state_.overflowed_ = false;
   read_state_.initialized_ = true;
-
-  return Status::Ok();
 }
 
 /** Apply the query condition. */
@@ -961,8 +995,7 @@ Status DenseReader::copy_fixed_tiles(
         auto dest_validity_ptr = dst_val_buf + cell_offset;
 
         // Get the tile buffers.
-        const Tile* const tile = &std::get<0>(*tile_tuples[fd]);
-        const Tile* const tile_nullable = &std::get<2>(*tile_tuples[fd]);
+        const auto& tile = tile_tuples[fd]->fixed_tile();
 
         auto src_offset = iter.pos_in_tile() + start * stride;
 
@@ -971,28 +1004,31 @@ Status DenseReader::copy_fixed_tiles(
         if (stride == 1) {
           std::memcpy(
               dest_ptr + cell_size * start,
-              tile->data_as<char>() + cell_size * src_offset,
+              tile.data_as<char>() + cell_size * src_offset,
               cell_size * (end - start + 1));
 
           if (nullable) {
+            const auto& tile_nullable = tile_tuples[fd]->validity_tile();
             std::memcpy(
                 dest_validity_ptr + start,
-                tile_nullable->data_as<char>() + src_offset,
+                tile_nullable.data_as<char>() + src_offset,
                 (end - start + 1));
           }
         } else {
           // Go cell by cell.
-          auto src = tile->data_as<char>() + cell_size * src_offset;
-          auto src_validity =
-              nullable ? tile_nullable->data_as<char>() + src_offset : nullptr;
+          auto src = tile.data_as<char>() + cell_size * src_offset;
           auto dest = dest_ptr + cell_size * start;
-          auto dest_validity = dest_validity_ptr + start;
           for (uint64_t i = 0; i < end - start + 1; ++i) {
             std::memcpy(dest, src, cell_size);
             src += cell_size * stride;
             dest += cell_size;
+          }
 
-            if (nullable) {
+          if (nullable) {
+            const auto& tile_nullable = tile_tuples[fd]->validity_tile();
+            auto src_validity = tile_nullable.data_as<char>() + src_offset;
+            auto dest_validity = dest_validity_ptr + start;
+            for (uint64_t i = 0; i < end - start + 1; ++i) {
               memcpy(dest_validity, src_validity, 1);
               src_validity += stride;
               dest_validity++;
@@ -1153,17 +1189,12 @@ Status DenseReader::copy_offset_tiles(
         auto dest_validity_ptr = dst_val_buf + cell_offset;
 
         // Get the tile buffers.
-        const Tile* const t_var = &std::get<1>(*tile_tuples[fd]);
+        const auto& t_var = tile_tuples[fd]->var_tile();
 
         // Setup variables for the copy.
         auto src_buff =
-            static_cast<uint64_t*>(std::get<0>(*tile_tuples[fd]).data()) +
+            static_cast<uint64_t*>(tile_tuples[fd]->fixed_tile().data()) +
             start * stride + src_cell;
-        auto src_buff_validity =
-            nullable ?
-                static_cast<uint8_t*>(std::get<2>(*tile_tuples[fd]).data()) +
-                    start + src_cell :
-                nullptr;
         auto div = elements_mode_ ? data_type_size : 1;
         auto dest = (OffType*)dest_ptr + start;
 
@@ -1173,28 +1204,29 @@ Status DenseReader::copy_offset_tiles(
         for (; i < end - start; ++i) {
           auto i_src = i * stride;
           dest[i] = (src_buff[i_src + 1] - src_buff[i_src]) / div;
-          var_data_buff[i + start] = t_var->data_as<char>() + src_buff[i_src];
-        }
-
-        if (nullable) {
-          i = 0;
-          for (; i < end - start; ++i) {
-            dest_validity_ptr[start + i] = src_buff_validity[i * stride];
-          }
+          var_data_buff[i + start] = t_var.data_as<char>() + src_buff[i_src];
         }
 
         // Copy the last value.
         if (start + src_cell + (end - start) * stride >=
             cell_num_per_tile - 1) {
-          dest[i] = (t_var->size() - src_buff[i * stride]) / div;
+          dest[i] = (t_var.size() - src_buff[i * stride]) / div;
         } else {
           auto i_src = i * stride;
           dest[i] = (src_buff[i_src + 1] - src_buff[i_src]) / div;
         }
-        var_data_buff[i + start] =
-            t_var->data_as<char>() + src_buff[i * stride];
+        var_data_buff[i + start] = t_var.data_as<char>() + src_buff[i * stride];
 
         if (nullable) {
+          auto src_buff_validity =
+              static_cast<uint8_t*>(tile_tuples[fd]->validity_tile().data()) +
+              start + src_cell;
+
+          for (i = 0; i < end - start; ++i) {
+            dest_validity_ptr[start + i] = src_buff_validity[i * stride];
+          }
+
+          // Copy last validity value.
           dest_validity_ptr[start + i] = src_buff_validity[i * stride];
         }
 

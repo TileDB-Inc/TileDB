@@ -76,7 +76,8 @@ UnorderedWriter::UnorderedWriter(
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
-    URI fragment_uri)
+    URI fragment_uri,
+    bool skip_checks_serialization)
     : WriterBase(
           stats,
           logger,
@@ -89,7 +90,8 @@ UnorderedWriter::UnorderedWriter(
           written_fragment_info,
           false,
           coords_info,
-          fragment_uri) {
+          fragment_uri,
+          skip_checks_serialization) {
 }
 
 UnorderedWriter::~UnorderedWriter() {
@@ -122,7 +124,6 @@ Status UnorderedWriter::finalize() {
 }
 
 void UnorderedWriter::reset() {
-  initialized_ = false;
 }
 
 /* ****************************** */

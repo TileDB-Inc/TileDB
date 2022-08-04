@@ -51,24 +51,24 @@ find_package(Threads REQUIRED)
 # Subdirectories
 ############################################################
 
+add_subdirectory(api)
 add_subdirectory(common)
 add_subdirectory(type)
 add_subdirectory(sm)
+add_subdirectory(storage_format)
 
 ############################################################
-# Source files
+# Header files
 ############################################################
+# The headers in this section are those to be installed in the base include
+# directory, not in subdirectories of the base. The other include files are
+# specified in the installation section
 
 # The core header directory.
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 # List of API headers (to be installed)
-set(TILEDB_PUBLIC_HEADERS
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.h
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_enum.h
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_version.h
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_experimental.h
-)
+set(TILEDB_PUBLIC_HEADERS ${TILEDB_C_API_FILENAME_HEADERS})
 
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_PUBLIC_HEADERS
@@ -79,6 +79,7 @@ endif()
 if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/experimental/tiledb_dimension_label.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/experimental/tiledb_enum_experimental.h
   )
 endif()
 
@@ -121,6 +122,10 @@ else()
   message(STATUS "TileDB C++ API is not built.")
 endif()
 
+############################################################
+# Source files
+############################################################
+
 # List of all core source files
 set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_memory.cc
@@ -132,11 +137,13 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/types/dynamic_typed_datum.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array_directory.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/consistency.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema_evolution.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension_label_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/attribute.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension_label_schema.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension_label_reference.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/domain.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/dimension_label/dimension_label.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer.cc
@@ -218,6 +225,8 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ast/query_ast.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/deletes.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/serialization.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/hilbert_order.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/legacy/cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/legacy/reader.cc
@@ -259,8 +268,10 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile_metadata_generator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/writer_tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/parse_uri.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/type/range/range.cc
 )
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
+list(APPEND TILEDB_CORE_SOURCES ${TILEDB_API_SOURCES})
 
 if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_CORE_SOURCES
@@ -337,8 +348,6 @@ list(APPEND TILEDB_EXTERNALS_SOURCES ${TileDB_blosc_SOURCES})
 set_source_files_properties(
   ${TileDB_blosc_SOURCES}
   PROPERTIES COMPILE_OPTIONS "${TileDB_blosc_COMPILE_OPTIONS}")
-
-add_subdirectory(storage_format)
 
 ############################################################
 # Build core objects as a reusable object library
@@ -952,23 +961,19 @@ endif()
 ############################################################
 # API symbol exports (and public headers for install)
 ############################################################
-
-include(GenerateExportHeader)
+# Generation of the header (still) happens here, but `TILEDB_EXPORT_*` symbols
+# are defined in the parent directory.
 
 # Generates the file 'tiledb_export.h' suitable for the current compiler.
+include(GenerateExportHeader)
 generate_export_header(TILEDB_CORE_OBJECTS
   BASE_NAME tiledb
 )
-
-# Set variables in the parent scope so the tests and examples can reference it.
-set(TILEDB_EXPORT_HEADER_NAME "tiledb_export.h" PARENT_SCOPE)
-set(TILEDB_EXPORT_HEADER_DIR "${CMAKE_CURRENT_BINARY_DIR}" PARENT_SCOPE)
-set(TILEDB_EXPORT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/tiledb_export.h")
-set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER}" PARENT_SCOPE)
+# Install locally
+configure_file(${TILEDB_EXPORT_HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/${TILEDB_EXPORT_HEADER_LOCALINSTALL_PATH} COPYONLY)
 
 target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
-
-target_include_directories(TILEDB_CORE_OBJECTS PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(TILEDB_CORE_OBJECTS PRIVATE ${TILEDB_EXPORT_HEADER_DIR})
 
 # Add the generated header to the public headers list
 list(APPEND TILEDB_PUBLIC_HEADERS
@@ -1039,11 +1044,30 @@ set(TARGETS_EXPORT_NAME "TileDBTargets")
 install(
   TARGETS ${TILEDB_INSTALL_TARGETS}
   EXPORT ${TARGETS_EXPORT_NAME}
-  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tiledb
+  PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/tiledb"
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+)
+
+# Install each of the RELATIVE headers to the subdirectory it belongs in
+# TODO: Change to use `FILE_SET` after upgrade to CMake 3.23
+foreach(HEADER ${TILEDB_C_API_RELATIVE_HEADERS})
+  cmake_path(RELATIVE_PATH HEADER
+      BASE_DIRECTORY ${TILEDB_C_API_RELATIVE_HEADER_BASE}
+      OUTPUT_VARIABLE HEADER_STRIPPED
+      )
+  cmake_path(REMOVE_FILENAME HEADER_STRIPPED OUTPUT_VARIABLE HEADER_RELATIVE)
+  install(
+      FILES ${HEADER}
+      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${HEADER_RELATIVE}"
+  )
+endforeach()
+# Install the export directory
+install(
+    FILES ${TILEDB_EXPORT_HEADER}
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${TILEDB_EXPORT_HEADER_INSTALL_PATH}"
 )
 
 # Path to generated cmake file

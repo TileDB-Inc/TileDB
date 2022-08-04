@@ -73,7 +73,8 @@ class Reader : public ReaderBase, public IQueryStrategy {
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition);
+      QueryCondition& condition,
+      bool skip_checks_serialization = false);
 
   /** Destructor. */
   ~Reader() = default;
@@ -97,9 +98,6 @@ class Reader : public ReaderBase, public IQueryStrategy {
 
   /** Returns the status details reason. */
   QueryStatusDetailsReason status_incomplete_reason() const;
-
-  /** Initializes the reader. */
-  Status init();
 
   /** Initialize the memory budget variables. */
   Status initialize_memory_budget();
@@ -237,6 +235,13 @@ class Reader : public ReaderBase, public IQueryStrategy {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /**
+   * Load data used for sparse reads.
+   *
+   * @return Status.
+   */
+  Status load_initial_data();
 
   /**
    * Applies the query condition, `condition_`, to filter cell indexes
@@ -613,7 +618,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   bool has_separate_coords() const;
 
   /** Initializes the read state. */
-  Status init_read_state();
+  void init_read_state();
 
   /**
    * Sorts the input result coordinates according to the subarray layout.

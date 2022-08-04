@@ -36,7 +36,7 @@
 #include <vector>
 #include "external/include/span/span.hpp"
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "experimental/tiledb/common/dag/utils/range_join.h"
 #include "experimental/tiledb/common/dag/utils/traits.h"
 

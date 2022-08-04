@@ -77,7 +77,8 @@ GlobalOrderWriter::GlobalOrderWriter(
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
-    URI fragment_uri)
+    URI fragment_uri,
+    bool skip_checks_serialization)
     : WriterBase(
           stats,
           logger,
@@ -90,7 +91,8 @@ GlobalOrderWriter::GlobalOrderWriter(
           written_fragment_info,
           disable_checks_consolidation,
           coords_info,
-          fragment_uri) {
+          fragment_uri,
+          skip_checks_serialization) {
 }
 
 GlobalOrderWriter::~GlobalOrderWriter() {
@@ -125,9 +127,9 @@ Status GlobalOrderWriter::finalize() {
 }
 
 void GlobalOrderWriter::reset() {
-  if (global_write_state_ != nullptr)
+  if (global_write_state_ != nullptr) {
     nuke_global_write_state();
-  initialized_ = false;
+  }
 }
 
 /* ****************************** */
