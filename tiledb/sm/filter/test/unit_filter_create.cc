@@ -402,10 +402,9 @@ TEST_CASE("Filter: Test XOR filter deserialization", "[filter][xor]") {
   buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
   ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_filter, filter1]{
+  auto filter1{
       FilterCreate::deserialize(&constbuffer, constants::format_version)};
-  REQUIRE(st_filter.ok());
 
   // Check type
-  CHECK(filter1.value()->type() == filtertype0);
+  CHECK(filter1->type() == filtertype0);
 }
