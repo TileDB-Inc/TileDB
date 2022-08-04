@@ -67,14 +67,15 @@ jobs:
 
           ## ** NOTE: most of these steps must run in the same shell context **
 
-          source $GITHUB_WORKSPACE/scripts/ci/posix/build-services-start.sh
-
-          #####################################################
-          # Build libtiledb using `bootstrap_args` as set above
 
           ###################################################
           # Start helper processes, such as backend emulator
           # if applicable
+
+          source $GITHUB_WORKSPACE/scripts/ci/posix/build-services-start.sh
+
+          #####################################################
+          # Build libtiledb using `bootstrap_args` as set above
 
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
@@ -99,16 +100,6 @@ jobs:
           # Build benchmark code
 
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
-
-      #- name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-      #  if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-      #  uses: actions/upload-artifact@v2
-      #  with:
-      #    retention-days: 10
-      #    name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
-      #    if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn`
-      #    path: |
-      #      /var/lib/apport/coredump/
 
       - name: 'Dump core stacks on failure'
         if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed

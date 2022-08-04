@@ -83,10 +83,6 @@ jobs:
         env:
           TILEDB_COMPATIBILITY_VERSION: ${{ matrix.tiledb_version }}
         run: |
-          pwd
-          cd $GITHUB_WORKSPACE/build
-          pwd
-
           ulimit -c unlimited
           ulimit -c
 
