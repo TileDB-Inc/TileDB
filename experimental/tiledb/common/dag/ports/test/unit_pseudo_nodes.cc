@@ -85,47 +85,33 @@ TEST_CASE(
   }
 }
 
-template <class PortState>
-void attach_producer_and_consumer() {
+/**
+ * Test that we can attach a producer and consumer node to each other.
+ */
+TEST_CASE(
+    "Pseudo Nodes: Attach producer and consumer nodes", "[pseudo_nodes]") {
   size_t N = 41;
 
-  static_assert(
-      std::is_same_v<PortState, two_stage> ||
-      std::is_same_v<PortState, three_stage>);
+  using Producer = ProducerNode<AsyncMover2, size_t>;
 
-  using Producer = std::conditional_t<
-      std::is_same_v<PortState, two_stage>,
-      ProducerNode<AsyncMover2, size_t>,
-      ProducerNode<AsyncMover3, size_t>>;
-
-  using Consumer = std::conditional_t<
-      std::is_same_v<PortState, two_stage>,
-      ConsumerNode<AsyncMover2, size_t>,
-      ConsumerNode<AsyncMover3, size_t>>;
-
-  using Function = std::conditional_t<
-      std::is_same_v<PortState, two_stage>,
-      FunctionNode<AsyncMover2, size_t>,
-      FunctionNode<AsyncMover3, size_t>>;
+  using Consumer = ConsumerNode<AsyncMover2, size_t>;
 
   SECTION("Attach trivial lambdas") {
     Producer left([]() -> size_t { return 0UL; });
     Consumer right([](size_t) -> void { return; });
 
     SECTION("left to right") {
-      Edge(left, right);
+      attach(left, right);
     }
     SECTION("right to left") {
-      if constexpr (std::is_same_v<PortState, two_stage>) {
-        attach(right, left);
-      }
+      attach(right, left);
     }
 
     SECTION("Attach 2") {
       Producer foo{[]() { return 0UL; }};
       Consumer bar{[](size_t) {}};
 
-      Edge(foo, bar);
+      attach(foo, bar);
     }
   }
 
@@ -146,15 +132,6 @@ void attach_producer_and_consumer() {
       attach(r, p);
     }
   }
-}
-
-/**
- * Test that we can attach a producer and consumer node to each other.
- */
-TEST_CASE(
-    "Pseudo Nodes: Attach producer and consumer nodes", "[pseudo_nodes]") {
-  attach_producer_and_consumer<two_stage>();
-  attach_producer_and_consumer<three_stage>();
 }
 
 /**
