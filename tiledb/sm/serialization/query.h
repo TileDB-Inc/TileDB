@@ -247,14 +247,6 @@ Status condition_to_capnp(
     const QueryCondition& condition,
     capnp::Condition::Builder* condition_builder);
 
-Status subarray_to_capnp(
-    const ArraySchema& schema,
-    const Subarray* subarray,
-    capnp::Subarray::Builder* builder);
-
-Status subarray_from_capnp(
-    const capnp::Subarray::Reader& reader, Subarray* subarray);
-
 void ordered_dim_label_reader_to_capnp(
     const Query& query,
     const OrderedDimLabelReader& reader,

@@ -49,6 +49,10 @@
 #include "tiledb/sm/subarray/relevant_fragments.h"
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
 
+#ifdef TILEDB_SERIALIZATION
+#include "tiledb/sm/serialization/serializable_subarray.h"
+#endif
+
 #include <cmath>
 #include <iostream>
 #include <map>
@@ -248,6 +252,28 @@ class Subarray {
       StorageManager* storage_manager = nullptr);
 
   /**
+   * Constructor, used by serialization.
+   *
+   * @param array The array the subarray is associated with.
+   * @param layout The layout of the values of the subarray (of the results
+   *     if the subarray is used for reads, or of the values provided
+   *     by the user for writes).
+   * @param stats The stats.
+   * @param logger The parent logger to clone and use for logging
+   * @param ranges The ranges for this subarray, per dimensions
+   * @param is_default Are the ranges for a dimension default or not
+   * @param relevant_fragments The relevant fragments
+   */
+  Subarray(
+      const Array* array,
+      Layout layout,
+      stats::Stats* stats,
+      shared_ptr<Logger> logger,
+      std::vector<std::vector<Range>>& ranges,
+      std::vector<bool>&& is_default,
+      std::vector<unsigned>&& relevant_fragments);
+
+  /**
    * Copy constructor. This performs a deep copy (including memcpy of
    * underlying buffers).
    */
@@ -271,6 +297,10 @@ class Subarray {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+
+#ifdef TILEDB_SERIALIZATION
+  serialization::SerializableSubarray serializable_subarray() const;
+#endif
 
   /** Sets config for query-level parameters only. */
   void set_config(const Config& config);
@@ -1232,11 +1262,6 @@ class Subarray {
    * Return relevant fragments as computed
    */
   const RelevantFragments& relevant_fragments() const;
-
-  /**
-   * Return relevant fragments as computed
-   */
-  RelevantFragments& relevant_fragments();
 
   /**
    * For flattened ("total order") start/end range indexes,

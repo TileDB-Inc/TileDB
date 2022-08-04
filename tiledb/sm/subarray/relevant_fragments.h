@@ -152,7 +152,7 @@ class RelevantFragments {
    * that are not in [min, max[.
    */
   RelevantFragments(
-      RelevantFragments& relevant_fragments, unsigned min, unsigned max)
+      const RelevantFragments& relevant_fragments, unsigned min, unsigned max)
       : non_computed_fragment_num_(0)
       , relevant_fragments_computed_(true) {
     computed_relevant_fragments_.reserve(relevant_fragments.size());

@@ -49,3 +49,19 @@ commence(unit_test capnp_nonempty_domain)
   # Enable serialization
   target_compile_definitions(unit_capnp_nonempty_domain PRIVATE -DTILEDB_SERIALIZATION)
 conclude(unit_test)
+
+commence(unit_test serialization)
+    this_target_sources(main.cc unit_serializable_objects.cc)
+    # Not actually testing a unit yet, but some things that ought to be units
+    this_target_link_libraries(TILEDB_CORE_OBJECTS TILEDB_CORE_OBJECTS_ILIB)
+
+    # We want tests to continue as normal even as the API is changing,
+    # so don't warn for deprecations, since they'll be escalated to errors.
+    if (NOT MSVC)
+      target_compile_options(unit_serialization PRIVATE -Wno-deprecated-declarations)
+    endif()
+
+    target_compile_definitions(unit_serialization PRIVATE
+      -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../../../test/inputs"
+    )
+conclude(unit_test)
