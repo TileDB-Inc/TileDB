@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: 'Print env'
-        run: ./scripts/ci/linux/print-env.sh
+        run: ./scripts/ci/posix/print-env.sh
         shell: bash
 
       # Need this for virtualenv and arrow tests if enabled
