@@ -34,7 +34,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <tiledb/tiledb.h>
-
+#if 0
 // Name of array.
 const char* array_name = "encrypted_array";
 
@@ -202,3 +202,8 @@ int main() {
 
   return 0;
 }
+#else
+int main() {
+  return 0;
+}
+#endif
