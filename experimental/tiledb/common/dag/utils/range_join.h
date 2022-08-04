@@ -66,6 +66,7 @@
 #ifndef TILEDB_RANGE_JOIN_H
 #define TILEDB_RANGE_JOIN_H
 
+#include <algorithm>
 #include <iterator>
 #include <numeric>
 #include <tuple>

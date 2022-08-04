@@ -39,11 +39,11 @@
 using namespace tiledb::common;
 
 class big_class {
-  [[maybe_unused]] std::array<char, 2 * 1024 * 1024> storage_;
+  std::array<char, 2 * 1024 * 1024> storage_;
 };
 
 class small_class {
-  [[maybe_unused]] std::array<char, 4 * 1024> storage_;
+  std::array<char, 4 * 1024> storage_;
 };
 
 /**
@@ -367,12 +367,18 @@ TEST_CASE(
   }
 }
 
+/**
+ * Test allocator interface for `PoolAllocator`.  It should be conformant, but
+ * g++ seems to be kind of persnickety.
+ */
+#ifndef __GNUG__
 TEST_CASE(
     "Pool Allocator: Allocate vector with PoolAllocator - compile only",
     "[PoolAllocator]") {
   std::vector<std::byte, PoolAllocator<1024 * 1024>> v(10);
   CHECK(v.size() == 10);
 }
+#endif
 
 /**
  * Allocate a large number of chunks.

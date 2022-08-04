@@ -38,6 +38,7 @@
 #define TILEDB_DAG_FSM_H
 
 #include <atomic>
+#include <cassert>
 #include <iostream>
 #include <mutex>
 #include <stdexcept>
@@ -97,6 +98,7 @@ template <>
 constexpr const unsigned short num_stages<two_stage> = 2;
 #endif
 
+namespace {
 /**
  * Strings for each enum member, for debugging.
  */
@@ -104,7 +106,7 @@ template <class PortState>
 static std::vector<std::string> port_state_strings;
 
 template <>
-static std::vector<std::string> port_state_strings<two_stage>{
+std::vector<std::string> port_state_strings<two_stage>{
     "st_00",
     "st_01",
     "st_10",
@@ -114,7 +116,7 @@ static std::vector<std::string> port_state_strings<two_stage>{
 };
 
 template <>
-static std::vector<std::string> port_state_strings<three_stage>{
+std::vector<std::string> port_state_strings<three_stage>{
     "st_000",
     "st_001",
     "st_010",
@@ -126,6 +128,7 @@ static std::vector<std::string> port_state_strings<three_stage>{
     "error",
     "done",
 };
+}  // namespace
 
 /**
  * Function to convert a state to a string.  Specializations exist for

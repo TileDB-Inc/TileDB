@@ -90,6 +90,7 @@
 #define TILEDB_DAG_POOL_ALLOCATOR_H
 
 #include <atomic>
+#include <cassert>
 #include <iostream>
 #include <mutex>
 
