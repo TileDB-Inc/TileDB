@@ -25,7 +25,7 @@
 # THE SOFTWARE.
 #
 
-# add_subdirectory(data_block)
+add_subdirectory(data_block)
 # add_subdirectory(edge)
 add_subdirectory(execution)
 # add_subdirectory(graph)

@@ -76,7 +76,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       Subarray& subarray,
       Layout layout,
       QueryCondition& condition,
-      bool consolidation_with_timestamps);
+      bool consolidation_with_timestamps,
+      bool skip_checks_serialization = false);
 
   /** Destructor. */
   ~SparseGlobalOrderReader() = default;
@@ -110,13 +111,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @return The query status.
    */
   QueryStatusDetailsReason status_incomplete_reason() const;
-
-  /**
-   * Initializes the reader.
-   *
-   * @return Status.
-   */
-  Status init();
 
   /**
    * Initialize the memory budget variables.

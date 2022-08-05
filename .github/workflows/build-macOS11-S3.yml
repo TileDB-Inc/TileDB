@@ -6,6 +6,7 @@ on:
       - release-*
       - refs/tags/*
     paths-ignore:
+      - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
@@ -15,6 +16,7 @@ on:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
     paths-ignore:
+      - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
@@ -73,14 +75,6 @@ jobs:
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
         shell: bash
-
-      - name: 'Install system headers (OSX 10.14 only)'
-        run: |
-          set -e pipefail
-          open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
-          sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
-        shell: bash
-        if: ${{ runner.os == 'macOS' && env.imageName == 'macOS-10.14' }}
 
       - name: 'Build and test libtiledb'
         id: test

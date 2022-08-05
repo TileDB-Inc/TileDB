@@ -48,18 +48,17 @@ GroupMemberV1::GroupMemberV1(
 // format_version (uint32_t)
 // type (uint8_t)
 // relative (uint8_t)
-// uri_size (uint32_t)
+// uri_size (uint64_t)
 // uri (string)
 Status GroupMemberV1::serialize(Buffer* buff) {
-  RETURN_NOT_OK(buff->write(
-      &GroupMemberV1::format_version_, sizeof(GroupMemberV1::format_version_)));
+  RETURN_NOT_OK(buff->write(&GroupMemberV1::format_version_, sizeof(uint32_t)));
 
   // Write type
   uint8_t type = static_cast<uint8_t>(type_);
-  RETURN_NOT_OK(buff->write(&type, sizeof(type)));
+  RETURN_NOT_OK(buff->write(&type, sizeof(uint8_t)));
 
   // Write relative
-  RETURN_NOT_OK(buff->write(&relative_, sizeof(relative_)));
+  RETURN_NOT_OK(buff->write(&relative_, sizeof(uint8_t)));
 
   // Write uri
   uint64_t uri_size = uri_.to_string().size();
@@ -67,11 +66,11 @@ Status GroupMemberV1::serialize(Buffer* buff) {
   RETURN_NOT_OK(buff->write(uri_.c_str(), uri_size));
 
   // Write name
-  bool name_set = name_.has_value();
-  RETURN_NOT_OK(buff->write(&name_set, sizeof(bool)));
-  if (name_set) {
+  auto name_set = static_cast<uint8_t>(name_.has_value());
+  RETURN_NOT_OK(buff->write(&name_set, sizeof(uint8_t)));
+  if (name_.has_value()) {
     uint64_t name_size = name_->size();
-    RETURN_NOT_OK(buff->write(&name_size, sizeof(name_size)));
+    RETURN_NOT_OK(buff->write(&name_size, sizeof(uint64_t)));
     RETURN_NOT_OK(buff->write(name_->data(), name_size));
   }
 
@@ -82,26 +81,27 @@ std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
 GroupMemberV1::deserialize(ConstBuffer* buff) {
   uint8_t type_placeholder;
   RETURN_NOT_OK_TUPLE(
-      buff->read(&type_placeholder, sizeof(type_placeholder)), std::nullopt);
+      buff->read(&type_placeholder, sizeof(uint8_t)), std::nullopt);
   ObjectType type = static_cast<ObjectType>(type_placeholder);
 
-  bool relative;
-  RETURN_NOT_OK_TUPLE(buff->read(&relative, sizeof(relative)), std::nullopt);
+  uint8_t relative_int;
+  RETURN_NOT_OK_TUPLE(buff->read(&relative_int, sizeof(uint8_t)), std::nullopt);
+  auto relative = static_cast<bool>(relative_int);
 
   uint64_t uri_size = 0;
-  RETURN_NOT_OK_TUPLE(buff->read(&uri_size, sizeof(uri_size)), std::nullopt);
+  RETURN_NOT_OK_TUPLE(buff->read(&uri_size, sizeof(uint64_t)), std::nullopt);
 
   std::string uri_string;
   uri_string.resize(uri_size);
   RETURN_NOT_OK_TUPLE(buff->read(&uri_string[0], uri_size), std::nullopt);
 
-  bool name_set;
+  uint8_t name_set_int;
   std::optional<std::string> name;
-  RETURN_NOT_OK_TUPLE(buff->read(&name_set, sizeof(name_set)), std::nullopt);
+  RETURN_NOT_OK_TUPLE(buff->read(&name_set_int, sizeof(uint8_t)), std::nullopt);
+  auto name_set = static_cast<bool>(name_set_int);
   if (name_set) {
     uint64_t name_size = 0;
-    RETURN_NOT_OK_TUPLE(
-        buff->read(&name_size, sizeof(name_size)), std::nullopt);
+    RETURN_NOT_OK_TUPLE(buff->read(&name_size, sizeof(uint64_t)), std::nullopt);
 
     std::string name_string;
     name_string.resize(name_size);

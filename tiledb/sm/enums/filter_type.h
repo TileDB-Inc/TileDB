@@ -37,6 +37,7 @@
 #include <cassert>
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 using namespace tiledb::common;
 
@@ -50,7 +51,7 @@ namespace sm {
  */
 enum class FilterType : uint8_t {
 #define TILEDB_FILTER_TYPE_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
+#include "tiledb/api/c_api/filter/filter_api_enum.h"
 #undef TILEDB_FILTER_TYPE_ENUM
   /** Internally used encryption with AES-256-GCM. */
   INTERNAL_FILTER_AES_256_GCM = 11,
@@ -131,6 +132,19 @@ inline Status filter_type_enum(
     return Status_Error("Invalid FilterType " + filter_type_str);
   }
   return Status::Ok();
+}
+
+/** Throws error if the input Filtertype enum is not between 0 and 15. */
+inline void ensure_filtertype_is_valid(uint8_t type) {
+  if (type > 15) {
+    throw std::runtime_error(
+        "Invalid FilterType (" + std::to_string(type) + ")");
+  }
+}
+
+/** Throws error if the input Filtertype's enum is not between 0 and 14. */
+inline void ensure_filtertype_is_valid(FilterType type) {
+  ensure_filtertype_is_valid(::stdx::to_underlying(type));
 }
 
 }  // namespace sm

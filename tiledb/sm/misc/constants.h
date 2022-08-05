@@ -77,6 +77,9 @@ extern const std::string array_fragments_dir_name;
 /** The array commit directory name. */
 extern const std::string array_commits_dir_name;
 
+/** The array dimension labels directory name. */
+extern const std::string array_dimension_labels_dir_name;
+
 /** The default tile capacity. */
 extern const uint64_t capacity;
 
@@ -584,6 +587,9 @@ extern const std::string vfsmode_append_str;
 
 /** The TileDB library version in format { major, minor, revision }. */
 extern const int32_t library_version[3];
+
+/** The TileDB serialization base format version number. */
+extern const uint32_t base_format_version;
 
 /** The TileDB serialization format version number. */
 extern const uint32_t format_version;

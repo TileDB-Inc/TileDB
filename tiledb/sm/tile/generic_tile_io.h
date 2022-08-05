@@ -127,7 +127,7 @@ class GenericTileIO {
    * @param config The storage manager's config.
    * @return Status, Tile
    */
-  tuple<Status, optional<Buffer>> read_generic(
+  tuple<Status, optional<Tile>> read_generic(
       uint64_t file_offset,
       const EncryptionKey& encryption_key,
       const Config& config);

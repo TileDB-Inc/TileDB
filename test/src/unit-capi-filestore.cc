@@ -31,8 +31,8 @@
  * Tests the TileDB filestore C API.
  */
 
+#include <test/support/tdb_catch.h>
 #include <iostream>
-#include "catch.hpp"
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -374,6 +374,12 @@ TEST_CASE_METHOD(
 
   // Check correctness
   CHECK(!std::memcmp(buffer, file_content.data(), file_content.size()));
+
+  // Exporting to a non-existent directory should return an error, not abort
+  // (SC-19240)
+  REQUIRE(
+      tiledb_filestore_uri_export(
+          ctx_, "/dir/not/exists/hello.txt", array_name.c_str()) == TILEDB_ERR);
 
   // Clean up
   tiledb_vfs_close(ctx_, fh);

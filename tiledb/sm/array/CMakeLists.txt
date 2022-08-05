@@ -42,17 +42,5 @@ target_link_libraries(compile_array PRIVATE config)
 target_sources(compile_array PRIVATE test/compile_array_directory_main.cc)
 
 if (TILEDB_TESTS)
-    add_executable(unit_array EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_array PRIVATE array)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_array PUBLIC Catch2::Catch2)
-
-    # Sources for tests
-    target_sources(unit_array PUBLIC test/main.cc test/unit_array_directory.cc)
-
-    add_test(
-        NAME "unit_array"
-        COMMAND $<TARGET_FILE:unit_array>
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
+  add_subdirectory(test)
 endif()

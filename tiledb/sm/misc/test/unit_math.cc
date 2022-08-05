@@ -30,7 +30,7 @@
  * Tests the various utility functions.
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 

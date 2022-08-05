@@ -32,7 +32,7 @@
 
 #ifdef HAVE_GCS
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/gcs.h"

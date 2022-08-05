@@ -41,7 +41,7 @@
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/query_condition.h"
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <iostream>
 
 using namespace tiledb::sm;
@@ -55,7 +55,9 @@ TEST_CASE(
 
   ArraySchema array_schema;
   std::vector<ResultCellSlab> result_cell_slabs;
-  REQUIRE(query_condition.apply(array_schema, result_cell_slabs, 1).ok());
+  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+  REQUIRE(
+      query_condition.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
 }
 
 TEST_CASE("QueryCondition: Test init", "[QueryCondition][value_constructor]") {
@@ -1134,7 +1136,9 @@ void test_apply_cells<char*>(
   ResultCellSlab result_cell_slab(result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, result_cell_slabs, 1).ok());
+  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+  REQUIRE(
+      query_condition.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1161,8 +1165,9 @@ void test_apply_cells<char*>(
       std::vector<ResultCellSlab> result_cell_slabs_eq_null;
       result_cell_slabs_eq_null.emplace_back(
           std::move(result_cell_slab_eq_null));
+      std::vector<shared_ptr<FragmentMetadata>> frag_md;
       REQUIRE(query_condition_eq_null
-                  .apply(array_schema, result_cell_slabs_eq_null, 1)
+                  .apply(array_schema, frag_md, result_cell_slabs_eq_null, 1)
                   .ok());
 
       REQUIRE(result_cell_slabs_eq_null.size() == (cells / 2));
@@ -1227,7 +1232,9 @@ void test_apply_cells<char*>(
   ResultCellSlab fill_result_cell_slab(nullptr, 0, cells);
   std::vector<ResultCellSlab> fill_result_cell_slabs;
   fill_result_cell_slabs.emplace_back(std::move(fill_result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, fill_result_cell_slabs, 1).ok());
+  REQUIRE(
+      query_condition.apply(array_schema, frag_md, fill_result_cell_slabs, 1)
+          .ok());
 
   // Verify the fill result cell slabs contain the expected cells.
   auto fill_expected_iter = fill_expected_cell_idx_vec.begin();
@@ -1299,7 +1306,9 @@ void test_apply_cells(
   ResultCellSlab result_cell_slab(result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, result_cell_slabs, 1).ok());
+  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+  REQUIRE(
+      query_condition.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1357,7 +1366,9 @@ void test_apply_cells(
   ResultCellSlab fill_result_cell_slab(nullptr, 0, cells);
   std::vector<ResultCellSlab> fill_result_cell_slabs;
   fill_result_cell_slabs.emplace_back(std::move(fill_result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, fill_result_cell_slabs, 1).ok());
+  REQUIRE(
+      query_condition.apply(array_schema, frag_md, fill_result_cell_slabs, 1)
+          .ok());
 
   // Verify the fill result cell slabs contain the expected cells.
   auto fill_expected_iter = fill_expected_cell_idx_vec.begin();
@@ -1464,7 +1475,7 @@ void test_apply_tile<char*>(
   bool var_size = array_schema.attribute(field_name)->var_size();
   bool nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
-      var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
+      var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
 
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,
@@ -1482,7 +1493,7 @@ void test_apply_tile<char*>(
   REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
 
   if (var_size) {
-    Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+    Tile* const tile_offsets = &tile_tuple->fixed_tile();
     REQUIRE(tile_offsets
                 ->init_unfiltered(
                     constants::format_version,
@@ -1503,7 +1514,7 @@ void test_apply_tile<char*>(
   }
 
   if (nullable) {
-    Tile* const tile_validity = &std::get<2>(*tile_tuple);
+    Tile* const tile_validity = &tile_tuple->validity_tile();
     REQUIRE(tile_validity
                 ->init_unfiltered(
                     constants::format_version,
@@ -1540,7 +1551,7 @@ void test_apply_tile(
     const ArraySchema& array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
-  Tile* const tile = &std::get<0>(*tile_tuple);
+  Tile* const tile = &tile_tuple->fixed_tile();
 
   REQUIRE(
       tile->init_unfiltered(
@@ -1605,7 +1616,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile<char*>(field_name, cells, type, array_schema, &result_tile);
 }
@@ -1638,7 +1649,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile<T>(field_name, cells, type, array_schema, &result_tile);
 }
@@ -1715,14 +1726,14 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
   var_size = array_schema.attribute(field_name)->var_size();
   nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
-      var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
+      var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
 
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,
@@ -1743,7 +1754,7 @@ TEST_CASE(
   REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
 
   if (var_size) {
-    Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+    Tile* const tile_offsets = &tile_tuple->fixed_tile();
     REQUIRE(tile_offsets
                 ->init_unfiltered(
                     constants::format_version,
@@ -1766,7 +1777,7 @@ TEST_CASE(
   }
 
   if (nullable) {
-    Tile* const tile_validity = &std::get<2>(*tile_tuple);
+    Tile* const tile_validity = &tile_tuple->validity_tile();
     REQUIRE(tile_validity
                 ->init_unfiltered(
                     constants::format_version,
@@ -1829,7 +1840,9 @@ TEST_CASE(
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, result_cell_slabs, 1).ok());
+  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+  REQUIRE(
+      query_condition.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -2136,7 +2149,7 @@ void test_apply_tile_dense<char*>(
   bool var_size = array_schema.attribute(field_name)->var_size();
   bool nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
-      var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
+      var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
 
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,
@@ -2154,7 +2167,7 @@ void test_apply_tile_dense<char*>(
   REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
 
   if (var_size) {
-    Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+    Tile* const tile_offsets = &tile_tuple->fixed_tile();
     REQUIRE(tile_offsets
                 ->init_unfiltered(
                     constants::format_version,
@@ -2175,7 +2188,7 @@ void test_apply_tile_dense<char*>(
   }
 
   if (nullable) {
-    Tile* const tile_validity = &std::get<2>(*tile_tuple);
+    Tile* const tile_validity = &tile_tuple->validity_tile();
     REQUIRE(tile_validity
                 ->init_unfiltered(
                     constants::format_version,
@@ -2212,7 +2225,7 @@ void test_apply_tile_dense(
     const ArraySchema& array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
-  Tile* const tile = &std::get<0>(*tile_tuple);
+  Tile* const tile = &tile_tuple->fixed_tile();
 
   REQUIRE(
       tile->init_unfiltered(
@@ -2283,7 +2296,7 @@ void test_apply_dense<char*>(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile_dense<char*>(
       field_name, cells, type, array_schema, &result_tile);
@@ -2322,7 +2335,7 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile_dense<T>(field_name, cells, type, array_schema, &result_tile);
 }
@@ -2400,14 +2413,14 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
   var_size = array_schema.attribute(field_name)->var_size();
   nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
-      var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
+      var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
 
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,
@@ -2427,7 +2440,7 @@ TEST_CASE(
   REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
 
   if (var_size) {
-    Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+    Tile* const tile_offsets = &tile_tuple->fixed_tile();
     REQUIRE(tile_offsets
                 ->init_unfiltered(
                     constants::format_version,
@@ -2450,7 +2463,7 @@ TEST_CASE(
   }
 
   if (nullable) {
-    Tile* const tile_validity = &std::get<2>(*tile_tuple);
+    Tile* const tile_validity = &tile_tuple->validity_tile();
     REQUIRE(tile_validity
                 ->init_unfiltered(
                     constants::format_version,
@@ -2811,7 +2824,7 @@ void test_apply_tile_sparse<char*>(
   bool var_size = array_schema.attribute(field_name)->var_size();
   bool nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
-      var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
+      var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
 
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,
@@ -2829,7 +2842,7 @@ void test_apply_tile_sparse<char*>(
   REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
 
   if (var_size) {
-    Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+    Tile* const tile_offsets = &tile_tuple->fixed_tile();
     REQUIRE(tile_offsets
                 ->init_unfiltered(
                     constants::format_version,
@@ -2850,7 +2863,7 @@ void test_apply_tile_sparse<char*>(
   }
 
   if (nullable) {
-    Tile* const tile_validity = &std::get<2>(*tile_tuple);
+    Tile* const tile_validity = &tile_tuple->validity_tile();
     REQUIRE(tile_validity
                 ->init_unfiltered(
                     constants::format_version,
@@ -2887,7 +2900,7 @@ void test_apply_tile_sparse(
     const ArraySchema& array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
-  Tile* const tile = &std::get<0>(*tile_tuple);
+  Tile* const tile = &tile_tuple->fixed_tile();
 
   REQUIRE(
       tile->init_unfiltered(
@@ -2959,7 +2972,7 @@ void test_apply_sparse<char*>(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile_sparse<char*>(
       field_name, cells, type, array_schema, &result_tile);
@@ -2998,7 +3011,7 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile_sparse<T>(
       field_name, cells, type, array_schema, &result_tile);
@@ -3073,7 +3086,8 @@ void validate_qc_apply(
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(tp.qc_.apply(array_schema, result_cell_slabs, 1).ok());
+  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+  REQUIRE(tp.qc_.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
   REQUIRE(result_cell_slabs.size() == tp.expected_slabs_.size());
   uint64_t result_cell_slabs_size = result_cell_slabs.size();
   for (uint64_t i = 0; i < result_cell_slabs_size; ++i) {
@@ -3702,9 +3716,9 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, false, false);
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
-  Tile* const tile = &std::get<0>(*tile_tuple);
+  Tile* const tile = &tile_tuple->fixed_tile();
 
   // Initialize and populate the data tile.
   REQUIRE(tile->init_unfiltered(
@@ -4001,10 +4015,10 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, true, false);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
-  Tile* const tile = &std::get<1>(*tile_tuple);
+  Tile* const tile = &tile_tuple->var_tile();
 
   std::string data = "alicebobcraigdaveerinfrankgraceheidiivanjudy";
   std::vector<uint64_t> offsets = {0, 5, 8, 13, 17, 21, 26, 31, 36, 40};
@@ -4020,7 +4034,7 @@ TEST_CASE(
   REQUIRE(tile->write(data.c_str(), 0, data.size()).ok());
 
   // Write the tile offsets.
-  Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+  Tile* const tile_offsets = &tile_tuple->fixed_tile();
   REQUIRE(tile_offsets
               ->init_unfiltered(
                   constants::format_version,
@@ -4285,9 +4299,9 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, false, true);
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
-  Tile* const tile = &std::get<0>(*tile_tuple);
+  Tile* const tile = &tile_tuple->fixed_tile();
 
   // Initialize and populate the data tile.
   REQUIRE(tile->init_unfiltered(
@@ -4302,7 +4316,7 @@ TEST_CASE(
       3.4, 1.3, 2.2, 4.5, 2.8, 2.1, 1.7, 3.3, 1.9, 4.2};
   REQUIRE(tile->write(values.data(), 0, cells * sizeof(float)).ok());
 
-  Tile* const tile_validity = &std::get<2>(*tile_tuple);
+  Tile* const tile_validity = &tile_tuple->validity_tile();
   REQUIRE(tile_validity
               ->init_unfiltered(
                   constants::format_version,
@@ -4378,14 +4392,14 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
   var_size = array_schema.attribute(field_name)->var_size();
   nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
-      var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
+      var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
 
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,
@@ -4405,7 +4419,7 @@ TEST_CASE(
   REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
 
   if (var_size) {
-    Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+    Tile* const tile_offsets = &tile_tuple->fixed_tile();
     REQUIRE(tile_offsets
                 ->init_unfiltered(
                     constants::format_version,
@@ -4428,7 +4442,7 @@ TEST_CASE(
   }
 
   if (nullable) {
-    Tile* const tile_validity = &std::get<2>(*tile_tuple);
+    Tile* const tile_validity = &tile_tuple->validity_tile();
     REQUIRE(tile_validity
                 ->init_unfiltered(
                     constants::format_version,

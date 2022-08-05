@@ -32,7 +32,7 @@
 
 #ifdef _WIN32
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 
 #include <cassert>
 #include "tiledb/common/status.h"

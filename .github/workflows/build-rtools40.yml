@@ -1,15 +1,22 @@
 name: rtools40
-
 on:
   push:
+    branches:
+      - dev
+      - release-*
+      - refs/tags/*
     paths-ignore:
+      - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
       - 'doc/source/conf.py'
       - 'tiledb/sm/c_api/tiledb_version.h'
   pull_request:
+    branches:
+      - '*'  # must quote since "*" is a YAML reserved character; we want a string
     paths-ignore:
+      - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'

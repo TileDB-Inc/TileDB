@@ -30,7 +30,7 @@
  * Tests the C++ API for array related functions.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/filesystem/uri.h"
@@ -1703,4 +1703,100 @@ TEST_CASE(
   CHECK(
       stats.find("\"Context.StorageManager.VFS.file_size_num\": 1") !=
       std::string::npos);
+}
+
+TEST_CASE(
+    "C++ API: Write and read to an array with experimental build enabled",
+    "[cppapi][array][experimental]") {
+  if constexpr (!is_experimental_build) {
+    return;
+  }
+
+  static const std::string arrays_dir =
+      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays";
+  std::string old_array_name(arrays_dir + "/non_split_coords_v1_4_0");
+  std::string new_array_name(arrays_dir + "/experimental_array_vUINT32_MAX");
+  Context ctx;
+
+  // Try writing to an older-versioned array
+  REQUIRE_THROWS_WITH(
+      Array(ctx, old_array_name, TILEDB_WRITE),
+      Catch::Contains("Array format version") &&
+          Catch::Contains("is not the library format version"));
+
+  // Read from an older-versioned array
+  Array array(ctx, old_array_name, TILEDB_READ);
+
+  // Upgrade version
+  Array::upgrade_version(ctx, old_array_name);
+
+  // Write to upgraded (current) version
+  Array array_write(ctx, old_array_name, TILEDB_WRITE);
+  std::vector<int> subarray_write = {1, 2, 10, 10};
+  std::vector<int> a_write = {11, 12};
+  std::vector<int> d1_write = {1, 2};
+  std::vector<int> d2_write = {10, 10};
+
+  Query query_write(ctx, array_write, TILEDB_WRITE);
+
+  query_write.set_layout(TILEDB_GLOBAL_ORDER);
+  query_write.set_data_buffer("a", a_write);
+  query_write.set_data_buffer("d1", d1_write);
+  query_write.set_data_buffer("d2", d2_write);
+
+  query_write.submit();
+  query_write.finalize();
+  array_write.close();
+
+  FragmentInfo fragment_info(ctx, old_array_name);
+  fragment_info.load();
+  std::string fragment_uri = fragment_info.fragment_uri(1);
+
+  // old version fragment
+  CHECK(fragment_info.version(0) == 1);
+  // new version fragment
+  CHECK(fragment_info.version(1) == tiledb::sm::constants::format_version);
+
+  // Read from upgraded version
+  Array array_read(ctx, old_array_name, TILEDB_READ);
+  std::vector<int> subarray_read = {1, 4, 10, 10};
+  std::vector<int> a_read;
+  a_read.resize(4);
+  std::vector<int> d1_read;
+  d1_read.resize(4);
+  std::vector<int> d2_read;
+  d2_read.resize(4);
+
+  Query query_read(ctx, array_read);
+  query_read.set_subarray(subarray_read)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", a_read)
+      .set_data_buffer("d1", d1_read)
+      .set_data_buffer("d2", d2_read);
+
+  query_read.submit();
+  array_read.close();
+
+  for (int i = 0; i < 2; i++) {
+    REQUIRE(a_read[i] == i + 11);
+  }
+  for (int i = 2; i < 3; i++) {
+    REQUIRE(a_read[i] == i + 1);
+  }
+
+  // Try writing to a newer-versioned (UINT32_MAX) array
+  REQUIRE_THROWS_WITH(
+      Array(ctx, new_array_name, TILEDB_WRITE),
+      Catch::Contains("Incompatible format version."));
+
+  // Try reading from a newer-versioned (UINT32_MAX) array
+  REQUIRE_THROWS_WITH(
+      Array(ctx, new_array_name, TILEDB_READ),
+      Catch::Contains("Incompatible format version."));
+
+  // Clean up
+  VFS vfs(ctx);
+  vfs.remove_dir(get_fragment_dir(array_read.uri()));
+  vfs.remove_dir(get_commit_dir(array_read.uri()));
+  vfs.remove_dir(array_read.uri() + "/__schema");
 }
