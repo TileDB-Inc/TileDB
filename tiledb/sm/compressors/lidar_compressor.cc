@@ -74,6 +74,7 @@ Status Lidar::compress(
 
   // Sort values
   parallel_sort(Lidar::compute_tp_, vals.begin(), vals.end(), LidarSortCmp<W>());
+  // switch things back oops
 
   std::vector<W> num_vals;
   std::vector<size_t> positions;
