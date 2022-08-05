@@ -649,8 +649,8 @@ void CompressionFilter::serialize_impl(Serializer& serializer) const {
     return;
   }
   auto compressor_char = static_cast<uint8_t>(compressor_);
-  serializer.write(compressor_char);
-  serializer.write(level_);
+  serializer.write<uint8_t>(compressor_char);
+  serializer.write<int32_t>(level_);
 }
 
 void CompressionFilter::init_compression_resource_pool(uint64_t size) {

@@ -208,15 +208,15 @@ void Attribute::serialize(
     Serializer& serializer, const uint32_t version) const {
   // Write attribute name
   auto attribute_name_size = (uint32_t)name_.size();
-  serializer.write(attribute_name_size);
+  serializer.write<uint32_t>(attribute_name_size);
   serializer.write(name_.data(), attribute_name_size);
 
   // Write type
   auto type = (uint8_t)type_;
-  serializer.write(type);
+  serializer.write<uint8_t>(type);
 
   // Write cell_val_num_
-  serializer.write(cell_val_num_);
+  serializer.write<uint32_t>(cell_val_num_);
 
   // Write filter pipeline
   filters_.serialize(serializer);
@@ -225,18 +225,18 @@ void Attribute::serialize(
   if (version >= 6) {
     auto fill_value_size = (uint64_t)fill_value_.size();
     assert(fill_value_size != 0);
-    serializer.write(fill_value_size);
+    serializer.write<uint64_t>(fill_value_size);
     serializer.write(fill_value_.data(), fill_value_.size());
   }
 
   // Write nullable
   if (version >= 7) {
-    serializer.write(nullable_);
+    serializer.write<uint8_t>(nullable_);
   }
 
   // Write validity fill value
   if (version >= 7) {
-    serializer.write(fill_value_validity_);
+    serializer.write<uint8_t>(fill_value_validity_);
   }
 }
 

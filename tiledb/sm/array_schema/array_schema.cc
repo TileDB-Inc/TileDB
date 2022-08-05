@@ -557,23 +557,23 @@ void ArraySchema::serialize(Serializer& serializer) const {
   // the in-memory `version_`, we will serialize every array schema
   // as the latest version.
   const uint32_t version = constants::format_version;
-  serializer.write(version);
+  serializer.write<uint32_t>(version);
 
   // Write allows_dups
-  serializer.write(allows_dups_);
+  serializer.write<uint8_t>(allows_dups_);
 
   // Write array type
   auto array_type = (uint8_t)array_type_;
-  serializer.write(array_type);
+  serializer.write<uint8_t>(array_type);
 
   // Write tile and cell order
   auto tile_order = (uint8_t)tile_order_;
-  serializer.write(tile_order);
+  serializer.write<uint8_t>(tile_order);
   auto cell_order = (uint8_t)cell_order_;
-  serializer.write(cell_order);
+  serializer.write<uint8_t>(cell_order);
 
   // Write capacity
-  serializer.write(capacity_);
+  serializer.write<uint64_t>(capacity_);
 
   // Write coords filters
   coords_filters_.serialize(serializer);
@@ -589,7 +589,7 @@ void ArraySchema::serialize(Serializer& serializer) const {
 
   // Write attributes
   auto attribute_num = (uint32_t)attributes_.size();
-  serializer.write(attribute_num);
+  serializer.write<uint32_t>(attribute_num);
   for (auto& attr : attributes_) {
     attr->serialize(serializer, version);
   }
@@ -601,7 +601,7 @@ void ArraySchema::serialize(Serializer& serializer) const {
       throw StatusException(Status_ArraySchemaError(
           "Overflow when attempting to serialize label number."));
     }
-    serializer.write(label_num);
+    serializer.write<uint32_t>(label_num);
     for (auto& label : dimension_labels_) {
       label->serialize(serializer, version);
     }

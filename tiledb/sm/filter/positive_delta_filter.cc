@@ -412,7 +412,7 @@ PositiveDeltaFilter* PositiveDeltaFilter::clone_impl() const {
 }
 
 void PositiveDeltaFilter::serialize_impl(Serializer& serializer) const {
-  serializer.write(max_window_size_);
+  serializer.write<uint32_t>(max_window_size_);
 }
 
 }  // namespace sm

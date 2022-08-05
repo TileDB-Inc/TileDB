@@ -1305,17 +1305,17 @@ void Dimension::serialize(Serializer& serializer, uint32_t version) const {
 
   // Write dimension name
   auto dimension_name_size = (uint32_t)name_.size();
-  serializer.write(dimension_name_size);
+  serializer.write<uint32_t>(dimension_name_size);
   serializer.write(name_.data(), dimension_name_size);
 
   // Applicable only to version >= 5
   if (version >= 5) {
     // Write type
     auto type = (uint8_t)type_;
-    serializer.write(type);
+    serializer.write<uint8_t>(type);
 
     // Write cell_val_num_
-    serializer.write(cell_val_num_);
+    serializer.write<uint32_t>(cell_val_num_);
 
     // Write filter pipeline
     filters_.serialize(serializer);
@@ -1323,11 +1323,11 @@ void Dimension::serialize(Serializer& serializer, uint32_t version) const {
 
   // Write domain and tile extent
   uint64_t domain_size = (is_str) ? 0 : 2 * coord_size();
-  serializer.write(domain_size);
+  serializer.write<uint64_t>(domain_size);
   serializer.write(domain_.data(), domain_size);
 
   auto null_tile_extent = (uint8_t)(tile_extent_ ? 0 : 1);
-  serializer.write(null_tile_extent);
+  serializer.write<uint8_t>(null_tile_extent);
   if (tile_extent_) {
     serializer.write(tile_extent_.data(), tile_extent_.size());
   }

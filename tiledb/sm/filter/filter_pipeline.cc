@@ -639,9 +639,9 @@ Status FilterPipeline::run_reverse_internal(
 // filter0 metadata (see Filter::serialize)
 // filter1...
 void FilterPipeline::serialize(Serializer& serializer) const {
-  serializer.write(max_chunk_size_);
+  serializer.write<uint32_t>(max_chunk_size_);
   auto num_filters = static_cast<uint32_t>(filters_.size());
-  serializer.write(num_filters);
+  serializer.write<uint32_t>(num_filters);
 
   for (const auto& f : filters_) {
     // For compatibility with the old attribute compressor API: if the filter

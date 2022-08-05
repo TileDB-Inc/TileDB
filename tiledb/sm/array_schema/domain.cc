@@ -588,7 +588,7 @@ bool Domain::null_tile_extents() const {
 // ...
 void Domain::serialize(Serializer& serializer, uint32_t version) const {
   // Write dimensions
-  serializer.write(dim_num_);
+  serializer.write<uint32_t>(dim_num_);
   for (const auto& dim : dimensions_) {
     dim->serialize(serializer, version);
   }

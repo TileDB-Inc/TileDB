@@ -231,23 +231,23 @@ void DimensionLabelReference::dump(FILE* out) const {
 //| URI                       | `char []`  |
 void DimensionLabelReference::serialize(
     Serializer& serializer, uint32_t) const {
-  serializer.write(dim_id_);
+  serializer.write<uint32_t>(dim_id_);
   auto label_order_int = static_cast<uint8_t>(label_order_);
-  serializer.write(label_order_int);
+  serializer.write<uint8_t>(label_order_int);
   auto label_type_int = static_cast<uint8_t>(label_type_);
-  serializer.write(label_type_int);
-  serializer.write(label_cell_val_num_);
+  serializer.write<uint8_t>(label_type_int);
+  serializer.write<uint32_t>(label_cell_val_num_);
   auto is_external_int = static_cast<uint8_t>(is_external_);
-  serializer.write(is_external_int);
+  serializer.write<uint8_t>(is_external_int);
   auto relative_uri_int = static_cast<uint8_t>(relative_uri_);
-  serializer.write(relative_uri_int);
+  serializer.write<uint8_t>(relative_uri_int);
   uint64_t label_domain_size =
       datatype_is_string(label_type_) ? 0 : 2 * datatype_size(label_type_);
-  serializer.write(label_domain_size);
+  serializer.write<uint64_t>(label_domain_size);
   uint64_t name_size{name_.size()};
-  serializer.write(name_size);
+  serializer.write<uint64_t>(name_size);
   uint64_t uri_size{uri_.to_string().size()};
-  serializer.write(uri_size);
+  serializer.write<uint64_t>(uri_size);
   serializer.write(label_domain_.data(), label_domain_size);
   serializer.write(name_.c_str(), name_size);
   serializer.write(uri_.c_str(), uri_size);

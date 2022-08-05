@@ -68,13 +68,13 @@ Status Filter::set_option(FilterOption option, const void* value) {
 // filter metadata (char[])
 void Filter::serialize(Serializer& serializer) const {
   auto type = static_cast<uint8_t>(type_);
-  serializer.write(type);
+  serializer.write<uint8_t>(type);
 
   // Compute and write metadata length
   SizeComputationSerializer size_computation_serializer;
   serialize_impl(size_computation_serializer);
   uint32_t md_length = size_computation_serializer.size();
-  serializer.write(md_length);
+  serializer.write<uint32_t>(md_length);
 
   // Filter-specific serialization
   serialize_impl(serializer);
