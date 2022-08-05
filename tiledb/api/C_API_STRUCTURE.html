@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.0.37">
+<meta name="generator" content="quarto-1.0.38">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -211,6 +211,7 @@ ul.task-list{list-style: none;}
   <li><a href="#facade-classes" id="toc-facade-classes" class="nav-link" data-scroll-target="#facade-classes">Facade classes</a></li>
   <li><a href="#proxy-classes" id="toc-proxy-classes" class="nav-link" data-scroll-target="#proxy-classes">Proxy classes</a></li>
   </ul></li>
+  <li><a href="#implementation-restrictions" id="toc-implementation-restrictions" class="nav-link" data-scroll-target="#implementation-restrictions">Implementation restrictions</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -253,9 +254,18 @@ ul.task-list{list-style: none;}
 <section id="proxy-classes" class="level3">
 <h3 class="anchored" data-anchor-id="proxy-classes">Proxy classes</h3>
 <p>A proxy class represent a C API object that is newly created by collecting constructor arguments through API <code>set_</code> calls.</p>
-
-
 </section>
+</section>
+<section id="implementation-restrictions" class="level2">
+<h2 class="anchored" data-anchor-id="implementation-restrictions">Implementation restrictions</h2>
+<ul>
+<li><p>In order to facilitate correct SWIG wrapper generation, non-TileDB headers included by the external header files <em>must</em> be wrapped as follows:</p>
+<pre><code>#ifndef TILEDB_CAPI_WRAPPING
+#include &lt;stdint.h&gt;
+#endif</code></pre></li>
+</ul>
+
+
 </section>
 </section>
 
