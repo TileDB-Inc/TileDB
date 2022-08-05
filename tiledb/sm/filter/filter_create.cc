@@ -152,7 +152,7 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     };
     case FilterType::FILTER_XOR: {
       return make_shared<XORFilter>(HERE());
-    };
+    }
     default:
       throw StatusException(
           "FilterCreate", "Deserialization error; unknown type");
