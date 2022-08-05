@@ -31,7 +31,7 @@
  * Tests for the RLE compression.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "helpers.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/compressors/rle_compressor.h"

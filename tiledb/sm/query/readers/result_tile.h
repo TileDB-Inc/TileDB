@@ -71,12 +71,72 @@ class Subarray;
 class ResultTile {
  public:
   /**
-   * For each fixed-sized attributes, the second tile in the tuple is ignored.
-   * For var-sized attributes, the first tile is the offsets tile and the second
-   * tile is the var-sized values tile. If the attribute is nullable, the third
-   * tile contains the validity vector.
+   * Class definition for the tile tuple.
    */
-  typedef tuple<Tile, Tile, Tile> TileTuple;
+  class TileTuple {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+
+    /** Default constructor. */
+    TileTuple() = delete;
+
+    /** Constructor with var_size and nullable parameters. */
+    TileTuple(bool var_size, bool nullable) {
+      if (var_size) {
+        var_tile_ = Tile();
+      }
+
+      if (nullable) {
+        validity_tile_ = Tile();
+      }
+    }
+
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+
+    /** @returns Fixed tile. */
+    Tile& fixed_tile() {
+      return fixed_tile_;
+    }
+
+    /** @returns Var tile. */
+    Tile& var_tile() {
+      return var_tile_.value();
+    }
+
+    /** @returns Validity tile. */
+    Tile& validity_tile() {
+      return validity_tile_.value();
+    }
+
+    /** @returns Fixed tile. */
+    const Tile& fixed_tile() const {
+      return fixed_tile_;
+    }
+
+    /** @returns Var tile. */
+    const Tile& var_tile() const {
+      return var_tile_.value();
+    }
+
+    /** @returns Validity tile. */
+    const Tile& validity_tile() const {
+      return validity_tile_.value();
+    }
+
+   private:
+    /** Stores the fixed data tile. */
+    Tile fixed_tile_;
+
+    /** Stores the var data tile. */
+    optional<Tile> var_tile_;
+
+    /** Stores the validity data tile. */
+    optional<Tile> validity_tile_;
+  };
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -136,10 +196,11 @@ class ResultTile {
   void erase_tile(const std::string& name);
 
   /** Initializes the result tile for the given attribute. */
-  void init_attr_tile(const std::string& name);
+  void init_attr_tile(const std::string& name, bool var_size, bool nullable);
 
   /** Initializes the result tile for the given dimension name and index. */
-  void init_coord_tile(const std::string& name, unsigned dim_idx);
+  void init_coord_tile(
+      const std::string& name, bool var_size, unsigned dim_idx);
 
   /** Returns the tile pair for the input attribute or dimension. */
   TileTuple* tile_tuple(const std::string& name);
@@ -397,13 +458,13 @@ class ResultTile {
   optional<TileTuple> delete_timestamps_tile_;
 
   /** The zipped coordinates tile. */
-  TileTuple coords_tile_;
+  optional<TileTuple> coords_tile_;
 
   /**
    * The separate coordinate tiles along with their names, sorted on the
    * dimension order.
    */
-  std::vector<std::pair<std::string, TileTuple>> coord_tiles_;
+  std::vector<std::pair<std::string, optional<TileTuple>>> coord_tiles_;
 
   /**
    * Stores the appropriate templated compute_results_dense() function based for

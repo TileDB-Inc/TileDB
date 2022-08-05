@@ -2604,6 +2604,12 @@ TILEDB_EXPORT int32_t tiledb_domain_dump(
  *     ctx, "dim_0", TILEDB_INT64, dim_domain, &tile_extent, &dim);
  * @endcode
  *
+ * Note: as laid out in the Storage Format,
+ * the following Datatypes are not valid for Dimension:
+ * TILEDB_CHAR, TILEDB_BLOB, TILEDB_BOOL, TILEDB_STRING_UTF8,
+ * TILEDB_STRING_UTF16, TILEDB_STRING_UTF32, TILEDB_STRING_UCS2,
+ * TILEDB_STRING_UCS4, TILEDB_ANY
+ *
  * @param ctx The TileDB context.
  * @param name The dimension name.
  * @param type The dimension type.

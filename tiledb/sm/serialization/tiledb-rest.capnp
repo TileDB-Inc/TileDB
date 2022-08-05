@@ -219,6 +219,12 @@ struct Error {
     message @1 :Text;
 }
 
+struct FloatScaleConfig {
+  scale @0 :Float64;
+  offset @1 :Float64;
+  byteWidth @2 :UInt64;
+}
+
 struct Filter {
   type @0 :Text;
   # filter type
@@ -238,6 +244,8 @@ struct Filter {
     float64 @12 :Float64;
   }
   # filter data
+
+  floatScaleConfig @13 :FloatScaleConfig;
 }
 
 struct FilterPipeline {

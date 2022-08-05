@@ -30,10 +30,11 @@
  * Tests the C++ API for float scaling filter related functions.
  */
 
+#include <limits>
 #include <random>
 #include <vector>
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
@@ -74,7 +75,6 @@ template <typename T, typename W>
 struct FloatScalingFilterTestStruct {
   void float_scaling_filter_api_test(
       Context& ctx, tiledb_array_type_t array_type) {
-    /// TODO: Comment whole function.
     Domain domain(ctx);
     auto d1 = Dimension::create<int>(ctx, "rows", {{1, dim_hi}}, 4);
     auto d2 = Dimension::create<int>(ctx, "cols", {{1, dim_hi}}, 4);
@@ -103,7 +103,8 @@ struct FloatScalingFilterTestStruct {
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<T> dis(-45234.0f, 45234.0);
+    std::uniform_real_distribution<T> dis(
+        std::numeric_limits<W>::min(), std::numeric_limits<W>::max());
 
     std::vector<int> row_dims;
     std::vector<int> col_dims;
@@ -171,18 +172,22 @@ struct FloatScalingFilterTestStruct {
   }
 };
 
-TEMPLATE_PRODUCT_TEST_CASE(
-    "C++ API: Float Scaling Filter list on array",
-    "[cppapi][filter][float-scaling]",
-    FloatScalingFilterTestStruct,
-    ((float, int8_t),
-     (double, int8_t),
+/**
+,
      (float, int16_t),
      (double, int16_t),
      (float, int32_t),
      (double, int32_t),
      (float, int64_t),
-     (double, int64_t))) {
+     (double, int64_t)
+ *
+ */
+
+TEMPLATE_PRODUCT_TEST_CASE(
+    "C++ API: Float Scaling Filter list on array",
+    "[cppapi][filter][float-scaling]",
+    FloatScalingFilterTestStruct,
+    ((float, int8_t), (double, int8_t))) {
   // Setup.
   Context ctx;
   VFS vfs(ctx);

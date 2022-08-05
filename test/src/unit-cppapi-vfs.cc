@@ -30,7 +30,7 @@
  * Tests the C++ API for the VFS functionality.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
 
 #ifdef _WIN32

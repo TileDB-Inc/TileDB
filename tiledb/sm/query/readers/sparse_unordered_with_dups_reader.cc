@@ -53,6 +53,14 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
+class SparseUnorderedWithDupsReaderStatusException : public StatusException {
+ public:
+  explicit SparseUnorderedWithDupsReaderStatusException(
+      const std::string& message)
+      : StatusException("SparseUnorderedWithDupsReader", message) {
+  }
+};
+
 /* ****************************** */
 /*          CONSTRUCTORS          */
 /* ****************************** */
@@ -67,7 +75,8 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition)
+    QueryCondition& condition,
+    bool skip_checks_serialization)
     : SparseIndexReaderBase(
           stats,
           logger->clone("SparseUnorderedWithDupsReader", ++logger_id_),
@@ -78,6 +87,13 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           subarray,
           layout,
           condition) {
+  SparseIndexReaderBase::init(skip_checks_serialization);
+
+  // Initialize memory budget variables.
+  if (!initialize_memory_budget().ok()) {
+    throw SparseUnorderedWithDupsReaderStatusException(
+        "Cannot initialize memory budget");
+  }
 }
 
 /* ****************************** */
@@ -101,16 +117,6 @@ SparseUnorderedWithDupsReader<BitmapType>::status_incomplete_reason() const {
   return result_tiles_.empty() ?
              QueryStatusDetailsReason::REASON_MEMORY_BUDGET :
              QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE;
-}
-
-template <class BitmapType>
-Status SparseUnorderedWithDupsReader<BitmapType>::init() {
-  RETURN_NOT_OK(SparseIndexReaderBase::init());
-
-  // Initialize memory budget variables.
-  RETURN_NOT_OK(initialize_memory_budget());
-
-  return Status::Ok();
 }
 
 template <class BitmapType>
@@ -513,11 +519,10 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
     void** var_data) {
   // Get source buffers.
   const auto tile_tuple = rt->tile_tuple(name);
-  const auto t = &std::get<0>(*tile_tuple);
-  const auto t_var = &std::get<1>(*tile_tuple);
-  const auto src_buff = t->data_as<uint64_t>();
-  const auto src_var_buff = t_var->data_as<char>();
-  const auto t_val = &std::get<2>(*tile_tuple);
+  const auto& t = tile_tuple->fixed_tile();
+  const auto& t_var = tile_tuple->var_tile();
+  const auto src_buff = t.data_as<uint64_t>();
+  const auto src_var_buff = t_var.data_as<char>();
   const auto cell_num =
       fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
 
@@ -536,7 +541,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
   if (src_max_pos == cell_num) {
     for (uint64_t i = 0; i < rt->bitmap()[src_max_pos - 1]; i++) {
       *buffer =
-          (OffType)(t_var->size() - src_buff[src_max_pos - 1]) / offset_div;
+          (OffType)(t_var.size() - src_buff[src_max_pos - 1]) / offset_div;
       buffer++;
       *var_data = src_var_buff + src_buff[src_max_pos - 1];
       var_data++;
@@ -545,7 +550,8 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
 
   // Copy nullable values.
   if (nullable) {
-    const auto src_val_buff = t_val->data_as<uint8_t>();
+    const auto& t_val = tile_tuple->validity_tile();
+    const auto src_val_buff = t_val.data_as<uint8_t>();
     for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
       for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
         *val_buffer = src_val_buff[c];
@@ -572,11 +578,10 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
     void** var_data) {
   // Get source buffers.
   const auto tile_tuple = rt->tile_tuple(name);
-  const auto t = &std::get<0>(*tile_tuple);
-  const auto t_var = &std::get<1>(*tile_tuple);
-  const auto src_buff = t->data_as<uint64_t>();
-  const auto src_var_buff = t_var->data_as<char>();
-  const auto t_val = &std::get<2>(*tile_tuple);
+  const auto& t = tile_tuple->fixed_tile();
+  const auto& t_var = tile_tuple->var_tile();
+  const auto src_buff = t.data_as<uint64_t>();
+  const auto src_var_buff = t_var.data_as<char>();
   const auto cell_num =
       fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
 
@@ -595,13 +600,14 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
     // Do last cell.
     if (src_max_pos == cell_num && rt->bitmap()[src_max_pos - 1]) {
       *buffer =
-          (OffType)(t_var->size() - src_buff[src_max_pos - 1]) / offset_div;
+          (OffType)(t_var.size() - src_buff[src_max_pos - 1]) / offset_div;
       *var_data = src_var_buff + src_buff[src_max_pos - 1];
     }
 
     // Copy nullable values.
     if (nullable) {
-      const auto src_val_buff = t_val->data_as<uint8_t>();
+      const auto& t_val = tile_tuple->validity_tile();
+      const auto src_val_buff = t_val.data_as<uint8_t>();
       for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
         if (rt->bitmap()[c]) {
           *val_buffer = src_val_buff[c];
@@ -622,13 +628,14 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
     // Copy last cell.
     if (src_max_pos == cell_num) {
       *buffer =
-          (OffType)(t_var->size() - src_buff[src_max_pos - 1]) / offset_div;
+          (OffType)(t_var.size() - src_buff[src_max_pos - 1]) / offset_div;
       *var_data = src_var_buff + src_buff[src_max_pos - 1];
     }
 
     // Copy nullable values.
     if (nullable) {
-      const auto src_val_buff = t_val->data_as<uint8_t>();
+      const auto& t_val = tile_tuple->validity_tile();
+      const auto src_val_buff = t_val.data_as<uint8_t>();
       for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
         *val_buffer = src_val_buff[c];
         val_buffer++;
@@ -827,8 +834,8 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
   const auto tile_tuple = stores_zipped_coords ?
                               rt->tile_tuple(constants::coords) :
                               rt->tile_tuple(name);
-  const auto t = &std::get<0>(*tile_tuple);
-  const auto src_buff = t->data_as<uint8_t>();
+  const auto& t = tile_tuple->fixed_tile();
+  const auto src_buff = t.data_as<uint8_t>();
 
   // Copy values.
   if (!stores_zipped_coords) {
@@ -851,8 +858,8 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
 
   // Copy nullable values.
   if (nullable) {
-    const auto t_val = &std::get<2>(*tile_tuple);
-    const auto src_val_buff = t_val->data_as<uint8_t>();
+    const auto& t_val = tile_tuple->validity_tile();
+    const auto src_val_buff = t_val.data_as<uint8_t>();
     for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
       for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
         *val_buffer = src_val_buff[c];
@@ -882,9 +889,8 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
   const auto tile_tuple = stores_zipped_coords ?
                               rt->tile_tuple(constants::coords) :
                               rt->tile_tuple(name);
-  const auto t = &std::get<0>(*tile_tuple);
-  const auto src_buff = t->data_as<uint8_t>();
-  const auto t_val = &std::get<2>(*tile_tuple);
+  const auto& t = tile_tuple->fixed_tile();
+  const auto src_buff = t.data_as<uint8_t>();
 
   if (!rt->copy_full_tile()) {
     // Copy values.
@@ -927,9 +933,10 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
     if (nullable) {
       // Go through bitmap, when there is a hole in cell contiguity, do a
       // memcpy.
+      const auto& t_val = tile_tuple->validity_tile();
       uint64_t length = 0;
       uint64_t start = src_min_pos;
-      const auto src_val_buff = t_val->data_as<uint8_t>();
+      const auto src_val_buff = t_val.data_as<uint8_t>();
       for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
         if (rt->bitmap()[c]) {
           length++;
@@ -957,7 +964,8 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
         (src_max_pos - src_min_pos) * cell_size);
 
     if (nullable) {
-      const auto src_val_buff = t_val->data_as<uint8_t>();
+      const auto& t_val = tile_tuple->validity_tile();
+      const auto src_val_buff = t_val.data_as<uint8_t>();
       memcpy(val_buffer, src_val_buff + src_min_pos, src_max_pos - src_min_pos);
     }
   }
@@ -976,9 +984,10 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_timestamp_data_tile(
   Tile* t = nullptr;
   uint8_t* src_buff = nullptr;
   if (tile_tuple != nullptr) {
-    t = &std::get<0>(*tile_tuple);
+    t = &tile_tuple->fixed_tile();
     src_buff = t->data_as<uint8_t>();
   }
+
   const uint64_t cell_size = constants::timestamp_size;
 
   if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
@@ -1014,9 +1023,10 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_timestamp_data_tile(
   Tile* t = nullptr;
   uint8_t* src_buff = nullptr;
   if (tile_tuple != nullptr) {
-    t = &std::get<0>(*tile_tuple);
+    t = &tile_tuple->fixed_tile();
     src_buff = t->data_as<uint8_t>();
   }
+
   const uint64_t cell_size = constants::timestamp_size;
   auto frag_timestamp = fragment_timestamp(rt);
 
@@ -1626,7 +1636,8 @@ template SparseUnorderedWithDupsReader<uint8_t>::SparseUnorderedWithDupsReader(
     std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,
-    QueryCondition&);
+    QueryCondition&,
+    bool);
 template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
     stats::Stats*,
     shared_ptr<Logger>,
@@ -1636,7 +1647,8 @@ template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
     std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,
-    QueryCondition&);
+    QueryCondition&,
+    bool);
 
 }  // namespace sm
 }  // namespace tiledb

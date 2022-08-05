@@ -57,6 +57,13 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
+class ReaderStatusException : public StatusException {
+ public:
+  explicit ReaderStatusException(const std::string& message)
+      : StatusException("Reader", message) {
+  }
+};
+
 namespace {
 /**
  * If the given iterator points to an "invalid" element, advance it until the
@@ -103,7 +110,8 @@ Reader::Reader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition)
+    QueryCondition& condition,
+    bool skip_checks_serialization)
     : ReaderBase(
           stats,
           logger->clone("Reader", ++logger_id_),
@@ -114,6 +122,32 @@ Reader::Reader(
           subarray,
           layout,
           condition) {
+  // Sanity checks
+  if (storage_manager_ == nullptr) {
+    throw ReaderStatusException(
+        "Cannot initialize reader; Storage manager not set");
+  }
+
+  if (!skip_checks_serialization && buffers_.empty()) {
+    throw ReaderStatusException("Cannot initialize reader; Buffers not set");
+  }
+
+  if (!skip_checks_serialization && array_schema_.dense() &&
+      !subarray_.is_set()) {
+    throw ReaderStatusException(
+        "Cannot initialize reader; Dense reads must have a subarray set");
+  }
+
+  // Check subarray
+  check_subarray();
+
+  // Initialize the read state
+  init_read_state();
+
+  // Check the validity buffer sizes. This must be performed
+  // after `init_read_state` to ensure we have set the
+  // member state correctly from the config.
+  check_validity_buffer_sizes();
 }
 
 /* ****************************** */
@@ -131,32 +165,6 @@ bool Reader::incomplete() const {
 QueryStatusDetailsReason Reader::status_incomplete_reason() const {
   return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
                         QueryStatusDetailsReason::REASON_NONE;
-}
-
-Status Reader::init() {
-  // Sanity checks
-  if (storage_manager_ == nullptr)
-    return logger_->status(Status_ReaderError(
-        "Cannot initialize reader; Storage manager not set"));
-  if (buffers_.empty())
-    return logger_->status(
-        Status_ReaderError("Cannot initialize reader; Buffers not set"));
-  if (array_schema_.dense() && !subarray_.is_set())
-    return logger_->status(Status_ReaderError(
-        "Cannot initialize reader; Dense reads must have a subarray set"));
-
-  // Check subarray
-  RETURN_NOT_OK(check_subarray());
-
-  // Initialize the read state
-  RETURN_NOT_OK(init_read_state());
-
-  // Check the validity buffer sizes. This must be performed
-  // after `init_read_state` to ensure we have set the
-  // member state correctly from the config.
-  RETURN_NOT_OK(check_validity_buffer_sizes());
-
-  return Status::Ok();
 }
 
 Status Reader::initialize_memory_budget() {
@@ -951,9 +959,11 @@ Status Reader::copy_partitioned_fixed_cells(
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
   auto cell_size = array_schema_.cell_size(*name);
+  const auto is_attr = array_schema_.is_attr(*name);
+  const auto is_dim = array_schema_.is_dim(*name);
   ByteVecValue fill_value;
   uint8_t fill_value_validity = 0;
-  if (array_schema_.is_attr(*name)) {
+  if (is_attr) {
     fill_value = array_schema_.attribute(*name)->fill_value();
     fill_value_validity = array_schema_.attribute(*name)->fill_value_validity();
   }
@@ -975,16 +985,17 @@ Status Reader::copy_partitioned_fixed_cells(
 
     // First we check if this is an older (pre TileDB 2.0) array with zipped
     // coordinates and the user has requested split buffer if so we should
-    // proceed to copying the tile If not, and there is no tile or the tile is
+    // proceed to copying the tile. If not, and there is no tile or the tile is
     // empty for the field then this is a read of an older fragment in schema
     // evolution. In that case we want to set the field to fill values for this
     // for this tile.
     const bool split_buffer_for_zipped_coords =
-        array_schema_.is_dim(*name) && cs.tile_->stores_zipped_coords();
-    if ((cs.tile_ == nullptr || cs.tile_->tile_tuple(*name) == nullptr) &&
-        !split_buffer_for_zipped_coords &&
-        !is_timestamps) {  // Empty range or attributed added
-                           // in schema evolution
+        is_dim && cs.tile_->stores_zipped_coords();
+    const bool field_not_present =
+        (is_dim || is_attr) && cs.tile_->tile_tuple(*name) == nullptr;
+    if ((cs.tile_ == nullptr || field_not_present) &&
+        !split_buffer_for_zipped_coords) {  // Empty range or attributed added
+                                            // in schema evolution
       auto bytes_to_copy = cs_length * cell_size;
       auto fill_num = bytes_to_copy / fill_value_size;
       for (uint64_t j = 0; j < fill_num; ++j) {
@@ -1186,8 +1197,8 @@ Status Reader::compute_var_cell_destinations(
     uint64_t tile_var_size = 0;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(name);
-      const auto& tile = std::get<0>(*tile_tuple);
-      const auto& tile_var = std::get<1>(*tile_tuple);
+      const auto& tile = tile_tuple->fixed_tile();
+      const auto& tile_var = tile_tuple->var_tile();
 
       // Get the internal buffer to the offset values.
       tile_offsets = (uint64_t*)tile.data();
@@ -1294,9 +1305,9 @@ Status Reader::copy_partitioned_var_cells(
     uint64_t tile_cell_num = 0;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(*name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(*name);
-      Tile* const tile = &std::get<0>(*tile_tuple);
-      tile_var = &std::get<1>(*tile_tuple);
-      tile_validity = &std::get<2>(*tile_tuple);
+      Tile* const tile = &tile_tuple->fixed_tile();
+      tile_var = &tile_tuple->var_tile();
+      tile_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
       // Get the internal buffer to the offset values.
       tile_offsets = (uint64_t*)tile->data();
@@ -1832,43 +1843,59 @@ bool Reader::has_separate_coords() const {
   return false;
 }
 
-Status Reader::init_read_state() {
+void Reader::init_read_state() {
   auto timer_se = stats_->start_timer("init_state");
 
   // Check subarray
-  if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
-    return logger_->status(
-        Status_ReaderError("Cannot initialize read "
-                           "state; Multi-range "
-                           "subarrays do not "
-                           "support global order"));
+  if (subarray_.layout() == Layout::GLOBAL_ORDER &&
+      subarray_.range_num() != 1) {
+    throw ReaderStatusException(
+        "Cannot initialize read state; Multi-range subarrays do not support "
+        "global order");
+  }
 
   // Get config
   bool found = false;
   uint64_t memory_budget = 0;
-  RETURN_NOT_OK(
-      config_.get<uint64_t>("sm.memory_budget", &memory_budget, &found));
+  if (!config_.get<uint64_t>("sm.memory_budget", &memory_budget, &found).ok()) {
+    throw ReaderStatusException("Cannot get setting");
+  }
   assert(found);
+
   uint64_t memory_budget_var = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.memory_budget_var", &memory_budget_var, &found));
+  if (!config_.get<uint64_t>("sm.memory_budget_var", &memory_budget_var, &found)
+           .ok()) {
+    throw ReaderStatusException("Cannot get setting");
+  }
   assert(found);
+
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    return logger_->status(
-        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
-                           "format in configuration"));
+    throw ReaderStatusException(
+        "Cannot initialize reader; Unsupported offsets"
+        " format in configuration");
   }
-  RETURN_NOT_OK(config_.get<bool>(
-      "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
+
+  if (!config_
+           .get<bool>(
+               "sm.var_offsets.extra_element", &offsets_extra_element_, &found)
+           .ok()) {
+    throw ReaderStatusException("Cannot get setting");
+  }
   assert(found);
-  RETURN_NOT_OK(config_.get<uint32_t>(
-      "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
+
+  if (!config_
+           .get<uint32_t>("sm.var_offsets.bitsize", &offsets_bitsize_, &found)
+           .ok()) {
+    throw ReaderStatusException("Cannot get setting");
+  }
+  assert(found);
+
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    return logger_->status(
-        Status_ReaderError("Cannot initialize reader; Unsupported offsets "
-                           "bitsize in configuration"));
+    throw ReaderStatusException(
+        "Cannot initialize reader; Unsupported offsets"
+        " bitsize in configuration");
   }
   assert(found);
 
@@ -1898,22 +1925,37 @@ Status Reader::init_read_state() {
     auto buffer_validity_size = a.second.validity_vector_.buffer_size();
     if (!array_schema_.var_size(attr_name)) {
       if (!array_schema_.is_nullable(attr_name)) {
-        RETURN_NOT_OK(read_state_.partitioner_.set_result_budget(
-            attr_name.c_str(), *buffer_size));
+        if (!read_state_.partitioner_
+                 .set_result_budget(attr_name.c_str(), *buffer_size)
+                 .ok()) {
+          throw ReaderStatusException("Cannot set result budget");
+        }
       } else {
-        RETURN_NOT_OK(read_state_.partitioner_.set_result_budget_nullable(
-            attr_name.c_str(), *buffer_size, *buffer_validity_size));
+        if (!read_state_.partitioner_
+                 .set_result_budget_nullable(
+                     attr_name.c_str(), *buffer_size, *buffer_validity_size)
+                 .ok()) {
+          throw ReaderStatusException("Cannot set result budget");
+        }
       }
     } else {
       if (!array_schema_.is_nullable(attr_name)) {
-        RETURN_NOT_OK(read_state_.partitioner_.set_result_budget(
-            attr_name.c_str(), *buffer_size, *buffer_var_size));
+        if (!read_state_.partitioner_
+                 .set_result_budget(
+                     attr_name.c_str(), *buffer_size, *buffer_var_size)
+                 .ok()) {
+          throw ReaderStatusException("Cannot set result budget");
+        }
       } else {
-        RETURN_NOT_OK(read_state_.partitioner_.set_result_budget_nullable(
-            attr_name.c_str(),
-            *buffer_size,
-            *buffer_var_size,
-            *buffer_validity_size));
+        if (!read_state_.partitioner_
+                 .set_result_budget_nullable(
+                     attr_name.c_str(),
+                     *buffer_size,
+                     *buffer_var_size,
+                     *buffer_validity_size)
+                 .ok()) {
+          throw ReaderStatusException("Cannot set result budget");
+        }
       }
     }
   }
@@ -1921,8 +1963,6 @@ Status Reader::init_read_state() {
   read_state_.unsplittable_ = false;
   read_state_.overflowed_ = false;
   read_state_.initialized_ = true;
-
-  return Status::Ok();
 }
 
 Status Reader::sort_result_coords(

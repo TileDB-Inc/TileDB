@@ -631,12 +631,14 @@ tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
         entries.emplace_back(
             "azure://" + container_name + "/" +
                 remove_front_slash(remove_trailing_slash(blob.name)),
-            0);
+            0,
+            blob.is_directory);
       } else {
         entries.emplace_back(
             "azure://" + container_name + "/" +
                 remove_front_slash(remove_trailing_slash(blob.name)),
-            blob.content_length);
+            blob.content_length,
+            blob.is_directory);
       }
     }
 

@@ -30,12 +30,11 @@
  * Tests of C API for attributes.
  */
 
-#include "catch.hpp"
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <iostream>
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
 #ifdef _WIN32

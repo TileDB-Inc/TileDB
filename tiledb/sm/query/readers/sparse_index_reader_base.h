@@ -224,9 +224,10 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Initializes the reader.
    *
+   * @param skip_checks_serialization Skip checks during serialization.
    * @return Status.
    */
-  Status init();
+  void init(bool skip_checks_serialization);
 
   /**
    * Resize the output buffers to the correct size after copying.

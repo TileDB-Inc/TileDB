@@ -79,6 +79,7 @@ endif()
 if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/experimental/tiledb_dimension_label.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/experimental/tiledb_enum_experimental.h
   )
 endif()
 
@@ -139,9 +140,10 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/consistency.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema_evolution.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension_label_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/attribute.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension_label_schema.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension_label_reference.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/domain.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/dimension_label/dimension_label.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer.cc
@@ -268,6 +270,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile_metadata_generator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/writer_tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/parse_uri.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/type/range/range.cc
 )
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_API_SOURCES})

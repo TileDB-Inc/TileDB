@@ -30,7 +30,7 @@
  * Tests for the C++ API object management code.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "test/src/serialization_wrappers.h"
 #include "test/src/vfs_helpers.h"

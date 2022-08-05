@@ -31,6 +31,7 @@ add_executable(unit_range EXCLUDE_FROM_ALL
   unit_check_range_is_subset.cc
   unit_check_range_is_valid.cc
   unit_crop_range.cc
+  unit_range_str.cc
 )
 target_link_libraries(unit_range
   PRIVATE range

@@ -74,7 +74,8 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition);
+      QueryCondition& condition,
+      bool skip_checks_serialization = false);
 
   /** Destructor. */
   ~SparseUnorderedWithDupsReader() = default;
@@ -134,13 +135,6 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @return The query status.
    */
   QueryStatusDetailsReason status_incomplete_reason() const;
-
-  /**
-   * Initializes the reader.
-   *
-   * @return Status.
-   */
-  Status init();
 
   /**
    * Initialize the memory budget variables.

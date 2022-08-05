@@ -30,7 +30,7 @@
  * Tests the CPP API consolidation with timestamps.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -418,7 +418,7 @@ TEST_CASE_METHOD(
   auto timestamps_ptr =
       GENERATE_REF(as<std::vector<uint64_t>*>{}, nullptr, &timestamps);
 
-  uint64_t tstamp = 7;  
+  uint64_t tstamp = 7;
   SECTION("Read after all writes") {
     // Read after both writes - should see everything.
     tstamp = 7;

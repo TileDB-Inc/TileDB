@@ -47,9 +47,6 @@ class IQueryStrategy {
   /** Destructor. */
   virtual ~IQueryStrategy() = default;
 
-  /** Initializes the strategy. */
-  virtual Status init() = 0;
-
   /** Initialize the memory budget variables. */
   virtual Status initialize_memory_budget() = 0;
 
