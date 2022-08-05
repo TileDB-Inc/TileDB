@@ -384,10 +384,10 @@ endif()
 
 # If we found the SDK but it didn't have a cmake target build them
 #if (GCSSDK_FOUND AND NOT TARGET storage_client)
-if (GCSSDK_FOUND AND NOT TARGET google_cloud_cpp_storage)
-#if (GCSSDK_FOUND AND NOT TARGET google-cloud-cpp::storage)
-#  message(STATUS "missing target google-cloud-cpp::storage, hacking in")
-  message(STATUS "missing target google_cloud_cpp_storage, hacking in")
+#if (GCSSDK_FOUND AND NOT TARGET google_cloud_cpp_storage)
+if (GCSSDK_FOUND AND NOT TARGET google-cloud-cpp::storage)
+  message(STATUS "missing target google-cloud-cpp::storage, hacking in")
+#  message(STATUS "missing target google_cloud_cpp_storage, hacking in")
   # Build a list of all GCS libraries to link with.
   #list(APPEND GCSSDK_LINKED_LIBS "storage_client"
   list(APPEND GCSSDK_LINKED_LIBS 
@@ -420,7 +420,7 @@ if (GCSSDK_FOUND AND NOT TARGET google_cloud_cpp_storage)
 #    add_library(storage_client UNKNOWN IMPORTED)
 #    add_library(google_cloud_cpp_storage UNKNOWN IMPORTED)
     add_library(google-cloud-cpp::storage UNKNOWN IMPORTED)
-    if(0)
+    if(1)
 #    set_target_properties(storage_client PROPERTIES
 #      IMPORTED_LOCATION "${GCS_FOUND_storage_client};${GCS_FOUND_google_cloud_cpp_common};${GCS_FOUND_crc32c}"
 #    set_target_properties(google_cloud_cpp_storage PROPERTIES
