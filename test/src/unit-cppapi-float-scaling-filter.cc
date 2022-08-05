@@ -172,7 +172,9 @@ struct FloatScalingFilterTestStruct {
     REQUIRE(table["a"].second == total_num_elements);
 
     for (size_t i = 0; i < total_num_elements; ++i) {
-      CHECK(fabs(a_data_read[i] - expected_a[i]) < std::numeric_limits<T>::epsilon());
+      CHECK(
+          fabs(a_data_read[i] - expected_a[i]) <
+          std::numeric_limits<T>::epsilon());
     }
 
     query_r.finalize();
@@ -184,7 +186,9 @@ TEMPLATE_PRODUCT_TEST_CASE(
     "C++ API: Float Scaling Filter list on array",
     "[cppapi][filter][float-scaling][!mayfail]",
     FloatScalingFilterTestStruct,
-    ((float, int8_t), (double, int8_t), (float, int16_t),
+    ((float, int8_t),
+     (double, int8_t),
+     (float, int16_t),
      (double, int16_t),
      (float, int32_t),
      (double, int32_t),
