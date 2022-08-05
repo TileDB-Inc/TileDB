@@ -39,6 +39,9 @@
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
 #ifdef _WIN32
+#if !defined(NOMINMAX)
+#define NOMINMAX
+#endif
 #include <Windows.h>
 #include "tiledb/sm/filesystem/win.h"
 #else
