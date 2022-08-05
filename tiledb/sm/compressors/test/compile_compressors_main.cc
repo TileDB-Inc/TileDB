@@ -1,5 +1,5 @@
 /**
- * @file compile_compressors_main.cc
+ * @file compile_filter_main.cc
  *
  * @section LICENSE
  *
