@@ -34,7 +34,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <tiledb/tiledb.h>
-#if 0
+
 // Name of array.
 const char* array_name = "encrypted_array";
 
@@ -105,7 +105,7 @@ void write_array() {
   tiledb_config_t* cfg;
   tiledb_error_t* err;
   tiledb_config_alloc(&cfg, &err);
-  tiledb_config_set(cfg, "sm.encryption_type", "TILEDB_AES_256_GCS", &err);
+  tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
   tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err);
   tiledb_array_set_config(ctx, array, cfg);
   tiledb_array_open(ctx, array, TILEDB_WRITE);
@@ -144,7 +144,7 @@ void read_array() {
   tiledb_config_t* cfg;
   tiledb_error_t* err;
   tiledb_config_alloc(&cfg, &err);
-  tiledb_config_set(cfg, "sm.encryption_type", "TILEDB_AES_256_GCM", &err);
+  tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
   tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err);
   tiledb_array_set_config(ctx, array, cfg);
   tiledb_array_open(ctx, array, TILEDB_READ);
@@ -202,8 +202,3 @@ int main() {
 
   return 0;
 }
-#else
-int main() {
-  return 0;
-}
-#endif
