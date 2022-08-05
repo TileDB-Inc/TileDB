@@ -68,7 +68,9 @@ namespace sm {
 /* ****************************** */
 
 Query::Query(
-    StorageManager* storage_manager, shared_ptr<Array> array, URI fragment_uri)
+    StorageManager* storage_manager,
+    shared_ptr<Array> array,
+    optional<std::string> fragment_name)
     : array_shared_(array)
     , array_(array_shared_.get())
     , array_schema_(array->array_schema_latest_ptr())
@@ -85,8 +87,8 @@ Query::Query(
     , offsets_buffer_name_("")
     , disable_checks_consolidation_(false)
     , consolidation_with_timestamps_(false)
-    , fragment_uri_(fragment_uri)
-    , force_legacy_reader_(false) {
+    , force_legacy_reader_(false)
+    , fragment_name_(fragment_name) {
   assert(array->is_open());
   auto st = array->get_query_type(&type_);
   assert(st.ok());
@@ -1193,7 +1195,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           coords_info_,
-          fragment_uri_,
+          fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::UNORDERED) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
@@ -1208,7 +1210,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           coords_info_,
-          fragment_uri_,
+          fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::GLOBAL_ORDER) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
@@ -1225,7 +1227,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           disable_checks_consolidation_,
           processed_conditions_,
           coords_info_,
-          fragment_uri_,
+          fragment_name_,
           skip_checks_serialization));
     } else {
       assert(false);

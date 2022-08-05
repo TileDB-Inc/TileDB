@@ -79,7 +79,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       bool disable_checks_consolidation,
       Query::CoordsInfo& coords_info_,
-      URI fragment_uri = URI(""),
+      optional<std::string> fragment_name = nullopt,
       bool skip_checks_serialization = false);
 
   /** Destructor. */
@@ -258,12 +258,14 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /**
    * Creates a new fragment.
    *
+   * This will create the fragment directory, fragment URI directory, and commit
+   * directory (if they do not already exist) the first time it is called.
+   *
    * @param dense Whether the fragment is dense or not.
    * @param frag_meta The fragment metadata to be generated.
    * @return Status
    */
-  Status create_fragment(
-      bool dense, shared_ptr<FragmentMetadata>& frag_meta) const;
+  Status create_fragment(bool dense, shared_ptr<FragmentMetadata>& frag_meta);
 
   /**
    * Runs the input coordinate and attribute tiles through their

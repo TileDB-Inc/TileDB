@@ -53,7 +53,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -85,7 +85,7 @@ WriterBase::WriterBase(
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
-    URI fragment_uri,
+    optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : StrategyBase(
           stats,
@@ -103,8 +103,6 @@ WriterBase::WriterBase(
     , check_global_order_(false)
     , dedup_coords_(false)
     , written_fragment_info_(written_fragment_info) {
-  fragment_uri_ = fragment_uri;
-
   // Sanity checks
   if (storage_manager_ == nullptr) {
     throw WriterBaseStatusException(
@@ -199,6 +197,20 @@ WriterBase::WriterBase(
 
   optimize_layout_for_1D();
   check_var_attr_offsets();
+
+  // Get the timestamp the array was opened and the array write version.
+  uint64_t timestamp = array_->timestamp_end_opened_at();
+  auto write_version = array_->array_schema_latest().write_version();
+
+  // Set the fragment URI using either the provided fragment name or a generated
+  // fragment name.
+  auto new_fragment_str =
+      fragment_name.has_value() ?
+          fragment_name.value() :
+          storage_format::generate_fragment_name(timestamp, write_version);
+  auto frag_dir_uri =
+      array_->array_directory().get_fragments_dir(write_version);
+  fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
 }
 
 WriterBase::~WriterBase() {
@@ -623,26 +635,23 @@ std::string WriterBase::coords_to_str(uint64_t i) const {
 }
 
 Status WriterBase::create_fragment(
-    bool dense, shared_ptr<FragmentMetadata>& frag_meta) const {
-  URI uri;
+    bool dense, shared_ptr<FragmentMetadata>& frag_meta) {
+  // Get write version, timestamp array was opened,  and a reference to the
+  // array directory.
+  auto write_version = array_->array_schema_latest().write_version();
   uint64_t timestamp = array_->timestamp_end_opened_at();
-  if (!fragment_uri_.to_string().empty()) {
-    uri = fragment_uri_;
-  } else {
-    auto write_version = array_->array_schema_latest().write_version();
-    auto&& [st, new_fragment_name_opt] =
-        new_fragment_name(timestamp, write_version);
-    RETURN_NOT_OK(st);
-    auto& new_fragment_str = *new_fragment_name_opt;
+  auto& array_dir = array_->array_directory();
 
-    auto& array_dir = array_->array_directory();
-    auto frag_uri = array_dir.get_fragments_dir(write_version);
-    RETURN_NOT_OK(storage_manager_->vfs()->create_dir(frag_uri));
-    auto commit_uri = array_dir.get_commits_dir(write_version);
-    RETURN_NOT_OK(storage_manager_->vfs()->create_dir(commit_uri));
+  // Create the directories.
+  // Create the fragment directory, the directory for the new fragment URI, and
+  // the commit directory.
+  throw_if_not_ok(storage_manager_->vfs()->create_dir(
+      array_dir.get_fragments_dir(write_version)));
+  throw_if_not_ok(storage_manager_->create_dir(fragment_uri_));
+  throw_if_not_ok(storage_manager_->vfs()->create_dir(
+      array_dir.get_commits_dir(write_version)));
 
-    uri = frag_uri.join_path(new_fragment_str);
-  }
+  // Create fragment metadata.
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
   const bool has_timestamps = buffers_.count(constants::timestamps) != 0;
   const bool has_delete_metadata =
@@ -652,14 +661,14 @@ Status WriterBase::create_fragment(
       storage_manager_,
       nullptr,
       array_->array_schema_latest_ptr(),
-      uri,
+      fragment_uri_,
       timestamp_range,
       dense,
       has_timestamps,
       has_delete_metadata);
 
   RETURN_NOT_OK((frag_meta)->init(subarray_.ndrange(0)));
-  return storage_manager_->create_dir(uri);
+  return Status::Ok();
 }
 
 Status WriterBase::filter_tiles(
