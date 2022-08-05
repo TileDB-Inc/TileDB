@@ -29,6 +29,7 @@ include(common NO_POLICY_SCOPE)
 
 list(APPEND SOURCES
     data_block.cc
+    pool_allocator.cc
 )
 gather_sources(${SOURCES})
 
@@ -64,6 +65,47 @@ if (TILEDB_TESTS)
     add_test(
             NAME "unit_data_block"
             COMMAND $<TARGET_FILE:unit_data_block> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()
+
+list(APPEND POOL_SOURCES
+    pool_allocator.cc
+)
+gather_sources(${POOL_SOURCES})
+
+#
+# Object library for other units to depend upon
+#
+add_library(pool_allocator OBJECT ${POOL_SOURCES})
+target_link_libraries(pool_allocator PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_pool_allocator EXCLUDE_FROM_ALL)
+target_link_libraries(compile_pool_allocator PRIVATE pool_allocator)
+target_sources(compile_pool_allocator PRIVATE test/compile_pool_allocator_main.cc)
+
+if (TILEDB_TESTS)
+    add_executable(unit_pool_allocator EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_pool_allocator PUBLIC pool_allocator)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_pool_allocator PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_pool_allocator PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_pool_allocator PUBLIC ${DEPENDENT_POOL_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_pool_allocator PUBLIC
+            test/main.cc
+            test/unit_pool_allocator.cc
+            )
+
+    add_test(
+            NAME "unit_pool_allocator"
+            COMMAND $<TARGET_FILE:unit_pool_allocator> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
