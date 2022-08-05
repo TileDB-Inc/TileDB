@@ -89,34 +89,17 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
 }
 
 shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
-    ConstBuffer* buff,
+    Deserializer& deserializer,
     const EncryptionKey& encryption_key,
     const uint32_t version) {
   Status st;
-
-  uint8_t type;
-  st = buff->read(&type, sizeof(uint8_t));
-  if (!st.ok()) {
-    throw std::runtime_error(
-        "[FilterCreate::deserialize] Failed to load filter type");
-  }
-  try {
-    ensure_filtertype_is_valid(type);
-  } catch (const std::exception& e) {
-    std::throw_with_nested(std::runtime_error("[FilterCreate::deserialize] "));
-  }
+  uint8_t type = deserializer.read<uint8_t>();
   FilterType filtertype = static_cast<FilterType>(type);
-
-  uint32_t filter_metadata_len;
-  st = buff->read(&filter_metadata_len, sizeof(uint32_t));
-  if (!st.ok()) {
-    throw std::runtime_error(
-        "[FilterCreate::deserialize] Failed to load filter metadata length");
-  }
-  auto offset = buff->offset();
-  if ((buff->size() - offset) < filter_metadata_len) {
-    throw StatusException(Status_FilterError(
-        "Deserialization error; not enough data in buffer for metadata"));
+  uint32_t filter_metadata_len = deserializer.read<uint32_t>();
+  if (deserializer.size() < filter_metadata_len) {
+    throw StatusException(
+        "FilterCreate",
+        "Deserialization error; not enough data in buffer for metadata");
   }
 
   switch (filtertype) {
@@ -129,40 +112,14 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     case FilterType::FILTER_BZIP2:
     case FilterType::FILTER_DOUBLE_DELTA:
     case FilterType::FILTER_DICTIONARY: {
-      uint8_t compressor_char;
-      int compression_level;
-      st = (buff->read(&compressor_char, sizeof(uint8_t)));
-      if (!st.ok()) {
-        throw std::runtime_error(
-            "[FilterCreate::deserialize] Failed to load compressor");
-      }
-      try {
-        ensure_compressor_is_valid(compressor_char);
-      } catch (const std::exception& e) {
-        std::throw_with_nested(
-            std::runtime_error("[FilterCreate::deserialize] "));
-      }
-
-      /* Note: compression level is directly handled by the Compressor
-        and thus needn't be validated here. */
+      uint8_t compressor_char = deserializer.read<uint8_t>();
+      int compression_level = deserializer.read<int32_t>();
       Compressor compressor = static_cast<Compressor>(compressor_char);
-      st = buff->read(&compression_level, sizeof(int32_t));
-      if (!st.ok()) {
-        throw std::runtime_error(
-            "[FilterCreate::deserialize] Failed to load compression level");
-      }
       return make_shared<CompressionFilter>(
           HERE(), compressor, compression_level, version);
     }
     case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
-      /* Note: No validation is possible on max_window_size;
-        no actual limit, though usable limit is likely in the low 1000s. */
-      uint32_t max_window_size;
-      st = buff->read(&max_window_size, sizeof(uint32_t));
-      if (!st.ok()) {
-        throw std::runtime_error(
-            "[FilterCreate::deserialize] Failed to load maximum window size");
-      }
+      uint32_t max_window_size = deserializer.read<uint32_t>();
       return make_shared<BitWidthReductionFilter>(HERE(), max_window_size);
     }
     case FilterType::FILTER_BITSHUFFLE:
@@ -170,14 +127,8 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     case FilterType::FILTER_BYTESHUFFLE:
       return make_shared<ByteshuffleFilter>(HERE());
     case FilterType::FILTER_POSITIVE_DELTA: {
-      uint32_t max_window_size;
-      st = buff->read(&max_window_size, sizeof(uint32_t));
-      if (!st.ok()) {
-        throw std::runtime_error(
-            "[FilterCreate::deserialize] Failed to load maximum window size");
-      } else {
-        return make_shared<PositiveDeltaFilter>(HERE(), max_window_size);
-      }
+      uint32_t max_window_size = deserializer.read<uint32_t>();
+      return make_shared<PositiveDeltaFilter>(HERE(), max_window_size);
     }
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
       if (encryption_key.encryption_type() ==
@@ -191,31 +142,25 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     case FilterType::FILTER_CHECKSUM_SHA256:
       return make_shared<ChecksumSHA256Filter>(HERE());
     case FilterType::FILTER_SCALE_FLOAT: {
-      FloatScalingFilter::FilterConfig filter_config;
-      st = buff->read(&filter_config, sizeof(FloatScalingFilter::FilterConfig));
-      if (!st.ok()) {
-        throw std::runtime_error(
-            "[FilterCreate::deserialize] Failed to load FloatScaling metadata");
-      } else {
-        return make_shared<FloatScalingFilter>(
-            HERE(),
-            filter_config.byte_width,
-            filter_config.scale,
-            filter_config.offset);
-      }
-    }
-    case FilterType::FILTER_XOR: {
+      auto filter_config =
+          deserializer.read<FloatScalingFilter::FilterConfig>();
+      return make_shared<FloatScalingFilter>(
+          HERE(),
+          filter_config.byte_width,
+          filter_config.scale,
+          filter_config.offset);
+    };
+     case FilterType::FILTER_XOR: {
       return make_shared<XORFilter>(HERE());
     }
     default:
-      assert(false);
       throw StatusException(
-          Status_FilterError("Deserialization error; unknown type"));
+          "FilterCreate", "Deserialization error; unknown type");
   }
 }
-
 shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
-    ConstBuffer* buff, const uint32_t version) {
+    Deserializer& deserializer, const uint32_t version) {
   EncryptionKey encryption_key;
-  return tiledb::sm::FilterCreate::deserialize(buff, encryption_key, version);
+  return tiledb::sm::FilterCreate::deserialize(
+      deserializer, encryption_key, version);
 }

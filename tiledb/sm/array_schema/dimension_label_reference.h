@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 #include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;
@@ -123,12 +124,12 @@ class DimensionLabelReference {
   /**
    * Populates the object members from the data in the input binary buffer.
    *
-   * @param buff The buffer to deserialize from.
+   * @param deserializer The deserializer to deserialize from.
    * @param version The array schema version.
    * @return DimensionLabelReference
    */
   static shared_ptr<DimensionLabelReference> deserialize(
-      ConstBuffer* buff, uint32_t version);
+      Deserializer& deserializer, uint32_t version);
 
   /** Index of the dimension the label is attached to. */
   inline dimension_size_type dimension_id() const {
@@ -192,10 +193,10 @@ class DimensionLabelReference {
   /**
    * Serializes the dimension label object into a buffer.
    *
-   * @param buff The buffer the array schema is serialized into.
+   * @param serializer The object the dimension is serialized into.
    * @param version The array schema version.
    */
-  void serialize(Buffer* buff, uint32_t version) const;
+  void serialize(Serializer& serializer, uint32_t version) const;
 
   /** Returns the URI of the dimension label. */
   inline const URI& uri() const {

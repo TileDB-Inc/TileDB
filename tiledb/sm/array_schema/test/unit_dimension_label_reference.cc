@@ -36,6 +36,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 #include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;
@@ -63,10 +64,15 @@ TEST_CASE(
                                 nullptr,
                                 is_external,
                                 is_relative};
-  Buffer buffer{};
-  label.serialize(&buffer, version);
-  ConstBuffer buffer2{&buffer};
-  auto label2 = DimensionLabelReference::deserialize(&buffer2, version);
+  SizeComputationSerializer size_computation_serializer;
+  label.serialize(size_computation_serializer, version);
+
+  std::vector<uint8_t> data(size_computation_serializer.size());
+  Serializer serializer(data.data(), data.size());
+  label.serialize(serializer, version);
+
+  Deserializer deserializer(data.data(), data.size());
+  auto label2 = DimensionLabelReference::deserialize(deserializer, version);
   CHECK(dim_id == label2->dimension_id());
   CHECK(name == label2->name());
   CHECK(label2->label_type() == Datatype::FLOAT64);

@@ -70,9 +70,9 @@ TEST_CASE(
   buffer_offset<uint32_t, 1>(p) = sizeof(uint32_t);  // metadata_length
   buffer_offset<uint32_t, 5>(p) = max_window_size0;
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   auto filter1{
-      FilterCreate::deserialize(&constbuffer, constants::format_version)};
+      FilterCreate::deserialize(deserializer, constants::format_version)};
 
   // Check type
   CHECK(filter1->type() == filtertype0);
@@ -93,9 +93,9 @@ TEST_CASE(
   buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
   buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   auto filter1{
-      FilterCreate::deserialize(&constbuffer, constants::format_version)};
+      FilterCreate::deserialize(deserializer, constants::format_version)};
 
   // Check type
   CHECK(filter1->type() == filtertype0);
@@ -110,9 +110,9 @@ TEST_CASE(
   buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
   buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   auto filter1{
-      FilterCreate::deserialize(&constbuffer, constants::format_version)};
+      FilterCreate::deserialize(deserializer, constants::format_version)};
 
   // Check type
   CHECK(filter1->type() == filtertype0);
@@ -127,9 +127,9 @@ TEST_CASE(
   buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
   buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   auto filter1{
-      FilterCreate::deserialize(&constbuffer, constants::format_version)};
+      FilterCreate::deserialize(deserializer, constants::format_version)};
 
   // Check type
   CHECK(filter1->type() == filtertype0);
@@ -144,9 +144,9 @@ TEST_CASE(
   buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
   buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   auto filter1{
-      FilterCreate::deserialize(&constbuffer, constants::format_version)};
+      FilterCreate::deserialize(deserializer, constants::format_version)};
 
   // Check type
   CHECK(filter1->type() == filtertype0);
@@ -161,9 +161,9 @@ TEST_CASE(
   buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
   buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   auto filter1{
-      FilterCreate::deserialize(&constbuffer, constants::format_version)};
+      FilterCreate::deserialize(deserializer, constants::format_version)};
 
   // Check type
   CHECK(filter1->type() == filtertype0);
@@ -195,9 +195,9 @@ TEST_CASE(
         sizeof(uint8_t) + sizeof(int32_t);  // metadata_length
     buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(compressor0);
 
-    ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+    Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
     auto filter1{
-        FilterCreate::deserialize(&constbuffer, constants::format_version)};
+        FilterCreate::deserialize(deserializer, constants::format_version)};
 
     // Check type
     CHECK(filter1->type() == filtertype0);
@@ -216,9 +216,9 @@ TEST_CASE(
     buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(compressor0);
     buffer_offset<int32_t, 6>(p) = level0;
 
-    ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+    Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
     auto filter1{
-        FilterCreate::deserialize(&constbuffer, constants::format_version)};
+        FilterCreate::deserialize(deserializer, constants::format_version)};
 
     // Check type
     CHECK(filter1->type() == filtertype0);
@@ -244,9 +244,9 @@ TEST_CASE(
     buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(compressor0);
     buffer_offset<int32_t, 6>(p) = level0;
 
-    ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+    Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
     auto filter1{
-        FilterCreate::deserialize(&constbuffer, constants::format_version)};
+        FilterCreate::deserialize(deserializer, constants::format_version)};
 
     // Check type
     CHECK(filter1->type() == filtertype0);
@@ -272,9 +272,9 @@ TEST_CASE(
     buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(compressor0);
     buffer_offset<int32_t, 6>(p) = level0;
 
-    ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+    Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
     auto filter1{
-        FilterCreate::deserialize(&constbuffer, constants::format_version)};
+        FilterCreate::deserialize(deserializer, constants::format_version)};
 
     // Check type
     CHECK(filter1->type() == filtertype0);
@@ -300,9 +300,9 @@ TEST_CASE(
     buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(compressor0);
     buffer_offset<int32_t, 6>(p) = level0;
 
-    ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+    Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
     auto filter1{
-        FilterCreate::deserialize(&constbuffer, constants::format_version)};
+        FilterCreate::deserialize(deserializer, constants::format_version)};
 
     // Check type
     CHECK(filter1->type() == filtertype0);
@@ -323,9 +323,9 @@ TEST_CASE("Filter: Test noop filter deserialization", "[filter][noop]") {
   buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
   buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   auto filter1{
-      FilterCreate::deserialize(&constbuffer, constants::format_version)};
+      FilterCreate::deserialize(deserializer, constants::format_version)};
 
   // Check type
   CHECK(filter1->type() == filtertype0);
@@ -341,9 +341,9 @@ TEST_CASE(
   buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
   buffer_offset<uint32_t, 1>(p) = sizeof(uint32_t);  // metadata_length
   buffer_offset<uint32_t, 5>(p) = max_window_size0;
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   auto filter1{
-      FilterCreate::deserialize(&constbuffer, constants::format_version)};
+      FilterCreate::deserialize(deserializer, constants::format_version)};
 
   // Check type
   CHECK(filter1->type() == filtertype0);
@@ -375,9 +375,9 @@ TEST_CASE(
   buffer_offset<double, 13>(p) = offset0;
   buffer_offset<uint64_t, 21>(p) = byte_width0;
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   auto filter1{
-      FilterCreate::deserialize(&constbuffer, constants::format_version)};
+      FilterCreate::deserialize(deserializer, constants::format_version)};
   CHECK(filter1->type() == filtertype0);
   double scale1 = 0.0;
   REQUIRE(filter1->get_option(FilterOption::SCALE_FLOAT_FACTOR, &scale1).ok());

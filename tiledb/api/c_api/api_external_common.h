@@ -36,7 +36,9 @@
 /*
  * Use C headers since we need to compile externally-visible headers as C
  */
+#ifndef TILEDB_CAPI_WRAPPING
 #include <stdint.h>
+#endif
 
 /*
  * Header "tiledb_export.h" is built by CMake `GenerateExportHeader` and appears

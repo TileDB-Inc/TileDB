@@ -134,20 +134,17 @@ TEST_CASE("Dimension: Test deserialize,int32", "[dimension][deserialize]") {
   dim_buffer_offset<uint8_t, 35>(p) = null_tile_extent;
   dim_buffer_offset<int32_t, 36>(p) = tile_extent;
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_dim, dim]{
-      Dimension::deserialize(&constbuffer, 10, Datatype::INT32)};
-
-  REQUIRE(st_dim.ok());
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
+  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32);
 
   // Check name
-  CHECK(dim.value()->name() == dimension_name);
+  CHECK(dim->name() == dimension_name);
 
   // Check type
-  CHECK(dim.value()->type() == Datatype::INT32);
+  CHECK(dim->type() == Datatype::INT32);
 
-  CHECK(dim.value()->cell_val_num() == 1);
-  CHECK(dim.value()->var_size() == false);
+  CHECK(dim->cell_val_num() == 1);
+  CHECK(dim->var_size() == false);
 }
 
 TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
@@ -176,16 +173,14 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
   dim_buffer_offset<uint64_t, 19>(p) = domain_size;
   dim_buffer_offset<uint8_t, 27>(p) = null_tile_extent;
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_dim, dim]{
-      Dimension::deserialize(&constbuffer, 10, Datatype::INT32)};
-  REQUIRE(st_dim.ok());
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
+  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32);
   // Check name
-  CHECK(dim.value()->name() == dimension_name);
+  CHECK(dim->name() == dimension_name);
   // Check type
-  CHECK(dim.value()->type() == type);
-  CHECK(dim.value()->cell_val_num() == constants::var_num);
-  CHECK(dim.value()->var_size() == true);
+  CHECK(dim->type() == type);
+  CHECK(dim->cell_val_num() == constants::var_num);
+  CHECK(dim->var_size() == true);
 }
 
 TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
