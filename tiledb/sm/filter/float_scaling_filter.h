@@ -97,7 +97,7 @@ class FloatScalingFilter : public Filter {
   void dump(FILE* out) const override;
 
   /** Serializes this filter's metadata to the given buffer. */
-  Status serialize_impl(Buffer* buff) const override;
+  void serialize_impl(Serializer& serializer) const override;
 
   /**
    * Run forward. Takes input data in floating point representation and

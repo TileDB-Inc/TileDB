@@ -286,10 +286,10 @@ class ArraySchema {
   /**
    * Serializes the array schema object into a buffer.
    *
-   * @param buff The buffer the array schema is serialized into.
+   * @param serializer The object the array schema is serialized into.
    * @return Status
    */
-  Status serialize(Buffer* buff) const;
+  void serialize(Serializer& serializer) const;
 
   /** Returns the tile order. */
   Layout tile_order() const;
@@ -349,11 +349,11 @@ class ArraySchema {
   /**
    * It assigns values to the members of the object from the input buffer.
    *
-   * @param buff The binary representation of the object to read from.
+   * @param deserializer The deserializer to deserialize from.
    * @param uri The uri of the Array.
    * @return A new ArraySchema.
    */
-  static ArraySchema deserialize(ConstBuffer* buff, const URI& uri);
+  static ArraySchema deserialize(Deserializer& deserializer, const URI& uri);
 
   /** Returns the array domain. */
   inline const Domain& domain() const {

@@ -214,6 +214,11 @@ void read_array_with_qc(tiledb_ctx_t* ctx, tiledb_query_condition_t* qc) {
   tiledb_array_alloc(ctx, array_name, &array);
   tiledb_array_open(ctx, array, TILEDB_READ);
 
+  tiledb_subarray_t* subarray;
+  tiledb_subarray_alloc(ctx, array, &subarray);
+  int subarray_v[] = {0, num_elems - 1};
+  tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
+
   // Execute the read query.
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
@@ -226,8 +231,7 @@ void read_array_with_qc(tiledb_ctx_t* ctx, tiledb_query_condition_t* qc) {
       ctx, query, "b", b_data_offsets, &b_offsets_size);
   tiledb_query_set_data_buffer(ctx, query, "c", c_data, &c_size);
   tiledb_query_set_data_buffer(ctx, query, "d", d_data, &d_size);
-  int dims[] = {0, num_elems - 1};
-  tiledb_query_set_subarray(ctx, query, dims);
+  tiledb_query_set_subarray_t(ctx, query, subarray);
 
   if (qc) {
     tiledb_query_set_condition(ctx, query, qc);
@@ -260,6 +264,7 @@ void read_array_with_qc(tiledb_ctx_t* ctx, tiledb_query_condition_t* qc) {
   tiledb_query_finalize(ctx, query);
   tiledb_array_close(ctx, array);
 
+  tiledb_subarray_free(&subarray);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
 }

@@ -180,19 +180,13 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
   return Status::Ok();
 }
 
-tuple<Status, optional<shared_ptr<Dimension>>> Dimension::deserialize(
-    ConstBuffer* buff, uint32_t version, Datatype type) {
+shared_ptr<Dimension> Dimension::deserialize(
+    Deserializer& deserializer, uint32_t version, Datatype type) {
   Status st;
   // Load dimension name
-  uint32_t dimension_name_size;
-  st = buff->read(&dimension_name_size, sizeof(uint32_t));
-  if (!st.ok())
-    return {st, nullopt};
-  std::string name;
-  name.resize(dimension_name_size);
-  st = buff->read(&name[0], dimension_name_size);
-  if (!st.ok())
-    return {st, nullopt};
+  auto dimension_name_size = deserializer.read<uint32_t>();
+  std::string name(
+      deserializer.get_ptr<char>(dimension_name_size), dimension_name_size);
 
   Datatype datatype;
   uint32_t cell_val_num;
@@ -200,21 +194,14 @@ tuple<Status, optional<shared_ptr<Dimension>>> Dimension::deserialize(
   // Applicable only to version >= 5
   if (version >= 5) {
     // Load type
-    uint8_t type;
-    st = buff->read(&type, sizeof(uint8_t));
-    if (!st.ok())
-      return {st, nullopt};
+    auto type = deserializer.read<uint8_t>();
     datatype = (Datatype)type;
 
     // Load cell_val_num_
-    st = buff->read(&cell_val_num, sizeof(uint32_t));
-    if (!st.ok())
-      return {st, nullopt};
+    cell_val_num = deserializer.read<uint32_t>();
 
     // Load filter pipeline
-    // Note: Security validation delegated to invoked API
-    auto filterpipeline{FilterPipeline::deserialize(buff, version)};
-    filter_pipeline = filterpipeline;
+    filter_pipeline = FilterPipeline::deserialize(deserializer, version);
   } else {
     datatype = type;
     cell_val_num = (datatype_is_string(datatype)) ? constants::var_num : 1;
@@ -223,44 +210,32 @@ tuple<Status, optional<shared_ptr<Dimension>>> Dimension::deserialize(
   // Load domain
   uint64_t domain_size = 0;
   if (version >= 5) {
-    st = buff->read(&domain_size, sizeof(uint64_t));
-    if (!st.ok())
-      return {st, nullopt};
+    domain_size = deserializer.read<uint64_t>();
   } else {
     domain_size = 2 * datatype_size(datatype);
   }
   Range domain;
   if (domain_size != 0) {
-    std::vector<uint8_t> tmp(domain_size);
-    st = buff->read(&tmp[0], domain_size);
-    if (!st.ok())
-      return {st, nullopt};
-    domain = Range(&tmp[0], domain_size);
+    domain = Range(deserializer.get_ptr<uint8_t>(domain_size), domain_size);
   }
 
   ByteVecValue tile_extent;
   // Load tile extent
   tile_extent.assign_as_void();
-  uint8_t null_tile_extent;
-  st = buff->read(&null_tile_extent, sizeof(uint8_t));
-  if (!st.ok())
-    return {st, nullopt};
+  auto null_tile_extent = deserializer.read<uint8_t>();
   if (null_tile_extent == 0) {
     tile_extent.resize(datatype_size(datatype));
-    st = buff->read(tile_extent.data(), datatype_size(datatype));
-    if (!st.ok())
-      return {st, nullopt};
+    deserializer.read(tile_extent.data(), datatype_size(datatype));
   }
 
-  return {Status::Ok(),
-          tiledb::common::make_shared<Dimension>(
-              HERE(),
-              name,
-              datatype,
-              cell_val_num,
-              domain,
-              filter_pipeline,
-              tile_extent)};
+  return tiledb::common::make_shared<Dimension>(
+      HERE(),
+      name,
+      datatype,
+      cell_val_num,
+      domain,
+      filter_pipeline,
+      tile_extent);
 }
 
 const Range& Dimension::domain() const {
@@ -1328,40 +1303,39 @@ bool Dimension::smaller_than<char>(
 // domain (void* - domain_size)
 // null_tile_extent (uint8_t)
 // tile_extent (void* - type_size)
-Status Dimension::serialize(Buffer* buff, uint32_t version) {
+void Dimension::serialize(Serializer& serializer, uint32_t version) const {
   // Sanity check
   auto is_str = datatype_is_string(type_);
   assert(is_str || !domain_.empty());
 
   // Write dimension name
   auto dimension_name_size = (uint32_t)name_.size();
-  RETURN_NOT_OK(buff->write(&dimension_name_size, sizeof(uint32_t)));
-  RETURN_NOT_OK(buff->write(name_.c_str(), dimension_name_size));
+  serializer.write<uint32_t>(dimension_name_size);
+  serializer.write(name_.data(), dimension_name_size);
 
   // Applicable only to version >= 5
   if (version >= 5) {
     // Write type
     auto type = (uint8_t)type_;
-    RETURN_NOT_OK(buff->write(&type, sizeof(uint8_t)));
+    serializer.write<uint8_t>(type);
 
     // Write cell_val_num_
-    RETURN_NOT_OK(buff->write(&cell_val_num_, sizeof(uint32_t)));
+    serializer.write<uint32_t>(cell_val_num_);
 
     // Write filter pipeline
-    RETURN_NOT_OK(filters_.serialize(buff));
+    filters_.serialize(serializer);
   }
 
   // Write domain and tile extent
   uint64_t domain_size = (is_str) ? 0 : 2 * coord_size();
-  RETURN_NOT_OK(buff->write(&domain_size, sizeof(uint64_t)));
-  RETURN_NOT_OK(buff->write(domain_.data(), domain_size));
+  serializer.write<uint64_t>(domain_size);
+  serializer.write(domain_.data(), domain_size);
 
   auto null_tile_extent = (uint8_t)(tile_extent_ ? 0 : 1);
-  RETURN_NOT_OK(buff->write(&null_tile_extent, sizeof(uint8_t)));
-  if (tile_extent_)
-    RETURN_NOT_OK(buff->write(tile_extent_.data(), tile_extent_.size()));
-
-  return Status::Ok();
+  serializer.write<uint8_t>(null_tile_extent);
+  if (tile_extent_) {
+    serializer.write(tile_extent_.data(), tile_extent_.size());
+  }
 }
 
 Status Dimension::set_domain(const void* domain) {
