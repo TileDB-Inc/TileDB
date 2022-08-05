@@ -36,6 +36,8 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/xor_filter.h"
+#include "tiledb/common/thread_pool.h"
+#include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
 
@@ -93,7 +95,7 @@ class Lidar {
     template<typename W>
     static Status compress(Datatype type, int level, ConstBuffer* input_buffer, Buffer* output_buffer);
 
-    template<typename T, typename W>
+    template<typename W>
     static Status decompress(ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 
     /** The default filter compression level. */
