@@ -172,9 +172,7 @@ struct FloatScalingFilterTestStruct {
     REQUIRE(table["a"].second == total_num_elements);
 
     for (size_t i = 0; i < total_num_elements; ++i) {
-      CHECK(
-          fabs(a_data_read[i] - expected_a[i]) <
-          std::numeric_limits<T>::epsilon());
+      CHECK(fabs(a_data_read[i] - expected_a[i]) < std::numeric_limits<T>::epsilon());
     }
 
     query_r.finalize();
@@ -182,22 +180,16 @@ struct FloatScalingFilterTestStruct {
   }
 };
 
-/**
-,
-     (float, int16_t),
+TEMPLATE_PRODUCT_TEST_CASE(
+    "C++ API: Float Scaling Filter list on array",
+    "[cppapi][filter][float-scaling][!mayfail]",
+    FloatScalingFilterTestStruct,
+    ((float, int8_t), (double, int8_t), (float, int16_t),
      (double, int16_t),
      (float, int32_t),
      (double, int32_t),
      (float, int64_t),
-     (double, int64_t)
- *
- */
-
-TEMPLATE_PRODUCT_TEST_CASE(
-    "C++ API: Float Scaling Filter list on array",
-    "[cppapi][filter][float-scaling]",
-    FloatScalingFilterTestStruct,
-    ((float, int8_t), (double, int8_t))) {
+     (double, int64_t))) {
   // Setup.
   Context ctx;
   VFS vfs(ctx);
@@ -206,10 +198,9 @@ TEMPLATE_PRODUCT_TEST_CASE(
     vfs.remove_dir(array_name);
 
   auto array_type = GENERATE(TILEDB_SPARSE, TILEDB_DENSE);
-  auto negative = GENERATE(true, false);
 
   TestType fs;
-  fs.float_scaling_filter_api_test(ctx, array_type, negative);
+  fs.float_scaling_filter_api_test(ctx, array_type);
 
   // Teardown.
   if (vfs.is_dir(array_name))
