@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -100,13 +100,16 @@ void write_array_global() {
   int data[] = {1, 2, 3, 4, 5, 6, 7, 8};
   uint64_t data_size = sizeof(data);
 
-  int subarray[] = {1, 4, 1, 2};
+  tiledb_subarray_t* subarray;
+  tiledb_subarray_alloc(ctx, array, &subarray);
+  int subarray_v[] = {1, 4, 1, 2};
+  tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
 
   // Create the query
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
-  tiledb_query_set_subarray(ctx, query, subarray);
+  tiledb_query_set_subarray_t(ctx, query, subarray);
   tiledb_query_set_data_buffer(ctx, query, "a", data, &data_size);
 
   // Submit query
@@ -119,6 +122,7 @@ void write_array_global() {
   tiledb_array_close(ctx, array);
 
   // Clean up
+  tiledb_subarray_free(&subarray);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
@@ -138,13 +142,16 @@ void write_array_row_major() {
   int data[] = {9, 10, 11, 12};
   uint64_t data_size = sizeof(data);
 
-  int subarray[] = {1, 4, 3, 3};
+  tiledb_subarray_t* subarray;
+  tiledb_subarray_alloc(ctx, array, &subarray);
+  int subarray_v[] = {1, 4, 3, 3};
+  tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
 
   // Create the query
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
-  tiledb_query_set_subarray(ctx, query, subarray);
+  tiledb_query_set_subarray_t(ctx, query, subarray);
   tiledb_query_set_data_buffer(ctx, query, "a", data, &data_size);
 
   // Submit query
@@ -154,6 +161,7 @@ void write_array_row_major() {
   tiledb_array_close(ctx, array);
 
   // Clean up
+  tiledb_subarray_free(&subarray);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
@@ -170,7 +178,10 @@ void read_array() {
   tiledb_array_open(ctx, array, TILEDB_READ);
 
   // Read the entire array
-  int subarray[] = {1, 4, 1, 3};
+  tiledb_subarray_t* subarray;
+  tiledb_subarray_alloc(ctx, array, &subarray);
+  int subarray_v[] = {1, 4, 1, 3};
+  tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
 
   // Prepare the vector that will hold the result (of size 6 elements)
   int data[12];
@@ -179,7 +190,7 @@ void read_array() {
   // Create query
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
-  tiledb_query_set_subarray(ctx, query, subarray);
+  tiledb_query_set_subarray_t(ctx, query, subarray);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_data_buffer(ctx, query, "a", data, &data_size);
 
@@ -194,6 +205,7 @@ void read_array() {
     printf("%d\n", data[i]);
 
   // Clean up
+  tiledb_subarray_free(&subarray);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);

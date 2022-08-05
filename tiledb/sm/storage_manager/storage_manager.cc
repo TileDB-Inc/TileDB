@@ -1451,11 +1451,12 @@ StorageManager::load_array_schema_from_uri(
   stats_->add_counter("read_array_schema_size", tile.size());
 
   // Deserialize
-  ConstBuffer cbuff(tile.data(), tile.size());
+  Deserializer deserializer(tile.data(), tile.size());
+
   try {
     return {Status::Ok(),
             make_shared<ArraySchema>(
-                HERE(), ArraySchema::deserialize(&cbuff, schema_uri))};
+                HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
   } catch (const StatusException& e) {
     return {Status_StorageManagerError(e.what()), nullopt};
   }
@@ -1530,10 +1531,15 @@ StorageManager::load_all_array_schemas(
   auto status =
       parallel_for(compute_tp_, 0, schema_num, [&](size_t schema_ith) {
         auto& schema_uri = schema_uris[schema_ith];
-        auto&& [st, array_schema] =
-            load_array_schema_from_uri(schema_uri, encryption_key);
-        RETURN_NOT_OK(st);
-        schema_vector[schema_ith] = array_schema.value();
+        try {
+          auto&& [st, array_schema] =
+              load_array_schema_from_uri(schema_uri, encryption_key);
+          RETURN_NOT_OK(st);
+          schema_vector[schema_ith] = array_schema.value();
+        } catch (std::exception& e) {
+          return Status_StorageManagerError(e.what());
+        }
+
         return Status::Ok();
       });
   RETURN_NOT_OK_TUPLE(status, nullopt);
@@ -1901,10 +1907,24 @@ Status StorageManager::store_array_schema(
   const URI schema_uri = array_schema->uri();
 
   // Serialize
-  Buffer buff;
-  RETURN_NOT_OK(array_schema->serialize(&buff));
+  SizeComputationSerializer size_computation_serializer;
+  array_schema->serialize(size_computation_serializer);
 
-  stats_->add_counter("write_array_schema_size", buff.size());
+  Tile tile;
+  if (!tile.init_unfiltered(
+               0,
+               constants::generic_tile_datatype,
+               size_computation_serializer.size(),
+               constants::generic_tile_cell_size,
+               0)
+           .ok()) {
+    throw StatusException("StorageManager", "Cannot initialize tile");
+  }
+
+  Serializer serializer(tile.data(), tile.size());
+  array_schema->serialize(serializer);
+
+  stats_->add_counter("write_array_schema_size", tile.size());
 
   // Delete file if it exists already
   bool exists;
@@ -1921,8 +1941,7 @@ Status StorageManager::store_array_schema(
   if (!schema_dir_exists)
     RETURN_NOT_OK(create_dir(array_schema_dir_uri));
 
-  RETURN_NOT_OK(store_data_to_generic_tile(
-      buff.data(), buff.size(), schema_uri, encryption_key));
+  RETURN_NOT_OK(store_data_to_generic_tile(tile, schema_uri, encryption_key));
 
   return Status::Ok();
 }
@@ -1970,6 +1989,11 @@ Status StorageManager::store_data_to_generic_tile(
       data,
       size);
 
+  return store_data_to_generic_tile(tile, uri, encryption_key);
+}
+
+Status StorageManager::store_data_to_generic_tile(
+    Tile& tile, const URI& uri, const EncryptionKey& encryption_key) {
   GenericTileIO tile_io(this, uri);
   uint64_t nbytes = 0;
   Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
@@ -2031,10 +2055,6 @@ Status StorageManager::write_to_cache(
       tile_cache_->insert(key.str(), std::move(cached_buffer), false));
 
   return Status::Ok();
-}
-
-Status StorageManager::write(const URI& uri, Buffer* buffer) const {
-  return vfs_->write(uri, buffer->data(), buffer->size());
 }
 
 Status StorageManager::write(const URI& uri, void* data, uint64_t size) const {

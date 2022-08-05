@@ -160,6 +160,15 @@ class GenericTileIO {
       Tile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
+   * Serialize a generic tile header.
+   *
+   * @param serializer The serializer.
+   * @param header The header to serialize.
+   */
+  template <class T>
+  void serialize_generic_tile_header(T& serializer, GenericTileHeader& header);
+
+  /**
    * Writes the generic tile header to the file.
    *
    * @param header The header to write

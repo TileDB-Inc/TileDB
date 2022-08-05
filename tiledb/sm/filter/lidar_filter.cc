@@ -50,12 +50,66 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-template<typename W>
-struct LidarSortCmp {
-  bool operator()(const std::pair<W, size_t>& a, const std::pair<W, size_t>& b) const {
-    return a.first < b.first;
+   /**
+   * Run forward. TODO: COMMENT
+   */
+  Status LidarFilter::run_forward(
+      const Tile& tile,
+      Tile* const tile_offsets,
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override {
+  auto tile_type = tile.type();
+
+  switch (tile_type) {
+    case Datatype::FLOAT32: {
+      return run_forward<int32_t>(
+          input_metadata, input, output_metadata, output);
+    }
+    case Datatype::FLOAT64: {
+      return run_forward<int64_t>(
+          input_metadata, input, output_metadata, output);
+    }
+    default: {
+      return Status_FilterError("LidarFilter::run_forward: datatype is not a floating point type.");
+    }
   }
-};
+
+  return Status_FilterError("LidarFilter::run_forward: invalid datatype.");
+}
+
+  /**
+   * Run reverse. TODO: comment
+   */
+  Status LidarFilter::run_reverse(
+      const Tile& tile,
+      Tile* const tile_offsets,
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output,
+      const Config& config) const override {
+  (void)config;
+
+  auto tile_type = tile.type();
+
+  switch (tile_type) {
+    case Datatype::FLOAT32: {
+      return run_reverse<int32_t>(
+          input_metadata, input, output_metadata, output);
+    }
+    case Datatype::FLOAT64: {
+      return run_reverse<int64_t>(
+          input_metadata, input, output_metadata, output);
+    }
+    default: {
+      return Status_FilterError("LidarFilter::run_forward: datatype is not a floating point type.");
+    }
+  }
+
+   return Status_FilterError("LidarFilter::run_reverse: invalid datatype.");
+}
 
 template<typename W>
 Status Lidar::compress(
@@ -110,25 +164,6 @@ Status Lidar::compress(
   return Status::Ok();
 }
 
-Status Lidar::compress(
-    Datatype type, int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
-  switch (type) {
-    case Datatype::FLOAT32: {
-      return compress<int32_t>(type, level, input_buffer, output_buffer);
-    }
-    case Datatype::FLOAT64: {
-      return compress<int64_t>(type, level, input_buffer, output_buffer);
-    }
-    default: {
-      return Status_CompressionError("Lidar::compress: attribute type is not a floating point type.");
-    }
-  }
-}
-
-Status Lidar::compress(Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer) {
-    return compress(type, default_level_, input_buffer, output_buffer);
-}
-
 template<typename W>
 Status Lidar::decompress(ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   size_t len;
@@ -168,25 +203,6 @@ Status Lidar::decompress(ConstBuffer* input_buffer, PreallocatedBuffer* output_b
   output_buffer->write(original_vals.data(), len * sizeof(W));
   
   return Status::Ok();
-}
-
-Status Lidar::decompress(
-    Datatype type, ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
-  switch (type) {
-    case Datatype::FLOAT32: {
-      return decompress<int32_t>(input_buffer, output_buffer);
-    }
-    case Datatype::FLOAT64: {
-      return decompress<int64_t>(input_buffer, output_buffer);
-    }
-    default: {
-      return Status_CompressionError("Lidar::compress: attribute type is not a floating point type.");
-    }
-  }
-}
-
-uint64_t Lidar::overhead(uint64_t nbytes) {
-  return BZip::overhead(nbytes);
 }
 
 }  // namespace sm

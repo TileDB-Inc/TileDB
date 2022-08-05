@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -153,7 +153,10 @@ void read_array() {
   tiledb_array_open(ctx, array, TILEDB_READ);
 
   // Slice only rows 1, 2 and cols 2, 3, 4
-  int subarray[] = {1, 2, 2, 4};
+  tiledb_subarray_t* subarray;
+  tiledb_subarray_alloc(ctx, array, &subarray);
+  int subarray_v[] = {1, 2, 2, 4};
+  tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
 
   // Prepare the vectors that will hold the results
   char a1[6];
@@ -164,7 +167,7 @@ void read_array() {
   // Create query
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
-  tiledb_query_set_subarray(ctx, query, subarray);
+  tiledb_query_set_subarray_t(ctx, query, subarray);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_data_buffer(ctx, query, "a1", a1, &a1_size);
   tiledb_query_set_data_buffer(ctx, query, "a2", a2, &a2_size);
@@ -182,6 +185,7 @@ void read_array() {
   printf("\n");
 
   // Clean up
+  tiledb_subarray_free(&subarray);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
@@ -198,7 +202,10 @@ void read_array_subselect() {
   tiledb_array_open(ctx, array, TILEDB_READ);
 
   // Slice only rows 1, 2 and cols 2, 3, 4
-  int subarray[] = {1, 2, 2, 4};
+  tiledb_subarray_t* subarray;
+  tiledb_subarray_alloc(ctx, array, &subarray);
+  int subarray_v[] = {1, 2, 2, 4};
+  tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
 
   // Prepare the vector that will hold the results
   char a1[6];
@@ -207,7 +214,7 @@ void read_array_subselect() {
   // Create query
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
-  tiledb_query_set_subarray(ctx, query, subarray);
+  tiledb_query_set_subarray_t(ctx, query, subarray);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_data_buffer(ctx, query, "a1", a1, &a1_size);
 
@@ -223,6 +230,7 @@ void read_array_subselect() {
     printf("a1: %c\n", a1[i]);
 
   // Clean up
+  tiledb_subarray_free(&subarray);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);

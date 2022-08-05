@@ -58,6 +58,7 @@
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter_create.h"
 #include "tiledb/sm/filter/float_scaling_filter.h"
+#include "tiledb/sm/filter/lidar_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/misc/constants.h"
@@ -131,6 +132,7 @@ Status filter_to_capnp(
     case FilterType::FILTER_CHECKSUM_SHA256:
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
     case FilterType::FILTER_XOR:
+    case FilterType::FILTER_LIDAR:
       break;
   }
 
@@ -229,6 +231,9 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
     }
     case FilterType::FILTER_XOR: {
       return {Status::Ok(), tiledb::common::make_shared<XORFilter>(HERE())};
+    }
+    case FilterType::FILTER_LIDAR: {
+      return {Status::Ok(), tiledb::common::make_shared<LidarFilter>(HERE())};
     }
     default: {
       throw std::logic_error(

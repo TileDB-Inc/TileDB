@@ -51,60 +51,75 @@ class PreallocatedBuffer;
 /** Handles compression/decompression of lidar data (similar to LASzip). 
  * TODO: comment more
 */
-class Lidar {
- public:
+class LidarFilter : public Filter {
+public:
   /**
-   * Compression function.
-   *
-   * @param level Compression level.
-   * @param input_buffer Input buffer to read from.
-   * @param output_buffer Output buffer to write to the compressed data.
-   * @return Status
+   * Default constructor.
    */
-  static Status compress(
-      Datatype type, int level, ConstBuffer* input_buffer, Buffer* output_buffer);
-
-  /**
-   * Overloaded compression function with default compression level.
-   *
-   * @param input_buffer Input buffer to read from.
-   * @param output_buffer Output buffer to write to the compressed data.
-   * @return Status
-   */
-  static Status compress(Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer);
-
-  /**
-   * Decompression function.
-   *
-   * @param input_buffer Input buffer to read from.
-   * @param output_buffer Output buffer to write the decompressed data to.
-   * @return Status
-   */
-  static Status decompress(
-      Datatype type, ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
-
-  /** Returns the default compression level. */
-  static int default_level() {
-    return default_level_;
+  LidarFilter()
+      : Filter(FilterType::FILTER_LIDAR) {
   }
 
-  /** Returns the compression overhead for the given input. */
-  static uint64_t overhead(uint64_t nbytes);
+  /** Dumps the filter details in ASCII format in the selected output. */
+  void dump(FILE* out) const override;
+
+  /**
+   * Run forward. TODO: COMMENT
+   */
+  Status run_forward(
+      const Tile& tile,
+      Tile* const tile_offsets,
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override;
+
+  /**
+   * Run reverse. TODO: comment
+   */
+  Status run_reverse(
+      const Tile& tile,
+      Tile* const tile_offsets,
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output,
+      const Config& config) const override;
 
   private:
-    template<typename W>
-    static Status compress(Datatype type, int level, ConstBuffer* input_buffer, Buffer* output_buffer);
+    /**
+   * Run forward, templated on the tile type.
+   */
+  template <typename T>
+  Status run_forward(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
 
-    template<typename W>
-    static Status decompress(ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
+  /**
+   * Run reverse, templated on the tile type.
+   */
+  template <typename T>
+  Status run_reverse(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
 
-    /** The default filter compression level. */
-    static constexpr int default_level_ = -1;
+  /**
+   * shuffle part
+   */
+  template <typename T>
+  Status shuffle_part(const ConstBuffer* part, Buffer* output) const;
 
-    static XORFilter xor_filter_;
+  /**
+   * TODO: comment
+   */
+  template <typename T>
+  Status unshuffle_part(const ConstBuffer* part, Buffer* output) const;
 
-    /** Thread pool for compute-bound tasks. */
-    static ThreadPool* compute_tp_;
+  XORFilter xor_filter_;
 };
 
 }; // namespace sm

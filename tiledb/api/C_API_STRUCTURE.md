@@ -43,3 +43,11 @@ For each facade base class, there's an optional proxy class, that is, a `{0,1}` 
 
 A proxy class represent a C API object that is newly created by collecting constructor arguments through API `set_` calls.
 
+## Implementation restrictions
+
+* In order to facilitate correct SWIG wrapper generation, non-TileDB headers included by the external header files *must* be wrapped as follows:
+  ```
+  #ifndef TILEDB_CAPI_WRAPPING
+  #include <stdint.h>
+  #endif
+  ```
