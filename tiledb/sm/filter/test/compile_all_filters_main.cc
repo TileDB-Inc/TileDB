@@ -30,6 +30,6 @@
 
 int main() {
   (void)sizeof(tiledb::sm::FilterCreate);
-  (void)&tiledb::sm::FilterCreate::deserialize;
+  (void*)&tiledb::sm::FilterCreate::deserialize;
   return 0;
 }
