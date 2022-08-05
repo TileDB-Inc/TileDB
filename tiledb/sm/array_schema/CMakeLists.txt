@@ -80,6 +80,7 @@ target_sources(compile_domain PRIVATE test/compile_domain_main.cc)
 add_library(dimension_label_reference OBJECT dimension_label_reference.cc)
 target_link_libraries(dimension_label_reference PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(dimension_label_reference PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+target_link_libraries(dimension_label_reference PUBLIC range $<TARGET_OBJECTS:range>)
 target_link_libraries(dimension_label_reference PUBLIC constants $<TARGET_OBJECTS:constants>)
 target_link_libraries(dimension_label_reference PUBLIC vfs $<TARGET_OBJECTS:vfs>)
 #

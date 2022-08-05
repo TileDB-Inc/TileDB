@@ -52,7 +52,7 @@ find_package(Threads REQUIRED)
 ############################################################
 
 # Aggregate all link-completeness targets
-add_custom_target(all_link_complete EXCLUDE_FROM_ALL)
+add_custom_target(all_link_complete)
 
 add_subdirectory(api)
 add_subdirectory(common)

@@ -34,6 +34,7 @@ target_link_libraries(range_subset PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(range_subset PUBLIC constants $<TARGET_OBJECTS:constants>)
 target_link_libraries(range_subset PUBLIC thread_pool $<TARGET_OBJECTS:thread_pool>)
 target_link_libraries(range_subset PUBLIC range $<TARGET_OBJECTS:range>)
+target_link_libraries(range_subset PUBLIC range $<TARGET_OBJECTS:buffer>)
 
 #
 # Test-compile of object library ensures link-completeness
