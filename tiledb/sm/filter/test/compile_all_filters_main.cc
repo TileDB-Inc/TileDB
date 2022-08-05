@@ -3,6 +3,11 @@
  *
  * @section LICENSE
  *
+ * The MI/**
+ * @file compile_all_filters_main.cc
+ *
+ * @section LICENSE
+ *
  * The MIT License
  *
  * @copyright Copyright (c) 2021 TileDB, Inc.
@@ -30,6 +35,9 @@
 
 int main() {
   (void)sizeof(tiledb::sm::FilterCreate);
-  (void*)&tiledb::sm::FilterCreate::deserialize;
+  std::shared_ptr<tiledb::sm::Filter> (*fn_enc)(tiledb::sm::Deserializer&, const tiledb::sm::EncryptionKey&, const uint32_t) = tiledb::sm::FilterCreate::deserialize;
+  (void)fn_enc;
+  std::shared_ptr<tiledb::sm::Filter> (*fn)(tiledb::sm::Deserializer&, const uint32_t) = tiledb::sm::FilterCreate::deserialize;
+  (void)fn;
   return 0;
 }
