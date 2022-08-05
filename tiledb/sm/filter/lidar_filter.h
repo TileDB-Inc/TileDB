@@ -1,5 +1,5 @@
 /**
- * @file   lidar_compressor.h
+ * @file   lidar_filter.h
  *
  * @section LICENSE
  *
@@ -30,8 +30,8 @@
  * This file defines the lidar compressor class.
  */
 
-#ifndef TILEDB_LIDAR_COMPRESSOR_H
-#define TILEDB_LIDAR_COMPRESSOR_H
+#ifndef TILEDB_LIDAR_FILTER_H
+#define TILEDB_LIDAR_FILTER_H
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -110,4 +110,4 @@ class Lidar {
 }; // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_LIDAR_COMPRESSOR_H
+#endif  // TILEDB_LIDAR_FILTER_H

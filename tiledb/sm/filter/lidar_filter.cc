@@ -1,5 +1,5 @@
 /**
- * @file   lidar_compressor.cc
+ * @file   lidar_filter.cc
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the lidar compressor class.
+ * This file implements the lidar filter class.
  */
 
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/compressors/lidar_compressor.h"
+#include "tiledb/sm/filter/lidar_filter.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"

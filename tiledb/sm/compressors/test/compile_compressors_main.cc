@@ -1,5 +1,5 @@
 /**
- * @file compile_filter_main.cc
+ * @file compile_compressors_main.cc
  *
  * @section LICENSE
  *
@@ -30,7 +30,6 @@
 #include "../dd_compressor.h"
 #include "../dict_compressor.h"
 #include "../gzip_compressor.h"
-#include "../lidar_compressor.h"
 #include "../lz4_compressor.h"
 #include "../rle_compressor.h"
 #include "../zstd_compressor.h"
@@ -40,7 +39,6 @@ int main() {
   (void)sizeof(tiledb::sm::DoubleDelta);
   (void)sizeof(tiledb::sm::DictEncoding);
   (void)sizeof(tiledb::sm::GZip);
-  (void)sizeof(tiledb::sm::Lidar);
   (void)sizeof(tiledb::sm::LZ4);
   (void)sizeof(tiledb::sm::RLE);
   (void)sizeof(tiledb::sm::ZStd);
