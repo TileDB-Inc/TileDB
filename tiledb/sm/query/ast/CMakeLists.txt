@@ -40,6 +40,7 @@ target_link_libraries(query_ast PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_query_ast EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_query_ast)
 target_sources(compile_query_ast PRIVATE test/compile_query_ast_main.cc)
 
 target_link_libraries(compile_query_ast PRIVATE query_ast)

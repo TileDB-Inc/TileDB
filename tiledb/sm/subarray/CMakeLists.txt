@@ -39,6 +39,7 @@ target_link_libraries(range_subset PUBLIC range $<TARGET_OBJECTS:range>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_range_subset EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_range_subset)
 target_link_libraries(compile_range_subset PRIVATE range_subset)
 target_sources(compile_range_subset PRIVATE test/compile_range_subset_main.cc)
 

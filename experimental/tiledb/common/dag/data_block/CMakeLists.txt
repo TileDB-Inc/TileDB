@@ -43,6 +43,7 @@ target_link_libraries(data_block PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_data_block EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_data_blocks)
 target_link_libraries(compile_data_block PRIVATE data_block)
 target_sources(compile_data_block PRIVATE test/compile_data_block_main.cc)
 
@@ -84,6 +85,7 @@ target_link_libraries(pool_allocator PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_pool_allocator EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_pool_allocator)
 target_link_libraries(compile_pool_allocator PRIVATE pool_allocator)
 target_sources(compile_pool_allocator PRIVATE test/compile_pool_allocator_main.cc)
 

@@ -36,6 +36,7 @@ target_link_libraries(group PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_group EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_group)
 target_link_libraries(compile_group PRIVATE group)
 target_sources(compile_group PRIVATE
     test/compile_group_main.cc $<TARGET_OBJECTS:group>
