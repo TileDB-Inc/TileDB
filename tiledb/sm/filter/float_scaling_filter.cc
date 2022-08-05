@@ -56,8 +56,8 @@ void FloatScalingFilter::dump(FILE* out) const {
 }
 
 Status FloatScalingFilter::serialize_impl(Buffer* buff) const {
-  Metadata buffer_struct = {scale_, offset_, byte_width_};
-  RETURN_NOT_OK(buff->write(&buffer_struct, sizeof(Metadata)));
+  FilterConfig buffer_struct = {scale_, offset_, byte_width_};
+  RETURN_NOT_OK(buff->write(&buffer_struct, sizeof(FilterConfig)));
   return Status::Ok();
 }
 

@@ -939,14 +939,21 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Upper-bound on number of threads to allocate for IO-bound tasks. <br>
  *    **Default*: # cores
  * - `sm.vacuum.mode` <br>
- *    The vacuuming mode, one of `fragments` (remove consolidated fragments),
- *    `fragment_meta` (remove only consolidated fragment metadata), or
- *    `array_meta` (remove consolidated array metadata files). <br>
+ *    The vacuuming mode, one of
+ *    `commits` (remove only consolidated commit files),
+ *    `fragments` (remove only consolidated fragments),
+ *    `fragment_meta` (remove only consolidated fragment metadata),
+ *    `array_meta` (remove only consolidated array metadata files), or
+ *    `group_meta` (remove only consolidate group metadata only).
+ *    <br>
  *    **Default**: fragments
  * - `sm.consolidation_mode` <br>
- *    The consolidation mode, one of `fragments` (consolidate all fragments),
+ *    The consolidation mode, one of
+ *    `commits` (consolidate all commit files),
+ *    `fragments` (consolidate all fragments),
  *    `fragment_meta` (consolidate only fragment metadata footers to a single
- *    file), or `array_meta` (consolidate array metadata only). <br>
+ * file), `array_meta` (consolidate array metadata only), or `group_meta`
+ * (consolidate group metadata only). <br>
  *    **Default**: "fragments"
  * - `sm.consolidation.amplification` <br>
  *    The factor by which the size of the dense fragment resulting
@@ -2596,6 +2603,12 @@ TILEDB_EXPORT int32_t tiledb_domain_dump(
  * tiledb_dimension_alloc(
  *     ctx, "dim_0", TILEDB_INT64, dim_domain, &tile_extent, &dim);
  * @endcode
+ *
+ * Note: as laid out in the Storage Format,
+ * the following Datatypes are not valid for Dimension:
+ * TILEDB_CHAR, TILEDB_BLOB, TILEDB_BOOL, TILEDB_STRING_UTF8,
+ * TILEDB_STRING_UTF16, TILEDB_STRING_UTF32, TILEDB_STRING_UCS2,
+ * TILEDB_STRING_UCS4, TILEDB_ANY
  *
  * @param ctx The TileDB context.
  * @param name The dimension name.

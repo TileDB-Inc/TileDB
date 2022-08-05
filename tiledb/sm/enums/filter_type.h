@@ -37,6 +37,7 @@
 #include <cassert>
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 using namespace tiledb::common;
 
@@ -131,6 +132,19 @@ inline Status filter_type_enum(
     return Status_Error("Invalid FilterType " + filter_type_str);
   }
   return Status::Ok();
+}
+
+/** Throws error if the input Filtertype enum is not between 0 and 15. */
+inline void ensure_filtertype_is_valid(uint8_t type) {
+  if (type > 15) {
+    throw std::runtime_error(
+        "Invalid FilterType (" + std::to_string(type) + ")");
+  }
+}
+
+/** Throws error if the input Filtertype's enum is not between 0 and 14. */
+inline void ensure_filtertype_is_valid(FilterType type) {
+  ensure_filtertype_is_valid(::stdx::to_underlying(type));
 }
 
 }  // namespace sm

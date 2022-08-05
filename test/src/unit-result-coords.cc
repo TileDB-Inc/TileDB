@@ -42,7 +42,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 
 using namespace tiledb::sm;
 using namespace tiledb::test;
@@ -128,8 +128,9 @@ CResultCoordsFx::~CResultCoordsFx() {
 GlobalOrderResultTile<uint8_t> CResultCoordsFx::make_tile_with_num_cells(
     uint64_t num_cells) {
   GlobalOrderResultTile<uint8_t> result_tile(0, 0, false, *frag_md);
+  result_tile.init_attr_tile(constants::coords, false, false);
   auto tile_tuple = result_tile.tile_tuple(constants::coords);
-  Tile* const tile = &std::get<0>(*tile_tuple);
+  Tile* const tile = &tile_tuple->fixed_tile();
   auto cell_size = sizeof(int64_t);
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,

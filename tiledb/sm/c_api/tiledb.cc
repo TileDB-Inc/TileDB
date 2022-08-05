@@ -43,10 +43,12 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
+#include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filesystem.h"
@@ -1368,6 +1370,7 @@ int32_t tiledb_dimension_alloc(
   // Create a new Dimension object
   (*dim)->dim_ = new (std::nothrow)
       tiledb::sm::Dimension(name, static_cast<tiledb::sm::Datatype>(type));
+
   if ((*dim)->dim_ == nullptr) {
     delete *dim;
     *dim = nullptr;
@@ -4243,6 +4246,34 @@ int32_t tiledb_array_create(
             ctx->storage_manager()->array_create(
                 uri, array_schema->array_schema_, key)))
       return TILEDB_ERR;
+  }
+
+  // Create any dimension labels in the array.
+  if constexpr (is_experimental_build) {
+    // Check no dimension labels with REST
+    if (uri.is_tiledb() && array_schema->array_schema_->dim_label_num() > 0)
+      throw StatusException(Status_Error(
+          "Failed to create array; remote arrays with dimension labels are not "
+          "currently supported."));
+
+    // Add dimension labels
+    for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
+         ilabel < array_schema->array_schema_->dim_label_num();
+         ++ilabel) {
+      // Get dimension label information and define URI and name.
+      const auto& dim_label_ref =
+          array_schema->array_schema_->dimension_label_reference(ilabel);
+      if (dim_label_ref.is_external())
+        continue;
+      if (!dim_label_ref.has_schema())
+        throw StatusException(
+            Status_Error("Failed to create array. Dimension labels that are "
+                         "not external must have a schema."));
+      tiledb::sm::create_dimension_label(
+          uri.join_path(dim_label_ref.uri().to_string()),
+          *(ctx->storage_manager()),
+          dim_label_ref.schema());
+    }
   }
   return TILEDB_OK;
 }

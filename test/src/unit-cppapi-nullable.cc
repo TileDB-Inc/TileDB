@@ -30,7 +30,7 @@
  * Tests arrays with nullable attributes.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"

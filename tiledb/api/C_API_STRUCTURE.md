@@ -5,10 +5,10 @@
 The C API consists of layers starting with the API functions themselves and ending with classes that call into the non-API parts of the core library. There are five layers, each with its own responsibilities.
 
 ### Public API functions
-  
+
 Public API functions themselves are declared with `extern "C"` linkage. They are implemented as wrappers around an API implementation function. There is a one-to-one relationship between public API functions and API implementation functions.
 
-Public API functions are responsible for uniform error processing through handling exceptions. The wrapper provides uniformity of behavior for (1) return values, (2) logging format, (3) error return. Non-uniform error handling may be done outside this layer, although that's not usually necessary. 
+Public API functions are responsible for uniform error processing through handling exceptions. The wrapper provides uniformity of behavior for (1) return values, (2) logging format, (3) error return. Non-uniform error handling may be done outside this layer, although that's not usually necessary.
 
 ### API implementation functions
 

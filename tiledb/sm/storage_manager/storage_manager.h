@@ -189,9 +189,9 @@ class StorageManager {
    * @param uri The object URI.
    * @param offset The offset into the file to read from.
    * @param encryption_key The encryption key to use.
-   * @return Status, Buffer with the data.
+   * @return Status, Tile with the data.
    */
-  tuple<Status, optional<Buffer>> load_data_from_generic_tile(
+  tuple<Status, optional<Tile>> load_data_from_generic_tile(
       const URI& uri, uint64_t offset, const EncryptionKey& encryption_key);
 
   /**
@@ -780,12 +780,11 @@ class StorageManager {
   /**
    * Loads the delete conditions from storage.
    *
-   * @param array_dir The array directory.
-   * @param enc_key The encryption key that may be needed to access the file.
+   * @param array The array.
    * @return Status, vector of the delete conditions.
    */
   tuple<Status, optional<std::vector<QueryCondition>>> load_delete_conditions(
-      const ArrayDirectory& array_dir, const EncryptionKey& enc_key);
+      const Array& array);
 
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;

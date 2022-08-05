@@ -31,7 +31,7 @@
  * Tests for the C API error return code.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <iostream>

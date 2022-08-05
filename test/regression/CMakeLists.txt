@@ -25,6 +25,8 @@
 # THE SOFTWARE.
 #
 
+set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+
 find_package(Catch_EP REQUIRED)
 
 set(SOURCES
@@ -35,6 +37,10 @@ set(SOURCES
 
 if (TILEDB_SERIALIZATION)
   list(APPEND SOURCES targets/sc-18250.cc)
+endif()
+
+if (TILEDB_CPP_API)
+  list(APPEND SOURCES targets/sc-19240_cppapi-vfs-exception.cc)
 endif()
 
 add_executable(tiledb_regression
@@ -57,6 +63,7 @@ target_link_libraries(tiledb_regression
 target_include_directories(tiledb_regression
   PRIVATE
     ${CMAKE_INSTALL_PREFIX}/include
+    "${TILEDB_CORE_INCLUDE_DIR}"
 )
 
 add_test(

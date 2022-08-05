@@ -3,6 +3,7 @@ name: windows build
 on:
   push:
     paths-ignore:
+      - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
@@ -10,6 +11,7 @@ on:
       - 'tiledb/sm/c_api/tiledb_version.h'
   pull_request:
     paths-ignore:
+      - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'

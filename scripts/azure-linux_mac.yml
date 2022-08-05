@@ -24,16 +24,9 @@ steps:
   condition: eq(variables['TILEDB_ARROW_TESTS'], 'ON')
 
 - bash: |
-    set -e pipefail
-    open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
-    sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
-  condition: and(eq(variables['Agent.OS'], 'Darwin'), eq(variables['imageName'], 'macOS-10.14'))
-  displayName: 'Install system headers (OSX 10.14 only)'
-
-- bash: |
     #https://stackoverflow.com/questions/65278351/no-core-dump-file-generated-after-segmentation-fault-in-macos-big-sur
     sysctl -a | grep core
-    
+
     #https://developer.apple.com/forums/thread/53023?answerId=158378022#158378022
     #sudo chmod 1775 /cores
     #https://developer.apple.com/forums/thread/127503?answerId=401103022#401103022
@@ -42,7 +35,7 @@ steps:
     sudo chown $(whoami) /cores
 
     sudo ls -l /
-    
+
     ps -A
     ls -l /cores
   condition: and(eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
@@ -53,7 +46,7 @@ steps:
     ulimit -c               # should output 0 if disabled
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
     ulimit -c               # should output 'unlimited' now
-    
+
     # Azure sets "SYSTEM=build" for unknown reasons, which breaks the OpenSSL configure script
     #   - openssl configure uses ENV{SYSTEM} if available:
     #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56

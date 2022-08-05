@@ -73,11 +73,24 @@ target_link_libraries(compile_domain PRIVATE domain)
 target_sources(compile_domain PRIVATE test/compile_domain_main.cc)
 
 #
-# `array_schema` object library
+# `dimension_label_reference` object library
 #
+add_library(dimension_label_reference OBJECT dimension_label_reference.cc)
+target_link_libraries(dimension_label_reference PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(dimension_label_reference PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+target_link_libraries(dimension_label_reference PUBLIC constants $<TARGET_OBJECTS:constants>)
+target_link_libraries(dimension_label_reference PUBLIC vfs $<TARGET_OBJECTS:vfs>)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_dimension_label_reference EXCLUDE_FROM_ALL)
+target_link_libraries(compile_dimension_label_reference PRIVATE dimension_label_reference)
+target_sources(compile_dimension_label_reference PRIVATE test/compile_dimension_label_reference_main.cc)
+
 add_library(array_schema OBJECT array_schema.cc dimension_label_schema.cc)
 target_link_libraries(array_schema PUBLIC attribute $<TARGET_OBJECTS:attribute>)
 target_link_libraries(array_schema PUBLIC domain $<TARGET_OBJECTS:domain>)
+target_link_libraries(array_schema PUBLIC dimension_label_reference $<TARGET_OBJECTS:dimension_label_reference>)
 target_link_libraries(array_schema PUBLIC time $<TARGET_OBJECTS:time>)
 target_link_libraries(array_schema PUBLIC uri_format $<TARGET_OBJECTS:uri_format>)
 target_link_libraries(array_schema PUBLIC uuid $<TARGET_OBJECTS:uuid>)
@@ -99,9 +112,11 @@ if (TILEDB_TESTS)
     target_sources(unit_array_schema
       PUBLIC
         test/main.cc
+        test/unit_array_schema.cc
         test/unit_dimension.cc
-        test/unit_domain_data.cc
+        test/unit_dimension_label_reference.cc
         test/unit_dimension_label_schema.cc
+        test/unit_domain_data.cc
     )
 
     add_test(

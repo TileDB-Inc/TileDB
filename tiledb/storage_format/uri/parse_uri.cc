@@ -88,7 +88,7 @@ Status get_fragment_name_version(const std::string& name, uint32_t* version) {
     // version is greater than or equal to 7, we have a footer version of 4.
     // Otherwise, it is version 3.
     const uint32_t frag_version =
-        std::stol(name.substr(name.find_last_of('_') + 1));
+        std::stoul(name.substr(name.find_last_of('_') + 1));
     if (frag_version >= 10)
       *version = 5;
     else if (frag_version >= 7)

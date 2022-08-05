@@ -30,7 +30,7 @@
  * This file tests the Consistency class
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <iostream>
 
 #include "unit_consistency.h"

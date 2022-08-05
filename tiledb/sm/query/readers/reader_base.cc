@@ -51,6 +51,13 @@
 namespace tiledb {
 namespace sm {
 
+class ReaderBaseStatusException : public StatusException {
+ public:
+  explicit ReaderBaseStatusException(const std::string& message)
+      : StatusException("ReaderBase", message) {
+  }
+};
+
 /* ****************************** */
 /*          CONSTRUCTORS          */
 /* ****************************** */
@@ -77,7 +84,8 @@ ReaderBase::ReaderBase(
     , condition_(condition)
     , disable_cache_(false)
     , user_requested_timestamps_(false)
-    , use_timestamps_(false) {
+    , use_timestamps_(false)
+    , initial_data_loaded_(false) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
   timestamps_needed_for_deletes_.resize(fragment_metadata_.size());
@@ -232,16 +240,16 @@ void ReaderBase::zero_out_buffer_sizes() {
   }
 }
 
-Status ReaderBase::check_subarray() const {
-  if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
-    return logger_->status(Status_ReaderError(
+void ReaderBase::check_subarray() const {
+  if (subarray_.layout() == Layout::GLOBAL_ORDER &&
+      subarray_.range_num() != 1) {
+    throw ReaderBaseStatusException(
         "Cannot initialize reader; Multi-range subarrays with "
-        "global order layout are not supported"));
-
-  return Status::Ok();
+        "global order layout are not supported");
+  }
 }
 
-Status ReaderBase::check_validity_buffer_sizes() const {
+void ReaderBase::check_validity_buffer_sizes() const {
   // Verify that the validity buffer size for each
   // nullable attribute is large enough to contain
   // a validity value for each cell.
@@ -274,12 +282,10 @@ Status ReaderBase::check_validity_buffer_sizes() const {
               "given for ";
         ss << "attribute '" << name << "'";
         ss << " (" << cell_validity_num << " < " << min_cell_num << ")";
-        return logger_->status(Status_ReaderError(ss.str()));
+        throw ReaderBaseStatusException(ss.str());
       }
     }
   }
-
-  return Status::Ok();
 }
 
 bool ReaderBase::partial_consolidated_fragment_overlap() const {
@@ -592,20 +598,21 @@ Status ReaderBase::read_tiles(
         const uint64_t dim_num = array_schema->dim_num();
         for (uint64_t d = 0; d < dim_num; ++d) {
           if (array_schema->dimension_ptr(d)->name() == name) {
-            tile->init_coord_tile(name, d);
+            tile->init_coord_tile(name, var_size, d);
             break;
           }
         }
         tile_tuple = tile->tile_tuple(name);
       } else {
-        tile->init_attr_tile(name);
+        tile->init_attr_tile(name, var_size, nullable);
         tile_tuple = tile->tile_tuple(name);
       }
 
       assert(tile_tuple != nullptr);
-      Tile* const t = &std::get<0>(*tile_tuple);
-      Tile* const t_var = &std::get<1>(*tile_tuple);
-      Tile* const t_validity = &std::get<2>(*tile_tuple);
+      Tile* const t = &tile_tuple->fixed_tile();
+      Tile* const t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+      Tile* const t_validity =
+          nullable ? &tile_tuple->validity_tile() : nullptr;
       if (!var_size) {
         if (nullable)
           RETURN_NOT_OK(
@@ -841,7 +848,7 @@ ReaderBase::load_tile_chunk_data(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
+        tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
       return {Status::Ok(), 0, 0, 0};
     }
 
@@ -850,9 +857,9 @@ ReaderBase::load_tile_chunk_data(
       return {Status::Ok(), 0, 0, 0};
     }
 
-    const auto t = &std::get<0>(*tile_tuple);
-    const auto t_var = &std::get<1>(*tile_tuple);
-    const auto t_validity = &std::get<2>(*tile_tuple);
+    const auto t = &tile_tuple->fixed_tile();
+    const auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+    const auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
     auto&& [st, tile_size] = load_chunk_data(t, tile_chunk_data);
     RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
@@ -899,7 +906,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
+        tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
       return Status::Ok();
     }
 
@@ -908,9 +915,9 @@ Status ReaderBase::unfilter_tile_chunk_range(
       return Status::Ok();
     }
 
-    auto t = &std::get<0>(*tile_tuple);
-    auto t_var = &std::get<1>(*tile_tuple);
-    auto t_validity = &std::get<2>(*tile_tuple);
+    auto t = &tile_tuple->fixed_tile();
+    auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+    auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
     // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
     // 't_var' for var-sized tiles.
@@ -988,7 +995,7 @@ Status ReaderBase::post_process_unfiltered_tile(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
+        tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
       return Status::Ok();
     }
 
@@ -997,22 +1004,21 @@ Status ReaderBase::post_process_unfiltered_tile(
       return Status::Ok();
     }
 
-    auto t = &std::get<0>(*tile_tuple);
-    auto t_var = &std::get<1>(*tile_tuple);
-    auto t_validity = &std::get<2>(*tile_tuple);
+    auto& t = tile_tuple->fixed_tile();
+    t.filtered_buffer().clear();
 
-    t->filtered_buffer().clear();
-
-    zip_tile_coordinates(name, t);
+    zip_tile_coordinates(name, &t);
 
     if (var_size) {
-      t_var->filtered_buffer().clear();
-      zip_tile_coordinates(name, t_var);
+      auto& t_var = tile_tuple->var_tile();
+      t_var.filtered_buffer().clear();
+      zip_tile_coordinates(name, &t_var);
     }
 
     if (nullable) {
-      t_validity->filtered_buffer().clear();
-      zip_tile_coordinates(name, t_validity);
+      auto& t_validity = tile_tuple->validity_tile();
+      t_validity.filtered_buffer().clear();
+      zip_tile_coordinates(name, &t_validity);
     }
   }
 
@@ -1394,7 +1400,7 @@ Status ReaderBase::unfilter_tiles(
           // Skip non-existent attributes/dimensions (e.g. coords in the
           // dense case).
           if (tile_tuple == nullptr ||
-              std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
+              tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
             return Status::Ok();
           }
 
@@ -1403,9 +1409,10 @@ Status ReaderBase::unfilter_tiles(
             return Status::Ok();
           }
 
-          auto& t = std::get<0>(*tile_tuple);
-          auto& t_var = std::get<1>(*tile_tuple);
-          auto& t_validity = std::get<2>(*tile_tuple);
+          Tile* const t = &tile_tuple->fixed_tile();
+          Tile* const t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+          Tile* const t_validity =
+              nullable ? &tile_tuple->validity_tile() : nullptr;
 
           if (disable_cache_ == false) {
             logger_->info("using cache");
@@ -1419,14 +1426,14 @@ Status ReaderBase::unfilter_tiles(
                 fragment->file_offset(name, tile_idx, &tile_attr_offset));
 
             // Cache 't'.
-            if (t.filtered() && !disable_cache_) {
+            if (t->filtered() && !disable_cache_) {
               // Store the filtered buffer in the tile cache.
               RETURN_NOT_OK(storage_manager_->write_to_cache(
-                  *tile_attr_uri, tile_attr_offset, t.filtered_buffer()));
+                  *tile_attr_uri, tile_attr_offset, t->filtered_buffer()));
             }
 
             // Cache 't_var'.
-            if (var_size && t_var.filtered() && !disable_cache_) {
+            if (var_size && t_var->filtered() && !disable_cache_) {
               auto&& [status, tile_attr_var_uri] = fragment->var_uri(name);
               RETURN_NOT_OK(status);
 
@@ -1438,11 +1445,11 @@ Status ReaderBase::unfilter_tiles(
               RETURN_NOT_OK(storage_manager_->write_to_cache(
                   *tile_attr_var_uri,
                   tile_attr_var_offset,
-                  t_var.filtered_buffer()));
+                  t_var->filtered_buffer()));
             }
 
             // Cache 't_validity'.
-            if (nullable && t_validity.filtered() && !disable_cache_) {
+            if (nullable && t_validity->filtered() && !disable_cache_) {
               auto&& [status, tile_attr_validity_uri] =
                   fragment->validity_uri(name);
               RETURN_NOT_OK(status);
@@ -1455,7 +1462,7 @@ Status ReaderBase::unfilter_tiles(
               RETURN_NOT_OK(storage_manager_->write_to_cache(
                   *tile_attr_validity_uri,
                   tile_attr_validity_offset,
-                  t_validity.filtered_buffer()));
+                  t_validity->filtered_buffer()));
             }
           }
 
@@ -1463,15 +1470,14 @@ Status ReaderBase::unfilter_tiles(
           // 't_var' for var-sized tiles.
           if (!var_size) {
             if (!nullable)
-              RETURN_NOT_OK(unfilter_tile(name, &t));
+              RETURN_NOT_OK(unfilter_tile(name, t));
             else
-              RETURN_NOT_OK(unfilter_tile_nullable(name, &t, &t_validity));
+              RETURN_NOT_OK(unfilter_tile_nullable(name, t, t_validity));
           } else {
             if (!nullable)
-              RETURN_NOT_OK(unfilter_tile(name, &t, &t_var));
+              RETURN_NOT_OK(unfilter_tile(name, t, t_var));
             else
-              RETURN_NOT_OK(
-                  unfilter_tile_nullable(name, &t, &t_var, &t_validity));
+              RETURN_NOT_OK(unfilter_tile_nullable(name, t, t_var, t_validity));
           }
         }
 

@@ -31,12 +31,11 @@
  * Tests of C API for (dense or sparse) array operations.
  */
 
-#include "catch.hpp"
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <iostream>
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
 #ifdef _WIN32
@@ -2168,4 +2167,56 @@ TEST_CASE_METHOD(
 
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 #endif
+}
+
+TEST_CASE_METHOD(
+    ArrayFx, "Test dimension datatypes", "[array][dimension][datatypes]") {
+  SupportedFsLocal local_fs;
+  std::string array_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + "array_dim_types";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+
+  uint64_t dim_domain[] = {1, 10, 1, 10};
+  uint64_t tile_extent = 2;
+  tiledb_dimension_t* dim;
+
+  SECTION("- valid and supported Datatypes") {
+    std::vector<tiledb_datatype_t> valid_supported_types = {TILEDB_UINT64,
+                                                            TILEDB_INT64};
+
+    for (auto dim_type : valid_supported_types) {
+      int rc = tiledb_dimension_alloc(
+          ctx_, "dim", dim_type, dim_domain, &tile_extent, &dim);
+      REQUIRE(rc == TILEDB_OK);
+    }
+  }
+
+  SECTION("- valid and unsupported Datatypes") {
+    std::vector<tiledb_datatype_t> valid_unsupported_types = {TILEDB_CHAR,
+                                                              TILEDB_BOOL};
+
+    for (auto dim_type : valid_unsupported_types) {
+      int rc = tiledb_dimension_alloc(
+          ctx_, "dim", dim_type, dim_domain, &tile_extent, &dim);
+      REQUIRE(rc == TILEDB_ERR);
+    }
+  }
+
+  SECTION("- invalid Datatypes") {
+    std::vector<std::underlying_type_t<tiledb_datatype_t>> invalid_datatypes = {
+        42, 100};
+
+    for (auto dim_type : invalid_datatypes) {
+      int rc = tiledb_dimension_alloc(
+          ctx_,
+          "dim",
+          tiledb_datatype_t(dim_type),
+          dim_domain,
+          &tile_extent,
+          &dim);
+      REQUIRE(rc == TILEDB_ERR);
+    }
+  }
+
+  tiledb_dimension_free(&dim);
 }

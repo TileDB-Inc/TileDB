@@ -30,7 +30,7 @@
  * Tests the `Status` class.
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include "tiledb/common/status.h"
 
 using namespace tiledb::common;

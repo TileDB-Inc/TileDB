@@ -37,6 +37,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/type/range/range.h"
@@ -47,7 +48,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <iostream>
 
 using namespace tiledb::sm;
@@ -88,12 +89,53 @@ ReaderFx::ReaderFx()
   create_dir(temp_dir_, ctx_, vfs_);
 
   array_name_ = temp_dir_ + ARRAY_NAME;
-  int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array_);
+
+  int64_t dim_domain[] = {-1, 2};
+  int64_t tile_extent = 2;
+
+  // Create domain
+  tiledb_domain_t* domain;
+  auto rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_t* dim;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_INT64, dim_domain, &tile_extent, &dim);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, dim);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create attribute
+  tiledb_attribute_t* attr;
+  rc = tiledb_attribute_alloc(ctx_, "a", TILEDB_INT32, &attr);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create array
+  rc = tiledb_array_create(ctx_, array_name_.c_str(), array_schema);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_attribute_free(&attr);
+  tiledb_dimension_free(&dim);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
   CHECK(rc == TILEDB_OK);
 }
 
 ReaderFx::~ReaderFx() {
-  tiledb_array_free(&array_);
   remove_dir(temp_dir_, ctx_, vfs_);
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
@@ -107,18 +149,21 @@ TEST_CASE_METHOD(
     ReaderFx,
     "Reader: Compute result space tiles, 2D",
     "[Reader][2d][compute_result_space_tiles]") {
+  uint64_t tmp_size = 0;
   Config config;
+  Context context(config);
   std::unordered_map<std::string, tiledb::sm::QueryBuffer> buffers;
-  Subarray subarray;
+  buffers.emplace(
+      "a", tiledb::sm::QueryBuffer(nullptr, nullptr, &tmp_size, &tmp_size));
   QueryCondition condition;
   ThreadPool tp_cpu(4), tp_io(4);
-  StorageManager storage_manager(
-      &tp_cpu, &tp_io, &g_helper_stats, g_helper_logger());
-  Array array(URI("my_array"), &storage_manager);
+  Array array(URI(array_name_), context.storage_manager());
+  array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+  Subarray subarray(&array, &g_helper_stats, g_helper_logger());
   Reader reader(
       &g_helper_stats,
       g_helper_logger(),
-      nullptr,
+      context.storage_manager(),
       &array,
       config,
       buffers,

@@ -34,7 +34,7 @@
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/storage_manager/context.h"
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 
 using namespace tiledb::sm;
 using namespace tiledb::sm::deletes_and_updates::serialization;

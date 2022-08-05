@@ -30,7 +30,7 @@
  * This file defines unit tests for the RangeSetAndSuperset classes.
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include "../range_subset.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/type/range/range.h"

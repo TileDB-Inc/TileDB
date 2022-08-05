@@ -59,6 +59,7 @@ namespace sm {
 Dimension::Dimension(const std::string& name, Datatype type)
     : name_(name)
     , type_(type) {
+  ensure_datatype_is_supported(type_);
   cell_val_num_ = (datatype_is_string(type)) ? constants::var_num : 1;
   set_ceil_to_tile_func();
   set_coincides_with_tiles_func();
@@ -95,6 +96,7 @@ Dimension::Dimension(
     , name_(name)
     , tile_extent_(tile_extent)
     , type_(type) {
+  ensure_datatype_is_supported(type_);
   set_ceil_to_tile_func();
   set_coincides_with_tiles_func();
   set_compute_mbr_func();
@@ -126,6 +128,9 @@ Dimension::Dimension(const Dimension* dim) {
   name_ = dim->name();
   tile_extent_ = dim->tile_extent();
   type_ = dim->type_;
+
+  // Validate type
+  ensure_datatype_is_supported(type_);
 
   // Set fuctions
   ceil_to_tile_func_ = dim->ceil_to_tile_func_;
@@ -207,12 +212,9 @@ tuple<Status, optional<shared_ptr<Dimension>>> Dimension::deserialize(
       return {st, nullopt};
 
     // Load filter pipeline
-    auto&& [st_filterpipeline, filterpipeline]{
-        FilterPipeline::deserialize(buff, version)};
-    if (!st_filterpipeline.ok()) {
-      return {st_filterpipeline, nullopt};
-    }
-    filter_pipeline = filterpipeline.value();
+    // Note: Security validation delegated to invoked API
+    auto filterpipeline{FilterPipeline::deserialize(buff, version)};
+    filter_pipeline = filterpipeline;
   } else {
     datatype = type;
     cell_val_num = (datatype_is_string(datatype)) ? constants::var_num : 1;
@@ -1843,6 +1845,33 @@ std::string Dimension::domain_str() const {
 
   assert(false);
   return "";
+}
+
+void Dimension::ensure_datatype_is_supported(Datatype type) const {
+  try {
+    ensure_datatype_is_valid(type);
+  } catch (...) {
+    std::throw_with_nested(
+        std::logic_error("[Dimension::ensure_datatype_is_supported] "));
+    return;
+  }
+
+  switch (type) {
+    case Datatype::CHAR:
+    case Datatype::BLOB:
+    case Datatype::BOOL:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    case Datatype::ANY:
+      throw std::logic_error(
+          "Datatype::" + datatype_str(type) +
+          " is not a valid Dimension Datatype");
+    default:
+      return;
+  }
 }
 
 std::string Dimension::tile_extent_str() const {

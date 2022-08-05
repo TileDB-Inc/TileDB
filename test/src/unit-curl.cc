@@ -30,7 +30,7 @@
  * Tests for TileDB curl object.
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/rest/curl.h"
 
 #ifdef _WIN32

@@ -54,6 +54,15 @@ build() {
 
   make -C tiledb tests -j ${NUMBER_OF_PROCESSORS}
   make examples
+  make
+  make -C tiledb
+
+# in a local environ, can build to demo/check for previously seen (windows event) handle leakge
+# apparently due to issues with mingw std library implementation.
+# note that with S3 enabled above, and minio not running, the aws sdk may fatally error on exit.
+#  make -C tiledb/test tiledb_unit # need the support lib built
+#  make -C tiledb/test/performance tiledb_explore_msys_handle_leakage
+#  . ../test/performance/msys_handle_leakage/trials.sh
 }
 
 package() {

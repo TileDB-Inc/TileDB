@@ -199,6 +199,12 @@ class ReaderBase : public StrategyBase {
    */
   std::vector<bool> timestamps_needed_for_deletes_;
 
+  /** Names of dim/attr loaded for query condition. */
+  std::unordered_set<std::string> qc_loaded_attr_names_set_;
+
+  /** Have we loaded the initial data. */
+  bool initial_data_loaded_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -241,10 +247,10 @@ class ReaderBase : public StrategyBase {
   void zero_out_buffer_sizes();
 
   /** Correctness checks for `subarray_`. */
-  Status check_subarray() const;
+  void check_subarray() const;
 
   /** Correctness checks validity buffer sizes in `buffers_`. */
-  Status check_validity_buffer_sizes() const;
+  void check_validity_buffer_sizes() const;
 
   /**
    * Skip read/unfilter operations for timestamps attribute and fragments

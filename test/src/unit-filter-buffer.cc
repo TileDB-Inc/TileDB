@@ -34,7 +34,7 @@
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/filter/filter_storage.h"
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <iostream>
 
 using namespace tiledb::sm;
