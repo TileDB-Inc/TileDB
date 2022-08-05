@@ -158,15 +158,10 @@ GenericTileIO::read_generic_tile_header(
           header_buff.get(),
           header.filter_pipeline_size),
       nullopt);
-  ConstBuffer cbuf(header_buff->data(), header_buff->size());
-
-  try {
-    auto filterpipeline{
-        FilterPipeline::deserialize(&cbuf, header.version_number)};
-    header.filters = filterpipeline;
-  } catch (std::exception& e) {
-    return {Status_Error(e.what()), nullopt};
-  }
+  Deserializer deserializer(header_buff->data(), header_buff->size());
+  auto filterpipeline{
+      FilterPipeline::deserialize(deserializer, header.version_number)};
+  header.filters = std::move(filterpipeline);
 
   return {Status::Ok(), header};
 }
@@ -198,42 +193,33 @@ Status GenericTileIO::write_generic(
   return Status::Ok();
 }
 
+template <class T>
+void GenericTileIO::serialize_generic_tile_header(
+    T& serializer, GenericTileHeader& header) {
+  serializer.write(header.version_number);
+  serializer.write(header.persisted_size);
+  serializer.write(header.tile_size);
+  serializer.write(header.datatype);
+  serializer.write(header.cell_size);
+  serializer.write(header.encryption_type);
+  serializer.write(header.filter_pipeline_size);
+  header.filters.serialize(serializer);
+}
+
 Status GenericTileIO::write_generic_tile_header(GenericTileHeader* header) {
-  // Write to buffer
-  auto buff = tdb_new(Buffer);
-  RETURN_NOT_OK_ELSE(
-      buff->write(&header->version_number, sizeof(uint32_t)), tdb_delete(buff));
-  RETURN_NOT_OK_ELSE(
-      buff->write(&header->persisted_size, sizeof(uint64_t)), tdb_delete(buff));
-  RETURN_NOT_OK_ELSE(
-      buff->write(&header->tile_size, sizeof(uint64_t)), tdb_delete(buff));
-  RETURN_NOT_OK_ELSE(
-      buff->write(&header->datatype, sizeof(uint8_t)), tdb_delete(buff));
-  RETURN_NOT_OK_ELSE(
-      buff->write(&header->cell_size, sizeof(uint64_t)), tdb_delete(buff));
-  RETURN_NOT_OK_ELSE(
-      buff->write(&header->encryption_type, sizeof(uint8_t)), tdb_delete(buff));
+  SizeComputationSerializer fp_size_computation_serializer;
+  header->filters.serialize(fp_size_computation_serializer);
+  header->filter_pipeline_size = fp_size_computation_serializer.size();
 
-  // Write placeholder value for pipeline size.
-  uint64_t pipeline_size_offset = buff->offset();
-  RETURN_NOT_OK_ELSE(
-      buff->write(&header->filter_pipeline_size, sizeof(uint32_t)),
-      tdb_delete(buff));
+  SizeComputationSerializer size_computation_serializer;
+  serialize_generic_tile_header(size_computation_serializer, *header);
 
-  // Write pipeline to buffer
-  auto orig_size = buff->size();
-  RETURN_NOT_OK_ELSE(header->filters.serialize(buff), tdb_delete(buff));
-
-  // Write actual pipeline size over placeholder.
-  header->filter_pipeline_size =
-      static_cast<uint32_t>(buff->size() - orig_size);
-  *(static_cast<uint32_t*>(buff->value_ptr(pipeline_size_offset))) =
-      header->filter_pipeline_size;
+  std::vector<uint8_t> data(size_computation_serializer.size());
+  Serializer serializer(data.data(), data.size());
+  serialize_generic_tile_header(serializer, *header);
 
   // Write buffer to file
-  Status st = storage_manager_->write(uri_, buff);
-
-  tdb_delete(buff);
+  Status st = storage_manager_->write(uri_, data.data(), data.size());
 
   return st;
 }

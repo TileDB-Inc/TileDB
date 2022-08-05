@@ -169,6 +169,22 @@ class Deserializer {
   }
 
   /**
+   * Deserialize a buffer.
+   *
+   * @param data data to read.
+   * @param size size of the data.
+   */
+  void read(void* data, storage_size_t size) {
+    if (size > size_) {
+      throw std::logic_error("Reading data past end of serialized data size.");
+    }
+
+    memcpy(data, ptr_, size);
+    ptr_ += size;
+    size_ -= size;
+  }
+
+  /**
    * Return a pointer to serialized data.
    *
    * @tparam T Type of the data.
