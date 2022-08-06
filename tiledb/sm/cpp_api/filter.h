@@ -281,6 +281,8 @@ class Filter {
         return "SCALE_FLOAT";
       case TILEDB_FILTER_XOR:
         return "XOR";
+      case TILEDB_FILTER_LIDAR:
+        return "LIDAR";
     }
     return "";
   }

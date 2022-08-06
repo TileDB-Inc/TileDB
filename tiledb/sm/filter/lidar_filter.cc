@@ -129,8 +129,7 @@ template<typename T>
 
   // Apply XOR filter.
   Datatype int_type = sizeof(T) == 4 ? Datatype::INT32 : Datatype::INT64;
-  Tile tile;
-  tile.type_ = sizeof(T) == 4 ? Datatype::INT32 : Datatype::INT64;
+  Tile tile(int_type, 0, 0, nullptr, 0);
   FilterBuffer input;
   input.init(num_vals.data(), num_vals.size() * sizeof(T));
   FilterBuffer xor_output;

@@ -36,6 +36,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/xor_filter.h"
+#include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/compressors/bzip_compressor.h"
 
@@ -57,7 +58,8 @@ public:
    * Default constructor.
    */
   LidarFilter()
-      : Filter(FilterType::FILTER_LIDAR){
+      : Filter(FilterType::FILTER_LIDAR)
+      , compressor_filter_(Compressor::BZIP2, BZip::default_level()) {
   }
 
   /** Dumps the filter details in ASCII format in the selected output. */
@@ -126,8 +128,7 @@ public:
   Status unshuffle_part(ConstBuffer* input_buffer, FilterBuffer* output_buffer, const Config& config) const;
 
   XORFilter xor_filter_;
-  BZip bzip_compressor;
-  CompressionFilter compressor_filter_(bzip_compressor);
+  CompressionFilter compressor_filter_;
 };
 
 }; // namespace sm
