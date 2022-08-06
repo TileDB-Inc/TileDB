@@ -36,8 +36,8 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/xor_filter.h"
-#include "tiledb/common/thread_pool.h"
-#include "tiledb/sm/tile/tile.h"
+#include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/compressors/bzip_compressor.h"
 
 using namespace tiledb::common;
 
@@ -57,7 +57,7 @@ public:
    * Default constructor.
    */
   LidarFilter()
-      : Filter(FilterType::FILTER_LIDAR) {
+      : Filter(FilterType::FILTER_LIDAR){
   }
 
   /** Dumps the filter details in ASCII format in the selected output. */
@@ -86,10 +86,15 @@ public:
       FilterBuffer* output,
       const Config& config) const override;
 
+  /** Returns a new clone of this filter. */
+  LidarFilter* clone_impl() const override;
+
   private:
     /**
    * Run forward, templated on the tile type.
    */
+
+  
   template <typename T>
   Status run_forward(
       FilterBuffer* input_metadata,
@@ -105,21 +110,24 @@ public:
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
-      FilterBuffer* output) const;
+      FilterBuffer* output,
+      const Config& config) const;
 
   /**
    * shuffle part
    */
   template <typename T>
-  Status shuffle_part(const ConstBuffer* part, Buffer* output) const;
+  Status shuffle_part(ConstBuffer* input_buffer, FilterBuffer* output_buffer) const;
 
   /**
    * TODO: comment
    */
   template <typename T>
-  Status unshuffle_part(const ConstBuffer* part, Buffer* output) const;
+  Status unshuffle_part(ConstBuffer* input_buffer, FilterBuffer* output_buffer, const Config& config) const;
 
   XORFilter xor_filter_;
+  BZip bzip_compressor;
+  CompressionFilter compressor_filter_(bzip_compressor);
 };
 
 }; // namespace sm
