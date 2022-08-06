@@ -30,18 +30,18 @@
  * This file implements the lidar filter class.
  */
 
-#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/filter/lidar_filter.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/filter/filter_storage.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/tile/tile.h"
 
 #include <cmath>
-#include <vector>
 #include <utility>
+#include <vector>
 
 using namespace tiledb::common;
 
@@ -54,16 +54,16 @@ void LidarFilter::dump(FILE* out) const {
   fprintf(out, "LidarFilter");
 }
 
-   /**
-   * Run forward. TODO: COMMENT
-   */
-  Status LidarFilter::run_forward(
-      const Tile& tile,
-      Tile* const,  // offsets_tile
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const {
+/**
+ * Run forward. TODO: COMMENT
+ */
+Status LidarFilter::run_forward(
+    const Tile& tile,
+    Tile* const,  // offsets_tile
+    FilterBuffer* input_metadata,
+    FilterBuffer* input,
+    FilterBuffer* output_metadata,
+    FilterBuffer* output) const {
   auto tile_type = tile.type();
 
   switch (tile_type) {
@@ -76,7 +76,8 @@ void LidarFilter::dump(FILE* out) const {
           input_metadata, input, output_metadata, output);
     }
     default: {
-      return Status_FilterError("LidarFilter::run_forward: datatype is not a floating point type.");
+      return Status_FilterError(
+          "LidarFilter::run_forward: datatype is not a floating point type.");
     }
   }
 
@@ -106,11 +107,12 @@ Status LidarFilter::run_forward(
   return Status::Ok();
 }
 
-template<typename T>
- Status LidarFilter::shuffle_part(ConstBuffer* input_buffer, FilterBuffer* output_buffer) const {
+template <typename T>
+Status LidarFilter::shuffle_part(
+    ConstBuffer* input_buffer, FilterBuffer* output_buffer) const {
   assert(sizeof(T) == 4 || sizeof(T) == 8);
   assert((input_buffer->size() % sizeof(T)) == 0 && input_buffer->size() > 0);
-  size_t len = input_buffer->size()/sizeof(T);
+  size_t len = input_buffer->size() / sizeof(T);
   std::vector<std::pair<T, size_t>> vals;
   for (size_t i = 0; i < len; ++i) {
     T val = input_buffer->value<T>(i * sizeof(T));
@@ -122,7 +124,7 @@ template<typename T>
 
   std::vector<T> num_vals;
   std::vector<size_t> positions;
-  for (const auto &elem : vals) {
+  for (const auto& elem : vals) {
     num_vals.push_back(elem.first);
     positions.push_back(elem.second);
   }
@@ -135,33 +137,46 @@ template<typename T>
   FilterBuffer xor_output;
   FilterBuffer input_metadata;
   FilterBuffer xor_output_metadata;
-  xor_filter_.run_forward(tile, nullptr, &input, &input_metadata, &xor_output, &xor_output_metadata);
+  xor_filter_.run_forward(
+      tile,
+      nullptr,
+      &input,
+      &input_metadata,
+      &xor_output,
+      &xor_output_metadata);
 
   assert(output.num_buffers() == 1);
   FilterBuffer bzip_output_metadata;
   FilterBuffer bzip_output;
-  RETURN_NOT_OK(compressor_filter_.run_forward(tile, nullptr, &xor_output_metadata, &xor_output, &bzip_output_metadata, &bzip_output));
+  RETURN_NOT_OK(compressor_filter_.run_forward(
+      tile,
+      nullptr,
+      &xor_output_metadata,
+      &xor_output,
+      &bzip_output_metadata,
+      &bzip_output));
 
   // Write output to output buffer.
   RETURN_NOT_OK(output_buffer->write(&len, sizeof(size_t)));
   output_buffer->advance_offset(sizeof(size_t));
-  RETURN_NOT_OK(output_buffer->write(positions.data(), positions.size() * sizeof(size_t)));
+  RETURN_NOT_OK(output_buffer->write(
+      positions.data(), positions.size() * sizeof(size_t)));
   output_buffer->advance_offset(positions.size() * sizeof(size_t));
   RETURN_NOT_OK(output_buffer->append_view(&xor_output));
   return Status::Ok();
- }
+}
 
-  /**
-   * Run reverse. TODO: comment
-   */
-  Status LidarFilter::run_reverse(
-      const Tile& tile,
-      Tile* const,  // offsets_tile
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output,
-      const Config& config) const {
+/**
+ * Run reverse. TODO: comment
+ */
+Status LidarFilter::run_reverse(
+    const Tile& tile,
+    Tile* const,  // offsets_tile
+    FilterBuffer* input_metadata,
+    FilterBuffer* input,
+    FilterBuffer* output_metadata,
+    FilterBuffer* output,
+    const Config& config) const {
   auto tile_type = tile.type();
 
   switch (tile_type) {
@@ -174,11 +189,12 @@ template<typename T>
           input_metadata, input, output_metadata, output, config);
     }
     default: {
-      return Status_FilterError("LidarFilter::run_forward: datatype is not a floating point type.");
+      return Status_FilterError(
+          "LidarFilter::run_forward: datatype is not a floating point type.");
     }
   }
 
-   return Status_FilterError("LidarFilter::run_reverse: invalid datatype.");
+  return Status_FilterError("LidarFilter::run_reverse: invalid datatype.");
 }
 
 template <typename T>
@@ -187,7 +203,7 @@ Status LidarFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
-    const Config &config) const {
+    const Config& config) const {
   // Get number of parts
   uint32_t num_parts;
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));
@@ -214,24 +230,28 @@ Status LidarFilter::run_reverse(
   return Status::Ok();
 }
 
-template<typename T>
-Status LidarFilter::unshuffle_part(ConstBuffer* input_buffer, FilterBuffer* output_buffer, const Config &config) const {
+template <typename T>
+Status LidarFilter::unshuffle_part(
+    ConstBuffer* input_buffer,
+    FilterBuffer* output_buffer,
+    const Config& config) const {
   size_t len;
   RETURN_NOT_OK(input_buffer->read(&len, sizeof(size_t)));
   std::vector<size_t> positions(len, 0);
   RETURN_NOT_OK(input_buffer->read(positions.data(), len * sizeof(size_t)));
-  ConstBuffer gzip_decompress_buffer(input_buffer->cur_data(), input_buffer->nbytes_left_to_read());
+  ConstBuffer gzip_decompress_buffer(
+      input_buffer->cur_data(), input_buffer->nbytes_left_to_read());
   std::vector<T> decompressed_data(len, 0);
   PreallocatedBuffer gzip_output(decompressed_data.data(), len * sizeof(T));
   BZip::decompress(&gzip_decompress_buffer, &gzip_output);
 
   // XOR filter reverse.
-   Datatype int_type = sizeof(T) == 4 ? Datatype::INT32 : Datatype::INT64;
+  Datatype int_type = sizeof(T) == 4 ? Datatype::INT32 : Datatype::INT64;
   Tile tile;
-    tile.init_unfiltered(
-        constants::format_version, int_type, 0, 1, 0);
+  tile.init_unfiltered(constants::format_version, int_type, 0, 1, 0);
   uint32_t arr[2];
-  arr[0] = 1; arr[1] = len * sizeof(T);
+  arr[0] = 1;
+  arr[1] = len * sizeof(T);
   FilterBuffer xor_input_metadata;
   xor_input_metadata.init(static_cast<void*>(arr), sizeof(uint32_t) * 2);
   FilterBuffer xor_input;
@@ -239,7 +259,14 @@ Status LidarFilter::unshuffle_part(ConstBuffer* input_buffer, FilterBuffer* outp
   FilterBuffer xor_output_metadata;
   FilterBuffer xor_output;
 
-  xor_filter_.run_reverse(tile, nullptr, &xor_input_metadata, &xor_input, &xor_output_metadata, &xor_output, config);
+  xor_filter_.run_reverse(
+      tile,
+      nullptr,
+      &xor_input_metadata,
+      &xor_input,
+      &xor_output_metadata,
+      &xor_output,
+      config);
   assert(xor_output.num_buffers() == 1);
 
   auto xor_output_buffer = xor_output.buffers()[0];
@@ -250,7 +277,7 @@ Status LidarFilter::unshuffle_part(ConstBuffer* input_buffer, FilterBuffer* outp
   }
 
   output_buffer->write(original_vals.data(), len * sizeof(T));
-  
+
   return Status::Ok();
 }
 

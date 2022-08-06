@@ -41,16 +41,16 @@
 #include "encryption_aes256gcm_filter.h"
 #include "filter.h"
 #include "float_scaling_filter.h"
-#include "noop_filter.h"
 #include "lidar_filter.h"
+#include "noop_filter.h"
 #include "positive_delta_filter.h"
-#include "xor_filter.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/stdx/utility/to_underlying.h"
+#include "xor_filter.h"
 
 tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
   switch (type) {
