@@ -72,5 +72,5 @@ constexpr bool is_compiler_msvc = false;
 constexpr bool is_compiler_mingw = true;
 #endif
 
-}
+}  // namespace tiledb::platform
 #endif  // TILEDB_PLATFORM_H
