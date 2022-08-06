@@ -1,5 +1,5 @@
 /**
- * @file   tiledb/common/platform.h
+ * @file   tiledb/platform/platform.h
  *
  * @section LICENSE
  *
@@ -30,9 +30,10 @@
  * Platform/machine config of the TileDB library.
  */
 
-#ifndef TILEDB_COMMON_PLATFORM_H
-#define TILEDB_COMMON_PLATFORM_H
+#ifndef TILEDB_PLATFORM_H
+#define TILEDB_PLATFORM_H
 
+namespace tiledb::platform {
 /** Operating System */
 #if defined(_WIN32)
 constexpr bool is_os_windows = true;
@@ -71,4 +72,5 @@ constexpr bool is_compiler_msvc = false;
 constexpr bool is_compiler_mingw = true;
 #endif
 
-#endif  // TILEDB_COMMON_PLATFORM_H
+}
+#endif  // TILEDB_PLATFORM_H
