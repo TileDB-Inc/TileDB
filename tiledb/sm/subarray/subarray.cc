@@ -163,11 +163,11 @@ void Subarray::add_label_range(
   if (label_range_subset_[dim_idx].has_value()) {
     // A label range has already been set on this dimension. Do the following:
     //  * Check this label is the same label that rangers were already set.
-    if (dim_label_ref.name() != label_range_subset_[dim_idx].name()) {
+    if (dim_label_ref.name() != label_range_subset_[dim_idx].value().name) {
       throw StatusException(Status_SubarrayError(
           "Cannot add label range; Dimension is already to set to use "
           "dimension label '" +
-          label_range_subset_[dim_idx].name()));
+          label_range_subset_[dim_idx].value().name));
     }
   } else {
     // A label range has not yet been set on this dimension. Do the following:
@@ -194,7 +194,7 @@ void Subarray::add_label_range(
 
   // Restrict the range to the dimension domain and add.
   auto&& [error_status, oob_warning] =
-      label_range_subset_[dim_idx].range_subset().add_range(
+      label_range_subset_[dim_idx].value().ranges.add_range(
           range, read_range_oob_error);
   if (!error_status.ok()) {
     throw StatusException(Status_SubarrayError(
@@ -547,12 +547,12 @@ void Subarray::get_label_range(
                      .dimension_label_reference(label_name)
                      .dimension_id();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].name() != label_name) {
+      label_range_subset_[dim_idx].value().name != label_name) {
     throw StatusException(Status_SubarrayError(
         "Cannot get label range; No ranges set on dimension label '" +
         label_name + "'"));
   }
-  const auto& range = label_range_subset_[dim_idx][range_idx];
+  const auto& range = label_range_subset_[dim_idx].value().ranges[range_idx];
   *start = range.start_fixed();
   *end = range.end_fixed();
   *stride = nullptr;
@@ -564,8 +564,8 @@ void Subarray::get_label_range_num(
                      .dimension_label_reference(label_name)
                      .dimension_id();
   *range_num = (label_range_subset_[dim_idx].has_value() &&
-                label_range_subset_[dim_idx].name() == label_name) ?
-                   label_range_subset_[dim_idx].ranges().size() :
+                label_range_subset_[dim_idx].value().name == label_name) ?
+                   label_range_subset_[dim_idx].value().ranges.num_ranges() :
                    0;
 }
 
@@ -578,12 +578,12 @@ void Subarray::get_label_range_var(
                      .dimension_label_reference(label_name)
                      .dimension_id();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].name() != label_name) {
+      label_range_subset_[dim_idx].value().name != label_name) {
     throw StatusException(Status_SubarrayError(
         "Cannot get label range; No ranges set on dimension label '" +
         label_name + "'"));
   }
-  const auto& range = label_range_subset_[dim_idx][range_idx];
+  const auto& range = label_range_subset_[dim_idx].value().ranges[range_idx];
   std::memcpy(start, range.start_str().data(), range.start_size());
   std::memcpy(end, range.end_str().data(), range.end_size());
 }
@@ -597,12 +597,12 @@ void Subarray::get_label_range_var_size(
                      .dimension_label_reference(label_name)
                      .dimension_id();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].name() != label_name) {
+      label_range_subset_[dim_idx].value().name != label_name) {
     throw StatusException(Status_SubarrayError(
         "Cannot get label range size; No ranges set on dimension label '" +
         label_name + "'"));
   }
-  const auto& range = label_range_subset_[dim_idx][range_idx];
+  const auto& range = label_range_subset_[dim_idx].value().ranges[range_idx];
   *start_size = range.start_size();
   *end_size = range.end_size();
 }
@@ -2091,7 +2091,7 @@ void Subarray::add_default_ranges() {
   }
   is_default_.resize(dim_num, true);
   label_range_subset_.clear();
-  label_range_subset_.resize(dim_num);
+  label_range_subset_.resize(dim_num, nullopt);
 }
 
 void Subarray::compute_range_offsets() {
@@ -3399,10 +3399,9 @@ template void Subarray::crop_to_tile<double>(
 
 Subarray::LabelRangeSubset::LabelRangeSubset(
     const DimensionLabelReference& ref, bool coalesce_ranges)
-    : label_range_subset_{
-          {ref.name(),
-           RangeSetAndSuperset(
-               ref.label_type(), ref.label_domain(), false, coalesce_ranges)}} {
+    : name{ref.name()}
+    , ranges{RangeSetAndSuperset(
+          ref.label_type(), ref.label_domain(), false, coalesce_ranges)} {
 }
 
 }  // namespace sm

@@ -1140,13 +1140,9 @@ class Subarray {
   struct LabelRangeSubset {
    public:
     /**
-     * Default constructor
-     *
-     * Sets data to nullopt.
+     * Default constructor is not C.41.
      **/
-    LabelRangeSubset()
-        : label_range_subset_{nullopt} {
-    }
+    LabelRangeSubset() = delete;
 
     /**
      * Constructor
@@ -1158,51 +1154,11 @@ class Subarray {
     LabelRangeSubset(
         const DimensionLabelReference& ref, bool coalesce_ranges = true);
 
-    /** Returns if the label range subset has a value. */
-    inline bool has_value() const {
-      return label_range_subset_.has_value();
-    }
+    /** Name of the dimension label. */
+    std::string name;
 
-    /**
-     * Returns the name of the dimension label the ranges are set on.
-     *
-     * Throws a bad optional access if the label range is not set.
-     */
-    inline const std::string& name() const {
-      return std::get<0>(label_range_subset_.value());
-    }
-
-    /**
-     * Returns the range subset.
-     *
-     * Throws a bad optional access if the label range is not set.
-     */
-    inline RangeSetAndSuperset& range_subset() {
-      return std::get<1>(label_range_subset_.value());
-    }
-
-    /**
-     * Access a range in the range subset.
-     *
-     * Throws a bad optional access if the label range is not set.
-     *
-     * @param range_index The index of the range to access.
-     */
-    inline const Range& operator[](const uint64_t range_index) const {
-      return std::get<1>(label_range_subset_.value())[range_index];
-    }
-
-    /**
-     * Returns a vector of all ranges set for this dimension label.
-     *
-     * Throws a bad optional access if the label range is not set.
-     */
-    inline const std::vector<Range>& ranges() const {
-      return std::get<1>(label_range_subset_.value()).ranges();
-    }
-
-   private:
-    optional<tuple<std::string, RangeSetAndSuperset>> label_range_subset_;
+    /** The ranges set on the dimension label. */
+    RangeSetAndSuperset ranges;
   };
 
   /* ********************************* */
@@ -1249,7 +1205,7 @@ class Subarray {
   /**
    * Stores LabelRangeSubset objects for handling ranges on dimension labels.
    */
-  std::vector<LabelRangeSubset> label_range_subset_;
+  std::vector<optional<LabelRangeSubset>> label_range_subset_;
 
   /**
    * Flag storing if each dimension is a default value or not.
