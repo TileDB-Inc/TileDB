@@ -477,6 +477,7 @@ CURLcode curl_maybe_instrumented(
 
   std::stringstream ss;
   ss.precision(3);
+  ss.setf(std::ios::fixed, std::ios::floatfield);
   ss << "OP=CORE-TO-REST";
   ss << ",SECONDS=" << (float)dt / 1000.0;
   ss << ",RETRY=" << int(retry_number);
