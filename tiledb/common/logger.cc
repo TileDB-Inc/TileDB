@@ -90,6 +90,10 @@ Logger::~Logger() {
   spdlog::drop(name_);
 }
 
+bool Logger::should_trace() {
+  return logger_->should_log(spdlog::level::trace);
+}
+
 void Logger::trace(const char* msg) {
   logger_->trace(msg);
 }
@@ -343,6 +347,14 @@ void LOG_WARN(const std::stringstream& msg) {
 /** Logs an error. */
 void LOG_ERROR(const std::stringstream& msg) {
   global_logger().error(msg);
+}
+
+/**
+ * Returns whether trace-level or above is in effect.  Useful for callsites which want to avoid
+ * setting up log data that would be needless to compute if the logging isn't being done.
+ */
+bool LOG_SHOULD_TRACE() {
+  return global_logger().should_trace();
 }
 
 }  // namespace tiledb::common

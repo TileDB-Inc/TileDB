@@ -131,6 +131,12 @@ class Logger {
   }
 
   /**
+   * Returns whether trace-level or above is in effect.  Useful for callsites which want to avoid
+   * setting up log data that would be needless to compute if the logging isn't being done.
+   */
+  bool should_trace();
+
+  /**
    * Log a debug statement with no message formatting.
    *
    * @param msg The string to log.
