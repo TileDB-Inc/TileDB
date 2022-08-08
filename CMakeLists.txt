@@ -400,6 +400,9 @@ target_include_directories(local_install INTERFACE ${TILEDB_LOCALINSTALL_INCLUDE
 # Enable testing
 enable_testing()
 
+# Aggregate all link-completeness targets
+add_custom_target(all_link_complete)
+
 # Build the TileDB library experimental features
 add_subdirectory(experimental)
 

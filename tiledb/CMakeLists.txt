@@ -51,9 +51,6 @@ find_package(Threads REQUIRED)
 # Subdirectories
 ############################################################
 
-# Aggregate all link-completeness targets
-add_custom_target(all_link_complete)
-
 add_subdirectory(api)
 add_subdirectory(common)
 add_subdirectory(type)
