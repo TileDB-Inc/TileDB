@@ -483,6 +483,7 @@ CURLcode curl_maybe_instrumented(
   ss << ",CODE=" << http_code;
   ss << ",URL=" << url;
   LOG_TRACE(ss.str());
+  LOG_FLUSH();  // crucial for the nominal use-case which is pipe-to-grep
 
   return curl_code;
 }

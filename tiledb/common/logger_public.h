@@ -86,6 +86,12 @@ void LOG_ERROR(const std::stringstream& msg);
  */
 bool LOG_SHOULD_TRACE();
 
+/**
+ * Flushes the logger stream. Essential for getting real-time information
+ * whenever a logged process has output piped to something else, such as grep.
+ */
+void LOG_FLUSH();
+
 }  // namespace common
 
 /*

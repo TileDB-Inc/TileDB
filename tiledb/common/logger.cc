@@ -90,10 +90,6 @@ Logger::~Logger() {
   spdlog::drop(name_);
 }
 
-bool Logger::should_trace() {
-  return logger_->should_log(spdlog::level::trace);
-}
-
 void Logger::trace(const char* msg) {
   logger_->trace(msg);
 }
@@ -184,6 +180,14 @@ void Logger::critical(const std::stringstream& msg) {
 void Logger::fatal(const std::stringstream& msg) {
   logger_->error(msg.str());
   exit(1);
+}
+
+bool Logger::should_trace() {
+  return logger_->should_log(spdlog::level::trace);
+}
+
+void Logger::flush() {
+  return logger_->flush();
 }
 
 void Logger::set_level(Logger::Level lvl) {
@@ -356,6 +360,14 @@ void LOG_ERROR(const std::stringstream& msg) {
  */
 bool LOG_SHOULD_TRACE() {
   return global_logger().should_trace();
+}
+
+/**
+ * Flushes the logger stream. Essential for getting real-time information
+ * whenever a logged process has output piped to something else, such as grep.
+ */
+void LOG_FLUSH() {
+  global_logger().flush();
 }
 
 }  // namespace tiledb::common

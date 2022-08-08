@@ -131,13 +131,6 @@ class Logger {
   }
 
   /**
-   * Returns whether trace-level or above is in effect.  Useful for callsites
-   * which want to avoid setting up log data that would be needless to compute
-   * if the logging isn't being done.
-   */
-  bool should_trace();
-
-  /**
    * Log a debug statement with no message formatting.
    *
    * @param msg The string to log.
@@ -334,6 +327,19 @@ class Logger {
   void critical(const char* fmt, const Arg1& arg1, const Args&... args) {
     logger_->critical(fmt, arg1, args...);
   }
+
+  /**
+   * Returns whether trace-level or above is in effect.  Useful for callsites
+   * which want to avoid setting up log data that would be needless to compute
+   * if the logging isn't being done.
+   */
+  bool should_trace();
+
+  /**
+   * Flushes the logger stream. Essential for getting real-time information
+   * whenever a logged process has output piped to something else, such as grep.
+   */
+  void flush();
 
   /**
    * Set the logger level.
