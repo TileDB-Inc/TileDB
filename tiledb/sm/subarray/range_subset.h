@@ -371,7 +371,7 @@ class RangeSetAndSuperset {
   /**
    * Removes all ranges.
    *
-   * Note: This will make it so it is no longer implcititly set.
+   * Note: This will make it so it is no longer implicititly set.
    */
   inline void clear() {
     ranges_.clear();

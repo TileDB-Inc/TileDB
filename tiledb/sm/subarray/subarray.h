@@ -1166,7 +1166,7 @@ class Subarray {
     /**
      * Returns the name of the dimension label the ranges are set on.
      *
-     * Throws a bad optional access if the labl range is not set.
+     * Throws a bad optional access if the label range is not set.
      */
     inline const std::string& name() const {
       return std::get<0>(label_range_subset_.value());
@@ -1175,7 +1175,7 @@ class Subarray {
     /**
      * Returns the range subset.
      *
-     * Throws a bad optional access if the labl range is not set.
+     * Throws a bad optional access if the label range is not set.
      */
     inline RangeSetAndSuperset& range_subset() {
       return std::get<1>(label_range_subset_.value());
@@ -1184,7 +1184,7 @@ class Subarray {
     /**
      * Access a range in the range subset.
      *
-     * Throws a bad optional access if the labl range is not set.
+     * Throws a bad optional access if the label range is not set.
      *
      * @param range_index The index of the range to access.
      */
@@ -1195,7 +1195,7 @@ class Subarray {
     /**
      * Returns a vector of all ranges set for this dimension label.
      *
-     * Throws a bad optional access if the labl range is not set.
+     * Throws a bad optional access if the label range is not set.
      */
     inline const std::vector<Range>& ranges() const {
       return std::get<1>(label_range_subset_.value()).ranges();

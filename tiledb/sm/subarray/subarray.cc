@@ -171,7 +171,7 @@ void Subarray::add_label_range(
     }
   } else {
     // A label range has not yet been set on this dimension. Do the following:
-    //  * Verify no ranges explicitily set on the dimension.
+    //  * Verify no ranges explicitly set on the dimension.
     //  * Construct LabelRangeSubset for this dimension label.
     //  * Clear implicitly set range from the dimension ranges.
     //  * Update is_default (tracks if the range on the dimension is the default
