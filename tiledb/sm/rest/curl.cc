@@ -458,11 +458,21 @@ Status Curl::make_curl_request(
  * indispensable counterpart to Jaeger tracing, while Jaeger tracing isn't
  * enough to give us a full picture on all interactions in all contexts.
  *
- * Easiest enable: export TILEDB_CONFIG_LOGGING_LEVEL=5
+ * Easiest enable:
+ *     export TILEDB_REST_TRACE_CURL_CALLS=true
+ *     export TILEDB_CONFIG_LOGGING_LEVEL=5
+ * (you need both)
  */
-CURLcode curl_maybe_instrumented(
-    CURL* curl, const char* const url, uint8_t retry_number) {
-  if (!LOG_SHOULD_TRACE()) {  // fast path
+CURLcode Curl::curl_maybe_instrumented(
+    const char* const url, uint8_t retry_number) const {
+  CURL* curl = curl_.get();
+  bool rest_trace_curl_calls = false;
+  bool found = false;
+  auto ok =
+      config_
+          ->get<bool>("rest.trace.curl.calls", &rest_trace_curl_calls, &found)
+          .ok();
+  if (!ok || !found || !rest_trace_curl_calls) {
     return curl_easy_perform(curl);
   }
 
@@ -558,7 +568,7 @@ Status Curl::make_curl_request_common(
     curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
 
     /* fetch the url */
-    CURLcode tmp_curl_code = curl_maybe_instrumented(curl, url, i);
+    CURLcode tmp_curl_code = curl_maybe_instrumented(url, i);
 
     bool retry;
     RETURN_NOT_OK(should_retry(&retry));

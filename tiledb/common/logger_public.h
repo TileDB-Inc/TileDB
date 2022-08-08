@@ -80,15 +80,10 @@ void LOG_WARN(const std::stringstream& msg);
 void LOG_ERROR(const std::stringstream& msg);
 
 /**
- * Returns whether trace-level or above is in effect.  Useful for callsites
- * which want to avoid setting up log data that would be needless to compute if
- * the logging isn't being done.
- */
-bool LOG_SHOULD_TRACE();
-
-/**
  * Flushes the logger stream. Essential for getting real-time information
  * whenever a logged process has output piped to something else, such as grep.
+ * Note that spdlog acquires a global mutex on flush -- be advised this may
+ * or may not cause a noticeable impact on performance if this is used.
  */
 void LOG_FLUSH();
 

@@ -182,10 +182,6 @@ void Logger::fatal(const std::stringstream& msg) {
   exit(1);
 }
 
-bool Logger::should_trace() {
-  return logger_->should_log(spdlog::level::trace);
-}
-
 void Logger::flush() {
   return logger_->flush();
 }
@@ -351,15 +347,6 @@ void LOG_WARN(const std::stringstream& msg) {
 /** Logs an error. */
 void LOG_ERROR(const std::stringstream& msg) {
   global_logger().error(msg);
-}
-
-/**
- * Returns whether trace-level or above is in effect.  Useful for callsites
- * which want to avoid setting up log data that would be needless to compute if
- * the logging isn't being done.
- */
-bool LOG_SHOULD_TRACE() {
-  return global_logger().should_trace();
 }
 
 /**

@@ -80,6 +80,13 @@ class Config {
   /** The default for Curl's verbose mode used by REST. */
   static const std::string REST_CURL_VERBOSE;
 
+  /**
+   * The default for Curl's performance-tracing mode used by REST.  Emits
+   * compact/concise timing information more suitable for performance analysis
+   * than rest.curl.verbose.
+   */
+  static const std::string REST_TRACE_CURL_CALLS;
+
   /** If the array metadata should be loaded on array open */
   static const std::string REST_LOAD_METADATA_ON_ARRAY_OPEN;
 
@@ -94,7 +101,7 @@ class Config {
 
   /**
    * The default logging level. It can be:
-   * - `1` i.e. `error` if bootstrap flag --enalbe-verbose is given
+   * - `1` i.e. `error` if bootstrap flag --enable-verbose is given
    * - `0` i.e. `fatal` if this bootstrap flag is missing
    */
   static const std::string CONFIG_LOGGING_LEVEL;

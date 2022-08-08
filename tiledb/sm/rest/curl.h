@@ -440,6 +440,24 @@ class Curl {
       void* write_arg) const;
 
   /**
+   * Provides crucial information on core-to-REST-server HTTP operations.  This
+   * is essential for analyzing and minimizing remote-request latencies.  An
+   * indispensable counterpart to Jaeger tracing, while Jaeger tracing isn't
+   * enough to give us a full picture on all interactions in all contexts.
+   *
+   * Easiest enable:
+   *     export TILEDB_REST_TRACE_CURL_CALLS=true
+   *     export TILEDB_CONFIG_LOGGING_LEVEL=5
+   * (you need both)
+   *
+   * Note: uses LOG_TRACE with flush, and spdlog acquires a global mutex
+   * for log-flushing. This may or may not have a perceptible impact on
+   * performance, if you use this feature.
+   */
+  CURLcode curl_maybe_instrumented(
+      const char* const url, uint8_t retry_number) const;
+
+  /**
    * Common code shared between variants of 'make_curl_options_request'.
    *
    * @param stats The stats instance to record into
