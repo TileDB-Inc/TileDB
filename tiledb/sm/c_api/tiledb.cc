@@ -3919,6 +3919,8 @@ int32_t tiledb_array_alloc(
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation error");
+    delete *array;
+    *array = nullptr;
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;
@@ -5812,6 +5814,105 @@ int32_t tiledb_deserialize_array_schema(
   } catch (...) {
     delete *array_schema;
     *array_schema = nullptr;
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_serialize_array_open(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) {
+  // Currently no different behaviour is required if array open is serialized by
+  // the client or the Cloud server, so the variable is unused
+  (void)client_side;
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Allocate a buffer list
+  if (detail::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::array_open_serialize(
+              *(array->array_.get()),
+              (tiledb::sm::SerializationType)serialize_type,
+              (*buffer)->buffer_))) {
+    detail::tiledb_buffer_free(buffer);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_array_open(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_array_t** array) {
+  // Currently no different behaviour is required if array open is deserialized
+  // by the client or the Cloud server, so the variable is unused
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Create array struct
+  *array = new (std::nothrow) tiledb_array_t;
+  if (*array == nullptr) {
+    auto st = Status_Error("Failed to allocate TileDB array object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Check array URI
+  auto uri = tiledb::sm::URI("deserialized_array");
+  if (uri.is_invalid()) {
+    auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
+    delete *array;
+    *array = nullptr;
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Allocate an array object
+  try {
+    (*array)->array_ =
+        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+  } catch (std::bad_alloc&) {
+    auto st = Status_Error(
+        "Failed to create TileDB array object; Memory allocation "
+        "error");
+    delete *array;
+    *array = nullptr;
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::array_open_deserialize(
+              (*array)->array_.get(),
+              (tiledb::sm::SerializationType)serialize_type,
+              *buffer->buffer_))) {
+    delete *array;
+    *array = nullptr;
     return TILEDB_ERR;
   }
 
@@ -9546,6 +9647,26 @@ int32_t tiledb_deserialize_array_schema(
     tiledb_array_schema_t** array_schema) noexcept {
   return api_entry<detail::tiledb_deserialize_array_schema>(
       ctx, buffer, serialize_type, client_side, array_schema);
+}
+
+int32_t tiledb_serialize_array_open(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) noexcept {
+  return api_entry<detail::tiledb_serialize_array_open>(
+      ctx, array, serialize_type, client_side, buffer);
+}
+
+int32_t tiledb_deserialize_array_open(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_array_t** array) noexcept {
+  return api_entry<detail::tiledb_deserialize_array_open>(
+      ctx, buffer, serialize_type, client_side, array);
 }
 
 int32_t tiledb_serialize_array_schema_evolution(

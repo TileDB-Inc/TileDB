@@ -39,6 +39,8 @@
 #endif
 // clang-format on
 
+#include <string>
+
 #include "tiledb/common/common.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/enums/serialization_type.h"
@@ -145,13 +147,17 @@ Status array_to_capnp(
         *(schema.second.get()), &schema_builder, client_side));
   }
 
-  auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
-  RETURN_NOT_OK(
-      utils::serialize_non_empty_domain(nonempty_domain_builder, array));
+  if (array->serialize_non_empty_domain()) {
+    auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
+    RETURN_NOT_OK(
+        utils::serialize_non_empty_domain(nonempty_domain_builder, array));
+  }
 
-  auto array_metadata_builder = array_builder->initArrayMetadata();
-  RETURN_NOT_OK(
-      metadata_to_capnp(array->unsafe_metadata(), &array_metadata_builder));
+  if (array->serialize_metadata()) {
+    auto array_metadata_builder = array_builder->initArrayMetadata();
+    RETURN_NOT_OK(
+        metadata_to_capnp(array->unsafe_metadata(), &array_metadata_builder));
+  }
 
   return Status::Ok();
 }
@@ -191,18 +197,51 @@ Status array_from_capnp(
         make_shared<ArraySchema>(HERE(), array_schema_latest));
   }
 
-  if (array_reader.hasNonEmptyDomain()) {
-    const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
-    // Deserialize
-    RETURN_NOT_OK(
-        utils::deserialize_non_empty_domain(nonempty_domain_reader, array));
+  if (array->serialize_non_empty_domain()) {
+    if (array_reader.hasNonEmptyDomain()) {
+      const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
+      // Deserialize
+      RETURN_NOT_OK(
+          utils::deserialize_non_empty_domain(nonempty_domain_reader, array));
+      array->set_non_empty_domain_computed(true);
+    }
   }
 
-  if (array_reader.hasArrayMetadata()) {
-    const auto& array_metadata_reader = array_reader.getArrayMetadata();
-    // Deserialize
+  if (array->serialize_metadata()) {
+    if (array_reader.hasArrayMetadata()) {
+      const auto& array_metadata_reader = array_reader.getArrayMetadata();
+      // Deserialize
+      RETURN_NOT_OK(
+          metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
+      array->set_metadata_loaded(true);
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status array_open_to_capnp(
+    const Array& array, capnp::ArrayOpen::Builder* array_open_builder) {
+  // Set config
+  auto config_builder = array_open_builder->initConfig();
+  auto config = array.config();
+  RETURN_NOT_OK(config_to_capnp(&config, &config_builder));
+
+  return Status::Ok();
+}
+
+Status array_open_from_capnp(
+    const capnp::ArrayOpen::Reader& array_open_reader, Array* array) {
+  if (array == nullptr) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error deserializing array open; array is null."));
+  }
+
+  if (array_open_reader.hasConfig()) {
+    tdb_unique_ptr<Config> decoded_config = nullptr;
     RETURN_NOT_OK(
-        metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
+        config_from_capnp(array_open_reader.getConfig(), &decoded_config));
+    RETURN_NOT_OK(array->set_config(*decoded_config));
   }
 
   return Status::Ok();
@@ -421,6 +460,109 @@ Status array_deserialize(
   return Status::Ok();
 }
 
+Status array_open_serialize(
+    const Array& array,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    capnp::ArrayOpen::Builder arrayOpenBuilder =
+        message.initRoot<capnp::ArrayOpen>();
+    RETURN_NOT_OK(array_open_to_capnp(array, &arrayOpenBuilder));
+
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(arrayOpenBuilder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
+        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
+        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status_SerializationError(
+            "Error serializing array open; Unknown serialization type "
+            "passed: " +
+            std::to_string(static_cast<uint8_t>(serialize_type))));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing array open; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing array open; exception " + std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
+Status array_open_deserialize(
+    Array* array,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer) {
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        json.handleByAnnotation<capnp::ArrayOpen>();
+        ::capnp::MallocMessageBuilder message_builder;
+        capnp::ArrayOpen::Builder array_open_builder =
+            message_builder.initRoot<capnp::ArrayOpen>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            array_open_builder);
+        capnp::ArrayOpen::Reader array_open_reader =
+            array_open_builder.asReader();
+        RETURN_NOT_OK(array_open_from_capnp(array_open_reader, array));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
+        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
+        capnp::ArrayOpen::Reader array_open_reader =
+            reader.getRoot<capnp::ArrayOpen>();
+        RETURN_NOT_OK(array_open_from_capnp(array_open_reader, array));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status_SerializationError(
+            "Error deserializing array open; Unknown serialization type "
+            "passed"));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error deserializing array open; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error deserializing array open; exception " + std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
 #else
 
 Status array_serialize(Array*, SerializationType, Buffer*, const bool) {
@@ -431,6 +573,16 @@ Status array_serialize(Array*, SerializationType, Buffer*, const bool) {
 Status array_deserialize(Array*, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
+}
+
+Status array_open_serialize(const Array&, SerializationType, Buffer*) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot serialize; serialization not enabled."));
+}
+
+Status array_open_deserialize(Array*, SerializationType, const Buffer&) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot deserialize; serialization not enabled."));
 }
 
 Status metadata_serialize(Metadata*, SerializationType, Buffer*) {

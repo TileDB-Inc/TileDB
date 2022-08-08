@@ -37,6 +37,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
+#include "test/src/serialization_wrappers.h"
 #include "test/src/vfs_helpers.h"
 #ifdef _WIN32
 #include <Windows.h>
@@ -2219,4 +2220,112 @@ TEST_CASE_METHOD(
   }
 
   tiledb_dimension_free(&dim);
+}
+
+TEST_CASE_METHOD(
+    ArrayFx,
+    "Test array open serialization",
+    "[array][array_open][serialization]") {
+#ifdef TILEDB_SERIALIZATION
+  const char* array_name = "array_open_serialization";
+
+  // Create TileDB context
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_alloc(NULL, &ctx);
+
+  // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
+  int dim_domain[] = {1, 4, 1, 4};
+  int tile_extents[] = {4, 4};
+  tiledb_dimension_t* d1;
+  tiledb_dimension_alloc(
+      ctx, "rows", TILEDB_INT32, &dim_domain[0], &tile_extents[0], &d1);
+  tiledb_dimension_t* d2;
+  tiledb_dimension_alloc(
+      ctx, "cols", TILEDB_INT32, &dim_domain[2], &tile_extents[1], &d2);
+
+  // Create domain
+  tiledb_domain_t* domain;
+  tiledb_domain_alloc(ctx, &domain);
+  tiledb_domain_add_dimension(ctx, domain, d1);
+  tiledb_domain_add_dimension(ctx, domain, d2);
+
+  // Create a single attribute "a" so each (i,j) cell can store an integer
+  tiledb_attribute_t* a;
+  tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a);
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
+  tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+  tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+  tiledb_array_schema_set_domain(ctx, array_schema, domain);
+  tiledb_array_schema_add_attribute(ctx, array_schema, a);
+
+  // Set a few config variables
+  tiledb_ctx_free(&ctx);
+  tiledb_config_t* config;
+  tiledb_error_t* error;
+  tiledb_config_alloc(&config, &error);
+  tiledb_config_set(config, "rest.use_refactored_array_open", "true", &error);
+  tiledb_config_set(
+      config, "rest.load_metadata_on_array_open", "false", &error);
+  tiledb_config_set(
+      config, "rest.load_non_empty_domain_on_array_open", "false", &error);
+  tiledb_ctx_alloc(config, &ctx);
+
+  // Create the array
+  tiledb_array_create(ctx, array_name, array_schema);
+
+  // Serialize array and deserialize into deserialized_array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx, array_name, &array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_t* deserialized_array = nullptr;
+  rc = tiledb_array_open_serialize(
+      ctx,
+      array,
+      &deserialized_array,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check that the original and de-serialized array have the same config
+  tiledb_config_t* deserialized_config;
+  rc = tiledb_array_get_config(ctx, deserialized_array, &deserialized_config);
+  REQUIRE(rc == TILEDB_OK);
+  uint8_t equal = 0;
+  rc = tiledb_config_compare(config, deserialized_config, &equal);
+  REQUIRE(rc == TILEDB_OK);
+  // Check that they are equal
+  CHECK(equal == 1);
+
+  // Check that the config variables have the right value in deserialized array
+  const char* value = nullptr;
+  rc = tiledb_config_get(
+      config, "rest.use_refactored_array_open", &value, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(!strcmp(value, "true"));
+  value = nullptr;
+  rc = tiledb_config_get(
+      config, "rest.load_metadata_on_array_open", &value, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(!strcmp(value, "false"));
+  value = nullptr;
+  rc = tiledb_config_get(
+      config, "rest.load_non_empty_domain_on_array_open", &value, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(!strcmp(value, "false"));
+
+  // Clean up
+  tiledb_array_free(&deserialized_array);
+  tiledb_attribute_free(&a);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+  tiledb_config_free(&config);
+  tiledb_ctx_free(&ctx);
+#endif
 }

@@ -376,6 +376,11 @@ class Array {
    */
   Metadata* unsafe_metadata();
 
+  /** Set if array metadata is loaded already for this array or not */
+  inline void set_metadata_loaded(const bool is_loaded) {
+    metadata_loaded_ = is_loaded;
+  }
+
   /** Returns the non-empty domain of the opened array.
    *  If the non_empty_domain has not been computed or loaded
    *  it will be loaded first
@@ -385,8 +390,21 @@ class Array {
   /** Returns the non-empty domain of the opened array. */
   void set_non_empty_domain(const NDRange& non_empty_domain);
 
+  /** Set if the non_empty_domain is computed already for this array or not */
+  inline void set_non_empty_domain_computed(const bool is_computed) {
+    non_empty_domain_computed_ = is_computed;
+  }
+
   /** Returns the memory tracker. */
   MemoryTracker* memory_tracker();
+
+  /** Checks the config to see if non empty domain should be serialized on array
+   * open. */
+  bool serialize_non_empty_domain() const;
+
+  /** Checks the config to see if metadata should be serialized on array open.
+   */
+  bool serialize_metadata() const;
 
  private:
   /* ********************************* */
@@ -561,6 +579,9 @@ class Array {
    * Note: the Sentry object will also be released upon Array destruction.
    **/
   void set_array_closed();
+
+  /** Checks the config to see if refactored array open should be used. */
+  bool use_refactored_array_open() const;
 };
 
 }  // namespace sm
