@@ -227,7 +227,7 @@ Config::Config() {
   param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
   param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
-  param_values_["rest.trace.curl.calls"] = REST_TRACE_CURL_CALLS;
+  param_values_["rest.curl.trace_calls"] = REST_TRACE_CURL_CALLS;
   param_values_["rest.load_metadata_on_array_open"] =
       REST_LOAD_METADATA_ON_ARRAY_OPEN;
   param_values_["rest.load_non_empty_domain_on_array_open"] =
@@ -530,8 +530,8 @@ Status Config::unset(const std::string& param) {
     param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   } else if (param == "rest.curl.verbose") {
     param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
-  } else if (param == "rest.trace.curl.calls") {
-    param_values_["rest.trace.curl.calls"] = REST_TRACE_CURL_CALLS;
+  } else if (param == "rest.curl.trace_calls") {
+    param_values_["rest.curl.trace_calls"] = REST_TRACE_CURL_CALLS;
   } else if (param == "rest.load_metadata_on_array_open") {
     param_values_["rest.load_metadata_on_array_open"] =
         REST_LOAD_METADATA_ON_ARRAY_OPEN;

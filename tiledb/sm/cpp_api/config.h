@@ -718,11 +718,11 @@ class Config {
    *    Set curl to run in verbose mode for REST requests <br>
    *    curl will print to stdout with this option
    *    **Default**: false
-   * - `rest.trace.curl.calls` <br>
+   * - `rest.curl.trace_calls` <br>
    *    Set curl to emit single timing lines for REST requests, emitting
    *    compact/concise timing information more suitable for performance
-   * analysis than rest.curl.verbose <br> curl will print to stdout with this
-   * option
+   *    analysis than rest.curl.verbose <br> curl will print to stdout with this
+   *    option
    *    **Default**: false
    * - `rest.load_metadata_on_array_open` <br>
    *    If true, array metadata will be loaded and sent to server together with

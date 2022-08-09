@@ -371,6 +371,9 @@ class Curl {
   /** Verbose logging in curl. */
   bool verbose_;
 
+  /** Trace rest curl calls. */
+  bool trace_calls_;
+
   /**
    * Populates the curl slist with authorization (token or username+password),
    * and any extra headers.
@@ -440,22 +443,27 @@ class Curl {
       void* write_arg) const;
 
   /**
-   * Provides crucial information on core-to-REST-server HTTP operations.  This
-   * is essential for analyzing and minimizing remote-request latencies.  An
-   * indispensable counterpart to Jaeger tracing, while Jaeger tracing isn't
-   * enough to give us a full picture on all interactions in all contexts.
+   * Optionally instruments and then executes curl_easy_perform. Instrumentation
+   * is meant to provide crucial information on core-to-REST-server HTTP
+   * operations which is essential for analyzing and minimizing remote-request
+   * latencies. An indispensable counterpart to Jaeger tracing, while Jaeger
+   * tracing isn't enough to give us a full picture on all interactions in all
+   * contexts.
    *
-   * Easiest enable:
-   *     export TILEDB_REST_TRACE_CURL_CALLS=true
+   * Easiest instrumentation enable:
+   *     export TILEDB_REST_CURL_TRACE_CALLS=true
    *     export TILEDB_CONFIG_LOGGING_LEVEL=5
    * (you need both)
    *
-   * Note: uses LOG_TRACE with flush, and spdlog acquires a global mutex
-   * for log-flushing. This may or may not have a perceptible impact on
+   * Note: if enabled LOG_TRACE with flush is used, and spdlog acquires a global
+   * mutex for log-flushing. This may or may not have a perceptible impact on
    * performance, if you use this feature.
+   *
+   * @param url URL to fetch.
+   * @param retry_number The time this request is being retried.
    */
-  CURLcode curl_maybe_instrumented(
-      const char* const url, uint8_t retry_number) const;
+  CURLcode curl_easy_perform_maybe_instrumented(
+      const char* const url, const uint8_t retry_number) const;
 
   /**
    * Common code shared between variants of 'make_curl_options_request'.
