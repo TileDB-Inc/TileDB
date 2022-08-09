@@ -26,6 +26,54 @@
 # THE SOFTWARE.
 #
 
+#########################
+# from https://stackoverflow.com/a/56738858
+## https://stackoverflow.com/questions/32183975/how-to-print-all-the-properties-of-a-target-in-cmake/56738858#56738858
+## https://stackoverflow.com/a/56738858/3743145
+
+## Get all properties that cmake supports
+execute_process(COMMAND cmake --help-property-list OUTPUT_VARIABLE CMAKE_PROPERTY_LIST)
+## Convert command output into a CMake list
+STRING(REGEX REPLACE ";" "\\\\;" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
+STRING(REGEX REPLACE "\n" ";" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
+
+list(REMOVE_DUPLICATES CMAKE_PROPERTY_LIST)
+
+function(print_target_properties tgt)
+    if(NOT TARGET ${tgt})
+      message("There is no target named '${tgt}'")
+      return()
+    endif()
+
+    # <sigh>, so didn't read carefully enuf, cmp0045 is for
+    # non-existent -target-, not the properties...
+    cmake_policy(GET CMP0045 cmp0045_state)
+    message(STATUS "policy CMP0045 state ${cmp0045_state}")
+    cmake_policy(PUSH)
+    cmake_policy(SET CMP0045 OLD)
+    foreach (prop ${CMAKE_PROPERTY_LIST})
+        string(REPLACE "<CONFIG>" "${CMAKE_BUILD_TYPE}" prop ${prop})
+        # TBD: this call on IMPORT_LOCATION is generating an error when docs
+        # indicate it should be setting a -NOTFOUND, what am I missing?
+#        get_target_property(propval ${tgt} ${prop})
+#        if (propval)
+#            message ("${tgt} ${prop} = ${propval}")
+#        else()
+#          message("get_target_property did not find ${prop}, ${propval}")
+#        endif()
+        get_property(propval2 TARGET ${tgt} PROPERTY ${prop})
+        if (propval2)
+            message ("${tgt} ${prop} = ${propval2}")
+#        else()
+#          message("get_property did not find ${prop}, ${propval}")
+        endif()
+    endforeach(prop)
+    cmake_policy(POP)
+endfunction(print_target_properties)
+#########################
+
+include(CMakePrintHelpers)
+
 ############################################################
 # CMake policies
 ############################################################
@@ -529,12 +577,44 @@ if (TILEDB_GCS)
 #  find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
   find_package(GCSSDK_EP REQUIRED COMPONENTS storage)
   message(STATUS "storage_FOUND ${storage_FOUND}, storage-NOTFOUND ${storage-NOTFOUND}")
+  message(STATUS "GCSSDK_EP_FOUND ${GCSSDK_EP_FOUND}, GCSSDK_EP-NOTFOUND ${GCSSDK_EP-NOTFOUND}")
+  cmake_policy(PUSH)
+  cmake_policy(GET CMP0111 cmp0111_state)
+  message(STATUS "policy CMP0111 state ${cmp0111_state}")
+  # TBD: figure out how to handle missing IMPORT_LOCATION without old policy...
+  # ... may not work anyway, but gonna try...
+  cmake_policy(SET CMP0111 OLD)
+  
+  if(1)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
        #storage_client
        google-cloud-cpp::storage # v2.0.0+
+       #tdb-google-cloud-cpp::storage # v2.0.0+
+       #tdb-gcs-libs
        #google_cloud_cpp_storage
   )
+  print_target_properties(TILEDB_CORE_OBJECTS_ILIB)
+  print_target_properties(tdb-gcs-libs)
+  print_target_properties(google-cloud-cpp::storage)
+#  else()
+#  add_library(tdb-google-cloud-cpp::storage UNKNOWN IMPORTED)
+#  set_target_properties($tgt PROPERTIES)
+#  function(add_loc tgt lib_loc)
+#    set_target_properties($tgt PROPERTIES
+#      IMPORTED_LOCATION "${libloc}"
+#      #INTERFACE_INCLUDE_DIRECTORIES ${TILEDB_EP_INSTALL_PREFIX}/include
+#    )
+#    
+#  endfunction()
+#  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+#    INTERFACE
+#       #storage_client
+#       #google-cloud-cpp::storage # v2.0.0+
+#       google_cloud_cpp_storage
+#  )
+  endif()
+  cmake_policy(POP)
   add_definitions(-DHAVE_GCS)
   message(STATUS "after setting interface google-cloud-cpp::storage")
 
@@ -546,12 +626,19 @@ if (TILEDB_GCS)
 
   #get_target_property(_GCS_INTERFACE_LIBS storage_client INTERFACE_LINK_LIBRARIES)
   #get_target_property(_GCS_INTERFACE_LIBS google_cloud_cpp_storage INTERFACE_LINK_LIBRARIES)
-  get_target_property(_GCS_INTERFACE_LIBS google-cloud-cpp::storage INTERFACE_LINK_LIBRARIES)
+  #get_target_property(_GCS_INTERFACE_LIBS google-cloud-cpp::storage INTERFACE_LINK_LIBRARIES)
+  get_target_property(_GCS_INTERFACE_LIBS tdb-gcs-libs INTERFACE_LINK_LIBRARIES)
   if ("ZLIB::ZLIB" IN_LIST _GCS_INTERFACE_LIBS)
+    message("removing ZLIB::ZLIB from _GCS_INTERFACE_LIBS")
+    message("before, _GCS_INTERFACE_LIBS is ${_GCS_INTERFACE_LIBS"}")
     list(REMOVE_ITEM _GCS_INTERFACE_LIBS "ZLIB::ZLIB")
+    message("after, _GCS_INTERFACE_LIBS is ${_GCS_INTERFACE_LIBS"}")
     #set_property(TARGET storage_client PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
     #set_property(TARGET google_cloud_cpp_storage PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
-    set_property(TARGET google-cloud-cpp::storage PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
+    #set_property(TARGET google-cloud-cpp::storage PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
+    set_property(TARGET tdb-gcs-libs PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
+  else()
+    message("ZLIB::ZLIB not found in _GCS_INTERFACE_LIBS")
   endif()
   # TBD: exploratory, gcssdk 2.0.0+
   find_package(absl CONFIG REQUIRED
@@ -561,7 +648,14 @@ if (TILEDB_GCS)
   # TBD: whats correct way, targets returned to set include directories?
   #target_include_directories(TILEDB_CORE_OBJECTS_ILIB INTERFACE absl)
   target_include_directories(TILEDB_CORE_OBJECTS PRIVATE "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/include")
+
 endif()
+
+  print_target_properties( TILEDB_CORE_OBJECTS_ILIB ) 
+  print_target_properties( tdb-gcs-libs )
+  print_target_properties( spdlog::spdlog )
+  print_target_properties( libmagic )
+
 
 # Libcurl
 if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
@@ -615,6 +709,15 @@ find_package(Spdlog_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
 find_package(Magic_EP REQUIRED)
+
+message("before target_link_libraries(TILEDB_CORE_OBJECTS_ILIB")
+  #print_target_properties( Bzip2::Bzip2 )
+  #print_target_properties( LZ4::LZ4 )
+  print_target_properties( spdlog::spdlog )
+  #print_target_properties( Zlib::Zlib )
+  #print_target_properties( Zstd::Zstd )
+  print_target_properties( libmagic )
+
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
@@ -624,6 +727,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Zstd::Zstd
     libmagic
 )
+message("after target_link_libraries(TILEDB_CORE_OBJECTS_ILIB")
 if(TILEDB_WEBP)
   find_package(Webp_EP REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB

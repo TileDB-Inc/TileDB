@@ -47,13 +47,30 @@ function(print_target_properties tgt)
       return()
     endif()
 
+    # <sigh>, so didn't read carefully enuf, cmp0045 is for
+    # non-existent -target-, not the properties...
+    cmake_policy(GET CMP0045 cmp0045_state)
+    message(STATUS "policy CMP0045 state ${cmp0045_state}")
+    cmake_policy(PUSH)
+    cmake_policy(SET CMP0045 OLD)
     foreach (prop ${CMAKE_PROPERTY_LIST})
         string(REPLACE "<CONFIG>" "${CMAKE_BUILD_TYPE}" prop ${prop})
-        get_target_property(propval ${tgt} ${prop})
-        if (propval)
-            message ("${tgt} ${prop} = ${propval}")
+        # TBD: this call on IMPORT_LOCATION is generating an error when docs
+        # indicate it should be setting a -NOTFOUND, what am I missing?
+#        get_target_property(propval ${tgt} ${prop})
+#        if (propval)
+#            message ("${tgt} ${prop} = ${propval}")
+#        else()
+#          message("get_target_property did not find ${prop}, ${propval}")
+#        endif()
+        get_property(propval2 TARGET ${tgt} PROPERTY ${prop})
+        if (propval2)
+            message ("${tgt} ${prop} = ${propval2}")
+#        else()
+#          message("get_property did not find ${prop}, ${propval}")
         endif()
     endforeach(prop)
+    cmake_policy(POP)
 endfunction(print_target_properties)
 #########################
 
@@ -80,9 +97,10 @@ set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
 set(GCSSDK_DIR "${TILEDB_EP_INSTALL_PREFIX}")
 
 # First check for a static version in the EP prefix.
-# The storage client is installed as the cmake package storage_client
+# The storage client is installed as the cmake package storage_client (with prev v2 packages)
 # TODO: This should be replaced with proper find_package as google installs cmake targets for the subprojects
-if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
+#if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
+if ((NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT) AND NOT TILEDB_SUPERBUILD)
   #set(abslpath d:/dev/tiledb/gh.sc-17498-upd-gcs.git/bld.vs22.A/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/absl)
   #set(absl_DIR "${abslpath}")
   # TBD: Do artifacts of these need to get 'installed' into tiledb location to be included with distribution as well?
@@ -95,6 +113,25 @@ if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
   #set(GTest_DIR "${CMAKE_BINARY_DIR}/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/GTest")
   #set(re2_DIR "${CMAKE_BINARY_DIR}/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/re2")
 
+  message(STATUS "CMAKE_SYSTEM [target] is ${CMAKE_SYSTEM}, CMAKE_HOST_SYSTEM is ${CMAKE_HOST_SYSTEM}")
+  message(STATUS "TARGET_TRIPLET is ${TARGET_TRIPLET}, HOST_TRIPLET is ${HOST_TRIPLET}")
+  message(STATUS "TRIPLET is ${TRIPLET}")
+  
+  find_library(TDB_GCS_STORAGE_LIBRARY
+    NAME google_cloud_cpp_storage
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
+  find_library(TDB_GCS_STORAGE_LIBRARY
+    NAMES
+      libgoogle_cloud_cpp_storage${CMAKE_STATIC_LIBRARY_SUFFIX} 
+      google_cloud_cpp_storage${CMAKE_STATIC_LIBRARY_SUFFIX}
+    PATHS 
+#      ${TILEDB_EP_INSTALL_PREFIX} 
+      ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out
+    PATH_SUFFIXES lib lib64
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
+  
   set(absl_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/absl")
   set(nlohmann_json_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/nlohmann_json")
   set(benchmark_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/benchmark")
@@ -112,6 +149,7 @@ if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
   message(STATUS "gRPC_DIR is ${gRPC_DIR}")
   message(STATUS "GTest_DIR is ${GTest_DIR}")
   message(STATUS "re2_DIR is ${re2_DIR}")
+  
 #  message(STATUS "OpenSSL_DIR is ${OpenSSL_DIR}")
   # TBD: Will this satisfy gcs need? seems openssl not part of what gcs installs in build via vcpkg...
   # "unimplemented on windows" ... find_package(OpenSSL_EP)
@@ -147,14 +185,42 @@ if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
   #  PATHS ${TILEDB_OPENSSL_DIR}
   #    ${openssl_DIR}
   #  )
+  #set(google_cloud_cpp_rest_internal_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/google/cloud")
+  find_package(google_cloud_cpp_common
+    PATHS
+        ${TILEDB_EP_INSTALL_PREFIX}
+        ${TILEDB_DEPS_NO_DEFAULT_PATH}
+        ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/google/cloud
+    )
+  find_package(google_cloud_cpp_rest_internal
+    PATHS
+        ${TILEDB_EP_INSTALL_PREFIX}
+        ${TILEDB_DEPS_NO_DEFAULT_PATH}
+        ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/google/cloud
+    )
+  if(NOT TARGET google_cloud_cpp_rest_internal)
+    message(STATUS "missing target google_cloud_cpp_rest_internal")
+  else()
+    message(STATUS "have target google_cloud_cpp_rest_internal")
+  endif()
+  if(NOT TARGET google-cloud-cpp::rest-internal)
+    message(STATUS "missing target google-cloud-cpp::rest-internal")
+  else()
+    message(STATUS "have target google-cloud-cpp::rest-internal")
+  endif()
+  
 #  find_package(storage_client
   find_package(google_cloud_cpp_storage CONFIG
+#  find_package(google_cloud_cpp_storage
+#  find_package(google_cloud_cpp_storage 
 #  find_package(google_cloud_cpp::storage CONFIG
 #  find_package(google-cloud-cpp::storage CONFIG
     PATHS ${TILEDB_EP_INSTALL_PREFIX}
           ${TILEDB_DEPS_NO_DEFAULT_PATH}
 #          ${TILEDB_EP_BASE}/src/ep_gcssdk
           ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/google/cloud/storage
+#          ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/google/cloud
+#          ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out
   )
 #  set(GCSSDK_FOUND ${storage_client_FOUND})
   set(GCSSDK_FOUND ${google_cloud_cpp_storage_FOUND})
@@ -164,14 +230,18 @@ if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
     message(STATUS "missing target google_cloud_cpp_storage")
   else()
     message(STATUS "have target google_cloud_cpp_storage")
-    print_target_properties( google_cloud_cpp_storage ) 
+    print_target_properties( google_cloud_cpp_storage)
   endif()
   if(NOT TARGET google-cloud-cpp::storage)
     message(STATUS "missing target google-cloud-cpp::storage")
   else()
     message(STATUS "have target google-cloud-cpp::storage")
-    print_target_properties( google-cloud-cpp::storage ) 
+    print_target_properties(google-cloud-cpp::storage)
   endif()
+else()
+  message(STATUS "CMAKE_SYSTEM [target] is ${CMAKE_SYSTEM}, CMAKE_HOST_SYSTEM is ${CMAKE_HOST_SYSTEM}")
+  message(STATUS "TARGET_TRIPLET is ${TARGET_TRIPLET}, HOST_TRIPLET is ${HOST_TRIPLET}")
+  message(STATUS "TRIPLET is ${TRIPLET}")
 endif()
 
 if (NOT GCSSDK_FOUND)
@@ -222,6 +292,57 @@ if (NOT GCSSDK_FOUND)
     endif()
     set(CONDITIONAL_PATCH "") #seems adding openssl to vcpkg.json is NOT helpful...
   message(STATUS "findGCSSDK B ... TILEDB_EP_BASE is ${TILEDB_EP_BASE}")
+  if(WIN32)
+    set(TDB_LOCAL_ARCH_NAME "${CMAKE_SOURCE_DIR}/gcssdk_win_build_tree_${CMAKE_BUILD_TYPE}_archive.tgz")
+  else()
+    set(TDB_LOCAL_ARCH_NAME "${CMAKE_SOURCE_DIR}/gcssdk_nix_build_tree_${CMAKE_BUILD_TYPE}_archive.tgz")
+  endif()
+  if(EXISTS ${TDB_LOCAL_ARCH_NAME})
+  #hacked branch to 'download' from local archive created from other
+  message("findgcs, Fetching gcs build tree from local archive ${TDB_LOCAL_ARCH_NAME}")
+  ExternalProject_Add(ep_gcssdk
+      PREFIX "externals"
+      # Set download name to avoid collisions with only the version number in the filename
+      DOWNLOAD_NAME ep_gcssdk.zip
+      URL ${TDB_LOCAL_ARCH_NAME}
+      BUILD_IN_SOURCE 1
+#      PATCH_COMMAND
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch &&
+        #The following patch is on top of a patch already done in build.patch above, application order is important!
+        #does add_compile_options() hoping for
+        #"These options are used when compiling targets from the current directory and below."
+#        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/v1.22.0.CMakelists.txt.openssl3md5deprecationmitigation.patch
+#      PATCH_COMMAND
+#        ${CONDITIONAL_PATCH}
+      CONFIGURE_COMMAND ""
+#        COMMAND ${CMAKE_COMMAND} -E tar cfvz ${CMAKE_SOURCE_DIR}/gcssdk_win_build_tree_archive.tgz .
+      #BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
+      BUILD_COMMAND ${CMAKE_COMMAND} -E echo "echo extracted ep_gcssdk should contain entire build-tree ..." #${CMAKE_COMMAND} --build cmake-out --config ${CMAKE_BUILD_TYPE}
+      # There is no install command, the build process installs the libraries
+      # ... no longer seems to for 2.0.0, but still no install command... what's the vcpkg way of locating?
+      #INSTALL_COMMAND ""
+      INSTALL_COMMAND ${CMAKE_COMMAND} --build cmake-out --target install
+      LOG_DOWNLOAD TRUE
+      LOG_CONFIGURE TRUE
+      LOG_BUILD TRUE
+      LOG_INSTALL TRUE
+      LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
+      DEPENDS ${DEPENDS}
+    )
+  else()
+  message("findgcs, downloading gcssdk archives")
+  #set(GCS_CMAKE_BUILD_TYPE $<IF:$<BOOL:$<CONFIG:Debug>>,Debug,Release>)
+  if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    set(GCS_CMAKE_BUILD_TYPE Debug)
+    set(GCS_LINK_OPTIONS "/VERBOSE")
+  else()
+    set(GCS_CMAKE_BUILD_TYPE Release)
+    set(GCS_LINK_OPTIONS "/NODEFAULTLIB:MSVCRTD /VERBOSE")
+  endif()
+  
+  message("GCS_CMAKE_BUILD_TYPE is ${GCS_CMAKE_BUILD_TYPE}")
   ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
@@ -247,9 +368,12 @@ if (NOT GCSSDK_FOUND)
          #${CMAKE_COMMAND} -Hsuper -Bcmake-out
          #${TDB_PREP_ENV} ${CMAKE_COMMAND} -H. -Bcmake-out/ -DCMAKE_TOOLCHAIN_FILE=./tdb.vcpkg/scripts/buildsystem/vcpkg.cmake
          #${CMAKE_COMMAND} -E env ${TDB_PREP_ENV} ${CMAKE_COMMAND} -H. -Bcmake-out/ -DCMAKE_TOOLCHAIN_FILE=./tdb.vcpkg/vcpkg/scripts/buildsystem/vcpkg.cmake
-         #${CMAKE_COMMAND} -E env ${TDB_PREP_ENV} ${CMAKE_COMMAND} --trace -H. -Bcmake-out/ -DCMAKE_TOOLCHAIN_FILE=${TDB_VCPKG_TOOLCHAIN_PATH}
-         ${CMAKE_COMMAND} -E env ${TDB_PREP_ENV} ${CMAKE_COMMAND} --debug-find -H. -Bcmake-out/ -DCMAKE_TOOLCHAIN_FILE=${TDB_VCPKG_TOOLCHAIN_PATH}
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+         ${CMAKE_COMMAND} -E env ${TDB_PREP_ENV} ${CMAKE_COMMAND} --trace -H. -Bcmake-out/ -DCMAKE_TOOLCHAIN_FILE=${TDB_VCPKG_TOOLCHAIN_PATH}
+         #${CMAKE_COMMAND} -E env ${TDB_PREP_ENV} ${CMAKE_COMMAND} --debug-find -H. -Bcmake-out/ -DCMAKE_TOOLCHAIN_FILE=${TDB_VCPKG_TOOLCHAIN_PATH} 
+        #-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        #vcpkg only supports Debug/Release, so if Debug then Debug, else must be(MinSizeRel/RelWithDebInfo/Release), use Release
+        #-DCMAKE_BUILD_TYPE=$<IF:$<BOOL:$<CONFIG:Debug>>,Debug,Release> #${CMAKE_BUILD_TYPE}
+        -DCMAKE_BUILD_TYPE=${GCS_CMAKE_BUILD_TYPE}
         -DBUILD_SHARED_LIBS=OFF
         -DBUILD_SAMPLES=OFF
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
@@ -269,13 +393,17 @@ if (NOT GCSSDK_FOUND)
         -DGOOGLE_CLOUD_CPP_ENABLE_STORAGE=ON
         -DGOOGLE_CLOUD_CPP_ENABLE_PUBSUB=OFF
         -DGOOGLE_CLOUD_CPP_ENABLE_EXAMPLES=OFF # Set in case BUILD_SAMPLES=OFF above does not cover this
+        -DGOOGLE_CLOUD_CPP_ENABLE=storage
         -DBUILD_TESTING=OFF
         # Google uses their own variable instead of CMAKE_INSTALL_PREFIX
         -DGOOGLE_CLOUD_CPP_EXTERNAL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
-      #BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
-      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out
+        #TDB: Are we blowing away something else needed than that set above?
+        -DLINK_OPTIONS=${GCS_LINK_OPTIONS}
+      #BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU} -- /verbosity:diag
+      #BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out --config ${CMAKE_BUILD_TYPE} -- /verbosity:diag
+      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out --config ${GCS_CMAKE_BUILD_TYPE} -- /verbosity:diag
       # There is no install command, the build process installs the libraries
       # ... no longer seems to for 2.0.0, but still no install command... what's the vcpkg way of locating?
       #INSTALL_COMMAND ""
@@ -287,7 +415,10 @@ if (NOT GCSSDK_FOUND)
       LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
       DEPENDS ${DEPENDS}
     )
+    endif()
 
+    # still need to fetch/prep the base/source vcpkg dir as it's not in the gcssdk build tree but
+    # won't need the step to create the archive if it already exists
     if(WIN32)
       #set(psargs "$env{VCPKG_ROOT}=$env{CD}/tdb.vcpkg/vcpkg" && echo "vcpkg_root is $env{VCPKG_ROOT}" && "$env{VCPKG_ROOT}/bootstrap-vcpkg.ps1" -disableMetrics)
       #set(psargs "$$env{VCPKG_ROOT}=$env{CD}/tdb.vcpkg/vcpkg && echo vcpkg_root is $$env{VCPKG_ROOT} && $$env{VCPKG_ROOT}/bootstrap-vcpkg.ps1 -disableMetrics")
@@ -318,7 +449,7 @@ if (NOT GCSSDK_FOUND)
         COMMAND echo ${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg/bootstrap-vcpkg.bat -disableMetrics >> tdb.bootstrap.vcpkg.bat
         #COMMAND echo "$\{VCPKG_ROOT\}/bootstrap-vcpkg.sh" >> tdb.bootstrap.vcpkg.sh
         #COMMAND type ./tdb.bootstrap.vcpkg.bat && echo "------------"
-        COMMAND echo "following is contents of ./tdb.bootstrap.vcpkg.bat"
+        #COMMAND echo "following is contents of ./tdb.bootstrap.vcpkg.bat"
         #COMMAND cmd /c "type ./tdb.bootstrap.vcpkg.bat"
         #?syntax of command incorrect? yes, doesn't like '/'... COMMAND type ./tdb.bootstrap.vcpkg.bat
         #COMMAND type .\tdb.bootstrap.vcpkg.bat
@@ -330,6 +461,15 @@ if (NOT GCSSDK_FOUND)
         #COMMAND ${CMAKE_COMMAND} -H. -Bcmake-out/ -DCMAKE_TOOLCHAIN_FILE=$%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake
         #COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
       )
+      if(NOT EXISTS ${TDB_LOCAL_ARCH_NAME})
+      ExternalProject_Add_Step(ep_gcssdk gcssdk_gen_buildtree_archive
+        DEPENDERS install
+        DEPENDEES build
+        #COMMAND ${CMAKE_COMMAND} -E tar cfvz ${CMAKE_SOURCE_DIR}/gcssdk_win_build_tree_archive.tgz .
+        COMMAND ${CMAKE_COMMAND} -E tar cfvz ${TDB_LOCAL_ARCH_NAME} ./ep_gcssdk
+        WORKING_DIRECTORY ${TILEDB_EP_BASE}/src/ep_gcssdk/..
+      )
+      endif()
     else()
       
       ExternalProject_Add_Step(ep_gcssdk gcssdk_prep_vcpkg 
@@ -357,13 +497,22 @@ if (NOT GCSSDK_FOUND)
         #COMMAND ${CMAKE_COMMAND} -H. -Bcmake-out/ -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
         #COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
       )
+      if(NOT EXISTS ${TDB_LOCAL_ARCH_NAME})
+      ExternalProject_Add_Step(ep_gcssdk gcssdk_gen_buildtree_archive
+        DEPENDERS install
+        DEPENDEES build
+        #COMMAND ${CMAKE_COMMAND} -E tar cfvz ${CMAKE_SOURCE_DIR}/gcssdk_nix_build_tree_archive.tgz
+        COMMAND ${CMAKE_COMMAND} -E tar cfvz ${TDB_LOCAL_ARCH_NAME} ./ep_gcssdk
+        WORKING_DIRECTORY ${TILEDB_EP_BASE}/src/ep_gcssdk/..
+      )
+      endif()
     endif()
 
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_gcssdk)
     list(APPEND FORWARD_EP_CMAKE_ARGS
       -DTILEDB_GCSSDK_EP_BUILT=TRUE
       # At what point might there be conflicts with multiple toolchain files?
-      -DCMAKE_TOOLCHAIN_FILE=${TDB_VCPKG_TOOLCHAIN_PATH}
+#      -DCMAKE_TOOLCHAIN_FILE=${TDB_VCPKG_TOOLCHAIN_PATH}
     )
     # TDB: parameterize if this works to find absl...
     set(abslpath d:/dev/tiledb/gh.sc-17498-upd-gcs.git/bld.vs22.A/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/absl)
@@ -374,6 +523,9 @@ if (NOT GCSSDK_FOUND)
 #       "${abslpath}"
        )
     list(APPEND CMAKE_PREFIX_PATH "${abslpath}")
+    list(APPEND CMAKE_PREFIX_PATH 
+      "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/google/cloud"
+      )
     set(absl_DIR "${abslpath}")
     set(abslpath d:/dev/tiledb/gh.sc-17498-upd-gcs.git/bld.vs22.A/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/absl)
     set(absl_DIR "${abslpath}")
@@ -385,27 +537,47 @@ endif()
 # If we found the SDK but it didn't have a cmake target build them
 #if (GCSSDK_FOUND AND NOT TARGET storage_client)
 #if (GCSSDK_FOUND AND NOT TARGET google_cloud_cpp_storage)
-if (GCSSDK_FOUND AND NOT TARGET google-cloud-cpp::storage)
-  message(STATUS "missing target google-cloud-cpp::storage, hacking in")
+#if (GCSSDK_FOUND AND NOT TARGET google-cloud-cpp::storage)
+if (GCSSDK_FOUND AND NOT TARGET tdb-google-cloud-cpp::storage)
+  message(STATUS "missing target tdb-google-cloud-cpp::storage, hacking in")
 #  message(STATUS "missing target google_cloud_cpp_storage, hacking in")
   # Build a list of all GCS libraries to link with.
   #list(APPEND GCSSDK_LINKED_LIBS "storage_client"
   list(APPEND GCSSDK_LINKED_LIBS 
           #"storage_client"
-          "google_cloud_cpp_storage" 
+          #"google_cloud_cpp_storage" 
+         #"google_cloud_cpp_common"
+         #"crc32c"
+         "google_cloud_cpp_storage"
+         "google_cloud_cpp_rest_internal"
          "google_cloud_cpp_common"
-         "crc32c")
+         #think is 'package', so find_library() not gonna work... "spdlog::spdlog"
+         )
 
+  if(0)
+  if (NOT TARGET tdb-google-cloud-cpp::storage)
+    message(STATUS "missing target google-cloud-cpp::storage!")
+#    add_library(storage_client UNKNOWN IMPORTED)
+#    add_library(google_cloud_cpp_storage UNKNOWN IMPORTED)
+    add_library(tdb-google-cloud-cpp::storage UNKNOWN IMPORTED)
+  endif()
+  endif()
+  set(TDB_GCS_LIBS_LOCS)
   foreach (LIB ${GCSSDK_LINKED_LIBS})
     find_library(GCS_FOUND_${LIB}
-      NAMES lib${LIB}${CMAKE_STATIC_LIBRARY_SUFFIX}
+      NAMES 
+        lib${LIB}${CMAKE_STATIC_LIBRARY_SUFFIX}
+        ${LIB}${CMAKE_STATIC_LIBRARY_SUFFIX}
       PATHS 
-        ${TILEDB_EP_INSTALL_PREFIX} 
-#        ${TILEDB_EP_BASE}/src/ep_gcssdk
+#        ${TILEDB_EP_INSTALL_PREFIX} 
+        ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out
+        ${TILEDB_DEPS_NO_DEFAULT_PATH}
       PATH_SUFFIXES lib lib64
-      ${TILEDB_DEPS_NO_DEFAULT_PATH}
     )
     message(STATUS "Found GCS lib: ${LIB} (${GCS_FOUND_${LIB}})")
+    if(GCS_FOUND_${LIB})
+      list(APPEND TDB_GCS_LIBS_LOCS "${GCS_FOUND_${LIB}}")
+    endif()
 
     # If we built a static EP, install it if required.
     if (GCSSDK_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
@@ -413,21 +585,39 @@ if (GCSSDK_FOUND AND NOT TARGET google-cloud-cpp::storage)
     endif()
   endforeach ()
 
+  if(1)
 #  if (NOT TARGET storage_client)
 #  if (NOT TARGET google_cloud_cpp_storage)
-  if (NOT TARGET google-cloud-cpp::storage)
-    message(STATUS "missing target google-cloud-cpp::storage!")
+#  if (NOT TARGET google-cloud-cpp::storage)
+#  if (NOT TARGET tdb-google-cloud-cpp::storage)
+  if (NOT TARGET tdb-gcs-libs)
+##   message(STATUS "missing target google-cloud-cpp::storage!")
+    message(STATUS "missing target tdb-gcs-libs")
 #    add_library(storage_client UNKNOWN IMPORTED)
 #    add_library(google_cloud_cpp_storage UNKNOWN IMPORTED)
-    add_library(google-cloud-cpp::storage UNKNOWN IMPORTED)
+#    add_library(google-cloud-cpp::storage UNKNOWN IMPORTED)
+#    add_library(tdb-google-cloud-cpp::storage UNKNOWN IMPORTED)
+    add_library(tdb-gcs-libs UNKNOWN IMPORTED)
     if(1)
+      set_target_properties(tdb-gcs-libs PROPERTIES
+        #IMPORTED_LOCATION "${TDB_GCS_LIBS_LOCS}"
+        IMPORTED_LOCATION "${GCS_FOUND_google_cloud_cpp_storage};${GCS_FOUND_google_cloud_cpp_rest_internal};${GCS_FOUND_google_cloud_cpp_common}"
+        #LINK_LIBRARIES "${GCS_FOUND_google_cloud_cpp_storage};${GCS_FOUND_google_cloud_cpp_rest_internal};${GCS_FOUND_google_cloud_cpp_common}"
+        INTERFACE_INCLUDE_DIRECTORIES ${TILEDB_EP_INSTALL_PREFIX}/include
+      )
+      print_target_properties(tdb-gcs-libs)
 #    set_target_properties(storage_client PROPERTIES
 #      IMPORTED_LOCATION "${GCS_FOUND_storage_client};${GCS_FOUND_google_cloud_cpp_common};${GCS_FOUND_crc32c}"
 #    set_target_properties(google_cloud_cpp_storage PROPERTIES
-    set_target_properties(google-cloud-cpp::storage PROPERTIES
-      IMPORTED_LOCATION "${GCS_FOUND_google_cloud_cpp_storage};${GCS_FOUND_google_cloud_cpp_common};${GCS_FOUND_crc32c}"
-      INTERFACE_INCLUDE_DIRECTORIES ${TILEDB_EP_INSTALL_PREFIX}/include
-    )
+#    set_target_properties(google-cloud-cpp::storage PROPERTIES
+#    set_target_properties(tdb-google-cloud-cpp::storage PROPERTIES
+##      IMPORTED_LOCATION "${GCS_FOUND_google_cloud_cpp_storage};${GCS_FOUND_google_cloud_cpp_common};${GCS_FOUND_crc32c}"
+##      IMPORTED_LOCATION "${GCS_FOUND_google_cloud_cpp_storage};${GCS_FOUND_spdlog::spdlog}"
+#      #ok, so doesn't like ':' in variable names, what would we have
+#      IMPORTED_LOCATION "${GCS_FOUND_google_cloud_cpp_storage}"
+#      INTERFACE_INCLUDE_DIRECTORIES ${TILEDB_EP_INSTALL_PREFIX}/include
+#    )
     endif()
+  endif()
   endif()
 endif()
