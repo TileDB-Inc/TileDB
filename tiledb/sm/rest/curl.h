@@ -455,10 +455,6 @@ class Curl {
    *     export TILEDB_CONFIG_LOGGING_LEVEL=5
    * (you need both)
    *
-   * Note: if enabled LOG_TRACE with flush is used, and spdlog acquires a global
-   * mutex for log-flushing. This may or may not have a perceptible impact on
-   * performance, if you use this feature.
-   *
    * @param url URL to fetch.
    * @param retry_number The time this request is being retried.
    */

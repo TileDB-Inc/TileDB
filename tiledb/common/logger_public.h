@@ -79,14 +79,6 @@ void LOG_WARN(const std::stringstream& msg);
 /** Logs an error. */
 void LOG_ERROR(const std::stringstream& msg);
 
-/**
- * Flushes the logger stream. Essential for getting real-time information
- * whenever a logged process has output piped to something else, such as grep.
- * Note that spdlog acquires a global mutex on flush -- be advised this may
- * or may not cause a noticeable impact on performance if this is used.
- */
-void LOG_FLUSH();
-
 }  // namespace common
 
 /*

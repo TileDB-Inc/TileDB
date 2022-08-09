@@ -182,10 +182,6 @@ void Logger::fatal(const std::stringstream& msg) {
   exit(1);
 }
 
-void Logger::flush() {
-  return logger_->flush();
-}
-
 void Logger::set_level(Logger::Level lvl) {
   switch (lvl) {
     case Logger::Level::FATAL:
@@ -347,14 +343,6 @@ void LOG_WARN(const std::stringstream& msg) {
 /** Logs an error. */
 void LOG_ERROR(const std::stringstream& msg) {
   global_logger().error(msg);
-}
-
-/**
- * Flushes the logger stream. Essential for getting real-time information
- * whenever a logged process has output piped to something else, such as grep.
- */
-void LOG_FLUSH() {
-  global_logger().flush();
 }
 
 }  // namespace tiledb::common

@@ -329,14 +329,6 @@ class Logger {
   }
 
   /**
-   * Flushes the logger stream. Essential for getting real-time information
-   * whenever a logged process has output piped to something else, such as grep.
-   * Note that spdlog acquires a global mutex on flush -- be advised this may
-   * or may not cause a noticeable impact on performance if this is used.
-   */
-  void flush();
-
-  /**
    * Set the logger level.
    *
    * @param lvl Logger::Level VERBOSE logs debug statements, ERR only logs
