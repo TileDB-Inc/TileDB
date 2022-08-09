@@ -91,6 +91,7 @@ include(TileDBCommon)
 # If the EP was built, it will install the storage_client-config.cmake file,
 # which we can use with find_package. CMake uses CMAKE_PREFIX_PATH to locate find
 # modules.
+list(APPEND CMAKE_PREFIX_PATH "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/")
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
 
 # Try searching for the SDK in the EP prefix.
@@ -101,6 +102,7 @@ set(GCSSDK_DIR "${TILEDB_EP_INSTALL_PREFIX}")
 # TODO: This should be replaced with proper find_package as google installs cmake targets for the subprojects
 #if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
 if ((NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT) AND NOT TILEDB_SUPERBUILD)
+  if(0)
   #set(abslpath d:/dev/tiledb/gh.sc-17498-upd-gcs.git/bld.vs22.A/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/absl)
   #set(absl_DIR "${abslpath}")
   # TBD: Do artifacts of these need to get 'installed' into tiledb location to be included with distribution as well?
@@ -112,15 +114,16 @@ if ((NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT) AND NOT TILEDB_SUPERBU
   #set(gRPC_DIR "${CMAKE_BINARY_DIR}/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/gRPC")
   #set(GTest_DIR "${CMAKE_BINARY_DIR}/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/GTest")
   #set(re2_DIR "${CMAKE_BINARY_DIR}/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/re2")
+  endif()
 
   message(STATUS "CMAKE_SYSTEM [target] is ${CMAKE_SYSTEM}, CMAKE_HOST_SYSTEM is ${CMAKE_HOST_SYSTEM}")
   message(STATUS "TARGET_TRIPLET is ${TARGET_TRIPLET}, HOST_TRIPLET is ${HOST_TRIPLET}")
   message(STATUS "TRIPLET is ${TRIPLET}")
   
-  find_library(TDB_GCS_STORAGE_LIBRARY
-    NAME google_cloud_cpp_storage
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
-  )
+  #find_library(TDB_GCS_STORAGE_LIBRARY
+  #  NAME google_cloud_cpp_storage
+  #  ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  #)
   find_library(TDB_GCS_STORAGE_LIBRARY
     NAMES
       libgoogle_cloud_cpp_storage${CMAKE_STATIC_LIBRARY_SUFFIX} 
@@ -128,10 +131,12 @@ if ((NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT) AND NOT TILEDB_SUPERBU
     PATHS 
 #      ${TILEDB_EP_INSTALL_PREFIX} 
       ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out
+      ${TILEDB_DEPS_NO_DEFAULT_PATH}
     PATH_SUFFIXES lib lib64
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
   
+  if(1)
+  if(WIN32)
   set(absl_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/absl")
   set(nlohmann_json_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/nlohmann_json")
   set(benchmark_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/benchmark")
@@ -140,6 +145,26 @@ if ((NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT) AND NOT TILEDB_SUPERBU
   set(gRPC_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/gRPC")
   set(GTest_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/GTest")
   set(re2_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/re2")
+  elseif(APPLE)
+  # TBD: What to do about arm64?
+  set(absl_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-osx/share/absl")
+  set(nlohmann_json_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-osx/share/nlohmann_json")
+  set(benchmark_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-osx/share/benchmark")
+  set(Crc32c_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-osx/share/Crc32c")
+  set(CURL_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-osx/share/CURL")
+  set(gRPC_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-osx/share/gRPC")
+  set(GTest_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-osx/share/GTest")
+  set(re2_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-osx/share/re2")
+  else() # assume linux
+  set(absl_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-linux/share/absl")
+  set(nlohmann_json_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-linux/share/nlohmann_json")
+  set(benchmark_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-linux/share/benchmark")
+  set(Crc32c_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-linux/share/Crc32c")
+  set(CURL_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-linux/share/CURL")
+  set(gRPC_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-linux/share/gRPC")
+  set(GTest_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-linux/share/GTest")
+  set(re2_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-linux/share/re2")
+  endif()
 #  set(OpenSSL_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/openssl")
   message(STATUS "absl_DIR is ${absl_DIR}")
   message(STATUS "nlohmann_json_DIR is ${nlohmann_json_DIR}")
@@ -165,6 +190,15 @@ if ((NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT) AND NOT TILEDB_SUPERBU
   set(ENV{OPENSSL_ROOT_DIR} "${OpenSSL_DIR}")
   message(STATUS "before fp env OpenSSL_DIR is $ENV{OpenSSL_DIR}")
   message(STATUS "before fp env OpenSSL_DIR is $ENV{OPENSSL_ROOT_DIR}")
+  else()
+  set(OpenSSL_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed") # plus PATH_SUFFIXES
+  endif()
+  
+  #TBD: 
+  # 1) Will CMAKE_FIND_ROOT_PATH usage enable finding without having the specific module directories? 
+  # 2)What about outside of gcs vcpkg related needs, is this bad?
+  #set(CMAKE_FIND_ROOT_PATH "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed")
+  
   #find_package(openssl
   find_package(OpenSSL
     PATHS
@@ -172,8 +206,25 @@ if ((NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT) AND NOT TILEDB_SUPERBU
       #${openssl_DIR}
       ${OpenSSL_DIR}
       #${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/lib
+    PATH_SUFFIXES
+      x64-linux
+      x64-osx
+      x64-windows
+    HINTS
+      ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed
     )
   message(STATUS "after OpenSSL_DIR is ${OpenSSL_DIR}")
+  find_package(absl CONFIG
+    PATHS
+      ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed
+    PATH_SUFFIXES
+      x64-linux
+      x64-osx
+      x64-windows
+    HINTS
+      ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed
+    )
+  message("absl_FOUND is ${absl_FOUND}, absl-NOTFOUND is ${absl-NOTFOUND}")
 #  set(VCPKG_INSTALLED_DIR "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed")
   # gcs v2.0.0+ apparently requires externally, not sure why not pulling from vcpkg, attempts
   # to make it do so by adding openssl to gcssdk vcpkg.json do not get openssl built/included...
@@ -191,12 +242,24 @@ if ((NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT) AND NOT TILEDB_SUPERBU
         ${TILEDB_EP_INSTALL_PREFIX}
         ${TILEDB_DEPS_NO_DEFAULT_PATH}
         ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/google/cloud
+    PATH_SUFFIXES
+      x64-linux
+      x64-osx
+      x64-windows
+    HINTS
+      ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed
     )
   find_package(google_cloud_cpp_rest_internal
     PATHS
         ${TILEDB_EP_INSTALL_PREFIX}
         ${TILEDB_DEPS_NO_DEFAULT_PATH}
         ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/google/cloud
+    PATH_SUFFIXES
+      x64-linux
+      x64-osx
+      x64-windows
+    HINTS
+      ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed
     )
   if(NOT TARGET google_cloud_cpp_rest_internal)
     message(STATUS "missing target google_cloud_cpp_rest_internal")
@@ -221,6 +284,12 @@ if ((NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT) AND NOT TILEDB_SUPERBU
           ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/google/cloud/storage
 #          ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/google/cloud
 #          ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out
+    PATH_SUFFIXES
+      x64-linux
+      x64-osx
+      x64-windows
+    HINTS
+      ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed
   )
 #  set(GCSSDK_FOUND ${storage_client_FOUND})
   set(GCSSDK_FOUND ${google_cloud_cpp_storage_FOUND})
@@ -342,6 +411,12 @@ if (NOT GCSSDK_FOUND)
     set(GCS_LINK_OPTIONS "/NODEFAULTLIB:MSVCRTD /VERBOSE")
   endif()
   
+  if(WIN32)
+    set(GCS_EXTRA_BUILD_PARAMS "-- /verbosity:diag")
+  else()
+    set(GCS_EXTRA_BUILD_PARAMS "-- VERBOSE=1")
+    set(GCS_EXTRA_BUILD_PARAMS "")
+  endif()
   message("GCS_CMAKE_BUILD_TYPE is ${GCS_CMAKE_BUILD_TYPE}")
   ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
@@ -381,7 +456,9 @@ if (NOT GCSSDK_FOUND)
         #Do we need this at all with vcpkg... 
         #-DOPENSSL_ROOT_DIR="${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/lib"
         #-DOPENSSL_ROOT_DIR=${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/lib
-        -DOPENSSL_ROOT_DIR=${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows
+        #-DOPENSSL_ROOT_DIR=${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows
+        #prob needs that last, but will try without x64-windows...
+        -DOPENSSL_ROOT_DIR=${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed
         #-DOPENSSL_ROOT_DIR="${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/lib"
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF
@@ -403,7 +480,7 @@ if (NOT GCSSDK_FOUND)
         -DLINK_OPTIONS=${GCS_LINK_OPTIONS}
       #BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU} -- /verbosity:diag
       #BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out --config ${CMAKE_BUILD_TYPE} -- /verbosity:diag
-      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out --config ${GCS_CMAKE_BUILD_TYPE} -- /verbosity:diag
+      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out --config ${GCS_CMAKE_BUILD_TYPE} ${GCS_EXTRA_BUILD_PARAMS}
       # There is no install command, the build process installs the libraries
       # ... no longer seems to for 2.0.0, but still no install command... what's the vcpkg way of locating?
       #INSTALL_COMMAND ""
@@ -514,6 +591,9 @@ if (NOT GCSSDK_FOUND)
       # At what point might there be conflicts with multiple toolchain files?
 #      -DCMAKE_TOOLCHAIN_FILE=${TDB_VCPKG_TOOLCHAIN_PATH}
     )
+    if(0)
+    #TBD: with more global setting of CMAKE_PREFIX_PATH, do we still need the more direct paths, which if so
+    #will require groking the platform triplet needed cross-platform...
     # TDB: parameterize if this works to find absl...
     set(abslpath d:/dev/tiledb/gh.sc-17498-upd-gcs.git/bld.vs22.A/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/absl)
     #string(replace "\\" "/" abslpath ${abslpath})
@@ -529,6 +609,7 @@ if (NOT GCSSDK_FOUND)
     set(absl_DIR "${abslpath}")
     set(abslpath d:/dev/tiledb/gh.sc-17498-upd-gcs.git/bld.vs22.A/externals/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/share/absl)
     set(absl_DIR "${abslpath}")
+    endif()
   else()
     message(FATAL_ERROR "Unable to find GCSSDK")
   endif()

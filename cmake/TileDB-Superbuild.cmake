@@ -156,6 +156,12 @@ message("tiledb project, TILEDB_USE_GCS_TOOLCHAIN is ${TILEDB_USE_GCS_TOOLCHAIN}
 message("tiledb project, INHERITED_CMAKE_ARGS is ${INHERITED_CMAKE_ARGS}")
 message("tiledb project, FORWARD_EP_CMAKE_ARGS is ${FORWARD_EP_CMAKE_ARGS}")
 message("env{VCPKG_ROOT} is ${VCPKG_ROOT}")
+  if(WIN32)
+    set(GCS_EXTRA_BUILD_PARAMS "-- /verbosity:diag")
+  else()
+    set(GCS_EXTRA_BUILD_PARAMS "-- VERBOSE=1")
+    set(GCS_EXTRA_BUILD_PARAMS "")
+  endif()
 ExternalProject_Add(tiledb
   SOURCE_DIR ${PROJECT_SOURCE_DIR}
   # hi-jacking patch_command for diagnostics...
@@ -173,7 +179,7 @@ ExternalProject_Add(tiledb
 #    # appears -DTOOLCHAIN=<...> is being added to FORWARD_EP_CMAKE_ARGS
 #    ${TILEDB_USE_GCS_TOOLCHAIN}
 #  # VCPKG_ROOT added for when TILEDB_S3 active
-  BUILD_COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} -- /verbosity:diag
+  BUILD_COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} ${GCS_EXTRA_BUILD_PARAMS}
   CONFIGURE_COMMAND
 #    ${CMAKE_COMMAND} -E env VCPKG_ROOT=${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg ${CMAKE_COMMAND} -DTILEDB_SUPERBUILD=OFF ${INHERITED_CMAKE_ARGS} ${FORWARD_EP_CMAKE_ARGS} ${CMAKE_SOURCE_DIR}/tiledb
 #    ${CMAKE_COMMAND} -E env VCPKG_ROOT=${CMAKE_BINARY_DIR}/tdb.vcpkg/vcpkg ${CMAKE_COMMAND} --trace -DTILEDB_SUPERBUILD=OFF ${INHERITED_CMAKE_ARGS} ${FORWARD_EP_CMAKE_ARGS} ${TILEDB_USE_GCS_TOOLCHAIN} ${PROJECT_SOURCE_DIR}

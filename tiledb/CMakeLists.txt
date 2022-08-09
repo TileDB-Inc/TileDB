@@ -630,9 +630,9 @@ if (TILEDB_GCS)
   get_target_property(_GCS_INTERFACE_LIBS tdb-gcs-libs INTERFACE_LINK_LIBRARIES)
   if ("ZLIB::ZLIB" IN_LIST _GCS_INTERFACE_LIBS)
     message("removing ZLIB::ZLIB from _GCS_INTERFACE_LIBS")
-    message("before, _GCS_INTERFACE_LIBS is ${_GCS_INTERFACE_LIBS"}")
+    message("before, _GCS_INTERFACE_LIBS is ${_GCS_INTERFACE_LIBS}")
     list(REMOVE_ITEM _GCS_INTERFACE_LIBS "ZLIB::ZLIB")
-    message("after, _GCS_INTERFACE_LIBS is ${_GCS_INTERFACE_LIBS"}")
+    message("after, _GCS_INTERFACE_LIBS is ${_GCS_INTERFACE_LIBS}")
     #set_property(TARGET storage_client PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
     #set_property(TARGET google_cloud_cpp_storage PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
     #set_property(TARGET google-cloud-cpp::storage PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
@@ -643,11 +643,27 @@ if (TILEDB_GCS)
   # TBD: exploratory, gcssdk 2.0.0+
   find_package(absl CONFIG REQUIRED
     PATHS
-      ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows
+      #${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows
+      ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/
+    PATH_SUFFIXES
+      x64-linux
+      x64-osx
+      x64-windows
+    HINTS
+      ${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed
   )
+  message("absl_INCLUDE_DIRS is ${absl_INCLUDE_DIRS}")
   # TBD: whats correct way, targets returned to set include directories?
   #target_include_directories(TILEDB_CORE_OBJECTS_ILIB INTERFACE absl)
-  target_include_directories(TILEDB_CORE_OBJECTS PRIVATE "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/include")
+  if(WIN32)
+  #target_include_directories(TILEDB_CORE_OBJECTS PRIVATE "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/include")
+  #target_include_directories(TILEDB_CORE_OBJECTS PRIVATE "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-windows/include")
+  target_include_directories(TILEDB_CORE_OBJECTS PRIVATE "${absl_INCLUDE_DIRS}")
+  else()
+  #target_include_directories(TILEDB_CORE_OBJECTS PRIVATE "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-linux/include")
+  #target_include_directories(TILEDB_CORE_OBJECTS PRIVATE "${TILEDB_EP_BASE}/src/ep_gcssdk/cmake-out/vcpkg_installed/x64-linux/include")
+  target_include_directories(TILEDB_CORE_OBJECTS PRIVATE "${absl_INCLUDE_DIRS}")
+  endif()
 
 endif()
 
