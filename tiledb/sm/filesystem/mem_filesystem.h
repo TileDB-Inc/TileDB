@@ -52,8 +52,16 @@ namespace sm {
 
 class URI;
 
+/**
+ * The virtual filesystem's in-memory filesystem.
+ *
+ * @invariant The MemFilesystem exists on a single, global Context.
+ */
 class MemFilesystem {
  public:
+  /* Class that models an entity in the in-memory filesystem tree */
+  class FSNode;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -100,6 +108,14 @@ class MemFilesystem {
    * @return Status
    */
   Status file_size(const std::string& path, uint64_t* size) const;
+
+  /**
+   * Initialize this instance with the given root.
+   *
+   * @param root Root of the MemFS directory tree.
+   * @return Status
+   */
+  Status init(shared_ptr<FSNode> root);
 
   /**
    * Checks if a path corresponds to an existing directory.
@@ -172,6 +188,15 @@ class MemFilesystem {
   Status remove(const std::string& path, bool is_dir) const;
 
   /**
+   * Returns the root of this instance's directory tree.
+   *
+   * @return The root of this directory tree.
+   */
+  inline shared_ptr<FSNode> root() {
+    return root_;
+  };
+
+  /**
    * Creates an empty file.
    *
    * @param path The full name of the file to be created
@@ -198,9 +223,6 @@ class MemFilesystem {
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
 
-  /* Class that models an entity in the in-memory filesystem tree */
-  class FSNode;
-
   /* Subclass of FSNode that represents a file in the filesystem tree */
   class File;
 
@@ -212,7 +234,7 @@ class MemFilesystem {
   /* ********************************* */
 
   /* The node that represents the root of the directory tree. */
-  tdb_unique_ptr<FSNode> root_;
+  shared_ptr<FSNode> root_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

@@ -385,6 +385,11 @@ class VFS {
    */
   Status copy_dir(const URI& old_uri, const URI& new_uri);
 
+  /** Returns the root of the in-memory filesystem's directory tree. */
+  inline shared_ptr<MemFilesystem::FSNode> memfs_root() {
+    return memfs_.root();
+  }
+
   /**
    * Reads from a file.
    *
