@@ -618,7 +618,7 @@ Status SparseIndexReaderBase::apply_query_condition(
 
           // If the fragment has delete meta, process the delete timestamps.
           if (frag_meta->has_delete_meta() && !include_delete_meta_) {
-            // Remove cells with partial overlap from the bitmap.
+            // Remove cells deleted cells using the open timestamp.
             RETURN_NOT_OK(delete_timestamps_condition_.apply_sparse<BitmapType>(
                 *(frag_meta->array_schema().get()), *rt, rt->bitmap_with_qc()));
             rt->count_cells();
@@ -638,7 +638,7 @@ Status SparseIndexReaderBase::apply_query_condition(
             // Allocate delete condition idx vector when in consolidation
             // mode.
             if (include_delete_meta_) {
-              rt->allocate_delete_condition_ptr_vector();
+              rt->allocate_per_cell_delete_condition_vector();
             }
 
             for (uint64_t i = 0; i < delete_conditions_.size(); i++) {
@@ -669,7 +669,8 @@ Status SparseIndexReaderBase::apply_query_condition(
 
                   if (include_delete_meta_) {
                     // Compute the delete condition ptr.
-                    rt->compute_delete_condition_ptr(&delete_conditions_[i]);
+                    rt->compute_per_cell_delete_condition(
+                        &delete_conditions_[i]);
                   } else {
                     // Count cells is dups are allowed as the regular bitmap was
                     // modified.

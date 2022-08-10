@@ -1237,7 +1237,7 @@ class FragmentMetadata {
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
-   * versions 15 or higher.
+   * versions 16 or higher.
    */
   Status load_generic_tile_offsets_v16_or_higher(ConstBuffer* buff);
 

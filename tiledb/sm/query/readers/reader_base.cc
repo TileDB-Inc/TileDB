@@ -338,6 +338,7 @@ Status ReaderBase::add_partial_overlap_condition() {
 }
 
 Status ReaderBase::add_delete_timestamps_condition() {
+  // Add the delete timestamp condition if any fragments have delete metadata.
   bool add_delete_timestamps_condition = false;
   for (auto& frag_meta : fragment_metadata_) {
     if (frag_meta->has_delete_meta()) {
@@ -346,6 +347,7 @@ Status ReaderBase::add_delete_timestamps_condition() {
     }
   }
 
+  // The delete timestamp condition uses the open timestamp to filter cells.
   if (add_delete_timestamps_condition) {
     uint64_t open_ts = array_->timestamp_end_opened_at();
     RETURN_NOT_OK(delete_timestamps_condition_.init(

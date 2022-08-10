@@ -804,7 +804,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
     std::swap(use_extra_bitmap_, tile.use_extra_bitmap_);
     std::swap(hilbert_values_, tile.hilbert_values_);
     std::swap(extra_bitmap_, tile.extra_bitmap_);
-    std::swap(delete_condition_ptr_, tile.delete_condition_ptr_);
+    std::swap(per_cell_delete_condition_, tile.per_cell_delete_condition_);
   }
 
   /** Returns if the tile was used by the merge or not. */
@@ -892,18 +892,18 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   }
 
   /** Allocate space for the delete condition index vector. */
-  inline void allocate_delete_condition_ptr_vector() {
-    delete_condition_ptr_.resize(ResultTile::cell_num(), nullptr);
+  inline void allocate_per_cell_delete_condition_vector() {
+    per_cell_delete_condition_.resize(ResultTile::cell_num(), nullptr);
   }
 
   /** Compute the delete condition index. */
-  inline void compute_delete_condition_ptr(QueryCondition* ptr) {
+  inline void compute_per_cell_delete_condition(QueryCondition* ptr) {
     // Go through all cells, if the delete condition cleared the cell, and the
     // index for this cell is still unset, set it to the current condition.
     for (uint64_t c = 0; c < ResultTileWithBitmap<BitmapType>::cell_num_; c++) {
       if (extra_bitmap_[c] == 0) {
-        if (delete_condition_ptr_[c] == nullptr) {
-          delete_condition_ptr_[c] = ptr;
+        if (per_cell_delete_condition_[c] == nullptr) {
+          per_cell_delete_condition_[c] = ptr;
         }
       }
     }
@@ -918,7 +918,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
    * uint64_t max.
    */
   inline uint64_t delete_timestamp(uint64_t cell_idx) {
-    auto ptr = delete_condition_ptr_[cell_idx];
+    auto ptr = per_cell_delete_condition_[cell_idx];
     return ptr == nullptr ? std::numeric_limits<uint64_t>::max() :
                             ptr->condition_timestamp();
   }
@@ -929,7 +929,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
    * max.
    */
   inline size_t delete_hash(uint64_t cell_idx) {
-    auto ptr = delete_condition_ptr_[cell_idx];
+    auto ptr = per_cell_delete_condition_[cell_idx];
     return ptr == nullptr ? std::numeric_limits<size_t>::max() :
                             ptr->condition_marker_hash();
   }
@@ -954,7 +954,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
    * Delete condition index that deleted a cell. Used for consolidation with
    * delete metadata.
    */
-  std::vector<QueryCondition*> delete_condition_ptr_;
+  std::vector<QueryCondition*> per_cell_delete_condition_;
 
   /** Use the extra bitmap or not. */
   bool use_extra_bitmap_;
@@ -1027,11 +1027,11 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
   }
 
   /** Not used for this result tile type. */
-  inline void allocate_delete_condition_ptr_vector() {
+  inline void allocate_per_cell_delete_condition_vector() {
   }
 
   /** Not used for this result tile type. */
-  inline void compute_delete_condition_ptr(QueryCondition*) {
+  inline void compute_per_cell_delete_condition(QueryCondition*) {
   }
 };
 

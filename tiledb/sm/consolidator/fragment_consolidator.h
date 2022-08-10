@@ -139,7 +139,7 @@ class FragmentConsolidator : public Consolidator {
      */
     bool with_timestamps_;
     /**
-     * Include delete meta in the consolidated fragment or not.
+     * Include delete metadata in the consolidated fragment or not.
      */
     bool with_delete_meta_;
     /**
