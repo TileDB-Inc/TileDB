@@ -27,7 +27,24 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a threadpool with various parameterized capabilities.
+ * This file declares a threadpool with various parameterized capabilities.  The
+ * basic interface and implementation of the experimental `ThreadPool` is based
+ * on the existing TileDB `ThreadPool`.  However, the experimental `ThreadPool`
+ * extends the existing `ThreadPool`, controlled by three template parameters
+ * (as described below).
+ *
+ * template <
+ *   bool WorkStealing = false,
+ *   bool MultipleQueues = false,
+ *   bool RecursivePush = true>
+ * class ThreadPool{};
+ *
+ * @todo Make `ThreadPool` non-copyable (and otherwise conformant to std
+ * execution contexts.
+ *
+ * @todo Provide a C++ executor interface as specified by proposals to the
+ * committee.
+ *
  */
 
 #ifndef TILEDB_THREADPOOL_H
@@ -64,6 +81,19 @@ struct QueueBase<false> {
   ProducerConsumerQueue<std::shared_ptr<std::function<void()>>> task_queue_;
 };
 
+/**
+ * Experimtal threadpool class.
+ *
+ * @tparam WorkStealing Whether the threadpool implements a work-stealing
+ * scheme.  Only applicable when there are multiple queues.
+ * @tparam MultipleQueues Whether the threadpool uses one queue per thread (plus
+ * a global queue).
+ * @tparam RecursivePush Whether the threadpool queues tasks from threads in the
+ * threadpool.  If not, the worker thread trying to submit the job will just run
+ * the job.  This is not necessarily a bad scheme, since the job being enqueued
+ * would go at the top of the stack and would be the next job to be run by a
+ * worker thread anyway.
+ */
 template <
     bool WorkStealing = false,
     bool MultipleQueues = false,

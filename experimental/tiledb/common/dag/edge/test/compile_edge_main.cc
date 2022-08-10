@@ -1,11 +1,11 @@
 /**
- * @file   fsm.cc
+ * @file compile_edge_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,13 +24,21 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file defines the fsm classes for dag.
  */
 
-#include <cassert>
+#include "../edge.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#include "experimental/tiledb/common/dag/state_machine/policies.h"
+#include "experimental/tiledb/common/dag/state_machine/test/types.h"
 
-#include "experimental/tiledb/common/dag/ports/fsm.h"
-#include "tiledb/common/logger.h"
+using namespace tiledb::common;
+int main() {
+  (void)sizeof(Edge<NullMover2, size_t>);
+  (void)sizeof(Edge<NullMover3, size_t>);
+  (void)sizeof(Edge<DebugMover2, size_t>);
+  (void)sizeof(Edge<DebugMover3, size_t>);
+  (void)sizeof(Edge<ManualMover2, size_t>);
+  (void)sizeof(Edge<ManualMover3, size_t>);
+  (void)sizeof(Edge<AsyncMover2, size_t>);
+  (void)sizeof(Edge<AsyncMover3, size_t>);
+}

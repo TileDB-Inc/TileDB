@@ -58,6 +58,53 @@
 using namespace tiledb::common;
 
 /**
+ * Test constructor
+ */
+TEST_CASE("DataBlock: Test create DataBlock", "[data_block]") {
+  SECTION("Constructor compilation tests") {
+    DataBlock da;
+    CHECK(da.size() == 0);
+    CHECK(da.capacity() == DataBlock::max_size());
+
+    DataBlock db{};
+    CHECK(db.size() == 0);
+    CHECK(db.capacity() == DataBlock::max_size());
+
+    DataBlock dc{0};
+    CHECK(dc.size() == 0);
+    CHECK(dc.capacity() == DataBlock::max_size());
+
+    DataBlock dd{DataBlock::max_size()};
+    CHECK(dd.size() == DataBlock::max_size());
+    CHECK(dd.capacity() == DataBlock::max_size());
+
+    auto de = DataBlock();
+    CHECK(de.size() == 0);
+    CHECK(de.capacity() == DataBlock::max_size());
+
+    auto df = DataBlock{};
+    CHECK(df.size() == 0);
+    CHECK(df.capacity() == DataBlock::max_size());
+
+    auto dg = DataBlock(0);
+    CHECK(dg.size() == 0);
+    CHECK(dg.capacity() == DataBlock::max_size());
+
+    auto dh = DataBlock{0};
+    CHECK(dh.size() == 0);
+    CHECK(dh.capacity() == DataBlock::max_size());
+
+    auto di = DataBlock(DataBlock::max_size());
+    CHECK(di.size() == DataBlock::max_size());
+    CHECK(di.capacity() == DataBlock::max_size());
+
+    auto dj = DataBlock{DataBlock::max_size()};
+    CHECK(dj.size() == DataBlock::max_size());
+    CHECK(dj.capacity() == DataBlock::max_size());
+  }
+}
+
+/**
  * Some simple tests of the DataBlock interface.
  *
  * @tparam The `DataBlock` type
@@ -119,12 +166,346 @@ void db_test_1(const DB& db) {
 }
 
 /**
- * Invoke the simple tests with a basic `DataBlock`
+ * Invoke simple API tests with a basic `DataBlock`
  */
-TEST_CASE("DataBlock: Test create DataBlock", "[data_block]") {
-  auto db = DataBlock{chunk_size_};
+TEST_CASE("DataBlock: Test API of variously sized DataBlock", "[data_block]") {
+  SECTION("Specific size constructed") {
+    auto db = DataBlock{1};
+    db_test_0(db);
+    db_test_1(db);
+  }
+  SECTION("Specific size constructed") {
+    auto db = DataBlock{chunk_size_};
+    db_test_0(db);
+    db_test_1(db);
+  }
+  SECTION("Specific size constructed") {
+    auto db = DataBlock{chunk_size_ - 1};
+    db_test_0(db);
+    db_test_1(db);
+  }
+  SECTION("Specific size constructed") {
+    auto db = DataBlock{chunk_size_ / 2};
+    db_test_0(db);
+    db_test_1(db);
+  }
+  SECTION("Specific size constructed") {
+    auto db = DataBlock{chunk_size_ / 2 - 1};
+    db_test_0(db);
+    db_test_1(db);
+  }
+  SECTION("Specific size constructed") {
+    auto db = DataBlock{chunk_size_ / 2 + 1};
+    db_test_0(db);
+    db_test_1(db);
+  }
+  SECTION("Max size constructed") {
+    auto db = DataBlock{DataBlock::max_size()};
+    db_test_0(db);
+    db_test_1(db);
+  }
+}
+
+/**
+ * Invoke the simple tests with a `DataBlock` created with an `std::allocator`.
+ */
+TEST_CASE(
+    "DataBlock: Test create DataBlock with std::allocator<std::byte>",
+    "[data_block]") {
+  auto db = DataBlockImpl<std::allocator<std::byte>>{chunk_size_};
+  CHECK(db.size() == chunk_size_);
+  CHECK(db.capacity() == DataBlock::max_size());
+
   db_test_0(db);
   db_test_1(db);
+
+  auto dc = DataBlock{chunk_size_};
+  CHECK(dc.size() == chunk_size_);
+  CHECK(dc.capacity() == DataBlock::max_size());
+
+  db_test_0(dc);
+  db_test_1(dc);
+}
+
+/**
+ * Test iterating through a `DataBlock`
+ */
+template <class DB>
+void db_test_2(DB& db) {
+  for (auto& j : db) {
+    j = std::byte{255};
+  }
+  auto e = std::find_if_not(
+      db.begin(), db.end(), [](auto a) { return std::byte{255} == a; });
+  CHECK(e == db.end());
+
+  for (auto& j : db) {
+    j = std::byte{13};
+  }
+  auto f = std::find_if_not(
+      db.begin(), db.end(), [](auto a) { return std::byte{13} == a; });
+  CHECK(f == db.end());
+}
+
+/**
+ * Run iteration test on DataBlock allocated with `std::allocator` and with our
+ * `PoolAllocator`.
+ */
+TEST_CASE("DataBlock: Iterate through data_block", "[data_block]") {
+  auto db = DataBlockImpl<std::allocator<std::byte>>{};
+  db_test_2(db);
+  auto dc = DataBlock{chunk_size_};
+  db_test_2(dc);
+}
+
+/**
+ * Run iteration test on multiple DataBlocks, again allocated with
+ * `std::allocator` and with our `PoolAllocator`.
+ */
+TEST_CASE("DataBlock: Iterate through 8 data_blocks", "[data_block]") {
+  for (size_t i = 0; i < 8; ++i) {
+    auto db = DataBlockImpl<std::allocator<std::byte>>{};
+    db_test_2(db);
+  }
+  for (size_t i = 0; i < 8; ++i) {
+    auto db = DataBlock{chunk_size_};
+    db_test_2(db);
+  }
+}
+
+/**
+ * Verify some properties of `DataBlock`s
+ */
+TEST_CASE("DataBlock: Get span", "[data_block]") {
+  auto a = DataBlock{};
+  auto b = DataBlock{};
+  auto c = DataBlock{};
+
+  CHECK(a.size() == 0);
+  CHECK(b.size() == 0);
+  CHECK(c.size() == 0);
+
+  CHECK(a.data() != b.data());
+  CHECK(a.data() != c.data());
+  CHECK(b.data() != c.data());
+
+  CHECK(a.capacity() == 4'194'304);
+  CHECK(b.capacity() == 4'194'304);
+  CHECK(c.capacity() == 4'194'304);
+
+  SECTION("entire_span") {
+    auto span_a = a.entire_span();
+    auto span_b = b.entire_span();
+    auto span_c = c.entire_span();
+
+    CHECK(span_a.data() == a.data());
+    CHECK(span_b.data() == b.data());
+    CHECK(span_c.data() == c.data());
+
+    CHECK(span_a.size() == 4'194'304);
+    CHECK(span_b.size() == 4'194'304);
+    CHECK(span_c.size() == 4'194'304);
+  }
+  SECTION("span") {
+    auto span_a = a.span();
+    auto span_b = b.span();
+    auto span_c = c.span();
+
+    CHECK(span_a.data() == a.data());
+    CHECK(span_b.data() == b.data());
+    CHECK(span_c.data() == c.data());
+
+    CHECK(span_a.size() == 0);
+    CHECK(span_b.size() == 0);
+    CHECK(span_c.size() == 0);
+  }
+}
+
+/**
+ * Test resizing.
+ */
+TEST_CASE("DataBlock: Test resize", "[data_block]") {
+  auto a = DataBlock{chunk_size_};
+  auto b = DataBlock{chunk_size_};
+  auto c = DataBlock{chunk_size_};
+
+  a.resize(1'000'000);
+  b.resize(2'000'000);
+  c.resize(3'000'000);
+
+  CHECK(a.size() == 1'000'000);
+  CHECK(b.size() == 2'000'000);
+  CHECK(c.size() == 3'000'000);
+
+  auto span_a = a.span();
+  auto span_b = b.span();
+  auto span_c = c.span();
+
+  CHECK(span_a.size() == 1'000'000);
+  CHECK(span_b.size() == 2'000'000);
+  CHECK(span_c.size() == 3'000'000);
+}
+
+TEST_CASE("DataBlock: Test (shallow) copying", "[data_block]") {
+  auto a = DataBlock{DataBlock::max_size()};
+  auto b = DataBlock{DataBlock::max_size()};
+  auto c = DataBlock{DataBlock::max_size()};
+
+  [[maybe_unused]] auto da = a.data();
+  [[maybe_unused]] auto db = b.data();
+  [[maybe_unused]] auto dc = c.data();
+
+  CHECK(a.size() == DataBlock::max_size());
+  CHECK(b.size() == DataBlock::max_size());
+  CHECK(c.size() == DataBlock::max_size());
+  CHECK(a.capacity() == DataBlock::max_size());
+  CHECK(b.capacity() == DataBlock::max_size());
+  CHECK(c.capacity() == DataBlock::max_size());
+
+  /* Hmm...  Can't do arithmetic on std::byte */
+  std::iota(
+      reinterpret_cast<uint8_t*>(a.begin()),
+      reinterpret_cast<uint8_t*>(a.end()),
+      uint8_t{0});
+  std::iota(
+      reinterpret_cast<uint8_t*>(b.begin()),
+      reinterpret_cast<uint8_t*>(b.end()),
+      uint8_t{0});
+  std::iota(
+      reinterpret_cast<uint8_t*>(c.begin()),
+      reinterpret_cast<uint8_t*>(c.end()),
+      uint8_t{0});
+
+  auto check_iota = [](const DataBlock& y) {
+    uint8_t b{0};
+    for (auto&& j : y) {
+      if (static_cast<uint8_t>(j) != b) {
+        return false;
+      }
+      ++b;
+    }
+    return true;
+  };
+  auto check_zero = [](const DataBlock& y) {
+    uint8_t b{0};
+    for (auto&& j : y) {
+      if (static_cast<uint8_t>(j) != b) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  CHECK(check_iota(a));
+  CHECK(check_iota(b));
+  CHECK(check_iota(c));
+  CHECK(!check_zero(a));
+  CHECK(!check_zero(b));
+  CHECK(!check_zero(c));
+
+  auto verify_da = [&check_iota, &check_zero](DataBlock& d, DataBlock& a) {
+    CHECK(a.data() == d.data());
+    CHECK(d.size() == a.size());
+    a.resize(1);
+    CHECK(a.size() == 1);
+    CHECK(d.size() == DataBlock::max_size());
+
+    a.resize(DataBlock::max_size());
+    CHECK(a.size() == DataBlock::max_size());
+    CHECK(d.size() == DataBlock::max_size());
+
+    /**
+     * Test changes to a reflecting in d
+     */
+    CHECK(check_iota(a));
+    CHECK(check_iota(d));
+    std::fill(a.begin(), a.end(), std::byte{0});
+    CHECK(check_zero(a));
+    CHECK(check_zero(d));
+
+    /**
+     * Test changes to d reflecting in a
+     */
+    std::iota(
+        reinterpret_cast<uint8_t*>(a.begin()),
+        reinterpret_cast<uint8_t*>(a.end()),
+        uint8_t{0});
+
+    CHECK(check_iota(a));
+    CHECK(check_iota(d));
+    std::fill(d.begin(), d.end(), std::byte{0});
+    CHECK(check_zero(a));
+    CHECK(check_zero(d));
+  };
+
+  SECTION("Test copy constructor") {
+    auto d = a;
+    verify_da(d, a);
+  }
+  SECTION("Test copy constructor, ii") {
+    DataBlock d(a);
+    verify_da(d, a);
+  }
+  SECTION("Test assignment") {
+    DataBlock d;
+    d = a;
+    verify_da(d, a);
+  }
+
+  /**
+   * Test move constructors.  This is dangerous because in general, pointers may
+   * not be valid.
+   */
+  SECTION("Test move constructor, ii") {
+    DataBlock tmp = b;
+    CHECK(tmp.use_count() == 2);
+    CHECK(b.use_count() == 2);
+
+    DataBlock d(std::move(b));
+
+    CHECK(d.use_count() == 2);
+    CHECK(b.use_count() == 0);
+    CHECK(tmp.use_count() == 2);
+
+    // Don't verify against something that has been moved from
+    //    verify_da(d, b);
+    CHECK(db == tmp.data());
+    CHECK(db == d.data());
+
+    verify_da(d, tmp);
+  }
+
+  SECTION("Test move assignment") {
+    DataBlock tmp = c;
+    DataBlock d;
+    CHECK(c.use_count() == 2);
+    d = std::move(c);
+    CHECK(dc == d.data());
+
+    CHECK(c.use_count() == 0);  // Can't use c any longer
+
+    // Don't verify against something that has been moved from
+    //    verify_da(d, c);
+    verify_da(d, tmp);
+  }
+}
+
+#if 0
+/**
+ * Attempt to test destructor by invoking it explicitly.  Unfortunately, the destructor will be invoked again when the variable goes out of scope.  Which is bad.
+ */
+TEST_CASE(
+    "DataBlock: Test allocation and deallocation of DataBlock", "[data_block") {
+  auto a = DataBlock{chunk_size_};
+  auto ptr_a = a.data();
+
+  // Don't do this!  It will call destructor again when `a` goes out of scope
+  // (which would be bad)
+  a.~DataBlock();
+
+  auto b = DataBlock{chunk_size_};
+  auto ptr_b = b.data();
+  CHECK(ptr_a == ptr_b);
 }
 
 /**
@@ -314,6 +695,136 @@ TEST_CASE(
   CHECK(y == ptr_b);
 }
 
+TEST_CASE(
+    "DataBlock: Test DataBlock allocation/deallocation from pool, etc",
+    "[data_block]") {
+  auto a = DataBlock{chunk_size_};
+  auto b = DataBlock{chunk_size_};
+  auto c = DataBlock{chunk_size_};
+  auto da = a.data();
+  auto db = b.data();
+  auto dc = c.data();
+
+  CHECK(da != db);
+  CHECK(da != dc);
+  CHECK(db != dc);
+
+  decltype(da) dd = nullptr;
+  {
+    auto d = DataBlock{chunk_size_};
+    dd = d.data();
+    CHECK(da != dd);
+    CHECK(db != dd);
+    CHECK(dc != dd);
+
+    auto e = DataBlock{chunk_size_};
+    auto de = e.data();
+    CHECK(da != de);
+    CHECK(db != de);
+    CHECK(dc != de);
+    CHECK(dd != de);
+  }
+  {
+    auto d = DataBlock{chunk_size_};
+    auto de = d.data();
+    CHECK(dd == de);
+    CHECK(da != de);
+    CHECK(db != de);
+    CHECK(dc != de);
+  }
+}
+
+TEST_CASE(
+    "DataBlock: Test DataBlock allocation/deallocation on copying, etc",
+    "[data_block]") {
+  auto a = DataBlock{chunk_size_};
+  auto b = DataBlock{chunk_size_};
+  auto c = DataBlock{chunk_size_};
+  auto da = a.data();
+  auto db = b.data();
+  auto dc = c.data();
+
+  CHECK(da != db);
+  CHECK(da != dc);
+  CHECK(db != dc);
+
+  auto test_use_counts = [](DataBlock& d, DataBlock& a) {
+    auto dd = d.data();
+    auto da = a.data();
+    CHECK(da == dd);
+
+    CHECK(d.use_count() == 2);
+    CHECK(a.use_count() == 2);
+    {
+      auto e = a;
+      auto de = e.data();
+      CHECK(da == de);
+      CHECK(e.use_count() == 3);
+      CHECK(d.use_count() == 3);
+      CHECK(a.use_count() == 3);
+    }
+    CHECK(d.use_count() == 2);
+    CHECK(a.use_count() == 2);
+  };
+  auto test_use_counts_move = [](DataBlock& d, DataBlock& a) {
+    auto dd = d.data();
+    auto da = a.data();
+    CHECK(da == dd);
+
+    CHECK(d.use_count() == 1);
+    CHECK(a.use_count() == 0);
+    {
+      auto e = d;
+      auto de = e.data();
+      CHECK(dd == de);
+      CHECK(e.use_count() == 2);
+      CHECK(d.use_count() == 2);
+      CHECK(a.use_count() == 0);
+    }
+    CHECK(d.use_count() == 1);
+    CHECK(a.use_count() == 0);
+  };
+
+  SECTION("Test uses with copy constructor") {
+    {
+      auto d = a;
+      test_use_counts(d, a);
+    }
+    CHECK(a.use_count() == 1);
+  }
+
+  SECTION("Test copy constructor, ii") {
+    {
+      DataBlock d(a);
+      test_use_counts(d, a);
+    }
+    CHECK(a.use_count() == 1);
+  }
+  SECTION("Test assignment") {
+    {
+      DataBlock d;
+      d = a;
+      test_use_counts(d, a);
+    }
+    CHECK(a.use_count() == 1);
+  }
+
+  SECTION("Test move constructor, ii") {
+    {
+      DataBlock d(std::move(b));
+      test_use_counts_move(d, b);
+    }
+    CHECK(b.use_count() == 0);
+  }
+  SECTION("Test move assignment") {
+    {
+      DataBlock d;
+      d = std::move(c);
+      test_use_counts_move(d, c);
+    }
+    CHECK(c.use_count() == 0);
+  }
+}
 /**
  * Verify the random-access range interface of a `DataBlock` by using
  * `std::fill` algorithm.

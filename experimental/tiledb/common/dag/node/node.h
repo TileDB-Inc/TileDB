@@ -35,9 +35,8 @@
 
 namespace tiledb::common {
 
-/*
- * To be defined. First test is to hook up a raw source and a raw sink with an
- * edge.
+/**
+ *
  */
 class Node;
 

@@ -368,8 +368,8 @@ TEST_CASE(
 }
 
 /**
- * Test interface for `PoolAllocator`.  It should be conformant, but g++ seems
- * more persnickety.
+ * Test allocator interface for `PoolAllocator`.  It should be conformant, but
+ * g++ seems to be kind of persnickety.
  */
 #ifndef __GNUG__
 TEST_CASE(

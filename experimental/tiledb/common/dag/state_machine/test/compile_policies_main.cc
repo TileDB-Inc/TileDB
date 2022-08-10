@@ -1,5 +1,5 @@
 /**
- * @file compile_fsm_main.cc
+ * @file compile_policies.cc
  *
  * @section LICENSE
  *
@@ -26,9 +26,19 @@
  * THE SOFTWARE.
  */
 
-#include "../ports.h"
+#include "../fsm.h"
+#include "../policies.h"
+#include "./types.h"
 
 int main() {
-  (void)sizeof(tiledb::common::PortStateMachine);
-  return 0;
+  (void)sizeof(NullPolicy3<size_t>);
+  (void)sizeof(NullPolicy2<size_t>);
+  (void)sizeof(DebugPolicy3<size_t>);
+  (void)sizeof(DebugPolicy2<size_t>);
+  (void)sizeof(ManualPolicy3<size_t>);
+  (void)sizeof(ManualPolicy2<size_t>);
+  (void)sizeof(AsyncPolicy3<size_t>);
+  (void)sizeof(AsyncPolicy2<size_t>);
+  (void)sizeof(UnifiedAsyncPolicy3<size_t>);
+  (void)sizeof(UnifiedAsyncPolicy2<size_t>);
 }

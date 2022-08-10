@@ -41,6 +41,9 @@
  *
  */
 
+#ifndef TILEDB_ARROW_PROXY_HPP
+#define TILEDB_ARROW_PROXY_HPP
+
 template <class Reference>
 struct arrow_proxy {
   Reference r;
@@ -48,3 +51,5 @@ struct arrow_proxy {
     return &r;
   }
 };
+
+#endif  // TILEDB_ARROW_PROXY_HPP
