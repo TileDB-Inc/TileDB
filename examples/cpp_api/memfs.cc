@@ -66,6 +66,7 @@ void write_array(std::string array_name) {
     Context ctx_non_global;
     Array array(ctx_non_global, array_name, TILEDB_WRITE);
   } catch (std::exception& e) {
+    std::cout << "Error: Must use process global Context on memfs.\n";
   }
 
   Array array(ctx_, array_name, TILEDB_WRITE);

@@ -67,7 +67,7 @@ class MemFilesystem {
   /* ********************************* */
 
   /** Constructor. */
-  MemFilesystem();
+  MemFilesystem(shared_ptr<FSNode> root = nullptr);
 
   /** Copy constructor. */
   DISABLE_COPY(MemFilesystem);
@@ -108,14 +108,6 @@ class MemFilesystem {
    * @return Status
    */
   Status file_size(const std::string& path, uint64_t* size) const;
-
-  /**
-   * Initialize this instance with the given root.
-   *
-   * @param root Root of the MemFS directory tree.
-   * @return Status
-   */
-  Status init(shared_ptr<FSNode> root);
 
   /**
    * Checks if a path corresponds to an existing directory.

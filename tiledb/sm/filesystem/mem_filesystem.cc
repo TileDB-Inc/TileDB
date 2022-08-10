@@ -340,8 +340,10 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
   }
 };
 
-MemFilesystem::MemFilesystem()
-    : root_(shared_ptr<FSNode>(tdb_new(Directory))) {
+MemFilesystem::MemFilesystem(shared_ptr<FSNode> root)
+    : root_(
+          root == nullptr ? shared_ptr<FSNode>(tdb_new(Directory)) :
+                            std::move(root)) {
   assert(root_);
 }
 
@@ -366,13 +368,6 @@ Status MemFilesystem::file_size(
   }
 
   return cur->get_size(size);
-}
-
-Status MemFilesystem::init(shared_ptr<FSNode> root) {
-  root_ = root;
-  assert(root_);
-
-  return Status::Ok();
 }
 
 bool MemFilesystem::is_dir(const std::string& path) const {
