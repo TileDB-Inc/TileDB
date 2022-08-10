@@ -1,11 +1,11 @@
 /**
- * @file unit_block_edge.cc
+ * @file experimental/tiledb/common/thread_pool/test/unit_ports.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,11 +26,10 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * Tests the operation of passing data blocks along edges.
- *
- * The different tests currently include an extensive amount of debugging code.
  */
 
-#include "unit_block_edge.h"
-#include "experimental/tiledb/common/dag/data_block/data_block.h"
+#ifndef TILEDB_UNIT_NODES_H
+#define TILEDB_UNIT_NODES_H
+#define CATCH_CONFIG_MAIN
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_NODES_H

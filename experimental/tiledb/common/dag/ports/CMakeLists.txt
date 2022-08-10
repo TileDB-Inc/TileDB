@@ -141,12 +141,11 @@ if (TILEDB_TESTS)
    message(STATUS "*** Ports sanitizer ${SANITIZER}")
 
     add_executable(unit_concurrency EXCLUDE_FROM_ALL
-      $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
     )
 
 #    target_link_libraries(unit_concurrency PUBLIC concurrency)
 
-    target_link_libraries(unit_concurrency PUBLIC TILEDB_CORE_OBJECTS_ILIB)
+#    target_link_libraries(unit_concurrency PUBLIC TILEDB_CORE_OBJECTS_ILIB)
 
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_concurrency PUBLIC Catch2::Catch2)

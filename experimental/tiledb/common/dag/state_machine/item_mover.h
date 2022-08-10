@@ -69,6 +69,7 @@ class BaseMover<Mover, three_stage, Block> {
   using item_type = std::optional<Block>;
 
   std::array<item_type*, 3> items_;
+  item_type edge_item_;
 
  protected:
   constexpr inline static bool edgeful = true;
@@ -83,6 +84,7 @@ class BaseMover<Mover, three_stage, Block> {
   using PortState = three_stage;
 
   BaseMover() = default;
+
   BaseMover(item_type& source_init, item_type& edge_init, item_type& sink_init)
       : items_{&source_init, &edge_init, &sink_init} {
   }
@@ -90,14 +92,14 @@ class BaseMover<Mover, three_stage, Block> {
   /**
    * Register items to be moved with the data mover.  In the context of TileDB
    * task graph, this will generally be a source, an edge intermediary, and a
-   * sink.
+   * sink.  IMPORTANT:  The "edge item" is actually stored in the mover, as the
+   * Edge itself may go out of scope.
    *
    * @pre Called under lock.
    */
-  void register_items(
-      item_type& source_item, item_type& edge_item, item_type& sink_item) {
+  void register_port_items(item_type& source_item, item_type& sink_item) {
     items_[0] = &source_item;
-    items_[1] = &edge_item;
+    items_[1] = &edge_item_;
     items_[2] = &sink_item;
   }
 
@@ -106,25 +108,23 @@ class BaseMover<Mover, three_stage, Block> {
    *
    * @pre Called under lock.
    */
-  void deregister_items(
-      item_type& source_item, item_type& edge_item, item_type& sink_item) {
-    if (items_[0] != &source_item || items_[1] != &edge_item ||
-        items_[2] != &sink_item) {
-      throw std::runtime_error(
-          "Attempting to deregister source, edge, or sink items that were not "
-          "registered.");
-    }
-    for (auto& j : items_) {
-      j->reset();
+  void deregister_items() {
+    for (auto&& j : items_) {
+      if (j == nullptr) {
+        throw std::runtime_error(
+            "Attempting to deregister source, edge, or sink items that were "
+            "not registered.");
+      }
+      j.reset();
     }
   }
 
-  /**
-   * Do the actual data movement.  We move all items in the pipeline towards
-   * the end so that there are no "holes".
-   *
-   * @pre Called under lock
-   */
+/**
+ * Do the actual data movement.  We move all items in the pipeline towards
+ * the end so that there are no "holes".
+ *
+ * @pre Called under lock
+ */
   inline void on_move(std::atomic<int>& event) {
     //    auto state = this->state();
     auto state = static_cast<Mover*>(this)->state();
@@ -142,18 +142,31 @@ class BaseMover<Mover, three_stage, Block> {
       std::cout << event;
       std::cout << "    "
                 << "Action on_move state = (";
-      for (auto& j : items_) {
-        std::cout << " "
-                  << (j != nullptr && j->has_value() ?
-                          std::to_string(j->value()) :
-                          "no_value")
-                  << " ";
+      if constexpr (std::is_fundamental_v<decltype(items_[0])>) {
+        for (auto& j : items_) {
+          std::cout << " "
+                    << (j != nullptr && j->has_value() ?
+                            std::to_string(j->value()) :
+                            "no_value")
+                    << " ";
+        }
+      } else {
+        for (auto& j : items_) {
+          std::cout << " "
+                    << (j != nullptr && j->has_value() ? "has_value" :
+                                                         "no_value")
+                    << " ";
+        }
       }
       std::cout << ") -> ";
     }
 
     /*
-     * Do the moves, always pushing all elements as far forward as possible.
+     * Do the moves, always pushing all elements as far forward as possible. The
+     * moves call swap between pairs of items.  Note that the values being
+     * pointed to by the items array are swapped, not the pointer themselves
+     * (though, presumably, the pointers could be swapped.  Thus, the swaps and
+     * the moves are **deep copies** since the item_type is an optional.
      */
     switch (state) {
       case PortState::st_101:
@@ -190,13 +203,23 @@ class BaseMover<Mover, three_stage, Block> {
     }
     if (debug) {
       std::cout << "(";
-      for (auto& j : items_) {
-        std::cout << " "
-                  << (j != nullptr && j->has_value() ?
-                          std::to_string(j->value()) :
-                          "no_value")
-                  << " ";
+      if constexpr (std::is_fundamental_v<decltype(items_[0])>) {
+        for (auto& j : items_) {
+          std::cout << " "
+                    << (j != nullptr && j->has_value() ?
+                            std::to_string(j->value()) :
+                            "no_value")
+                    << " ";
+        }
+      } else {
+        for (auto& j : items_) {
+          std::cout << " "
+                    << (j != nullptr && j->has_value() ? "has_value" :
+                                                         "no_value")
+                    << " ";
+        }
       }
+
       std::cout << ")" << std::endl;
       std::cout << event << "  "
                 << " source done swapping items with " +
@@ -225,6 +248,10 @@ class BaseMover<Mover, three_stage, Block> {
 
   auto& sink_item() {
     return *items_[2];
+  }
+
+  bool is_done() {
+    return static_cast<Mover*>(this)->state() == three_stage::done;
   }
 
  private:
@@ -259,6 +286,7 @@ class BaseMover<Mover, two_stage, Block> {
   using PortState = two_stage;
 
   BaseMover() = default;
+
   BaseMover(item_type& source_init, item_type& sink_init)
       : items_{&source_init, &sink_init} {
   }
@@ -269,7 +297,7 @@ class BaseMover<Mover, two_stage, Block> {
    *
    * @pre Called under lock
    */
-  void register_items(item_type& source_item, item_type& sink_item) {
+  void register_port_items(item_type& source_item, item_type& sink_item) {
     items_[0] = &source_item;
     items_[1] = &sink_item;
   }
@@ -277,21 +305,26 @@ class BaseMover<Mover, two_stage, Block> {
   /**
    * Deregister the items.
    */
-  void deregister_items(item_type& source_item, item_type& sink_item) {
-    if (items_[0] != &source_item || items_[1] != &sink_item) {
-      throw std::runtime_error(
-          "Attempting to deregister source or sink items that were not "
-          "registered.");
-    }
+  void deregister_items() {
     for (auto& j : items_) {
+      if (j == nullptr) {
+        throw std::runtime_error(
+            "Attempting to deregister source, edge, or sink items that "
+            "were not registered.");
+      }
       j->reset();
     }
   }
 
-  /**
+  /*
    * Do the actual data movement.  We move all items in the pipeline towards
    * the end so that there are no "holes".  In the case of two stages this
    * basically means that we are in state 10 and we swap to state 01.
+   *
+   * Note that the values being
+   * pointed to by the items array are swapped, not the pointer themselves
+   * (though, presumably, the pointers could be swapped.  Thus, the swaps and
+   * the moves are **deep copies** since the item_type is an optional.
    *
    * @pre Called under lock
    */
@@ -317,8 +350,6 @@ class BaseMover<Mover, two_stage, Block> {
       std::cout << "    "
                 << "Action on_move state = (";
       for (auto& j : items_) {
-        //        print_types(j);
-
         if constexpr (has_to_string_v<decltype(j->value())>) {
           std::cout << " "
                     << (j != nullptr && j->has_value() ?
@@ -375,30 +406,35 @@ class BaseMover<Mover, two_stage, Block> {
   auto& sink_item() {
     return *items_[1];
   }
+
+  bool is_done() {
+    return static_cast<Mover*>(this)->state() == two_stage::done;
+  }
 };
 
 /**
  * Class template for moving data between end ports (perhaps via an edge)
  * in TileDB task graph.
  *
- * @tparam Policy The policy that uses the `ItemMover` for its implementation
- * of event actions provided to the `PortFiniteStateMachine`.  Note that
- * `Policy` is a template template, taking `ItemMover` and `PortState` as
- * template parameters.
- * @tparam PortState The type of the states that will be used by the `ItemMover`
- * (and the Policy, and the StateMachine)
- * @tparam Block The type of data to be moved.  Note that the mover assumes that
- * underlying items are `std::optional<Block>`.  The mover maintains pointers to
- * each of the underlying items.  Data movement is accomplished by using
- * `std::swap` on the things being pointed to (i.e., on the underlying items of
- * `std::optional<Block>`).  This should be fairly lightweight.
+ * @tparam Policy The policy that uses the `ItemMover` for its
+ * implementation of event actions provided to the `PortFiniteStateMachine`.
+ * Note that `Policy` is a template template, taking `ItemMover` and
+ * `PortState` as template parameters.
+ * @tparam PortState The type of the states that will be used by the
+ * `ItemMover` (and the Policy, and the StateMachine)
+ * @tparam Block The type of data to be moved.  Note that the mover assumes
+ * that underlying items are `std::optional<Block>`.  The mover maintains
+ * pointers to each of the underlying items.  Data movement is accomplished
+ * by using `std::swap` on the things being pointed to (i.e., on the
+ * underlying items of `std::optional<Block>`).  This should be fairly
+ * lightweight.
  *
  * `ItemMover` inherits from `Policy`, which takes `ItemMover` as a template
  * parameter (CRTP). `ItemMover` also inherits from `BaseMover`, which
  * implements all of the actual data movement. Clients of the `ItemMover`
- * activate its actions by calling the member functions `do_fill`, `do_push`,
- * `do_drain`, and `do_pull`, which correspond to actions in the
- * `PortFiniteStateMachine`.
+ * activate its actions by calling the member functions `do_fill`,
+ * `do_push`, `do_drain`, and `do_pull`, which correspond to actions in the
+ * `PortFiniteStateMachine`.  `on_move` is handled by the base class.
  */
 template <template <class, class> class Policy, class PortState, class Block>
 class ItemMover
@@ -456,16 +492,6 @@ class ItemMover
     this->event(PortEvent::stop, msg);
   }
 
-  //  using state_machine_type = PortFiniteStateMachine<
-  //      Policy<ItemMover<Policy, PortState, Block>, PortState>,
-  //      PortState>;
-  //
-  //  state_machine_type* get_mover() {
-  //    return static_cast<state_machine_type*>(*this);
-  //  }
-  //  auto get_state() {
-  //    return static_cast<state_machine_type*>(this)->state();
-  //  }
  private:
   void debug_msg(const std::string& msg) {
     if (static_cast<Mover*>(this)->debug_enabled()) {

@@ -33,8 +33,5 @@ add_subdirectory(state_machine)
 add_subdirectory(ports)
 add_subdirectory(data_block)
 add_subdirectory(edge)
-# add_subdirectory(node)
+add_subdirectory(nodes)
 # add_subdirectory(graph)
-
-
-
