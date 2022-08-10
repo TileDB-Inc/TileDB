@@ -257,8 +257,7 @@ Curl::Curl(const std::shared_ptr<Logger>& logger)
     , retry_delay_factor_(0)
     , retry_initial_delay_ms_(0)
     , logger_(logger->clone("curl ", ++logger_id_))
-    , verbose_(false)
-    , trace_calls_(false) {
+    , verbose_(false) {
 }
 
 Status Curl::init(
@@ -343,10 +342,6 @@ Status Curl::init(
   assert(found);
 
   RETURN_NOT_OK(config_->get<bool>("rest.curl.verbose", &verbose_, &found));
-  assert(found);
-
-  RETURN_NOT_OK(
-      config_->get<bool>("rest.curl.trace_calls", &trace_calls_, &found));
   assert(found);
 
   return Status::Ok();
@@ -457,33 +452,29 @@ Status Curl::make_curl_request(
       static_cast<void*>(&cb));
 }
 
-CURLcode Curl::curl_easy_perform_maybe_instrumented(
+CURLcode Curl::curl_easy_perform_instrumented(
     const char* const url, const uint8_t retry_number) const {
   CURL* curl = curl_.get();
-  CURLcode curl_code = CURLE_OK;
-  if (!trace_calls_) {
-    curl_code = curl_easy_perform(curl);
-  } else {
-    uint64_t t1 = tiledb::sm::utils::time::timestamp_now_ms();
-    curl_code = curl_easy_perform(curl);
-    uint64_t t2 = tiledb::sm::utils::time::timestamp_now_ms();
-    uint64_t dt = t2 - t1;
-    long http_code = 0;
-    if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) !=
-        CURLE_OK) {
-      http_code = 999;
-    }
-
-    std::stringstream ss;
-    ss.precision(3);
-    ss.setf(std::ios::fixed, std::ios::floatfield);
-    ss << "OP=CORE-TO-REST";
-    ss << ",SECONDS=" << (float)dt / 1000.0;
-    ss << ",RETRY=" << int(retry_number);
-    ss << ",CODE=" << http_code;
-    ss << ",URL=" << url;
-    LOG_TRACE(ss.str());
+  // Time the curl transfer
+  uint64_t t1 = tiledb::sm::utils::time::timestamp_now_ms();
+  auto curl_code = curl_easy_perform(curl);
+  uint64_t t2 = tiledb::sm::utils::time::timestamp_now_ms();
+  uint64_t dt = t2 - t1;
+  long http_code = 0;
+  if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) != CURLE_OK) {
+    http_code = 999;
   }
+
+  // Log time and details about the request
+  std::stringstream ss;
+  ss.precision(3);
+  ss.setf(std::ios::fixed, std::ios::floatfield);
+  ss << "OP=CORE-TO-REST";
+  ss << ",SECONDS=" << (float)dt / 1000.0;
+  ss << ",RETRY=" << int(retry_number);
+  ss << ",CODE=" << http_code;
+  ss << ",URL=" << url;
+  logger_->trace(ss);
 
   return curl_code;
 }
@@ -557,7 +548,7 @@ Status Curl::make_curl_request_common(
     curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
 
     /* fetch the url */
-    CURLcode tmp_curl_code = curl_easy_perform_maybe_instrumented(url, i);
+    CURLcode tmp_curl_code = curl_easy_perform_instrumented(url, i);
 
     bool retry;
     RETURN_NOT_OK(should_retry(&retry));

@@ -371,9 +371,6 @@ class Curl {
   /** Verbose logging in curl. */
   bool verbose_;
 
-  /** Trace rest curl calls. */
-  bool trace_calls_;
-
   /**
    * Populates the curl slist with authorization (token or username+password),
    * and any extra headers.
@@ -443,7 +440,7 @@ class Curl {
       void* write_arg) const;
 
   /**
-   * Optionally instruments and then executes curl_easy_perform. Instrumentation
+   * Instruments and then executes curl_easy_perform. Instrumentation
    * is meant to provide crucial information on core-to-REST-server HTTP
    * operations which is essential for analyzing and minimizing remote-request
    * latencies. An indispensable counterpart to Jaeger tracing, while Jaeger
@@ -451,14 +448,12 @@ class Curl {
    * contexts.
    *
    * Easiest instrumentation enable:
-   *     export TILEDB_REST_CURL_TRACE_CALLS=true
    *     export TILEDB_CONFIG_LOGGING_LEVEL=5
-   * (you need both)
    *
    * @param url URL to fetch.
    * @param retry_number The time this request is being retried.
    */
-  CURLcode curl_easy_perform_maybe_instrumented(
+  CURLcode curl_easy_perform_instrumented(
       const char* const url, const uint8_t retry_number) const;
 
   /**

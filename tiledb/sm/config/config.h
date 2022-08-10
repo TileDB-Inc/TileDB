@@ -80,13 +80,6 @@ class Config {
   /** The default for Curl's verbose mode used by REST. */
   static const std::string REST_CURL_VERBOSE;
 
-  /**
-   * The default for Curl's performance-tracing mode used by REST.  Emits
-   * compact/concise timing information more suitable for performance analysis
-   * than rest.curl.verbose.
-   */
-  static const std::string REST_TRACE_CURL_CALLS;
-
   /** If the array metadata should be loaded on array open */
   static const std::string REST_LOAD_METADATA_ON_ARRAY_OPEN;
 
