@@ -52,6 +52,7 @@ endif()
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_vfs EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_vfs)
 target_link_libraries(compile_vfs PRIVATE vfs)
 target_sources(compile_vfs PRIVATE test/compile_vfs_main.cc)
 

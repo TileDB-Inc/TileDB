@@ -42,6 +42,7 @@ target_link_libraries(ports PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_ports EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_ports)
 target_link_libraries(compile_ports PRIVATE ports)
 target_sources(compile_ports PRIVATE test/compile_ports_main.cc)
 
@@ -86,6 +87,7 @@ target_link_libraries(fsm PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_fsm EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_fsm)
 target_link_libraries(compile_fsm PRIVATE fsm)
 target_sources(compile_fsm PRIVATE test/compile_fsm_main.cc)
 
@@ -127,6 +129,7 @@ target_link_libraries(pseudo_nodes PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_pseudo_nodes EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_pseudo_nodes)
 target_link_libraries(compile_pseudo_nodes PRIVATE pseudo_nodes)
 target_sources(compile_pseudo_nodes PRIVATE test/compile_pseudo_nodes_main.cc)
 
