@@ -409,7 +409,8 @@ TEST_CASE("Filter: Test XOR filter deserialization", "[filter][xor]") {
   CHECK(filter1->type() == filtertype0);
 }
 
-TEST_CASE("Filter: Test Bit sort filter deserialization", "[filter][bit-sort]") {
+TEST_CASE(
+    "Filter: Test Bit sort filter deserialization", "[filter][bit-sort]") {
   Buffer buffer;
   FilterType filtertype0 = FilterType::FILTER_BITSORT;
   char serialized_buffer[5];

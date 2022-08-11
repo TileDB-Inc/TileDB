@@ -37,6 +37,7 @@
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/filter/filter_storage.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/tile/tile.h"
 
 #include <cmath>
 #include <utility>
@@ -83,7 +84,8 @@ Status BitSortFilter::run_forward(
     }
     default: {
       return Status_FilterError(
-          "BitSortFilter::run_forward: datatype does not have an appropriate size");
+          "BitSortFilter::run_forward: datatype does not have an appropriate "
+          "size");
     }
   }
 
@@ -109,7 +111,7 @@ Status BitSortFilter::run_forward(
   RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
   RETURN_NOT_OK(output_metadata->write(&num_parts, sizeof(uint32_t)));
 
-  // Shuffle all parts
+  // Sort all parts
   for (const auto& part : parts) {
     auto part_size = (uint32_t)part.size();
     RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
@@ -120,8 +122,10 @@ Status BitSortFilter::run_forward(
 }
 
 template <typename T>
-Status BitSortFilter::shuffle_part(
-    ConstBuffer* input_buffer, Buffer* output_buffer) const {
+Status BitSortFilter::sort_part(
+    const ConstBuffer* input_buffer, Buffer* output_buffer) const {
+  (void)input_buffer;
+  (void)output_buffer;
   return Status::Ok();
 }
 
@@ -157,7 +161,8 @@ Status BitSortFilter::run_reverse(
     }
     default: {
       return Status_FilterError(
-          "BitSortFilter::run_reverse: datatype does not have an appropriate size");
+          "BitSortFilter::run_reverse: datatype does not have an appropriate "
+          "size");
     }
   }
 
@@ -169,8 +174,7 @@ Status BitSortFilter::run_reverse(
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
-    FilterBuffer* output,
-    const Config& config) const {
+    FilterBuffer* output) const {
   // Get number of parts
   uint32_t num_parts;
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));
@@ -204,9 +208,10 @@ Status BitSortFilter::run_reverse(
 }
 
 template <typename T>
-Status BitSortFilter::unshuffle_part(
-    ConstBuffer* input_buffer,
-    Buffer* output_buffer) const {
+Status BitSortFilter::unsort_part(
+    ConstBuffer* input_buffer, Buffer* output_buffer) const {
+  (void)input_buffer;
+  (void)output_buffer;
   return Status::Ok();
 }
 

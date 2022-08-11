@@ -35,6 +35,8 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/sm/filter/filter.h"
 
 using namespace tiledb::common;
 
@@ -106,24 +108,20 @@ class BitSortFilter : public Filter {
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
-      FilterBuffer* output,
-      const Config& config) const;
+      FilterBuffer* output) const;
 
   /**
    * TODO: comment part
    */
   template <typename T>
   Status sort_part(
-      ConstBuffer* input_buffer, Buffer* output_buffer) const;
+      const ConstBuffer* input_buffer, Buffer* output_buffer) const;
 
   /**
    * TODO: comment
    */
   template <typename T>
-  Status unsort_part(
-      ConstBuffer* input_buffer,
-      Buffer* output_buffer) const;
-
+  Status unsort_part(ConstBuffer* input_buffer, Buffer* output_buffer) const;
 };
 
 };  // namespace sm
