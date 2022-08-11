@@ -64,6 +64,7 @@ const std::string Config::REST_RETRY_HTTP_CODES = "503";
 const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
+const std::string Config::REST_CURL_BUFFERSIZE = "524288";
 const std::string Config::REST_CURL_VERBOSE = "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
@@ -225,6 +226,7 @@ Config::Config() {
   param_values_["rest.retry_count"] = REST_RETRY_COUNT;
   param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
   param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
+  param_values_["rest.curl.buffersize"] = REST_CURL_BUFFERSIZE;
   param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
   param_values_["rest.load_metadata_on_array_open"] =
       REST_LOAD_METADATA_ON_ARRAY_OPEN;
@@ -526,6 +528,8 @@ Status Config::unset(const std::string& param) {
     param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
   } else if (param == "rest.retry_delay_factor") {
     param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
+  } else if (param == "rest.curl.buffersize") {
+    param_values_["rest.curl.buffersize"] = REST_CURL_BUFFERSIZE;
   } else if (param == "rest.curl.verbose") {
     param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
   } else if (param == "rest.load_metadata_on_array_open") {

@@ -77,6 +77,9 @@ class Config {
   /** The default exponential delay factor for retrying a http request. */
   static const std::string REST_RETRY_DELAY_FACTOR;
 
+  /** The default buffer size for curl reads used by REST. */
+  static const std::string REST_CURL_BUFFERSIZE;
+
   /** The default for Curl's verbose mode used by REST. */
   static const std::string REST_CURL_VERBOSE;
 
