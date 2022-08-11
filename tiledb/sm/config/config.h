@@ -94,7 +94,7 @@ class Config {
 
   /**
    * The default logging level. It can be:
-   * - `1` i.e. `error` if bootstrap flag --enalbe-verbose is given
+   * - `1` i.e. `error` if bootstrap flag --enable-verbose is given
    * - `0` i.e. `fatal` if this bootstrap flag is missing
    */
   static const std::string CONFIG_LOGGING_LEVEL;
