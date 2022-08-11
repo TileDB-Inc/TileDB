@@ -274,6 +274,7 @@ Status DenseReader::dense_read() {
 
   // Compute subarrays for each tile.
   const auto& tile_coords = subarray.tile_coords();
+  stats_->add_counter("num_tiles", tile_coords.size());
   TileSubarrays tile_subarrays{tile_coords.size()};
   const auto& layout =
       layout_ == Layout::GLOBAL_ORDER ? array_schema_.cell_order() : layout_;
