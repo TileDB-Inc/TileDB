@@ -182,6 +182,7 @@ Status array_from_capnp(
         all_schemas[array_schema_build.getKey()] = std::move(schema);
       }
     }
+    array->set_array_schemas_all(all_schemas);
   }
 
   if (array_reader.hasArraySchemaLatest()) {
