@@ -200,7 +200,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_pipeline.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_storage.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/float_scaling_filter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/lidar_filter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/bitsort_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/xor_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/noop_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/positive_delta_filter.cc

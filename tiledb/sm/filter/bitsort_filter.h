@@ -1,5 +1,5 @@
 /**
- * @file   lidar_filter.h
+ * @file   bitsort_filter.h
  *
  * @section LICENSE
  *
@@ -27,18 +27,14 @@
  *
  * @section DESCRIPTION
  *
- * This file defines the lidar compressor class.
+ * This file defines the bit sort filter class.
  */
 
-#ifndef TILEDB_LIDAR_FILTER_H
-#define TILEDB_LIDAR_FILTER_H
+#ifndef TILEDB_BITSORT_FILTER_H
+#define TILEDB_BITSORT_FILTER_H
 
 #include "tiledb/common/status.h"
-#include "tiledb/sm/compressors/bzip_compressor.h"
-#include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/filter/compression_filter.h"
-#include "tiledb/sm/filter/xor_filter.h"
 
 using namespace tiledb::common;
 
@@ -49,17 +45,16 @@ class Buffer;
 class ConstBuffer;
 class PreallocatedBuffer;
 
-/** Handles compression/decompression of lidar data (similar to LASzip).
+/** Handles bit sorting!
  * TODO: comment more
  */
-class LidarFilter : public Filter {
+class BitSortFilter : public Filter {
  public:
   /**
    * Default constructor.
    */
-  LidarFilter()
-      : Filter(FilterType::FILTER_LIDAR)
-      , compressor_filter_(Compressor::BZIP2, BZip::default_level()) {
+  BitSortFilter()
+      : Filter(FilterType::FILTER_BITSORT) {
   }
 
   /** Dumps the filter details in ASCII format in the selected output. */
@@ -89,7 +84,7 @@ class LidarFilter : public Filter {
       const Config& config) const override;
 
   /** Returns a new clone of this filter. */
-  LidarFilter* clone_impl() const override;
+  BitSortFilter* clone_impl() const override;
 
  private:
   /**
@@ -115,26 +110,23 @@ class LidarFilter : public Filter {
       const Config& config) const;
 
   /**
-   * shuffle part
+   * TODO: comment part
    */
   template <typename T>
-  Status shuffle_part(
-      ConstBuffer* input_buffer, FilterBuffer* output_buffer) const;
+  Status sort_part(
+      ConstBuffer* input_buffer, Buffer* output_buffer) const;
 
   /**
    * TODO: comment
    */
   template <typename T>
-  Status unshuffle_part(
+  Status unsort_part(
       ConstBuffer* input_buffer,
-      FilterBuffer* output_buffer,
-      const Config& config) const;
+      Buffer* output_buffer) const;
 
-  XORFilter xor_filter_;
-  CompressionFilter compressor_filter_;
 };
 
 };  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_LIDAR_FILTER_H
+#endif  // TILEDB_BITSORT_FILTER_H

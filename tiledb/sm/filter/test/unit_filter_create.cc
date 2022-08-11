@@ -409,9 +409,9 @@ TEST_CASE("Filter: Test XOR filter deserialization", "[filter][xor]") {
   CHECK(filter1->type() == filtertype0);
 }
 
-TEST_CASE("Filter: Test LiDAR filter deserialization", "[filter][lidar]") {
+TEST_CASE("Filter: Test Bit sort filter deserialization", "[filter][bit-sort]") {
   Buffer buffer;
-  FilterType filtertype0 = FilterType::FILTER_LIDAR;
+  FilterType filtertype0 = FilterType::FILTER_BITSORT;
   char serialized_buffer[5];
   char* p = &serialized_buffer[0];
   buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);

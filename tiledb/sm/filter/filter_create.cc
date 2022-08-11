@@ -34,6 +34,7 @@
 #include "filter_create.h"
 #include "bit_width_reduction_filter.h"
 #include "bitshuffle_filter.h"
+#include "bitsort_filter.h"
 #include "byteshuffle_filter.h"
 #include "checksum_md5_filter.h"
 #include "checksum_sha256_filter.h"
@@ -41,7 +42,6 @@
 #include "encryption_aes256gcm_filter.h"
 #include "filter.h"
 #include "float_scaling_filter.h"
-#include "lidar_filter.h"
 #include "noop_filter.h"
 #include "positive_delta_filter.h"
 #include "tiledb/common/logger_public.h"
@@ -82,8 +82,8 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
       return tdb_new(tiledb::sm::FloatScalingFilter);
     case tiledb::sm::FilterType::FILTER_XOR:
       return tdb_new(tiledb::sm::XORFilter);
-    case tiledb::sm::FilterType::FILTER_LIDAR:
-      return tdb_new(tiledb::sm::LidarFilter);
+    case tiledb::sm::FilterType::FILTER_BITSORT:
+      return tdb_new(tiledb::sm::BitSortFilter);
     default:
       throw StatusException(
           "FilterCreate",
@@ -156,8 +156,8 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     case FilterType::FILTER_XOR: {
       return make_shared<XORFilter>(HERE());
     }
-    case FilterType::FILTER_LIDAR: {
-      return make_shared<LidarFilter>(HERE());
+    case FilterType::FILTER_BITSORT: {
+      return make_shared<BitSortFilter>(HERE());
     }
     default:
       throw StatusException(

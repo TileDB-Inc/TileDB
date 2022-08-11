@@ -1,5 +1,5 @@
 /**
- * @file compile_lidar_filter_main.cc
+ * @file compile_bitsort_filter_main.cc
  *
  * @section LICENSE
  *
@@ -26,9 +26,9 @@
  * THE SOFTWARE.
  */
 
-#include "../lidar_filter.h"
+#include "../bitsort_filter.h"
 
 int main() {
-  (void)sizeof(tiledb::sm::LidarFilter);
+  (void)sizeof(tiledb::sm::BitSortFilter);
   return 0;
 }
