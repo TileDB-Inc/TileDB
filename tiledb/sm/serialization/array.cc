@@ -187,6 +187,7 @@ Status array_from_capnp(
             make_shared<ArraySchema>(HERE(), schema);
       }
     }
+    array->set_array_schemas_all(all_schemas);
   }
 
   if (array_reader.hasArraySchemaLatest()) {

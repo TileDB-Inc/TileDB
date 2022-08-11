@@ -109,6 +109,11 @@ shared_ptr<const ArraySchema> Array::array_schema_latest_ptr() const {
   return array_schema_latest_;
 }
 
+void Array::set_array_schemas_all(
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>& all_schemas) {
+  array_schemas_all_ = all_schemas;
+}
+
 const URI& Array::array_uri() const {
   return array_uri_;
 }

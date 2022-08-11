@@ -123,6 +123,13 @@ class Array {
     return array_schemas_all_;
   }
 
+  /**
+   * Sets all array schemas.
+   * @param all_schemas The array schemas to set.
+   */
+  void set_array_schemas_all(
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>& all_schemas);
+
   /** Returns the array URI. */
   const URI& array_uri() const;
 
