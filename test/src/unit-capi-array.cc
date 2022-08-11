@@ -40,6 +40,9 @@
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
 #ifdef _WIN32
+#if !defined(NOMINMAX)
+#define NOMINMAX
+#endif
 #include <Windows.h>
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -48,6 +51,7 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
@@ -2052,6 +2056,8 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
+  auto all_arrays = array->array_->array_schemas_all();
+
   int32_t a[4];
   uint64_t a_size = sizeof(a);
 
@@ -2102,25 +2108,55 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, new_array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
+  // Check the retrieved array schema
+  tiledb_array_schema_t* new_array_schema;
+  rc = tiledb_array_schema_load(ctx_, array_name.c_str(), &new_array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_array_schema_check(ctx_, new_array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_layout_t cell_order;
+  rc = tiledb_array_schema_get_cell_order(ctx_, new_array_schema, &cell_order);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(cell_order == TILEDB_ROW_MAJOR);
+
+  tiledb_layout_t tile_order;
+  rc = tiledb_array_schema_get_tile_order(ctx_, new_array_schema, &tile_order);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(tile_order == TILEDB_ROW_MAJOR);
+
+  unsigned int num_attributes = 0;
+  rc = tiledb_array_schema_get_attribute_num(
+      ctx_, new_array_schema, &num_attributes);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(num_attributes == 1);
+
+  tiledb_domain_t* dom;
+  rc = tiledb_array_schema_get_domain(ctx_, new_array_schema, &dom);
+  REQUIRE(rc == TILEDB_OK);
+
+  unsigned int ndim = 0;
+  rc = tiledb_domain_get_ndim(ctx_, dom, &ndim);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(ndim == 2);
+
+  auto all_arrays_new = new_array->array_->array_schemas_all();
+  CHECK(all_arrays.size() == all_arrays_new.size());
+  CHECK(std::equal(
+      all_arrays.begin(),
+      all_arrays.end(),
+      all_arrays_new.begin(),
+      [](auto a, auto b) { return a.first == b.first; }));
+
+  // Check the retrieved non empty domain
   int is_empty;
   uint64_t domain[4];
   rc = tiledb_array_get_non_empty_domain(ctx_, new_array, domain, &is_empty);
   CHECK(rc == TILEDB_OK);
   CHECK(is_empty == 1);
 
-  // Close new_array
-  rc = tiledb_array_close(ctx_, new_array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&new_array);
-
-  /** Validate metadata. **/
-  // Open new_array in read mode
-  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &new_array);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, new_array, TILEDB_READ);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Read
+  // Check the retrieved metadata
   const void* v_r;
   tiledb_datatype_t v_type;
   uint32_t v_num;
