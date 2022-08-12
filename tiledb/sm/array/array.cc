@@ -224,6 +224,12 @@ Status Array::load_fragments(
   return Status::Ok();
 }
 
+void Array::set_delete_tiles_location(
+    const std::vector<ArrayDirectory::DeleteTileLocation>&
+        delete_tiles_location) {
+  array_dir_.set_delete_tiles_location(delete_tiles_location);
+}
+
 Status Array::open(
     QueryType query_type,
     EncryptionType encryption_type,

@@ -299,13 +299,16 @@ SparseUnorderedWithDupsReader<BitmapType>::get_coord_tiles_size(
           subarray_.is_set(), dim_num, f, t);
   RETURN_NOT_OK_TUPLE(st, nullopt);
 
+  auto frag_meta = fragment_metadata_[f];
+
   // Add the result tile structure size.
   tiles_sizes->first += sizeof(UnorderedWithDupsResultTile<BitmapType>);
 
-  // Add the tile bitmap size if there is a subarray or query condition set.
-  if (subarray_.is_set() || !condition_.empty()) {
-    tiles_sizes->first +=
-        fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
+  // Add the tile bitmap size if there is a subarray or any condition to
+  // process.
+  if (subarray_.is_set() || has_post_deduplication_conditions(*frag_meta) ||
+      process_partial_timestamps(*frag_meta)) {
+    tiles_sizes->first += frag_meta->cell_num(t) * sizeof(BitmapType);
   }
 
   return {Status::Ok(), *tiles_sizes};

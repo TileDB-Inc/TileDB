@@ -132,14 +132,18 @@ const std::string timestamps = "__timestamps";
 /** Special name reserved for the delete timestamp attribute. */
 const std::string delete_timestamps = "__delete_timestamps";
 
-/** Special name reserved for the delete condition name attribute. */
-const std::string delete_condition_names = "__delete_condition_names";
+/** Special name reserved for the delete condition marker hash attribute. */
+const std::string delete_condition_marker_hash =
+    "__delete_condition_marker_hash";
 
 /** The size of a timestamp cell. */
 const uint64_t timestamp_size = sizeof(uint64_t);
 
-/** The type of a variable offset cell. */
+/** The type of a timestamp cell. */
 extern const Datatype timestamp_type = Datatype::UINT64;
+
+/** The type of a delete condition marker hash cell. */
+extern const Datatype delete_condition_marker_hash_type = Datatype::UINT64;
 
 /** The default compressor for the coordinates. */
 Compressor coords_compression = Compressor::ZSTD;

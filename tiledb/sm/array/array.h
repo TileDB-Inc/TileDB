@@ -179,6 +179,15 @@ class Array {
   Status load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
 
   /**
+   * Sets the delete tiles location.
+   *
+   * @param delete_tiles_location Location for the delete tiles.
+   */
+  void set_delete_tiles_location(
+      const std::vector<ArrayDirectory::DeleteTileLocation>&
+          delete_tiles_location);
+
+  /**
    * Opens the array for reading.
    *
    * @param query_type The query type. This should always be READ. It
