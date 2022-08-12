@@ -1,0 +1,21 @@
+diff --git a/./super/external/grpc.cmake b/./super/external/grpc.cmake
+index b9c109534..a8521bb17 100644
+--- a/./super/external/grpc.cmake
++++ b/./super/external/grpc.cmake
+@@ -15,7 +15,6 @@
+ # ~~~
+ 
+ include(ExternalProjectHelper)
+-include(external/abseil)
+ include(external/c-ares)
+ include(external/protobuf)
+ 
+@@ -33,7 +32,7 @@ if (NOT TARGET grpc-project)
+     include(ExternalProject)
+     ExternalProject_Add(
+         grpc-project
+-        DEPENDS c-ares-project protobuf-project abseil-cpp-project
++        DEPENDS c-ares-project protobuf-project
+         EXCLUDE_FROM_ALL ON
+         PREFIX "${CMAKE_BINARY_DIR}/external/grpc"
+         INSTALL_DIR "${GOOGLE_CLOUD_CPP_EXTERNAL_PREFIX}"

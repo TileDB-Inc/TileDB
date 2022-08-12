@@ -70,15 +70,25 @@ if (NOT GCSSDK_FOUND)
     include(ProcessorCount)
     processorcount(NCPU)
 
+    # TBD: this -should- force creation of external project, unless it happens to find...
+    # but, if it happens to find local version, then won't have target 'ep_absl' to depend on...
+    # ???
+    find_package(absl_ep)
+
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_gcssdk.zip
       URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.22.0.zip"
       URL_HASH SHA1=d4e14faef4095289b06f5ffe57d33a14574a7055
+      #URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.42.0.zip"
+      #URL_HASH SHA256=c06ae9aededbb8aa217a6d2453754daa40b815f9a4004bc4f2d2d215c79828aa
+      DEPENDS ep_absl
       BUILD_IN_SOURCE 1
       PATCH_COMMAND
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/gcssdk.build.2.patch &&
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/gcssdk.grpc.patch &&
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch &&
         #The following patch is on top of a patch already done in build.patch above, application order is important!

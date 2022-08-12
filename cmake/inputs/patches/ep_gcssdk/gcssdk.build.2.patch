@@ -1,0 +1,20 @@
+diff --git a/super/CMakeLists.txt b/super/CMakeLists.txt
+index 203e09c28..7a478c4c5 100644
+--- a/super/CMakeLists.txt
++++ b/super/CMakeLists.txt
+@@ -37,7 +37,6 @@ if ("${GOOGLE_CLOUD_CPP_ENABLE_CCACHE}")
+     endif ()
+ endif ()
+ 
+-include(external/abseil)
+ include(external/benchmark)
+ include(external/crc32c)
+ include(external/googletest)
+@@ -52,7 +51,6 @@ set_external_project_build_parallel_level(PARALLEL)
+ set_external_project_vars()
+ 
+ set(GOOGLE_CLOUD_CPP_DEPENDENCIES_LIST
+-    abseil-cpp-project
+     grpc-project
+     crc32c-project
+     nlohmann-json-project
