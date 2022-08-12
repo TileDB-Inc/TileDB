@@ -212,6 +212,9 @@ ul.task-list{list-style: none;}
   <li><a href="#tile-sizes" id="toc-tile-sizes" class="nav-link" data-scroll-target="#tile-sizes">Tile Sizes</a></li>
   <li><a href="#tile-mins-maxs" id="toc-tile-mins-maxs" class="nav-link" data-scroll-target="#tile-mins-maxs">Tile Mins Maxs</a></li>
   <li><a href="#tile-sums" id="toc-tile-sums" class="nav-link" data-scroll-target="#tile-sums">Tile Sums</a></li>
+  <li><a href="#tile-null-count" id="toc-tile-null-count" class="nav-link" data-scroll-target="#tile-null-count">Tile Null Count</a></li>
+  <li><a href="#tile-fragment-min-max-sum-null-count" id="toc-tile-fragment-min-max-sum-null-count" class="nav-link" data-scroll-target="#tile-fragment-min-max-sum-null-count">Tile Fragment Min Max Sum Null Count</a></li>
+  <li><a href="#tile-processed-conditions" id="toc-tile-processed-conditions" class="nav-link" data-scroll-target="#tile-processed-conditions">Tile Processed Conditions</a></li>
   <li><a href="#footer" id="toc-footer" class="nav-link" data-scroll-target="#footer">Footer</a></li>
   </ul></li>
   <li><a href="#data-file" id="toc-data-file" class="nav-link" data-scroll-target="#data-file">Data File</a></li>
@@ -255,6 +258,12 @@ ul.task-list{list-style: none;}
          |      |_ d1.tdb                   # var-sized dimension (offsets) 
          |      |_ d1_var.tdb               # var-sized dimension (values)
          |      |_ ...      
+         |      |_ t.tdb                    # timestamp attribute
+         |      |_ ...  
+         |      |_ dt.tdb                   # delete timestamp attribute
+         |      |_ ...  
+         |      |_ dcmh.tdb                 # delete condition marker hash attribute
+         |      |_ ...  
         |_ ...  </code></pre>
 <p><code>&lt;timestamped_name&gt;</code> has format <code>__t1_t2_uuid_v</code>, where: * <code>t1</code> and <code>t2</code> are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC) * <code>uuid</code> is a unique identifier * <code>v</code> is the format version</p>
 <p>There can be any number of fragments in an array. The fragment folder contains:</p>
@@ -262,6 +271,9 @@ ul.task-list{list-style: none;}
 <li>A single <a href="#fragment-metadata-file">fragment metadata file</a> named <code>__fragment_metadata.tdb</code>.</li>
 <li>Any number of <a href="#data-file">data files</a>. For each fixed-sized attribute <code>foo1</code> (or dimension <code>bar1</code>), there is a single data file <code>a0.tdb</code> (<code>d0.tdb</code>) containing the values along this attribute (dimension). For every var-sized attribute <code>foo2</code> (or dimensions <code>bar2</code>), there are two data files; <code>a1_var.tdb</code> (<code>d1_var.tdb</code>) containing the var-sized values of the attribute (dimension) and <code>a1.tdb</code> (<code>d1.tdb</code>) containing the starting offsets of each value in <code>a1_var.tdb</code> (<code>d1_var.rdb</code>). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, <code>foo3</code>, will have an additional file <code>a2_validity.tdb</code> that contains its validity vector.</li>
 <li>The names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.</li>
+<li>The timestamp fixed attribute (<code>t.tdb</code>) is, for fragments consolidated with timestamps, the time at which a cell was added.</li>
+<li>The delete timestamp fixed attribute (<code>dt.tdb</code>) is, for fragments consolidated with delete conditions, the time at which a cell was deleted.</li>
+<li>The delete condition marker hash fixed attribute (<code>dcmh.tdb</code>) is, for fragments consolidated with delete conditions, the hash of the delete condition marker that deleted the cell. The delete condition marker is the file path of the delete condition relative to the array URI.</li>
 </ul>
 </section>
 <section id="fragment-metadata-file" class="level2">
@@ -343,7 +355,7 @@ ul.task-list{list-style: none;}
 </tr>
 <tr class="even">
 <td style="text-align: left;">Tile mins for attribute/dimension 1</td>
-<td style="text-align: left;"><a href="#tile-mins-maxs">Tile mins/maxs</a></td>
+<td style="text-align: left;"><a href="#tile-mins-maxs">Tile Mins/Maxs</a></td>
 <td style="text-align: left;">The serialized mins for attribute/dimension 1</td>
 </tr>
 <tr class="odd">
@@ -353,12 +365,12 @@ ul.task-list{list-style: none;}
 </tr>
 <tr class="even">
 <td style="text-align: left;">Variable mins for attribute/dimension N</td>
-<td style="text-align: left;"><a href="#tile-mins-maxs">Tile mins/maxs</a></td>
+<td style="text-align: left;"><a href="#tile-mins-maxs">Tile Mins/Maxs</a></td>
 <td style="text-align: left;">The serialized mins for attribute/dimension N</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Tile maxs for attribute/dimension 1</td>
-<td style="text-align: left;"><a href="#tile-mins-maxs">Tile mins/maxs</a></td>
+<td style="text-align: left;"><a href="#tile-mins-maxs">Tile Mins/Maxs</a></td>
 <td style="text-align: left;">The serialized maxs for attribute/dimension 1</td>
 </tr>
 <tr class="even">
@@ -368,12 +380,12 @@ ul.task-list{list-style: none;}
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Variable maxs for attribute/dimension N</td>
-<td style="text-align: left;"><a href="#tile-mins-maxs">Tile mins/maxs</a></td>
+<td style="text-align: left;"><a href="#tile-mins-maxs">Tile Mins/Maxs</a></td>
 <td style="text-align: left;">The serialized maxs for attribute/dimension N</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Tile sums for attribute/dimension 1</td>
-<td style="text-align: left;"><a href="#tile-sums">Tile sums</a></td>
+<td style="text-align: left;"><a href="#tile-sums">Tile Sums</a></td>
 <td style="text-align: left;">The serialized sums for attribute/dimension 1</td>
 </tr>
 <tr class="odd">
@@ -383,12 +395,12 @@ ul.task-list{list-style: none;}
 </tr>
 <tr class="even">
 <td style="text-align: left;">Variable sums for attribute/dimension N</td>
-<td style="text-align: left;"><a href="#tile-sums">Tile sums</a></td>
+<td style="text-align: left;"><a href="#tile-sums">Tile Sums</a></td>
 <td style="text-align: left;">The serialized sums for attribute/dimension N</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Tile null counts for attribute/dimension 1</td>
-<td style="text-align: left;"><a href="#tile-null-count">Tile null count</a></td>
+<td style="text-align: left;"><a href="#tile-null-count">Tile Null Count</a></td>
 <td style="text-align: left;">The serialized null counts for attribute/dimension 1</td>
 </tr>
 <tr class="even">
@@ -398,8 +410,18 @@ ul.task-list{list-style: none;}
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Variable maxs for attribute/dimension N</td>
-<td style="text-align: left;">[<a href="#tile-null-count">Tile null count</a></td>
+<td style="text-align: left;">[<a href="#tile-null-count">Tile Null Count</a></td>
 <td style="text-align: left;">The serialized null counts for attribute/dimension N</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Fragment min, max, sum, null count</td>
+<td style="text-align: left;">[<a href="#tile-fragment-min-max-sum-null-count">Tile Fragment Min Max Sum Null Count</a></td>
+<td style="text-align: left;">The serialized fragment min max sum null count</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Processed conditions</td>
+<td style="text-align: left;">[<a href="#tile-processed-conditions">Tile Processed Conditions</a></td>
+<td style="text-align: left;">The serialized processed conditions</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Metadata footer</td>
@@ -726,6 +748,9 @@ ul.task-list{list-style: none;}
 </tr>
 </tbody>
 </table>
+</section>
+<section id="tile-null-count" class="level3">
+<h3 class="anchored" data-anchor-id="tile-null-count">Tile Null Count</h3>
 <p>The tile null count is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
 <table class="table">
 <thead>
@@ -758,6 +783,9 @@ ul.task-list{list-style: none;}
 </tr>
 </tbody>
 </table>
+</section>
+<section id="tile-fragment-min-max-sum-null-count" class="level3">
+<h3 class="anchored" data-anchor-id="tile-fragment-min-max-sum-null-count">Tile Fragment Min Max Sum Null Count</h3>
 <p>The fragment min max sum null count is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
 <table class="table">
 <colgroup>
@@ -840,6 +868,9 @@ ul.task-list{list-style: none;}
 </tr>
 </tbody>
 </table>
+</section>
+<section id="tile-processed-conditions" class="level3">
+<h3 class="anchored" data-anchor-id="tile-processed-conditions">Tile Processed Conditions</h3>
 <p>The processed conditions is a <a href="../format_spec/generic_tile.html">generic tile</a> and is the list of delete/update conditions that have already been applied for this fragment and don’t need to be applied again, in no particular order, with the following internal format:</p>
 <table class="table">
 <thead>
