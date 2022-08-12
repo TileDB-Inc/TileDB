@@ -1,5 +1,5 @@
 /**
- * @file   unit-cppapi-update-values.cc
+ * @file   unit-cppapi-updates.cc
  *
  * @section LICENSE
  *
@@ -38,9 +38,11 @@
 
 using namespace tiledb;
 
-TEST_CASE("C++ API: Test setting an update value", "[cppapi][update-value]") {
+TEST_CASE("C++ API: Test setting an update value", "[cppapi][updates]") {
   const std::string array_name = "cpp_unit_update_values";
-  Context ctx;
+  Config config;
+  config["sm.allow_updates_experimental"] = "true";
+  Context ctx(config);
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
@@ -54,22 +56,16 @@ TEST_CASE("C++ API: Test setting an update value", "[cppapi][update-value]") {
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
   Array::create(array_name, schema);
-  Array array(ctx, array_name, TILEDB_READ);
+  Array array(ctx, array_name, TILEDB_UPDATE);
   Query query(ctx, array);
 
   // Set update value.
-  bool exception = false;
-  try {
-    int val = 1;
-    QueryExperimental::add_update_value_to_query(
-        ctx, query, "a", &val, sizeof(val));
-  } catch (std::exception&) {
-    exception = true;
-  }
-  CHECK(exception == true);
+  int val = 1;
+  QueryExperimental::add_update_value_to_query(
+      ctx, query, "a", &val, sizeof(val));
 
-  // query.ptr()->query_->update_values()[0].check(
-  //    array.ptr()->array_->array_schema_latest());
+  query.ptr()->query_->update_values()[0].check(
+      array.ptr()->array_->array_schema_latest());
 
   array.close();
 

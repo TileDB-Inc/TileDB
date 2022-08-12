@@ -121,6 +121,9 @@ class Config {
   /** The default format for logging. */
   static const std::string CONFIG_LOGGING_DEFAULT_FORMAT;
 
+  /** Allow updates or not. */
+  static const std::string SM_ALLOW_UPDATES_EXPERIMENTAL;
+
   /**
    * The key for encrypted arrays.
    *  */

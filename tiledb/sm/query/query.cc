@@ -2055,7 +2055,7 @@ Status Query::add_update_value(
     const char* field_name,
     const void* update_value,
     uint64_t update_value_size) {
-  if constexpr (true) {
+  if (type_ != QueryType::UPDATE) {
     return logger_->status(Status_QueryError(
         "Cannot add query update value; Operation only applicable "
         "to update queries"));

@@ -160,6 +160,16 @@ Status StorageManager::array_close_for_deletes(Array* array) {
   return Status::Ok();
 }
 
+Status StorageManager::array_close_for_updates(Array* array) {
+  assert(open_arrays_.find(array) != open_arrays_.end());
+
+  // Remove entry from open arrays
+  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
+  open_arrays_.erase(array);
+
+  return Status::Ok();
+}
+
 Status StorageManager::group_close_for_reads(Group* group) {
   assert(open_groups_.find(group) != open_groups_.end());
 

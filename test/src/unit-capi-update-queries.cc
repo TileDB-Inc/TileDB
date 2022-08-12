@@ -1,5 +1,5 @@
 /**
- * @file   unit-capi-update-values.cc
+ * @file   unit-capi-update-queries.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests of C API for update values.
+ * Tests of C API for updates.
  */
 
 #include "catch.hpp"
@@ -51,7 +51,7 @@ struct UpdateValuesfx {
 
   // Vector of supported filesystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
-  std::string array_name_ = "array-update-values";
+  std::string array_name_ = "array-updates";
 
   // Functions
   UpdateValuesfx();
@@ -65,7 +65,15 @@ struct UpdateValuesfx {
 UpdateValuesfx::UpdateValuesfx()
     : fs_vec_(vfs_test_get_fs_vec()) {
   // Initialize vfs test
-  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
+  tiledb_error_t* error = nullptr;
+  tiledb_config_t* config = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  tiledb_config_set(config, "sm.allow_updates_experimental", "true", &error);
+  REQUIRE(error == nullptr);
+
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok());
 }
 
 UpdateValuesfx::~UpdateValuesfx() {
@@ -140,12 +148,11 @@ void UpdateValuesfx::create_sparse_array(
 TEST_CASE_METHOD(
     UpdateValuesfx,
     "C API: Test update values with invalid query types",
-    "[capi][update-values][invalid-query-types]") {
+    "[capi][updates][invalid-query-types]") {
   create_temp_dir();
   create_sparse_array("a", TILEDB_FLOAT32);
 
-  // TODO: Add delete.
-  tiledb_query_type_t type = GENERATE(TILEDB_READ, TILEDB_WRITE);
+  tiledb_query_type_t type = GENERATE(TILEDB_READ, TILEDB_WRITE, TILEDB_DELETE);
 
   tiledb_array_t* array;
   auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -163,11 +170,6 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_update_value(ctx_, query, "a", &val, sizeof(val));
   REQUIRE(rc == TILEDB_ERR);
 
-  // Check the update value.
-  // auto st =
-  //     query->query_->update_values()[0].check(array->array_->array_schema_latest());
-  // CHECK(st.ok());
-
   // Close array.
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -182,43 +184,43 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     UpdateValuesfx,
     "C API: Test update values with invalid values",
-    "[capi][update-values][invalid-values]") {
+    "[capi][updates][invalid-values]") {
   create_temp_dir();
   create_sparse_array("a", TILEDB_FLOAT32);
 
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_UPDATE);
   CHECK(rc == TILEDB_OK);
 
   // Prepare query.
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_UPDATE, &query);
   REQUIRE(rc == TILEDB_OK);
 
   SECTION("Invalid field name") {
     // Add the update value.
     float val = 1.0f;
     rc = tiledb_query_add_update_value(ctx_, query, "g", &val, sizeof(val));
-    CHECK(rc == TILEDB_ERR);
+    CHECK(rc == TILEDB_OK);
   }
 
   SECTION("Invalid field size") {
     double val = 1.0;
     rc = tiledb_query_add_update_value(ctx_, query, "g", &val, sizeof(val));
-    CHECK(rc == TILEDB_ERR);
+    CHECK(rc == TILEDB_OK);
   }
 
   SECTION("Nullptr on non nullable attribute") {
     rc = tiledb_query_add_update_value(ctx_, query, "g", nullptr, 0);
-    CHECK(rc == TILEDB_ERR);
+    CHECK(rc == TILEDB_OK);
   }
 
   // Check the update value.
-  // auto st =
-  // query->query_->update_values()[0].check(array->array_->array_schema_latest());
-  // CHECK(!st.ok());
+  auto st = query->query_->update_values()[0].check(
+      array->array_->array_schema_latest());
+  CHECK(!st.ok());
 
   // Clean up.
   tiledb_query_free(&query);

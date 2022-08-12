@@ -159,6 +159,14 @@ class StorageManager {
   Status array_close_for_deletes(Array* array);
 
   /**
+   * Closes an array opened for updates.
+   *
+   * @param array The array to be closed.
+   * @return Status
+   */
+  Status array_close_for_updates(Array* array);
+
+  /**
    * Closes an group opened for reads.
    *
    * @param group The group to be closed.

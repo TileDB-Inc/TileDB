@@ -77,6 +77,7 @@ const std::string Config::REST_CURL_VERBOSE = "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
+const std::string Config::SM_ALLOW_UPDATES_EXPERIMENTAL = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
 const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
 const std::string Config::SM_DEDUP_COORDS = "false";
@@ -246,6 +247,8 @@ Config::Config() {
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
+  param_values_["sm.allow_updates_experimental"] =
+      SM_ALLOW_UPDATES_EXPERIMENTAL;
   param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   param_values_["sm.encryption_type"] = SM_ENCRYPTION_TYPE;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
@@ -587,6 +590,9 @@ Status Config::unset(const std::string& param) {
     param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   } else if (param == "config.logging_format") {
     param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
+  } else if (param == "sm.allow_updates_experimental") {
+    param_values_["sm.allow_updates_experimental"] =
+        SM_ALLOW_UPDATES_EXPERIMENTAL;
   } else if (param == "sm.encryption_key") {
     param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   } else if (param == "sm.encryption_type") {
@@ -882,6 +888,8 @@ Status Config::sanity_check(
     if (value != "DEFAULT" && value != "JSON")
       return LOG_STATUS(
           Status_ConfigError("Invalid logging format parameter value"));
+  } else if (param == "sm.allow_updates_experimental") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_coord_dups") {
@@ -1049,8 +1057,8 @@ const char* Config::get_from_config_or_env(
     return value_config;
   }
 
-  // Check env if not found in config or if it was found in the config but is a
-  // default value
+  // Check env if not found in config or if it was found in the config but is
+  // a default value
   const char* value_env = get_from_env(param, found);
   if (*found)
     return value_env;
