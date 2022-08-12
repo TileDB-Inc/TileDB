@@ -932,8 +932,12 @@ Status FragmentInfo::load(
 
   // Get number of unconsolidated fragment metadata
   unconsolidated_metadata_num_ = 0;
-  for (const auto& f : single_fragment_info_vec_)
+  for (const auto& f : single_fragment_info_vec_) {
     unconsolidated_metadata_num_ += (uint32_t)!f.has_consolidated_footer();
+  }
+
+  // Store the delete tile locations
+  delete_tiles_location_ = array_dir.delete_tiles_location();
 
   return Status::Ok();
 }
@@ -967,6 +971,11 @@ uint32_t FragmentInfo::to_vacuum_num() const {
 
 uint32_t FragmentInfo::unconsolidated_metadata_num() const {
   return unconsolidated_metadata_num_;
+}
+
+const std::vector<ArrayDirectory::DeleteTileLocation>&
+FragmentInfo::delete_tiles_location() const {
+  return delete_tiles_location_;
 }
 
 /* ********************************* */

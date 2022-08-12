@@ -156,6 +156,12 @@ void ReaderBase::compute_result_space_tiles(
 /*        PROTECTED METHODS       */
 /* ****************************** */
 
+bool ReaderBase::process_partial_timestamps(FragmentMetadata& frag_meta) const {
+  return frag_meta.has_timestamps() &&
+         frag_meta.partial_time_overlap(
+             array_->timestamp_start(), array_->timestamp_end_opened_at());
+}
+
 void ReaderBase::clear_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles,
@@ -207,7 +213,7 @@ Status ReaderBase::generate_timestamped_conditions() {
 
     // Combine the timestamp condition and delete condition. The condition is
     // already negated.
-    QueryCondition timestamped_condition;
+    QueryCondition timestamped_condition(delete_condition.condition_marker());
     RETURN_NOT_OK(timestamp_condition.combine(
         delete_condition,
         QueryConditionCombinationOp::OR,
@@ -331,6 +337,29 @@ Status ReaderBase::add_partial_overlap_condition() {
   return Status::Ok();
 }
 
+Status ReaderBase::add_delete_timestamps_condition() {
+  // Add the delete timestamp condition if any fragments have delete metadata.
+  bool add_delete_timestamps_condition = false;
+  for (auto& frag_meta : fragment_metadata_) {
+    if (frag_meta->has_delete_meta()) {
+      add_delete_timestamps_condition = true;
+      break;
+    }
+  }
+
+  // The delete timestamp condition uses the open timestamp to filter cells.
+  if (add_delete_timestamps_condition) {
+    uint64_t open_ts = array_->timestamp_end_opened_at();
+    RETURN_NOT_OK(delete_timestamps_condition_.init(
+        std::string(constants::delete_timestamps),
+        &open_ts,
+        sizeof(uint64_t),
+        QueryConditionOp::GE));
+  }
+
+  return Status::Ok();
+}
+
 bool ReaderBase::include_timestamps(const unsigned f) const {
   auto frag_has_ts = fragment_metadata_[f]->has_timestamps();
   auto partial_overlap = fragment_metadata_[f]->partial_time_overlap(
@@ -389,6 +418,11 @@ Status ReaderBase::load_tile_offsets(
             continue;
           }
 
+          // Continue if the fragment doesn't have delete metadata.
+          if (delete_meta_not_present(name, frag_idx)) {
+            continue;
+          }
+
           filtered_names.emplace_back(name);
         }
 
@@ -433,6 +467,30 @@ Status ReaderBase::load_tile_var_sizes(
             continue;
 
           fragment->load_tile_var_sizes(*encryption_key, name);
+        }
+
+        return Status::Ok();
+      });
+
+  RETURN_NOT_OK(status);
+
+  return Status::Ok();
+}
+
+Status ReaderBase::load_processed_conditions() {
+  auto timer_se = stats_->start_timer("load_processed_conditions");
+  const auto encryption_key = array_->encryption_key();
+
+  // Load all fragments in parallel.
+  const auto status = parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      fragment_metadata_.size(),
+      [&](const uint64_t i) {
+        auto& fragment = fragment_metadata_[i];
+
+        if (fragment->has_delete_meta()) {
+          RETURN_NOT_OK(fragment->load_processed_conditions(*encryption_key));
         }
 
         return Status::Ok();
@@ -543,8 +601,9 @@ Status ReaderBase::read_tiles(
   auto timer_se = stats_->start_timer("read_tiles");
 
   // Shortcut for empty tile vec
-  if (result_tiles.empty())
+  if (result_tiles.empty() || names.empty()) {
     return Status::Ok();
+  }
 
   // Populate the list of regions per file to be read.
   std::unordered_map<
@@ -584,6 +643,11 @@ Status ReaderBase::read_tiles(
 
       // If the fragment doesn't include timestamps
       if (timestamps_not_present(name, tile->frag_idx())) {
+        continue;
+      }
+
+      // Continue if the fragment doesn't have delete metadata.
+      if (delete_meta_not_present(name, tile->frag_idx())) {
         continue;
       }
 
@@ -857,6 +921,11 @@ ReaderBase::load_tile_chunk_data(
       return {Status::Ok(), 0, 0, 0};
     }
 
+    // If the fragment doesn't have delete metadata.
+    if (delete_meta_not_present(name, tile->frag_idx())) {
+      return {Status::Ok(), 0, 0, 0};
+    }
+
     const auto t = &tile_tuple->fixed_tile();
     const auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
     const auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
@@ -912,6 +981,11 @@ Status ReaderBase::unfilter_tile_chunk_range(
 
     // If the fragment doesn't include timestamps
     if (timestamps_not_present(name, tile->frag_idx())) {
+      return Status::Ok();
+    }
+
+    // If the fragment doesn't have delete metadata.
+    if (delete_meta_not_present(name, tile->frag_idx())) {
       return Status::Ok();
     }
 
@@ -1001,6 +1075,11 @@ Status ReaderBase::post_process_unfiltered_tile(
 
     // If the fragment doesn't include timestamps
     if (timestamps_not_present(name, tile->frag_idx())) {
+      return Status::Ok();
+    }
+
+    // If the fragment doesn't have delete metadata.
+    if (delete_meta_not_present(name, tile->frag_idx())) {
       return Status::Ok();
     }
 
@@ -1406,6 +1485,11 @@ Status ReaderBase::unfilter_tiles(
 
           // If the fragment doesn't include timestamps
           if (timestamps_not_present(name, tile->frag_idx())) {
+            return Status::Ok();
+          }
+
+          // If the fragment doesn't have delete metadata.
+          if (delete_meta_not_present(name, tile->frag_idx())) {
             return Status::Ok();
           }
 

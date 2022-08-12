@@ -101,3 +101,22 @@ int tiledb_group_serialize(
   tiledb_buffer_free(&buffer);
   return rc;
 }
+
+int tiledb_array_open_serialize(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array_open_serialized,
+    tiledb_array_t** array_open_deserialized,
+    tiledb_serialization_type_t serialize_type) {
+  // Serialize and Deserialize
+  tiledb_buffer_t* buffer;
+  int rc = tiledb_serialize_array_open(
+      ctx, array_open_serialized, serialize_type, 1, &buffer);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_deserialize_array_open(
+      ctx, buffer, serialize_type, 0, array_open_deserialized);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_buffer_free(&buffer);
+  return rc;
+}

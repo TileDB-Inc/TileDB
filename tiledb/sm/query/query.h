@@ -574,6 +574,13 @@ class Query {
   Status set_consolidation_with_timestamps();
 
   /**
+   * Set the processed conditions for writes.
+   *
+   * @param processed_conditions The processed conditions.
+   */
+  void set_processed_conditions(std::vector<std::string>& processed_conditions);
+
+  /**
    * Sets the config for the Query
    *
    * This function overrides the config for Query-level parameters only.
@@ -1005,6 +1012,9 @@ class Query {
 
   /* Scratch space used for REST requests. */
   shared_ptr<Buffer> rest_scratch_;
+
+  /* Processed conditions, used for consolidation. */
+  std::vector<std::string> processed_conditions_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

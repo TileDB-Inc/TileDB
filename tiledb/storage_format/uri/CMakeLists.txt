@@ -35,5 +35,6 @@ target_link_libraries(uri_format PUBLIC vfs $<TARGET_OBJECTS:vfs>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_uri_format EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_uri_format)
 target_link_libraries(compile_uri_format PRIVATE uri_format)
 target_sources(compile_uri_format PRIVATE test/compile_uri_format_main.cc)

@@ -1,16 +1,11 @@
 /**
- * @file compile_all_filters_main.cc
- *
- * @section LICENSE
- *
- * The MI/**
- * @file compile_all_filters_main.cc
+ * @file unit_range.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,15 +24,48 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file tests the Range class
  */
 
-#include "../filter_create.h"
+#include <catch.hpp>
+#include "tiledb/type/range/range.h"
 
-int main() {
-  using namespace tiledb::sm;
-  (void)sizeof(tiledb::sm::FilterCreate);
-  (void)static_cast<shared_ptr<Filter> (*)(
-      Deserializer & deserializer, const uint32_t version)>(
-      tiledb::sm::FilterCreate::deserialize);
-  return 0;
+using namespace tiledb::common;
+using namespace tiledb::type;
+
+TEMPLATE_TEST_CASE(
+    "Test fixed-sized range constructor with "
+    "separate start and stop pointers",
+    "[range]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t,
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    float,
+    double) {
+  TestType start{2};
+  TestType end{10};
+  Range range{&start, &end, sizeof(TestType)};
+  REQUIRE(!range.var_size());
+  const auto* data = static_cast<const TestType*>(range.data());
+  REQUIRE(data[0] == start);
+  REQUIRE(data[1] == end);
+}
+
+TEST_CASE(
+    "Test variable-sized range constructor with separate start and stop "
+    "pointers",
+    "[range]") {
+  std::string start{"x"};
+  std::string end{"zzz"};
+  Range range{start.data(), start.size(), end.data(), end.size()};
+  REQUIRE(range.var_size());
+  REQUIRE(range.start_str() == start);
+  REQUIRE(range.end_str() == end);
 }

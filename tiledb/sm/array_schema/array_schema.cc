@@ -260,6 +260,10 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
     return constants::timestamp_size;
   }
 
+  if (name == constants::delete_condition_marker_hash) {
+    return sizeof(size_t);
+  }
+
   // Attribute
   auto attr_it = attribute_map_.find(name);
   if (attr_it != attribute_map_.end()) {
@@ -281,9 +285,8 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
 }
 
 unsigned int ArraySchema::cell_val_num(const std::string& name) const {
-  // Special zipped coordinates
-  if (name == constants::coords || name == constants::timestamps ||
-      name == constants::delete_timestamps) {
+  // Special attributes
+  if (is_special_attribute(name)) {
     return 1;
   }
 
@@ -380,14 +383,15 @@ Status ArraySchema::check_attributes(
 }
 
 const FilterPipeline& ArraySchema::filters(const std::string& name) const {
-  if (name == constants::coords || name == constants::timestamps ||
-      name == constants::delete_timestamps)
+  if (is_special_attribute(name)) {
     return coords_filters();
+  }
 
   // Attribute
   auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end())
+  if (attr_it != attribute_map_.end()) {
     return attr_it->second->filters();
+  }
 
   // Dimension (if filters not set, return default coordinate filters)
   auto dim_it = dim_map_.find(name);
@@ -622,6 +626,10 @@ Datatype ArraySchema::type(const std::string& name) const {
     return constants::timestamp_type;
   }
 
+  if (name == constants::delete_condition_marker_hash) {
+    return constants::delete_condition_marker_hash_type;
+  }
+
   // Attribute
   auto attr_it = attribute_map_.find(name);
   if (attr_it != attribute_map_.end()) {
@@ -636,19 +644,21 @@ Datatype ArraySchema::type(const std::string& name) const {
 
 bool ArraySchema::var_size(const std::string& name) const {
   // Special case for zipped coordinates
-  if (name == constants::coords || name == constants::timestamps ||
-      name == constants::delete_timestamps)
+  if (is_special_attribute(name)) {
     return false;
+  }
 
   // Attribute
   auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end())
+  if (attr_it != attribute_map_.end()) {
     return attr_it->second->var_size();
+  }
 
   // Dimension
   auto dim_it = dim_map_.find(name);
-  if (dim_it != dim_map_.end())
+  if (dim_it != dim_map_.end()) {
     return dim_it->second->var_size();
+  }
 
   // Name is not an attribute or dimension
   assert(false);

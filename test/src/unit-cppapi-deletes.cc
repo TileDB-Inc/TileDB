@@ -235,6 +235,7 @@ void DeletesFx::read_sparse(
 
 void DeletesFx::consolidate_sparse(bool vacuum) {
   auto config = ctx_.config();
+  Array::consolidate(ctx_, SPARSE_ARRAY_NAME, &config);
 
   if (vacuum) {
     REQUIRE_NOTHROW(Array::vacuum(ctx_, SPARSE_ARRAY_NAME, &config));
@@ -247,6 +248,7 @@ void DeletesFx::consolidate_commits_sparse(bool vacuum) {
   Array::consolidate(ctx_, SPARSE_ARRAY_NAME, &config);
 
   if (vacuum) {
+    config["sm.vacuum.mode"] = "commits";
     REQUIRE_NOTHROW(Array::vacuum(ctx_, SPARSE_ARRAY_NAME, &config));
   }
 }
@@ -365,7 +367,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DeletesFx,
-    "CPP API: Test writing invalid delete condition",
+    "CPP API: Test deletes, writing invalid delete condition",
     "[cppapi][deletes][write-check][invalid]") {
   remove_sparse_array();
   create_sparse_array();
@@ -382,7 +384,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DeletesFx,
-    "CPP API: Test open for delete invalid version",
+    "CPP API: Test deletes, open for delete invalid version",
     "[cppapi][deletes][invalid-version]") {
   if constexpr (is_experimental_build) {
     return;
@@ -405,11 +407,19 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DeletesFx,
-    "CPP API: Test reading with delete condition",
+    "CPP API: Test deletes, reading with delete condition",
     "[cppapi][deletes][read]") {
   remove_sparse_array();
 
+  bool consolidate = GENERATE(true, false);
+  bool vacuum = GENERATE(true, false);
   bool allows_dups = GENERATE(true, false);
+  bool legacy = GENERATE(true, false);
+  tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+  if (!consolidate && vacuum) {
+    return;
+  }
+
   create_sparse_array(allows_dups);
 
   // Write fragment.
@@ -425,8 +435,12 @@ TEST_CASE_METHOD(
   // Write another fragment that will not be affected by the condition.
   write_sparse({1}, {4}, {4}, 5);
 
+  // Consolidate with delete.
+  if (consolidate) {
+    consolidate_sparse(vacuum);
+  }
+
   // Test read for both refactored and legacy.
-  bool legacy = GENERATE(true, false);
   if (legacy) {
     set_legacy();
   }
@@ -437,7 +451,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1(buffer_size);
   std::vector<uint64_t> dim1(buffer_size);
   std::vector<uint64_t> dim2(buffer_size);
-  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 2);
+  read_sparse(a1, dim1, dim2, stats, read_layout, 2);
 
   std::vector<int> c_a1 = {0, 1, 2, 3};
   std::vector<uint64_t> c_dim1 = {1, 1, 1, 2};
@@ -451,7 +465,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1_2(buffer_size);
   std::vector<uint64_t> dim1_2(buffer_size);
   std::vector<uint64_t> dim2_2(buffer_size);
-  read_sparse(a1_2, dim1_2, dim2_2, stats, TILEDB_GLOBAL_ORDER, 4);
+  read_sparse(a1_2, dim1_2, dim2_2, stats, read_layout, 4);
 
   std::vector<int> c_a1_2 = {2, 3};
   std::vector<uint64_t> c_dim1_2 = {1, 2};
@@ -467,7 +481,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1_3(buffer_size);
   std::vector<uint64_t> dim1_3(buffer_size);
   std::vector<uint64_t> dim2_3(buffer_size);
-  read_sparse(a1_3, dim1_3, dim2_3, stats, TILEDB_GLOBAL_ORDER, 6);
+  read_sparse(a1_3, dim1_3, dim2_3, stats, read_layout, 6);
 
   std::vector<int> c_a1_3 = {2, 3, 1};
   std::vector<uint64_t> c_dim1_3 = {1, 2, 4};
@@ -483,11 +497,20 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DeletesFx,
-    "CPP API: Test reading with delete condition, consolidated fragment",
+    "CPP API: Test deletes, reading with delete condition, consolidated "
+    "fragment",
     "[cppapi][deletes][read][consolidated]") {
   remove_sparse_array();
 
+  bool consolidate = GENERATE(true, false);
+  bool vacuum = GENERATE(true, false);
   bool allows_dups = GENERATE(true, false);
+  bool legacy = GENERATE(true, false);
+  tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+  if (!consolidate && vacuum) {
+    return;
+  }
+
   create_sparse_array(allows_dups);
 
   // Write fragment.
@@ -507,8 +530,12 @@ TEST_CASE_METHOD(
   // Write condition.
   write_delete_condition(qc, 3);
 
+  // Consolidate with delete.
+  if (consolidate) {
+    consolidate_sparse(vacuum);
+  }
+
   // Test read for both refactored and legacy.
-  bool legacy = GENERATE(true, false);
   if (legacy) {
     set_legacy();
   }
@@ -519,7 +546,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1(buffer_size);
   std::vector<uint64_t> dim1(buffer_size);
   std::vector<uint64_t> dim2(buffer_size);
-  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 2);
+  read_sparse(a1, dim1, dim2, stats, read_layout, 2);
 
   std::vector<int> c_a1 = {0, 1, 2, 3};
   std::vector<uint64_t> c_dim1 = {1, 1, 1, 2};
@@ -533,7 +560,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1_2(buffer_size);
   std::vector<uint64_t> dim1_2(buffer_size);
   std::vector<uint64_t> dim2_2(buffer_size);
-  read_sparse(a1_2, dim1_2, dim2_2, stats, TILEDB_GLOBAL_ORDER, 4);
+  read_sparse(a1_2, dim1_2, dim2_2, stats, read_layout, 4);
 
   std::vector<int> c_a1_2 = {2, 3};
   std::vector<uint64_t> c_dim1_2 = {1, 2};
@@ -549,7 +576,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1_3(buffer_size);
   std::vector<uint64_t> dim1_3(buffer_size);
   std::vector<uint64_t> dim2_3(buffer_size);
-  read_sparse(a1_3, dim1_3, dim2_3, stats, TILEDB_GLOBAL_ORDER, 6);
+  read_sparse(a1_3, dim1_3, dim2_3, stats, read_layout, 6);
 
   std::vector<int> c_a1_3 = {2, 3, 1};
   std::vector<uint64_t> c_dim1_3 = {1, 2, 4};
@@ -565,12 +592,20 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DeletesFx,
-    "CPP API: Test reading with delete condition, delete duplicates from later "
-    "fragments",
+    "CPP API: Test deletes, reading with delete condition, delete duplicates "
+    "from later fragments",
     "[cppapi][deletes][duplicates]") {
   remove_sparse_array();
 
+  bool consolidate = GENERATE(true, false);
+  bool vacuum = GENERATE(true, false);
   bool allows_dups = GENERATE(true, false);
+  bool legacy = GENERATE(true, false);
+  tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+  if (!consolidate && vacuum) {
+    return;
+  }
+
   create_sparse_array(allows_dups);
 
   // Write fragment.
@@ -587,8 +622,12 @@ TEST_CASE_METHOD(
   // Write condition.
   write_delete_condition(qc, 5);
 
+  // Consolidate with delete.
+  if (consolidate) {
+    consolidate_sparse(vacuum);
+  }
+
   // Test read for both refactored and legacy.
-  bool legacy = GENERATE(true, false);
   if (legacy) {
     set_legacy();
   }
@@ -599,7 +638,7 @@ TEST_CASE_METHOD(
   std::vector<int> a1(buffer_size);
   std::vector<uint64_t> dim1(buffer_size);
   std::vector<uint64_t> dim2(buffer_size);
-  read_sparse(a1, dim1, dim2, stats, TILEDB_GLOBAL_ORDER, 7);
+  read_sparse(a1, dim1, dim2, stats, read_layout, 7);
 
   if (allows_dups) {
     std::vector<int> c_a1 = {0, 1, 2, 3};
@@ -626,7 +665,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DeletesFx,
-    "CPP API: Deletes, commits consolidation",
+    "CPP API: Test deletes, commits consolidation",
     "[cppapi][deletes][commits][consolidation]") {
   remove_sparse_array();
 
@@ -672,6 +711,214 @@ TEST_CASE_METHOD(
   write_delete_condition(qc3, 4);
 
   check_delete_conditions({qc, qc3, qc2}, 8);
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    DeletesFx,
+    "CPP API: Test deletes, consolidation, delete same cell earlier",
+    "[cppapi][deletes][consolidation][same-cell]") {
+  remove_sparse_array();
+
+  bool allows_dups = GENERATE(true, false);
+  bool legacy = GENERATE(true, false);
+  tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
+  create_sparse_array(allows_dups);
+
+  // Write fragment with one cell.
+  write_sparse({3}, {1}, {1}, 1);
+
+  // Define query condition (a1 < 4).
+  QueryCondition qc(ctx_);
+  int32_t val = 4;
+  qc.init("a1", &val, sizeof(int32_t), TILEDB_LT);
+
+  // Write condition.
+  write_delete_condition(qc, 5);
+
+  // Consolidate.
+  consolidate_sparse(true);
+
+  // Reading before the delete condition timestamp.
+  uint64_t buffer_size = 1;
+  std::string stats;
+  std::vector<int> a1(buffer_size);
+  std::vector<uint64_t> dim1(buffer_size);
+  std::vector<uint64_t> dim2(buffer_size);
+  read_sparse(a1, dim1, dim2, stats, read_layout, 4);
+
+  std::vector<int> c_a1 = {3};
+  std::vector<uint64_t> c_dim1 = {1};
+  std::vector<uint64_t> c_dim2 = {1};
+  CHECK(!memcmp(c_a1.data(), a1.data(), c_a1.size() * sizeof(int)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+
+  // Reading after delete condition timestamp.
+  buffer_size = 1;
+  std::vector<int> a1_empty(buffer_size);
+  std::vector<uint64_t> dim1_empty(buffer_size);
+  std::vector<uint64_t> dim2_empty(buffer_size);
+  read_sparse(a1_empty, dim1_empty, dim2_empty, stats, read_layout, 6);
+
+  std::vector<int> c_a1_empty = {0};
+  std::vector<uint64_t> c_dim1_empty = {0};
+  std::vector<uint64_t> c_dim2_empty = {0};
+  CHECK(!memcmp(
+      c_a1_empty.data(), a1_empty.data(), c_a1_empty.size() * sizeof(int)));
+  CHECK(!memcmp(
+      c_dim1_empty.data(),
+      dim1_empty.data(),
+      c_dim1_empty.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(
+      c_dim2_empty.data(),
+      dim2_empty.data(),
+      c_dim2_empty.size() * sizeof(uint64_t)));
+
+  // Define query condition (a1 < 5).
+  QueryCondition qc2(ctx_);
+  int32_t val2 = 5;
+  qc2.init("a1", &val2, sizeof(int32_t), TILEDB_LT);
+
+  // Write condition, but earlier.
+  write_delete_condition(qc2, 3);
+
+  // Consolidate.
+  consolidate_sparse(true);
+
+  // Test read for both refactored and legacy.
+  if (legacy) {
+    set_legacy();
+  }
+
+  // Reading before new delete condition timestamp.
+  buffer_size = legacy ? 100 : 1;
+  std::vector<int> a1_2(buffer_size);
+  std::vector<uint64_t> dim1_2(buffer_size);
+  std::vector<uint64_t> dim2_2(buffer_size);
+  read_sparse(a1_2, dim1_2, dim2_2, stats, read_layout, 2);
+
+  std::vector<int> c_a1_2 = {3};
+  std::vector<uint64_t> c_dim1_2 = {1};
+  std::vector<uint64_t> c_dim2_2 = {1};
+  CHECK(!memcmp(c_a1_2.data(), a1_2.data(), c_a1_2.size() * sizeof(int)));
+  CHECK(!memcmp(
+      c_dim1_2.data(), dim1_2.data(), c_dim1_2.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(
+      c_dim2_2.data(), dim2_2.data(), c_dim2_2.size() * sizeof(uint64_t)));
+
+  // Reading after new delete condition timestamp.
+  buffer_size = legacy ? 100 : 1;
+  std::vector<int> a1_3(buffer_size);
+  std::vector<uint64_t> dim1_3(buffer_size);
+  std::vector<uint64_t> dim2_3(buffer_size);
+  read_sparse(a1_3, dim1_3, dim2_3, stats, read_layout, 6);
+
+  std::vector<int> c_a1_3 = {0};
+  std::vector<uint64_t> c_dim1_3 = {0};
+  std::vector<uint64_t> c_dim2_3 = {0};
+  CHECK(!memcmp(c_a1_3.data(), a1_3.data(), c_a1_3.size() * sizeof(int)));
+  CHECK(!memcmp(
+      c_dim1_3.data(), dim1_3.data(), c_dim1_3.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(
+      c_dim2_3.data(), dim2_3.data(), c_dim2_3.size() * sizeof(uint64_t)));
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    DeletesFx,
+    "CPP API: Test deletes, multiple consolidation with deletes",
+    "[cppapi][deletes][consolidation][multiple]") {
+  remove_sparse_array();
+
+  bool allows_dups = GENERATE(true, false);
+  bool legacy = GENERATE(true, false);
+  tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
+  create_sparse_array(allows_dups);
+
+  // Write fragment.
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+
+  // Define query condition (a1 < 2).
+  QueryCondition qc(ctx_);
+  int32_t val = 2;
+  qc.init("a1", &val, sizeof(int32_t), TILEDB_LT);
+
+  // Write condition.
+  write_delete_condition(qc, 3);
+
+  // Consolidate.
+  consolidate_sparse(true);
+
+  // Write fragment.
+  write_sparse({4, 5, 6, 7}, {3, 3, 4, 4}, {3, 4, 3, 4}, 5);
+
+  // Define query condition (d2 == 3).
+  QueryCondition qc2(ctx_);
+  uint64_t val2 = 3;
+  qc2.init("d2", &val2, sizeof(uint64_t), TILEDB_EQ);
+
+  // Write condition.
+  write_delete_condition(qc2, 7);
+
+  // Consolidate.
+  consolidate_sparse(true);
+
+  // Test read for both refactored and legacy.
+  if (legacy) {
+    set_legacy();
+  }
+
+  // Read at time 4.
+  uint64_t buffer_size = legacy ? 100 : 2;
+  std::string stats;
+  std::vector<int> a1(buffer_size);
+  std::vector<uint64_t> dim1(buffer_size);
+  std::vector<uint64_t> dim2(buffer_size);
+  read_sparse(a1, dim1, dim2, stats, read_layout, 4);
+
+  std::vector<int> c_a1 = {2, 3};
+  std::vector<uint64_t> c_dim1 = {1, 2};
+  std::vector<uint64_t> c_dim2 = {4, 3};
+  CHECK(!memcmp(c_a1.data(), a1.data(), c_a1.size() * sizeof(int)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+
+  // Read at time 6.
+  buffer_size = legacy ? 100 : 6;
+  std::vector<int> a1_2(buffer_size);
+  std::vector<uint64_t> dim1_2(buffer_size);
+  std::vector<uint64_t> dim2_2(buffer_size);
+  read_sparse(a1_2, dim1_2, dim2_2, stats, read_layout, 6);
+
+  std::vector<int> c_a1_2 = {2, 3, 4, 5, 6, 7};
+  std::vector<uint64_t> c_dim1_2 = {1, 2, 3, 3, 4, 4};
+  std::vector<uint64_t> c_dim2_2 = {4, 3, 3, 4, 3, 4};
+  CHECK(!memcmp(c_a1_2.data(), a1_2.data(), c_a1_2.size() * sizeof(int)));
+  CHECK(!memcmp(
+      c_dim1_2.data(), dim1_2.data(), c_dim1_2.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(
+      c_dim2_2.data(), dim2_2.data(), c_dim2_2.size() * sizeof(uint64_t)));
+
+  // Reading everything.
+  buffer_size = legacy ? 100 : 3;
+  std::vector<int> a1_3(buffer_size);
+  std::vector<uint64_t> dim1_3(buffer_size);
+  std::vector<uint64_t> dim2_3(buffer_size);
+  read_sparse(a1_3, dim1_3, dim2_3, stats, read_layout, 10);
+
+  std::vector<int> c_a1_3 = {2, 5, 7};
+  std::vector<uint64_t> c_dim1_3 = {1, 3, 4};
+  std::vector<uint64_t> c_dim2_3 = {4, 4, 4};
+  CHECK(!memcmp(c_a1_3.data(), a1_3.data(), c_a1_3.size() * sizeof(int)));
+  CHECK(!memcmp(
+      c_dim1_3.data(), dim1_3.data(), c_dim1_3.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(
+      c_dim2_3.data(), dim2_3.data(), c_dim2_3.size() * sizeof(uint64_t)));
 
   remove_sparse_array();
 }

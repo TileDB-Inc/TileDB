@@ -650,8 +650,9 @@ QueryBuffer Query::buffer(const std::string& name) const {
 }
 
 Status Query::finalize() {
-  if (status_ == QueryStatus::UNINITIALIZED)
+  if (status_ == QueryStatus::UNINITIALIZED) {
     return Status::Ok();
+  }
 
   if (array_->is_remote()) {
     auto rest_client = storage_manager_->rest_client();
@@ -1134,6 +1135,11 @@ Status Query::set_consolidation_with_timestamps() {
   return Status::Ok();
 }
 
+void Query::set_processed_conditions(
+    std::vector<std::string>& processed_conditions) {
+  processed_conditions_ = processed_conditions;
+}
+
 Status Query::check_buffer_names() {
   if (type_ == QueryType::WRITE) {
     // If the array is sparse, the coordinates must be provided
@@ -1152,6 +1158,10 @@ Status Query::check_buffer_names() {
     auto expected_num = array_schema_->attribute_num();
     expected_num += static_cast<decltype(expected_num)>(
         buffers_.count(constants::timestamps));
+    expected_num += static_cast<decltype(expected_num)>(
+        buffers_.count(constants::delete_timestamps));
+    expected_num += static_cast<decltype(expected_num)>(
+        buffers_.count(constants::delete_condition_marker_hash));
     expected_num += (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
                      coord_offsets_buffer_is_set_) ?
                         array_schema_->dim_num() :
@@ -1210,6 +1220,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           disable_checks_consolidation_,
+          processed_conditions_,
           coords_info_,
           fragment_uri_,
           skip_checks_serialization));
@@ -1508,8 +1519,7 @@ Status Query::set_data_buffer(
   const bool is_attr = array_schema_->is_attr(name);
 
   // Check that attribute/dimension exists
-  if (name != constants::coords && name != constants::timestamps &&
-      name != constants::delete_timestamps && !is_dim && !is_attr) {
+  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));
