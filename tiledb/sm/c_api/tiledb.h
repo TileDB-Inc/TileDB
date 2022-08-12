@@ -1360,7 +1360,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    If true, the new, experimental REST routes and APIs for opening an array
  *    will be used <br>
  *    **Default**: false
- * - `rest.curl.buffersize` <br>
+ * - `rest.curl.buffer_size` <br>
  *    Set curl buffer size for REST requests <br>
  *    **Default**: 524288 (512KB)
  * - `filestore.buffer_size` <br>

@@ -78,7 +78,7 @@ class Config {
   static const std::string REST_RETRY_DELAY_FACTOR;
 
   /** The default buffer size for curl reads used by REST. */
-  static const std::string REST_CURL_BUFFERSIZE;
+  static const std::string REST_CURL_BUFFER_SIZE;
 
   /** The default for Curl's verbose mode used by REST. */
   static const std::string REST_CURL_VERBOSE;

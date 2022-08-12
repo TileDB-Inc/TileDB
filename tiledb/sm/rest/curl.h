@@ -372,7 +372,7 @@ class Curl {
   bool verbose_;
 
   /** Max curl buffer size for received data. */
-  uint64_t curl_buffersize_;
+  uint64_t curl_buffer_size_;
 
   /**
    * Populates the curl slist with authorization (token or username+password),
