@@ -57,29 +57,29 @@ Status XORFilter::run_forward(
     FilterBuffer* output) const {
   auto tile_type = tile.type();
 
-  switch (tile_type) {
-    case Datatype::INT8: {
+  switch (datatype_size(tile_type)){
+    case sizeof(int8_t): {
       return run_forward<int8_t>(
           input_metadata, input, output_metadata, output);
     }
-    case Datatype::INT16: {
+    case sizeof(int16_t): {
       return run_forward<int16_t>(
           input_metadata, input, output_metadata, output);
     }
-    case Datatype::INT32: {
+    case sizeof(int32_t): {
       return run_forward<int32_t>(
           input_metadata, input, output_metadata, output);
     }
-    case Datatype::INT64: {
+    case sizeof(int64_t): {
       return run_forward<int64_t>(
           input_metadata, input, output_metadata, output);
     }
     default: {
-      return Status_FilterError("XORFilter::run_forward: invalid datatype.");
+      return Status_FilterError("XORFilter::run_forward: datatype size cannot be converted to integer type.");
     }
   }
 
-  return Status::Ok();
+  return Status_FilterError("XORFilter::run_forward: invalid datatype.");
 }
 
 template <typename T>
@@ -127,7 +127,7 @@ Status XORFilter::shuffle_part(const ConstBuffer* part, Buffer* output) const {
   output->advance_offset(sizeof(T));
 
   for (uint32_t j = 1; j < num_elems_in_part; ++j) {
-    T value = part_array[j] - part_array[j - 1];
+    T value = part_array[j] ^ part_array[j - 1];
     RETURN_NOT_OK(output->write(&value, sizeof(T)));
 
     if (j != num_elems_in_part - 1) {
@@ -149,30 +149,29 @@ Status XORFilter::run_reverse(
   (void)config;
 
   auto tile_type = tile.type();
-
-  switch (tile_type) {
-    case Datatype::INT8: {
+  switch (datatype_size(tile_type)) {
+    case sizeof(int8_t): {
       return run_reverse<int8_t>(
           input_metadata, input, output_metadata, output);
     }
-    case Datatype::INT16: {
+    case sizeof(int16_t): {
       return run_reverse<int16_t>(
           input_metadata, input, output_metadata, output);
     }
-    case Datatype::INT32: {
+    case sizeof(int32_t): {
       return run_reverse<int32_t>(
           input_metadata, input, output_metadata, output);
     }
-    case Datatype::INT64: {
+    case sizeof(int64_t): {
       return run_reverse<int64_t>(
           input_metadata, input, output_metadata, output);
     }
     default: {
-      return Status_FilterError("XORFilter::run_forward: invalid datatype.");
+      return Status_FilterError("XORFilter::run_reverse: datatype size cannot be converted to integer type.");
     }
   }
 
-  return Status::Ok();
+  return Status_FilterError("XORFilter::run_reverse: invalid datatype.");
 }
 
 template <typename T>
@@ -231,7 +230,7 @@ Status XORFilter::unshuffle_part(
 
   T last_element = part_array[0];
   for (uint32_t j = 1; j < num_elems_in_part; ++j) {
-    T value = last_element + part_array[j];
+    T value = last_element ^ part_array[j];
     output_array[j] = value;
     last_element = value;
   }
