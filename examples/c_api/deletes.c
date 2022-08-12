@@ -165,8 +165,8 @@ void read_array() {
   tiledb_array_open(ctx, array, TILEDB_READ);
 
   // Set maximum buffer sizes
-  uint64_t coords_size = 12;
-  uint64_t data_size = 12;
+  uint64_t coords_size = 3 * sizeof(int);
+  uint64_t data_size = 3 * sizeof(int);
 
   // Prepare the vector that will hold the result
   int* coords_rows = (int*)malloc(coords_size);
@@ -214,6 +214,9 @@ int main() {
   tiledb_ctx_free(&ctx);
 
   if (type != TILEDB_ARRAY) {
+    // This will write some simple data to cells (1, 1), (2, 4) and (2, 3) of
+    // a 2D array and delete cells where the first dimension is two. Only the
+    // cell with the coordinates (1, 1) should remain.
     create_array();
     write_array();
     delete_cells();

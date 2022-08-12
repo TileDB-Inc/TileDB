@@ -136,6 +136,9 @@ int main() {
   Context ctx;
 
   if (Object::object(ctx, array_name).type() != Object::Type::Array) {
+    // This will write some simple data to cells (1, 1), (2, 4) and (2, 3) of
+    // a 2D array and delete cells where the first dimension is two. Only the
+    // cell with the coordinates (1, 1) should remain.
     create_array();
     write_array();
     delete_cells();
