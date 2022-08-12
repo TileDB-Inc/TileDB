@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: 'Ubuntu Prelim'
-        if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        if: ${{ startsWith(matrix.os, 'ubuntu-') == true }}
         run: ./scripts/ci/posix/prelim.sh
         shell: bash
 
