@@ -1828,10 +1828,6 @@ TEST_CASE(
 TEST_CASE("C++ API: Array write and read from MemFS", "[cppapi][memfs]") {
   const std::string array_name = "mem://cpp_unit_array";
   Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
 
   // Create
   Domain domain(ctx);
@@ -1872,17 +1868,11 @@ TEST_CASE("C++ API: Array write and read from MemFS", "[cppapi][memfs]") {
     REQUIRE(data[i] == data_expected[i]);
   }
 
-  // Ensure the memfs directory has been initialized
-  std::vector<std::string> uris = vfs.ls(array_name);
-  REQUIRE(uris.size() != 0);
-
-  // Clean up
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
-
-  // Ensure memfs was cleaned up
-  uris = vfs.ls(array_name);
-  REQUIRE(uris.size() == 0);
+  // Try removing on a different VFS instance
+  VFS vfs(ctx);
+  REQUIRE_THROWS_WITH(
+      vfs.remove_dir(array_name),
+      Catch::Contains("File not found, remove failed"));
 }
 
 TEST_CASE(

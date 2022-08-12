@@ -94,22 +94,12 @@ void read_array(std::string array_name) {
 }
 
 void remove_array(std::string array_name) {
-  // Initialize a VFS object
-  VFS vfs(ctx_);
-
-  // Ensure the memfs directory has been initialized
-  std::vector<std::string> uris = vfs.ls(array_name);
-  for (auto uri : uris) {
-    std::cout << uri << std::endl;
-  }
-
-  // Clean up
-  vfs.remove_dir(array_name);
-
-  // Ensure memfs has been cleaned up
-  std::vector<std::string> uris2 = vfs.ls(array_name);
-  if (uris2.size() != 0) {
-    std::cout << "Error: MemFS directory has not been fully deleted.";
+  try {
+    VFS vfs(ctx_);
+    vfs.remove_dir(array_name);
+  } catch (...) {
+    std::cout
+        << "The MemFilesystem is associated with a single VFS instance.\n";
   }
 }
 

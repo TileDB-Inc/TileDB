@@ -108,7 +108,7 @@ class MemFilesystem::FSNode {
   mutable std::mutex mutex_;
 
   /** A hashtable of all the next-level subnodes of this node*/
-  std::unordered_map<std::string, shared_ptr<FSNode>> children_;
+  std::unordered_map<std::string, tdb_unique_ptr<FSNode>> children_;
 };
 
 class MemFilesystem::File : public MemFilesystem::FSNode {
@@ -340,10 +340,8 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
   }
 };
 
-MemFilesystem::MemFilesystem(shared_ptr<FSNode> root)
-    : root_(
-          root == nullptr ? shared_ptr<FSNode>(tdb_new(Directory)) :
-                            std::move(root)) {
+MemFilesystem::MemFilesystem()
+    : root_(tdb_unique_ptr<FSNode>(tdb_new(Directory))) {
   assert(root_);
 }
 
@@ -460,7 +458,7 @@ Status MemFilesystem::move(
     return LOG_STATUS(Status_MemFSError(
         std::string("Move failed, file not found: " + old_path)));
   }
-  shared_ptr<FSNode> old_node_ptr =
+  tdb_unique_ptr<FSNode> old_node_ptr =
       std::move(old_node_parent->children_[old_path_last_token]);
   old_node_parent->children_.erase(old_path_last_token);
   old_node_parent_lock.unlock();
@@ -571,7 +569,7 @@ Status MemFilesystem::create_dir_internal(
     assert(cur_lock.mutex() == &cur->mutex_);
 
     if (!cur->has_child(token)) {
-      cur->children_[token] = shared_ptr<FSNode>(tdb_new(Directory));
+      cur->children_[token] = tdb_unique_ptr<FSNode>(tdb_new(Directory));
     } else if (!cur->is_dir()) {
       return LOG_STATUS(Status_MemFSError(std::string(
           "Cannot create directory, a file with that name exists already: " +
@@ -625,7 +623,7 @@ Status MemFilesystem::touch_internal(
   }
 
   const std::string& filename = tokens[tokens.size() - 1];
-  cur->children_[filename] = shared_ptr<FSNode>(tdb_new(File));
+  cur->children_[filename] = tdb_unique_ptr<FSNode>(tdb_new(File));
 
   // Save the output argument, `node`, if requested.
   if (node != nullptr) {
