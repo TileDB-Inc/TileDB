@@ -129,6 +129,7 @@ const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MAX_BATCH_SIZE = std::to_string(UINT64_MAX);
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
 const std::string Config::VFS_MIN_BATCH_SIZE = "20971520";
+const std::string Config::VFS_DISABLE_BATCHING = "false";
 const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
 const std::string Config::VFS_FILE_MAX_PARALLEL_OPS =
@@ -305,6 +306,7 @@ Config::Config() {
   param_values_["vfs.max_batch_size"] = VFS_MAX_BATCH_SIZE;
   param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
   param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
+  param_values_["vfs.disable_batching"] = VFS_DISABLE_BATCHING;
   param_values_["vfs.read_ahead_size"] = VFS_READ_AHEAD_SIZE;
   param_values_["vfs.read_ahead_cache_size"] = VFS_READ_AHEAD_CACHE_SIZE;
   param_values_["vfs.file.posix_file_permissions"] =
@@ -667,6 +669,8 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
   } else if (param == "vfs.min_batch_size") {
     param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
+  } else if (param == "vfs.disable_batching") {
+    param_values_["vfs.disable_batching"] = VFS_DISABLE_BATCHING;
   } else if (param == "vfs.read_ahead_size") {
     param_values_["vfs.read_ahead_size"] = VFS_READ_AHEAD_SIZE;
   } else if (param == "vfs.read_ahead_cache_size") {
@@ -890,6 +894,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_batch_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
+  } else if (param == "vfs.disable_batching") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.read_ahead_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.read_ahead_cache_size") {

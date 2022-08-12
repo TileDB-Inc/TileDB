@@ -109,6 +109,11 @@ shared_ptr<const ArraySchema> Array::array_schema_latest_ptr() const {
   return array_schema_latest_;
 }
 
+void Array::set_array_schemas_all(
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>& all_schemas) {
+  array_schemas_all_ = all_schemas;
+}
+
 const URI& Array::array_uri() const {
   return array_uri_;
 }
@@ -217,6 +222,12 @@ Status Array::load_fragments(
   fragment_metadata_ = std::move(fragment_metadata.value());
 
   return Status::Ok();
+}
+
+void Array::set_delete_tiles_location(
+    const std::vector<ArrayDirectory::DeleteTileLocation>&
+        delete_tiles_location) {
+  array_dir_.set_delete_tiles_location(delete_tiles_location);
 }
 
 Status Array::open(

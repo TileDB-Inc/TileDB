@@ -368,6 +368,16 @@ class RangeSetAndSuperset {
    */
   Status add_range_unrestricted(const Range& range);
 
+  /**
+   * Removes all ranges.
+   *
+   * Note: This will make it so it is no longer implicititly set.
+   */
+  inline void clear() {
+    ranges_.clear();
+    is_implicitly_initialized_ = false;
+  }
+
   /** Returns a const reference to the stored ranges. */
   inline const std::vector<Range>& ranges() const {
     return ranges_;
@@ -375,7 +385,7 @@ class RangeSetAndSuperset {
 
   /**
    * Returns ``true`` if the current range is implicitly set to the full
-   *subset.
+   * subset.
    **/
   inline bool is_implicitly_initialized() const {
     return is_implicitly_initialized_;

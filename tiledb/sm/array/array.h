@@ -123,6 +123,13 @@ class Array {
     return array_schemas_all_;
   }
 
+  /**
+   * Sets all array schemas.
+   * @param all_schemas The array schemas to set.
+   */
+  void set_array_schemas_all(
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>& all_schemas);
+
   /** Returns the array URI. */
   const URI& array_uri() const;
 
@@ -170,6 +177,15 @@ class Array {
    * @return Status
    */
   Status load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
+
+  /**
+   * Sets the delete tiles location.
+   *
+   * @param delete_tiles_location Location for the delete tiles.
+   */
+  void set_delete_tiles_location(
+      const std::vector<ArrayDirectory::DeleteTileLocation>&
+          delete_tiles_location);
 
   /**
    * Opens the array for reading.
