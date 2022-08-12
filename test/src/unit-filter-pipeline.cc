@@ -56,6 +56,7 @@
 #include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 #include <test/support/tdb_catch.h>
 #include <functional>
@@ -4052,7 +4053,7 @@ TEMPLATE_TEST_CASE(
 }
 
 template <typename T>
-void testing_xor_filter() {
+void testing_xor_filter(Datatype t) {
   tiledb::sm::Config config;
 
   // Set up test data
@@ -4062,28 +4063,6 @@ void testing_xor_filter() {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  Datatype t = Datatype::INT8;
-  switch (sizeof(T)) {
-    case 1: {
-      t = Datatype::INT8;
-    } break;
-    case 2: {
-      t = Datatype::INT16;
-    } break;
-    case 4: {
-      t = Datatype::INT32;
-    } break;
-    case 8: {
-      t = Datatype::INT64;
-    } break;
-    default: {
-      INFO(
-          "testing_xor_filter: passed int type with size of not 1, 2, 4, or 8 "
-          "bytes.");
-      CHECK(false);
-    }
-  }
-
   tile.init_unfiltered(
       constants::format_version, t, tile_size, cell_size, dim_num);
 
@@ -4119,7 +4098,29 @@ void testing_xor_filter() {
   }
 }
 
-TEMPLATE_TEST_CASE(
-    "Filter: Test XOR", "[filter][xor]", int8_t, int16_t, int32_t, int64_t) {
-  testing_xor_filter<TestType>();
+TEST_CASE("Filter: Test XOR", "[filter][xor]") {
+  testing_xor_filter<std::to_>(Datatype::INT8);
+  testing_xor_filter<uint8_t>(Datatype::UINT8);
+  testing_xor_filter<int16_t>(Datatype::INT16);
+  testing_xor_filter<uint16_t>(Datatype::UINT16);
+  testing_xor_filter<int32_t>(Datatype::INT32);
+  testing_xor_filter<uint32_t>(Datatype::UINT32);
+  testing_xor_filter<int64_t>(Datatype::INT64);
+  testing_xor_filter<uint64_t>(Datatype::UINT64);
+  testing_xor_filter<float>(Datatype::FLOAT32);
+  testing_xor_filter<double>(Datatype::FLOAT64);
+  testing_xor_filter<char>(Datatype::CHAR);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_YEAR);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_MONTH);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_WEEK);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_DAY);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_HR);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_MIN);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_SEC);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_MS);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_US);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_NS);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_PS);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_FS);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_AS);
 }

@@ -57,7 +57,7 @@ Status XORFilter::run_forward(
     FilterBuffer* output) const {
   auto tile_type = tile.type();
 
-  switch (datatype_size(tile_type)){
+  switch (datatype_size(tile_type)) {
     case sizeof(int8_t): {
       return run_forward<int8_t>(
           input_metadata, input, output_metadata, output);
@@ -75,7 +75,9 @@ Status XORFilter::run_forward(
           input_metadata, input, output_metadata, output);
     }
     default: {
-      return Status_FilterError("XORFilter::run_forward: datatype size cannot be converted to integer type.");
+      return Status_FilterError(
+          "XORFilter::run_forward: datatype size cannot be converted to "
+          "integer type.");
     }
   }
 
@@ -167,7 +169,9 @@ Status XORFilter::run_reverse(
           input_metadata, input, output_metadata, output);
     }
     default: {
-      return Status_FilterError("XORFilter::run_reverse: datatype size cannot be converted to integer type.");
+      return Status_FilterError(
+          "XORFilter::run_reverse: datatype size cannot be converted to "
+          "integer type.");
     }
   }
 
