@@ -85,7 +85,8 @@ Query::Query(
     , offsets_buffer_name_("")
     , disable_checks_consolidation_(false)
     , consolidation_with_timestamps_(false)
-    , fragment_uri_(fragment_uri) {
+    , fragment_uri_(fragment_uri)
+    , force_legacy_reader_(false) {
   assert(array->is_open());
   auto st = array->get_query_type(&type_);
   assert(st.ok());
@@ -1094,7 +1095,9 @@ IQueryStrategy* Query::strategy(bool skip_checks_serialization) {
   return strategy_.get();
 }
 
-Status Query::reset_strategy_with_layout(Layout layout) {
+Status Query::reset_strategy_with_layout(
+    Layout layout, bool force_legacy_reader) {
+  force_legacy_reader_ = force_legacy_reader;
   strategy_ = nullptr;
   layout_ = layout;
   subarray_.set_layout(layout);
@@ -2244,6 +2247,12 @@ bool Query::use_refactored_dense_reader(
     const ArraySchema& array_schema, bool all_dense) {
   bool use_refactored_reader = false;
   bool found = false;
+
+  // If the query comes from a client using the legacy reader.
+  if (force_legacy_reader_) {
+    return false;
+  }
+
   // First check for legacy option
   config_.get<bool>(
       "sm.use_refactored_readers", &use_refactored_reader, &found);
@@ -2266,6 +2275,12 @@ bool Query::use_refactored_sparse_global_order_reader(
     Layout layout, const ArraySchema& array_schema) {
   bool use_refactored_reader = false;
   bool found = false;
+
+  // If the query comes from a client using the legacy reader.
+  if (force_legacy_reader_) {
+    return false;
+  }
+
   // First check for legacy option
   config_.get<bool>(
       "sm.use_refactored_readers", &use_refactored_reader, &found);
@@ -2290,6 +2305,11 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader(
     Layout layout, const ArraySchema& array_schema) {
   bool use_refactored_reader = false;
   bool found = false;
+
+  // If the query comes from a client using the legacy reader.
+  if (force_legacy_reader_) {
+    return false;
+  }
 
   // First check for legacy option
   config_.get<bool>(
