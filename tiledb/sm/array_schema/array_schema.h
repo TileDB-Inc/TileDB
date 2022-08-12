@@ -147,6 +147,15 @@ class ArraySchema {
   /* ********************************* */
 
   /**
+   * Returns true if the name is a special attribute.
+   */
+  static inline bool is_special_attribute(const std::string& name) {
+    return name == constants::coords || name == constants::timestamps ||
+           name == constants::delete_timestamps ||
+           name == constants::delete_condition_marker_hash;
+  }
+
+  /**
    * Returns true if the array allows coordinate duplicates. Applicable
    * only to sparse arrays, dense arrays do not allow duplicates.
    */

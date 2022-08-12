@@ -91,7 +91,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
     , buffers_full_(false)
-    , include_delete_meta_(false) {
+    , deletes_consolidation_(false) {
   read_state_.done_adding_result_tiles_ = false;
   disable_cache_ = true;
 }
@@ -163,7 +163,7 @@ void SparseIndexReaderBase::init(bool skip_checks_serialization) {
 bool SparseIndexReaderBase::has_post_deduplication_conditions(
     FragmentMetadata& frag_meta) {
   return frag_meta.has_delete_meta() || !condition_.empty() ||
-         (!delete_conditions_.empty() && !include_delete_meta_);
+         (!delete_conditions_.empty() && !deletes_consolidation_);
 }
 
 uint64_t SparseIndexReaderBase::cells_copied(
@@ -612,12 +612,12 @@ Status SparseIndexReaderBase::apply_query_condition(
 
           // Make sure we have a condition bitmap if needed.
           if (has_post_deduplication_conditions(*frag_meta) ||
-              include_delete_meta_) {
+              deletes_consolidation_) {
             rt->ensure_bitmap_for_query_condition();
           }
 
           // If the fragment has delete meta, process the delete timestamps.
-          if (frag_meta->has_delete_meta() && !include_delete_meta_) {
+          if (frag_meta->has_delete_meta() && !deletes_consolidation_) {
             // Remove cells deleted cells using the open timestamp.
             RETURN_NOT_OK(delete_timestamps_condition_.apply_sparse<BitmapType>(
                 *(frag_meta->array_schema().get()), *rt, rt->bitmap_with_qc()));
@@ -635,9 +635,10 @@ Status SparseIndexReaderBase::apply_query_condition(
 
           // Apply delete conditions.
           if (!delete_conditions_.empty()) {
-            // Allocate delete condition idx vector when in consolidation
-            // mode.
-            if (include_delete_meta_) {
+            // Allocate delete condition idx vector if required. This vector
+            // is used to store which delete condition deleted a particular
+            // cell.
+            if (deletes_consolidation_) {
               rt->allocate_per_cell_delete_condition_vector();
             }
 
@@ -667,8 +668,11 @@ Status SparseIndexReaderBase::apply_query_condition(
                                           rt->bitmap_with_qc()));
                   }
 
-                  if (include_delete_meta_) {
-                    // Compute the delete condition ptr.
+                  if (deletes_consolidation_) {
+                    // This is a post processing step during deletes
+                    // consolidation to set the delete condition pointer to
+                    // the current delete condition if the cells was cleared
+                    // by this condition and not any previous conditions.
                     rt->compute_per_cell_delete_condition(
                         &delete_conditions_[i]);
                   } else {

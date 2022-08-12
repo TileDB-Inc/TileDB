@@ -1519,9 +1519,7 @@ Status Query::set_data_buffer(
   const bool is_attr = array_schema_->is_attr(name);
 
   // Check that attribute/dimension exists
-  if (name != constants::coords && name != constants::timestamps &&
-      name != constants::delete_timestamps &&
-      name != constants::delete_condition_marker_hash && !is_dim && !is_attr) {
+  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));

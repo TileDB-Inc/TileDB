@@ -159,7 +159,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   auto fragment_num = fragment_metadata_.size();
 
   // Set the boolean to include delete meta, if required.
-  include_delete_meta_ = buffers_.count(constants::delete_timestamps) != 0;
+  deletes_consolidation_ = buffers_.count(constants::delete_timestamps) != 0;
 
   // Check that the query condition is valid.
   RETURN_NOT_OK(condition_.check(array_schema_));
@@ -312,7 +312,7 @@ SparseGlobalOrderReader<BitmapType>::get_coord_tiles_size(
   // We will also create the bitmap as a temporay bitmap to compute delete
   // condition results.
   if ((!dups && has_post_deduplication_conditions(*frag_meta)) ||
-      include_delete_meta_) {
+      deletes_consolidation_) {
     tiles_sizes->first += frag_meta->cell_num(t) * sizeof(BitmapType);
   }
 
@@ -362,7 +362,7 @@ SparseGlobalOrderReader<BitmapType>::add_result_tile(
 
   // Add the tile.
   result_tiles_[f].emplace_back(
-      f, t, array_schema_.allows_dups(), include_delete_meta_, frag_md);
+      f, t, array_schema_.allows_dups(), deletes_consolidation_, frag_md);
 
   return {Status::Ok(), false};
 }
@@ -1380,10 +1380,11 @@ Status SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
         auto buffer_condition_marker_hashes =
             static_cast<size_t*>(query_buffer.buffer_) + dest_cell_offset;
 
-        // If we have delete metadata, we need to take either the existing
-        // delete time, or the new computed one with the new conditions. If
-        // not, just that the computed value.
         if (fragment_metadata_[rt->frag_idx()]->has_delete_meta()) {
+          // If we have delete metadata, we need to take either the existing
+          // delete time, or the one coming from processing the delete
+          // conditions not already processed for this fragment.
+
           // Get source buffers.
           const auto tile_tuple_delete_ts =
               rt->tile_tuple(constants::delete_timestamps);
@@ -1397,8 +1398,9 @@ Status SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
           auto src_buff_condition_marker_hashes =
               t_condition_marker_hashes->template data_as<uint64_t>() + min_pos;
 
-          // Copy either the existing delete conditon timestamp or the one
-          // computed, whichever comes first.
+          // For all cells, take either the time coming in from the existing
+          // metadata or the one computed with the delete conditions not
+          // already processed for this fragment, whichever comes first.
           for (uint64_t c = min_pos; c < max_pos; c++) {
             const auto delete_condition_ts = rt->delete_timestamp(c);
             const auto delete_condition_marker_hash = rt->delete_hash(c);
@@ -1410,12 +1412,16 @@ Status SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
               *buffer_delete_ts = delete_condition_ts;
               *buffer_condition_marker_hashes = delete_condition_marker_hash;
             }
+
+            // Move the source/destination pointers to the next cell.
             buffer_delete_ts++;
             src_buff_delete_ts++;
             buffer_condition_marker_hashes++;
             src_buff_condition_marker_hashes++;
           }
         } else {
+          // No delete metadata, just that the computed value.
+
           // Copy using the delete condition idx vector.
           for (uint64_t c = min_pos; c < max_pos; c++) {
             *buffer_delete_ts = rt->delete_timestamp(c);
@@ -1668,7 +1674,7 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
       auto& query_buffer = buffers_[name];
 
       // Delete timestamps will be processed at the same time as the delete
-      // condition name.
+      // condition marker hashes.
       if (name == constants::delete_timestamps) {
         continue;
       }

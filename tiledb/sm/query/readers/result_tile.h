@@ -901,10 +901,8 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
     // Go through all cells, if the delete condition cleared the cell, and the
     // index for this cell is still unset, set it to the current condition.
     for (uint64_t c = 0; c < ResultTileWithBitmap<BitmapType>::cell_num_; c++) {
-      if (extra_bitmap_[c] == 0) {
-        if (per_cell_delete_condition_[c] == nullptr) {
-          per_cell_delete_condition_[c] = ptr;
-        }
+      if (extra_bitmap_[c] == 0 && per_cell_delete_condition_[c] == nullptr) {
+        per_cell_delete_condition_[c] = ptr;
       }
     }
 

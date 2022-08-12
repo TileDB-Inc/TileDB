@@ -167,8 +167,7 @@ Status SubarrayPartitioner::get_result_budget(
   bool is_attr = array_schema.is_attr(name);
 
   // Check if attribute/dimension exists
-  if (name != constants::coords && name != constants::timestamps &&
-      name != constants::delete_timestamps && !is_dim && !is_attr) {
+  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
     return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Invalid attribute/dimension '") +
         name + "'"));
@@ -433,9 +432,7 @@ Status SubarrayPartitioner::set_result_budget(
   bool is_attr = array_schema.is_attr(name);
 
   // Check if attribute/dimension exists
-  if (name != constants::coords && name != constants::timestamps &&
-      name != constants::delete_timestamps &&
-      name != constants::delete_condition_marker_hash && !is_dim && !is_attr) {
+  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
     return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Invalid attribute/dimension '") +
         name + "'"));

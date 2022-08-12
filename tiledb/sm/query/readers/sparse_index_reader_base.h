@@ -301,15 +301,19 @@ class SparseIndexReaderBase : public ReaderBase {
   /** List of tiles to ignore. */
   std::unordered_set<IgnoredTile, ignored_tile_hash> ignored_tiles_;
 
-  /** Include delete metadata in the results (for consolidation only). */
-  bool include_delete_meta_;
+  /** Are we doing deletes consolidation. */
+  bool deletes_consolidation_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
 
   /**
-   * Returns if there is any condition to be applied post deduplication.
+   * Returns if there is any condition to be applied post deduplication. This
+   * will return true if we have:
+   *   A query condition.
+   *   Delete metadata (delete timestamp condition).
+   *   Delete conditions (but not in consolidation mode).
    *
    * @param frag_meta Fragment metadata.
    * @return true if there is any condition to be applied post deduplication.
