@@ -1673,6 +1673,13 @@
     "text": "This is public documentation of the code within this repository."
   },
   {
+    "objectID": "scripts/ci/posix/DIRECTORY.html",
+    "href": "scripts/ci/posix/DIRECTORY.html",
+    "title": "",
+    "section": "",
+    "text": "prelim.sh: install required system packages; configure system for core dumps\nbuild-services-start.sh: start emulators (eg S3, GCS) for backend-specific testing\nbuild-services-stop.sh: stop emulators (this has been necessary to avoid job failure due to unexited processes)\ndump-core-stacks.sh: dump the stack traces from saved core dumps (if applicable)"
+  },
+  {
     "objectID": "format_spec/group.html",
     "href": "format_spec/group.html",
     "title": "",
