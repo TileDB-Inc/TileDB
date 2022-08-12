@@ -1469,11 +1469,13 @@ Status VFS::read_all(
     ThreadPool* thread_pool,
     std::vector<ThreadPool::Task>* tasks,
     const bool use_read_ahead) {
-  if (!init_)
+  if (!init_) {
     return LOG_STATUS(Status_VFSError("Cannot read all; VFS not initialized"));
+  }
 
-  if (regions.empty())
+  if (regions.empty()) {
     return Status::Ok();
+  }
 
   // Convert the individual regions into batched regions.
   std::vector<BatchedRead> batches;
@@ -1501,6 +1503,41 @@ Status VFS::read_all(
             uint64_t nbytes = std::get<2>(region);
             std::memcpy(dest, buffer.data(offset - batch_copy.offset), nbytes);
           }
+
+          return Status::Ok();
+        });
+
+    tasks->push_back(std::move(task));
+  }
+
+  return Status::Ok();
+}
+
+Status VFS::read_all_no_batching(
+    const URI& uri,
+    const std::vector<tuple<uint64_t, Tile*, uint64_t>>& regions,
+    ThreadPool* thread_pool,
+    std::vector<ThreadPool::Task>* tasks,
+    const bool use_read_ahead) {
+  if (!init_) {
+    return LOG_STATUS(Status_VFSError("Cannot read all; VFS not initialized"));
+  }
+
+  if (regions.empty()) {
+    return Status::Ok();
+  }
+
+  // Read all the batches and copy to the original destinations.
+  for (const auto& region : regions) {
+    URI uri_copy = uri;
+    auto task =
+        thread_pool->execute([this, uri_copy, region, use_read_ahead]() {
+          RETURN_NOT_OK(read(
+              uri_copy,
+              std::get<0>(region),
+              std::get<1>(region)->filtered_buffer().data(),
+              std::get<2>(region),
+              use_read_ahead));
 
           return Status::Ok();
         });
