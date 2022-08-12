@@ -1334,7 +1334,11 @@ Status query_from_capnp(
   // Deserialize layout.
   Layout layout = Layout::UNORDERED;
   RETURN_NOT_OK(layout_enum(query_reader.getLayout().cStr(), &layout));
-  RETURN_NOT_OK(query->reset_strategy_with_layout(layout));
+
+  // Make sure we have the right query strategy in place.
+  bool force_legacy_reader =
+      query_type == QueryType::READ && query_reader.hasReader();
+  RETURN_NOT_OK(query->reset_strategy_with_layout(layout, force_legacy_reader));
 
   // Deserialize array instance.
   RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
