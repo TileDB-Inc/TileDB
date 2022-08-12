@@ -1,12 +1,6 @@
 name: build-ubuntu-20.04-backwards-compatibility
 on:
   workflow_call:
-    inputs:
-      job_name:
-        description: 'Name of the job for display purposes'
-        default: ''
-        required: false
-        type: string
 
 env:
   CXX: g++

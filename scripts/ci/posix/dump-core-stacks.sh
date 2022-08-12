@@ -13,7 +13,7 @@ if [[ "$TILEDB_CI_OS" == "Linux" ]]; then
       echo "core files found at/under $(pwd)"
       corefiles=$(find . -name 'core.*')
     elif [[ $(find / -name 'core.*') ]]; then
-      echo "core founds found!"
+      echo "core files found!"
       corefiles=$(find / -name 'core.*')
     else
       echo "core files expected but not found!"

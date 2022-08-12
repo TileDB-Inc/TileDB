@@ -106,7 +106,7 @@ jobs:
         run: ./scripts/ci/posix/dump-core-stacks.sh
 
       - name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-        if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         uses: actions/upload-artifact@v2
         with:
           retention-days: 10
