@@ -79,3 +79,11 @@ jobs:
 
   standalone:
     uses: ./.github/workflows/unit-test-runs.yml
+
+  # dummy job for branch protection check
+  full_ci_passed:
+    needs: [ci1, ci2, ci2, ci3, ci4, ci5, ci6, ci7, ci_msvc, standalone]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: ''
+        run: echo "Complete"
