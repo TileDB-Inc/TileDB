@@ -26,7 +26,7 @@ my_array                                    # array folder
          |      |_ ...  
          |      |_ dt.tdb                   # delete timestamp attribute
          |      |_ ...  
-         |      |_ dcmh.tdb                 # delete condition marker hash attribute
+         |      |_ dci.tdb                  # delete condition index attribute
          |      |_ ...  
         |_ ...  
 ```
@@ -43,7 +43,7 @@ There can be any number of fragments in an array. The fragment folder contains:
 * The names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.
 * The timestamp fixed attribute (`t.tdb`) is, for fragments consolidated with timestamps, the time at which a cell was added.
 * The delete timestamp fixed attribute (`dt.tdb`) is, for fragments consolidated with delete conditions, the time at which a cell was deleted.
-* The delete condition marker hash fixed attribute (`dcmh.tdb`) is, for fragments consolidated with delete conditions, the hash of the delete condition marker that deleted the cell. The delete condition marker is the file path of the delete condition relative to the array URI.
+* The delete condition index fixed attribute (`dci.tdb`) is, for fragments consolidated with delete conditions, the index of the delete condition (inside of [Tile Processed Conditions](#tile-processed-conditions)) that deleted the cell.
 
 ## Fragment Metadata File 
 
@@ -203,7 +203,7 @@ The fragment min max sum null count is a [generic tile](./generic_tile.md) with 
 
 ### Tile Processed Conditions
 
-The processed conditions is a [generic tile](./generic_tile.md) and is the list of delete/update conditions that have already been applied for this fragment and don't need to be applied again, in no particular order, with the following internal format:
+The processed conditions is a [generic tile](./generic_tile.md) and is the list of delete/update conditions that have already been applied for this fragment and don't need to be applied again, sorted by filename, with the following internal format:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |

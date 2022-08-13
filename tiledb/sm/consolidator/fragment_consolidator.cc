@@ -569,7 +569,7 @@ Status FragmentConsolidator::create_buffers(
   }
 
   // Adding buffers for delete meta, one for timestamp and one for condition
-  // marker hash.
+  // index.
   if (config_.with_delete_meta_) {
     buffer_num += 2;
   }
@@ -852,7 +852,7 @@ Status FragmentConsolidator::set_query_buffers(
         &(*buffer_sizes)[bid]));
     ++bid;
     RETURN_NOT_OK(query->set_data_buffer(
-        constants::delete_condition_marker_hash,
+        constants::delete_condition_index,
         (void*)&(*buffers)[bid][0],
         &(*buffer_sizes)[bid]));
     ++bid;

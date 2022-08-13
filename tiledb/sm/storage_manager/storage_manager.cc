@@ -1619,6 +1619,7 @@ StorageManager::load_delete_conditions(const Array& array) {
 
     delete_conditions[i] =
         tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
+            i,
             locations[i].condition_marker(),
             tile_opt->data(),
             tile_opt->size());

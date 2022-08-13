@@ -1164,7 +1164,7 @@ Status Query::check_buffer_names() {
     expected_num += static_cast<decltype(expected_num)>(
         buffers_.count(constants::delete_timestamps));
     expected_num += static_cast<decltype(expected_num)>(
-        buffers_.count(constants::delete_condition_marker_hash));
+        buffers_.count(constants::delete_condition_index));
     expected_num += (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
                      coord_offsets_buffer_is_set_) ?
                         array_schema_->dim_num() :
