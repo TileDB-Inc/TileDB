@@ -73,7 +73,7 @@ if (NOT GCSSDK_FOUND)
     # TBD: this -should- force creation of external project, unless it happens to find...
     # but, if it happens to find local version, then won't have target 'ep_absl' to depend on...
     # ???
-    find_package(absl_ep)
+    find_package(absl_EP)
 
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
@@ -82,7 +82,7 @@ if (NOT GCSSDK_FOUND)
       URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.22.0.zip"
       URL_HASH SHA1=d4e14faef4095289b06f5ffe57d33a14574a7055
       #URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.42.0.zip"
-      #URL_HASH SHA256=c06ae9aededbb8aa217a6d2453754daa40b815f9a4004bc4f2d2d215c79828aa
+      #URL_HASH SHA256=80e24a53a0c78ae4b5b3f9675d184f4a72a98e57adb62f4dc1d9a26ae6b30362
       DEPENDS ep_absl
       BUILD_IN_SOURCE 1
       PATCH_COMMAND
