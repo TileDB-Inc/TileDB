@@ -63,7 +63,8 @@ Deletes::Deletes(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition)
+    QueryCondition& condition,
+    bool skip_checks_serialization)
     : StrategyBase(
           stats,
           logger->clone("Deletes", ++logger_id_),
@@ -94,7 +95,7 @@ Deletes::Deletes(
         "Cannot initialize deletes; Subarrays are not supported");
   }
 
-  if (condition_.empty()) {
+  if (!skip_checks_serialization && condition_.empty()) {
     throw DeleteStatusException(
         "Cannot initialize deletes; One condition is needed");
   }

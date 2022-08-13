@@ -1350,7 +1350,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         buffers_,
         subarray_,
         layout_,
-        condition_));
+        condition_,
+        skip_checks_serialization));
   } else {
     return logger_->status(
         Status_QueryError("Cannot create strategy; unsupported query type"));

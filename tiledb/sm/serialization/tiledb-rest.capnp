@@ -485,6 +485,16 @@ struct QueryReader {
   # Stats object
 }
 
+struct Delete {
+  # Delete struct
+
+  condition @0 :Condition;
+  # The delete condition
+
+  stats @1 :Stats;
+  # Stats object
+}
+
 struct ResultCellSlab {
 # Result cell slab
 
@@ -592,6 +602,9 @@ struct Query {
 
     denseReader @16 :QueryReader;
     # denseReader contains data needed for continuation of incomplete dense reads with dense reader
+
+    delete @17 :Delete;
+    #delete constains data for delete queries
 }
 
 struct NonEmptyDomain {
