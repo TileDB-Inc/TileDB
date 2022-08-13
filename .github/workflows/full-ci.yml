@@ -8,7 +8,7 @@ on:
 
     ##############################################################################
     #                                                                            #
-    #   These sections must be synchronized with 'paths-ignore' in full-ci.yml   #
+    #These sections must be synchronized with 'paths-ignore' in full-ci-dummy.yml#
     #                                                                            #
     ##############################################################################
 
