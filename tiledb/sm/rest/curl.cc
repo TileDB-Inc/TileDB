@@ -344,6 +344,10 @@ Status Curl::init(
   RETURN_NOT_OK(config_->get<bool>("rest.curl.verbose", &verbose_, &found));
   assert(found);
 
+  RETURN_NOT_OK(config_->get<uint64_t>(
+      "rest.curl.buffer_size", &curl_buffer_size_, &found));
+  assert(found);
+
   return Status::Ok();
 }
 
@@ -546,6 +550,9 @@ Status Curl::make_curl_request_common(
 
     /* enable forwarding auth to redirects */
     curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
+
+    /* Set max buffer size */
+    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, curl_buffer_size_);
 
     /* fetch the url */
     CURLcode tmp_curl_code = curl_easy_perform_instrumented(url, i);

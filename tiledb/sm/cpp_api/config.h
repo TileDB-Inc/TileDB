@@ -734,6 +734,9 @@ class Config {
    *    If true, the new, experimental REST routes and APIs for opening an array
    *    will be used <br>
    *    **Default**: false
+   * - `rest.curl.buffer_size` <br>
+   *    Set curl buffer size for REST requests <br>
+   *    **Default**: 524288 (512KB)
    * - `filestore.buffer_size` <br>
    *    Specifies the size in bytes of the internal buffers used in the
    *    filestore API. The size should be bigger than the minimum tile size
