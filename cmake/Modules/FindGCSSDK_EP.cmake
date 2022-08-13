@@ -74,6 +74,7 @@ if (NOT GCSSDK_FOUND)
     # but, if it happens to find local version, then won't have target 'ep_absl' to depend on...
     # ???
     find_package(absl_EP)
+    find_package(Crc32c_EP)
 
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
@@ -83,12 +84,13 @@ if (NOT GCSSDK_FOUND)
       URL_HASH SHA1=d4e14faef4095289b06f5ffe57d33a14574a7055
       #URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.42.0.zip"
       #URL_HASH SHA256=80e24a53a0c78ae4b5b3f9675d184f4a72a98e57adb62f4dc1d9a26ae6b30362
-      DEPENDS ep_absl
+      DEPENDS ep_absl ep_crc32c
       BUILD_IN_SOURCE 1
       PATCH_COMMAND
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/gcssdk.build.2.patch &&
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/gcssdk.grpc.patch &&
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/gcssdk.build.3.patch &&
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch &&
         #The following patch is on top of a patch already done in build.patch above, application order is important!

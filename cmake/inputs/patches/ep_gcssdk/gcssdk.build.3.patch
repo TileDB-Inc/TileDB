@@ -1,0 +1,20 @@
+diff --git a/super/CMakeLists.txt b/super/CMakeLists.txt
+index 7a478c4c5..3e3f104bb 100644
+--- a/super/CMakeLists.txt
++++ b/super/CMakeLists.txt
+@@ -38,7 +38,6 @@ if ("${GOOGLE_CLOUD_CPP_ENABLE_CCACHE}")
+ endif ()
+ 
+ include(external/benchmark)
+-include(external/crc32c)
+ include(external/googletest)
+ include(external/grpc)
+ include(external/nlohmann_json)
+@@ -52,7 +51,6 @@ set_external_project_vars()
+ 
+ set(GOOGLE_CLOUD_CPP_DEPENDENCIES_LIST
+     grpc-project
+-    crc32c-project
+     nlohmann-json-project
+     googletest-project
+     benchmark-project)

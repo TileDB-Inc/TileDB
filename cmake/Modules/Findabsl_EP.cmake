@@ -25,9 +25,9 @@
 #
 # Finds the absl (abseil) library, installing with an ExternalProject as necessary.
 # This module defines:
-#   - libabsl_INCLUDE_DIR, directory containing headers
-#   - libabsl_LIBRARIES, the Magic library path
-#   - libabsl_FOUND, whether Magic has been found
+#   - absl_INCLUDE_DIR, directory containing headers
+#   - absl_LIBRARIES, the Magic library path
+#   - absl_FOUND, whether Magic has been found
 #   - The absl imported target
 
 # Include some common helper functions.
@@ -38,38 +38,6 @@ set(ABSL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
 if(TILEDB_ABSL_EP_BUILT)
   find_package(absl PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
-endif()
-
-if (TILEDB_ABSL_EP_BUILT AND NOT ABSL_FOUND)
-  find_path(absl_INCLUDE_DIR
-    NAMES ???absl.h #magic.h
-    PATHS ${ABSL_PATHS}
-    PATH_SUFFIXES include
-    ${NO_DEFAULT_PATH}
-  )
-
-  if (NOT absl_INCLUDE_DIR)
-    find_path(absl_INCLUDE_DIR
-      NAMES ???absl.h #file/file.h
-      PATHS ${ABSL_PATHS}
-      PATH_SUFFIXES include
-      ${NO_DEFAULT_PATH}
-    )
-  endif()
-
-  # Link statically if installed with the EP.
-  find_library(absl_LIBRARIES
-    absl
-    PATHS ${ABSL_PATHS}
-    PATH_SUFFIXES lib a
-    #${TILEDB_DEPS_NO_DEFAULT_PATH}
-    ${NO_DEFAULT_PATH}
-  )
-
-  include(FindPackageHandleStandardArgs)
-  FIND_PACKAGE_HANDLE_STANDARD_ARGS(absl
-    REQUIRED_VARS libmagic_LIBRARIES libmagic_INCLUDE_DIR
-  )
 endif()
 
 # if not yet built add it as an external project
@@ -102,7 +70,7 @@ if(NOT TILEDB_ABSL_EP_BUILT)
         URL_HASH SHA256=${TILEDB_ABSEIL_CPP_SHA256}
         #LIST_SEPARATOR |
         CMAKE_ARGS #${GOOGLE_CLOUD_CPP_EXTERNAL_PROJECT_CCACHE}
-                   -DCMAKE_INSTALL_PREFIX="${TILEDB_EP_INSTALL_PREFIX}"
+                   #-DCMAKE_INSTALL_PREFIX="${TILEDB_EP_INSTALL_PREFIX}"
                    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                    -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
                    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
