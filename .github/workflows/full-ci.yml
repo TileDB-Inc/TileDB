@@ -5,6 +5,13 @@ on:
       - dev
       - release-*
       - refs/tags/*
+
+    ##############################################################################
+    #                                                                            #
+    #   These sections must be synchronized with 'paths-ignore' in full-ci.yml   #
+    #                                                                            #
+    ##############################################################################
+
     paths-ignore:
       - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
