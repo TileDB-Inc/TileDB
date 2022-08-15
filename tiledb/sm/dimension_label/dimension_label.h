@@ -136,21 +136,6 @@ class DimensionLabel {
       const void* encryption_key,
       uint32_t key_length);
 
-  /**
-   * Opens the dimension label for reading without fragments.
-   *
-   * @param encryption_type The encryption type of the dimension label
-   * @param encryption_key If the dimension label is encrypted, the private
-   *     encryption key. For unencrypted axes, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   *
-   * @note Applicable only to reads.
-   */
-  void open_without_fragments(
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length);
-
   /** Returns the query type the dimension label was opened with. */
   QueryType query_type() const;
 
