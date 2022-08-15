@@ -132,8 +132,8 @@ class ProducerNode : public Source<Mover_T, Block> {
   }
   ProducerNode(ProducerNode&&) = default;
 
-  ProducerNode(const ProducerNode&) = default;
-  ProducerNode(ProducerNode&&) = default;
+  //  ProducerNode(const ProducerNode&) = default;
+  //  ProducerNode(ProducerNode&&) = default;
 
   /**
    * Submit an item to be transferred to correspondent_ Sink.  Blocking.  The

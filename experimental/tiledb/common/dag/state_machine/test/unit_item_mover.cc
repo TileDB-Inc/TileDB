@@ -937,9 +937,10 @@ TEST_CASE(
   std::optional<size_t> source_item{0};
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover3{source_item, edge_item, sink_item};
+  [[maybe_unused]] auto a =
+      AsyncMover3<size_t>{source_item, edge_item, sink_item};
 
-  a.set_state(PortState3::st_000);
+  a.set_state(three_stage::st_000);
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.do_fill(debug ? "async source (fill)" : "");
@@ -977,9 +978,10 @@ TEST_CASE(
   std::optional<size_t> source_item{0};
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover3{source_item, edge_item, sink_item};
+  [[maybe_unused]] auto a =
+      AsyncMover3<size_t>{source_item, edge_item, sink_item};
 
-  a.set_state(PortState3::st_000);
+  a.set_state(three_stage::st_000);
 
   auto fut_b = std::async(std::launch::async, [&]() {
     a.do_pull(debug ? "async sink (pull)" : "");
@@ -1018,9 +1020,9 @@ TEST_CASE(
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedItemMover3{source_item, edge_item, sink_item};
+      UnifiedAsyncMover3<size_t>{source_item, edge_item, sink_item};
 
-  a.set_state(PortState3::st_000);
+  a.set_state(three_stage::st_000);
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.do_fill(debug ? "manual async source (fill)" : "");
@@ -1053,9 +1055,9 @@ TEST_CASE(
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedItemMover3{source_item, edge_item, sink_item};
+      UnifiedAsyncMover3<size_t>{source_item, edge_item, sink_item};
 
-  a.set_state(PortState3::st_000);
+  a.set_state(three_stage::st_000);
 
   auto fut_b = std::async(std::launch::async, [&]() {
     a.do_pull(debug ? "manual async sink (pull)" : "");
@@ -1091,9 +1093,10 @@ TEST_CASE(
   std::optional<size_t> source_item{0};
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover3{source_item, edge_item, sink_item};
+  [[maybe_unused]] auto a =
+      AsyncMover3<size_t>{source_item, edge_item, sink_item};
 
-  a.set_state(PortState3::st_000);
+  a.set_state(three_stage::st_000);
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
@@ -1183,9 +1186,9 @@ TEST_CASE(
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
   [[maybe_unused]] auto a =
-      UnifiedItemMover3{source_item, edge_item, sink_item};
+      UnifiedAsyncMover3<size_t>{source_item, edge_item, sink_item};
 
-  a.set_state(PortState3::st_000);
+  a.set_state(three_stage::st_000);
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
@@ -1265,12 +1268,13 @@ TEST_CASE(
   std::optional<size_t> source_item{0};
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover3{source_item, edge_item, sink_item};
+  [[maybe_unused]] auto a =
+      AsyncMover3<size_t>{source_item, edge_item, sink_item};
 
   if (debug)
     a.enable_debug();
 
-  a.set_state(PortState3::st_000);
+  a.set_state(three_stage::st_000);
 
   size_t rounds = 377;
   if (debug)
@@ -1354,9 +1358,10 @@ TEST_CASE(
   std::optional<size_t> source_item{0};
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover3{source_item, edge_item, sink_item};
+  [[maybe_unused]] auto a =
+      AsyncMover3<size_t>{source_item, edge_item, sink_item};
 
-  a.set_state(PortState3::st_000);
+  a.set_state(three_stage::st_000);
 
   size_t rounds = 377;
   if (debug)
@@ -1439,9 +1444,10 @@ TEST_CASE(
   std::optional<size_t> source_item{0};
   std::optional<size_t> edge_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = ItemMover3{source_item, edge_item, sink_item};
+  [[maybe_unused]] auto a =
+      AsyncMover3<size_t>{source_item, edge_item, sink_item};
 
-  a.set_state(PortState3::st_000);
+  a.set_state(three_stage::st_000);
 
   size_t rounds = 377;
   if (debug)

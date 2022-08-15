@@ -294,7 +294,7 @@ transition_table<two_stage>[num_states<two_stage>][n_events] {
   /* st_11 */ { two_stage::error, two_stage::error, two_stage::st_10, two_stage::st_11, two_stage::xt_11 },
 
   /* xt_00 */ { two_stage::error, two_stage::error, two_stage::error, two_stage::done,  two_stage::error },
-  /* xt_01 */ { two_stage::error, two_stage::error, two_stage::done,  two_stage::xt_01, two_stage::error },
+  /* xt_01 */ { two_stage::error, two_stage::error, two_stage::/*done*/xt_00,  two_stage::xt_01, two_stage::error },
   /* xt_10 */ { two_stage::error, two_stage::error, two_stage::error, two_stage::xt_01, two_stage::error },
   /* xt_11 */ { two_stage::error, two_stage::error, two_stage::xt_10, two_stage::xt_11, two_stage::error },
 
@@ -339,7 +339,7 @@ constexpr const PortAction entry_table<two_stage> [num_states<two_stage>][n_even
   /* st_10 */ { PortAction::notify_sink, PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
   /* st_11 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
 
-  /* xt_00 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::source_done },
+  /* xt_00 */ { PortAction::none,        PortAction::none,        PortAction::/*notify_source*/none, PortAction::none,      PortAction::source_done },
   /* xt_01 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::source_done },
   /* xt_10 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::source_done },
   /* xt_11 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::source_done },
@@ -368,7 +368,7 @@ transition_table<three_stage>[num_states<three_stage>][n_events] {
   /* st_111 */ { three_stage::error,  three_stage::error,  three_stage::st_110, three_stage::st_111,  three_stage::xt_111,},
 
   /* xt_000 */ { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::done,    three_stage::error,},
-  /* xt_001 */ { three_stage::error,  three_stage::error,  three_stage::done,   three_stage::xt_001,  three_stage::error,},
+  /* xt_001 */ { three_stage::error,  three_stage::error,  three_stage::/*done*/xt_000,   three_stage::xt_001,  three_stage::error,},
   /* xt_010 */ { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::xt_001,  three_stage::error,},
   /* xt_011 */ { three_stage::error,  three_stage::error,  three_stage::xt_010, three_stage::xt_011,  three_stage::error,},
   /* xt_100 */ { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::xt_001,  three_stage::error,},
@@ -429,7 +429,7 @@ constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_e
   /* st_110 */ { PortAction::notify_sink, PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
   /* st_111 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
 
-  /* xt_000 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::source_done },
+  /* xt_000 */ { PortAction::none,        PortAction::none,        PortAction::/*notify_source*/none, PortAction::none,      PortAction::source_done },
   /* xt_001 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::source_done },
   /* xt_010 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::source_done },
   /* xt_011 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::source_done },

@@ -126,15 +126,15 @@ endif()
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_item_mover EXCLUDE_FROM_ALL)
-target_link_libraries(compile_item_mover PRIVATE item_mover)
+#target_link_libraries(compile_item_mover PRIVATE item_mover)
 target_sources(compile_item_mover PRIVATE test/compile_item_mover_main.cc)
 
 if (TILEDB_TESTS)
     add_executable(unit_item_mover EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_item_mover PUBLIC item_mover)
+#    target_link_libraries(unit_item_mover PUBLIC item_mover)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_item_mover PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_item_mover PUBLIC $<TARGET_OBJECTS:thread_pool>)
+#    target_link_libraries(unit_item_mover PUBLIC $<TARGET_OBJECTS:thread_pool>)
 
     # Sources for code elsewhere required for tests
     target_sources(unit_item_mover PUBLIC ${DEPENDENT_SOURCES})

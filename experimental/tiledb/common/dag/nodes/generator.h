@@ -1,5 +1,5 @@
 /**
- * @file unit_block_edge.cc
+ * @file   generator.h
  *
  * @section LICENSE
  *
@@ -27,10 +27,37 @@
  *
  * @section DESCRIPTION
  *
- * Tests the operation of passing data blocks along edges.
- *
- * The different tests currently include an extensive amount of debugging code.
+ * This file declares the generators classes for dag.
  */
 
-#include "unit_block_edge.h"
-#include "experimental/tiledb/common/dag/data_block/data_block.h"
+#ifndef TILEDB_DAG_GENERATOR_H
+#define TILEDB_DAG_GENERATOR_H
+
+namespace tiledb::common {
+
+/**
+ * Prototype producer function object class.  This class generates a sequence of
+ * integers starting at `N`, returning a new integer with every invocation of
+ * `operator()`.
+ */
+template <class Block = size_t>
+class generator {
+  std::atomic<Block> N_{0};
+  std::atomic<Block> i_{0};
+
+ public:
+  generator(Block N = 0)
+      : N_{N}
+      , i_{N} {
+  }
+  generator(const generator& rhs)
+      : N_(rhs.N_.load())
+      , i_(rhs.i_.load()) {
+  }
+
+  Block operator()() {
+    return i_++;
+  }
+};
+}  // namespace tiledb::common
+#endif  // TILEDB_DAG_GENERATOR_H

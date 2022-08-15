@@ -1,5 +1,6 @@
+
 /**
- * @file unit_block_edge.cc
+ * @file unit_nodes_concurrency.h
  *
  * @section LICENSE
  *
@@ -26,11 +27,10 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * Tests the operation of passing data blocks along edges.
- *
- * The different tests currently include an extensive amount of debugging code.
  */
 
-#include "unit_block_edge.h"
-#include "experimental/tiledb/common/dag/data_block/data_block.h"
+#ifndef TILEDB_UNIT_NODES_CONCURRENCY_H
+#define TILEDB_UNIT_NODES_CONCURRENCY_H
+#define CATCH_CONFIG_MAIN
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_NODES_CONCURRENCY_H

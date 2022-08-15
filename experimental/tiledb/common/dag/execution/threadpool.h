@@ -78,7 +78,7 @@ struct QueueBase<false> {
  * worker thread anyway.
  */
 template <
-    bool WorkStealing = false,
+    bool WorkStealing = true,
     bool MultipleQueues = false,
     bool RecursivePush = true>
 class ThreadPool : public QueueBase<MultipleQueues> {
@@ -168,8 +168,8 @@ class ThreadPool : public QueueBase<MultipleQueues> {
     return future;
   }
 
-  template <class R, bool U = WorkStealing, std::enable_if_t<U, bool> = true>
-  auto wait(std::future<R>&& task) {
+  template <class R, bool U = WorkStealing>
+  auto wait(std::future<R>&& task, std::enable_if_t<U, bool> = true) {
     while (true) {
       if (task.wait_for(std::chrono::milliseconds(0)) ==
           std::future_status::ready) {
@@ -205,9 +205,9 @@ class ThreadPool : public QueueBase<MultipleQueues> {
     }
   }
 
-  template <class R, bool U = WorkStealing, std::enable_if_t<!U, bool> = true>
-  auto wait(std::future<R>& task) {
-    return wait(std::move(task));
+  template <class R, bool U = WorkStealing>
+  auto wait(std::future<R>&& task, std::enable_if_t<!U, bool> = true) {
+    return task.wait();
   }
 
   size_t num_threads() {

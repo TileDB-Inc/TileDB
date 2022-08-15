@@ -151,7 +151,7 @@ TEST_CASE("BlocksAndPorts: Manual extract sink values", "[blocks_and_ports]") {
   DataBlock y{DataBlock::max_size()};
 
   SECTION("set source in unbound pair") {
-    CHECK(sink.extract().has_value() == false);
+    CHECK_THROWS(sink.extract().has_value() == false);
   }
   SECTION("set source in bound pair") {
     CHECK(x.size() == DataBlock::max_size());
