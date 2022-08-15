@@ -229,8 +229,7 @@ const int EMPTY_SINK = 7654321;
 }
 
 [[maybe_unused]] static std::string is_stopping(three_stage st) {
-  if ((st >= three_stage::xt_000 && st <= three_stage::xt_111) ||
-      st == three_stage::done) {
+  if (st >= three_stage::xt_000 && st <= three_stage::xt_111) {
     return {};
   } else {
     return str(st);
@@ -415,8 +414,7 @@ const int EMPTY_SINK = 7654321;
 }
 
 [[maybe_unused]] static std::string is_stopping(two_stage st) {
-  if ((st >= two_stage::xt_00 && st <= two_stage::xt_11) ||
-      st == two_stage::done) {
+  if (st >= two_stage::xt_00 && st <= two_stage::xt_11) {
     return {};
   } else {
     return str(st);

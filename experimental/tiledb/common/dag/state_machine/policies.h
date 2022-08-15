@@ -104,7 +104,6 @@ namespace tiledb::common {
  *   notify_sink: on_notify_sink()
  *   source_wait: on_source_wait()
  *   sink_wait: on_sink_wait()
- *   done: on_source_done(), on_sink_done()
  *
  * NB: With our current approach, we seem to really only need single functions for 
  * wait, notify, and move, so we may be able to condense this in the future.
@@ -123,8 +122,6 @@ namespace tiledb::common {
  *   on_notify_sink(): notify source
  *   on_source_wait(): put source into waiting state
  *   on_sink_wait(): put sink into waiting state
- *   on_source_done(): put source into waiting state
- *   on_sink_done(): put sink into waiting state
  *
  * The implementations of `AsyncStateMachine` and `UnifiedAsyncStateMachine` 
  * currently use locks and condition variable for effecting the wait (and notify) functions.
@@ -156,7 +153,6 @@ class NullPolicy
       PortFiniteStateMachine<NullPolicy<Mover, PortState>, PortState>;
   using lock_type = typename state_machine_type::lock_type;
 
- public:
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
   }
   inline void on_source_move(lock_type&, std::atomic<int>&) {
@@ -254,6 +250,7 @@ class ManualPolicy
  * actions so that the procession of steps is driven by the state machine rather
  * than the user of the state machine.
  */
+
 template <class Mover, class PortState = typename Mover::PortState>
 class AsyncPolicy
     : public PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState>
@@ -396,8 +393,7 @@ class AsyncPolicy
   /**
    * Function for handling `source_done` action.
    */
-  inline void on_source_done(
-      lock_type& _unused(lock), std::atomic<int>& event) {
+  inline void on_source_done(lock_type& lock, std::atomic<int>& event) {
     assert(lock.owns_lock());
 
     debug_msg(
@@ -408,7 +404,7 @@ class AsyncPolicy
   /**
    * Function for handling `sink_done` action.
    */
-  inline void on_sink_done(lock_type& _unused(lock), std::atomic<int>& event) {
+  inline void on_sink_done(lock_type& lock, std::atomic<int>& event) {
     assert(lock.owns_lock());
 
     debug_msg(

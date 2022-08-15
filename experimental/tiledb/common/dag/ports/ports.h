@@ -57,10 +57,13 @@
 #define TILEDB_DAG_PORTS_H
 
 #include <condition_variable>
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <optional>
+
+// #include "fsm.h"
+// #include "policies.h"
+// #include "../utils/print_types.h"
 
 #include "../utils/print_types.h"
 
@@ -74,52 +77,55 @@ template <template <class> class Mover_T, class Block>
 class Sink;
 
 /**
- * Base port class for both `Source` and `Sink`.  Maintains common data and
- * functions used by both.
+ * A data flow source, used by both edges and nodes.
+ *
+ * Source objects have two states: empty and full.
  */
 template <template <class> class Mover_T, class Block>
-class Port {
- protected:
+class Source {
+  friend class Sink<Mover_T, Block>;
+
   using mover_type = Mover_T<Block>;
   using source_type = Source<Mover_T, Block>;
   using sink_type = Sink<Mover_T, Block>;
 
+ protected:
   /**
-   * Pointer to the item_mover_ to be used by the `Port`
+   * The finite state machine controlling data transfer between Source and Sink.
+   * Shared between Source and Sink.
    */
   std::shared_ptr<mover_type> item_mover_;
 
-  /**
-   * Storage to cache an item to be sent or received via the `Port`
-   */
+ public:
   std::optional<Block> item_{};
 
   /**
-   * Flag indicating whether the `Port` has been connected to another `Port`.
+   * The correspondent Sink, if any
    */
-  bool attached_{false};
+  sink_type* correspondent_{nullptr};
+
+  Source() = default;
+  Source(const Source& rhs) = delete;
+  Source(Source&& rhs) = delete;
+  Source& operator=(const Source& rhs) = delete;
+  Source& operator=(Source&& rhs) = delete;
 
   /**
-   * Function return whether the `Port` has been connected to another `Port`.
+   * Check if Source is attached.
+   *
+   * @pre Called under lock
    */
-  bool is_attached() {
-    return attached_;
+  bool is_attached() const {
+    return correspondent_ != nullptr;
   }
 
   /**
-   * Set attached flag to true.
+   * Check if Source is attached to a Sink
+   *
+   * @pre Called under lock
    */
-  bool set_attached() {
-    attached_ = true;
-    return attached_;
-  }
-
-  /**
-   * Set attached flag to false.
-   */
-  bool clear_attached() {
-    attached_ = false;
-    return attached_;
+  bool is_attached_to(sink_type* sink) const {
+    return correspondent_ != nullptr && correspondent_ == sink;
   }
 
   /**
@@ -127,53 +133,30 @@ class Port {
    *
    * @pre Called under lock
    */
-  void unattach() {
-    if (!is_attached()) {
+  void remove_attachment() {
+    if (correspondent_ == nullptr || !is_attached_to(correspondent_) ||
+        !correspondent_->is_attached_to(this)) {
       throw std::runtime_error(
-          "Attempting to unattach unattached correspondent");
+          "Source attempting to unattach unattached correspondent");
+    } else {
+      correspondent_ = nullptr;
     }
-    clear_attached();
-    item_mover_.reset();
   }
-
- public:
-  auto get_mover() {
-    return item_mover_;
-  }
-};
-
-/**
- * A data flow source, used by both edges and nodes.
- *
- * Source objects have two states: empty and full.
- */
-template <template <class> class Mover_T, class Block>
-class Source : public Port<Mover_T, Block> {
-  using Port<Mover_T, Block>::Port;
-  friend Port<Mover_T, Block>;
-  using port_type = Port<Mover_T, Block>;
-
-  friend class Sink<Mover_T, Block>;
-  using mover_type = typename port_type::mover_type;
-  using sink_type = typename port_type::sink_type;
-
- protected:
- public:
-  Source() = default;
-  Source(const Source& rhs) = delete;
-  Source(Source&& rhs) = delete;
-  Source& operator=(const Source& rhs) = delete;
-  Source& operator=(Source&& rhs) = delete;
 
  public:
   /**
-   * Inject an item into the `Source`.
+   * Get the data mover associated with this Source.  Used only for testing.
    */
+  mover_type* get_mover() {
+    return item_mover_.get();
+  }
+
   bool inject(const Block& value) {
-    if (!this->is_attached() || this->item_.has_value()) {
+    if (!is_attached() || item_.has_value()) {
       return false;
     }
-    this->item_ = value;
+    std::scoped_lock lock(correspondent_->mutex_);
+    item_ = value;
 
     using mover_type = Mover_T<Block>;
     using source_type = Source<Mover_T, Block>;
@@ -194,70 +177,155 @@ class Source : public Port<Mover_T, Block> {
     }
   };
 
-  /**
-   * A data flow sink, used by both edges and nodes.
-   *
-   * Sink objects have two states: emptty and full.  Their functionality is
-   * determined by the states (and policies) of the `Mover`.  Their
-   * functionality is determined by the states (and policies) of the `Mover`.
-   */
-  template <template <class> class Mover_T, class Block>
-  class Sink : public Port<Mover_T, Block> {
-    using Port<Mover_T, Block>::Port;
-    friend Port<Mover_T, Block>;
-    using port_type = Port<Mover_T, Block>;
-
-    friend class Source<Mover_T, Block>;
-    using mover_type = typename port_type::mover_type;
-    using source_type = typename port_type::source_type;
-    using sink_type = typename port_type::sink_type;
-
-   public:
-    Sink() = default;
-
-    Sink(const Sink& rhs) = delete;
-    Sink(Sink&& rhs) = delete;
-    Sink& operator=(const Sink& rhs) = delete;
-    Sink& operator=(Sink&& rhs) = delete;
-
-   public:
-    /**
-     * Create functions (and friends) to manage attaching and detaching of
-     * `Sink` and `Source` ports.
-     */
-    void attach(source_type& predecessor) {
-      if (this->is_attached() || predecessor.is_attached()) {
-        throw std::runtime_error(
-            "Sink attempting to attach to already attached ports");
-      } else {
-        this->item_mover_ = std::make_shared<mover_type>();
-        predecessor.item_mover_ = this->item_mover_;
-        this->item_mover_->register_port_items(predecessor.item_, this->item_);
-        this->set_attached();
-        predecessor.set_attached();
-      }
+  std::optional<Block> extract() {
+    if (!is_attached()) {
+      return {};
     }
-  };
+    std::optional<Block> ret{};
+    std::swap(ret, item_);
 
-  void attach(source_type& predecessor, std::shared_ptr<mover_type> mover) {
-    if (this->is_attached() || predecessor.is_attached()) {
+    return ret;
+  }
+};
+
+/**
+ * A data flow sink, used by both edges and nodes.
+ *
+ * Sink objects have two states: empty and full.  Their functionality is
+ * determined by the states (and policies) of the `Mover`.
+ */
+template <template <class> class Mover_T, class Block>
+class Sink {
+  friend class Source<Mover_T, Block>;
+
+  using mover_type = Mover_T<Block>;
+  using source_type = Source<Mover_T, Block>;
+  using sink_type = Sink<Mover_T, Block>;
+
+  /**
+   * @inv If an item is present, `try_receive` will succeed.
+   */
+  std::optional<Block> item_{};
+
+  /**
+   * The correspondent Source, if any
+   */
+  source_type* correspondent_{nullptr};
+
+ protected:
+  /**
+   * The finite state machine controlling data transfer between Source and Sink.
+   * Shared between Source and Sink.
+   */
+  std::shared_ptr<mover_type> item_mover_;
+
+ public:
+  Sink() = default;
+
+  Sink(const Sink& rhs) = delete;
+  Sink(Sink&& rhs) = delete;
+  Sink& operator=(const Sink& rhs) = delete;
+  Sink& operator=(Sink&& rhs) = delete;
+
+  /**
+   * Get the data mover associated with this Sink.  Used only for testing.
+   */
+  mover_type* get_mover() {
+    return item_mover_.get();
+  }
+
+ private:
+  /**
+   * Mutex shared by a correspondent pair. It's arbitratily defined in only the
+   * Sink and only protects attachment of Source and Sink. Protection of data
+   * transfer is accomplished in the finite state machine.
+   *
+   * @todo Are there other Source / Sink functions that need to be protected?
+   */
+  mutable std::mutex mutex_;
+
+ public:
+  /**
+   * Check if Sink is attached
+   *
+   * @pre Called under lock
+   */
+  bool is_attached() const {
+    return correspondent_ != nullptr;
+  }
+
+  /**
+   * Check if Sink is attached to a Source
+   *
+   * @pre Called under lock
+   */
+  bool is_attached_to(source_type* source) const {
+    return correspondent_ != nullptr && correspondent_ == source;
+  }
+
+  /**
+   * Assign a correspondent for this Sink.
+   *
+   * @pre Called under lock
+   */
+  void attach(source_type& predecessor) {
+    if (is_attached() || predecessor.is_attached()) {
       throw std::runtime_error(
-          "Sink attempting to attach to already attached ports");
+          "Sink attempting to attach to already attached correspondent");
     } else {
-      predecessor.item_mover_ = this->item_mover_ = mover;
-      this->item_mover_->register_port_items(predecessor.item_, this->item_);
-      this->set_attached();
-      predecessor.set_attached();
+      correspondent_ = &predecessor;
+      predecessor.correspondent_ = this;
+
+      if constexpr (mover_type::is_direct_connection()) {
+        item_mover_ = std::make_shared<mover_type>();
+        correspondent_->item_mover_ = item_mover_;
+        item_mover_->register_items(correspondent_->item_, item_);
+      } else {
+        throw std::logic_error("not direct connection");
+      }
     }
   }
 
-  void detach(source_type& predecessor) {
-    if (!this->is_attached() || !predecessor.is_attached()) {
-      throw std::runtime_error("Sink attempting to detach unattached ports");
+  void attach(
+      source_type& predecessor,
+      sink_type& edge_sink,
+      source_type& edge_source) {
+    if (!edge_sink.item_mover_) {
+      throw std::logic_error("no item mover on edge");
+    }
+    if (edge_sink.item_mover_ != edge_source.item_mover_) {
+      throw std::logic_error("bad item movers on edge");
+    }
+    if (predecessor.item_mover_ || item_mover_) {
+      throw std::logic_error("bad item mover(s) already set");
+    }
+    predecessor.item_mover_ = item_mover_ = edge_sink.item_mover_;
+    correspondent_ = &edge_source;
+    edge_source.correspondent_ = this;
+    predecessor.correspondent_ = &edge_sink;
+    edge_sink.correspondent_ = &predecessor;
+
+    item_mover_->register_items(predecessor.item_, edge_sink.item_, item_);
+  }
+
+  /**
+   * Remove the current attachment, if any.
+   *
+   * @pre Called under lock
+   */
+  void unattach() {
+    if (!is_attached_to(correspondent_) ||
+        !correspondent_->is_attached_to(this)) {
+      throw std::runtime_error(
+          "Attempting to unattach unattached correspondent");
     } else {
-      this->item_mover_->deregister_items();
-      detach();
-      predecessor.detach();
+      if constexpr (mover_type::is_direct_connection()) {
+        item_mover_->deregister_items(correspondent_->item_, item_);
+      }
+      item_mover_.reset();
+      correspondent_->item_mover_.reset();
+      correspondent_->remove_attachment();
+      correspondent_ = nullptr;
     }
   }
 
@@ -277,102 +345,125 @@ class Source : public Port<Mover_T, Block> {
       Source<Mver_T, Blck>& source, Sink<Mver_T, Blck>& sink);
 
   friend inline void attach(source_type& source, sink_type& sink) {
+    std::scoped_lock lock(sink.mutex_);
+    if (source.is_attached() || sink.is_attached()) {
+      throw std::logic_error("Improperly attached in attach");
+    }
     sink.attach(source);
+    if (!source.is_attached_to(&sink) || !sink.is_attached_to(&source)) {
+      throw std::logic_error("Improperly attached in attach");
+    }
   }
 
+  /**
+   * Free functions for attachment / unattachment Source and Sink.
+   */
+
+  /**
+   * Assign sink as correspondent to source and vice versa.  Acquires lock
+   * before calling any member functions.
+   *
+   * @pre Both source and sink are unattached
+   */
   template <template <class> class Mver_T, class Blck>
   friend inline void attach(
       Source<Mver_T, Blck>& source,
-      Sink<Mver_T, Blck>& sink,
-      std::shared_ptr<Mver_T<Blck>>& mover);
+      Sink<Mver_T, Blck>& edge_sink,
+      Source<Mver_T, Blck>& edge_source,
+      Sink<Mver_T, Blck>& sink);
 
   friend inline void attach(
       source_type& source,
-      sink_type& sink,
-      std::shared_ptr<mover_type>& mover) {
-    sink.attach(source, mover);
+      sink_type& edge_sink,
+      source_type& edge_source,
+      sink_type& sink) {
+    std::scoped_lock lock(sink.mutex_);
+    if (source.is_attached() || sink.is_attached() ||
+        edge_source.is_attached() || edge_sink.is_attached()) {
+      throw std::logic_error("Improperly attached in attach");
+    }
+    sink.attach(source, edge_sink, edge_source);
+    if (!source.is_attached_to(&edge_sink) ||
+        !sink.is_attached_to(&edge_source) ||
+        !edge_source.is_attached_to(&sink) ||
+        !edge_sink.is_attached_to(&source)) {
+      throw std::logic_error("Improperly attached in attach");
+    }
   }
 
+  /**
+   * Remove the correspondent relationship between a source and sink.  Acquires
+   * lock before calling any member functions.
+   *
+   * @param source A Souce port
+   * @param sink A Sink port
+   *
+   * @pre `source` and `sink` are in a correspondent relationship.
+   */
   template <template <class> class Mver_T, class Blck>
-  friend inline void detach(
+  friend inline void unattach(
       Source<Mver_T, Blck>& source, Sink<Mver_T, Blck>& sink);
 
-  friend inline void detach(source_type& source, sink_type& sink) {
-    sink.detach(source);
-  }
-
-  template <template <class> class Mver_T, class Blck>
-  friend inline void detach(
-      Source<Mver_T, Blck>& source,
-      Sink<Mver_T, Blck>& sink,
-      Mver_T<Blck>& mover);
-
-  friend inline void detach(
-      source_type& source, sink_type& sink, mover_type& mover) {
-    sink.detach(source, mover);
+  friend inline void unattach(
+      Source<Mover_T, Block>& source, Sink<Mover_T, Block>& sink) {
+    std::scoped_lock lock(sink.mutex_);
+    if (source.is_attached() && sink.is_attached()) {
+      sink.unattach();
+    } else {
+      throw std::logic_error("Improperly attached in unattach");
+    }
   }
 
  public:
-  /**
-   * Inject an item into the `Sink`.  Used only for testing.
-   */
   bool inject(const Block& value) {
-    if (!this->is_attached() || this->item_.has_value()) {
+    if (!is_attached() || item_.has_value()) {
       return false;
     }
-    this->item_ = value;
+    item_ = value;
     return true;
   }
 
-  /**
-   * Remove an item from the `Sink`
-   */
   std::optional<Block> extract() {
-    if (!this->is_attached()) {
-      throw std::logic_error("Sink not attached in extract");
+    if (!is_attached()) {
       return {};
     }
     std::optional<Block> ret{};
-
-    if (!this->item_.has_value()) {
-      if (this->get_mover()->debug_enabled()) {
-        std::cout << "extract no value with state = "
-                  << str(this->item_mover_->state()) << std::endl;
-      }
-    }
-
-    std::swap(ret, this->item_);
+    std::swap(ret, item_);
 
     return ret;
   }
 };
 
 /**
- * Attach a `Source` and a `Sink`.
+ * Assign sink as correspondent to source and vice versa.
+ *
+ * @pre Both source and sink are unattached
  */
 template <template <class> class Mover_T, class Block>
 inline void attach(Sink<Mover_T, Block>& sink, Source<Mover_T, Block>& source) {
   attach(source, sink);
 }
 
-/**
- * Attach a `Source` and a `Sink` that will share an item mover (conceptually,
- * an edge).
- */
-template <template <class> class Mover_T, class Block>
+#if 0
+template <class Mover, class Block>
 inline void attach(
-    Sink<Mover_T, Block>& sink,
-    Source<Mover_T, Block>& source,
-    std::shared_ptr<Mover_T<Block>>& mover) {
-  attach(source, sink, mover);
+    Source<Mover, Block>& source, Sink<Mover, Block>& sink) {
+  sink.attach(source);
 }
+#endif
 
 /**
- * Remove attachment.
+ * Remove the correspondent relationship between a source and sink
+ *
+ * @param sink A Sink port
+ * @param sink A Source port
+ *
+ * @pre `source` and `sink` are in a correspondent relationship.
  */
 template <template <class> class Mover_T, class Block>
-inline void detach(Sink<Mover_T, Block>& sink, Source<Mover_T, Block>& source) {
-  detach(source, sink);
+inline void unattach(
+    Sink<Mover_T, Block>& sink, Source<Mover_T, Block>& source) {
+  unattach(source, sink);
 }
 
 }  // namespace tiledb::common

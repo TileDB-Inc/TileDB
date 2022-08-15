@@ -32,5 +32,5 @@
  * The different tests currently include an extensive amount of debugging code.
  */
 
-#include "unit_block_edge.h"
 #include "experimental/tiledb/common/dag/data_block/data_block.h"
+#include "unit_block_test.h"

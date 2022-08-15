@@ -507,6 +507,158 @@ TEST_CASE(
   auto ptr_b = b.data();
   CHECK(ptr_a == ptr_b);
 }
+
+/**
+ * Invoke the simple tests with a `DataBlock` created with an `std::allocator`.
+ */
+TEST_CASE(
+    "DataBlock: Test create DataBlock with std::allocator<std::byte>",
+    "[data_block]") {
+  auto db = DataBlockImpl<std::allocator<std::byte>>{chunk_size_};
+  db_test_0(db);
+  db_test_1(db);
+
+  auto dc = DataBlock{chunk_size_};
+  db_test_0(dc);
+  db_test_1(dc);
+}
+
+/**
+ * Test iterating through a `DataBlock`
+ */
+template <class DB>
+void db_test_2(DB& db) {
+  for (auto& j : db) {
+    j = std::byte{255};
+  }
+  auto e = std::find_if_not(
+      db.begin(), db.end(), [](auto a) { return std::byte{255} == a; });
+  CHECK(e == db.end());
+
+  for (auto& j : db) {
+    j = std::byte{13};
+  }
+  auto f = std::find_if_not(
+      db.begin(), db.end(), [](auto a) { return std::byte{13} == a; });
+  CHECK(f == db.end());
+}
+
+/**
+ * Run iteration test on DataBlock allocated with `std::allocator` and with our
+ * `PoolAllocator`.
+ */
+TEST_CASE("DataBlock: Iterate through data_block", "[data_block]") {
+  auto db = DataBlockImpl<std::allocator<std::byte>>{};
+  db_test_2(db);
+  auto dc = DataBlock{chunk_size_};
+  db_test_2(dc);
+}
+
+/**
+ * Run iteration test on multiple DataBlocks, again allocated with
+ * `std::allocator` and with our `PoolAllocator`.
+ */
+TEST_CASE("DataBlock: Iterate through 8 data_blocks", "[data_block]") {
+  for (size_t i = 0; i < 8; ++i) {
+    auto db = DataBlockImpl<std::allocator<std::byte>>{};
+    db_test_2(db);
+  }
+  for (size_t i = 0; i < 8; ++i) {
+    auto db = DataBlock{chunk_size_};
+    db_test_2(db);
+  }
+}
+
+/**
+ * Verify some properties of `DataBlock`s
+ */
+TEST_CASE("DataBlock: Get span", "[data_block]") {
+  auto a = DataBlock{};
+  auto b = DataBlock{};
+  auto c = DataBlock{};
+
+  CHECK(a.size() == 0);
+  CHECK(b.size() == 0);
+  CHECK(c.size() == 0);
+
+  CHECK(a.data() != b.data());
+  CHECK(a.data() != c.data());
+  CHECK(b.data() != c.data());
+
+  CHECK(a.capacity() == 4'194'304);
+  CHECK(b.capacity() == 4'194'304);
+  CHECK(c.capacity() == 4'194'304);
+
+  SECTION("entire_span") {
+    auto span_a = a.entire_span();
+    auto span_b = b.entire_span();
+    auto span_c = c.entire_span();
+
+    CHECK(span_a.data() == a.data());
+    CHECK(span_b.data() == b.data());
+    CHECK(span_c.data() == c.data());
+
+    CHECK(span_a.size() == 4'194'304);
+    CHECK(span_b.size() == 4'194'304);
+    CHECK(span_c.size() == 4'194'304);
+  }
+  SECTION("span") {
+    auto span_a = a.span();
+    auto span_b = b.span();
+    auto span_c = c.span();
+
+    CHECK(span_a.data() == a.data());
+    CHECK(span_b.data() == b.data());
+    CHECK(span_c.data() == c.data());
+
+    CHECK(span_a.size() == 0);
+    CHECK(span_b.size() == 0);
+    CHECK(span_c.size() == 0);
+  }
+}
+
+/**
+ * Test resizing.
+ */
+TEST_CASE("DataBlock: Test resize", "[data_block]") {
+  auto a = DataBlock{chunk_size_};
+  auto b = DataBlock{chunk_size_};
+  auto c = DataBlock{chunk_size_};
+
+  a.resize(1'000'000);
+  b.resize(2'000'000);
+  c.resize(3'000'000);
+
+  CHECK(a.size() == 1'000'000);
+  CHECK(b.size() == 2'000'000);
+  CHECK(c.size() == 3'000'000);
+
+  auto span_a = a.span();
+  auto span_b = b.span();
+  auto span_c = c.span();
+
+  CHECK(span_a.size() == 1'000'000);
+  CHECK(span_b.size() == 2'000'000);
+  CHECK(span_c.size() == 3'000'000);
+}
+
+#if 0
+/**
+ * Attempt to test destructor by invoking it explicitly.  Unfortunately, the destructor will be invoked again when the variable goes out of scope.  Which is bad.
+ */
+TEST_CASE(
+    "DataBlock: Test allocation and deallocation of DataBlock", "[data_block") {
+  auto a = DataBlock{chunk_size_};
+  auto ptr_a = a.data();
+
+  // Don't do this!  It will call destructor again when `a` goes out of scope
+  // (which would be bad)
+  a.~DataBlock();
+
+  auto b = DataBlock{chunk_size_};
+  auto ptr_b = b.data();
+  CHECK(ptr_a == ptr_b);
+}
 #endif
 
 /**

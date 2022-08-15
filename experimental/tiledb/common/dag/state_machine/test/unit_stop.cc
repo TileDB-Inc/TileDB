@@ -57,6 +57,201 @@
 
 using namespace tiledb::common;
 
+#if 0
+/**
+ * TEMPORARY Repeat of above but with three-stage mover
+ */
+TEST_CASE(
+    "TEMPORARY Pass a sequence of n integers, three stage, async", "[stop]") {
+  [[maybe_unused]] constexpr bool debug = false;
+
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> mid_item{0};
+  std::optional<size_t> sink_item{0};
+  [[maybe_unused]] auto a =
+      AsyncMover3<size_t>{source_item, mid_item, sink_item};
+  if (debug) {
+    a.enable_debug();
+  }
+
+  a.set_state(three_stage::st_000);
+
+  size_t rounds = 3379;
+  if (debug)
+    rounds = 333;
+
+  std::vector<size_t> input(rounds);
+  std::vector<size_t> output(rounds);
+
+  std::iota(input.begin(), input.end(), 19);
+  std::fill(output.begin(), output.end(), 0);
+  auto i = input.begin();
+  auto j = output.begin();
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
+
+  auto source_node = [&]() {
+    size_t n = rounds;
+
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(127)));
+
+      *(a.source_item()) = *i++;
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(333)));
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      a.do_fill(debug ? "async source node" : "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      a.do_push(debug ? "async source node" : "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(333)));
+
+      *(a.source_item()) = EMPTY_SOURCE;
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(127)));
+
+      if (n == 0) {
+        a.do_stop(debug ? "async source (stop)" : "");
+        CHECK(is_stopping(a.state()) == "");
+        break;
+      }
+    }
+  };
+
+  auto sink_node = [&]() {
+    size_t n = rounds + 5;
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      a.do_pull(debug ? "async sink node" : "");
+
+      if (is_done(a.state()) == "") {
+        std::cout << "+++ "
+                  << "Break after pull " << n << std::endl;
+
+        CHECK(is_done(a.state()) == "");
+        CHECK(n == 4);
+        break;
+      }
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(127)));
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(333)));
+
+      *j++ = *(a.sink_item());
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      *(a.sink_item()) = EMPTY_SINK;
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(333)));
+
+      a.do_drain(debug ? "async sink node" : "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(127)));
+
+      if (is_done(a.state()) == "") {
+        std::cout << "+++ "
+                  << "Break after drain " << n << std::endl;
+
+        CHECK(is_done(a.state()) == "");
+        CHECK(n == 5);
+        break;
+      }
+    }
+  };
+
+  SECTION("launch source before sink, get source before sink") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch sink before source, get source before sink") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch source before sink, get sink before source") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  SECTION("launch sink before source, get sink before source") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  if (debug)
+    for (size_t i = 0; i < rounds; ++i) {
+      std::cout << i << " (" << input[i] << ", " << output[i] << ")"
+                << std::endl;
+    }
+
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    for (size_t j = 0; j < input.size(); ++j) {
+      if (input[j] != output[j]) {
+        std::cout << "=== " << j << " (" << input[j] << ", " << output[j] << ")"
+                  << std::endl;
+      }
+    }
+  }
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    auto iter = std::find_first_of(
+        input.begin(),
+        input.end(),
+        output.begin(),
+        output.end(),
+        std::not_equal_to<size_t>());
+    if (iter != input.end()) {
+      size_t k = iter - input.begin();
+      std::cout << "--- " << k << " (" << input[k] << ", " << output[k] << ")"
+                << std::endl;
+    } else {
+      std::cout << "this should not happen" << std::endl;
+    }
+  }
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()));
+  CHECK(str(a.state()) == "done");
+}
+
+#endif
+
 TEST_CASE("Port FSM: Just stop, two stage", "[stop]") {
   [[maybe_unused]] constexpr bool debug = false;
 
@@ -132,8 +327,6 @@ TEST_CASE("Port FSM: Just stop, two stage", "[stop]") {
   a.do_pull();
   CHECK(str(a.state()) == "xt_01");
   a.do_drain();
-  CHECK(str(a.state()) == "xt_00");
-  a.do_pull();
   CHECK(str(a.state()) == "done");
 
   a.set_state(two_stage::st_01);
@@ -141,8 +334,6 @@ TEST_CASE("Port FSM: Just stop, two stage", "[stop]") {
   a.do_stop();
   CHECK(str(a.state()) == "xt_01");
   a.do_drain();
-  CHECK(str(a.state()) == "xt_00");
-  a.do_pull();
   CHECK(str(a.state()) == "done");
 }
 
@@ -259,8 +450,6 @@ TEST_CASE("Port FSM: Just stop, three stage", "[stop]") {
   a.do_pull();
   CHECK(str(a.state()) == "xt_001");
   a.do_drain();
-  CHECK(str(a.state()) == "xt_000");
-  a.do_pull();
   CHECK(str(a.state()) == "done");
 
   a.set_state(three_stage::st_010);
@@ -270,8 +459,6 @@ TEST_CASE("Port FSM: Just stop, three stage", "[stop]") {
   a.do_pull();
   CHECK(str(a.state()) == "xt_001");
   a.do_drain();
-  CHECK(str(a.state()) == "xt_000");
-  a.do_pull();
   CHECK(str(a.state()) == "done");
 
   a.set_state(three_stage::st_011);
@@ -285,8 +472,6 @@ TEST_CASE("Port FSM: Just stop, three stage", "[stop]") {
   a.do_pull();
   CHECK(str(a.state()) == "xt_001");
   a.do_drain();
-  CHECK(str(a.state()) == "xt_000");
-  a.do_pull();
   CHECK(str(a.state()) == "done");
 
   a.set_state(three_stage::st_000);
@@ -301,8 +486,6 @@ TEST_CASE("Port FSM: Just stop, three stage", "[stop]") {
   a.do_stop();
   CHECK(str(a.state()) == "xt_001");
   a.do_drain();
-  CHECK(str(a.state()) == "xt_000");
-  a.do_pull();
   CHECK(str(a.state()) == "done");
 
   a.set_state(three_stage::st_010);
@@ -321,8 +504,6 @@ TEST_CASE("Port FSM: Just stop, three stage", "[stop]") {
   a.do_pull();
   CHECK(str(a.state()) == "xt_001");
   a.do_drain();
-  CHECK(str(a.state()) == "xt_000");
-  a.do_pull();
   CHECK(str(a.state()) == "done");
 }
 
@@ -364,12 +545,7 @@ TEST_CASE("Port FSM: Asynchronous source and manual sink", "[stop]") {
     CHECK(is_sink_full(a.state()) == "");
 
     a.do_drain(debug ? "manual sink (drain)" : "");
-    if (!(is_done(a.state()) == "")) {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      CHECK(is_done(a.state()) == "");
-    } else {
-      CHECK(is_done(a.state()) == "");
-    }
+    CHECK(is_done(a.state()) == "");
   }
 
   fut_a.get();
@@ -466,12 +642,7 @@ TEST_CASE("Port FSM: Unified Asynchronous source and manual sink", "[stop]") {
     CHECK(is_sink_full(a.state()) == "");
 
     a.do_drain(debug ? "manual sink (drain)" : "");
-    if (!(is_done(a.state()) == "")) {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      CHECK(is_done(a.state()) == "");
-    } else {
-      CHECK(is_done(a.state()) == "");
-    }
+    CHECK(is_done(a.state()) == "");
   }
 
   fut_a.get();
@@ -611,9 +782,6 @@ TEST_CASE(
     "AsynchronousPolicy: Asynchronous source and asynchronous sink, n "
     "iterations, no delays",
     "[stop]") {
-  size_t rounds = GENERATE(0, 1, 2, 17);
-  size_t offset = GENERATE(0, 1, 2, 5);
-
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
@@ -625,6 +793,7 @@ TEST_CASE(
 
   a.set_state(two_stage::st_00);
 
+  size_t rounds = 1307;
   if (debug)
     rounds = 3;
 
@@ -640,46 +809,41 @@ TEST_CASE(
 
       a.do_push(debug ? "async source (push)" : "");
       CHECK(is_source_empty(a.state()) == "");
+
+      if (n == 0) {
+        a.do_stop(debug ? "async source (stop)" : "");
+        CHECK(is_stopping(a.state()) == "");
+        break;
+      }
     }
-    a.do_stop(debug ? "async source (stop)" : "");
-    CHECK(is_stopping(a.state()) == "");
   };
 
   auto sink_node = [&]() {
-    size_t n = rounds + offset;
+    size_t n = rounds + 5;
     while (n--) {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
       a.do_pull(debug ? "async sink (pull)" : "");
-
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset - 1);
+        CHECK(n == 4);
         break;
       }
 
       CHECK(is_sink_full(a.state()) == "");
 
       a.do_drain(debug ? "async sink (drain)" : "");
-
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset);
+        CHECK(n == 5);
         break;
       }
     }
-    if (!a.is_done()) {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      CHECK(is_done(a.state()) == "");
-    }
-    CHECK(n == offset - 1);
     CHECK(is_done(a.state()) == "");
   };
 
-  SECTION(
-      "launch source before sink, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get source before sink") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -687,9 +851,7 @@ TEST_CASE(
     fut_b.get();
   }
 
-  SECTION(
-      "launch sink before source, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get source before sink") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -697,9 +859,7 @@ TEST_CASE(
     fut_b.get();
   }
 
-  SECTION(
-      "launch source before sink, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get sink before source") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -707,9 +867,7 @@ TEST_CASE(
     fut_a.get();
   }
 
-  SECTION(
-      "launch sink before source, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get sink before source") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -721,17 +879,14 @@ TEST_CASE(
   CHECK((a.source_swaps() + a.sink_swaps()) == rounds);
 };
 
-  /**
-   * Repeat of above but with unified asynchronous policy
-   */
+/**
+ * Repeat of above but with unified asynchronous policy
+ */
 TEST_CASE(
     "UnifiedAsynchronousPolicy: UnifiedAsynchronous source and asynchronous "
     "sink, no delays, n "
     "iterations",
     "[stop]") {
-  size_t rounds = GENERATE(0, 1, 2, 17);
-  size_t offset = GENERATE(0, 1, 2, 5);
-
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
@@ -743,6 +898,7 @@ TEST_CASE(
 
   a.set_state(two_stage::st_00);
 
+  size_t rounds = 1307;
   if (debug)
     rounds = 3;
 
@@ -758,44 +914,41 @@ TEST_CASE(
 
       a.do_push(debug ? "async source (push)" : "");
       CHECK(is_source_empty(a.state()) == "");
+
+      if (n == 0) {
+        a.do_stop(debug ? "async source (stop)" : "");
+        CHECK(is_stopping(a.state()) == "");
+        break;
+      }
     }
-    a.do_stop(debug ? "async source (stop)" : "");
-    CHECK(is_stopping(a.state()) == "");
   };
 
   auto sink_node = [&]() {
-    size_t n = rounds + offset;
+    size_t n = rounds + 5;
     while (n--) {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
       a.do_pull(debug ? "async sink (pull)" : "");
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset - 1);
+        CHECK(n == 4);
         break;
       }
 
       CHECK(is_sink_full(a.state()) == "");
 
       a.do_drain(debug ? "async sink (drain)" : "");
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset);
+        CHECK(n == 5);
         break;
       }
     }
-    if (!a.is_done()) {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      CHECK(is_done(a.state()) == "");
-    }
-    CHECK(n == offset - 1);
     CHECK(is_done(a.state()) == "");
   };
 
-  SECTION(
-      "launch source before sink, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get source before sink") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -803,9 +956,7 @@ TEST_CASE(
     fut_b.get();
   }
 
-  SECTION(
-      "launch sink before source, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get source before sink") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -813,9 +964,7 @@ TEST_CASE(
     fut_b.get();
   }
 
-  SECTION(
-      "launch source before sink, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get sink before source") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -823,9 +972,7 @@ TEST_CASE(
     fut_a.get();
   }
 
-  SECTION(
-      "launch sink before source, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get sink before source") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -837,20 +984,16 @@ TEST_CASE(
   CHECK((a.source_swaps() + a.sink_swaps()) == rounds);
 };
 
-  /**
-   * Test of the asynchrous state machine policy, launching both an
-   * emulated source client and an emulated sink client as asynchronous tasks.
-   * The test runs n iterations of each emulated client.  The test also invokes
-   * the tasks in all combinations of orderings of task launch and waiting on
-   * futures.
-   */
+/**
+ * Test of the asynchrous state machine policy, launching both an
+ * emulated source client and an emulated sink client as asynchronous tasks. The
+ * test runs n iterations of each emulated client.  The test also invokes the
+ * tasks in all combinations of orderings of task launch and waiting on futures.
+ */
 TEST_CASE(
     "AsynchronousPolicy: Asynchronous source and asynchronous sink, n "
     "iterations, delays",
     "[stop]") {
-  size_t rounds = GENERATE(0, 1, 2, 17);
-  size_t offset = GENERATE(0, 1, 2, 5);
-
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
@@ -862,6 +1005,7 @@ TEST_CASE(
 
   a.set_state(two_stage::st_00);
 
+  size_t rounds = 1307;
   if (debug)
     rounds = 3;
 
@@ -885,21 +1029,25 @@ TEST_CASE(
 
       a.do_push(debug ? "async source (push)" : "");
       CHECK(is_source_empty(a.state()) == "");
+
+      if (n == 0) {
+        a.do_stop(debug ? "async source (stop)" : "");
+        CHECK(is_stopping(a.state()) == "");
+        break;
+      }
     }
-    a.do_stop(debug ? "async source (stop)" : "");
-    CHECK(is_stopping(a.state()) == "");
   };
 
   auto sink_node = [&]() {
-    size_t n = rounds + offset;
+    size_t n = rounds + 5;
     while (n--) {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
       a.do_pull(debug ? "async sink (pull)" : "");
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset - 1);
+        CHECK(n == 4);
         break;
       }
       CHECK(is_sink_full(a.state()) == "");
@@ -913,23 +1061,16 @@ TEST_CASE(
       /* Insert delay to encourage context switch */
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(250)));
 
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset);
+        CHECK(n == 5);
         break;
       }
     }
-    if (!a.is_done()) {
-      a.do_pull(debug ? "async sink node" : "");
-      CHECK(is_done(a.state()) == "");
-    }
-    CHECK(n == offset - 1);
     CHECK(is_done(a.state()) == "");
   };
 
-  SECTION(
-      "launch source before sink, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get source before sink") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -937,9 +1078,7 @@ TEST_CASE(
     fut_b.get();
   }
 
-  SECTION(
-      "launch sink before source, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get source before sink") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -947,9 +1086,7 @@ TEST_CASE(
     fut_b.get();
   }
 
-  SECTION(
-      "launch source before sink, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get sink before source") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -957,9 +1094,7 @@ TEST_CASE(
     fut_a.get();
   }
 
-  SECTION(
-      "launch sink before source, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get sink before source") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -971,17 +1106,14 @@ TEST_CASE(
   CHECK((a.source_swaps() + a.sink_swaps()) == rounds);
 };
 
-  /**
-   * Repeat of above but with unified asynchronous scheduler
-   */
+/**
+ * Repeat of above but with unified asynchronous scheduler
+ */
 TEST_CASE(
     "UnifiedAsynchronousPolicy: UnifiedAsynchronous source and asynchronous "
     "sink, n "
     "iterations, delays",
     "[stop]") {
-  size_t rounds = GENERATE(0, 1, 2, 17);
-  size_t offset = GENERATE(0, 1, 2, 5);
-
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
@@ -993,6 +1125,7 @@ TEST_CASE(
 
   a.set_state(two_stage::st_00);
 
+  size_t rounds = 1307;
   if (debug)
     rounds = 3;
 
@@ -1016,21 +1149,25 @@ TEST_CASE(
 
       a.do_push(debug ? "async source (push)" : "");
       CHECK(is_source_empty(a.state()) == "");
+
+      if (n == 0) {
+        a.do_stop(debug ? "async source (stop)" : "");
+        CHECK(is_stopping(a.state()) == "");
+        break;
+      }
     }
-    a.do_stop(debug ? "async source (stop)" : "");
-    CHECK(is_stopping(a.state()) == "");
   };
 
   auto sink_node = [&]() {
-    size_t n = rounds + offset;
+    size_t n = rounds + 5;
     while (n--) {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
       a.do_pull(debug ? "async sink (pull)" : "");
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset - 1);
+        CHECK(n == 4);
         break;
       }
       CHECK(is_sink_full(a.state()) == "");
@@ -1044,23 +1181,16 @@ TEST_CASE(
       /* Insert delay to encourage context switch */
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(250)));
 
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset);
+        CHECK(n == 5);
         break;
       }
     }
-    if (!a.is_done()) {
-      a.do_pull(debug ? "async sink node" : "");
-      CHECK(is_done(a.state()) == "");
-    }
-    CHECK(n == offset - 1);
     CHECK(is_done(a.state()) == "");
   };
 
-  SECTION(
-      "launch source before sink, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get source before sink") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -1068,9 +1198,7 @@ TEST_CASE(
     fut_b.get();
   }
 
-  SECTION(
-      "launch sink before source, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get source before sink") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -1078,9 +1206,7 @@ TEST_CASE(
     fut_b.get();
   }
 
-  SECTION(
-      "launch source before sink, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get sink before source") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -1088,9 +1214,7 @@ TEST_CASE(
     fut_a.get();
   }
 
-  SECTION(
-      "launch sink before source, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get sink before source") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -1102,20 +1226,17 @@ TEST_CASE(
   CHECK((a.source_swaps() + a.sink_swaps()) == rounds);
 };
 
-  /**
-   * Test that we can correctly pass a sequence of integers from source to sink.
-   * Random delays are inserted between each step of each function in order to
-   * increase the likelihood of exposing race conditions / deadlocks.
-   *
-   * The test creates an asynchronous task for a source node client and for a
-   * sync node client, and launches them separately using `std::async`.  To
-   * create different interleavings of the tasks, we use all combinations of
-   * ordering for launching the tasks and waiting on their futures.
-   */
+/**
+ * Test that we can correctly pass a sequence of integers from source to sink.
+ * Random delays are inserted between each step of each function in order to
+ * increase the likelihood of exposing race conditions / deadlocks.
+ *
+ * The test creates an asynchronous task for a source node client and for a sync
+ * node client, and launches them separately using `std::async`.  To create
+ * different interleavings of the tasks, we use all combinations of ordering for
+ * launching the tasks and waiting on their futures.
+ */
 TEST_CASE("Pass a sequence of n integers, async", "[stop]") {
-  size_t rounds = GENERATE(0, 1, 2, 17);
-  size_t offset = GENERATE(0, 1, 2, 5);
-
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
@@ -1127,8 +1248,9 @@ TEST_CASE("Pass a sequence of n integers, async", "[stop]") {
 
   a.set_state(two_stage::st_00);
 
+  size_t rounds = 3379;
   if (debug)
-    rounds = 3;
+    rounds = 333;
 
   std::vector<size_t> input(rounds);
   std::vector<size_t> output(rounds);
@@ -1138,9 +1260,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[stop]") {
   auto i = input.begin();
   auto j = output.begin();
 
-  if (rounds != 0) {
-    CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
-  }
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
 
   auto source_node = [&]() {
     size_t n = rounds;
@@ -1175,13 +1295,17 @@ TEST_CASE("Pass a sequence of n integers, async", "[stop]") {
       *(a.source_item()) = EMPTY_SOURCE;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(127)));
+
+      if (n == 0) {
+        a.do_stop(debug ? "async source (stop)" : "");
+        CHECK(is_stopping(a.state()) == "");
+        break;
+      }
     }
-    a.do_stop(debug ? "async source (stop)" : "");
-    CHECK(is_stopping(a.state()) == "");
   };
 
   auto sink_node = [&]() {
-    size_t n = rounds + offset;
+    size_t n = rounds + 5;
     while (n--) {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
@@ -1190,9 +1314,9 @@ TEST_CASE("Pass a sequence of n integers, async", "[stop]") {
 
       a.do_pull(debug ? "async sink node" : "");
 
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset - 1);
+        CHECK(n == 4);
         break;
       }
 
@@ -1218,23 +1342,15 @@ TEST_CASE("Pass a sequence of n integers, async", "[stop]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(127)));
 
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset);
+        CHECK(n == 5);
         break;
       }
     }
-    if (!a.is_done()) {
-      a.do_pull(debug ? "async sink node" : "");
-      CHECK(is_done(a.state()) == "");
-    }
-    CHECK(n == offset - 1);
-    CHECK(is_done(a.state()) == "");
   };
 
-  SECTION(
-      "launch source before sink, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get source before sink") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -1242,9 +1358,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[stop]") {
     fut_b.get();
   }
 
-  SECTION(
-      "launch sink before source, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get source before sink") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -1252,9 +1366,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[stop]") {
     fut_b.get();
   }
 
-  SECTION(
-      "launch source before sink, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get sink before source") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -1262,9 +1374,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[stop]") {
     fut_a.get();
   }
 
-  SECTION(
-      "launch sink before source, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get sink before source") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -1311,9 +1421,6 @@ TEST_CASE("Pass a sequence of n integers, async", "[stop]") {
  * Repeat the above but with unified asynchronous scheduler
  */
 TEST_CASE("Pass a sequence of n integers, unified async", "[stop]") {
-  size_t rounds = GENERATE(0, 1, 2, 17);
-  size_t offset = GENERATE(0, 1, 2, 5);
-
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
@@ -1325,8 +1432,9 @@ TEST_CASE("Pass a sequence of n integers, unified async", "[stop]") {
 
   a.set_state(two_stage::st_00);
 
+  size_t rounds = 3379;
   if (debug)
-    rounds = 3;
+    rounds = 333;
 
   std::vector<size_t> input(rounds);
   std::vector<size_t> output(rounds);
@@ -1336,9 +1444,7 @@ TEST_CASE("Pass a sequence of n integers, unified async", "[stop]") {
   auto i = input.begin();
   auto j = output.begin();
 
-  if (rounds != 0) {
-    CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
-  }
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
 
   auto source_node = [&]() {
     size_t n = rounds;
@@ -1373,13 +1479,17 @@ TEST_CASE("Pass a sequence of n integers, unified async", "[stop]") {
       *(a.source_item()) = EMPTY_SOURCE;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(127)));
+
+      if (n == 0) {
+        a.do_stop(debug ? "async source (stop)" : "");
+        CHECK(is_stopping(a.state()) == "");
+        break;
+      }
     }
-    a.do_stop(debug ? "async source (stop)" : "");
-    CHECK(is_stopping(a.state()) == "");
   };
 
   auto sink_node = [&]() {
-    size_t n = rounds + offset;
+    size_t n = rounds + 5;
     while (n--) {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
@@ -1394,9 +1504,9 @@ TEST_CASE("Pass a sequence of n integers, unified async", "[stop]") {
 
       a.do_pull(debug ? "async sink node" : "");
 
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset - 1);
+        CHECK(n == 4);
         break;
       }
 
@@ -1422,23 +1532,15 @@ TEST_CASE("Pass a sequence of n integers, unified async", "[stop]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(127)));
 
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset);
+        CHECK(n == 5);
         break;
       }
     }
-    if (!a.is_done()) {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      CHECK(is_done(a.state()) == "");
-    }
-    CHECK(n == offset - 1);
-    CHECK(is_done(a.state()) == "");
   };
 
-  SECTION(
-      "launch source before sink, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get source before sink") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -1446,9 +1548,7 @@ TEST_CASE("Pass a sequence of n integers, unified async", "[stop]") {
     fut_b.get();
   }
 
-  SECTION(
-      "launch sink before source, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get source before sink") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -1456,9 +1556,7 @@ TEST_CASE("Pass a sequence of n integers, unified async", "[stop]") {
     fut_b.get();
   }
 
-  SECTION(
-      "launch source before sink, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get sink before source") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -1466,9 +1564,7 @@ TEST_CASE("Pass a sequence of n integers, unified async", "[stop]") {
     fut_a.get();
   }
 
-  SECTION(
-      "launch sink before source, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get sink before source") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -1516,8 +1612,6 @@ TEST_CASE("Pass a sequence of n integers, unified async", "[stop]") {
  */
 TEST_CASE("Pass a sequence of n integers, three stage, async", "[stop]") {
   [[maybe_unused]] constexpr bool debug = false;
-  size_t rounds = GENERATE(0, 1, 2, 17);
-  size_t offset = GENERATE(0, 1, 2, 5);
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> mid_item{0};
@@ -1530,8 +1624,9 @@ TEST_CASE("Pass a sequence of n integers, three stage, async", "[stop]") {
 
   a.set_state(three_stage::st_000);
 
+  size_t rounds = 3379;
   if (debug)
-    rounds = 3;
+    rounds = 333;
 
   std::vector<size_t> input(rounds);
   std::vector<size_t> output(rounds);
@@ -1541,9 +1636,7 @@ TEST_CASE("Pass a sequence of n integers, three stage, async", "[stop]") {
   auto i = input.begin();
   auto j = output.begin();
 
-  if (rounds != 0) {
-    CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
-  }
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
 
   auto source_node = [&]() {
     size_t n = rounds;
@@ -1578,13 +1671,17 @@ TEST_CASE("Pass a sequence of n integers, three stage, async", "[stop]") {
       *(a.source_item()) = EMPTY_SOURCE;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(127)));
+
+      if (n == 0) {
+        a.do_stop(debug ? "async source (stop)" : "");
+        CHECK(is_stopping(a.state()) == "");
+        break;
+      }
     }
-    a.do_stop(debug ? "async source (stop)" : "");
-    CHECK(is_stopping(a.state()) == "");
   };
 
   auto sink_node = [&]() {
-    size_t n = rounds + offset;
+    size_t n = rounds + 5;
     while (n--) {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
@@ -1593,9 +1690,9 @@ TEST_CASE("Pass a sequence of n integers, three stage, async", "[stop]") {
 
       a.do_pull(debug ? "async sink node" : "");
 
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset - 1);
+        CHECK(n == 4);
         break;
       }
 
@@ -1621,24 +1718,15 @@ TEST_CASE("Pass a sequence of n integers, three stage, async", "[stop]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(127)));
 
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset);
+        CHECK(n == 5);
         break;
       }
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
-    if (!a.is_done()) {
-      a.do_pull(debug ? "async sink node" : "");
-      CHECK(is_done(a.state()) == "");
-    }
-    CHECK(n == offset - 1);
-    CHECK(is_done(a.state()) == "");
   };
 
-  SECTION(
-      "launch source before sink, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get source before sink") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -1646,9 +1734,7 @@ TEST_CASE("Pass a sequence of n integers, three stage, async", "[stop]") {
     fut_b.get();
   }
 
-  SECTION(
-      "launch sink before source, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get source before sink") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -1656,9 +1742,7 @@ TEST_CASE("Pass a sequence of n integers, three stage, async", "[stop]") {
     fut_b.get();
   }
 
-  SECTION(
-      "launch source before sink, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get sink before source") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -1666,9 +1750,7 @@ TEST_CASE("Pass a sequence of n integers, three stage, async", "[stop]") {
     fut_a.get();
   }
 
-  SECTION(
-      "launch sink before source, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get sink before source") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -1716,8 +1798,6 @@ TEST_CASE("Pass a sequence of n integers, three stage, async", "[stop]") {
 TEST_CASE(
     "Pass a sequence of n integers, three stage, unified async", "[stop]") {
   [[maybe_unused]] constexpr bool debug = false;
-  size_t rounds = GENERATE(0, 1, 2, 17);
-  size_t offset = GENERATE(0, 1, 2, 5);
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> mid_item{0};
@@ -1730,8 +1810,9 @@ TEST_CASE(
 
   a.set_state(three_stage::st_000);
 
+  size_t rounds = 3379;
   if (debug)
-    rounds = 3;
+    rounds = 333;
 
   std::vector<size_t> input(rounds);
   std::vector<size_t> output(rounds);
@@ -1741,9 +1822,7 @@ TEST_CASE(
   auto i = input.begin();
   auto j = output.begin();
 
-  if (rounds != 0) {
-    CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
-  }
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
 
   auto source_node = [&]() {
     size_t n = rounds;
@@ -1778,25 +1857,34 @@ TEST_CASE(
       *(a.source_item()) = EMPTY_SOURCE;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(127)));
+
+      if (n == 0) {
+        a.do_stop(debug ? "async source (stop)" : "");
+        CHECK(is_stopping(a.state()) == "");
+        break;
+      }
     }
-    a.do_stop(debug ? "async source (stop)" : "");
-    CHECK(is_stopping(a.state()) == "");
   };
 
   auto sink_node = [&]() {
-    size_t n = rounds + offset;
+    size_t n = rounds + 5;
     while (n--) {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
 
+      // It doesn't seem we actually need these guards here?
+      // while (a.state() == two_stage::st_11 ||
+      //             a.state() == two_stage::st_01)
+      //        ;
+
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
       a.do_pull(debug ? "async sink node" : "");
 
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset - 1);
+        CHECK(n == 4);
         break;
       }
 
@@ -1822,23 +1910,15 @@ TEST_CASE(
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(127)));
 
-      if (a.is_done()) {
+      if (is_done(a.state()) == "") {
         CHECK(is_done(a.state()) == "");
-        CHECK(n == offset);
+        CHECK(n == 5);
         break;
       }
     }
-    if (!a.is_done()) {
-      a.do_pull(debug ? "async sink node" : "");
-      CHECK(is_done(a.state()) == "");
-    }
-    CHECK(n == offset - 1);
-    CHECK(is_done(a.state()) == "");
   };
 
-  SECTION(
-      "launch source before sink, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get source before sink") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -1846,9 +1926,7 @@ TEST_CASE(
     fut_b.get();
   }
 
-  SECTION(
-      "launch sink before source, get source before sink " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get source before sink") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 
@@ -1856,9 +1934,7 @@ TEST_CASE(
     fut_b.get();
   }
 
-  SECTION(
-      "launch source before sink, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch source before sink, get sink before source") {
     auto fut_a = std::async(std::launch::async, source_node);
     auto fut_b = std::async(std::launch::async, sink_node);
 
@@ -1866,9 +1942,7 @@ TEST_CASE(
     fut_a.get();
   }
 
-  SECTION(
-      "launch sink before source, get sink before source " +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+  SECTION("launch sink before source, get sink before source") {
     auto fut_b = std::async(std::launch::async, sink_node);
     auto fut_a = std::async(std::launch::async, source_node);
 

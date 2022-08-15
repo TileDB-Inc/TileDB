@@ -36,80 +36,43 @@
 #define TILEDB_DAG_EDGE_H
 
 #include <array>
-#include <cassert>
-#include <iostream>
 #include <type_traits>
 #include "experimental/tiledb/common/dag/ports/ports.h"
 
 namespace tiledb::common {
 
 /**
- * Trivial base class to enable storage of `Edge` objects of different types in
- * a task graph.
- */
-struct GraphEdge {};
-
-/**
  * An edge in a task graph.
  *
- * Creating an edge sets up an item mover between the `Source` and the `Sink`.
- * The `Edge` may go out of scope when this is done.  The item mover will still
- * be pointed to by `Source` and the `Sink`.
+ * Contains a queue of blocks of size 3, that is, at any time it has between 0
+ * and 3 blocks in it.  Three blocks in the queue allows one to be written to on
+ * one side of the edge, read from on the other side of the edge, with one ready
+ * to be read.
  *
- * @todo Since the `Edge` doesn't really maintain any information related to
- * `Source` and `Sink` it probably doesn't need those as template parameters,
- * but rather we could make the constructor a function template.
+ * Edges implement a demand-pull pattern for synchronization.
  */
 template <template <class> class Mover_T, class Block>
-class Edge : public GraphEdge {
+class Edge : public Source<Mover_T, Block>, public Sink<Mover_T, Block> {
   using source_type = Source<Mover_T, Block>;
   using sink_type = Sink<Mover_T, Block>;
-
   using mover_type = Mover_T<Block>;
-
-  /**
-   * Indicates whether ther is a buffer item in the item mover, or if the
-   * `Source` and `Sink` can be directly connected.
-   */
   constexpr static bool edgeful = mover_type::edgeful;
+
   std::shared_ptr<mover_type> item_mover_;
+  std::optional<Block> item_{};
 
  public:
-  /**
-   * Constructor.
-   */
-  Edge(source_type& from, sink_type& to, bool debug = false) {
-    if (debug)
-      std::cout << "Edge constructor"
-                << " " << this << std::endl;
-
+  Edge(source_type& from, sink_type& to) {
     item_mover_ = std::make_shared<mover_type>();
+    source_type::item_mover_ = sink_type::item_mover_ = item_mover_;
 
-    if (item_mover_->debug_enabled())
-      std::cout << "Edge constructor after make shared" << std::endl;
-
-    if (debug) {
-      item_mover_->enable_debug();
+    if constexpr (edgeful) {
+      attach(from, *this, *this, to);
+    } else {
+      attach(from, to);
     }
-
-    if (item_mover_->debug_enabled())
-      std::cout << "Item mover debug " << item_mover_->debug_enabled()
-                << std::endl;
-
-    if (item_mover_->debug_enabled())
-      std::cout << "Edge constructor about to attach" << std::endl;
-
-    attach(from, to, item_mover_);
-    if (item_mover_->debug_enabled())
-      std::cout << "Edge constructor done" << std::endl;
   }
-
-  ~Edge() {
-    if (item_mover_->debug_enabled())
-      std::cout << "Edge destructor" << std::endl;
-  }
-
-};  // namespace tiledb::common
+};
 
 }  // namespace tiledb::common
 

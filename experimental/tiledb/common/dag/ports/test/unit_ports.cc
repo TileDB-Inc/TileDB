@@ -128,7 +128,7 @@ TEST_CASE("Ports: Manual extract sink values", "[ports]") {
   Sink<NullMover2, size_t> sink;
 
   SECTION("set source in unbound pair") {
-    CHECK_THROWS(sink.extract().has_value() == false);
+    CHECK(sink.extract().has_value() == false);
   }
   SECTION("set source in bound pair") {
     attach(source, sink);

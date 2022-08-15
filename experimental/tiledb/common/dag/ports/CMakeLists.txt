@@ -97,8 +97,60 @@ target_link_libraries(compile_pseudo_nodes PRIVATE pseudo_nodes)
 target_sources(compile_pseudo_nodes PRIVATE test/compile_pseudo_nodes_main.cc)
 
 if (TILEDB_TESTS)
-    add_executable(unit_fsm EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_fsm PUBLIC fsm)
+    add_executable(unit_pseudo_nodes EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_pseudo_nodes PUBLIC pseudo_nodes)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_pseudo_nodes PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_pseudo_nodes PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_pseudo_nodes PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_pseudo_nodes PUBLIC
+            test/main.cc
+            test/unit_pseudo_nodes.cc
+            )
+
+    add_test(
+            NAME "unit_pseudo_nodes"
+            COMMAND $<TARGET_FILE:unit_pseudo_nodes> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()
+
+# list(APPEND CONCURRENCY_SOURCES
+#    test/concurrency.cc
+# )
+# gather_sources(${CONCURRENCY_SOURCES})
+
+
+#
+# Object library for other units to depend upon
+#
+# add_library(concurrency OBJECT ${CONCURRENCY_SOURCES})
+# target_link_libraries(concurrency PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+
+#
+# Since there are no components, there is no object library to test compile
+#
+# add_executable(compile_concurrency EXCLUDE_FROM_ALL)
+# target_link_libraries(compile_concurrency PRIVATE concurrency)
+# target_sources(compile_concurrency PRIVATE test/compile_concurrency_main.cc)
+add_dependencies(all_link_complete compile_fsm)
+
+if (TILEDB_TESTS)
+
+   message(STATUS "*** Ports sanitizer ${SANITIZER}")
+
+    add_executable(unit_concurrency EXCLUDE_FROM_ALL
+      $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+    )
+
+#    target_link_libraries(unit_concurrency PUBLIC concurrency)
+
+    target_link_libraries(unit_concurrency PUBLIC TILEDB_CORE_OBJECTS_ILIB)
+
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_concurrency PUBLIC Catch2::Catch2)
 #    target_link_libraries(unit_concurrency PUBLIC $<TARGET_OBJECTS:thread_pool>)
