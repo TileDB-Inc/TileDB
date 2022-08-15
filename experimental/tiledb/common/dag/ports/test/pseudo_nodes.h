@@ -44,8 +44,6 @@ namespace tiledb::common {
 
 class GraphNode {};
 
-class GraphNode {};
-
 /**
  * Prototype producer function object class.  This class generates a sequence of
  * integers from 0 to N (half-open interval).  It will invoke an out-of-data
@@ -127,13 +125,9 @@ class ProducerNode : public Source<Mover_T, Block> {
    * Trivial default constructor, for testing.
    */
   ProducerNode() = default;
-  ProducerNode(const ProducerNode&) = default;
+  //  ProducerNode(const ProducerNode&) = default;
   ProducerNode(const ProducerNode&) {
   }
-  ProducerNode(ProducerNode&&) = default;
-
-  //  ProducerNode(const ProducerNode&) = default;
-  //  ProducerNode(ProducerNode&&) = default;
 
   /**
    * Submit an item to be transferred to correspondent_ Sink.  Blocking.  The
@@ -199,7 +193,7 @@ class consumer {
   OutputIterator iter_;
 
  public:
-  explicit explicit consumer(OutputIterator iter)
+  explicit consumer(OutputIterator iter)
       : iter_(iter) {
   }
   void operator()(Block& item) {
@@ -250,10 +244,9 @@ class ConsumerNode : public Sink<Mover_T, Block> {
    * Trivial default constructor, for testing.
    */
   ConsumerNode() = default;
-  ConsumerNode(const ConsumerNode&) = default;
+  //  ConsumerNode(const ConsumerNode&) = default;
   ConsumerNode(const ConsumerNode&) {
   }
-  ConsumerNode(ConsumerNode&&) = default;
   ConsumerNode(ConsumerNode&&) = default;
 
   /**

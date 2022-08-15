@@ -174,25 +174,22 @@ class Source : public Port<Mover_T, Block> {
       return false;
     }
     this->item_ = value;
-
-    using mover_type = Mover_T<Block>;
-    using source_type = Source<Mover_T, Block>;
-    using sink_type = Sink<Mover_T, Block>;
-
-    /**
-     * Extract an item into the `Source`.  Used only for testing.
-     */
-    std::optional<Block> extract() {
-      if (!this->is_attached()) {
-        throw std::logic_error("Sink not attached in extract");
-        return {};
-      }
-      std::optional<Block> ret{};
-      std::swap(ret, this->item_);
-
-      return ret;
+    return true;
+  }
+  /**
+   * Extract an item into the `Source`.  Used only for testing.
+   */
+  std::optional<Block> extract() {
+    if (!this->is_attached()) {
+      throw std::logic_error("Sink not attached in extract");
+      return {};
     }
-  };
+    std::optional<Block> ret{};
+    std::swap(ret, this->item_);
+
+    return ret;
+  }
+};
 
   /**
    * A data flow sink, used by both edges and nodes.
@@ -201,43 +198,46 @@ class Source : public Port<Mover_T, Block> {
    * determined by the states (and policies) of the `Mover`.  Their
    * functionality is determined by the states (and policies) of the `Mover`.
    */
-  template <template <class> class Mover_T, class Block>
-  class Sink : public Port<Mover_T, Block> {
-    using Port<Mover_T, Block>::Port;
-    friend Port<Mover_T, Block>;
-    using port_type = Port<Mover_T, Block>;
+template <template <class> class Mover_T, class Block>
+class Sink : public Port<Mover_T, Block> {
+  using Port<Mover_T, Block>::Port;
+  friend Port<Mover_T, Block>;
+  using port_type = Port<Mover_T, Block>;
 
-    friend class Source<Mover_T, Block>;
-    using mover_type = typename port_type::mover_type;
-    using source_type = typename port_type::source_type;
-    using sink_type = typename port_type::sink_type;
+  friend class Source<Mover_T, Block>;
+  //    using mover_type = typename port_type::mover_type;
+  //    using source_type = typename port_type::source_type;
+  //    using sink_type = typename port_type::sink_type;
 
-   public:
-    Sink() = default;
+  using mover_type = Mover_T<Block>;
+  using source_type = Source<Mover_T, Block>;
+  using sink_type = Sink<Mover_T, Block>;
 
-    Sink(const Sink& rhs) = delete;
-    Sink(Sink&& rhs) = delete;
-    Sink& operator=(const Sink& rhs) = delete;
-    Sink& operator=(Sink&& rhs) = delete;
+ public:
+  Sink() = default;
 
-   public:
-    /**
-     * Create functions (and friends) to manage attaching and detaching of
-     * `Sink` and `Source` ports.
-     */
-    void attach(source_type& predecessor) {
-      if (this->is_attached() || predecessor.is_attached()) {
-        throw std::runtime_error(
-            "Sink attempting to attach to already attached ports");
-      } else {
-        this->item_mover_ = std::make_shared<mover_type>();
-        predecessor.item_mover_ = this->item_mover_;
-        this->item_mover_->register_port_items(predecessor.item_, this->item_);
-        this->set_attached();
-        predecessor.set_attached();
-      }
+  Sink(const Sink& rhs) = delete;
+  Sink(Sink&& rhs) = delete;
+  Sink& operator=(const Sink& rhs) = delete;
+  Sink& operator=(Sink&& rhs) = delete;
+
+ public:
+  /**
+   * Create functions (and friends) to manage attaching and detaching of
+   * `Sink` and `Source` ports.
+   */
+  void attach(source_type& predecessor) {
+    if (this->is_attached() || predecessor.is_attached()) {
+      throw std::runtime_error(
+          "Sink attempting to attach to already attached ports");
+    } else {
+      this->item_mover_ = std::make_shared<mover_type>();
+      predecessor.item_mover_ = this->item_mover_;
+      this->item_mover_->register_port_items(predecessor.item_, this->item_);
+      this->set_attached();
+      predecessor.set_attached();
     }
-  };
+  }
 
   void attach(source_type& predecessor, std::shared_ptr<mover_type> mover) {
     if (this->is_attached() || predecessor.is_attached()) {
