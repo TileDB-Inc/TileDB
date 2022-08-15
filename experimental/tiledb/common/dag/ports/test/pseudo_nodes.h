@@ -44,6 +44,8 @@ namespace tiledb::common {
 
 class GraphNode {};
 
+class GraphNode {};
+
 /**
  * Prototype producer function object class.  This class generates a sequence of
  * integers from 0 to N (half-open interval).  It will invoke an out-of-data
@@ -103,7 +105,21 @@ class ProducerNode : public Source<Mover_T, Block> {
        * nullptr
        */
 
+      /*
+       * It would be nice to guard this constructor so that only functions or
+       * function objects are accepted.  Unfortunately, is_function does not
+       * work for bind or for function objects.
+       *
+       * typename std::enable_if<
+       * std::is_function_v<std::remove_reference_t<decltype(f)>> ||
+       * std::is_bind_expression_v<std::remove_reference_t<decltype(f)>> ||
+       * std::is_member_function_pointer_v<
+       * std::remove_reference_t<decltype(f)>::operator()>, void**>::type =
+       * nullptr
+       */
+
       : f_{std::forward<Function>(f)} {
+    //    print_types(f, f_);
     //    print_types(f, f_);
   }
 
@@ -111,6 +127,7 @@ class ProducerNode : public Source<Mover_T, Block> {
    * Trivial default constructor, for testing.
    */
   ProducerNode() = default;
+  ProducerNode(const ProducerNode&) = default;
   ProducerNode(const ProducerNode&) {
   }
   ProducerNode(ProducerNode&&) = default;
@@ -182,7 +199,7 @@ class consumer {
   OutputIterator iter_;
 
  public:
-  explicit consumer(OutputIterator iter)
+  explicit explicit consumer(OutputIterator iter)
       : iter_(iter) {
   }
   void operator()(Block& item) {
@@ -208,7 +225,16 @@ class ConsumerNode : public Sink<Mover_T, Block> {
    */
   template <class Function>
   explicit ConsumerNode(
+
       Function&& f
+      /*
+,
+      typename std::enable_if<
+          std::is_function_v<std::remove_reference_t<decltype(f)>> ||
+              std::is_bind_expression_v<std::remove_reference_t<decltype(f)>>,
+          void**>::type = nullptr)
+      */
+
       /*
 ,
       typename std::enable_if<
@@ -224,8 +250,10 @@ class ConsumerNode : public Sink<Mover_T, Block> {
    * Trivial default constructor, for testing.
    */
   ConsumerNode() = default;
+  ConsumerNode(const ConsumerNode&) = default;
   ConsumerNode(const ConsumerNode&) {
   }
+  ConsumerNode(ConsumerNode&&) = default;
   ConsumerNode(ConsumerNode&&) = default;
 
   /**

@@ -119,12 +119,12 @@ class BaseMover<Mover, three_stage, Block> {
     }
   }
 
-/**
- * Do the actual data movement.  We move all items in the pipeline towards
- * the end so that there are no "holes".
- *
- * @pre Called under lock
- */
+  /**
+   * Do the actual data movement.  We move all items in the pipeline towards
+   * the end so that there are no "holes".
+   *
+   * @pre Called under lock
+   */
   inline void on_move(std::atomic<int>& event) {
     //    auto state = this->state();
     auto state = static_cast<Mover*>(this)->state();

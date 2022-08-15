@@ -866,7 +866,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
   size_t rounds = 3379;
   if (debug)
-    rounds = 333;
+    rounds = 33333;
 
   std::vector<size_t> input(rounds);
   std::vector<size_t> output(rounds);
@@ -1501,4 +1501,3 @@ TEST_CASE("Pass a sequence of n integers, unified3", "[fsm]") {
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
   CHECK(str(a.state()) == "st_000");
 }
-

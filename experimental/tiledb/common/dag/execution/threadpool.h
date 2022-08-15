@@ -27,24 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a threadpool with various parameterized capabilities.  The
- * basic interface and implementation of the experimental `ThreadPool` is based
- * on the existing TileDB `ThreadPool`.  However, the experimental `ThreadPool`
- * extends the existing `ThreadPool`, controlled by three template parameters
- * (as described below).
- *
- * template <
- *   bool WorkStealing = false,
- *   bool MultipleQueues = false,
- *   bool RecursivePush = true>
- * class ThreadPool{};
- *
- * @todo Make `ThreadPool` non-copyable (and otherwise conformant to std
- * execution contexts.
- *
- * @todo Provide a C++ executor interface as specified by proposals to the
- * committee.
- *
+ * This file declares a threadpool with various parameterized capabilities.
  */
 
 #ifndef TILEDB_THREADPOOL_H
