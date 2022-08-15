@@ -59,6 +59,12 @@ struct Array {
   # array metadata
 }
 
+struct ArrayOpen {
+  config @0 :Config;
+  # Config
+}
+
+
 struct ArraySchema {
 # ArraySchema during creation or retrieval
     arrayType @0 :Text;
