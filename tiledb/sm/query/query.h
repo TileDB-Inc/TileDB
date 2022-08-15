@@ -558,9 +558,11 @@ class Query {
    * Switch the strategy depending on layout. Used by serialization.
    *
    * @param layout New layout
+   * @param force_legacy_reader Force use of the legacy reader if the client
+   *    requested it.
    * @return Status
    */
-  Status reset_strategy_with_layout(Layout layout);
+  Status reset_strategy_with_layout(Layout layout, bool force_legacy_reader);
 
   /**
    * Disables checking the global order and coordinate duplicates. Applicable
@@ -1015,6 +1017,14 @@ class Query {
 
   /* Processed conditions, used for consolidation. */
   std::vector<std::string> processed_conditions_;
+
+  /**
+   * Flag to force legacy reader when strategy gets created. This is used by
+   * the serialization codebase if a query comes from an older version of the
+   * library that doesn't have the refactored readers, we need to run it with
+   * the legacy reader.
+   */
+  bool force_legacy_reader_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
