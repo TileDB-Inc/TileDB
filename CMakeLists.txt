@@ -95,10 +95,6 @@ else()
   set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
-# Set -fvisibility=hidden (or equivalent) flags by default.
-set(CMAKE_C_VISIBILITY_PRESET hidden)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-
 ############################################################
 # Build options
 ############################################################
@@ -128,6 +124,12 @@ option(TILEDB_WEBP "If true, enables building webp and a simple linkage test" OF
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
 option(TILEDB_EXPERIMENTAL_FEATURES "If true, build and include experimental features" OFF)
+option(TILEDB_CMAKE_C_VISIBILITY_PRESET "Set visibility option for c compiler" hidden)
+option(TILEDB_CMAKE_CXX_VISIBILITY_PRESET "Set visibility option for cxx compiler" hidden)
+
+# Set -fvisibility=hidden (or equivalent) flags by default.
+set(CMAKE_C_VISIBILITY_PRESET ${TILEDB_CMAKE_C_VISIBILITY_PRESET})
+set(CMAKE_CXX_VISIBILITY_PRESET ${TILEDB_CMAKE_CXX_VISIBILITY_PRESET})
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 

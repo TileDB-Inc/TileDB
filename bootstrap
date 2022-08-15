@@ -25,6 +25,8 @@ if [ x"${default_dependency}" = x"" ]; then
     default_dependency="/opt/dependency"
 fi
 
+default_visibility="hidden"
+
 # Display bootstrap usage
 usage() {
 echo '
@@ -62,6 +64,8 @@ Configuration:
     --enable-webp                   enables building of webp library and linkage test
     --enable-experimental-features  enables experimental TileDB features
     --enable=arg1,arg2...           same as "--enable-arg1 --enable-arg2 ..."
+    --c-visibility-preset           set visibility preset for c compiler ['"$default_visibility"']
+    --cxx-visibility-preset         set visibility preset for c compiler ['"$default_visibility"']
 
 
 Dependencies:
@@ -104,6 +108,8 @@ tiledb_arrow_tests="OFF"
 tiledb_experimental_features="OFF"
 tiledb_build_webp="OFF"
 enable_multiple=""
+c_visibility_setting="${default_visibility}"
+cxx_visibility_setting="${default_visibility}"
 while test $# != 0; do
     case "$1" in
     --prefix=*) dir=`arg "$1"`
@@ -111,6 +117,11 @@ while test $# != 0; do
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
     --force-build-all-deps) tiledb_force_all_deps="ON";;
+    --c-visibility-preset) setting=`arg "$1"`
+                c_visibility_setting="$setting";;
+    --cxx-visibility-preset) setting=`arg "$1"`
+                cxx_visibility_setting="$setting";;
+    --cxx-visibility-preset) setting=`arg "$1"`
     --disable-werror) tiledb_werror="OFF";;
     --disable-tests) tiledb_tests="OFF";;
     --disable-cpp-api) tiledb_cpp_api="OFF";;
@@ -220,6 +231,8 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
     -DSANITIZER="${sanitizer}" \
     -DTILEDB_EXPERIMENTAL_FEATURES=${tiledb_experimental_features} \
+    -DTILEDB_CMAKE_C_VISIBILITY_PRESET=${c_visibility_setting} \
+    -DTILEDB_CMAKE_CXX_VISIBILITY_PRESET=${cxx_visibility_setting} \
     ${tiledb_disable_avx2} \
     "${source_dir}" || die "failed to configure the project"
 
