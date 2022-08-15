@@ -103,18 +103,18 @@ Status XORFilter::run_forward(
   RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
   RETURN_NOT_OK(output_metadata->write(&num_parts, sizeof(uint32_t)));
 
-  // Shuffle all parts
+  // XOR all parts
   for (const auto& part : parts) {
     auto part_size = (uint32_t)part.size();
     RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
-    RETURN_NOT_OK(shuffle_part<T>(&part, output_buf));
+    RETURN_NOT_OK(xor_part<T>(&part, output_buf));
   }
 
   return Status::Ok();
 }
 
 template <typename T>
-Status XORFilter::shuffle_part(const ConstBuffer* part, Buffer* output) const {
+Status XORFilter::xor_part(const ConstBuffer* part, Buffer* output) const {
   uint32_t s = part->size();
   assert(s % sizeof(T) == 0);
   uint32_t num_elems_in_part = s / sizeof(T);
@@ -198,7 +198,7 @@ Status XORFilter::run_reverse(
     ConstBuffer part(nullptr, 0);
     RETURN_NOT_OK(input->get_const_buffer(part_size, &part));
 
-    RETURN_NOT_OK(unshuffle_part<T>(&part, output_buf));
+    RETURN_NOT_OK(unxor_part<T>(&part, output_buf));
 
     if (output_buf->owns_data()) {
       output_buf->advance_size(part_size);
@@ -217,8 +217,7 @@ Status XORFilter::run_reverse(
 }
 
 template <typename T>
-Status XORFilter::unshuffle_part(
-    const ConstBuffer* part, Buffer* output) const {
+Status XORFilter::unxor_part(const ConstBuffer* part, Buffer* output) const {
   uint32_t s = part->size();
   assert(s % sizeof(T) == 0);
   uint32_t num_elems_in_part = s / sizeof(T);

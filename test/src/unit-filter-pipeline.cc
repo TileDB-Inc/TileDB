@@ -4099,7 +4099,7 @@ void testing_xor_filter(Datatype t) {
 }
 
 TEST_CASE("Filter: Test XOR", "[filter][xor]") {
-  testing_xor_filter<std::to_>(Datatype::INT8);
+  testing_xor_filter<int8_t>(Datatype::INT8);
   testing_xor_filter<uint8_t>(Datatype::UINT8);
   testing_xor_filter<int16_t>(Datatype::INT16);
   testing_xor_filter<uint16_t>(Datatype::UINT16);

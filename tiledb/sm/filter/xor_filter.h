@@ -48,7 +48,7 @@ namespace sm {
  * elements.
  *
  * On write, the XOR filter stores an array of integers (with size n) by storing
- * the starting element and then storing the difference between the next
+ * the starting element and then storing the XOR between the next
  * n-1 consecutive pairs of elements.
  *
  * On read, the XOR filter reverses this transformation and returns the values
@@ -116,19 +116,19 @@ class XORFilter : public Filter {
       FilterBuffer* output) const;
 
   /**
-   * Shuffles the input buffer by storing the first element, then
-   * storing the differences between each consecutive element pair.
+   * XORs the input buffer by storing the first element, then
+   * storing the XORed value between each consecutive element pair.
    */
   template <typename T>
-  Status shuffle_part(const ConstBuffer* part, Buffer* output) const;
+  Status xor_part(const ConstBuffer* part, Buffer* output) const;
 
   /**
-   * Unshuffles the input buffer by restoring the input buffer (which
-   * contains the starting element and the differences between each
+   * Un-XORs the input buffer by restoring the input buffer (which
+   * contains the starting element and the XORs between each
    * consecutive element pair) to the original array.
    */
   template <typename T>
-  Status unshuffle_part(const ConstBuffer* part, Buffer* output) const;
+  Status unxor_part(const ConstBuffer* part, Buffer* output) const;
 
   /** Returns a new clone of this filter. */
   XORFilter* clone_impl() const override;
