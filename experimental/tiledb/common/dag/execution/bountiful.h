@@ -40,50 +40,56 @@
 #define TILEDB_DAG_BOUNTIFUL_H
 
 #include <future>
+#include <thread>
 #include <vector>
 
 namespace tiledb::common {
 
 class BountifulScheduler {
-  std::vector<std::future<void>> futures;
-
-  /**
-   * Destructor.  Waits for all tasks to finish.
-   */
  public:
-  ~BountifulScheduler() {
-    for (auto&& f : futures) {
-      f.get();
+  BountifulScheduler() = default;
+  ~BountifulScheduler() = default;
+
+  template <class Fn>
+  auto async(Fn&& f) {
+    static_assert(std::is_invocable_v<Fn>);
+    return std::async(std::launch::async, std::forward<Fn>(f));
+  }
+
+  template <class Fn>
+  auto async(std::vector<Fn>&& f) {
+    std::vector<std::future<void>> futures;
+    futures.reserve(size(f));
+    for (auto&& t : f) {
+      futures.emplace_back(std::async(std::launch::async, std::forward<Fn>(t)));
     }
-  }
-
-  /**
-   * You get a thread and you get a thread!  Every task gets a thread!
-   *
-   * Operates in conjunction with an asynchronous state machine policy (i.e., a
-   * policy that does its own wait and notify).
-   *
-   * @tparam Schedulable The `Schedulable` is assumed to have a `start` function
-   * that takes a `void` and returns a `void`.
-   *
-   * @param node The thing to be scheduled.
-   *
-   * @return A reference to the argument is returned.
-   */
-  template <class Schedulable>
-  Schedulable* schedule(Schedulable& node) {
-    futures.emplace_back(
-        std::async(std::launch::async, [&node]() { node.start(); }));
-    return &node;
-  }
-
-  template <class Schedulable>
-  Schedulable* schedule(Schedulable&& node) {
-    futures.emplace_back(
-        std::async(std::launch::async, [&node]() { node.start(); }));
-    return &node;
+    return futures;
   }
 };
+
+template <class Fn>
+auto async(BountifulScheduler& sch, Fn&& f) {
+  return sch.async(std::forward<Fn>(f));
+}
+
+template <class R>
+auto sync_wait(std::future<R>& task) {
+  return task.get();
+}
+
+template <class R>
+auto sync_wait(std::future<R>&& task) {
+  return std::forward<std::future<R>>(task).get();
+}
+
+template <class R>
+auto sync_wait_all(std::vector<std::future<R>>&& tasks) {
+  std::vector<R> results;
+  for (auto&& t : tasks) {
+    results.emplace_back(t);
+  }
+  return results;
+}
 
 }  // namespace tiledb::common
 

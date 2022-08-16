@@ -1,5 +1,5 @@
 /**
- * @file   scheduler.h
+ * @file unit_stop_source.h
  *
  * @section LICENSE
  *
@@ -26,39 +26,10 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This file declares scheduler(s) for dag.
  */
 
-#ifndef TILEDB_DAG_SCHEDULER_H
-#define TILEDB_DAG_SCHEDULER_H
-
-#include "experimental/tiledb/common/dag/execution/threadpool.h"
-
-namespace tiledb::common {
-
-/**
- * Scheduler for the graph.
- *
- * The scheduler owns a thread pool. It is also an active object; at least one
- * thread in its pool is dedicated to its own operation.
- */
-#if 0
-
-template <class Block>
-class Scheduler {
-  ThreadPool tp_;
-
- public:
-  void notify_alive(Source<Block>*);
-  void notify_quiescent(Source<Block>*);
-  void notify_alive(Sink<Block>*);
-  void notify_quiescent(Sink<Block>*);
-  // Possibly needed
-  // wakeup(Source *);
-  // wakeup(Sink *);
-};
-#endif
-
-}  // namespace tiledb::common
-#endif  // TILEDB_DAG_SCHEDULER_H
+#ifndef TILEDB_UNIT_STOP_SOURCE_H
+#define TILEDB_UNIT_STOP_SOURCE_H
+#define CATCH_CONFIG_MAIN
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_STOP_SOURCE_H

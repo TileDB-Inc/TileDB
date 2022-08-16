@@ -32,58 +32,57 @@
  */
 
 #include "unit_bountiful.h"
+#include <atomic>
 #include <memory>
 #include <vector>
 #include "experimental/tiledb/common/dag/execution/bountiful.h"
 
 using namespace tiledb::common;
 
+std::atomic<size_t> i_;
+
 struct super_simple {
-  size_t value_{0};
-  size_t i_{};
-
-  explicit super_simple(size_t i = 0UL)
-      : i_{i} {
-  }
-
+  explicit super_simple() = default;
   super_simple(const super_simple&) = delete;
   super_simple(super_simple&&) = default;
 
-  void start() {
-    value_ = 8675309 + i_;
+  void operator()() {
+    i_++;
   }
 };
 
 TEST_CASE("BountifulScheduler: Test construct one", "[bountiful_scheduler]") {
+  i_ = 0;
   super_simple a;
-  {
-    BountifulScheduler sch;
-    sch.schedule(a);
-  }
-  CHECK(a.value_ == 8675309);
+
+  BountifulScheduler sch;
+  auto b = async(sch, a);
+  sync_wait(b);
+  CHECK(i_ == 1);
 }
 
 TEST_CASE(
     "BountifulScheduler: Test construct several", "[bountiful_scheduler]") {
   for (size_t i = 1; i <= 16; ++i) {
-    std::vector<std::shared_ptr<super_simple>> v;
+    std::vector<super_simple> v;
+    std::vector<std::future<void>> w;
     v.clear();
     CHECK(v.size() == 0);
 
-    {
-      BountifulScheduler sch;
+    BountifulScheduler sch;
 
-      for (size_t j = 1; j <= i; ++j) {
-        v.emplace_back(std::make_shared<super_simple>(super_simple(i + j)));
-      }
-      CHECK(v.size() == i);
-      for (size_t j = 1; j <= i; ++j) {
-        sch.schedule(*v[j - 1]);
-      }
+    for (size_t j = 0; j < i; ++j) {
+      v.emplace_back(super_simple{});
     }
-    for (size_t j = 1; j <= i; ++j) {
-      CHECK(v.size() == i);
-      CHECK(v[j - 1]->value_ == (8675309 + i + j));
+    CHECK(v.size() == i);
+    for (size_t j = 0; j < i; ++j) {
+      w[i] = async(sch, v[j]);
     }
+    CHECK(v.size() == i);
+    CHECK(w.size() == i);
+    for (size_t j = 0; j < i; ++j) {
+      sync_wait(w[j]);
+    }
+    CHECK(i_ == i);
   }
 }
