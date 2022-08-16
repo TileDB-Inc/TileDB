@@ -37,8 +37,6 @@ add_executable(unit_link_absl src/absl_link_test.cc)
 find_package(absl CONFIG REQUIRED
   PATHS
       ${TILEDB_EP_INSTALL_PREFIX}/lib/cmake
-  #HINTS 
-  #  ${TILEDB_EP_INSTALL_PREFIX}
   ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 

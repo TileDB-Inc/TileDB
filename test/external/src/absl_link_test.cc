@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests for linkage to items in the targets found to be referenced by 
+ * Tests for linkage to libraries of the targets found to be referenced by 
  * gcssdk v1.22 at the time of creation of absl_link_test.cc.
  * 
  * Those targets were crudely identified by extracting from the following action:
@@ -88,23 +88,20 @@ cloud\testing_util\CMakeLists.txt:        PUBLIC absl::symbolize absl::failure_s
 #include <include/absl/container/fixed_array.h> // absl::fixed_array
 #include <include/absl/numeric/int128.h> // absl::numeric
 #if 0
-// absl::symbolize, absl::failure_signal_handler both in testing_util, don't think we need to verify these.
+// absl::symbolize, absl::failure_signal_handler both in testing_util, not verifying these as
+// we do not build gcs tests.
 #include <include/absl/symbolize/
 #include <include/absl/failure_signal_handler/
 #endif
 
-int main(int argc, char *argv[])
+int main()
 {
   
-  printf("argc/argv[0], %d, %s\n", argc, argv[0]);
-  #if 1
-  
-  // absl::memory target/library seem header only, nothing to attempt to link to.
-  // 
+  { // absl::memory target/library seem header only, nothing to attempt to link to.
+  }
   {// strings
     absl::string_view view_float("5.927");
     float f;
-    //double f;
     (void)absl::SimpleAtof(view_float, &f);
     printf("%f\n", f);
   }
@@ -149,11 +146,10 @@ int main(int argc, char *argv[])
   }
   { // numeric
     absl::uint128 u128 { 1299.3 };
-    // printf("%d, %s\n", i, absl::Uint128ToFormattedString(u128, std::ios::dec).c_str());
     std::stringstream sstr;
     sstr << "u128 " << u128 ;
     printf("%s\n", sstr.str().c_str());
   }
-  #endif
+
   return 0 ;
 }
