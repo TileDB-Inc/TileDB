@@ -1,5 +1,4 @@
 
-
 The file fsm.h implements a state machine for two communicating ports, `Source` and
 `Sink`.  Each port has two states, empty or full.  There are two transition events
 associated with the source: fill, which transitions from empty to full and
@@ -25,7 +24,6 @@ transition and event action tables.
 <img source="source_state_machine.svg" width="360" />
 <img source="sink_state_machine.svg" width="360" />
 
-
 We can combine the source and sink state machines into a single "product" state
 machine wherein the overall state is represented with two bits, one for the source and
 one for the sink, e.g., "00" meaning that the source state is 0 and the sink state is
@@ -46,7 +44,6 @@ processing for the push or pull event in the current state.
 The waiter doesn't get to move in that case, but does get to leave the wait and
 produce or consume an item and then try to push or pull again.)
 
-
 Our basic goal for the `Source` and `Sink` ports is to transfer a data item from a
 `Source` to a connected (bound) `Sink`.  At a high level, the way a client would use
 the `Source` to do this is the following:
@@ -55,7 +52,6 @@ the `Source` to do this is the following:
 - invoke the fill event
 - invoke the push event
 
-
 Similarly, the desired usage of a `Sink` port is also to transfer a data item from a
 `Source` to a bound `Sink`.  At a high level, the way a client would use the `Source`
 is the following
@@ -63,8 +59,6 @@ is the following
 - extract the data item from the `Sink` port
 - consume the item
 - invoke the drain event
-
-
 
 Based on these product states and the four above events, the state transition table
 for the product state machine (which we will just refer to as the "state machine"
@@ -77,7 +71,6 @@ below is the following:
 | 01     | 11          | 01          | 00          | 01          |          |
 | 10     |             | 01          |             | 01          |          |
 | 11     |             | 01          | 10          | 11          |          |  
-
 
 Using this table, we can include the states as predicates with "proof outline" 
 statements for the `Source` operation:
@@ -163,9 +156,11 @@ When the state is 00, the `Sink` will wait for the `Source` to become full.  The
 `Source` will notify the `Sink` when it becomes full.  Similarly, if the state is 11,
 the `Source` will wait until it is signalled by the `Sink` that the `Sink` is empty.
 
-In more detail, we can describe the `Source` behavior (including proof outline predicates);
+In more detail, we can describe the `Source` behavior (including proof outline predicates).  The steps
+of `Source` operation are pseudocode in normal text, while the associated state of the state machine
+are given in comments, with predicates in curly braces.
 ```C
-  init: { state = 00 ∧ source_item = empty }
+  init: /* { state = 00 ∧ source_item = empty } */
   while (not done)
 
      /* { state = 00 ∨ state = 01 } ∧ { source_item = empty } */
@@ -175,57 +170,66 @@ In more detail, we can describe the `Source` behavior (including proof outline p
      /* { state = 00 ∨ state = 01 } ∧ { source_item = full } */
      client invokes fill event to transition from empty to full.
 
-     /* state machine locks mutex */
+     state machine locks mutex
+     /* { mutex = locked } */
      state machine invokes exit action
      if { state = 00 ∨ state = 01 } → none
      /* { state = 00 ∨ state = 01 } ∧ { source_item = full } */
      state machine performs transition
-       { state = 00 } → { state = 10 } ∧ { source_item = full } */
-       { state = 01 } → { state = 11 } ∧ { source_item = full } */
+     /* { state = 00 } → { state = 10 } ∧ { source_item = full } */
+     /* { state = 01 } → { state = 11 } ∧ { source_item = full } */
      /* { state = 10 ∨ state = 11 } ∧ { source_item = full } */
      Source notifies Sink that it is full
      /* { state = 10 ∨ state = 11 } ∧ { source_item = full } */
      Source returns
-     /* state machine unlocks mutex */
+     state machine unlocks mutex
+     /* { mutex = unlocked } */
 
      /* Before the Source begins the push, the Sink may pull, drain, do both, or do nothing */
 
      /* { state = 10 ∨ state = 11 ∨ state = 01 ∨ state = 00 } ∧ { source_item = empty ∨ source_item = full } */
      client invokes push event
      state machine locks the mutex
+     /* { mutex = locked */
 
      /* { state = 10 ∨ state = 11 ∨ state = 01 ∨ state = 00 } ∧ { source_item = empty ∨ source_item = full } */
-     state machine executes push exit action, which may be one of the following, depending on the state */
+     state machine executes push exit action, which may be one of the following, depending on the state
      restart:
        if { state = 00 ∨ state = 01 } → none
        if state = 10 → execute source_swap
        if state = 11 → execute source_wait
-         /* pre_source_swap: { state = 10 } ∧ { source_item = full } */
+         pre_source_swap: /* { state = 10 } ∧ { source_item = full } */
             state machine swaps source_item and sink_item -- swap does not change state
-         /* post_source_swap: { state = 10 } ∧ { source_item = empty } */
-       if { state = 11 } → execute source_wait  /* wait for Sink to become empty */
+         post_source_swap: /* { state = 10 } ∧ { source_item = empty } */
+
+       if { state = 11 } → execute source_wait  
+          pre_source_wait: /* { state = 11 } */
+          /* unlock mutex and wait for Sink to become empty */
           /* Important! When the state machine comes back from wait, it is now no longer in the state it was when it started the wait. */
           /* We therefore restart event processing for the push event, given the state present when coming back from wait: goto restart.*/
+       /* { mutex = locked } */
 
-        make state transition according to state transition table and next_state set by most recent event
-          { state = 00 } → { state = 00 }
-          { state = 01 ∨ state = 10 } → { state = 01 }
+       /* { state = 00 ∨ state = 01 ∨ state = 10 } ∧ { source_item = empty } */      
+       make state transition according to state transition table and next_state set by most recent event
+         { state = 00 } → { state = 00 }
+         { state = 01 ∨ state = 10 } → { state = 01 }
 
-       { state = 00 ∨ state = 01 } ∧ { source_item = empty } */
+       /* { state = 00 ∨ state = 01 } ∧ { source_item = empty } */
        state machine invokes entry action (none) 
 
-       /* post_entry: { state = 00 ∨ state = 01 } ∧ { source_item = empty } */
+       post_entry: /* { state = 00 ∨ state = 01 } ∧ { source_item = empty } */
        state machine unlocks mutex
+       /* { mutex = unlocked } */
 
-      /* post_push: { state = 00 ∨ state = 01 } ∧ { source_item = empty } */
-    /* end_loop: { state = 00 ∨ state = 01 } ∧ { source_item = empty } */
-  /* post_loop: { state = 00 ∨ state = 01 } ∧ { source_item = empty } */
+      post_push: /* { state = 00 ∨ state = 01 } ∧ { source_item = empty } */
+    end_loop: /* { state = 00 ∨ state = 01 } ∧ { source_item = empty } */
+  post_loop: /* { state = 00 ∨ state = 01 } ∧ { source_item = empty } */
 ```
 
 The `Sink` is the dual of the Source.  Note that we start with pull.
 We can describe the `Sink` behavior (including proof outline predicates):
 ```C
-  init: { state = 00 ∧ sink_item = empty }
+  init: /* { state = 00 ∧ sink_item = empty } */
   while (not done)
      /* { state = 00 ∨ state = 01 } ∧ { sink_item = empty ∨ sink_item = full } */
      /* Before client invokes the pull event, the source could have filled, filled and pushed, or done nothing */
@@ -236,6 +240,7 @@ We can describe the `Sink` behavior (including proof outline predicates):
      /* { state = 00 ∨ state = 01 ∨ state = 10 ∨ state = 10 } ∧ { sink_item = empty ∨ sink_item = full } */
      client invokes pull event
      state machine locks mutex
+     /* mutex = locked */
 
      /* { state = 00 ∨ state = 01 ∨ state = 10 ∨ state = 11 } ∧ { sink_item = empty ∨ sink_item = full } */
      state machine executes pull exit action, which may be one of the following, depending on the state
@@ -243,12 +248,15 @@ We can describe the `Sink` behavior (including proof outline predicates):
        { state = 01 ∨ state = 11 } → none
        { state = 10 } → sink_swap 
        { state = 00 } → sink_wait
-         /* pre_sink_swap: { state = 10 } ∧ { sink_item = empty }
-         /* post_sink_swap: { state = 10 } ∧ { sink_item = full }
+         pre_sink_swap: /* { state = 10 } ∧ { sink_item = empty } */
+         post_sink_swap: /* { state = 10 } ∧ { sink_item = full } */
 
-         /* pre_sink_wait: { state = 00 } /* wait for source to become full */
-          /* Important! When the state machine comes back from wait, it is now no longer in the state it was when it started the wait. */
-          /* We therefore restart event processing for the pull event, given the state present when coming back from wait: goto restart.*/
+         if { state = 00 } → execute sink_wait
+         pre_sink_wait: /* { state = 00 } */ 
+           /* unlock mutex and wait for Source to become full */
+           /* Important! When the state machine comes back from wait, it is now no longer in the state it was when it started the wait. */
+           /* We therefore restart event processing for the pull event, given the state present when coming back from wait: goto restart.*/
+       /* { mutex = locked */
 
        /* { state = 01 ∨ state = 10 ∨ state = 11 } ∧ { sink_item = full } */      
        make state transition according to state transition table and state and next_state set by most recent event
@@ -259,6 +267,8 @@ We can describe the `Sink` behavior (including proof outline predicates):
        state machine invokes pull entry action (none)
        /* post_entry: { state = 01 ∨ state = 11 } ∧ { sink_item = full } */ 
      state machine unlocks mutex
+     /* { mutex = unlocked */
+
      /* post_pull: { state = 01 ∨ state = 11 } ∧ { sink_item = full } */
 
      client of the sink extracts the item  /* Note that although the Source can execute and potentially change the
@@ -286,12 +296,17 @@ We can describe the `Sink` behavior (including proof outline predicates):
 Operations carried out directly by the state machine are protected by a lock.  When
 the `Source` or `Sink` wait, they do so on a condition variable using that same lock.
 
-Since the synchronization implies that if the `Source` and `Sink` execute the same
-number of loops, the `Source` will have { state = 00 ∨ state = 01 }
-while the `Sink` will have { state = 00 ∨ state = 10 }.
-The final state of the state machine must be 
-{ state = 00 ∨ state = 01 } ∧ { state = 00 ∨ state = 10 } ∧ { item = empty },
-i.e., { state = 00 } ∧ { item = empty }.
+Note that when the `Source` and `Sink` both exit their loops that the `Source` will
+have 
+  { state = 00 ∨ state = 01 } 
+while the `Sink` will have 
+  { state = 00 ∨ state = 10 }.
+The final state of the state machine is therefore 
+  { state = 00 ∨ state = 01 } ∧ { state = 00 ∨ state = 10 } ∧ { item = empty }, 
+i.e., 
+  { state = 00 } ∧ { item = empty }.
+(This assumes that both `Source` and `Sink` perform the same number of operations,
+otherwise one of them will be left in a wait.)
 
 **NB:** The sink_swap and source_swap functions are identical. Each checks to see if
 the state is equal to 10, if so, swap the state to 01 (and perform an
@@ -302,4 +317,3 @@ into a wait.
 Thus, we may not need separate swaps for `Source` and `Sink`, nor separate condition
 variables, nor separate notification functions.  I have verified that this works
 experimentally, but I am leaving things separate for now.
-
