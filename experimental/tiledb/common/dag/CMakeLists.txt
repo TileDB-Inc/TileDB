@@ -25,10 +25,13 @@
 # THE SOFTWARE.
 #
 
-add_subdirectory(data_block)
-# add_subdirectory(edge)
-add_subdirectory(execution)
-# add_subdirectory(graph)
-# add_subdirectory(node)
-add_subdirectory(ports)
+message(STATUS "+++++++ in dag")
+
 add_subdirectory(utils)
+add_subdirectory(execution)
+add_subdirectory(state_machine)
+add_subdirectory(ports)
+add_subdirectory(data_block)
+add_subdirectory(edge)
+add_subdirectory(nodes)
+# add_subdirectory(graph)

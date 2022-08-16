@@ -68,6 +68,10 @@ if (TILEDB_TESTS)
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	    )
 
+endif()
+
+if (TILEDB_TESTS)
+
     add_executable(unit_threadpool EXCLUDE_FROM_ALL)
     target_link_libraries(unit_threadpool PUBLIC execution)
     find_package(Catch_EP REQUIRED)
@@ -91,3 +95,29 @@ if (TILEDB_TESTS)
 	    )
 
 endif()
+
+if (TILEDB_TESTS)
+    add_executable(unit_bountiful EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_bountiful PUBLIC execution)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_bountiful PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_bountiful PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_bountiful PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_bountiful PUBLIC
+            test/main.cc
+            test/unit_bountiful.cc
+            )
+
+    add_test(
+            NAME "unit_bountiful"
+            COMMAND $<TARGET_FILE:unit_bountiful> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+
+	    )
+
+endif()
+
