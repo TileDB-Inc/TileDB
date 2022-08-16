@@ -348,6 +348,17 @@ class Query {
   }
 
   /**
+    Submits and finalizes the last tile of a global order write. For remote
+    TileDB arrays, this is optimized to use only one request to perform both
+    the submit and finalize.
+   */
+  void submit_and_finalize() {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(
+        tiledb_query_submit_and_finalize(ctx.ptr().get(), query_.get()));
+  }
+
+  /**
    * Returns the number of elements in the result buffers from a read query.
    * This is a map from the attribute name to a pair of values.
    *

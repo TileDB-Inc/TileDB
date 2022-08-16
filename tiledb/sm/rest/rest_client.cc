@@ -777,7 +777,40 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
 
 Status RestClient::submit_and_finalize_query_to_rest(
     const URI& uri, Query* query) {
-  return Status::Ok();
+  // Serialize query to send
+  BufferList serialized;
+  RETURN_NOT_OK(serialization::query_serialize(
+      query, serialization_type_, true, &serialized));
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  std::string url =
+      redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
+      curlc.url_escape(array_uri) +
+      "/query/submit_and_finalize?type=" + query_type_str(query->type());
+
+  Buffer returned_data;
+  RETURN_NOT_OK(curlc.post_data(
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
+
+  if (returned_data.data() == nullptr || returned_data.size() == 0) {
+    return LOG_STATUS(Status_RestError(
+        "Error on submit_and_finalize; server returned no data."));
+  }
+
+  returned_data.reset_offset();
+  return serialization::query_deserialize(
+      returned_data, serialization_type_, true, nullptr, query, compute_tp_);
 }
 
 Status RestClient::subarray_to_str(
