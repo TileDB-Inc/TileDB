@@ -32,7 +32,7 @@ endif()
 
 message("adding target unit_link_absl, have TILEDB_ABSEIL")
 
-add_executable(unit_link_absl src/absl_link_test.cc)
+add_executable(unit_link_absl EXCLUDE_FROM_ALL src/absl_link_test.cc)
 
 find_package(absl CONFIG REQUIRED
   PATHS
