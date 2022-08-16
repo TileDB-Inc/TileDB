@@ -617,6 +617,20 @@ if(TILEDB_WEBP)
   )
 endif()
 
+if(TILEDB_ABSEIL)
+  find_package(absl_EP REQUIRED)
+  find_package(absl CONFIG REQUIRED
+    HINTS
+      ${TILEDB_EP_INSTALL_PREFIX}/lib/cmake
+    )
+
+  include(${CMAKE_SOURCE_DIR}/test/external/src/absl_library_targets.cmake)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+    ${TILEDB_ABSL_LIBRARY_TARGETS}
+  )
+endif()
+
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
@@ -889,6 +903,11 @@ if (TILEDB_STATIC)
   append_dep_lib(spdlog::spdlog)
   append_dep_lib(libmagic)
   append_dep_lib(WebP::webp)
+  if(TILEDB_ABSEIL)
+    foreach(tgt ${TILEDB_ABSL_LIBRARIES})
+      append_dep_lib(${tgt})
+    endforeach()
+  endif()
 endif()
 
 ############################################################
