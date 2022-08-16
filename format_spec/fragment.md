@@ -43,7 +43,7 @@ There can be any number of fragments in an array. The fragment folder contains:
 * The names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.
 * The timestamp fixed attribute (`t.tdb`) is, for fragments consolidated with timestamps, the time at which a cell was added.
 * The delete timestamp fixed attribute (`dt.tdb`) is, for fragments consolidated with delete conditions, the time at which a cell was deleted.
-* The delete condition index fixed attribute (`dci.tdb`) is, for fragments consolidated with delete conditions, the index of the delete condition (inside of [Tile Processed Conditions](#tile-processed-conditions)) that deleted the cell.
+* The delete condition [Delete commit file](./delete_commit_file.md) index fixed attribute (`dci.tdb`) is, for fragments consolidated with delete conditions, the index of the delete condition (inside of [Tile Processed Conditions](#tile-processed-conditions)) that deleted the cell.
 
 ## Fragment Metadata File 
 
