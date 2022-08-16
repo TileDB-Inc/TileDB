@@ -572,10 +572,27 @@ struct TemporaryDirectoryFixture {
     tiledb_vfs_free(&vfs_);
   }
 
-  /** Create a new array. */
+  /** Create a path in the temporary directory. */
   std::string fullpath(std::string&& name) {
     return temp_dir_ + name;
   }
+
+  /**
+   * Creates a new array array in the temporary directory and returns the
+   * fullpath the array.
+   *
+   * @param name Name of the array relative to the temporary directory.
+   * @param array_schema Schema for the array to be created.
+   * @returns URI of the array.
+   */
+  std::string create_temporary_array(
+      std::string&& name, tiledb_array_schema_t* array_schema) {
+    auto array_uri = fullpath(std::move(name));
+    REQUIRE_TILEDB_OK(tiledb_array_schema_check(ctx, array_schema));
+    REQUIRE_TILEDB_OK(
+        tiledb_array_create(ctx, array_uri.c_str(), array_schema));
+    return array_uri;
+  };
 
  protected:
   /** TileDB context */

@@ -226,6 +226,7 @@ void check_save_to_file() {
   ss << "config.logging_level 0\n";
 #endif
   ss << "filestore.buffer_size 104857600\n";
+  ss << "rest.curl.buffer_size 524288\n";
   ss << "rest.curl.verbose false\n";
   ss << "rest.http_compressor any\n";
   ss << "rest.load_metadata_on_array_open true\n";
@@ -289,6 +290,7 @@ void check_save_to_file() {
      << "\n";
   ss << "vfs.azure.use_block_list_upload true\n";
   ss << "vfs.azure.use_https true\n";
+  ss << "vfs.disable_batching false\n";
   ss << "vfs.file.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
   ss << "vfs.file.posix_directory_permissions 755\n";
@@ -574,6 +576,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.retry_delay_factor"] = "1.25";
   all_param_values["rest.retry_initial_delay_ms"] = "500";
   all_param_values["rest.retry_http_codes"] = "503";
+  all_param_values["rest.curl.buffer_size"] = "524288";
   all_param_values["rest.curl.verbose"] = "false";
   all_param_values["rest.load_metadata_on_array_open"] = "false";
   all_param_values["rest.load_non_empty_domain_on_array_open"] = "false";
@@ -635,6 +638,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.var_offsets.mode"] = "elements";
   all_param_values["sm.max_tile_overlap_size"] = "314572800";
 
+  all_param_values["vfs.disable_batching"] = "false";
   all_param_values["vfs.max_batch_size"] = std::to_string(UINT64_MAX);
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
@@ -703,6 +707,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["min_batch_gap"] = "512000";
   vfs_param_values["min_batch_size"] = "20971520";
   vfs_param_values["min_parallel_size"] = "10485760";
+  vfs_param_values["disable_batching"] = "false";
   vfs_param_values["read_ahead_size"] = "102400";
   vfs_param_values["read_ahead_cache_size"] = "10485760";
   vfs_param_values["gcs.project_id"] = "";

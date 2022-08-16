@@ -128,14 +128,17 @@ extern const std::string timestamps;
 /** Special name reserved for the delete timestamp attribute. */
 extern const std::string delete_timestamps;
 
-/** Special name reserved for the delete condition name attribute. */
-extern const std::string delete_condition_names;
+/** Special name reserved for the delete condition marker hash attribute. */
+extern const std::string delete_condition_marker_hash;
 
 /** The size of a timestamp cell. */
 extern const uint64_t timestamp_size;
 
-/** The type of a variable offset cell. */
+/** The type of a timestamp cell. */
 extern const Datatype timestamp_type;
+
+/** The type of a delete condition marker hash cell. */
+extern const Datatype delete_condition_marker_hash_type;
 
 /** The special value for an empty int32. */
 extern const int empty_int32;
