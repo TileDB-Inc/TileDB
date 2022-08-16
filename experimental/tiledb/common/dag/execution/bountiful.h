@@ -40,48 +40,55 @@
 #define TILEDB_DAG_BOUNTIFUL_H
 
 #include <future>
+#include <thread>
 #include <vector>
 
 namespace tiledb::common {
 
 class BountifulScheduler {
-  std::vector<std::future<void>> futures;
+  std::vector<std::shared_ptr<std::function<void()>>> tasks_;
+  std::vector<std::thread>;
 
   /**
    * Destructor.  Waits for all tasks to finish.
    */
  public:
-  ~BountifulScheduler() {
-    for (auto&& f : futures) {
-      f.get();
-    }
+  BountifulScheduler() {
   }
 
   /**
-   * You get a thread and you get a thread!  Every task gets a thread!
+   * Schedule a given container of tasks to run.
    *
    * Operates in conjunction with an asynchronous state machine policy (i.e., a
    * policy that does its own wait and notify).
    *
-   * @tparam Schedulable The `Schedulable` is assumed to have a `start` function
-   * that takes a `void` and returns a `void`.
+   * The tasks do **not** start running when they are scheduled.  Rather, they
+   * begin execution when the `wait` member function is called.
    *
-   * @param node The thing to be scheduled.
-   *
-   * @return A reference to the argument is returned.
+   * The tasks will be scheduled (and executed) in the order they are given.  It
+   * is up to the caller to provide the tasks in a sensible order.
    */
-  template <class Schedulable>
-  Schedulable* schedule(Schedulable& node) {
-    futures.emplace_back(
-        std::async(std::launch::async, [&node]() { node.start(); }));
-    return &node;
+  auto schedule(std::vector<std::future<void>>& tasks) {
+    for (auto&& t : tasks) {
+      tasks_.emplace_back(t);
+    }
   }
 
-  template <class Schedulable>
-  Schedulable* schedule(Schedulable&& node) {
-    futures.emplace_back(
-        std::async(std::launch::async, [&node]() { node.start(); }));
-    return &node;
+  /**
+   * The `sync_wait` function initiates execution of the tasks in `tasks_` and
+   * waits for their completion. The tasks will be run in the order they were
+   * originally given.
+   *
+   * With the bountiful scheduler, every task gets a thread.
+   * (You get a thread and you get a thread!  Every task gets a thread!)
+   */
+  void sync_wait() {
+    for (auto&& t : tasks_) {
+      threads_.emplace_back(t);
+    }
+    for (auto&& t : tasks_) {
+      t.join();
+    }
   }
 };
 

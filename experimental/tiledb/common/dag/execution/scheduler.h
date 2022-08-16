@@ -61,4 +61,4 @@ class Scheduler {
 #endif
 
 }  // namespace tiledb::common
-#endif  // TILEDB_DAG_SCHEDULER_HH
+#endif  // TILEDB_DAG_SCHEDULER_H
