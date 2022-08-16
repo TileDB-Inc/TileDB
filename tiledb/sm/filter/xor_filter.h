@@ -98,7 +98,9 @@ class XORFilter : public Filter {
   /**
    * Run forward, templated on the tile type.
    */
-  template <typename T>
+  template <
+      typename T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
   Status run_forward(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
@@ -108,7 +110,9 @@ class XORFilter : public Filter {
   /**
    * Run reverse, templated on the tile type.
    */
-  template <typename T>
+  template <
+      typename T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
   Status run_reverse(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
@@ -119,7 +123,9 @@ class XORFilter : public Filter {
    * XORs the input buffer by storing the first element, then
    * storing the XORed value between each consecutive element pair.
    */
-  template <typename T>
+  template <
+      typename T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
   Status xor_part(const ConstBuffer* part, Buffer* output) const;
 
   /**
@@ -127,7 +133,9 @@ class XORFilter : public Filter {
    * contains the starting element and the XORs between each
    * consecutive element pair) to the original array.
    */
-  template <typename T>
+  template <
+      typename T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
   Status unxor_part(const ConstBuffer* part, Buffer* output) const;
 
   /** Returns a new clone of this filter. */

@@ -57,6 +57,9 @@ Status XORFilter::run_forward(
     FilterBuffer* output) const {
   auto tile_type = tile.type();
 
+  // Since run_forward interprests the filter's data as integers, we case on
+  // the size of the type and pass in the corresponding integer type into
+  // a templated function.
   switch (datatype_size(tile_type)) {
     case sizeof(int8_t): {
       return run_forward<int8_t>(
@@ -84,7 +87,9 @@ Status XORFilter::run_forward(
   return Status_FilterError("XORFilter::run_forward: invalid datatype.");
 }
 
-template <typename T>
+template <
+    typename T,
+    typename std::enable_if<std::is_integral<T>::value>::type*>
 Status XORFilter::run_forward(
     FilterBuffer* input_metadata,
     FilterBuffer* input,
@@ -113,7 +118,9 @@ Status XORFilter::run_forward(
   return Status::Ok();
 }
 
-template <typename T>
+template <
+    typename T,
+    typename std::enable_if<std::is_integral<T>::value>::type*>
 Status XORFilter::xor_part(const ConstBuffer* part, Buffer* output) const {
   uint32_t s = part->size();
   assert(s % sizeof(T) == 0);
@@ -150,6 +157,9 @@ Status XORFilter::run_reverse(
     const Config& config) const {
   (void)config;
 
+  // Since run_reverse interprests the filter's data as integers, we case on
+  // the size of the type and pass in the corresponding integer type into
+  // a templated function.
   auto tile_type = tile.type();
   switch (datatype_size(tile_type)) {
     case sizeof(int8_t): {
@@ -178,7 +188,9 @@ Status XORFilter::run_reverse(
   return Status_FilterError("XORFilter::run_reverse: invalid datatype.");
 }
 
-template <typename T>
+template <
+    typename T,
+    typename std::enable_if<std::is_integral<T>::value>::type*>
 Status XORFilter::run_reverse(
     FilterBuffer* input_metadata,
     FilterBuffer* input,
@@ -216,7 +228,9 @@ Status XORFilter::run_reverse(
   return Status::Ok();
 }
 
-template <typename T>
+template <
+    typename T,
+    typename std::enable_if<std::is_integral<T>::value>::type*>
 Status XORFilter::unxor_part(const ConstBuffer* part, Buffer* output) const {
   uint32_t s = part->size();
   assert(s % sizeof(T) == 0);

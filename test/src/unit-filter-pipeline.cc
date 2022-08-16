@@ -4052,7 +4052,13 @@ TEMPLATE_TEST_CASE(
   testing_float_scaling_filter<double, TestType>();
 }
 
-template <typename T>
+/*
+ Defining distribution types to pass into the testing_xor_filter function.
+ */
+typedef typename std::uniform_int_distribution<int64_t> IntDistribution;
+typedef typename std::uniform_real_distribution<double> FloatDistribution;
+
+template <typename T, typename Distribution = IntDistribution>
 void testing_xor_filter(Datatype t) {
   tiledb::sm::Config config;
 
@@ -4068,7 +4074,7 @@ void testing_xor_filter(Datatype t) {
 
   // Setting up the random number generator for the XOR filter testing.
   std::mt19937_64 gen(0x57A672DE);
-  std::uniform_int_distribution<int64_t> dis(
+  Distribution dis(
       std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
 
   std::vector<T> results;
@@ -4107,8 +4113,8 @@ TEST_CASE("Filter: Test XOR", "[filter][xor]") {
   testing_xor_filter<uint32_t>(Datatype::UINT32);
   testing_xor_filter<int64_t>(Datatype::INT64);
   testing_xor_filter<uint64_t>(Datatype::UINT64);
-  testing_xor_filter<float>(Datatype::FLOAT32);
-  testing_xor_filter<double>(Datatype::FLOAT64);
+  testing_xor_filter<float, FloatDistribution>(Datatype::FLOAT32);
+  testing_xor_filter<double, FloatDistribution>(Datatype::FLOAT64);
   testing_xor_filter<char>(Datatype::CHAR);
   testing_xor_filter<int64_t>(Datatype::DATETIME_YEAR);
   testing_xor_filter<int64_t>(Datatype::DATETIME_MONTH);
