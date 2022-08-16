@@ -609,6 +609,20 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Zstd::Zstd
     libmagic
 )
+
+if(TILEDB_CRC32)
+  find_package(crc32c_EP REQUIRED)
+  find_package(crc32c CONFIG REQUIRED
+    HINTS
+      ${TILEDB_EP_INSTALL_PREFIX}/lib/cmake
+    )
+
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+    Crc32c::crc32c
+  )
+endif()
+
 if(TILEDB_WEBP)
   find_package(Webp_EP REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -888,6 +902,7 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
   append_dep_lib(libmagic)
+  append_dep_lib(Crc32c::crc32c)
   append_dep_lib(WebP::webp)
 endif()
 
