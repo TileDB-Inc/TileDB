@@ -136,18 +136,6 @@ void DimensionLabel::open(
   query_type_ = query_type;
 }
 
-void DimensionLabel::open_without_fragments(
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
-  throw_if_not_ok(indexed_array_->open_without_fragments(
-      encryption_type, encryption_key, key_length));
-  throw_if_not_ok(labelled_array_->open_without_fragments(
-      encryption_type, encryption_key, key_length));
-  load_schema();
-  query_type_ = QueryType::READ;
-}
-
 void DimensionLabel::load_schema() {
   // Get dimension label schema metadata
   GroupV1 label_group{uri_, storage_manager_};
