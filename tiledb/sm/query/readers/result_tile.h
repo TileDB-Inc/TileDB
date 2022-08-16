@@ -922,14 +922,14 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   }
 
   /**
-   * Returns the delete hash for the cell at `cell_idx`. If there was not any
-   * delete condition that deleted this cell, the hash is going to be size_t
-   * max.
+   * Returns the delete condition index for the cell at `cell_idx`. If there
+   * was not any delete condition that deleted this cell, the value is going
+   * to be uint64_t max.
    */
-  inline size_t delete_hash(uint64_t cell_idx) {
+  inline size_t delete_condition_index(uint64_t cell_idx) {
     auto ptr = per_cell_delete_condition_[cell_idx];
-    return ptr == nullptr ? std::numeric_limits<size_t>::max() :
-                            ptr->condition_marker_hash();
+    return ptr == nullptr ? std::numeric_limits<uint64_t>::max() :
+                            ptr->condition_index();
   }
 
  private:

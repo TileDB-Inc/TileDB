@@ -260,8 +260,8 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
     return constants::timestamp_size;
   }
 
-  if (name == constants::delete_condition_marker_hash) {
-    return sizeof(size_t);
+  if (name == constants::delete_condition_index) {
+    return sizeof(uint64_t);
   }
 
   // Attribute
@@ -626,8 +626,8 @@ Datatype ArraySchema::type(const std::string& name) const {
     return constants::timestamp_type;
   }
 
-  if (name == constants::delete_condition_marker_hash) {
-    return constants::delete_condition_marker_hash_type;
+  if (name == constants::delete_condition_index) {
+    return constants::delete_condition_index_type;
   }
 
   // Attribute

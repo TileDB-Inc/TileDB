@@ -1342,8 +1342,8 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
     return {Status::Ok(), "dt"};
   }
 
-  if (name == constants::delete_condition_marker_hash) {
-    return {Status::Ok(), "dcmh"};
+  if (name == constants::delete_condition_index) {
+    return {Status::Ok(), "dci"};
   }
 
   auto err = "Unable to locate dimension/attribute " + name;
@@ -1922,16 +1922,26 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::get_null_count(
 
 void FragmentMetadata::set_processed_conditions(
     std::vector<std::string>& processed_conditions) {
-  processed_conditions_ = std::unordered_set<std::string>(
+  processed_conditions_ = processed_conditions;
+  processed_conditions_set_ = std::unordered_set<std::string>(
       processed_conditions.begin(), processed_conditions.end());
 }
 
-std::unordered_set<std::string>& FragmentMetadata::get_processed_conditions() {
+std::vector<std::string>& FragmentMetadata::get_processed_conditions() {
   if (!loaded_metadata_.processed_conditions_) {
     throw std::logic_error("Trying to access metadata that's not present");
   }
 
   return processed_conditions_;
+}
+
+std::unordered_set<std::string>&
+FragmentMetadata::get_processed_conditions_set() {
+  if (!loaded_metadata_.processed_conditions_) {
+    throw std::logic_error("Trying to access metadata that's not present");
+  }
+
+  return processed_conditions_set_;
 }
 
 uint64_t FragmentMetadata::first_timestamp() const {
@@ -3512,6 +3522,7 @@ Status FragmentMetadata::load_processed_conditions(ConstBuffer* buff) {
                                      " num processed conditions failed"));
   }
 
+  processed_conditions_.reserve(num);
   for (uint64_t i = 0; i < num; i++) {
     uint64_t size;
     st = buff->read(&size, sizeof(uint64_t));
@@ -3530,8 +3541,11 @@ Status FragmentMetadata::load_processed_conditions(ConstBuffer* buff) {
                                        " processed conditions failed"));
     }
 
-    processed_conditions_.emplace(condition);
+    processed_conditions_.emplace_back(condition);
   }
+
+  processed_conditions_set_ = std::unordered_set<std::string>(
+      processed_conditions_.begin(), processed_conditions_.end());
 
   return Status::Ok();
 }
@@ -5209,7 +5223,7 @@ void FragmentMetadata::build_idx_map() {
   }
   if (has_delete_meta_) {
     idx_map_[constants::delete_timestamps] = idx++;
-    idx_map_[constants::delete_condition_marker_hash] = idx++;
+    idx_map_[constants::delete_condition_index] = idx++;
   }
 }
 

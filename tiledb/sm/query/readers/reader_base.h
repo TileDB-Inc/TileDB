@@ -286,7 +286,7 @@ class ReaderBase : public StrategyBase {
   inline bool delete_meta_not_present(
       const std::string& name, const unsigned f) const {
     return (name == constants::delete_timestamps ||
-            name == constants::delete_condition_marker_hash) &&
+            name == constants::delete_condition_index) &&
            !fragment_metadata_[f]->has_delete_meta();
   }
 

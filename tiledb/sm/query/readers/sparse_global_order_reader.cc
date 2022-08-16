@@ -1363,6 +1363,13 @@ Status SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
     QueryBuffer& query_buffer) {
   auto timer_se = stats_->start_timer("copy_delete_meta_tiles");
 
+  // Make a map to quickly find the condition index from a marker.
+  std::unordered_map<std::string, uint64_t> condition_marker_to_index_map;
+  for (auto& condition : delete_conditions_) {
+    condition_marker_to_index_map.emplace(
+        condition.condition_marker(), condition.condition_index());
+  }
+
   // Process all tiles/cells in parallel.
   auto status = parallel_for_2d(
       storage_manager_->compute_tp(),
@@ -1393,7 +1400,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
             static_cast<uint64_t*>(
                 buffers_[constants::delete_timestamps].buffer_) +
             dest_cell_offset;
-        auto buffer_condition_marker_hashes =
+        auto buffer_condition_indexes =
             static_cast<size_t*>(query_buffer.buffer_) + dest_cell_offset;
 
         if (fragment_metadata_[rt->frag_idx()]->has_delete_meta()) {
@@ -1407,33 +1414,40 @@ Status SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
           const auto t_delete_ts = &tile_tuple_delete_ts->fixed_tile();
           auto src_buff_delete_ts =
               t_delete_ts->template data_as<uint64_t>() + min_pos;
-          const auto tile_tuple_condition_marker_hashes =
-              rt->tile_tuple(constants::delete_condition_marker_hash);
-          const auto t_condition_marker_hashes =
-              &tile_tuple_condition_marker_hashes->fixed_tile();
-          auto src_buff_condition_marker_hashes =
-              t_condition_marker_hashes->template data_as<uint64_t>() + min_pos;
+          const auto tile_tuple_condition_indexes =
+              rt->tile_tuple(constants::delete_condition_index);
+          const auto t_condition_indexes =
+              &tile_tuple_condition_indexes->fixed_tile();
+          auto src_buff_condition_indexes =
+              t_condition_indexes->template data_as<uint64_t>() + min_pos;
 
           // For all cells, take either the time coming in from the existing
           // metadata or the one computed with the delete conditions not
           // already processed for this fragment, whichever comes first.
           for (uint64_t c = min_pos; c < max_pos; c++) {
             const auto delete_condition_ts = rt->delete_timestamp(c);
-            const auto delete_condition_marker_hash = rt->delete_hash(c);
+            const auto delete_condition_index = rt->delete_condition_index(c);
             if (delete_condition_ts >= *src_buff_delete_ts) {
               *buffer_delete_ts = *src_buff_delete_ts;
-              *buffer_condition_marker_hashes =
-                  *src_buff_condition_marker_hashes;
+
+              // Convert the source condition index to this fragment's
+              // processed condition index.
+              auto& condition_marker =
+                  fragment_metadata_[rt->frag_idx()]
+                      ->get_processed_conditions()[*src_buff_condition_indexes];
+              uint64_t converted_index =
+                  condition_marker_to_index_map[condition_marker];
+              *buffer_condition_indexes = converted_index;
             } else {
               *buffer_delete_ts = delete_condition_ts;
-              *buffer_condition_marker_hashes = delete_condition_marker_hash;
+              *buffer_condition_indexes = delete_condition_index;
             }
 
             // Move the source/destination pointers to the next cell.
             buffer_delete_ts++;
             src_buff_delete_ts++;
-            buffer_condition_marker_hashes++;
-            src_buff_condition_marker_hashes++;
+            buffer_condition_indexes++;
+            src_buff_condition_indexes++;
           }
         } else {
           // No delete metadata, just that the computed value.
@@ -1442,8 +1456,8 @@ Status SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
           for (uint64_t c = min_pos; c < max_pos; c++) {
             *buffer_delete_ts = rt->delete_timestamp(c);
             buffer_delete_ts++;
-            *buffer_condition_marker_hashes = rt->delete_hash(c);
-            buffer_condition_marker_hashes++;
+            *buffer_condition_indexes = rt->delete_condition_index(c);
+            buffer_condition_indexes++;
           }
         }
 
@@ -1498,7 +1512,7 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
 
             // Skip for delete condition name if the fragment doesn't have
             // delete metadata.
-            if (name == constants::delete_condition_marker_hash &&
+            if (name == constants::delete_condition_index &&
                 !fragment_metadata_[f]->has_delete_meta()) {
               continue;
             }
@@ -1690,7 +1704,7 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
       auto& query_buffer = buffers_[name];
 
       // Delete timestamps will be processed at the same time as the delete
-      // condition marker hashes.
+      // condition indexes.
       if (name == constants::delete_timestamps) {
         continue;
       }
@@ -1716,7 +1730,7 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
       if (name == constants::timestamps) {
         RETURN_NOT_OK(copy_timestamps_tiles(
             num_range_threads, result_cell_slabs, cell_offsets, query_buffer));
-      } else if (name == constants::delete_condition_marker_hash) {
+      } else if (name == constants::delete_condition_index) {
         // Copy fixed size data.
         RETURN_NOT_OK(copy_delete_meta_tiles(
             num_range_threads, result_cell_slabs, cell_offsets, query_buffer));
@@ -1778,8 +1792,8 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
       }
 
       // For delete timestamps, since they get processed at the same time as
-      // the delete condition marker hashes, we need to adjust the buffer size.
-      if (name == constants::delete_condition_marker_hash) {
+      // the delete condition indexes, we need to adjust the buffer size.
+      if (name == constants::delete_condition_index) {
         *buffers_[constants::delete_timestamps].buffer_size_ =
             total_cells * constants::timestamp_size;
       }

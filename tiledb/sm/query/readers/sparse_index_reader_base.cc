@@ -644,7 +644,7 @@ Status SparseIndexReaderBase::apply_query_condition(
 
             for (uint64_t i = 0; i < delete_conditions_.size(); i++) {
               if (!frag_meta->has_delete_meta() ||
-                  frag_meta->get_processed_conditions().count(
+                  frag_meta->get_processed_conditions_set().count(
                       delete_conditions_[i].condition_marker()) == 0) {
                 auto delete_timestamp =
                     delete_conditions_[i].condition_timestamp();
