@@ -111,10 +111,18 @@ struct FloatScalingFilterTestStruct {
     schema.add_attribute(a);
     Array::create(array_name, schema);
 
+    // When choosing the range for our input data, we want it to account for
+    // both the type restraints and choose numbers that are within the original
+    // byte width.
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<T> dis(
-        std::numeric_limits<W>::min(), std::numeric_limits<W>::max());
+    T dis_min = std::max(
+        std::numeric_limits<T>::min(),
+        static_cast<T>(std::numeric_limits<W>::min()));
+    T dis_max = std::min(
+        std::numeric_limits<T>::max(),
+        static_cast<T>(std::numeric_limits<W>::max()));
+    std::uniform_real_distribution<T> dis(dis_min, dis_max);
 
     std::vector<int> row_dims;
     std::vector<int> col_dims;
