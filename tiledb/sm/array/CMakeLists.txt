@@ -38,6 +38,7 @@ target_link_libraries(array PUBLIC uuid $<TARGET_OBJECTS:uuid>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_array EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_array)
 target_link_libraries(compile_array PRIVATE config)
 target_sources(compile_array PRIVATE test/compile_array_directory_main.cc)
 

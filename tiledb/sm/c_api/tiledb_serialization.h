@@ -154,6 +154,50 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_schema(
     tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 /**
+ * Serializes the given array open information into the given buffer.
+ *
+ * @note The caller must free the returned `tiledb_buffer_t`.
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to get the information to serialize from.
+ * @param serialization_type Type of serialization to use.
+ * @param client_side Allows to specify different behavior depending on who is
+ * serializing, the client (1) or the Cloud server (0). This is sometimes needed
+ * since they are both using the same Core library APIs for serialization.
+ * @param tiledb_buffer_t Will be set to a newly allocated buffer containing
+ *    the serialized array open information.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_serialize_array_open(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer_list) TILEDB_NOEXCEPT;
+
+/**
+ * Deserializes into an existing array from the given buffer.
+ *
+ * @note The deserialization is zero-copy, so the source buffer must exceed
+ * the lifetime of the array being deserialized to.
+ *
+ * @param ctx The TileDB context.
+ * @param buffer Buffer to deserialize from.
+ * @param serialization_type Type of deserialization to use.
+ * @param client_side Allows to specify different behavior depending on who is
+ * serializing, the client (1) or the Cloud server (0). This is sometimes needed
+ * since they are both using the same Core library APIs for serialization.
+ * @param array The array object to deserialize into (must be pre-allocated).
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_deserialize_array_open(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_array_t** array) TILEDB_NOEXCEPT;
+
+/**
  * Serializes the given array schema evolution.
  *
  * @note The caller must free the returned `tiledb_buffer_t`.

@@ -41,6 +41,7 @@ target_link_libraries(thread_pool PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_thread_pool EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_thread_pool)
 target_link_libraries(compile_thread_pool PRIVATE thread_pool)
 target_sources(compile_thread_pool PRIVATE test/compile_thread_pool_main.cc)
 

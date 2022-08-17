@@ -104,13 +104,12 @@ class FilterPipeline {
   /**
    * Populates the filter pipeline from the data in the input binary buffer.
    *
-   * @param buff The buffer to deserialize from.
+   * @param deserializer The deserializer to deserialize from.
    * @param version Array schema version
    * @return FilterPipeline
-   *
-   * @pre version has been validated by ArraySchema::deserialize
    */
-  static FilterPipeline deserialize(ConstBuffer* buff, const uint32_t version);
+  static FilterPipeline deserialize(
+      Deserializer& deserializer, const uint32_t version);
 
   /**
    * Dumps the filter pipeline details in ASCII format in the selected
@@ -279,10 +278,10 @@ class FilterPipeline {
   /**
    * Serializes the pipeline metadata into a binary buffer.
    *
-   * @param buff The buffer to serialize the data into.
+   * @param serializer The object the filter pipeline is serialized into.
    * @return Status
    */
-  Status serialize(Buffer* buff) const;
+  void serialize(Serializer& serializer) const;
 
   /** Sets the maximum tile chunk size. */
   void set_max_chunk_size(uint32_t max_chunk_size);

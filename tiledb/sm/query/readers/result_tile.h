@@ -45,6 +45,7 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/tile/tile.h"
 
@@ -60,6 +61,7 @@ namespace sm {
 
 class Domain;
 class FragmentMetadata;
+class QueryCondition;
 class Subarray;
 
 /**
@@ -768,9 +770,10 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
       unsigned frag_idx,
       uint64_t tile_idx,
       bool dups,
+      bool include_delete_meta,
       const FragmentMetadata& frag_md)
       : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md)
-      , dups_(dups)
+      , use_extra_bitmap_(!dups || include_delete_meta)
       , used_(false) {
   }
 
@@ -798,9 +801,10 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   void swap(GlobalOrderResultTile& tile) {
     ResultTileWithBitmap<uint8_t>::swap(tile);
     std::swap(used_, tile.used_);
-    std::swap(dups_, tile.dups_);
+    std::swap(use_extra_bitmap_, tile.use_extra_bitmap_);
     std::swap(hilbert_values_, tile.hilbert_values_);
     std::swap(extra_bitmap_, tile.extra_bitmap_);
+    std::swap(per_cell_delete_condition_, tile.per_cell_delete_condition_);
   }
 
   /** Returns if the tile was used by the merge or not. */
@@ -829,7 +833,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
    * it will only contain the query condition results.
    */
   void ensure_bitmap_for_query_condition() {
-    if (!dups_) {
+    if (use_extra_bitmap_) {
       if (ResultTileWithBitmap<BitmapType>::has_bmp()) {
         extra_bitmap_ = ResultTileWithBitmap<BitmapType>::bitmap_;
       } else {
@@ -887,6 +891,47 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
     return ret;
   }
 
+  /** Allocate space for the delete condition index vector. */
+  inline void allocate_per_cell_delete_condition_vector() {
+    per_cell_delete_condition_.resize(ResultTile::cell_num(), nullptr);
+  }
+
+  /** Compute the delete condition index. */
+  inline void compute_per_cell_delete_condition(QueryCondition* ptr) {
+    // Go through all cells, if the delete condition cleared the cell, and the
+    // index for this cell is still unset, set it to the current condition.
+    for (uint64_t c = 0; c < ResultTileWithBitmap<BitmapType>::cell_num_; c++) {
+      if (extra_bitmap_[c] == 0 && per_cell_delete_condition_[c] == nullptr) {
+        per_cell_delete_condition_[c] = ptr;
+      }
+    }
+
+    // Reset the bitmap to be ready for the next condition.
+    std::fill(extra_bitmap_.begin(), extra_bitmap_.end(), 1);
+  }
+
+  /**
+   * Returns the delete timestamp for the cell at `cell_idx`. If there was not
+   * any delete condition that deleted this cell, the timestamp is going to be
+   * uint64_t max.
+   */
+  inline uint64_t delete_timestamp(uint64_t cell_idx) {
+    auto ptr = per_cell_delete_condition_[cell_idx];
+    return ptr == nullptr ? std::numeric_limits<uint64_t>::max() :
+                            ptr->condition_timestamp();
+  }
+
+  /**
+   * Returns the delete condition index for the cell at `cell_idx`. If there
+   * was not any delete condition that deleted this cell, the value is going
+   * to be uint64_t max.
+   */
+  inline size_t delete_condition_index(uint64_t cell_idx) {
+    auto ptr = per_cell_delete_condition_[cell_idx];
+    return ptr == nullptr ? std::numeric_limits<uint64_t>::max() :
+                            ptr->condition_index();
+  }
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
@@ -903,8 +948,14 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
    */
   std::vector<BitmapType> extra_bitmap_;
 
-  /** Are duplicates allowed. */
-  bool dups_;
+  /**
+   * Delete condition index that deleted a cell. Used for consolidation with
+   * delete metadata.
+   */
+  std::vector<QueryCondition*> per_cell_delete_condition_;
+
+  /** Use the extra bitmap or not. */
+  bool use_extra_bitmap_;
 
   /** Was the tile used in the merge. */
   bool used_;
@@ -971,6 +1022,14 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
    */
   inline std::vector<BitmapType>& bitmap_with_qc() {
     return ResultTileWithBitmap<BitmapType>::bitmap_;
+  }
+
+  /** Not used for this result tile type. */
+  inline void allocate_per_cell_delete_condition_vector() {
+  }
+
+  /** Not used for this result tile type. */
+  inline void compute_per_cell_delete_condition(QueryCondition*) {
   }
 };
 

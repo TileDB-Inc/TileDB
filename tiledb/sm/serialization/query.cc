@@ -60,6 +60,7 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
+#include "tiledb/sm/query/deletes_and_updates/deletes.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
@@ -1100,6 +1101,50 @@ Status dense_reader_from_capnp(
   return Status::Ok();
 }
 
+Status delete_from_capnp(
+    const capnp::Delete::Reader& delete_reader,
+    Query* query,
+    Deletes* delete_strategy) {
+  // Query condition
+  if (delete_reader.hasCondition()) {
+    auto condition_reader = delete_reader.getCondition();
+    QueryCondition condition;
+    RETURN_NOT_OK(condition_from_capnp(condition_reader, &condition));
+    RETURN_NOT_OK(query->set_condition(condition));
+  }
+
+  // If cap'n proto object has stats set it on c++ object
+  if (delete_reader.hasStats()) {
+    stats::Stats* stats = delete_strategy->stats();
+    // We should always have a stats here
+    if (stats != nullptr) {
+      RETURN_NOT_OK(stats_from_capnp(delete_reader.getStats(), stats));
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status delete_to_capnp(
+    const Query& query,
+    Deletes& delete_strategy,
+    capnp::Delete::Builder* delete_builder) {
+  const QueryCondition* condition = query.condition();
+  if (!condition->empty()) {
+    auto condition_builder = delete_builder->initCondition();
+    RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+  }
+
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = delete_strategy.stats();
+  if (stats != nullptr) {
+    auto stats_builder = delete_builder->initStats();
+    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+  }
+
+  return Status::Ok();
+}
+
 Status writer_to_capnp(
     const Query& query,
     WriterBase& writer,
@@ -1164,7 +1209,8 @@ Status query_to_capnp(
   auto array = query.array();
   auto query_type = query.type();
 
-  if (query_type != QueryType::READ && query_type != QueryType::WRITE) {
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
+      query_type != QueryType::DELETE) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; Unsupported query type."));
   }
@@ -1273,7 +1319,7 @@ Status query_to_capnp(
       auto reader = dynamic_cast<Reader*>(query.strategy());
       RETURN_NOT_OK(reader_to_capnp(query, *reader, &builder));
     }
-  } else {
+  } else if (type == QueryType::WRITE) {
     auto builder = query_builder->initWriter();
     auto writer = dynamic_cast<WriterBase*>(query.strategy(true));
 
@@ -1282,6 +1328,10 @@ Status query_to_capnp(
         writer->offsets_extra_element());
     query_builder->setVarOffsetsBitsize(writer->offsets_bitsize());
     RETURN_NOT_OK(writer_to_capnp(query, *writer, &builder));
+  } else {
+    auto builder = query_builder->initDelete();
+    auto delete_strategy = dynamic_cast<Deletes*>(query.strategy(true));
+    RETURN_NOT_OK(delete_to_capnp(query, *delete_strategy, &builder));
   }
 
   // Serialize Config
@@ -1326,7 +1376,8 @@ Status query_from_capnp(
         " but got serialized type for " + query_reader.getType().cStr()));
   }
 
-  if (query_type != QueryType::READ && query_type != QueryType::WRITE) {
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
+      query_type != QueryType::DELETE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; Unsupported query type."));
   }
@@ -1334,7 +1385,11 @@ Status query_from_capnp(
   // Deserialize layout.
   Layout layout = Layout::UNORDERED;
   RETURN_NOT_OK(layout_enum(query_reader.getLayout().cStr(), &layout));
-  RETURN_NOT_OK(query->reset_strategy_with_layout(layout));
+
+  // Make sure we have the right query strategy in place.
+  bool force_legacy_reader =
+      query_type == QueryType::READ && query_reader.hasReader();
+  RETURN_NOT_OK(query->reset_strategy_with_layout(layout, force_legacy_reader));
 
   // Deserialize array instance.
   RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
@@ -1390,7 +1445,7 @@ Status query_from_capnp(
     if (type == QueryType::READ && context == SerializationContext::SERVER) {
       const QueryBuffer& query_buffer = query->buffer(name);
       // We use the query_buffer directly in order to get the original buffer
-      // sizes This avoid a problem where an incomplete query will change the
+      // sizes. This avoid a problem where an incomplete query will change the
       // users buffer size to the smaller results and we end up not being able
       // to correctly calculate if the new results can fit into the users buffer
       if (var_size) {
@@ -1420,7 +1475,7 @@ Status query_from_capnp(
               query_buffer.original_validity_vector_size_;
         }
       }
-    } else {
+    } else if (query_type == QueryType::WRITE || type == QueryType::READ) {
       // For writes we need to use get_buffer and clientside
       if (var_size) {
         if (!nullable) {
@@ -1475,6 +1530,8 @@ Status query_from_capnp(
             existing_validity_buffer_size = *existing_validity_buffer_size_ptr;
         }
       }
+    } else {
+      // Delete queries have nothing to deserialize.
     }
 
     if (context == SerializationContext::CLIENT) {
@@ -1700,7 +1757,7 @@ Status query_from_capnp(
                 false));
           }
         }
-      } else {
+      } else if (query_type == QueryType::WRITE) {
         // On writes, just set buffer pointers wrapping the data in the message.
         if (var_size) {
           auto* offsets = reinterpret_cast<uint64_t*>(attribute_buffer_start);
@@ -1771,6 +1828,8 @@ Status query_from_capnp(
                 &attr_state->validity_len_size));
           }
         }
+      } else {
+        // Delete queries have no buffers to deserialize.
       }
     }
   }
@@ -1816,7 +1875,7 @@ Status query_from_capnp(
           dynamic_cast<Reader*>(query->strategy()),
           compute_tp));
     }
-  } else {
+  } else if (query_type == QueryType::WRITE) {
     auto writer_reader = query_reader.getWriter();
     auto writer = dynamic_cast<WriterBase*>(query->strategy());
 
@@ -1855,6 +1914,10 @@ Status query_from_capnp(
         RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
       }
     }
+  } else {
+    auto delete_reader = query_reader.getDelete();
+    auto delete_strategy = dynamic_cast<Deletes*>(query->strategy());
+    RETURN_NOT_OK(delete_from_capnp(delete_reader, query, delete_strategy));
   }
 
   // Deserialize status. This must come last because various setters above

@@ -1183,7 +1183,7 @@ Status FragmentMetadata::store_v15_or_higher(
       clean_up());
   offset += nbytes;
 
-  // Store fragment min, max, sum and null count
+  // Store processed condition
   gt_offsets_.processed_conditions_offsets_ = offset;
   RETURN_NOT_OK_ELSE(
       store_processed_conditions(encryption_key, &nbytes), clean_up());
@@ -1340,6 +1340,10 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
 
   if (name == constants::delete_timestamps) {
     return {Status::Ok(), "dt"};
+  }
+
+  if (name == constants::delete_condition_index) {
+    return {Status::Ok(), "dci"};
   }
 
   auto err = "Unable to locate dimension/attribute " + name;
@@ -1533,11 +1537,13 @@ Status FragmentMetadata::load_fragment_min_max_sum_null_count(
 
 Status FragmentMetadata::load_processed_conditions(
     const EncryptionKey& encryption_key) {
-  if (loaded_metadata_.processed_conditions_)
+  if (loaded_metadata_.processed_conditions_) {
     return Status::Ok();
+  }
 
-  if (version_ <= 14)
+  if (version_ <= 15) {
     return Status::Ok();
+  }
 
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -1914,12 +1920,28 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::get_null_count(
   return {Status::Ok(), fragment_null_counts_[idx]};
 }
 
-std::unordered_set<std::string>& FragmentMetadata::get_processed_conditions() {
+void FragmentMetadata::set_processed_conditions(
+    std::vector<std::string>& processed_conditions) {
+  processed_conditions_ = processed_conditions;
+  processed_conditions_set_ = std::unordered_set<std::string>(
+      processed_conditions.begin(), processed_conditions.end());
+}
+
+std::vector<std::string>& FragmentMetadata::get_processed_conditions() {
   if (!loaded_metadata_.processed_conditions_) {
     throw std::logic_error("Trying to access metadata that's not present");
   }
 
   return processed_conditions_;
+}
+
+std::unordered_set<std::string>&
+FragmentMetadata::get_processed_conditions_set() {
+  if (!loaded_metadata_.processed_conditions_) {
+    throw std::logic_error("Trying to access metadata that's not present");
+  }
+
+  return processed_conditions_set_;
 }
 
 uint64_t FragmentMetadata::first_timestamp() const {
@@ -3500,6 +3522,7 @@ Status FragmentMetadata::load_processed_conditions(ConstBuffer* buff) {
                                      " num processed conditions failed"));
   }
 
+  processed_conditions_.reserve(num);
   for (uint64_t i = 0; i < num; i++) {
     uint64_t size;
     st = buff->read(&size, sizeof(uint64_t));
@@ -3518,8 +3541,11 @@ Status FragmentMetadata::load_processed_conditions(ConstBuffer* buff) {
                                        " processed conditions failed"));
     }
 
-    processed_conditions_.emplace(condition);
+    processed_conditions_.emplace_back(condition);
   }
+
+  processed_conditions_set_ = std::unordered_set<std::string>(
+      processed_conditions_.begin(), processed_conditions_.end());
 
   return Status::Ok();
 }
@@ -3548,8 +3574,10 @@ Status FragmentMetadata::load_generic_tile_offsets(ConstBuffer* buff) {
     return load_generic_tile_offsets_v7_v10(buff);
   } else if (version_ == 11) {
     return load_generic_tile_offsets_v11(buff);
+  } else if (version_ >= 12 && version_ < 16) {
+    return load_generic_tile_offsets_v12_v15(buff);
   } else {
-    return load_generic_tile_offsets_v12_or_higher(buff);
+    return load_generic_tile_offsets_v16_or_higher(buff);
   }
 
   assert(false);
@@ -3710,7 +3738,73 @@ Status FragmentMetadata::load_generic_tile_offsets_v11(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_generic_tile_offsets_v12_or_higher(
+Status FragmentMetadata::load_generic_tile_offsets_v12_v15(ConstBuffer* buff) {
+  // Load R-Tree offset
+  RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
+
+  // Load offsets for tile offsets
+  auto num = num_dims_and_attrs();
+  gt_offsets_.tile_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile var offsets
+  gt_offsets_.tile_var_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_var_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile var sizes
+  gt_offsets_.tile_var_sizes_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile validity offsets
+  gt_offsets_.tile_validity_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_validity_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile min offsets
+  gt_offsets_.tile_min_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_min_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile max offsets
+  gt_offsets_.tile_max_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_max_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile sum offsets
+  gt_offsets_.tile_sum_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_sum_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile null count offsets
+  gt_offsets_.tile_null_count_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_null_count_offsets_[i], sizeof(uint64_t)));
+  }
+
+  RETURN_NOT_OK(buff->read(
+      &gt_offsets_.fragment_min_max_sum_null_count_offset_, sizeof(uint64_t)));
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_generic_tile_offsets_v16_or_higher(
     ConstBuffer* buff) {
   // Load R-Tree offset
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
@@ -3773,6 +3867,9 @@ Status FragmentMetadata::load_generic_tile_offsets_v12_or_higher(
 
   RETURN_NOT_OK(buff->read(
       &gt_offsets_.fragment_min_max_sum_null_count_offset_, sizeof(uint64_t)));
+
+  RETURN_NOT_OK(
+      buff->read(&gt_offsets_.processed_conditions_offsets_, sizeof(uint64_t)));
 
   return Status::Ok();
 }
@@ -4118,6 +4215,16 @@ Status FragmentMetadata::write_generic_tile_offsets(Buffer* buff) const {
       return LOG_STATUS(Status_FragmentMetadataError(
           "Cannot serialize fragment metadata; Writing fragment min max sum "
           "null counts failed"));
+    }
+  }
+
+  if (version_ >= 16) {
+    st = buff->write(
+        &gt_offsets_.processed_conditions_offsets_, sizeof(uint64_t));
+    if (!st.ok()) {
+      return LOG_STATUS(Status_FragmentMetadataError(
+          "Cannot serialize fragment metadata; Writing processed conditions"
+          "failed"));
     }
   }
 
@@ -5116,7 +5223,7 @@ void FragmentMetadata::build_idx_map() {
   }
   if (has_delete_meta_) {
     idx_map_[constants::delete_timestamps] = idx++;
-    idx_map_[constants::delete_condition_names] = idx++;
+    idx_map_[constants::delete_condition_index] = idx++;
   }
 }
 

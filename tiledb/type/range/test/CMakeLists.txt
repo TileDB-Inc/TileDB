@@ -28,6 +28,7 @@ find_package(Catch_EP REQUIRED)
 
 add_executable(unit_range EXCLUDE_FROM_ALL
   main.cc
+  unit_range.cc
   unit_check_range_is_subset.cc
   unit_check_range_is_valid.cc
   unit_crop_range.cc

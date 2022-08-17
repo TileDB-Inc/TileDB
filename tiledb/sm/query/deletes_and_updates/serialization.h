@@ -52,6 +52,7 @@ std::vector<uint8_t> serialize_condition(const QueryCondition& query_condition);
 /**
  * Deserializes the condition.
  *
+ * @param condition_index Index for this condition.
  * @param condition_marker Marker used to know which file the condition came
  * from.
  * @param buff Pointer to the serialized data.
@@ -59,6 +60,7 @@ std::vector<uint8_t> serialize_condition(const QueryCondition& query_condition);
  * @return Deserialized query condition.
  */
 QueryCondition deserialize_condition(
+    const uint64_t condition_index,
     const std::string& condition_marker,
     const void* buff,
     const storage_size_t size);

@@ -34,11 +34,13 @@ target_link_libraries(range_subset PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(range_subset PUBLIC constants $<TARGET_OBJECTS:constants>)
 target_link_libraries(range_subset PUBLIC thread_pool $<TARGET_OBJECTS:thread_pool>)
 target_link_libraries(range_subset PUBLIC range $<TARGET_OBJECTS:range>)
+target_link_libraries(range_subset PUBLIC range $<TARGET_OBJECTS:buffer>)
 
 #
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_range_subset EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_range_subset)
 target_link_libraries(compile_range_subset PRIVATE range_subset)
 target_sources(compile_range_subset PRIVATE test/compile_range_subset_main.cc)
 

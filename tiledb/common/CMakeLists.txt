@@ -66,6 +66,7 @@ target_link_libraries(baseline PUBLIC common)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_baseline EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_baseline)
 target_link_libraries(compile_baseline PRIVATE baseline)
 target_sources(compile_baseline PRIVATE
     test/compile_baseline_main.cc $<TARGET_OBJECTS:baseline>
@@ -81,6 +82,7 @@ add_library(stringx OBJECT
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_stringx EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_stringx)
 target_link_libraries(compile_stringx PRIVATE stringx)
 target_sources(compile_stringx PRIVATE
     test/compile_stringx_main.cc $<TARGET_OBJECTS:stringx>

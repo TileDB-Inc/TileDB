@@ -134,7 +134,8 @@ TEST_CASE(
   std::string array_uri(arrays_dir + "/dense_array_v1_3_0");
   REQUIRE_THROWS_WITH(
       Array(ctx, array_uri, TILEDB_READ),
-      Catch::Contains("Failed to load maximum tile chunk size"));
+      "[TileDB::Array] Error: [TileDB::StorageManager] Error: Reading data "
+      "past end of serialized data size.");
 }
 
 template <typename T>

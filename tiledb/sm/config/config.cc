@@ -64,6 +64,7 @@ const std::string Config::REST_RETRY_HTTP_CODES = "503";
 const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
+const std::string Config::REST_CURL_BUFFER_SIZE = "524288";
 const std::string Config::REST_CURL_VERBOSE = "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
@@ -128,6 +129,7 @@ const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MAX_BATCH_SIZE = std::to_string(UINT64_MAX);
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
 const std::string Config::VFS_MIN_BATCH_SIZE = "20971520";
+const std::string Config::VFS_DISABLE_BATCHING = "false";
 const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
 const std::string Config::VFS_FILE_MAX_PARALLEL_OPS =
@@ -225,6 +227,7 @@ Config::Config() {
   param_values_["rest.retry_count"] = REST_RETRY_COUNT;
   param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
   param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
+  param_values_["rest.curl.buffer_size"] = REST_CURL_BUFFER_SIZE;
   param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
   param_values_["rest.load_metadata_on_array_open"] =
       REST_LOAD_METADATA_ON_ARRAY_OPEN;
@@ -303,6 +306,7 @@ Config::Config() {
   param_values_["vfs.max_batch_size"] = VFS_MAX_BATCH_SIZE;
   param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
   param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
+  param_values_["vfs.disable_batching"] = VFS_DISABLE_BATCHING;
   param_values_["vfs.read_ahead_size"] = VFS_READ_AHEAD_SIZE;
   param_values_["vfs.read_ahead_cache_size"] = VFS_READ_AHEAD_CACHE_SIZE;
   param_values_["vfs.file.posix_file_permissions"] =
@@ -526,6 +530,8 @@ Status Config::unset(const std::string& param) {
     param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
   } else if (param == "rest.retry_delay_factor") {
     param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
+  } else if (param == "rest.curl.buffer_size") {
+    param_values_["rest.curl.buffer_size"] = REST_CURL_BUFFER_SIZE;
   } else if (param == "rest.curl.verbose") {
     param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
   } else if (param == "rest.load_metadata_on_array_open") {
@@ -663,6 +669,8 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
   } else if (param == "vfs.min_batch_size") {
     param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
+  } else if (param == "vfs.disable_batching") {
+    param_values_["vfs.disable_batching"] = VFS_DISABLE_BATCHING;
   } else if (param == "vfs.read_ahead_size") {
     param_values_["vfs.read_ahead_size"] = VFS_READ_AHEAD_SIZE;
   } else if (param == "vfs.read_ahead_cache_size") {
@@ -886,6 +894,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_batch_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
+  } else if (param == "vfs.disable_batching") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.read_ahead_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.read_ahead_cache_size") {

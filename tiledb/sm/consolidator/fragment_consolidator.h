@@ -139,6 +139,10 @@ class FragmentConsolidator : public Consolidator {
      */
     bool with_timestamps_;
     /**
+     * Include delete metadata in the consolidated fragment or not.
+     */
+    bool with_delete_meta_;
+    /**
      * The factor by which the size of the dense fragment resulting
      * from consolidating a set of fragments (containing at least one
      * dense fragment) can be amplified. This is important when
