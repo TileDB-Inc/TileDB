@@ -88,7 +88,7 @@ class Metadata {
   /* ********************************* */
 
   /** Constructor. */
-  Metadata();
+  explicit Metadata();
 
   /** Constructor. */
   Metadata(const std::map<std::string, MetadataValue>& metadata_map);
@@ -117,10 +117,10 @@ class Metadata {
 
   /**
    * Deserializes the input metadata buffers. Note that the buffers are
-   * assummed to be sorted on time. The function will take care of any
+   * assumed to be sorted on time. The function will take care of any
    * deleted or overwritten metadata items considering the order.
    */
-  static tuple<Status, optional<shared_ptr<Metadata>>> deserialize(
+  static shared_ptr<Metadata> deserialize(
       const std::vector<shared_ptr<Buffer>>& metadata_buffs);
 
   /** Serializes all key-value metadata items into the input buffer. */
