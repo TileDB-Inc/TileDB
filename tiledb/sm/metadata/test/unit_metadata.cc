@@ -114,7 +114,7 @@ TEST_CASE(
 
   // Read key_1 metadata
   const int32_t* v_1;
-  meta->get("key1", &type, &v_num, (const void**)(&v_1));
+  meta.get("key1", &type, &v_num, (const void**)(&v_1));
   CHECK(type == Datatype::INT32);
   CHECK(v_num == (uint32_t)(value_1_vector.size()));
   CHECK(*(v_1) == 100);
@@ -122,14 +122,14 @@ TEST_CASE(
 
   // Read key_2 metadata
   const double* v_2;
-  meta->get("key2", &type, &v_num, (const void**)(&v_2));
+  meta.get("key2", &type, &v_num, (const void**)(&v_2));
   CHECK(type == Datatype::FLOAT64);
   CHECK(v_num == value_2_size);
   CHECK(*(v_2) == value_2);
 
   // Read key_3 metadata
   const char* v_3;
-  meta->get("key3", &type, &v_num, (const void**)(&v_3));
+  meta.get("key3", &type, &v_num, (const void**)(&v_3));
   CHECK(type == Datatype::STRING_ASCII);
   CHECK(v_num == value_3_size);
   CHECK(std::string(v_3, value_3_size) == value_3);

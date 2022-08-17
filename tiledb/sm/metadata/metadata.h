@@ -120,7 +120,7 @@ class Metadata {
    * assumed to be sorted on time. The function will take care of any
    * deleted or overwritten metadata items considering the order.
    */
-  static shared_ptr<Metadata> deserialize(
+  static Metadata deserialize(
       const std::vector<shared_ptr<Buffer>>& metadata_buffs);
 
   /** Serializes all key-value metadata items into the input buffer. */

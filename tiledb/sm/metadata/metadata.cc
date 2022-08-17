@@ -120,11 +120,11 @@ Status Metadata::generate_uri(const URI& array_uri) {
   return Status::Ok();
 }
 
-shared_ptr<Metadata> Metadata::deserialize(
+Metadata Metadata::deserialize(
     const std::vector<shared_ptr<Buffer>>& metadata_buffs) {
-  std::map<std::string, MetadataValue> metadata_map;
   if (metadata_buffs.empty())
-    return make_shared<Metadata>(HERE(), metadata_map);
+    return Metadata();
+  std::map<std::string, MetadataValue> metadata_map;
 
   Status st;
   uint32_t key_len;
@@ -154,7 +154,8 @@ shared_ptr<Metadata> Metadata::deserialize(
         value_len = value_struct.num_ *
                     datatype_size(static_cast<Datatype>(value_struct.type_));
         value_struct.value_.resize(value_len);
-        throw_if_not_ok(buff->read((void*)value_struct.value_.data(), value_len));
+        throw_if_not_ok(
+            buff->read((void*)value_struct.value_.data(), value_len));
       }
 
       // Insert to metadata
@@ -162,7 +163,7 @@ shared_ptr<Metadata> Metadata::deserialize(
     }
   }
 
-  return make_shared<Metadata>(HERE(), metadata_map);
+  return Metadata(metadata_map);
 }
 
 Status Metadata::serialize(Buffer* buff) const {
