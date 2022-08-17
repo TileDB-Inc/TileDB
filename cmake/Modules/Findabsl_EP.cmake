@@ -41,10 +41,13 @@ if(TILEDB_ABSL_EP_BUILT)
     HINTS
       ${TILEDB_EP_INSTALL_PREFIX}/lib/cmake
     ${TILEDB_DEPS_NO_DEFAULT_PATH})
+elseif (NOT TILEDB_FORCE_ALL_DEPS)
+  # seems no standard findabsl.cmake, so silence warnings with QUIET
+  find_package(absl QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
 # if not yet built add it as an external project
-if(NOT TILEDB_ABSL_EP_BUILT)
+if(NOT TILEDB_ABSL_EP_BUILT AND NOT absl_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding absl as an external project")
 
@@ -74,9 +77,6 @@ if(NOT TILEDB_ABSL_EP_BUILT)
              -DCMAKE_CXX_FLAGS=-fPIC
              -DCMAKE_C_FLAGS=-fPIC
              -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
-#        BUILD_COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
-        PATCH_COMMAND ${CMAKE_COMMAND} -P
-                      "${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_absl/abseil-patch.cmake"
         LOG_CONFIGURE OFF
         LOG_BUILD ON
         LOG_INSTALL ON
@@ -90,4 +90,19 @@ if(NOT TILEDB_ABSL_EP_BUILT)
   else()
     message(FATAL_ERROR "Unable to find absl")
   endif()
+endif()
+
+if(absl_FOUND)
+  # not currently trying to create all (55 at this time) targets, just attempt
+  # sanity check of their existence and warn/error if not found.
+  include(${CMAKE_SOURCE_DIR}/test/external/src/absl_library_targets.cmake)
+  foreach(tgt ${TILEDB_ABSL_LIBRARY_TARGETS})
+    if(NOT TARGET ${tgt})
+      if(TILEDB_ABSL_EP_BUILT)
+        message(FATAL_ERROR "built absl missing target ${tgt} from absl_library_targets.cmake (did absl changes occur?)")
+      else()
+        message(WARNING "absl missing expected target ${tgt} from absl_library_targets.cmake (different absl version?)")
+      endif()
+    endif()
+  endforeach()
 endif()

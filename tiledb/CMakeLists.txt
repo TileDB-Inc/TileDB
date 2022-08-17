@@ -619,10 +619,6 @@ endif()
 
 if(TILEDB_ABSEIL)
   find_package(absl_EP REQUIRED)
-  find_package(absl CONFIG REQUIRED
-    HINTS
-      ${TILEDB_EP_INSTALL_PREFIX}/lib/cmake
-    )
 
   include(${CMAKE_SOURCE_DIR}/test/external/src/absl_library_targets.cmake)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
