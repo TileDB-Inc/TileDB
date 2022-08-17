@@ -41,10 +41,13 @@ if(TILEDB_CRC32C_EP_BUILT)
     HINTS
       ${TILEDB_EP_INSTALL_PREFIX}/lib/cmake
     ${TILEDB_DEPS_NO_DEFAULT_PATH})
+elseif (NOT TILEDB_FORCE_ALL_DEPS)
+  # seems no standard findabsl.cmake, so silence warnings with QUIET
+  find_package(Crc32c QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
 # if not yet built add it as an external project
-if (NOT TILEDB_CRC32C_EP_BUILT)
+if (NOT TILEDB_CRC32C_EP_BUILT AND NOT Crc32c_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding crc32c as an external project")
 
@@ -82,7 +85,6 @@ if (NOT TILEDB_CRC32C_EP_BUILT)
     message(FATAL_ERROR "Unable to find crc32c")
   endif()
 endif ()
-
 
 if (Crc32c_FOUND AND NOT TARGET Crc32c::crc32c)
   message(STATUS "Found crc32c, adding imported target: ${Crc32c_LIBRARIES}")
