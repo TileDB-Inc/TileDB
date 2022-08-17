@@ -184,6 +184,11 @@ void ResultTile::init_attr_tile(
     return;
   }
 
+  if (name == constants::delete_condition_index) {
+    delete_condition_index_tile_ = TileTuple(false, false);
+    return;
+  }
+
   // Handle attributes
   for (auto& at : attr_tiles_) {
     if (at.first == name && at.second == nullopt) {
@@ -218,6 +223,11 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   if (delete_timestamps_tile_.has_value() &&
       name == constants::delete_timestamps) {
     return &delete_timestamps_tile_.value();
+  }
+
+  if (delete_condition_index_tile_.has_value() &&
+      name == constants::delete_condition_index) {
+    return &delete_condition_index_tile_.value();
   }
 
   // Handle attribute tile

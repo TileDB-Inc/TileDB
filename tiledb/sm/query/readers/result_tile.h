@@ -459,6 +459,9 @@ class ResultTile {
   /** The delete timestamp attribute tile. */
   optional<TileTuple> delete_timestamps_tile_;
 
+  /** The delete condition marker hash attribute tile. */
+  optional<TileTuple> delete_condition_index_tile_;
+
   /** The zipped coordinates tile. */
   optional<TileTuple> coords_tile_;
 
@@ -628,17 +631,6 @@ class ResultTileWithBitmap : public ResultTile {
    */
   inline uint64_t result_num() {
     return result_num_;
-  }
-
-  /**
-   * Clear a cell in the bitmap.
-   *
-   * @param cell_idx Cell index to clear.
-   */
-  void clear_cell(uint64_t cell_idx) {
-    assert(cell_idx < bitmap_.size());
-    result_num_ -= bitmap_[cell_idx];
-    bitmap_[cell_idx] = 0;
   }
 
   /**
@@ -854,6 +846,22 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   inline std::vector<BitmapType>& bitmap_with_qc() {
     return extra_bitmap_.size() > 0 ? extra_bitmap_ :
                                       ResultTileWithBitmap<BitmapType>::bitmap_;
+  }
+
+  /**
+   * Clear a cell in the bitmap.
+   *
+   * @param cell_idx Cell index to clear.
+   */
+  void clear_cell(uint64_t cell_idx) {
+    assert(cell_idx < ResultTileWithBitmap<BitmapType>::bitmap_.size());
+    ResultTileWithBitmap<BitmapType>::result_num_ -=
+        ResultTileWithBitmap<BitmapType>::bitmap_[cell_idx];
+    ResultTileWithBitmap<BitmapType>::bitmap_[cell_idx] = 0;
+
+    if (extra_bitmap_.size() > 0) {
+      extra_bitmap_[cell_idx] = 0;
+    }
   }
 
   /** Allocate space for the hilbert values vector. */

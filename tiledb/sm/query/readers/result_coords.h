@@ -148,9 +148,24 @@ struct GlobalOrderResultCoords
     : public ResultCoordsBase<GlobalOrderResultTile<BitmapType>> {
   using base = ResultCoordsBase<GlobalOrderResultTile<BitmapType>>;
 
+  /**
+   * Set to false when a duplicate was found in the cell following this cell
+   * in the same fragment and added to the tile queue.
+   */
+  bool has_next_;
+
   /** Constructor. */
   GlobalOrderResultCoords(GlobalOrderResultTile<BitmapType>* tile, uint64_t pos)
       : ResultCoordsBase<GlobalOrderResultTile<BitmapType>>(tile, pos)
+      , has_next_(true)
+      , init_(false) {
+  }
+
+  /** Constructor. */
+  GlobalOrderResultCoords(
+      GlobalOrderResultTile<BitmapType>* tile, uint64_t pos, bool has_next)
+      : ResultCoordsBase<GlobalOrderResultTile<BitmapType>>(tile, pos)
+      , has_next_(has_next)
       , init_(false) {
   }
 
@@ -173,6 +188,28 @@ struct GlobalOrderResultCoords
     }
 
     return false;
+  }
+
+  /** See if the next cell has the same coordinates. */
+  bool next_cell_same_coords() {
+    auto next_pos = base::pos_ + 1;
+    uint64_t cell_num = base::tile_->cell_num();
+    if (next_pos != cell_num) {
+      if (base::tile_->has_bmp()) {
+        while (next_pos < cell_num) {
+          if (base::tile_->bitmap()[next_pos]) {
+            break;
+          }
+          next_pos++;
+        }
+      }
+    }
+
+    if (next_pos == cell_num) {
+      return false;
+    }
+
+    return base::tile_->same_coords(*base::tile_, base::pos_, next_pos);
   }
 
   /**

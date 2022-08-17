@@ -259,24 +259,40 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const GlobalOrderResultCoords<BitmapType>& rc) const {
     return !all_tiles_loaded_[frag_idx] &&
            fragment_metadata_[frag_idx]->has_timestamps() &&
+           rc.tile_ == &result_tiles_[frag_idx].back() &&
            rc.tile_->tile_idx() == last_cells_[frag_idx].tile_idx_ &&
            rc.pos_ == last_cells_[frag_idx].cell_idx_;
   }
 
   /**
-   * Add a cell (for a specific fragment) to the queue of cells currently being
-   * processed.
+   * Add, for a fragment with timestamps, all duplicates of a certain cell.
    *
-   * @param dups Are we returning dups or not.
    * @param rc Current result coords for the fragment.
    * @param result_tiles_it Iterator, per frag, in the list of retult tiles.
    * @param tile_queue Queue of one result coords, per fragment, sorted.
    *
-   * @return Status, more_tiles.
+   * @return If more tiles are needed.
    */
   template <class CompType>
-  tuple<Status, optional<bool>> add_next_cell_to_queue(
-      bool dups,
+  bool add_all_dups_to_queue(
+      GlobalOrderResultCoords<BitmapType>& rc,
+      std::vector<TileListIt>& result_tiles_it,
+      TileMinHeap<CompType>& tile_queue);
+
+  /**
+   * Add a cell (for a specific fragment) to the queue of cells currently being
+   * processed.
+   *
+   * @param purge_deletes_no_dups_mode Are we in purge delete no dups mode.
+   * @param rc Current result coords for the fragment.
+   * @param result_tiles_it Iterator, per frag, in the list of retult tiles.
+   * @param tile_queue Queue of one result coords, per fragment, sorted.
+   *
+   * @return If more tiles are needed.
+   */
+  template <class CompType>
+  bool add_next_cell_to_queue(
+      const bool purge_deletes_no_dups_mode,
       GlobalOrderResultCoords<BitmapType>& rc,
       std::vector<TileListIt>& result_tiles_it,
       TileMinHeap<CompType>& tile_queue);
@@ -291,13 +307,13 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   Status compute_hilbert_values(std::vector<ResultTile*>& result_tiles);
 
   /**
-   * Get the timestamp value for a result coords.
+   * Update the fragment index to the larger between current one and the one
+   * passed in.
    *
-   * @param rc Result coords.
-   *
-   * @return timestamp.
+   * @param tile Current tile.
+   * @param c Current cell index.
    */
-  uint64_t get_timestamp(const GlobalOrderResultCoords<BitmapType>& rc) const;
+  void update_frag_idx(GlobalOrderResultTile<BitmapType>* tile, uint64_t c);
 
   /**
    * Compute the result cell slabs once tiles are loaded.

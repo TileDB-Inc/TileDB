@@ -640,7 +640,8 @@ TEST_CASE_METHOD(
     "across tiles",
     "[cppapi][consolidation-with-timestamps][global-read][across-tiles]") {
   remove_sparse_array();
-  create_sparse_array();
+  bool allow_dups = GENERATE(true, false);
+  create_sparse_array(allow_dups);
 
   // Write fragments.
   // We write 8 cells per fragments for 6 fragments. Then it gets consolidated
@@ -660,7 +661,7 @@ TEST_CASE_METHOD(
 
   // Test read for both refactored and legacy.
   bool legacy = GENERATE(true, false);
-  uint64_t buffer_size = 8;
+  uint64_t buffer_size = allow_dups ? 48 : 8;
   if (legacy) {
     set_legacy();
     buffer_size = 100;
@@ -675,9 +676,15 @@ TEST_CASE_METHOD(
   std::vector<int> c_a1 = {1, 2, 3, 4, 5, 6, 7, 8};
   std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2};
   std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4};
-  CHECK(!memcmp(c_a1.data(), a1.data(), c_a1.size() * sizeof(int)));
-  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
-  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+  for (uint64_t i = 0; i < 8; i++) {
+    uint64_t max_j = allow_dups ? 6 : 1;
+    for (uint64_t j = 0; j < max_j; j++) {
+      uint64_t idx = i * max_j + j;
+      CHECK(a1[idx] == c_a1[i]);
+      CHECK(dim1[idx] == c_dim1[i]);
+      CHECK(dim2[idx] == c_dim2[i]);
+    }
+  }
 
   remove_sparse_array();
 }
@@ -1669,7 +1676,7 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> c_dim2 = {
         1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 3, 4, 4};
     std::vector<uint64_t> c_ts = {
-        1, 1, 5, 3, 5, 1, 1, 3, 5, 3, 5, 7, 3, 7, 7, 7};
+        1, 1, 5, 3, 5, 1, 1, 3, 5, 3, 5, 7, 7, 3, 7, 7};
     CHECK(
         (!memcmp(c_a_1.data(), a.data(), c_a_1.size() * sizeof(int)) ||
          !memcmp(c_a_2.data(), a.data(), c_a_2.size() * sizeof(int))));

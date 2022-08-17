@@ -91,7 +91,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
     , buffers_full_(false)
-    , deletes_consolidation_(false) {
+    , deletes_consolidation_no_purge_(false) {
   read_state_.done_adding_result_tiles_ = false;
   disable_cache_ = true;
 }
@@ -163,7 +163,7 @@ void SparseIndexReaderBase::init(bool skip_checks_serialization) {
 bool SparseIndexReaderBase::has_post_deduplication_conditions(
     FragmentMetadata& frag_meta) {
   return frag_meta.has_delete_meta() || !condition_.empty() ||
-         (!delete_conditions_.empty() && !deletes_consolidation_);
+         (!delete_conditions_.empty() && !deletes_consolidation_no_purge_);
 }
 
 uint64_t SparseIndexReaderBase::cells_copied(
@@ -372,6 +372,11 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   // Load delete timestamps, always.
   attr_tile_offsets_to_load.emplace_back(constants::delete_timestamps);
 
+  // Load delete condition marker hashes for delete consolidation.
+  if (deletes_consolidation_no_purge_) {
+    attr_tile_offsets_to_load.emplace_back(constants::delete_condition_index);
+  }
+
   // Load tile offsets and var sizes for attributes.
   RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(subarray_, var_size_to_load));
   RETURN_CANCEL_OR_ERROR(
@@ -404,11 +409,16 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
 
   // Compute attributes to load.
   std::vector<std::string> attr_to_load;
-  attr_to_load.reserve(1 + use_timestamps_ + qc_loaded_attr_names_.size());
+  attr_to_load.reserve(
+      1 + deletes_consolidation_no_purge_ + use_timestamps_ +
+      qc_loaded_attr_names_.size());
   if (use_timestamps_) {
     attr_to_load.emplace_back(constants::timestamps);
   }
   attr_to_load.emplace_back(constants::delete_timestamps);
+  if (deletes_consolidation_no_purge_) {
+    attr_to_load.emplace_back(constants::delete_condition_index);
+  }
   std::copy(
       qc_loaded_attr_names_.begin(),
       qc_loaded_attr_names_.end(),
@@ -612,12 +622,13 @@ Status SparseIndexReaderBase::apply_query_condition(
 
           // Make sure we have a condition bitmap if needed.
           if (has_post_deduplication_conditions(*frag_meta) ||
-              deletes_consolidation_) {
+              deletes_consolidation_no_purge_) {
             rt->ensure_bitmap_for_query_condition();
           }
 
           // If the fragment has delete meta, process the delete timestamps.
-          if (frag_meta->has_delete_meta() && !deletes_consolidation_) {
+          if (frag_meta->has_delete_meta() &&
+              !deletes_consolidation_no_purge_) {
             // Remove cells deleted cells using the open timestamp.
             RETURN_NOT_OK(delete_timestamps_condition_.apply_sparse<BitmapType>(
                 *(frag_meta->array_schema().get()), *rt, rt->bitmap_with_qc()));
@@ -638,7 +649,7 @@ Status SparseIndexReaderBase::apply_query_condition(
             // Allocate delete condition idx vector if required. This vector
             // is used to store which delete condition deleted a particular
             // cell.
-            if (deletes_consolidation_) {
+            if (deletes_consolidation_no_purge_) {
               rt->allocate_per_cell_delete_condition_vector();
             }
 
@@ -668,7 +679,7 @@ Status SparseIndexReaderBase::apply_query_condition(
                                           rt->bitmap_with_qc()));
                   }
 
-                  if (deletes_consolidation_) {
+                  if (deletes_consolidation_no_purge_) {
                     // This is a post processing step during deletes
                     // consolidation to set the delete condition pointer to
                     // the current delete condition if the cells was cleared
