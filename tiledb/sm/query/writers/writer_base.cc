@@ -1036,10 +1036,7 @@ Status WriterBase::write_tiles(
 
   // Close files, except in the case of global order
   if (close_files && layout_ != Layout::GLOBAL_ORDER) {
-    // TODO: close files here if on the server side, maybe is_remote helps?
-    // TODO: Does it close the file during finalize for S3 array in multipart
-    // upload?
-    // TODO: double check tile alignment restriction is checked during submit?
+    // TODO: refactor, repeated closing sequence here
     auto&& [st1, uri] = frag_meta->uri(name);
     RETURN_NOT_OK(st1);
 

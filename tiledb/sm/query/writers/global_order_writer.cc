@@ -771,8 +771,6 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   }
 
   // First fill the last tile
-  // TODO: potential undefined behavior here as last_tiles_[name] can be an
-  // empty vector
   auto& last_tile = global_write_state_->last_tiles_[name][0];
   uint64_t cell_idx = 0;
   uint64_t last_tile_cell_idx =
