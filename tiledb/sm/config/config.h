@@ -581,7 +581,8 @@ class Config {
    * function and it thus the same as the non-template `get`.
    */
   template <>
-  [[nodiscard]] inline optional<std::string> get<std::string>(const std::string& key) const {
+  [[nodiscard]] inline optional<std::string> get<std::string>(
+      const std::string& key) const {
     return get(key);
   }
 
