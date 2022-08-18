@@ -33,9 +33,6 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
-# Search the path set during the superbuild for the EP.
-set(ABSL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
-
 if(TILEDB_ABSL_EP_BUILT)
   find_package(absl CONFIG REQUIRED
     HINTS
