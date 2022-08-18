@@ -274,6 +274,7 @@ void check_save_to_file() {
   ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
+  ss << "sm.query.dense.qc_coords_mode false\n";
   ss << "sm.query.dense.reader refactored\n";
   ss << "sm.query.sparse_global_order.reader refactored\n";
   ss << "sm.query.sparse_unordered_with_dups.reader refactored\n";
@@ -591,6 +592,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.skip_est_size_partitioning"] = "false";
   all_param_values["sm.memory_budget"] = "5368709120";
   all_param_values["sm.memory_budget_var"] = "10737418240";
+  all_param_values["sm.query.dense.qc_coords_mode"] = "false";
   all_param_values["sm.query.dense.reader"] = "refactored";
   all_param_values["sm.query.sparse_global_order.reader"] = "refactored";
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";

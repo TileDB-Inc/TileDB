@@ -386,6 +386,11 @@ class Config {
    *    The offsets format (`bytes` or `elements`) to be used for
    *    var-sized attributes.<br>
    *    **Default**: bytes
+   * - `sm.query.dense.qc_coords_mode` <br>
+   *    **Experimental** <br>
+   *    Reads only the coordinates of the dense query that matched the query
+   *    condition.<br>
+   *    **Default**: false
    * - `sm.query.dense.reader` <br>
    *    Which reader to use for dense queries. "refactored" or "legacy".<br>
    *    **Default**: refactored
