@@ -67,12 +67,13 @@ if(NOT TILEDB_ABSL_EP_BUILT AND NOT absl_FOUND)
              -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
              -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+             # TBD: may have to revisit this for building (tiledb) both shared/static...?
+             # latest gcssdk appears to have built abseil (win64) as shared, even
+             # tho gcssdk itself is apparently built as static...
              -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
              -DBUILD_TESTING=OFF
              -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
              -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
-             -DCMAKE_CXX_FLAGS=-fPIC
-             -DCMAKE_C_FLAGS=-fPIC
              -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
         LOG_CONFIGURE OFF
         LOG_BUILD ON
