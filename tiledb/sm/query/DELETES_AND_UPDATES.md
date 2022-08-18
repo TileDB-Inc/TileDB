@@ -1,0 +1,4 @@
+# Deletes
+
+Deletes are implemented as a query type, `TILEDB_QUERY_TYPE_DELETE`, which requires
+a QueryCondition to be set on the Query. Upon query submission, TileDB creates a [delete commit file](https://github.com/TileDB-Inc/TileDB/blob/dev/format_spec/delete_commit_file.md) containing a serialized version of the query condition. All attribute values matching the query condition expression are considered to be deleted as of the timestamp of the commit file. During reads, any delete commit files within the query range are loaded and deserialized, then the _negation_ of the stored query condition is applied to the final result.

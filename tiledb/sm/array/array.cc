@@ -109,6 +109,11 @@ shared_ptr<const ArraySchema> Array::array_schema_latest_ptr() const {
   return array_schema_latest_;
 }
 
+void Array::set_array_schemas_all(
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>& all_schemas) {
+  array_schemas_all_ = all_schemas;
+}
+
 const URI& Array::array_uri() const {
   return array_uri_;
 }
@@ -132,13 +137,15 @@ Status Array::open_without_fragments(
     uint32_t key_length) {
   Status st;
   // Checks
-  if (is_open())
+  if (is_open()) {
     return LOG_STATUS(Status_ArrayError(
         "Cannot open array without fragments; Array already open"));
-  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
+  }
+  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION) {
     return LOG_STATUS(
         Status_ArrayError("Cannot open array without fragments; encrypted "
                           "remote arrays are not supported."));
+  }
 
   metadata_.clear();
   metadata_loaded_ = false;
@@ -155,21 +162,31 @@ Status Array::open_without_fragments(
 
     // Copy the key bytes.
     st = encryption_key_->set_key(encryption_type, encryption_key, key_length);
-    if (!st.ok())
+    if (!st.ok()) {
       throw StatusException(st);
+    }
 
     if (remote_) {
       auto rest_client = storage_manager_->rest_client();
-      if (rest_client == nullptr)
+      if (rest_client == nullptr) {
         throw Status_ArrayError(
             "Cannot open array; remote array with no REST client.");
+      }
       /* #TODO Change get_array_schema_from_rest function signature to
         throw instead of return Status */
-      auto&& [st, array_schema_latest] =
-          rest_client->get_array_schema_from_rest(array_uri_);
-      if (!st.ok())
-        throw StatusException(st);
-      array_schema_latest_ = array_schema_latest.value();
+      if (!use_refactored_array_open()) {
+        auto&& [st, array_schema_latest] =
+            rest_client->get_array_schema_from_rest(array_uri_);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
+        array_schema_latest_ = array_schema_latest.value();
+      } else {
+        auto st = rest_client->post_array_from_rest(array_uri_, this);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
+      }
     } else {
       array_dir_ = ArrayDirectory(
           storage_manager_->vfs(),
@@ -205,6 +222,12 @@ Status Array::load_fragments(
   fragment_metadata_ = std::move(fragment_metadata.value());
 
   return Status::Ok();
+}
+
+void Array::set_delete_tiles_location(
+    const std::vector<ArrayDirectory::DeleteTileLocation>&
+        delete_tiles_location) {
+  array_dir_.set_delete_tiles_location(delete_tiles_location);
 }
 
 Status Array::open(
@@ -265,8 +288,9 @@ Status Array::open(
       encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
       assert(found);
       auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
-      if (!st.ok())
+      if (!st.ok()) {
         throw StatusException(st);
+      }
       encryption_type = et.value();
 
       if (EncryptionKey::is_valid_key_length(
@@ -284,14 +308,16 @@ Status Array::open(
       }
     }
 
-    if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
+    if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION) {
       throw Status_ArrayError(
           "Cannot open array; encrypted remote arrays are not supported.");
+    }
 
     // Copy the key bytes.
     st = encryption_key_->set_key(encryption_type, encryption_key, key_length);
-    if (!st.ok())
+    if (!st.ok()) {
       throw StatusException(st);
+    }
 
     if (timestamp_end_opened_at_ == UINT64_MAX) {
       if (query_type == QueryType::READ) {
@@ -306,14 +332,23 @@ Status Array::open(
 
     if (remote_) {
       auto rest_client = storage_manager_->rest_client();
-      if (rest_client == nullptr)
+      if (rest_client == nullptr) {
         throw Status_ArrayError(
             "Cannot open array; remote array with no REST client.");
-      auto&& [st, array_schema_latest] =
-          rest_client->get_array_schema_from_rest(array_uri_);
-      if (!st.ok())
-        throw StatusException(st);
-      array_schema_latest_ = array_schema_latest.value();
+      }
+      if (!use_refactored_array_open()) {
+        auto&& [st, array_schema_latest] =
+            rest_client->get_array_schema_from_rest(array_uri_);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
+        array_schema_latest_ = array_schema_latest.value();
+      } else {
+        auto st = rest_client->post_array_from_rest(array_uri_, this);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
+      }
     } else if (query_type == QueryType::READ) {
       array_dir_ = ArrayDirectory(
           storage_manager_->vfs(),
@@ -324,8 +359,9 @@ Status Array::open(
 
       auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
           storage_manager_->array_open_for_reads(this);
-      if (!st.ok())
+      if (!st.ok()) {
         throw StatusException(st);
+      }
       // Set schemas
       array_schema_latest_ = array_schema_latest.value();
       array_schemas_all_ = array_schemas.value();
@@ -341,8 +377,9 @@ Status Array::open(
 
       auto&& [st, array_schema_latest, array_schemas] =
           storage_manager_->array_open_for_writes(this);
-      if (!st.ok())
+      if (!st.ok()) {
         throw StatusException(st);
+      }
 
       // Set schemas
       array_schema_latest_ = array_schema_latest.value();
@@ -1162,6 +1199,52 @@ void Array::set_array_closed() {
   /* Note: the Sentry object will also be released upon Array destruction. */
   consistency_sentry_.reset();
   is_open_ = false;
+}
+
+bool Array::use_refactored_array_open() const {
+  auto found = false;
+  auto refactored_array_open = false;
+  auto status = config_.get<bool>(
+      "rest.use_refactored_array_open", &refactored_array_open, &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get use_refactored_array_open configuration option from "
+        "config");
+  }
+
+  return refactored_array_open;
+}
+
+bool Array::serialize_non_empty_domain() const {
+  auto found = false;
+  auto serialize_ned_array_open = false;
+  auto status = config_.get<bool>(
+      "rest.load_non_empty_domain_on_array_open",
+      &serialize_ned_array_open,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get rest.load_non_empty_domain_on_array_open configuration "
+        "option from config");
+  }
+
+  return serialize_ned_array_open;
+}
+
+bool Array::serialize_metadata() const {
+  auto found = false;
+  auto serialize_metadata_array_open = false;
+  auto status = config_.get<bool>(
+      "rest.load_metadata_on_array_open",
+      &serialize_metadata_array_open,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get rest.load_metadata_on_array_open configuration option from "
+        "config");
+  }
+
+  return serialize_metadata_array_open;
 }
 }  // namespace sm
 }  // namespace tiledb

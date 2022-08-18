@@ -1094,6 +1094,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.min_batch_gap` <br>
  *    The minimum number of bytes between two VFS read batches.<br>
  *    **Default**: 500KB
+ * - `vfs.disable_batching` <br>
+ *    **Experimental** <br>
+ *    Disables tile batching from VFS, making direct reads.<br>
+ *    **Default**: false
  * - `vfs.file.posix_file_permissions` <br>
  *    Permissions to use for posix file system with file creation.<br>
  *    **Default**: 644
@@ -1360,6 +1364,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    If true, the new, experimental REST routes and APIs for opening an array
  *    will be used <br>
  *    **Default**: false
+ * - `rest.curl.buffer_size` <br>
+ *    Set curl buffer size for REST requests <br>
+ *    **Default**: 524288 (512KB)
  * - `filestore.buffer_size` <br>
  *    Specifies the size in bytes of the internal buffers used in the filestore
  *    API. The size should be bigger than the minimum tile size filestore

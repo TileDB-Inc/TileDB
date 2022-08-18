@@ -68,7 +68,9 @@ namespace sm {
 /* ****************************** */
 
 Query::Query(
-    StorageManager* storage_manager, shared_ptr<Array> array, URI fragment_uri)
+    StorageManager* storage_manager,
+    shared_ptr<Array> array,
+    optional<std::string> fragment_name)
     : array_shared_(array)
     , array_(array_shared_.get())
     , array_schema_(array->array_schema_latest_ptr())
@@ -85,7 +87,8 @@ Query::Query(
     , offsets_buffer_name_("")
     , disable_checks_consolidation_(false)
     , consolidation_with_timestamps_(false)
-    , fragment_uri_(fragment_uri) {
+    , force_legacy_reader_(false)
+    , fragment_name_(fragment_name) {
   assert(array->is_open());
   auto st = array->get_query_type(&type_);
   assert(st.ok());
@@ -650,8 +653,9 @@ QueryBuffer Query::buffer(const std::string& name) const {
 }
 
 Status Query::finalize() {
-  if (status_ == QueryStatus::UNINITIALIZED)
+  if (status_ == QueryStatus::UNINITIALIZED) {
     return Status::Ok();
+  }
 
   if (array_->is_remote()) {
     auto rest_client = storage_manager_->rest_client();
@@ -1094,7 +1098,9 @@ IQueryStrategy* Query::strategy(bool skip_checks_serialization) {
   return strategy_.get();
 }
 
-Status Query::reset_strategy_with_layout(Layout layout) {
+Status Query::reset_strategy_with_layout(
+    Layout layout, bool force_legacy_reader) {
+  force_legacy_reader_ = force_legacy_reader;
   strategy_ = nullptr;
   layout_ = layout;
   subarray_.set_layout(layout);
@@ -1134,6 +1140,11 @@ Status Query::set_consolidation_with_timestamps() {
   return Status::Ok();
 }
 
+void Query::set_processed_conditions(
+    std::vector<std::string>& processed_conditions) {
+  processed_conditions_ = processed_conditions;
+}
+
 Status Query::check_buffer_names() {
   if (type_ == QueryType::WRITE) {
     // If the array is sparse, the coordinates must be provided
@@ -1152,6 +1163,10 @@ Status Query::check_buffer_names() {
     auto expected_num = array_schema_->attribute_num();
     expected_num += static_cast<decltype(expected_num)>(
         buffers_.count(constants::timestamps));
+    expected_num += static_cast<decltype(expected_num)>(
+        buffers_.count(constants::delete_timestamps));
+    expected_num += static_cast<decltype(expected_num)>(
+        buffers_.count(constants::delete_condition_index));
     expected_num += (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
                      coord_offsets_buffer_is_set_) ?
                         array_schema_->dim_num() :
@@ -1180,7 +1195,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           coords_info_,
-          fragment_uri_,
+          fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::UNORDERED) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
@@ -1195,7 +1210,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           coords_info_,
-          fragment_uri_,
+          fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::GLOBAL_ORDER) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
@@ -1210,8 +1225,9 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           disable_checks_consolidation_,
+          processed_conditions_,
           coords_info_,
-          fragment_uri_,
+          fragment_name_,
           skip_checks_serialization));
     } else {
       assert(false);
@@ -1339,7 +1355,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         buffers_,
         subarray_,
         layout_,
-        condition_));
+        condition_,
+        skip_checks_serialization));
   } else {
     return logger_->status(
         Status_QueryError("Cannot create strategy; unsupported query type"));
@@ -1508,8 +1525,7 @@ Status Query::set_data_buffer(
   const bool is_attr = array_schema_->is_attr(name);
 
   // Check that attribute/dimension exists
-  if (name != constants::coords && name != constants::timestamps &&
-      name != constants::delete_timestamps && !is_dim && !is_attr) {
+  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));
@@ -2244,6 +2260,12 @@ bool Query::use_refactored_dense_reader(
     const ArraySchema& array_schema, bool all_dense) {
   bool use_refactored_reader = false;
   bool found = false;
+
+  // If the query comes from a client using the legacy reader.
+  if (force_legacy_reader_) {
+    return false;
+  }
+
   // First check for legacy option
   config_.get<bool>(
       "sm.use_refactored_readers", &use_refactored_reader, &found);
@@ -2266,6 +2288,12 @@ bool Query::use_refactored_sparse_global_order_reader(
     Layout layout, const ArraySchema& array_schema) {
   bool use_refactored_reader = false;
   bool found = false;
+
+  // If the query comes from a client using the legacy reader.
+  if (force_legacy_reader_) {
+    return false;
+  }
+
   // First check for legacy option
   config_.get<bool>(
       "sm.use_refactored_readers", &use_refactored_reader, &found);
@@ -2290,6 +2318,11 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader(
     Layout layout, const ArraySchema& array_schema) {
   bool use_refactored_reader = false;
   bool found = false;
+
+  // If the query comes from a client using the legacy reader.
+  if (force_legacy_reader_) {
+    return false;
+  }
 
   // First check for legacy option
   config_.get<bool>(

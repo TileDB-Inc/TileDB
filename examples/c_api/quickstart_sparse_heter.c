@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -160,13 +160,17 @@ void read_array() {
   tiledb_query_set_data_buffer(ctx, query, "rows", rows, &row_coords_size);
   tiledb_query_set_data_buffer(ctx, query, "cols", cols, &cols_coords_size);
 
+  tiledb_subarray_t* subarray;
+  tiledb_subarray_alloc(ctx, array, &subarray);
+  tiledb_query_set_subarray_t(ctx, query, subarray);
+
   int row_start = 1, row_end = 2;
   float cols_start = 1,
         cols_end = 2;  // note 'float', type needs to match for item being added
-  tiledb_query_add_range(
-      ctx, query, 0, &row_start, &row_end, NULL);  //'0' dimension, rows
-  tiledb_query_add_range(
-      ctx, query, 1, &cols_start, &cols_end, NULL);  //'1' dimension, cols
+  tiledb_subarray_add_range(
+      ctx, subarray, 0, &row_start, &row_end, NULL);  //'0' dimension, rows
+  tiledb_subarray_add_range(
+      ctx, subarray, 1, &cols_start, &cols_end, NULL);  //'1' dimension, cols
 
   // Submit query
   tiledb_query_submit(ctx, query);
@@ -187,6 +191,7 @@ void read_array() {
   free((void*)rows);
   free((void*)cols);
   free((void*)data);
+  tiledb_subarray_free(&subarray);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);

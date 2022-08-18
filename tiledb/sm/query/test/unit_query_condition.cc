@@ -40,6 +40,7 @@
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/readers/result_cell_slab.h"
 
 #include <test/support/tdb_catch.h>
 #include <iostream>

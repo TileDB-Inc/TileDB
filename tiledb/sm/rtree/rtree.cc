@@ -259,14 +259,14 @@ uint64_t RTree::subtree_leaf_num(uint64_t level) const {
 }
 
 void RTree::serialize(Serializer& serializer) const {
-  serializer.write(fanout_);
+  serializer.write<uint32_t>(fanout_);
   auto level_num = (unsigned)levels_.size();
-  serializer.write(level_num);
+  serializer.write<uint32_t>(level_num);
   auto dim_num = domain_->dim_num();
 
   for (unsigned l = 0; l < level_num; ++l) {
     auto mbr_num = (uint64_t)levels_[l].size();
-    serializer.write(mbr_num);
+    serializer.write<uint64_t>(mbr_num);
     for (uint64_t m = 0; m < mbr_num; ++m) {
       for (unsigned d = 0; d < dim_num; ++d) {
         const auto& r = levels_[l][m][d];
@@ -275,8 +275,8 @@ void RTree::serialize(Serializer& serializer) const {
           serializer.write(r.data(), r.size());
         } else {  // Var-sized
           // range_size | start_size | range
-          serializer.write(r.size());
-          serializer.write(r.start_size());
+          serializer.write<uint64_t>(r.size());
+          serializer.write<uint64_t>(r.start_size());
           serializer.write(r.data(), r.size());
         }
       }

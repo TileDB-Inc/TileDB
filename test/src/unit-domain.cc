@@ -113,19 +113,18 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize") {
   dom_buffer_offset<uint64_t, 63>(p) = domain_size2;
   dom_buffer_offset<uint8_t, 71>(p) = null_tile_extent2;
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_dom, dom]{Domain::deserialize(
-      &constbuffer, 10, Layout::ROW_MAJOR, Layout::ROW_MAJOR)};
-  REQUIRE(st_dom.ok());
-  CHECK(dom.value()->dim_num() == dim_num);
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
+  auto dom{Domain::deserialize(
+      deserializer, 10, Layout::ROW_MAJOR, Layout::ROW_MAJOR)};
+  CHECK(dom->dim_num() == dim_num);
 
-  auto dim1{dom.value()->dimension_ptr("d1")};
+  auto dim1{dom->dimension_ptr("d1")};
   CHECK(dim1->name() == dimension_name1);
   CHECK(dim1->type() == type1);
   CHECK(dim1->cell_val_num() == cell_val_num1);
   CHECK(dim1->filters().size() == num_filters1);
 
-  auto dim2{dom.value()->dimension_ptr("d2")};
+  auto dim2{dom->dimension_ptr("d2")};
   CHECK(dim2->name() == dimension_name2);
   CHECK(dim2->type() == type2);
   CHECK(dim2->cell_val_num() == cell_val_num2);

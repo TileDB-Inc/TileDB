@@ -152,23 +152,6 @@ class StrategyBase {
    * the query.
    */
   void get_dim_attr_stats() const;
-
-  /**
-   * Generates a new fragment name, which is in the form: <br>
-   * `__t_t_uuid_v`, where `t` is the input timestamp and `v` is the current
-   * format version. For instance,
-   * `__1458759561320_1458759561320_6ba7b8129dad11d180b400c04fd430c8_3`.
-   *
-   * If `timestamp` is 0, then it is set to the current time.
-   *
-   * @param timestamp The timestamp of when the array got opened for writes. It
-   *     is in ms since 1970-01-01 00:00:00 +0000 (UTC).
-   * @param format_version The write version.
-   *
-   * @return Status, new fragment name.
-   */
-  tuple<Status, optional<std::string>> new_fragment_name(
-      uint64_t timestamp, uint32_t format_version) const;
 };
 
 }  // namespace sm

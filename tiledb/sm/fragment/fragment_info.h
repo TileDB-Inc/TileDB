@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/uri.h"
@@ -321,6 +322,10 @@ class FragmentInfo {
   /** Returns the number of fragments with unconsolidated metadata. */
   uint32_t unconsolidated_metadata_num() const;
 
+  /** Returns the location of delete tiles. */
+  const std::vector<ArrayDirectory::DeleteTileLocation>& delete_tiles_location()
+      const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -361,6 +366,9 @@ class FragmentInfo {
 
   /** Timestamp end used in load. */
   uint64_t timestamp_end_;
+
+  /** Delete tile locations. */
+  std::vector<ArrayDirectory::DeleteTileLocation> delete_tiles_location_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

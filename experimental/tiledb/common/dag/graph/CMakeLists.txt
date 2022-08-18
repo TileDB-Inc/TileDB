@@ -42,6 +42,7 @@ target_link_libraries(graph PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_graph EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_graph)
 target_link_libraries(compile_graph PRIVATE graph)
 target_sources(compile_graph PRIVATE test/compile_graph_main.cc)
 

@@ -39,6 +39,7 @@ target_link_libraries(metadata PUBLIC vfs $<TARGET_OBJECTS:vfs>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_metadata EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_metadata)
 target_link_libraries(compile_metadata PRIVATE metadata)
 target_sources(compile_metadata PRIVATE test/compile_metadata_main.cc)
 

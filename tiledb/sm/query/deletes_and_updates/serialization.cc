@@ -44,7 +44,7 @@ void serialize_condition_impl(
   // Serialize is_expr.
   const auto node_type =
       node->is_expr() ? NodeType::EXPRESSION : NodeType::VALUE;
-  serializer.write(static_cast<uint8_t>(node_type));
+  serializer.write<uint8_t>(static_cast<uint8_t>(node_type));
   if (!node->is_expr()) {
     // Get values.
     const auto op = node->get_op();
@@ -54,14 +54,14 @@ void serialize_condition_impl(
     const auto& value = node->get_condition_value_view();
     const storage_size_t value_length = value.size();
     // Serialize op.
-    serializer.write(op);
+    serializer.write<uint8_t>(static_cast<uint8_t>(op));
 
     // Serialize field name.
-    serializer.write(field_name_length);
+    serializer.write<uint32_t>(field_name_length);
     serializer.write(field_name.data(), field_name_length);
 
     // Serialize value.
-    serializer.write(value_length);
+    serializer.write<uint64_t>(value_length);
     serializer.write(value.content(), value.size());
   } else {
     // Get values.
@@ -70,10 +70,10 @@ void serialize_condition_impl(
     const auto combinatin_op = node->get_combination_op();
 
     // Serialize combination op.
-    serializer.write(combinatin_op);
+    serializer.write<uint8_t>(static_cast<uint8_t>(combinatin_op));
 
     // Serialize children num.
-    serializer.write(nodes_size);
+    serializer.write<size_t>(nodes_size);
 
     for (storage_size_t i = 0; i < nodes.size(); i++) {
       serialize_condition_impl(nodes[i], serializer);
@@ -144,12 +144,15 @@ tdb_unique_ptr<ASTNode> deserialize_condition_impl(Deserializer& deserializer) {
 }
 
 QueryCondition deserialize_condition(
+    const uint64_t condition_index,
     const std::string& condition_marker,
     const void* buff,
     const storage_size_t size) {
   Deserializer deserializer(buff, size);
   return QueryCondition(
-      condition_marker, deserialize_condition_impl(deserializer));
+      condition_index,
+      condition_marker,
+      deserialize_condition_impl(deserializer));
 }
 
 }  // namespace tiledb::sm::deletes_and_updates::serialization

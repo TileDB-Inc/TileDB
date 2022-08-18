@@ -35,7 +35,9 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
+#include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <algorithm>
@@ -55,24 +57,33 @@ namespace sm {
 QueryCondition::QueryCondition() {
 }
 
+QueryCondition::QueryCondition(const std::string& condition_marker)
+    : condition_marker_(condition_marker)
+    , condition_index_(0) {
+}
+
 QueryCondition::QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree)
     : tree_(std::move(tree)) {
 }
 
 QueryCondition::QueryCondition(
+    const uint64_t condition_index,
     const std::string& condition_marker,
     tdb_unique_ptr<tiledb::sm::ASTNode>&& tree)
     : condition_marker_(condition_marker)
+    , condition_index_(condition_index)
     , tree_(std::move(tree)) {
 }
 
 QueryCondition::QueryCondition(const QueryCondition& rhs)
     : condition_marker_(rhs.condition_marker_)
+    , condition_index_(rhs.condition_index_)
     , tree_(rhs.tree_ == nullptr ? nullptr : rhs.tree_->clone()) {
 }
 
 QueryCondition::QueryCondition(QueryCondition&& rhs)
     : condition_marker_(std::move(rhs.condition_marker_))
+    , condition_index_(rhs.condition_index_)
     , tree_(std::move(rhs.tree_)) {
 }
 
@@ -82,6 +93,7 @@ QueryCondition::~QueryCondition() {
 QueryCondition& QueryCondition::operator=(const QueryCondition& rhs) {
   if (this != &rhs) {
     condition_marker_ = rhs.condition_marker_;
+    condition_index_ = rhs.condition_index_;
     tree_ = rhs.tree_ == nullptr ? nullptr : rhs.tree_->clone();
   }
 
@@ -90,6 +102,7 @@ QueryCondition& QueryCondition::operator=(const QueryCondition& rhs) {
 
 QueryCondition& QueryCondition::operator=(QueryCondition&& rhs) {
   condition_marker_ = std::move(rhs.condition_marker_);
+  condition_index_ = std::move(rhs.condition_index_);
   tree_ = std::move(rhs.tree_);
   return *this;
 }
@@ -391,6 +404,21 @@ void QueryCondition::apply_ast_node(
         }
       }
     } else {
+      const auto f = result_tile->frag_idx();
+
+      // For delete timestamps conditions, if there's no delete metadata or
+      // delete condition was already processed, GT condition is always true.
+      if (field_name == constants::delete_timestamps &&
+          (!fragment_metadata[f]->has_delete_meta() ||
+           fragment_metadata[f]->get_processed_conditions_set().count(
+               condition_marker_) != 0)) {
+        assert(Op == QueryConditionOp::GT);
+        for (size_t c = starting_index; c < starting_index + length; ++c) {
+          result_cell_bitmap[c] = 1;
+        }
+        continue;
+      }
+
       const auto tile_tuple = result_tile->tile_tuple(field_name);
       uint8_t* buffer_validity = nullptr;
 
@@ -2110,6 +2138,14 @@ QueryCondition QueryCondition::negated_condition() {
 
 const tdb_unique_ptr<ASTNode>& QueryCondition::ast() const {
   return tree_;
+}
+
+const std::string& QueryCondition::condition_marker() const {
+  return condition_marker_;
+}
+
+uint64_t QueryCondition::condition_index() const {
+  return condition_index_;
 }
 
 void QueryCondition::set_ast(tdb_unique_ptr<ASTNode>&& ast) {
