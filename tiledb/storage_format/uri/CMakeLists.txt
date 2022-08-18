@@ -31,6 +31,8 @@ include(common NO_POLICY_SCOPE)
 add_library(uri_format OBJECT parse_uri.cc)
 target_link_libraries(uri_format PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(uri_format PUBLIC vfs $<TARGET_OBJECTS:vfs>)
+target_link_libraries(uri_format PUBLIC uuid $<TARGET_OBJECTS:uuid>)
+target_link_libraries(uri_format PUBLIC time $<TARGET_OBJECTS:time>)
 #
 # Test-compile of object library ensures link-completeness
 #

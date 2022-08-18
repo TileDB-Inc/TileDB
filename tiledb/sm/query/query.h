@@ -135,11 +135,17 @@ class Query {
    * for the name of the new fragment to be created.
    *
    * @note Array must be a properly opened array.
+   *
+   * @param array The array that is being queried.
+   * @param fragment_uri The full URI for the new fragment. Only used for
+   * writes.
+   * @param fragment_base_uri Optional base name for new fragment. Only used for
+   *     writes and only if fragment_uri is empty.
    */
   Query(
       StorageManager* storage_manager,
       shared_ptr<Array> array,
-      URI fragment_uri = URI(""));
+      optional<std::string> fragment_name = nullopt);
 
   /** Destructor. */
   ~Query();
@@ -1009,9 +1015,6 @@ class Query {
    */
   bool consolidation_with_timestamps_;
 
-  /** The name of the new fragment to be created for writes. */
-  URI fragment_uri_;
-
   /* Scratch space used for REST requests. */
   shared_ptr<Buffer> rest_scratch_;
 
@@ -1025,6 +1028,14 @@ class Query {
    * the legacy reader.
    */
   bool force_legacy_reader_;
+
+  /**
+   * The name of the new fragment to be created for writes.
+   *
+   * If not set, the fragment name will be created using the latest array
+   * timestamp and a generated UUID.
+   */
+  optional<std::string> fragment_name_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
