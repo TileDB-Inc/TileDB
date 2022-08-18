@@ -299,7 +299,7 @@ void ConsolidationWithTimestampsFx::read_sparse(
   // Open array.
   Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
 
-  if(!skip_query){
+  if (!skip_query) {
     // Create query.
     Query query(ctx_, array, TILEDB_READ);
     query.set_layout(layout);
@@ -397,7 +397,7 @@ TEST_CASE_METHOD(
   // Write fourth fragment.
   write_sparse({12, 13, 14, 15}, {4, 3, 3, 4}, {2, 3, 4, 4}, 6);
 
-  for(auto ux=0u; ux < consolidate_sparse_iters; ++ux) {
+  for (auto ux = 0u; ux < consolidate_sparse_iters; ++ux) {
     // Consolidate.
     consolidate_sparse(3, 7, vacuum);
   }
@@ -422,20 +422,25 @@ TEST_CASE_METHOD(
   SECTION("Read after all writes") {
     // Read after both writes - should see everything.
     tstamp = 7;
-    //read_sparse(a, dim1, dim2, stats, layout, 7, timestamps_ptr);
-
+    // read_sparse(a, dim1, dim2, stats, layout, 7, timestamps_ptr);
   }
 
   // Read with full coverage on first 2 consolidated, partial coverage on second
   // 2 consolidated.
   SECTION("Read between the 2 writes") {
     tstamp = 5;
-    //read_sparse(a, dim1, dim2, stats, layout, 5, timestamps_ptr);
-
+    // read_sparse(a, dim1, dim2, stats, layout, 5, timestamps_ptr);
   }
-  for(auto ux=0u ; ux < read_sparse_iters; ++ux)
-    read_sparse(a, dim1, dim2, stats, layout, tstamp, timestamps_ptr, perform_query == 0);
+  for (auto ux = 0u; ux < read_sparse_iters; ++ux)
+    read_sparse(
+        a,
+        dim1,
+        dim2,
+        stats,
+        layout,
+        tstamp,
+        timestamps_ptr,
+        perform_query == 0);
 
   remove_sparse_array();
 }
-
