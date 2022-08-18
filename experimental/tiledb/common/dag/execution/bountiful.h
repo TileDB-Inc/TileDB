@@ -46,51 +46,50 @@
 namespace tiledb::common {
 
 class BountifulScheduler {
-  std::vector<std::shared_ptr<std::function<void()>>> tasks_;
-  std::vector<std::thread>;
-
-  /**
-   * Destructor.  Waits for all tasks to finish.
-   */
  public:
-  BountifulScheduler() {
+  BountifulScheduler() = default;
+  ~BountifulScheduler() = default;
+
+  template <class Fn>
+  auto async(Fn&& f) {
+    static_assert(std::is_invocable_v<Fn>);
+    return std::async(std::launch::async, std::forward<Fn>(f));
   }
 
-  /**
-   * Schedule a given container of tasks to run.
-   *
-   * Operates in conjunction with an asynchronous state machine policy (i.e., a
-   * policy that does its own wait and notify).
-   *
-   * The tasks do **not** start running when they are scheduled.  Rather, they
-   * begin execution when the `wait` member function is called.
-   *
-   * The tasks will be scheduled (and executed) in the order they are given.  It
-   * is up to the caller to provide the tasks in a sensible order.
-   */
-  auto schedule(std::vector<std::future<void>>& tasks) {
-    for (auto&& t : tasks) {
-      tasks_.emplace_back(t);
+  template <class Fn>
+  auto async(std::vector<Fn>&& f) {
+    std::vector<std::future<void>> futures;
+    futures.reserve(size(f));
+    for (auto&& t : f) {
+      futures.emplace_back(std::async(std::launch::async, std::forward<Fn>(t)));
     }
-  }
-
-  /**
-   * The `sync_wait` function initiates execution of the tasks in `tasks_` and
-   * waits for their completion. The tasks will be run in the order they were
-   * originally given.
-   *
-   * With the bountiful scheduler, every task gets a thread.
-   * (You get a thread and you get a thread!  Every task gets a thread!)
-   */
-  void sync_wait() {
-    for (auto&& t : tasks_) {
-      threads_.emplace_back(t);
-    }
-    for (auto&& t : tasks_) {
-      t.join();
-    }
+    return futures;
   }
 };
+
+template <class Fn>
+auto async(BountifulScheduler& sch, Fn&& f) {
+  return sch.async(std::forward<Fn>(f));
+}
+
+template <class R>
+auto sync_wait(std::future<R>& task) {
+  return task.get();
+}
+
+template <class R>
+auto sync_wait(std::future<R>&& task) {
+  return std::forward<std::future<R>>(task).get();
+}
+
+template <class R>
+auto sync_wait_all(std::vector<std::future<R>>&& tasks) {
+  std::vector<R> results;
+  for (auto&& t : tasks) {
+    results.emplace_back(t);
+  }
+  return results;
+}
 
 }  // namespace tiledb::common
 
