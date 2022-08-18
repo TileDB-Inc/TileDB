@@ -1129,10 +1129,10 @@ Status delete_to_capnp(
     const Query& query,
     Deletes& delete_strategy,
     capnp::Delete::Builder* delete_builder) {
-  const QueryCondition* condition = query.condition();
-  if (!condition->empty()) {
+  auto condition = query.condition();
+  if (!condition.empty()) {
     auto condition_builder = delete_builder->initCondition();
-    RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+    RETURN_NOT_OK(condition_to_capnp(condition, &condition_builder));
   }
 
   // If stats object exists set its cap'n proto object

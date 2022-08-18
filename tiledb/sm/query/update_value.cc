@@ -79,33 +79,6 @@ UpdateValue::UpdateValue(UpdateValue&& rhs)
 UpdateValue::~UpdateValue() {
 }
 
-UpdateValue& UpdateValue::operator=(const UpdateValue& rhs) {
-  if (this != &rhs) {
-    field_name_ = rhs.field_name_;
-    update_value_data_ = rhs.update_value_data_;
-    update_value_view_ = UntypedDatumView(
-        rhs.update_value_view_.content() != nullptr &&
-                rhs.update_value_view_.size() == 0 ?
-            (void*)"" :
-            update_value_data_.data(),
-        update_value_data_.size());
-  }
-
-  return *this;
-}
-
-UpdateValue& UpdateValue::operator=(UpdateValue&& rhs) {
-  field_name_ = std::move(rhs.field_name_);
-  update_value_data_ = std::move(rhs.update_value_data_);
-  update_value_view_ = UntypedDatumView(
-      rhs.update_value_view_.content() != nullptr &&
-              rhs.update_value_view_.size() == 0 ?
-          (void*)"" :
-          update_value_data_.data(),
-      update_value_data_.size());
-  return *this;
-}
-
 Status UpdateValue::check(const ArraySchema& array_schema) const {
   const uint64_t update_value_size = update_value_data_.size();
 

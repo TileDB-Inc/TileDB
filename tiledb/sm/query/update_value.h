@@ -68,18 +68,11 @@ class UpdateValue {
   UpdateValue(UpdateValue&& rhs);
 
   /* ********************************* */
-  /*             OPERATORS             */
-  /* ********************************* */
-
-  /** Copy-assignment operator. */
-  UpdateValue& operator=(const UpdateValue& rhs);
-
-  /** Move-assignment operator. */
-  UpdateValue& operator=(UpdateValue&& rhs);
-
-  /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  DISABLE_COPY_ASSIGN(UpdateValue);
+  DISABLE_MOVE_ASSIGN(UpdateValue);
 
   /**
    * Verifies that the object respects the array schema.
@@ -95,13 +88,13 @@ class UpdateValue {
   /* ********************************* */
 
   /** Name of the attribute to update.  */
-  std::string field_name_;
+  const std::string field_name_;
 
   /** The value data. */
   ByteVecValue update_value_data_;
 
   /** A view of the value data. */
-  UntypedDatumView update_value_view_;
+  const UntypedDatumView update_value_view_;
 };
 
 }  // namespace sm
