@@ -287,9 +287,11 @@ class synchronized_optional {
      * A lock on the referent held for the duration of this object's life span.
      *
      * It's marked `maybe_unused` because, as a sentry object, it's initialized
-     * for its side effects and never referenced explicitly thereafter.
+     * for its side effects and never referenced explicitly thereafter. The
+     * marking is commented out for now because gcc emits a warning that it's
+     * ignoring the attribute, a warning that escalates to an error in CI.
      */
-    [[maybe_unused]] L lock_;
+    /*[[maybe_unused]]*/ L lock_;
 
    public:
     /**
