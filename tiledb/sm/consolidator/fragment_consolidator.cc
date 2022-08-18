@@ -100,21 +100,17 @@ Status FragmentConsolidator::consolidate(
   // which dense fragments are consolidatable.
   FragmentInfo fragment_info(URI(array_name), storage_manager_);
   auto st = fragment_info.load(
+      array_for_reads->array_directory(),
       config_.timestamp_start_,
       config_.timestamp_end_,
       encryption_type,
       encryption_key,
-      key_length,
-      array_for_reads->array_schema_latest().dense());
+      key_length);
   if (!st.ok()) {
     array_for_reads->close();
     array_for_writes->close();
     return st;
   }
-
-  // Set the delete tiles location in the open array.
-  array_for_reads->set_delete_tiles_location(
-      fragment_info.delete_tiles_location());
 
   uint32_t step = 0;
   std::vector<TimestampedURI> to_consolidate;
@@ -212,21 +208,17 @@ Status FragmentConsolidator::consolidate_fragments(
   // Get all fragment info
   FragmentInfo fragment_info(URI(array_name), storage_manager_);
   auto st = fragment_info.load(
+      array_for_reads->array_directory(),
       0,
       utils::time::timestamp_now_ms(),
       encryption_type,
       encryption_key,
-      key_length,
-      false);
+      key_length);
   if (!st.ok()) {
     array_for_reads->close();
     array_for_writes->close();
     return st;
   }
-
-  // Set the delete tiles location in the open array.
-  array_for_reads->set_delete_tiles_location(
-      fragment_info.delete_tiles_location());
 
   // Make a set of the uris to consolidate
   NDRange union_non_empty_domains;
