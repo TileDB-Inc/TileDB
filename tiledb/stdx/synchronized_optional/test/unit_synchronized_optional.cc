@@ -27,8 +27,8 @@
  */
 
 #define CATCH_CONFIG_MAIN
-#include "test/support/tdb_catch.h"
 #include "../synchronized_optional.h"
+#include "test/support/tdb_catch.h"
 
 using stdx::synchronized_optional;
 using soint = synchronized_optional<int>;
