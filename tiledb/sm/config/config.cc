@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,8 +42,16 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
+/** Return a Config error class Status with a given message **/
+inline Status Status_ConfigError(const std::string& msg) {
+  return {"[TileDB::Config] Error", msg};
+}
+
+void throw_config_exception(const std::string& msg) {
+  throw StatusException(Status_ConfigError(msg));
+}
 
 /* ****************************** */
 /*        CONFIG DEFAULTS         */
@@ -457,6 +465,36 @@ Status Config::set(const std::string& param, const std::string& value) {
   set_params_.insert(param);
 
   return Status::Ok();
+}
+
+optional<std::string> Config::get(const std::string& key) const {
+  bool found;
+  const char* val = get_from_config_or_env(key, &found);
+  if (found) {
+    return {std::string{val}};
+  } else {
+    return {nullopt};
+  }
+}
+
+template <class T>
+optional<T> Config::get(const std::string& key) const {
+  auto value{get(key)};
+  if (!value.has_value()) {
+    return {nullopt};
+  }
+  T converted_value;
+  /*
+   * `convert` is only declared for certain types. If the type argument to this
+   * function isn't one of them, this function won't compile.
+   */
+  auto status = utils::parse::convert(value.value(), &converted_value);
+  if (!status.ok()) {
+    throw_config_exception(
+        "Failed to convert configuration value '" + value.value() +
+        std::string("' for key '") + key + "'. Reason: " + status.to_string());
+  }
+  return {converted_value};
 }
 
 Status Config::get(const std::string& param, const char** value) const {
@@ -1044,5 +1082,12 @@ template Status Config::get<double>(
 template Status Config::get_vector<uint32_t>(
     const std::string& param, std::vector<uint32_t>* value, bool* found) const;
 
-}  // namespace sm
-}  // namespace tiledb
+template optional<bool> Config::get<bool>(const std::string&) const;
+template optional<int> Config::get<int>(const std::string&) const;
+template optional<uint32_t> Config::get<uint32_t>(const std::string&) const;
+template optional<int64_t> Config::get<int64_t>(const std::string&) const;
+template optional<uint64_t> Config::get<uint64_t>(const std::string&) const;
+template optional<float> Config::get<float>(const std::string&) const;
+template optional<double> Config::get<double>(const std::string&) const;
+
+}  // namespace tiledb::sm
