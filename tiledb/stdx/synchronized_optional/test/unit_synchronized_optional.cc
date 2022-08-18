@@ -167,9 +167,14 @@ TEST_CASE("synchronized_optional - move assignment") {
   soint x{std::in_place, 7};
   REQUIRE(x.has_value());
   REQUIRE(x == 7);
-  x = move(soint{std::in_place, 8});
+  // explicit call with temporary argument must resolve to T&& argument
+  (void) x.operator=(soint{std::in_place, 8});
   REQUIRE(x);
   CHECK(x == 8);
+  // implicit call
+  x = soint{std::in_place, 7};
+  REQUIRE(x);
+  CHECK(x == 7);
 }
 
 TEST_CASE("synchronized_optional - emplace") {
