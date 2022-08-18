@@ -65,6 +65,8 @@ CAPNP_DECLARE_SCHEMA(9be1921b07e6cd2d);
 CAPNP_DECLARE_SCHEMA(f01116579e9ea98e);
 CAPNP_DECLARE_SCHEMA(9737dcafdfce31bb);
 CAPNP_DECLARE_SCHEMA(926fe1c3b12ed651);
+CAPNP_DECLARE_SCHEMA(9317f20ce509d918);
+CAPNP_DECLARE_SCHEMA(e49c69137e9b3d04);
 CAPNP_DECLARE_SCHEMA(8cd4e323f1feea3b);
 CAPNP_DECLARE_SCHEMA(92c8467685565269);
 CAPNP_DECLARE_SCHEMA(bda7916926591c22);
@@ -153,7 +155,7 @@ struct Array {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(a45730f57e0460b4, 2, 6)
+    CAPNP_DECLARE_STRUCT_HEADER(a45730f57e0460b4, 2, 7)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1000,6 +1002,41 @@ struct ArrayMetadata::MetadataEntry {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(926fe1c3b12ed651, 1, 3)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct ArrayDirectory {
+  ArrayDirectory() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+  struct DeleteTileLocation;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(9317f20ce509d918, 2, 13)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct ArrayDirectory::DeleteTileLocation {
+  DeleteTileLocation() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(e49c69137e9b3d04, 2, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1880,6 +1917,10 @@ class Array::Reader {
   inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Reader
   getArrayMetadata() const;
 
+  inline bool hasArrayDirectory() const;
+  inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Reader
+  getArrayDirectory() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1999,6 +2040,19 @@ class Array::Builder {
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayMetadata>
   disownArrayMetadata();
 
+  inline bool hasArrayDirectory();
+  inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Builder
+  getArrayDirectory();
+  inline void setArrayDirectory(
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::Reader value);
+  inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Builder
+  initArrayDirectory();
+  inline void adoptArrayDirectory(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayDirectory>&&
+          value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayDirectory>
+  disownArrayDirectory();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -2030,6 +2084,8 @@ class Array::Pipeline {
   getNonEmptyDomain();
   inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Pipeline
   getArrayMetadata();
+  inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Pipeline
+  getArrayDirectory();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -8499,6 +8555,459 @@ class ArrayMetadata::MetadataEntry::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
+class ArrayDirectory::Reader {
+ public:
+  typedef ArrayDirectory Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasUnfilteredFragmentUris() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getUnfilteredFragmentUris() const;
+
+  inline bool hasConsolidatedCommitUris() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getConsolidatedCommitUris() const;
+
+  inline bool hasArraySchemaUris() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getArraySchemaUris() const;
+
+  inline bool hasLatestArraySchemaUri() const;
+  inline ::capnp::Text::Reader getLatestArraySchemaUri() const;
+
+  inline bool hasArrayMetaUrisToVacuum() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getArrayMetaUrisToVacuum() const;
+
+  inline bool hasArrayMetaVacUrisToVacuum() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getArrayMetaVacUrisToVacuum() const;
+
+  inline bool hasCommitUrisToConsolidate() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getCommitUrisToConsolidate() const;
+
+  inline bool hasCommitUrisToVacuum() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getCommitUrisToVacuum() const;
+
+  inline bool hasConsolidatedCommitUrisToVacuum() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getConsolidatedCommitUrisToVacuum() const;
+
+  inline bool hasArrayMetaUris() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getArrayMetaUris() const;
+
+  inline bool hasFragmentMetaUris() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getFragmentMetaUris() const;
+
+  inline bool hasDeleteTilesLocation() const;
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::capnp::Kind::STRUCT>::Reader
+  getDeleteTilesLocation() const;
+
+  inline ::uint64_t getTimestampStart() const;
+
+  inline ::uint64_t getTimestampEnd() const;
+
+  inline bool hasMode() const;
+  inline ::capnp::Text::Reader getMode() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class ArrayDirectory::Builder {
+ public:
+  typedef ArrayDirectory Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasUnfilteredFragmentUris();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getUnfilteredFragmentUris();
+  inline void setUnfilteredFragmentUris(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setUnfilteredFragmentUris(
+      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  initUnfilteredFragmentUris(unsigned int size);
+  inline void adoptUnfilteredFragmentUris(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownUnfilteredFragmentUris();
+
+  inline bool hasConsolidatedCommitUris();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getConsolidatedCommitUris();
+  inline void setConsolidatedCommitUris(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setConsolidatedCommitUris(
+      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  initConsolidatedCommitUris(unsigned int size);
+  inline void adoptConsolidatedCommitUris(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownConsolidatedCommitUris();
+
+  inline bool hasArraySchemaUris();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getArraySchemaUris();
+  inline void setArraySchemaUris(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setArraySchemaUris(
+      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  initArraySchemaUris(unsigned int size);
+  inline void adoptArraySchemaUris(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownArraySchemaUris();
+
+  inline bool hasLatestArraySchemaUri();
+  inline ::capnp::Text::Builder getLatestArraySchemaUri();
+  inline void setLatestArraySchemaUri(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initLatestArraySchemaUri(unsigned int size);
+  inline void adoptLatestArraySchemaUri(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownLatestArraySchemaUri();
+
+  inline bool hasArrayMetaUrisToVacuum();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getArrayMetaUrisToVacuum();
+  inline void setArrayMetaUrisToVacuum(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setArrayMetaUrisToVacuum(
+      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  initArrayMetaUrisToVacuum(unsigned int size);
+  inline void adoptArrayMetaUrisToVacuum(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownArrayMetaUrisToVacuum();
+
+  inline bool hasArrayMetaVacUrisToVacuum();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getArrayMetaVacUrisToVacuum();
+  inline void setArrayMetaVacUrisToVacuum(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setArrayMetaVacUrisToVacuum(
+      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  initArrayMetaVacUrisToVacuum(unsigned int size);
+  inline void adoptArrayMetaVacUrisToVacuum(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownArrayMetaVacUrisToVacuum();
+
+  inline bool hasCommitUrisToConsolidate();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getCommitUrisToConsolidate();
+  inline void setCommitUrisToConsolidate(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setCommitUrisToConsolidate(
+      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  initCommitUrisToConsolidate(unsigned int size);
+  inline void adoptCommitUrisToConsolidate(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownCommitUrisToConsolidate();
+
+  inline bool hasCommitUrisToVacuum();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getCommitUrisToVacuum();
+  inline void setCommitUrisToVacuum(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setCommitUrisToVacuum(
+      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  initCommitUrisToVacuum(unsigned int size);
+  inline void adoptCommitUrisToVacuum(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownCommitUrisToVacuum();
+
+  inline bool hasConsolidatedCommitUrisToVacuum();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getConsolidatedCommitUrisToVacuum();
+  inline void setConsolidatedCommitUrisToVacuum(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setConsolidatedCommitUrisToVacuum(
+      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  initConsolidatedCommitUrisToVacuum(unsigned int size);
+  inline void adoptConsolidatedCommitUrisToVacuum(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownConsolidatedCommitUrisToVacuum();
+
+  inline bool hasArrayMetaUris();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getArrayMetaUris();
+  inline void setArrayMetaUris(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setArrayMetaUris(
+      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  initArrayMetaUris(unsigned int size);
+  inline void adoptArrayMetaUris(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownArrayMetaUris();
+
+  inline bool hasFragmentMetaUris();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getFragmentMetaUris();
+  inline void setFragmentMetaUris(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setFragmentMetaUris(
+      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  initFragmentMetaUris(unsigned int size);
+  inline void adoptFragmentMetaUris(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownFragmentMetaUris();
+
+  inline bool hasDeleteTilesLocation();
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::capnp::Kind::STRUCT>::Builder
+  getDeleteTilesLocation();
+  inline void setDeleteTilesLocation(::capnp::List<
+                                     ::tiledb::sm::serialization::capnp::
+                                         ArrayDirectory::DeleteTileLocation,
+                                     ::capnp::Kind::STRUCT>::Reader value);
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::capnp::Kind::STRUCT>::Builder
+  initDeleteTilesLocation(unsigned int size);
+  inline void adoptDeleteTilesLocation(
+      ::capnp::Orphan<::capnp::List<
+          ::tiledb::sm::serialization::capnp::ArrayDirectory::
+              DeleteTileLocation,
+          ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::capnp::Kind::STRUCT>>
+  disownDeleteTilesLocation();
+
+  inline ::uint64_t getTimestampStart();
+  inline void setTimestampStart(::uint64_t value);
+
+  inline ::uint64_t getTimestampEnd();
+  inline void setTimestampEnd(::uint64_t value);
+
+  inline bool hasMode();
+  inline ::capnp::Text::Builder getMode();
+  inline void setMode(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initMode(unsigned int size);
+  inline void adoptMode(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownMode();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class ArrayDirectory::Pipeline {
+ public:
+  typedef ArrayDirectory Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class ArrayDirectory::DeleteTileLocation::Reader {
+ public:
+  typedef DeleteTileLocation Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasUri() const;
+  inline ::capnp::Text::Reader getUri() const;
+
+  inline bool hasConditionMarker() const;
+  inline ::capnp::Text::Reader getConditionMarker() const;
+
+  inline ::uint64_t getOffset() const;
+
+  inline ::uint64_t getTimestamp() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class ArrayDirectory::DeleteTileLocation::Builder {
+ public:
+  typedef DeleteTileLocation Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasUri();
+  inline ::capnp::Text::Builder getUri();
+  inline void setUri(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initUri(unsigned int size);
+  inline void adoptUri(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownUri();
+
+  inline bool hasConditionMarker();
+  inline ::capnp::Text::Builder getConditionMarker();
+  inline void setConditionMarker(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initConditionMarker(unsigned int size);
+  inline void adoptConditionMarker(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownConditionMarker();
+
+  inline ::uint64_t getOffset();
+  inline void setOffset(::uint64_t value);
+
+  inline ::uint64_t getTimestamp();
+  inline void setTimestamp(::uint64_t value);
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class ArrayDirectory::DeleteTileLocation::Pipeline {
+ public:
+  typedef DeleteTileLocation Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 class EstimatedResultSize::Reader {
  public:
   typedef EstimatedResultSize Reads;
@@ -12648,6 +13157,62 @@ Array::Builder::disownArrayMetadata() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::ArrayMetadata>::disown(
           _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+
+inline bool Array::Reader::hasArrayDirectory() const {
+  return !_reader.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Array::Builder::hasArrayDirectory() {
+  return !_builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Reader
+Array::Reader::getArrayDirectory() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayDirectory>::get(
+          _reader.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Builder
+Array::Builder::getArrayDirectory() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayDirectory>::get(
+          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Pipeline
+Array::Pipeline::getArrayDirectory() {
+  return ::tiledb::sm::serialization::capnp::ArrayDirectory::Pipeline(
+      _typeless.getPointerField(6));
+}
+#endif  // !CAPNP_LITE
+inline void Array::Builder::setArrayDirectory(
+    ::tiledb::sm::serialization::capnp::ArrayDirectory::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayDirectory>::set(
+          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Builder
+Array::Builder::initArrayDirectory() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayDirectory>::init(
+          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
+}
+inline void Array::Builder::adoptArrayDirectory(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayDirectory>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayDirectory>::adopt(
+          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayDirectory>
+Array::Builder::disownArrayDirectory() {
+  return ::capnp::_::PointerHelpers<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
 }
 
 inline bool ArrayOpen::Reader::hasConfig() const {
@@ -20282,6 +20847,866 @@ inline bool ArrayMetadata::MetadataEntry::Builder::getDel() {
 inline void ArrayMetadata::MetadataEntry::Builder::setDel(bool value) {
   _builder.setDataField<bool>(
       ::capnp::bounded<32>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool ArrayDirectory::Reader::hasUnfilteredFragmentUris() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::Builder::hasUnfilteredFragmentUris() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+ArrayDirectory::Reader::getUnfilteredFragmentUris() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::getUnfilteredFragmentUris() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::Builder::setUnfilteredFragmentUris(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          value);
+}
+inline void ArrayDirectory::Builder::setUnfilteredFragmentUris(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::initUnfilteredFragmentUris(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArrayDirectory::Builder::adoptUnfilteredFragmentUris(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+ArrayDirectory::Builder::disownUnfilteredFragmentUris() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::Reader::hasConsolidatedCommitUris() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::Builder::hasConsolidatedCommitUris() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+ArrayDirectory::Reader::getConsolidatedCommitUris() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::getConsolidatedCommitUris() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::Builder::setConsolidatedCommitUris(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          value);
+}
+inline void ArrayDirectory::Builder::setConsolidatedCommitUris(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::initConsolidatedCommitUris(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArrayDirectory::Builder::adoptConsolidatedCommitUris(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+ArrayDirectory::Builder::disownConsolidatedCommitUris() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::Reader::hasArraySchemaUris() const {
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::Builder::hasArraySchemaUris() {
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+ArrayDirectory::Reader::getArraySchemaUris() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::getArraySchemaUris() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::Builder::setArraySchemaUris(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          value);
+}
+inline void ArrayDirectory::Builder::setArraySchemaUris(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::initArraySchemaUris(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArrayDirectory::Builder::adoptArraySchemaUris(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+ArrayDirectory::Builder::disownArraySchemaUris() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::Reader::hasLatestArraySchemaUri() const {
+  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::Builder::hasLatestArraySchemaUri() {
+  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader ArrayDirectory::Reader::getLatestArraySchemaUri()
+    const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder
+ArrayDirectory::Builder::getLatestArraySchemaUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::Builder::setLatestArraySchemaUri(
+    ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder ArrayDirectory::Builder::initLatestArraySchemaUri(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      size);
+}
+inline void ArrayDirectory::Builder::adoptLatestArraySchemaUri(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+ArrayDirectory::Builder::disownLatestArraySchemaUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::Reader::hasArrayMetaUrisToVacuum() const {
+  return !_reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::Builder::hasArrayMetaUrisToVacuum() {
+  return !_builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+ArrayDirectory::Reader::getArrayMetaUrisToVacuum() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::getArrayMetaUrisToVacuum() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::Builder::setArrayMetaUrisToVacuum(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+          value);
+}
+inline void ArrayDirectory::Builder::setArrayMetaUrisToVacuum(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::initArrayMetaUrisToVacuum(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArrayDirectory::Builder::adoptArrayMetaUrisToVacuum(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+ArrayDirectory::Builder::disownArrayMetaUrisToVacuum() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::Reader::hasArrayMetaVacUrisToVacuum() const {
+  return !_reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::Builder::hasArrayMetaVacUrisToVacuum() {
+  return !_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+ArrayDirectory::Reader::getArrayMetaVacUrisToVacuum() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::getArrayMetaVacUrisToVacuum() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::Builder::setArrayMetaVacUrisToVacuum(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+          value);
+}
+inline void ArrayDirectory::Builder::setArrayMetaVacUrisToVacuum(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::initArrayMetaVacUrisToVacuum(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArrayDirectory::Builder::adoptArrayMetaVacUrisToVacuum(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+ArrayDirectory::Builder::disownArrayMetaVacUrisToVacuum() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::Reader::hasCommitUrisToConsolidate() const {
+  return !_reader.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::Builder::hasCommitUrisToConsolidate() {
+  return !_builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+ArrayDirectory::Reader::getCommitUrisToConsolidate() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::getCommitUrisToConsolidate() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::Builder::setCommitUrisToConsolidate(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS),
+          value);
+}
+inline void ArrayDirectory::Builder::setCommitUrisToConsolidate(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::initCommitUrisToConsolidate(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArrayDirectory::Builder::adoptCommitUrisToConsolidate(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+ArrayDirectory::Builder::disownCommitUrisToConsolidate() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::Reader::hasCommitUrisToVacuum() const {
+  return !_reader.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::Builder::hasCommitUrisToVacuum() {
+  return !_builder.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+ArrayDirectory::Reader::getCommitUrisToVacuum() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::getCommitUrisToVacuum() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::Builder::setCommitUrisToVacuum(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS),
+          value);
+}
+inline void ArrayDirectory::Builder::setCommitUrisToVacuum(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::initCommitUrisToVacuum(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArrayDirectory::Builder::adoptCommitUrisToVacuum(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+ArrayDirectory::Builder::disownCommitUrisToVacuum() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::Reader::hasConsolidatedCommitUrisToVacuum() const {
+  return !_reader.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::Builder::hasConsolidatedCommitUrisToVacuum() {
+  return !_builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+ArrayDirectory::Reader::getConsolidatedCommitUrisToVacuum() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::getConsolidatedCommitUrisToVacuum() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::Builder::setConsolidatedCommitUrisToVacuum(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS),
+          value);
+}
+inline void ArrayDirectory::Builder::setConsolidatedCommitUrisToVacuum(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::initConsolidatedCommitUrisToVacuum(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArrayDirectory::Builder::adoptConsolidatedCommitUrisToVacuum(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+ArrayDirectory::Builder::disownConsolidatedCommitUrisToVacuum() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::Reader::hasArrayMetaUris() const {
+  return !_reader.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::Builder::hasArrayMetaUris() {
+  return !_builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+ArrayDirectory::Reader::getArrayMetaUris() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::getArrayMetaUris() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::Builder::setArrayMetaUris(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
+          value);
+}
+inline void ArrayDirectory::Builder::setArrayMetaUris(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::initArrayMetaUris(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArrayDirectory::Builder::adoptArrayMetaUris(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+ArrayDirectory::Builder::disownArrayMetaUris() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::Reader::hasFragmentMetaUris() const {
+  return !_reader.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::Builder::hasFragmentMetaUris() {
+  return !_builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+ArrayDirectory::Reader::getFragmentMetaUris() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::getFragmentMetaUris() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::Builder::setFragmentMetaUris(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS),
+          value);
+}
+inline void ArrayDirectory::Builder::setFragmentMetaUris(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDirectory::Builder::initFragmentMetaUris(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArrayDirectory::Builder::adoptFragmentMetaUris(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+ArrayDirectory::Builder::disownFragmentMetaUris() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::Reader::hasDeleteTilesLocation() const {
+  return !_reader.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::Builder::hasDeleteTilesLocation() {
+  return !_builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+    ::capnp::Kind::STRUCT>::Reader
+ArrayDirectory::Reader::getDeleteTilesLocation() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::capnp::Kind::STRUCT>>::get(_reader
+                                       .getPointerField(
+                                           ::capnp::bounded<11>() *
+                                           ::capnp::POINTERS));
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+    ::capnp::Kind::STRUCT>::Builder
+ArrayDirectory::Builder::getDeleteTilesLocation() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::capnp::Kind::STRUCT>>::get(_builder
+                                       .getPointerField(
+                                           ::capnp::bounded<11>() *
+                                           ::capnp::POINTERS));
+}
+inline void ArrayDirectory::Builder::setDeleteTilesLocation(
+    ::capnp::List<
+        ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+        ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::capnp::Kind::STRUCT>>::
+      set(_builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+    ::capnp::Kind::STRUCT>::Builder
+ArrayDirectory::Builder::initDeleteTilesLocation(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::capnp::Kind::STRUCT>>::
+      init(
+          _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArrayDirectory::Builder::adoptDeleteTilesLocation(
+    ::capnp::Orphan<::capnp::List<
+        ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+        ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::capnp::Kind::STRUCT>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<
+    ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+    ::capnp::Kind::STRUCT>>
+ArrayDirectory::Builder::disownDeleteTilesLocation() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::capnp::Kind::STRUCT>>::disown(_builder
+                                          .getPointerField(
+                                              ::capnp::bounded<11>() *
+                                              ::capnp::POINTERS));
+}
+
+inline ::uint64_t ArrayDirectory::Reader::getTimestampStart() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t ArrayDirectory::Builder::getTimestampStart() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void ArrayDirectory::Builder::setTimestampStart(::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t ArrayDirectory::Reader::getTimestampEnd() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t ArrayDirectory::Builder::getTimestampEnd() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void ArrayDirectory::Builder::setTimestampEnd(::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool ArrayDirectory::Reader::hasMode() const {
+  return !_reader.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::Builder::hasMode() {
+  return !_builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader ArrayDirectory::Reader::getMode() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder ArrayDirectory::Builder::getMode() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::Builder::setMode(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder ArrayDirectory::Builder::initMode(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS),
+      size);
+}
+inline void ArrayDirectory::Builder::adoptMode(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> ArrayDirectory::Builder::disownMode() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::DeleteTileLocation::Reader::hasUri() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::DeleteTileLocation::Builder::hasUri() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader
+ArrayDirectory::DeleteTileLocation::Reader::getUri() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder
+ArrayDirectory::DeleteTileLocation::Builder::getUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::DeleteTileLocation::Builder::setUri(
+    ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder
+ArrayDirectory::DeleteTileLocation::Builder::initUri(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      size);
+}
+inline void ArrayDirectory::DeleteTileLocation::Builder::adoptUri(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+ArrayDirectory::DeleteTileLocation::Builder::disownUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::DeleteTileLocation::Reader::hasConditionMarker()
+    const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::DeleteTileLocation::Builder::hasConditionMarker() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader
+ArrayDirectory::DeleteTileLocation::Reader::getConditionMarker() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder
+ArrayDirectory::DeleteTileLocation::Builder::getConditionMarker() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::DeleteTileLocation::Builder::setConditionMarker(
+    ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder
+ArrayDirectory::DeleteTileLocation::Builder::initConditionMarker(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      size);
+}
+inline void ArrayDirectory::DeleteTileLocation::Builder::adoptConditionMarker(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+ArrayDirectory::DeleteTileLocation::Builder::disownConditionMarker() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline ::uint64_t ArrayDirectory::DeleteTileLocation::Reader::getOffset()
+    const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t ArrayDirectory::DeleteTileLocation::Builder::getOffset() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void ArrayDirectory::DeleteTileLocation::Builder::setOffset(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t ArrayDirectory::DeleteTileLocation::Reader::getTimestamp()
+    const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t ArrayDirectory::DeleteTileLocation::Builder::getTimestamp() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void ArrayDirectory::DeleteTileLocation::Builder::setTimestamp(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool EstimatedResultSize::Reader::hasResultSizes() const {

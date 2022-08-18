@@ -57,6 +57,9 @@ struct Array {
 
   arrayMetadata @7 :ArrayMetadata;
   # array metadata
+
+  arrayDirectory @8 : ArrayDirectory;
+  # array directory
 }
 
 struct ArrayOpen {
@@ -668,6 +671,65 @@ struct ArrayMetadata {
   entries @0 :List(MetadataEntry);
   # list of metadata values
 }
+
+struct ArrayDirectory {
+  # object representing an array directory
+
+  struct DeleteTileLocation {
+    uri @0 :Text;
+    conditionMarker @1 :Text;
+    offset @2 :UInt64;
+    timestamp @3 :UInt64;
+  }
+
+  unfilteredFragmentUris @0 :List(Text); 
+  # fragment URIs
+
+  consolidatedCommitUris @1 :List(Text);
+  # consolidated commit URI set
+
+  arraySchemaUris @2 :List(Text);
+  # URIs of all the array schema files
+
+  latestArraySchemaUri @3 :Text;
+  # latest array schema URI. 
+
+  arrayMetaUrisToVacuum @4 :List(Text);
+  # the array metadata files to vacuum
+
+  arrayMetaVacUrisToVacuum @5 :List(Text);
+  # the array metadata vac files to vacuum
+
+  commitUrisToConsolidate @6 :List(Text);
+  # the commit files to consolidate
+
+  commitUrisToVacuum @7 :List(Text);
+  # the commit files to vacuum
+
+  consolidatedCommitUrisToVacuum @8 :List(Text);
+  # the consolidated commit files to vacuum
+
+  arrayMetaUris @9 :List(Text);
+  # the timestamped filtered array metadata URIs, after removing
+  # the ones that need to be vacuumed and those that do not fall within
+  # [timestamp_start, timestamp_end]
+
+  fragmentMetaUris @10 :List(Text);
+  # the URIs of the consolidated fragment metadata files
+
+  deleteTilesLocation @11 :List(DeleteTileLocation);
+  # the location of delete tiles
+
+  timestampStart @12 :UInt64;
+   # Only the files created after timestamp_start are listed 
+
+  timestampEnd @13 :UInt64;
+  # Only the files created before timestamp_end are listed 
+
+  mode @14 :Text;
+  # mode for the array directory
+}
+
 
 struct EstimatedResultSize {
   # object representing estimated
