@@ -577,16 +577,6 @@ class Config {
   [[nodiscard]] optional<T> get(const std::string& key) const;
 
   /**
-   * An explicit specialization for `std::string`. It does not call a conversion
-   * function and it thus the same as the non-template `get`.
-   */
-  template <>
-  [[nodiscard]] inline optional<std::string> get<std::string>(
-      const std::string& key) const {
-    return get(key);
-  }
-
-  /**
    * Returns the string representation of a config parameter value.
    * Sets `found` to `true` if found and `false` otherwise.
    */
@@ -701,6 +691,18 @@ class Config {
   const char* get_from_config_or_env(
       const std::string& param, bool* found) const;
 };
+
+/**
+ * An explicit specialization for `std::string`. It does not call a conversion
+ * function and it thus the same as the non-template `get`.
+ */
+template <>
+[[nodiscard]] inline optional<std::string> Config::get<std::string>(
+    const std::string& key) const {
+  return get(key);
+}
+
+
 
 }  // namespace tiledb::sm
 
