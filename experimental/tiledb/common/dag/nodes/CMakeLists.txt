@@ -166,3 +166,31 @@ if (TILEDB_TESTS)
 #            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 #    )
 endif()
+
+
+#
+# Test-compile of object library ensures link-completeness
+#
+# add_executable(compile_stop_source EXCLUDE_FROM_ALL)
+# add_dependencies(all_link_complete compile_stop_source)
+# target_sources(compile_stop_source PRIVATE test/compile_stop_source_main.cc)
+
+if (TILEDB_TESTS)
+    add_executable(unit_stop_source EXCLUDE_FROM_ALL)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_stop_source PUBLIC Catch2::Catch2)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_stop_source PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_stop_source PUBLIC
+            test/unit_stop_source.cc
+            )
+
+    add_test(
+            NAME "unit_stop_source"
+            COMMAND $<TARGET_FILE:unit_stop_source> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()
