@@ -33,9 +33,6 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
-# Search the path set during the superbuild for the EP.
-set(CRC32C_PATHS ${TILEDB_EP_INSTALL_PREFIX})
-
 if(TILEDB_CRC32C_EP_BUILT)
   find_package(Crc32c CONFIG REQUIRED
     HINTS
@@ -65,13 +62,12 @@ if (NOT TILEDB_CRC32C_EP_BUILT AND NOT Crc32c_FOUND)
         URL ${TILEDB_CRC32C_URL}
         URL_HASH SHA256=${TILEDB_CRC32C_SHA256}
         LIST_SEPARATOR |
-        CMAKE_ARGS #${GOOGLE_CLOUD_CPP_EXTERNAL_PROJECT_CMAKE_FLAGS}
+        CMAKE_ARGS
                    -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
                    -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
                    -DCRC32C_BUILD_TESTS=OFF
                    -DCRC32C_BUILD_BENCHMARKS=OFF
                    -DCRC32C_USE_GLOG=OFF
-#        BUILD_COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
         LOG_DOWNLOAD ON
         LOG_CONFIGURE ON
         LOG_BUILD ON
