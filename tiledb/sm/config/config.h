@@ -694,15 +694,13 @@ class Config {
 
 /**
  * An explicit specialization for `std::string`. It does not call a conversion
- * function and it thus the same as the non-template `get`.
+ * function and it is thus the same as the non-template `get`.
  */
 template <>
 [[nodiscard]] inline optional<std::string> Config::get<std::string>(
     const std::string& key) const {
   return get(key);
 }
-
-
 
 }  // namespace tiledb::sm
 
