@@ -3964,7 +3964,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
 }
 
 template <typename FloatingType, typename IntType>
-void testing_float_scaling_filter(bool negative) {
+void testing_float_scaling_filter() {
   tiledb::sm::Config config;
 
   // Set up test data
@@ -3999,7 +3999,7 @@ void testing_float_scaling_filter(bool negative) {
   // the type restraints and choose numbers that are within the original byte
   // width.
   std::random_device rd_so;
-  std::mt19937 gen_so(rd_so());
+  std::mt19937_64 gen_so(rd_so());
   double dis_min = std::max(
       static_cast<double>(std::numeric_limits<IntType>::min()),
       std::numeric_limits<double>::min());
@@ -4014,9 +4014,9 @@ void testing_float_scaling_filter(bool negative) {
   uint64_t byte_width = sizeof(IntType);
 
   std::random_device rd;
-  std::mt19937 gen(rd());
-  IntType smallest_val = negative ? std::numeric_limits<IntType>::min() : 1.0f;
-  IntType largest_val = negative ? -1.0f : std::numeric_limits<IntType>::max();
+  std::mt19937_64 gen(rd());
+  IntType smallest_val = 1.0f;
+  IntType largest_val = std::numeric_limits<IntType>::max();
   std::uniform_real_distribution<FloatingType> dis(smallest_val, largest_val);
 
   for (uint64_t i = 0; i < nelts; i++) {
@@ -4034,14 +4034,8 @@ void testing_float_scaling_filter(bool negative) {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(FloatScalingFilter()).ok());
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width);
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_FACTOR, &scale);
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_OFFSET, &foffset);
-
+  CHECK(
+      pipeline.add_filter(FloatScalingFilter(scale, foffset, byte_width)).ok());
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
   // Check new size and number of chunks
@@ -4064,9 +4058,8 @@ TEMPLATE_TEST_CASE(
     int16_t,
     int32_t,
     int64_t) {
-  auto negative = GENERATE(true, false);
-  testing_float_scaling_filter<float, TestType>(negative);
-  testing_float_scaling_filter<double, TestType>(negative);
+  testing_float_scaling_filter<float, TestType>();
+  testing_float_scaling_filter<double, TestType>();
 }
 
 template <typename FloatingType, typename IntType>
@@ -4103,7 +4096,7 @@ void testing_float_scaling_filter_zeros(FloatingType zero_val) {
   // the type restraints and choose numbers that are within the original byte
   // width.
   std::random_device rd_so;
-  std::mt19937 gen_so(rd_so());
+  std::mt19937_64 gen_so(rd_so());
   double dis_min = std::max(
       static_cast<double>(std::numeric_limits<IntType>::min()),
       std::numeric_limits<double>::min());
@@ -4124,14 +4117,8 @@ void testing_float_scaling_filter_zeros(FloatingType zero_val) {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(FloatScalingFilter()).ok());
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width);
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_FACTOR, &scale);
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_OFFSET, &foffset);
-
+  CHECK(
+      pipeline.add_filter(FloatScalingFilter(scale, foffset, byte_width)).ok());
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
   // Check new size and number of chunks
@@ -4197,7 +4184,7 @@ void testing_float_scaling_filter_error(FloatingType error_val) {
   // the type restraints and choose numbers that are within the original byte
   // width.
   std::random_device rd_so;
-  std::mt19937 gen_so(rd_so());
+  std::mt19937_64 gen_so(rd_so());
   double dis_min = std::max(
       static_cast<double>(std::numeric_limits<IntType>::min()),
       std::numeric_limits<double>::min());
@@ -4218,14 +4205,8 @@ void testing_float_scaling_filter_error(FloatingType error_val) {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(FloatScalingFilter()).ok());
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width);
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_FACTOR, &scale);
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_OFFSET, &foffset);
-
+  CHECK(
+      pipeline.add_filter(FloatScalingFilter(scale, foffset, byte_width)).ok());
   CHECK(!pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 }
 
@@ -4295,7 +4276,7 @@ void testing_float_scaling_filter_denorm(FloatingType denorm_val) {
   // the type restraints and choose numbers that are within the original byte
   // width.
   std::random_device rd_so;
-  std::mt19937 gen_so(rd_so());
+  std::mt19937_64 gen_so(rd_so());
   double dis_min = std::max(
       static_cast<double>(std::numeric_limits<IntType>::min()),
       std::numeric_limits<double>::min());
@@ -4321,14 +4302,8 @@ void testing_float_scaling_filter_denorm(FloatingType denorm_val) {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(FloatScalingFilter()).ok());
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width);
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_FACTOR, &scale);
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_OFFSET, &foffset);
-
+  CHECK(
+      pipeline.add_filter(FloatScalingFilter(scale, foffset, byte_width)).ok());
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
   // Check new size and number of chunks
