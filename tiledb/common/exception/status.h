@@ -335,10 +335,6 @@ inline Status Status_ConsolidatorError(const std::string& msg) {
 inline Status Status_LRUCacheError(const std::string& msg) {
   return {"[TileDB::LRUCache] Error", msg};
 }
-/** Return a Config error class Status with a given message **/
-inline Status Status_ConfigError(const std::string& msg) {
-  return {"[TileDB::Config] Error", msg};
-}
 /** Return a Utils error class Status with a given message **/
 inline Status Status_UtilsError(const std::string& msg) {
   return {"[TileDB::Utils] Error", msg};

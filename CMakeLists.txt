@@ -204,6 +204,8 @@ set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 
 # Set compiler flags
 if (MSVC)
+  # Turn on standards-conformance mode
+  add_compile_options("/permissive-")
   # We disable some warnings that are not present in gcc/clang -Wall:
   #   C4101: unreferenced local variable
   #   C4146: unary minus operator applied to unsigned type
@@ -213,12 +215,18 @@ if (MSVC)
   #   C4457: local variable hiding function parameter
   #   C4702: unreachable code
   #   C4800: warning implicit cast int to bool
-  #   C4996: deprecation warning about e.g. sscanf.
-  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800 /wd4996)
+  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800)
   # Warnings as errors:
   if (TILEDB_WERROR)
     add_compile_options(/WX)
   endif()
+  # Turn off MSVC deprecation of certain standard library functions. This allows
+  # other deprecations to remain visible.
+  add_compile_definitions("_CRT_SECURE_NO_WARNINGS")
+  # We currently need to suppress warnings about deprecation (C4996) for two cases:
+  #   1. C++ API functions that call deprecated C API functions
+  #   2. two warnings in `test/src/helpers.cc` that call deprecated C API functions
+  add_compile_options(/wd4996)
   # Disable GDI (which we don't need, and causes some macro
   # re-definition issues if wingdi.h is included)
   add_compile_options(/DNOGDI)
@@ -424,6 +432,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_exception unit_interval unit_thread_pool unit_experimental)
   add_dependencies(tests unit_array_schema unit_filter_create unit_filter_pipeline unit_metadata)
   add_dependencies(tests unit_compressors unit_query unit_misc unit_vfs unit_array)
+  add_dependencies(tests unit_config)
   add_dependencies(tests unit_range_subset)
   add_dependencies(tests unit_consistency)
   add_dependencies(tests unit_range)
