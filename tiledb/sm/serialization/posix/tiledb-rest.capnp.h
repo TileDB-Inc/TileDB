@@ -79,6 +79,8 @@ CAPNP_DECLARE_SCHEMA(d5fd459ad75e86a9);
 CAPNP_DECLARE_SCHEMA(c0c730b5390f4427);
 CAPNP_DECLARE_SCHEMA(d8bd3c0dec37b773);
 CAPNP_DECLARE_SCHEMA(cde352fc27e7ca61);
+CAPNP_DECLARE_SCHEMA(d492b6734d5e3bf5);
+CAPNP_DECLARE_SCHEMA(bde8ebd7b13d8625);
 
 }  // namespace schemas
 }  // namespace capnp
@@ -1076,7 +1078,7 @@ struct GlobalWriteState {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(c0c730b5390f4427, 1, 3)
+    CAPNP_DECLARE_STRUCT_HEADER(c0c730b5390f4427, 1, 4)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
@@ -1107,6 +1109,36 @@ struct FragmentMetadata {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(cde352fc27e7ca61, 4, 21)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct MultiPartUploadState {
+  MultiPartUploadState() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(d492b6734d5e3bf5, 1, 2)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct CompletedPart {
+  CompletedPart() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(bde8ebd7b13d8625, 1, 1)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
@@ -7657,6 +7689,9 @@ public:
 
   inline  ::uint64_t getLastHilbertValue() const;
 
+  inline bool hasMultiPartUploadStates() const;
+  inline  ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>::Reader getMultiPartUploadStates() const;
+
 private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -7709,6 +7744,13 @@ public:
   inline  ::uint64_t getLastHilbertValue();
   inline void setLastHilbertValue( ::uint64_t value);
 
+  inline bool hasMultiPartUploadStates();
+  inline  ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>::Builder getMultiPartUploadStates();
+  inline void setMultiPartUploadStates( ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>::Reader value);
+  inline  ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>::Builder initMultiPartUploadStates();
+  inline void adoptMultiPartUploadStates(::capnp::Orphan< ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>>&& value);
+  inline ::capnp::Orphan< ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>> disownMultiPartUploadStates();
+
 private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -7730,6 +7772,7 @@ public:
   inline  ::tiledb::sm::serialization::capnp::MapUInt64::Pipeline getCellsWritten();
   inline  ::tiledb::sm::serialization::capnp::FragmentMetadata::Pipeline getFragMeta();
   inline  ::tiledb::sm::serialization::capnp::SingleCoord::Pipeline getLastCellCoords();
+  inline  ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>::Pipeline getMultiPartUploadStates();
 private:
   ::capnp::AnyPointer::Pipeline _typeless;
   friend class ::capnp::PipelineHook;
@@ -8159,6 +8202,188 @@ public:
       : _typeless(kj::mv(typeless)) {}
 
   inline  ::tiledb::sm::serialization::capnp::NonEmptyDomainList::Pipeline getNonEmptyDomain();
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class MultiPartUploadState::Reader {
+public:
+  typedef MultiPartUploadState Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint64_t getPartNumber() const;
+
+  inline bool hasUploadId() const;
+  inline  ::capnp::Text::Reader getUploadId() const;
+
+  inline bool hasCompletedPartIds() const;
+  inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Reader getCompletedPartIds() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class MultiPartUploadState::Builder {
+public:
+  typedef MultiPartUploadState Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint64_t getPartNumber();
+  inline void setPartNumber( ::uint64_t value);
+
+  inline bool hasUploadId();
+  inline  ::capnp::Text::Builder getUploadId();
+  inline void setUploadId( ::capnp::Text::Reader value);
+  inline  ::capnp::Text::Builder initUploadId(unsigned int size);
+  inline void adoptUploadId(::capnp::Orphan< ::capnp::Text>&& value);
+  inline ::capnp::Orphan< ::capnp::Text> disownUploadId();
+
+  inline bool hasCompletedPartIds();
+  inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Builder getCompletedPartIds();
+  inline void setCompletedPartIds( ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Reader value);
+  inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Builder initCompletedPartIds(unsigned int size);
+  inline void adoptCompletedPartIds(::capnp::Orphan< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>> disownCompletedPartIds();
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class MultiPartUploadState::Pipeline {
+public:
+  typedef MultiPartUploadState Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class CompletedPart::Reader {
+public:
+  typedef CompletedPart Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasETag() const;
+  inline  ::capnp::Text::Reader getETag() const;
+
+  inline  ::uint64_t getPartNumber() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class CompletedPart::Builder {
+public:
+  typedef CompletedPart Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline bool hasETag();
+  inline  ::capnp::Text::Builder getETag();
+  inline void setETag( ::capnp::Text::Reader value);
+  inline  ::capnp::Text::Builder initETag(unsigned int size);
+  inline void adoptETag(::capnp::Orphan< ::capnp::Text>&& value);
+  inline ::capnp::Orphan< ::capnp::Text> disownETag();
+
+  inline  ::uint64_t getPartNumber();
+  inline void setPartNumber( ::uint64_t value);
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class CompletedPart::Pipeline {
+public:
+  typedef CompletedPart Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
 private:
   ::capnp::AnyPointer::Pipeline _typeless;
   friend class ::capnp::PipelineHook;
@@ -15466,6 +15691,45 @@ inline void GlobalWriteState::Builder::setLastHilbertValue( ::uint64_t value) {
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
+inline bool GlobalWriteState::Reader::hasMultiPartUploadStates() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS).isNull();
+}
+inline bool GlobalWriteState::Builder::hasMultiPartUploadStates() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS).isNull();
+}
+inline  ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>::Reader GlobalWriteState::Reader::getMultiPartUploadStates() const {
+  return ::capnp::_::PointerHelpers< ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>>::get(_reader.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline  ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>::Builder GlobalWriteState::Builder::getMultiPartUploadStates() {
+  return ::capnp::_::PointerHelpers< ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>>::get(_builder.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>::Pipeline GlobalWriteState::Pipeline::getMultiPartUploadStates() {
+  return  ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>::Pipeline(_typeless.getPointerField(3));
+}
+#endif  // !CAPNP_LITE
+inline void GlobalWriteState::Builder::setMultiPartUploadStates( ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>::Reader value) {
+  ::capnp::_::PointerHelpers< ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>>::set(_builder.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS), value);
+}
+inline  ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>::Builder GlobalWriteState::Builder::initMultiPartUploadStates() {
+  return ::capnp::_::PointerHelpers< ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>>::init(_builder.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline void GlobalWriteState::Builder::adoptMultiPartUploadStates(
+    ::capnp::Orphan< ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>>&& value) {
+  ::capnp::_::PointerHelpers< ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>> GlobalWriteState::Builder::disownMultiPartUploadStates() {
+  return ::capnp::_::PointerHelpers< ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::MultiPartUploadState>>::disown(_builder.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+
 inline bool SingleCoord::Reader::hasCoords() const {
   return !_reader.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
@@ -16439,6 +16703,136 @@ inline void FragmentMetadata::Builder::adoptRtree(
 inline ::capnp::Orphan< ::capnp::Data> FragmentMetadata::Builder::disownRtree() {
   return ::capnp::_::PointerHelpers< ::capnp::Data>::disown(_builder.getPointerField(
       ::capnp::bounded<20>() * ::capnp::POINTERS));
+}
+
+inline  ::uint64_t MultiPartUploadState::Reader::getPartNumber() const {
+  return _reader.getDataField< ::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint64_t MultiPartUploadState::Builder::getPartNumber() {
+  return _builder.getDataField< ::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void MultiPartUploadState::Builder::setPartNumber( ::uint64_t value) {
+  _builder.setDataField< ::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool MultiPartUploadState::Reader::hasUploadId() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool MultiPartUploadState::Builder::hasUploadId() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::capnp::Text::Reader MultiPartUploadState::Reader::getUploadId() const {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::capnp::Text::Builder MultiPartUploadState::Builder::getUploadId() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void MultiPartUploadState::Builder::setUploadId( ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::capnp::Text::Builder MultiPartUploadState::Builder::initUploadId(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
+}
+inline void MultiPartUploadState::Builder::adoptUploadId(
+    ::capnp::Orphan< ::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::capnp::Text> MultiPartUploadState::Builder::disownUploadId() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool MultiPartUploadState::Reader::hasCompletedPartIds() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline bool MultiPartUploadState::Builder::hasCompletedPartIds() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Reader MultiPartUploadState::Reader::getCompletedPartIds() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Builder MultiPartUploadState::Builder::getCompletedPartIds() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void MultiPartUploadState::Builder::setCompletedPartIds( ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
+}
+inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Builder MultiPartUploadState::Builder::initCompletedPartIds(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), size);
+}
+inline void MultiPartUploadState::Builder::adoptCompletedPartIds(
+    ::capnp::Orphan< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>> MultiPartUploadState::Builder::disownCompletedPartIds() {
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool CompletedPart::Reader::hasETag() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool CompletedPart::Builder::hasETag() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::capnp::Text::Reader CompletedPart::Reader::getETag() const {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::capnp::Text::Builder CompletedPart::Builder::getETag() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void CompletedPart::Builder::setETag( ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::capnp::Text::Builder CompletedPart::Builder::initETag(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
+}
+inline void CompletedPart::Builder::adoptETag(
+    ::capnp::Orphan< ::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::capnp::Text> CompletedPart::Builder::disownETag() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline  ::uint64_t CompletedPart::Reader::getPartNumber() const {
+  return _reader.getDataField< ::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint64_t CompletedPart::Builder::getPartNumber() {
+  return _builder.getDataField< ::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void CompletedPart::Builder::setPartNumber( ::uint64_t value) {
+  _builder.setDataField< ::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 }  // namespace

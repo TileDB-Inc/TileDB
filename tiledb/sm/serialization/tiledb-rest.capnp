@@ -767,6 +767,8 @@ struct GlobalWriteState {
 
   lastHilbertValue @3 :UInt64;
   # last hilbert value written
+
+  multiPartUploadStates@4 :Map(Text, MultiPartUploadState);
 }
 
 struct SingleCoord {
@@ -812,4 +814,14 @@ struct FragmentMetadata {
   # non empty domain
 
   rtree @25 :Data;
+}
+
+struct MultiPartUploadState {
+  partNumber@0 :UInt64;
+  uploadId@1 :Text;
+  completedPartIds@2 :List(CompletedPart);
+}
+struct CompletedPart {
+  eTag@0 :Text;
+  partNumber@1 :UInt64;
 }
