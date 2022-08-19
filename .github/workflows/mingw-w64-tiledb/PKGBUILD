@@ -83,6 +83,9 @@ check (){
   # apparently due to pre-existing tmp/TMP/TEMP env vars
   ( unset tmp; unset TMP; unset TEMP; powershell ${TILEDB_HOME}/scripts/install-minio.ps1 )
 
+  # See if this will succeed by self, then (still) fail in the larger run...
+  ./tiledb/test/tiledb_unit.exe -d=yes --vfs=native "Sparse unordered with dups reader: qc budget forcing one tile at a time"
+
   # always avoid the test that fails due to our 'non-standard' config options set above
   exclude_tests="~\"C API: Test config iter\""
   if [ "$CARCH" == "i686" ]; then
