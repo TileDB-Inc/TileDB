@@ -208,12 +208,12 @@ TEST_CASE_METHOD(
 
   SECTION("Invalid field size") {
     double val = 1.0;
-    rc = tiledb_query_add_update_value(ctx_, query, "g", &val, sizeof(val));
+    rc = tiledb_query_add_update_value(ctx_, query, "a", &val, sizeof(val));
     CHECK(rc == TILEDB_OK);
   }
 
   SECTION("Nullptr on non nullable attribute") {
-    rc = tiledb_query_add_update_value(ctx_, query, "g", nullptr, 0);
+    rc = tiledb_query_add_update_value(ctx_, query, "a", nullptr, 0);
     CHECK(rc == TILEDB_OK);
   }
 
@@ -221,6 +221,40 @@ TEST_CASE_METHOD(
   auto st = query->query_->update_values()[0].check(
       array->array_->array_schema_latest());
   CHECK(!st.ok());
+
+  // Clean up.
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+
+  remove_temp_dir();
+}
+
+TEST_CASE_METHOD(
+    UpdateValuesfx,
+    "C API: Adding update value twice",
+    "[capi][updates][adding-twice]") {
+  create_temp_dir();
+  create_sparse_array("a", TILEDB_FLOAT32);
+
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_UPDATE);
+  CHECK(rc == TILEDB_OK);
+
+  // Prepare query.
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_UPDATE, &query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Add the update value.
+  float val = 1.0f;
+  rc = tiledb_query_add_update_value(ctx_, query, "a", &val, sizeof(val));
+  CHECK(rc == TILEDB_OK);
+
+  // Try to add again.
+  rc = tiledb_query_add_update_value(ctx_, query, "a", &val, sizeof(val));
+  CHECK(rc == TILEDB_ERR);
 
   // Clean up.
   tiledb_query_free(&query);

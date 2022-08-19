@@ -2067,6 +2067,12 @@ Status Query::add_update_value(
         "Setting update values is only valid for sparse arrays"));
   }
 
+  if (attributes_with_update_value_.count(field_name) != 0) {
+    return logger_->status(
+        Status_QueryError("Update value already set for attribute"));
+  }
+
+  attributes_with_update_value_.emplace(field_name);
   update_values_.emplace_back(field_name, update_value, update_value_size);
   return Status::Ok();
 }

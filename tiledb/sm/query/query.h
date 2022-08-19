@@ -1000,6 +1000,9 @@ class Query {
   /** The update values. */
   std::vector<UpdateValue> update_values_;
 
+  /** Set of attributes that have an update value. */
+  std::set<std::string> attributes_with_update_value_;
+
   /** The fragment metadata that this query will focus on. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
 
