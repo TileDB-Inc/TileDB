@@ -111,6 +111,7 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
   REQUIRE(TILEDB_FILTER_CHECKSUM_MD5 == 12);
   REQUIRE(TILEDB_FILTER_CHECKSUM_SHA256 == 13);
   REQUIRE(TILEDB_FILTER_DICTIONARY == 14);
+  REQUIRE(TILEDB_FILTER_BITSORT == 16);
 
   /** Filter option */
   REQUIRE(TILEDB_COMPRESSION_LEVEL == 0);
@@ -435,6 +436,9 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
       (tiledb_filter_type_from_str("DICTIONARY_ENCODING", &filter_type) ==
            TILEDB_OK &&
        filter_type == TILEDB_FILTER_DICTIONARY));
+  REQUIRE(
+      (tiledb_filter_type_from_str("BITSORT", &filter_type) == TILEDB_OK &&
+       filter_type == TILEDB_FILTER_BITSORT));
 
   tiledb_filter_option_t filter_option;
   REQUIRE(

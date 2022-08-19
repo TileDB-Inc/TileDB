@@ -34,6 +34,7 @@
 #include "filter_create.h"
 #include "bit_width_reduction_filter.h"
 #include "bitshuffle_filter.h"
+#include "bitsort_filter.h"
 #include "byteshuffle_filter.h"
 #include "checksum_md5_filter.h"
 #include "checksum_sha256_filter.h"
@@ -146,6 +147,9 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
           filter_config.byte_width,
           filter_config.scale,
           filter_config.offset);
+    };
+    case FilterType::FILTER_BITSORT: {
+      return make_shared<BitSortFilter>(HERE());
     };
     default:
       throw StatusException(

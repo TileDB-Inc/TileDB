@@ -157,6 +157,18 @@ target_link_libraries(compile_float_scale_filters PRIVATE float_scaling_filters)
 target_sources(compile_float_scale_filters PRIVATE test/compile_float_scaling_filter_main.cc)
 
 #
+# `bitsort_filters` object library
+#
+add_library(bitsort_filters OBJECT bitsort_filter.cc)
+target_link_libraries(bitsort_filters PUBLIC filter $<TARGET_OBJECTS:filter>)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_bitsort_filters EXCLUDE_FROM_ALL)
+target_link_libraries(compile_bitsort_filters PRIVATE bitsort_filters)
+target_sources(compile_bitsort_filters PRIVATE test/compile_bitsort_filter_main.cc)
+
+#
 # `all_filters` object library
 #
 add_library(all_filters OBJECT
@@ -169,6 +181,7 @@ target_link_libraries(all_filters PUBLIC checksum_filters $<TARGET_OBJECTS:check
 target_link_libraries(all_filters PUBLIC compression_filter $<TARGET_OBJECTS:compression_filter>)
 target_link_libraries(all_filters PUBLIC encryption_filters $<TARGET_OBJECTS:encryption_filters>)
 target_link_libraries(all_filters PUBLIC float_scaling_filters $<TARGET_OBJECTS:float_scaling_filters>)
+target_link_libraries(all_filters PUBLIC bitsort_filters $<TARGET_OBJECTS:bitsort_filters>)
 #
 # Test-compile of object library ensures link-completeness
 #
