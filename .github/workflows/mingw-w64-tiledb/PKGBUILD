@@ -83,9 +83,6 @@ check (){
   # apparently due to pre-existing tmp/TMP/TEMP env vars
   ( unset tmp; unset TMP; unset TEMP; powershell ${TILEDB_HOME}/scripts/install-minio.ps1 )
 
-  # See if this will succeed by self, then (still) fail in the larger run...
-  ./tiledb/test/tiledb_unit.exe -d=yes --vfs=native "Sparse unordered with dups reader: qc budget forcing one tile at a time"
-
   # always avoid the test that fails due to our 'non-standard' config options set above
   exclude_tests="~\"C API: Test config iter\""
   if [ "$CARCH" == "i686" ]; then
@@ -111,6 +108,9 @@ check (){
     # the 'rand'omness exercised within it, altho appears it is always seeding for same sequence...?
     # leaving in for now, but if problems occur may want to exclude from full run, run singularly below...
     exclude_tests="${exclude_tests} ~\"C API: Test sparse array\\, sorted reads\""
+    # following was failing in CI on larger run, but not locally for dlh
+    exclude_tests="${exclude_tests} ~\"Sparse unordered with dups reader: qc removes full tile\""
+    exclude_tests="${exclude_tests} ~\"C API: Group, vacuuming\""
 
     # some tests that fail in the larger run will run successfully individually, set these up to be run individually
     prev_excluded=""
@@ -120,6 +120,8 @@ check (){
     prev_excluded="${prev_excluded} \"C API: Test importing from a buffer\""
     # may want to activate here if de-activated above...
     prev_excluded="${prev_excluded} ~\"C API: Test sparse array\\, sorted reads\""
+    prev_excluded="${prev_excluded} ~\"Sparse unordered with dups reader: qc removes full tile\""
+    prev_excluded="${prev_excluded} ~\"C API: Group, vacuuming\""
 
   else
     echo "no additional test exclusions"
