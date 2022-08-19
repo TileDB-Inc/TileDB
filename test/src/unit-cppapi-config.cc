@@ -44,6 +44,14 @@ int setenv_local(const char* __name, const char* __value) {
 #endif
 }
 
+int clrenv_local(const char* __name) {
+#ifdef _WIN32
+  return _putenv_s(__name, "");
+#else
+  return unsetenv(__name);
+#endif
+}
+
 TEST_CASE("C++ API: Config", "[cppapi][config]") {
   tiledb::Config config;
   config["foo"] = "bar";
@@ -127,7 +135,7 @@ TEST_CASE(
   // and this test case runs before the capi-config tests cases, and if
   // TILEDB_SM_IO_CONCURRENCY_LEVEL is left in environment a test case there
   // fails...
-  setenv_local("TILEDB_SM_IO_CONCURRENCY_LEVEL", "");
+  clrenv_local("TILEDB_SM_IO_CONCURRENCY_LEVEL");
 }
 
 TEST_CASE("C++ API: Config Equality", "[cppapi][config]") {

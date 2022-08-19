@@ -87,7 +87,7 @@ check (){
   exclude_tests="~\"C API: Test config iter\""
   if [ "$CARCH" == "i686" ]; then
     # test failures occurring in 32bit environ, for now avoid
-    echo "add unit tests skipped as too many currently fail with 32bit mingw!"
+    echo "skip unit tests that (generally) fail with 32bit mingw!"
 
     exclude_tests="${exclude_tests} ~\"CPP API: Test consolidation with timestamps\\, global read\\, all cells same coords\\, with memory budget\""
     exclude_tests="${exclude_tests} ~\"CPP API: Test consolidation with timestamps\\, global read\\, same cells across tiles\\, with memory budget\""
@@ -104,12 +104,19 @@ check (){
     exclude_tests="${exclude_tests} ~\"CPP API: Test reading with delete condition\""
     exclude_tests="${exclude_tests} ~\"CPP API: Test reading with delete condition\\, consolidated fragment\""
     exclude_tests="${exclude_tests} ~\"CPP API: Test reading with delete condition\\, delete duplicates from later fragments\""
+    #The following test has sometimes failed, sometimes not, when run with others, reason unknown, possibly
+    # the 'rand'omness exercised within it, altho appears it is always seeding for same sequence...?
+    # leaving in for now, but if problems occur may want to exclude from full run, run singularly below...
+    exclude_tests="${exclude_tests} ~\"C API: Test sparse array\\, sorted reads\""
 
+    # some tests that fail in the larger run will run successfully individually, set these up to be run individually
     prev_excluded=""
     prev_excluded="${prev_excluded} \"CPP API: Test consolidation with timestamps\\, global read\\, all cells same coords\\, with memory budget\""
     prev_excluded="${prev_excluded} \"CPP API: Test consolidation with timestamps\\, global read\\, same cells across tiles\\, with memory budget\""
     prev_excluded="${prev_excluded} \"Compression-RLE: Test compression parameter calculation of strings\""
     prev_excluded="${prev_excluded} \"C API: Test importing from a buffer\""
+    # may want to activate here if de-activated above...
+    prev_excluded="${prev_excluded} ~\"C API: Test sparse array\\, sorted reads\""
 
   else
     echo "no additional test exclusions"
