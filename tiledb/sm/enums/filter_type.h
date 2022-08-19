@@ -92,6 +92,8 @@ inline const std::string& filter_type_str(FilterType filter_type) {
       return constants::filter_scale_float_str;
     case FilterType::FILTER_XOR:
       return constants::filter_xor_str;
+    case FilterType::FILTER_BITSORT:
+      return constants::filter_bitsort_str;
     default:
       return constants::empty_str;
   }
@@ -132,6 +134,8 @@ inline Status filter_type_enum(
     *filter_type = FilterType::FILTER_SCALE_FLOAT;
   else if (filter_type_str == constants::filter_xor_str)
     *filter_type = FilterType::FILTER_XOR;
+  else if (filter_type_str == constants::filter_bitsort_str)
+    *filter_type = FilterType::FILTER_BITSORT;
   else {
     return Status_Error("Invalid FilterType " + filter_type_str);
   }
