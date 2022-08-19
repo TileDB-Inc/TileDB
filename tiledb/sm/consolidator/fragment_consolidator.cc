@@ -304,18 +304,13 @@ Status FragmentConsolidator::vacuum(
   // Get the fragment URIs and vacuum file URIs to be vacuumed
   auto vfs = storage_manager_->vfs();
   auto compute_tp = storage_manager_->compute_tp();
-  ArrayDirectory array_dir;
-  try {
-    array_dir = ArrayDirectory(
-        vfs,
-        compute_tp,
-        URI(array_name),
-        timestamp_start,
-        timestamp_end,
-        ArrayDirectoryMode::VACUUM_FRAGMENTS);
-  } catch (const std::logic_error& le) {
-    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-  }
+  auto array_dir = ArrayDirectory(
+      vfs,
+      compute_tp,
+      URI(array_name),
+      timestamp_start,
+      timestamp_end,
+      ArrayDirectoryMode::VACUUM_FRAGMENTS);
 
   auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
   const auto& fragment_uris_to_vacuum =
