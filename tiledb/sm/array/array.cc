@@ -226,10 +226,10 @@ Status Array::load_fragments(
 
 Status Array::delete_fragments(
     const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
-  // Check that query type is WRITE_EXCLUSIVE
-  if (query_type_ != QueryType::WRITE_EXCLUSIVE) {
+  // Check that query type is MODIFY_EXCLUSIVE
+  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(Status_ArrayError(
-        "[Array::delete_fragments] Query type must be WRITE_EXCLUSIVE"));
+        "[Array::delete_fragments] Query type must be MODIFY_EXCLUSIVE"));
   }
 
   // Check that array is open
@@ -349,7 +349,7 @@ Status Array::open(
         timestamp_end_opened_at_ = utils::time::timestamp_now_ms();
       } else if (
           query_type == QueryType::WRITE ||
-          query_type == QueryType::WRITE_EXCLUSIVE ||
+          query_type == QueryType::MODIFY_EXCLUSIVE ||
           query_type == QueryType::DELETE) {
         timestamp_end_opened_at_ = 0;
       } else {
@@ -455,7 +455,7 @@ Status Array::close() {
       // Update array metadata for write queries if metadata was written by the
       // user
       if ((query_type_ == QueryType::WRITE ||
-           query_type_ == QueryType::WRITE_EXCLUSIVE) &&
+           query_type_ == QueryType::MODIFY_EXCLUSIVE) &&
           metadata_.num() > 0) {
         // Set metadata loaded to be true so when serialization fetchs the
         // metadata it won't trigger a deadlock
@@ -480,7 +480,7 @@ Status Array::close() {
           throw StatusException(st);
       } else if (
           query_type_ == QueryType::WRITE ||
-          query_type_ == QueryType::WRITE_EXCLUSIVE) {
+          query_type_ == QueryType::MODIFY_EXCLUSIVE) {
         st = storage_manager_->array_close_for_writes(this);
         if (!st.ok())
           throw StatusException(st);
@@ -787,10 +787,10 @@ Status Array::delete_metadata(const char* key) {
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::WRITE_EXCLUSIVE) {
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(
         Status_ArrayError("Cannot delete metadata. Array was "
-                          "not opened in write mode"));
+                          "not opened in write or modify_exclusive mode"));
   }
 
   // Check if key is null
@@ -817,10 +817,10 @@ Status Array::put_metadata(
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::WRITE_EXCLUSIVE) {
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(
         Status_ArrayError("Cannot put metadata; Array was "
-                          "not opened in write mode"));
+                          "not opened in write or modify_exclusive mode"));
   }
 
   // Check if key is null

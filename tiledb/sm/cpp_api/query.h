@@ -2316,8 +2316,8 @@ class Query {
         return "READ";
       case TILEDB_WRITE:
         return "WRITE";
-      case TILEDB_WRITE_EXCLUSIVE:
-        return "WRITE_EXCLUSIVE";
+      case TILEDB_MODIFY_EXCLUSIVE:
+        return "MODIFY_EXCLUSIVE";
       case TILEDB_DELETE:
         return "DELETE";
     }

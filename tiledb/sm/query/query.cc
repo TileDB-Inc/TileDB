@@ -133,7 +133,7 @@ Query::~Query() {
 Status Query::add_range(
     unsigned dim_idx, const void* start, const void* end, const void* stride) {
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE) {
     return logger_->status(
         Status_QueryError("Adding a range for an unsupported query type"));
   }
@@ -202,7 +202,7 @@ Status Query::add_range_var(
     const void* end,
     uint64_t end_size) {
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE) {
     return logger_->status(
         Status_QueryError("Adding a range for an unsupported query type"));
   }
@@ -220,7 +220,7 @@ Status Query::add_range_var(
     return logger_->status(
         Status_QueryError("Cannot add range; Range must be variable-sized"));
 
-  if (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE)
+  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)
     return logger_->status(Status_QueryError(
         "Cannot add range; Function applicable only to reads"));
 
@@ -241,7 +241,7 @@ Status Query::add_range_var(
 }
 
 Status Query::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
-  if ((type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE) &&
+  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
       !array_schema_->dense())
     return logger_->status(
         Status_QueryError("Getting the number of ranges from a write query "
@@ -261,7 +261,7 @@ Status Query::get_range(
         "Getting a var range size only applicable to read queries"));
   }
 
-  if ((type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE) &&
+  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
       !array_schema_->dense()) {
     return logger_->status(
         Status_QueryError("Getting a range from a write query is not "
@@ -559,9 +559,10 @@ Query::get_max_mem_size_map() {
 }
 
 Status Query::get_written_fragment_num(uint32_t* num) const {
-  if (type_ != QueryType::WRITE && type_ != QueryType::WRITE_EXCLUSIVE) {
-    return logger_->status(Status_QueryError(
-        "Cannot get number of fragments; Applicable only to WRITE mode"));
+  if (type_ != QueryType::WRITE && type_ != QueryType::MODIFY_EXCLUSIVE) {
+    return logger_->status(
+        Status_QueryError("Cannot get number of fragments; Applicable only to "
+                          "WRITE and MODIFY_EXCLUSIVE mode"));
   }
 
   *num = (uint32_t)written_fragment_info_.size();
@@ -570,9 +571,10 @@ Status Query::get_written_fragment_num(uint32_t* num) const {
 }
 
 Status Query::get_written_fragment_uri(uint32_t idx, const char** uri) const {
-  if (type_ != QueryType::WRITE && type_ != QueryType::WRITE_EXCLUSIVE) {
-    return logger_->status(Status_QueryError(
-        "Cannot get fragment URI; Applicable only to WRITE mode"));
+  if (type_ != QueryType::WRITE && type_ != QueryType::MODIFY_EXCLUSIVE) {
+    return logger_->status(
+        Status_QueryError("Cannot get fragment URI; Applicable only to WRITE "
+                          "and MODIFY_EXCLUSIVE mode"));
   }
 
   auto num = (uint32_t)written_fragment_info_.size();
@@ -587,9 +589,10 @@ Status Query::get_written_fragment_uri(uint32_t idx, const char** uri) const {
 
 Status Query::get_written_fragment_timestamp_range(
     uint32_t idx, uint64_t* t1, uint64_t* t2) const {
-  if (type_ != QueryType::WRITE && type_ != QueryType::WRITE_EXCLUSIVE) {
-    return logger_->status(Status_QueryError(
-        "Cannot get fragment timestamp range; Applicable only to WRITE mode"));
+  if (type_ != QueryType::WRITE && type_ != QueryType::MODIFY_EXCLUSIVE) {
+    return logger_->status(
+        Status_QueryError("Cannot get fragment timestamp range; Applicable "
+                          "only to WRITE and MODIFY_EXCLSUIVE mode"));
   }
 
   auto num = (uint32_t)written_fragment_info_.size();
@@ -635,7 +638,7 @@ std::vector<std::string> Query::buffer_names() const {
 
 QueryBuffer Query::buffer(const std::string& name) const {
   // Special zipped coordinates
-  if ((type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE) &&
+  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
       name == constants::coords) {
     return QueryBuffer(
         coords_info_.coords_buffer_,
@@ -698,7 +701,7 @@ Status Query::get_buffer(
     uint64_t** buffer_val_size) const {
   // Check query type
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot get buffer; Unsupported query type."));
   }
@@ -742,7 +745,7 @@ Status Query::get_offsets_buffer(
     const char* name, uint64_t** buffer_off, uint64_t** buffer_off_size) const {
   // Check query type
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot get buffer; Unsupported query type."));
   }
@@ -782,7 +785,7 @@ Status Query::get_data_buffer(
     const char* name, void** buffer, uint64_t** buffer_size) const {
   // Check query type
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot get buffer; Unsupported query type."));
   }
@@ -797,7 +800,7 @@ Status Query::get_data_buffer(
   }
 
   // Special zipped coordinates
-  if ((type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE) &&
+  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
       name == constants::coords) {
     *buffer = coords_info_.coords_buffer_;
     *buffer_size = coords_info_.coords_buffer_size_;
@@ -830,7 +833,7 @@ Status Query::get_validity_buffer(
     uint64_t** buffer_validity_bytemap_size) const {
   // Check query type
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot get buffer; Unsupported query type."));
   }
@@ -895,7 +898,7 @@ Status Query::get_buffer(
     const ValidityVector** validity_vector) const {
   // Check query type
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot get buffer; Unsupported query type."));
   }
@@ -941,7 +944,7 @@ Status Query::get_buffer(
     const ValidityVector** validity_vector) const {
   // Check query type
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot get buffer; Unsupported query type."));
   }
@@ -1049,7 +1052,7 @@ Layout Query::layout() const {
 }
 
 const QueryCondition* Query::condition() const {
-  if (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE) {
+  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     return nullptr;
   }
 
@@ -1076,7 +1079,7 @@ Status Query::process() {
     return st;
   }
 
-  if ((type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE) &&
+  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
       layout_ == Layout::GLOBAL_ORDER) {
     // reset coord buffer marker at end of global write
     // this will allow for the user to properly set the next write batch
@@ -1124,9 +1127,10 @@ Status Query::disable_checks_consolidation() {
         "Cannot disable checks for consolidation after initialization"));
   }
 
-  if (type_ != QueryType::WRITE && type_ != QueryType::WRITE_EXCLUSIVE) {
-    return logger_->status(Status_QueryError(
-        "Cannot disable checks for consolidation; Applicable only to writes"));
+  if (type_ != QueryType::WRITE && type_ != QueryType::MODIFY_EXCLUSIVE) {
+    return logger_->status(
+        Status_QueryError("Cannot disable checks for consolidation; Applicable "
+                          "only to write and modify_exclusive"));
   }
 
   disable_checks_consolidation_ = true;
@@ -1155,7 +1159,7 @@ void Query::set_processed_conditions(
 }
 
 Status Query::check_buffer_names() {
-  if (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE) {
+  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     // If the array is sparse, the coordinates must be provided
     if (!array_schema_->dense() && !coords_info_.has_coords_)
       return logger_->status(Status_WriterError(
@@ -1190,7 +1194,7 @@ Status Query::check_buffer_names() {
 }
 
 Status Query::create_strategy(bool skip_checks_serialization) {
-  if (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE) {
+  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           OrderedWriter,
@@ -1380,7 +1384,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
 
 Status Query::check_set_fixed_buffer(const std::string& name) {
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot set buffer; Unsupported query type."));
   }
@@ -1482,12 +1486,12 @@ Status Query::set_buffer(
     has_zipped_coords_buffer_ = true;
 
     // Set special function for zipped coordinates buffer
-    if (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE)
+    if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)
       return set_coords_buffer(buffer, buffer_size);
   }
 
   if (is_dim &&
-      (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE)) {
+      (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)) {
     // Check number of coordinates
     uint64_t coords_num = *buffer_size / array_schema_->cell_size(name);
     if (coord_buffer_is_set_ && coords_num != coords_info_.coords_num_)
@@ -1519,7 +1523,7 @@ Status Query::set_data_buffer(
 
   // Check buffer
   if (check_null_buffers && buffer == nullptr) {
-    if ((type_ != QueryType::WRITE && type_ != QueryType::WRITE_EXCLUSIVE) ||
+    if ((type_ != QueryType::WRITE && type_ != QueryType::MODIFY_EXCLUSIVE) ||
         *buffer_size != 0) {
       return logger_->status(
           Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
@@ -1544,7 +1548,7 @@ Status Query::set_data_buffer(
   }
 
   if (array_schema_->dense() &&
-      (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE) &&
+      (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
       !is_attr) {
     return logger_->status(Status_QueryError(
         std::string("Dense write queries cannot set dimension buffers")));
@@ -1570,12 +1574,12 @@ Status Query::set_data_buffer(
     has_zipped_coords_buffer_ = true;
 
     // Set special function for zipped coordinates buffer
-    if (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE)
+    if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)
       return set_coords_buffer(buffer, buffer_size);
   }
 
   if (is_dim &&
-      (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE)) {
+      (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)) {
     // Check number of coordinates
     uint64_t coords_num = *buffer_size / array_schema_->cell_size(name);
     if (coord_data_buffer_is_set_ && coords_num != coords_info_.coords_num_ &&
@@ -1646,7 +1650,7 @@ Status Query::set_offsets_buffer(
         "' after initialization"));
 
   if (is_dim &&
-      (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE)) {
+      (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)) {
     // Check number of coordinates
     uint64_t coords_num =
         *buffer_offsets_size / constants::cell_var_offset_size;
@@ -1726,14 +1730,14 @@ Status Query::set_buffer(
     const bool check_null_buffers) {
   // Check query type
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot set buffer; Unsupported query type."));
   }
 
   // Check buffer
   if (check_null_buffers && buffer_val == nullptr)
-    if ((type_ != QueryType::WRITE && type_ != QueryType::WRITE_EXCLUSIVE) ||
+    if ((type_ != QueryType::WRITE && type_ != QueryType::MODIFY_EXCLUSIVE) ||
         *buffer_val_size != 0)
       return logger_->status(
           Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
@@ -1783,7 +1787,7 @@ Status Query::set_buffer(
         "' after initialization"));
 
   if (is_dim &&
-      (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE)) {
+      (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)) {
     // Check number of coordinates
     uint64_t coords_num = *buffer_off_size / constants::cell_var_offset_size;
     if (coord_buffer_is_set_ && coords_num != coords_info_.coords_num_)
@@ -1915,14 +1919,14 @@ Status Query::set_buffer(
     const bool check_null_buffers) {
   // Check query type
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot set layout; Unsupported query type."));
   }
 
   // Check buffer
   if (check_null_buffers && buffer_val == nullptr)
-    if ((type_ != QueryType::WRITE && type_ != QueryType::WRITE_EXCLUSIVE) ||
+    if ((type_ != QueryType::WRITE && type_ != QueryType::MODIFY_EXCLUSIVE) ||
         *buffer_val_size != 0)
       return logger_->status(
           Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
@@ -1999,7 +2003,7 @@ Status Query::set_est_result_size(
 
 Status Query::set_layout(Layout layout) {
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot set layout; Unsupported query type."));
   }
@@ -2014,7 +2018,7 @@ Status Query::set_layout(Layout layout) {
         "Cannot set layout; Hilbert order is not applicable to queries"));
   }
 
-  if ((type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE) &&
+  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
       array_schema_->dense() && layout == Layout::UNORDERED) {
     return logger_->status(Status_QueryError(
         "Unordered writes are only possible for sparse arrays"));
@@ -2026,7 +2030,7 @@ Status Query::set_layout(Layout layout) {
 }
 
 Status Query::set_condition(const QueryCondition& condition) {
-  if (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE)
+  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)
     return logger_->status(Status_QueryError(
         "Cannot set query condition; Operation not applicable "
         "to write queries"));
@@ -2041,7 +2045,7 @@ void Query::set_status(QueryStatus status) {
 
 Status Query::set_subarray(const void* subarray) {
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot set subarray; Unsupported query type."));
   }
@@ -2086,7 +2090,7 @@ Status Query::set_subarray(const void* subarray) {
     }
   }
 
-  if (type_ == QueryType::WRITE || type_ == QueryType::WRITE_EXCLUSIVE) {
+  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     // Not applicable to sparse arrays
     if (!array_schema_->dense())
       return logger_->status(Status_WriterError(
@@ -2161,7 +2165,7 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 
 Status Query::check_buffers_correctness() {
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::WRITE_EXCLUSIVE && type_ != QueryType::DELETE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE && type_ != QueryType::DELETE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot check buffers; Unsupported query type."));
   }

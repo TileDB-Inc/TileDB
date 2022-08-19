@@ -71,16 +71,17 @@ ConsistencyController::entry_type ConsistencyController::register_array(
 
   std::lock_guard<std::mutex> lock(mtx_);
   if (this->is_open(uri)) {
-    if (query_type == QueryType::WRITE_EXCLUSIVE) {
+    if (query_type == QueryType::MODIFY_EXCLUSIVE) {
       throw std::runtime_error(
           "[ConsistencyController::register_array] Array already open; must "
-          "close array before opening for exclusive write.");
+          "close array before opening for exclusive modification.");
     } else {
       auto iter = array_registry_.find(uri);
-      if (iter->second.get_query_type() == QueryType::WRITE_EXCLUSIVE) {
+      if (iter->second.get_query_type() == QueryType::MODIFY_EXCLUSIVE) {
         throw std::runtime_error(
             "[ConsistencyController::register_array] Must close array opened "
-            "for exclusive write before opening an array at the same address.");
+            "for exclusive modification before opening an array at the same "
+            "address.");
       }
     }
   }

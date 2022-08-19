@@ -237,10 +237,10 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "WhiteboxConsistencyController: Exclusive write",
-    "[ConsistencyController][write][exclusive]") {
+    "WhiteboxConsistencyController: Exclusive modification",
+    "[ConsistencyController][modify][exclusive]") {
   WhiteboxConsistencyController x;
-  const URI uri = URI("whitebox_exclusive_write");
+  const URI uri = URI("whitebox_modify_exclusive");
 
   // Create a StorageManager
   Config config;
@@ -254,9 +254,9 @@ TEST_CASE(
   // Create an array
   tdb_unique_ptr<Array> array = x.create_array(uri, &sm);
 
-  // Open an array for exclusive write
+  // Open an array for exclusive modification
   st = array->open(
-      QueryType::WRITE_EXCLUSIVE, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+      QueryType::MODIFY_EXCLUSIVE, EncryptionType::NO_ENCRYPTION, nullptr, 0);
   REQUIRE(st.ok());
   REQUIRE(x.registry_size() == 1);
   REQUIRE(x.is_open(uri) == true);
@@ -264,11 +264,11 @@ TEST_CASE(
   // Try to register an array for read
   REQUIRE_THROWS_WITH(
       x.register_array(uri, *array.get(), QueryType::READ),
-      Catch::Contains("close array opened for exclusive write"));
+      Catch::Contains("close array opened for exclusive modification"));
   REQUIRE(x.registry_size() == 1);
   REQUIRE(x.is_open(uri) == true);
 
-  // Close exclusive write array
+  // Close exclusive modification array
   array.get()->close();
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri) == false);
@@ -279,10 +279,11 @@ TEST_CASE(
   REQUIRE(x.registry_size() == 1);
   REQUIRE(x.is_open(uri) == true);
 
-  // Try to register an array for exclusive write
+  // Try to register an array for exclusive modification
   REQUIRE_THROWS_WITH(
-      x.register_array(uri, *array, QueryType::WRITE_EXCLUSIVE),
-      Catch::Contains("must close array before opening for exclusive write"));
+      x.register_array(uri, *array, QueryType::MODIFY_EXCLUSIVE),
+      Catch::Contains(
+          "must close array before opening for exclusive modification"));
   REQUIRE(x.registry_size() == 1);
 
   // Clean up

@@ -72,7 +72,7 @@ Status Group::open(
   }
 
   if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
-      query_type != QueryType::WRITE_EXCLUSIVE) {
+      query_type != QueryType::MODIFY_EXCLUSIVE) {
     return Status_GroupError("Cannot open group; Unsupported query type");
   }
 
@@ -82,7 +82,7 @@ Status Group::open(
     } else {
       assert(
           query_type == QueryType::WRITE ||
-          query_type == QueryType::WRITE_EXCLUSIVE);
+          query_type == QueryType::MODIFY_EXCLUSIVE);
       timestamp_end = 0;
     }
   }
@@ -234,7 +234,7 @@ Status Group::close() {
     // Update group metadata for write queries if metadata was written by the
     // user
     if (query_type_ == QueryType::WRITE ||
-        query_type_ == QueryType::WRITE_EXCLUSIVE) {
+        query_type_ == QueryType::MODIFY_EXCLUSIVE) {
       if (metadata_.num() > 0) {
         // Set metadata loaded to be true so when serialization fetches the
         // metadata it won't trigger a deadlock
@@ -266,7 +266,7 @@ Status Group::close() {
       RETURN_NOT_OK(storage_manager_->group_close_for_reads(this));
     } else if (
         query_type_ == QueryType::WRITE ||
-        query_type_ == QueryType::WRITE_EXCLUSIVE) {
+        query_type_ == QueryType::MODIFY_EXCLUSIVE) {
       // If changes haven't been applied, apply them
       if (!changes_applied_) {
         RETURN_NOT_OK(apply_pending_changes());
@@ -309,10 +309,10 @@ Status Group::delete_metadata(const char* key) {
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::WRITE_EXCLUSIVE)
+      query_type_ != QueryType::MODIFY_EXCLUSIVE)
     return Status_GroupError(
         "Cannot delete metadata. Group was "
-        "not opened in write mode");
+        "not opened in write or modify_exclusive mode");
 
   // Check if key is null
   if (key == nullptr)
@@ -334,10 +334,10 @@ Status Group::put_metadata(
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::WRITE_EXCLUSIVE)
+      query_type_ != QueryType::MODIFY_EXCLUSIVE)
     return Status_GroupError(
         "Cannot put metadata; Group was "
-        "not opened in write mode");
+        "not opened in write or modify_exclusive mode");
 
   // Check if key is null
   if (key == nullptr)
@@ -527,9 +527,10 @@ Status Group::mark_member_for_addition(
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::WRITE_EXCLUSIVE) {
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return Status_GroupError(
-        "Cannot get member; Group was not opened in write mode");
+        "Cannot get member; Group was not opened in write or modify_exclusive "
+        "mode");
   }
 
   const std::string& uri = group_member_uri.to_string();
@@ -597,9 +598,10 @@ Status Group::mark_member_for_removal(const std::string& uri) {
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::WRITE_EXCLUSIVE) {
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return Status_GroupError(
-        "Cannot get member; Group was not opened in write mode");
+        "Cannot get member; Group was not opened in write or modify_exclusive "
+        "mode");
   }
   if (members_to_add_.find(uri) != members_to_add_.end()) {
     return Status_GroupError(

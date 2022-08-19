@@ -687,7 +687,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Deletion of sequential fragment writes",
     "[cppapi][fragments][delete]") {
-  /* Note: An array must be open, in WRITE_EXCLUSIVE mode to delete_fragments */
+  /* Note: An array must be open in MODIFY_EXCLUSIVE mode to delete_fragments */
   Context ctx;
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";
@@ -718,14 +718,14 @@ TEST_CASE(
     CHECK(tiledb::test::num_fragments(array_name) == 3);
     REQUIRE_THROWS_WITH(
         array.delete_fragments(array_name, timestamp_start, timestamp_end),
-        Catch::Contains("Query type must be WRITE_EXCLUSIVE"));
+        Catch::Contains("Query type must be MODIFY_EXCLUSIVE"));
     CHECK(tiledb::test::num_fragments(array_name) == 3);
     array.close();
   }
 
-  SECTION("WRITE_EXCLUSIVE") {
-    auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE_EXCLUSIVE);
-    auto query = tiledb::Query(ctx, array, TILEDB_WRITE_EXCLUSIVE);
+  SECTION("MODIFY_EXCLUSIVE") {
+    auto array = tiledb::Array(ctx, array_name, TILEDB_MODIFY_EXCLUSIVE);
+    auto query = tiledb::Query(ctx, array, TILEDB_MODIFY_EXCLUSIVE);
     query.set_data_buffer("a", data).set_subarray({0, 1}).submit();
     query.set_data_buffer("a", data).set_subarray({2, 3}).submit();
     query.set_data_buffer("a", data).set_subarray({4, 5}).submit();
@@ -745,7 +745,7 @@ TEST_CASE(
       // Consolidate and reopen array
       Array::consolidate(ctx, array_name);
       CHECK(tiledb::test::num_fragments(array_name) == 4);
-      array.open(TILEDB_WRITE_EXCLUSIVE);
+      array.open(TILEDB_MODIFY_EXCLUSIVE);
       CHECK(tiledb::test::num_fragments(array_name) == 4);
 
       // Check commits directory after consolidation
