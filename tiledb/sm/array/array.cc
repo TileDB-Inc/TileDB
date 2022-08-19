@@ -86,6 +86,7 @@ Array::Array(
     , storage_manager_(storage_manager)
     , config_(storage_manager_->config())
     , remote_(array_uri.is_tiledb())
+    , metadata_()
     , metadata_loaded_(false)
     , non_empty_domain_computed_(false)
     , consistency_controller_(cc)
