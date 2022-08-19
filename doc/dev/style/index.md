@@ -1,5 +1,5 @@
 ---
-title: C++ Style Guide
+title: Style Guide
 ---
 
 When in doubt and not in conflict with this style guide, follow [C++ Core
@@ -11,12 +11,13 @@ Where possible we should use up to C++17. Some external packages, such as PDAL a
 limited in what they can use. Where we control the environment we should strive
 for C++17 usage.
 
-## Functions
+### Table of Contents
 
-* See [Functions.md](Functions.md)
-* [Inputs on the right. Outputs on the left.](Functions.md#inputs-on-the-right-outputs-on-the-left)
+* [Functions](Functions.md)
+  * With emphasis: [Inputs on the right. Outputs on the left.](Functions.md#inputs-on-the-right-outputs-on-the-left)
+* [Memory handling](Memory.md)
+* [Storage serialization](Serialization.md)
 
-## Memory Handling
+## CMake
 
-* See [Memory.md](Memory.md)
-
+* [CMake guide](CMake.md)
