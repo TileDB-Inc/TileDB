@@ -83,27 +83,212 @@ if (NOT OPENSSL_FOUND AND TILEDB_FORCE_ALL_DEPS)
   )
 endif()
 
+#INCLUDE(FindPerl)
+#INCLUDE(FindPerlLibs)
+if(WIN32)
+  if(TILEDB_SUPERBUILD)
+#    find_package(Perl)
+#    if(PERL_FOUND)
+#      set(PERL_COMMAND ${PERL_EXECUTABLE})
+#    else()
+#      find_package(PerlLibs)
+#      if(PERLLIBS_FOUND)
+#        set(PERL_COMMAND, ${PERL_EXECUTABLE})
+#      else()
+        set(PERL_COMMAND "PERL_COMMAND-NOTFOUND")
+        # 32bit is slightly smaller and sufficient for configuring openssl.
+        ExternalProject_Add(strawberry_perl_portable
+            PREFIX "externals"
+            URL "https://strawberryperl.com/download/5.32.1.1/strawberry-perl-5.32.1.1-32bit-portable.zip"
+            URL_HASH SHA1=28bca91cadd6651c2b2463db8587c170bf17f2fa
+            CONFIGURE_COMMAND ""
+            BUILD_ALWAYS OFF
+            BUILD_COMMAND ""
+            INSTALL_COMMAND ""
+            LOG_DOWNLOAD TRUE
+        )
+      
+#      endif()
+#    endif()
+  else() # NOT SUPERBUILD
+#    find_package(Perl)
+#    if(PERL_FOUND)
+#      set(PERL_COMMAND ${PERL_EXECUTABLE})
+#    else()
+#      find_package(PerlLibs)
+#      if(PERLLIBS_FOUND)
+#        set(PERL_COMMAND, ${PERL_EXECUTABLE})
+#      else()
+        set(PERL_COMMAND "PERL_COMMAND-NOTFOUND")
+        find_program(PERL_COMMAND "perl.exe")
+        # find_program(PERL_COMMAND "perl.exe" ...what paths to specify?...)
+#      endif()
+#    endif()
+  endif()
+endif()
+
 if (NOT OPENSSL_FOUND AND TILEDB_SUPERBUILD)
   message(STATUS "Adding OpenSSL as an external project")
 
   if (WIN32)
-    message(FATAL_ERROR "OpenSSL external project unimplemented on Windows.")
+#    message(FATAL_ERROR "OpenSSL external project unimplemented on Windows.")
+    message(STATUS "OpenSSL external project attempting build on Windows.")
   endif()
 
-  # Support cross compilation of MacOS
-  if (CMAKE_OSX_ARCHITECTURES STREQUAL arm64)
-    set(OPENSSL_CONFIG_CMD ${CMAKE_COMMAND} -E env "ARCHFLAGS=\\\\-arch arm64" ${TILEDB_EP_BASE}/src/ep_openssl/Configure darwin64-arm64-cc --prefix=${TILEDB_EP_INSTALL_PREFIX} no-shared -fPIC)
-  elseif(CMAKE_OSX_ARCHITECTURES STREQUAL x86_64)
-    set(OPENSSL_CONFIG_CMD ${CMAKE_COMMAND} -E env "ARCHFLAGS=\\\\-arch x86_64" ${TILEDB_EP_BASE}/src/ep_openssl/Configure darwin64-x86_64-cc --prefix=${TILEDB_EP_INSTALL_PREFIX} no-shared -fPIC)
+  if(WIN32)
+
+  if(1)
+    set(config "VC-WIN64A")
+#    set(do_script "do_win64a.bat")
+    set(do_script "OpenSSL-build.bat")
+    set(tdb_findopenssl_need_depends 0)
+    if(NOT PERL_COMMAND)
+      #get_filename_component(PERL_BIN_DIR ${PERL_COMMAND} PATH)
+        #else()
+          # This *should* be where portable strawberry perl.exe winds up by time ep_openssl attempts
+          # to reference it are made.
+          #set(PERL_BIN_DIR "${TILEDB_EP_BASE}/src/strawberry_perl_portable/perl/bin")
+          set(PERL_COMMAND "${TILEDB_EP_BASE}/src/strawberry_perl_portable/perl/bin/perl.exe")
+          set(tdb_findopenssl_need_depends 1)
+    endif()
+    get_filename_component(PERL_BIN_DIR ${PERL_COMMAND} PATH)
+
+  # suspect prior to this 'proj' is set to 'ep_bzip2'...
+  # set(proj "ep_openssl")  
+  set(proj "tdb-openssl-help")  
+  set(TILEDB_EP_OPENSSL_DIR "${TILEDB_EP_BASE}/src/ep_openssl")
+  set(TILEDB_EP_OPENSSL_HELP_DIR "${TILEDB_EP_BASE}/src/${proj}")
+  file(MAKE_DIRECTORY "$TILEDB_EP_OPENSSL_DIR}")
+
+  #file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${proj}-configure.bat"
+  file(WRITE "${TILEDB_EP_OPENSSL_HELP_DIR}/${proj}-configure.bat"
+  "set PATH=%PATH%;${PERL_BIN_DIR}
+path
+ECHO ${PERL_BIN_DIR}
+POWERSHELL ls ${PERL_BIN_DIR}
+POWERSHELL ls ${PERL_BIN_DIR}/perl.exe
+perl Configure ${config} no-asm --prefix=${TILEDB_EP_INSTALL_PREFIX} --openssldir=${TILEDB_EP_INSTALL_PREFIX}/ssl
+") #call OpenSSL-configure.bat")
+#perl Configure ${config} no-asm
+#call ${do_script}")
+#call ms\\${do_script}")
+
+  #file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${proj}-build.bat"
+  file(WRITE "${TILEDB_EP_OPENSSL_HELP_DIR}/${proj}-build.bat"
+  "set PATH=%PATH%;${PERL_BIN_DIR}
+path
+nmake")
+#nmake -f ms\\ntdll.mak")
+
+  #file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${proj}-install.bat"
+  file(WRITE "${TILEDB_EP_OPENSSL_HELP_DIR}/${proj}-install.bat"
+  "set PATH=%PATH%;${PERL_BIN_DIR}
+path
+nmake install")
+#set PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+#SET OPENSSLDIR=${TILEDB_EP_INSTALL_PREFIX}/ssl
+#cmake --build . --target install")
+#call ${TILEDB_EP_OPENSSL_HELP_DIR}/${proj}-install.bat")
+#nmake -f ms\\ntdll.mak install")
+
+  if(tdb_findopenssl_need_depends)
+    #set(OPTIONAL_DEPENDS "DEPENDS strawberry_perl_portable")
+    set(tdb_findopenssl_OPTIONAL_DEPENDS "strawberry_perl_portable")
   else()
-    set(OPENSSL_CONFIG_CMD ${TILEDB_EP_BASE}/src/ep_openssl/config --prefix=${TILEDB_EP_INSTALL_PREFIX} no-shared -fPIC)
+    set(tdb_findopenssl_OPTIONAL_DEPENDS)
+  endif()
+  
+  message(STATUS "optional_depends: ${OPTIONAL_DEPENDS}")
+
+  ExternalProject_Add(ep_openssl
+    PREFIX "externals"
+    # Use github archive instead of the one hosted on openssl.org because of CMake bug #13251
+    URL "https://github.com/openssl/openssl/archive/OpenSSL_1_1_1i.zip"
+    URL_HASH SHA1=627938302f681dfac186a9225b65368516b4f484
+#    DOWNLOAD_DIR ${CMAKE_CURRENT_BINARY_DIR}
+#    SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
+    # See if can compensate for missing on initial superbuild pass to set ep_cmake_cache_args
+#    CMAKE_ARGS -DPERL_COMMAND:FILEPATH=${PERL_COMMAND}
+    CMAKE_ARGS -A X64 -DPERL_COMMAND=${PERL_COMMAND}
+    BUILD_IN_SOURCE 1
+    #CONFIGURE_COMMAND "${CMAKE_CURRENT_BINARY_DIR}/${proj}-configure.bat"
+    #CONFIGURE_COMMAND "${CMAKE_CURRENT_BINARY_DIR}/OpenSSL-configure.bat"
+    CONFIGURE_COMMAND "${TILEDB_EP_OPENSSL_HELP_DIR}/${proj}-configure.bat"
+    #BUILD_COMMAND "${CMAKE_CURRENT_BINARY_DIR}/${proj}-build.bat"
+    BUILD_ALWAYS OFF
+    BUILD_COMMAND "${TILEDB_EP_OPENSSL_HELP_DIR}/${proj}-build.bat"
+    #BUILD_COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_CURRENT_BINARY_DIR}"
+    #INSTALL_COMMAND "${CMAKE_CURRENT_BINARY_DIR}/${proj}-install.bat"
+    INSTALL_COMMAND "${TILEDB_EP_OPENSSL_HELP_DIR}/${proj}-install.bat"
+        DEPENDS ${tdb_findopenssl_OPTIONAL_DEPENDS}
+        LOG_DOWNLOAD TRUE
+    )
+
+  else() # path/branch LIKELY to be DELETED
+  # likely to be abandoned attempt to use libressl, after discovering cmakelists.txt elsewhere
+  # that can be morphed to use cmake on same actual openssl release used by *nix branch
+  ExternalProject_Add(ep_openssl # a lie to use same name as openssl, libressl sposed to be drop-in replacment
+    PREFIX "externals"
+        URL "https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.3.3.tar.gz"
+    URL_HASH SHA256=a471565b36ccd1a70d0bd7d37c6e95c43a26a62829b487d9d2cdebfe58be3066
+        PATCH_COMMAND
+          echo "base directory for ep_openssl seems to be" && cd
+        CMAKE_ARGS 
+#         --trace -Bbuild -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX} -DUSE_STATIC_MSVC_RUNTIMES=ON .. 
+#         --trace         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX} -DUSE_STATIC_MSVC_RUNTIMES=ON .. 
+          --trace         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX} -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX} -DUSE_STATIC_MSVC_RUNTIMES=ON .. 
+    CONFIGURE_COMMAND
+#         echo "attempting cmake from" &&
+#         pwd &&
+#         cmd /c rd /s /q build && mkdir build && cd build && echo %cd% &&
+          cmd /c cd && 
+          echo "removing any pre-existing build directory" &&
+          if exist build ( rd /s /q build ) else echo no build directory to remove. && 
+          echo "directory removed, creating build directory" &&
+          mkdir build && 
+          dir &&
+          cd build &&
+          cd &&
+        "${CMAKE_COMMAND}" --trace -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX} -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX} -DUSE_STATIC_MSVC_RUNTIMES=ON ../../ep_openssl
+#        "${CMAKE_COMMAND}" --trace -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX} -DUSE_STATIC_MSVC_RUNTIMES=ON ../../ep_openssl
+#        --prefix=${TILEDB_EP_INSTALL_PREFIX}
+#        no-shared
+##        -fPIC
+#        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+#    BUILD_IN_SOURCE TRUE
+    BUILD_COMMAND cmd /c cd && dir && ${CMAKE_COMMAND} --build ./build
+#    INSTALL_COMMAND ${CMAKE_COMMAND} -B./build --build --target install
+#    INSTALL_COMMAND ${CMAKE_COMMAND}  --build ./build --target INSTALL
+    INSTALL_COMMAND ${CMAKE_COMMAND}  --build ./build --target INSTALL_SW
+    UPDATE_COMMAND ""
+    LOG_DOWNLOAD TRUE
+    LOG_CONFIGURE TRUE
+    LOG_BUILD TRUE
+    LOG_INSTALL TRUE
+    LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
+        ${OPTIONAL_DEPENDS}
+  )
   endif()
 
+  # not sure which of these, and how modified they should be from *nix side.
+  set(TILEDB_OPENSSL_DIR "${TILEDB_EP_INSTALL_PREFIX}")
+
+  list(APPEND TILEDB_EXTERNAL_PROJECTS ep_openssl)
+  list(APPEND FORWARD_EP_CMAKE_ARGS
+    -DTILEDB_OPENSSL_EP_BUILT=TRUE
+  )
+
+  else()
   ExternalProject_Add(ep_openssl
     PREFIX "externals"
     URL "https://github.com/openssl/openssl/archive/OpenSSL_1_1_1i.zip"
     URL_HASH SHA1=627938302f681dfac186a9225b65368516b4f484
-    CONFIGURE_COMMAND ${OPENSSL_CONFIG_CMD}
+    CONFIGURE_COMMAND
+      ${TILEDB_EP_BASE}/src/ep_openssl/config
+        --prefix=${TILEDB_EP_INSTALL_PREFIX}
+        no-shared
+#        -fPIC
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     BUILD_IN_SOURCE TRUE
     BUILD_COMMAND $(MAKE)
     INSTALL_COMMAND $(MAKE) install
@@ -121,6 +306,8 @@ if (NOT OPENSSL_FOUND AND TILEDB_SUPERBUILD)
   list(APPEND FORWARD_EP_CMAKE_ARGS
     -DTILEDB_OPENSSL_EP_BUILT=TRUE
   )
+  endif()
+  
 endif()
 
 if (OPENSSL_FOUND)
