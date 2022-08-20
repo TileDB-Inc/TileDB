@@ -26,8 +26,8 @@
 # Finds the Crc32c library, installing with an ExternalProject as necessary.
 # This module defines:
 #   - Crc32c_INCLUDE_DIR, directory containing headers
-#   - Crc32c_LIBRARIES, the Magic library path
-#   - Crc32c_FOUND, whether Magic has been found
+#   - Crc32c_LIBRARIES, the Crc32c library path
+#   - Crc32c_FOUND, whether Crc32c has been found
 #   - The Crc32c::crc32c imported target
 
 # Include some common helper functions.
@@ -39,7 +39,7 @@ if(TILEDB_CRC32C_EP_BUILT)
       ${TILEDB_EP_INSTALL_PREFIX}/lib/cmake
     ${TILEDB_DEPS_NO_DEFAULT_PATH})
 elseif (NOT TILEDB_FORCE_ALL_DEPS)
-  # seems no standard findabsl.cmake, so silence warnings with QUIET
+  # seems no standard findCrc32c.cmake, so silence warnings with QUIET
   find_package(Crc32c QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
