@@ -107,6 +107,7 @@ if (NOT ZSTD_FOUND)
       LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
     )
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_zstd)
+    set(TILEDB_ZSTD_DIR "${TILEDB_EP_INSTALL_PREFIX}")
   else()
     message(FATAL_ERROR "Unable to find Zstd")
   endif()
