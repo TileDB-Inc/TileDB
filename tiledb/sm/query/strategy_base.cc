@@ -105,19 +105,6 @@ void StrategyBase::get_dim_attr_stats() const {
   }
 }
 
-tuple<Status, optional<std::string>> StrategyBase::new_fragment_name(
-    uint64_t timestamp, uint32_t format_version) const {
-  timestamp = (timestamp != 0) ? timestamp : utils::time::timestamp_now_ms();
-
-  std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);
-  std::stringstream ss;
-  ss << "/__" << timestamp << "_" << timestamp << "_" << uuid << "_"
-     << format_version;
-
-  return {Status::Ok(), ss.str()};
-}
-
 std::string StrategyBase::offsets_mode() const {
   return offsets_format_mode_;
 }

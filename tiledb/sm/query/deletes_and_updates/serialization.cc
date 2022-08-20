@@ -144,12 +144,15 @@ tdb_unique_ptr<ASTNode> deserialize_condition_impl(Deserializer& deserializer) {
 }
 
 QueryCondition deserialize_condition(
+    const uint64_t condition_index,
     const std::string& condition_marker,
     const void* buff,
     const storage_size_t size) {
   Deserializer deserializer(buff, size);
   return QueryCondition(
-      condition_marker, deserialize_condition_impl(deserializer));
+      condition_index,
+      condition_marker,
+      deserialize_condition_impl(deserializer));
 }
 
 }  // namespace tiledb::sm::deletes_and_updates::serialization

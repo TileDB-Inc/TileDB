@@ -467,7 +467,7 @@ Status FragmentConsolidator::consolidate_internal(
 
   // Get the vacuum URI
   auto&& [st_vac_uri, vac_uri] =
-      array_for_reads->array_directory().get_vaccum_uri(*new_fragment_uri);
+      array_for_reads->array_directory().get_vacuum_uri(*new_fragment_uri);
   if (!st_vac_uri.ok()) {
     tdb_delete(query_r);
     tdb_delete(query_w);
@@ -569,7 +569,7 @@ Status FragmentConsolidator::create_buffers(
   }
 
   // Adding buffers for delete meta, one for timestamp and one for condition
-  // marker hash.
+  // index.
   if (config_.with_delete_meta_) {
     buffer_num += 2;
   }
@@ -622,17 +622,13 @@ Status FragmentConsolidator::create_queries(
   auto last = (*query_r)->last_fragment_uri();
 
   auto write_version = array_for_reads->array_schema_latest().write_version();
-  auto&& [st, name] =
+  auto&& [st, fragment_name] =
       array_for_reads->array_directory().compute_new_fragment_name(
           first, last, write_version);
   RETURN_NOT_OK(st);
-  auto frag_uri =
-      array_for_reads->array_directory().get_fragments_dir(write_version);
-  *new_fragment_uri = frag_uri.join_path(name.value());
 
   // Create write query
-  *query_w =
-      tdb_new(Query, storage_manager_, array_for_writes, *new_fragment_uri);
+  *query_w = tdb_new(Query, storage_manager_, array_for_writes, fragment_name);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->disable_checks_consolidation());
   if (array_for_reads->array_schema_latest().dense()) {
@@ -648,6 +644,11 @@ Status FragmentConsolidator::create_queries(
     processed_conditions.emplace_back(location.condition_marker());
   }
   (*query_w)->set_processed_conditions(processed_conditions);
+
+  // Set the URI for the new fragment.
+  auto frag_uri =
+      array_for_reads->array_directory().get_fragments_dir(write_version);
+  *new_fragment_uri = frag_uri.join_path(fragment_name.value());
 
   return Status::Ok();
 }
@@ -852,7 +853,7 @@ Status FragmentConsolidator::set_query_buffers(
         &(*buffer_sizes)[bid]));
     ++bid;
     RETURN_NOT_OK(query->set_data_buffer(
-        constants::delete_condition_marker_hash,
+        constants::delete_condition_index,
         (void*)&(*buffers)[bid][0],
         &(*buffer_sizes)[bid]));
     ++bid;

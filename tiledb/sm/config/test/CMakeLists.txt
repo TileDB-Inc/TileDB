@@ -1,9 +1,9 @@
 #
-# tiledb/sm/config/CMakeLists.txt
+# tiledb/sm/config/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021-2022 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,22 +23,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-
 include(common NO_POLICY_SCOPE)
 
-#
-# `config` object library
-#
-add_library(config OBJECT config.cc)
-target_link_libraries(config PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(config PUBLIC constants $<TARGET_OBJECTS:constants>)
-target_link_libraries(config PUBLIC parse_argument $<TARGET_OBJECTS:parse_argument>)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_config EXCLUDE_FROM_ALL)
-add_dependencies(all_link_complete compile_config)
-target_link_libraries(compile_config PRIVATE config)
-target_sources(compile_config PRIVATE test/compile_config_main.cc)
-
-add_test_subdirectory()
+add_executable(unit_config EXCLUDE_FROM_ALL)
+find_package(Catch_EP REQUIRED)
+target_link_libraries(unit_config PUBLIC Catch2::Catch2)
+target_link_libraries(unit_config PUBLIC config)
+target_sources(unit_config PUBLIC unit_config.cc)
+add_test(
+    NAME "unit_config"
+    COMMAND $<TARGET_FILE:unit_config>
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)

@@ -35,6 +35,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -63,7 +64,8 @@ Deletes::Deletes(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition)
+    QueryCondition& condition,
+    bool skip_checks_serialization)
     : StrategyBase(
           stats,
           logger->clone("Deletes", ++logger_id_),
@@ -94,7 +96,7 @@ Deletes::Deletes(
         "Cannot initialize deletes; Subarrays are not supported");
   }
 
-  if (condition_.empty()) {
+  if (!skip_checks_serialization && condition_.empty()) {
     throw DeleteStatusException(
         "Cannot initialize deletes; One condition is needed");
   }
@@ -124,11 +126,9 @@ Status Deletes::dowork() {
   // Get a new fragment name for the delete.
   uint64_t timestamp = array_->timestamp_end_opened_at();
   auto write_version = array_->array_schema_latest().write_version();
-  auto&& [st, new_fragment_name_opt] =
-      new_fragment_name(timestamp, write_version);
-  RETURN_NOT_OK(st);
-  std::string new_fragment_str =
-      *new_fragment_name_opt + constants::delete_file_suffix;
+  auto new_fragment_str =
+      storage_format::generate_fragment_name(timestamp, write_version) +
+      constants::delete_file_suffix;
 
   // Get the delete URI.
   auto& array_dir = array_->array_directory();

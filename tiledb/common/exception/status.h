@@ -275,10 +275,7 @@ inline Status Status_ArraySchemaError(const std::string& msg) {
 inline Status Status_ArraySchemaEvolutionError(const std::string& msg) {
   return {"[TileDB::ArraySchemaEvolution] Error", msg};
 }
-/** Return a Metadata error class Status with a given message **/
-inline Status Status_MetadataError(const std::string& msg) {
-  return {"[TileDB::Metadata] Error", msg};
-}
+
 /** Return a IO error class Status with a given message **/
 inline Status Status_IOError(const std::string& msg) {
   return {"[TileDB::IO] Error", msg};
@@ -334,10 +331,6 @@ inline Status Status_ConsolidatorError(const std::string& msg) {
 /** Return a LRUCache error class Status with a given message **/
 inline Status Status_LRUCacheError(const std::string& msg) {
   return {"[TileDB::LRUCache] Error", msg};
-}
-/** Return a Config error class Status with a given message **/
-inline Status Status_ConfigError(const std::string& msg) {
-  return {"[TileDB::Config] Error", msg};
 }
 /** Return a Utils error class Status with a given message **/
 inline Status Status_UtilsError(const std::string& msg) {

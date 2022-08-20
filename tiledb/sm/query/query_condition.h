@@ -70,6 +70,7 @@ class QueryCondition {
 
   /** Constructor from a tree and marker. */
   QueryCondition(
+      const uint64_t condition_index,
       const std::string& condition_marker,
       tdb_unique_ptr<tiledb::sm::ASTNode>&& tree);
 
@@ -228,9 +229,9 @@ class QueryCondition {
   const std::string& condition_marker() const;
 
   /**
-   * Returns the condition marker hash.
+   * Returns the condition index.
    */
-  size_t condition_marker_hash() const;
+  uint64_t condition_index() const;
 
  private:
   /* ********************************* */
@@ -262,8 +263,8 @@ class QueryCondition {
   /** Marker used to reference which file the condition came from. */
   std::string condition_marker_;
 
-  /** Hash of `condition_marker_`. */
-  size_t condition_marker_hash_;
+  /** Index for the condition. */
+  size_t condition_index_;
 
   /** AST Tree structure representing the condition. **/
   tdb_unique_ptr<tiledb::sm::ASTNode> tree_{};

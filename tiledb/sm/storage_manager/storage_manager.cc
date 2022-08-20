@@ -1590,12 +1590,7 @@ Status StorageManager::load_array_metadata(
     meta_size += b->size();
   stats_->add_counter("read_array_meta_size", meta_size);
 
-  auto&& [st_metadata, deserialized_metadata]{
-      Metadata::deserialize(metadata_buffs)};
-  if (!st_metadata.ok()) {
-    return st_metadata;
-  }
-  *metadata = *(deserialized_metadata.value());
+  *metadata = Metadata::deserialize(metadata_buffs);
 
   // Sets the loaded metadata URIs
   RETURN_NOT_OK(metadata->set_loaded_metadata_uris(array_metadata_to_load));
@@ -1619,6 +1614,7 @@ StorageManager::load_delete_conditions(const Array& array) {
 
     delete_conditions[i] =
         tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
+            i,
             locations[i].condition_marker(),
             tile_opt->data(),
             tile_opt->size());
@@ -2185,14 +2181,8 @@ Status StorageManager::load_group_metadata(
     meta_size += b->size();
   stats_->add_counter("read_array_meta_size", meta_size);
 
-  // Deserialize metadata buffers
-  auto&& [st, deserialized_metadata] = metadata->deserialize(metadata_buffs);
-  if (!st.ok()) {
-    return st;
-  }
-
   // Copy the deserialized metadata into the original Metadata object
-  *metadata = *(deserialized_metadata.value());
+  *metadata = Metadata::deserialize(metadata_buffs);
   RETURN_NOT_OK(metadata->set_loaded_metadata_uris(group_metadata_to_load));
 
   return Status::Ok();
