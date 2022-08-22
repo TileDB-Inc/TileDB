@@ -1115,7 +1115,10 @@ IQueryStrategy* Query::strategy(bool skip_checks_serialization) {
 Status Query::reset_strategy_with_layout(
     Layout layout, bool force_legacy_reader) {
   force_legacy_reader_ = force_legacy_reader;
-  strategy_ = nullptr;
+  if (strategy_ != nullptr) {
+    dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
+    strategy_ = nullptr;
+  }
   layout_ = layout;
   subarray_.set_layout(layout);
   RETURN_NOT_OK(create_strategy(true));
