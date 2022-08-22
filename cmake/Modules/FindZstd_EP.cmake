@@ -98,6 +98,11 @@ if (NOT ZSTD_FOUND)
         -DCMAKE_BUILD_TYPE=Release
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
+	# Disable building ZSTD shared library as this is not used by superbuild
+	# When using superbuild for zstd + curl the shared library was being selected
+	# on some envs due to ordering of search paths.
+	# This caused linker errors for projects using libtiledb because of missing shared zstd library.
+	-DZSTD_BUILD_SHARED=OFF
         ${TILEDB_EP_BASE}/src/ep_zstd/build/cmake
       UPDATE_COMMAND ""
       LOG_DOWNLOAD TRUE
