@@ -38,6 +38,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/filesystem/uri.h"
 
 using namespace tiledb::common;
@@ -99,7 +100,8 @@ class ConsistencyController {
    *
    * @return Sentry object whose lifespan is the same as the registration.
    */
-  ConsistencySentry make_sentry(const URI uri, Array& array);
+  ConsistencySentry make_sentry(
+      const URI uri, Array& array, const QueryType& query_type);
 
   /** Returns true if the array is open, i.e. registered in the multimap. */
   bool is_open(const URI uri);
@@ -113,7 +115,8 @@ class ConsistencyController {
    *
    * @pre the given URI is the root directory of the Array and is not empty.
    */
-  entry_type register_array(const URI uri, Array& array);
+  entry_type register_array(
+      const URI uri, Array& array, const QueryType& query_type);
 
   /**
    * Wrapper around a multimap deregistration operation.

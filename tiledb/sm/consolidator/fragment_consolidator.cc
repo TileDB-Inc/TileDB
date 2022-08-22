@@ -289,20 +289,27 @@ Status FragmentConsolidator::consolidate_fragments(
 }
 
 Status FragmentConsolidator::vacuum(const char* array_name) {
+  return vacuum(array_name, 0, std::numeric_limits<uint64_t>::max(), false);
+}
+
+Status FragmentConsolidator::vacuum(
+    const char* array_name,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    bool for_deletes) {
   if (array_name == nullptr)
     return logger_->status(Status_StorageManagerError(
         "Cannot vacuum fragments; Array name cannot be null"));
 
-  // Get the fragment URIs and vacuum file URIs to be vacuum
+  // Get the fragment URIs and vacuum file URIs to be vacuumed
   auto vfs = storage_manager_->vfs();
   auto compute_tp = storage_manager_->compute_tp();
-
   auto array_dir = ArrayDirectory(
       vfs,
       compute_tp,
       URI(array_name),
-      0,
-      std::numeric_limits<uint64_t>::max(),
+      timestamp_start,
+      timestamp_end,
       ArrayDirectoryMode::VACUUM_FRAGMENTS);
 
   auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
@@ -363,6 +370,16 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
+
+  // Delete fragments if vacuuming for deletes
+  if (for_deletes) {
+    const auto& fragment_uris = filtered_fragment_uris.fragment_uris();
+    status = parallel_for(compute_tp, 0, fragment_uris.size(), [&](size_t i) {
+      RETURN_NOT_OK(vfs->remove_dir(fragment_uris[i].uri_));
+      return Status::Ok();
+    });
+    RETURN_NOT_OK(status);
+  }
 
   return Status::Ok();
 }

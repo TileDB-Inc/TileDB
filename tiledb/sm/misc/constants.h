@@ -269,6 +269,9 @@ extern const std::string query_type_write_str;
 /** TILEDB_DELETE Query String **/
 extern const std::string query_type_delete_str;
 
+/** TILEDB_MODIFY_EXCLUSIVE Query String **/
+extern const std::string query_type_modify_exclusive_str;
+
 /** TILEDB_FAILED Query String **/
 extern const std::string query_status_failed_str;
 

@@ -284,6 +284,9 @@ const std::string query_type_write_str = "WRITE";
 /** TILEDB_DELETE Query String **/
 const std::string query_type_delete_str = "DELETE";
 
+/** TILEDB_MODIFY_EXCLUSIVE Query String **/
+const std::string query_type_modify_exclusive_str = "MODIFY_EXCLUSIVE";
+
 /** TILEDB_FAILED Query String **/
 const std::string query_status_failed_str = "FAILED";
 
