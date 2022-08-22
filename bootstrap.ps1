@@ -66,7 +66,7 @@ Enables building of Abseil and simple linkage test
 .Parameter DisableWerror
 Disable use of warnings-as-errors (/WX) during build.
 
-.PARAMETER EnableCrc32
+.PARAMETER _EnableCrc32
 Enables building of Crc32 and simple linkage test
 
 .Parameter DisableCppApi
@@ -105,7 +105,7 @@ Param(
     [switch]$EnableWebP,
     [switch]$EnableAbseil,
     [switch]$EnableBuildDeps,
-    [switch]$EnableCrc32,
+    [switch]$_EnableCrc32,
     [switch]$DisableWerror,
     [switch]$DisableCppApi,
     [switch]$DisableTests,
@@ -224,7 +224,7 @@ if ($EnableBuildDeps.IsPresent) {
 }
 
 $BuildCrc32="OFF"
-if ($EnableCrc32.IsPresent) {
+if ($_EnableCrc32.IsPresent) {
   $BuildCrc32="ON"
 }
 
