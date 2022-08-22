@@ -74,7 +74,7 @@ class generator {
 template <class Block, class StateMachine>
 class ProducerNode : public Source<Block, StateMachine> {
   using Base = Source<Block, StateMachine>;
-  // This causes initialization problems 
+  // This causes initialization problems
   //  std::atomic<size_t> i_{0};
   size_t N_{0};
   std::function<Block()> f_;

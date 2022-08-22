@@ -32,5 +32,5 @@ sudo ./scripts/install-clangformat.sh
 src=$GITHUB_WORKSPACE
 cd $src
 $src/scripts/run-clang-format.sh $src clang-format-9 0 \
-  $(find $src/tiledb $src/test $src/examples $src/tools \
+  $(find $src/tiledb $src/test $src/examples $src/tools $src/experimental \
     -name "*.cc" -or -name "*.c" -or -name "*.h")
