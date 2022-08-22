@@ -8232,8 +8232,8 @@ public:
   inline bool hasUploadId() const;
   inline  ::capnp::Text::Reader getUploadId() const;
 
-  inline bool hasCompletedPartIds() const;
-  inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Reader getCompletedPartIds() const;
+  inline bool hasCompletedParts() const;
+  inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Reader getCompletedParts() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -8273,12 +8273,12 @@ public:
   inline void adoptUploadId(::capnp::Orphan< ::capnp::Text>&& value);
   inline ::capnp::Orphan< ::capnp::Text> disownUploadId();
 
-  inline bool hasCompletedPartIds();
-  inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Builder getCompletedPartIds();
-  inline void setCompletedPartIds( ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Reader value);
-  inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Builder initCompletedPartIds(unsigned int size);
-  inline void adoptCompletedPartIds(::capnp::Orphan< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>&& value);
-  inline ::capnp::Orphan< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>> disownCompletedPartIds();
+  inline bool hasCompletedParts();
+  inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Builder getCompletedParts();
+  inline void setCompletedParts( ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Reader value);
+  inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Builder initCompletedParts(unsigned int size);
+  inline void adoptCompletedParts(::capnp::Orphan< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>> disownCompletedParts();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -16753,36 +16753,36 @@ inline ::capnp::Orphan< ::capnp::Text> MultiPartUploadState::Builder::disownUplo
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline bool MultiPartUploadState::Reader::hasCompletedPartIds() const {
+inline bool MultiPartUploadState::Reader::hasCompletedParts() const {
   return !_reader.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
 }
-inline bool MultiPartUploadState::Builder::hasCompletedPartIds() {
+inline bool MultiPartUploadState::Builder::hasCompletedParts() {
   return !_builder.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
 }
-inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Reader MultiPartUploadState::Reader::getCompletedPartIds() const {
+inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Reader MultiPartUploadState::Reader::getCompletedParts() const {
   return ::capnp::_::PointerHelpers< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>::get(_reader.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS));
 }
-inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Builder MultiPartUploadState::Builder::getCompletedPartIds() {
+inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Builder MultiPartUploadState::Builder::getCompletedParts() {
   return ::capnp::_::PointerHelpers< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>::get(_builder.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS));
 }
-inline void MultiPartUploadState::Builder::setCompletedPartIds( ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Reader value) {
+inline void MultiPartUploadState::Builder::setCompletedParts( ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Reader value) {
   ::capnp::_::PointerHelpers< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>::set(_builder.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS), value);
 }
-inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Builder MultiPartUploadState::Builder::initCompletedPartIds(unsigned int size) {
+inline  ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>::Builder MultiPartUploadState::Builder::initCompletedParts(unsigned int size) {
   return ::capnp::_::PointerHelpers< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>::init(_builder.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS), size);
 }
-inline void MultiPartUploadState::Builder::adoptCompletedPartIds(
+inline void MultiPartUploadState::Builder::adoptCompletedParts(
     ::capnp::Orphan< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>&& value) {
   ::capnp::_::PointerHelpers< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>::adopt(_builder.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS), kj::mv(value));
 }
-inline ::capnp::Orphan< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>> MultiPartUploadState::Builder::disownCompletedPartIds() {
+inline ::capnp::Orphan< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>> MultiPartUploadState::Builder::disownCompletedParts() {
   return ::capnp::_::PointerHelpers< ::capnp::List< ::tiledb::sm::serialization::capnp::CompletedPart,  ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
       ::capnp::bounded<1>() * ::capnp::POINTERS));
 }

@@ -37,6 +37,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/query/writers/writer_base.h"
 
@@ -140,6 +141,13 @@ class GlobalOrderWriter : public WriterBase {
 
   /** Returns a bare pointer to the global state. */
   GlobalWriteState* get_global_state();
+
+  /**
+   * Used in serialization to share the multipart upload state
+   * among cloud executors
+   */
+  std::pair<Status, std::unordered_map<std::string, VFS::MultiPartUploadState>>
+  multipart_upload_state() const;
 
  private:
   /* ********************************* */

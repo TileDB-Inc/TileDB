@@ -872,6 +872,34 @@ class S3 {
    */
   Status get_make_upload_part_req(
       const URI& uri, const std::string& uri_path, MakeUploadPartCtx& ctx);
+
+  /**
+   * Returns the upload ID of a multipart upload state identified by uri
+   *
+   * @param uri The URI of the multipart state
+   * @return The upload ID as string
+   */
+  std::pair<Status, std::optional<std::string>> multipart_upload_id(
+      const URI& uri);
+
+  /**
+   * Returns the part number of a multipart upload state identified by uri
+   *
+   * @param uri The URI of the multipart state
+   * @return The part number
+   */
+  std::pair<Status, std::optional<uint64_t>> multipart_part_number(
+      const URI& uri);
+
+  /**
+   * Returns the completed parts of a multipart upload state identified by uri
+   *
+   * @param uri The URI of the multipart state
+   * @return A List of etags and part numbers of already uploaded parts
+   */
+  std::
+      pair<Status, std::optional<std::vector<std::pair<std::string, uint64_t>>>>
+      multipart_completed_parts(const URI& uri);
 };
 
 }  // namespace sm

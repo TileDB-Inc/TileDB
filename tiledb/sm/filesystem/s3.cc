@@ -1751,6 +1751,33 @@ Status S3::get_make_upload_part_req(
   return Status::Ok();
 }
 
+std::pair<Status, std::optional<std::string>> S3::multipart_upload_id(
+    const URI& uri) {
+  const Aws::Http::URI aws_uri(uri.c_str());
+  const std::string uri_path(aws_uri.GetPath().c_str());
+  MultiPartUploadState* state;
+  std::unique_lock<std::mutex> state_lck;
+
+  // Lock the multipart states map for reads
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
+  auto state_iter = multipart_upload_states_.find(uri_path);
+  if (state_iter == multipart_upload_states_.end()) {
+    // TODO: status and nullopt
+  }
+
+  // Lock multipart state
+  state_lck = std::unique_lock<std::mutex>(state->mtx);
+  return state_iter->second.upload_id;
+}
+
+std::pair<Status, std::optional<uint64_t>> S3::multipart_part_number(
+    const URI& uri) {
+}
+
+std::pair<Status, std::optional<std::vector<std::pair<std::string, uint64_t>>>>
+S3::multipart_completed_parts(const URI& uri) {
+}
+
 }  // namespace sm
 }  // namespace tiledb
 

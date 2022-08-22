@@ -37,7 +37,6 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -1217,6 +1216,50 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
 
 GlobalOrderWriter::GlobalWriteState* GlobalOrderWriter::get_global_state() {
   return global_write_state_.get();
+}
+
+std::pair<Status, std::unordered_map<std::string, VFS::MultiPartUploadState>>
+GlobalOrderWriter::multipart_upload_state() const {
+  auto meta = global_write_state_->frag_meta_;
+  std::unordered_map<std::string, VFS::MultiPartUploadState> result;
+
+  // TODO: to be refactored, there are multiple places in writers where
+  // we iterate over the internal fragment files manually
+  const auto buf_names = buffer_names();
+  for (const auto& name : buf_names) {
+    auto&& [st1, uri] = meta->uri(name);
+    RETURN_NOT_OK_TUPLE(st1, {});
+
+    auto&& [st2, state] = storage_manager_->vfs()->multipart_upload_state(*uri);
+    RETURN_NOT_OK_TUPLE(st2, {});
+    // If there is no entry for this uri, probably multipart upload is disabled
+    // or no write was issued so far
+    if (!state.has_value()) {
+      return {Status::Ok(), {}};
+    }
+    result[uri->to_string()] = std::move(*state);
+
+    if (array_schema_.var_size(name)) {
+      auto&& [status, var_uri] = meta->var_uri(name);
+      RETURN_NOT_OK_TUPLE(status, {});
+
+      auto&& [st, var_state] =
+          storage_manager_->vfs()->multipart_upload_state(*var_uri);
+      RETURN_NOT_OK_TUPLE(st, {});
+      result[var_uri->to_string()] = std::move(*var_state);
+    }
+    if (array_schema_.is_nullable(name)) {
+      auto&& [status, validity_uri] = meta->validity_uri(name);
+      RETURN_NOT_OK_TUPLE(status, {});
+
+      auto&& [st, val_state] =
+          storage_manager_->vfs()->multipart_upload_state(*validity_uri);
+      RETURN_NOT_OK_TUPLE(st, {});
+      result[validity_uri->to_string()] = std::move(*val_state);
+    }
+  }
+
+  return {Status::Ok(), result};
 }
 
 }  // namespace sm

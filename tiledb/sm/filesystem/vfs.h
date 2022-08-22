@@ -90,6 +90,27 @@ enum class VFSMode : uint8_t;
 class VFS {
  public:
   /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+  /**
+   * Multipart upload state definition used in the serialization of remote
+   * global order writes. This state is a generalization of
+   * the multipart upload state types currently defined independently by each
+   * backend implementation.
+   */
+  struct MultiPartUploadState {
+    struct CompletedParts {
+      /* TODO: document fields */
+      optional<std::string> e_tag;
+      uint64_t part_number;
+    };
+
+    uint64_t part_number;
+    optional<std::string> upload_id;
+    std::vector<CompletedParts> completed_parts;
+  };
+
+  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -429,6 +450,16 @@ class VFS {
    * @return Status
    */
   Status write(const URI& uri, const void* buffer, uint64_t buffer_size);
+
+  /**
+   * Used in serialization to share the multipart upload state
+   * among cloud executors during global order writes
+   *
+   * @param uri The file uri used as key in the internal map of the backend
+   * @return A pair of status and VFS::MultiPartUploadState object.
+   */
+  std::pair<Status, std::optional<MultiPartUploadState>> multipart_upload_state(
+      const URI& uri) const;
 
  private:
   /* ********************************* */

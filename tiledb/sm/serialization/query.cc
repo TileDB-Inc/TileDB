@@ -1189,7 +1189,7 @@ Status writer_to_capnp(
     if (globalstate) {
       auto global_state_builder = writer_builder->initGlobalWriteState();
       RETURN_NOT_OK(global_write_state_to_capnp(
-          query, *globalstate, &global_state_builder));
+          query, globalwriter, &global_state_builder));
     }
   }
 
@@ -2373,8 +2373,10 @@ Status query_est_result_size_deserialize(
 
 Status global_write_state_to_capnp(
     const Query& query,
-    const GlobalOrderWriter::GlobalWriteState& write_state,
+    GlobalOrderWriter& globalwriter,
     capnp::GlobalWriteState::Builder* state_builder) {
+  auto& write_state = *globalwriter.get_global_state();
+
   auto& cells_written = write_state.cells_written_;
   if (!cells_written.empty()) {
     auto cells_writen_builder = state_builder->initCellsWritten();
@@ -2618,6 +2620,40 @@ Status global_write_state_to_capnp(
 
   state_builder->setLastHilbertValue(write_state.last_hilbert_value_);
 
+  // Serialize the multipart upload state
+  auto&& [st, multipart_states] = globalwriter.multipart_upload_state();
+  RETURN_NOT_OK(st);
+
+  if (!multipart_states.empty()) {
+    auto multipart_builder = state_builder->initMultiPartUploadStates();
+    auto entries_builder =
+        multipart_builder.initEntries(multipart_states.size());
+    uint64_t index = 0;
+    for (auto& entry : multipart_states) {
+      entries_builder[index].setKey(entry.first);
+      auto multipart_entry_builder = entries_builder[index].initValue();
+      ++index;
+      auto& state = entry.second;
+      multipart_entry_builder.setPartNumber(state.part_number);
+      if (state.upload_id.has_value()) {
+        multipart_entry_builder.setUploadId(*state.upload_id);
+      }
+
+      auto& completed_parts = state.completed_parts;
+      // Get completed parts
+      if (!completed_parts.empty()) {
+        auto builder = multipart_entry_builder.initCompletedParts(
+            state.completed_parts.size());
+        for (uint64_t i = 0; i < state.completed_parts.size(); ++i) {
+          if (state.completed_parts[i].e_tag.has_value()) {
+            builder[i].setETag(*state.completed_parts[i].e_tag);
+          }
+          builder[i].setPartNumber(state.completed_parts[i].part_number);
+        }
+      }
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -2858,7 +2894,7 @@ Status query_est_result_size_deserialize(
 
 Status global_write_state_to_capnp(
     const Query& query,
-    const GlobalOrderWriter::GlobalWriteState& write_state,
+    GlobalOrderWriter& globalwriter,
     capnp::GlobalWriteState::Builder* state_builder) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));

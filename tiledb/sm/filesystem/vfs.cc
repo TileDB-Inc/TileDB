@@ -1825,5 +1825,47 @@ Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
       Status_VFSError("Unsupported URI schemes: " + uri.to_string()));
 }
 
+std::pair<Status, std::optional<VFS::MultiPartUploadState>>
+VFS::multipart_upload_state(const URI& uri) const {
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    VFS::MultiPartUploadState state;
+    auto&& [st, upload_id] = s3_.multipart_upload_id(uri);
+    RETURN_NOT_OK_TUPLE(st, nullopt);
+    state.upload_id = upload_id;
+    state.part_number = s3_.multipart_part_number(uri);
+    for (auto part : s3_.multipart_completed_parts(uri)) {
+      state.completed_parts.emplace_back();
+      state.completed_parts.back().e_tag = part.first;
+      state.completed_parts.back().part_number = part.second;
+    }
+    return {Status::Ok(), state};
+#else
+    return {LOG_STATUS(Status_VFSError("TileDB was built without S3 support")),
+            nullopt};
+#endif
+  } else if (uri.is_azure()) {
+#ifdef HAVE_AZURE
+    return {LOG_STATUS(Status_VFSError("Not yet supported for Azure")),
+            nullopt};
+#else
+    return {
+        LOG_STATUS(Status_VFSError("TileDB was built without Azure support")),
+        nullopt};
+#endif
+  } else if (uri.is_gcs()) {
+#ifdef HAVE_GCS
+    return {LOG_STATUS(Status_VFSError("Not yet supported for GCS")), nullopt};
+#else
+    return {LOG_STATUS(Status_VFSError("TileDB was built without GCS support")),
+            nullopt};
+#endif
+  }
+
+  return {LOG_STATUS(
+              Status_VFSError("Unsupported URI schemes: " + uri.to_string())),
+          nullopt};
+}
+
 }  // namespace sm
 }  // namespace tiledb
