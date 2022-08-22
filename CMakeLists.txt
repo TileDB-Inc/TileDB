@@ -445,6 +445,8 @@ if (TILEDB_TESTS)
     add_dependencies(tests unit_link_webp)
   endif()
 
+  add_dependencies(tests unit_link_openssl)
+
   if (ENABLE_MAGIC_TEST)
     add_dependencies(tests unit_mgc_dict)
   endif()

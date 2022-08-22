@@ -95,9 +95,7 @@ if (TILEDB_SERIALIZATION)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCapnp_EP.cmake)
 endif()
 
-if (NOT WIN32)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
-endif()
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
 
 if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
   # Need libcurl either with S3 or serialization support.

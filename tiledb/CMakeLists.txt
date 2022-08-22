@@ -486,10 +486,8 @@ add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
 # blosc link dependencies
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPTIONS})
 
-# Find OpenSSL first in case it's needed for S3 or Azure
-if (NOT WIN32)
-  find_package(OpenSSL_EP REQUIRED)
-endif()
+# Find OpenSSL first in case it's needed for S3 or Azure or gcs
+find_package(OpenSSL_EP REQUIRED)
 
 # S3 dependencies
 if (TILEDB_S3)
@@ -617,6 +615,11 @@ if(TILEDB_WEBP)
     WebP::webp
   )
 endif()
+
+target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+  INTERFACE
+  ${TILEDB_OPENSSL_LIBRARY_TARGETS}
+)
 
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
