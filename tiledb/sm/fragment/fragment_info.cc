@@ -864,8 +864,8 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
       0,
       fragment_num,
       [this, &fragment_metadata_value, &sizes](uint64_t i) {
-        // Get fragment size. Applicable only to relevant fragments, excluding
-        // those potentially loaded in a passed in an array directory.
+        // Get fragment size. Applicable only to relevant fragments, including
+        // fragments that are in the range [timestamp_start_, timestamp_end_].
         auto meta = fragment_metadata_value[i];
         if (meta->timestamp_range().first >= timestamp_start_ &&
             meta->timestamp_range().second <= timestamp_end_) {
