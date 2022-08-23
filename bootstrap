@@ -59,6 +59,7 @@ Configuration:
     --enable-tools                  enables TileDB CLI tools (experimental)
     --enable-ccache                 enables use of ccache (if present)
     --enable-arrow-tests            enables the compilation of the arrow adapter unit tests
+    --enable-_crc32                  enables building of crc32 library and linkage test
     --enable-webp                   enables building of webp library and linkage test
     --enable-abseil                 enables building of abseil library and linkage test
     --enable-experimental-features  enables experimental TileDB features
@@ -103,6 +104,7 @@ tiledb_tools="OFF"
 tiledb_ccache="OFF"
 tiledb_arrow_tests="OFF"
 tiledb_experimental_features="OFF"
+tiledb_build_crc32="OFF"
 tiledb_build_webp="OFF"
 tiledb_build_abseil="OFF"
 enable_multiple=""
@@ -134,6 +136,7 @@ while test $# != 0; do
     --enable-tools) tiledb_tools="ON";;
     --enable-ccache) tiledb_ccache="ON";;
     --enable-arrow-tests) tiledb_arrow_tests="ON";;
+    --enable-_crc32) tiledb_build_crc32="ON";;
     --enable-webp) tiledb_build_webp="ON";;
     --enable-abseil) tiledb_build_abseil="ON";;
     --enable-experimental-features) tiledb_experimental_features="ON";;
@@ -161,6 +164,7 @@ for en in "${enables[@]}"; do
     tools) tiledb_tools="ON";;
     ccache) tiledb_ccache="ON";;
     arrow-tests) tiledb_arrow_tests="ON";;
+    _crc32) tiledb_build_crc32="ON";;
     webp) tiledb_build_webp="ON";;
     abseil) tiledb_build_abseil="ON";;
     hdfs) tiledb_hdfs="ON";;
@@ -220,6 +224,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_TESTS=${tiledb_tests} \
     -DTILEDB_CCACHE=${tiledb_ccache} \
     -DTILEDB_ARROW_TESTS=${tiledb_arrow_tests} \
+    -DTILEDB_CRC32=${tiledb_build_crc32} \
     -DTILEDB_WEBP=${tiledb_build_webp} \
     -DTILEDB_ABSEIL=${tiledb_build_abseil} \
     -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
