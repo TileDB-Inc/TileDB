@@ -616,11 +616,6 @@ if(TILEDB_WEBP)
   )
 endif()
 
-target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-  INTERFACE
-  ${TILEDB_OPENSSL_LIBRARY_TARGETS}
-)
-
 if(TILEDB_ABSEIL)
   find_package(absl_EP REQUIRED)
 
