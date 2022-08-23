@@ -3,11 +3,6 @@
  *
  * @section LICENSE
  *
- * The MI/**
- * @file compile_all_filters_main.cc
- *
- * @section LICENSE
- *
  * The MIT License
  *
  * @copyright Copyright (c) 2021 TileDB, Inc.
@@ -35,6 +30,7 @@
 
 int main() {
   using namespace tiledb::sm;
+
   (void)sizeof(tiledb::sm::FilterCreate);
   (void)static_cast<shared_ptr<Filter> (*)(
       Deserializer & deserializer, const uint32_t version)>(
