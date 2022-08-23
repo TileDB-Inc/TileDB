@@ -1426,7 +1426,7 @@ class FragmentMetadata {
   /**
    * Loads the processed conditions for the fragment.
    */
-  Status load_processed_conditions(ConstBuffer* buff);
+  Status load_processed_conditions(Deserializer &deserializer);
 
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);

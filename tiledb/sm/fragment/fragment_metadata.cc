@@ -1555,8 +1555,8 @@ Status FragmentMetadata::load_processed_conditions(
   storage_manager_->stats()->add_counter(
       "read_processed_conditions_size", tile.size());
 
-  ConstBuffer cbuff(tile.data(), tile.size());
-  RETURN_NOT_OK(load_processed_conditions(&cbuff));
+  Deserializer deserializer(tile.data(), tile.size());
+  RETURN_NOT_OK(load_processed_conditions(deserializer));
 
   loaded_metadata_.processed_conditions_ = true;
 
@@ -3510,36 +3510,21 @@ Status FragmentMetadata::load_fragment_min_max_sum_null_count(
 // ...
 // processed_condition_size#<condition_num-1> (uint64_t)
 // processed_condition#<condition_num-1>
-Status FragmentMetadata::load_processed_conditions(ConstBuffer* buff) {
-  Status st;
+Status FragmentMetadata::load_processed_conditions(Deserializer &deserializer) {
+    Status st;
 
   // Get num conditions.
   uint64_t num;
-  st = buff->read(&num, sizeof(uint64_t));
-  if (!st.ok()) {
-    return LOG_STATUS(
-        Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                     " num processed conditions failed"));
-  }
+  num = deserializer.read<uint64_t>();
 
   processed_conditions_.reserve(num);
   for (uint64_t i = 0; i < num; i++) {
     uint64_t size;
-    st = buff->read(&size, sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                       " processed conditions size failed"));
-    }
+    size = deserializer.read<uint64_t>();
 
     std::string condition;
     condition.resize(size);
-    st = buff->read(condition.data(), size);
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                       " processed conditions failed"));
-    }
+    deserializer.read(condition.data(), size);
 
     processed_conditions_.emplace_back(condition);
   }
