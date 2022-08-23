@@ -6449,6 +6449,7 @@ TEST_CASE_METHOD(
     auto end1 = tiledb::sm::utils::time::timestamp_now_ms();
     consolidate_dense("array_meta", start1, end1);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
     auto start2 = tiledb::sm::utils::time::timestamp_now_ms();
     write_dense_array_metadata();
     write_dense_array_metadata();
