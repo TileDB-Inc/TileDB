@@ -93,7 +93,7 @@ check (){
   exclude_tests="~\"C API: Test config iter\""
   if [ "$CARCH" == "i686" ]; then
     # test failures occurring in 32bit environ, for now avoid
-    echo "skip unit tests that (generally) fail with 32bit mingw!"
+    echo "skip unit tests that \(generally\) fail with 32bit mingw!"
 
     exclude_tests="${exclude_tests} ~\"CPP API: Test consolidation with timestamps\\, global read\\, all cells same coords\\, with memory budget\""
     exclude_tests="${exclude_tests} ~\"CPP API: Test consolidation with timestamps\\, global read\\, same cells across tiles\\, with memory budget\""
