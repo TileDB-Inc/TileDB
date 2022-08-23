@@ -222,8 +222,8 @@ struct GlobalOrderResultCoords
     uint64_t ret = 1;
     uint64_t cell_num = base::tile_->cell_num();
     uint64_t next_pos = base::pos_ + 1;
-    if (base::tile_->has_post_qc_bmp()) {
-      auto& bitmap = base::tile_->bitmap_with_qc();
+    if (base::tile_->has_post_dedup_bmp()) {
+      auto& bitmap = base::tile_->post_dedup_bitmap();
 
       // Current cell is not in the bitmap.
       if (!bitmap[base::pos_]) {
@@ -283,8 +283,8 @@ struct GlobalOrderResultCoords
     // until we find a cell that isn't in the bitmap. This will tell us the
     // maximum slab that can be merged for this bitmap, next we'll look at
     // next.
-    if (base::tile_->has_post_qc_bmp()) {
-      auto& bitmap = base::tile_->bitmap_with_qc();
+    if (base::tile_->has_post_dedup_bmp()) {
+      auto& bitmap = base::tile_->post_dedup_bitmap();
       // Current cell is not in the bitmap.
       if (!bitmap[base::pos_]) {
         return 0;

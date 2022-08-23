@@ -158,10 +158,6 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
 
-  // Set the boolean to include delete meta, if required.
-  deletes_consolidation_no_purge_ =
-      buffers_.count(constants::delete_timestamps) != 0;
-
   // Check that the query condition is valid.
   RETURN_NOT_OK(condition_.check(array_schema_));
 
@@ -178,6 +174,11 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
 
   // Load initial data, if not loaded already.
   RETURN_NOT_OK(load_initial_data(true));
+  purge_deletes_consolidation_ = !deletes_consolidation_no_purge_ &&
+                                 consolidation_with_timestamps_ &&
+                                 !delete_conditions_.empty();
+  purge_deletes_no_dups_mode_ =
+      !array_schema_.allows_dups() && purge_deletes_consolidation_;
 
   // Attributes names to process.
   std::vector<std::string> names;
@@ -706,13 +707,9 @@ SparseGlobalOrderReader<BitmapType>::compute_result_cell_slab() {
   }
 
   if (array_schema_.cell_order() == Layout::HILBERT) {
-    return merge_result_cell_slabs(
-        num_cells,
-        HilbertCmpReverse(array_schema_.domain(), &fragment_metadata_));
+    return merge_result_cell_slabs<HilbertCmpReverse>(num_cells);
   } else {
-    return merge_result_cell_slabs(
-        num_cells,
-        GlobalCmpReverse(array_schema_.domain(), &fragment_metadata_));
+    return merge_result_cell_slabs<GlobalCmpReverse>(num_cells);
   }
 }
 
@@ -778,7 +775,6 @@ bool SparseGlobalOrderReader<BitmapType>::add_all_dups_to_queue(
 template <class BitmapType>
 template <class CompType>
 bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
-    const bool purge_deletes_no_dups_mode,
     GlobalOrderResultCoords<BitmapType>& rc,
     std::vector<TileListIt>& result_tiles_it,
     TileMinHeap<CompType>& tile_queue) {
@@ -842,7 +838,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
 
     // Add all the cells in this tile with the same coordinates as this cell
     // for purge deletes with no dups mode.
-    if (purge_deletes_no_dups_mode &&
+    if (purge_deletes_no_dups_mode_ &&
         fragment_metadata_[frag_idx]->has_timestamps()) {
       if (add_all_dups_to_queue(rc, result_tiles_it, tile_queue)) {
         return true;
@@ -916,40 +912,25 @@ template <class BitmapType>
 template <class CompType>
 tuple<Status, optional<std::vector<ResultCellSlab>>>
 SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
-    uint64_t num_cells, CompType cmp) {
+    uint64_t num_cells) {
   auto timer_se = stats_->start_timer("merge_result_cell_slabs");
   std::vector<ResultCellSlab> result_cell_slabs;
-  auto cmp_no_timestamps = cmp;
+  CompType cmp_max_slab_length(
+      array_schema_.domain(), false, &fragment_metadata_);
 
   // TODO Parallelize.
 
   // For easy reference.
-  const bool dups =
+  const bool return_all_dups =
       array_schema_.allows_dups() || consolidation_with_timestamps_;
-
-  // Are we doing purge deletes consolidation. The consolidation with
-  // timestamps flag will be set and we will have a post query condition
-  // bitmap. The later is only true in consolidation when delete conditions
-  // are present.
-  const bool purge_deletes_consolidation = !deletes_consolidation_no_purge_ &&
-                                           consolidation_with_timestamps_ &&
-                                           !delete_conditions_.empty();
-
-  // For purge deletes consolidation and no duplicates, we read in a different
-  // mode. We will first sort cells in the tile queue with the same coordinates
-  // using timestamps (where the cell with the greater timestamp comes first).
-  // Then when adding cells for a fragment consolidated with timestamps, we
-  // will add all the dups at once. Finally, when creating cell slabs, we will
-  // stop creating cell slabs once a cell is deleted. This will enable cells
-  // created after the last delete time to go through, but the cells created
-  // before to be purged.
-  const bool purge_deletes_no_dups_mode =
-      !array_schema_.allows_dups() && purge_deletes_consolidation;
 
   // A tile min heap, contains one GlobalOrderResultCoords per fragment.
   std::vector<GlobalOrderResultCoords<BitmapType>> container;
   container.reserve(result_tiles_.size());
-  cmp.use_timestamps(!array_schema_.allows_dups());
+  CompType cmp(
+      array_schema_.domain(),
+      !array_schema_.allows_dups(),
+      &fragment_metadata_);
   TileMinHeap<CompType> tile_queue(cmp, std::move(container));
 
   // If any fragments needs to load more tiles.
@@ -971,8 +952,11 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
                   read_state_.frag_idx_[f].cell_idx_ :
                   0;
           GlobalOrderResultCoords rc(&*(rt_it[f]), cell_idx);
-          need_more_tiles |= add_next_cell_to_queue(
-              purge_deletes_no_dups_mode, rc, rt_it, tile_queue);
+          bool res = add_next_cell_to_queue(rc, rt_it, tile_queue);
+          {
+            std::unique_lock<std::mutex> ul(tile_queue_mutex_);
+            need_more_tiles |= res;
+          }
         }
 
         return Status::Ok();
@@ -996,22 +980,22 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
       // For consolidation with deletes, check if the cell was deleted and
       // stop copying if it is. All cells after this in the queue have a
       // smaller timestamp so they should be deleted.
-      if (purge_deletes_no_dups_mode) {
-        stop_creating_slabs |= tile->bitmap_with_qc()[to_process.pos_] == 0;
+      if (purge_deletes_no_dups_mode_) {
+        stop_creating_slabs |= tile->post_dedup_bitmap()[to_process.pos_] == 0;
       }
 
-      if (dups && !stop_creating_slabs) {
+      if (return_all_dups && !stop_creating_slabs) {
         // If we return duplicates, create one slab for all the dups.
         if (non_overlapping_ranges) {
-          if (!purge_deletes_no_dups_mode ||
-              tile->bitmap_with_qc()[to_process.pos_] != 0) {
+          if (!purge_deletes_no_dups_mode_ ||
+              tile->post_dedup_bitmap()[to_process.pos_] != 0) {
             tile->set_used();
             result_cell_slabs.emplace_back(tile, to_process.pos_, 1);
             num_cells--;
           }
         } else {
           // For overlapping ranges, create as many slabs as there are counts.
-          auto num = tile->bitmap_with_qc()[to_process.pos_];
+          auto num = tile->post_dedup_bitmap()[to_process.pos_];
           if (num_cells < num) {
             num_cells = 0;
             break;
@@ -1038,17 +1022,15 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
       // the higher timestamp is already in `to_process` and will be processed
       // below. For dups, `to_process` was already added above, replace it with
       // the top of the queue.
-      if (!dups) {
+      if (!return_all_dups) {
         auto to_remove = tile_queue.top();
         tile_queue.pop();
 
         // Put the next cell from the processed tile in the queue.
-        need_more_tiles = add_next_cell_to_queue(
-            purge_deletes_no_dups_mode, to_remove, rt_it, tile_queue);
+        need_more_tiles = add_next_cell_to_queue(to_remove, rt_it, tile_queue);
       } else {
         // Put the next cell from the processed tile in the queue.
-        need_more_tiles = add_next_cell_to_queue(
-            purge_deletes_no_dups_mode, to_process, rt_it, tile_queue);
+        need_more_tiles = add_next_cell_to_queue(to_process, rt_it, tile_queue);
 
         to_process = tile_queue.top();
         tile_queue.pop();
@@ -1068,7 +1050,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
       // For purge delete no dups mode, we cannot merge more than one cell at
       // time as we don't know if any cells in the generated slab are
       // duplicates.
-      bool single_cell_only = purge_deletes_no_dups_mode &&
+      bool single_cell_only = purge_deletes_no_dups_mode_ &&
                               fragment_metadata_[frag_idx]->has_timestamps();
 
       // Compute the length of the cell slab.
@@ -1078,7 +1060,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
           length = to_process.max_slab_length();
         } else {
           length =
-              to_process.max_slab_length(tile_queue.top(), cmp_no_timestamps);
+              to_process.max_slab_length(tile_queue.top(), cmp_max_slab_length);
         }
       }
 
@@ -1123,8 +1105,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
     }
 
     // Put the next cell in the queue.
-    need_more_tiles = add_next_cell_to_queue(
-        purge_deletes_no_dups_mode, to_process, rt_it, tile_queue);
+    need_more_tiles = add_next_cell_to_queue(to_process, rt_it, tile_queue);
   }
 
   buffers_full_ = num_cells == 0;

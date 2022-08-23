@@ -91,7 +91,8 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
     , buffers_full_(false)
-    , deletes_consolidation_no_purge_(false) {
+    , deletes_consolidation_no_purge_(
+          buffers_.count(constants::delete_timestamps) != 0) {
   read_state_.done_adding_result_tiles_ = false;
   disable_cache_ = true;
 }
@@ -631,14 +632,18 @@ Status SparseIndexReaderBase::apply_query_condition(
               !deletes_consolidation_no_purge_) {
             // Remove cells deleted cells using the open timestamp.
             RETURN_NOT_OK(delete_timestamps_condition_.apply_sparse<BitmapType>(
-                *(frag_meta->array_schema().get()), *rt, rt->bitmap_with_qc()));
+                *(frag_meta->array_schema().get()),
+                *rt,
+                rt->post_dedup_bitmap()));
             rt->count_cells();
           }
 
           // Compute the result of the query condition for this tile
           if (!condition_.empty()) {
             RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
-                *(frag_meta->array_schema().get()), *rt, rt->bitmap_with_qc()));
+                *(frag_meta->array_schema().get()),
+                *rt,
+                rt->post_dedup_bitmap()));
             if (array_schema_.allows_dups()) {
               rt->count_cells();
             }
@@ -670,13 +675,13 @@ Status SparseIndexReaderBase::apply_query_condition(
                         delete_conditions_[i].apply_sparse<BitmapType>(
                             *(frag_meta->array_schema().get()),
                             *rt,
-                            rt->bitmap_with_qc()));
+                            rt->post_dedup_bitmap()));
                   } else {
                     RETURN_NOT_OK(timestamped_delete_conditions_[i]
                                       .apply_sparse<BitmapType>(
                                           *(frag_meta->array_schema().get()),
                                           *rt,
-                                          rt->bitmap_with_qc()));
+                                          rt->post_dedup_bitmap()));
                   }
 
                   if (deletes_consolidation_no_purge_) {

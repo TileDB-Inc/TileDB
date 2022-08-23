@@ -765,7 +765,9 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
       bool include_delete_meta,
       const FragmentMetadata& frag_md)
       : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md)
-      , use_extra_bitmap_(!dups || include_delete_meta)
+      , post_dedup_bitmap_(
+            !dups || include_delete_meta ? optional(std::vector<BitmapType>()) :
+                                           nullopt)
       , used_(false) {
   }
 
@@ -793,9 +795,8 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   void swap(GlobalOrderResultTile& tile) {
     ResultTileWithBitmap<uint8_t>::swap(tile);
     std::swap(used_, tile.used_);
-    std::swap(use_extra_bitmap_, tile.use_extra_bitmap_);
     std::swap(hilbert_values_, tile.hilbert_values_);
-    std::swap(extra_bitmap_, tile.extra_bitmap_);
+    std::swap(post_dedup_bitmap_, tile.post_dedup_bitmap_);
     std::swap(per_cell_delete_condition_, tile.per_cell_delete_condition_);
   }
 
@@ -811,25 +812,26 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
 
   /**
    * Returns whether this tile has a post query condition bitmap. For this
-   * tile type, it will either be extra_bitmap_ or the normal bitmap.
+   * tile type, it will either be post_dedup_bitmap_ or the normal bitmap.
    */
-  inline bool has_post_qc_bmp() {
+  inline bool has_post_dedup_bmp() {
     return ResultTileWithBitmap<BitmapType>::has_bmp() ||
-           extra_bitmap_.size() > 0;
+           (post_dedup_bitmap_.has_value() && post_dedup_bitmap_->size() > 0);
   }
 
   /**
    * Ensures there is a post query condition bitmap allocated. If there is a
-   * regular bitmap already for this tile, 'extra_bitmap_' will contain the
+   * regular bitmap already for this tile, 'post_dedup_bitmap_' will contain the
    * combination of the existing bitmap with query condition results. Otherwise
    * it will only contain the query condition results.
    */
   void ensure_bitmap_for_query_condition() {
-    if (use_extra_bitmap_) {
+    if (post_dedup_bitmap_.has_value()) {
       if (ResultTileWithBitmap<BitmapType>::has_bmp()) {
-        extra_bitmap_ = ResultTileWithBitmap<BitmapType>::bitmap_;
+        post_dedup_bitmap_ = ResultTileWithBitmap<BitmapType>::bitmap_;
       } else {
-        extra_bitmap_.resize(ResultTileWithBitmap<BitmapType>::cell_num_, 1);
+        post_dedup_bitmap_->resize(
+            ResultTileWithBitmap<BitmapType>::cell_num_, 1);
       }
     } else {
       if (ResultTileWithBitmap<BitmapType>::bitmap_.size() == 0) {
@@ -841,11 +843,12 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
 
   /**
    * Returns the bitmap that included query condition results. For this tile
-   * type, this is 'extra_bitmap_' if allocated, or the regular bitmap.
+   * type, this is 'post_dedup_bitmap_' if allocated, or the regular bitmap.
    */
-  inline std::vector<BitmapType>& bitmap_with_qc() {
-    return extra_bitmap_.size() > 0 ? extra_bitmap_ :
-                                      ResultTileWithBitmap<BitmapType>::bitmap_;
+  inline std::vector<BitmapType>& post_dedup_bitmap() {
+    return post_dedup_bitmap_.has_value() && post_dedup_bitmap_->size() > 0 ?
+               post_dedup_bitmap_.value() :
+               ResultTileWithBitmap<BitmapType>::bitmap_;
   }
 
   /**
@@ -854,13 +857,16 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
    * @param cell_idx Cell index to clear.
    */
   void clear_cell(uint64_t cell_idx) {
-    assert(cell_idx < ResultTileWithBitmap<BitmapType>::bitmap_.size());
+    if (cell_idx > ResultTileWithBitmap<BitmapType>::bitmap_.size()) {
+      throw std::out_of_range("Cell index out of range");
+    }
+
     ResultTileWithBitmap<BitmapType>::result_num_ -=
         ResultTileWithBitmap<BitmapType>::bitmap_[cell_idx];
     ResultTileWithBitmap<BitmapType>::bitmap_[cell_idx] = 0;
 
-    if (extra_bitmap_.size() > 0) {
-      extra_bitmap_[cell_idx] = 0;
+    if (post_dedup_bitmap_.has_value() && post_dedup_bitmap_->size() > 0) {
+      post_dedup_bitmap_->at(cell_idx) = 0;
     }
   }
 
@@ -909,13 +915,14 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
     // Go through all cells, if the delete condition cleared the cell, and the
     // index for this cell is still unset, set it to the current condition.
     for (uint64_t c = 0; c < ResultTileWithBitmap<BitmapType>::cell_num_; c++) {
-      if (extra_bitmap_[c] == 0 && per_cell_delete_condition_[c] == nullptr) {
+      if (post_dedup_bitmap_->at(c) == 0 &&
+          per_cell_delete_condition_[c] == nullptr) {
         per_cell_delete_condition_[c] = ptr;
       }
     }
 
     // Reset the bitmap to be ready for the next condition.
-    std::fill(extra_bitmap_.begin(), extra_bitmap_.end(), 1);
+    std::fill(post_dedup_bitmap_->begin(), post_dedup_bitmap_->end(), 1);
   }
 
   /**
@@ -951,19 +958,16 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   /**
    * An extra bitmap will be needed for array with no duplicates. For those,
    * deduplication need to be run before query condition is applied. So bitmap_
-   * will contain the results before query condition, and extra_bitmap_ will
-   * contain results after query condition.
+   * will contain the results before query condition, and post_dedup_bitmap_
+   * will contain results after query condition.
    */
-  std::vector<BitmapType> extra_bitmap_;
+  optional<std::vector<BitmapType>> post_dedup_bitmap_;
 
   /**
    * Delete condition index that deleted a cell. Used for consolidation with
    * delete metadata.
    */
   std::vector<QueryCondition*> per_cell_delete_condition_;
-
-  /** Use the extra bitmap or not. */
-  bool use_extra_bitmap_;
 
   /** Was the tile used in the merge. */
   bool used_;
@@ -1009,7 +1013,7 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
    * Returns whether this tile has a post query condition bitmap. For this
    * tile type, this is stored in the regular bitmap.
    */
-  inline bool has_post_qc_bmp() {
+  inline bool has_post_dedup_bmp() {
     return ResultTileWithBitmap<BitmapType>::has_bmp();
   }
 
@@ -1028,7 +1032,7 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
    * Returns the bitmap that included query condition results. For this tile
    * type, this is stored in the regular bitmap.
    */
-  inline std::vector<BitmapType>& bitmap_with_qc() {
+  inline std::vector<BitmapType>& post_dedup_bitmap() {
     return ResultTileWithBitmap<BitmapType>::bitmap_;
   }
 
