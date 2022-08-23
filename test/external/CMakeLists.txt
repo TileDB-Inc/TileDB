@@ -34,3 +34,24 @@ find_package(OpenSSL_EP REQUIRED)
 target_link_libraries(unit_link_openssl PRIVATE ${OPENSSL_LIBRARIES})
 
 target_include_directories(unit_link_openssl PRIVATE ${OPENSSL_INCLUDE_DIR})
+
+if(NOT TILEDB_ABSEIL)
+  message("skipping target unit_link_absl, found NOT TILEDB_ABSEIL")
+  return()
+endif()
+
+message("adding target unit_link_absl, have TILEDB_ABSEIL")
+
+add_executable(unit_link_absl EXCLUDE_FROM_ALL src/absl_link_test.cc)
+
+find_package(absl CONFIG REQUIRED
+  PATHS
+      ${TILEDB_EP_INSTALL_PREFIX}/lib/cmake
+  ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/absl_library_targets.cmake)
+
+target_link_libraries(unit_link_absl PRIVATE ${TILEDB_ABSL_LIBRARY_TARGETS})
+
+target_include_directories(unit_link_absl PRIVATE ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_EP_INSTALL_PREFIX}/include )
