@@ -83,6 +83,12 @@ check (){
   # apparently due to pre-existing tmp/TMP/TEMP env vars
   ( unset tmp; unset TMP; unset TEMP; powershell ${TILEDB_HOME}/scripts/install-minio.ps1 )
 
+  echo "CARCH is $CARCH"
+  if [ "$CARCH" == "x86_64" ]; then # only want mingw64, but this prob gets ucrt64 also...
+    echo "running selected tests failing in ci in mingw64 (but not ucrt64)
+    ./tiledb/test/tiledb_unit.exe -d=yes --vfs=native "Sparse unordered with dups reader: qc removes full tile" "C API: Group\\, vacuuming" "C API: Test vacuuming and timestamps - vacuum array metadata with timestamps"
+  fi
+
   # always avoid the test that fails due to our 'non-standard' config options set above
   exclude_tests="~\"C API: Test config iter\""
   if [ "$CARCH" == "i686" ]; then
