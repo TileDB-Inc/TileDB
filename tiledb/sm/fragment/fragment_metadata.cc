@@ -3510,7 +3510,7 @@ Status FragmentMetadata::load_fragment_min_max_sum_null_count(
 // ...
 // processed_condition_size#<condition_num-1> (uint64_t)
 // processed_condition#<condition_num-1>
-Status FragmentMetadata::load_processed_conditions(Deserializer &deserializer) {
+Status FragmentMetadata::load_processed_conditions(Deserializer& deserializer) {
   // Get num conditions.
   uint64_t num;
   num = deserializer.read<uint64_t>();
@@ -4802,7 +4802,6 @@ Status FragmentMetadata::store_fragment_min_max_sum_null_count(
 
 Status FragmentMetadata::store_processed_conditions(
     const EncryptionKey& encryption_key, uint64_t* nbytes) {
-
   auto serialize_processed_conditions = [this](Serializer& serializer) {
     // Store num conditions.
     uint64_t num = processed_conditions_.size();
