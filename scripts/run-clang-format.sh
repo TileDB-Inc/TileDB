@@ -38,7 +38,7 @@ else
 
   NUM_CORRECTIONS=`$CLANG_FORMAT -output-replacements-xml  $@ | grep offset | wc -l`
   if [ "$NUM_CORRECTIONS" -gt "0" ]; then
-    $CLANG_FORMAT -output-replacements-xml  $@
+    $CLANG_FORMAT  $@
     echo "clang-format suggested changes, please run 'make format'!!!!"
     $CLANG_FORMAT --version
     exit 1
