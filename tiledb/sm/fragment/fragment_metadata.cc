@@ -3511,8 +3511,6 @@ Status FragmentMetadata::load_fragment_min_max_sum_null_count(
 // processed_condition_size#<condition_num-1> (uint64_t)
 // processed_condition#<condition_num-1>
 Status FragmentMetadata::load_processed_conditions(Deserializer &deserializer) {
-    Status st;
-
   // Get num conditions.
   uint64_t num;
   num = deserializer.read<uint64_t>();
@@ -4804,36 +4802,37 @@ Status FragmentMetadata::store_fragment_min_max_sum_null_count(
 
 Status FragmentMetadata::store_processed_conditions(
     const EncryptionKey& encryption_key, uint64_t* nbytes) {
-  Status st;
-  Buffer buff;
 
-  // Store num conditions.
-  uint64_t num = processed_conditions_.size();
-  st = buff.write(&num, sizeof(uint64_t));
-  if (!st.ok()) {
-    return LOG_STATUS(Status_FragmentMetadataError(
-        "Cannot serialize fragment metadata; Writing num processed conditions "
-        "failed"));
+  auto serialize_processed_conditions = [this](Serializer& serializer) {
+    // Store num conditions.
+    uint64_t num = processed_conditions_.size();
+    serializer.write<uint64_t>(num);
+
+    for (auto& processed_condition : processed_conditions_) {
+      uint64_t size = processed_condition.size();
+      serializer.write<uint64_t>(size);
+
+      serializer.write(processed_condition.data(), processed_condition.size());
+    }
+  };
+  SizeComputationSerializer size_computation_serializer;
+  serialize_processed_conditions(size_computation_serializer);
+
+  Tile tile;
+  if (!tile.init_unfiltered(
+               0,
+               constants::generic_tile_datatype,
+               size_computation_serializer.size(),
+               constants::generic_tile_cell_size,
+               0)
+           .ok()) {
+    throw FragmentMetadataStatusException("Cannot initialize tile");
   }
 
-  for (auto& processed_condition : processed_conditions_) {
-    uint64_t size = processed_condition.size();
-    st = buff.write(&size, sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(Status_FragmentMetadataError(
-          "Cannot serialize fragment metadata; Writing processed condition "
-          "size failed"));
-    }
+  Serializer serializer(tile.data(), tile.size());
+  serialize_processed_conditions(serializer);
 
-    st = buff.write(processed_condition.data(), processed_condition.size());
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot serialize fragment metadata; "
-                                       "Writing processed condition failed"));
-    }
-  }
-
-  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, tile, nbytes));
 
   storage_manager_->stats()->add_counter(
       "write_processed_conditions_size", *nbytes);
