@@ -351,7 +351,7 @@ tuple<Status, optional<URI>> ArrayDirectory::get_commit_uri(
           URI(temp_uri.to_string() + constants::write_file_suffix)};
 }
 
-tuple<Status, optional<URI>> ArrayDirectory::get_vaccum_uri(
+tuple<Status, optional<URI>> ArrayDirectory::get_vacuum_uri(
     const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
   uint32_t version;

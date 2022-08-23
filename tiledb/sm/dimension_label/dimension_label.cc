@@ -30,6 +30,7 @@
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label_schema.h"
@@ -118,6 +119,7 @@ void DimensionLabel::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  // Open indexed array and get schema
   throw_if_not_ok(indexed_array_->open(
       query_type,
       timestamp_start,
@@ -125,6 +127,11 @@ void DimensionLabel::open(
       encryption_type,
       encryption_key,
       key_length));
+  auto&& [index_status, indexed_array_schema] =
+      indexed_array_->get_array_schema();
+  throw_if_not_ok(index_status);
+
+  // Open labelled array and get schema
   throw_if_not_ok(labelled_array_->open(
       query_type,
       timestamp_start,
@@ -132,29 +139,43 @@ void DimensionLabel::open(
       encryption_type,
       encryption_key,
       key_length));
-  load_schema();
+  auto&& [label_status, labelled_array_schema] =
+      labelled_array_->get_array_schema();
+  throw_if_not_ok(label_status);
+  load_schema(indexed_array_schema.value(), labelled_array_schema.value());
   query_type_ = query_type;
+
+  // Restrict reading to only shared fragments.
+  if (query_type_ == QueryType::READ) {
+    // Get label names
+    std::vector<TimestampedURI> indexed_frag_uris{
+        indexed_array_->array_directory()
+            .filtered_fragment_uris(false)
+            .fragment_uris()};
+    std::vector<TimestampedURI> labelled_frag_uris{
+        labelled_array_->array_directory()
+            .filtered_fragment_uris(false)
+            .fragment_uris()};
+
+    // Remove mismatched fragments.
+    intersect_fragments(indexed_frag_uris, labelled_frag_uris);
+    intersect_fragments(labelled_frag_uris, indexed_frag_uris);
+
+    // Reload with only shared fragments.
+    indexed_array_->load_fragments(indexed_frag_uris);
+    labelled_array_->load_fragments(labelled_frag_uris);
+  }
 }
 
-void DimensionLabel::open_without_fragments(
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
-  throw_if_not_ok(indexed_array_->open_without_fragments(
-      encryption_type, encryption_key, key_length));
-  throw_if_not_ok(labelled_array_->open_without_fragments(
-      encryption_type, encryption_key, key_length));
-  load_schema();
-  query_type_ = QueryType::READ;
-}
-
-void DimensionLabel::load_schema() {
+void DimensionLabel::load_schema(
+    shared_ptr<ArraySchema> indexed_array_schema,
+    shared_ptr<ArraySchema> labelled_array_schema) {
   // Get dimension label schema metadata
   GroupV1 label_group{uri_, storage_manager_};
   throw_if_not_ok(label_group.open(QueryType::READ));
-
   Datatype datatype;
   uint32_t value_num;
+
   // - Read format version.
   const void* format_version_value;
   throw_if_not_ok(label_group.get_metadata(
@@ -180,6 +201,7 @@ void DimensionLabel::load_schema() {
         "DimensionLabel",
         "Cannot load dimension label schema. Version is newer than current "
         "library version.");
+
   // - Read label order
   const void* label_order_value;
   throw_if_not_ok(label_group.get_metadata(
@@ -198,15 +220,13 @@ void DimensionLabel::load_schema() {
         "Unexpected number of values for the index attribute id.");
   auto label_order =
       label_order_from_int(*static_cast<const uint8_t*>(label_order_value));
+
   // - Close group
   throw_if_not_ok(label_group.close());
+
   // Get array schemas
-  auto&& [label_status, label_schema] = labelled_array_->get_array_schema();
-  throw_if_not_ok(label_status);
-  auto&& [index_status, index_schema] = indexed_array_->get_array_schema();
-  throw_if_not_ok(index_status);
   schema_ = make_shared<DimensionLabelSchema>(
-      HERE(), label_order, index_schema.value(), label_schema.value());
+      HERE(), label_order, indexed_array_schema, labelled_array_schema);
 }
 
 QueryType DimensionLabel::query_type() const {
@@ -223,6 +243,7 @@ void create_dimension_label(
     const DimensionLabelSchema& schema) {
   // Create the group for the dimension label.
   storage_manager.group_create(uri.to_string());
+
   // Create the arrays inside the group.
   EncryptionKey key;
   key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0);
@@ -238,9 +259,11 @@ void create_dimension_label(
       uri.join_path(labelled_array_name.value()),
       schema.labelled_array_schema(),
       key);
+
   // Open dimension label group.
   GroupV1 label_group{uri, &storage_manager};
   label_group.open(QueryType::WRITE);
+
   // Add metadata to group.
   const uint32_t format_version{1};
   label_group.put_metadata(
@@ -248,13 +271,47 @@ void create_dimension_label(
   uint8_t label_order_int{static_cast<uint8_t>(schema.label_order())};
   label_group.put_metadata(
       "__label_order", Datatype::UINT8, 1, &label_order_int);
+
   // Add arrays to group.
   label_group.mark_member_for_addition(
       URI(indexed_array_name.value(), false), true, indexed_array_name);
   label_group.mark_member_for_addition(
       URI(labelled_array_name.value(), false), true, labelled_array_name);
+
   // Close group.
   label_group.close();
+}
+
+void intersect_fragments(
+    const std::vector<TimestampedURI>& comparison_fragment_list,
+    std::vector<TimestampedURI>& fragment_list) {
+  // If the comparison list is empty, clear the fragment list and return.
+  if (comparison_fragment_list.empty()) {
+    fragment_list.clear();
+    return;
+  }
+
+  // Create a set of fragment names from the comparison fragment list.
+  std::set<std::string> allowed_fragment_names;
+  for (const auto& frag_uri : comparison_fragment_list) {
+    allowed_fragment_names.insert(
+        frag_uri.uri_.remove_trailing_slash().last_path_part());
+  }
+
+  // Iterate over fragment list removing any fragments that are not in the
+  // comparison list.
+  for (auto iter = fragment_list.rbegin(); iter != fragment_list.rend();
+       ++iter) {
+    auto search = allowed_fragment_names.find(
+        iter->uri_.remove_trailing_slash().last_path_part());
+    if (search == allowed_fragment_names.end()) {
+      // Swap & pop the fragment: Replace the value at this iterator with the
+      // last element in the vector, then remove the final element for the
+      // vector.
+      *iter = fragment_list.back();
+      fragment_list.pop_back();
+    }
+  }
 }
 
 }  // namespace tiledb::sm

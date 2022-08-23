@@ -728,7 +728,16 @@ class FragmentMetadata {
    *
    * @return Processed conditions.
    */
-  std::unordered_set<std::string>& get_processed_conditions();
+  std::vector<std::string>& get_processed_conditions();
+
+  /**
+   * Retrieves the processed conditions set. The processed conditions is the
+   * list of delete/update conditions that have already been applied for this
+   * fragment and don't need to be applied again.
+   *
+   * @return Processed conditions set.
+   */
+  std::unordered_set<std::string>& get_processed_conditions_set();
 
   /** Returns the first timestamp of the fragment timestamp range. */
   uint64_t first_timestamp() const;
@@ -1085,7 +1094,13 @@ class FragmentMetadata {
   URI array_uri_;
 
   /** Set of already processed delete/update conditions for this fragment. */
-  std::unordered_set<std::string> processed_conditions_;
+  std::unordered_set<std::string> processed_conditions_set_;
+
+  /**
+   * Ordered list of already processed delete/update conditions for this
+   * fragment.
+   */
+  std::vector<std::string> processed_conditions_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

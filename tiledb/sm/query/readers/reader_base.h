@@ -178,6 +178,9 @@ class ReaderBase : public StrategyBase {
   /** Disable the tile cache or not. */
   bool disable_cache_;
 
+  /** Read directly from storage without batching. */
+  bool disable_batching_;
+
   /**
    * The condition to apply on results when there is partial time overlap
    * with at least one fragment
@@ -283,7 +286,7 @@ class ReaderBase : public StrategyBase {
   inline bool delete_meta_not_present(
       const std::string& name, const unsigned f) const {
     return (name == constants::delete_timestamps ||
-            name == constants::delete_condition_marker_hash) &&
+            name == constants::delete_condition_index) &&
            !fragment_metadata_[f]->has_delete_meta();
   }
 

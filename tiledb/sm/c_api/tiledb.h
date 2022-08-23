@@ -1094,6 +1094,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.min_batch_gap` <br>
  *    The minimum number of bytes between two VFS read batches.<br>
  *    **Default**: 500KB
+ * - `vfs.disable_batching` <br>
+ *    **Experimental** <br>
+ *    Disables tile batching from VFS, making direct reads.<br>
+ *    **Default**: false
  * - `vfs.file.posix_file_permissions` <br>
  *    Permissions to use for posix file system with file creation.<br>
  *    **Default**: 644
@@ -1360,6 +1364,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    If true, the new, experimental REST routes and APIs for opening an array
  *    will be used <br>
  *    **Default**: false
+ * - `rest.curl.buffer_size` <br>
+ *    Set curl buffer size for REST requests <br>
+ *    **Default**: 524288 (512KB)
  * - `filestore.buffer_size` <br>
  *    Specifies the size in bytes of the internal buffers used in the filestore
  *    API. The size should be bigger than the minimum tile size filestore
@@ -5728,6 +5735,31 @@ TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     uint64_t* timestamp_end) TILEDB_NOEXCEPT;
+
+/**
+ * Deletes array fragments written between the input timestamps.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_vfs_delete_fragments(
+ *   ctx, vfs, "hdfs:///temp/my_array", 0, UINT64_MAX);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to delete the fragments from.
+ * @param uri The URI of the fragments' parent Array.
+ * @param timestamp_start The epoch timestamp in milliseconds.
+ * @param timestamp_end The epoch timestamp in milliseconds. Use UINT64_MAX for
+ *   the current timestamp.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_delete_fragments(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end) TILEDB_NOEXCEPT;
 
 /**
  * Opens a TileDB array. The array is opened using a query type as input.

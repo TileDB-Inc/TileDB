@@ -2483,8 +2483,12 @@ int32_t tiledb_query_alloc(
 
   // Error if the query type and array query type do not match
   tiledb::sm::QueryType array_query_type;
-  if (SAVE_ERROR_CATCH(ctx, array->array_->get_query_type(&array_query_type)))
+  try {
+    array_query_type = array->array_->get_query_type();
+  } catch (StatusException& e) {
     return TILEDB_ERR;
+  }
+
   if (query_type != static_cast<tiledb_query_type_t>(array_query_type)) {
     std::stringstream errmsg;
     errmsg << "Cannot create query; "
@@ -3973,6 +3977,24 @@ int32_t tiledb_array_get_open_timestamp_end(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_delete_fragments(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array->array_->delete_fragments(
+              tiledb::sm::URI(uri), timestamp_start, timestamp_end)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
@@ -4202,8 +4224,11 @@ int32_t tiledb_array_get_query_type(
 
   // Get query_type
   tiledb::sm::QueryType type;
-  if (SAVE_ERROR_CATCH(ctx, array->array_->get_query_type(&type)))
+  try {
+    type = array->array_->get_query_type();
+  } catch (StatusException& e) {
     return TILEDB_ERR;
+  }
 
   *query_type = static_cast<tiledb_query_type_t>(type);
 
@@ -8969,6 +8994,16 @@ int32_t tiledb_array_get_open_timestamp_end(
     uint64_t* timestamp_end) noexcept {
   return api_entry<detail::tiledb_array_get_open_timestamp_end>(
       ctx, array, timestamp_end);
+}
+
+int32_t tiledb_array_delete_fragments(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end) noexcept {
+  return api_entry<detail::tiledb_array_delete_fragments>(
+      ctx, array, uri, timestamp_start, timestamp_end);
 }
 
 int32_t tiledb_array_open(

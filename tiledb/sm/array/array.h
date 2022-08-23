@@ -179,6 +179,19 @@ class Array {
   Status load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
 
   /**
+   * Deletes the fragments from the Array with given URI.
+   *
+   * @param uri The uri of the Array whose fragments are to be deleted.
+   * @param timestamp_start The start timestamp at which to delete fragments.
+   * @param timestamp_end The end timestamp at which to delete fragments.
+   * @return Status
+   *
+   * @pre The Array must be open for exclusive writes
+   */
+  Status delete_fragments(
+      const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
+
+  /**
    * Sets the delete tiles location.
    *
    * @param delete_tiles_location Location for the delete tiles.
@@ -237,8 +250,8 @@ class Array {
   /** Retrieves the array schema. Errors if the array is not open. */
   tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema() const;
 
-  /** Retrieves the query type. Errors if the array is not open. */
-  Status get_query_type(QueryType* qyery_type) const;
+  /** Retrieves the query type. Throws if the array is not open. */
+  QueryType get_query_type() const;
 
   /**
    * Returns the max buffer size given a fixed-sized attribute/dimension and
@@ -587,8 +600,12 @@ class Array {
   /** Computes the non-empty domain of the array. */
   Status compute_non_empty_domain();
 
-  /** Sets the array state as open. */
-  void set_array_open();
+  /**
+   * Sets the array state as open.
+   *
+   * @param query_type The QueryType of the Array.
+   */
+  void set_array_open(const QueryType& query_type);
 
   /** Sets the array state as closed.
    *

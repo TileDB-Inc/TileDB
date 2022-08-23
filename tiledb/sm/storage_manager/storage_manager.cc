@@ -552,6 +552,20 @@ Status StorageManager::fragments_consolidate(
       array_name, encryption_type, encryption_key, key_length, fragment_uris);
 }
 
+Status StorageManager::fragments_vacuum(
+    const char* array_name,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    bool for_deletes) {
+  // Vacuum
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::FRAGMENT, &config_, this);
+  auto fragment_consolidator =
+      dynamic_cast<FragmentConsolidator*>(consolidator.get());
+  return fragment_consolidator->vacuum(
+      array_name, timestamp_start, timestamp_end, for_deletes);
+}
+
 Status StorageManager::array_vacuum(
     const char* array_name, const Config* config) {
   // If 'config' is unset, use the 'config_' that was set during initialization
@@ -888,8 +902,7 @@ Status StorageManager::array_get_non_empty_domain(
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Array is not open"));
 
-  QueryType query_type;
-  RETURN_NOT_OK(array->get_query_type(&query_type));
+  QueryType query_type{array->get_query_type()};
   if (query_type != QueryType::READ)
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Array not opened for reads"));
@@ -1590,12 +1603,7 @@ Status StorageManager::load_array_metadata(
     meta_size += b->size();
   stats_->add_counter("read_array_meta_size", meta_size);
 
-  auto&& [st_metadata, deserialized_metadata]{
-      Metadata::deserialize(metadata_buffs)};
-  if (!st_metadata.ok()) {
-    return st_metadata;
-  }
-  *metadata = *(deserialized_metadata.value());
+  *metadata = Metadata::deserialize(metadata_buffs);
 
   // Sets the loaded metadata URIs
   RETURN_NOT_OK(metadata->set_loaded_metadata_uris(array_metadata_to_load));
@@ -1619,6 +1627,7 @@ StorageManager::load_delete_conditions(const Array& array) {
 
     delete_conditions[i] =
         tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
+            i,
             locations[i].condition_marker(),
             tile_opt->data(),
             tile_opt->size());
@@ -2089,6 +2098,8 @@ tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_details(
   auto timer_se = stats_->start_timer("sm_load_group_details");
   const URI& latest_group_uri = group_directory->latest_group_details_uri();
   if (latest_group_uri.is_invalid()) {
+    // Returning ok because not having the latest group details means the group
+    // has just been created and no members have been added yet.
     return {Status::Ok(), std::nullopt};
   }
   return load_group_from_uri(
@@ -2115,6 +2126,8 @@ StorageManager::group_open_for_reads(Group* group) {
     return {Status::Ok(), group_deserialized.value()->members()};
   }
 
+  // Return ok because having no members is acceptable if the group has never
+  // been written to.
   return {Status::Ok(), std::nullopt};
 }
 
@@ -2138,6 +2151,8 @@ StorageManager::group_open_for_writes(Group* group) {
     return {Status::Ok(), group_deserialized.value()->members()};
   }
 
+  // Return ok because having no members is acceptable if the group has never
+  // been written to.
   return {Status::Ok(), std::nullopt};
 }
 
@@ -2179,14 +2194,8 @@ Status StorageManager::load_group_metadata(
     meta_size += b->size();
   stats_->add_counter("read_array_meta_size", meta_size);
 
-  // Deserialize metadata buffers
-  auto&& [st, deserialized_metadata] = metadata->deserialize(metadata_buffs);
-  if (!st.ok()) {
-    return st;
-  }
-
   // Copy the deserialized metadata into the original Metadata object
-  *metadata = *(deserialized_metadata.value());
+  *metadata = Metadata::deserialize(metadata_buffs);
   RETURN_NOT_OK(metadata->set_loaded_metadata_uris(group_metadata_to_load));
 
   return Status::Ok();

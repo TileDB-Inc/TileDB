@@ -359,6 +359,24 @@ class VFS {
       std::vector<ThreadPool::Task>* tasks,
       bool use_read_ahead = true);
 
+  /**
+   * Reads multiple regions from a file with no batching.
+   *
+   * @param uri The URI of the file.
+   * @param regions The list of regions to read. Each region is a tuple
+   *    `(file_offset, dest_buffer, nbytes)`.
+   * @param thread_pool Thread pool to execute async read tasks to.
+   * @param tasks Vector to which new async read tasks are pushed.
+   * @param use_read_ahead Whether to use the read-ahead cache.
+   * @return Status
+   */
+  Status read_all_no_batching(
+      const URI& uri,
+      const std::vector<tuple<uint64_t, Tile*, uint64_t>>& regions,
+      ThreadPool* thread_pool,
+      std::vector<ThreadPool::Task>* tasks,
+      bool use_read_ahead = true);
+
   /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;
 

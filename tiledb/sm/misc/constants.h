@@ -128,8 +128,8 @@ extern const std::string timestamps;
 /** Special name reserved for the delete timestamp attribute. */
 extern const std::string delete_timestamps;
 
-/** Special name reserved for the delete condition marker hash attribute. */
-extern const std::string delete_condition_marker_hash;
+/** Special name reserved for the delete condition index attribute. */
+extern const std::string delete_condition_index;
 
 /** The size of a timestamp cell. */
 extern const uint64_t timestamp_size;
@@ -137,8 +137,8 @@ extern const uint64_t timestamp_size;
 /** The type of a timestamp cell. */
 extern const Datatype timestamp_type;
 
-/** The type of a delete condition marker hash cell. */
-extern const Datatype delete_condition_marker_hash_type;
+/** The type of a delete condition index cell. */
+extern const Datatype delete_condition_index_type;
 
 /** The special value for an empty int32. */
 extern const int empty_int32;
@@ -268,6 +268,9 @@ extern const std::string query_type_write_str;
 
 /** TILEDB_DELETE Query String **/
 extern const std::string query_type_delete_str;
+
+/** TILEDB_MODIFY_EXCLUSIVE Query String **/
+extern const std::string query_type_modify_exclusive_str;
 
 /** TILEDB_FAILED Query String **/
 extern const std::string query_status_failed_str;

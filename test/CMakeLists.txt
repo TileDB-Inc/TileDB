@@ -252,6 +252,8 @@ endif()
 if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/test-capi-dimension_labels.cc
+    src/test-dimension_labels-read-consistency.cc
+    src/unit_intersect_fragments.cc
   )
 endif()
 
@@ -410,3 +412,6 @@ add_subdirectory(ci)
 if(WIN32)
   add_subdirectory(performance)
 endif()
+
+#add tests related to external items
+add_subdirectory(external)
