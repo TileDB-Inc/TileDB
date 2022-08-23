@@ -800,7 +800,7 @@ Status FragmentInfo::has_consolidated_metadata(
 Status FragmentInfo::load() {
   RETURN_NOT_OK(check_array_uri());
   RETURN_NOT_OK(set_enc_key_from_config());
-  RETURN_NOT_OK(set_timestamp_range_from_config());
+  RETURN_NOT_OK(set_default_timestamp_range());
 
   // Create an ArrayDirectory object and load
   auto array_dir = ArrayDirectory(
@@ -820,7 +820,7 @@ Status FragmentInfo::load(
   RETURN_NOT_OK(check_array_uri());
 
   RETURN_NOT_OK(enc_key_.set_key(encryption_type, encryption_key, key_length));
-  RETURN_NOT_OK(set_timestamp_range_from_config());
+  RETURN_NOT_OK(set_default_timestamp_range());
 
   // Create an ArrayDirectory object and load
   auto array_dir = ArrayDirectory(
@@ -849,13 +849,13 @@ Status FragmentInfo::load(
 
 Status FragmentInfo::load(const ArrayDirectory& array_dir) {
   // Get the array schemas and fragment metadata.
-  auto&& [st_schemas, array_schema_latest, array_schemas_all, fragment_metadata_opt] =
+  auto&& [st_schemas, array_schema_latest, array_schemas_all, fragment_metadata] =
       storage_manager_->load_array_schemas_and_fragment_metadata(
           array_dir, nullptr, enc_key_);
   RETURN_NOT_OK(st_schemas);
-  const auto& fragment_metadata = fragment_metadata_opt.value();
+  const auto& fragment_metadata_value = fragment_metadata.value();
   array_schemas_all_ = std::move(array_schemas_all.value());
-  auto fragment_num = (uint32_t)fragment_metadata.size();
+  auto fragment_num = (uint32_t)fragment_metadata_value.size();
 
   // Get fragment sizes
   std::vector<uint64_t> sizes(fragment_num, 0);
@@ -863,10 +863,10 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
       storage_manager_->compute_tp(),
       0,
       fragment_num,
-      [this, &fragment_metadata, &sizes](uint64_t i) {
+      [this, &fragment_metadata_value, &sizes](uint64_t i) {
         // Get fragment size. Applicable only to relevant fragments, excluding
         // those potentially loaded in a passed in an array directory.
-        auto meta = fragment_metadata[i];
+        auto meta = fragment_metadata_value[i];
         if (meta->timestamp_range().first >= timestamp_start_ &&
             meta->timestamp_range().second <= timestamp_end_) {
           uint64_t size;
@@ -883,7 +883,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
 
   // Create the vector that will store the SingleFragmentInfo objects
   for (uint64_t fid = 0; fid < fragment_num; fid++) {
-    const auto meta = fragment_metadata[fid];
+    const auto meta = fragment_metadata_value[fid];
     const auto& array_schema = meta->array_schema();
     const auto& non_empty_domain = meta->non_empty_domain();
 
@@ -982,7 +982,7 @@ Status FragmentInfo::set_enc_key_from_config() {
       enc_type, enc_key_str.c_str(), static_cast<uint32_t>(enc_key_str.size()));
 }
 
-Status FragmentInfo::set_timestamp_range_from_config() {
+Status FragmentInfo::set_default_timestamp_range() {
   timestamp_start_ = 0;
   timestamp_end_ = utils::time::timestamp_now_ms();
 

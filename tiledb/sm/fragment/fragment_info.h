@@ -362,10 +362,9 @@ class FragmentInfo {
   Status set_enc_key_from_config();
 
   /**
-   * Sets the timestamp range from config_. If not present, the timestamp
-   * range is set to [0, now].
+   * Sets the timestamp range to [0, now].
    */
-  Status set_timestamp_range_from_config();
+  Status set_default_timestamp_range();
 
   /**
    * Loads the fragment info from an array using the array directory.
