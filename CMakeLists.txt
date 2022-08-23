@@ -147,7 +147,7 @@ if (WIN32 AND NOT TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK)
 endif()
 
 # enable assertions by default for debug builds
-if (CMAKE_BUILD_TYPE EQUAL "Debug")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(TILEDB_ASSERTIONS TRUE)
 endif()
 include(TileDBAssertions)
