@@ -7,7 +7,7 @@ The XOR filter applies the XOR operation sequentally to the input data, in chunk
   ```
   data = np.random.rang(npts)
   data_b = data.view(np.int64)
-  for i in range(2, len(data)):
+  for i in range(1, len(data)):
     data_b[i] = data_b[i] ^ data_b[i-1]
   ```
 
