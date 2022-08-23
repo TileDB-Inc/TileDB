@@ -1830,11 +1830,14 @@ VFS::multipart_upload_state(const URI& uri) const {
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     VFS::MultiPartUploadState state;
-    auto&& [st, upload_id] = s3_.multipart_upload_id(uri);
-    RETURN_NOT_OK_TUPLE(st, nullopt);
-    state.upload_id = upload_id;
-    state.part_number = s3_.multipart_part_number(uri);
-    for (auto part : s3_.multipart_completed_parts(uri)) {
+    auto upload_id = s3_.multipart_upload_id(uri);
+    if (!upload_id.has_value()) {
+      return {Status::Ok(), nullopt};
+    }
+    state.upload_id = *upload_id;
+    state.part_number = *s3_.multipart_part_number(uri);
+    auto completed_parts = *s3_.multipart_completed_parts(uri);
+    for (auto part : completed_parts) {
       state.completed_parts.emplace_back();
       state.completed_parts.back().e_tag = part.first;
       state.completed_parts.back().part_number = part.second;
@@ -1865,6 +1868,41 @@ VFS::multipart_upload_state(const URI& uri) const {
   return {LOG_STATUS(
               Status_VFSError("Unsupported URI schemes: " + uri.to_string())),
           nullopt};
+}
+
+Status VFS::set_multipart_upload_state(
+    const URI& uri, const MultiPartUploadState& state) {
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    S3::MultiPartUploadState s3_state;
+    s3_state.part_number = state.part_number;
+    s3_state.upload_id = *state.upload_id;
+    for (auto& part : state.completed_parts) {
+      auto rv = s3_state.completed_parts.emplace(part.part_number);
+      rv.first->second.SetETag(part.e_tag->c_str());
+      rv.first->second.SetPartNumber(part.part_number);
+    }
+    return s3_.set_multipart_upload_state(uri, s3_state);
+#else
+    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+#endif
+  } else if (uri.is_azure()) {
+#ifdef HAVE_AZURE
+    return LOG_STATUS(Status_VFSError("Not yet supported for Azure"));
+#else
+    return LOG_STATUS(
+        Status_VFSError("TileDB was built without Azure support"));
+#endif
+  } else if (uri.is_gcs()) {
+#ifdef HAVE_GCS
+    return LOG_STATUS(Status_VFSError("Not yet supported for GCS"));
+#else
+    return LOG_STATUS(Status_VFSError("TileDB was built without GCS support"));
+#endif
+  }
+
+  return LOG_STATUS(
+      Status_VFSError("Unsupported URI schemes: " + uri.to_string()));
 }
 
 }  // namespace sm

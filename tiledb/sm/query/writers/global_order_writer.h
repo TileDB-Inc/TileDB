@@ -149,6 +149,13 @@ class GlobalOrderWriter : public WriterBase {
   std::pair<Status, std::unordered_map<std::string, VFS::MultiPartUploadState>>
   multipart_upload_state() const;
 
+  /**
+   * Used in serialization of global order writes to set the multipart upload
+   * state in the internal maps of cloud backends
+   */
+  Status set_multipart_upload_state(
+      const URI& uri, const VFS::MultiPartUploadState& state);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

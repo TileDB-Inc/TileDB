@@ -2864,6 +2864,35 @@ Status global_write_state_from_capnp(
     }
   }
 
+  // Deserialize the multipart upload state
+  if (state_reader.hasMultiPartUploadStates()) {
+    auto multipart_reader = state_reader.getMultiPartUploadStates();
+    if (multipart_reader.hasEntries()) {
+      for (auto entry : multipart_reader.getEntries()) {
+        VFS::MultiPartUploadState deserialized_state;
+        auto state = entry.getValue();
+        auto uri = URI(entry.getKey().cStr());
+        if (state.hasUploadId()) {
+          deserialized_state.upload_id = state.getUploadId();
+        }
+        deserialized_state.part_number = entry.getValue().getPartNumber();
+        if (state.hasCompletedParts()) {
+          auto& parts = deserialized_state.completed_parts;
+          for (auto part : state.getCompletedParts()) {
+            parts.emplace_back();
+            parts.back().part_number = part.getPartNumber();
+            if (part.hasETag()) {
+              parts.back().e_tag = std::string(part.getETag().cStr());
+            }
+          }
+        }
+
+        RETURN_NOT_OK(
+            globalwriter.set_multipart_upload_state(uri, deserialized_state));
+      }
+    }
+  }
+
   return Status::Ok();
 }
 

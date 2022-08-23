@@ -461,6 +461,17 @@ class VFS {
   std::pair<Status, std::optional<MultiPartUploadState>> multipart_upload_state(
       const URI& uri) const;
 
+  /**
+   * Used in serialization of global order writes to set the multipart upload
+   * state in the internal maps of cloud backends during deserialization
+   *
+   * @param uri The file uri used as key in the internal map of the backend
+   * @param state The multipart upload state info
+   * @return Status
+   */
+  Status set_multipart_upload_state(
+      const URI& uri, const MultiPartUploadState& state);
+
  private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */

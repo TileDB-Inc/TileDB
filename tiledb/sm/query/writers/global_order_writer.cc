@@ -1262,5 +1262,10 @@ GlobalOrderWriter::multipart_upload_state() const {
   return {Status::Ok(), result};
 }
 
+Status GlobalOrderWriter::set_multipart_upload_state(
+    const URI& uri, const VFS::MultiPartUploadState& state) {
+  return storage_manager_->vfs()->set_multipart_upload_state(uri, state);
+}
+
 }  // namespace sm
 }  // namespace tiledb

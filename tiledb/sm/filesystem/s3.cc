@@ -1751,31 +1751,65 @@ Status S3::get_make_upload_part_req(
   return Status::Ok();
 }
 
-std::pair<Status, std::optional<std::string>> S3::multipart_upload_id(
-    const URI& uri) {
+std::optional<std::string> S3::multipart_upload_id(const URI& uri) const {
   const Aws::Http::URI aws_uri(uri.c_str());
   const std::string uri_path(aws_uri.GetPath().c_str());
-  MultiPartUploadState* state;
-  std::unique_lock<std::mutex> state_lck;
 
   // Lock the multipart states map for reads
   UniqueReadLock unique_rl(&multipart_upload_rwlock_);
   auto state_iter = multipart_upload_states_.find(uri_path);
   if (state_iter == multipart_upload_states_.end()) {
-    // TODO: status and nullopt
+    return nullopt;
   }
 
   // Lock multipart state
-  state_lck = std::unique_lock<std::mutex>(state->mtx);
+  auto state_lck = std::unique_lock<std::mutex>(state_iter->second.mtx);
   return state_iter->second.upload_id;
 }
 
-std::pair<Status, std::optional<uint64_t>> S3::multipart_part_number(
-    const URI& uri) {
+std::optional<uint64_t> S3::multipart_part_number(const URI& uri) const {
+  const Aws::Http::URI aws_uri(uri.c_str());
+  const std::string uri_path(aws_uri.GetPath().c_str());
+
+  // Lock the multipart states map for reads
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
+  auto state_iter = multipart_upload_states_.find(uri_path);
+  if (state_iter == multipart_upload_states_.end()) {
+    return nullopt;
+  }
+
+  // Lock multipart state
+  auto state_lck = std::unique_lock<std::mutex>(state_iter->second.mtx);
+  return state_iter->second.part_number;
 }
 
-std::pair<Status, std::optional<std::vector<std::pair<std::string, uint64_t>>>>
-S3::multipart_completed_parts(const URI& uri) {
+std::optional<std::vector<std::pair<std::string, uint64_t>>>
+S3::multipart_completed_parts(const URI& uri) const {
+  const Aws::Http::URI aws_uri(uri.c_str());
+  const std::string uri_path(aws_uri.GetPath().c_str());
+
+  // Lock the multipart states map for reads
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
+  auto state_iter = multipart_upload_states_.find(uri_path);
+  if (state_iter == multipart_upload_states_.end()) {
+    return nullopt;
+  }
+
+  // Lock multipart state
+  auto state_lck = std::unique_lock<std::mutex>(state_iter->second.mtx);
+  std::vector<std::pair<std::string, uint64_t>> result;
+  for (auto part : state_iter->second.completed_parts) {
+    result.emplace_back(part.second.GetETag(), part.first);
+  }
+  return std::move(result);
+}
+
+Status S3::set_multipart_upload_state(
+    const URI& uri, const MultiPartUploadState& state) {
+  UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
+  multipart_upload_states_[uri.to_string()] = state;
+
+  return Status::Ok();
 }
 
 }  // namespace sm
