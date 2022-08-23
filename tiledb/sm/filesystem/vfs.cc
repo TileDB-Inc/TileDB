@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,8 +51,7 @@
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -61,9 +60,9 @@ namespace sm {
 VFS::VFS()
     : stats_(nullptr)
     , init_(false)
-    , read_ahead_size_(0)
     , compute_tp_(nullptr)
-    , io_tp_(nullptr) {
+    , io_tp_(nullptr)
+    , vfs_params_(VFSParameters(config_)) {
 #ifdef HAVE_AZURE
   supported_fs_.insert(Filesystem::AZURE);
 #endif
@@ -77,6 +76,74 @@ VFS::VFS()
   supported_fs_.insert(Filesystem::S3);
 #endif
   supported_fs_.insert(Filesystem::MEMFS);
+}
+
+VFS::VFS(
+    stats::Stats* const parent_stats,
+    ThreadPool* const compute_tp,
+    ThreadPool* const io_tp,
+    const Config* const config)
+    : stats_(parent_stats->create_child("VFS"))
+    , config_(*config)
+    , init_(false)
+    , compute_tp_(compute_tp)
+    , io_tp_(io_tp)
+    , vfs_params_(VFSParameters(config_)) {
+  Status st;
+  assert(compute_tp);
+  assert(io_tp);
+
+  // Construct the read-ahead cache.
+  read_ahead_cache_ = tdb_unique_ptr<ReadAheadCache>(
+      tdb_new(ReadAheadCache, vfs_params_.read_ahead_cache_size_));
+
+#ifdef HAVE_HDFS
+  supported_fs_.insert(Filesystem::HDFS);
+  hdfs_ = tdb_unique_ptr<hdfs::HDFS>(tdb_new(hdfs::HDFS));
+  st = hdfs_->init(config_);
+  if (!st.ok()) {
+    throw std::runtime_error("[VFS::VFS] Failed to initialize HDFS backend.");
+  }
+#endif
+
+#ifdef HAVE_S3
+  supported_fs_.insert(Filesystem::S3);
+  st = s3_.init(stats_, config_, io_tp_);
+  if (!st.ok()) {
+    throw std::runtime_error("[VFS::VFS] Failed to initialize S3 backend.");
+  }
+#endif
+
+#ifdef HAVE_AZURE
+  supported_fs_.insert(Filesystem::AZURE);
+  st = azure_.init(config_, io_tp_);
+  if (!st.ok()) {
+    throw std::runtime_error("[VFS::VFS] Failed to initialize Azure backend.");
+  }
+#endif
+
+#ifdef HAVE_GCS
+  supported_fs_.insert(Filesystem::GCS);
+  st = gcs_.init(config_, io_tp_);
+  if (!st.ok()) {
+    // We should print some warning here, LOG_STATUS only prints in
+    // verbose mode. Since this is called in the init of the context, we
+    // can't return the error through the normal set it on the context.
+    throw StatusException(Status_GCSError(
+        "GCS failed to initialize, GCS support will not be available in this "
+        "context: " +
+        st.message()));
+  }
+#endif
+
+#ifdef _WIN32
+  win_.init(config_, io_tp_);
+#else
+  posix_.init(config_, io_tp_);
+#endif
+
+  supported_fs_.insert(Filesystem::MEMFS);
+  init_ = true;
 }
 
 /* ********************************* */
@@ -738,8 +805,7 @@ Status VFS::init(
     stats::Stats* const parent_stats,
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
-    const Config* const ctx_config,
-    const Config* const vfs_config) {
+    const Config* const config) {
   stats_ = parent_stats->create_child("VFS");
 
   assert(compute_tp);
@@ -748,24 +814,15 @@ Status VFS::init(
   io_tp_ = io_tp;
 
   // Set appropriately the config
-  if (ctx_config)
-    config_ = *ctx_config;
-  if (vfs_config)
-    config_.inherit(*vfs_config);
+  if (config)
+    config_ = *config;
+
+  /* Initialize VFSParameters */
+  vfs_params_ = VFSParameters(config_);
 
   // Construct the read-ahead cache.
-  bool found = false;
-  uint64_t read_ahead_cache_size = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "vfs.read_ahead_cache_size", &read_ahead_cache_size, &found));
-  assert(found);
   read_ahead_cache_ = tdb_unique_ptr<ReadAheadCache>(
-      tdb_new(ReadAheadCache, read_ahead_cache_size));
-
-  // Store the read-ahead size.
-  RETURN_NOT_OK(
-      config_.get<uint64_t>("vfs.read_ahead_size", &read_ahead_size_, &found));
-  assert(found);
+      tdb_new(ReadAheadCache, vfs_params_.read_ahead_cache_size_));
 
 #ifdef HAVE_HDFS
   hdfs_ = tdb_unique_ptr<hdfs::HDFS>(tdb_new(hdfs::HDFS));
@@ -1258,11 +1315,7 @@ Status VFS::read(
     return LOG_STATUS(Status_VFSError("Cannot read; VFS not initialized"));
 
   // Get config params
-  bool found;
-  uint64_t min_parallel_size = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "vfs.min_parallel_size", &min_parallel_size, &found));
-  assert(found);
+  uint64_t min_parallel_size = vfs_params_.min_parallel_size_;
   uint64_t max_ops = 0;
   RETURN_NOT_OK(max_parallel_ops(uri, &max_ops));
 
@@ -1425,7 +1478,7 @@ Status VFS::read_ahead_impl(
   //    to a future small read.
   // 3. It saves us a copy. We must make a copy of the buffer at
   //    some point (one for the user, one for the cache).
-  if (nbytes >= read_ahead_size_)
+  if (nbytes >= vfs_params_.read_ahead_size_)
     return read_fn(uri, offset, buffer, nbytes, 0, &nbytes_read);
 
   // Avoid a read if the requested buffer can be read from the
@@ -1442,11 +1495,11 @@ Status VFS::read_ahead_impl(
   // the subrange of this buffer back to the user to satisfy the
   // read request.
   Buffer ra_buffer;
-  RETURN_NOT_OK(ra_buffer.realloc(read_ahead_size_));
+  RETURN_NOT_OK(ra_buffer.realloc(vfs_params_.read_ahead_size_));
 
   // Calculate the exact number of bytes to populate `ra_buffer`
-  // with `read_ahead_size_` bytes.
-  const uint64_t ra_nbytes = read_ahead_size_ - nbytes;
+  // with `vfs_params_.read_ahead_size_` bytes.
+  const uint64_t ra_nbytes = vfs_params_.read_ahead_size_ - nbytes;
 
   // Read into `ra_buffer`.
   RETURN_NOT_OK(
@@ -1551,21 +1604,6 @@ Status VFS::read_all_no_batching(
 Status VFS::compute_read_batches(
     const std::vector<tuple<uint64_t, Tile*, uint64_t>>& regions,
     std::vector<BatchedRead>* batches) const {
-  // Get config params
-  bool found;
-  uint64_t max_batch_size = 0;
-  RETURN_NOT_OK(
-      config_.get<uint64_t>("vfs.max_batch_size", &max_batch_size, &found));
-  assert(found);
-  uint64_t min_batch_size = 0;
-  RETURN_NOT_OK(
-      config_.get<uint64_t>("vfs.min_batch_size", &min_batch_size, &found));
-  assert(found);
-  uint64_t min_batch_gap = 0;
-  RETURN_NOT_OK(
-      config_.get<uint64_t>("vfs.min_batch_gap", &min_batch_gap, &found));
-  assert(found);
-
   // Ensure the regions are sorted on offset.
   std::vector<tuple<uint64_t, Tile*, uint64_t>> sorted_regions(
       regions.begin(), regions.end());
@@ -1586,8 +1624,9 @@ Status VFS::compute_read_batches(
     uint64_t nbytes = std::get<2>(region);
     uint64_t new_batch_size = (offset + nbytes) - curr_batch.offset;
     uint64_t gap = offset - (curr_batch.offset + curr_batch.nbytes);
-    if (new_batch_size <= max_batch_size &&
-        (new_batch_size <= min_batch_size || gap <= min_batch_gap)) {
+    if (new_batch_size <= vfs_params_.max_batch_size_ &&
+        (new_batch_size <= vfs_params_.min_batch_size_ ||
+         gap <= vfs_params_.min_batch_gap_)) {
       // Extend current batch.
       curr_batch.nbytes = new_batch_size;
       curr_batch.regions.push_back(region);
@@ -1923,5 +1962,4 @@ Status VFS::flush_multipart_file_buffer(const URI& uri) {
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

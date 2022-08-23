@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -5136,12 +5136,11 @@ int32_t tiledb_vfs_alloc(
   auto stats = ctx->storage_manager()->stats();
   auto compute_tp = ctx->storage_manager()->compute_tp();
   auto io_tp = ctx->storage_manager()->io_tp();
-  auto vfs_config = config ? config->config_ : nullptr;
   auto ctx_config = ctx->storage_manager()->config();
+  if (config)
+    ctx_config.inherit(*(config->config_));
   if (SAVE_ERROR_CATCH(
-          ctx,
-          (*vfs)->vfs_->init(
-              stats, compute_tp, io_tp, &ctx_config, vfs_config))) {
+          ctx, (*vfs)->vfs_->init(stats, compute_tp, io_tp, &ctx_config))) {
     delete (*vfs)->vfs_;
     delete vfs;
     return TILEDB_ERR;
