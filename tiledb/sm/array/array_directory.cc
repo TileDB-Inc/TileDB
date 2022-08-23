@@ -304,11 +304,6 @@ ArrayDirectory::delete_tiles_location() const {
   return delete_tiles_location_;
 }
 
-void ArrayDirectory::set_delete_tiles_location(
-    const std::vector<DeleteTileLocation>& delete_tiles_location) {
-  delete_tiles_location_ = delete_tiles_location;
-}
-
 URI ArrayDirectory::get_fragments_dir(uint32_t write_version) const {
   if (write_version < 12) {
     return uri_;

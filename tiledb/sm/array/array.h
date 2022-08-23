@@ -192,15 +192,6 @@ class Array {
       const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
 
   /**
-   * Sets the delete tiles location.
-   *
-   * @param delete_tiles_location Location for the delete tiles.
-   */
-  void set_delete_tiles_location(
-      const std::vector<ArrayDirectory::DeleteTileLocation>&
-          delete_tiles_location);
-
-  /**
    * Opens the array for reading.
    *
    * @param query_type The query type. This should always be READ. It
