@@ -195,7 +195,7 @@ Status Array::open_without_fragments(
           array_uri_,
           0,
           UINT64_MAX,
-          ArrayDirectoryMode::SCHEMA_ONLY);
+          ArrayDirectoryMode::READ);
 
       auto&& [st, array_schema, array_schemas] =
           storage_manager_->array_open_for_reads_without_fragments(this);
@@ -251,12 +251,6 @@ Status Array::delete_fragments(
       uri.c_str(), timestamp_start, timestamp_end, true));
 
   return Status::Ok();
-}
-
-void Array::set_delete_tiles_location(
-    const std::vector<ArrayDirectory::DeleteTileLocation>&
-        delete_tiles_location) {
-  array_dir_.set_delete_tiles_location(delete_tiles_location);
 }
 
 Status Array::open(
