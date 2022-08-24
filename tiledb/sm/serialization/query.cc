@@ -1224,9 +1224,7 @@ Status writer_from_capnp(
       RETURN_NOT_OK(global_writer->init_global_write_state());
     }
     RETURN_NOT_OK(global_write_state_from_capnp(
-        query,
-        writer_reader.getGlobalWriteState(),
-        global_writer->get_global_state()));
+        query, writer_reader.getGlobalWriteState(), global_writer));
   }
 
   return Status::Ok();
@@ -2660,7 +2658,9 @@ Status global_write_state_to_capnp(
 Status global_write_state_from_capnp(
     const Query& query,
     const capnp::GlobalWriteState::Reader& state_reader,
-    GlobalOrderWriter::GlobalWriteState* write_state) {
+    GlobalOrderWriter* globalwriter) {
+  auto write_state = globalwriter->get_global_state();
+
   if (state_reader.hasCellsWritten()) {
     auto& cells_written = write_state->cells_written_;
     auto cell_written_reader = state_reader.getCellsWritten();
@@ -2888,7 +2888,7 @@ Status global_write_state_from_capnp(
         }
 
         RETURN_NOT_OK(
-            globalwriter.set_multipart_upload_state(uri, deserialized_state));
+            globalwriter->set_multipart_upload_state(uri, deserialized_state));
       }
     }
   }
@@ -2932,7 +2932,7 @@ Status global_write_state_to_capnp(
 Status global_write_state_from_capnp(
     const Query& query,
     const capnp::GlobalWriteState::Builder& state_reader,
-    GlobalOrderWriter::GlobalWriteState* write_state) {
+    GlobalOrderWriter* globalwriter) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

@@ -202,7 +202,7 @@ Status global_write_state_to_capnp(
 Status global_write_state_from_capnp(
     const Query& query,
     const capnp::GlobalWriteState::Reader& state_reader,
-    GlobalOrderWriter::GlobalWriteState* write_state);
+    GlobalOrderWriter* globalwriter);
 
 Status condition_from_capnp(
     const capnp::Condition::Reader& condition_reader,

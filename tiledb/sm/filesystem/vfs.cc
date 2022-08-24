@@ -1865,20 +1865,19 @@ VFS::multipart_upload_state(const URI& uri) const {
 #endif
   }
 
-  return {LOG_STATUS(
-              Status_VFSError("Unsupported URI schemes: " + uri.to_string())),
-          nullopt};
+  return {Status::Ok(), nullopt};
 }
 
 Status VFS::set_multipart_upload_state(
     const URI& uri, const MultiPartUploadState& state) {
+  (void)state;
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     S3::MultiPartUploadState s3_state;
     s3_state.part_number = state.part_number;
     s3_state.upload_id = *state.upload_id;
     for (auto& part : state.completed_parts) {
-      auto rv = s3_state.completed_parts.emplace(part.part_number);
+      auto rv = s3_state.completed_parts.try_emplace(part.part_number);
       rv.first->second.SetETag(part.e_tag->c_str());
       rv.first->second.SetPartNumber(part.part_number);
     }
@@ -1901,8 +1900,7 @@ Status VFS::set_multipart_upload_state(
 #endif
   }
 
-  return LOG_STATUS(
-      Status_VFSError("Unsupported URI schemes: " + uri.to_string()));
+  return Status::Ok();
 }
 
 }  // namespace sm

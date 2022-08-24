@@ -93,6 +93,10 @@ namespace sm {
  * maintains buffer caches for writing into the various attribute files.
  */
 class S3 {
+ private:
+  /** Forward declaration */
+  struct MultiPartUploadState;
+
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -399,7 +403,7 @@ class S3 {
    * @return Status
    */
   Status set_multipart_upload_state(
-      const URI& uri, const MultiPartUploadState& state);
+      const URI& uri, const S3::MultiPartUploadState& state);
 
  private:
   /* ********************************* */
