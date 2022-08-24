@@ -1721,8 +1721,8 @@ TEST_CASE(
   // Try writing to an older-versioned array
   REQUIRE_THROWS_WITH(
       Array(ctx, old_array_name, TILEDB_WRITE),
-      Catch::Contains("Array format version") &&
-          Catch::Contains("is not the library format version"));
+      Catch::Matchers::ContainsSubstring("Array format version") &&
+          Catch::Matchers::ContainsSubstring("is not the library format version"));
 
   // Read from an older-versioned array
   Array array(ctx, old_array_name, TILEDB_READ);
@@ -1787,12 +1787,12 @@ TEST_CASE(
   // Try writing to a newer-versioned (UINT32_MAX) array
   REQUIRE_THROWS_WITH(
       Array(ctx, new_array_name, TILEDB_WRITE),
-      Catch::Contains("Incompatible format version."));
+      Catch::Matchers::ContainsSubstring("Incompatible format version."));
 
   // Try reading from a newer-versioned (UINT32_MAX) array
   REQUIRE_THROWS_WITH(
       Array(ctx, new_array_name, TILEDB_READ),
-      Catch::Contains("Incompatible format version."));
+      Catch::Matchers::ContainsSubstring("Incompatible format version."));
 
   // Clean up
   VFS vfs(ctx);

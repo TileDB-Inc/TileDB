@@ -36,7 +36,18 @@
     /** Write query */
     TILEDB_QUERY_TYPE_ENUM(WRITE) = 1,
     /** Delete query */
+    #if (_MSC_VER)
+    // note: 'DELETE' is #define'd somewhere within windows headers as
+    // something resolving to '(0x00010000L)', which causes problems with
+    // query_type.h which does not qualify the 'id' like tiledb.h does.
+    #pragma push_macro("DELETE")
+    #undef DELETE
+    #endif
     TILEDB_QUERY_TYPE_ENUM(DELETE) = 2,
+    // can't pop, other places ref'ing QueryType::DELETE will still fail...
+    // #if (_MSC_VER)
+    // #pragma pop_macro("DELETE")
+    // #endif
 #endif
 // clang-format on
 

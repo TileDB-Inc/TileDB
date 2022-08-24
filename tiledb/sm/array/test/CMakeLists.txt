@@ -30,6 +30,7 @@ find_package(Catch_EP REQUIRED)
 add_executable(unit_array EXCLUDE_FROM_ALL)
 target_link_libraries(unit_array PRIVATE array)
 target_link_libraries(unit_array PUBLIC Catch2::Catch2)
+target_include_directories(unit_array PUBLIC Catch2::Catch2)
 
 target_sources(unit_array PUBLIC main.cc unit_array_directory.cc)
 
@@ -45,8 +46,13 @@ add_executable(unit_consistency EXCLUDE_FROM_ALL
 
 target_link_libraries(unit_consistency
   PUBLIC
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     TILEDB_CORE_OBJECTS_ILIB
+)
+target_include_directories(unit_consistency
+  PUBLIC
+    #Catch2::Catch2
+    ${TILEDB_EP_INSTALL_PREFIX}/include
 )
 
 target_sources(unit_consistency PUBLIC main.cc unit_consistency.cc)

@@ -30,7 +30,7 @@
  * This file tests the Range class
  */
 
-#include <catch.hpp>
+#include <tdb_catch.h>
 #include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;

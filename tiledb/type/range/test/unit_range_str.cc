@@ -31,7 +31,7 @@
  * from ranges.
  */
 
-#include <catch.hpp>
+#include <tdb_catch.h>
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/type/range/range.h"

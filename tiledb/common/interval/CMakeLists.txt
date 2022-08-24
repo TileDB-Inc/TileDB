@@ -31,7 +31,16 @@ endif()
 find_package(Catch_EP REQUIRED)
 
 add_executable(unit_interval EXCLUDE_FROM_ALL)
-target_link_libraries(unit_interval PUBLIC Catch2::Catch2)
+target_link_libraries(unit_interval PUBLIC Catch2::Catch2WithMain)
+#target_include_directories(unit_interval PUBLIC Catch2::Catch2)
+target_include_directories(unit_interval       
+  PUBLIC
+  #$<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
+  ${TILEDB_EP_INSTALL_PREFIX}/include
+  )
+  
+print_target_properties(unit_interval)
+print_target_properties(Catch2::Catch2)
 
 # Sources for code under test
 target_sources(unit_interval PUBLIC

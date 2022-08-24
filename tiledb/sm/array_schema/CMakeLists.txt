@@ -111,7 +111,8 @@ if (TILEDB_TESTS)
     add_executable(unit_array_schema EXCLUDE_FROM_ALL)
     target_link_libraries(unit_array_schema PRIVATE array_schema)
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_array_schema PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_array_schema PUBLIC Catch2::Catch2WithMain)
+    target_include_directories(unit_array_schema PUBLIC ${TILEDB_EP_INSTALL_PREFIX}/include ${TILEDB_SOURCE_ROOT_DIR}/test/support)
 
     # Sources for tests
     target_sources(unit_array_schema

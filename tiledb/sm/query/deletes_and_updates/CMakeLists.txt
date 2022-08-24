@@ -28,7 +28,8 @@ include(common NO_POLICY_SCOPE)
 if (TILEDB_TESTS)
     add_executable(unit_delete_condition EXCLUDE_FROM_ALL)
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_delete_condition PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_delete_condition PUBLIC Catch2::Catch2WithMain)
+    target_include_directories(unit_delete_condition PUBLIC ${TILEDB_EP_INSTALL_PREFIX}/include)
     target_link_libraries(unit_delete_condition PUBLIC ast_test_support_lib)
 
     # Sources for tests

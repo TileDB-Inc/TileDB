@@ -27,6 +27,36 @@
 #
 
 ############################################################
+## from https://stackoverflow.com/a/56738858
+## https://stackoverflow.com/questions/32183975/how-to-print-all-the-properties-of-a-target-in-cmake/56738858#56738858
+## https://stackoverflow.com/a/56738858/3743145
+
+## Get all properties that cmake supports
+execute_process(COMMAND cmake --help-property-list OUTPUT_VARIABLE CMAKE_PROPERTY_LIST)
+## Convert command output into a CMake list
+STRING(REGEX REPLACE ";" "\\\\;" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
+STRING(REGEX REPLACE "\n" ";" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
+
+list(REMOVE_DUPLICATES CMAKE_PROPERTY_LIST)
+
+function(print_target_properties tgt)
+    if(NOT TARGET ${tgt})
+      message("There is no target named '${tgt}'")
+      return()
+    endif()
+
+    foreach (prop ${CMAKE_PROPERTY_LIST})
+        string(REPLACE "<CONFIG>" "${CMAKE_BUILD_TYPE}" prop ${prop})
+        get_target_property(propval ${tgt} ${prop})
+        if (propval)
+            message ("${tgt} ${prop} = ${propval}")
+        endif()
+    endforeach(prop)
+endfunction(print_target_properties)
+include(CMakePrintHelpers)
+############################################################
+
+############################################################
 # CMake setup
 ############################################################
 
@@ -73,6 +103,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Options")
 
 set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/inputs")
+# TBD: consider changing init'ing of TILEDB_CORE_INCLUDE_DIR in various locations
+# to use TILEDB_SOURCE_ROOT_DIR.
+set(TILEDB_SOURCE_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -419,9 +452,11 @@ if (TILEDB_TESTS)
   # Add cmake target for "tests" to build all unit tests executables
   add_custom_target(tests)
   add_dependencies(tests tiledb_unit)
+  add_dependencies(tests test_assert)
 
   add_dependencies(tests unit_buffer unit_datum unit_dynamic_memory)
-  add_dependencies(tests unit_exception unit_interval unit_thread_pool unit_experimental)
+#  add_dependencies(tests unit_exception unit_interval unit_thread_pool unit_experimental)
+  add_dependencies(tests unit_exception               unit_thread_pool unit_experimental)
   add_dependencies(tests unit_array_schema unit_filter_create unit_filter_pipeline unit_metadata)
   add_dependencies(tests unit_compressors unit_query unit_misc unit_vfs unit_array)
   add_dependencies(tests unit_range_subset)

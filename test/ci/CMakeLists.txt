@@ -4,15 +4,22 @@ find_package(Catch_EP REQUIRED)
 
 add_executable(
   test_assert
+  EXCLUDE_FROM_ALL
   test_assert.cc
 )
 
 target_include_directories(test_assert
   PRIVATE
     "${TILEDB_CORE_INCLUDE_DIR}"
+    $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
+    Catch2::Catch2
 )
 
-target_link_libraries(test_assert PUBLIC Catch2::Catch2)
+print_target_properties(test_assert)
+print_target_properties(Catch2::Catch2)
+
+#target_link_libraries(test_assert PUBLIC Catch2::Catch2)
+target_link_libraries(test_assert PUBLIC Catch2::Catch2WithMain)
 
 if (TILEDB_ASSERTIONS)
   target_compile_definitions(

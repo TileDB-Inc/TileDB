@@ -155,7 +155,8 @@ if (TILEDB_TESTS)
   add_executable(unit_misc EXCLUDE_FROM_ALL)
   target_link_libraries(unit_misc PRIVATE math)
   find_package(Catch_EP REQUIRED)
-  target_link_libraries(unit_misc PUBLIC Catch2::Catch2)
+  target_link_libraries(unit_misc PUBLIC Catch2::Catch2WithMain)
+  target_include_directories(unit_misc PUBLIC ${TILEDB_EP_INSTALL_PREFIX}/include)
   target_include_directories(unit_misc
     PRIVATE
     "${CMAKE_SOURCE_DIR}"

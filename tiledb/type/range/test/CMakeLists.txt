@@ -36,7 +36,12 @@ add_executable(unit_range EXCLUDE_FROM_ALL
 )
 target_link_libraries(unit_range
   PRIVATE range
-  PUBLIC Catch2::Catch2
+  PUBLIC Catch2::Catch2WithMain
+)
+target_include_directories(unit_range
+  PRIVATE
+    ${TILEDB_EP_INSTALL_PREFIX}/include
+    ${TILEDB_SOURCE_ROOT_DIR}/test/support
 )
 add_test(
   NAME "unit_range"

@@ -72,12 +72,14 @@ target_include_directories(
   tiledb_explore_msys_handle_leakage BEFORE PRIVATE
     ${TILEDB_CORE_INCLUDE_DIR}
     ${TILEDB_EXPORT_HEADER_DIR}
+    #Catch2::Catch2
+    ${TILEDB_EP_INSTALL_PREFIX}/include
 )
 
 target_link_libraries(tiledb_explore_msys_handle_leakage
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     tiledb_test_support_lib
 )
 

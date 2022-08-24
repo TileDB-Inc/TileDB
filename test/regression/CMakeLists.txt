@@ -55,7 +55,7 @@ endif()
 
 target_link_libraries(tiledb_regression
   PUBLIC
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     local_install
     tiledb_shared
 )
@@ -64,6 +64,8 @@ target_include_directories(tiledb_regression
   PRIVATE
     ${CMAKE_INSTALL_PREFIX}/include
     "${TILEDB_CORE_INCLUDE_DIR}"
+    #Catch2::Catch2
+    ${TILEDB_EP_INSTALL_PREFIX}/include
 )
 
 add_test(

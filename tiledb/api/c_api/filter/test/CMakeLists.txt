@@ -28,7 +28,15 @@ include(common NO_POLICY_SCOPE)
 
 add_executable(unit_capi_filter EXCLUDE_FROM_ALL)
 find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_capi_filter PUBLIC Catch2::Catch2)
+#target_link_libraries(unit_capi_filter PUBLIC Catch2::Catch2)
+target_link_libraries(unit_capi_filter PUBLIC Catch2::Catch2WithMain)
+#target_include_directories(unit_capi_filter PUBLIC Catch2::Catch2)
+target_include_directories(unit_capi_filter 
+  PUBLIC
+  #$<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
+  ${TILEDB_EP_INSTALL_PREFIX}/include
+  )
+
 # target_link_libraries(unit_capi_filter PUBLIC capi_filter)
 #
 # INCOMPLETE: This unit test runner does not link at present if capi_filter is

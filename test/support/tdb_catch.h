@@ -35,6 +35,6 @@
 #ifndef TILEDB_MISC_TDB_CATCH_H
 #define TILEDB_MISC_TDB_CATCH_H
 
-#include <catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #endif  // TILEDB_MISC_TDB_CATCH_H
