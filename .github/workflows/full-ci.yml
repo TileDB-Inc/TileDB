@@ -30,6 +30,10 @@ on:
       - 'doc/source/conf.py'
       - 'tiledb/sm/c_api/tiledb_version.h'
 
+concurrency:
+  group: ${{ github.head_ref }}
+  cancel-in-progress: true
+
 ## NOTE: the job names below must be unique!
 jobs:
   ci1:
@@ -87,9 +91,12 @@ jobs:
   standalone:
     uses: ./.github/workflows/unit-test-runs.yml
 
+  ci_docker:
+    uses: ./.github/workflows/build-dockerfile.yml
+
   # dummy job for branch protection check
   full_ci_passed:
-    needs: [ci1, ci2, ci2, ci3, ci4, ci5, ci6, ci7, ci_msvc, standalone]
+    needs: [ci1, ci2, ci2, ci3, ci4, ci5, ci6, ci7, ci_msvc, backward_compatibility, standalone]
     runs-on: ubuntu-22.04
     steps:
       - name: ''
