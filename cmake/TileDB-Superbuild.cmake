@@ -192,20 +192,13 @@ endif()
 if (${CLANG_FORMAT_FOUND})
   message(STATUS "clang hunt, found ${CLANG_FORMAT_BIN}")
   # runs clang format and updates files in place.
+
   add_custom_target(format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 1
-    `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples
-    ${CMAKE_CURRENT_SOURCE_DIR}/tools
-    -name \\*.cc -or -name \\*.c -or -name \\*.h`)
+                    ${CLANG_FORMAT_FIND_FILES})
 
   # runs clang format and exits with a non-zero exit code if any files need to be reformatted
   add_custom_target(check-format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 0
-    `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples
-    ${CMAKE_CURRENT_SOURCE_DIR}/tools
-    -name \\*.cc -or -name \\*.c -or -name \\*.h`)
+                    ${CLANG_FORMAT_FIND_FILES})
 else()
   message(STATUS "was unable to find clang-format")
 endif()
