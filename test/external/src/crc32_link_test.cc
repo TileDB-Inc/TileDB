@@ -34,11 +34,12 @@
 
 #include <include/crc32c/crc32c.h>
 
-int main()
-{
+int main() {
   uint8_t buf[32];
 
-  printf("crc32 of indeterminate buffer is %u\n", crc32c::Crc32c(buf, sizeof(buf)));
+  printf(
+      "crc32 of indeterminate buffer is %u\n",
+      crc32c::Crc32c(buf, sizeof(buf)));
 
-  return 0 ;
+  return 0;
 }
