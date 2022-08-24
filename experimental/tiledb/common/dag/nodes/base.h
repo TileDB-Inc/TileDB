@@ -1,5 +1,5 @@
 /**
- * @file   nodes.h
+ * @file   base.h
  *
  * @section LICENSE
  *
@@ -27,15 +27,49 @@
  *
  * @section DESCRIPTION
  *
- * This file is a header that includes headers for base node class, simple node
- * classes, and general node classes.
+ * This file declares  a virtual base class for dag task graph nodes, to be used
+ * by both simple and general graph nodes.
  */
 
-#ifndef TILEDB_DAG_NODE_H
-#define TILEDB_DAG_NODE_H
+#ifndef TILEDB_DAG_NODE_BASE_H
+#define TILEDB_DAG_NODE_BASE_H
 
-#include "experimental/tiledb/common/dag/nodes/base.h"
-// #include "experimental/tiledb/common/dag/nodes/general.h"
-#include "experimental/tiledb/common/dag/nodes/simple.h"
+#include <functional>
+#include <type_traits>
 
-#endif  // TILEDB_DAG_NODE_H
+#include "experimental/tiledb/common/dag/execution/stop_token.hpp"
+#include "experimental/tiledb/common/dag/ports/ports.h"
+
+#include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
+
+namespace tiledb::common {
+
+/**
+ * A virtual base class for graph nodes.
+ */
+template <class CalculationState>
+class GeneralGraphNode {
+ protected:
+  CalculationState current_calculation_state_;
+  CalculationState new_calculation_state_;
+
+ public:
+  // including swap
+  void update_state();
+
+  /**
+   * Pure virtual function for running graph nodes.
+   */
+  virtual void run_once() = 0;
+  virtual void run() = 0;
+  virtual void run_for(size_t iterations = 1) = 0;
+  //  virtual void stop();
+};
+
+template <>
+class GeneralGraphNode<void> : GeneralGraphNode<std::monostate> {
+};
+
+using GraphNode = GeneralGraphNode<void>;
+}  // namespace tiledb::common
+#endif  // TILEDB_DAG_NODE_BASE_H

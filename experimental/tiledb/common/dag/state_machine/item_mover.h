@@ -250,6 +250,13 @@ class BaseMover<Mover, three_stage, Block> {
     return *items_[2];
   }
 
+  bool is_stopping() {
+    auto st = static_cast<Mover*>(this)->state();
+    return (
+        (st >= three_stage::xt_000 && st <= three_stage::xt_111) ||
+        st == three_stage::done);
+  }
+
   bool is_done() {
     return static_cast<Mover*>(this)->state() == three_stage::done;
   }
@@ -405,6 +412,13 @@ class BaseMover<Mover, two_stage, Block> {
 
   auto& sink_item() {
     return *items_[1];
+  }
+
+  bool is_stopping() {
+    auto st = static_cast<Mover*>(this)->state();
+    return (
+        (st >= two_stage::xt_00 && st <= two_stage::xt_11) ||
+        st == two_stage::done);
   }
 
   bool is_done() {

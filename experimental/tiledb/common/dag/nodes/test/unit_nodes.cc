@@ -731,18 +731,18 @@ TEST_CASE("Nodes: Pass some data, two attachment orders", "[nodes]") {
     attach(p, r);
   }
 
-  p.run();
-  r.run();
+  p.run_once();
+  r.run_once();
 
   CHECK(v.size() == 1);
 
-  p.run();
-  r.run();
+  p.run_once();
+  r.run_once();
 
   CHECK(v.size() == 2);
 
-  p.run();
-  r.run();
+  p.run_once();
+  r.run_once();
 
   CHECK(v.size() == 3);
 
@@ -772,14 +772,14 @@ TEST_CASE("Nodes: Asynchronously pass some data", "[nodes]") {
   auto fun_a = [&]() {
     size_t N = rounds;
     while (N--) {
-      p.run();
+      p.run_once();
     }
   };
 
   auto fun_b = [&]() {
     size_t N = rounds;
     while (N--) {
-      r.run();
+      r.run_once();
     }
   };
 
@@ -842,14 +842,14 @@ TEST_CASE("Nodes: Asynchronously pass some data, random delays", "[nodes]") {
   auto fun_a = [&]() {
     size_t N = rounds;
     while (N--) {
-      p.run();
+      p.run_once();
     }
   };
 
   auto fun_b = [&]() {
     size_t N = rounds;
     while (N--) {
-      r.run();
+      r.run_once();
     }
   };
 
@@ -922,21 +922,21 @@ TEST_CASE(
   attach(q, r);
   attach(r, s);
 
-  q.run();
-  r.run();
-  s.run();
+  q.run_once();
+  r.run_once();
+  s.run_once();
 
   CHECK(v.size() == 1);
 
-  q.run();
-  r.run();
-  s.run();
+  q.run_once();
+  r.run_once();
+  s.run_once();
 
   CHECK(v.size() == 2);
 
-  q.run();
-  r.run();
-  s.run();
+  q.run_once();
+  r.run_once();
+  s.run_once();
 
   CHECK(v.size() == 3);
 
@@ -995,21 +995,21 @@ void asynchronous_with_function_node(
   auto fun_a = [&]() {
     size_t N = rounds;
     while (N--) {
-      q.run();
+      q.run_once();
     }
   };
 
   auto fun_b = [&]() {
     size_t N = rounds;
     while (N--) {
-      r.run();
+      r.run_once();
     }
   };
 
   auto fun_c = [&]() {
     size_t N = rounds;
     while (N--) {
-      s.run();
+      s.run_once();
     }
   };
 
@@ -1142,28 +1142,28 @@ void asynchronous_with_function_node_4(
   auto fun_a = [&]() {
     size_t N = rounds;
     while (N--) {
-      q.run();
+      q.run_once();
     }
   };
 
   auto fun_b = [&]() {
     size_t N = rounds;
     while (N--) {
-      r.run();
+      r.run_once();
     }
   };
 
   auto fun_c = [&]() {
     size_t N = rounds;
     while (N--) {
-      s.run();
+      s.run_once();
     }
   };
 
   auto fun_d = [&]() {
     size_t N = rounds;
     while (N--) {
-      t.run();
+      t.run_once();
     }
   };
 
@@ -1282,8 +1282,8 @@ TEST_CASE("Nodes: Async pass n integers, two nodes, two stage", "[nodes]") {
   ConsumerNode<AsyncMover2, size_t> sink_node(consumer{j});
 
   auto a = Edge(source_node, sink_node);
-  auto source = [&]() { source_node.run(rounds); };
-  auto sink = [&]() { sink_node.run(rounds + offset); };
+  auto source = [&]() { source_node.run_for(rounds); };
+  auto sink = [&]() { sink_node.run_for(rounds + offset); };
 
   SECTION(
       "a c a c " + std::to_string(rounds) + " / " + std::to_string(offset)) {
@@ -1375,8 +1375,8 @@ TEST_CASE("Nodes: Async pass n integers, two nodes, three stage", "[nodes]") {
 
   Edge(source_node, sink_node);
 
-  auto source = [&]() { source_node.run(rounds); };
-  auto sink = [&]() { sink_node.run(rounds + offset); };
+  auto source = [&]() { source_node.run_for(rounds); };
+  auto sink = [&]() { sink_node.run_for(rounds + offset); };
 
   SECTION(
       "a c a c " + std::to_string(rounds) + " / " + std::to_string(offset)) {
@@ -1467,9 +1467,9 @@ TEST_CASE("Nodes: Async pass n integers, three nodes, two stage", "[nodes]") {
   auto a = Edge(source_node, mid_node);
   auto b = Edge(mid_node, sink_node);
 
-  auto source = [&]() { source_node.run(rounds); };
-  auto mid = [&]() { mid_node.run(rounds + offset); };
-  auto sink = [&]() { sink_node.run(rounds); };
+  auto source = [&]() { source_node.run_for(rounds); };
+  auto mid = [&]() { mid_node.run_for(rounds + offset); };
+  auto sink = [&]() { sink_node.run_for(rounds); };
 
   SECTION(
       "test source launch, sink launch, source get, sink get" +
@@ -1667,9 +1667,9 @@ TEST_CASE(
   Edge(source_node, mid_node);
   Edge(mid_node, sink_node);
 
-  auto source = [&]() { source_node.run(rounds); };
-  auto mid = [&]() { mid_node.run(rounds + offset); };
-  auto sink = [&]() { sink_node.run(rounds); };
+  auto source = [&]() { source_node.run_for(rounds); };
+  auto mid = [&]() { mid_node.run_for(rounds + offset); };
+  auto sink = [&]() { sink_node.run_for(rounds); };
 
   SECTION(
       "test source launch, sink launch, source "
@@ -1883,10 +1883,15 @@ TEST_CASE(
   auto b = Edge(mid_node1, mid_node2);
   auto c = Edge(mid_node2, sink_node);
 
-  auto source = [&]() { source_node.run(rounds); };
-  auto mid1 = [&]() { mid_node1.run(rounds + offset); };
-  auto mid2 = [&]() { mid_node2.run(rounds); };
-  auto sink = [&]() { sink_node.run(rounds + offset); };
+  auto x = sink_node.get_mover();
+  if (debug) {
+    x->enable_debug();
+  }
+
+  auto source = [&]() { source_node.run_for(rounds); };
+  auto mid1 = [&]() { mid_node1.run_for(rounds + offset); };
+  auto mid2 = [&]() { mid_node2.run_for(rounds); };
+  auto sink = [&]() { sink_node.run_for(rounds + offset); };
 
   SECTION(
       "dcba abcd" + std::to_string(rounds) + " / " + std::to_string(offset)) {
@@ -2007,10 +2012,10 @@ TEST_CASE(
   auto b = Edge(mid_node1, mid_node2);
   auto c = Edge(mid_node2, sink_node);
 
-  auto source = [&]() { source_node.run(rounds); };
-  auto mid1 = [&]() { mid_node1.run(rounds + offset); };
-  auto mid2 = [&]() { mid_node2.run(rounds); };
-  auto sink = [&]() { sink_node.run(rounds + offset); };
+  auto source = [&]() { source_node.run_for(rounds); };
+  auto mid1 = [&]() { mid_node1.run_for(rounds + offset); };
+  auto mid2 = [&]() { mid_node2.run_for(rounds); };
+  auto sink = [&]() { sink_node.run_for(rounds + offset); };
 
   SECTION(
       "abcd "
@@ -2136,10 +2141,10 @@ TEST_CASE(
   auto b = Edge(mid_node1, mid_node2);
   auto c = Edge(mid_node2, sink_node);
 
-  auto source = [&]() { source_node.run_with_delays(rounds); };
-  auto mid1 = [&]() { mid_node1.run_with_delays(rounds + offset); };
-  auto mid2 = [&]() { mid_node2.run_with_delays(rounds + offset + 1); };
-  auto sink = [&]() { sink_node.run_with_delays(rounds + offset + 2); };
+  auto source = [&]() { source_node.run_for_with_delays(rounds); };
+  auto mid1 = [&]() { mid_node1.run_for_with_delays(rounds + offset); };
+  auto mid2 = [&]() { mid_node2.run_for_with_delays(rounds + offset + 1); };
+  auto sink = [&]() { sink_node.run_for_with_delays(rounds + offset + 2); };
 
   SECTION(
       "abcd abcd" + std::to_string(rounds) + " / " + std::to_string(offset)) {
