@@ -357,8 +357,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS PRIVATE $<BUILD_INTERFACE:common>)
 ############################################################
 # provide actions/target for preparation of magic.mgc data for embedding/build
 
-#set(MGC_GZIPPED_BIN_PATH3 "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc/magic_mgc_gzipped.bin")
-set(MGC_GZIPPED_BIN_OUTPUT_DIRECTORY "${TILEDB_EP_BASE}/install/include")
+set(MGC_GZIPPED_BIN_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/..")
 set(MGC_GZIPPED_BIN_OUTPUT_FILE "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}/magic_mgc_gzipped.bin")
 set(MGC_GZIPPED_BIN_INPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc")
 set(MGC_GZIPPED_BIN_INPUT_FILE "${MGC_GZIPPED_BIN_INPUT_DIRECTORY}/magic_mgc_gzipped.bin.tar.bz2")
