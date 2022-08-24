@@ -119,7 +119,7 @@ void xor_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
   REQUIRE(table["a"].second == total_num_elements);
 
   for (size_t i = 0; i < total_num_elements; ++i) {
-    CHECK(fabs(a_data_read[i] == expected_a[i]));
+    CHECK(a_data_read[i] == expected_a[i]);
   }
 
   query_r.finalize();
