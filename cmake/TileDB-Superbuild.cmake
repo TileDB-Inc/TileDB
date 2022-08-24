@@ -193,15 +193,6 @@ if (${CLANG_FORMAT_FOUND})
   message(STATUS "clang hunt, found ${CLANG_FORMAT_BIN}")
   # runs clang format and updates files in place.
 
-  # This section must be updated with `scripts/ci/check_formatting_linux.sh`
-  set(CLANG_FORMAT_FIND_FILES
-      `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
-      ${CMAKE_CURRENT_SOURCE_DIR}/test/src
-      ${CMAKE_CURRENT_SOURCE_DIR}/examples
-      ${CMAKE_CURRENT_SOURCE_DIR}/tools
-      ${CMAKE_CURRENT_SOURCE_DIR}/experimental
-      -name \\*.cc -or -name \\*.c -or -name \\*.h`)
-
   add_custom_target(format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 1
                     ${CLANG_FORMAT_FIND_FILES})
 
