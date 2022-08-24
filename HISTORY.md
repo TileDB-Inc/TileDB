@@ -1,3 +1,25 @@
+# TileDB v2.11.1 Release Notes
+
+## Improvements
+### Performance
+
+* Add support for new array open REST call [#3339](https://github.com/TileDB-Inc/TileDB/pull/3339)
+* Fix reader serialization for old clients. [#3446](https://github.com/TileDB-Inc/TileDB/pull/3446)
+* Sparse global order reader: merge algorithm optimization. [#3331](https://github.com/TileDB-Inc/TileDB/pull/3331)
+
+### Internal
+
+* Dense reader: adding num tiles to stats. [#3434](https://github.com/TileDB-Inc/TileDB/pull/3434)
+* Opt-in core-to-REST-server instrumentation [#3432](https://github.com/TileDB-Inc/TileDB/pull/3432)
+* Serialization: improvements around query serialization/deserialization. [#3379](https://github.com/TileDB-Inc/TileDB/pull/3379)
+
+
+## Defects removed
+
+* #3430 [#3431](https://github.com/TileDB-Inc/TileDB/pull/3431)
+* Fix deserialize to set array_schema_all_ into array object [#3363](https://github.com/TileDB-Inc/TileDB/pull/3363)
+
+
 # TileDB v2.11.0 Release Notes
 
 ## Disk Format
