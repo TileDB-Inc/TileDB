@@ -51,7 +51,8 @@ TEST_CASE("Config::get - not found", "[config]") {
   CHECK(!x.has_value());
 }
 
-TEMPLATE_LIST_TEST_CASE("Config::get - not found", "[config]", config_types) {
+TEMPLATE_LIST_TEST_CASE(
+    "Config::get<T> - not found", "[config]", config_types) {
   Config c{};  // empty
   std::string key{"this_key_is_not_present"};
   auto x{c.get<TestType>(key)};
@@ -104,4 +105,62 @@ TEST_CASE("Config::get<std::string> - found and matched", "[config]") {
   auto x{c.get<std::string>(key)};
   REQUIRE(x.has_value());
   CHECK(x.value() == value);
+}
+
+TEMPLATE_LIST_TEST_CASE(
+    "Config::get<T> - must_find not found", "[config]", config_types) {
+  Config c{};
+  std::string key{"should_not_exist"};
+  REQUIRE_THROWS(c.get<TestType>(key, Config::must_find));
+}
+
+TEST_CASE("Config::get<bool> - must_find found true", "[config]") {
+  Config c{};
+  std::string key{"the_key"};
+  std::string value{"true"};
+  c.set(key, value);
+  REQUIRE_NOTHROW(c.get<bool>(key, Config::must_find));
+  auto found_value{c.get<bool>(key, Config::must_find)};
+  CHECK(found_value == true);
+}
+
+TEST_CASE("Config::get<bool> - must_find found false", "[config]") {
+  Config c{};
+  std::string key{"the_key"};
+  std::string value{"false"};
+  c.set(key, value);
+  REQUIRE_NOTHROW(c.get<bool>(key, Config::must_find));
+  auto found_value{c.get<bool>(key, Config::must_find)};
+  CHECK(found_value == false);
+}
+
+TEMPLATE_LIST_TEST_CASE(
+    "Config::get<T> - must_find found 1", "[config]", config_types_integral) {
+  Config c{};
+  std::string key{"the_key"};
+  c.set(key, "1");
+  REQUIRE_NOTHROW(c.get<TestType>(key, Config::must_find));
+  auto found_value{c.get<TestType>(key, Config::must_find)};
+  CHECK(found_value == 1);
+}
+
+TEMPLATE_LIST_TEST_CASE(
+    "Config::get<T> - must_find found 1.0", "[config]", config_types_floating) {
+  Config c{};
+  std::string key{"the_key"};
+  c.set(key, "1.0");
+  REQUIRE_NOTHROW(c.get<TestType>(key, Config::must_find));
+  auto found_value{c.get<TestType>(key, Config::must_find)};
+  CHECK(found_value == 1.0);
+}
+
+TEST_CASE(
+    "Config::get<std::string> - must_find found and matched", "[config]") {
+  Config c{};
+  std::string key{"the_key"};
+  std::string value{"the_value"};
+  c.set(key, value);
+  REQUIRE_NOTHROW(c.get<std::string>(key, Config::must_find));
+  auto x{c.get<std::string>(key, Config::must_find)};
+  CHECK(x == "the_value");
 }

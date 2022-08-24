@@ -527,6 +527,25 @@ Status Config::get(const std::string& param, T* value, bool* found) const {
   return Status::Ok();
 }
 
+template <class T>
+T Config::get(
+    const std::string& key,
+    [[maybe_unused]] const Config::MustFindMarker& marker) const {
+  bool found;
+  const char* val = get_from_config_or_env(key, &found);
+  if (!found) {
+    throw_config_exception("Failed to get config value for key: " + key);
+  }
+  T converted_value;
+  auto status = utils::parse::convert(val, &converted_value);
+  if (!status.ok()) {
+    throw_config_exception(
+        "Failed to convert configuration value '" + std::string(val) +
+        "' for key '" + key + "'. Reason: " + status.to_string());
+  }
+  return converted_value;
+}
+
 /*
  * Template definition not in header; explicitly instantiated below. It's here
  * to deal with legacy difficulties with header dependencies.
@@ -1089,5 +1108,32 @@ template optional<int64_t> Config::get<int64_t>(const std::string&) const;
 template optional<uint64_t> Config::get<uint64_t>(const std::string&) const;
 template optional<float> Config::get<float>(const std::string&) const;
 template optional<double> Config::get<double>(const std::string&) const;
+
+template bool Config::get<bool>(
+    const std::string&, const Config::MustFindMarker&) const;
+template int Config::get<int>(
+    const std::string&, const Config::MustFindMarker&) const;
+template uint32_t Config::get<uint32_t>(
+    const std::string&, const Config::MustFindMarker&) const;
+template int64_t Config::get<int64_t>(
+    const std::string&, const Config::MustFindMarker&) const;
+template uint64_t Config::get<uint64_t>(
+    const std::string&, const Config::MustFindMarker&) const;
+template float Config::get<float>(
+    const std::string&, const Config::MustFindMarker&) const;
+template double Config::get<double>(
+    const std::string&, const Config::MustFindMarker&) const;
+
+template <>
+std::string Config::get<std::string>(
+    const std::string& key, const Config::MustFindMarker&) const {
+  auto value = get(key);
+  if (value.has_value()) {
+    return value.value();
+  } else {
+    throw_config_exception("Failed to get config value for key: " + key);
+  }
+  return get(key).value();
+}
 
 }  // namespace tiledb::sm

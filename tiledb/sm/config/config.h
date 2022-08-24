@@ -535,6 +535,10 @@ class Config {
   /*        OTHER CONSTANTS         */
   /* ****************************** */
 
+  /** Marker class to enforce value is found with Config::get overload */
+  class MustFindMarker {};
+  static constexpr MustFindMarker must_find{};
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -594,6 +598,22 @@ class Config {
   TILEDB_DEPRECATE_CONFIG
   template <class T>
   Status get(const std::string& param, T* value, bool* found) const;
+
+  /**
+   * Retrieves a string value of the given parameter.
+   * Throws Status_ConfigError if config value could not be found
+   */
+  std::string get(
+      const std::string& key,
+      [[maybe_unused]] const MustFindMarker& marker) const;
+
+  /**
+   * Retrieves the value of the given parameter in the templated type.
+   * Throws Status_ConfigError if config value could not be found
+   */
+  template <class T>
+  T get(const std::string& key, [[maybe_unused]] const MustFindMarker& marker)
+      const;
 
   /**
    * Retrieves the value of the given parameter in the templated type.
