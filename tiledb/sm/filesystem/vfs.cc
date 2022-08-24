@@ -82,13 +82,13 @@ VFS::VFS(
     stats::Stats* const parent_stats,
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
-    const Config* const config)
+    const Config& config)
     : stats_(parent_stats->create_child("VFS"))
-    , config_(*config)
+    , config_(config)
     , init_(false)
     , compute_tp_(compute_tp)
     , io_tp_(io_tp)
-    , vfs_params_(VFSParameters(config_)) {
+    , vfs_params_(VFSParameters(config)) {
   Status st;
   assert(compute_tp);
   assert(io_tp);
@@ -100,7 +100,7 @@ VFS::VFS(
 #ifdef HAVE_HDFS
   supported_fs_.insert(Filesystem::HDFS);
   hdfs_ = tdb_unique_ptr<hdfs::HDFS>(tdb_new(hdfs::HDFS));
-  st = hdfs_->init(config_);
+  st = hdfs_->init(config);
   if (!st.ok()) {
     throw std::runtime_error("[VFS::VFS] Failed to initialize HDFS backend.");
   }
@@ -108,7 +108,7 @@ VFS::VFS(
 
 #ifdef HAVE_S3
   supported_fs_.insert(Filesystem::S3);
-  st = s3_.init(stats_, config_, io_tp_);
+  st = s3_.init(stats_, config, io_tp_);
   if (!st.ok()) {
     throw std::runtime_error("[VFS::VFS] Failed to initialize S3 backend.");
   }
@@ -116,7 +116,7 @@ VFS::VFS(
 
 #ifdef HAVE_AZURE
   supported_fs_.insert(Filesystem::AZURE);
-  st = azure_.init(config_, io_tp_);
+  st = azure_.init(config, io_tp_);
   if (!st.ok()) {
     throw std::runtime_error("[VFS::VFS] Failed to initialize Azure backend.");
   }
@@ -124,7 +124,7 @@ VFS::VFS(
 
 #ifdef HAVE_GCS
   supported_fs_.insert(Filesystem::GCS);
-  st = gcs_.init(config_, io_tp_);
+  st = gcs_.init(config, io_tp_);
   if (!st.ok()) {
     // We should print some warning here, LOG_STATUS only prints in
     // verbose mode. Since this is called in the init of the context, we
@@ -137,9 +137,9 @@ VFS::VFS(
 #endif
 
 #ifdef _WIN32
-  win_.init(config_, io_tp_);
+  win_.init(config, io_tp_);
 #else
-  posix_.init(config_, io_tp_);
+  posix_.init(config, io_tp_);
 #endif
 
   supported_fs_.insert(Filesystem::MEMFS);
@@ -805,7 +805,7 @@ Status VFS::init(
     stats::Stats* const parent_stats,
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
-    const Config* const config) {
+    const Config& config) {
   stats_ = parent_stats->create_child("VFS");
 
   assert(compute_tp);
@@ -813,11 +813,8 @@ Status VFS::init(
   compute_tp_ = compute_tp;
   io_tp_ = io_tp;
 
-  // Set appropriately the config
-  if (config)
-    config_ = *config;
-
   /* Initialize VFSParameters */
+  config_ = config;
   vfs_params_ = VFSParameters(config_);
 
   // Construct the read-ahead cache.

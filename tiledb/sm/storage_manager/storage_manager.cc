@@ -1447,7 +1447,7 @@ Status StorageManager::init(const Config& config) {
   auto& global_state = global_state::GlobalState::GetGlobalState();
   RETURN_NOT_OK(global_state.init(config));
 
-  vfs_ = tdb_new(VFS, stats_, compute_tp_, io_tp_, &config_);
+  vfs_ = tdb_new(VFS, stats_, compute_tp_, io_tp_, config_);
 #ifdef TILEDB_SERIALIZATION
   RETURN_NOT_OK(init_rest_client());
 #endif

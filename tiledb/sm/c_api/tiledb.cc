@@ -5140,7 +5140,7 @@ int32_t tiledb_vfs_alloc(
   if (config)
     ctx_config.inherit(*(config->config_));
   if (SAVE_ERROR_CATCH(
-          ctx, (*vfs)->vfs_->init(stats, compute_tp, io_tp, &ctx_config))) {
+          ctx, (*vfs)->vfs_->init(stats, compute_tp, io_tp, ctx_config))) {
     delete (*vfs)->vfs_;
     delete vfs;
     return TILEDB_ERR;

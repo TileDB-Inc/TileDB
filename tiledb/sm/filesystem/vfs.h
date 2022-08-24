@@ -162,7 +162,7 @@ class VFS {
   VFS(stats::Stats* parent_stats,
       ThreadPool* compute_tp,
       ThreadPool* io_tp,
-      const Config* config);
+      const Config& config);
 
   /** Destructor. */
   ~VFS() = default;
@@ -326,7 +326,7 @@ class VFS {
       stats::Stats* parent_stats,
       ThreadPool* compute_tp,
       ThreadPool* io_tp,
-      const Config* config);
+      const Config& config);
 
   /**
    * Terminates the virtual system. Must only be called if init() returned
