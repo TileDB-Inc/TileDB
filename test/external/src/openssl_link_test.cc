@@ -28,18 +28,17 @@
  * @section DESCRIPTION
  *
  * Tests for linkage to openssl
-*/
+ */
 
 #include <stdio.h>
 
-#include <openssl/ssl.h>
 #include <openssl/crypto.h>
+#include <openssl/ssl.h>
 
-int main()
-{
+int main() {
   OPENSSL_init_ssl(0, NULL);
-  
-  OPENSSL_cleanse((void *)0, 0);
-  
-  return 0 ;
+
+  OPENSSL_cleanse((void*)0, 0);
+
+  return 0;
 }
