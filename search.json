@@ -1673,6 +1673,146 @@
     "text": "Hi! Thanks for your interest in TileDB. The following notes are intended to help you file issues, bug reports, or contribute code to the open source TileDB project.\n\n\n\nReporting a bug? Please read how to file a bug report section to make sure sufficient information is included.\nContributing code? You rock! Be sure to review the contributor section for helpful tips on the tools we use to build TileDB, format code, and issue pull requests (PR)’s.\n\n\n\n\nA useful bug report filed as a GitHub issue provides information about how to reproduce the error.\n\nBefore opening a new GitHub issue try searching the existing issues to see if someone else has already noticed the same problem.\nWhen filing a bug report, provide where possible:\n\n\nThe version TileDB (tiledb_version()) or if a dev version, specific commit that triggers the error.\nThe full error message, including the backtrace (if possible). Verbose error reporting is enabled by building TileDB with ../bootstrap --enable-verbose.\nA minimal working example, i.e. the smallest chunk of code that triggers the error. Ideally, this should be code that can be a small reduced C / C++ source file. If the code to reproduce is somewhat long, consider putting it in a gist.\n\n\nWhen pasting code blocks or output, put triple backquotes (```) around the text so GitHub will format it nicely. Code statements should be surrounded by single backquotes (`). See GitHub’s guide on Markdown for more formatting tricks.\n\n\n\n\nBy contributing code to TileDB, you are agreeing to release it under the MIT License.\n\n\nPlease see building from source for dependencies and detailed build instructions.\nFrom a fork of TileDB\ngit clone https://github.com/username/TileDB\ncd TileDB && mkdir build && cd build\n../bootstrap\nmake && make check\ncd ../\ngit checkout -b <my_initials>/<my_bugfix_branch>\n... code changes ...\nmake -C build format\nmake -C build check\ngit commit -a -m \"my commit message\"\ngit push --set-upstream origin <my_initials>/<my_bugfix_branch>\nIssue a PR from your updated TileDB fork\nBranch conventions: - dev is the development branch of TileDB, all PR’s are merged into dev. - master tracks the latest stable / released version of TileDB. - release-x.y.z are major / bugfix release branches of TileDB.\nFormatting conventions: - 2 spaces per indentation level not tabs - class names use CamelCase - member functions, variables use lowercase with underscores - class member variables use a trailing underscore foo_ - comments are good, TileDB uses doxygen for class doc strings. - format code using clang-format\n\n\n\n\ndev is the development branch, all PR’s should be rebased on top of the latest dev commit.\nCommit changes to a local branch. The convention is to use your initials to identify branches: (ex. “Fred Jones” , fj/my_bugfix_branch). Branch names should be identifiable and reflect the feature or bug that they want to address / fix. This helps in deleting old branches later.\nMake sure the test suite passes by running make check.\nWhen ready to submit a PR, git rebase the branch on top of the latest dev commit. Be sure to squash / cleanup the commit history so that the PR preferably one, or a couple commits at most. Each atomic commit in a PR should be able to pass the test suite.\nRun the limiting / code format tooling (make format) before submitting a final PR. Make sure that your contribution generally follows the format and naming conventions used by surrounding code.\nIf the PR changes/adds/removes user-facing API or system behavior (such as API changes), add a note to the TileDB/HISTORY.md file.\nSubmit a PR, writing a descriptive message. If a PR closes an open issue, reference the issue in the PR message (ex. If an issue closes issue number 10, you would write closes #10)\nMake sure CI (continuous integration) is passing for your PR – click Show all checks in the pull request status box at the bottom of each PR page. The continous integration project pages will also list all recently-built PRs:\n\nAzure Pipelines\n\n\n\n\n\n\nTileDB uses Sphinx as its documentation generator.\nDocumentation is written in reStructuredText markup.\n\nBuilding the docs locally:\n$ cd TileDB/doc\n$ ./local-build.sh\nThis will install all the required packages in a Python virtual environment, and build the docs locally. You can then open the doc/source/_build/html/index.html file in your browser.\nNote: If there are additions to the C/C++ API in between builds, rerun bootstrap:\n$ cd ../build\n$ ../bootstrap <flags>\n\n\n\n\nTileDB\n\nHomepage\nDocumentation\nIssues\nForum\nOrganization\n\nGithub / Git\n\nGit cheatsheet\nGithub Documentation\nForking a Repo\nMore Learning Resources"
   },
   {
+    "objectID": "doc/dev/style/ErrorHandling.html",
+    "href": "doc/dev/style/ErrorHandling.html",
+    "title": "Error handling",
+    "section": "",
+    "text": "The code began its life with a don’t-throw-exceptions practice. It’s beginning a transition into a do-throw-exceptions practice, although that hasn’t started quite yet."
+  },
+  {
+    "objectID": "doc/dev/style/ErrorHandling.html#all-functions",
+    "href": "doc/dev/style/ErrorHandling.html#all-functions",
+    "title": "Error handling",
+    "section": "All functions",
+    "text": "All functions\n\nEvery function should signal an error only when it gives up what it’s trying to do.\n\nThis point may sound obvious, but it’s a bit more subtle than that. The magic word is only. A function that is unable to do something but knows that it can’t could return a bool value of false, for example. A function that can’t tell whether it can do something or not needs to signal an error.\nAnother way of stating this point is that signalling an error isn’t the same thing as failing an operation. If a function only ever succeeds at its operation, then it must signal an error. If a function can both succeed and fail at its operation, then it need not signal an error. Yet it’s also possible for a function to both succeed and fail and also stop working and throw an error.\nIt’s up to the function to determine when it should fail (ordinary, without error) and when it should signal an error (not ordinary). The decision about whether or not to do this is not a matter of style, but of substance.\n\nA function should signal an error only when circumstances are outside its expectations.\n\nSome code might be described as whimsical, unexpectedly not performing the duties they seem to have taken on. (It might be appropriate to refer to these as Bartelby functions, because they would prefer not to perform certain tasks.) This point is that a function should be consistent in its error behavior.\n\nEach function should document its expectations.\n\nA user of a function should have some idea about when it may rely upon the behavior of a function. If the function does not contain documentation about what its expectations are, a user cannot know with precision when it may be relied upon.\nAn expection is somewhat broader than a precondition. All preconditions are expectations, to be sure. Some expectations, though, are not. For example, an expectation about the state of a filesystem might be present. If so, however, it should be documented. There should be no implicit expectations.\n\nSignal an error by returning an error status.\n\nAs of now, this code signals error by returning an object of class Status.\nThis advice is will evolve. The first change will be “Signal an either by returning an error status or throwing”. The second will be “Signal an error by throwing”."
+  },
+  {
+    "objectID": "doc/dev/style/ErrorHandling.html#signalling-an-error-by-returning-an-error-status",
+    "href": "doc/dev/style/ErrorHandling.html#signalling-an-error-by-returning-an-error-status",
+    "title": "Error handling",
+    "section": "Signalling an error by returning an error status",
+    "text": "Signalling an error by returning an error status\nThis section applies to functions that might not use a throw statement to cede control to their caller.\n\nEach function that can signal an error without throwing should return a Status object.\n\nThe definition of class Status is in tiledb/common/status.h. Include that header in every compilation unit that defines such functions. If only a declaration is needed, a forward declaration of class Status is acceptable.\n\nUse a tuple return value to return both Status and other values.\n\nA function may return both Status and other return values by returning a tuple. See style guide entry Inputs on the right. Outputs on the left. for more information about how to accomplish this.\n\nReturn Status::Ok() to not signal an error.\n\nThe factory function Status::Ok() returns a value that does not signal anything.\n\nUse a factory function in the vicinity of the error to make Status objects.\n\nA number of factory functions exist to create status messages local to a specific area of the code. A function should use one of these functions to construct Status objects that it returns.\n\nExample\nFor example, code that is checking for an error related to a Context might look like the following:\n#include \"tiledb/common/status.h\"\nusing namespace = tiledb::common;\nbool failure_condition();\n\nStatus foo() {\n  if (failure_condition()) {\n    return Status_ContextError(\"Cannot do requested thing\");\n  }  \n  return Status::Ok(); \n}"
+  },
+  {
+    "objectID": "doc/dev/style/ErrorHandling.html#signalling-an-error-by-throwing",
+    "href": "doc/dev/style/ErrorHandling.html#signalling-an-error-by-throwing",
+    "title": "Error handling",
+    "section": "Signalling an error by throwing",
+    "text": "Signalling an error by throwing\nAlthough throwing exceptions is not yet permitted in library code, some of its precepts can already be stated.\n\nSignal an error by throwing an object of class tdb::exception.\n\nThe library has tdb::exception to allow greater expressiveness and precision than what’s afforded in std::exception.\n\nConvert from returning Status st by throwing tdb::exception(st)\n\ntdb::exception has a constructor with a single Status argument. This constructor is present to allow rapid conversion from returning status to throwing."
+  },
+  {
+    "objectID": "doc/dev/style/ErrorHandling.html#style-guide-for-error-messages",
+    "href": "doc/dev/style/ErrorHandling.html#style-guide-for-error-messages",
+    "title": "Error handling",
+    "section": "Style guide for error messages",
+    "text": "Style guide for error messages\n\nMake error messages either informative or empty.\n\nWhen someone looks at an exception in practice, the source location and call stack will be available. If what you’re saying doesn’t add to this, don’t say anything else."
+  },
+  {
+    "objectID": "doc/dev/style/index.html",
+    "href": "doc/dev/style/index.html",
+    "title": "Style Guide",
+    "section": "",
+    "text": "When in doubt and not in conflict with this style guide, follow C++ Core Guidelines"
+  },
+  {
+    "objectID": "doc/dev/style/index.html#c-standards",
+    "href": "doc/dev/style/index.html#c-standards",
+    "title": "Style Guide",
+    "section": "C++ Standards",
+    "text": "C++ Standards\nWhere possible we should use up to C++17. Some external packages, such as PDAL are limited in what they can use. Where we control the environment we should strive for C++17 usage.\n\nTable of Contents\n\nFunctions\n\nWith emphasis: Inputs on the right. Outputs on the left.\n\nMemory handling\nStorage serialization"
+  },
+  {
+    "objectID": "doc/dev/style/index.html#cmake",
+    "href": "doc/dev/style/index.html#cmake",
+    "title": "Style Guide",
+    "section": "CMake",
+    "text": "CMake\n\nCMake guide"
+  },
+  {
+    "objectID": "doc/dev/style/CMake.html",
+    "href": "doc/dev/style/CMake.html",
+    "title": "CMake",
+    "section": "",
+    "text": "TileDB uses CMake for its configuration, build system, and package management."
+  },
+  {
+    "objectID": "doc/dev/style/CMake.html#build-options",
+    "href": "doc/dev/style/CMake.html#build-options",
+    "title": "CMake",
+    "section": "Build Options",
+    "text": "Build Options\nThe TILEDB_* options are used primarily for enabling/disabling extra components (e.g. S3 support, test suite) and setting build or compilation settings (e.g. error on warn, superbuild). The options are defined in a single code block in the TileDB root CMakeLists.txt file.\nIf it is decided a new option is needed, the following must be updated in addition to the root CMakeLists.txt file:\n\nthe bootstrap scripts (bootstrap, bootstrap.ps1)\ncontinuous integration coverage to ensure the option is exercised in a CI build (edit github actions workflows under .github/workflows)\nthe build documentation contained in our online docs"
+  },
+  {
+    "objectID": "doc/dev/style/CMake.html#tiledb-object-libraries",
+    "href": "doc/dev/style/CMake.html#tiledb-object-libraries",
+    "title": "CMake",
+    "section": "TileDB Object Libraries",
+    "text": "TileDB Object Libraries\nThe main TileDB library is in the process of being broken into discrete object libraries.\nTODO About the object libraries and best practices"
+  },
+  {
+    "objectID": "doc/dev/style/CMake.html#tiledb-static-and-shared-libraries",
+    "href": "doc/dev/style/CMake.html#tiledb-static-and-shared-libraries",
+    "title": "CMake",
+    "section": "TileDB Static and Shared Libraries",
+    "text": "TileDB Static and Shared Libraries\nTODO About combining the object libraries into the main libraries created by CMake"
+  },
+  {
+    "objectID": "doc/dev/style/CMake.html#adding-a-dependency",
+    "href": "doc/dev/style/CMake.html#adding-a-dependency",
+    "title": "CMake",
+    "section": "Adding a dependency",
+    "text": "Adding a dependency\nThere are several steps to adding a new dependency to TileDB. See TileDB wiki on GitHub for more information."
+  },
+  {
+    "objectID": "doc/dev/style/CMake.html#using-the-common-modules",
+    "href": "doc/dev/style/CMake.html#using-the-common-modules",
+    "title": "CMake",
+    "section": "Using the common modules",
+    "text": "Using the common modules\n\n_TODO Describe (generally speaking) what is included in the cmake/common*.cmake modules_\nTODO Guidelines for adding to the modules (including best practices for CMake macros and functions)."
+  },
+  {
+    "objectID": "doc/dev/style/Functions.html",
+    "href": "doc/dev/style/Functions.html",
+    "title": "Functions",
+    "section": "",
+    "text": "The legacy of C is that functions have only a single return and only return by value. When a function should naturally return multiple return values, it was expedient to pass “out-arguments” to the function. In C this was a pointer; in C++ it could also be a reference. This convention commingled in- and out-arguments in a call list. C++17 can do better.\n\nUsestd::tuple to return multiple values.\nStrictly speaking, returning multiple values was possible before. The overhead required was burdensome. A function could return a struct value, packaging multiple values as a single one. std::tuple allows something like an in-place struct declaration; the elements are typed but anonymous. Such a function is still returning a single value, but of a type that’s designed to hold multiples.\nUse std::optional to return a value that might not be initialized.\nA near-universal pattern is to return a value when a function succeeds but not to return anything when it fails. This is the pattern when a function throws on failure. If it should not throw on failure, though, it has to return both a success/failure status and sometimes a value. std::optional is the standard library’s way of representing “sometimes a value”. The “not this time” value is std::nullopt.\nThere’s an alternative return value that this style guide considers an antipattern: a default-constructed instance. Of all the problems it has, the most pernicious is that is discourages adherence to “C.41: A constructor should create a fully initialized object”. It’s less efficient, too, since it requires an extraneous construction and assignment. The present style guide enables direct-initialization with no run-time overhead.\nUse std::optional even for bool-convertible classes like shared_ptr.\nYes, it’s certainly possible to use an a empty shared_ptr to signify a “pointer that’s not present”. A consistent return convention makes it quicker to read code. Please don’t put your colleagues in the position of needing to figure out that you’re doing something different to accomplish something that’s not different.\nRemember the std::in_place_t form of the std::optional constructor.\nAs a rule, it’s more efficient to construct an object immediately before you need it. When returning an optional, that’s the return statement. The in_place argument to optional<T> allows its constructor to also construct the T instance, removing any need for a temporary or extraneous variable.\nPrefer a structured binding declaration to initialize variables.\nStructured binding, introduced in C++17, allows multiple assignment or multiple initialization from tuples (or from other types that can act like tuples). While it’s the preferred way of retrieving return values, it’s not the only way.\nThe easiest alternative is auto x{f(...)};. This statement initializes x as a tuple. The disadvantage is that elements have to be retrieved by position. A structured binding declaration allows elements to be retrieved by name. A tuple variable is perfectly good, though, when the value is being forwarded on.\nAnother alternative is to use std::tie to assign to existing variables. This can be better in circumstances where it’s beneficial to reuse an existing variable.\nPrefer structured direct-initialization over structured assignment.\nOne of the forms of structured binding looks like an assignment; it performs copy-initialization. The other forms perform direct-initialization. The direct form is more general and more efficient that the copy form. (The copy form might be needed in unusual circumstances.) In particular, direct-initialization works with non-copyable classes.\nAlso, use the curly-brace syntax for direct-initialization. There’s a parenthesis syntax available, but its easily confused at a glance with the lambda syntax.\nBy default, use the && ref-qualifier in a structured binding.\nRoughly speaking, the && ref-qualifier yields perfect forwarding, as if the structured variables had been directly initialized in the return statement of the function.\nIf the structured variables should all be constant, then const auto& may be appropriate, and the rules for temporary materialization will apply. The structured binding syntax does not allow mixed declarations with both const and non-const variables, as the cv-declaration is about the temporary value (the right side, roughly) rather than to the variables.\nCheck that a returned class has a move constructor.\nThis point is about efficiency. If a move constructor is not present, the compiler will use the copy constructor. The default move constructor will typically suffice.\n\n\n\n\nDeclare as tuple<boolean_like, optional<T>> f(...)\nInitialize as auto && [b, t]{ f(...) };\nMove constructor T(T&&) = default;\n\n\n\n\n#include <optional>\n\nclass NC {\n  int x;\n  int y;\n public:\n  NC() = delete;\n  explicit NC(int x, int y) : x(x), y(y) {};\n  NC(const NC&) = delete; // No copy constructor\n  NC(NC&&) = default;  // ... but there is a move constructor\n  int operator()() const { return x; }\n};\n\nstd::tuple<bool, std::optional<NC>> foo() {\n  return {true,std::optional<NC>( std::in_place, 1, 3 )};\n}\n\nstd::tuple<bool, std::optional<NC>> bar() {\n  return {false, std::nullopt};\n}\n\nTEST_CASE(\"foo\")\n{\n  auto && [b, nc]{ foo() };\n  CHECK(b);\n  REQUIRE(nc.has_value());\n  CHECK((*nc)() == 1);\n}\n\nTEST_CASE(\"bar\")\n{\n  auto && [b, nc]{ bar() };\n  CHECK_FALSE(b);\n  CHECK_FALSE(nc.has_value());\n}"
+  },
+  {
+    "objectID": "doc/dev/style/Functions.html#references",
+    "href": "doc/dev/style/Functions.html#references",
+    "title": "Functions",
+    "section": "References",
+    "text": "References\n\nhttps://en.cppreference.com/w/cpp/utility/tuple\nhttps://en.cppreference.com/w/cpp/utility/optional\nhttps://en.cppreference.com/w/cpp/language/structured_binding"
+  },
+  {
+    "objectID": "doc/dev/style/Serialization.html",
+    "href": "doc/dev/style/Serialization.html",
+    "title": "On-disk Serialization and Deserialization",
+    "section": "",
+    "text": "The status of on-disk serialization is currently in flux. At time of writing, the current guidelines for writing serialize functions for TileDB classes is as follows:\n\nOnly use sizeof on fixed-sized types (not variables or types with compiler-dependent size like bool).\nReturn a TileDB shared pointer to the object in deserialize methods. Use exceptions, not Status objects, for errors.\nValidate all types either at time of deserialization or in the constructor used for generating the object.\nAdd unit tests that check the validations throws the expected errors.\n\n\n\nFor validating enums, consider creating a function that converts from the underlying variable type to the enum with validation. The serialization/deserialization should be to an fixed-size integer of the under-lying type. Consider writing a function with validation to get the actual enum from the integer. For example,\ninline ArrayType array_type_from_int(uint8_t array_type_enum) {\n    auto type = ArrayType(array_type_enum);\n    if (type != ArrayType::DENSE && type != ArrayType::SPARSE) {\n        throw std::runtime_error(\n            \"Invalid ArrayType (\" + std::to_string(array_type_enum) + \")\");\n    }\n    return type;\n}\nIf the enum has many types, use a switch statement to validate the types."
+  },
+  {
+    "objectID": "doc/dev/style/Memory.html",
+    "href": "doc/dev/style/Memory.html",
+    "title": "Memory Guidelines",
+    "section": "",
+    "text": "The use of new or malloc is forbidden unless justifcation and a team agreement on an exception is granted. Inplace a smart pointer should be used.\nThat is a unique_ptr, shared_ptr or weak_ptr should be used in all cases. With weak_ptr being rarely used.\nIn the core TileDB library we have our own tdb_unique_ptr and tdb_shared_ptr that must be used inplace of the stl versions.\nmake_unique_ptr or make_shared_ptr is the preferred, exception safe, method of creating the smart pointers.\nExtreme care must be given to all allocations. Even when using STL containers like std::vector thoughtful consideration must be given for the dynamic allocations that will occur.\nIf we are only allocating one megabyte or less strongly consider fixed allocations instead. Fixed allocation help to avoid fragmentation of the heap."
+  },
+  {
+    "objectID": "doc/dev/style/Variables.html",
+    "href": "doc/dev/style/Variables.html",
+    "title": "Initialization",
+    "section": "",
+    "text": "The title says it all. Here are some examples.\n// No. This is initialization with an assignment expression.\nint x = 1;\n\n// No. This uses a parenthesized expression list.\nint x(1);\n\n// No. This has a brace initialization list, but it uses an assignment expression,\n// not direct initialization\nstd::vector<int> y = {1,2,3};\n\n// Yes\nint x{1};\nstd::vector<int> y{1,2,3};"
+  },
+  {
+    "objectID": "doc/dev/style/Variables.html#references",
+    "href": "doc/dev/style/Variables.html#references",
+    "title": "Initialization",
+    "section": "References",
+    "text": "References\n\nThe FAQ for C++11 calls this uniform initialization. The term “uniform initialization” isn’t the official name for the syntax, however. Rather, it describes the goal to allow a single syntax to be used for all initializations.\nSection “11.6 Initializers [dcl.init]” in the C++17 standard, ISO/IEC 14882:2017."
+  },
+  {
     "objectID": "format_spec/filters/xor.html",
     "href": "format_spec/filters/xor.html",
     "title": "XOR Filter",
