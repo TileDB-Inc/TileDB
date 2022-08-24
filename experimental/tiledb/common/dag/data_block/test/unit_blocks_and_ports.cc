@@ -81,7 +81,7 @@ TEST_CASE(
     CHECK(source.extract().has_value() == true);
   }
   SECTION("set source in unbound source") {
-    CHECK(source.inject(x) == false);
+    CHECK_THROWS(source.inject(x) == false);
   }
   SECTION("set source that has value") {
     attach(source, sink);

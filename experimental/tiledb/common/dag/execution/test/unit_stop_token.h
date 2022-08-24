@@ -1,5 +1,5 @@
 /**
- * @file   nodes.h
+ * @file unit_stop_token.h
  *
  * @section LICENSE
  *
@@ -26,16 +26,9 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This file is a header that includes headers for base node class, simple node
- * classes, and general node classes.
  */
 
-#ifndef TILEDB_DAG_NODE_H
-#define TILEDB_DAG_NODE_H
-
-#include "experimental/tiledb/common/dag/nodes/base.h"
-// #include "experimental/tiledb/common/dag/nodes/general.h"
-#include "experimental/tiledb/common/dag/nodes/simple.h"
-
-#endif  // TILEDB_DAG_NODE_H
+#ifndef TILEDB_UNIT_STOP_TOKEN_H
+#define TILEDB_UNIT_STOP_TOKEN_H
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_STOP_TOKEN_H

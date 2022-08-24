@@ -1,11 +1,11 @@
 /**
- * @file experimental/tiledb/common/thread_pool/test/unit_ports.h
+ * @file unit_proof.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,8 +28,7 @@
  * @section DESCRIPTION
  */
 
-#ifndef TILEDB_UNIT_NODES_H
-#define TILEDB_UNIT_NODES_H
-#define CATCH_CONFIG_MAIN
+#ifndef TILEDB_UNIT_PROOF_H
+#define TILEDB_UNIT_PROOF_H
 #include <test/support/tdb_catch.h>
-#endif  // TILEDB_UNIT_NODES_H
+#endif  // TILEDB_UNIT_PROOF_H

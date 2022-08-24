@@ -1,11 +1,11 @@
 /**
- * @file   nodes.h
+ * @file unit_genera.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,16 +26,10 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This file is a header that includes headers for base node class, simple node
- * classes, and general node classes.
  */
 
-#ifndef TILEDB_DAG_NODE_H
-#define TILEDB_DAG_NODE_H
-
-#include "experimental/tiledb/common/dag/nodes/base.h"
-// #include "experimental/tiledb/common/dag/nodes/general.h"
-#include "experimental/tiledb/common/dag/nodes/simple.h"
-
-#endif  // TILEDB_DAG_NODE_H
+#ifndef TILEDB_UNIT_GENERAL_H
+#define TILEDB_UNIT_GENERAL_H
+#define CATCH_CONFIG_MAIN
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_GENERAL_H

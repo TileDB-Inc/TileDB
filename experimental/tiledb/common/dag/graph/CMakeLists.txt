@@ -36,7 +36,7 @@ gather_sources(${SOURCES})
 # Object library for other units to depend upon
 #
 add_library(graph OBJECT ${SOURCES})
-target_link_libraries(graph PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+# target_link_libraries(graph PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
