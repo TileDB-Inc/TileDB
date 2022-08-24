@@ -1555,8 +1555,8 @@ Status FragmentMetadata::load_processed_conditions(
   storage_manager_->stats()->add_counter(
       "read_processed_conditions_size", tile.size());
 
-  ConstBuffer cbuff(tile.data(), tile.size());
-  RETURN_NOT_OK(load_processed_conditions(&cbuff));
+  Deserializer deserializer(tile.data(), tile.size());
+  RETURN_NOT_OK(load_processed_conditions(deserializer));
 
   loaded_metadata_.processed_conditions_ = true;
 
@@ -3510,36 +3510,19 @@ Status FragmentMetadata::load_fragment_min_max_sum_null_count(
 // ...
 // processed_condition_size#<condition_num-1> (uint64_t)
 // processed_condition#<condition_num-1>
-Status FragmentMetadata::load_processed_conditions(ConstBuffer* buff) {
-  Status st;
-
+Status FragmentMetadata::load_processed_conditions(Deserializer& deserializer) {
   // Get num conditions.
   uint64_t num;
-  st = buff->read(&num, sizeof(uint64_t));
-  if (!st.ok()) {
-    return LOG_STATUS(
-        Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                     " num processed conditions failed"));
-  }
+  num = deserializer.read<uint64_t>();
 
   processed_conditions_.reserve(num);
   for (uint64_t i = 0; i < num; i++) {
     uint64_t size;
-    st = buff->read(&size, sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                       " processed conditions size failed"));
-    }
+    size = deserializer.read<uint64_t>();
 
     std::string condition;
     condition.resize(size);
-    st = buff->read(condition.data(), size);
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                       " processed conditions failed"));
-    }
+    deserializer.read(condition.data(), size);
 
     processed_conditions_.emplace_back(condition);
   }
@@ -4819,36 +4802,36 @@ Status FragmentMetadata::store_fragment_min_max_sum_null_count(
 
 Status FragmentMetadata::store_processed_conditions(
     const EncryptionKey& encryption_key, uint64_t* nbytes) {
-  Status st;
-  Buffer buff;
-
+  auto serialize_processed_conditions = [this](Serializer& serializer) {
   // Store num conditions.
   uint64_t num = processed_conditions_.size();
-  st = buff.write(&num, sizeof(uint64_t));
-  if (!st.ok()) {
-    return LOG_STATUS(Status_FragmentMetadataError(
-        "Cannot serialize fragment metadata; Writing num processed conditions "
-        "failed"));
-  }
+    serializer.write<uint64_t>(num);
 
   for (auto& processed_condition : processed_conditions_) {
     uint64_t size = processed_condition.size();
-    st = buff.write(&size, sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(Status_FragmentMetadataError(
-          "Cannot serialize fragment metadata; Writing processed condition "
-          "size failed"));
-    }
+      serializer.write<uint64_t>(size);
 
-    st = buff.write(processed_condition.data(), processed_condition.size());
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot serialize fragment metadata; "
-                                       "Writing processed condition failed"));
+      serializer.write(processed_condition.data(), processed_condition.size());
     }
+  };
+  SizeComputationSerializer size_computation_serializer;
+  serialize_processed_conditions(size_computation_serializer);
+
+  Tile tile;
+  if (!tile.init_unfiltered(
+               0,
+               constants::generic_tile_datatype,
+               size_computation_serializer.size(),
+               constants::generic_tile_cell_size,
+               0)
+           .ok()) {
+    throw FragmentMetadataStatusException("Cannot initialize tile");
   }
 
-  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
+  Serializer serializer(tile.data(), tile.size());
+  serialize_processed_conditions(serializer);
+
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, tile, nbytes));
 
   storage_manager_->stats()->add_counter(
       "write_processed_conditions_size", *nbytes);
