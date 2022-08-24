@@ -4803,12 +4803,12 @@ Status FragmentMetadata::store_fragment_min_max_sum_null_count(
 Status FragmentMetadata::store_processed_conditions(
     const EncryptionKey& encryption_key, uint64_t* nbytes) {
   auto serialize_processed_conditions = [this](Serializer& serializer) {
-  // Store num conditions.
-  uint64_t num = processed_conditions_.size();
+    // Store num conditions.
+    uint64_t num = processed_conditions_.size();
     serializer.write<uint64_t>(num);
 
-  for (auto& processed_condition : processed_conditions_) {
-    uint64_t size = processed_condition.size();
+    for (auto& processed_condition : processed_conditions_) {
+      uint64_t size = processed_condition.size();
       serializer.write<uint64_t>(size);
 
       serializer.write(processed_condition.data(), processed_condition.size());
