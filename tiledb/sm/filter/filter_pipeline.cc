@@ -212,13 +212,25 @@ Status FilterPipeline::filter_chunks_forward(
 
       f->init_compression_resource_pool(compute_tp->concurrency_level());
 
-      RETURN_NOT_OK(f->run_forward(
+      if (f->type() == FilterType::FILTER_BITSORT) {
+        std::vector<Tile*> dim_tiles; // dummy arg, change
+        RETURN_NOT_OK(f->run_forward(
+          tile,
+          offsets_tile,
+          dim_tiles,
+          &input_metadata,
+          &input_data,
+          &output_metadata,
+          &output_data));
+      } else {
+        RETURN_NOT_OK(f->run_forward(
           tile,
           offsets_tile,
           &input_metadata,
           &input_data,
           &output_metadata,
           &output_data));
+      }
 
       input_data.set_read_only(false);
       input_data.swap(output_data);

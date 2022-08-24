@@ -68,6 +68,7 @@ class BitSortFilter : public Filter {
   Status run_forward(
       const Tile& tile,
       Tile* const tile_offsets,
+      std::vector<Tile*> &dim_tiles,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

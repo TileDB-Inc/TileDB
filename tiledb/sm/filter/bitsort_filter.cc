@@ -60,10 +60,12 @@ void BitSortFilter::dump(FILE* out) const {
 Status BitSortFilter::run_forward(
     const Tile& tile,
     Tile* const,  // offsets_tile
+    std::vector<Tile*> &dim_tiles,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
+ (void)dim_tiles;
   auto tile_type = tile.type();
   switch (datatype_size(tile_type)) {
     case sizeof(int8_t): {
