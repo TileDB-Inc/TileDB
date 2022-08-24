@@ -37,9 +37,7 @@ target_include_directories(unit_link_openssl PRIVATE ${OPENSSL_INCLUDE_DIR})
 
 if(NOT TILEDB_ABSEIL)
   message("skipping target unit_link_absl, found NOT TILEDB_ABSEIL")
-  return()
-endif()
-
+else()
 message("adding target unit_link_absl, have TILEDB_ABSEIL")
 
 add_executable(unit_link_absl EXCLUDE_FROM_ALL src/absl_link_test.cc)
@@ -55,3 +53,24 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/src/absl_library_targets.cmake)
 target_link_libraries(unit_link_absl PRIVATE ${TILEDB_ABSL_LIBRARY_TARGETS})
 
 target_include_directories(unit_link_absl PRIVATE ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_EP_INSTALL_PREFIX}/include )
+
+endif()
+
+if(NOT TILEDB_CRC32)
+  message("skipping target unit_link_crc32, found NOT TILEDB_CRC32")
+else()
+  message("adding target unit_link_absl, have TILEDB_ABSEIL")
+
+  add_executable(unit_link_crc32 EXCLUDE_FROM_ALL src/crc32_link_test.cc)
+
+  find_package(Crc32c CONFIG REQUIRED
+    PATHS
+        ${TILEDB_EP_INSTALL_PREFIX}/lib/cmake
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
+
+  target_link_libraries(unit_link_crc32 PRIVATE Crc32c::crc32c)
+
+  target_include_directories(unit_link_crc32 PRIVATE ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_EP_INSTALL_PREFIX}/include )
+endif()
+

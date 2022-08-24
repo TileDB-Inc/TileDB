@@ -1,5 +1,5 @@
 /**
- * @file print_types.hpp
+ * @file compile_xor_filter_main.cc
  *
  * @section LICENSE
  *
@@ -24,32 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file declares a compile-time check that prints the types of its
- * arguments.  Useful for debugging type-related compilation problems.
- *
- * Original copyright statements from NWGraph:
- * @copyright SPDX-FileCopyrightText: 2022 Battelle Memorial Institute
- * @copyright SPDX-FileCopyrightText: 2022 University of Washington
- *
- * SPDX-License-Identifier: BSD-3-Clause
- *
- * @authors
- *   Luke D'Alessandro
- *
  */
 
-#ifndef PRINT_TYPES_HPP
-#define PRINT_TYPES_HPP
+#include "../xor_filter.h"
 
-template <class... Ts>
-struct print_types_t;
-
-template <class... Ts>
-constexpr auto print_types(Ts...) {
-  return print_types_t<Ts...>{};
+int main() {
+  (void)sizeof(tiledb::sm::XORFilter);
+  return 0;
 }
-
-#endif  // PRINT_TYPES_HPP

@@ -49,6 +49,7 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/stdx/utility/to_underlying.h"
+#include "xor_filter.h"
 
 tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
   switch (type) {
@@ -78,6 +79,8 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
       return tdb_new(tiledb::sm::ChecksumSHA256Filter);
     case tiledb::sm::FilterType::FILTER_SCALE_FLOAT:
       return tdb_new(tiledb::sm::FloatScalingFilter);
+    case tiledb::sm::FilterType::FILTER_XOR:
+      return tdb_new(tiledb::sm::XORFilter);
     default:
       throw StatusException(
           "FilterCreate",
@@ -147,6 +150,9 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
           filter_config.scale,
           filter_config.offset);
     };
+    case FilterType::FILTER_XOR: {
+      return make_shared<XORFilter>(HERE());
+    }
     default:
       throw StatusException(
           "FilterCreate", "Deserialization error; unknown type");

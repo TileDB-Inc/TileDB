@@ -6510,15 +6510,7 @@ int32_t tiledb_fragment_info_load(
     return TILEDB_ERR;
 
   // Load fragment info
-  bool set_timestamp_range_from_config = true;
-  bool set_enc_key_from_config = true;
-  bool compute_anterior = false;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          fragment_info->fragment_info_->load(
-              set_timestamp_range_from_config,
-              set_enc_key_from_config,
-              compute_anterior)))
+  if (SAVE_ERROR_CATCH(ctx, fragment_info->fragment_info_->load()))
     return TILEDB_ERR;
 
   return TILEDB_OK;

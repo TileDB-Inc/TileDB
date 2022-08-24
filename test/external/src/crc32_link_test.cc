@@ -1,11 +1,11 @@
 /**
- * @file print_types.hpp
+ * @file   crc32_lilnk_test.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,29 +27,18 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a compile-time check that prints the types of its
- * arguments.  Useful for debugging type-related compilation problems.
- *
- * Original copyright statements from NWGraph:
- * @copyright SPDX-FileCopyrightText: 2022 Battelle Memorial Institute
- * @copyright SPDX-FileCopyrightText: 2022 University of Washington
- *
- * SPDX-License-Identifier: BSD-3-Clause
- *
- * @authors
- *   Luke D'Alessandro
- *
+ * Tests for linkage to Crc32c
  */
 
-#ifndef PRINT_TYPES_HPP
-#define PRINT_TYPES_HPP
+#include <stdio.h>
 
-template <class... Ts>
-struct print_types_t;
+#include <include/crc32c/crc32c.h>
 
-template <class... Ts>
-constexpr auto print_types(Ts...) {
-  return print_types_t<Ts...>{};
+int main()
+{
+  uint8_t buf[32];
+
+  printf("crc32 of indeterminate buffer is %u\n", crc32c::Crc32c(buf, sizeof(buf)));
+
+  return 0 ;
 }
-
-#endif  // PRINT_TYPES_HPP

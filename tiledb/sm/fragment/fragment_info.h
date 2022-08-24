@@ -242,19 +242,9 @@ class FragmentInfo {
   /**
    * Loads the fragment info from an array.
    *
-   * @param set_timestamp_range_from_config If `true` the timestamps
-   *     will be set by reading them from `config_`.
-   * @param set_key_from_cfg If `true`, the encryption key and type
-   *     will be set by reading them from `config_`.
-   * @param compute_anterior If `true`, all fragments
-   *     will be loaded and `anterior_ndrange` will be computed for
-   *     those that have a start timestamp smaller than `timestamp_start_`.
    * @return Status
    */
-  Status load(
-      bool set_timestamp_range_from_config,
-      bool set_key_from_config,
-      bool compute_anterior);
+  Status load();
 
   /**
    * Loads the fragment info from an array using the input key.
@@ -273,6 +263,7 @@ class FragmentInfo {
    * Loads the fragment info from an array using the input key
    * and timestamps.
    *
+   * @param array_dir The array directory to load the fragments.
    * @param timestamp_start This function will load fragments with
    *      whose timestamps are within [timestamp_start, timestamp_end].
    * @param timestamp_end This function will load fragments with
@@ -280,18 +271,15 @@ class FragmentInfo {
    * @param encryption_type The encryption type.
    * @param encryption_key The encryption key.
    * @param key_length The length of `encryption_key`.
-   * @param compute_anterior If `true`, all fragments
-   *     will be loaded and `anterior_ndrange` will be computed for
-   *     those that have a start timestamp smaller than `timestamp_start_`.
    * @return Status
    */
   Status load(
+      const ArrayDirectory& array_dir,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
       EncryptionType encryption_type,
       const void* encryption_key,
-      uint32_t key_length,
-      bool compute_anterior);
+      uint32_t key_length);
 
   /**
    * It replaces a sequence of SingleFragmentInfo elements in
@@ -321,10 +309,6 @@ class FragmentInfo {
 
   /** Returns the number of fragments with unconsolidated metadata. */
   uint32_t unconsolidated_metadata_num() const;
-
-  /** Returns the location of delete tiles. */
-  const std::vector<ArrayDirectory::DeleteTileLocation>& delete_tiles_location()
-      const;
 
  private:
   /* ********************************* */
@@ -367,21 +351,25 @@ class FragmentInfo {
   /** Timestamp end used in load. */
   uint64_t timestamp_end_;
 
-  /** Delete tile locations. */
-  std::vector<ArrayDirectory::DeleteTileLocation> delete_tiles_location_;
-
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+
+  /** Checks the array URI is valid. */
+  Status check_array_uri();
 
   /** Sets the encryption key (if present) from config_. */
   Status set_enc_key_from_config();
 
   /**
-   * Sets the timestamp range from config_. If not present, the timestamp
-   * range is set to [0, now].
+   * Sets the timestamp range to [0, now].
    */
-  Status set_timestamp_range_from_config();
+  Status set_default_timestamp_range();
+
+  /**
+   * Loads the fragment info from an array using the array directory.
+   */
+  Status load(const ArrayDirectory& array_directory);
 
   /**
    * Loads the fragment metadata of the input URI and returns a

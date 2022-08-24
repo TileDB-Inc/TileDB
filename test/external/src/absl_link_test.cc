@@ -1,3 +1,4 @@
+// clang-format off
 /**
  * @file   absl_lilnk_test.cc
  *
@@ -69,6 +70,7 @@ cloud\storage\CMakeLists.txt:            PRIVATE absl::memory
 cloud\storage\tests\CMakeLists.txt:                absl::strings
 cloud\testing_util\CMakeLists.txt:        PUBLIC absl::symbolize absl::failure_signal_handler
  */
+// clang-format on
 
 #include <stdio.h>
 #include <cstdint>
@@ -79,77 +81,79 @@ cloud\testing_util\CMakeLists.txt:        PUBLIC absl::symbolize absl::failure_s
 #include <include/absl/strings/string_view.h>
 #include <include/absl/strings/numbers.h>
 #include <include/absl/time/clock.h>
-#include <include/absl/hash/hash.h> // absl::flat_hash_map
-#include <include/absl/types/optional.h> // absl::optional
-#include <include/absl/types/variant.h> // absl::variant
-#include <include/absl/base/casts.h> // absl::function_ref
-#include <include/absl/meta/type_traits.h> // absl::function_ref
-#include <absl/strings/str_format.h> // absl::str_format
-#include <include/absl/container/fixed_array.h> // absl::fixed_array
-#include <include/absl/numeric/int128.h> // absl::numeric
+#include <include/absl/hash/hash.h>              // absl::flat_hash_map
+#include <include/absl/types/optional.h>         // absl::optional
+#include <include/absl/types/variant.h>          // absl::variant
+#include <include/absl/base/casts.h>             // absl::function_ref
+#include <include/absl/meta/type_traits.h>       // absl::function_ref
+#include <absl/strings/str_format.h>             // absl::str_format
+#include <include/absl/container/fixed_array.h>  // absl::fixed_array
+#include <include/absl/numeric/int128.h>         // absl::numeric
 #if 0
-// absl::symbolize, absl::failure_signal_handler both in testing_util, not verifying these as
-// we do not build gcs tests.
+// absl::symbolize, absl::failure_signal_handler both in testing_util, not
+// verifying these as we do not build gcs tests.
 #include <include/absl/symbolize/
 #include <include/absl/failure_signal_handler/
 #endif
 
-int main()
-{
-  
-  { // absl::memory target/library seem header only, nothing to attempt to link to.
-  }
-  {// strings
+int main() {
+  {
+      // absl::memory target/library seem header only, nothing to attempt to
+      // link to.
+  } {  // strings
     absl::string_view view_float("5.927");
     float f;
     (void)absl::SimpleAtof(view_float, &f);
     printf("%f\n", f);
   }
-  { // time
+  {  // time
     absl::Time n, b, a;
     b = absl::FromUnixNanos(absl::GetCurrentTimeNanos());
     n = absl::Now();
     a = absl::FromUnixNanos(absl::GetCurrentTimeNanos());
-    if( b > a) {
-      printf("Unexpected b < a... (%s) < a (%s)\n", absl::FormatTime(b).c_str(), absl::FormatTime(a).c_str());
+    if (b > a) {
+      printf(
+          "Unexpected b < a... (%s) < a (%s)\n",
+          absl::FormatTime(b).c_str(),
+          absl::FormatTime(a).c_str());
     }
   }
-  { // hash.h
+  {  // hash.h
     bool is_hashable = std::is_default_constructible<absl::Hash<int>>();
     printf("is_hashable<int>(), %d\n", is_hashable);
   }
-  { // optional
+  {  // optional
     absl::optional<int> empty;
-    if(!empty){
+    if (!empty) {
       printf("empty !empty?\n");
     }
-    if(empty.has_value()) {
+    if (empty.has_value()) {
       printf("empty unexpectedly has value!\n");
     }
   }
-  { // variant
+  {  // variant
     absl::variant<uint64_t> x;
-    if(x.index()){
+    if (x.index()) {
       printf("x.index() unexpectedly != zero\n");
     }
   }
-  { // str_format
-    auto fmtd = absl::StrFormat("%d",123);
-    if( fmtd != std::string("123")){
-      printf("must not work like I guessed, \"%s\" != \"123\"\n",fmtd.c_str());
+  {  // str_format
+    auto fmtd = absl::StrFormat("%d", 123);
+    if (fmtd != std::string("123")) {
+      printf("must not work like I guessed, \"%s\" != \"123\"\n", fmtd.c_str());
     }
   }
-  { // fixed_array
+  {  // fixed_array
     absl::FixedArray<int, 10> fa(5);
     *fa.begin() = atoi("99753");
     printf("fa.begin() %d, fa[0] %d\n", *fa.begin(), fa[0]);
   }
-  { // numeric
-    absl::uint128 u128 { 1299.3 };
+  {  // numeric
+    absl::uint128 u128{1299.3};
     std::stringstream sstr;
-    sstr << "u128 " << u128 ;
+    sstr << "u128 " << u128;
     printf("%s\n", sstr.str().c_str());
   }
 
-  return 0 ;
+  return 0;
 }
