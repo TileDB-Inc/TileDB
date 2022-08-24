@@ -1229,5 +1229,9 @@ Status ArraySchema::generate_uri(
   return Status::Ok();
 }
 
+bool ArraySchema::has_bitsort_filter() {
+  return coords_filters_.has_filter(FilterType::FILTER_BITSORT);
+}
+
 }  // namespace sm
 }  // namespace tiledb

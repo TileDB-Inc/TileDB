@@ -282,7 +282,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param tile The tiles to be filtered.
    * @return Status
    */
-  Status filter_tiles(const std::string& name, WriterTileVector* tiles);
+  Status filter_tiles(const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*> &dim_tiles);
 
   /**
    * Runs the input tile for the input attribute/dimension through the filter
