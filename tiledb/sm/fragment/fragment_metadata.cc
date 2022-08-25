@@ -850,7 +850,8 @@ void FragmentMetadata::store(const EncryptionKey& encryption_key) {
         fragment_uri_.join_path(constants::fragment_metadata_filename);
     throw std::logic_error(
         "FragmentMetadata::store(), unexpected version_ " +
-        std::to_string(version_) + " storing " + fragment_metadata_uri.to_string());
+        std::to_string(version_) + " storing " +
+        fragment_metadata_uri.to_string());
   }
   try {
     if (version_ <= 10) {
@@ -867,8 +868,9 @@ void FragmentMetadata::store(const EncryptionKey& encryption_key) {
     clean_up();
     auto fragment_metadata_uri =
         fragment_uri_.join_path(constants::fragment_metadata_filename);
-    std::throw_with_nested(
-        std::runtime_error("FragmentMetadata::store() failed on " + fragment_metadata_uri.to_string()));
+    std::throw_with_nested(std::runtime_error(
+        "FragmentMetadata::store() failed on " +
+        fragment_metadata_uri.to_string()));
   }
 }
 
