@@ -37,7 +37,6 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
-#include "tiledb/sm/query/global_order_writer.h"
 #include "tiledb/sm/query/query_condition.h"
 
 #ifdef TILEDB_SERIALIZATION
@@ -53,6 +52,7 @@ class Array;
 class Buffer;
 class BufferList;
 class Query;
+class GlobalOrderWriter;
 
 enum class SerializationType : uint8_t;
 

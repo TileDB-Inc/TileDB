@@ -1670,8 +1670,7 @@ void ConsolidationFx::write_dense_full() {
   // Finalize query
   // rc = tiledb_query_finalize(ctx_, query);
   // CHECK(rc == TILEDB_OK);
-  submit_serialized_query(ctx_, query);
-  finalize_serialized_query(ctx_, query);
+  submit_and_finalize_serialized_query(ctx_, query);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -1753,8 +1752,7 @@ void ConsolidationFx::write_dense_subarray(
   // Finalize query
   // rc = tiledb_query_finalize(ctx_, query);
   // CHECK(rc == TILEDB_OK);
-  submit_serialized_query(ctx_, query);
-  finalize_serialized_query(ctx_, query);
+  submit_and_finalize_serialized_query(ctx_, query);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

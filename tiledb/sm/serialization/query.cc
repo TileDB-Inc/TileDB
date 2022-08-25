@@ -61,7 +61,7 @@
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/query/deletes_and_updates/deletes.h"
-#include "tiledb/sm/query/global_order_writer.h"
+#include "tiledb/sm/query/writers/global_order_writer.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
@@ -1896,13 +1896,6 @@ Status query_from_capnp(
     }
   } else if (query_type == QueryType::WRITE) {
     auto writer_reader = query_reader.getWriter();
-
-    // Following other code paths, we need to clear the strategy here.
-    // When creating a backup in query_deserialize (with query_serialize)
-    // we end up creating an OrderedWriter strategy on the Query object:
-    // layout is not properly initialized at the point where we make a
-    // create_strategy() call
-    query->clear_strategy();
     auto writer = dynamic_cast<WriterBase*>(query->strategy());
 
     if (query_reader.hasVarOffsetsMode()) {
@@ -2578,8 +2571,13 @@ Status global_write_state_to_capnp(
         query.array_schema().dim_num()));
 
     // TODO: Can this be done better? Does this make a lot of copies?
-    Buffer buff;
-    frag_meta->rtree().serialize(&buff);
+    SizeComputationSerializer size_computation_serializer;
+    frag_meta->rtree().serialize(size_computation_serializer);
+
+    std::vector<uint8_t> buff(size_computation_serializer.size());
+    Serializer serializer(buff.data(), buff.size());
+    frag_meta->rtree().serialize(serializer);
+
     auto vec = kj::Vector<uint8_t>();
     vec.addAll(
         kj::ArrayPtr<uint8_t>(static_cast<uint8_t*>(buff.data()), buff.size()));
@@ -2799,11 +2797,12 @@ Status global_write_state_from_capnp(
 
     if (frag_meta_reader.hasRtree()) {
       auto data = frag_meta_reader.getRtree();
-      auto cb = ConstBuffer(data.begin(), data.size());
       auto& domain = query.array_schema().domain();
       // If there are no levels, we still need domain_ properly initialized
       frag_meta->rtree() = RTree(&domain, constants::rtree_fanout);
-      frag_meta->rtree().deserialize(&cb, &domain, frag_meta->version());
+      Deserializer deserializer(data.begin(), data.size());
+      frag_meta->rtree().deserialize(
+          deserializer, &domain, frag_meta->version());
     }
   }
 

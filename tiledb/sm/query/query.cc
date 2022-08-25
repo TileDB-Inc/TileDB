@@ -705,7 +705,6 @@ Status Query::submit_and_finalize() {
 
     if (status_ == QueryStatus::UNINITIALIZED) {
       RETURN_NOT_OK(create_strategy());
-      RETURN_NOT_OK(strategy_->init());
     }
     return rest_client->submit_and_finalize_query_to_rest(
         array_->array_uri(), this);
