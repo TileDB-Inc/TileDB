@@ -43,7 +43,9 @@ set(INHERITED_CMAKE_ARGS
   -DTILEDB_TOOLS=${TILEDB_TOOLS}
   -DTILEDB_SERIALIZATION=${TILEDB_SERIALIZATION}
   -DTILEDB_ARROW_TESTS=${TILEDB_ARROW_TESTS}
+  -DTILEDB_CRC32=${TILEDB_CRC32}
   -DTILEDB_WEBP=${TILEDB_WEBP}
+  -DTILEDB_ABSEIL=${TILEDB_ABSEIL}
   -DTILEDB_INSTALL_LIBDIR=${TILEDB_INSTALL_LIBDIR}
   -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
   -DTILEDB_EXPERIMENTAL_FEATURES=${TILEDB_EXPERIMENTAL_FEATURES}
@@ -87,8 +89,17 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindSpdlog_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZlib_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZstd_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindMagic_EP.cmake)
+
+if(TILEDB_CRC32)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCrc32c_EP.cmake)
+endif()
+
 if(TILEDB_WEBP)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindWebp_EP.cmake)
+endif()
+
+if(TILEDB_ABSEIL)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/Findabsl_EP.cmake)
 endif()
 
 if (TILEDB_SERIALIZATION)
@@ -181,20 +192,13 @@ endif()
 if (${CLANG_FORMAT_FOUND})
   message(STATUS "clang hunt, found ${CLANG_FORMAT_BIN}")
   # runs clang format and updates files in place.
+
   add_custom_target(format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 1
-    `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples
-    ${CMAKE_CURRENT_SOURCE_DIR}/tools
-    -name \\*.cc -or -name \\*.c -or -name \\*.h`)
+                    ${CLANG_FORMAT_FIND_FILES})
 
   # runs clang format and exits with a non-zero exit code if any files need to be reformatted
   add_custom_target(check-format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 0
-    `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples
-    ${CMAKE_CURRENT_SOURCE_DIR}/tools
-    -name \\*.cc -or -name \\*.c -or -name \\*.h`)
+                    ${CLANG_FORMAT_FIND_FILES})
 else()
   message(STATUS "was unable to find clang-format")
 endif()

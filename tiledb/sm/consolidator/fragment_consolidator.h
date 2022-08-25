@@ -122,10 +122,25 @@ class FragmentConsolidator : public Consolidator {
   /**
    * Performs the vacuuming operation.
    *
-   * @param array_name URI of array to consolidate.
+   * @param array_name URI of array to vacuum.
    * @return Status
    */
   Status vacuum(const char* array_name);
+
+  /**
+   * Performs the vacuuming operation.
+   *
+   * @param array_name URI of array to vacuum.
+   * @param timestamp_start The start timestamp at which to vacuum.
+   * @param timestamp_end The end timestamp at which to vacuum.
+   * @param for_deletes True if vacuumuming for deletion of fragments.
+   * @return Status
+   */
+  Status vacuum(
+      const char* array_name,
+      uint64_t timestamp_start = 0,
+      uint64_t timestamp_end = std::numeric_limits<uint64_t>::max(),
+      bool for_deletes = false);
 
  private:
   /* ********************************* */

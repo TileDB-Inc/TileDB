@@ -411,6 +411,21 @@ class StorageManager {
       const Config* config);
 
   /**
+   * Cleans up the array fragments.
+   *
+   * @param array_name The name of the array to be vacuumed.
+   * @param timestamp_start The start timestamp at which to vacuum.
+   * @param timestamp_end The end timestamp at which to vacuum.
+   * @param for_deletes True if vacuumuming for deletion of fragments.
+   * @return Status
+   */
+  Status fragments_vacuum(
+      const char* array_name,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      bool for_deletes);
+
+  /**
    * Cleans up the array, such as its consolidated fragments and array
    * metadata. Note that this will coarsen the granularity of time traveling
    * (see docs for more information).

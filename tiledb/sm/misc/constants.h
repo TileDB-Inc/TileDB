@@ -269,6 +269,9 @@ extern const std::string query_type_write_str;
 /** TILEDB_DELETE Query String **/
 extern const std::string query_type_delete_str;
 
+/** TILEDB_MODIFY_EXCLUSIVE Query String **/
+extern const std::string query_type_modify_exclusive_str;
+
 /** TILEDB_FAILED Query String **/
 extern const std::string query_status_failed_str;
 
@@ -370,6 +373,9 @@ extern const std::string filter_dictionary_str;
 
 /** String describing FILTER_SCALE_FLOAT. */
 extern const std::string filter_scale_float_str;
+
+/** String describing FILTER_XOR. */
+extern const std::string filter_xor_str;
 
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;

@@ -124,7 +124,9 @@ option(TILEDB_TOOLS "If true, enables building the TileDB tools" OFF)
 option(TILEDB_SERIALIZATION "If true, enables building with support for query serialization" OFF)
 option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
 option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit tests" OFF)
+option(TILEDB_CRC32 "If true, enables building crc32 and a simple linkage test" OFF)
 option(TILEDB_WEBP "If true, enables building webp and a simple linkage test" OFF)
+option(TILEDB_ABSEIL "If true, enables building abseil and a simple linkage test" OFF)
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
 option(TILEDB_EXPERIMENTAL_FEATURES "If true, build and include experimental features" OFF)
@@ -146,7 +148,7 @@ if (WIN32 AND NOT TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK)
 endif()
 
 # enable assertions by default for debug builds
-if (CMAKE_BUILD_TYPE EQUAL "Debug")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(TILEDB_ASSERTIONS TRUE)
 endif()
 include(TileDBAssertions)
@@ -204,6 +206,8 @@ set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 
 # Set compiler flags
 if (MSVC)
+  # Turn on standards-conformance mode
+  add_compile_options("/permissive-")
   # We disable some warnings that are not present in gcc/clang -Wall:
   #   C4101: unreferenced local variable
   #   C4146: unary minus operator applied to unsigned type
@@ -213,12 +217,18 @@ if (MSVC)
   #   C4457: local variable hiding function parameter
   #   C4702: unreachable code
   #   C4800: warning implicit cast int to bool
-  #   C4996: deprecation warning about e.g. sscanf.
-  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800 /wd4996)
+  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800)
   # Warnings as errors:
   if (TILEDB_WERROR)
     add_compile_options(/WX)
   endif()
+  # Turn off MSVC deprecation of certain standard library functions. This allows
+  # other deprecations to remain visible.
+  add_compile_definitions("_CRT_SECURE_NO_WARNINGS")
+  # We currently need to suppress warnings about deprecation (C4996) for two cases:
+  #   1. C++ API functions that call deprecated C API functions
+  #   2. two warnings in `test/src/helpers.cc` that call deprecated C API functions
+  add_compile_options(/wd4996)
   # Disable GDI (which we don't need, and causes some macro
   # re-definition issues if wingdi.h is included)
   add_compile_options(/DNOGDI)
@@ -424,6 +434,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_exception unit_interval unit_thread_pool unit_experimental)
   add_dependencies(tests unit_array_schema unit_filter_create unit_filter_pipeline unit_metadata)
   add_dependencies(tests unit_compressors unit_query unit_misc unit_vfs unit_array)
+  add_dependencies(tests unit_config)
   add_dependencies(tests unit_range_subset)
   add_dependencies(tests unit_consistency)
   add_dependencies(tests unit_range)
@@ -432,8 +443,16 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_ast)
   add_dependencies(tests unit_serializers)
 
+  if (TILEDB_CRC32)
+    add_dependencies(tests unit_link_crc32)
+  endif()
+
   if (TILEDB_WEBP)
     add_dependencies(tests unit_link_webp)
+  endif()
+
+  if (TILEDB_ABSEIL)
+    add_dependencies(tests unit_link_absl)
   endif()
 
   if (ENABLE_MAGIC_TEST)

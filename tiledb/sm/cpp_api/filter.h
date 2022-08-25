@@ -279,6 +279,8 @@ class Filter {
         return "DICTIONARY_ENCODING";
       case TILEDB_FILTER_SCALE_FLOAT:
         return "SCALE_FLOAT";
+      case TILEDB_FILTER_XOR:
+        return "XOR";
     }
     return "";
   }

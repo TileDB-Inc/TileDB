@@ -54,7 +54,9 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/filter/float_scaling_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
+#include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/stdx/utility/to_underlying.h"
 
 #include <test/support/tdb_catch.h>
 #include <functional>
@@ -4048,4 +4050,83 @@ TEMPLATE_TEST_CASE(
     int64_t) {
   testing_float_scaling_filter<float, TestType>();
   testing_float_scaling_filter<double, TestType>();
+}
+
+/*
+ Defining distribution types to pass into the testing_xor_filter function.
+ */
+typedef typename std::uniform_int_distribution<int64_t> IntDistribution;
+typedef typename std::uniform_real_distribution<double> FloatDistribution;
+
+template <typename T, typename Distribution = IntDistribution>
+void testing_xor_filter(Datatype t) {
+  tiledb::sm::Config config;
+
+  // Set up test data
+  const uint64_t nelts = 100;
+  const uint64_t tile_size = nelts * sizeof(T);
+  const uint64_t cell_size = sizeof(T);
+  const uint32_t dim_num = 0;
+
+  Tile tile;
+  tile.init_unfiltered(
+      constants::format_version, t, tile_size, cell_size, dim_num);
+
+  // Setting up the random number generator for the XOR filter testing.
+  std::mt19937_64 gen(0x57A672DE);
+  Distribution dis(
+      std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
+
+  std::vector<T> results;
+
+  for (uint64_t i = 0; i < nelts; i++) {
+    T val = static_cast<T>(dis(gen));
+    CHECK(tile.write(&val, i * sizeof(T), sizeof(T)).ok());
+    results.push_back(val);
+  }
+
+  FilterPipeline pipeline;
+  ThreadPool tp(4);
+  CHECK(pipeline.add_filter(XORFilter()).ok());
+
+  CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
+
+  // Check new size and number of chunks
+  CHECK(tile.size() == 0);
+  CHECK(tile.filtered_buffer().size() != 0);
+  CHECK(tile.alloc_data(nelts * sizeof(T)).ok());
+  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .ok());
+  for (uint64_t i = 0; i < nelts; i++) {
+    T elt = 0;
+    CHECK(tile.read(&elt, i * sizeof(T), sizeof(T)).ok());
+    CHECK(elt == results[i]);
+  }
+}
+
+TEST_CASE("Filter: Test XOR", "[filter][xor]") {
+  testing_xor_filter<int8_t>(Datatype::INT8);
+  testing_xor_filter<uint8_t>(Datatype::UINT8);
+  testing_xor_filter<int16_t>(Datatype::INT16);
+  testing_xor_filter<uint16_t>(Datatype::UINT16);
+  testing_xor_filter<int32_t>(Datatype::INT32);
+  testing_xor_filter<uint32_t>(Datatype::UINT32);
+  testing_xor_filter<int64_t>(Datatype::INT64);
+  testing_xor_filter<uint64_t>(Datatype::UINT64);
+  testing_xor_filter<float, FloatDistribution>(Datatype::FLOAT32);
+  testing_xor_filter<double, FloatDistribution>(Datatype::FLOAT64);
+  testing_xor_filter<char>(Datatype::CHAR);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_YEAR);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_MONTH);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_WEEK);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_DAY);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_HR);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_MIN);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_SEC);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_MS);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_US);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_NS);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_PS);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_FS);
+  testing_xor_filter<int64_t>(Datatype::DATETIME_AS);
 }
