@@ -680,7 +680,9 @@ Status WriterBase::filter_tiles(
   auto timer_se = stats_->start_timer("filter_tiles");
 
   std::vector<WriterTileVector*> dim_tiles;
-  if (array_schema_.has_bitsort_filter()) {
+  // has_bitsort_filter gives an attribute name and we pass in dim_tiles to only this attribute.
+  auto attr_value = array_schema_.has_bitsort_filter();
+  if (attr_value) {
     for (const auto &name : array_schema_.dim_names()) {
       dim_tiles.push_back(&((*tiles)[name]));
     }
@@ -693,7 +695,11 @@ Status WriterBase::filter_tiles(
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
         const auto& name = buff_it->first;
-        RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name]), dim_tiles));
+        if (attr_value && attr_value.value() == name) {
+          RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name]), dim_tiles));
+        } else {
+          RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
+        }
         return Status::Ok();
       });
 
@@ -704,6 +710,12 @@ Status WriterBase::filter_tiles(
 
 Status WriterBase::filter_tiles(
     const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*> &dim_tiles) {
+  // Constraints: attribute must be sized
+
+}
+
+Status WriterBase::filter_tiles(
+    const std::string& name, WriterTileVector* tiles) {
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
 
@@ -724,8 +736,6 @@ Status WriterBase::filter_tiles(
       args.emplace_back(&tile.validity_tile(), nullptr, false, true);
     }
   }
-
-  // Where do I process dim_tiles?
 
   // For fixed size, process everything, for var size, everything minus offsets.
   auto status = parallel_for(

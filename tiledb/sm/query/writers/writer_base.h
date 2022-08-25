@@ -289,6 +289,16 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status filter_tiles(const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*> &dim_tiles);
 
   /**
+   * @brief Function overload to handle dim tiles.
+   * 
+   * @param name 
+   * @param tiles 
+   * @param dim_tiles 
+   * @return Status 
+   */
+  Status filter_tiles(const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*> &dim_tiles);
+
+  /**
    * Runs the input tile for the input attribute/dimension through the filter
    * pipeline. The tile buffer is modified to contain the output of the
    * pipeline.

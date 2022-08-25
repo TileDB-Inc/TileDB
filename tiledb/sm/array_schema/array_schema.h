@@ -445,7 +445,7 @@ class ArraySchema {
   Status generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range);
 
   /** Returns whether the array schema's list of filters contains the bitsort filter. */
-  bool has_bitsort_filter();
+  std::optional<std::string> has_bitsort_filter();
 
  private:
   /* ********************************* */
