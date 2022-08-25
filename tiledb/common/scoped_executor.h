@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -73,19 +73,6 @@ class ScopedExecutor final {
 
   DISABLE_COPY_AND_COPY_ASSIGN(ScopedExecutor);
   DISABLE_MOVE_ASSIGN(ScopedExecutor);
-
-  /**
-   * Helper method to allow setting/changing function as needed.
-   * This can be used to change/disable a function should a routine
-   * need to disable or modify a prior function that may have been
-   * intended for premature/error exit cleanup and would cause problems
-   * if exited at some point later than appropriate.
-   *
-   * @param fn the function to install
-   */
-  void set_fn(std::function<void()>&& fn) {
-    fn_ = fn;
-  }
 
  private:
   /* ********************************* */

@@ -282,7 +282,7 @@ class FragmentMetadata {
       std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
   /** Stores all the metadata to storage. */
-  Status store(const EncryptionKey& encryption_key);
+  void store(const EncryptionKey& encryption_key);
 
   /**
    * Stores all the metadata to storage.

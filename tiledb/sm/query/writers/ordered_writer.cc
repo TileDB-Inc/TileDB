@@ -296,9 +296,12 @@ Status OrderedWriter::ordered_write() {
       storage_manager_->vfs()->remove_dir(uri));
 
   // Write the fragment metadata
-  RETURN_CANCEL_OR_ERROR_ELSE(
-      frag_meta->store(array_->get_encryption_key()),
-      storage_manager_->vfs()->remove_dir(uri));
+  try {
+    frag_meta->store(array_->get_encryption_key());
+  } catch (...) {
+    storage_manager_->vfs()->remove_dir(uri);
+    throw;
+  }
 
   // Add written fragment info
   RETURN_NOT_OK_ELSE(
