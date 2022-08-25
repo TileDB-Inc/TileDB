@@ -296,9 +296,6 @@ TILEDB_EXPORT int32_t tiledb_query_get_relevant_fragment_num(
 /*        QUERY STATUS DETAILS       */
 /* ********************************* */
 
-/** This should move to c_api/tiledb.h when stabilized */
-typedef struct tiledb_query_status_details_t tiledb_query_status_details_t;
-
 /** TileDB query status details type. */
 typedef enum {
 /** Helper macro for defining status details type enums. */
@@ -308,9 +305,9 @@ typedef enum {
 } tiledb_query_status_details_reason_t;
 
 /** This should move to c_api/tiledb_struct_defs.h when stabilized */
-struct tiledb_query_status_details_t {
+typedef struct tiledb_experimental_query_status_details_t {
   tiledb_query_status_details_reason_t incomplete_reason;
-};
+} tiledb_query_status_details_t;
 
 /**
  * Get extended query status details.
