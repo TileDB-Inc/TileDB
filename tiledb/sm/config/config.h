@@ -568,7 +568,9 @@ class Config {
    * @param key The name of the configuration parameter
    * @return If a configuration item is present, its value. If not, `nullopt`.
    */
-  [[nodiscard]] optional<std::string> get(const std::string& key) const;
+  [[nodiscard]] inline optional<std::string> get(const std::string& key) const {
+    return get_private<false>(key);
+  }
 
   /**
    * Retrieve the string value of a configuration parameter and convert it to
@@ -578,7 +580,18 @@ class Config {
    * @return If a configuration item is present, its value. If not, `nullopt`.
    */
   template <class T>
-  [[nodiscard]] optional<T> get(const std::string& key) const;
+  [[nodiscard]] inline optional<T> get(const std::string& key) const {
+    return get_private<T, false>(key);
+  }
+
+  /**
+   * Retrieves the value of the given parameter in the templated type.
+   * Throws Status_ConfigError if config value could not be found
+   */
+  template <class T>
+  inline T get(const std::string& key, const MustFindMarker&) const {
+    return get_private<T, true>(key).value();
+  }
 
   /**
    * Returns the string representation of a config parameter value.
@@ -598,22 +611,6 @@ class Config {
   TILEDB_DEPRECATE_CONFIG
   template <class T>
   Status get(const std::string& param, T* value, bool* found) const;
-
-  /**
-   * Retrieves a string value of the given parameter.
-   * Throws Status_ConfigError if config value could not be found
-   */
-  std::string get(
-      const std::string& key,
-      [[maybe_unused]] const MustFindMarker& marker) const;
-
-  /**
-   * Retrieves the value of the given parameter in the templated type.
-   * Throws Status_ConfigError if config value could not be found
-   */
-  template <class T>
-  T get(const std::string& key, [[maybe_unused]] const MustFindMarker& marker)
-      const;
 
   /**
    * Retrieves the value of the given parameter in the templated type.
@@ -710,6 +707,12 @@ class Config {
    */
   const char* get_from_config_or_env(
       const std::string& param, bool* found) const;
+
+  template <class T, bool must_find>
+  optional<T> get_private(const std::string& key) const;
+
+  template <bool must_find>
+  optional<std::string> get_private(const std::string& key) const;
 };
 
 /**
@@ -719,7 +722,13 @@ class Config {
 template <>
 [[nodiscard]] inline optional<std::string> Config::get<std::string>(
     const std::string& key) const {
-  return get(key);
+  return get_private<false>(key);
+}
+
+template <>
+inline std::string Config::get<std::string>(
+    const std::string& key, const Config::MustFindMarker&) const {
+  return get_private<true>(key).value();
 }
 
 }  // namespace tiledb::sm
