@@ -855,11 +855,11 @@ void FragmentMetadata::store(const EncryptionKey& encryption_key) {
   }
   try {
     if (version_ <= 10) {
-      store_v7_v10(encryption_key);
+      throw_if_not_ok(store_v7_v10(encryption_key));
     } else if (version_ == 11) {
-      store_v11(encryption_key);
+      throw_if_not_ok(store_v11(encryption_key));
     } else if (version_ <= 14) {
-      store_v12_v14(encryption_key);
+      throw_if_not_ok(store_v12_v14(encryption_key));
     } else {
       store_v15_or_higher(encryption_key);
     }
