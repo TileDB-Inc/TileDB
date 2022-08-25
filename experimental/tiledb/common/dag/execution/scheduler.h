@@ -31,7 +31,9 @@
  */
 
 #ifndef TILEDB_DAG_SCHEDULER_H
-#define TILEDB_DAG_SCHEDULER_HH
+#define TILEDB_DAG_SCHEDULER_H
+
+#include "experimental/tiledb/common/dag/execution/threadpool.h"
 
 namespace tiledb::common {
 
@@ -41,6 +43,8 @@ namespace tiledb::common {
  * The scheduler owns a thread pool. It is also an active object; at least one
  * thread in its pool is dedicated to its own operation.
  */
+#if 0
+
 template <class Block>
 class Scheduler {
   ThreadPool tp_;
@@ -54,6 +58,7 @@ class Scheduler {
   // wakeup(Source *);
   // wakeup(Sink *);
 };
+#endif
 
 }  // namespace tiledb::common
-#endif  // TILEDB_DAG_SCHEDULER_HH
+#endif  // TILEDB_DAG_SCHEDULER_H

@@ -1,11 +1,11 @@
 /**
- * @file compile_fsm_main.cc
+ * @file compile_edge_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,9 +26,19 @@
  * THE SOFTWARE.
  */
 
-#include "../ports.h"
+#include "../edge.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#include "experimental/tiledb/common/dag/state_machine/policies.h"
+#include "experimental/tiledb/common/dag/state_machine/test/types.h"
 
+using namespace tiledb::common;
 int main() {
-  (void)sizeof(tiledb::common::PortStateMachine);
-  return 0;
+  (void)sizeof(Edge<NullMover2, size_t>);
+  (void)sizeof(Edge<NullMover3, size_t>);
+  (void)sizeof(Edge<DebugMover2, size_t>);
+  (void)sizeof(Edge<DebugMover3, size_t>);
+  (void)sizeof(Edge<ManualMover2, size_t>);
+  (void)sizeof(Edge<ManualMover3, size_t>);
+  (void)sizeof(Edge<AsyncMover2, size_t>);
+  (void)sizeof(Edge<AsyncMover3, size_t>);
 }
