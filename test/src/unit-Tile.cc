@@ -39,20 +39,13 @@
 using namespace tiledb::sm;
 
 TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
-  // Instantiate the test Tile.
-  Tile tile;
-  CHECK(tile.empty());
-  CHECK(tile.size() == 0);
-
   // Initialize the test Tile.
   const uint32_t format_version = 0;
   const Datatype data_type = Datatype::UINT32;
   const uint64_t tile_size = 1024 * 1024;
   const uint64_t cell_size = sizeof(uint32_t);
   const unsigned int dim_num = 1;
-  CHECK(tile.init_unfiltered(
-                format_version, data_type, tile_size, cell_size, dim_num)
-            .ok());
+  Tile tile(format_version, data_type, cell_size, dim_num, tile_size, 0);
   CHECK(tile.size() == tile_size);
 
   // Create a buffer to write to the test Tile.
@@ -64,7 +57,6 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
 
   // Write the buffer to the test Tile.
   CHECK(tile.write(write_buffer, 0, tile_size).ok());
-  CHECK(!tile.empty());
   CHECK(tile.size() == tile_size);
 
   // Ensure the internal data was deep-copied:
@@ -128,16 +120,12 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
 
 TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
   // Instantiate and initialize the first test Tile.
-  Tile tile1;
   const uint32_t format_version = 0;
   const Datatype data_type = Datatype::UINT32;
   const uint64_t tile_size = 1024 * 1024;
   const uint64_t cell_size = sizeof(uint32_t);
   const unsigned int dim_num = 1;
-  CHECK(tile1
-            .init_unfiltered(
-                format_version, data_type, tile_size, cell_size, dim_num)
-            .ok());
+  Tile tile1(format_version, data_type, cell_size, dim_num, tile_size, 0);
 
   // Create a buffer to write to the first test Tile.
   const uint32_t buffer_len = tile_size / sizeof(uint32_t);
@@ -156,7 +144,6 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
   CHECK(tile2.cell_size() == cell_size);
   CHECK(tile2.cell_num() == buffer_len);
   CHECK(tile2.zipped_coords_dim_num() == dim_num);
-  CHECK(tile2.empty() == false);
   CHECK(tile2.filtered() == false);
   CHECK(tile2.format_version() == format_version);
   CHECK(tile2.size() == tile_size);
@@ -177,16 +164,12 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
 
 TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
   // Instantiate and initialize the first test Tile.
-  Tile tile1;
   const uint32_t format_version = 0;
   const Datatype data_type = Datatype::UINT32;
   const uint64_t tile_size = 1024 * 1024;
   const uint64_t cell_size = sizeof(uint32_t);
   const unsigned int dim_num = 1;
-  CHECK(tile1
-            .init_unfiltered(
-                format_version, data_type, tile_size, cell_size, dim_num)
-            .ok());
+  Tile tile1(format_version, data_type, cell_size, dim_num, tile_size, 0);
 
   // Create a buffer to write to the first test Tile.
   const uint32_t buffer_len = tile_size / sizeof(uint32_t);
@@ -205,7 +188,6 @@ TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
   CHECK(tile2.cell_size() == cell_size);
   CHECK(tile2.cell_num() == buffer_len);
   CHECK(tile2.zipped_coords_dim_num() == dim_num);
-  CHECK(tile2.empty() == false);
   CHECK(tile2.filtered() == false);
   CHECK(tile2.format_version() == format_version);
   CHECK(tile2.size() == tile_size);

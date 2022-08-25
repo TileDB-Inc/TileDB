@@ -86,31 +86,32 @@ void Tile::set_max_tile_chunk_size(uint64_t max_tile_chunk_size) {
 }
 
 Tile Tile::from_generic(storage_size_t tile_size) {
-  Tile tile;
-  if (!tile.init_unfiltered(
-               0,
-               constants::generic_tile_datatype,
-               tile_size,
-               constants::generic_tile_cell_size,
-               0)
-           .ok()) {
-    throw TileStatusException("Cannot initialize tile");
-  }
-  return tile;
+  return {0,
+          constants::generic_tile_datatype,
+          constants::generic_tile_cell_size,
+          0,
+          tile_size,
+          0};
 }
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Tile::Tile()
-    : data_(nullptr, tiledb_free)
-    , size_(0)
-    , cell_size_(0)
-    , zipped_coords_dim_num_(0)
-    , format_version_(0)
-    , type_(Datatype::INT32)
-    , filtered_buffer_(0) {
+Tile::Tile(
+    const uint32_t format_version,
+    const Datatype type,
+    const uint64_t cell_size,
+    const unsigned int zipped_coords_dim_num,
+    const uint64_t size,
+    const uint64_t filtered_size)
+    : data_(static_cast<char*>(tdb_malloc(size)), tiledb_free)
+    , size_(size)
+    , cell_size_(cell_size)
+    , zipped_coords_dim_num_(zipped_coords_dim_num)
+    , format_version_(format_version)
+    , type_(type)
+    , filtered_buffer_(filtered_size) {
 }
 
 Tile::Tile(
@@ -129,9 +130,13 @@ Tile::Tile(
 }
 
 Tile::Tile(Tile&& tile)
-    : Tile() {
-  // Swap with the argument
-  swap(tile);
+    : data_(std::move(tile.data_))
+    , size_(std::move(tile.size_))
+    , cell_size_(std::move(tile.cell_size_))
+    , zipped_coords_dim_num_(std::move(tile.zipped_coords_dim_num_))
+    , format_version_(std::move(tile.format_version_))
+    , type_(std::move(tile.type_))
+    , filtered_buffer_(std::move(tile.filtered_buffer_)) {
 }
 
 Tile& Tile::operator=(Tile&& tile) {
@@ -149,69 +154,9 @@ uint64_t Tile::cell_num() const {
   return size() / cell_size_;
 }
 
-Status Tile::init_unfiltered(
-    uint32_t format_version,
-    Datatype type,
-    uint64_t tile_size,
-    uint64_t cell_size,
-    unsigned int dim_num,
-    bool fill_with_zeros) {
-  cell_size_ = cell_size;
-  zipped_coords_dim_num_ = dim_num;
-  type_ = type;
-  format_version_ = format_version;
-
-  if (tile_size > 0) {
-    data_.reset(static_cast<char*>(tdb_malloc(tile_size)));
-    if (data_ == nullptr)
-      return LOG_STATUS(
-          Status_TileError("Cannot initialize tile; Buffer allocation failed"));
-  } else {
-    data_ = nullptr;
-  }
-
-  if (fill_with_zeros && tile_size > 0) {
-    memset(data_.get(), 0, tile_size);
-  }
-  size_ = tile_size;
-
-  return Status::Ok();
-}
-
-Status Tile::init_filtered(
-    uint32_t format_version,
-    Datatype type,
-    uint64_t cell_size,
-    unsigned int zipped_coords_dim_num) {
-  cell_size_ = cell_size;
-  zipped_coords_dim_num_ = zipped_coords_dim_num;
-  type_ = type;
-  format_version_ = format_version;
-  size_ = 0;
-
-  return Status::Ok();
-}
-
 void Tile::clear_data() {
   data_ = nullptr;
   size_ = 0;
-}
-
-Status Tile::alloc_data(uint64_t size) {
-  assert(data_ == nullptr);
-  data_.reset(static_cast<char*>(tdb_malloc(size)));
-  if (data_ == nullptr) {
-    return LOG_STATUS(
-        Status_TileError("Cannot allocate buffer; Memory allocation failed"));
-  }
-  size_ = size;
-
-  return Status::Ok();
-}
-
-bool Tile::empty() const {
-  assert(!filtered());
-  return data_ == nullptr;
 }
 
 Status Tile::read(

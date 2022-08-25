@@ -1921,7 +1921,6 @@ Status StorageManagerCanonical::read_from_cache(
     bool* in_cache) const {
   std::stringstream key;
   key << uri.to_string() << "+" << offset;
-  buffer.expand(nbytes);
   RETURN_NOT_OK(tile_cache_->read(key.str(), buffer, 0, nbytes, in_cache));
 
   return Status::Ok();
