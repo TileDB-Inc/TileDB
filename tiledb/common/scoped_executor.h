@@ -74,6 +74,10 @@ class ScopedExecutor final {
   DISABLE_COPY_AND_COPY_ASSIGN(ScopedExecutor);
   DISABLE_MOVE_ASSIGN(ScopedExecutor);
 
+  void set_fn(std::function<void()>&& fn) {
+    fn_ = fn;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

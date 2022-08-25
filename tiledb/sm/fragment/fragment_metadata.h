@@ -1666,7 +1666,7 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written.
    * @return Status
    */
-  Status store_processed_conditions(
+  void store_processed_conditions(
       const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**

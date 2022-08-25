@@ -1102,17 +1102,20 @@ Status FragmentMetadata::store_v15_or_higher(
   auto num = num_dims_and_attrs();
   uint64_t offset = 0, nbytes;
 
+  // provide for error clean up on early exits.
+  ScopedExecutor premature_exit_cleanup([this]() { clean_up(); });
+
   // Store R-Tree
   gt_offsets_.rtree_ = offset;
-  RETURN_NOT_OK_ELSE(store_rtree(encryption_key, &nbytes), clean_up());
+  RETURN_NOT_OK(store_rtree(encryption_key, &nbytes));
   offset += nbytes;
 
   // Store tile offsets
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_offsets(i, encryption_key, &nbytes), clean_up());
+    RETURN_NOT_OK(
+        store_tile_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1120,8 +1123,8 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_var_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_var_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_var_offsets(i, encryption_key, &nbytes), clean_up());
+    RETURN_NOT_OK(
+        store_tile_var_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1129,8 +1132,8 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_var_sizes_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_var_sizes_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_var_sizes(i, encryption_key, &nbytes), clean_up());
+    RETURN_NOT_OK(
+        store_tile_var_sizes(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1138,8 +1141,8 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_validity_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_validity_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_validity_offsets(i, encryption_key, &nbytes), clean_up());
+    RETURN_NOT_OK(
+        store_tile_validity_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1147,7 +1150,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_min_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_min_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(store_tile_mins(i, encryption_key, &nbytes), clean_up());
+    RETURN_NOT_OK(store_tile_mins(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1155,7 +1158,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_max_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_max_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(store_tile_maxs(i, encryption_key, &nbytes), clean_up());
+    RETURN_NOT_OK(store_tile_maxs(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1163,7 +1166,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_sum_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_sum_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(store_tile_sums(i, encryption_key, &nbytes), clean_up());
+    RETURN_NOT_OK(store_tile_sums(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1171,27 +1174,27 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_null_count_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_null_count_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_null_counts(i, encryption_key, &nbytes), clean_up());
+    RETURN_NOT_OK(
+        store_tile_null_counts(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
   // Store fragment min, max, sum and null count
   gt_offsets_.fragment_min_max_sum_null_count_offset_ = offset;
-  RETURN_NOT_OK_ELSE(
-      store_fragment_min_max_sum_null_count(num, encryption_key, &nbytes),
-      clean_up());
+  RETURN_NOT_OK(
+      store_fragment_min_max_sum_null_count(num, encryption_key, &nbytes));
   offset += nbytes;
 
   // Store processed condition
   gt_offsets_.processed_conditions_offsets_ = offset;
-  RETURN_NOT_OK_ELSE(
-      store_processed_conditions(encryption_key, &nbytes), clean_up());
+  store_processed_conditions(encryption_key, &nbytes);
   offset += nbytes;
 
   // Store footer
-  RETURN_NOT_OK_ELSE(store_footer(encryption_key), clean_up());
+  RETURN_NOT_OK(store_footer(encryption_key));
 
+  // disable the premature exit cleanup action (don't delete the fragment file)
+  premature_exit_cleanup.set_fn([]() {});  
   // Close file
   return storage_manager_->close_file(fragment_metadata_uri);
 }
@@ -4800,7 +4803,7 @@ Status FragmentMetadata::store_fragment_min_max_sum_null_count(
   return Status::Ok();
 }
 
-Status FragmentMetadata::store_processed_conditions(
+void FragmentMetadata::store_processed_conditions(
     const EncryptionKey& encryption_key, uint64_t* nbytes) {
   auto serialize_processed_conditions = [this](Serializer& serializer) {
     // Store num conditions.
@@ -4817,26 +4820,15 @@ Status FragmentMetadata::store_processed_conditions(
   SizeComputationSerializer size_computation_serializer;
   serialize_processed_conditions(size_computation_serializer);
 
-  Tile tile;
-  if (!tile.init_unfiltered(
-               0,
-               constants::generic_tile_datatype,
-               size_computation_serializer.size(),
-               constants::generic_tile_cell_size,
-               0)
-           .ok()) {
-    throw FragmentMetadataStatusException("Cannot initialize tile");
-  }
+  Tile tile{Tile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   serialize_processed_conditions(serializer);
 
-  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, tile, nbytes));
+  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
 
   storage_manager_->stats()->add_counter(
       "write_processed_conditions_size", *nbytes);
-
-  return Status::Ok();
 }
 
 template <class T>
