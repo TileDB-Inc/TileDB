@@ -127,18 +127,17 @@ template <class PortState>
 static std::vector<std::string> port_state_strings;
 
 template <>
-std::vector<std::string> port_state_strings<two_stage>{
-    "st_00",
-    "st_01",
-    "st_10",
-    "st_11",
-    "xt_00",
-    "xt_01",
-    "xt_10",
-    "xt_11",
-    "done",
-    "error",
-    "last"};
+std::vector<std::string> port_state_strings<two_stage>{"st_00",
+                                                       "st_01",
+                                                       "st_10",
+                                                       "st_11",
+                                                       "xt_00",
+                                                       "xt_01",
+                                                       "xt_10",
+                                                       "xt_11",
+                                                       "done",
+                                                       "error",
+                                                       "last"};
 
 template <>
 std::vector<std::string> port_state_strings<three_stage>{

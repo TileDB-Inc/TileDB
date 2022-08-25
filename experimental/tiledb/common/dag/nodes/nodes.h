@@ -504,18 +504,23 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
 
 /**
  * Function node. Constructed with function that accepts a Block and returns
- * a Block.  Derived from both `Sink` and `Source`.  The `FunctionNode` accepts an item on its `Sink` and submits it to its `Source`
+ * a Block.  Derived from both `Sink` and `Source`.  The `FunctionNode` accepts
+ * an item on its `Sink` and submits it to its `Source`
  *
- * @tparam SinkMover_T The type of item mover to be used by the `Sink` part of this class.  The class
- * can invoke any of the functions in the mover.  The `Source` part of the `FunctionNode` will invoke
- * `do_fill`, `do_push`, `inject`, and `do_stop`.
+ * @tparam SinkMover_T The type of item mover to be used by the `Sink` part of
+ * this class.  The class can invoke any of the functions in the mover.  The
+ * `Source` part of the `FunctionNode` will invoke `do_fill`, `do_push`,
+ * `inject`, and `do_stop`.
  *
- * @tparam SourceMover_T The type of item mover to be used with the `ProducerNode` part of thi class. It
- * is a template template to be composed with `Block`.  
+ * @tparam SourceMover_T The type of item mover to be used with the
+ * `ProducerNode` part of thi class. It is a template template to be composed
+ * with `Block`.
  *
- * @tparam BlockIn The type of item to be consumed by the `Sink` part of the `ProducerNode`.
+ * @tparam BlockIn The type of item to be consumed by the `Sink` part of the
+ * `ProducerNode`.
  *
- * @tparam BlockIn The type of item to be produced by the `Source` part of the `ProducerNode`.
+ * @tparam BlockIn The type of item to be produced by the `Source` part of the
+ * `ProducerNode`.
  */
 template <
     template <class>

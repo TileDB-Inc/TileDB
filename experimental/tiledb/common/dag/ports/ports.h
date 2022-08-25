@@ -191,13 +191,13 @@ class Source : public Port<Mover_T, Block> {
   }
 };
 
-  /**
-   * A data flow sink, used by both edges and nodes.
-   *
-   * Sink objects have two states: emptty and full.  Their functionality is
-   * determined by the states (and policies) of the `Mover`.  Their
-   * functionality is determined by the states (and policies) of the `Mover`.
-   */
+/**
+ * A data flow sink, used by both edges and nodes.
+ *
+ * Sink objects have two states: emptty and full.  Their functionality is
+ * determined by the states (and policies) of the `Mover`.  Their
+ * functionality is determined by the states (and policies) of the `Mover`.
+ */
 template <template <class> class Mover_T, class Block>
 class Sink : public Port<Mover_T, Block> {
   using Port<Mover_T, Block>::Port;
