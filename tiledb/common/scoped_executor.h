@@ -80,7 +80,7 @@ class ScopedExecutor final {
    * need to disable or modify a prior function that may have been
    * intended for premature/error exit cleanup and would cause problems
    * if exited at some point later than appropriate.
-   * 
+   *
    * @param fn the function to install
    */
   void set_fn(std::function<void()>&& fn) {

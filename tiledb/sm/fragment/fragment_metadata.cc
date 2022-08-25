@@ -1114,8 +1114,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_offsets_[i] = offset;
-    RETURN_NOT_OK(
-        store_tile_offsets(i, encryption_key, &nbytes));
+    RETURN_NOT_OK(store_tile_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1123,8 +1122,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_var_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_var_offsets_[i] = offset;
-    RETURN_NOT_OK(
-        store_tile_var_offsets(i, encryption_key, &nbytes));
+    RETURN_NOT_OK(store_tile_var_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1132,8 +1130,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_var_sizes_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_var_sizes_[i] = offset;
-    RETURN_NOT_OK(
-        store_tile_var_sizes(i, encryption_key, &nbytes));
+    RETURN_NOT_OK(store_tile_var_sizes(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1141,8 +1138,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_validity_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_validity_offsets_[i] = offset;
-    RETURN_NOT_OK(
-        store_tile_validity_offsets(i, encryption_key, &nbytes));
+    RETURN_NOT_OK(store_tile_validity_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1174,8 +1170,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_null_count_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_null_count_offsets_[i] = offset;
-    RETURN_NOT_OK(
-        store_tile_null_counts(i, encryption_key, &nbytes));
+    RETURN_NOT_OK(store_tile_null_counts(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1194,7 +1189,7 @@ Status FragmentMetadata::store_v15_or_higher(
   RETURN_NOT_OK(store_footer(encryption_key));
 
   // disable the premature exit cleanup action (don't delete the fragment file)
-  premature_exit_cleanup.set_fn([]() {});  
+  premature_exit_cleanup.set_fn([]() {});
   // Close file
   return storage_manager_->close_file(fragment_metadata_uri);
 }
