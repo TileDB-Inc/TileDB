@@ -235,6 +235,11 @@ Status ArrayDirectory::load() {
           fragment_meta_uris_v12_or_higher.begin(),
           fragment_meta_uris_v12_or_higher.end(),
           std::back_inserter(fragment_meta_uris_));
+
+      // Sort the delete commits by timestamp. Delete tiles locations come from
+      // both the consolidated file and the directory listing, and they might
+      // have interleaved times, so we need to sort.
+      std::sort(delete_tiles_location_.begin(), delete_tiles_location_.end());
     }
   }
 
@@ -341,7 +346,7 @@ tuple<Status, optional<URI>> ArrayDirectory::get_commit_uri(
           URI(temp_uri.to_string() + constants::write_file_suffix)};
 }
 
-tuple<Status, optional<URI>> ArrayDirectory::get_vaccum_uri(
+tuple<Status, optional<URI>> ArrayDirectory::get_vacuum_uri(
     const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
   uint32_t version;
@@ -454,9 +459,23 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
     } else if (stdx::string::ends_with(
                    commits_dir_uris[i].to_string(),
                    constants::delete_file_suffix)) {
-      if (consolidated_commit_uris_set_.count(commits_dir_uris[i].c_str()) ==
-          0) {
-        delete_tiles_location_.emplace_back(commits_dir_uris[i], 0);
+      // Get the start and end timestamp for this delete
+      std::pair<uint64_t, uint64_t> delete_timestamp_range;
+      RETURN_NOT_OK_TUPLE(
+          utils::parse::get_timestamp_range(
+              commits_dir_uris[i], &delete_timestamp_range),
+          nullopt);
+
+      // Add the delete tile location if it overlaps the open start/end times
+      if (timestamps_overlap(delete_timestamp_range, false)) {
+        if (consolidated_commit_uris_set_.count(commits_dir_uris[i].c_str()) ==
+            0) {
+          const auto base_uri_size = uri_.to_string().size();
+          delete_tiles_location_.emplace_back(
+              commits_dir_uris[i],
+              commits_dir_uris[i].to_string().substr(base_uri_size),
+              0);
+        }
       }
     }
   }
@@ -516,9 +535,35 @@ ArrayDirectory::load_consolidated_commit_uris(
       RETURN_NOT_OK_TUPLE(
           vfs_->read(uri, 0, &names[0], size), nullopt, nullopt);
       std::stringstream ss(names);
-      for (std::string uri_str; std::getline(ss, uri_str);) {
-        if (ignore_set.count(uri_str) == 0) {
-          uris_set.emplace(uri_.to_string() + uri_str);
+      for (std::string condition_marker; std::getline(ss, condition_marker);) {
+        if (ignore_set.count(condition_marker) == 0) {
+          uris_set.emplace(uri_.to_string() + condition_marker);
+        }
+
+        // If we have a delete, process the condition tile
+        if (stdx::string::ends_with(
+                condition_marker, constants::delete_file_suffix)) {
+          storage_size_t size = 0;
+          ss.read(
+              static_cast<char*>(static_cast<void*>(&size)),
+              sizeof(storage_size_t));
+          auto pos = ss.tellg();
+
+          // Get the start and end timestamp for this delete
+          std::pair<uint64_t, uint64_t> delete_timestamp_range;
+          RETURN_NOT_OK_TUPLE(
+              utils::parse::get_timestamp_range(
+                  URI(condition_marker), &delete_timestamp_range),
+              nullopt,
+              nullopt);
+
+          // Add the delete tile location if it overlaps the open start/end
+          // times
+          if (timestamps_overlap(delete_timestamp_range, false)) {
+            delete_tiles_location_.emplace_back(uri, condition_marker, pos);
+          }
+          pos += size;
+          ss.seekg(pos);
         }
       }
     }
@@ -635,7 +680,9 @@ void ArrayDirectory::load_commits_uris_to_consolidate(
   // Add the wrt file URIs not already in the list.
   for (auto& uri : commits_dir_uris) {
     if (stdx::string::ends_with(
-            uri.to_string(), constants::write_file_suffix)) {
+            uri.to_string(), constants::write_file_suffix) ||
+        stdx::string::ends_with(
+            uri.to_string(), constants::delete_file_suffix)) {
       if (consolidated_uris_set.count(uri.c_str()) == 0) {
         commit_uris_to_consolidate_.emplace_back(uri);
       }

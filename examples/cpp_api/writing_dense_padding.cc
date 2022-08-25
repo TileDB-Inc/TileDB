@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -65,10 +65,11 @@ void write_array() {
 
   // Prepare some data for the array
   std::vector<int> data = {1, 2, 3, 4};
-  std::vector<int> subarray = {2, 3, 1, 2};
 
   // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 2, 3).add_range(1, 1, 2);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data)
@@ -86,7 +87,8 @@ void read_array() {
   Array array(ctx, array_name, TILEDB_READ);
 
   // Read the entire array
-  const std::vector<int> subarray = {1, 4, 1, 4};
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 4);
 
   // Prepare the vector that will hold the result (of size 16 elements)
   std::vector<int> data(16);

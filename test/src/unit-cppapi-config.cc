@@ -32,7 +32,7 @@
 
 #include <thread>
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
@@ -67,7 +67,7 @@ TEST_CASE("C++ API: Config iterator", "[cppapi][config]") {
     names.push_back(it->first);
   }
   // Check number of VFS params in default config object.
-  CHECK(names.size() == 58);
+  CHECK(names.size() == 59);
 }
 
 TEST_CASE("C++ API: Config Environment Variables", "[cppapi][config]") {

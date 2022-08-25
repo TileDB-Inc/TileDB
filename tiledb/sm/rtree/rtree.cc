@@ -37,6 +37,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 #include <cassert>
 #include <cmath>
@@ -93,16 +94,18 @@ RTree& RTree::operator=(RTree&& rtree) noexcept {
 /*               API              */
 /* ****************************** */
 
-Status RTree::build_tree() {
-  if (levels_.empty())
-    return Status::Ok();
+void RTree::build_tree() {
+  if (levels_.empty()) {
+    return;
+  }
 
   assert(levels_.size() == 1);
 
   auto leaf_num = levels_[0].size();
   assert(leaf_num >= 1);
-  if (leaf_num == 1)
-    return Status::Ok();
+  if (leaf_num == 1) {
+    return;
+  }
 
   // Build the tree bottom up
   auto height = (size_t)std::ceil(utils::math::log(fanout_, leaf_num)) + 1;
@@ -113,8 +116,6 @@ Status RTree::build_tree() {
 
   // Make the root as the first level
   std::reverse(std::begin(levels_), std::end(levels_));
-
-  return Status::Ok();
 }
 
 uint64_t RTree::free_memory() {
@@ -257,34 +258,30 @@ uint64_t RTree::subtree_leaf_num(uint64_t level) const {
   return leaf_num;
 }
 
-Status RTree::serialize(Buffer* buff) const {
-  RETURN_NOT_OK(buff->write(&fanout_, sizeof(fanout_)));
+void RTree::serialize(Serializer& serializer) const {
+  serializer.write<uint32_t>(fanout_);
   auto level_num = (unsigned)levels_.size();
-  RETURN_NOT_OK(buff->write(&level_num, sizeof(level_num)));
+  serializer.write<uint32_t>(level_num);
   auto dim_num = domain_->dim_num();
 
   for (unsigned l = 0; l < level_num; ++l) {
     auto mbr_num = (uint64_t)levels_[l].size();
-    RETURN_NOT_OK(buff->write(&mbr_num, sizeof(uint64_t)));
+    serializer.write<uint64_t>(mbr_num);
     for (uint64_t m = 0; m < mbr_num; ++m) {
       for (unsigned d = 0; d < dim_num; ++d) {
         const auto& r = levels_[l][m][d];
         if (!domain_->dimension_ptr(d)->var_size()) {  // Fixed-sized
           // Just write the plain range
-          RETURN_NOT_OK(buff->write(r.data(), r.size()));
+          serializer.write(r.data(), r.size());
         } else {  // Var-sized
           // range_size | start_size | range
-          auto size = r.size();
-          auto start_size = r.start_size();
-          RETURN_NOT_OK(buff->write(&size, sizeof(uint64_t)));
-          RETURN_NOT_OK(buff->write(&start_size, sizeof(uint64_t)));
-          RETURN_NOT_OK(buff->write(r.data(), size));
+          serializer.write<uint64_t>(r.size());
+          serializer.write<uint64_t>(r.start_size());
+          serializer.write(r.data(), r.size());
         }
       }
     }
   }
-
-  return Status::Ok();
 }
 
 Status RTree::set_leaf(uint64_t leaf_id, const NDRange& mbr) {
@@ -321,11 +318,14 @@ Status RTree::set_leaf_num(uint64_t num) {
   return Status::Ok();
 }
 
-Status RTree::deserialize(
-    ConstBuffer* cbuff, const Domain* domain, uint32_t version) {
-  if (version < 5)
-    return deserialize_v1_v4(cbuff, domain);
-  return deserialize_v5(cbuff, domain);
+void RTree::deserialize(
+    Deserializer& deserializer, const Domain* domain, uint32_t version) {
+  if (version < 5) {
+    deserialize_v1_v4(deserializer, domain);
+    return;
+  }
+
+  deserialize_v5(deserializer, domain);
 }
 
 /* ****************************** */
@@ -356,56 +356,52 @@ RTree RTree::clone() const {
   return clone;
 }
 
-Status RTree::deserialize_v1_v4(ConstBuffer* cbuff, const Domain* domain) {
-  // For backwards compatibility, they will be ignored
-  unsigned dim_num_i;
-  uint8_t type_i;
+void RTree::deserialize_v1_v4(
+    Deserializer& deserializer, const Domain* domain) {
+  deserialized_buffer_size_ = deserializer.size();
 
-  RETURN_NOT_OK(cbuff->read(&dim_num_i, sizeof(dim_num_i)));
-  RETURN_NOT_OK(cbuff->read(&fanout_, sizeof(fanout_)));
-  RETURN_NOT_OK(cbuff->read(&type_i, sizeof(type_i)));
-  unsigned level_num;
-  RETURN_NOT_OK(cbuff->read(&level_num, sizeof(level_num)));
+  // For backwards compatibility, ignored
+  auto dim_num_i = deserializer.read<unsigned>();
+  (void)dim_num_i;
 
+  fanout_ = deserializer.read<unsigned>();
+
+  // For backwards compatibility, ignored
+  auto type_i = deserializer.read<uint8_t>();
+  (void)type_i;
+
+  auto level_num = deserializer.read<unsigned>();
   levels_.clear();
   levels_.resize(level_num);
   auto dim_num = domain->dim_num();
-  uint64_t mbr_num;
   for (unsigned l = 0; l < level_num; ++l) {
-    RETURN_NOT_OK(cbuff->read(&mbr_num, sizeof(uint64_t)));
+    auto mbr_num = deserializer.read<uint64_t>();
     levels_[l].resize(mbr_num);
     for (uint64_t m = 0; m < mbr_num; ++m) {
       levels_[l][m].resize(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
         auto r_size{2 * domain->dimension_ptr(d)->coord_size()};
-        levels_[l][m][d].set_range(cbuff->cur_data(), r_size);
-        cbuff->advance_offset(r_size);
+        auto data = deserializer.get_ptr<void>(r_size);
+        levels_[l][m][d].set_range(data, r_size);
       }
     }
   }
 
   domain_ = domain;
-  deserialized_buffer_size_ = cbuff->size();
-
-  return Status::Ok();
 }
 
-Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
-  RETURN_NOT_OK(cbuff->read(&fanout_, sizeof(fanout_)));
-  unsigned level_num;
+void RTree::deserialize_v5(Deserializer& deserializer, const Domain* domain) {
+  deserialized_buffer_size_ = deserializer.size();
 
-  RETURN_NOT_OK(cbuff->read(&level_num, sizeof(level_num)));
-
-  if (level_num == 0)
-    return Status::Ok();
+  fanout_ = deserializer.read<unsigned>();
+  auto level_num = deserializer.read<unsigned>();
 
   levels_.clear();
   levels_.resize(level_num);
   auto dim_num = domain->dim_num();
 
-  uint64_t mbr_num;
   for (unsigned l = 0; l < level_num; ++l) {
-    RETURN_NOT_OK(cbuff->read(&mbr_num, sizeof(uint64_t)));
+    auto mbr_num = deserializer.read<uint64_t>();
     levels_[l].resize(mbr_num);
 
     for (uint64_t m = 0; m < mbr_num; ++m) {
@@ -414,24 +410,20 @@ Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
         auto dim{domain->dimension_ptr(d)};
         if (!dim->var_size()) {  // Fixed-sized
           auto r_size = 2 * dim->coord_size();
-          levels_[l][m][d].set_range(cbuff->cur_data(), r_size);
-          cbuff->advance_offset(r_size);
+          auto data = deserializer.get_ptr<void>(r_size);
+          levels_[l][m][d].set_range(data, r_size);
         } else {  // Var-sized
           // range_size | start_size | range
-          uint64_t r_size, start_size;
-          RETURN_NOT_OK(cbuff->read(&r_size, sizeof(uint64_t)));
-          RETURN_NOT_OK(cbuff->read(&start_size, sizeof(uint64_t)));
-          levels_[l][m][d].set_range(cbuff->cur_data(), r_size, start_size);
-          cbuff->advance_offset(r_size);
+          auto r_size = deserializer.read<uint64_t>();
+          auto start_size = deserializer.read<uint64_t>();
+          auto data = deserializer.get_ptr<void>(r_size);
+          levels_[l][m][d].set_range(data, r_size, start_size);
         }
       }
     }
   }
 
   domain_ = domain;
-  deserialized_buffer_size_ = cbuff->size();
-
-  return Status::Ok();
 }
 
 void RTree::swap(RTree& rtree) {

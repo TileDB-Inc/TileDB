@@ -41,6 +41,7 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/array/consistency.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
@@ -58,8 +59,27 @@ class StorageManager;
 enum class QueryType : uint8_t;
 
 /**
+ * Free function that returns a reference to the ConsistencyController object.
+ */
+ConsistencyController& controller();
+
+/**
  * An array object to be opened for reads/writes. An ``Array`` instance
  * is associated with the timestamp it is opened at.
+ *
+ * @invariant is_opening_or_closing_ is false outside of the body of
+ * an open or close function.
+ *
+ * @invariant is_opening_or_closing_ is true when the class is either
+ * partially open or partially closed.
+ *
+ * @invariant atomicity must be maintained between the following:
+ * 1. an open Array.
+ * 2. the is_open_ flag.
+ * 3. the existence of a ConsistencySentry object, which represents
+ * open Array registration.
+ *
+ * @invariant mtx_ must not be locked outside of the scope of a member function.
  */
 class Array {
  public:
@@ -68,7 +88,10 @@ class Array {
   /* ********************************* */
 
   /** Constructor. */
-  Array(const URI& array_uri, StorageManager* storage_manager);
+  Array(
+      const URI& array_uri,
+      StorageManager* storage_manager,
+      ConsistencyController& cc = controller());
 
   /** Destructor. */
   ~Array() = default;
@@ -99,6 +122,13 @@ class Array {
   array_schemas_all() const {
     return array_schemas_all_;
   }
+
+  /**
+   * Sets all array schemas.
+   * @param all_schemas The array schemas to set.
+   */
+  void set_array_schemas_all(
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>& all_schemas);
 
   /** Returns the array URI. */
   const URI& array_uri() const;
@@ -149,6 +179,19 @@ class Array {
   Status load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
 
   /**
+   * Deletes the fragments from the Array with given URI.
+   *
+   * @param uri The uri of the Array whose fragments are to be deleted.
+   * @param timestamp_start The start timestamp at which to delete fragments.
+   * @param timestamp_end The end timestamp at which to delete fragments.
+   * @return Status
+   *
+   * @pre The Array must be open for exclusive writes
+   */
+  Status delete_fragments(
+      const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
+
+  /**
    * Opens the array for reading.
    *
    * @param query_type The query type. This should always be READ. It
@@ -190,7 +233,7 @@ class Array {
   bool is_empty() const;
 
   /** Returns `true` if the array is open. */
-  bool is_open() const;
+  bool is_open();
 
   /** Returns `true` if the array is remote */
   bool is_remote() const;
@@ -198,8 +241,8 @@ class Array {
   /** Retrieves the array schema. Errors if the array is not open. */
   tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema() const;
 
-  /** Retrieves the query type. Errors if the array is not open. */
-  Status get_query_type(QueryType* qyery_type) const;
+  /** Retrieves the query type. Throws if the array is not open. */
+  QueryType get_query_type() const;
 
   /**
    * Returns the max buffer size given a fixed-sized attribute/dimension and
@@ -353,6 +396,11 @@ class Array {
    */
   Metadata* unsafe_metadata();
 
+  /** Set if array metadata is loaded already for this array or not */
+  inline void set_metadata_loaded(const bool is_loaded) {
+    metadata_loaded_ = is_loaded;
+  }
+
   /** Returns the non-empty domain of the opened array.
    *  If the non_empty_domain has not been computed or loaded
    *  it will be loaded first
@@ -362,8 +410,21 @@ class Array {
   /** Returns the non-empty domain of the opened array. */
   void set_non_empty_domain(const NDRange& non_empty_domain);
 
+  /** Set if the non_empty_domain is computed already for this array or not */
+  inline void set_non_empty_domain_computed(const bool is_computed) {
+    non_empty_domain_computed_ = is_computed;
+  }
+
   /** Returns the memory tracker. */
   MemoryTracker* memory_tracker();
+
+  /** Checks the config to see if non empty domain should be serialized on array
+   * open. */
+  bool serialize_non_empty_domain() const;
+
+  /** Checks the config to see if metadata should be serialized on array open.
+   */
+  bool serialize_metadata() const;
 
  private:
   /* ********************************* */
@@ -406,6 +467,9 @@ class Array {
 
   /** `True` if the array has been opened. */
   std::atomic<bool> is_open_;
+
+  /** `True` if the array is currently in the process of opening or closing. */
+  std::atomic<bool> is_opening_or_closing_;
 
   /** The query type the array was opened for. */
   QueryType query_type_;
@@ -468,6 +532,18 @@ class Array {
   /** Memory tracker for the array. */
   MemoryTracker memory_tracker_;
 
+  /** A reference to the object which controls the present Array instance. */
+  ConsistencyController& consistency_controller_;
+
+  /** Lifespan maintenance of an open array in the ConsistencyController. */
+  std::optional<ConsistencySentry> consistency_sentry_;
+
+  /**
+   * Mutex that protects atomicity between the existence of the
+   * ConsistencySentry registration and the is_open_ flag.
+   */
+  std::mutex mtx_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -514,6 +590,22 @@ class Array {
 
   /** Computes the non-empty domain of the array. */
   Status compute_non_empty_domain();
+
+  /**
+   * Sets the array state as open.
+   *
+   * @param query_type The QueryType of the Array.
+   */
+  void set_array_open(const QueryType& query_type);
+
+  /** Sets the array state as closed.
+   *
+   * Note: the Sentry object will also be released upon Array destruction.
+   **/
+  void set_array_closed();
+
+  /** Checks the config to see if refactored array open should be used. */
+  bool use_refactored_array_open() const;
 };
 
 }  // namespace sm

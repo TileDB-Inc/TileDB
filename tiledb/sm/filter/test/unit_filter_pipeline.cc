@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 
 #include "../bit_width_reduction_filter.h"
 #include "../bitshuffle_filter.h"
@@ -102,24 +102,23 @@ TEST_CASE(
   filters_buffer_offset<uint8_t, 33>(p) = static_cast<uint8_t>(compressor3);
   filters_buffer_offset<int32_t, 34>(p) = compressor_level3;
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_filters, filters]{
-      FilterPipeline::deserialize(&constbuffer, constants::format_version)};
-  REQUIRE(st_filters.ok());
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
+  auto filters{
+      FilterPipeline::deserialize(deserializer, constants::format_version)};
 
-  CHECK(filters.value().max_chunk_size() == max_chunk_size);
-  CHECK(filters.value().size() == num_filters);
+  CHECK(filters.max_chunk_size() == max_chunk_size);
+  CHECK(filters.size() == num_filters);
 
-  Filter* filter1 = filters.value().get_filter(0);
+  Filter* filter1 = filters.get_filter(0);
   CHECK(filter1->type() == filtertype1);
   int level1 = 0;
   REQUIRE(filter1->get_option(FilterOption::COMPRESSION_LEVEL, &level1).ok());
   CHECK(level1 == compressor_level1);
 
-  Filter* filter2 = filters.value().get_filter(1);
+  Filter* filter2 = filters.get_filter(1);
   CHECK(filter2->type() == filtertype2);
 
-  Filter* filter3 = filters.value().get_filter(2);
+  Filter* filter3 = filters.get_filter(2);
   CHECK(filter3->type() == filtertype3);
   int level3 = 0;
   REQUIRE(filter3->get_option(FilterOption::COMPRESSION_LEVEL, &level3).ok());

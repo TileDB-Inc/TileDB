@@ -76,7 +76,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       Subarray& subarray,
       Layout layout,
       QueryCondition& condition,
-      bool consolidation_with_timestamps);
+      bool consolidation_with_timestamps,
+      bool skip_checks_serialization = false);
 
   /** Destructor. */
   ~SparseGlobalOrderReader() = default;
@@ -110,13 +111,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @return The query status.
    */
   QueryStatusDetailsReason status_incomplete_reason() const;
-
-  /**
-   * Initializes the reader.
-   *
-   * @return Status.
-   */
-  Status init();
 
   /**
    * Initialize the memory budget variables.
@@ -206,7 +200,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param memory_budget_qc_tiles Memory budget for query condition tiles.
    * @param f Fragment index.
    * @param t Tile index.
-   * @param array_schema Array schema.
+   * @param frag_md Fragment metadata.
    *
    * @return buffers_full, new_var_buffer_size, new_result_tiles_size.
    */
@@ -216,7 +210,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const uint64_t memory_budget_qc_tiles,
       const unsigned f,
       const uint64_t t,
-      const ArraySchema& array_schema);
+      const FragmentMetadata& frag_md);
 
   /**
    * Create the result tiles.
@@ -237,8 +231,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /**
    * Process fragments with timestamps to deduplicate entries.
    * This removes cells across tiles.
-   *
-   * @param result_tiles Result tiles to process.
    *
    * @return Status.
    */
@@ -422,6 +414,22 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @return Status.
    */
   Status copy_timestamps_tiles(
+      const uint64_t num_range_threads,
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      const std::vector<uint64_t>& cell_offsets,
+      QueryBuffer& query_buffer);
+
+  /**
+   * Copy delete metadata tiles.
+   *
+   * @param num_range_threads Total number of range threads.
+   * @param result_cell_slabs Result cell slabs to process.
+   * @param cell_offsets Cell offset per result tile.
+   * @param query_buffer Query buffer to operate on.
+   *
+   * @return Status.
+   */
+  Status copy_delete_meta_tiles(
       const uint64_t num_range_threads,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       const std::vector<uint64_t>& cell_offsets,

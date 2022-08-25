@@ -31,7 +31,7 @@
  */
 
 #include "helpers.h"
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "serialization_wrappers.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -544,6 +544,93 @@ void create_array(
   // Clean up
   tiledb_array_schema_free(&array_schema);
   tiledb_ctx_free(&ctx_array);
+}
+
+tiledb_array_schema_t* create_array_schema(
+    tiledb_ctx_t* ctx,
+    tiledb_array_type_t array_type,
+    const std::vector<std::string>& dim_names,
+    const std::vector<tiledb_datatype_t>& dim_types,
+    const std::vector<void*>& dim_domains,
+    const std::vector<void*>& tile_extents,
+    const std::vector<std::string>& attr_names,
+    const std::vector<tiledb_datatype_t>& attr_types,
+    const std::vector<uint32_t>& cell_val_num,
+    const std::vector<std::pair<tiledb_filter_type_t, int>>& compressors,
+    tiledb_layout_t tile_order,
+    tiledb_layout_t cell_order,
+    uint64_t capacity,
+    bool allows_dups) {
+  // For easy reference
+  auto dim_num = dim_names.size();
+  auto attr_num = attr_names.size();
+
+  // Sanity checks
+  assert(dim_types.size() == dim_num);
+  assert(dim_domains.size() == dim_num);
+  assert(tile_extents.size() == dim_num);
+  assert(attr_types.size() == attr_num);
+  assert(cell_val_num.size() == attr_num);
+  assert(compressors.size() == attr_num);
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc(ctx, array_type, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx, array_schema, cell_order);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx, array_schema, tile_order);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_capacity(ctx, array_schema, capacity);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_allows_dups(ctx, array_schema, (int)allows_dups);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimensions and domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  for (size_t i = 0; i < dim_num; ++i) {
+    tiledb_dimension_t* d;
+    rc = tiledb_dimension_alloc(
+        ctx,
+        dim_names[i].c_str(),
+        dim_types[i],
+        dim_domains[i],
+        tile_extents[i],
+        &d);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_domain_add_dimension(ctx, domain, d);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_dimension_free(&d);
+  }
+
+  // Set domain to schema
+  rc = tiledb_array_schema_set_domain(ctx, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_domain_free(&domain);
+
+  // Create attributes
+  for (size_t i = 0; i < attr_num; ++i) {
+    tiledb_attribute_t* a;
+    rc = tiledb_attribute_alloc(ctx, attr_names[i].c_str(), attr_types[i], &a);
+    REQUIRE(rc == TILEDB_OK);
+    rc = set_attribute_compression_filter(
+        ctx, a, compressors[i].first, compressors[i].second);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_attribute_set_cell_val_num(ctx, a, cell_val_num[i]);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_schema_add_attribute(ctx, array_schema, a);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_attribute_free(&a);
+  }
+
+  // Check array schema
+  rc = tiledb_array_schema_check(ctx, array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  return array_schema;
 }
 
 void create_s3_bucket(

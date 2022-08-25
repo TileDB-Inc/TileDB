@@ -76,8 +76,10 @@ GlobalOrderWriter::GlobalOrderWriter(
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     bool disable_checks_consolidation,
+    std::vector<std::string>& processed_conditions,
     Query::CoordsInfo& coords_info,
-    URI fragment_uri)
+    optional<std::string> fragment_name,
+    bool skip_checks_serialization)
     : WriterBase(
           stats,
           logger,
@@ -90,7 +92,9 @@ GlobalOrderWriter::GlobalOrderWriter(
           written_fragment_info,
           disable_checks_consolidation,
           coords_info,
-          fragment_uri) {
+          fragment_name,
+          skip_checks_serialization)
+    , processed_conditions_(processed_conditions) {
 }
 
 GlobalOrderWriter::~GlobalOrderWriter() {
@@ -119,15 +123,17 @@ Status GlobalOrderWriter::dowork() {
 Status GlobalOrderWriter::finalize() {
   auto timer_se = stats_->start_timer("finalize");
 
-  if (global_write_state_ != nullptr)
+  if (global_write_state_ != nullptr) {
     return finalize_global_write_state();
+  }
+
   return Status::Ok();
 }
 
 void GlobalOrderWriter::reset() {
-  if (global_write_state_ != nullptr)
+  if (global_write_state_ != nullptr) {
     nuke_global_write_state();
-  initialized_ = false;
+  }
 }
 
 /* ****************************** */
@@ -502,6 +508,9 @@ Status GlobalOrderWriter::finalize_global_write_state() {
       return logger_->status(Status_WriterError(ss.str()));
     }
   }
+
+  // Set the processed conditions
+  meta->set_processed_conditions(processed_conditions_);
 
   // Compute fragment min/max/sum/null count
   RETURN_NOT_OK_ELSE(

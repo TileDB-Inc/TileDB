@@ -307,14 +307,21 @@ class Config {
    *    Upper-bound on number of threads to allocate for IO-bound tasks. <br>
    *    **Default*: # cores
    * - `sm.vacuum.mode` <br>
-   *    The vacuuming mode, one of `fragments` (remove consolidated fragments),
-   *    `fragment_meta` (remove only consolidated fragment metadata), or
-   *    `array_meta` (remove consolidated array metadata files). <br>
-   *    **Default**: fragments
+   *    The vacuuming mode, one of
+   *    `commits` (remove only consolidated commit files),
+   *    `fragments` (remove only consolidated fragments),
+   *    `fragment_meta` (remove only consolidated fragment metadata),
+   *    `array_meta` (remove only consolidated array metadata files), or
+   *    `group_meta` (remove only consolidate group metadata only).
+   *    <br>
+   *    **Default**: "fragments"
    * - `sm.consolidation_mode` <br>
-   *    The consolidation mode, one of `fragments` (consolidate all fragments),
+   *    The consolidation mode, one of
+   *    `commits` (consolidate all commit files),
+   *    `fragments` (consolidate all fragments),
    *    `fragment_meta` (consolidate only fragment metadata footers to a single
-   *    file), or `array_meta` (consolidate array metadata only). <br>
+   * file), `array_meta` (consolidate array metadata only), or `group_meta`
+   * (consolidate group metadata only). <br>
    *    **Default**: "fragments"
    * - `sm.consolidation.amplification` <br>
    *    The factor by which the size of the dense fragment resulting
@@ -456,6 +463,10 @@ class Config {
    * - `vfs.min_batch_gap` <br>
    *    The minimum number of bytes between two VFS read batches.<br>
    *    **Default**: 500KB
+   * - `vfs.disable_batching` <br>
+   *    **Experimental** <br>
+   *    Disables tile batching from VFS, making direct reads.<br>
+   *    **Default**: false
    * - `vfs.file.posix_file_permissions` <br>
    *    permissions to use for posix file system with file or dir creation.<br>
    *    **Default**: 644
@@ -723,6 +734,9 @@ class Config {
    *    If true, the new, experimental REST routes and APIs for opening an array
    *    will be used <br>
    *    **Default**: false
+   * - `rest.curl.buffer_size` <br>
+   *    Set curl buffer size for REST requests <br>
+   *    **Default**: 524288 (512KB)
    * - `filestore.buffer_size` <br>
    *    Specifies the size in bytes of the internal buffers used in the
    *    filestore API. The size should be bigger than the minimum tile size

@@ -49,14 +49,19 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
 
-#include <numeric>
-
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
 namespace tiledb {
 namespace sm {
+
+class SparseGlobalOrderReaderStatusException : public StatusException {
+ public:
+  explicit SparseGlobalOrderReaderStatusException(const std::string& message)
+      : StatusException("SparseGlobalOrderReader", message) {
+  }
+};
 
 /* ****************************** */
 /*          CONSTRUCTORS          */
@@ -73,7 +78,8 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     Subarray& subarray,
     Layout layout,
     QueryCondition& condition,
-    bool consolidation_with_timestamps)
+    bool consolidation_with_timestamps,
+    bool skip_checks_serialization)
     : SparseIndexReaderBase(
           stats,
           logger->clone("SparseGlobalOrderReader", ++logger_id_),
@@ -89,6 +95,13 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     , memory_used_for_qc_tiles_(array->fragment_metadata().size())
     , consolidation_with_timestamps_(consolidation_with_timestamps)
     , last_cells_(array->fragment_metadata().size()) {
+  SparseIndexReaderBase::init(skip_checks_serialization);
+
+  // Initialize memory budget variables.
+  if (!initialize_memory_budget().ok()) {
+    throw SparseGlobalOrderReaderStatusException(
+        "Cannot initialize memory budget");
+  }
 }
 
 /* ****************************** */
@@ -106,16 +119,6 @@ QueryStatusDetailsReason
 SparseGlobalOrderReader<BitmapType>::status_incomplete_reason() const {
   return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
                         QueryStatusDetailsReason::REASON_NONE;
-}
-
-template <class BitmapType>
-Status SparseGlobalOrderReader<BitmapType>::init() {
-  RETURN_NOT_OK(SparseIndexReaderBase::init());
-
-  // Initialize memory budget variables.
-  RETURN_NOT_OK(initialize_memory_budget());
-
-  return Status::Ok();
 }
 
 template <class BitmapType>
@@ -155,11 +158,8 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
 
-  // Make sure user didn't request delete timestamps.
-  if (buffers_.count(constants::delete_timestamps) != 0) {
-    return logger_->status(Status_SparseGlobalOrderReaderError(
-        "Reader cannot process delete timestamps"));
-  }
+  // Set the boolean to include delete meta, if required.
+  deletes_consolidation_ = buffers_.count(constants::delete_timestamps) != 0;
 
   // Check that the query condition is valid.
   RETURN_NOT_OK(condition_.check(array_schema_));
@@ -201,8 +201,8 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
       std::vector<ResultTile*> tmp_result_tiles;
       for (auto& rt_list : result_tiles_) {
         for (auto& result_tile : rt_list) {
-          if (!result_tile.coords_loaded_) {
-            result_tile.coords_loaded_ = true;
+          if (!result_tile.coords_loaded()) {
+            result_tile.set_coords_loaded();
             tmp_result_tiles.emplace_back(&result_tile);
           }
         }
@@ -229,7 +229,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
           storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
             auto it = result_tiles_[f].begin();
             while (it != result_tiles_[f].end()) {
-              if (it->bitmap_result_num_ == 0) {
+              if (it->result_num() == 0) {
                 {
                   std::unique_lock<std::mutex> lck(ignored_tiles_mutex);
                   ignored_tiles_.emplace(f, it->tile_idx());
@@ -295,20 +295,25 @@ SparseGlobalOrderReader<BitmapType>::get_coord_tiles_size(
       SparseIndexReaderBase::get_coord_tiles_size<BitmapType>(
           true, dim_num, f, t);
   RETURN_NOT_OK_TUPLE(st, nullopt);
+  auto frag_meta = fragment_metadata_[f];
 
   // Add the result tile structure size.
   tiles_sizes->first += sizeof(GlobalOrderResultTile<BitmapType>);
 
-  // Add the tile bitmap size if there is a subarray.
-  if (subarray_.is_set()) {
-    tiles_sizes->first +=
-        fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
+  // Add the tile bitmap size if there is a subarray or pre query condition to
+  // be processed.
+  const bool dups = array_schema_.allows_dups();
+  if (subarray_.is_set() || process_partial_timestamps(*frag_meta) ||
+      (dups && has_post_deduplication_conditions(*frag_meta))) {
+    tiles_sizes->first += frag_meta->cell_num(t) * sizeof(BitmapType);
   }
 
-  // Add the extra bitmap size if there is a query condition and no dups.
-  if (!array_schema_.allows_dups() && !condition_.empty()) {
-    tiles_sizes->first +=
-        fragment_metadata_[f]->cell_num(t) * sizeof(BitmapType);
+  // Add the extra bitmap size if there is a condition to process and no dups.
+  // We will also create the bitmap as a temporay bitmap to compute delete
+  // condition results.
+  if ((!dups && has_post_deduplication_conditions(*frag_meta)) ||
+      deletes_consolidation_) {
+    tiles_sizes->first += frag_meta->cell_num(t) * sizeof(BitmapType);
   }
 
   return {Status::Ok(), *tiles_sizes};
@@ -322,7 +327,7 @@ SparseGlobalOrderReader<BitmapType>::add_result_tile(
     const uint64_t memory_budget_qc_tiles,
     const unsigned f,
     const uint64_t t,
-    const ArraySchema& array_schema) {
+    const FragmentMetadata& frag_md) {
   if (ignored_tiles_.count(IgnoredTile(f, t))) {
     return {Status::Ok(), false};
   }
@@ -347,16 +352,17 @@ SparseGlobalOrderReader<BitmapType>::add_result_tile(
   // Adjust total memory used.
   {
     std::unique_lock<std::mutex> lck(mem_budget_mtx_);
-    memory_used_for_coords_total_ += tiles_size + sizeof(ResultTile);
+    memory_used_for_coords_total_ += tiles_size;
     memory_used_qc_tiles_total_ += tiles_size_qc;
   }
 
   // Adjust per fragment memory used.
-  memory_used_for_coords_[f] += tiles_size + sizeof(ResultTile);
+  memory_used_for_coords_[f] += tiles_size;
   memory_used_for_qc_tiles_[f] += tiles_size_qc;
 
   // Add the tile.
-  result_tiles_[f].emplace_back(f, t, array_schema);
+  result_tiles_[f].emplace_back(
+      f, t, array_schema_.allows_dups(), deletes_consolidation_, frag_md);
 
   return {Status::Ok(), false};
 }
@@ -372,8 +378,9 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
 
   // Get the number of fragments to process.
   unsigned num_fragments_to_process = 0;
-  for (auto all_loaded : all_tiles_loaded_)
+  for (auto all_loaded : all_tiles_loaded_) {
     num_fragments_to_process += !all_loaded;
+  }
 
   per_fragment_memory_ =
       memory_budget_ * memory_budget_ratio_coords_ / num_fragments_to_process;
@@ -397,7 +404,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
                   per_fragment_qc_memory_,
                   f,
                   t,
-                  *(fragment_metadata_[f]->array_schema()).get());
+                  *fragment_metadata_[f]);
               RETURN_NOT_OK(st);
               tiles_found = true;
 
@@ -408,10 +415,18 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
                     f,
                     t);
 
-                if (result_tiles_[f].empty())
+                if (result_tiles_[f].empty()) {
+                  auto&& [st, tile_sizes] = get_coord_tiles_size(dim_num, f, t);
                   return logger_->status(Status_SparseGlobalOrderReaderError(
                       "Cannot load a single tile for fragment, increase memory "
-                      "budget"));
+                      "budget, tile size : " +
+                      std::to_string(tile_sizes.value().first) +
+                      ", per fragment memory " +
+                      std::to_string(per_fragment_memory_) + ", total budget " +
+                      std::to_string(memory_budget_) +
+                      " , num fragments to process " +
+                      std::to_string(num_fragments_to_process)));
+                }
                 return Status::Ok();
               }
 
@@ -445,7 +460,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
                 per_fragment_qc_memory_,
                 f,
                 t,
-                *(fragment_metadata_[f]->array_schema()).get());
+                *fragment_metadata_[f]);
             RETURN_NOT_OK(st);
             tiles_found = true;
 
@@ -455,10 +470,18 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
                   f,
                   t);
 
-              if (result_tiles_[f].empty())
+              if (result_tiles_[f].empty()) {
+                auto&& [st, tile_sizes] = get_coord_tiles_size(dim_num, f, t);
                 return logger_->status(Status_SparseGlobalOrderReaderError(
                     "Cannot load a single tile for fragment, increase memory "
-                    "budget"));
+                    "budget, tile size : " +
+                    std::to_string(tile_sizes.value().first) +
+                    ", per fragment memory " +
+                    std::to_string(per_fragment_memory_) + ", total budget " +
+                    std::to_string(memory_budget_) +
+                    " , num fragments to process " +
+                    std::to_string(num_fragments_to_process)));
+              }
               return Status::Ok();
             }
           }
@@ -510,15 +533,14 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_tiles_with_timestamps(
 
           // Make a bitmap if necessary.
           if (!rt->has_bmp()) {
-            rt->bitmap_.resize(cell_num, 1);
-            rt->bitmap_result_num_ = cell_num;
+            rt->alloc_bitmap();
           }
 
           // Process all cells.
           uint64_t c = 0;
           while (c < cell_num - 1) {
             // If the cell is in the bitmap.
-            if (rt->bitmap_[c]) {
+            if (rt->bitmap()[c]) {
               // Save the current cell timestamp as max and move to the next.
               uint64_t max_timestamp = rt->timestamp(c);
               uint64_t max = c;
@@ -528,18 +550,18 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_tiles_with_timestamps(
               // one with the biggest timestamp in the bitmap.
               while (c < cell_num && rt->same_coords(max, c)) {
                 // If the cell is in the bitmap.
-                if (rt->bitmap_[c]) {
+                if (rt->bitmap()[c]) {
                   uint64_t current_timestamp = rt->timestamp(c);
 
                   // If the current cell has a bigger timestamp, clear the old
                   // max in the bitmap and save the new max.
                   if (current_timestamp > max_timestamp) {
-                    rt->bitmap_[max] = 0;
+                    rt->bitmap()[max] = 0;
                     max_timestamp = current_timestamp;
                     max = c;
                   } else {
                     // Clear this cell from the bitmap.
-                    rt->bitmap_[c] = 0;
+                    rt->bitmap()[c] = 0;
                   }
                 }
 
@@ -553,8 +575,7 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_tiles_with_timestamps(
           }
 
           // Count new number of cells in the bitmap.
-          rt->bitmap_result_num_ =
-              std::accumulate(rt->bitmap_.begin(), rt->bitmap_.end(), 0);
+          rt->count_cells();
         }
 
         return Status::Ok();
@@ -605,7 +626,7 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps() {
                 // Same coords, compare timestamps.
                 if (it->timestamp(last) > next_tile->timestamp(first)) {
                   // Remove the cell in the next tile.
-                  if (next_tile->bitmap_result_num_ == 1) {
+                  if (next_tile->result_num() == 1) {
                     // Only one cell in the bitmap, delete next tile.
                     // Stay on this tile as we will compare to the new next.
                     {
@@ -615,13 +636,12 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps() {
                     remove_result_tile(f, next_tile);
                   } else {
                     // Remove the cell in the bitmap and move to the next tile.
-                    next_tile->bitmap_[first] = 0;
-                    next_tile->bitmap_result_num_--;
+                    next_tile->clear_cell(first);
                     it++;
                   }
                 } else {
                   // Remove the cell in the current tile.
-                  if (next_tile->bitmap_result_num_ == 1) {
+                  if (next_tile->result_num() == 1) {
                     // Only one cell in the bitmap, delete current tile.
                     auto to_delete = it;
                     it++;
@@ -632,8 +652,7 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps() {
                     remove_result_tile(f, to_delete);
                   } else {
                     // Remove the cell in the bitmap and move to the next tile.
-                    it->bitmap_[last] = 0;
-                    it->bitmap_result_num_--;
+                    it->clear_cell(last);
                     it++;
                   }
                 }
@@ -798,7 +817,7 @@ Status SparseGlobalOrderReader<BitmapType>::compute_hilbert_values(
         tile->allocate_hilbert_vector();
         for (rc.pos_ = 0; rc.pos_ < cell_num; rc.pos_++) {
           // Process only values in bitmap.
-          if (!tile->has_bmp() || tile->bitmap_[rc.pos_]) {
+          if (!tile->has_bmp() || tile->bitmap()[rc.pos_]) {
             // Compute Hilbert number for all dimensions first.
             for (uint32_t d = 0; d < dim_num; ++d) {
               auto dim{array_schema_.dimension_ptr(d)};
@@ -903,7 +922,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
           num_cells--;
         } else {
           // For overlapping ranges, create as many slabs as there are counts.
-          auto num = to_process_dup.tile_->bitmap_[to_process_dup.pos_];
+          auto num = to_process_dup.tile_->bitmap()[to_process_dup.pos_];
           if (num_cells < num) {
             num_cells = 0;
             break;
@@ -974,7 +993,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
         read_state_.frag_idx_[frag_idx] = FragIdx(tile_idx, start + length);
         num_cells -= length;
       } else {
-        auto num = to_process.tile_->bitmap_[to_process.pos_];
+        auto num = to_process.tile_->bitmap()[to_process.pos_];
         if (num > num_cells) {
           num_cells = 0;
           break;
@@ -1059,11 +1078,10 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
 
         // Get source buffers.
         const auto tile_tuple = rt->tile_tuple(name);
-        const auto t = &std::get<0>(*tile_tuple);
-        const auto t_var = &std::get<1>(*tile_tuple);
-        const auto src_buff = t->template data_as<uint64_t>();
-        const auto src_var_buff = t_var->template data_as<char>();
-        const auto t_val = &std::get<2>(*tile_tuple);
+        const auto& t = tile_tuple->fixed_tile();
+        const auto& t_var = tile_tuple->var_tile();
+        const auto src_buff = t.template data_as<uint64_t>();
+        const auto src_var_buff = t_var.template data_as<char>();
         const auto cell_num =
             fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
 
@@ -1097,13 +1115,14 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
         // Copy last cell.
         if (max_pos == cell_num) {
           *buffer =
-              (OffType)(t_var->size() - src_buff[max_pos - 1]) / offset_div;
+              (OffType)(t_var.size() - src_buff[max_pos - 1]) / offset_div;
           *var_data_buffer = src_var_buff + src_buff[max_pos - 1];
         }
 
         // Copy nullable values.
         if (nullable) {
-          const auto src_val_buff = t_val->template data_as<uint8_t>();
+          const auto& t_val = tile_tuple->validity_tile();
+          const auto src_val_buff = t_val.template data_as<uint8_t>();
           for (uint64_t c = min_pos; c < max_pos; c++) {
             *val_buffer = src_val_buff[c];
             val_buffer++;
@@ -1224,9 +1243,8 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
         const auto tile_tuple = stores_zipped_coords ?
                                     rt->tile_tuple(constants::coords) :
                                     rt->tile_tuple(name);
-        const auto t = &std::get<0>(*tile_tuple);
-        const auto src_buff = t->template data_as<uint8_t>();
-        const auto t_val = &std::get<2>(*tile_tuple);
+        const auto& t = tile_tuple->fixed_tile();
+        const auto src_buff = t.template data_as<uint8_t>();
 
         // Compute parallelization parameters.
         auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
@@ -1262,7 +1280,8 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
         }
 
         if (nullable) {
-          const auto src_val_buff = t_val->template data_as<uint8_t>();
+          const auto& t_val = tile_tuple->validity_tile();
+          const auto src_val_buff = t_val.template data_as<uint8_t>();
           memcpy(val_buffer, src_val_buff + min_pos, max_pos - min_pos);
         }
 
@@ -1295,10 +1314,6 @@ Status SparseGlobalOrderReader<BitmapType>::copy_timestamps_tiles(
             result_cell_slabs[i].tile_);
         const uint64_t cell_size = constants::timestamp_size;
 
-        // Get source buffers.
-        const auto tile_tuple = rt->tile_tuple(constants::timestamps);
-        const auto t = &std::get<0>(*tile_tuple);
-
         // Compute parallelization parameters.
         auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
             compute_parallelization_parameters(
@@ -1317,6 +1332,8 @@ Status SparseGlobalOrderReader<BitmapType>::copy_timestamps_tiles(
 
         if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
           // Copy tile.
+          const auto tile_tuple = rt->tile_tuple(constants::timestamps);
+          const auto t = &tile_tuple->fixed_tile();
           const auto src_buff = t->template data_as<uint8_t>();
           memcpy(
               buffer,
@@ -1328,6 +1345,119 @@ Status SparseGlobalOrderReader<BitmapType>::copy_timestamps_tiles(
           for (uint64_t c = 0; c < (max_pos - min_pos); c++) {
             *buffer = timestamp;
             buffer++;
+          }
+        }
+
+        return Status::Ok();
+      });
+  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+
+  return Status::Ok();
+}
+
+template <class BitmapType>
+Status SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
+    const uint64_t num_range_threads,
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    const std::vector<uint64_t>& cell_offsets,
+    QueryBuffer& query_buffer) {
+  auto timer_se = stats_->start_timer("copy_delete_meta_tiles");
+
+  // Make a map to quickly find the condition index from a marker.
+  std::unordered_map<std::string, uint64_t> condition_marker_to_index_map;
+  for (auto& condition : delete_conditions_) {
+    condition_marker_to_index_map.emplace(
+        condition.condition_marker(), condition.condition_index());
+  }
+
+  // Process all tiles/cells in parallel.
+  auto status = parallel_for_2d(
+      storage_manager_->compute_tp(),
+      0,
+      result_cell_slabs.size(),
+      0,
+      num_range_threads,
+      [&](uint64_t i, uint64_t range_thread_idx) {
+        // For easy reference.
+        auto& rcs = result_cell_slabs[i];
+        auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(
+            result_cell_slabs[i].tile_);
+
+        // Compute parallelization parameters.
+        auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
+            compute_parallelization_parameters(
+                range_thread_idx,
+                num_range_threads,
+                rcs.start_,
+                rcs.length_,
+                cell_offsets[i]);
+        if (skip_copy) {
+          return Status::Ok();
+        }
+
+        // Get dest buffers.
+        auto buffer_delete_ts =
+            static_cast<uint64_t*>(
+                buffers_[constants::delete_timestamps].buffer_) +
+            dest_cell_offset;
+        auto buffer_condition_indexes =
+            static_cast<size_t*>(query_buffer.buffer_) + dest_cell_offset;
+
+        if (fragment_metadata_[rt->frag_idx()]->has_delete_meta()) {
+          // If we have delete metadata, we need to take either the existing
+          // delete time, or the one coming from processing the delete
+          // conditions not already processed for this fragment.
+
+          // Get source buffers.
+          const auto tile_tuple_delete_ts =
+              rt->tile_tuple(constants::delete_timestamps);
+          const auto t_delete_ts = &tile_tuple_delete_ts->fixed_tile();
+          auto src_buff_delete_ts =
+              t_delete_ts->template data_as<uint64_t>() + min_pos;
+          const auto tile_tuple_condition_indexes =
+              rt->tile_tuple(constants::delete_condition_index);
+          const auto t_condition_indexes =
+              &tile_tuple_condition_indexes->fixed_tile();
+          auto src_buff_condition_indexes =
+              t_condition_indexes->template data_as<uint64_t>() + min_pos;
+
+          // For all cells, take either the time coming in from the existing
+          // metadata or the one computed with the delete conditions not
+          // already processed for this fragment, whichever comes first.
+          for (uint64_t c = min_pos; c < max_pos; c++) {
+            const auto delete_condition_ts = rt->delete_timestamp(c);
+            const auto delete_condition_index = rt->delete_condition_index(c);
+            if (delete_condition_ts >= *src_buff_delete_ts) {
+              *buffer_delete_ts = *src_buff_delete_ts;
+
+              // Convert the source condition index to this fragment's
+              // processed condition index.
+              auto& condition_marker =
+                  fragment_metadata_[rt->frag_idx()]
+                      ->get_processed_conditions()[*src_buff_condition_indexes];
+              uint64_t converted_index =
+                  condition_marker_to_index_map[condition_marker];
+              *buffer_condition_indexes = converted_index;
+            } else {
+              *buffer_delete_ts = delete_condition_ts;
+              *buffer_condition_indexes = delete_condition_index;
+            }
+
+            // Move the source/destination pointers to the next cell.
+            buffer_delete_ts++;
+            src_buff_delete_ts++;
+            buffer_condition_indexes++;
+            src_buff_condition_indexes++;
+          }
+        } else {
+          // No delete metadata, just that the computed value.
+
+          // Copy using the delete condition idx vector.
+          for (uint64_t c = min_pos; c < max_pos; c++) {
+            *buffer_delete_ts = rt->delete_timestamp(c);
+            buffer_delete_ts++;
+            *buffer_condition_indexes = rt->delete_condition_index(c);
+            buffer_condition_indexes++;
           }
         }
 
@@ -1365,7 +1495,7 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
         // For dimensions or query condition fields, tiles are already all
         // loaded in memory.
         if (array_schema_.is_dim(name) ||
-            condition_.field_names().count(name) != 0 || is_timestamps)
+            qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps)
           return Status::Ok();
 
         // Get the size for all tiles.
@@ -1373,26 +1503,28 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
         for (; idx < max_cs_idx; idx++) {
           auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(
               result_cell_slabs[idx].tile_);
-          auto id =
-              std::pair<uint64_t, uint64_t>(rt->frag_idx(), rt->tile_idx());
+          const auto f = rt->frag_idx();
+          const auto t = rt->tile_idx();
+          auto id = std::pair<uint64_t, uint64_t>(f, t);
 
           if (accounted_tiles.count(id) == 0) {
             accounted_tiles.emplace(id);
 
+            // Skip for delete condition name if the fragment doesn't have
+            // delete metadata.
+            if (name == constants::delete_condition_index &&
+                !fragment_metadata_[f]->has_delete_meta()) {
+              continue;
+            }
+
             // Size of the tile in memory.
-            auto&& [st, tile_size] =
-                get_attribute_tile_size(name, rt->frag_idx(), rt->tile_idx());
+            auto&& [st, tile_size] = get_attribute_tile_size(name, f, t);
             RETURN_NOT_OK(st);
 
             // Account for the pointers to the var data that is created in
             // copy_tiles for var sized attributes.
             if (var_sized) {
-              auto cell_num = rt->bitmap_result_num_ !=
-                                      std::numeric_limits<uint64_t>::max() ?
-                                  rt->bitmap_result_num_ :
-                                  fragment_metadata_[rt->frag_idx()]->cell_num(
-                                      rt->tile_idx());
-              *tile_size += sizeof(void*) * cell_num;
+              *tile_size += sizeof(void*) * rt->result_num();
             }
 
             // Stop when we reach the budget.
@@ -1571,6 +1703,12 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
       const auto cell_size = array_schema_.cell_size(name);
       auto& query_buffer = buffers_[name];
 
+      // Delete timestamps will be processed at the same time as the delete
+      // condition indexes.
+      if (name == constants::delete_timestamps) {
+        continue;
+      }
+
       // Pointers to var size data, generated when offsets are processed.
       std::vector<void*> var_data;
       if (var_sized) {
@@ -1591,6 +1729,10 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
           elements_mode_ ? datatype_size(array_schema_.type(name)) : 1;
       if (name == constants::timestamps) {
         RETURN_NOT_OK(copy_timestamps_tiles(
+            num_range_threads, result_cell_slabs, cell_offsets, query_buffer));
+      } else if (name == constants::delete_condition_index) {
+        // Copy fixed size data.
+        RETURN_NOT_OK(copy_delete_meta_tiles(
             num_range_threads, result_cell_slabs, cell_offsets, query_buffer));
       } else if (var_sized) {
         RETURN_NOT_OK(copy_offsets_tiles<OffType>(
@@ -1645,11 +1787,19 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
         *query_buffer.buffer_size_ = total_cells * cell_size;
       }
 
-      if (nullable)
+      if (nullable) {
         *buffers_[name].validity_vector_.buffer_size() = total_cells;
+      }
+
+      // For delete timestamps, since they get processed at the same time as
+      // the delete condition indexes, we need to adjust the buffer size.
+      if (name == constants::delete_condition_index) {
+        *buffers_[constants::delete_timestamps].buffer_size_ =
+            total_cells * constants::timestamp_size;
+      }
 
       // Clear tiles from memory.
-      if (!is_dim && condition_.field_names().count(name) == 0 &&
+      if (!is_dim && qc_loaded_attr_names_set_.count(name) == 0 &&
           name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);
@@ -1679,13 +1829,13 @@ Status SparseGlobalOrderReader<BitmapType>::remove_result_tile(
   }
 
   // Adjust per fragment memory usage.
-  memory_used_for_coords_[frag_idx] -= tiles_size + sizeof(ResultTile);
+  memory_used_for_coords_[frag_idx] -= tiles_size;
   memory_used_for_qc_tiles_[frag_idx] -= tiles_size_qc;
 
   // Adjust total memory usage.
   {
     std::unique_lock<std::mutex> lck(mem_budget_mtx_);
-    memory_used_for_coords_total_ -= tiles_size + sizeof(ResultTile);
+    memory_used_for_coords_total_ -= tiles_size;
     memory_used_qc_tiles_total_ -= tiles_size_qc;
   }
 
@@ -1741,6 +1891,7 @@ template SparseGlobalOrderReader<uint8_t>::SparseGlobalOrderReader(
     Subarray&,
     Layout,
     QueryCondition&,
+    bool,
     bool);
 template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
     stats::Stats*,
@@ -1752,6 +1903,7 @@ template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
     Subarray&,
     Layout,
     QueryCondition&,
+    bool,
     bool);
 
 }  // namespace sm

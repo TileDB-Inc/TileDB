@@ -275,6 +275,23 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_point_ranges(
     const void* start,
     uint64_t count) TILEDB_NOEXCEPT;
 
+/**
+ * Get the number of relevant fragments from the subarray. Should only be
+ * called after size estimation was asked for.
+ *
+ * @param ctx The TileDB context.
+ * @param query The query to get the data fron.
+ * @param relevant_fragment_num Variable to receive the number of relevant
+ * fragments.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note Should only be called after size estimation was run.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_relevant_fragment_num(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    uint64_t* relevant_fragment_num) TILEDB_NOEXCEPT;
+
 /* ********************************* */
 /*        QUERY STATUS DETAILS       */
 /* ********************************* */

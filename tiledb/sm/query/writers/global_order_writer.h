@@ -108,8 +108,10 @@ class GlobalOrderWriter : public WriterBase {
       Layout layout,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       bool disable_checks_consolidation,
+      std::vector<std::string>& processed_conditions,
       Query::CoordsInfo& coords_info_,
-      URI fragment_uri = URI(""));
+      optional<std::string> fragment_name = nullopt,
+      bool skip_checks_serialization = false);
 
   /** Destructor. */
   ~GlobalOrderWriter();
@@ -137,6 +139,9 @@ class GlobalOrderWriter : public WriterBase {
 
   /** The state associated with global writes. */
   tdb_unique_ptr<GlobalWriteState> global_write_state_;
+
+  /** The processed conditions. */
+  std::vector<std::string>& processed_conditions_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

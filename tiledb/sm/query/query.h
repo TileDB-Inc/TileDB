@@ -135,11 +135,17 @@ class Query {
    * for the name of the new fragment to be created.
    *
    * @note Array must be a properly opened array.
+   *
+   * @param array The array that is being queried.
+   * @param fragment_uri The full URI for the new fragment. Only used for
+   * writes.
+   * @param fragment_base_uri Optional base name for new fragment. Only used for
+   *     writes and only if fragment_uri is empty.
    */
   Query(
       StorageManager* storage_manager,
       shared_ptr<Array> array,
-      URI fragment_uri = URI(""));
+      optional<std::string> fragment_name = nullopt);
 
   /** Destructor. */
   ~Query();
@@ -551,14 +557,18 @@ class Query {
   /** Processes a query. */
   Status process();
 
-  /** Create the strategy. */
-  Status create_strategy();
-
   /** Gets the strategy of the query. */
-  IQueryStrategy* strategy();
+  IQueryStrategy* strategy(bool skip_checks_serialization = false);
 
-  /** Remove the current strategy. Used by serialization. */
-  void clear_strategy();
+  /**
+   * Switch the strategy depending on layout. Used by serialization.
+   *
+   * @param layout New layout
+   * @param force_legacy_reader Force use of the legacy reader if the client
+   *    requested it.
+   * @return Status
+   */
+  Status reset_strategy_with_layout(Layout layout, bool force_legacy_reader);
 
   /**
    * Disables checking the global order and coordinate duplicates. Applicable
@@ -570,6 +580,13 @@ class Query {
    * Enables consolidation with timestamps.
    */
   Status set_consolidation_with_timestamps();
+
+  /**
+   * Set the processed conditions for writes.
+   *
+   * @param processed_conditions The processed conditions.
+   */
+  void set_processed_conditions(std::vector<std::string>& processed_conditions);
 
   /**
    * Sets the config for the Query
@@ -799,11 +816,6 @@ class Query {
       std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size);
 
   /**
-   * Sets the cell layout of the query without performing any checks.
-   */
-  Status set_layout_unsafe(Layout layout);
-
-  /**
    * Sets the cell layout of the query.
    */
   Status set_layout(Layout layout);
@@ -1003,15 +1015,38 @@ class Query {
    */
   bool consolidation_with_timestamps_;
 
-  /** The name of the new fragment to be created for writes. */
-  URI fragment_uri_;
-
   /* Scratch space used for REST requests. */
   shared_ptr<Buffer> rest_scratch_;
+
+  /* Processed conditions, used for consolidation. */
+  std::vector<std::string> processed_conditions_;
+
+  /**
+   * Flag to force legacy reader when strategy gets created. This is used by
+   * the serialization codebase if a query comes from an older version of the
+   * library that doesn't have the refactored readers, we need to run it with
+   * the legacy reader.
+   */
+  bool force_legacy_reader_;
+
+  /**
+   * The name of the new fragment to be created for writes.
+   *
+   * If not set, the fragment name will be created using the latest array
+   * timestamp and a generated UUID.
+   */
+  optional<std::string> fragment_name_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /**
+   * Create the strategy.
+   *
+   * @param skip_checks_serialization Skip checks during serialization.
+   */
+  Status create_strategy(bool skip_checks_serialization = false);
 
   Status check_set_fixed_buffer(const std::string& name);
 

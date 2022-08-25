@@ -79,7 +79,8 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       bool disable_checks_consolidation,
       Query::CoordsInfo& coords_info_,
-      URI fragment_uri = URI(""));
+      optional<std::string> fragment_name = nullopt,
+      bool skip_checks_serialization = false);
 
   /** Destructor. */
   ~WriterBase();
@@ -112,9 +113,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
 
   /** Returns current setting of dedup_coords_ */
   bool get_dedup_coords() const;
-
-  /** Initializes the writer. */
-  Status init();
 
   /** Initialize the memory budget variables. */
   Status initialize_memory_budget();
@@ -181,9 +179,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /** The name of the new fragment to be created. */
   URI fragment_uri_;
 
-  /** True if the writer has been initialized. */
-  bool initialized_;
-
   /** Stores information about the written fragments. */
   std::vector<WrittenFragmentInfo>& written_fragment_info_;
 
@@ -201,7 +196,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status add_written_fragment_info(const URI& uri);
 
   /** Correctness checks for buffer sizes. */
-  Status check_buffer_sizes() const;
+  void check_buffer_sizes() const;
 
   /**
    * Throws an error if there are coordinates falling out-of-bounds, i.e.,
@@ -212,14 +207,14 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status check_coord_oob() const;
 
   /** Correctness checks for `subarray_`. */
-  Status check_subarray() const;
+  void check_subarray() const;
 
   /**
    * Check the validity of the provided buffer offsets for a variable attribute.
    *
    * @return Status
    */
-  Status check_var_attr_offsets() const;
+  void check_var_attr_offsets() const;
 
   /**
    * Cleans up the coordinate buffers. Applicable only if the coordinate
@@ -263,12 +258,14 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /**
    * Creates a new fragment.
    *
+   * This will create the fragment directory, fragment URI directory, and commit
+   * directory (if they do not already exist) the first time it is called.
+   *
    * @param dense Whether the fragment is dense or not.
    * @param frag_meta The fragment metadata to be generated.
    * @return Status
    */
-  Status create_fragment(
-      bool dense, shared_ptr<FragmentMetadata>& frag_meta) const;
+  Status create_fragment(bool dense, shared_ptr<FragmentMetadata>& frag_meta);
 
   /**
    * Runs the input coordinate and attribute tiles through their
@@ -340,22 +337,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       WriterTileVector* tiles) const;
 
   /**
-   * Generates a new fragment name, which is in the form: <br>
-   * `__t_t_uuid_v`, where `t` is the input timestamp and `v` is the current
-   * format version. For instance,
-   * `__1458759561320_1458759561320_6ba7b8129dad11d180b400c04fd430c8_3`.
-   *
-   * If `timestamp` is 0, then it is set to the current time.
-   *
-   * @param timestamp The timestamp of when the array got opened for writes. It
-   *     is in ms since 1970-01-01 00:00:00 +0000 (UTC).
-   * @param frag_uri Will store the new special fragment name
-   * @return Status
-   */
-  Status new_fragment_name(
-      uint64_t timestamp, uint32_t format_version, std::string* frag_uri) const;
-
-  /**
    * Optimize the layout for 1D arrays. Specifically, if the array
    * is 1D and the query layout is not global or unordered, the layout
    * should be the same as the cell order of the array. This produces
@@ -367,7 +348,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * Checks the validity of the extra element from var-sized offsets of
    * attributes
    */
-  Status check_extra_element();
+  void check_extra_element();
 
   /**
    * Return an element of the offsets buffer at a certain position

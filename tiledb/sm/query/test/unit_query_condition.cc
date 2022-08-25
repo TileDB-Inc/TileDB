@@ -40,8 +40,9 @@
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/readers/result_cell_slab.h"
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <iostream>
 
 using namespace tiledb::sm;
@@ -55,7 +56,9 @@ TEST_CASE(
 
   ArraySchema array_schema;
   std::vector<ResultCellSlab> result_cell_slabs;
-  REQUIRE(query_condition.apply(array_schema, result_cell_slabs, 1).ok());
+  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+  REQUIRE(
+      query_condition.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
 }
 
 TEST_CASE("QueryCondition: Test init", "[QueryCondition][value_constructor]") {
@@ -1134,7 +1137,9 @@ void test_apply_cells<char*>(
   ResultCellSlab result_cell_slab(result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, result_cell_slabs, 1).ok());
+  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+  REQUIRE(
+      query_condition.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1161,8 +1166,9 @@ void test_apply_cells<char*>(
       std::vector<ResultCellSlab> result_cell_slabs_eq_null;
       result_cell_slabs_eq_null.emplace_back(
           std::move(result_cell_slab_eq_null));
+      std::vector<shared_ptr<FragmentMetadata>> frag_md;
       REQUIRE(query_condition_eq_null
-                  .apply(array_schema, result_cell_slabs_eq_null, 1)
+                  .apply(array_schema, frag_md, result_cell_slabs_eq_null, 1)
                   .ok());
 
       REQUIRE(result_cell_slabs_eq_null.size() == (cells / 2));
@@ -1227,7 +1233,9 @@ void test_apply_cells<char*>(
   ResultCellSlab fill_result_cell_slab(nullptr, 0, cells);
   std::vector<ResultCellSlab> fill_result_cell_slabs;
   fill_result_cell_slabs.emplace_back(std::move(fill_result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, fill_result_cell_slabs, 1).ok());
+  REQUIRE(
+      query_condition.apply(array_schema, frag_md, fill_result_cell_slabs, 1)
+          .ok());
 
   // Verify the fill result cell slabs contain the expected cells.
   auto fill_expected_iter = fill_expected_cell_idx_vec.begin();
@@ -1299,7 +1307,9 @@ void test_apply_cells(
   ResultCellSlab result_cell_slab(result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, result_cell_slabs, 1).ok());
+  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+  REQUIRE(
+      query_condition.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1357,7 +1367,9 @@ void test_apply_cells(
   ResultCellSlab fill_result_cell_slab(nullptr, 0, cells);
   std::vector<ResultCellSlab> fill_result_cell_slabs;
   fill_result_cell_slabs.emplace_back(std::move(fill_result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, fill_result_cell_slabs, 1).ok());
+  REQUIRE(
+      query_condition.apply(array_schema, frag_md, fill_result_cell_slabs, 1)
+          .ok());
 
   // Verify the fill result cell slabs contain the expected cells.
   auto fill_expected_iter = fill_expected_cell_idx_vec.begin();
@@ -1464,7 +1476,7 @@ void test_apply_tile<char*>(
   bool var_size = array_schema.attribute(field_name)->var_size();
   bool nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
-      var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
+      var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
 
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,
@@ -1482,7 +1494,7 @@ void test_apply_tile<char*>(
   REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
 
   if (var_size) {
-    Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+    Tile* const tile_offsets = &tile_tuple->fixed_tile();
     REQUIRE(tile_offsets
                 ->init_unfiltered(
                     constants::format_version,
@@ -1503,7 +1515,7 @@ void test_apply_tile<char*>(
   }
 
   if (nullable) {
-    Tile* const tile_validity = &std::get<2>(*tile_tuple);
+    Tile* const tile_validity = &tile_tuple->validity_tile();
     REQUIRE(tile_validity
                 ->init_unfiltered(
                     constants::format_version,
@@ -1540,7 +1552,7 @@ void test_apply_tile(
     const ArraySchema& array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
-  Tile* const tile = &std::get<0>(*tile_tuple);
+  Tile* const tile = &tile_tuple->fixed_tile();
 
   REQUIRE(
       tile->init_unfiltered(
@@ -1605,7 +1617,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile<char*>(field_name, cells, type, array_schema, &result_tile);
 }
@@ -1638,7 +1650,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile<T>(field_name, cells, type, array_schema, &result_tile);
 }
@@ -1715,14 +1727,14 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
   var_size = array_schema.attribute(field_name)->var_size();
   nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
-      var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
+      var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
 
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,
@@ -1743,7 +1755,7 @@ TEST_CASE(
   REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
 
   if (var_size) {
-    Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+    Tile* const tile_offsets = &tile_tuple->fixed_tile();
     REQUIRE(tile_offsets
                 ->init_unfiltered(
                     constants::format_version,
@@ -1766,7 +1778,7 @@ TEST_CASE(
   }
 
   if (nullable) {
-    Tile* const tile_validity = &std::get<2>(*tile_tuple);
+    Tile* const tile_validity = &tile_tuple->validity_tile();
     REQUIRE(tile_validity
                 ->init_unfiltered(
                     constants::format_version,
@@ -1829,7 +1841,9 @@ TEST_CASE(
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(query_condition.apply(array_schema, result_cell_slabs, 1).ok());
+  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+  REQUIRE(
+      query_condition.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -2136,7 +2150,7 @@ void test_apply_tile_dense<char*>(
   bool var_size = array_schema.attribute(field_name)->var_size();
   bool nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
-      var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
+      var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
 
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,
@@ -2154,7 +2168,7 @@ void test_apply_tile_dense<char*>(
   REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
 
   if (var_size) {
-    Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+    Tile* const tile_offsets = &tile_tuple->fixed_tile();
     REQUIRE(tile_offsets
                 ->init_unfiltered(
                     constants::format_version,
@@ -2175,7 +2189,7 @@ void test_apply_tile_dense<char*>(
   }
 
   if (nullable) {
-    Tile* const tile_validity = &std::get<2>(*tile_tuple);
+    Tile* const tile_validity = &tile_tuple->validity_tile();
     REQUIRE(tile_validity
                 ->init_unfiltered(
                     constants::format_version,
@@ -2212,7 +2226,7 @@ void test_apply_tile_dense(
     const ArraySchema& array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
-  Tile* const tile = &std::get<0>(*tile_tuple);
+  Tile* const tile = &tile_tuple->fixed_tile();
 
   REQUIRE(
       tile->init_unfiltered(
@@ -2283,7 +2297,7 @@ void test_apply_dense<char*>(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile_dense<char*>(
       field_name, cells, type, array_schema, &result_tile);
@@ -2322,7 +2336,7 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile_dense<T>(field_name, cells, type, array_schema, &result_tile);
 }
@@ -2400,14 +2414,14 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
   var_size = array_schema.attribute(field_name)->var_size();
   nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
-      var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
+      var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
 
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,
@@ -2427,7 +2441,7 @@ TEST_CASE(
   REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
 
   if (var_size) {
-    Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+    Tile* const tile_offsets = &tile_tuple->fixed_tile();
     REQUIRE(tile_offsets
                 ->init_unfiltered(
                     constants::format_version,
@@ -2450,7 +2464,7 @@ TEST_CASE(
   }
 
   if (nullable) {
-    Tile* const tile_validity = &std::get<2>(*tile_tuple);
+    Tile* const tile_validity = &tile_tuple->validity_tile();
     REQUIRE(tile_validity
                 ->init_unfiltered(
                     constants::format_version,
@@ -2609,15 +2623,12 @@ void test_apply_cells_sparse<char*>(
   }
 
   // Apply the query condition.
-  uint64_t cell_count = 0;
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
-              .apply_sparse<uint8_t>(
-                  array_schema, *result_tile, result_bitmap, &cell_count)
+              .apply_sparse<uint8_t>(array_schema, *result_tile, result_bitmap)
               .ok());
 
   // Verify the result bitmap contain the expected cells.
-  REQUIRE(cell_count == expected_cell_idx_vec.size());
   auto expected_iter = expected_cell_idx_vec.begin();
   for (uint64_t cell_idx = 0; cell_idx < cells; ++cell_idx) {
     if (result_bitmap[cell_idx]) {
@@ -2637,18 +2648,13 @@ void test_apply_cells_sparse<char*>(
       REQUIRE(query_condition_eq_null.check(array_schema).ok());
 
       // Apply the query condition.
-      uint64_t cell_count_eq_null = 0;
       std::vector<uint8_t> result_bitmap_eq_null(cells, 1);
       REQUIRE(query_condition_eq_null
                   .apply_sparse<uint8_t>(
-                      array_schema,
-                      *result_tile,
-                      result_bitmap_eq_null,
-                      &cell_count_eq_null)
+                      array_schema, *result_tile, result_bitmap_eq_null)
                   .ok());
 
       // Verify the result bitmap contain the expected cells.
-      REQUIRE(cell_count_eq_null == 5);
       for (uint64_t cell_idx = 0; cell_idx < cells; ++cell_idx) {
         REQUIRE(result_bitmap_eq_null[cell_idx] == (cell_idx + eq + 1) % 2);
       }
@@ -2712,15 +2718,12 @@ void test_apply_cells_sparse(
   }
 
   // Apply the query condition.
-  uint64_t cell_count = 0;
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
-              .apply_sparse<uint8_t>(
-                  array_schema, *result_tile, result_bitmap, &cell_count)
+              .apply_sparse<uint8_t>(array_schema, *result_tile, result_bitmap)
               .ok());
 
   // Verify the result bitmap contain the expected cells.
-  REQUIRE(cell_count == expected_cell_idx_vec.size());
   auto expected_iter = expected_cell_idx_vec.begin();
   for (uint64_t cell_idx = 0; cell_idx < cells; ++cell_idx) {
     if (result_bitmap[cell_idx]) {
@@ -2822,7 +2825,7 @@ void test_apply_tile_sparse<char*>(
   bool var_size = array_schema.attribute(field_name)->var_size();
   bool nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
-      var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
+      var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
 
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,
@@ -2840,7 +2843,7 @@ void test_apply_tile_sparse<char*>(
   REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
 
   if (var_size) {
-    Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+    Tile* const tile_offsets = &tile_tuple->fixed_tile();
     REQUIRE(tile_offsets
                 ->init_unfiltered(
                     constants::format_version,
@@ -2861,7 +2864,7 @@ void test_apply_tile_sparse<char*>(
   }
 
   if (nullable) {
-    Tile* const tile_validity = &std::get<2>(*tile_tuple);
+    Tile* const tile_validity = &tile_tuple->validity_tile();
     REQUIRE(tile_validity
                 ->init_unfiltered(
                     constants::format_version,
@@ -2898,7 +2901,7 @@ void test_apply_tile_sparse(
     const ArraySchema& array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
-  Tile* const tile = &std::get<0>(*tile_tuple);
+  Tile* const tile = &tile_tuple->fixed_tile();
 
   REQUIRE(
       tile->init_unfiltered(
@@ -2970,7 +2973,7 @@ void test_apply_sparse<char*>(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile_sparse<char*>(
       field_name, cells, type, array_schema, &result_tile);
@@ -3009,7 +3012,7 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   test_apply_tile_sparse<T>(
       field_name, cells, type, array_schema, &result_tile);
@@ -3054,17 +3057,14 @@ TEST_CASE(
  */
 struct TestParams {
   QueryCondition qc_;
-  uint64_t cell_count_;
   std::vector<uint8_t> expected_bitmap_;
   std::vector<ResultCellSlab> expected_slabs_;
 
   TestParams(
       QueryCondition&& qc,
-      uint64_t cell_count,
       std::vector<uint8_t>&& expected_bitmap,
       std::vector<ResultCellSlab>&& expected_slabs)
       : qc_(std::move(qc))
-      , cell_count_(cell_count)
       , expected_bitmap_(std::move(expected_bitmap))
       , expected_slabs_(expected_slabs) {
   }
@@ -3087,7 +3087,8 @@ void validate_qc_apply(
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(tp.qc_.apply(array_schema, result_cell_slabs, 1).ok());
+  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+  REQUIRE(tp.qc_.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
   REQUIRE(result_cell_slabs.size() == tp.expected_slabs_.size());
   uint64_t result_cell_slabs_size = result_cell_slabs.size();
   for (uint64_t i = 0; i < result_cell_slabs_size; ++i) {
@@ -3111,24 +3112,20 @@ void validate_qc_apply_sparse(
     uint64_t cells,
     const ArraySchema& array_schema,
     ResultTile& result_tile) {
-  uint64_t cell_count = 0;
   std::vector<uint8_t> sparse_result_bitmap(cells, 1);
   REQUIRE(tp.qc_
               .apply_sparse<uint8_t>(
-                  array_schema, result_tile, sparse_result_bitmap, &cell_count)
+                  array_schema, result_tile, sparse_result_bitmap)
               .ok());
-  CHECK(tp.cell_count_ == cell_count);
   for (uint64_t i = 0; i < cells; ++i) {
     CHECK(sparse_result_bitmap[i] == tp.expected_bitmap_[i]);
   }
 
-  cell_count = 0;
   std::vector<uint64_t> sparse_result_bitmap1(cells, 2);
   REQUIRE(tp.qc_
               .apply_sparse<uint64_t>(
-                  array_schema, result_tile, sparse_result_bitmap1, &cell_count)
+                  array_schema, result_tile, sparse_result_bitmap1)
               .ok());
-  CHECK(tp.cell_count_ * 2 == cell_count);
   for (uint64_t i = 0; i < cells; ++i) {
     CHECK(sparse_result_bitmap1[i] == tp.expected_bitmap_[i] * 2);
   }
@@ -3205,12 +3202,10 @@ void populate_test_params_vector(
                     &query_condition_3)
                 .ok());
 
-    uint64_t cell_count = 3;
     std::vector<uint8_t> expected_bitmap = {0, 0, 0, 0, 1, 1, 1, 0, 0, 0};
     std::vector<ResultCellSlab> expected_slabs = {{result_tile, 4, 3}};
     TestParams tp(
         std::move(query_condition_3),
-        cell_count,
         std::move(expected_bitmap),
         std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -3246,13 +3241,11 @@ void populate_test_params_vector(
                     &query_condition_3)
                 .ok());
 
-    uint64_t cell_count = 7;
     std::vector<uint8_t> expected_bitmap = {1, 1, 1, 1, 0, 0, 0, 1, 1, 1};
     std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 4},
                                                   {result_tile, 7, 3}};
     TestParams tp(
         std::move(query_condition_3),
-        cell_count,
         std::move(expected_bitmap),
         std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -3323,12 +3316,10 @@ void populate_test_params_vector(
                 combined_and1, QueryConditionCombinationOp::OR, &combined_or)
             .ok());
 
-    uint64_t cell_count = 6;
     std::vector<uint8_t> expected_bitmap = {0, 0, 0, 1, 1, 1, 1, 1, 1, 0};
     std::vector<ResultCellSlab> expected_slabs = {{result_tile, 3, 6}};
     TestParams tp(
         std::move(combined_or),
-        cell_count,
         std::move(expected_bitmap),
         std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -3400,13 +3391,11 @@ void populate_test_params_vector(
                 combined_or1, QueryConditionCombinationOp::AND, &combined_and)
             .ok());
 
-    uint64_t cell_count = 4;
     std::vector<uint8_t> expected_bitmap = {1, 1, 1, 0, 0, 0, 0, 0, 0, 1};
     std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 3},
                                                   {result_tile, 9, 1}};
     TestParams tp(
         std::move(combined_and),
-        cell_count,
         std::move(expected_bitmap),
         std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -3500,15 +3489,11 @@ void populate_test_params_vector(
     REQUIRE(subtree_a.combine(subtree_b, QueryConditionCombinationOp::OR, &qc)
                 .ok());
 
-    uint64_t cell_count = 2;
     std::vector<uint8_t> expected_bitmap = {0, 0, 0, 0, 0, 1, 0, 1, 0, 0};
     std::vector<ResultCellSlab> expected_slabs = {{result_tile, 5, 1},
                                                   {result_tile, 7, 1}};
     TestParams tp(
-        std::move(qc),
-        cell_count,
-        std::move(expected_bitmap),
-        std::move(expected_slabs));
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
   }
 
@@ -3597,7 +3582,6 @@ void populate_test_params_vector(
                     &combined_and4)
                 .ok());
 
-    uint64_t cell_count = 5;
     std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
     std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
                                                   {result_tile, 2, 1},
@@ -3606,7 +3590,6 @@ void populate_test_params_vector(
                                                   {result_tile, 8, 1}};
     TestParams tp(
         std::move(combined_and4),
-        cell_count,
         std::move(expected_bitmap),
         std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -3693,7 +3676,6 @@ void populate_test_params_vector(
                     QueryConditionCombinationOp::OR,
                     &combined_or4)
                 .ok());
-    uint64_t cell_count = 5;
     std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
     std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
                                                   {result_tile, 2, 1},
@@ -3702,7 +3684,6 @@ void populate_test_params_vector(
                                                   {result_tile, 8, 1}};
     TestParams tp(
         std::move(combined_or4),
-        cell_count,
         std::move(expected_bitmap),
         std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -3736,9 +3717,9 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, false, false);
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
-  Tile* const tile = &std::get<0>(*tile_tuple);
+  Tile* const tile = &tile_tuple->fixed_tile();
 
   // Initialize and populate the data tile.
   REQUIRE(tile->init_unfiltered(
@@ -3790,21 +3771,17 @@ void populate_string_test_params_vector(
     const std::string& field_name,
     ResultTile* result_tile,
     std::vector<TestParams>& tp_vec) {
-  // Construct basic query condition "foo < "eve".
+  // Construct basic query condition `foo < "eve"`.
   {
     char e[] = "eve";
     QueryCondition qc;
     REQUIRE(
         qc.init(std::string(field_name), &e, strlen(e), QueryConditionOp::LT)
             .ok());
-    uint64_t cell_count = 5;
     std::vector<uint8_t> expected_bitmap = {1, 1, 1, 1, 1, 0, 0, 0, 0, 0};
     std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 5}};
     TestParams tp(
-        std::move(qc),
-        cell_count,
-        std::move(expected_bitmap),
-        std::move(expected_slabs));
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
   }
   // Construct basic AND query condition `foo >= "bob" AND foo <= "eve"`.
@@ -3823,14 +3800,10 @@ void populate_string_test_params_vector(
 
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::AND, &qc).ok());
-    uint64_t cell_count = 4;
     std::vector<uint8_t> expected_bitmap = {0, 1, 1, 1, 1, 0, 0, 0, 0, 0};
     std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 4}};
     TestParams tp(
-        std::move(qc),
-        cell_count,
-        std::move(expected_bitmap),
-        std::move(expected_slabs));
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
   }
 
@@ -3851,15 +3824,11 @@ void populate_string_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
 
-    uint64_t cell_count = 7;
     std::vector<uint8_t> expected_bitmap = {1, 1, 0, 0, 0, 1, 1, 1, 1, 1};
     std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 2},
                                                   {result_tile, 5, 5}};
     TestParams tp(
-        std::move(qc),
-        cell_count,
-        std::move(expected_bitmap),
-        std::move(expected_slabs));
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
   }
 
@@ -3895,14 +3864,10 @@ void populate_string_test_params_vector(
     REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::AND, &qc6).ok());
     REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::OR, &qc).ok());
 
-    uint64_t cell_count = 9;
     std::vector<uint8_t> expected_bitmap = {0, 1, 1, 1, 1, 1, 1, 1, 1, 1};
     std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 9}};
     TestParams tp(
-        std::move(qc),
-        cell_count,
-        std::move(expected_bitmap),
-        std::move(expected_slabs));
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
   }
 
@@ -3938,14 +3903,10 @@ void populate_string_test_params_vector(
     REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::OR, &qc6).ok());
     REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::AND, &qc).ok());
 
-    uint64_t cell_count = 1;
     std::vector<uint8_t> expected_bitmap = {0, 0, 0, 0, 0, 0, 0, 1, 0, 0};
     std::vector<ResultCellSlab> expected_slabs = {{result_tile, 7, 1}};
     TestParams tp(
-        std::move(qc),
-        cell_count,
-        std::move(expected_bitmap),
-        std::move(expected_slabs));
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
   }
 
@@ -3978,7 +3939,6 @@ void populate_string_test_params_vector(
       REQUIRE(qc3.combine(val_nodes[4], QueryConditionCombinationOp::AND, &qc)
                   .ok());
 
-      uint64_t cell_count = 5;
       std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
       std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
                                                     {result_tile, 3, 1},
@@ -3986,10 +3946,7 @@ void populate_string_test_params_vector(
                                                     {result_tile, 7, 1},
                                                     {result_tile, 9, 1}};
       TestParams tp(
-          std::move(qc),
-          cell_count,
-          std::move(expected_bitmap),
-          std::move(expected_slabs));
+          std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
       tp_vec.push_back(tp);
     }
 
@@ -4019,7 +3976,6 @@ void populate_string_test_params_vector(
       REQUIRE(
           qc3.combine(val_nodes[4], QueryConditionCombinationOp::OR, &qc).ok());
 
-      uint64_t cell_count = 5;
       std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
       std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
                                                     {result_tile, 2, 1},
@@ -4027,10 +3983,7 @@ void populate_string_test_params_vector(
                                                     {result_tile, 6, 1},
                                                     {result_tile, 8, 1}};
       TestParams tp(
-          std::move(qc),
-          cell_count,
-          std::move(expected_bitmap),
-          std::move(expected_slabs));
+          std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
       tp_vec.push_back(tp);
     }
   }
@@ -4063,10 +4016,10 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, true, false);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
-  Tile* const tile = &std::get<1>(*tile_tuple);
+  Tile* const tile = &tile_tuple->var_tile();
 
   std::string data = "alicebobcraigdaveerinfrankgraceheidiivanjudy";
   std::vector<uint64_t> offsets = {0, 5, 8, 13, 17, 21, 26, 31, 36, 40};
@@ -4082,7 +4035,7 @@ TEST_CASE(
   REQUIRE(tile->write(data.c_str(), 0, data.size()).ok());
 
   // Write the tile offsets.
-  Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+  Tile* const tile_offsets = &tile_tuple->fixed_tile();
   REQUIRE(tile_offsets
               ->init_unfiltered(
                   constants::format_version,
@@ -4097,6 +4050,292 @@ TEST_CASE(
 
   std::vector<TestParams> tp_vec;
   populate_string_test_params_vector(field_name, &result_tile, tp_vec);
+
+  SECTION("Validate apply.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply(elem, cells, array_schema, result_tile);
+    }
+  }
+
+  SECTION("Validate apply_sparse.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply_sparse(elem, cells, array_schema, result_tile);
+    }
+  }
+
+  SECTION("Validate apply_dense.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply_dense(elem, cells, array_schema, result_tile);
+    }
+  }
+}
+
+/**
+ * @brief Function that takes a selection of QueryConditions, with their
+ * expected results, and combines them together. This function is
+ * exclusively for nullable query conditions.
+ *
+ * @param field_name The field name of the query condition.
+ * @param result_tile The result tile of the array we're running the query on.
+ * @param tp_vec The vector that stores the test parameter structs.
+ */
+void populate_nullable_test_params_vector(
+    const std::string& field_name,
+    ResultTile* result_tile,
+    std::vector<TestParams>& tp_vec) {
+  // Construct basic query condition `foo = null`.
+  {
+    QueryCondition qc;
+    REQUIRE(qc.init(std::string(field_name), nullptr, 0, QueryConditionOp::EQ)
+                .ok());
+    std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
+                                                  {result_tile, 2, 1},
+                                                  {result_tile, 4, 1},
+                                                  {result_tile, 6, 1},
+                                                  {result_tile, 8, 1}};
+    TestParams tp(
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct basic query condition `foo != null`.
+  {
+    QueryCondition qc;
+    REQUIRE(qc.init(std::string(field_name), nullptr, 0, QueryConditionOp::NE)
+                .ok());
+    std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
+                                                  {result_tile, 3, 1},
+                                                  {result_tile, 5, 1},
+                                                  {result_tile, 7, 1},
+                                                  {result_tile, 9, 1}};
+    TestParams tp(
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct basic query condition `foo > 2`.
+  {
+    QueryCondition qc;
+    float val = 2.0f;
+    REQUIRE(qc.init(
+                  std::string(field_name),
+                  &val,
+                  sizeof(float),
+                  QueryConditionOp::GT)
+                .ok());
+    std::vector<uint8_t> expected_bitmap = {0, 0, 0, 1, 0, 1, 0, 1, 0, 1};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 3, 1},
+                                                  {result_tile, 5, 1},
+                                                  {result_tile, 7, 1},
+                                                  {result_tile, 9, 1}};
+    TestParams tp(
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct query condition `foo < 2 || foo > 4`.
+  {
+    QueryCondition qc1;
+    float val = 2.0f;
+    float val1 = 4.0f;
+    REQUIRE(qc1.init(
+                   std::string(field_name),
+                   &val,
+                   sizeof(float),
+                   QueryConditionOp::LT)
+                .ok());
+
+    QueryCondition qc2;
+    REQUIRE(qc2.init(
+                   std::string(field_name),
+                   &val1,
+                   sizeof(float),
+                   QueryConditionOp::GT)
+                .ok());
+    QueryCondition qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
+    std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 0, 0, 0, 0, 1};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 1, 1}, {result_tile, 3, 1}, {result_tile, 9, 1}};
+    TestParams tp(
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct query condition `foo > 4 || foo = null`.
+  {
+    QueryCondition qc1;
+    float val = 4.0f;
+    REQUIRE(qc1.init(
+                   std::string(field_name),
+                   &val,
+                   sizeof(float),
+                   QueryConditionOp::GT)
+                .ok());
+
+    QueryCondition qc2;
+    REQUIRE(qc2.init(std::string(field_name), nullptr, 0, QueryConditionOp::EQ)
+                .ok());
+    QueryCondition qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
+    std::vector<uint8_t> expected_bitmap = {1, 0, 1, 1, 1, 0, 1, 0, 1, 1};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
+                                                  {result_tile, 2, 3},
+                                                  {result_tile, 6, 1},
+                                                  {result_tile, 8, 2}};
+    TestParams tp(
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct query condition `foo = null || foo > 4`.
+  {
+    QueryCondition qc1;
+    float val = 4.0f;
+    REQUIRE(qc1.init(
+                   std::string(field_name),
+                   &val,
+                   sizeof(float),
+                   QueryConditionOp::GT)
+                .ok());
+
+    QueryCondition qc2;
+    REQUIRE(qc2.init(std::string(field_name), nullptr, 0, QueryConditionOp::EQ)
+                .ok());
+    QueryCondition qc;
+    REQUIRE(qc2.combine(qc1, QueryConditionCombinationOp::OR, &qc).ok());
+    std::vector<uint8_t> expected_bitmap = {1, 0, 1, 1, 1, 0, 1, 0, 1, 1};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
+                                                  {result_tile, 2, 3},
+                                                  {result_tile, 6, 1},
+                                                  {result_tile, 8, 2}};
+    TestParams tp(
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct basic query condition `foo != null || foo > 4`.
+  {
+    QueryCondition qc1;
+    float val = 4.0f;
+    REQUIRE(qc1.init(
+                   std::string(field_name),
+                   &val,
+                   sizeof(float),
+                   QueryConditionOp::GT)
+                .ok());
+
+    QueryCondition qc2;
+    REQUIRE(qc2.init(std::string(field_name), nullptr, 0, QueryConditionOp::NE)
+                .ok());
+    QueryCondition qc;
+    REQUIRE(qc2.combine(qc1, QueryConditionCombinationOp::OR, &qc).ok());
+    std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
+                                                  {result_tile, 3, 1},
+                                                  {result_tile, 5, 1},
+                                                  {result_tile, 7, 1},
+                                                  {result_tile, 9, 1}};
+    TestParams tp(
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct basic query condition `foo > 4 || foo != null`.
+  {
+    QueryCondition qc1;
+    float val = 4.0f;
+    REQUIRE(qc1.init(
+                   std::string(field_name),
+                   &val,
+                   sizeof(float),
+                   QueryConditionOp::GT)
+                .ok());
+
+    QueryCondition qc2;
+    REQUIRE(qc2.init(std::string(field_name), nullptr, 0, QueryConditionOp::NE)
+                .ok());
+    QueryCondition qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
+    std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
+                                                  {result_tile, 3, 1},
+                                                  {result_tile, 5, 1},
+                                                  {result_tile, 7, 1},
+                                                  {result_tile, 9, 1}};
+    TestParams tp(
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+}
+
+TEST_CASE(
+    "QueryCondition: Test combinations, nullable attributes",
+    "[QueryCondition][combinations][nullable]") {
+  // Setup.
+  const std::string field_name = "foo";
+  const uint64_t cells = 10;
+  const Datatype type = Datatype::FLOAT32;
+
+  // Initialize the array schema.
+  ArraySchema array_schema;
+  Attribute attr(field_name, type);
+  REQUIRE(attr.set_nullable(true).ok());
+  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+              .ok());
+  Domain domain;
+  Dimension dim("dim1", Datatype::UINT32);
+  uint32_t bounds[2] = {1, cells};
+  Range range(bounds, 2 * sizeof(uint32_t));
+  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(
+      domain
+          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+          .ok());
+  REQUIRE(
+      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+          .ok());
+
+  // Initialize the result tile.
+  ResultTile result_tile(0, 0, array_schema);
+  result_tile.init_attr_tile(field_name, false, true);
+  ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
+  Tile* const tile = &tile_tuple->fixed_tile();
+
+  // Initialize and populate the data tile.
+  REQUIRE(tile->init_unfiltered(
+                  constants::format_version,
+                  type,
+                  cells * sizeof(float),
+                  sizeof(float),
+                  0)
+              .ok());
+
+  std::vector<float> values = {
+      3.4, 1.3, 2.2, 4.5, 2.8, 2.1, 1.7, 3.3, 1.9, 4.2};
+  REQUIRE(tile->write(values.data(), 0, cells * sizeof(float)).ok());
+
+  Tile* const tile_validity = &tile_tuple->validity_tile();
+  REQUIRE(tile_validity
+              ->init_unfiltered(
+                  constants::format_version,
+                  constants::cell_validity_type,
+                  10 * constants::cell_validity_size,
+                  constants::cell_validity_size,
+                  0)
+              .ok());
+
+  std::vector<uint8_t> validity(cells);
+  for (uint64_t i = 0; i < cells; ++i) {
+    validity[i] = i % 2;
+  }
+  REQUIRE(
+      tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+
+  std::vector<TestParams> tp_vec;
+  populate_nullable_test_params_vector(field_name, &result_tile, tp_vec);
 
   SECTION("Validate apply.") {
     for (auto& elem : tp_vec) {
@@ -4154,14 +4393,14 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name);
+  result_tile.init_attr_tile(field_name, var_size, nullable);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
   var_size = array_schema.attribute(field_name)->var_size();
   nullable = array_schema.attribute(field_name)->nullable();
   Tile* const tile =
-      var_size ? &std::get<1>(*tile_tuple) : &std::get<0>(*tile_tuple);
+      var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
 
   REQUIRE(tile->init_unfiltered(
                   constants::format_version,
@@ -4181,7 +4420,7 @@ TEST_CASE(
   REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
 
   if (var_size) {
-    Tile* const tile_offsets = &std::get<0>(*tile_tuple);
+    Tile* const tile_offsets = &tile_tuple->fixed_tile();
     REQUIRE(tile_offsets
                 ->init_unfiltered(
                     constants::format_version,
@@ -4204,7 +4443,7 @@ TEST_CASE(
   }
 
   if (nullable) {
-    Tile* const tile_validity = &std::get<2>(*tile_tuple);
+    Tile* const tile_validity = &tile_tuple->validity_tile();
     REQUIRE(tile_validity
                 ->init_unfiltered(
                     constants::format_version,
@@ -4264,15 +4503,12 @@ TEST_CASE(
   }
 
   // Apply the query condition.
-  uint64_t cell_count = 0;
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
-              .apply_sparse<uint8_t>(
-                  array_schema, result_tile, result_bitmap, &cell_count)
+              .apply_sparse<uint8_t>(array_schema, result_tile, result_bitmap)
               .ok());
 
   // Verify the result bitmap contain the expected cells.
-  REQUIRE(cell_count == expected_cell_idx_vec.size());
   auto expected_iter = expected_cell_idx_vec.begin();
   for (uint64_t cell_idx = 0; cell_idx < cells; ++cell_idx) {
     if (result_bitmap[cell_idx]) {

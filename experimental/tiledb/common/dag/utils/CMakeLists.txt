@@ -43,6 +43,7 @@ target_link_libraries(utils PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_utils EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_utils)
 target_link_libraries(compile_utils PRIVATE utils)
 target_sources(compile_utils PRIVATE test/compile_utils_main.cc)
 

@@ -54,5 +54,6 @@ endif()
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_crypto EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_crypto)
 target_link_libraries(compile_crypto PRIVATE crypto)
 target_sources(compile_crypto PRIVATE test/compile_crypto_main.cc)

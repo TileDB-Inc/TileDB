@@ -63,12 +63,15 @@ void create_array(const std::string& array_name, tiledb_array_type_t type) {
 }
 
 void create_arrays_groups() {
-  // Create groups
   tiledb::Context ctx;
+  tiledb::VFS vfs(ctx);
+  if (vfs.is_dir("my_group"))
+    vfs.remove_dir("my_group");
+
+  // Create groups
   tiledb::create_group(ctx, "my_group");
   tiledb::create_group(ctx, "my_group/sparse_arrays");
 
-  tiledb::VFS vfs(ctx);
   vfs.create_dir("my_group/dense_arrays");
 
   // Create arrays

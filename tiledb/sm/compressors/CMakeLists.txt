@@ -42,6 +42,7 @@ target_link_libraries(compressors PUBLIC Bzip2::Bzip2 LZ4::LZ4 Zlib::Zlib Zstd::
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_compressors EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_compressors)
 target_link_libraries(compile_compressors PRIVATE compressors)
 target_sources(compile_compressors PRIVATE
         test/compile_compressors_main.cc
@@ -52,15 +53,15 @@ target_sources(compile_compressors PRIVATE
 #
 add_executable(tdb_gzip_embedded_data)
 target_sources(tdb_gzip_embedded_data PRIVATE
-        util/tdb_gzip_embedded_data.cc 
+        util/tdb_gzip_embedded_data.cc
 )
 
 target_link_libraries(
-    tdb_gzip_embedded_data PUBLIC 
+    tdb_gzip_embedded_data PUBLIC
     filter
     compressors
     )
-    
+
 target_include_directories(tdb_gzip_embedded_data PRIVATE
         $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>
 )

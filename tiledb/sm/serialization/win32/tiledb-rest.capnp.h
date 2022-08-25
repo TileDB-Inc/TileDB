@@ -18,6 +18,7 @@ CAPNP_DECLARE_SCHEMA(ce5904e6f9410cec);
 CAPNP_DECLARE_SCHEMA(e3dadf2bf211bc97);
 CAPNP_DECLARE_SCHEMA(b6c95b4b8111ad36);
 CAPNP_DECLARE_SCHEMA(a45730f57e0460b4);
+CAPNP_DECLARE_SCHEMA(facceeafd4472c68);
 CAPNP_DECLARE_SCHEMA(d71de32f98e296fe);
 CAPNP_DECLARE_SCHEMA(a1b81d67548230d4);
 CAPNP_DECLARE_SCHEMA(92ad78f56de3d76a);
@@ -26,6 +27,7 @@ CAPNP_DECLARE_SCHEMA(95e26a84d32d8223);
 CAPNP_DECLARE_SCHEMA(a2a652536db09fa0);
 CAPNP_DECLARE_SCHEMA(de030f447664754c);
 CAPNP_DECLARE_SCHEMA(fa787661cd3563a4);
+CAPNP_DECLARE_SCHEMA(fda1cb9663a55b70);
 CAPNP_DECLARE_SCHEMA(e7175047415b3f97);
 CAPNP_DECLARE_SCHEMA(9ceaf832b3ab897f);
 CAPNP_DECLARE_SCHEMA(bc4583f733eac4f5);
@@ -51,6 +53,7 @@ CAPNP_DECLARE_SCHEMA(dac6a7f675c57409);
 CAPNP_DECLARE_SCHEMA(afc739d5c01e6496);
 CAPNP_DECLARE_SCHEMA(eaf57cb9871fc06f);
 CAPNP_DECLARE_SCHEMA(e19754f813ccf79c);
+CAPNP_DECLARE_SCHEMA(d74f5fed155d316c);
 CAPNP_DECLARE_SCHEMA(def87cead82188e7);
 CAPNP_DECLARE_SCHEMA(c1a2d010de779de5);
 CAPNP_DECLARE_SCHEMA(c86c77b5f6a2bf0f);
@@ -142,6 +145,23 @@ struct Array {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(a45730f57e0460b4, 2, 6)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct ArrayOpen {
+  ArrayOpen() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(facceeafd4472c68, 0, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -299,6 +319,23 @@ struct Error {
   };
 };
 
+struct FloatScaleConfig {
+  FloatScaleConfig() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(fda1cb9663a55b70, 3, 0)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
 struct Filter {
   Filter() = delete;
 
@@ -308,7 +345,7 @@ struct Filter {
   struct Data;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(e7175047415b3f97, 2, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(e7175047415b3f97, 2, 3)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -339,7 +376,7 @@ struct Filter::Data {
   };
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(9ceaf832b3ab897f, 2, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(9ceaf832b3ab897f, 2, 3)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -757,6 +794,23 @@ struct QueryReader {
   };
 };
 
+struct Delete {
+  Delete() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(d74f5fed155d316c, 0, 2)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
 struct ResultCellSlab {
   ResultCellSlab() = delete;
 
@@ -833,7 +887,7 @@ struct Query {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(96ba49d0f8b23ccc, 4, 12)
+    CAPNP_DECLARE_STRUCT_HEADER(96ba49d0f8b23ccc, 4, 13)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1814,6 +1868,108 @@ class Array::Pipeline {
   getNonEmptyDomain();
   inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Pipeline
   getArrayMetadata();
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class ArrayOpen::Reader {
+ public:
+  typedef ArrayOpen Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasConfig() const;
+  inline ::tiledb::sm::serialization::capnp::Config::Reader getConfig() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class ArrayOpen::Builder {
+ public:
+  typedef ArrayOpen Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasConfig();
+  inline ::tiledb::sm::serialization::capnp::Config::Builder getConfig();
+  inline void setConfig(
+      ::tiledb::sm::serialization::capnp::Config::Reader value);
+  inline ::tiledb::sm::serialization::capnp::Config::Builder initConfig();
+  inline void adoptConfig(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
+  disownConfig();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class ArrayOpen::Pipeline {
+ public:
+  typedef ArrayOpen Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+  inline ::tiledb::sm::serialization::capnp::Config::Pipeline getConfig();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -3091,6 +3247,108 @@ class Error::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
+class FloatScaleConfig::Reader {
+ public:
+  typedef FloatScaleConfig Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline double getScale() const;
+
+  inline double getOffset() const;
+
+  inline ::uint64_t getByteWidth() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class FloatScaleConfig::Builder {
+ public:
+  typedef FloatScaleConfig Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline double getScale();
+  inline void setScale(double value);
+
+  inline double getOffset();
+  inline void setOffset(double value);
+
+  inline ::uint64_t getByteWidth();
+  inline void setByteWidth(::uint64_t value);
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class FloatScaleConfig::Pipeline {
+ public:
+  typedef FloatScaleConfig Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 class Filter::Reader {
  public:
   typedef Filter Reads;
@@ -3114,6 +3372,10 @@ class Filter::Reader {
   inline ::capnp::Text::Reader getType() const;
 
   inline typename Data::Reader getData() const;
+
+  inline bool hasFloatScaleConfig() const;
+  inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Reader
+  getFloatScaleConfig() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -3164,6 +3426,19 @@ class Filter::Builder {
   inline typename Data::Builder getData();
   inline typename Data::Builder initData();
 
+  inline bool hasFloatScaleConfig();
+  inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Builder
+  getFloatScaleConfig();
+  inline void setFloatScaleConfig(
+      ::tiledb::sm::serialization::capnp::FloatScaleConfig::Reader value);
+  inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Builder
+  initFloatScaleConfig();
+  inline void adoptFloatScaleConfig(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::FloatScaleConfig>&&
+          value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FloatScaleConfig>
+  disownFloatScaleConfig();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -3186,6 +3461,8 @@ class Filter::Pipeline {
   }
 
   inline typename Data::Pipeline getData();
+  inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Pipeline
+  getFloatScaleConfig();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -6363,6 +6640,122 @@ class QueryReader::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
+class Delete::Reader {
+ public:
+  typedef Delete Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasCondition() const;
+  inline ::tiledb::sm::serialization::capnp::Condition::Reader getCondition()
+      const;
+
+  inline bool hasStats() const;
+  inline ::tiledb::sm::serialization::capnp::Stats::Reader getStats() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class Delete::Builder {
+ public:
+  typedef Delete Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasCondition();
+  inline ::tiledb::sm::serialization::capnp::Condition::Builder getCondition();
+  inline void setCondition(
+      ::tiledb::sm::serialization::capnp::Condition::Reader value);
+  inline ::tiledb::sm::serialization::capnp::Condition::Builder initCondition();
+  inline void adoptCondition(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Condition>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Condition>
+  disownCondition();
+
+  inline bool hasStats();
+  inline ::tiledb::sm::serialization::capnp::Stats::Builder getStats();
+  inline void setStats(::tiledb::sm::serialization::capnp::Stats::Reader value);
+  inline ::tiledb::sm::serialization::capnp::Stats::Builder initStats();
+  inline void adoptStats(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Stats>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Stats>
+  disownStats();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class Delete::Pipeline {
+ public:
+  typedef Delete Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+  inline ::tiledb::sm::serialization::capnp::Condition::Pipeline getCondition();
+  inline ::tiledb::sm::serialization::capnp::Stats::Pipeline getStats();
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 class ResultCellSlab::Reader {
  public:
   typedef ResultCellSlab Reads;
@@ -6945,6 +7338,9 @@ class Query::Reader {
   inline ::tiledb::sm::serialization::capnp::QueryReader::Reader
   getDenseReader() const;
 
+  inline bool hasDelete() const;
+  inline ::tiledb::sm::serialization::capnp::Delete::Reader getDelete() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -7121,6 +7517,16 @@ class Query::Builder {
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::QueryReader>
   disownDenseReader();
 
+  inline bool hasDelete();
+  inline ::tiledb::sm::serialization::capnp::Delete::Builder getDelete();
+  inline void setDelete(
+      ::tiledb::sm::serialization::capnp::Delete::Reader value);
+  inline ::tiledb::sm::serialization::capnp::Delete::Builder initDelete();
+  inline void adoptDelete(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Delete>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Delete>
+  disownDelete();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -7151,6 +7557,7 @@ class Query::Pipeline {
   getReaderIndex();
   inline ::tiledb::sm::serialization::capnp::QueryReader::Pipeline
   getDenseReader();
+  inline ::tiledb::sm::serialization::capnp::Delete::Pipeline getDelete();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -10271,6 +10678,58 @@ Array::Builder::disownArrayMetadata() {
           _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
 }
 
+inline bool ArrayOpen::Reader::hasConfig() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayOpen::Builder::hasConfig() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::Config::Reader
+ArrayOpen::Reader::getConfig() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
+          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::Config::Builder
+ArrayOpen::Builder::getConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Config::Pipeline
+ArrayOpen::Pipeline::getConfig() {
+  return ::tiledb::sm::serialization::capnp::Config::Pipeline(
+      _typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void ArrayOpen::Builder::setConfig(
+    ::tiledb::sm::serialization::capnp::Config::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::tiledb::sm::serialization::capnp::Config::Builder
+ArrayOpen::Builder::initConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::init(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void ArrayOpen::Builder::adoptConfig(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
+ArrayOpen::Builder::disownConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::disown(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
 inline bool ArraySchema::Reader::hasArrayType() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -12183,6 +12642,48 @@ inline ::capnp::Orphan<::capnp::Text> Error::Builder::disownMessage() {
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
+inline double FloatScaleConfig::Reader::getScale() const {
+  return _reader.getDataField<double>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline double FloatScaleConfig::Builder::getScale() {
+  return _builder.getDataField<double>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void FloatScaleConfig::Builder::setScale(double value) {
+  _builder.setDataField<double>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline double FloatScaleConfig::Reader::getOffset() const {
+  return _reader.getDataField<double>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline double FloatScaleConfig::Builder::getOffset() {
+  return _builder.getDataField<double>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void FloatScaleConfig::Builder::setOffset(double value) {
+  _builder.setDataField<double>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t FloatScaleConfig::Reader::getByteWidth() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t FloatScaleConfig::Builder::getByteWidth() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void FloatScaleConfig::Builder::setByteWidth(::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
 inline bool Filter::Reader::hasType() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -12242,6 +12743,63 @@ inline typename Filter::Data::Builder Filter::Builder::initData() {
   _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS).clear();
   return typename Filter::Data::Builder(_builder);
 }
+inline bool Filter::Reader::hasFloatScaleConfig() const {
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Filter::Builder::hasFloatScaleConfig() {
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Reader
+Filter::Reader::getFloatScaleConfig() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FloatScaleConfig>::get(
+          _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Builder
+Filter::Builder::getFloatScaleConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FloatScaleConfig>::get(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Pipeline
+Filter::Pipeline::getFloatScaleConfig() {
+  return ::tiledb::sm::serialization::capnp::FloatScaleConfig::Pipeline(
+      _typeless.getPointerField(2));
+}
+#endif  // !CAPNP_LITE
+inline void Filter::Builder::setFloatScaleConfig(
+    ::tiledb::sm::serialization::capnp::FloatScaleConfig::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FloatScaleConfig>::set(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Builder
+Filter::Builder::initFloatScaleConfig() {
+  return ::capnp::_::PointerHelpers<
+      ::tiledb::sm::serialization::capnp::FloatScaleConfig>::
+      init(_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void Filter::Builder::adoptFloatScaleConfig(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::FloatScaleConfig>&&
+        value) {
+  ::capnp::_::PointerHelpers<
+      ::tiledb::sm::serialization::capnp::FloatScaleConfig>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FloatScaleConfig>
+Filter::Builder::disownFloatScaleConfig() {
+  return ::capnp::_::PointerHelpers<
+      ::tiledb::sm::serialization::capnp::FloatScaleConfig>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
 inline ::tiledb::sm::serialization::capnp::Filter::Data::Which
 Filter::Data::Reader::which() const {
   return _reader.getDataField<Which>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
@@ -15708,6 +16266,108 @@ QueryReader::Builder::disownStats() {
           _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
 }
 
+inline bool Delete::Reader::hasCondition() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Delete::Builder::hasCondition() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::Condition::Reader
+Delete::Reader::getCondition() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Condition>::get(
+          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::Condition::Builder
+Delete::Builder::getCondition() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Condition>::get(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Condition::Pipeline
+Delete::Pipeline::getCondition() {
+  return ::tiledb::sm::serialization::capnp::Condition::Pipeline(
+      _typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void Delete::Builder::setCondition(
+    ::tiledb::sm::serialization::capnp::Condition::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Condition>::
+      set(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::Condition::Builder
+Delete::Builder::initCondition() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Condition>::init(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void Delete::Builder::adoptCondition(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Condition>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Condition>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Condition>
+Delete::Builder::disownCondition() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Condition>::disown(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool Delete::Reader::hasStats() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Delete::Builder::hasStats() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::Stats::Reader
+Delete::Reader::getStats() const {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Stats>::
+      get(_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::Stats::Builder
+Delete::Builder::getStats() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Stats>::
+      get(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Stats::Pipeline
+Delete::Pipeline::getStats() {
+  return ::tiledb::sm::serialization::capnp::Stats::Pipeline(
+      _typeless.getPointerField(1));
+}
+#endif  // !CAPNP_LITE
+inline void Delete::Builder::setStats(
+    ::tiledb::sm::serialization::capnp::Stats::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Stats>::set(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      value);
+}
+inline ::tiledb::sm::serialization::capnp::Stats::Builder
+Delete::Builder::initStats() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Stats>::
+      init(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void Delete::Builder::adoptStats(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Stats>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Stats>::adopt(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Stats>
+Delete::Builder::disownStats() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Stats>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
 inline ::uint32_t ResultCellSlab::Reader::getFragIdx() const {
   return _reader.getDataField<::uint32_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
@@ -16851,6 +17511,58 @@ Query::Builder::disownDenseReader() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::QueryReader>::disown(
           _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS));
+}
+
+inline bool Query::Reader::hasDelete() const {
+  return !_reader.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Query::Builder::hasDelete() {
+  return !_builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::Delete::Reader
+Query::Reader::getDelete() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Delete>::get(
+          _reader.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::Delete::Builder
+Query::Builder::getDelete() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Delete>::get(
+          _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Delete::Pipeline
+Query::Pipeline::getDelete() {
+  return ::tiledb::sm::serialization::capnp::Delete::Pipeline(
+      _typeless.getPointerField(12));
+}
+#endif  // !CAPNP_LITE
+inline void Query::Builder::setDelete(
+    ::tiledb::sm::serialization::capnp::Delete::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Delete>::set(
+      _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS),
+      value);
+}
+inline ::tiledb::sm::serialization::capnp::Delete::Builder
+Query::Builder::initDelete() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Delete>::init(
+          _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS));
+}
+inline void Query::Builder::adoptDelete(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Delete>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Delete>::adopt(
+      _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Delete>
+Query::Builder::disownDelete() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Delete>::disown(
+          _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS));
 }
 
 inline bool NonEmptyDomain::Reader::hasNonEmptyDomain() const {

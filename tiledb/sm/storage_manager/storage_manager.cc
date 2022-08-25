@@ -63,6 +63,7 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
+#include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -141,6 +142,16 @@ Status StorageManager::array_close_for_writes(Array* array) {
   // Flush the array metadata
   RETURN_NOT_OK(store_metadata(
       array->array_uri(), *array->encryption_key(), array->unsafe_metadata()));
+
+  // Remove entry from open arrays
+  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
+  open_arrays_.erase(array);
+
+  return Status::Ok();
+}
+
+Status StorageManager::array_close_for_deletes(Array* array) {
+  assert(open_arrays_.find(array) != open_arrays_.end());
 
   // Remove entry from open arrays
   std::lock_guard<std::mutex> lock{open_arrays_mtx_};
@@ -332,16 +343,17 @@ StorageManager::array_open_for_writes(Array* array) {
               nullopt,
               nullopt};
     }
-  }
-  if (version > constants::format_version) {
-    std::stringstream err;
-    err << "Cannot open array for writes; Array format version (";
-    err << version;
-    err << ") is newer than library format version (";
-    err << constants::format_version << ")";
-    return {logger_->status(Status_StorageManagerError(err.str())),
-            nullopt,
-            nullopt};
+  } else {
+    if (version > constants::format_version) {
+      std::stringstream err;
+      err << "Cannot open array for writes; Array format version (";
+      err << version;
+      err << ") is newer than library format version (";
+      err << constants::format_version << ")";
+      return {logger_->status(Status_StorageManagerError(err.str())),
+              nullopt,
+              nullopt};
+    }
   }
 
   // Mark the array as open
@@ -540,6 +552,20 @@ Status StorageManager::fragments_consolidate(
       array_name, encryption_type, encryption_key, key_length, fragment_uris);
 }
 
+Status StorageManager::fragments_vacuum(
+    const char* array_name,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    bool for_deletes) {
+  // Vacuum
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::FRAGMENT, &config_, this);
+  auto fragment_consolidator =
+      dynamic_cast<FragmentConsolidator*>(consolidator.get());
+  return fragment_consolidator->vacuum(
+      array_name, timestamp_start, timestamp_end, for_deletes);
+}
+
 Status StorageManager::array_vacuum(
     const char* array_name, const Config* config) {
   // If 'config' is unset, use the 'config_' that was set during initialization
@@ -671,6 +697,12 @@ Status StorageManager::array_create(
   URI array_fragment_metadata_uri =
       array_uri.join_path(constants::array_fragment_meta_dir_name);
   RETURN_NOT_OK(vfs_->create_dir(array_fragment_metadata_uri));
+
+  if constexpr (is_experimental_build) {
+    URI array_dimension_labels_uri =
+        array_uri.join_path(constants::array_dimension_labels_dir_name);
+    RETURN_NOT_OK(vfs_->create_dir(array_dimension_labels_uri));
+  }
 
   // Get encryption key from config
   Status st;
@@ -870,8 +902,7 @@ Status StorageManager::array_get_non_empty_domain(
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Array is not open"));
 
-  QueryType query_type;
-  RETURN_NOT_OK(array->get_query_type(&query_type));
+  QueryType query_type{array->get_query_type()};
   if (query_type != QueryType::READ)
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Array not opened for reads"));
@@ -1425,21 +1456,20 @@ StorageManager::load_array_schema_from_uri(
     const URI& schema_uri, const EncryptionKey& encryption_key) {
   auto timer_se = stats_->start_timer("sm_load_array_schema_from_uri");
 
-  auto&& [st, buffer_opt] =
-      load_data_from_generic_tile(schema_uri, encryption_key);
+  auto&& [st, tile_opt] =
+      load_data_from_generic_tile(schema_uri, 0, encryption_key);
   RETURN_NOT_OK_TUPLE(st, nullopt);
-  auto& buffer = *buffer_opt;
+  auto& tile = *tile_opt;
 
-  stats_->add_counter("read_array_schema_size", buffer.size());
+  stats_->add_counter("read_array_schema_size", tile.size());
 
   // Deserialize
-  ConstBuffer cbuff(&buffer);
-  auto deserialized_schema{ArraySchema::deserialize(&cbuff, schema_uri)};
+  Deserializer deserializer(tile.data(), tile.size());
 
-  // #TODO Update catch statement after later StatusException changes
   try {
     return {Status::Ok(),
-            make_shared<ArraySchema>(HERE(), deserialized_schema)};
+            make_shared<ArraySchema>(
+                HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
   } catch (const StatusException& e) {
     return {Status_StorageManagerError(e.what()), nullopt};
   }
@@ -1514,10 +1544,15 @@ StorageManager::load_all_array_schemas(
   auto status =
       parallel_for(compute_tp_, 0, schema_num, [&](size_t schema_ith) {
         auto& schema_uri = schema_uris[schema_ith];
-        auto&& [st, array_schema] =
-            load_array_schema_from_uri(schema_uri, encryption_key);
-        RETURN_NOT_OK(st);
-        schema_vector[schema_ith] = array_schema.value();
+        try {
+          auto&& [st, array_schema] =
+              load_array_schema_from_uri(schema_uri, encryption_key);
+          RETURN_NOT_OK(st);
+          schema_vector[schema_ith] = array_schema.value();
+        } catch (std::exception& e) {
+          return Status_StorageManagerError(e.what());
+        }
+
         return Status::Ok();
       });
   RETURN_NOT_OK_TUPLE(status, nullopt);
@@ -1549,9 +1584,14 @@ Status StorageManager::load_array_metadata(
   auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
 
-    auto&& [st, buffer] = load_data_from_generic_tile(uri, encryption_key);
+    auto&& [st, tile] = load_data_from_generic_tile(uri, 0, encryption_key);
     RETURN_NOT_OK(st);
-    metadata_buffs[m] = make_shared<Buffer>(HERE(), std::move(*buffer));
+
+    metadata_buffs[m] = tdb::make_shared<Buffer>(HERE());
+    RETURN_NOT_OK(metadata_buffs[m]->realloc(tile->size()));
+    metadata_buffs[m]->set_size(tile->size());
+    RETURN_NOT_OK(
+        tile->read(metadata_buffs[m]->data(), 0, metadata_buffs[m]->size()));
 
     return Status::Ok();
   });
@@ -1563,17 +1603,41 @@ Status StorageManager::load_array_metadata(
     meta_size += b->size();
   stats_->add_counter("read_array_meta_size", meta_size);
 
-  auto&& [st_metadata, deserialized_metadata]{
-      Metadata::deserialize(metadata_buffs)};
-  if (!st_metadata.ok()) {
-    return st_metadata;
-  }
-  *metadata = *(deserialized_metadata.value());
+  *metadata = Metadata::deserialize(metadata_buffs);
 
   // Sets the loaded metadata URIs
   RETURN_NOT_OK(metadata->set_loaded_metadata_uris(array_metadata_to_load));
 
   return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<QueryCondition>>>
+StorageManager::load_delete_conditions(const Array& array) {
+  auto& locations = array.array_directory().delete_tiles_location();
+  auto delete_conditions = std::vector<QueryCondition>(locations.size());
+
+  auto status = parallel_for(compute_tp_, 0, locations.size(), [&](size_t i) {
+    // Get condition marker.
+    auto& uri = locations[i].uri();
+
+    // Read the condition from storage.
+    auto&& [st, tile_opt] = load_data_from_generic_tile(
+        uri, locations[i].offset(), *array.encryption_key());
+    RETURN_NOT_OK(st);
+
+    delete_conditions[i] =
+        tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
+            i,
+            locations[i].condition_marker(),
+            tile_opt->data(),
+            tile_opt->size());
+
+    delete_conditions[i].check(array.array_schema_latest());
+    return Status::Ok();
+  });
+  RETURN_NOT_OK_TUPLE(status, nullopt);
+
+  return {Status::Ok(), delete_conditions};
 }
 
 Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
@@ -1841,7 +1905,6 @@ Status StorageManager::store_group_detail(
 
   RETURN_NOT_OK(store_data_to_generic_tile(
       buff.data(), buff.size(), *group_detail_uri, encryption_key));
-  buff.disown_data();
 
   return st;
 }
@@ -1852,10 +1915,24 @@ Status StorageManager::store_array_schema(
   const URI schema_uri = array_schema->uri();
 
   // Serialize
-  Buffer buff;
-  RETURN_NOT_OK(array_schema->serialize(&buff));
+  SizeComputationSerializer size_computation_serializer;
+  array_schema->serialize(size_computation_serializer);
 
-  stats_->add_counter("write_array_schema_size", buff.size());
+  Tile tile;
+  if (!tile.init_unfiltered(
+               0,
+               constants::generic_tile_datatype,
+               size_computation_serializer.size(),
+               constants::generic_tile_cell_size,
+               0)
+           .ok()) {
+    throw StatusException("StorageManager", "Cannot initialize tile");
+  }
+
+  Serializer serializer(tile.data(), tile.size());
+  array_schema->serialize(serializer);
+
+  stats_->add_counter("write_array_schema_size", tile.size());
 
   // Delete file if it exists already
   bool exists;
@@ -1872,9 +1949,7 @@ Status StorageManager::store_array_schema(
   if (!schema_dir_exists)
     RETURN_NOT_OK(create_dir(array_schema_dir_uri));
 
-  RETURN_NOT_OK(store_data_to_generic_tile(
-      buff.data(), buff.size(), schema_uri, encryption_key));
-  buff.disown_data();
+  RETURN_NOT_OK(store_data_to_generic_tile(tile, schema_uri, encryption_key));
 
   return Status::Ok();
 }
@@ -1906,7 +1981,6 @@ Status StorageManager::store_metadata(
       metadata_buff.size(),
       metadata_uri,
       encryption_key));
-  metadata_buff.disown_data();
 
   return Status::Ok();
 }
@@ -1923,6 +1997,11 @@ Status StorageManager::store_data_to_generic_tile(
       data,
       size);
 
+  return store_data_to_generic_tile(tile, uri, encryption_key);
+}
+
+Status StorageManager::store_data_to_generic_tile(
+    Tile& tile, const URI& uri, const EncryptionKey& encryption_key) {
   GenericTileIO tile_io(this, uri);
   uint64_t nbytes = 0;
   Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
@@ -1986,10 +2065,6 @@ Status StorageManager::write_to_cache(
   return Status::Ok();
 }
 
-Status StorageManager::write(const URI& uri, Buffer* buffer) const {
-  return vfs_->write(uri, buffer->data(), buffer->size());
-}
-
 Status StorageManager::write(const URI& uri, void* data, uint64_t size) const {
   return vfs_->write(uri, data, size);
 }
@@ -2006,14 +2081,14 @@ tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_from_uri(
     const URI& group_uri, const URI& uri, const EncryptionKey& encryption_key) {
   auto timer_se = stats_->start_timer("sm_load_group_from_uri");
 
-  auto&& [st, buffer_opt] = load_data_from_generic_tile(uri, encryption_key);
+  auto&& [st, tile_opt] = load_data_from_generic_tile(uri, 0, encryption_key);
   RETURN_NOT_OK_TUPLE(st, nullopt);
-  auto& buffer = *buffer_opt;
+  auto& tile = *tile_opt;
 
-  stats_->add_counter("read_group_size", buffer.size());
+  stats_->add_counter("read_group_size", tile.size());
 
   // Deserialize
-  ConstBuffer cbuff(&buffer);
+  ConstBuffer cbuff(tile.data(), tile.size());
   return Group::deserialize(&cbuff, group_uri, this);
 }
 
@@ -2023,6 +2098,8 @@ tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_details(
   auto timer_se = stats_->start_timer("sm_load_group_details");
   const URI& latest_group_uri = group_directory->latest_group_details_uri();
   if (latest_group_uri.is_invalid()) {
+    // Returning ok because not having the latest group details means the group
+    // has just been created and no members have been added yet.
     return {Status::Ok(), std::nullopt};
   }
   return load_group_from_uri(
@@ -2049,6 +2126,8 @@ StorageManager::group_open_for_reads(Group* group) {
     return {Status::Ok(), group_deserialized.value()->members()};
   }
 
+  // Return ok because having no members is acceptable if the group has never
+  // been written to.
   return {Status::Ok(), std::nullopt};
 }
 
@@ -2072,6 +2151,8 @@ StorageManager::group_open_for_writes(Group* group) {
     return {Status::Ok(), group_deserialized.value()->members()};
   }
 
+  // Return ok because having no members is acceptable if the group has never
+  // been written to.
   return {Status::Ok(), std::nullopt};
 }
 
@@ -2094,9 +2175,14 @@ Status StorageManager::load_group_metadata(
   auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = group_metadata_to_load[m].uri_;
 
-    auto&& [st, buffer] = load_data_from_generic_tile(uri, encryption_key);
+    auto&& [st, tile] = load_data_from_generic_tile(uri, 0, encryption_key);
     RETURN_NOT_OK(st);
-    metadata_buffs[m] = tdb::make_shared<Buffer>(HERE(), std::move(*buffer));
+
+    metadata_buffs[m] = tdb::make_shared<Buffer>(HERE());
+    RETURN_NOT_OK(metadata_buffs[m]->realloc(tile->size()));
+    metadata_buffs[m]->set_size(tile->size());
+    RETURN_NOT_OK(
+        tile->read(metadata_buffs[m]->data(), 0, metadata_buffs[m]->size()));
 
     return Status::Ok();
   });
@@ -2108,21 +2194,15 @@ Status StorageManager::load_group_metadata(
     meta_size += b->size();
   stats_->add_counter("read_array_meta_size", meta_size);
 
-  // Deserialize metadata buffers
-  auto&& [st, deserialized_metadata] = metadata->deserialize(metadata_buffs);
-  if (!st.ok()) {
-    return st;
-  }
-
   // Copy the deserialized metadata into the original Metadata object
-  *metadata = *(deserialized_metadata.value());
+  *metadata = Metadata::deserialize(metadata_buffs);
   RETURN_NOT_OK(metadata->set_loaded_metadata_uris(group_metadata_to_load));
 
   return Status::Ok();
 }
 
-tuple<Status, optional<Buffer>> StorageManager::load_data_from_generic_tile(
-    const URI& uri, const EncryptionKey& encryption_key) {
+tuple<Status, optional<Tile>> StorageManager::load_data_from_generic_tile(
+    const URI& uri, uint64_t offset, const EncryptionKey& encryption_key) {
   GenericTileIO tile_io(this, uri);
 
   // Get encryption key from config
@@ -2162,16 +2242,17 @@ tuple<Status, optional<Buffer>> StorageManager::load_data_from_generic_tile(
           nullopt);
     }
 
-    auto&& [st1, buff_opt] =
-        tile_io.read_generic(0, encryption_key_cfg, config_);
+    auto&& [st1, tile_opt] =
+        tile_io.read_generic(offset, encryption_key_cfg, config_);
     RETURN_NOT_OK_TUPLE(st1, nullopt);
 
-    return {Status::Ok(), std::move(*buff_opt)};
+    return {Status::Ok(), std::move(*tile_opt)};
   } else {
-    auto&& [st1, buff_opt] = tile_io.read_generic(0, encryption_key, config_);
+    auto&& [st1, tile_opt] =
+        tile_io.read_generic(offset, encryption_key, config_);
     RETURN_NOT_OK_TUPLE(st1, nullopt);
 
-    return {Status::Ok(), std::move(*buff_opt)};
+    return {Status::Ok(), std::move(*tile_opt)};
   }
 
   assert(false);
@@ -2272,11 +2353,17 @@ StorageManager::load_consolidated_fragment_meta(
   if (uri.to_string().empty())
     return {Status::Ok(), nullopt, nullopt};
 
-  auto&& [st, buffer_opt] = load_data_from_generic_tile(uri, enc_key);
+  auto&& [st, tile_opt] = load_data_from_generic_tile(uri, 0, enc_key);
   RETURN_NOT_OK_TUPLE(st, nullopt, nullopt);
-  auto& buffer = *buffer_opt;
+  auto& tile = *tile_opt;
 
-  stats_->add_counter("consolidated_frag_meta_size", buffer.size());
+  stats_->add_counter("consolidated_frag_meta_size", tile.size());
+
+  Buffer buffer;
+  RETURN_NOT_OK_TUPLE(buffer.realloc(tile.size()), nullopt, nullopt);
+  buffer.set_size(tile.size());
+  RETURN_NOT_OK_TUPLE(
+      tile.read(buffer.data(), 0, buffer.size()), nullopt, nullopt);
 
   uint32_t fragment_num;
   buffer.reset_offset();

@@ -37,6 +37,7 @@ target_link_libraries(filter PUBLIC crypto $<TARGET_OBJECTS:crypto>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_filter EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_filter)
 target_link_libraries(compile_filter PRIVATE filter)
 target_sources(compile_filter PRIVATE test/compile_filter_main.cc)
 
@@ -156,6 +157,18 @@ target_link_libraries(compile_float_scale_filters PRIVATE float_scaling_filters)
 target_sources(compile_float_scale_filters PRIVATE test/compile_float_scaling_filter_main.cc)
 
 #
+# `xor_filters` object library
+#
+add_library(xor_filters OBJECT xor_filter.cc)
+target_link_libraries(xor_filters PUBLIC filter $<TARGET_OBJECTS:filter>)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_xor_filters EXCLUDE_FROM_ALL)
+target_link_libraries(compile_xor_filters PRIVATE xor_filters)
+target_sources(compile_xor_filters PRIVATE test/compile_xor_filter_main.cc)
+
+#
 # `all_filters` object library
 #
 add_library(all_filters OBJECT
@@ -168,10 +181,12 @@ target_link_libraries(all_filters PUBLIC checksum_filters $<TARGET_OBJECTS:check
 target_link_libraries(all_filters PUBLIC compression_filter $<TARGET_OBJECTS:compression_filter>)
 target_link_libraries(all_filters PUBLIC encryption_filters $<TARGET_OBJECTS:encryption_filters>)
 target_link_libraries(all_filters PUBLIC float_scaling_filters $<TARGET_OBJECTS:float_scaling_filters>)
+target_link_libraries(all_filters PUBLIC xor_filters $<TARGET_OBJECTS:xor_filters>)
 #
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_all_filters EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_all_filters)
 target_link_libraries(compile_all_filters PRIVATE all_filters)
 target_sources(compile_all_filters PRIVATE test/compile_all_filters_main.cc)
 
@@ -192,9 +207,10 @@ target_link_libraries(filter_pipeline PUBLIC tile $<TARGET_OBJECTS:tile>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_filter_pipeline EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_filter_pipeline)
 target_link_libraries(compile_filter_pipeline PRIVATE filter_pipeline)
 target_sources(compile_filter_pipeline PRIVATE test/compile_filter_pipeline_main.cc)
-
+add_dependencies(all_link_complete compile_filter_pipeline)
 
 
 if (TILEDB_TESTS)

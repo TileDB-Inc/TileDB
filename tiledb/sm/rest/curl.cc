@@ -34,6 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/global_state/global_state.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
 
@@ -343,6 +344,10 @@ Status Curl::init(
   RETURN_NOT_OK(config_->get<bool>("rest.curl.verbose", &verbose_, &found));
   assert(found);
 
+  RETURN_NOT_OK(config_->get<uint64_t>(
+      "rest.curl.buffer_size", &curl_buffer_size_, &found));
+  assert(found);
+
   return Status::Ok();
 }
 
@@ -451,6 +456,33 @@ Status Curl::make_curl_request(
       static_cast<void*>(&cb));
 }
 
+CURLcode Curl::curl_easy_perform_instrumented(
+    const char* const url, const uint8_t retry_number) const {
+  CURL* curl = curl_.get();
+  // Time the curl transfer
+  uint64_t t1 = tiledb::sm::utils::time::timestamp_now_ms();
+  auto curl_code = curl_easy_perform(curl);
+  uint64_t t2 = tiledb::sm::utils::time::timestamp_now_ms();
+  uint64_t dt = t2 - t1;
+  long http_code = 0;
+  if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) != CURLE_OK) {
+    http_code = 999;
+  }
+
+  // Log time and details about the request
+  std::stringstream ss;
+  ss.precision(3);
+  ss.setf(std::ios::fixed, std::ios::floatfield);
+  ss << "OP=CORE-TO-REST";
+  ss << ",SECONDS=" << (float)dt / 1000.0;
+  ss << ",RETRY=" << int(retry_number);
+  ss << ",CODE=" << http_code;
+  ss << ",URL=" << url;
+  logger_->trace(ss);
+
+  return curl_code;
+}
+
 Status Curl::make_curl_request_common(
     stats::Stats* const stats,
     const char* const url,
@@ -519,8 +551,11 @@ Status Curl::make_curl_request_common(
     /* enable forwarding auth to redirects */
     curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
 
+    /* Set max buffer size */
+    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, curl_buffer_size_);
+
     /* fetch the url */
-    CURLcode tmp_curl_code = curl_easy_perform(curl);
+    CURLcode tmp_curl_code = curl_easy_perform_instrumented(url, i);
 
     bool retry;
     RETURN_NOT_OK(should_retry(&retry));

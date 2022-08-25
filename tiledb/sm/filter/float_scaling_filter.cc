@@ -55,10 +55,9 @@ void FloatScalingFilter::dump(FILE* out) const {
       offset_);
 }
 
-Status FloatScalingFilter::serialize_impl(Buffer* buff) const {
-  Metadata buffer_struct = {scale_, offset_, byte_width_};
-  RETURN_NOT_OK(buff->write(&buffer_struct, sizeof(Metadata)));
-  return Status::Ok();
+void FloatScalingFilter::serialize_impl(Serializer& serializer) const {
+  FilterConfig buffer_struct = {scale_, offset_, byte_width_};
+  serializer.write(buffer_struct);
 }
 
 template <typename T, typename W>

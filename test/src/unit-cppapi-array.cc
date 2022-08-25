@@ -30,8 +30,9 @@
  * Tests the C++ API for array related functions.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "helpers.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
@@ -678,6 +679,98 @@ TEST_CASE(
   CHECK(tiledb::test::num_fragments(array_name) == 4);
   Array::vacuum(ctx, array_name);
   CHECK(tiledb::test::num_fragments(array_name) == 1);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Deletion of sequential fragment writes",
+    "[cppapi][fragments][delete]") {
+  /* Note: An array must be open in MODIFY_EXCLUSIVE mode to delete_fragments */
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string array_name = "cpp_unit_array";
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "d", {{0, 11}}, 12));
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  std::vector<int> data = {0, 1};
+  uint64_t timestamp_start = 0;
+  uint64_t timestamp_end = UINT64_MAX;
+  tiledb::Array::create(array_name, schema);
+
+  SECTION("WRITE") {
+    auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
+    auto query = tiledb::Query(ctx, array, TILEDB_WRITE);
+    query.set_data_buffer("a", data).set_subarray({0, 1}).submit();
+    query.set_data_buffer("a", data).set_subarray({2, 3}).submit();
+    query.set_data_buffer("a", data).set_subarray({4, 5}).submit();
+    query.finalize();
+
+    // Delete fragments
+    CHECK(tiledb::test::num_fragments(array_name) == 3);
+    REQUIRE_THROWS_WITH(
+        array.delete_fragments(array_name, timestamp_start, timestamp_end),
+        Catch::Contains("Query type must be MODIFY_EXCLUSIVE"));
+    CHECK(tiledb::test::num_fragments(array_name) == 3);
+    array.close();
+  }
+
+  SECTION("MODIFY_EXCLUSIVE") {
+    auto array = tiledb::Array(ctx, array_name, TILEDB_MODIFY_EXCLUSIVE);
+    auto query = tiledb::Query(ctx, array, TILEDB_MODIFY_EXCLUSIVE);
+    query.set_data_buffer("a", data).set_subarray({0, 1}).submit();
+    query.set_data_buffer("a", data).set_subarray({2, 3}).submit();
+    query.set_data_buffer("a", data).set_subarray({4, 5}).submit();
+    query.finalize();
+    CHECK(tiledb::test::num_fragments(array_name) == 3);
+
+    SECTION("no consolidation") {
+      // Delete fragments
+      array.delete_fragments(array_name, timestamp_start, timestamp_end);
+      CHECK(tiledb::test::num_fragments(array_name) == 0);
+      array.close();
+    }
+
+    SECTION("consolidation") {
+      array.close();
+
+      // Consolidate and reopen array
+      Array::consolidate(ctx, array_name);
+      CHECK(tiledb::test::num_fragments(array_name) == 4);
+      array.open(TILEDB_MODIFY_EXCLUSIVE);
+      CHECK(tiledb::test::num_fragments(array_name) == 4);
+
+      // Check commits directory after consolidation
+      int vac_file_count = 0;
+      std::string commit_dir = tiledb::test::get_commit_dir(array_name);
+      std::vector<std::string> commits{vfs.ls(commit_dir)};
+      for (auto commit : commits) {
+        if (tiledb::sm::utils::parse::ends_with(
+                commit, tiledb::sm::constants::vacuum_file_suffix))
+          vac_file_count++;
+      }
+      CHECK(commits.size() == 5);
+      CHECK(vac_file_count == 1);
+
+      // Delete fragments
+      array.delete_fragments(array_name, timestamp_start, timestamp_end);
+      CHECK(tiledb::test::num_fragments(array_name) == 0);
+
+      // Check commits directory after deletion
+      commits = vfs.ls(commit_dir);
+      CHECK(commits.size() == 1);
+      CHECK(!tiledb::sm::utils::parse::ends_with(
+          commits[0], tiledb::sm::constants::vacuum_file_suffix));
+    }
+  }
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
@@ -1703,4 +1796,100 @@ TEST_CASE(
   CHECK(
       stats.find("\"Context.StorageManager.VFS.file_size_num\": 1") !=
       std::string::npos);
+}
+
+TEST_CASE(
+    "C++ API: Write and read to an array with experimental build enabled",
+    "[cppapi][array][experimental]") {
+  if constexpr (!is_experimental_build) {
+    return;
+  }
+
+  static const std::string arrays_dir =
+      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays";
+  std::string old_array_name(arrays_dir + "/non_split_coords_v1_4_0");
+  std::string new_array_name(arrays_dir + "/experimental_array_vUINT32_MAX");
+  Context ctx;
+
+  // Try writing to an older-versioned array
+  REQUIRE_THROWS_WITH(
+      Array(ctx, old_array_name, TILEDB_WRITE),
+      Catch::Contains("Array format version") &&
+          Catch::Contains("is not the library format version"));
+
+  // Read from an older-versioned array
+  Array array(ctx, old_array_name, TILEDB_READ);
+
+  // Upgrade version
+  Array::upgrade_version(ctx, old_array_name);
+
+  // Write to upgraded (current) version
+  Array array_write(ctx, old_array_name, TILEDB_WRITE);
+  std::vector<int> subarray_write = {1, 2, 10, 10};
+  std::vector<int> a_write = {11, 12};
+  std::vector<int> d1_write = {1, 2};
+  std::vector<int> d2_write = {10, 10};
+
+  Query query_write(ctx, array_write, TILEDB_WRITE);
+
+  query_write.set_layout(TILEDB_GLOBAL_ORDER);
+  query_write.set_data_buffer("a", a_write);
+  query_write.set_data_buffer("d1", d1_write);
+  query_write.set_data_buffer("d2", d2_write);
+
+  query_write.submit();
+  query_write.finalize();
+  array_write.close();
+
+  FragmentInfo fragment_info(ctx, old_array_name);
+  fragment_info.load();
+  std::string fragment_uri = fragment_info.fragment_uri(1);
+
+  // old version fragment
+  CHECK(fragment_info.version(0) == 1);
+  // new version fragment
+  CHECK(fragment_info.version(1) == tiledb::sm::constants::format_version);
+
+  // Read from upgraded version
+  Array array_read(ctx, old_array_name, TILEDB_READ);
+  std::vector<int> subarray_read = {1, 4, 10, 10};
+  std::vector<int> a_read;
+  a_read.resize(4);
+  std::vector<int> d1_read;
+  d1_read.resize(4);
+  std::vector<int> d2_read;
+  d2_read.resize(4);
+
+  Query query_read(ctx, array_read);
+  query_read.set_subarray(subarray_read)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", a_read)
+      .set_data_buffer("d1", d1_read)
+      .set_data_buffer("d2", d2_read);
+
+  query_read.submit();
+  array_read.close();
+
+  for (int i = 0; i < 2; i++) {
+    REQUIRE(a_read[i] == i + 11);
+  }
+  for (int i = 2; i < 3; i++) {
+    REQUIRE(a_read[i] == i + 1);
+  }
+
+  // Try writing to a newer-versioned (UINT32_MAX) array
+  REQUIRE_THROWS_WITH(
+      Array(ctx, new_array_name, TILEDB_WRITE),
+      Catch::Contains("Incompatible format version."));
+
+  // Try reading from a newer-versioned (UINT32_MAX) array
+  REQUIRE_THROWS_WITH(
+      Array(ctx, new_array_name, TILEDB_READ),
+      Catch::Contains("Incompatible format version."));
+
+  // Clean up
+  VFS vfs(ctx);
+  vfs.remove_dir(get_fragment_dir(array_read.uri()));
+  vfs.remove_dir(get_commit_dir(array_read.uri()));
+  vfs.remove_dir(array_read.uri() + "/__schema");
 }

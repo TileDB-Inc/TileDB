@@ -51,6 +51,13 @@
 namespace tiledb {
 namespace sm {
 
+class ReaderBaseStatusException : public StatusException {
+ public:
+  explicit ReaderBaseStatusException(const std::string& message)
+      : StatusException("ReaderBase", message) {
+  }
+};
+
 /* ****************************** */
 /*          CONSTRUCTORS          */
 /* ****************************** */
@@ -76,10 +83,20 @@ ReaderBase::ReaderBase(
           layout)
     , condition_(condition)
     , disable_cache_(false)
+    , disable_batching_(false)
     , user_requested_timestamps_(false)
-    , use_timestamps_(false) {
+    , use_timestamps_(false)
+    , initial_data_loaded_(false) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
+  timestamps_needed_for_deletes_.resize(fragment_metadata_.size());
+
+  bool found = false;
+  if (!config_.get<bool>("vfs.disable_batching", &disable_batching_, &found)
+           .ok()) {
+    throw ReaderBaseStatusException("Cannot get disable batching setting");
+  }
+  assert(found);
 }
 
 /* ********************************* */
@@ -147,6 +164,12 @@ void ReaderBase::compute_result_space_tiles(
 /*        PROTECTED METHODS       */
 /* ****************************** */
 
+bool ReaderBase::process_partial_timestamps(FragmentMetadata& frag_meta) const {
+  return frag_meta.has_timestamps() &&
+         frag_meta.partial_time_overlap(
+             array_->timestamp_start(), array_->timestamp_end_opened_at());
+}
+
 void ReaderBase::clear_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles,
@@ -154,6 +177,59 @@ void ReaderBase::clear_tiles(
   for (uint64_t i = min_result_tile; i < result_tiles.size(); i++) {
     result_tiles[i]->erase_tile(name);
   }
+}
+
+bool ReaderBase::need_timestamped_conditions() {
+  // If we have any delete condition that falls between the timestamps of a
+  // fragment with timestamps, generate timestamped query conditions.
+  bool make_timestamped_conditions = false;
+  for (uint64_t i = 0; i < fragment_metadata_.size(); i++) {
+    if (fragment_metadata_[i]->has_timestamps()) {
+      for (auto& delete_condition : delete_conditions_) {
+        auto delete_timestamp = delete_condition.condition_timestamp();
+        auto& frag_timestamps = fragment_metadata_[i]->timestamp_range();
+        if (delete_timestamp >= frag_timestamps.first &&
+            delete_timestamp <= frag_timestamps.second) {
+          make_timestamped_conditions = true;
+          timestamps_needed_for_deletes_[i] = true;
+        }
+      }
+    }
+  }
+
+  return make_timestamped_conditions;
+}
+
+Status ReaderBase::generate_timestamped_conditions() {
+  // Generate timestamped conditions.
+  timestamped_delete_conditions_.reserve(delete_conditions_.size());
+  for (auto& delete_condition : delete_conditions_) {
+    // We want the condition to be:
+    // DELETE WHERE (cond) AND cell timestamp <= delete timestamp.
+    // For apply, this condition needs to be be negated and become:
+    // (!cond) OR cell timestamp > delete timestamp.
+
+    // Make the timestamp condition, cell timestamp > delete timestamp.
+    QueryCondition timestamp_condition;
+    auto delete_timestamp = delete_condition.condition_timestamp();
+    std::string attr = constants::timestamps;
+    RETURN_NOT_OK(timestamp_condition.init(
+        std::move(attr),
+        &delete_timestamp,
+        constants::timestamp_size,
+        QueryConditionOp::GT));
+
+    // Combine the timestamp condition and delete condition. The condition is
+    // already negated.
+    QueryCondition timestamped_condition(delete_condition.condition_marker());
+    RETURN_NOT_OK(timestamp_condition.combine(
+        delete_condition,
+        QueryConditionCombinationOp::OR,
+        &timestamped_condition));
+    timestamped_delete_conditions_.push_back(timestamped_condition);
+  }
+
+  return Status::Ok();
 }
 
 void ReaderBase::reset_buffer_sizes() {
@@ -178,16 +254,16 @@ void ReaderBase::zero_out_buffer_sizes() {
   }
 }
 
-Status ReaderBase::check_subarray() const {
-  if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
-    return logger_->status(Status_ReaderError(
+void ReaderBase::check_subarray() const {
+  if (subarray_.layout() == Layout::GLOBAL_ORDER &&
+      subarray_.range_num() != 1) {
+    throw ReaderBaseStatusException(
         "Cannot initialize reader; Multi-range subarrays with "
-        "global order layout are not supported"));
-
-  return Status::Ok();
+        "global order layout are not supported");
+  }
 }
 
-Status ReaderBase::check_validity_buffer_sizes() const {
+void ReaderBase::check_validity_buffer_sizes() const {
   // Verify that the validity buffer size for each
   // nullable attribute is large enough to contain
   // a validity value for each cell.
@@ -220,12 +296,10 @@ Status ReaderBase::check_validity_buffer_sizes() const {
               "given for ";
         ss << "attribute '" << name << "'";
         ss << " (" << cell_validity_num << " < " << min_cell_num << ")";
-        return logger_->status(Status_ReaderError(ss.str()));
+        throw ReaderBaseStatusException(ss.str());
       }
     }
   }
-
-  return Status::Ok();
 }
 
 bool ReaderBase::partial_consolidated_fragment_overlap() const {
@@ -271,14 +345,38 @@ Status ReaderBase::add_partial_overlap_condition() {
   return Status::Ok();
 }
 
+Status ReaderBase::add_delete_timestamps_condition() {
+  // Add the delete timestamp condition if any fragments have delete metadata.
+  bool add_delete_timestamps_condition = false;
+  for (auto& frag_meta : fragment_metadata_) {
+    if (frag_meta->has_delete_meta()) {
+      add_delete_timestamps_condition = true;
+      break;
+    }
+  }
+
+  // The delete timestamp condition uses the open timestamp to filter cells.
+  if (add_delete_timestamps_condition) {
+    uint64_t open_ts = array_->timestamp_end_opened_at();
+    RETURN_NOT_OK(delete_timestamps_condition_.init(
+        std::string(constants::delete_timestamps),
+        &open_ts,
+        sizeof(uint64_t),
+        QueryConditionOp::GE));
+  }
+
+  return Status::Ok();
+}
+
 bool ReaderBase::include_timestamps(const unsigned f) const {
   auto frag_has_ts = fragment_metadata_[f]->has_timestamps();
   auto partial_overlap = fragment_metadata_[f]->partial_time_overlap(
       array_->timestamp_start(), array_->timestamp_end_opened_at());
   auto dups = array_schema_.allows_dups();
+  auto timestamps_needed = timestamps_needed_for_deletes_[f];
 
-  return frag_has_ts &&
-         (user_requested_timestamps_ || partial_overlap || !dups);
+  return frag_has_ts && (user_requested_timestamps_ || partial_overlap ||
+                         !dups || timestamps_needed);
 }
 
 Status ReaderBase::load_tile_offsets(
@@ -328,6 +426,11 @@ Status ReaderBase::load_tile_offsets(
             continue;
           }
 
+          // Continue if the fragment doesn't have delete metadata.
+          if (delete_meta_not_present(name, frag_idx)) {
+            continue;
+          }
+
           filtered_names.emplace_back(name);
         }
 
@@ -372,6 +475,30 @@ Status ReaderBase::load_tile_var_sizes(
             continue;
 
           fragment->load_tile_var_sizes(*encryption_key, name);
+        }
+
+        return Status::Ok();
+      });
+
+  RETURN_NOT_OK(status);
+
+  return Status::Ok();
+}
+
+Status ReaderBase::load_processed_conditions() {
+  auto timer_se = stats_->start_timer("load_processed_conditions");
+  const auto encryption_key = array_->encryption_key();
+
+  // Load all fragments in parallel.
+  const auto status = parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      fragment_metadata_.size(),
+      [&](const uint64_t i) {
+        auto& fragment = fragment_metadata_[i];
+
+        if (fragment->has_delete_meta()) {
+          RETURN_NOT_OK(fragment->load_processed_conditions(*encryption_key));
         }
 
         return Status::Ok();
@@ -482,8 +609,9 @@ Status ReaderBase::read_tiles(
   auto timer_se = stats_->start_timer("read_tiles");
 
   // Shortcut for empty tile vec
-  if (result_tiles.empty())
+  if (result_tiles.empty() || names.empty()) {
     return Status::Ok();
+  }
 
   // Populate the list of regions per file to be read.
   std::unordered_map<
@@ -526,6 +654,11 @@ Status ReaderBase::read_tiles(
         continue;
       }
 
+      // Continue if the fragment doesn't have delete metadata.
+      if (delete_meta_not_present(name, tile->frag_idx())) {
+        continue;
+      }
+
       num_tiles_read++;
 
       const bool var_size = array_schema->var_size(name);
@@ -537,20 +670,21 @@ Status ReaderBase::read_tiles(
         const uint64_t dim_num = array_schema->dim_num();
         for (uint64_t d = 0; d < dim_num; ++d) {
           if (array_schema->dimension_ptr(d)->name() == name) {
-            tile->init_coord_tile(name, d);
+            tile->init_coord_tile(name, var_size, d);
             break;
           }
         }
         tile_tuple = tile->tile_tuple(name);
       } else {
-        tile->init_attr_tile(name);
+        tile->init_attr_tile(name, var_size, nullable);
         tile_tuple = tile->tile_tuple(name);
       }
 
       assert(tile_tuple != nullptr);
-      Tile* const t = &std::get<0>(*tile_tuple);
-      Tile* const t_var = &std::get<1>(*tile_tuple);
-      Tile* const t_validity = &std::get<2>(*tile_tuple);
+      Tile* const t = &tile_tuple->fixed_tile();
+      Tile* const t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+      Tile* const t_validity =
+          nullable ? &tile_tuple->validity_tile() : nullptr;
       if (!var_size) {
         if (nullable)
           RETURN_NOT_OK(
@@ -682,12 +816,21 @@ Status ReaderBase::read_tiles(
 
   // Enqueue all regions to be read.
   for (const auto& item : all_regions) {
-    RETURN_NOT_OK(storage_manager_->vfs()->read_all(
-        item.first,
-        item.second,
-        storage_manager_->io_tp(),
-        &tasks,
-        use_read_ahead));
+    if (disable_batching_) {
+      RETURN_NOT_OK(storage_manager_->vfs()->read_all_no_batching(
+          item.first,
+          item.second,
+          storage_manager_->io_tp(),
+          &tasks,
+          use_read_ahead));
+    } else {
+      RETURN_NOT_OK(storage_manager_->vfs()->read_all(
+          item.first,
+          item.second,
+          storage_manager_->io_tp(),
+          &tasks,
+          use_read_ahead));
+    }
   }
 
   // Wait for the reads to finish and check statuses.
@@ -786,7 +929,7 @@ ReaderBase::load_tile_chunk_data(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
+        tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
       return {Status::Ok(), 0, 0, 0};
     }
 
@@ -795,9 +938,14 @@ ReaderBase::load_tile_chunk_data(
       return {Status::Ok(), 0, 0, 0};
     }
 
-    const auto t = &std::get<0>(*tile_tuple);
-    const auto t_var = &std::get<1>(*tile_tuple);
-    const auto t_validity = &std::get<2>(*tile_tuple);
+    // If the fragment doesn't have delete metadata.
+    if (delete_meta_not_present(name, tile->frag_idx())) {
+      return {Status::Ok(), 0, 0, 0};
+    }
+
+    const auto t = &tile_tuple->fixed_tile();
+    const auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+    const auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
     auto&& [st, tile_size] = load_chunk_data(t, tile_chunk_data);
     RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
@@ -844,7 +992,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
+        tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
       return Status::Ok();
     }
 
@@ -853,9 +1001,14 @@ Status ReaderBase::unfilter_tile_chunk_range(
       return Status::Ok();
     }
 
-    auto t = &std::get<0>(*tile_tuple);
-    auto t_var = &std::get<1>(*tile_tuple);
-    auto t_validity = &std::get<2>(*tile_tuple);
+    // If the fragment doesn't have delete metadata.
+    if (delete_meta_not_present(name, tile->frag_idx())) {
+      return Status::Ok();
+    }
+
+    auto t = &tile_tuple->fixed_tile();
+    auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+    auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
     // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
     // 't_var' for var-sized tiles.
@@ -933,7 +1086,7 @@ Status ReaderBase::post_process_unfiltered_tile(
     // Skip non-existent attributes/dimensions (e.g. coords in the
     // dense case).
     if (tile_tuple == nullptr ||
-        std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
+        tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
       return Status::Ok();
     }
 
@@ -942,22 +1095,26 @@ Status ReaderBase::post_process_unfiltered_tile(
       return Status::Ok();
     }
 
-    auto t = &std::get<0>(*tile_tuple);
-    auto t_var = &std::get<1>(*tile_tuple);
-    auto t_validity = &std::get<2>(*tile_tuple);
+    // If the fragment doesn't have delete metadata.
+    if (delete_meta_not_present(name, tile->frag_idx())) {
+      return Status::Ok();
+    }
 
-    t->filtered_buffer().clear();
+    auto& t = tile_tuple->fixed_tile();
+    t.filtered_buffer().clear();
 
-    zip_tile_coordinates(name, t);
+    zip_tile_coordinates(name, &t);
 
     if (var_size) {
-      t_var->filtered_buffer().clear();
-      zip_tile_coordinates(name, t_var);
+      auto& t_var = tile_tuple->var_tile();
+      t_var.filtered_buffer().clear();
+      zip_tile_coordinates(name, &t_var);
     }
 
     if (nullable) {
-      t_validity->filtered_buffer().clear();
-      zip_tile_coordinates(name, t_validity);
+      auto& t_validity = tile_tuple->validity_tile();
+      t_validity.filtered_buffer().clear();
+      zip_tile_coordinates(name, &t_validity);
     }
   }
 
@@ -1339,7 +1496,7 @@ Status ReaderBase::unfilter_tiles(
           // Skip non-existent attributes/dimensions (e.g. coords in the
           // dense case).
           if (tile_tuple == nullptr ||
-              std::get<0>(*tile_tuple).filtered_buffer().size() == 0) {
+              tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
             return Status::Ok();
           }
 
@@ -1348,9 +1505,15 @@ Status ReaderBase::unfilter_tiles(
             return Status::Ok();
           }
 
-          auto& t = std::get<0>(*tile_tuple);
-          auto& t_var = std::get<1>(*tile_tuple);
-          auto& t_validity = std::get<2>(*tile_tuple);
+          // If the fragment doesn't have delete metadata.
+          if (delete_meta_not_present(name, tile->frag_idx())) {
+            return Status::Ok();
+          }
+
+          Tile* const t = &tile_tuple->fixed_tile();
+          Tile* const t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+          Tile* const t_validity =
+              nullable ? &tile_tuple->validity_tile() : nullptr;
 
           if (disable_cache_ == false) {
             logger_->info("using cache");
@@ -1364,14 +1527,14 @@ Status ReaderBase::unfilter_tiles(
                 fragment->file_offset(name, tile_idx, &tile_attr_offset));
 
             // Cache 't'.
-            if (t.filtered() && !disable_cache_) {
+            if (t->filtered() && !disable_cache_) {
               // Store the filtered buffer in the tile cache.
               RETURN_NOT_OK(storage_manager_->write_to_cache(
-                  *tile_attr_uri, tile_attr_offset, t.filtered_buffer()));
+                  *tile_attr_uri, tile_attr_offset, t->filtered_buffer()));
             }
 
             // Cache 't_var'.
-            if (var_size && t_var.filtered() && !disable_cache_) {
+            if (var_size && t_var->filtered() && !disable_cache_) {
               auto&& [status, tile_attr_var_uri] = fragment->var_uri(name);
               RETURN_NOT_OK(status);
 
@@ -1383,11 +1546,11 @@ Status ReaderBase::unfilter_tiles(
               RETURN_NOT_OK(storage_manager_->write_to_cache(
                   *tile_attr_var_uri,
                   tile_attr_var_offset,
-                  t_var.filtered_buffer()));
+                  t_var->filtered_buffer()));
             }
 
             // Cache 't_validity'.
-            if (nullable && t_validity.filtered() && !disable_cache_) {
+            if (nullable && t_validity->filtered() && !disable_cache_) {
               auto&& [status, tile_attr_validity_uri] =
                   fragment->validity_uri(name);
               RETURN_NOT_OK(status);
@@ -1400,7 +1563,7 @@ Status ReaderBase::unfilter_tiles(
               RETURN_NOT_OK(storage_manager_->write_to_cache(
                   *tile_attr_validity_uri,
                   tile_attr_validity_offset,
-                  t_validity.filtered_buffer()));
+                  t_validity->filtered_buffer()));
             }
           }
 
@@ -1408,15 +1571,14 @@ Status ReaderBase::unfilter_tiles(
           // 't_var' for var-sized tiles.
           if (!var_size) {
             if (!nullable)
-              RETURN_NOT_OK(unfilter_tile(name, &t));
+              RETURN_NOT_OK(unfilter_tile(name, t));
             else
-              RETURN_NOT_OK(unfilter_tile_nullable(name, &t, &t_validity));
+              RETURN_NOT_OK(unfilter_tile_nullable(name, t, t_validity));
           } else {
             if (!nullable)
-              RETURN_NOT_OK(unfilter_tile(name, &t, &t_var));
+              RETURN_NOT_OK(unfilter_tile(name, t, t_var));
             else
-              RETURN_NOT_OK(
-                  unfilter_tile_nullable(name, &t, &t_var, &t_validity));
+              RETURN_NOT_OK(unfilter_tile_nullable(name, t, t_var, t_validity));
           }
         }
 

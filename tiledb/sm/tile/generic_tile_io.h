@@ -127,7 +127,7 @@ class GenericTileIO {
    * @param config The storage manager's config.
    * @return Status, Tile
    */
-  tuple<Status, optional<Buffer>> read_generic(
+  tuple<Status, optional<Tile>> read_generic(
       uint64_t file_offset,
       const EncryptionKey& encryption_key,
       const Config& config);
@@ -158,6 +158,15 @@ class GenericTileIO {
    */
   Status write_generic(
       Tile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  /**
+   * Serialize a generic tile header.
+   *
+   * @param serializer The serializer.
+   * @param header The header to serialize.
+   */
+  template <class T>
+  void serialize_generic_tile_header(T& serializer, GenericTileHeader& header);
 
   /**
    * Writes the generic tile header to the file.

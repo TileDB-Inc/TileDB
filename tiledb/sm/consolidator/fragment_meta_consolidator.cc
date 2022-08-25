@@ -68,7 +68,6 @@ Status FragmentMetaConsolidator::consolidate(
   auto timer_se = stats_->start_timer("consolidate_frag_meta");
 
   // Open array for reading
-
   Array array(URI(array_name), storage_manager_);
   RETURN_NOT_OK(
       array.open(QueryType::READ, encryption_type, encryption_key, key_length));
@@ -166,7 +165,6 @@ Status FragmentMetaConsolidator::consolidate(
       0,
       buff.data(),
       buff.size());
-  buff.disown_data();
 
   GenericTileIO tile_io(storage_manager_, uri);
   uint64_t nbytes = 0;
@@ -189,12 +187,9 @@ Status FragmentMetaConsolidator::vacuum(const char* array_name) {
   // (all except the last one)
   auto vfs = storage_manager_->vfs();
   auto compute_tp = storage_manager_->compute_tp();
-  ArrayDirectory array_dir;
-  try {
-    array_dir = ArrayDirectory(vfs, compute_tp, URI(array_name), 0, UINT64_MAX);
-  } catch (const std::logic_error& le) {
-    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-  }
+
+  auto array_dir =
+      ArrayDirectory(vfs, compute_tp, URI(array_name), 0, UINT64_MAX);
 
   const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
 

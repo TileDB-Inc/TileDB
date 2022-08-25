@@ -63,7 +63,8 @@ class UnorderedWriter : public WriterBase {
       Layout layout,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       Query::CoordsInfo& coords_info_,
-      URI fragment_uri = URI(""));
+      optional<std::string> fragment_name = nullopt,
+      bool skip_checks_serialization = false);
 
   /** Destructor. */
   ~UnorderedWriter();

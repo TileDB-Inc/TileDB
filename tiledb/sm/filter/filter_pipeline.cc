@@ -638,10 +638,10 @@ Status FilterPipeline::run_reverse_internal(
 // num_filters (uint32_t)
 // filter0 metadata (see Filter::serialize)
 // filter1...
-Status FilterPipeline::serialize(Buffer* buff) const {
-  RETURN_NOT_OK(buff->write(&max_chunk_size_, sizeof(uint32_t)));
+void FilterPipeline::serialize(Serializer& serializer) const {
+  serializer.write<uint32_t>(max_chunk_size_);
   auto num_filters = static_cast<uint32_t>(filters_.size());
-  RETURN_NOT_OK(buff->write(&num_filters, sizeof(uint32_t)));
+  serializer.write<uint32_t>(num_filters);
 
   for (const auto& f : filters_) {
     // For compatibility with the old attribute compressor API: if the filter
@@ -650,36 +650,25 @@ Status FilterPipeline::serialize(Buffer* buff) const {
     auto as_compression = dynamic_cast<CompressionFilter*>(f.get());
     if (as_compression != nullptr && f->type() == FilterType::FILTER_NONE) {
       auto noop = tdb_unique_ptr<NoopFilter>(new NoopFilter);
-      RETURN_NOT_OK(noop->serialize(buff));
+      noop->serialize(serializer);
     } else {
-      RETURN_NOT_OK(f->serialize(buff));
+      f->serialize(serializer);
     }
   }
-
-  return Status::Ok();
 }
 
-tuple<Status, optional<FilterPipeline>> FilterPipeline::deserialize(
-    ConstBuffer* buff, const uint32_t version) {
-  Status st;
-  uint32_t max_chunk_size;
+FilterPipeline FilterPipeline::deserialize(
+    Deserializer& deserializer, const uint32_t version) {
+  auto max_chunk_size = deserializer.read<uint32_t>();
+  auto num_filters = deserializer.read<uint32_t>();
   std::vector<shared_ptr<Filter>> filters;
 
-  RETURN_NOT_OK_TUPLE(buff->read(&max_chunk_size, sizeof(uint32_t)), nullopt);
-
-  uint32_t num_filters;
-  RETURN_NOT_OK_TUPLE(buff->read(&num_filters, sizeof(uint32_t)), nullopt);
-
   for (uint32_t i = 0; i < num_filters; i++) {
-    auto&& [st_filter, filter]{FilterCreate::deserialize(buff, version)};
-    if (!st_filter.ok()) {
-      return {st_filter, nullopt};
-    }
-    filters.push_back(std::move(filter.value()));
+    auto filter{FilterCreate::deserialize(deserializer, version)};
+    filters.push_back(std::move(filter));
   }
 
-  return {Status::Ok(),
-          optional<FilterPipeline>(std::in_place, max_chunk_size, filters)};
+  return FilterPipeline(max_chunk_size, filters);
 }
 
 void FilterPipeline::dump(FILE* out) const {

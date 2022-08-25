@@ -40,14 +40,11 @@ endif()
 # Function that builds an executable per example
 function(build_TileDB_example_capi TARGET)
   add_executable(${TARGET}_c EXCLUDE_FROM_ALL ${TARGET}.c)
-  target_include_directories(${TARGET}_c PUBLIC
-    "${CMAKE_CURRENT_BINARY_DIR}/../"
-  )
-  target_link_libraries(${TARGET}_c tiledb_shared)
+  target_link_libraries(${TARGET}_c PUBLIC local_install tiledb_shared)
   if (NOT WIN32)
     # On Linux, must explicitly link -lpthread -ldl in order for static linking
     # to libzstd or libcurl to work.
-    target_link_libraries(${TARGET}_c pthread dl)
+    target_link_libraries(${TARGET}_c PUBLIC pthread dl)
   endif()
   add_dependencies(examples_c ${TARGET}_c)
 endfunction()

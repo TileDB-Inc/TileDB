@@ -34,6 +34,7 @@
 #include <limits>
 #include <thread>
 
+#include "tiledb/common/common.h"
 #include "tiledb/sm/c_api/tiledb_version.h"
 
 // Include files for platform path max definition.
@@ -89,6 +90,9 @@ const std::string array_commits_dir_name = "__commits";
 /** The fragment metadata file name. */
 const std::string fragment_metadata_filename = "__fragment_metadata.tdb";
 
+/** The array dimension labels directory name. */
+const std::string array_dimension_labels_dir_name = "__labels";
+
 /** The default tile capacity. */
 const uint64_t capacity = 10000;
 
@@ -128,14 +132,17 @@ const std::string timestamps = "__timestamps";
 /** Special name reserved for the delete timestamp attribute. */
 const std::string delete_timestamps = "__delete_timestamps";
 
-/** Special name reserved for the delete condition name attribute. */
-const std::string delete_condition_names = "__delete_condition_names";
+/** Special name reserved for the delete condition index attribute. */
+const std::string delete_condition_index = "__delete_condition_index";
 
 /** The size of a timestamp cell. */
 const uint64_t timestamp_size = sizeof(uint64_t);
 
-/** The type of a variable offset cell. */
+/** The type of a timestamp cell. */
 extern const Datatype timestamp_type = Datatype::UINT64;
+
+/** The type of a delete condition index cell. */
+extern const Datatype delete_condition_index_type = Datatype::UINT64;
 
 /** The default compressor for the coordinates. */
 Compressor coords_compression = Compressor::ZSTD;
@@ -274,6 +281,12 @@ const std::string query_type_read_str = "READ";
 /** TILEDB_WRITE Query String **/
 const std::string query_type_write_str = "WRITE";
 
+/** TILEDB_DELETE Query String **/
+const std::string query_type_delete_str = "DELETE";
+
+/** TILEDB_MODIFY_EXCLUSIVE Query String **/
+const std::string query_type_modify_exclusive_str = "MODIFY_EXCLUSIVE";
+
 /** TILEDB_FAILED Query String **/
 const std::string query_status_failed_str = "FAILED";
 
@@ -375,6 +388,9 @@ const std::string filter_dictionary_str = "DICTIONARY_ENCODING";
 
 /** String describing FILTER_SCALE_FLOAT. */
 const std::string filter_scale_float_str = "SCALE_FLOAT";
+
+/** String describing FILTER_XOR. */
+const std::string filter_xor_str = "XOR";
 
 /** The string representation for FilterOption type compression_level. */
 const std::string filter_option_compression_level_str = "COMPRESSION_LEVEL";
@@ -599,14 +615,28 @@ const std::string vfsmode_append_str = "VFS_APPEND";
 const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
-/** The TileDB serialization format version number. */
-const uint32_t format_version = 15;
+/** The TileDB serialization base format version number. */
+const uint32_t base_format_version = 16;
+
+/**
+ * The TileDB serialization format version number.
+ *
+ * Conditionally set the high bit on the base_format_version to
+ * easily identify that the build is experimental.
+ **/
+const uint32_t format_version =
+    is_experimental_build ?
+        0b10000000000000000000000000000000 | base_format_version :
+        base_format_version;
 
 /** The lowest version supported for back compat writes. */
 const uint32_t back_compat_writes_min_format_version = 7;
 
 /** The lowest version supported for consolidation with timestamps. */
 const uint32_t consolidation_with_timestamps_min_version = 15;
+
+/** The lowest version supported for deletes. */
+const uint32_t deletes_min_version = 16;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;

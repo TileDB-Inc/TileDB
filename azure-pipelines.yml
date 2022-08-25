@@ -8,6 +8,12 @@ pr:
   branches:
     include:
     - '*'  # must quote since "*" is a YAML reserved character; we want a string
+    exclude:
+    - '.github/workflows/quarto-render.yml'
+    - '_quarto.yml'
+    - 'quarto-materials/*'
+    - '**/.md'
+    - 'doc/source/conf.py'
 
 variables:
   - name: MANYLINUX_IMAGE
@@ -24,7 +30,7 @@ stages:
       strategy:
         matrix:
           macOS_azure:
-            imageName: 'macOS-10.15'
+            imageName: 'macos-11'
             TILEDB_AZURE: ON
             TILEDB_SERIALIZATION: ON
             CXX: clang++
@@ -72,13 +78,13 @@ stages:
        strategy:
          matrix:
            macOS:
-             imageName: 'macOS-10.15'
+             imageName: 'macos-11'
              CXX: clang++
              ARTIFACT_OS: 'macos'
              ARTIFACT_ARCH: 'x86_64'
              CMAKE_OSX_ARCHITECTURES: "x86_64"
            macOS_arm64:
-             imageName: 'macOS-10.15'
+             imageName: 'macos-11'
              CXX: clang++
              ARTIFACT_OS: 'macos'
              ARTIFACT_ARCH: 'arm64'

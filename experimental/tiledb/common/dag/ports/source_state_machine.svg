@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xl="http://www.w3.org/1999/xlink" viewBox="-794.2008 1190.0512 488.55907 352.49607" width="488.55907" height="352.49607">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" viewBox="-794.2008 1190.0512 488.55907 352.49607" width="488.55907" height="352.49607">
   <defs>
     <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
       <g>
@@ -8,11 +8,10 @@
       </g>
     </marker>
   </defs>
-  <metadata> Produced by OmniGraffle 7.20\n2022-06-25 18:53:20 +0000</metadata>
-  <g id="Two_phase_last_one" stroke-dasharray="none" fill-opacity="1" fill="none" stroke="none" stroke-opacity="1">
-    <title>Two phase last one</title>
+  <g id="dag_nodes_iteration_three" stroke-opacity="1" fill-opacity="1" fill="none" stroke="none" stroke-dasharray="none">
+    <title>dag nodes iteration three</title>
     <rect fill="white" x="-794.2008" y="1190.0512" width="488.55907" height="352.49607"/>
-    <g id="Two_phase_last_one_Layer_1">
+    <g id="dag_nodes_iteration_three_Layer_1">
       <title>Layer 1</title>
       <g id="Graphic_697">
         <circle cx="-731.3386" cy="1479.685" r="62.3623061077334" fill="white"/>
@@ -26,7 +25,8 @@
         <circle cx="-617.9528" cy="1366.2993" r="62.3623061077333" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
         <text transform="translate(-662.8425 1327.6457)" fill="black">
           <tspan font-family="Helvetica Neue" font-size="16" fill="black" x=".4257667" y="15">state: empty</tspan>
-          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="1.4737667" y="51.448">entry: return</tspan>
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="3.4097667" y="51.448">entry: swap</tspan>
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="7.697767" y="69.896">exit:  none</tspan>
         </text>
       </g>
       <g id="Graphic_694">
@@ -44,10 +44,10 @@
         <circle cx="-368.50395" cy="1366.2993" r="62.3623061077333" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
         <text transform="translate(-413.3937 1327.6457)" fill="black">
           <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="12.441767" y="15">state: full</tspan>
-          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="1.4737667" y="51.448">entry: return</tspan>
-          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="4.5937667" y="69.896">exit: signal, </tspan>
-          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="1.6257667" y="88.34399">wait, maybe </tspan>
-          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="25.785767" y="106.79199">swap</tspan>
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="24.737767" y="33.448">entry: </tspan>
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="6.809767" y="51.895996">notify_sink</tspan>
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="27.705767" y="70.34399">exit:: </tspan>
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="2.0817667" y="88.79199">source_wait</tspan>
         </text>
       </g>
       <g id="Graphic_703">

@@ -448,7 +448,8 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
       entries.emplace_back(
           gcs_prefix + bucket_name + "/" +
               remove_front_slash(remove_trailing_slash(obj.name())),
-          obj.size());
+          obj.size(),
+          false);
     } else if (absl::holds_alternative<std::string>(results)) {
       // "Directories" are returned as strings here so we can't return
       // any metadata for them.
@@ -456,7 +457,8 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
           gcs_prefix + bucket_name + "/" +
               remove_front_slash(
                   remove_trailing_slash(absl::get<std::string>(results))),
-          0);
+          0,
+          true);
     }
   }
 

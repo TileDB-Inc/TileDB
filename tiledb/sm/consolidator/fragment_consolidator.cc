@@ -40,6 +40,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <iostream>
 #include <sstream>
@@ -99,12 +100,12 @@ Status FragmentConsolidator::consolidate(
   // which dense fragments are consolidatable.
   FragmentInfo fragment_info(URI(array_name), storage_manager_);
   auto st = fragment_info.load(
+      array_for_reads->array_directory(),
       config_.timestamp_start_,
       config_.timestamp_end_,
       encryption_type,
       encryption_key,
-      key_length,
-      array_for_reads->array_schema_latest().dense());
+      key_length);
   if (!st.ok()) {
     array_for_reads->close();
     array_for_writes->close();
@@ -132,8 +133,9 @@ Status FragmentConsolidator::consolidate(
     }
 
     // Check if there is anything to consolidate
-    if (to_consolidate.size() <= 1)
+    if (to_consolidate.size() <= 1) {
       break;
+    }
 
     // Consolidate the selected fragments
     URI new_fragment_uri;
@@ -199,18 +201,19 @@ Status FragmentConsolidator::consolidate_fragments(
   }
 
   // Check if there is anything to consolidate
-  if (fragment_uris.size() <= 1)
+  if (fragment_uris.size() <= 1) {
     return Status::Ok();
+  }
 
   // Get all fragment info
   FragmentInfo fragment_info(URI(array_name), storage_manager_);
   auto st = fragment_info.load(
+      array_for_reads->array_directory(),
       0,
       utils::time::timestamp_now_ms(),
       encryption_type,
       encryption_key,
-      key_length,
-      false);
+      key_length);
   if (!st.ok()) {
     array_for_reads->close();
     array_for_writes->close();
@@ -278,25 +281,28 @@ Status FragmentConsolidator::consolidate_fragments(
 }
 
 Status FragmentConsolidator::vacuum(const char* array_name) {
+  return vacuum(array_name, 0, std::numeric_limits<uint64_t>::max(), false);
+}
+
+Status FragmentConsolidator::vacuum(
+    const char* array_name,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    bool for_deletes) {
   if (array_name == nullptr)
     return logger_->status(Status_StorageManagerError(
         "Cannot vacuum fragments; Array name cannot be null"));
 
-  // Get the fragment URIs and vacuum file URIs to be vacuum
+  // Get the fragment URIs and vacuum file URIs to be vacuumed
   auto vfs = storage_manager_->vfs();
   auto compute_tp = storage_manager_->compute_tp();
-  ArrayDirectory array_dir;
-  try {
-    array_dir = ArrayDirectory(
-        vfs,
-        compute_tp,
-        URI(array_name),
-        0,
-        std::numeric_limits<uint64_t>::max(),
-        ArrayDirectoryMode::VACUUM_FRAGMENTS);
-  } catch (const std::logic_error& le) {
-    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-  }
+  auto array_dir = ArrayDirectory(
+      vfs,
+      compute_tp,
+      URI(array_name),
+      timestamp_start,
+      timestamp_end,
+      ArrayDirectoryMode::VACUUM_FRAGMENTS);
 
   auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
   const auto& fragment_uris_to_vacuum =
@@ -357,6 +363,16 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
       });
   RETURN_NOT_OK(status);
 
+  // Delete fragments if vacuuming for deletes
+  if (for_deletes) {
+    const auto& fragment_uris = filtered_fragment_uris.fragment_uris();
+    status = parallel_for(compute_tp, 0, fragment_uris.size(), [&](size_t i) {
+      RETURN_NOT_OK(vfs->remove_dir(fragment_uris[i].uri_));
+      return Status::Ok();
+    });
+    RETURN_NOT_OK(status);
+  }
+
   return Status::Ok();
 }
 
@@ -399,7 +415,7 @@ Status FragmentConsolidator::consolidate_internal(
     const std::vector<TimestampedURI>& to_consolidate,
     const NDRange& union_non_empty_domains,
     URI* new_fragment_uri) {
-  auto timer_se = stats_->start_timer("consolidate_main");
+  auto timer_se = stats_->start_timer("consolidate_internal");
 
   RETURN_NOT_OK(array_for_reads->load_fragments(to_consolidate));
 
@@ -409,6 +425,33 @@ Status FragmentConsolidator::consolidate_internal(
 
   // Get schema
   const auto& array_schema = array_for_reads->array_schema_latest();
+
+  // If there are any delete conditions coming after the first fragment or if
+  // there are any fragments with delete meta, the new fragment will include
+  // delete meta.
+  if (array_schema.write_version() >= constants::deletes_min_version) {
+    // Get the first fragment first timestamp.
+    std::pair<uint64_t, uint64_t> timestamps;
+    RETURN_NOT_OK(
+        utils::parse::get_timestamp_range(to_consolidate[0].uri_, &timestamps));
+
+    for (auto& delete_tile_location :
+         array_for_reads->array_directory().delete_tiles_location()) {
+      if (delete_tile_location.timestamp() >= timestamps.first) {
+        config_.with_delete_meta_ = true;
+        break;
+      }
+    }
+
+    if (!config_.with_delete_meta_) {
+      for (auto& frag_md : array_for_reads->fragment_metadata()) {
+        if (frag_md->has_delete_meta()) {
+          config_.with_delete_meta_ = true;
+          break;
+        }
+      }
+    }
+  }
 
   // Prepare buffers
   std::vector<ByteVec> buffers;
@@ -433,7 +476,7 @@ Status FragmentConsolidator::consolidate_internal(
 
   // Get the vacuum URI
   auto&& [st_vac_uri, vac_uri] =
-      array_for_reads->array_directory().get_vaccum_uri(*new_fragment_uri);
+      array_for_reads->array_directory().get_vacuum_uri(*new_fragment_uri);
   if (!st_vac_uri.ok()) {
     tdb_delete(query_r);
     tdb_delete(query_w);
@@ -534,6 +577,12 @@ Status FragmentConsolidator::create_buffers(
     buffer_num++;
   }
 
+  // Adding buffers for delete meta, one for timestamp and one for condition
+  // index.
+  if (config_.with_delete_meta_) {
+    buffer_num += 2;
+  }
+
   // Create buffers
   buffers->resize(buffer_num);
   buffer_sizes->resize(buffer_num);
@@ -582,21 +631,33 @@ Status FragmentConsolidator::create_queries(
   auto last = (*query_r)->last_fragment_uri();
 
   auto write_version = array_for_reads->array_schema_latest().write_version();
-  auto&& [st, name] =
+  auto&& [st, fragment_name] =
       array_for_reads->array_directory().compute_new_fragment_name(
           first, last, write_version);
   RETURN_NOT_OK(st);
-  auto frag_uri =
-      array_for_reads->array_directory().get_fragments_dir(write_version);
-  *new_fragment_uri = frag_uri.join_path(name.value());
 
   // Create write query
-  *query_w =
-      tdb_new(Query, storage_manager_, array_for_writes, *new_fragment_uri);
+  *query_w = tdb_new(Query, storage_manager_, array_for_writes, fragment_name);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->disable_checks_consolidation());
-  if (array_for_reads->array_schema_latest().dense())
+  if (array_for_reads->array_schema_latest().dense()) {
     RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
+  }
+
+  // Set the processed conditions on new fragment.
+  const auto& delete_tiles_location =
+      (*query_r)->array()->array_directory().delete_tiles_location();
+  std::vector<std::string> processed_conditions;
+  processed_conditions.reserve(delete_tiles_location.size());
+  for (auto& location : delete_tiles_location) {
+    processed_conditions.emplace_back(location.condition_marker());
+  }
+  (*query_w)->set_processed_conditions(processed_conditions);
+
+  // Set the URI for the new fragment.
+  auto frag_uri =
+      array_for_reads->array_directory().get_fragments_dir(write_version);
+  *new_fragment_uri = frag_uri.join_path(fragment_name.value());
 
   return Status::Ok();
 }
@@ -794,6 +855,19 @@ Status FragmentConsolidator::set_query_buffers(
     ++bid;
   }
 
+  if (config_.with_delete_meta_ && !dense) {
+    RETURN_NOT_OK(query->set_data_buffer(
+        constants::delete_timestamps,
+        (void*)&(*buffers)[bid][0],
+        &(*buffer_sizes)[bid]));
+    ++bid;
+    RETURN_NOT_OK(query->set_data_buffer(
+        constants::delete_condition_index,
+        (void*)&(*buffers)[bid][0],
+        &(*buffer_sizes)[bid]));
+    ++bid;
+  }
+
   return Status::Ok();
 }
 
@@ -845,6 +919,7 @@ Status FragmentConsolidator::set_config(const Config* config) {
   assert(found);
   config_.use_refactored_reader_ = reader.compare("refactored") == 0;
   config_.with_timestamps_ = true;
+  config_.with_delete_meta_ = false;
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)

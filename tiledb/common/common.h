@@ -61,6 +61,7 @@ using tiledb::common::make_shared;
  * The exception header also put `class Status` in scope.
  */
 #include "exception/exception.h"
+using tiledb::common::Status;
 using tiledb::common::StatusException;
 using tiledb::common::throw_if_not_ok;
 
@@ -72,5 +73,10 @@ constexpr bool is_experimental_build = true;
 #else
 constexpr bool is_experimental_build = false;
 #endif  // TILEDB_EXPERIMENTAL_FEATURES
+
+/*
+ * Platform/machine config
+ */
+#include "platform.h"
 
 #endif  // TILEDB_COMMON_COMMON_H

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -139,7 +139,8 @@ void read_array() {
   query.set_layout(TILEDB_ROW_MAJOR);
 
   // Read the full array
-  const std::vector<int> subarray_full = {1, 2, 1, 2};
+  Subarray subarray_full(ctx, array);
+  subarray_full.add_range(0, 1, 2).add_range(1, 1, 2);
   query.set_subarray(subarray_full);
 
   // Set the query buffers specifying the validity for each data

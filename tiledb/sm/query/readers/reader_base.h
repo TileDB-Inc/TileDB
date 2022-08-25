@@ -161,17 +161,37 @@ class ReaderBase : public StrategyBase {
   /** The query condition. */
   QueryCondition& condition_;
 
+  /** The delete conditions. */
+  std::vector<QueryCondition> delete_conditions_;
+
+  /**
+   * Timestamped delete conditions. This the same as delete_conditions_ but
+   * adds a conditional in the condition with the timestamp of the condition.
+   * It will be used to process fragments with timestamps when a delete
+   * condition timestamp falls within the fragment timestamps.
+   */
+  std::vector<QueryCondition> timestamped_delete_conditions_;
+
   /** The fragment metadata that the reader will focus on. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
 
   /** Disable the tile cache or not. */
   bool disable_cache_;
 
+  /** Read directly from storage without batching. */
+  bool disable_batching_;
+
   /**
    * The condition to apply on results when there is partial time overlap
    * with at least one fragment
-   * */
+   */
   QueryCondition partial_overlap_condition_;
+
+  /**
+   * The condition to apply on results when there is a delete timestamps
+   * column for a fragment
+   */
+  QueryCondition delete_timestamps_condition_;
 
   /** If the user requested timestamps attribute in the query */
   bool user_requested_timestamps_;
@@ -182,9 +202,30 @@ class ReaderBase : public StrategyBase {
    */
   bool use_timestamps_;
 
+  /**
+   * Boolean, per fragment, to specify that we need to load timestamps for
+   * deletes. This matches the fragments in 'fragment_metadata_'
+   */
+  std::vector<bool> timestamps_needed_for_deletes_;
+
+  /** Names of dim/attr loaded for query condition. */
+  std::unordered_set<std::string> qc_loaded_attr_names_set_;
+
+  /** Have we loaded the initial data. */
+  bool initial_data_loaded_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
+
+  /**
+   * Returns if we need to process partial timestamp condition for this
+   * fragment.
+   *
+   * @param frag_meta Fragment metadata.
+   * @return true if the condition need to be processed.
+   */
+  bool process_partial_timestamps(FragmentMetadata& frag_meta) const;
 
   /**
    * Deletes the tiles on the input attribute/dimension from the result tiles.
@@ -200,6 +241,20 @@ class ReaderBase : public StrategyBase {
       const uint64_t min_result_tile = 0) const;
 
   /**
+   * Is there a need to build timestamped conditions for deletes.
+   *
+   * @return true if the conditions need to be generated.
+   */
+  bool need_timestamped_conditions();
+
+  /**
+   * Generates timestamped conditions for deletes.
+   *
+   * @return Status.
+   */
+  Status generate_timestamped_conditions();
+
+  /**
    * Resets the buffer sizes to the original buffer sizes. This is because
    * the read query may alter the buffer sizes to reflect the size of
    * the useful data (results) written in the buffers.
@@ -210,10 +265,10 @@ class ReaderBase : public StrategyBase {
   void zero_out_buffer_sizes();
 
   /** Correctness checks for `subarray_`. */
-  Status check_subarray() const;
+  void check_subarray() const;
 
   /** Correctness checks validity buffer sizes in `buffers_`. */
-  Status check_validity_buffer_sizes() const;
+  void check_validity_buffer_sizes() const;
 
   /**
    * Skip read/unfilter operations for timestamps attribute and fragments
@@ -222,6 +277,17 @@ class ReaderBase : public StrategyBase {
   inline bool timestamps_not_present(
       const std::string& name, const unsigned f) const {
     return name == constants::timestamps && !include_timestamps(f);
+  }
+
+  /**
+   * Skip read/unfilter operations for timestamps attribute and fragments
+   * without delete metadata.
+   */
+  inline bool delete_meta_not_present(
+      const std::string& name, const unsigned f) const {
+    return (name == constants::delete_timestamps ||
+            name == constants::delete_condition_index) &&
+           !fragment_metadata_[f]->has_delete_meta();
   }
 
   /**
@@ -265,9 +331,14 @@ class ReaderBase : public StrategyBase {
   /**
    * Add a condition for partial time overlap based on array open and
    * end times, to be used to filter out results on fragments that have
-   * been consolidated with timestamps
+   * been consolidated with timestamps.
    */
   Status add_partial_overlap_condition();
+
+  /**
+   * Add a condition for delete timestamps.
+   */
+  Status add_delete_timestamps_condition();
 
   /**
    * Loads tile var sizes for each attribute/dimension name into
@@ -279,6 +350,14 @@ class ReaderBase : public StrategyBase {
    */
   Status load_tile_var_sizes(
       Subarray& subarray, const std::vector<std::string>& names);
+
+  /**
+   * Loads processed conditions from fragment metadata.
+   *
+   * @param subarray The subarray to load processed conditions for.
+   * @return Status
+   */
+  Status load_processed_conditions();
 
   /**
    * Initializes a fixed-sized tile.

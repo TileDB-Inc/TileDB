@@ -39,6 +39,7 @@
 #include "tiledb/common/types/dynamic_typed_datum.h"
 #include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 #include <vector>
 
@@ -186,12 +187,12 @@ class Domain {
   /**
    * Populates the object members from the data in the input binary buffer.
    *
-   * @param buff The buffer to deserialize from.
+   * @param deserializer The deserializer to deserialize from.
    * @param version The array schema version.
    * @return Status and Domain
    */
-  static tuple<Status, optional<shared_ptr<Domain>>> deserialize(
-      ConstBuffer* buff,
+  static shared_ptr<Domain> deserialize(
+      Deserializer& deserializer,
       uint32_t version,
       Layout cell_order,
       Layout tile_order);
@@ -392,11 +393,11 @@ class Domain {
   /**
    * Serializes the object members into a binary buffer.
    *
-   * @param buff The buffer to serialize the data into.
+   * @param serializer The object the array schema is serialized into.
    * @param version The array schema version.
    * @return Status
    */
-  Status serialize(Buffer* buff, uint32_t version);
+  void serialize(Serializer& serializer, uint32_t version) const;
 
   /**
    * For every dimension that has a null tile extent, it sets

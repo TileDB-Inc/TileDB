@@ -42,6 +42,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+void nop_free(void* const) {
+}
+
 /* ****************************** */
 /*           STATIC INIT          */
 /* ****************************** */
@@ -95,7 +98,7 @@ Tile::Tile(
     const unsigned int zipped_coords_dim_num,
     void* const buffer,
     uint64_t size)
-    : data_(static_cast<char*>(buffer), tiledb_free)
+    : data_(static_cast<char*>(buffer), nop_free)
     , size_(size)
     , cell_size_(cell_size)
     , zipped_coords_dim_num_(zipped_coords_dim_num)

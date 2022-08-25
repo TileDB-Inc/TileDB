@@ -393,6 +393,23 @@ class Array {
   }
 
   /**
+   * Deletes the fragments written between the input timestamps of an array
+   * with the input uri.
+   */
+  void delete_fragments(
+      const std::string& uri,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_delete_fragments(
+        ctx.ptr().get(),
+        array_.get(),
+        uri.c_str(),
+        timestamp_start,
+        timestamp_end));
+  }
+
+  /**
    * @brief Opens the array. The array is opened using a query type as input.
    *
    * This is to indicate that queries created for this `Array`

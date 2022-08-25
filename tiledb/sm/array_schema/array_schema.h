@@ -53,11 +53,14 @@ class Attribute;
 class Buffer;
 class ConstBuffer;
 class Dimension;
+class DimensionLabelReference;
+class DimensionLabelSchema;
 class Domain;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
 enum class Datatype : uint8_t;
+enum class LabelOrder : uint8_t;
 enum class Layout : uint8_t;
 
 /** Specifies the array schema. */
@@ -78,6 +81,12 @@ class ArraySchema {
    */
   using attribute_size_type = unsigned int;
 
+  /**
+   * Size type for the number of dimension labels in an array and for
+   * label indices.
+   */
+  using dimension_label_size_type = unsigned int;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -91,6 +100,8 @@ class ArraySchema {
   /** Constructor.
    * @param uri The URI of the array schema file.
    * @param version The format version of this array schema.
+   * @param timestamp_range The timestamp the array schema was written.
+   * @param name The file name of the schema in timestamp_timestamp_uuid format.
    * @param array_type The array type.
    * @param allows_dups True if the (sparse) array allows coordinate duplicates.
    * @param domain The array domain.
@@ -107,6 +118,8 @@ class ArraySchema {
   ArraySchema(
       URI uri,
       uint32_t version,
+      std::pair<uint64_t, uint64_t> timestamp_range,
+      std::string name,
       ArrayType array_type,
       bool allows_dups,
       shared_ptr<Domain> domain,
@@ -114,6 +127,7 @@ class ArraySchema {
       Layout tile_order,
       uint64_t capacity,
       std::vector<shared_ptr<const Attribute>> attributes,
+      std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels,
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
       FilterPipeline coords_filters);
@@ -131,6 +145,15 @@ class ArraySchema {
   /* ********************************* */
   /*               API                 */
   /* ********************************* */
+
+  /**
+   * Returns true if the name is a special attribute.
+   */
+  static inline bool is_special_attribute(const std::string& name) {
+    return name == constants::coords || name == constants::timestamps ||
+           name == constants::delete_timestamps ||
+           name == constants::delete_condition_index;
+  }
 
   /**
    * Returns true if the array allows coordinate duplicates. Applicable
@@ -208,6 +231,18 @@ class ArraySchema {
   /** True if the array is dense. */
   bool dense() const;
 
+  /** Returns the i-th dimension label. */
+  const DimensionLabelReference& dimension_label_reference(
+      dimension_label_size_type i) const;
+
+  /**
+   * Returns the selected dimension label.
+   *
+   * A status exception is thrown if the dimension label does not exist.
+   */
+  const DimensionLabelReference& dimension_label_reference(
+      const std::string& name) const;
+
   /** Returns the i-th dimension. */
   const Dimension* dimension_ptr(dimension_size_type i) const;
 
@@ -222,6 +257,9 @@ class ArraySchema {
 
   /** Returns the dimension types. */
   std::vector<Datatype> dim_types() const;
+
+  /** Returns the number of dimension labels. */
+  dimension_label_size_type dim_label_num() const;
 
   /** Returns the number of dimensions. */
   dimension_size_type dim_num() const;
@@ -245,6 +283,9 @@ class ArraySchema {
   /** Returns true if the input name is a dimension. */
   bool is_dim(const std::string& name) const;
 
+  /** Returns true if the input name is a dimension label. */
+  bool is_dim_label(const std::string& name) const;
+
   /** Returns true if the input name is a dimension, attribute or coords. */
   bool is_field(const std::string& name) const;
 
@@ -254,10 +295,10 @@ class ArraySchema {
   /**
    * Serializes the array schema object into a buffer.
    *
-   * @param buff The buffer the array schema is serialized into.
+   * @param serializer The object the array schema is serialized into.
    * @return Status
    */
-  Status serialize(Buffer* buff) const;
+  void serialize(Serializer& serializer) const;
 
   /** Returns the tile order. */
   Layout tile_order() const;
@@ -289,6 +330,24 @@ class ArraySchema {
       shared_ptr<const Attribute> attr, bool check_special = true);
 
   /**
+   * Adds a dimension label to the array schema.
+   *
+   * @param dim_id The index of the dimension the label applied to.
+   * @param name The name of the dimension label.
+   * @param dimension_label_schema The schema of the dimension label.
+   * @param check_name If ``true``, check the name does not conflict with other
+   * labels, attributes, or dimensions.
+   * @param check_is_compatible If ``true``, check the schema of the dimension
+   * label is compatible with the defintion of the dimension.
+   **/
+  Status add_dimension_label(
+      dimension_size_type dim_id,
+      const std::string& name,
+      shared_ptr<const DimensionLabelSchema> dimension_label_schema,
+      bool check_name = true,
+      bool check_is_compatible = true);
+
+  /**
    * Drops an attribute.
    *
    * @param attr_name The name of the attribute to be removed.
@@ -299,11 +358,11 @@ class ArraySchema {
   /**
    * It assigns values to the members of the object from the input buffer.
    *
-   * @param buff The binary representation of the object to read from.
-   * @param uri An optional uri object.
+   * @param deserializer The deserializer to deserialize from.
+   * @param uri The uri of the Array.
    * @return A new ArraySchema.
    */
-  static ArraySchema deserialize(ConstBuffer* buff, const URI& uri);
+  static ArraySchema deserialize(Deserializer& deserializer, const URI& uri);
 
   /** Returns the array domain. */
   inline const Domain& domain() const {
@@ -452,6 +511,13 @@ class ArraySchema {
    * Maintains lifespan for elements in both attributes_ and attribute_map_. */
   std::vector<shared_ptr<const Attribute>> attributes_;
 
+  /** The array dimension labels. */
+  std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels_;
+
+  /** A map from the dimension label names to the label schemas. */
+  std::unordered_map<std::string, const DimensionLabelReference*>
+      dimension_label_map_;
+
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;
 
@@ -464,6 +530,14 @@ class ArraySchema {
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
 
+  /**
+   * Number of internal dimension labels - used for constructing label URI.
+   *
+   * WARNING: This is only for array schema construction. It is not
+   * loaded from file when loading the array.
+   **/
+  dimension_label_size_type nlabel_internal_ = 0;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -472,7 +546,7 @@ class ArraySchema {
    * Returns false if the union of attribute and dimension names contain
    * duplicates.
    */
-  bool check_attribute_dimension_names() const;
+  Status check_attribute_dimension_label_names() const;
 
   /**
    * Returns error if double delta compression is used in the zipped

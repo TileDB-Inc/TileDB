@@ -59,31 +59,19 @@ inline Status Status_DimensionLabelError(const std::string& msg) {
  **/
 class DimensionLabel {
  public:
+  inline const static std::string indexed_array_name{"indexed"};
+  inline const static std::string labelled_array_name{"labelled"};
   /**
    * Constructor.
    *
-   * @param indexed_array_uri URI for the array with indices stored on the
-   * dimension.
-   * @param labelled_array_uri URI for the array with labels stored on the
-   * dimension.
+   * @param uri URI for the group containing the dimension labeli arrays.
    * @param storage_manager Storage manager object to use when opening the
    * arrays.
-   * @param label_order The ordering of the labels relative to the indices.
-   * @param label_attr_id The integer ID of the label attribute in the indexed
-   * array.
-   * @param index_attr_id The integer ID of the index attribute in the labelled
-   * array.
    */
-  DimensionLabel(
-      const URI& indexed_array_uri,
-      const URI& labelled_array_uri,
-      StorageManager* storage_manager,
-      LabelOrder label_order,
-      const DimensionLabelSchema::attribute_size_type label_attr_id = 0,
-      const DimensionLabelSchema::attribute_size_type index_attr_id = 0);
+  DimensionLabel(const URI& uri, StorageManager* storage_manager);
 
-  /** Closes the array and frees all memory. */
-  Status close();
+  /** Closes the arrays and frees all memory. */
+  void close();
 
   /** Returns the index attribute in the labelled array. */
   const Attribute* index_attribute() const;
@@ -108,9 +96,7 @@ class DimensionLabel {
   }
 
   /** Returns the order of the dimension label. */
-  inline LabelOrder label_order() const {
-    return label_order_;
-  }
+  LabelOrder label_order() const;
 
   /**
    * Opens the dimension label for reading at a timestamp retrieved from the
@@ -119,34 +105,30 @@ class DimensionLabel {
    * @param query_type The mode in which the dimension label is opened.
    * @param encryption_type The encryption type of the dimension label
    * @param encryption_key If the dimension label is encrypted, the private
-   * encryption key. For unencrypted axes, pass `nullptr`.
+   *     encryption key. For unencrypted axes, pass `nullptr`.
    * @param key_length The length in bytes of the encryption key.
-   * @return Status
    */
-  Status open(
+  void open(
       QueryType query_type,
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length);
 
   /**
-   * Opens the dimension label for reading.
+   * Opens the dimension label.
    *
    * @param query_type The query type. This should always be READ. It
-   *    is here only for sanity check.
+   *     is here only for sanity check.
    * @param timestamp_start The start timestamp at which to open the
-   * dimension label.
+   *     dimension label.
    * @param timestamp_end The end timestamp at which to open the
-   * dimension label.
+   *     dimension label.
    * @param encryption_type The encryption type of the dimension label
    * @param encryption_key If the dimension label is encrypted, the private
-   * encryption key. For unencrypted axes, pass `nullptr`.
+   *     encryption key. For unencrypted axes, pass `nullptr`.
    * @param key_length The length in bytes of the encryption key.
-   * @return Status
-   *
-   * @note Applicable only to reads.
    */
-  Status open(
+  void open(
       QueryType query_type,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
@@ -154,26 +136,19 @@ class DimensionLabel {
       const void* encryption_key,
       uint32_t key_length);
 
-  /**
-   * Opens the dimension label for reading without fragments.
-   *
-   * @param encryption_type The encryption type of the dimension label
-   * @param encryption_key If the dimension label is encrypted, the private
-   * encryption key. For unencrypted axes, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @return Status
-   *
-   * @note Applicable only to reads.
-   */
-  Status open_without_fragments(
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length);
+  /** Returns the query type the dimension label was opened with. */
+  QueryType query_type() const;
 
  private:
   /**********************/
   /* Private attributes */
   /**********************/
+
+  /** The URI of the dimension label group. */
+  URI uri_;
+
+  /** Storage manager */
+  StorageManager* storage_manager_;
 
   /** Array with index dimension */
   shared_ptr<Array> indexed_array_;
@@ -181,25 +156,53 @@ class DimensionLabel {
   /** Array with label dimension */
   shared_ptr<Array> labelled_array_;
 
-  /** Label order type of the dimension label */
-  LabelOrder label_order_;
-
-  /** Name of the label attribute in the indexed array. */
-  DimensionLabelSchema::attribute_size_type label_attr_id_;
-
-  /** Name of the index attribute in the labelled array. */
-  DimensionLabelSchema::attribute_size_type index_attr_id_;
-
   /** Latest dimension label schema  */
   shared_ptr<DimensionLabelSchema> schema_;
+
+  /** The query type the dimension label is opened as. */
+  optional<QueryType> query_type_;
 
   /*******************/
   /* Private methods */
   /*******************/
 
-  /** Loads and checks the dimension label schema. */
-  Status load_schema();
+  /**
+   * Loads and checks the dimension label schema.
+   *
+   * @param indexed_array_schema Array schema for the indexed array
+   * @param labelled_array_schema Array schema for the labelled array
+   **/
+  void load_schema(
+      shared_ptr<ArraySchema> indexed_array_schema,
+      shared_ptr<ArraySchema> labelled_array_schema);
 };
+
+/**
+ * Creates a dimension label from a dimension label schema.
+ *
+ * @param uri URI to create the dimension label at.
+ * @param storage_manager Storage manager object to use when opening the
+ *     arrays.
+ * @param schema The schema of the dimension label that will be created.
+ **/
+void create_dimension_label(
+    const URI& uri,
+    StorageManager& storage_manager,
+    const DimensionLabelSchema& schema);
+
+/**
+ * Removes all fragments URIs from a fragment list that do not have a similarly
+ * named fragment in a comparison fragments list.
+ *
+ * The comparison here is only on the base name of the fragment URIs. Fragments
+ * may be re-ordered upon return.
+ *
+ * @param comparison_fragment_uris The list of fragment URIs to check against.
+ * @param fragment_list The list of fragment URIs to prune.
+ */
+void intersect_fragments(
+    const std::vector<TimestampedURI>& comparison_fragment_list,
+    std::vector<TimestampedURI>& fragment_list);
 
 }  // namespace tiledb::sm
 

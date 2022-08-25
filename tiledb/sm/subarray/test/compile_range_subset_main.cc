@@ -29,6 +29,6 @@
 #include "../range_subset.h"
 
 int main() {
-  (void)sizeof(tiledb::sm::RangeSubsetBase);
+  (void)sizeof(tiledb::sm::RangeSetAndSuperset);
   return 0;
 }

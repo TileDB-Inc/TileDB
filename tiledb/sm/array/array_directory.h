@@ -37,6 +37,7 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <unordered_map>
 
@@ -150,6 +151,7 @@ class ArrayDirectory {
     std::vector<TimestampedURI> fragment_uris_;
   };
 
+ public:
   /**
    * Class to return a location of a delete tile, which is file URI/offset.
    */
@@ -162,23 +164,46 @@ class ArrayDirectory {
     /**
      * Constructor.
      */
-    DeleteTileLocation(const URI& uri, const storage_size_t offset)
+    DeleteTileLocation(
+        const URI& uri,
+        const std::string condition_marker,
+        const storage_size_t offset)
         : uri_(uri)
+        , condition_marker_(condition_marker)
         , offset_(offset) {
+      std::pair<uint64_t, uint64_t> timestamps;
+      if (!utils::parse::get_timestamp_range(URI(condition_marker), &timestamps)
+               .ok()) {
+        throw std::logic_error("Error parsing uri.");
+      }
+
+      timestamp_ = timestamps.first;
     }
 
     /** Destructor. */
     ~DeleteTileLocation() = default;
 
+    bool operator<(const DeleteTileLocation& rhs) const {
+      return (timestamp_ < rhs.timestamp_);
+    }
+
     /* ********************************* */
     /*                API                */
     /* ********************************* */
-    inline URI& Uri() {
+    inline const URI& uri() const {
       return uri_;
     }
 
-    inline uint64_t Offset() {
+    inline const std::string& condition_marker() const {
+      return condition_marker_;
+    }
+
+    inline uint64_t offset() const {
       return offset_;
+    }
+
+    inline uint64_t timestamp() const {
+      return timestamp_;
     }
 
    private:
@@ -189,11 +214,16 @@ class ArrayDirectory {
     /** The URIs of the file. */
     URI uri_;
 
+    /** The condition marker. */
+    std::string condition_marker_;
+
     /** The offset within the file. */
     uint64_t offset_;
+
+    /** Stores the timestamp of the delete for sorting. */
+    uint64_t timestamp_;
   };
 
- public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -278,7 +308,7 @@ class ArrayDirectory {
   tuple<Status, optional<URI>> get_commit_uri(const URI& fragment_uri) const;
 
   /** Returns the URI for a vacuum file. */
-  tuple<Status, optional<URI>> get_vaccum_uri(const URI& fragment_uri) const;
+  tuple<Status, optional<URI>> get_vacuum_uri(const URI& fragment_uri) const;
 
   /**
    * The new fragment name is computed

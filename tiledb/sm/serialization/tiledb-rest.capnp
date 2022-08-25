@@ -59,6 +59,12 @@ struct Array {
   # array metadata
 }
 
+struct ArrayOpen {
+  config @0 :Config;
+  # Config
+}
+
+
 struct ArraySchema {
 # ArraySchema during creation or retrieval
     arrayType @0 :Text;
@@ -111,7 +117,7 @@ struct ArraySchemaEvolution {
     # Attribute names to be dropped
 
     attributesToAdd @1 :List(Attribute);
-    # Attributes to be added    
+    # Attributes to be added
 
     timestampRange @2 :List(UInt64);
     # Timestamp range of array schema
@@ -219,6 +225,12 @@ struct Error {
     message @1 :Text;
 }
 
+struct FloatScaleConfig {
+  scale @0 :Float64;
+  offset @1 :Float64;
+  byteWidth @2 :UInt64;
+}
+
 struct Filter {
   type @0 :Text;
   # filter type
@@ -238,6 +250,8 @@ struct Filter {
     float64 @12 :Float64;
   }
   # filter data
+
+  floatScaleConfig @13 :FloatScaleConfig;
 }
 
 struct FilterPipeline {
@@ -433,7 +447,7 @@ struct ASTNode {
 
   # Expression node fields
   children @4 :List(ASTNode);
-  # A list of children 
+  # A list of children
 
   combinationOp @5 :Text;
   # The combination logical operator
@@ -468,6 +482,16 @@ struct QueryReader {
   # The query condition
 
   stats @4 :Stats;
+  # Stats object
+}
+
+struct Delete {
+  # Delete struct
+
+  condition @0 :Condition;
+  # The delete condition
+
+  stats @1 :Stats;
   # Stats object
 }
 
@@ -578,6 +602,9 @@ struct Query {
 
     denseReader @16 :QueryReader;
     # denseReader contains data needed for continuation of incomplete dense reads with dense reader
+
+    delete @17 :Delete;
+    # delete contains QueryCondition representing deletion expression
 }
 
 struct NonEmptyDomain {
@@ -637,12 +664,12 @@ struct ArrayMetadata {
 struct EstimatedResultSize {
   # object representing estimated
   struct ResultSize {
-    # Result size 
+    # Result size
     sizeFixed @0 :Float64;
     sizeVar @1 :Float64;
     sizeValidity @2 :Float64;
   }
-  
+
   struct MemorySize {
     # Memory Size
     sizeFixed @0 :UInt64;

@@ -114,7 +114,7 @@ class FragmentMetadata {
    */
   inline uint64_t num_dims_and_attrs() const {
     return array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
-           has_timestamps_;
+           has_timestamps_ + (has_delete_meta_ * 2);
   }
 
   /** Returns the number of cells in the fragment. */
@@ -713,13 +713,31 @@ class FragmentMetadata {
   tuple<Status, optional<uint64_t>> get_null_count(const std::string& name);
 
   /**
+   * Set the processed conditions. The processed conditions is the list
+   * of delete/update conditions that have already been applied for this
+   * fragment and don't need to be applied again.
+   *
+   * @param processed_conditions The processed conditions.
+   */
+  void set_processed_conditions(std::vector<std::string>& processed_conditions);
+
+  /**
    * Retrieves the processed conditions. The processed conditions is the list
    * of delete/update conditions that have already been applied for this
    * fragment and don't need to be applied again.
    *
    * @return Processed conditions.
    */
-  std::unordered_set<std::string>& get_processed_conditions();
+  std::vector<std::string>& get_processed_conditions();
+
+  /**
+   * Retrieves the processed conditions set. The processed conditions is the
+   * list of delete/update conditions that have already been applied for this
+   * fragment and don't need to be applied again.
+   *
+   * @return Processed conditions set.
+   */
+  std::unordered_set<std::string>& get_processed_conditions_set();
 
   /** Returns the first timestamp of the fragment timestamp range. */
   uint64_t first_timestamp() const;
@@ -1076,7 +1094,13 @@ class FragmentMetadata {
   URI array_uri_;
 
   /** Set of already processed delete/update conditions for this fragment. */
-  std::unordered_set<std::string> processed_conditions_;
+  std::unordered_set<std::string> processed_conditions_set_;
+
+  /**
+   * Ordered list of already processed delete/update conditions for this
+   * fragment.
+   */
+  std::vector<std::string> processed_conditions_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -1222,9 +1246,15 @@ class FragmentMetadata {
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
-   * versions 12 or higher.
+   * versions 12 to 15.
    */
-  Status load_generic_tile_offsets_v12_or_higher(ConstBuffer* buff);
+  Status load_generic_tile_offsets_v12_v15(ConstBuffer* buff);
+
+  /**
+   * Loads the generic tile offsets from the buffer. Applicable to
+   * versions 16 or higher.
+   */
+  Status load_generic_tile_offsets_v16_or_higher(ConstBuffer* buff);
 
   /**
    * Loads the array schema name.
@@ -1477,8 +1507,8 @@ class FragmentMetadata {
   /** Stores a footer with the basic information. */
   Status store_footer(const EncryptionKey& encryption_key);
 
-  /** Writes the R-tree to the input buffer. */
-  Status write_rtree(Buffer* buff);
+  /** Writes the R-tree to a tile. */
+  Tile write_rtree();
 
   /** Writes the non-empty domain to the input buffer. */
   Status write_non_empty_domain(Buffer* buff) const;
@@ -1674,9 +1704,9 @@ class FragmentMetadata {
 
   /**
    * Reads the contents of a generic tile starting at the input offset,
-   * and stores them into buffer ``buff``.
+   * and returns a tile.
    */
-  tuple<Status, optional<Buffer>> read_generic_tile_from_file(
+  tuple<Status, optional<Tile>> read_generic_tile_from_file(
       const EncryptionKey& encryption_key, uint64_t offset) const;
 
   /**
@@ -1699,6 +1729,18 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       Buffer& buff,
       uint64_t* nbytes) const;
+
+  /**
+   * Writes the contents of the input tile as a separate
+   * generic tile to the metadata file.
+   *
+   * @param encryption_key The encryption key.
+   * @param tile The tile whose contents the function will write.
+   * @param nbytes The total number of bytes written to the file.
+   * @return Status
+   */
+  Status write_generic_tile_to_file(
+      const EncryptionKey& encryption_key, Tile& tile, uint64_t* nbytes) const;
 
   /**
    * Writes the contents of the input buffer at the end of the fragment

@@ -77,6 +77,9 @@ extern const std::string array_fragments_dir_name;
 /** The array commit directory name. */
 extern const std::string array_commits_dir_name;
 
+/** The array dimension labels directory name. */
+extern const std::string array_dimension_labels_dir_name;
+
 /** The default tile capacity. */
 extern const uint64_t capacity;
 
@@ -125,14 +128,17 @@ extern const std::string timestamps;
 /** Special name reserved for the delete timestamp attribute. */
 extern const std::string delete_timestamps;
 
-/** Special name reserved for the delete condition name attribute. */
-extern const std::string delete_condition_names;
+/** Special name reserved for the delete condition index attribute. */
+extern const std::string delete_condition_index;
 
 /** The size of a timestamp cell. */
 extern const uint64_t timestamp_size;
 
-/** The type of a variable offset cell. */
+/** The type of a timestamp cell. */
 extern const Datatype timestamp_type;
+
+/** The type of a delete condition index cell. */
+extern const Datatype delete_condition_index_type;
 
 /** The special value for an empty int32. */
 extern const int empty_int32;
@@ -260,6 +266,12 @@ extern const std::string query_type_read_str;
 /** TILEDB_WRITE Query String **/
 extern const std::string query_type_write_str;
 
+/** TILEDB_DELETE Query String **/
+extern const std::string query_type_delete_str;
+
+/** TILEDB_MODIFY_EXCLUSIVE Query String **/
+extern const std::string query_type_modify_exclusive_str;
+
 /** TILEDB_FAILED Query String **/
 extern const std::string query_status_failed_str;
 
@@ -361,6 +373,9 @@ extern const std::string filter_dictionary_str;
 
 /** String describing FILTER_SCALE_FLOAT. */
 extern const std::string filter_scale_float_str;
+
+/** String describing FILTER_XOR. */
+extern const std::string filter_xor_str;
 
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;
@@ -582,6 +597,9 @@ extern const std::string vfsmode_append_str;
 /** The TileDB library version in format { major, minor, revision }. */
 extern const int32_t library_version[3];
 
+/** The TileDB serialization base format version number. */
+extern const uint32_t base_format_version;
+
 /** The TileDB serialization format version number. */
 extern const uint32_t format_version;
 
@@ -590,6 +608,9 @@ extern const uint32_t back_compat_writes_min_format_version;
 
 /** The lowest version supported for consolidation with timestamps. */
 extern const uint32_t consolidation_with_timestamps_min_version;
+
+/** The lowest version supported for deletes. */
+extern const uint32_t deletes_min_version;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;
