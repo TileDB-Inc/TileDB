@@ -33,31 +33,58 @@
 #ifndef TILEDB_DAG_GENERATOR_H
 #define TILEDB_DAG_GENERATOR_H
 
+#include "experimental/tiledb/common/dag/execution/stop_token.hpp"
+
 namespace tiledb::common {
 
 /**
  * Prototype producer function object class.  This class generates a sequence of
  * integers starting at `N`, returning a new integer with every invocation of
- * `operator()`.
+ * `operator()`.  
  */
-template <class Block = size_t>
+template <class Integral = size_t>
 class generator {
-  std::atomic<Block> N_{0};
-  std::atomic<Block> i_{0};
+  std::atomic<Integral> min_{0}, max_{0};
+  std::atomic<Integral> i_{0};
 
  public:
-  generator(Block N = 0)
-      : N_{N}
-      , i_{N} {
-  }
-  generator(const generator& rhs)
-      : N_(rhs.N_.load())
-      , i_(rhs.i_.load()) {
+  generator(Integral min = 0, Integral max = std::numeric_limits<Integral>::max()) : min_{min}, max_{max}, i_{min_.load()} {
   }
 
-  Block operator()() {
+  generator(const generator& rhs)
+    : min_(rhs.min_.load())
+    , max_(rhs.max_.load())
+    , i_(rhs.i_.load()) {
+  }
+
+#if 1
+  /**
+   * Function returning sequence of numbers, from `min_` to `max_`.  Stop is requested
+   * once `max_` is reached.
+   *
+   * @param stop_source Stop is requested once `i_` hits `max_`
+   *
+   * @return Next number in sequence, up to `max_`,
+   */
+  Integral operator()(std::stop_source& stop_source) {
+    if (i_ >= max_) {
+      stop_source.request_stop();
+      return max_;
+    }
     return i_++;
   }
+#else
+
+  Integral operator()() {
+    if (i_ >= max_) {
+      return max_;
+    }
+    return i_++;
+  }
+#endif
+
 };
+
+
 }  // namespace tiledb::common
 #endif  // TILEDB_DAG_GENERATOR_H

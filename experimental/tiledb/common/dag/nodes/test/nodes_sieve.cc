@@ -89,9 +89,16 @@
 using namespace tiledb::common;
 using namespace std::placeholders;
 
-bool debug = false;
-bool chart = false;
+/*
+ * File-local variables for enabling debugging and tracing
+ */
+static bool debug = false;
+static bool chart = false;
 
+/*
+ * Function to enable time based tracing of different portions of program
+ * execution.
+ */
 template <class TimeStamp, class StartTime>
 void stamp_time(
     const std::string& msg,
@@ -138,6 +145,10 @@ auto sieve_to_primes(std::vector<bool_t>& sieve) {
   return primes;
 }
 
+/**
+ * Takes a vector of bool which has a true value for any number that is a prime,
+ * and converts to a vector of prime numbers.
+ */
 template <class bool_t>
 auto sieve_to_primes(
     std::vector<bool_t>& sieve,
@@ -154,6 +165,11 @@ auto sieve_to_primes(
   return primes;
 }
 
+/**
+ * Purely sequential program for finding primes in the range 0 to n.  Returns a
+ * vector of "bool" where each location whose index corresponds to a prime
+ * number is true and all others are false.
+ */
 template <class bool_t>
 auto sieve_seq(size_t n) {
   if (debug)
@@ -179,7 +195,8 @@ auto sieve_seq(size_t n) {
 }
 
 /**
- * Generate a (thread safe) sequence of integers, starting at 0
+ * Class for generating a (thread safe) sequence of integers, starting at 0
+ *
  * @return integer, value one greater than previously returned
  */
 class input_body {
@@ -201,7 +218,7 @@ class input_body {
 
 /**
  * Create a bitmap for storing sieve results
- * @tparam type for bitmap
+ * @tparam bool_t type of elements for bitmap
  * @param the block number to create bitmap for
  * @return tuple with block number, bitmap range, and bitmap
  */
@@ -285,8 +302,8 @@ auto output_body(
 
 /**
  * Some structures to simulate a task graph.  Here, a "task graph" is a tuple of
- * pseudo nodes.  We later construct a vector of these graphs so that we can run
- * multiple graphs in parallel.
+ * task graph nodes.  We later construct a vector of these graphs so that we can
+ * run multiple graphs in parallel.
  *
  * @todo (IMPORTANT) Only run a subset of graphs at a time, rather than all of
  * them.
@@ -296,8 +313,13 @@ auto output_body(
 template <class... Ts>
 using the = std::vector<std::tuple<Ts...>>;
 
+// For future evaluation
 // ThreadPool<true, false, true> tp(std::thread::hardware_concurrency());
 
+/**
+ * Utility function for putting Ith node in a single sieve task graph into the
+ * vector of task graph nodes.
+ */
 template <size_t I, class Futs, class Graph, class TimeStamp, class StartTime>
 void do_emplace(
     Futs& futs,
@@ -307,12 +329,91 @@ void do_emplace(
     TimeStamp& timestamps,
     std::atomic<size_t>& time_index,
     StartTime start_time) {
-  futs.emplace_back(std::async(std::launch::async, [&, w]() {
+  futs.emplace_back(std::async(std::launch::async, [&, N, w]() {
     stamp_time("start", I, timestamps, time_index, start_time);
     std::get<I>(graph[w]).run_for(N);
     stamp_time("stop", I, timestamps, time_index, start_time);
   }));
 };
+
+/*
+ * Attempt at generating all graph nodes for the vector in one call.
+ */
+template <
+    class Futs,
+    class Graph,
+    class TimeStamp,
+    class StartTime,
+    size_t... Is>
+void do_emplace_x(
+    Futs& futs,
+    Graph& graph,
+    size_t N,
+    size_t w,
+    TimeStamp& timestamps,
+    std::atomic<size_t>& time_index,
+    StartTime start_time,
+    std::index_sequence<Is...>) {
+  ((futs.emplace_back(std::async(
+       std::launch::async,
+       [&, w]() {
+         stamp_time("start", Is, timestamps, time_index, start_time);
+         std::get<Is>(graph[w]).run_for(N);
+         stamp_time("stop", Is, timestamps, time_index, start_time);
+       }))),
+   ...);
+
+#if 0
+  std::apply(
+      [&, w](auto&&... args) {
+        ((
+
+             /* args.dosomething() */
+             futs.emplace_back(std::async(
+                 std::launch::async,
+                 [&, args, w]() {
+                   stamp_time(
+                       "start", args, timestamps, time_index, start_time);
+                   std::get<args>(graph[w]).run_for(N);
+                   stamp_time("stop", args, timestamps, time_index, start_time);
+                 }))
+
+             ),
+         ...);
+      },
+      is);
+#endif
+}
+
+/*
+ * Another attempt at generating all graph nodes for the vector in one call.
+ */
+template <
+    class Futs,
+    class Graph,
+    class TimeStamp,
+    class StartTime,
+    size_t... Is>
+void do_emplace_x_width(
+    Futs& futs,
+    Graph& graph,
+    size_t N,
+    size_t width,
+    TimeStamp& timestamps,
+    std::atomic<size_t>& time_index,
+    StartTime start_time,
+    std::index_sequence<Is...>) {
+  (([&]() {
+     for (size_t w = 0; w < width; ++w) {
+       futs.emplace_back(std::async(std::launch::async, [&, w]() {
+         stamp_time("start", Is, timestamps, time_index, start_time);
+         std::get<Is>(graph[w]).run_for(N);
+         stamp_time("stop", Is, timestamps, time_index, start_time);
+       }));
+     }
+   }()),
+   ...);
+}
 
 /**
  * Main sieve function
@@ -334,30 +435,30 @@ auto sieve_async_block(
   if (debug)
     std::cout << "== I am running" << std::endl;
 
+  /*
+   * Pseudo graph type. A structure to hold simple dag task graph nodes.
+   */
   using GraphType =
-
       the<ProducerNode<AsyncMover, size_t>,
-
           FunctionNode<AsyncMover, size_t, AsyncMover, part_info<bool_t>>,
-
           FunctionNode<
               AsyncMover,
               part_info<bool_t>,
               AsyncMover,
               part_info<bool_t>>,
-
           FunctionNode<AsyncMover, part_info<bool_t>, AsyncMover, prime_info>,
-          ConsumerNode<AsyncMover, prime_info>>;  //    thingo;
+          ConsumerNode<AsyncMover, prime_info>>;
 
   GraphType graph;
-
   input_body gen;
 
-  //  std::vector<std::thread> threads;
-  std::vector<std::future<void>> futs;
+  // Use threads instead of tasks
+  // std::vector<std::thread> threads;
+  // threads.clear();
 
-  //  threads.clear();
+  std::vector<std::future<void>> futs;
   futs.clear();
+
   graph.clear();
 
   size_t sqrt_n = static_cast<size_t>(std::ceil(std::sqrt(n)));
@@ -395,8 +496,8 @@ auto sieve_async_block(
   std::vector<GraphEdge> edges;
   edges.reserve(4 * width);
 
-  /**
-   * Create the graphs by emplacing the nodes for each one into a vector.
+  /*
+   * Create the "graphs" by emplacing the nodes for each "graph" into a vector.
    */
   for (size_t w = 0; w < width; ++w) {
     if (debug)
@@ -409,8 +510,9 @@ auto sieve_async_block(
         sieve_to_primes_part<bool_t>,
         std::bind(output_body, _1, std::ref(prime_list)));
 
-    /**
-     * Connect the nodes in the graph;
+    /*
+     * Connect the nodes in the graph.  We try to keep the edges from going out
+     * of scope by putting them into a vector.
      */
     edges.emplace_back(std::move(
         Edge(std::get<0>(graph.back()), std::get<1>(graph.back()), debug)));
@@ -426,58 +528,78 @@ auto sieve_async_block(
 
   size_t N = rounds;
 
-  if (reverse_order == false) {
-    /**
-     * Launch a thread to execute the graph.  We use the "abundant thread"
-     * scheduling policy, which launches a thread to run each node in each
-     * graph.
-     *
-     * @todo Only launch a subset of the graphs and launch new ones as running
-     * ones complete.  It might be easier to do this with `std::async` rather
-     * than `std::thread`.
-     */
+  /*
+   * Launch a thread to execute the graph.  We use the "abundant thread"
+   * scheduling policy, which launches a thread to run each node in each
+   * graph.
+   *
+   * @todo Only launch a subset of the graphs and launch new ones as running
+   * ones complete.  It might be easier to do this with `std::async` rather
+   * than `std::thread`.
+   */
 
+  /*
+   * Put the nodes for every graph sequentially into the vector.
+   */
+  if (grouped == false && reverse_order == false) {
     for (size_t w = 0; w < width; ++w) {
       do_emplace<0>(futs, graph, N, w, timestamps, time_index, start_time);
-    }
-    for (size_t w = 0; w < width; ++w) {
       do_emplace<1>(futs, graph, N, w, timestamps, time_index, start_time);
-    }
-    for (size_t w = 0; w < width; ++w) {
       do_emplace<2>(futs, graph, N, w, timestamps, time_index, start_time);
-    }
-    for (size_t w = 0; w < width; ++w) {
       do_emplace<3>(futs, graph, N, w, timestamps, time_index, start_time);
-    }
-    for (size_t w = 0; w < width; ++w) {
       do_emplace<4>(futs, graph, N, w, timestamps, time_index, start_time);
     }
-  } else {
-    /*
-     * Here we start by launching tasks in reverse order, with the assumption
-     * that the last tasks launched will be the first to run.
-     *
-     * @todo Do the same thing with the `ThreadPool` -- using launch::deferred
-     * to have complete control of scheduling.
-     */
+  }
+
+  /*
+   * Put the nodes for every graph sequentially into the vector, in reverse
+   * order.
+   */
+  if (grouped == false && reverse_order == true) {
     for (size_t w = 0; w < width; ++w) {
       do_emplace<4>(futs, graph, N, w, timestamps, time_index, start_time);
-    }
-    for (size_t w = 0; w < width; ++w) {
       do_emplace<3>(futs, graph, N, w, timestamps, time_index, start_time);
-    }
-    for (size_t w = 0; w < width; ++w) {
       do_emplace<2>(futs, graph, N, w, timestamps, time_index, start_time);
-    }
-    for (size_t w = 0; w < width; ++w) {
       do_emplace<1>(futs, graph, N, w, timestamps, time_index, start_time);
-    }
-    for (size_t w = 0; w < width; ++w) {
       do_emplace<0>(futs, graph, N, w, timestamps, time_index, start_time);
     }
   }
 
+  /*
+   * Put the nodes at each stage of the graph together into the vector.
+   */
+  if (grouped == true && reverse_order == false) {
+    for (size_t w = 0; w < width; ++w)
+      do_emplace<0>(futs, graph, N, w, timestamps, time_index, start_time);
+    for (size_t w = 0; w < width; ++w)
+      do_emplace<1>(futs, graph, N, w, timestamps, time_index, start_time);
+    for (size_t w = 0; w < width; ++w)
+      do_emplace<2>(futs, graph, N, w, timestamps, time_index, start_time);
+    for (size_t w = 0; w < width; ++w)
+      do_emplace<3>(futs, graph, N, w, timestamps, time_index, start_time);
+    for (size_t w = 0; w < width; ++w)
+      do_emplace<4>(futs, graph, N, w, timestamps, time_index, start_time);
+  }
+
+  /*
+   * Put the nodes at each stage of the graph together into the vector, in
+   * reverse order.
+   */
+  if (grouped == true && reverse_order == true) {
+    for (size_t w = 0; w < width; ++w)
+      do_emplace<4>(futs, graph, N, w, timestamps, time_index, start_time);
+    for (size_t w = 0; w < width; ++w)
+      do_emplace<3>(futs, graph, N, w, timestamps, time_index, start_time);
+    for (size_t w = 0; w < width; ++w)
+      do_emplace<2>(futs, graph, N, w, timestamps, time_index, start_time);
+    for (size_t w = 0; w < width; ++w)
+      do_emplace<1>(futs, graph, N, w, timestamps, time_index, start_time);
+    for (size_t w = 0; w < width; ++w)
+      do_emplace<0>(futs, graph, N, w, timestamps, time_index, start_time);
+  }
+
 #if 0
+  // If using threads
   for (size_t i = 0; i < threads.size(); ++i) {
     if (debug)
       std::cout << "joining " << i << std::endl;
@@ -485,7 +607,10 @@ auto sieve_async_block(
     threads[i].join();
   }
 #else
-  //  tp.wait_all(futs);
+  // If using thread pool
+  // tp.wait_all(futs);
+
+  // If using tasks
   for (auto&& f : futs) {
     f.wait();
   }
@@ -494,6 +619,9 @@ auto sieve_async_block(
   if (debug)
     std::cout << "threads size: " << futs.size() << std::endl;
 
+  /*
+   * Output tracing information from the runs.
+   */
   if (chart) {
     std::for_each(
         timestamps.begin(), timestamps.begin() + time_index, [](auto&& a) {
@@ -519,48 +647,51 @@ auto sieve_async_block(
   return prime_list;
 }
 
-  template <class F>
-  auto timer_2(
-      F f,
-      size_t max,
-      size_t blocksize,
-      size_t width,
-      bool reverse_order,
-      bool grouped,
-      bool use_futures,
-      bool use_threadpool) {
-    auto start = std::chrono::high_resolution_clock::now();
-    auto s =
-        f(max,
-          blocksize,
-          width,
-          reverse_order,
-          grouped,
-          use_futures,
-          use_threadpool);
-    auto stop = std::chrono::high_resolution_clock::now();
+/*
+ * Program for running different sieve function configurations.
+ */
+template <class F>
+auto timer_2(
+    F f,
+    size_t max,
+    size_t blocksize,
+    size_t width,
+    bool reverse_order,
+    bool grouped,
+    bool use_futures,
+    bool use_threadpool) {
+  auto start = std::chrono::high_resolution_clock::now();
+  auto s =
+      f(max,
+        blocksize,
+        width,
+        reverse_order,
+        grouped,
+        use_futures,
+        use_threadpool);
+  auto stop = std::chrono::high_resolution_clock::now();
 
-    size_t num = 0;
-    for (auto& j : s) {
-      if (j) {
-        num += j->size();
-      }
+  size_t num = 0;
+  for (auto& j : s) {
+    if (j) {
+      num += j->size();
     }
-    std::cout << num << ": " << std::endl;
-
-    return stop - start;
   }
+  std::cout << num << ": " << std::endl;
 
-  int main(int argc, char* argv[]) {
-    size_t number = 100'000'000;
-    size_t block_size = 100;
+  return stop - start;
+}
 
-    if (argc >= 2) {
-      number = std::stol(argv[1]);
-    }
-    if (argc >= 3) {
-      block_size = std::stol(argv[2]);
-    }
+int main(int argc, char* argv[]) {
+  size_t number = 100'000'000;
+  size_t block_size = 100;
+
+  if (argc >= 2) {
+    number = std::stol(argv[1]);
+  }
+  if (argc >= 3) {
+    block_size = std::stol(argv[2]);
+  }
 
 #if 0
 #ifdef __clang__
@@ -588,54 +719,60 @@ auto sieve_async_block(
    * Test with two_stage connections
    */
   for (auto reverse_order : {false, true}) {
-    for (size_t i = 0; i < 3; ++i) {
-      auto using_char_async_block = timer_2(
-          sieve_async_block<AsyncMover2, char>,
-          number,
-          block_size * 1024,
-          width,
-          reverse_order,
-          true,   /* grouped */
-          true,   /* use_futures */
-          false); /* use_threadpool */
+    for (auto grouped : {false, true}) {
+      for (size_t i = 0; i < 3; ++i) {
+        auto using_char_async_block = timer_2(
+            sieve_async_block<AsyncMover2, char>,
+            number,
+            block_size * 1024,
+            width,
+            reverse_order,
+            grouped, /* grouped */
+            true,    /* use_futures */
+            false);  /* use_threadpool */
 
-      std::cout << "Time using char async block, two stage, " +
-                       std::string(
-                           reverse_order ? "reverse order" : "forward order")
-                << " : "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(
-                       using_char_async_block)
-                       .count()
-                << "\n";
-    }
-
-    /*
-     * Test with three_stage connections
-     */
-    for (size_t i = 0; i < 3; ++i) {
-      if (i == 0) {
-        debug = false;
-      } else {
-        debug = false;
+        std::cout << "Time using char async block, two stage, " +
+                         std::string(
+                             reverse_order ? "reverse order" :
+                                             "forward order") +
+                         "  " + std::string(grouped ? "grouped" : "ungrouped")
+                  << " : "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(
+                         using_char_async_block)
+                         .count()
+                  << "\n";
       }
 
-      auto using_char_async_block = timer_2(
-          sieve_async_block<AsyncMover3, char>,
-          number,
-          block_size * 1024,
-          width,
-          reverse_order,
-          true,   /* grouped */
-          true,   /* use_futures */
-          false); /* use_threadpool */
-      std::cout << "Time using char async block, three stage, " +
-                       std::string(
-                           reverse_order ? "reverse order" : "forward order")
-                << " : "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(
-                       using_char_async_block)
-                       .count()
-                << "\n";
+      /*
+       * Test with three_stage connections
+       */
+      for (size_t i = 0; i < 3; ++i) {
+        if (i == 0) {
+          debug = false;
+        } else {
+          debug = false;
+        }
+
+        auto using_char_async_block = timer_2(
+            sieve_async_block<AsyncMover3, char>,
+            number,
+            block_size * 1024,
+            width,
+            reverse_order,
+            grouped, /* grouped */
+            true,    /* use_futures */
+            false);  /* use_threadpool */
+        std::cout << "Time using char async block, three stage, " +
+                         std::string(
+                             reverse_order ? "reverse order" :
+                                             "forward order") +
+                         "  " + std::string(grouped ? "grouped" : "ungrouped")
+                  << " : "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(
+                         using_char_async_block)
+                         .count()
+                  << "\n";
+      }
     }
   }
 

@@ -94,10 +94,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
    * @param f A function taking void that creates items.
    *
    * @tparam The type of the function (or function object) that generates items.
-   */
-
-  /**
-   * Constructor: Function takes void, returns Block
+   * The function may either take `void` or take a `stop_source` as argument.
    */
   template <class Function>
   ProducerNode(
@@ -139,13 +136,8 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
 
   /**
    * Function for invoking the function in the `ProducerNode` and sending it to
-   * the item mover.  The `run_for` function will invoke the stored function
-   * multiple times, given by the input parameter, or until the node is stopped,
-   * whichever happens first.  time (unless the state machine in the item mover
-   * is stopped).  It will also issue `stop` if the `flow_control` is stopped
-   * (the latter to be implemented).
-   *
-   * @param rounds The maximum number of times to invoke the producer function.
+   * the item mover.  It will also issue `stop` if the `stop_source` is stopped
+   * by the enclosed function.
    */
   void run_once() {
     auto state_machine = this->get_mover();
@@ -199,6 +191,9 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
       std::cout << "producer pushed " << std::endl;
   }
 
+  /**
+   * Invoke `run_once` until stopped.
+   */
   void run() {
     auto state_machine = this->get_mover();
     if (state_machine->debug_enabled()) {
@@ -212,6 +207,12 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
     // run_once() will have to have invoked do_stop() to break out of the loop.
   }
 
+  /**
+   * Invoke `run_once` a given number of times, or until stopped, whichever
+   * comes first.
+   *
+   *  @param rounds The maximum number of times to invoke the producer function.
+   */
   void run_for(size_t rounds) {
     auto state_machine = this->get_mover();
 
@@ -244,6 +245,9 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
       if (state_machine->debug_enabled())
         std::cout << "producer starting " << rounds << std::endl;
 
+      // @todo inject() and fill() need to be atomic (use state machine mutex?)
+      // Note that there are other places where these are used together, there
+      // should probably be just one atomic function.
       switch (f_.index()) {
         case 0:
           Base::inject(std::get<0>(f_)());
@@ -348,6 +352,10 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
         "Sink constructor with non-invocable type");
   }
 
+  /**
+   * Function for obtaining items from the item mover and invoking the stored
+   * function on each item.
+   */
   void run_once() {
     auto state_machine = this->get_mover();
     //  {{ state = st_00 ∨ state = st_10 } ∧ { item = empty }}
@@ -374,6 +382,10 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
 
     // Returns an optional, may not be necessary given stop state
     // @todo Pass in b as parameter so assignment is atomic
+    // @todo extract() and drain() need to be atomic (use state machine mutex?)
+    // Note that there are other places where these are used together, there
+    // should probably be just one atomic function.
+
     auto b = Base::extract();
     //  { state = st_01 ∨ state = st_11 } ∧ { item = empty }  (This is
     //  bad.) Source cannot change st_11 until drain is called.
@@ -424,14 +436,8 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
   }
 
   /**
-   * Function for obtaining items from the item mover and invoking the stored
-   * function on each item. The `run` function will invoke the stored
-   * function multiple times or until the state machine in the item mover is
-   * stopped, whichever happens first.
-   *
-   * @param rounds The maximum number of times to invoke the producer function.
+   * Invoke `run_once()` until the node is stopped.
    */
-
   void run() {
     auto state_machine = this->get_mover();
     if (state_machine->debug_enabled()) {
@@ -444,6 +450,12 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
     }
   }
 
+  /**
+   * Invoke `run_once()` a given number of times, or until the node is stopped,
+   * whichever comes first.
+   *
+   * @param rounds The maximum number of times to invoke the producer function.
+   */
   void run_for(size_t rounds) {
     auto state_machine = this->get_mover();
 
@@ -592,6 +604,12 @@ class FunctionNode : public GraphNode,
         "Function constructor with non-invocable type");
   }
 
+  /**
+   * Function for extracting data from the item mover, invoking the function in
+   * the `FunctionNode` and sending the result to the item mover. It will also
+   * issue `stop` if either its `Sink` portion or its `Source` portion is
+   * stopped.
+   */
   void run_once() {
     auto source_state_machine = SourceBase::get_mover();
     auto sink_state_machine = SinkBase::get_mover();
@@ -618,6 +636,7 @@ class FunctionNode : public GraphNode,
                 << " ( done: " << sink_state_machine->is_done() << " )"
                 << std::endl;
 
+    // @todo as elsewhere, extract+drain should be atomic
     auto b = SinkBase::extract();
 
     if (sink_state_machine->debug_enabled())
@@ -635,6 +654,7 @@ class FunctionNode : public GraphNode,
     if (sink_state_machine->debug_enabled())
       std::cout << "function ran function " << std::endl;
 
+    // @todo as elsewhere, inject+fill should be atomic
     SourceBase::inject(j);
     if (source_state_machine->debug_enabled())
       std::cout << "function injected " << std::endl;
@@ -664,13 +684,9 @@ class FunctionNode : public GraphNode,
     }
   }
 
-  /**
-   * Function for extracting data from the item mover, invoking the function in
-   * the `FunctionNode` and sending the result to * the item mover.  The
-   * `run` function will invoke the stored function * multiple times, given
-   * by the input parameter, or until the node is stopped, * whichever happens
-   * first.It will also issue `stop` if either its `Sink` portion or its
-   * `Source` portion is stopped.
+  /*
+   * Function for invoking `run_once` mutiple times, as given by the input
+   * parameter, or until the node is stopped, whichever happens first.
    *
    * @param rounds The maximum number of times to invoke the producer function.
    */
@@ -692,6 +708,10 @@ class FunctionNode : public GraphNode,
     source_state_machine->do_stop();
   }
 
+  /*
+   * Function for invoking `run_once` mutiple times, until the node is stopped.
+   *
+   */
   void run() {
     auto source_state_machine = SourceBase::get_mover();
     auto sink_state_machine = SinkBase::get_mover();
@@ -708,7 +728,7 @@ class FunctionNode : public GraphNode,
   }
 
   /**
-   * Same as the previous function, but with random delays inserted between
+   * Same as `run_for`, but with random delays inserted between
    * operations to expose race conditions and deadlocks.
    */
   void run_for_with_delays(size_t rounds) {
