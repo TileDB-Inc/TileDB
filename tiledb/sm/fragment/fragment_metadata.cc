@@ -841,23 +841,37 @@ Status FragmentMetadata::load(
   return load_v3_or_higher(encryption_key, f_buff, offset, array_schemas);
 }
 
-Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
+void FragmentMetadata::store(const EncryptionKey& encryption_key) {
   auto timer_se =
       storage_manager_->stats()->start_timer("write_store_frag_meta");
 
-  assert(version_ >= 7);
-  if (version_ <= 10) {
-    return store_v7_v10(encryption_key);
-  } else if (version_ == 11) {
-    return store_v11(encryption_key);
-  } else if (version_ <= 14) {
-    return store_v12_v14(encryption_key);
-  } else {
-    return store_v15_or_higher(encryption_key);
+  if (version_ < 7) {
+    auto fragment_metadata_uri =
+        fragment_uri_.join_path(constants::fragment_metadata_filename);
+    throw std::logic_error(
+        "FragmentMetadata::store(), unexpected version_ " +
+        std::to_string(version_) + " storing " +
+        fragment_metadata_uri.to_string());
   }
-
-  assert(false);
-  return Status::Ok();
+  try {
+    if (version_ <= 10) {
+      throw_if_not_ok(store_v7_v10(encryption_key));
+    } else if (version_ == 11) {
+      throw_if_not_ok(store_v11(encryption_key));
+    } else if (version_ <= 14) {
+      throw_if_not_ok(store_v12_v14(encryption_key));
+    } else {
+      store_v15_or_higher(encryption_key);
+    }
+    return;
+  } catch (...) {
+    clean_up();
+    auto fragment_metadata_uri =
+        fragment_uri_.join_path(constants::fragment_metadata_filename);
+    std::throw_with_nested(std::runtime_error(
+        "FragmentMetadata::store() failed on " +
+        fragment_metadata_uri.to_string()));
+  }
 }
 
 Status FragmentMetadata::store_v7_v10(const EncryptionKey& encryption_key) {
@@ -1104,15 +1118,14 @@ Status FragmentMetadata::store_v15_or_higher(
 
   // Store R-Tree
   gt_offsets_.rtree_ = offset;
-  RETURN_NOT_OK_ELSE(store_rtree(encryption_key, &nbytes), clean_up());
+  throw_if_not_ok(store_rtree(encryption_key, &nbytes));
   offset += nbytes;
 
   // Store tile offsets
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_offsets(i, encryption_key, &nbytes), clean_up());
+    throw_if_not_ok(store_tile_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1120,8 +1133,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_var_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_var_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_var_offsets(i, encryption_key, &nbytes), clean_up());
+    throw_if_not_ok(store_tile_var_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1129,8 +1141,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_var_sizes_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_var_sizes_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_var_sizes(i, encryption_key, &nbytes), clean_up());
+    throw_if_not_ok(store_tile_var_sizes(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1138,8 +1149,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_validity_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_validity_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_validity_offsets(i, encryption_key, &nbytes), clean_up());
+    throw_if_not_ok(store_tile_validity_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1147,7 +1157,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_min_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_min_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(store_tile_mins(i, encryption_key, &nbytes), clean_up());
+    throw_if_not_ok(store_tile_mins(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1155,7 +1165,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_max_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_max_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(store_tile_maxs(i, encryption_key, &nbytes), clean_up());
+    throw_if_not_ok(store_tile_maxs(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1163,7 +1173,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_sum_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_sum_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(store_tile_sums(i, encryption_key, &nbytes), clean_up());
+    throw_if_not_ok(store_tile_sums(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1171,26 +1181,23 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_null_count_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_null_count_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_null_counts(i, encryption_key, &nbytes), clean_up());
+    throw_if_not_ok(store_tile_null_counts(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
   // Store fragment min, max, sum and null count
   gt_offsets_.fragment_min_max_sum_null_count_offset_ = offset;
-  RETURN_NOT_OK_ELSE(
-      store_fragment_min_max_sum_null_count(num, encryption_key, &nbytes),
-      clean_up());
+  throw_if_not_ok(
+      store_fragment_min_max_sum_null_count(num, encryption_key, &nbytes));
   offset += nbytes;
 
   // Store processed condition
   gt_offsets_.processed_conditions_offsets_ = offset;
-  RETURN_NOT_OK_ELSE(
-      store_processed_conditions(encryption_key, &nbytes), clean_up());
+  store_processed_conditions(encryption_key, &nbytes);
   offset += nbytes;
 
   // Store footer
-  RETURN_NOT_OK_ELSE(store_footer(encryption_key), clean_up());
+  throw_if_not_ok(store_footer(encryption_key));
 
   // Close file
   return storage_manager_->close_file(fragment_metadata_uri);
@@ -1555,8 +1562,8 @@ Status FragmentMetadata::load_processed_conditions(
   storage_manager_->stats()->add_counter(
       "read_processed_conditions_size", tile.size());
 
-  ConstBuffer cbuff(tile.data(), tile.size());
-  RETURN_NOT_OK(load_processed_conditions(&cbuff));
+  Deserializer deserializer(tile.data(), tile.size());
+  RETURN_NOT_OK(load_processed_conditions(deserializer));
 
   loaded_metadata_.processed_conditions_ = true;
 
@@ -3510,36 +3517,19 @@ Status FragmentMetadata::load_fragment_min_max_sum_null_count(
 // ...
 // processed_condition_size#<condition_num-1> (uint64_t)
 // processed_condition#<condition_num-1>
-Status FragmentMetadata::load_processed_conditions(ConstBuffer* buff) {
-  Status st;
-
+Status FragmentMetadata::load_processed_conditions(Deserializer& deserializer) {
   // Get num conditions.
   uint64_t num;
-  st = buff->read(&num, sizeof(uint64_t));
-  if (!st.ok()) {
-    return LOG_STATUS(
-        Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                     " num processed conditions failed"));
-  }
+  num = deserializer.read<uint64_t>();
 
   processed_conditions_.reserve(num);
   for (uint64_t i = 0; i < num; i++) {
     uint64_t size;
-    st = buff->read(&size, sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                       " processed conditions size failed"));
-    }
+    size = deserializer.read<uint64_t>();
 
     std::string condition;
     condition.resize(size);
-    st = buff->read(condition.data(), size);
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                       " processed conditions failed"));
-    }
+    deserializer.read(condition.data(), size);
 
     processed_conditions_.emplace_back(condition);
   }
@@ -4817,43 +4807,32 @@ Status FragmentMetadata::store_fragment_min_max_sum_null_count(
   return Status::Ok();
 }
 
-Status FragmentMetadata::store_processed_conditions(
+void FragmentMetadata::store_processed_conditions(
     const EncryptionKey& encryption_key, uint64_t* nbytes) {
-  Status st;
-  Buffer buff;
+  auto serialize_processed_conditions = [this](Serializer& serializer) {
+    // Store num conditions.
+    uint64_t num = processed_conditions_.size();
+    serializer.write<uint64_t>(num);
 
-  // Store num conditions.
-  uint64_t num = processed_conditions_.size();
-  st = buff.write(&num, sizeof(uint64_t));
-  if (!st.ok()) {
-    return LOG_STATUS(Status_FragmentMetadataError(
-        "Cannot serialize fragment metadata; Writing num processed conditions "
-        "failed"));
-  }
+    for (auto& processed_condition : processed_conditions_) {
+      uint64_t size = processed_condition.size();
+      serializer.write<uint64_t>(size);
 
-  for (auto& processed_condition : processed_conditions_) {
-    uint64_t size = processed_condition.size();
-    st = buff.write(&size, sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(Status_FragmentMetadataError(
-          "Cannot serialize fragment metadata; Writing processed condition "
-          "size failed"));
+      serializer.write(processed_condition.data(), processed_condition.size());
     }
+  };
+  SizeComputationSerializer size_computation_serializer;
+  serialize_processed_conditions(size_computation_serializer);
 
-    st = buff.write(processed_condition.data(), processed_condition.size());
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot serialize fragment metadata; "
-                                       "Writing processed condition failed"));
-    }
-  }
+  Tile tile{Tile::from_generic(size_computation_serializer.size())};
 
-  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
+  Serializer serializer(tile.data(), tile.size());
+  serialize_processed_conditions(serializer);
+
+  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
 
   storage_manager_->stats()->add_counter(
       "write_processed_conditions_size", *nbytes);
-
-  return Status::Ok();
 }
 
 template <class T>

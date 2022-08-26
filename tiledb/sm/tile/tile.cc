@@ -42,6 +42,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class TileStatusException : public StatusException {
+ public:
+  explicit TileStatusException(const std::string& message)
+      : StatusException("Tile", message) {
+  }
+};
+
 void nop_free(void* const) {
 }
 
@@ -76,6 +83,20 @@ Status Tile::compute_chunk_size(
 
 void Tile::set_max_tile_chunk_size(uint64_t max_tile_chunk_size) {
   max_tile_chunk_size_ = max_tile_chunk_size;
+}
+
+Tile Tile::from_generic(storage_size_t tile_size) {
+  Tile tile;
+  if (!tile.init_unfiltered(
+               0,
+               constants::generic_tile_datatype,
+               tile_size,
+               constants::generic_tile_cell_size,
+               0)
+           .ok()) {
+    throw TileStatusException("Cannot initialize tile");
+  }
+  return tile;
 }
 
 /* ****************************** */
