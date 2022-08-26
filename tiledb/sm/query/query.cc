@@ -735,7 +735,7 @@ Status Query::check_tile_alignment() const {
     auto first_dimension = array_schema_->dimension_ptr(0);
     // TODO: limiting tile_extent to unsigned integral type is probably
     // incorrect
-    capacity = *(const uint64_t*)(first_dimension->tile_extent().data());
+    capacity = *(const uint32_t*)(first_dimension->tile_extent().data());
   }
   bool buffers_tile_aligned = true;
   if (is_var_size) {
