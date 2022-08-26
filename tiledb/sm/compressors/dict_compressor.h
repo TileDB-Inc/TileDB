@@ -237,11 +237,13 @@ class DictEncoding {
 
     std::vector<std::string> dict;
     dict.reserve(serialized_dict.size());
+    // T is uint{8,16,32,64} specified at the call-site
     T str_len = 0;
 
     size_t in_index = 0;
     while (in_index < serialized_dict.size()) {
       str_len = utils::endianness::decode_be<T>(&serialized_dict[in_index]);
+      // increment past the size element to the per-word data block
       in_index += sizeof(T);
       // construct string in place
       dict.emplace_back(
