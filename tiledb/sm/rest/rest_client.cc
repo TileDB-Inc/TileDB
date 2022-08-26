@@ -777,6 +777,17 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
 
 Status RestClient::submit_and_finalize_query_to_rest(
     const URI& uri, Query* query) {
+  serialization::CopyState copy_state;
+
+  // Get array
+  const Array* array = query->array();
+  if (array == nullptr) {
+    return LOG_STATUS(Status_RestError(
+        "Error while submit_and_finalize query to REST; null array."));
+  }
+
+  auto rest_scratch = query->rest_scratch();
+
   // Serialize query to send
   BufferList serialized;
   RETURN_NOT_OK(serialization::query_serialize(
@@ -794,23 +805,35 @@ Status RestClient::submit_and_finalize_query_to_rest(
       curlc.url_escape(array_uri) +
       "/query/submit_and_finalize?type=" + query_type_str(query->type());
 
-  Buffer returned_data;
-  RETURN_NOT_OK(curlc.post_data(
+  auto write_cb = std::bind(
+      &RestClient::query_post_call_back,
+      this,
+      std::placeholders::_1,
+      std::placeholders::_2,
+      std::placeholders::_3,
+      std::placeholders::_4,
+      rest_scratch,
+      query,
+      &copy_state);
+
+  const Status st = curlc.post_data(
       stats_,
       url,
       serialization_type_,
       &serialized,
-      &returned_data,
-      cache_key));
+      rest_scratch.get(),
+      std::move(write_cb),
+      cache_key);
 
-  if (returned_data.data() == nullptr || returned_data.size() == 0) {
+  if (!st.ok() && copy_state.empty()) {
     return LOG_STATUS(Status_RestError(
-        "Error on submit_and_finalize; server returned no data."));
+        "Error while submit_and_finalize query to REST; "
+        "server returned no data. "
+        "Curl error: " +
+        st.message()));
   }
 
-  returned_data.reset_offset();
-  return serialization::query_deserialize(
-      returned_data, serialization_type_, true, nullptr, query, compute_tp_);
+  return st;
 }
 
 Status RestClient::subarray_to_str(
