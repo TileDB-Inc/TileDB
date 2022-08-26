@@ -153,10 +153,23 @@ Status array_to_capnp(
         utils::serialize_non_empty_domain(nonempty_domain_builder, array));
   }
 
+  // Only serialize metadata if required
   if (array->serialize_metadata()) {
-    auto array_metadata_builder = array_builder->initArrayMetadata();
-    RETURN_NOT_OK(
-        metadata_to_capnp(array->unsafe_metadata(), &array_metadata_builder));
+    Metadata* metadata = nullptr;
+    // If the metadata is not loaded and it is not a remote array
+    // load it
+    if (!array->metadata_loaded() && !array->is_remote()) {
+      RETURN_NOT_OK(array->metadata(&metadata));
+    }
+    // If the metadata is loaded, serialize it
+    if (array->metadata_loaded()) {
+      if (metadata == nullptr) {
+        metadata = array->unsafe_metadata();
+      }
+      auto array_metadata_builder = array_builder->initArrayMetadata();
+      RETURN_NOT_OK(
+          metadata_to_capnp(metadata, &array_metadata_builder));
+    }
   }
 
   return Status::Ok();

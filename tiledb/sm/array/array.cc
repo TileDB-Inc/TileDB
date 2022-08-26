@@ -1018,6 +1018,10 @@ Status Array::compute_max_buffer_sizes(
   return Status::Ok();
 }
 
+const bool Array::metadata_loaded() const {
+  return metadata_loaded_;
+}
+
 Status Array::load_metadata() {
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();

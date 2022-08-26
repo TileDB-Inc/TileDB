@@ -390,6 +390,12 @@ class Array {
    */
   bool serialize_metadata() const;
 
+  /**
+   * Has array metadata been loaded
+   * @return bool
+   */
+  const bool metadata_loaded() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
