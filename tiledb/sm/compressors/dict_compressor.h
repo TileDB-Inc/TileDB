@@ -195,7 +195,7 @@ class DictEncoding {
       word_id = utils::endianness::decode_be<T>(&input[in_index]);
       in_index += sizeof(T);
       assert(word_id < dict.size());
-      auto word = dict[word_id];
+      const auto& word = dict[word_id];
       memcpy(&output[out_index], word.data(), word.size());
       output_offsets[offset_index++] = out_index;
       out_index += word.size();
