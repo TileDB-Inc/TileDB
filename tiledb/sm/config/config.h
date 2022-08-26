@@ -569,7 +569,7 @@ class Config {
    * @return If a configuration item is present, its value. If not, `nullopt`.
    */
   [[nodiscard]] inline optional<std::string> get(const std::string& key) const {
-    return get_private<false>(key);
+    return get_or_throw<false>(key);
   }
 
   /**
@@ -581,7 +581,7 @@ class Config {
    */
   template <class T>
   [[nodiscard]] inline optional<T> get(const std::string& key) const {
-    return get_private<T, false>(key);
+    return get_or_throw<T, false>(key);
   }
 
   /**
@@ -590,7 +590,7 @@ class Config {
    */
   template <class T>
   inline T get(const std::string& key, const MustFindMarker&) const {
-    return get_private<T, true>(key).value();
+    return get_or_throw<T, true>(key).value();
   }
 
   /**
@@ -708,11 +708,11 @@ class Config {
   const char* get_from_config_or_env(
       const std::string& param, bool* found) const;
 
-  template <class T, bool must_find>
-  optional<T> get_private(const std::string& key) const;
+  template <class T, bool will_throw>
+  optional<T> get_or_throw(const std::string& key) const;
 
-  template <bool must_find>
-  optional<std::string> get_private(const std::string& key) const;
+  template <bool will_throw>
+  optional<std::string> get_or_throw(const std::string& key) const;
 };
 
 /**
@@ -722,13 +722,13 @@ class Config {
 template <>
 [[nodiscard]] inline optional<std::string> Config::get<std::string>(
     const std::string& key) const {
-  return get_private<false>(key);
+  return get_or_throw<false>(key);
 }
 
 template <>
 inline std::string Config::get<std::string>(
     const std::string& key, const Config::MustFindMarker&) const {
-  return get_private<true>(key).value();
+  return get_or_throw<true>(key).value();
 }
 
 }  // namespace tiledb::sm

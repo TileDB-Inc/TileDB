@@ -1032,8 +1032,8 @@ const char* Config::get_from_config_or_env(
   return *found ? value_config : "";
 }
 
-template <class T, bool must_find>
-optional<T> Config::get_private(const std::string& key) const {
+template <class T, bool will_throw>
+optional<T> Config::get_or_throw(const std::string& key) const {
   bool found;
   const char* value = get_from_config_or_env(key, &found);
   if (found) {
@@ -1042,27 +1042,27 @@ optional<T> Config::get_private(const std::string& key) const {
     if (status.ok()) {
       return {converted_value};
     }
-    if constexpr (must_find) {
+    if constexpr (will_throw) {
       throw_config_exception(
           "Failed to parse config value '" + std::string(value) +
           "' for key '" + key + "'. Reason: " + status.to_string());
     }
   }
 
-  if constexpr (must_find) {
+  if constexpr (will_throw) {
     throw_config_exception("Failed to get config value for key: " + key);
   }
   return {nullopt};
 }
 
-template <bool must_find>
-optional<std::string> Config::get_private(const std::string& key) const {
+template <bool will_throw>
+optional<std::string> Config::get_or_throw(const std::string& key) const {
   bool found;
   const char* value = get_from_config_or_env(key, &found);
   if (found) {
     return {value};
   }
-  if constexpr (must_find) {
+  if constexpr (will_throw) {
     throw_config_exception("Failed to get config value for key: " + key);
   }
   return {nullopt};
@@ -1111,37 +1111,37 @@ template float Config::get<float>(
 template double Config::get<double>(
     const std::string&, const Config::MustFindMarker&) const;
 
-template optional<bool> Config::get_private<bool, false>(
+template optional<bool> Config::get_or_throw<bool, false>(
     const std::string& key) const;
-template optional<bool> Config::get_private<bool, true>(
+template optional<bool> Config::get_or_throw<bool, true>(
     const std::string& key) const;
-template optional<int> Config::get_private<int, false>(
+template optional<int> Config::get_or_throw<int, false>(
     const std::string& key) const;
-template optional<int> Config::get_private<int, true>(
+template optional<int> Config::get_or_throw<int, true>(
     const std::string& key) const;
-template optional<uint32_t> Config::get_private<uint32_t, false>(
+template optional<uint32_t> Config::get_or_throw<uint32_t, false>(
     const std::string& key) const;
-template optional<uint32_t> Config::get_private<uint32_t, true>(
+template optional<uint32_t> Config::get_or_throw<uint32_t, true>(
     const std::string& key) const;
-template optional<int64_t> Config::get_private<int64_t, false>(
+template optional<int64_t> Config::get_or_throw<int64_t, false>(
     const std::string& key) const;
-template optional<int64_t> Config::get_private<int64_t, true>(
+template optional<int64_t> Config::get_or_throw<int64_t, true>(
     const std::string& key) const;
-template optional<uint64_t> Config::get_private<uint64_t, false>(
+template optional<uint64_t> Config::get_or_throw<uint64_t, false>(
     const std::string& key) const;
-template optional<uint64_t> Config::get_private<uint64_t, true>(
+template optional<uint64_t> Config::get_or_throw<uint64_t, true>(
     const std::string& key) const;
-template optional<float> Config::get_private<float, false>(
+template optional<float> Config::get_or_throw<float, false>(
     const std::string& key) const;
-template optional<float> Config::get_private<float, true>(
+template optional<float> Config::get_or_throw<float, true>(
     const std::string& key) const;
-template optional<double> Config::get_private<double, false>(
+template optional<double> Config::get_or_throw<double, false>(
     const std::string& key) const;
-template optional<double> Config::get_private<double, true>(
+template optional<double> Config::get_or_throw<double, true>(
     const std::string& key) const;
-template optional<std::string> Config::get_private<false>(
+template optional<std::string> Config::get_or_throw<false>(
     const std::string& key) const;
-template optional<std::string> Config::get_private<true>(
+template optional<std::string> Config::get_or_throw<true>(
     const std::string& key) const;
 
 }  // namespace tiledb::sm
