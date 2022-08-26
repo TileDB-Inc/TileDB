@@ -129,6 +129,14 @@ class ResultTile {
       return validity_tile_.value();
     }
 
+    std::vector<std::string>& dictionary() {
+      return dictionary_;
+    }
+
+    const std::vector<std::string>& dictionary() const {
+      return dictionary_;
+    }
+
    private:
     /** Stores the fixed data tile. */
     Tile fixed_tile_;
@@ -138,6 +146,9 @@ class ResultTile {
 
     /** Stores the validity data tile. */
     optional<Tile> validity_tile_;
+
+    /** Optional Dictionary. */
+    std::vector<std::string> dictionary_;
   };
 
   /* ********************************* */
@@ -359,6 +370,29 @@ class ResultTile {
       const uint64_t start,
       const uint64_t end,
       std::vector<BitmapType>& result_count);
+
+  /**
+   * Applicable only to sparse arrays with dictionary encoding.
+   *
+   * Computes a result count for the input string dimension for the coordinates
+   * that fall in the input ranges and multiply with the previous count.
+   *
+   * This only processes cells from min_cell to max_cell as we might
+   * parallelize on cells.
+   *
+   * When called over multiple ranges, this follows the formula:
+   * total_count = d1_count * d2_count ... dN_count.
+   */
+  template <class BitmapType>
+  static void compute_results_count_sparse_string_dictionary(
+      const ResultTile* result_tile,
+      unsigned dim_idx,
+      const NDRange& ranges,
+      const std::vector<uint64_t>& range_indexes,
+      std::vector<BitmapType>& result_count,
+      const Layout& cell_order,
+      const uint64_t min_cell,
+      const uint64_t max_cell);
 
   /**
    * Applicable only to sparse arrays.

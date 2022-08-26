@@ -610,6 +610,9 @@ class ReaderBase : public StrategyBase {
   Status unfilter_tile(
       const std::string& name, Tile* tile, Tile* tile_var) const;
 
+  tuple<Status, optional<std::vector<std::string>>> get_tile_dictionary(
+      const std::string& name, Tile* tile, Tile* tile_var) const;
+
   /**
    * Runs the input fixed-sized tile for the input nullable attribute
    * through the filter pipeline. The tile buffer is modified to contain the

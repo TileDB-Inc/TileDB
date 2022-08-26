@@ -596,17 +596,12 @@ Status CompressionFilter::decompress_var_string_coords(
         output_view,
         offsets_view);
   } else if (compressor_ == Compressor::DICTIONARY_ENCODING) {
-    uint8_t ids_bytesize = 0, string_len_bytesize = 0;
-    uint32_t dict_size = 0;
+    uint8_t ids_bytesize = 0;
     RETURN_NOT_OK(input_metadata.read(&ids_bytesize, sizeof(uint8_t)));
-    RETURN_NOT_OK(input_metadata.read(&string_len_bytesize, sizeof(uint8_t)));
-    RETURN_NOT_OK(input_metadata.read(&dict_size, sizeof(uint32_t)));
-    std::vector<std::byte> flattened_dict(dict_size);
-    RETURN_NOT_OK(input_metadata.read(flattened_dict.data(), dict_size));
-    std::vector<std::string> dict = DictEncoding::deserialize_dictionary(
-        flattened_dict, string_len_bytesize);
+   auto&&[st, dict] = dictionary(input_metadata);
+   RETURN_NOT_OK(st);
     DictEncoding::decompress(
-        input_view, dict, ids_bytesize, output_view, offsets_view);
+        input_view, dict.value(), ids_bytesize, output_view, offsets_view);
   }
 
   if (output_buffer->owns_data())
@@ -615,6 +610,38 @@ Status CompressionFilter::decompress_var_string_coords(
   input.advance_offset(compressed_size);
 
   return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<std::string>>> CompressionFilter::decompress_dictionary(FilterBuffer& input_metadata) const {
+  // Read the number of parts from input metadata.
+  uint32_t num_metadata_parts, num_data_parts;
+  RETURN_NOT_OK_TUPLE(input_metadata.read(&num_metadata_parts, sizeof(uint32_t)), nullopt);
+  RETURN_NOT_OK_TUPLE(input_metadata.read(&num_data_parts, sizeof(uint32_t)), nullopt);
+
+  // Read the part metadata
+  uint32_t compressed_size, uncompressed_size, uncompressed_offsets_size;
+  RETURN_NOT_OK_TUPLE(input_metadata.read(&uncompressed_size, sizeof(uint32_t)), nullopt);
+  RETURN_NOT_OK_TUPLE(input_metadata.read(&compressed_size, sizeof(uint32_t)), nullopt);
+  RETURN_NOT_OK_TUPLE(
+      input_metadata.read(&uncompressed_offsets_size, sizeof(uint32_t)), nullopt);
+
+  uint8_t ids_bytesize = 0;
+  RETURN_NOT_OK_TUPLE(input_metadata.read(&ids_bytesize, sizeof(uint8_t)), nullopt);
+
+  return dictionary(input_metadata);
+}
+
+tuple<Status, optional<std::vector<std::string>>> CompressionFilter::dictionary(FilterBuffer& input_metadata) const {
+  uint8_t string_len_bytesize = 0;
+  uint32_t dict_size = 0;
+  RETURN_NOT_OK_TUPLE(input_metadata.read(&string_len_bytesize, sizeof(uint8_t)), nullopt);
+  RETURN_NOT_OK_TUPLE(input_metadata.read(&dict_size, sizeof(uint32_t)), nullopt);
+  std::vector<std::byte> flattened_dict(dict_size);
+  RETURN_NOT_OK_TUPLE(input_metadata.read(flattened_dict.data(), dict_size), nullopt);
+  std::vector<std::string> dict = DictEncoding::deserialize_dictionary(
+      flattened_dict, string_len_bytesize);
+
+  return {Status::Ok(), dict};
 }
 
 uint64_t CompressionFilter::overhead(const Tile& tile, uint64_t nbytes) const {

@@ -330,6 +330,22 @@ class FilterPipeline {
   bool use_tile_chunking(
       const bool is_var, const uint32_t version, const Datatype type) const;
 
+  /**
+   * Get dictionary
+   *
+   * @param reader_stats
+   * @param tile
+   * @param compute_tp
+   * @param config
+   * @return
+   */
+  tuple<Status, optional<std::vector<std::string>>> run_reverse_dictionary_only(
+      stats::Stats* const reader_stats,
+      Tile* const tile,
+      Tile* const offsets_tile,
+      ThreadPool* const compute_tp,
+      const Config& config) const;
+
  private:
   /** A pair of FilterBuffers. */
   typedef std::pair<FilterBuffer, FilterBuffer> FilterBufferPair;

@@ -1514,6 +1514,19 @@ Status ReaderBase::unfilter_tiles(
           Tile* const t_var = var_size ? &tile_tuple->var_tile() : nullptr;
           Tile* const t_validity =
               nullable ? &tile_tuple->validity_tile() : nullptr;
+          std::vector<std::string>* const t_dictionary = &tile_tuple->dictionary();
+
+          try {
+            if (fragment->array_schema()->domain().dimension_ptr(name)->filters().has_filter(FilterType::FILTER_DICTIONARY)) {
+              auto&& [st, dict] = get_tile_dictionary(name, t, t_var);
+              RETURN_NOT_OK(st);
+              if (dict.has_value()) {
+                *t_dictionary = *dict;
+              }
+            }
+          } catch (std::exception& e) {
+            logger_->error(e.what());
+          }
 
           if (disable_cache_ == false) {
             logger_->info("using cache");
@@ -1606,6 +1619,22 @@ Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile) const {
       storage_manager_->config()));
 
   return Status::Ok();
+}
+
+tuple<Status, optional<std::vector<std::string>>> ReaderBase::get_tile_dictionary(const std::string& name, Tile* tile, Tile* tile_var) const {
+  FilterPipeline offset_filters = array_schema_.cell_var_offsets_filters();
+  FilterPipeline filters = array_schema_.filters(name);
+
+  // Append an encryption unfilter when necessary.
+  RETURN_NOT_OK_TUPLE(FilterPipeline::append_encryption_filter(
+      &offset_filters, array_->get_encryption_key()), nullopt);
+  RETURN_NOT_OK_TUPLE(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()), nullopt);
+
+  // Reverse the tile filters.
+  // If offsets don't need to be unfiltered separately, it means they
+  // will be created on the fly from filtered data
+  return filters.run_reverse_dictionary_only(stats_, tile_var, tile, storage_manager_->compute_tp(), config_);
 }
 
 Status ReaderBase::unfilter_tile(

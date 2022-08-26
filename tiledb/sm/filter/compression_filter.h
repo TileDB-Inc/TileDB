@@ -140,6 +140,9 @@ class CompressionFilter : public Filter {
   /** Set the compression level used by this filter instance. */
   void set_compression_level(int compressor_level);
 
+  tuple<Status, optional<std::vector<std::string>>> decompress_dictionary(
+      FilterBuffer& input_metadata) const;
+
  private:
   /** The compressor. */
   Compressor compressor_;
@@ -216,6 +219,12 @@ class CompressionFilter : public Filter {
       FilterBuffer& input_metadata,
       Tile* offsets_tile,
       FilterBuffer& output) const;
+
+  /**
+   * Helper function to get dictionary from dictionary filter metadata
+   */
+  tuple<Status, optional<std::vector<std::string>>> dictionary(
+      FilterBuffer& input_metadata) const;
 
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;

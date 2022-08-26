@@ -34,6 +34,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/type/range/range.h"
 
@@ -839,6 +840,221 @@ void ResultTile::compute_results_count_sparse_string_range(
   }
 }
 
+
+template <class BitmapType>
+void ResultTile::compute_results_count_sparse_string_dictionary(
+    const ResultTile* result_tile,
+    unsigned dim_idx,
+    const NDRange& ranges,
+    const std::vector<uint64_t>& range_indexes,
+    std::vector<BitmapType>& result_count,
+    const Layout& cell_order,
+    const uint64_t min_cell,
+    const uint64_t max_cell) {
+  auto cell_num = result_tile->cell_num();
+  auto coords_num = max_cell - min_cell;
+  auto dim_num = result_tile->domain()->dim_num();
+
+  // Sanity check.
+  assert(coords_num != 0);
+  if (coords_num == 0)
+    return;
+
+  // Get coordinate tile
+  const auto& coord_tile = result_tile->coord_tile(dim_idx);
+
+  // Get offset buffer
+  const auto& coord_tile_off = coord_tile.fixed_tile();
+  auto buff_off = static_cast<const uint64_t*>(coord_tile_off.data());
+
+  const auto& dictionary = coord_tile.dictionary();
+  std::unordered_set<std::string_view> dictionary_keys(dictionary.begin(), dictionary.end());
+
+  // Get string buffer
+  const auto& coord_tile_str = coord_tile.var_tile();
+  auto buff_str = static_cast<const char*>(coord_tile_str.data());
+  auto buff_str_size = coord_tile_str.size();
+
+  // Cache start_str/end_str for all ranges.
+  std::vector<std::pair<std::string_view, std::string_view>> cached_ranges;
+  cached_ranges.reserve(range_indexes.size());
+
+  for (auto& i : range_indexes) {
+    cached_ranges.emplace_back(ranges[i].start_str(), ranges[i].end_str());
+  }
+
+  // For row-major cell orders, the first dimension is sorted.
+  // For col-major cell orders, the last dimension is sorted.
+  // If the coordinate value at index 0 is equivalent to the
+  // coordinate value at index 100, we know that  all coordinates
+  // between them are also equivalent. In this scenario where
+  // coordinate value i=0 matches the coordinate value at i=100,
+  // we can calculate `r_count[0]` and apply assign its value to
+  // `r_count[i]` where i in the range [1, 100].
+  //
+  // Calculating `r_count[i]` is expensive for strings because
+  // it invokes a string comparison. We partition the coordinates
+  // into a fixed number of ranges. For each partition, we will
+  // compare the start and ending coordinate values to see if
+  // they are equivalent. If so, we save the expense of computing
+  // `r_count` for each corresponding coordinate. If they do
+  // not match, we must compare each coordinate in the partition.
+  static const uint64_t c_partition_num = 6;
+  // We calculate the size of each partition by dividing the total
+  // number of coordinates by the number of partitions. If this
+  // does not evenly divide, we will append the remaining coordinates
+  // onto the last partition.
+  const uint64_t c_partition_size_div = coords_num / c_partition_num;
+  const uint64_t c_partition_size_rem = coords_num % c_partition_num;
+  const bool is_sorted_dim =
+      ((cell_order == Layout::ROW_MAJOR && dim_idx == 0) ||
+       (cell_order == Layout::COL_MAJOR && dim_idx == dim_num - 1));
+  if (is_sorted_dim && c_partition_size_div > 1 &&
+      coords_num > c_partition_num) {
+    // Loop over each coordinate partition.
+    for (uint64_t p = 0; p < c_partition_num; ++p) {
+      // Calculate the size of this partition.
+      const uint64_t c_partition_size =
+          c_partition_size_div +
+          (p == (c_partition_num - 1) ? c_partition_size_rem : 0);
+
+      // Calculate the position of the first and last coordinates
+      // in this partition.
+      const uint64_t first_c_pos = min_cell + p * c_partition_size_div;
+      const uint64_t last_c_pos = first_c_pos + c_partition_size - 1;
+      assert(first_c_pos < last_c_pos);
+
+      // The coordinate values are determined by their offset and size
+      // within `buff_str`. Calculate the offset and size for the
+      // first and last coordinates in this partition.
+      const uint64_t first_c_offset = buff_off[first_c_pos];
+      const uint64_t last_c_offset = buff_off[last_c_pos];
+      const uint64_t first_c_size = buff_off[first_c_pos + 1] - first_c_offset;
+      const uint64_t last_c_size = (last_c_pos == cell_num - 1) ?
+                                       buff_str_size - last_c_offset :
+                                       buff_off[last_c_pos + 1] - last_c_offset;
+
+      // Fetch the coordinate values for the first and last coordinates
+      // in this partition.
+      const char* const first_c_coord = &buff_str[first_c_offset];
+      const char* const second_coord = &buff_str[last_c_offset];
+
+      // Check if the first and last coordinates have an identical
+      // string value.
+      if (first_c_size == last_c_size &&
+          strncmp(first_c_coord, second_coord, first_c_size) == 0) {
+        uint64_t count = 0;
+        for (auto& cached_range : cached_ranges) {
+          count += str_coord_intersects(
+              first_c_offset,
+              first_c_size,
+              buff_str,
+              cached_range.first,
+              cached_range.second);
+        }
+
+        for (uint64_t pos = first_c_pos; pos < first_c_pos + c_partition_size;
+             ++pos) {
+          result_count[pos] = count;
+        }
+      } else {
+        // First check cached ranges against map
+        if (cached_ranges.size() == 1 && !dictionary_keys.empty()) {
+          if (cached_ranges[0].first == cached_ranges[0].second) {
+           if (dictionary_keys.find(cached_ranges[0].first) == dictionary_keys.end()) {
+             for (uint64_t pos = first_c_pos; pos < first_c_pos + c_partition_size;
+                  ++pos) {
+               result_count[pos] = 0;
+             }
+             return;
+           }
+          }
+        }
+//        for (auto&& range : cached_ranges) {
+//
+//        }
+        // Compute results
+        compute_results_count_sparse_string_range(
+            cached_ranges,
+            buff_str,
+            buff_off,
+            cell_num,
+            buff_str_size,
+            first_c_pos,
+            last_c_pos,
+            result_count);
+      }
+    }
+
+    // We've calculated `r_count` for all coordinate values in
+    // the sorted dimension.
+    return;
+  }
+
+  // Here, we're computing on all other dimensions. After the first dimension,
+  // it is possible that coordinates have already been determined to not
+  // intersect with the range in an earlier dimension. For example, if
+  // `dim_idx` is 2 for a row-major cell order, we have already checked this
+  // coordinate for an intersection in dimension-0 and dimension-1. If either
+  // did not intersect a coordinate, its associated value in `r_count` will be
+  // zero. To optimize for the scenario where there are many contiguous zeroes,
+  //  we can `memcmp` a large range of `r_count` values to avoid a comparison
+  // on each individual element.
+  //
+
+  // First check cached ranges against map
+  if (cached_ranges.size() == 1 && !dictionary_keys.empty()) {
+    if (cached_ranges[0].first == cached_ranges[0].second) {
+      if (dictionary_keys.find(cached_ranges[0].first) == dictionary_keys.end()) {
+        for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
+          result_count[pos] = 0;
+        }
+        return;
+      }
+    }
+  }
+  // Often, a memory comparison for one byte is as quick as comparing 4 or 8
+  // bytes. We will only get a benefit if we successfully find a `memcmp` on a
+  // much larger range.
+  const uint64_t zeroed_size = coords_num < 256 ? coords_num : 256;
+  for (uint64_t i = min_cell; i < min_cell + coords_num; i += zeroed_size) {
+    const uint64_t partition_size =
+        (i < max_cell - zeroed_size) ? zeroed_size : max_cell - i;
+
+    // Check if all `r_bitmap` values are zero between `i` and
+    // `partition_size`. To do so, first make sure the first byte is 0, then
+    // using memcmp(addr, addr + 1, size - 1), to validate the rest. This works
+    // as memcmp will validate that the current byte is equal to the next for
+    // all values of the memory buffer in order, and we start by knowing that
+    // the first byte is equal to 0. Through profiling, this has proven to be
+    // much faster than a solution using std::all_of for example, so even
+    // though this solution is less readable, it is still the best. Note that
+    // for this to work, we must make sure that the second address is exactly
+    // one byte after the first one.
+    if (result_count[i] == 0 &&
+        memcmp(
+            &result_count[i],
+            reinterpret_cast<uint8_t*>(&result_count[i]) + 1,
+            partition_size * sizeof(BitmapType) - 1) == 0)
+      continue;
+
+    {
+      // Here, we know that there is at least one `1` value within the
+      // `r_count` values within this partition. We must check
+      // each value for an intersection.
+      compute_results_count_sparse_string_range(
+          cached_ranges,
+          buff_str,
+          buff_off,
+          cell_num,
+          buff_str_size,
+          i,
+          i + partition_size - 1,
+          result_count);
+    }
+  }
+}
+
 template <class BitmapType>
 void ResultTile::compute_results_count_sparse_string(
     const ResultTile* result_tile,
@@ -1313,14 +1529,22 @@ void ResultTile::set_compute_results_func() {
         compute_results_count_sparse_uint64_t_func_[d] =
             compute_results_count_sparse<uint64_t, int64_t>;
         break;
-      case Datatype::STRING_ASCII:
+      case Datatype::STRING_ASCII: {
         compute_results_dense_func_[d] = nullptr;
         compute_results_sparse_func_[d] = compute_results_sparse<char>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse_string<uint8_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse_string<uint64_t>;
+        if (dim->filters().has_filter(FilterType::FILTER_DICTIONARY)) {
+          compute_results_count_sparse_uint8_t_func_[d] =
+              compute_results_count_sparse_string_dictionary<uint8_t>;
+          compute_results_count_sparse_uint64_t_func_[d] =
+              compute_results_count_sparse_string_dictionary<uint64_t>;
+        } else {
+          compute_results_count_sparse_uint8_t_func_[d] =
+              compute_results_count_sparse_string<uint8_t>;
+          compute_results_count_sparse_uint64_t_func_[d] =
+              compute_results_count_sparse_string<uint64_t>;
+        }
         break;
+      }
       default:
         compute_results_dense_func_[d] = nullptr;
         compute_results_sparse_func_[d] = nullptr;

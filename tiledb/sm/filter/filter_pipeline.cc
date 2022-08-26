@@ -564,6 +564,116 @@ Status FilterPipeline::run_reverse(
       reader_stats, tile, offsets_tile, compute_tp, config);
 }
 
+tuple<Status, optional<std::vector<std::string>>> FilterPipeline::run_reverse_dictionary_only(
+    stats::Stats* const reader_stats,
+    Tile* const tile,
+    Tile* const offsets_tile,
+    ThreadPool* const compute_tp,
+    const Config& config) const {
+  auto filtered_buffer_data = tile->filtered_buffer().data();
+
+  // First make a pass over the tile to get the chunk information.
+  uint64_t num_chunks;
+  memcpy(&num_chunks, filtered_buffer_data, sizeof(uint64_t));
+  filtered_buffer_data += sizeof(uint64_t);
+  std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>> filtered_chunks(
+      num_chunks);
+  uint64_t total_orig_size = 0;
+  for (uint64_t i = 0; i < num_chunks; i++) {
+    uint32_t filtered_chunk_size, orig_chunk_size, metadata_size;
+    memcpy(&orig_chunk_size, filtered_buffer_data, sizeof(uint32_t));
+    filtered_buffer_data += sizeof(uint32_t);
+    memcpy(&filtered_chunk_size, filtered_buffer_data, sizeof(uint32_t));
+    filtered_buffer_data += sizeof(uint32_t);
+    memcpy(&metadata_size, filtered_buffer_data, sizeof(uint32_t));
+    filtered_buffer_data += sizeof(uint32_t);
+
+    total_orig_size += orig_chunk_size;
+
+    filtered_chunks[i] = std::make_tuple(
+        filtered_buffer_data,
+        filtered_chunk_size,
+        orig_chunk_size,
+        metadata_size);
+    filtered_buffer_data += metadata_size + filtered_chunk_size;
+  }
+
+  reader_stats->add_counter("read_unfiltered_byte_num_for_dictionary", total_orig_size);
+
+  if (filtered_chunks.empty()) {
+    return {Status::Ok(), nullopt};
+  }
+
+  // Precompute the sizes of the final output chunks.
+  uint64_t total_size = 0;
+  std::vector<uint64_t> chunk_offsets(filtered_chunks.size());
+  for (size_t i = 0; i < filtered_chunks.size(); i++) {
+    chunk_offsets[i] = total_size;
+    total_size += std::get<2>(filtered_chunks[i]);
+  }
+
+  if (total_size != tile->size()) {
+    return {LOG_STATUS(
+        Status_FilterError("Error incorrect unfiltered tile size allocated.")), nullopt};
+  }
+
+  // Run each chunk through the entire pipeline.
+  for(uint64_t i = 0; i < filtered_chunks.size(); i++) {
+    const auto& chunk_input = filtered_chunks[i];
+
+    const uint32_t filtered_chunk_len = std::get<1>(chunk_input);
+    const uint32_t orig_chunk_len = std::get<2>(chunk_input);
+    const uint32_t metadata_len = std::get<3>(chunk_input);
+    void* const metadata = std::get<0>(chunk_input);
+    void* const chunk_data = (char*)metadata + metadata_len;
+
+    // TODO(ttd): can we instead allocate one FilterStorage per thread?
+    // or make it threadsafe?
+    FilterStorage storage;
+    FilterBuffer input_data(&storage), output_data(&storage);
+    FilterBuffer input_metadata(&storage), output_metadata(&storage);
+
+    // First filter's input is the filtered chunk data.
+    RETURN_NOT_OK_TUPLE(input_metadata.init(metadata, metadata_len), nullopt);
+    RETURN_NOT_OK_TUPLE(input_data.init(chunk_data, filtered_chunk_len), nullopt);
+
+    // If the pipeline is empty, just copy input to output.
+    if (filters_.empty()) {
+      return {Status::Ok(), nullopt};
+    }
+
+    // Apply the filters sequentially in reverse.
+    for (int64_t filter_idx = (int64_t)filters_.size() - 1; filter_idx >= 0;
+         filter_idx--) {
+      auto& f = filters_[filter_idx];
+
+      // Clear and reset I/O buffers
+      input_data.reset_offset();
+      input_data.set_read_only(true);
+      input_metadata.reset_offset();
+      input_metadata.set_read_only(true);
+
+      output_data.clear();
+      output_metadata.clear();
+
+      f->init_decompression_resource_pool(compute_tp->concurrency_level());
+      if (f->type() == FilterType::FILTER_DICTIONARY) {
+        auto f_casted = static_cast<CompressionFilter*>(f.get());
+        return f_casted->decompress_dictionary(input_metadata);
+      }
+
+      input_data.set_read_only(false);
+      input_metadata.set_read_only(false);
+
+      input_data.swap(output_data);
+      input_metadata.swap(output_metadata);
+      // Next input (input_buffers) now stores this output (output_buffers).
+    }
+  }
+
+  return {Status::Ok(), nullopt};
+}
+
 Status FilterPipeline::run_reverse_internal(
     stats::Stats* const reader_stats,
     Tile* const tile,

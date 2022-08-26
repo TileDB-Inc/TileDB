@@ -37,6 +37,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/misc/endian.h"
 
+#include <iostream>
 #include <map>
 #include <unordered_map>
 #include <vector>
