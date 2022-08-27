@@ -713,7 +713,7 @@ int main(int argc, char* argv[]) {
 
   tbb::global_control(tbb::global_control::max_allowed_parallelism, 2);
 #endif
-  size_t width = 8;
+  size_t width = 4;
 
   /*
    * Test with two_stage connections

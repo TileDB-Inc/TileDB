@@ -40,7 +40,7 @@
 #include "experimental/tiledb/common/dag/utils/print_types.h"
 
 using namespace tiledb::common;
-
+#if 0
 /**
  * Verify various API approaches
  */
@@ -631,8 +631,9 @@ TEST_CASE(
  */
 TEST_CASE("Nodes: Producer and consumer functions and nodes", "[nodes]") {
   size_t N = 37;
+  std::stop_source stop_source;
 
-  generator g;
+  generator g{0UL, N};
 
   std::vector<size_t> v;
   auto w = std::back_inserter(v);
@@ -640,7 +641,7 @@ TEST_CASE("Nodes: Producer and consumer functions and nodes", "[nodes]") {
 
   SECTION("Test generator function") {
     for (size_t i = 0; i < N; ++i) {
-      CHECK(g() == i);
+      CHECK(g(stop_source) == i);
     }
   }
 
@@ -692,7 +693,7 @@ TEST_CASE("Nodes: Attach producer and consumer nodes", "[nodes]") {
   }
 
   SECTION("Attach generator and consumer") {
-    generator g(N);
+    generator g{N};
 
     std::vector<size_t> v;
     std::back_insert_iterator<std::vector<size_t>> w(v);
@@ -758,7 +759,7 @@ TEST_CASE("Nodes: Pass some data, two attachment orders", "[nodes]") {
 TEST_CASE("Nodes: Asynchronously pass some data", "[nodes]") {
   size_t rounds = 423;
 
-  generator g{0};
+  generator g;
 
   std::vector<size_t> v;
   std::back_insert_iterator<std::vector<size_t>> w(v);
@@ -1845,6 +1846,7 @@ TEST_CASE(
   CHECK(std::equal(input.begin(), i, output.begin()));
 }
 
+#endif
 /**
  * Test that we can correctly pass a sequence of integers from producer node to
  * consumer node via function node.

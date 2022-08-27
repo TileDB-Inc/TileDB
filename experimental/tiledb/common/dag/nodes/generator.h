@@ -48,7 +48,16 @@ class generator {
   std::atomic<Integral> i_{0};
 
  public:
-  generator(Integral min = 0, Integral max = std::numeric_limits<Integral>::max()) : min_{min}, max_{max}, i_{min_.load()} {
+  generator(Integral min, Integral max)
+      : min_{min}
+      , max_{max}
+      , i_{min_.load()} {
+  }
+
+  explicit generator(Integral min = 0)
+      : min_{min}
+      , max_{std::numeric_limits<Integral>::max()}
+      , i_{min_.load()} {
   }
 
   generator(const generator& rhs)
@@ -57,10 +66,9 @@ class generator {
     , i_(rhs.i_.load()) {
   }
 
-#if 1
   /**
-   * Function returning sequence of numbers, from `min_` to `max_`.  Stop is requested
-   * once `max_` is reached.
+   * Function returning sequence of numbers, from `min_` to `max_`.  Stop is
+   * requested once `max_` is reached.
    *
    * @param stop_source Stop is requested once `i_` hits `max_`
    *
@@ -73,18 +81,7 @@ class generator {
     }
     return i_++;
   }
-#else
-
-  Integral operator()() {
-    if (i_ >= max_) {
-      return max_;
-    }
-    return i_++;
-  }
-#endif
-
 };
-
 
 }  // namespace tiledb::common
 #endif  // TILEDB_DAG_GENERATOR_H

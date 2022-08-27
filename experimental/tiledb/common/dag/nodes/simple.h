@@ -337,6 +337,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
       : f_{std::forward<Function>(f)} {
   }
 
+#if 0
   /**
    * Constructor for anything non-invocable.  It is here to provide more
    * meaningful error messages when the constructor is called with wrong type of
@@ -351,6 +352,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
         std::is_invocable_v<Function, Block>,
         "Sink constructor with non-invocable type");
   }
+#endif
 
   /**
    * Function for obtaining items from the item mover and invoking the stored
