@@ -33,8 +33,6 @@
 #ifndef TILEDB_DAG_GENERAL_H
 #define TILEDB_DAG_GENERAL_H
 
-#if 0
-
 #include <functional>
 #include <type_traits>
 #include "experimental/tiledb/common/dag/ports/ports.h"
@@ -44,569 +42,158 @@
 
 namespace tiledb::common {
 
-/**
- * A trivial base class so that we can store containers of different types of
- * nodes in a single container.
- */
-template <class CalculationState>
-class GeneralGraphNode {
- protected:
-  CalculationState current_calculation_state_;
-  CalculationState new_calculation_state_;
+#if 0
+template <
+    class CalculationState,
+    template <class>
+    class SinkMover_T,
+    std::tuple<BlockIn...>,  // Multiple types
+    // Only one mover type:  Input Mover and Output are the same
+    std::tuple<BlockOut...>>
+class FunctionNode : protected GeneralGraphNode<CalculationState> {
+  using SourceMover_T = SinkMover_T;  // just Mover_T
 
- public:
-  // including swap
-  void update_state();
+  std::tuple<Source<SourceMover_T, BlockOut>...>> inputs_;
+  std::tuple<Sink<SinkMover_T, BlockIn>>... >> outputs_;
 
-  virtual void run(size_t = 1) = 0;
-  //  virtual void stop();
+  FunctionNode() = default;
+
+  // Bound function node looks like this
+  template <class Function>
+  FunctionNode(Function&& f) {
+  }
+
+  FunctionNode()
+      : GeneralGraphNode<CalculationState>{} {
+  }
+
+  // Restart from suspension constructor
+  FunctionNode(const CalculationState& saved_calculation_state)
+      : GeneralGraphNode<CalculationState>{saved_calculation_state} {
+  }
+
+  // User implements this rather than passing in a function
+  // Scheduler just calls this and passes no calculation state -- i.e., this is
+  // really a resume.
+  virtual void operator()() = 0;
+  //
+  //
+  // Sink:
+  //   pull() -- moves data forward along the channel x0 -> x1
+  //   drain() -- state machine event x1 -> x0
+  //
+  // Source:
+  //   fill()
+  //   push()
+  //
+  // NodeInput<N>
+  //   std::tuple_ref<N, BlockIn>& value()
+  //
+  //   template <size_t N>
+  //   constexpr std::tuple_ref<N, BlockIn>& value() {}
+  //
+  //   auto foo = node_inputs_v<N>.value();
+  //
+  // Application developer gives user-readable names to tuple indices
+  // using lhs = node_inputs_v<0>;   // Or something similar
+  // using rhs = node_inputs_v<1>;
+  //
+  // decltype(auto) foo = lhs.value();
+  //
+  // ConsumerNode step():
+  //
+  // This is "g()":
+  // switch (new_state.instruction_pointer) {
+  //
+  // step(top);
+  // case top:
+  //   auto input_block = lhs.value();   // value() calls try_pull(), return an
+  //   optional if (!input_block.has_value()) {
+  //     return;
+  //   }
+  //
+  // step(middle);
+  // case middle:
+  //   auto && [output_block, new_state, really] = work on input_block
+  //
+  //   current_state <- new_state
+  //   if (not done working) {
+  //     if (yield requested)
+  //       return;
+  //   }
+  //
+  // step(bottom);
+  // case bottom:
+  //   lhs.consume();
+  //   change_state() {
+  //   --------------------------------
+  //     consume item(lhs.get_consume())
+  //     update_state
+  //     drain(lhs.get_consume())
+  //   --------------------------------
+  //   }
+  //
+  // case abort:
+  //   abort();
+  //
+  // case done:
+  //   // Clean up work...
+  //   finished();
+  // }
+
+  // NodeOutput
+
+  //  operator()() {
+  //  ProducerNode step():
+  //  - auto new_, block = f(old_, block)
+  //  - output() {
+  //  -------------------------------
+  //    - update_state (new_);
+  //    - inject return_block;
+  //    - fill
+  //  --------------------------------
+  //  }
+  //  - push
+
+  // user_function(
+  //
+
+  update_state() {
+  }
+
+  // update_state will do these
+  update_state_with_output() {
+  }
+  update_state_with_input() {
+  }
+  update_state_with_input_and_output() {
+  }
+
+  yield() {
+  }
+
+  finish() {
+  }
 };
-
-template <>
-class GeneralGraphNode<void> : GeneralGraphNode<std::monostate> {};
-
-using GraphNode = GeneralGraphNode<void>;
-
-/**
- * Flow control class.  To be used as optional argument to function call
- * inside a `ProducerNode` to indicate there will not be any more data
- * produced by the function.  The return value from the function when stop
- * is called is meaningless.
- */
-
-/**
- * Producer node.  Constructed with a function that creates Blocks.  A
- * Producer is derived from Source.
- *
- * @tparam Mover_T The type of item mover to be used by this class.  The
- * class can invoke any of the functions in the mover.  The `ProducerNode`
- * will invoke `do_fill`, `do_push`, `inject`, and `do_stop`.
- *
- * @tparam Mover_T The type of item mover to be used with the
- * `ProducerNode`. It is a template template to be composed with `Block`.
- * @tparam Block The type of data to be produced by the `ProducerNode` and
- * sent through the item mover.
- */
-
-template <template <class> class Mover_T, class Block>
-class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
-  using Base = Source<Mover_T, Block>;
-  using source_type = Source<Mover_T, Block>;
-  /**
-   * `std::stop_source` to be used with `ProducerNode`
-   */
-  std::stop_source stop_source_;
-
-  /**
-   * The function to be invoked by the `ProducerNode`
-   */
-  std::variant<std::function<Block()>, std::function<Block(std::stop_source&)>>
-      f_;
-
- public:
-  /**
-   * Trivial default constructor, for testing.
-   */
-  ProducerNode() = default;
-
-  /**
-   * Trivial copy constructor, needed to satisfy `is_movable`
-   */
-  ProducerNode(const ProducerNode&) {
-  }
-  ProducerNode(ProducerNode&&) = default;
-
-  /**
-   * Constructor
-   * @param f A function taking void that creates items.
-   *
-   * @tparam The type of the function (or function object) that generates items.
-   */
-
-  /**
-   * Constructor: Function takes void, returns Block
-   */
-  template <class Function>
-  ProducerNode(
-      Function&& f,
-      std::enable_if_t<
-          !std::is_bind_expression_v<
-              std::remove_cv_t<std::remove_reference_t<Function>>>,
-          void**> = nullptr)
-      : f_{std::forward<Function>(f)} {
-  }
-
-  /**
-   * Constructor: Special constructor for std::bind, no std::stop_source
-   */
-  template <class Function>
-  ProducerNode(
-      Function&& f,
-      std::enable_if_t<
-          std::is_bind_expression_v<
-              std::remove_cv_t<std::remove_reference_t<Function>>> &&
-              std::is_invocable_r_v<Block, Function, void>,
-          void**> = nullptr)
-      : f_{[&f]() { return std::forward<Function>(f)(); }} {
-  }
-
-  /**
-   * Constructor: Special constructor for std::bind, with std::stop_source
-   */
-  template <class Function>
-  ProducerNode(
-      Function&& f,
-      std::enable_if_t<
-          std::is_bind_expression_v<
-              std::remove_cv_t<std::remove_reference_t<Function>>> &&
-              std::is_invocable_r_v<Block, Function, std::stop_source&>,
-          void**> = nullptr)
-      : f_{[&f](std::stop_source& s) { return std::forward<Function>(f)(s); }} {
-  }
+#endif
 
 #if 0
 
-  template <class Function>
-  explicit ProducerNode(Function&& f)
-      : f_{f} {
-  }
-
-
-
- 
-  template <class Function>
-  explicit ProducerNode(
-      Function&& f,
-      std::enable_if_t<
-          !std::is_bind_expression_v<U>
-          //          ((std::is_invocable_r_v<Block, Function> ||
-          //            std::is_invocable_r_v<
-          //                Block,
-          //                Function,
-          //                std::
-          //                    stop_source>)&&(std::is_bind_expression_v<Function>
-          //                    == false)),
-          ,
-          void**> = nullptr)
-      : f_{std::forward<Function>(f)} {
-  }
-
-  template <class Function>
-  explicit ProducerNode(
-      Function& f,
-      std::enable_if_t<
-          ((std::is_invocable_r_v<Block, Function> ||
-            std::is_invocable_r_v<Block, Function, std::stop_source>)&&std::
-               is_bind_expression_v<Function>),
-          void**> = nullptr)
-      : f_{[&f]() { return std::forward<Function>(f)(); }} {
-  }
-
-  template <class Function>
-  explicit ProducerNode(
-      Function&& f,
-      std::enable_if_t<
-          ((std::is_invocable_r_v<Block, Function> ||
-            std::is_invocable_r_v<Block, Function, std::stop_source>)&&std::
-               is_bind_expression_v<Function>),
-          void**> = nullptr)
-      : f_{[&f]() { return std::forward<Function>(f)(); }} {
-  }
-
-#if 0
-  /**
-   * Constructor
-   * @param f A function that creates items.
-   * @tparam The type of the function (or function object) that generates items.
-   */
-  template <class Function>
-  explicit ProducerNode(
-      Function&& f,
-      std::enable_if_t<
-          (std::is_invocable_r_v<Block, Function> ||
-           std::is_invocable_r_v<Block, Function, std::stop_source>),
-
-          void**> = nullptr)
-      : f_{std::forward<Function>(f)} {
-  }
-#endif
-#if 0
-  /**
-   * Constructor 
-   * @param f A function that creates items.  The function should be
-   * invocable with a flow_control object.  Still trying to figure out how to allow
-   * overloading of the stored function, so this is not used for now.  
-   * @tparam The type of the function (or function object) that generates items.
-   */
-  template <class Function>
-  explicit ProducerNode(
-      Function&& f,
-      std::enable_if_t<std::is_invocable_r_v<Block, Function>, void**> =
-          nullptr)
-      : f_{[f](FlowControl&) { return std::forward<Function>(f)(); }} {
-  }
-#endif
-
-  /**
-   * Constructor for anything non-invocable.  It is here to provide more
-   * meaningful error messages when the constructor is called with wrong type of
-   * arguments.  Otherwise there is a huge list of unsuccessful substitutions,
-   * which are not informative.
-   */
-  template <class Function>
-  explicit ProducerNode(
-      Function&&,
-      std::enable_if_t<!std::is_invocable_r_v<Block, Function>, void**> =
-          nullptr) {
-    static_assert(
-        std::is_invocable_r_v<Block, Function>,
-        "Source constructor with non-invocable type");
-  }
-#endif
-
-  /**
-   * Function for invoking the function in the `ProducerNode` and sending it to
-   * the item mover.  The `run_for` function will invoke the stored function
-   * multiple times, given by the input parameter, or until the node is stopped,
-   * whichever happens first.  time (unless the state machine in the item mover
-   * is stopped).  It will also issue `stop` if the `flow_control` is stopped
-   * (the latter to be implemented).
-   *
-   * @param rounds The maximum number of times to invoke the producer function.
-   */
-  void run() {
-    auto state_machine = this->get_mover();
-    /**
-     * @todo Make inject and do_fill atomic (while properly separating
-     * concerns). Atomic on the mover would be the right thing.  There seems
-     * to still be the problem that the function will have created the item
-     * but is handing it off to the mover.  Need to do inject with an atomic
-     * swap so that the state of the function can know whether or not it has
-     * handed the item to the mover.
-     */
-    //  { state == st_00 ∨ state == st_01 }
-
-    switch (f_.index()) {
-      case 0:
-        Base::inject(std::get<0>(f_)());
-        break;
-      case 1:
-        Base::inject(std::get<1>(f_)(stop_source_));
-        break;
-      default:
-        throw std::logic_error("Impossible index for variant");
-    }
-    if (stop_source_.stop_requested()) {
-      return;
-    }
-
-    state_machine->do_fill();
-    //  { state == st_10 ∨ state == st_11 }
-
-    if (state_machine->debug_enabled())
-      std::cout << "producer filled "
-                << "state: " << str(state_machine->state()) << std::endl;
-
-    state_machine->do_push();
-    //  { state == st_01 ∨ state == st_00 }
-
-    if (state_machine->debug_enabled())
-      std::cout << "producer pushed " << std::endl;
-  }
-
-  void run(size_t rounds) {
-    auto state_machine = this->get_mover();
-    if (state_machine->debug_enabled())
-      std::cout << this->get_mover() << std::endl;
-
-    if (state_machine->debug_enabled())
-      std::cout << "producer starting " << rounds << std::endl;
-
-    while (rounds--) {
-      if (stop_source_.stop_requested()) {
-        break;
-      }
-
-      run();
-    }
-    if (state_machine->debug_enabled())
-      std::cout << "run stopping" << std::endl;
-    state_machine->do_stop();
-  }
-
-  /**
-   * Same as `run` but with random delays inserted.  Used for testing to
-   * encourage race conditions and deadlocks.
-   */
-  void run_with_delays(size_t rounds) {
-    auto state_machine = this->get_mover();
-    if (state_machine->debug_enabled())
-      std::cout << this->get_mover() << std::endl;
-
-    while (rounds--) {
-      if (state_machine->debug_enabled())
-        std::cout << "producer starting " << rounds << std::endl;
-
-      switch (f_.index()) {
-        case 0:
-          Base::inject(std::get<0>(f_)());
-          break;
-        case 1:
-          Base::inject(std::get<1>(f_)(stop_source_));
-          break;
-        default:
-          throw std::logic_error("Impossible index for variant");
-      }
-
-      if (state_machine->debug_enabled())
-        std::cout << "producer injected " << rounds << std::endl;
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
-
-      state_machine->do_fill();
-      if (state_machine->debug_enabled())
-        std::cout << "producer filled " << rounds << std::endl;
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
-
-      state_machine->do_push();
-      if (state_machine->debug_enabled())
-        std::cout << "producer pushed " << rounds << std::endl;
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
-    }
-    if (state_machine->debug_enabled())
-      std::cout << "run stopping" << std::endl;
-    state_machine->do_stop();
-  }
-};
-
 /**
- * Consumer node.  Constructed with a function that accepts Blocks and returns
- * void.
- *
- * @tparam Mover_T The type of item mover to be used by this class.  The class
- * can invoke any of the functions in the mover.  The `ConsumerNode` will invoke
- * `do_pull`, `do_drain`, and `extract`.
- *
- * @param Block The type of data to be obtained from the item mover and
- * consumed.
- */
-template <template <class> class Mover_T, class Block>
-class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
-  std::function<void(const Block&)> f_;
-
- public:
-  using Base = Sink<Mover_T, Block>;
-
- public:
-  /**
-   * Trivial default constructor, for testing.
-   */
-  ConsumerNode() = default;
-  ConsumerNode(const ConsumerNode&) {
-  }
-  ConsumerNode(ConsumerNode&&) = default;
-
-  /**
-   * Constructor
-   *
-   * @tparam The type of the function (or function object) that accepts items.
-   * May be an actual function, a function object, or the result of `std::bind`.
-   *
-   * @param f A function that accepts items.  Must be invocable with an object
-   * of type `Block`.
-   */
-  template <class Function>
-  explicit ConsumerNode(
-      Function&& f,
-      std::enable_if_t<std::is_invocable_r_v<void, Function, Block>, void**> =
-          nullptr)
-      : f_{std::forward<Function>(f)} {
-  }
-
-  /**
-   * Constructor for anything non-invocable.  It is here to provide more
-   * meaningful error messages when the constructor is called with wrong type of
-   * arguments.
-   */
-  template <class Function>
-  explicit ConsumerNode(
-      Function&&,
-      std::enable_if_t<!std::is_invocable_r_v<void, Function, Block>, void**> =
-          nullptr) {
-    static_assert(
-        std::is_invocable_v<Function, Block>,
-        "Sink constructor with non-invocable type");
-  }
-
-  void run() {
-    auto state_machine = this->get_mover();
-    //  {{ state == st_00 ∨ state == st_10 } ∧ { item == empty }}
-    //  ∨
-    //  {{ state == st_01 } ∨ { state == st_11 } ∧ { item == full }}
-    state_machine->do_pull();
-    //  { state == st_01 ∨ state == st_11 } ∧ { item == full }
-
-    if (state_machine->debug_enabled())
-      std::cout << "consumer pulled "
-                << " ( done: " << state_machine->is_done() << " )" << std::endl;
-
-    if (state_machine->is_done()) {
-      if (state_machine->debug_enabled())
-        std::cout << "consumer done i " << std::endl;
-      return;
-    }
-
-    if (state_machine->debug_enabled())
-      std::cout << "consumer checked done "
-                << " ( done: " << state_machine->is_done() << " )" << std::endl;
-
-    //  { state == st_01 ∨ state == st_11 } ∧ { item == full }
-
-    // Returns an optional, may not be necessary given stop state
-    // @todo Pass in b as parameter so assignment is atomic
-    auto b = Base::extract();
-    //  { state == st_01 ∨ state == st_11 } ∧ { item == empty }  (This is
-    //  bad.) Source cannot change st_11 until drain is called.
-
-    if (state_machine->debug_enabled())
-      std::cout << "consumer extracted, about to drain " << std::endl;
-
-    state_machine->do_drain();
-    //  {{ state == st_00 ∨ state == st_10 } ∧ { item == empty }}
-    //  ∨
-    //  {{ state == st_01 } ∨ { state == st_11 } ∧ { item == full }}
-    //  Since Source could have filled and pushed (perhaps twice)
-
-    //  We could move drain here and make atomic with extract() ?
-    //  Then would have { state == st_00 ∨ state == st_10 } ∧ { item == empty
-    //  } And Source would be notified, which could change state to
-    //  {{ state == st_01 ∨ state == st_11 } ∧ { item == full }}
-    //  ∨
-    //  {{ state == st_10 } ∧ { item == empty }
-    //  We have the previous item in b, so { item == full } is okay
-    //  This would benefit concurrency
-
-    if (state_machine->debug_enabled())
-      std::cout << "consumer drained " << std::endl;
-
-    //  Or maybe not have an extract and just send (full) item to f_() ?
-    CHECK(b.has_value());
-
-    //  Here we have that item has been extracted and
-    // { item == empty } ∨ { item == full }
-    // (but would be different item if full)
-    f_(*b);
-    //  Here we have that item has been processed and
-    // { item == empty } ∨ { item == full }
-    // Deallocate b
-
-    if (state_machine->debug_enabled())
-      std::cout << "consumer ran function " << std::endl;
-  }
-
-  /**
-   * Function for obtaining items from the item mover and invoking the stored
-   * function on each item. The `run` function will invoke the stored
-   * function multiple times or until the state machine in the item mover is
-   * stopped, whichever happens first.
-   *
-   * @param rounds The maximum number of times to invoke the producer function.
-   */
-  void run(size_t rounds) {
-    auto state_machine = this->get_mover();
-
-    while (rounds--) {
-      if (state_machine->debug_enabled()) {
-        std::cout << "consumer starting " << rounds << std::endl;
-        std::cout << this->get_mover() << std::endl;
-      }
-
-      if (state_machine->is_done()) {
-        if (state_machine->debug_enabled())
-          std::cout << "consumer breaking ii " << rounds << std::endl;
-        break;
-      }
-      run();
-    }
-    if (!state_machine->is_done()) {
-      state_machine->do_pull();
-    }
-  }
-
-  /**
-   * Same as the above function but with random delays inserted to encourage
-   * race conditions and deadlocks.
-   */
-  void run_with_delays(size_t rounds) {
-    auto state_machine = this->get_mover();
-
-    while (rounds--) {
-      if (state_machine->debug_enabled())
-        std::cout << "consumer starting " << rounds << std::endl;
-
-      if (state_machine->debug_enabled())
-        std::cout << this->get_mover() << std::endl;
-
-      state_machine->do_pull();
-      if (state_machine->debug_enabled())
-        std::cout << "consumer pulled " << rounds << std::endl;
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
-
-      if (state_machine->is_done()) {
-        break;
-      }
-
-      if (state_machine->debug_enabled())
-        std::cout << "consumer checked done " << rounds << std::endl;
-
-      auto b = Base::extract();
-
-      if (state_machine->debug_enabled())
-        std::cout << "consumer extracted, about to drain " << rounds
-                  << std::endl;
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
-
-      state_machine->do_drain();
-
-      if (state_machine->debug_enabled())
-        std::cout << "consumer drained " << rounds << std::endl;
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
-
-      f_(*b);
-
-      if (state_machine->debug_enabled())
-        std::cout << "consumer ran function " << rounds << std::endl;
-
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
-
-      if (state_machine->is_done()) {
-        break;
-      }
-    }
-    if (!state_machine->is_done()) {
-      state_machine->do_pull();
-    }
-  }
-};
-
-/**
- * Function node. Constructed with function that accepts a Block and returns
- * a Block.  Derived from both `Sink` and `Source`.  The `FunctionNode` accepts
- * an item on its `Sink` and submits it to its `Source`
+ * "Bound" Function node, based on `GeneralFunctionNode`.  Supports functions with no
+ * state as well as stateful functions with no intermediate yields.  I.e., functions
+ * that can be given to `BoundFunctionNode` in the form of initial state and final
+ * state.  Allows specializations to emulate `BoundProducerNode` and
+ * `BoundConsumerNode`, as well as the stateless `ProducerNode`, `ConsumerNode`, and
+ * `FunctionNode` as given in simple.h.
  *
  * @tparam SinkMover_T The type of item mover to be used by the `Sink` part of
  * this class.  The class can invoke any of the functions in the mover.  The
  * `Source` part of the `FunctionNode` will invoke `do_fill`, `do_push`,
  * `inject`, and `do_stop`.
  *
- * @tparam SourceMover_T The type of item mover to be used with the
- * `ProducerNode` part of thi class. It is a template template to be composed
- * with `Block`.
+ * @tparam SourceMover_T The type of item mover to be used with the `ProducerNode`
+ * part of thi class. It is a template template to be composed with `Block`.
  *
  * @tparam BlockIn The type of item to be consumed by the `Sink` part of the
  * `ProducerNode`.
@@ -622,7 +209,7 @@ template <
     class BlockIn,
     template <class> class SourceMover_T = SinkMover_T,
     class BlockOut = BlockIn>
-class BoundFunctionNode : public FunctionNode<void>,
+class BoundFunctionNode : public GeneralFunctionNode<void>,
                           SinkMover_T,
                           BlockIn,
                           SourceMover_T,
@@ -825,138 +412,7 @@ using BoundProducerNode = BoundFunctionNode<NullMover, void, Mover_T, Block>;
 template <class Mover_T, class Block>
 using BoundConsumerNode = BoundFunctionNode<Mover_T, Block, NullMover, void>;
 
-template <
-    class CalculationState,
-    template <class>
-    class SinkMover_T,
-    std::tuple<BlockIn...>,  // Multiple types
-    // Only one mover type:  Input Mover and Output are the same
-    std::tuple<BlockOut...>>
-class FunctionNode : protected GeneralGraphNode<CalculationState> {
-  using SourceMover_T = SinkMover_T;  // just Mover_T
-
-  std::tuple<Source<SourceMover_T, BlockOut>...>> inputs_;
-  std::tuple<Sink<SinkMover_T, BlockIn>>... >> outputs_;
-
-  FunctionNode() = default;
-
-  // Bound function node looks like this
-  template <class Function>
-  FunctionNode(Function&& f) {
-  }
-
-  FunctionNode()
-      : GeneralGraphNode<CalculationState>{} {
-  }
-
-  // Restart from suspension constructor
-  FunctionNode(const CalculationState& saved_calculation_state)
-      : GeneralGraphNode<CalculationState>{saved_calculation_state} {
-  }
-
-  // User implements this rather than passing in a function
-  // Scheduler just calls this and passes no calculation state -- i.e., this is
-  // really a resume.
-  virtual void operator()() = 0;
-  //
-  //
-  // Sink:
-  //   pull() -- moves data forward along the channel x0 -> x1
-  //   drain() -- state machine event x1 -> x0
-  //
-  // Source:
-  //   fill()
-  //   push()
-  //
-  // NodeInput<N>
-  //   std::tuple_ref<N, BlockIn>& value()
-  //
-  //   template <size_t N>
-  //   constexpr std::tuple_ref<N, BlockIn>& value() {}
-  //
-  //   auto foo = node_inputs_v<N>.value();
-  //
-  // Application developer gives user-readable names to tuple indices
-  // using lhs = node_inputs_v<0>;   // Or something similar
-  // using rhs = node_inputs_v<1>;
-  //
-  // decltype(auto) foo = lhs.value();
-  //
-  // ConsumerNode step():
-  //
-  // This is "g()":
-  // switch (new_state.instruction_pointer) {
-  //
-  // step(top);
-  // case top:
-  //   auto input_block = lhs.value();   // value() calls try_pull(), return an
-  //   optional if (!input_block.has_value()) {
-  //     return;
-  //   }
-  //
-  // step(middle);
-  // case middle:
-  //   auto && [output_block, new_state, really] = work on input_block
-  //
-  //   current_state <- new_state
-  //   if (not done working) {
-  //     if (yield requested)
-  //       return;
-  //   }
-  //
-  // step(bottom);
-  // case bottom:
-  //   lhs.consume();
-  //   change_state() {
-  //   --------------------------------
-  //     consume item(lhs.get_consume())
-  //     update_state
-  //     drain(lhs.get_consume())
-  //   --------------------------------
-  //   }
-  //
-  // case abort:
-  //   abort();
-  //
-  // case done:
-  //   // Clean up work...
-  //   finished();
-  // }
-
-  // NodeOutput
-
-  //  operator()() {
-  //  ProducerNode step():
-  //  - auto new_, block = f(old_, block)
-  //  - output() {
-  //  -------------------------------
-  //    - update_state (new_);
-  //    - inject return_block;
-  //    - fill
-  //  --------------------------------
-  //  }
-  //  - push
-
-  // user_function(
-  //
-
-  update_state() {
-  }
-
-  // update_state will do these
-  update_state_with_output() {
-  }
-  update_state_with_input() {
-  }
-  update_state_with_input_and_output() {
-  }
-
-  yield() {
-  }
-
-  finish() {
-  }
-};
 #endif
+
 }  // namespace tiledb::common
 #endif  // TILEDB_DAG_GENERAL_H

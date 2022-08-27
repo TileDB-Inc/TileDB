@@ -1,5 +1,5 @@
 /**
- * @file experimental/tiledb/common/thread_pool/test/unit_ports.h
+ * @file unit_genera.h
  *
  * @section LICENSE
  *
@@ -28,8 +28,8 @@
  * @section DESCRIPTION
  */
 
-#ifndef TILEDB_UNIT_NODES_H
-#define TILEDB_UNIT_NODES_H
+#ifndef TILEDB_UNIT_GENERAL_H
+#define TILEDB_UNIT_GENERAL_H
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
-#endif  // TILEDB_UNIT_NODES_H
+#endif  // TILEDB_UNIT_GENERAL_H

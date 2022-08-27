@@ -46,24 +46,45 @@ add_dependencies(all_link_complete compile_nodes)
 target_sources(compile_nodes PRIVATE test/compile_nodes_main.cc)
 
 if (TILEDB_TESTS)
-    add_executable(unit_nodes EXCLUDE_FROM_ALL)
+    add_executable(unit_simple EXCLUDE_FROM_ALL)
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_nodes PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_simple PUBLIC Catch2::Catch2)
 
     # Sources for code elsewhere required for tests
-    target_sources(unit_nodes PUBLIC ${DEPENDENT_SOURCES})
+    target_sources(unit_simple PUBLIC ${DEPENDENT_SOURCES})
 
     # Sources for tests
-    target_sources(unit_nodes PUBLIC
-            test/unit_nodes.cc
+    target_sources(unit_simple PUBLIC
+            test/unit_simple.cc
             )
 
     add_test(
-            NAME "unit_nodes"
-            COMMAND $<TARGET_FILE:unit_nodes> --durations=yes
+            NAME "unit_simple"
+            COMMAND $<TARGET_FILE:unit_simple> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
+
+if (TILEDB_TESTS)
+    add_executable(unit_general EXCLUDE_FROM_ALL)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_general PUBLIC Catch2::Catch2)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_general PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_general PUBLIC
+            test/unit_general.cc
+            )
+
+    add_test(
+            NAME "unit_general"
+            COMMAND $<TARGET_FILE:unit_general> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()
+
 
 
 #

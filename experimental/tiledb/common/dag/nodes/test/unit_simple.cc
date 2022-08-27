@@ -1,5 +1,5 @@
 /**
- * @file unit_nodes.cc
+ * @file unit_simple.cc
  *
  * @section LICENSE
  *
@@ -30,7 +30,7 @@
  * Tests the nodes classes, `SourceNode`, `SinkNode`, and `FunctionNode`.
  */
 
-#include "unit_nodes.h"
+#include "unit_simple.h"
 #include <future>
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/nodes/consumer.h"
