@@ -80,24 +80,23 @@ Status BitSortFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  (void)dim_tiles;
   auto tile_type = tile.type();
   switch (datatype_size(tile_type)) {
     case sizeof(int8_t): {
       return run_forward<int8_t>(
-          input_metadata, input, output_metadata, output);
+          dim_tiles, input_metadata, input, output_metadata, output);
     }
     case sizeof(int16_t): {
       return run_forward<int16_t>(
-          input_metadata, input, output_metadata, output);
+         dim_tiles, input_metadata, input, output_metadata, output);
     }
     case sizeof(int32_t): {
       return run_forward<int32_t>(
-          input_metadata, input, output_metadata, output);
+          dim_tiles, input_metadata, input, output_metadata, output);
     }
     case sizeof(int64_t): {
       return run_forward<int64_t>(
-          input_metadata, input, output_metadata, output);
+          dim_tiles, input_metadata, input, output_metadata, output);
     }
     default: {
       return Status_FilterError(
@@ -111,6 +110,7 @@ Status BitSortFilter::run_forward(
 
 template <typename T>
 Status BitSortFilter::run_forward(
+    std::vector<Tile*> &dim_tiles,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -132,7 +132,7 @@ Status BitSortFilter::run_forward(
   for (const auto& part : parts) {
     auto part_size = (uint32_t)part.size();
     RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
-    RETURN_NOT_OK(sort_part<T>(&part, output_buf));
+    RETURN_NOT_OK(sort_part<T>(dim_tiles, &part, output_buf));
   }
 
   return Status::Ok();
@@ -140,7 +140,8 @@ Status BitSortFilter::run_forward(
 
 template <typename T>
 Status BitSortFilter::sort_part(
-    const ConstBuffer* input_buffer, Buffer* output_buffer) const {
+    std::vector<Tile*> &dim_tiles, const ConstBuffer* input_buffer, Buffer* output_buffer) const {
+  (void)dim_tiles;
   (void)input_buffer;
   (void)output_buffer;
   return Status::Ok();
