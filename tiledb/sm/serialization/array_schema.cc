@@ -233,7 +233,7 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
       return {Status::Ok(), tiledb::common::make_shared<XORFilter>(HERE())};
     }
     case FilterType::FILTER_BITSORT: {
-      return {Status::Ok(), tiledb::common::make_shared<BitsortFilter>(HERE())};
+      return {Status::Ok(), tiledb::common::make_shared<BitSortFilter>(HERE())};
     }
     default: {
       throw std::logic_error(
