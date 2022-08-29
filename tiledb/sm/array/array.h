@@ -426,6 +426,9 @@ class Array {
    */
   bool serialize_metadata() const;
 
+  /** Checks the config to see if refactored array open should be used. */
+  bool use_refactored_array_open() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -603,9 +606,6 @@ class Array {
    * Note: the Sentry object will also be released upon Array destruction.
    **/
   void set_array_closed();
-
-  /** Checks the config to see if refactored array open should be used. */
-  bool use_refactored_array_open() const;
 };
 
 }  // namespace sm

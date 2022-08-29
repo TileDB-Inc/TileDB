@@ -2363,5 +2363,6 @@ TEST_CASE_METHOD(
   tiledb_array_schema_free(&array_schema);
   tiledb_config_free(&config);
   tiledb_ctx_free(&ctx);
+  remove_temp_dir(array_name);
 #endif
 }
