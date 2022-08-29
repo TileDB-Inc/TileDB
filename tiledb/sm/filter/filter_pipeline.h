@@ -208,6 +208,17 @@ class FilterPipeline {
       bool chunking = true) const;
 
   /**
+   * @brief TODO DIM TILE
+   * @return Status
+   */
+  Status run_forward(
+      stats::Stats* writer_stats,
+      Tile* tile,
+      std::vector<Tile*> dim_tiles,
+      ThreadPool* compute_tp,
+      bool chunking = true) const;
+
+  /**
    * Runs the pipeline in reverse on the given filtered tile. This is used
    * during reads, and processes filtered Tile data (e.g. compressed) into
    * unfiltered Tile data.
@@ -375,6 +386,24 @@ class FilterPipeline {
       Tile* const offsets_tile,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,
+      FilteredBuffer& output,
+      ThreadPool* const compute_tp) const;
+
+  /**
+   * @brief TODO: dim tile
+   *
+   * @param tile
+   * @param dim_tiles
+   * @param chunk_size
+   * @param chunk_offsets
+   * @param output
+   * @param compute_tp
+   * @return Status
+   */
+  Status filter_chunks_forward(
+      const Tile& tile,
+      std::vector<Tile*> dim_tiles,
+      uint32_t chunk_size,
       FilteredBuffer& output,
       ThreadPool* const compute_tp) const;
 

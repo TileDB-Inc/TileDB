@@ -37,6 +37,7 @@
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/sm/filter/bitsort_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter.h"
@@ -45,6 +46,8 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/tile.h"
+
+#include <memory>
 
 using namespace tiledb::common;
 
@@ -153,6 +156,172 @@ FilterPipeline::get_var_chunk_sizes(
 
 Status FilterPipeline::filter_chunks_forward(
     const Tile& tile,
+    std::vector<Tile*> dim_tiles,
+    uint32_t chunk_size,
+    FilteredBuffer& output,
+    ThreadPool* const compute_tp) const {
+  uint64_t last_buffer_size = chunk_size;
+  uint64_t nchunks = 1;
+  // if chunking will be used
+  if (tile.size() != chunk_size) {
+    nchunks = tile.size() / chunk_size;
+    last_buffer_size = tile.size() % chunk_size;
+    if (last_buffer_size != 0) {
+      nchunks++;
+    } else {
+      last_buffer_size = chunk_size;
+    }
+  }
+
+  // Vector storing the input and output of the final pipeline stage for each
+  // chunk.
+  std::vector<std::pair<FilterBufferPair, FilterBufferPair>> final_stage_io(
+      nchunks);
+
+  // Run each chunk through the entire pipeline.
+  auto status = parallel_for(compute_tp, 0, nchunks, [&](uint64_t i) {
+    // TODO(ttd): can we instead allocate one FilterStorage per thread?
+    // or make it threadsafe?
+    FilterStorage storage;
+    FilterBuffer input_data(&storage), output_data(&storage);
+    FilterBuffer input_metadata(&storage), output_metadata(&storage);
+
+    // First filter's input is the original chunk.
+    uint64_t offset = i * chunk_size;
+    void* chunk_buffer = static_cast<char*>(tile.data()) + offset;
+    uint32_t chunk_buffer_size =
+        i == nchunks - 1 ? last_buffer_size : chunk_size;
+    RETURN_NOT_OK(input_data.init(chunk_buffer, chunk_buffer_size));
+
+    // Apply the filters sequentially.
+    for (auto it = filters_.begin(), ite = filters_.end(); it != ite; ++it) {
+      auto& f = *it;
+
+      // Clear and reset I/O buffers
+      input_data.reset_offset();
+      input_data.set_read_only(true);
+      input_metadata.reset_offset();
+      input_metadata.set_read_only(true);
+
+      output_data.clear();
+      output_metadata.clear();
+
+      f->init_compression_resource_pool(compute_tp->concurrency_level());
+
+      if (f->type() == FilterType::FILTER_BITSORT) {
+        RETURN_NOT_OK(
+            std::dynamic_pointer_cast<const shared_ptr<BitSortFilter>>(f)
+                ->get()
+                ->run_forward(
+                    tile,
+                    dim_tiles,
+                    &input_metadata,
+                    &input_data,
+                    &output_metadata,
+                    &output_data));
+      } else {
+        RETURN_NOT_OK(f->run_forward(
+            tile,
+            nullptr,
+            &input_metadata,
+            &input_data,
+            &output_metadata,
+            &output_data));
+      }
+
+      input_data.set_read_only(false);
+      input_data.swap(output_data);
+      input_metadata.set_read_only(false);
+      input_metadata.swap(output_metadata);
+      // Next input (input_buffers) now stores this output (output_buffers).
+    }
+
+    // Save the finished chunk (last stage's output). This is safe to do
+    // because when the local FilterStorage goes out of scope, it will not
+    // free the buffers saved here as their shared_ptr counters will not
+    // be zero. However, as the output may have been a view on the input, we
+    // do need to save both here to prevent the input buffer from being
+    // freed.
+    auto& io = final_stage_io[i];
+    auto& io_input = io.first;
+    auto& io_output = io.second;
+    io_input.first.swap(input_metadata);
+    io_input.second.swap(input_data);
+    io_output.first.swap(output_metadata);
+    io_output.second.swap(output_data);
+    return Status::Ok();
+  });
+
+  RETURN_NOT_OK(status);
+
+  uint64_t total_processed_size = 0;
+  std::vector<uint32_t> var_chunk_sizes(final_stage_io.size());
+  uint64_t offset = sizeof(uint64_t);
+  std::vector<uint64_t> offsets(final_stage_io.size());
+  for (uint64_t i = 0; i < final_stage_io.size(); i++) {
+    auto& final_stage_output_metadata = final_stage_io[i].first.first;
+    auto& final_stage_output_data = final_stage_io[i].first.second;
+
+    // Check the size doesn't exceed the limit (should never happen).
+    if (final_stage_output_data.size() > std::numeric_limits<uint32_t>::max() ||
+        final_stage_output_metadata.size() >
+            std::numeric_limits<uint32_t>::max())
+      return LOG_STATUS(Status_FilterError(
+          "Filter error; filtered chunk size exceeds uint32_t"));
+
+    // Leave space for the chunk sizes and the data itself.
+    const uint32_t space_required = 3 * sizeof(uint32_t) +
+                                    final_stage_output_data.size() +
+                                    final_stage_output_metadata.size();
+
+    total_processed_size += space_required;
+    var_chunk_sizes[i] = space_required;
+    offsets[i] = offset;
+    offset += space_required;
+  }
+
+  // Allocate enough space in 'output' to store the leading uint64_t
+  // prefix containing the number of chunks and the 'total_processed_size'.
+  output.expand(sizeof(uint64_t) + total_processed_size);
+
+  // Write the leading prefix that contains the number of chunks.
+  memcpy(output.data(), &nchunks, sizeof(uint64_t));
+
+  // Concatenate all processed chunks into the final output buffer.
+  status = parallel_for(compute_tp, 0, final_stage_io.size(), [&](uint64_t i) {
+    auto& final_stage_output_metadata = final_stage_io[i].first.first;
+    auto& final_stage_output_data = final_stage_io[i].first.second;
+    auto filtered_size = (uint32_t)final_stage_output_data.size();
+    uint32_t orig_chunk_size =
+        i == final_stage_io.size() - 1 ? last_buffer_size : chunk_size;
+    auto metadata_size = (uint32_t)final_stage_output_metadata.size();
+    void* dest = output.data() + offsets[i];
+    uint64_t dest_offset = 0;
+
+    // Write the original (unfiltered) chunk size
+    std::memcpy((char*)dest + dest_offset, &orig_chunk_size, sizeof(uint32_t));
+    dest_offset += sizeof(uint32_t);
+    // Write the filtered chunk size
+    std::memcpy((char*)dest + dest_offset, &filtered_size, sizeof(uint32_t));
+    dest_offset += sizeof(uint32_t);
+    // Write the metadata size
+    std::memcpy((char*)dest + dest_offset, &metadata_size, sizeof(uint32_t));
+    dest_offset += sizeof(uint32_t);
+    // Write the chunk metadata
+    RETURN_NOT_OK(
+        final_stage_output_metadata.copy_to((char*)dest + dest_offset));
+    dest_offset += metadata_size;
+    // Write the chunk data
+    RETURN_NOT_OK(final_stage_output_data.copy_to((char*)dest + dest_offset));
+    return Status::Ok();
+  });
+
+  RETURN_NOT_OK(status);
+  return Status::Ok();
+}
+
+Status FilterPipeline::filter_chunks_forward(
+    const Tile& tile,
     Tile* const offsets_tile,
     uint32_t chunk_size,
     std::vector<uint64_t>& chunk_offsets,
@@ -211,26 +380,13 @@ Status FilterPipeline::filter_chunks_forward(
       output_metadata.clear();
 
       f->init_compression_resource_pool(compute_tp->concurrency_level());
-
-      if (f->type() == FilterType::FILTER_BITSORT) {
-        std::vector<Tile*> dim_tiles; // dummy arg, change
-        RETURN_NOT_OK(f->run_forward(
-          tile,
-          offsets_tile,
-          dim_tiles,
-          &input_metadata,
-          &input_data,
-          &output_metadata,
-          &output_data));
-      } else {
-        RETURN_NOT_OK(f->run_forward(
+      RETURN_NOT_OK(f->run_forward(
           tile,
           offsets_tile,
           &input_metadata,
           &input_data,
           &output_metadata,
           &output_data));
-      }
 
       input_data.set_read_only(false);
       input_data.swap(output_data);
@@ -476,6 +632,42 @@ Status FilterPipeline::run_forward(
           *chunk_offsets,
           tile->filtered_buffer(),
           compute_tp),
+      tile->filtered_buffer().clear());
+
+  // The contents of 'buffer' have been filtered and stored
+  // in 'filtered_buffer'. We can safely free 'buffer'.
+  tile->clear_data();
+
+  return Status::Ok();
+}
+
+Status FilterPipeline::run_forward(
+    stats::Stats* writer_stats,
+    Tile* tile,
+    std::vector<Tile*> dim_tiles,
+    ThreadPool* compute_tp,
+    bool use_chunking) const {
+  RETURN_NOT_OK(
+      tile ? Status::Ok() : Status_Error("invalid argument: null Tile*"));
+
+  writer_stats->add_counter("write_filtered_byte_num", tile->size());
+
+  uint32_t chunk_size = 0;
+  if (use_chunking) {
+    RETURN_NOT_OK(Tile::compute_chunk_size(
+        tile->size(),
+        tile->zipped_coords_dim_num(),
+        tile->cell_size(),
+        &chunk_size));
+  } else {
+    chunk_size = tile->size();
+  }
+
+  // Run the filters over all the chunks and store the result in
+  // 'filtered_buffer'.
+  RETURN_NOT_OK_ELSE(
+      filter_chunks_forward(
+          *tile, dim_tiles, chunk_size, tile->filtered_buffer(), compute_tp),
       tile->filtered_buffer().clear());
 
   // The contents of 'buffer' have been filtered and stored

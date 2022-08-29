@@ -676,38 +676,83 @@ Status WriterBase::filter_tiles(
   auto timer_se = stats_->start_timer("filter_tiles");
 
   std::vector<WriterTileVector*> dim_tiles;
-  // has_bitsort_filter gives an attribute name and we pass in dim_tiles to only this attribute.
+  // has_bitsort_filter gives an attribute name and we pass in dim_tiles to only
+  // this attribute.
   auto attr_value = array_schema_.has_bitsort_filter();
   if (attr_value) {
-    for (const auto &name : array_schema_.dim_names()) {
+    std::string attr_name = attr_value.value();
+    for (const auto& name : array_schema_.dim_names()) {
       dim_tiles.push_back(&((*tiles)[name]));
     }
-  }
 
-  // Coordinates
-  auto num = buffers_.size();
-  auto status =
-      parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
-        auto buff_it = buffers_.begin();
-        std::advance(buff_it, i);
-        const auto& name = buff_it->first;
-        if (attr_value && attr_value.value() == name) {
-          RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name]), dim_tiles));
-        } else {
+    RETURN_CANCEL_OR_ERROR(
+        filter_tiles(attr_name, &((*tiles)[attr_name]), dim_tiles));
+
+    auto num = buffers_.size();
+    auto status =
+        parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
+          auto buff_it = buffers_.begin();
+          std::advance(buff_it, i);
+          const auto& name = buff_it->first;
+          if (array_schema_.is_attr(name) && name != attr_name) {
+            RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
+          }
+          return Status::Ok();
+        });
+
+    RETURN_NOT_OK(status);
+  } else {
+    auto num = buffers_.size();
+    auto status =
+        parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
+          auto buff_it = buffers_.begin();
+          std::advance(buff_it, i);
+          const auto& name = buff_it->first;
           RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
-        }
-        return Status::Ok();
-      });
+          return Status::Ok();
+        });
 
-  RETURN_NOT_OK(status);
-
+    RETURN_NOT_OK(status);
+  }
   return Status::Ok();
 }
 
 Status WriterBase::filter_tiles(
-    const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*> &dim_tiles) {
-  // Constraints: attribute must be sized
+    const std::string& name,
+    WriterTileVector* tiles,
+    const std::vector<WriterTileVector*>& dim_tiles) {
+  // Constraints: attribute must be fixed sized and non nullable
 
+  /**
+   *  tiles[0]
+   *  dim_tiles[{0, n-1}][0]
+   *  global order
+   *
+   */
+
+  // TODO: no way this is the fastest way
+  std::vector<std::pair<Tile*, std::vector<Tile*>>> args;
+  auto args_status = parallel_for(
+      storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+        auto& tile = (*tiles)[i];
+        std::vector<Tile*> dim_tiles_temp;
+        for (const auto& elem : dim_tiles) {
+          dim_tiles_temp.push_back(&((*elem)[i].fixed_tile()));
+        }
+
+        args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp);
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(args_status);
+
+  auto filter_tiles_status = parallel_for(
+      storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
+        const auto& [tile, dim_tiles_arr] = args[i];
+        RETURN_NOT_OK(filter_tile(name, tile, dim_tiles_arr));
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(filter_tiles_status);
+  return Status::Ok();
 }
 
 Status WriterBase::filter_tiles(
@@ -756,6 +801,26 @@ Status WriterBase::filter_tiles(
     RETURN_NOT_OK(status);
   }
 
+  return Status::Ok();
+}
+
+Status WriterBase::filter_tile(
+    const std::string& name, Tile* tile, std::vector<Tile*> dim_tiles) {
+  // Get a copy of the appropriate filter pipeline.
+  FilterPipeline filters = array_schema_.filters(name);
+
+  // Append an encryption filter when necessary.
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()));
+
+  // Check if chunk or tile level filtering/unfiltering is appropriate
+  bool use_chunking = filters.use_tile_chunking(
+      array_schema_.var_size(name), array_schema_.version(), tile->type());
+
+  assert(!tile->filtered());
+  RETURN_NOT_OK(filters.run_forward(
+      stats_, tile, dim_tiles, storage_manager_->compute_tp(), use_chunking));
+  assert(tile->filtered());
   return Status::Ok();
 }
 
