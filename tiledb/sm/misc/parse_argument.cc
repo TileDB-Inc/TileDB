@@ -168,15 +168,20 @@ Status convert(const std::string& str, double* value) {
 Status convert(const std::string& str, bool* value) {
   std::string lvalue = str;
   std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::tolower);
-  if (lvalue == "true") {
+  if (lvalue == "true" || lvalue == "1") {
     *value = true;
-  } else if (lvalue == "false") {
+  } else if (lvalue == "false" || lvalue == "0") {
     *value = false;
   } else {
     return LOG_STATUS(Status_UtilsError(
         "Failed to convert string to bool; Value not 'true' or 'false'"));
   }
 
+  return Status::Ok();
+}
+
+Status convert(const std::string& str, std::string* value) {
+  *value = str;
   return Status::Ok();
 }
 

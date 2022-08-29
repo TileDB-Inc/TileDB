@@ -76,6 +76,10 @@ Status convert(const std::string& str, double* value);
 /** Converts the input string into a `bool` value. */
 Status convert(const std::string& str, bool* value);
 
+/** Converts the input string into a `string` value.
+ *  Supports using `convert` in templates where value may already be a string */
+Status convert(const std::string& str, std::string* value);
+
 /** Converts the input string into a `SerializationType` value. */
 Status convert(const std::string& str, SerializationType* value);
 

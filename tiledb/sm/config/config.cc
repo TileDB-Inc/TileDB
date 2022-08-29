@@ -1033,7 +1033,7 @@ const char* Config::get_from_config_or_env(
 }
 
 template <class T, bool will_throw>
-optional<T> Config::get_or_throw(const std::string& key) const {
+optional<T> Config::get_internal(const std::string& key) const {
   bool found;
   const char* value = get_from_config_or_env(key, &found);
   if (found) {
@@ -1042,26 +1042,11 @@ optional<T> Config::get_or_throw(const std::string& key) const {
     if (status.ok()) {
       return {converted_value};
     }
-    if constexpr (will_throw) {
-      throw_config_exception(
-          "Failed to parse config value '" + std::string(value) +
-          "' for key '" + key + "'. Reason: " + status.to_string());
-    }
+    throw_config_exception(
+        "Failed to parse config value '" + std::string(value) + "' for key '" +
+        key + "'. Reason: " + status.to_string());
   }
 
-  if constexpr (will_throw) {
-    throw_config_exception("Failed to get config value for key: " + key);
-  }
-  return {nullopt};
-}
-
-template <bool will_throw>
-optional<std::string> Config::get_or_throw(const std::string& key) const {
-  bool found;
-  const char* value = get_from_config_or_env(key, &found);
-  if (found) {
-    return {value};
-  }
   if constexpr (will_throw) {
     throw_config_exception("Failed to get config value for key: " + key);
   }
@@ -1111,37 +1096,37 @@ template float Config::get<float>(
 template double Config::get<double>(
     const std::string&, const Config::MustFindMarker&) const;
 
-template optional<bool> Config::get_or_throw<bool, false>(
+template optional<bool> Config::get_internal<bool, false>(
     const std::string& key) const;
-template optional<bool> Config::get_or_throw<bool, true>(
+template optional<bool> Config::get_internal<bool, true>(
     const std::string& key) const;
-template optional<int> Config::get_or_throw<int, false>(
+template optional<int> Config::get_internal<int, false>(
     const std::string& key) const;
-template optional<int> Config::get_or_throw<int, true>(
+template optional<int> Config::get_internal<int, true>(
     const std::string& key) const;
-template optional<uint32_t> Config::get_or_throw<uint32_t, false>(
+template optional<uint32_t> Config::get_internal<uint32_t, false>(
     const std::string& key) const;
-template optional<uint32_t> Config::get_or_throw<uint32_t, true>(
+template optional<uint32_t> Config::get_internal<uint32_t, true>(
     const std::string& key) const;
-template optional<int64_t> Config::get_or_throw<int64_t, false>(
+template optional<int64_t> Config::get_internal<int64_t, false>(
     const std::string& key) const;
-template optional<int64_t> Config::get_or_throw<int64_t, true>(
+template optional<int64_t> Config::get_internal<int64_t, true>(
     const std::string& key) const;
-template optional<uint64_t> Config::get_or_throw<uint64_t, false>(
+template optional<uint64_t> Config::get_internal<uint64_t, false>(
     const std::string& key) const;
-template optional<uint64_t> Config::get_or_throw<uint64_t, true>(
+template optional<uint64_t> Config::get_internal<uint64_t, true>(
     const std::string& key) const;
-template optional<float> Config::get_or_throw<float, false>(
+template optional<float> Config::get_internal<float, false>(
     const std::string& key) const;
-template optional<float> Config::get_or_throw<float, true>(
+template optional<float> Config::get_internal<float, true>(
     const std::string& key) const;
-template optional<double> Config::get_or_throw<double, false>(
+template optional<double> Config::get_internal<double, false>(
     const std::string& key) const;
-template optional<double> Config::get_or_throw<double, true>(
+template optional<double> Config::get_internal<double, true>(
     const std::string& key) const;
-template optional<std::string> Config::get_or_throw<false>(
+template optional<std::string> Config::get_internal<std::string, false>(
     const std::string& key) const;
-template optional<std::string> Config::get_or_throw<true>(
+template optional<std::string> Config::get_internal<std::string, true>(
     const std::string& key) const;
 
 }  // namespace tiledb::sm

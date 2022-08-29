@@ -563,16 +563,6 @@ class Config {
   Status set(const std::string& param, const std::string& value);
 
   /**
-   * Retrieve the string value of a configuration parameter.
-   *
-   * @param key The name of the configuration parameter
-   * @return If a configuration item is present, its value. If not, `nullopt`.
-   */
-  [[nodiscard]] inline optional<std::string> get(const std::string& key) const {
-    return get_or_throw<false>(key);
-  }
-
-  /**
    * Retrieve the string value of a configuration parameter and convert it to
    * a designated type.
    *
@@ -581,16 +571,19 @@ class Config {
    */
   template <class T>
   [[nodiscard]] inline optional<T> get(const std::string& key) const {
-    return get_or_throw<T, false>(key);
+    return get_internal<T, false>(key);
   }
 
   /**
    * Retrieves the value of the given parameter in the templated type.
    * Throws Status_ConfigError if config value could not be found
+   *
+   * @param key The name of the configuration parameter
+   * @return The value of the configuration parameter
    */
   template <class T>
   inline T get(const std::string& key, const MustFindMarker&) const {
-    return get_or_throw<T, true>(key).value();
+    return get_internal<T, true>(key).value();
   }
 
   /**
@@ -709,27 +702,8 @@ class Config {
       const std::string& param, bool* found) const;
 
   template <class T, bool will_throw>
-  optional<T> get_or_throw(const std::string& key) const;
-
-  template <bool will_throw>
-  optional<std::string> get_or_throw(const std::string& key) const;
+  optional<T> get_internal(const std::string& key) const;
 };
-
-/**
- * An explicit specialization for `std::string`. It does not call a conversion
- * function and it is thus the same as the non-template `get`.
- */
-template <>
-[[nodiscard]] inline optional<std::string> Config::get<std::string>(
-    const std::string& key) const {
-  return get_or_throw<false>(key);
-}
-
-template <>
-inline std::string Config::get<std::string>(
-    const std::string& key, const Config::MustFindMarker&) const {
-  return get_or_throw<true>(key).value();
-}
 
 }  // namespace tiledb::sm
 
