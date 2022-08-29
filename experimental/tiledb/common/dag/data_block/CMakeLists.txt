@@ -111,3 +111,44 @@ if (TILEDB_TESTS)
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
+
+# list(APPEND SOURCES
+# )
+# gather_sources(${SOURCES})
+
+#
+# Object library for other units to depend upon
+#
+# add_library(blocks_and_ports OBJECT ${SOURCES})
+# target_link_libraries(blocks_and_ports PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+
+#
+# Test-compile of object library ensures link-completeness
+#
+# add_executable(compile_blocks_and_ports EXCLUDE_FROM_ALL)
+# target_link_libraries(compile_blocks_and_ports PRIVATE blocks_and_ports)
+# target_sources(compile_blocks_and_ports PRIVATE test/compile_blocks_and_ports_main.cc)
+
+if (TILEDB_TESTS)
+    add_executable(unit_blocks_and_ports EXCLUDE_FROM_ALL)
+#    target_link_libraries(unit_blocks_and_ports PUBLIC blocks_and_ports)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_blocks_and_ports PUBLIC Catch2::Catch2)
+#    target_link_libraries(unit_blocks_and_ports PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_blocks_and_ports PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_blocks_and_ports PUBLIC
+            test/main.cc
+            test/unit_blocks_and_ports.cc
+            )
+
+    add_test(
+            NAME "unit_blocks_and_ports"
+            COMMAND $<TARGET_FILE:unit_blocks_and_ports> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()
+

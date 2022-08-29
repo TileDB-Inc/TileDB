@@ -159,7 +159,7 @@ Status Array::open_without_fragments(
   /* Note: the open status MUST be exception safe. If anything interrupts the
    * opening process, it will throw and the array will be set as closed. */
   try {
-    set_array_open();
+    set_array_open(query_type_);
 
     // Copy the key bytes.
     st = encryption_key_->set_key(encryption_type, encryption_key, key_length);
@@ -195,7 +195,7 @@ Status Array::open_without_fragments(
           array_uri_,
           0,
           UINT64_MAX,
-          ArrayDirectoryMode::SCHEMA_ONLY);
+          ArrayDirectoryMode::READ);
 
       auto&& [st, array_schema, array_schemas] =
           storage_manager_->array_open_for_reads_without_fragments(this);
@@ -225,10 +225,32 @@ Status Array::load_fragments(
   return Status::Ok();
 }
 
-void Array::set_delete_tiles_location(
-    const std::vector<ArrayDirectory::DeleteTileLocation>&
-        delete_tiles_location) {
-  array_dir_.set_delete_tiles_location(delete_tiles_location);
+Status Array::delete_fragments(
+    const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
+  // Check that query type is MODIFY_EXCLUSIVE
+  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+    return LOG_STATUS(Status_ArrayError(
+        "[Array::delete_fragments] Query type must be MODIFY_EXCLUSIVE"));
+  }
+
+  // Check that array is open
+  if (!is_open() && !controller().is_open(uri)) {
+    return LOG_STATUS(
+        Status_ArrayError("[Array::delete_fragments] Array is closed"));
+  }
+
+  // Check that array is not in the process of opening or closing
+  if (is_opening_or_closing_) {
+    return LOG_STATUS(Status_ArrayError(
+        "[Array::delete_fragments] "
+        "May not perform simultaneous open or close operations."));
+  }
+
+  // Vacuum fragments for deletes
+  RETURN_NOT_OK(storage_manager_->fragments_vacuum(
+      uri.c_str(), timestamp_start, timestamp_end, true));
+
+  return Status::Ok();
 }
 
 Status Array::open(
@@ -254,7 +276,7 @@ Status Array::open(
     uint32_t key_length) {
   Status st;
   // Checks
-  if (is_open_) {
+  if (is_open()) {
     return LOG_STATUS(
         Status_ArrayError("Cannot open array; Array already open"));
   }
@@ -264,15 +286,12 @@ Status Array::open(
   non_empty_domain_computed_ = false;
   timestamp_start_ = timestamp_start;
   timestamp_end_opened_at_ = timestamp_end;
-
-  /* Note: query_type_ MUST be set before calling set_array_open()
-    because it will be examined by the ConsistencyController. */
   query_type_ = query_type;
 
   /* Note: the open status MUST be exception safe. If anything interrupts the
    * opening process, it will throw and the array will be set as closed. */
   try {
-    set_array_open();
+    set_array_open(query_type);
 
     // Get encryption key from config
     std::string encryption_key_from_cfg;
@@ -324,7 +343,9 @@ Status Array::open(
       if (query_type == QueryType::READ) {
         timestamp_end_opened_at_ = utils::time::timestamp_now_ms();
       } else if (
-          query_type == QueryType::WRITE || query_type == QueryType::DELETE) {
+          query_type == QueryType::WRITE ||
+          query_type == QueryType::MODIFY_EXCLUSIVE ||
+          query_type == QueryType::DELETE) {
         timestamp_end_opened_at_ = 0;
       } else {
         throw Status_ArrayError("Cannot open array; Unsupported query type.");
@@ -428,7 +449,9 @@ Status Array::close() {
     if (remote_) {
       // Update array metadata for write queries if metadata was written by the
       // user
-      if (query_type_ == QueryType::WRITE && metadata_.num() > 0) {
+      if ((query_type_ == QueryType::WRITE ||
+           query_type_ == QueryType::MODIFY_EXCLUSIVE) &&
+          metadata_.num() > 0) {
         // Set metadata loaded to be true so when serialization fetchs the
         // metadata it won't trigger a deadlock
         metadata_loaded_ = true;
@@ -450,7 +473,9 @@ Status Array::close() {
         st = storage_manager_->array_close_for_reads(this);
         if (!st.ok())
           throw StatusException(st);
-      } else if (query_type_ == QueryType::WRITE) {
+      } else if (
+          query_type_ == QueryType::WRITE ||
+          query_type_ == QueryType::MODIFY_EXCLUSIVE) {
         st = storage_manager_->array_close_for_writes(this);
         if (!st.ok())
           throw StatusException(st);
@@ -504,16 +529,14 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> Array::get_array_schema()
   return {Status::Ok(), array_schema_latest_};
 }
 
-Status Array::get_query_type(QueryType* query_type) const {
+QueryType Array::get_query_type() const {
   // Error if the array is not open
   if (!is_open_) {
-    return LOG_STATUS(
+    throw StatusException(
         Status_ArrayError("Cannot get query_type; Array is not open"));
   }
 
-  *query_type = query_type_;
-
-  return Status::Ok();
+  return query_type_;
 }
 
 Status Array::get_max_buffer_size(
@@ -758,10 +781,11 @@ Status Array::delete_metadata(const char* key) {
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE) {
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(
         Status_ArrayError("Cannot delete metadata. Array was "
-                          "not opened in write mode"));
+                          "not opened in write or modify_exclusive mode"));
   }
 
   // Check if key is null
@@ -787,10 +811,11 @@ Status Array::put_metadata(
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE) {
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(
         Status_ArrayError("Cannot put metadata; Array was "
-                          "not opened in write mode"));
+                          "not opened in write or modify_exclusive mode"));
   }
 
   // Check if key is null
@@ -1164,7 +1189,7 @@ Status Array::compute_non_empty_domain() {
   return Status::Ok();
 }
 
-void Array::set_array_open() {
+void Array::set_array_open(const QueryType& query_type) {
   std::lock_guard<std::mutex> lock(mtx_);
   if (is_opening_or_closing_) {
     is_opening_or_closing_ = false;
@@ -1178,7 +1203,7 @@ void Array::set_array_open() {
    * only the pointer value is used and nothing is called on the Array objects.
    */
   consistency_sentry_.emplace(
-      consistency_controller_.make_sentry(array_uri_, *this));
+      consistency_controller_.make_sentry(array_uri_, *this, query_type));
   is_open_ = true;
 }
 

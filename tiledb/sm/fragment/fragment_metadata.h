@@ -282,7 +282,7 @@ class FragmentMetadata {
       std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
   /** Stores all the metadata to storage. */
-  Status store(const EncryptionKey& encryption_key);
+  void store(const EncryptionKey& encryption_key);
 
   /**
    * Stores all the metadata to storage.
@@ -1426,7 +1426,7 @@ class FragmentMetadata {
   /**
    * Loads the processed conditions for the fragment.
    */
-  Status load_processed_conditions(ConstBuffer* buff);
+  Status load_processed_conditions(Deserializer& deserializer);
 
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
@@ -1666,7 +1666,7 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written.
    * @return Status
    */
-  Status store_processed_conditions(
+  void store_processed_conditions(
       const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**

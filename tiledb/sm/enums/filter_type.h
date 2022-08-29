@@ -90,6 +90,8 @@ inline const std::string& filter_type_str(FilterType filter_type) {
       return constants::filter_dictionary_str;
     case FilterType::FILTER_SCALE_FLOAT:
       return constants::filter_scale_float_str;
+    case FilterType::FILTER_XOR:
+      return constants::filter_xor_str;
     case FilterType::FILTER_BITSORT:
       return constants::filter_bitsort_str;
     default:
@@ -130,6 +132,8 @@ inline Status filter_type_enum(
     *filter_type = FilterType::FILTER_DICTIONARY;
   else if (filter_type_str == constants::filter_scale_float_str)
     *filter_type = FilterType::FILTER_SCALE_FLOAT;
+  else if (filter_type_str == constants::filter_xor_str)
+    *filter_type = FilterType::FILTER_XOR;
   else if (filter_type_str == constants::filter_bitsort_str)
     *filter_type = FilterType::FILTER_BITSORT;
   else {
@@ -140,7 +144,7 @@ inline Status filter_type_enum(
 
 /** Throws error if the input Filtertype enum is not between 0 and 15. */
 inline void ensure_filtertype_is_valid(uint8_t type) {
-  if (type > 16) {
+  if (type > 17) {
     throw std::runtime_error(
         "Invalid FilterType (" + std::to_string(type) + ")");
   }

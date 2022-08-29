@@ -27,9 +27,17 @@
  */
 
 #include "../ports.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#include "experimental/tiledb/common/dag/state_machine/policies.h"
+#include "experimental/tiledb/common/dag/state_machine/test/types.h"
+
+using namespace tiledb::common;
 
 int main() {
-  (void)sizeof(tiledb::common::Sink);
-  (void)sizeof(tiledb::common::Source);
-  return 0;
+  (void)sizeof(tiledb::common::Sink<NullMover3, size_t>);
+  (void)sizeof(tiledb::common::Sink<NullMover2, size_t>);
+  (void)sizeof(tiledb::common::Sink<DebugMover3, size_t>);
+  (void)sizeof(tiledb::common::Sink<DebugMover2, size_t>);
+  (void)sizeof(tiledb::common::Sink<AsyncMover3, size_t>);
+  (void)sizeof(tiledb::common::Sink<AsyncMover2, size_t>);
 }

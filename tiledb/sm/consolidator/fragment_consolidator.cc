@@ -100,21 +100,17 @@ Status FragmentConsolidator::consolidate(
   // which dense fragments are consolidatable.
   FragmentInfo fragment_info(URI(array_name), storage_manager_);
   auto st = fragment_info.load(
+      array_for_reads->array_directory(),
       config_.timestamp_start_,
       config_.timestamp_end_,
       encryption_type,
       encryption_key,
-      key_length,
-      array_for_reads->array_schema_latest().dense());
+      key_length);
   if (!st.ok()) {
     array_for_reads->close();
     array_for_writes->close();
     return st;
   }
-
-  // Set the delete tiles location in the open array.
-  array_for_reads->set_delete_tiles_location(
-      fragment_info.delete_tiles_location());
 
   uint32_t step = 0;
   std::vector<TimestampedURI> to_consolidate;
@@ -212,21 +208,17 @@ Status FragmentConsolidator::consolidate_fragments(
   // Get all fragment info
   FragmentInfo fragment_info(URI(array_name), storage_manager_);
   auto st = fragment_info.load(
+      array_for_reads->array_directory(),
       0,
       utils::time::timestamp_now_ms(),
       encryption_type,
       encryption_key,
-      key_length,
-      false);
+      key_length);
   if (!st.ok()) {
     array_for_reads->close();
     array_for_writes->close();
     return st;
   }
-
-  // Set the delete tiles location in the open array.
-  array_for_reads->set_delete_tiles_location(
-      fragment_info.delete_tiles_location());
 
   // Make a set of the uris to consolidate
   NDRange union_non_empty_domains;
@@ -289,20 +281,27 @@ Status FragmentConsolidator::consolidate_fragments(
 }
 
 Status FragmentConsolidator::vacuum(const char* array_name) {
+  return vacuum(array_name, 0, std::numeric_limits<uint64_t>::max(), false);
+}
+
+Status FragmentConsolidator::vacuum(
+    const char* array_name,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    bool for_deletes) {
   if (array_name == nullptr)
     return logger_->status(Status_StorageManagerError(
         "Cannot vacuum fragments; Array name cannot be null"));
 
-  // Get the fragment URIs and vacuum file URIs to be vacuum
+  // Get the fragment URIs and vacuum file URIs to be vacuumed
   auto vfs = storage_manager_->vfs();
   auto compute_tp = storage_manager_->compute_tp();
-
   auto array_dir = ArrayDirectory(
       vfs,
       compute_tp,
       URI(array_name),
-      0,
-      std::numeric_limits<uint64_t>::max(),
+      timestamp_start,
+      timestamp_end,
       ArrayDirectoryMode::VACUUM_FRAGMENTS);
 
   auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
@@ -363,6 +362,16 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
+
+  // Delete fragments if vacuuming for deletes
+  if (for_deletes) {
+    const auto& fragment_uris = filtered_fragment_uris.fragment_uris();
+    status = parallel_for(compute_tp, 0, fragment_uris.size(), [&](size_t i) {
+      RETURN_NOT_OK(vfs->remove_dir(fragment_uris[i].uri_));
+      return Status::Ok();
+    });
+    RETURN_NOT_OK(status);
+  }
 
   return Status::Ok();
 }

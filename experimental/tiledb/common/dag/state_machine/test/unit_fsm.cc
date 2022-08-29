@@ -47,43 +47,58 @@
 #include <mutex>
 #include <numeric>
 #include <thread>
+#include <tuple>
 #include <vector>
-#include "experimental/tiledb/common/dag/ports/fsm.h"
-#include "experimental/tiledb/common/dag/ports/policies.h"
-#include "helpers.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#include "experimental/tiledb/common/dag/state_machine/policies.h"
+#include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
+#include "experimental/tiledb/common/dag/state_machine/test/types.h"
 
 using namespace tiledb::common;
 
-// using PortStateMachine = NullStateMachine;
+TEST_CASE("Port FSM: Construct DebugStateMachine2", "[fsm]") {
+  [[maybe_unused]] auto a = DebugStateMachine2<size_t>{};
 
-/*
- * Use the `DebugStateMachine` to verify startup state and some simple
- * transitions.
- */
-using PortStateMachine = DebugStateMachine<size_t>;
+  CHECK(a.state() == two_stage::st_00);
+}
 
-TEST_CASE("Port FSM: Construct", "[fsm]") {
-  [[maybe_unused]] auto a = PortStateMachine{};
+TEST_CASE("Port FSM: Copy, Move, etc", "[fsm]") {
+  [[maybe_unused]] auto a = DebugStateMachine3<size_t>{};
+  std::vector<DebugStateMachine2<size_t>> v;
+  v.reserve(55);
 
-  CHECK(a.state() == PortState::empty_empty);
+  [[maybe_unused]] auto b = DebugStateMachine2<size_t>{};
+
+  std::vector<DebugStateMachine3<size_t>> w;
+  w.reserve(55);
+
+  auto t = std::make_tuple(a, b);
+  std::vector<decltype(t)> u;
+  u.reserve(55);
+
+  auto foo = [](DebugStateMachine3<size_t>&&) {};
+  auto bar = [](DebugStateMachine2<size_t>&&) {};
+
+  foo(std::move(a));
+  bar(std::move(b));
 }
 
 TEST_CASE("Port FSM: Start up", "[fsm]") {
   constexpr bool debug = false;
-  [[maybe_unused]] auto a = PortStateMachine{};
+  [[maybe_unused]] auto a = DebugStateMachine2<size_t>{};
 
   if (debug)
     a.enable_debug();
-  CHECK(a.state() == PortState::empty_empty);
+  CHECK(a.state() == two_stage::st_00);
 
   SECTION("start source") {
     a.do_fill(debug ? "start source" : "");
-    CHECK(a.state() == PortState::full_empty);
+    CHECK(str(a.state()) == "st_10");
   }
 
   SECTION("start sink") {
     a.do_fill(debug ? "start sink (fill)" : "");
-    CHECK(str(a.state()) == "full_empty");
+    CHECK(str(a.state()) == "st_10");
     a.do_push(debug ? "start sink (push)" : "");
     CHECK(is_source_empty(a.state()) == "");
     a.do_drain(debug ? "start sink (drain)" : "");
@@ -92,68 +107,185 @@ TEST_CASE("Port FSM: Start up", "[fsm]") {
 }
 
 /*
- * Use the `DebugStateMachine` to verify startup state and some more involved
+ * Use the `DebugPolicy` to verify startup state and some more involved
  * transition sequences.
  */
 TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
-  [[maybe_unused]] auto a = PortStateMachine{};
-  CHECK(a.state() == PortState::empty_empty);
+  [[maybe_unused]] auto a = DebugStateMachine2<size_t>{};
+  CHECK(a.state() == two_stage::st_00);
 
   a.do_fill();
-  CHECK(str(a.state()) == "full_empty");
+  CHECK(str(a.state()) == "st_10");
   a.do_push();
-  CHECK(str(a.state()) == "empty_full");
+  CHECK(str(a.state()) == "st_01");
   a.do_fill();
-  CHECK(str(a.state()) == "full_full");
+  CHECK(str(a.state()) == "st_11");
   a.do_drain();
-  CHECK(str(a.state()) == "full_empty");
+  CHECK(str(a.state()) == "st_10");
   a.do_push();
-  CHECK(str(a.state()) == "empty_full");
+  CHECK(str(a.state()) == "st_01");
 
   a.do_drain();
-  CHECK(str(a.state()) == "empty_empty");
+  CHECK(str(a.state()) == "st_00");
 
   a.do_fill();
-  CHECK(str(a.state()) == "full_empty");
+  CHECK(str(a.state()) == "st_10");
   a.do_pull();
-  CHECK(str(a.state()) == "empty_full");
+  CHECK(str(a.state()) == "st_01");
   a.do_fill();
-  CHECK(str(a.state()) == "full_full");
+  CHECK(str(a.state()) == "st_11");
   a.do_drain();
-  CHECK(str(a.state()) == "full_empty");
+  CHECK(str(a.state()) == "st_10");
   a.do_pull();
-  CHECK(str(a.state()) == "empty_full");
+  CHECK(str(a.state()) == "st_01");
 
   a.do_drain();
-  CHECK(a.state() == PortState::empty_empty);
+  CHECK(a.state() == two_stage::st_00);
 
   a.do_fill();
-  CHECK(str(a.state()) == "full_empty");
+  CHECK(str(a.state()) == "st_10");
   a.do_push();
-  CHECK(str(a.state()) == "empty_full");
+  CHECK(str(a.state()) == "st_01");
   a.do_fill();
-  CHECK(str(a.state()) == "full_full");
+  CHECK(str(a.state()) == "st_11");
   a.do_drain();
-  CHECK(str(a.state()) == "full_empty");
+  CHECK(str(a.state()) == "st_10");
   a.do_pull();
-  CHECK(str(a.state()) == "empty_full");
+  CHECK(str(a.state()) == "st_01");
 
   a.do_drain();
-  CHECK(a.state() == PortState::empty_empty);
+  CHECK(a.state() == two_stage::st_00);
 
   a.do_fill();
-  CHECK(str(a.state()) == "full_empty");
+  CHECK(str(a.state()) == "st_10");
   a.do_pull();
-  CHECK(str(a.state()) == "empty_full");
+  CHECK(str(a.state()) == "st_01");
   a.do_fill();
-  CHECK(str(a.state()) == "full_full");
+  CHECK(str(a.state()) == "st_11");
   a.do_drain();
-  CHECK(str(a.state()) == "full_empty");
+  CHECK(str(a.state()) == "st_10");
   a.do_push();
-  CHECK(str(a.state()) == "empty_full");
+  CHECK(str(a.state()) == "st_01");
 
   a.do_drain();
-  CHECK(a.state() == PortState::empty_empty);
+  CHECK(a.state() == two_stage::st_00);
+}
+
+/*
+ * Use the `DebugStateMachine` to verify startup state and some more involved
+ * transition sequences.
+ */
+TEST_CASE("Port FSM3: Basic manual sequence", "[fsm]") {
+  [[maybe_unused]] auto a = DebugStateMachine3<size_t>{};
+  CHECK(a.state() == three_stage::st_000);
+
+  SECTION("Two element tests") {
+    a.do_fill();
+    CHECK(str(a.state()) == "st_100");
+    a.do_push();
+    CHECK(str(a.state()) == "st_001");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_101");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_100");
+    a.do_push();
+    CHECK(str(a.state()) == "st_001");
+
+    a.do_drain();
+    CHECK(str(a.state()) == "st_000");
+
+    a.do_fill();
+    CHECK(str(a.state()) == "st_100");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_001");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_101");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_100");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_001");
+
+    a.do_drain();
+    CHECK(str(a.state()) == "st_000");
+
+    a.do_fill();
+    CHECK(str(a.state()) == "st_100");
+    a.do_push();
+    CHECK(str(a.state()) == "st_001");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_101");
+    a.do_push();
+    CHECK(str(a.state()) == "st_011");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_010");
+    a.do_push();
+    CHECK(str(a.state()) == "st_001");
+
+    a.do_drain();
+    CHECK(str(a.state()) == "st_000");
+
+    a.do_fill();
+    CHECK(str(a.state()) == "st_100");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_001");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_101");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_011");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_010");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_001");
+
+    a.do_drain();
+    CHECK(str(a.state()) == "st_000");
+  }
+
+  SECTION("three element tests") {
+    a.do_fill();
+    CHECK(str(a.state()) == "st_100");
+    a.do_push();
+    CHECK(str(a.state()) == "st_001");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_101");
+    a.do_push();
+    CHECK(str(a.state()) == "st_011");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_111");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_110");
+    a.do_push();
+    CHECK(str(a.state()) == "st_011");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_010");
+    a.do_push();
+    CHECK(str(a.state()) == "st_001");
+
+    a.do_drain();
+    CHECK(str(a.state()) == "st_000");
+
+    a.do_fill();
+    CHECK(str(a.state()) == "st_100");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_001");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_101");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_011");
+    a.do_fill();
+    CHECK(str(a.state()) == "st_111");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_110");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_011");
+    a.do_drain();
+    CHECK(str(a.state()) == "st_010");
+    a.do_pull();
+    CHECK(str(a.state()) == "st_001");
+
+    a.do_drain();
+    CHECK(str(a.state()) == "st_000");
+  }
 }
 
 /**
@@ -161,15 +293,14 @@ TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
  * client as an asynchronous task and running an emulated sink client in the
  * main thread. The test just runs one pass of each emulated client.
  */
-TEST_CASE(
-    "AsynchronousStateMachine: Asynchronous source and manual sink", "[fsm]") {
+TEST_CASE("AsynchronousPolicy: Asynchronous source and manual sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine{source_item, sink_item, debug};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(two_stage::st_00);
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.do_fill(debug ? "async source (fill)" : "");
@@ -186,13 +317,13 @@ TEST_CASE(
   //  std::this_thread::sleep_for(std::chrono::microseconds(random_us(5000)));
 
   a.do_pull(debug ? "manual sink (pull)" : "");
-  CHECK(str(a.state()) == "empty_full");
+  CHECK(str(a.state()) == "st_01");
 
   a.do_drain(debug ? "manual sink (drain)" : "");
 
   fut_a.get();
 
-  CHECK(str(a.state()) == "empty_empty");
+  CHECK(str(a.state()) == "st_00");
 };
 
 /**
@@ -200,15 +331,14 @@ TEST_CASE(
  * client as an asynchronous task and running an emulated source client in the
  * main thread. The test just runs one pass of each emulated client.
  */
-TEST_CASE(
-    "AsynchronousStateMachine: Manual source and asynchronous sink", "[fsm]") {
+TEST_CASE("AsynchronousPolicy: Manual source and asynchronous sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine{source_item, sink_item, debug};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(two_stage::st_00);
 
   auto fut_b = std::async(std::launch::async, [&]() {
     a.do_pull(debug ? "async sink (pull)" : "");
@@ -229,7 +359,7 @@ TEST_CASE(
 
   fut_b.get();
 
-  CHECK(str(a.state()) == "empty_empty");
+  CHECK(str(a.state()) == "st_00");
 };
 
 /**
@@ -239,16 +369,14 @@ TEST_CASE(
  * client.
  */
 TEST_CASE(
-    "UnifiedAsynchronousStateMachine: Asynchronous source and manual sink",
-    "[fsm]") {
+    "UnifiedAsynchronousPolicy: Asynchronous source and manual sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
-  [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine{source_item, sink_item, debug};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2<size_t>{source_item, sink_item};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(two_stage::st_00);
 
   auto fut_a = std::async(std::launch::async, [&]() {
     a.do_fill(debug ? "manual async source (fill)" : "");
@@ -263,7 +391,7 @@ TEST_CASE(
 
   fut_a.get();
 
-  CHECK(str(a.state()) == "empty_empty");
+  CHECK(str(a.state()) == "st_00");
 };
 
 /**
@@ -273,16 +401,14 @@ TEST_CASE(
  * client.
  */
 TEST_CASE(
-    "UnifiedAsynchronousStateMachine: Manual source and asynchronous sink",
-    "[fsm]") {
+    "UnifiedAsynchronousPolicy: Manual source and asynchronous sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
-  [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine{source_item, sink_item, debug};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2<size_t>{source_item, sink_item};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(two_stage::st_00);
 
   auto fut_b = std::async(std::launch::async, [&]() {
     a.do_pull(debug ? "manual async sink (pull)" : "");
@@ -301,7 +427,7 @@ TEST_CASE(
 
   fut_b.get();
 
-  CHECK(str(a.state()) == "empty_empty");
+  CHECK(str(a.state()) == "st_00");
 };
 
 /**
@@ -311,15 +437,14 @@ TEST_CASE(
  * tasks in all combinations of orderings of task launch and waiting on futures.
  */
 TEST_CASE(
-    "AsynchronousStateMachine: Asynchronous source and asynchronous sink",
-    "[fsm]") {
+    "AsynchronousPolicy: Asynchronous source and asynchronous sink", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine{source_item, sink_item, debug};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(two_stage::st_00);
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
@@ -390,7 +515,7 @@ TEST_CASE(
     fut_a.get();
   }
 
-  CHECK(str(a.state()) == "empty_empty");
+  CHECK(str(a.state()) == "st_00");
 };
 
 /**
@@ -400,21 +525,20 @@ TEST_CASE(
  * tasks in all combinations of orderings of task launch and waiting on futures.
  */
 TEST_CASE(
-    "UnifiedAsynchronousStateMachine: Asynchronous source and asynchronous "
+    "UnifiedAsynchronousPolicy: Asynchronous source and asynchronous "
     "sink",
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
-  [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine{source_item, sink_item, debug};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2<size_t>{source_item, sink_item};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(two_stage::st_00);
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
-      CHECK(str(a.state()) == "empty_empty");
+      CHECK(str(a.state()) == "st_00");
       a.do_fill(debug ? "async source (fill)" : "");
       a.do_push(debug ? "async source (push)" : "");
     });
@@ -472,7 +596,7 @@ TEST_CASE(
     fut_a.get();
   }
 
-  CHECK(str(a.state()) == "empty_empty");
+  CHECK(str(a.state()) == "st_00");
 };
 
 /**
@@ -482,19 +606,19 @@ TEST_CASE(
  * tasks in all combinations of orderings of task launch and waiting on futures.
  */
 TEST_CASE(
-    "AsynchronousStateMachine: Asynchronous source and asynchronous sink, n "
+    "AsynchronousPolicy: Asynchronous source and asynchronous sink, n "
     "iterations",
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine{source_item, sink_item, debug};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
 
   if (debug)
     a.enable_debug();
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(two_stage::st_00);
 
   size_t rounds = 37;
   if (debug)
@@ -555,8 +679,8 @@ TEST_CASE(
     fut_a.get();
   }
 
-  CHECK(str(a.state()) == "empty_empty");
-  CHECK((a.source_swaps + a.sink_swaps) == rounds);
+  CHECK(str(a.state()) == "st_00");
+  CHECK((a.source_swaps() + a.sink_swaps()) == rounds);
 };
 
 /**
@@ -566,17 +690,16 @@ TEST_CASE(
  * tasks in all combinations of orderings of task launch and waiting on futures.
  */
 TEST_CASE(
-    "UnifiedAsynchronousStateMachine: Asynchronous source and asynchronous "
+    "UnifiedAsynchronousPolicy: Asynchronous source and asynchronous "
     "sink, n iterations",
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
-  [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine{source_item, sink_item, debug};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2<size_t>{source_item, sink_item};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(two_stage::st_00);
 
   size_t rounds = 37;
   if (debug)
@@ -639,23 +762,23 @@ TEST_CASE(
     fut_b.get();
     fut_a.get();
   }
-  CHECK(str(a.state()) == "empty_empty");
+  CHECK(str(a.state()) == "st_00");
 };
 
 /**
  * Repeat of above test, but without sleeping for emulated tasks.
  */
 TEST_CASE(
-    "UnifiedAsynchronousStateMachine: Asynchronous source and asynchronous "
+    "UnifiedAsynchronousPolicy: Asynchronous source and asynchronous "
     "sink, n iterations, no sleeping",
     "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine{source_item, sink_item, debug};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(two_stage::st_00);
 
   size_t rounds = 37;
   if (debug)
@@ -715,8 +838,8 @@ TEST_CASE(
     fut_b.get();
     fut_a.get();
   }
-  CHECK(str(a.state()) == "empty_empty");
-  CHECK(a.source_swaps + a.sink_swaps == rounds);
+  CHECK(str(a.state()) == "st_00");
+  CHECK(a.source_swaps() + a.sink_swaps() == rounds);
 };
 
 /**
@@ -732,15 +855,18 @@ TEST_CASE(
 TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
-  [[maybe_unused]] auto a = AsyncStateMachine{source_item, sink_item, debug};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
+  if (debug) {
+    a.enable_debug();
+  }
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(two_stage::st_00);
 
   size_t rounds = 3379;
   if (debug)
-    rounds = 3;
+    rounds = 33333;
 
   std::vector<size_t> input(rounds);
   std::vector<size_t> output(rounds);
@@ -760,10 +886,6 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
         std::cout << "source node iteration " << n << std::endl;
       }
 
-      // It doesn't seem we actually need these guards here?
-      // while (a.state() == PortState::full_empty ||
-      //        a.state() == PortState::full_full)// ;
-
       CHECK(is_source_empty(a.state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
@@ -772,7 +894,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      *(a.source_item_) = *i++;
+      *(a.source_item()) = *i++;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -786,7 +908,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      *(a.source_item_) = EMPTY_SOURCE;
+      *(a.source_item()) = EMPTY_SOURCE;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
@@ -800,8 +922,8 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       }
 
       // It doesn't seem we actually need these guards here?
-      // while (a.state() == PortState::full_full ||
-      //             a.state() == PortState::empty_full)
+      // while (a.state() == two_stage::st_11 ||
+      //             a.state() == two_stage::st_01)
       //        ;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
@@ -816,13 +938,13 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      *j++ = *(a.sink_item_);
+      *j++ = *(a.sink_item());
 
       CHECK(is_sink_full(a.state()) == "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      *(a.sink_item_) = EMPTY_SINK;
+      *(a.sink_item()) = EMPTY_SINK;
 
       a.do_drain(debug ? "async sink node" : "");
 
@@ -893,8 +1015,8 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
   }
 
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
-  CHECK(str(a.state()) == "empty_empty");
-  CHECK((a.source_swaps + a.sink_swaps) == rounds);
+  CHECK(str(a.state()) == "st_00");
+  CHECK((a.source_swaps() + a.sink_swaps()) == rounds);
 }
 
 /**
@@ -905,12 +1027,11 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  size_t source_item{0};
-  size_t sink_item{0};
-  [[maybe_unused]] auto a =
-      UnifiedAsyncStateMachine{source_item, sink_item, debug};
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+  [[maybe_unused]] auto a = UnifiedAsyncMover2<size_t>{source_item, sink_item};
 
-  a.set_state(PortState::empty_empty);
+  a.set_state(two_stage::st_00);
 
   size_t rounds = 3379;
   if (debug)
@@ -933,19 +1054,19 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      // while (a.state() == PortState::full_empty ||
-      // a.state() == PortState::full_full)
+      // while (a.state() == two_stage::st_10 ||
+      // a.state() == two_stage::st_11)
       // ;
 
       CHECK(is_source_empty(a.state()) == "");
 
-      *(a.source_item_) = *i++;
+      *(a.source_item()) = *i++;
       a.do_fill(debug ? "async source node" : "");
       a.do_push(debug ? "async source node" : "");
 
       CHECK(is_source_empty(a.state()) == "");
 
-      *(a.source_item_) = EMPTY_SOURCE;
+      *(a.source_item()) = EMPTY_SOURCE;
     }
   };
 
@@ -956,16 +1077,16 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
         std::cout << "sink node iteration " << n << std::endl;
       }
 
-      // while (a.state() == PortState::full_full ||
-      //             a.state() == PortState::empty_full)
+      // while (a.state() == two_stage::st_11 ||
+      //             a.state() == two_stage::st_01)
       //        ;
 
       a.do_pull(debug ? "async sink node" : "");
 
       CHECK(is_sink_full(a.state()) == "");
 
-      *j++ = *(a.sink_item_);
-      *(a.sink_item_) = EMPTY_SINK;
+      *j++ = *(a.sink_item());
+      *(a.sink_item()) = EMPTY_SINK;
 
       a.do_drain(debug ? "async sink node" : "");
     }
@@ -1033,5 +1154,350 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
     }
   }
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
-  CHECK(str(a.state()) == "empty_empty");
+  CHECK(str(a.state()) == "st_00");
+}
+
+TEST_CASE("Port FSM3: Construct", "[fsm]") {
+  [[maybe_unused]] auto a = DebugStateMachine3<size_t>{};
+
+  CHECK(a.state() == three_stage::st_000);
+}
+
+TEST_CASE("Port FSM3: Start up", "[fsm]") {
+  constexpr bool debug = false;
+  [[maybe_unused]] auto a = DebugStateMachine3<size_t>{};
+
+  if (debug)
+    a.enable_debug();
+  CHECK(a.state() == three_stage::st_000);
+
+  SECTION("start source") {
+    CHECK(a.state() == three_stage::st_000);
+
+    a.do_fill(debug ? "start source" : "");
+    CHECK(a.state() == three_stage::st_100);
+  }
+
+  SECTION("start sink") {
+    CHECK(a.state() == three_stage::st_000);
+
+    a.do_fill(debug ? "start sink (fill)" : "");
+
+    CHECK(str(a.state()) == "st_100");
+
+    a.do_push(debug ? "start sink (push)" : "");
+    CHECK(str(a.state()) == "st_001");
+    CHECK(is_source_empty(a.state()) == "");
+
+    a.do_drain(debug ? "start sink (drain)" : "");
+
+    CHECK(str(a.state()) == "st_000");
+    CHECK(is_sink_empty(a.state()) == "");
+  }
+}
+
+/**
+ * Test that we can correctly pass a sequence of integers from source to sink.
+ * Random delays are inserted between each step of each function in order to
+ * increase the likelihood of exposing race conditions / deadlocks.
+ *
+ * The test creates an asynchronous task for a source node client and for a sync
+ * node client, and launches them separately using `std::async`.  To create
+ * different interleavings of the tasks, we use all combinations of ordering for
+ * launching the tasks and waiting on their futures.
+ */
+TEST_CASE("Pass a sequence of n integers, async 3", "[fsm]") {
+  [[maybe_unused]] constexpr bool debug = false;
+
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+  std::optional<size_t> edge_item{0};
+  [[maybe_unused]] auto a =
+      AsyncMover3<size_t>{source_item, edge_item, sink_item};
+  if (debug) {
+    a.enable_debug();
+  }
+
+  a.set_state(three_stage::st_000);
+
+  size_t rounds = 3379;
+  if (debug)
+    rounds = 333;
+
+  std::vector<size_t> input(rounds);
+  std::vector<size_t> output(rounds);
+
+  std::iota(input.begin(), input.end(), 19);
+  std::fill(output.begin(), output.end(), 0);
+  auto i = input.begin();
+  auto j = output.begin();
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
+
+  auto source_node = [&]() {
+    size_t n = rounds;
+
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      *(a.source_item()) = *i++;
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      a.do_fill(debug ? "async source node" : "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      a.do_push(debug ? "async source node" : "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      *(a.source_item()) = EMPTY_SOURCE;
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    }
+  };
+
+  auto sink_node = [&]() {
+    size_t n = rounds;
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      a.do_pull(debug ? "async sink node" : "");
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      *j++ = *(a.sink_item());
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      *(a.sink_item()) = EMPTY_SINK;
+
+      a.do_drain(debug ? "async sink node" : "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    }
+  };
+
+  SECTION("launch source before sink, get source before sink") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch sink before source, get source before sink") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch source before sink, get sink before source") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  SECTION("launch sink before source, get sink before source") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  if (debug)
+    for (size_t i = 0; i < rounds; ++i) {
+      std::cout << i << " (" << input[i] << ", " << output[i] << ")"
+                << std::endl;
+    }
+
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    for (size_t j = 0; j < input.size(); ++j) {
+      if (input[j] != output[j]) {
+        std::cout << j << " (" << input[j] << ", " << output[j] << ")"
+                  << std::endl;
+      }
+    }
+  }
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    auto iter = std::find_first_of(
+        input.begin(),
+        input.end(),
+        output.begin(),
+        output.end(),
+        std::not_equal_to<size_t>());
+    if (iter != input.end()) {
+      size_t k = iter - input.begin();
+      std::cout << k << " (" << input[k] << ", " << output[k] << ")"
+                << std::endl;
+    } else {
+      std::cout << "this should not happen" << std::endl;
+    }
+  }
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()));
+  CHECK(str(a.state()) == "st_000");
+}
+
+/**
+ * Repeat the previous test, but with the unified async state machine.  To test
+ * rapid execution and interleaving of events, we do not include the delays
+ * between steps.
+ */
+TEST_CASE("Pass a sequence of n integers, unified3", "[fsm]") {
+  [[maybe_unused]] constexpr bool debug = false;
+
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+  std::optional<size_t> edge_item{0};
+  [[maybe_unused]] auto a =
+      UnifiedAsyncMover3<size_t>{source_item, edge_item, sink_item};
+
+  a.set_state(three_stage::st_000);
+
+  size_t rounds = 3379;
+  if (debug)
+    rounds = 3;
+
+  std::vector<size_t> input(rounds);
+  std::vector<size_t> output(rounds);
+
+  std::iota(input.begin(), input.end(), 19);
+  std::fill(output.begin(), output.end(), 0);
+  auto i = input.begin();
+  auto j = output.begin();
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
+
+  auto source_node = [&]() {
+    size_t n = rounds;
+
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      *(a.source_item()) = *i++;
+      a.do_fill(debug ? "async source node" : "");
+      a.do_push(debug ? "async source node" : "");
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      *(a.source_item()) = EMPTY_SOURCE;
+    }
+  };
+
+  auto sink_node = [&]() {
+    size_t n = rounds;
+    while (n--) {
+      if (debug) {
+        std::cout << "sink node iteration " << n << std::endl;
+      }
+
+      a.do_pull(debug ? "async sink node" : "");
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      *j++ = *(a.sink_item());
+      *(a.sink_item()) = EMPTY_SINK;
+
+      a.do_drain(debug ? "async sink node" : "");
+    }
+  };
+
+  SECTION("launch source before sink, get source before sink") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch sink before source, get source before sink") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch source before sink, get sink before source") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  SECTION("launch sink before source, get sink before source") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  if (debug)
+    for (size_t i = 0; i < rounds; ++i) {
+      std::cout << i << " (" << input[i] << ", " << output[i] << ")"
+                << std::endl;
+    }
+
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    for (size_t j = 0; j < input.size(); ++j) {
+      if (input[j] != output[j]) {
+        std::cout << j << " (" << input[j] << ", " << output[j] << ")"
+                  << std::endl;
+      }
+    }
+  }
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    auto iter = std::find_first_of(
+        input.begin(),
+        input.end(),
+        output.begin(),
+        output.end(),
+        std::not_equal_to<size_t>());
+    if (iter != input.end()) {
+      size_t k = iter - input.begin();
+      std::cout << k << " (" << input[k] << ", " << output[k] << ")"
+                << std::endl;
+    } else {
+      std::cout << "this should not happen" << std::endl;
+    }
+  }
+  CHECK(std::equal(input.begin(), input.end(), output.begin()));
+  CHECK(str(a.state()) == "st_000");
 }

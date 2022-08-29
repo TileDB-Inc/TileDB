@@ -76,6 +76,18 @@ struct has_cbegin_cend<
 template <typename T>
 constexpr bool has_cbegin_cend_v = has_cbegin_cend<T>::value;
 
+template <typename T, typename = void>
+struct has_to_string : std::false_type {};
+
+template <typename T>
+struct has_to_string<
+    T,
+    std::void_t<decltype(std::to_string(std::declval<T>()))>> : std::true_type {
+};
+
+template <typename T>
+constexpr bool has_to_string_v = has_to_string<T>::value;
+
 template <class T>
 struct is_span {
   constexpr static bool value = false;
