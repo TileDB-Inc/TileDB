@@ -1228,10 +1228,10 @@ Status ArraySchema::generate_uri(
   return Status::Ok();
 }
 
-std::optional<std::string> ArraySchema::has_bitsort_filter() {
-  for (const auto &attr_it : attribute_map_) {
-    if (attr_it->second->filters()..has_filter(FilterType::FILTER_BITSORT)) {
-      return attr_it->first;
+std::optional<std::string> ArraySchema::has_bitsort_filter() const {
+  for (const auto& attr_it : attribute_map_) {
+    if (attr_it.second->filters().has_filter(FilterType::FILTER_BITSORT)) {
+      return attr_it.first;
     }
   }
 

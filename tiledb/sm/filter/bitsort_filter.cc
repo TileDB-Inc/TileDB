@@ -54,18 +54,33 @@ void BitSortFilter::dump(FILE* out) const {
   fprintf(out, "BitSortFilter");
 }
 
+Status BitSortFilter::run_forward(
+    const Tile& tile,
+    Tile* const tile_offsets,
+    FilterBuffer* input_metadata,
+    FilterBuffer* input,
+    FilterBuffer* output_metadata,
+    FilterBuffer* output) const {
+  (void)tile;
+  (void)tile_offsets;
+  (void)input_metadata;
+  (void)input;
+  (void)output_metadata;
+  (void)output;
+  return Status_FilterError("Do not call");
+}
+
 /**
  * Run forward. TODO: COMMENT
  */
 Status BitSortFilter::run_forward(
     const Tile& tile,
-    Tile* const,  // offsets_tile
-    std::vector<Tile*> &dim_tiles,
+    std::vector<Tile*>& dim_tiles,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
- (void)dim_tiles;
+  (void)dim_tiles;
   auto tile_type = tile.type();
   switch (datatype_size(tile_type)) {
     case sizeof(int8_t): {
