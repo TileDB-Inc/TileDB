@@ -703,8 +703,32 @@ class Config {
 
   template <class T, bool will_throw>
   optional<T> get_internal(const std::string& key) const;
+
+  template <bool will_throw>
+  optional<std::string> get_internal_string(const std::string& key) const;
 };
 
+/**
+ * An explicit specialization for `std::string`. It does not call a conversion
+ * function and it is thus the same as `get_internal_string<false>`.
+ */
+template <>
+[[nodiscard]] inline optional<std::string> Config::get<std::string>(
+    const std::string& key) const {
+  return get_internal_string<false>(key);
+}
+
+/**
+ * An explicit specialization for `std::string`. It does not call a conversion
+ * function and it is thus the same as `get_internal_string<true>`
+ *
+ * Will throw if value is not found for provided config key
+ */
+template <>
+inline std::string Config::get<std::string>(
+    const std::string& key, const Config::MustFindMarker&) const {
+  return get_internal_string<true>(key).value();
+}
 }  // namespace tiledb::sm
 
 #ifdef TILEDB_DEPRECATE_CONFIG

@@ -43,8 +43,14 @@ using tiledb::sm::utils::parse::convert;
  */
 using config_types = std::
     tuple<bool, int, uint32_t, int64_t, uint64_t, float, double, std::string>;
+/*
+ * Config types that are convertable by utils::parse::convert
+ */
+using config_types_convertable =
+    std::tuple<bool, int, uint32_t, int64_t, uint64_t, float, double>;
 
-TEMPLATE_LIST_TEST_CASE("Config::get<T> - found", "[config]", config_types) {
+TEMPLATE_LIST_TEST_CASE(
+    "Config::get<T> - found", "[config]", config_types_convertable) {
   Config c{};
   std::string key{"the_key"};
   CHECK(c.set(key, "1").ok());
@@ -73,8 +79,24 @@ TEMPLATE_LIST_TEST_CASE(
   CHECK(!found_value.has_value());
 }
 
+TEST_CASE("Config::get<std::string> - not found", "[config]") {
+  Config c{};
+  std::string key{"the_key"};
+  REQUIRE_NOTHROW(c.get<std::string>(key));
+}
+
+TEST_CASE("Config::get<std::string> - found and matched", "[config]") {
+  Config c{};
+  std::string key{"the_key"};
+  std::string value{"the_value"};
+  c.set(key, value);
+  REQUIRE_NOTHROW(c.get<std::string>(key));
+  auto found_value{c.get<std::string>(key)};
+  CHECK(found_value.value() == value);
+}
+
 TEMPLATE_LIST_TEST_CASE(
-    "Config::get<T> - must_find found", "[config]", config_types) {
+    "Config::get<T> - must_find found", "[config]", config_types_convertable) {
   Config c{};
   std::string key{"the_key"};
   c.set(key, "1");
@@ -97,4 +119,21 @@ TEMPLATE_LIST_TEST_CASE(
   Config c{};
   std::string key{"the_key"};
   REQUIRE_THROWS(c.get<TestType>(key, Config::must_find));
+}
+
+TEST_CASE("Config::get<std::string> - must_find not found", "[config]") {
+  Config c{};
+  std::string key{"the_key"};
+  REQUIRE_THROWS(c.get<std::string>(key, Config::must_find));
+}
+
+TEST_CASE(
+    "Config::get<std::string> - must_find found and matched", "[config]") {
+  Config c{};
+  std::string key{"the_key"};
+  std::string value{"the_value"};
+  c.set(key, value);
+  REQUIRE_NOTHROW(c.get<std::string>(key, Config::must_find));
+  auto found_value{c.get<std::string>(key, Config::must_find)};
+  CHECK(found_value == value);
 }

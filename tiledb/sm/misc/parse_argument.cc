@@ -180,11 +180,6 @@ Status convert(const std::string& str, bool* value) {
   return Status::Ok();
 }
 
-Status convert(const std::string& str, std::string* value) {
-  *value = str;
-  return Status::Ok();
-}
-
 Status convert(const std::string& str, SerializationType* value) {
   std::string lvalue = str;
   std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::tolower);

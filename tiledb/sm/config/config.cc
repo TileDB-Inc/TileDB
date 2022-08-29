@@ -1034,17 +1034,28 @@ const char* Config::get_from_config_or_env(
 
 template <class T, bool will_throw>
 optional<T> Config::get_internal(const std::string& key) const {
-  bool found;
-  const char* value = get_from_config_or_env(key, &found);
-  if (found) {
+  auto value = get_internal_string<will_throw>(key);
+  if (value.has_value()) {
     T converted_value;
-    auto status = utils::parse::convert(value, &converted_value);
+    auto status = utils::parse::convert(value.value(), &converted_value);
     if (status.ok()) {
       return {converted_value};
     }
     throw_config_exception(
-        "Failed to parse config value '" + std::string(value) + "' for key '" +
-        key + "'. Reason: " + status.to_string());
+        "Failed to parse config value '" + std::string(value.value()) +
+        "' for key '" + key + "'. Reason: " + status.to_string());
+  }
+
+  return {nullopt};
+}
+
+template <bool will_throw>
+optional<std::string> Config::get_internal_string(
+    const std::string& key) const {
+  bool found;
+  const char* value = get_from_config_or_env(key, &found);
+  if (found) {
+    return {value};
   }
 
   if constexpr (will_throw) {
@@ -1124,9 +1135,10 @@ template optional<double> Config::get_internal<double, false>(
     const std::string& key) const;
 template optional<double> Config::get_internal<double, true>(
     const std::string& key) const;
-template optional<std::string> Config::get_internal<std::string, false>(
+
+template optional<std::string> Config::get_internal_string<true>(
     const std::string& key) const;
-template optional<std::string> Config::get_internal<std::string, true>(
+template optional<std::string> Config::get_internal_string<false>(
     const std::string& key) const;
 
 }  // namespace tiledb::sm
