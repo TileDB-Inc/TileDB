@@ -31,6 +31,7 @@ The filter has internal format:
 | Filter metadata | [Filter Metadata](#filter-metadata) | Filter metadata, specific to each filter. E.g. compression level for compression filters. |
 
 TileDB supports the following filters:
+* [Float Scaling Filter](./filters/float_scale.md)
 * [XOR Filter](./filters/xor.md)
 
 ## Filter Options
@@ -54,6 +55,16 @@ The filter options for `TILEDB_FILTER_BIT_WIDTH_REDUCTION` has internal format:
 | :--- | :--- | :--- |
 | Max window size | `uint32_t` | Maximum window size in bytes |
 
+### Float Scale Filter Reduction Options
+
+The filter options for `TILEDB_FILTER_SCALE_FLOAT` has internal format:
+
+| **Field** | **Type** | **Description** |
+| :--- | :--- | :--- |
+| Scale | `double` | Scale parameter used for float scaling filter conversion |
+| Offset | `double` | Offset parameter used for float scaling filter conversion |
+| Byte width | `double` | Width of the stored integer data in bytes |
+
 ### Positive Delta Options
 
 The filter options for `TILEDB_FILTER_POSITIVE_DELTA` has internal format:
@@ -64,4 +75,4 @@ The filter options for `TILEDB_FILTER_POSITIVE_DELTA` has internal format:
 
 ### Other Filter Options
 
-The remaining filters \(`TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256}` do not serialize any options.
+The remaining filters \(`TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256, XOR}` do not serialize any options.
