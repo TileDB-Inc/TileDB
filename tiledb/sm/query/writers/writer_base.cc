@@ -1034,22 +1034,31 @@ Status WriterBase::write_tiles(
     }
   }
 
-  // Close files, except in the case of global order
-  if (close_files && layout_ != Layout::GLOBAL_ORDER) {
-    // TODO: refactor, repeated closing sequence here
+  // Close files or flush multipart upload buffers in case of global order
+  // writes
+  if (close_files) {
+    std::vector<URI> closing_uris;
     auto&& [st1, uri] = frag_meta->uri(name);
     RETURN_NOT_OK(st1);
+    closing_uris.push_back(*uri);
 
-    RETURN_NOT_OK(storage_manager_->close_file(*uri));
     if (var_size) {
       auto&& [st2, var_uri] = frag_meta->var_uri(name);
       RETURN_NOT_OK(st2);
-      RETURN_NOT_OK(storage_manager_->close_file(*var_uri));
+      closing_uris.push_back(*var_uri);
     }
     if (nullable) {
       auto&& [st2, validity_uri] = frag_meta->validity_uri(name);
       RETURN_NOT_OK(st2);
-      RETURN_NOT_OK(storage_manager_->close_file(*validity_uri));
+      closing_uris.push_back(*validity_uri);
+    }
+    for (auto& u : closing_uris) {
+      if (layout_ == Layout::GLOBAL_ORDER) {
+        // TODO: how to not flush on local S3 global order writes
+        RETURN_NOT_OK(storage_manager_->vfs()->flush_multipart_file_buffer(u));
+      } else {
+        RETURN_NOT_OK(storage_manager_->close_file(u));
+      }
     }
   }
 

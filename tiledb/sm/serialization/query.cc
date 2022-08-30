@@ -2634,6 +2634,15 @@ Status global_write_state_to_capnp(
       if (state.upload_id.has_value()) {
         multipart_entry_builder.setUploadId(*state.upload_id);
       }
+      if (state.bucket.has_value()) {
+        multipart_entry_builder.setBucket(*state.bucket);
+      }
+      if (state.s3_key.has_value()) {
+        multipart_entry_builder.setS3Key(*state.s3_key);
+      }
+      if (!state.status.ok()) {
+        multipart_entry_builder.setStatus(state.status.message());
+      }
 
       auto& completed_parts = state.completed_parts;
       // Get completed parts
@@ -2873,6 +2882,16 @@ Status global_write_state_from_capnp(
         auto uri = URI(entry.getKey().cStr());
         if (state.hasUploadId()) {
           deserialized_state.upload_id = state.getUploadId();
+        }
+        if (state.hasBucket()) {
+          deserialized_state.bucket = state.getBucket();
+        }
+        if (state.hasS3Key()) {
+          deserialized_state.s3_key = state.getS3Key();
+        }
+        if (state.hasStatus()) {
+          deserialized_state.status =
+              Status(std::string(state.getStatus().cStr()), "");
         }
         deserialized_state.part_number = entry.getValue().getPartNumber();
         if (state.hasCompletedParts()) {

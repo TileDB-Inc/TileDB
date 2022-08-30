@@ -819,7 +819,10 @@ struct FragmentMetadata {
 struct MultiPartUploadState {
   partNumber@0 :UInt64;
   uploadId@1 :Text;
-  completedParts@2 :List(CompletedPart);
+  bucket@2 :Text;
+  s3Key@3 :Text;
+  status@4 :Text;
+  completedParts@5 :List(CompletedPart);
 }
 struct CompletedPart {
   eTag@0 :Text;

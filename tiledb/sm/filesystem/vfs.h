@@ -100,14 +100,16 @@ class VFS {
    */
   struct MultiPartUploadState {
     struct CompletedParts {
-      /* TODO: document fields */
       optional<std::string> e_tag;
       uint64_t part_number;
     };
 
     uint64_t part_number;
     optional<std::string> upload_id;
+    optional<std::string> bucket;
+    optional<std::string> s3_key;
     std::vector<CompletedParts> completed_parts;
+    Status status;
   };
 
   /* ********************************* */
@@ -471,6 +473,16 @@ class VFS {
    */
   Status set_multipart_upload_state(
       const URI& uri, const MultiPartUploadState& state);
+
+  /**
+   * Used in remote global order writes to flush the internal
+   * in-memory buffer for an URI that backends maintain to modulate the
+   * frequency of multipart upload requests.
+   *
+   * @param uri The file uri identifying the backend file buffer
+   * @return Status
+   */
+  Status flush_multipart_file_buffer(const URI& uri);
 
  private:
   /* ********************************* */

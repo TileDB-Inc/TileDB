@@ -370,31 +370,6 @@ class S3 {
   Status write(const URI& uri, const void* buffer, uint64_t length);
 
   /**
-   * Returns the upload ID of a multipart upload state identified by uri
-   *
-   * @param uri The URI of the multipart state
-   * @return The upload ID as string
-   */
-  std::optional<std::string> multipart_upload_id(const URI& uri) const;
-
-  /**
-   * Returns the part number of a multipart upload state identified by uri
-   *
-   * @param uri The URI of the multipart state
-   * @return The part number
-   */
-  std::optional<uint64_t> multipart_part_number(const URI& uri) const;
-
-  /**
-   * Returns the completed parts of a multipart upload state identified by uri
-   *
-   * @param uri The URI of the multipart state
-   * @return A List of etags and part numbers of already uploaded parts
-   */
-  std::optional<std::vector<std::pair<std::string, uint64_t>>>
-  multipart_completed_parts(const URI& uri) const;
-
-  /**
    * Used in serialization of global order writes to set the multipart upload
    * state in multipart_upload_states_ during deserialization
    *
@@ -914,6 +889,15 @@ class S3 {
    */
   Status get_make_upload_part_req(
       const URI& uri, const std::string& uri_path, MakeUploadPartCtx& ctx);
+
+  /**
+   * Returns the multipart upload state identified by uri
+   *
+   * @param uri The URI of the multipart state
+   * @return an optional MultiPartUploadState object
+   */
+  std::optional<S3::MultiPartUploadState> multipart_upload_state(
+      const URI& uri) const;
 };
 
 }  // namespace sm
