@@ -347,6 +347,22 @@ Status Array::open(
           query_type == QueryType::MODIFY_EXCLUSIVE ||
           query_type == QueryType::DELETE) {
         timestamp_end_opened_at_ = 0;
+      } else if (query_type == QueryType::UPDATE) {
+        bool found = false;
+        bool allow_updates = false;
+        if (!config_
+                 .get<bool>(
+                     "sm.allow_updates_experimental", &allow_updates, &found)
+                 .ok()) {
+          throw Status_ArrayError("Cannot get setting");
+        }
+        assert(found);
+
+        if (!allow_updates) {
+          throw Status_ArrayError(
+              "Cannot open array; Update query type is only experimental, do "
+              "not use.");
+        }
       } else {
         throw Status_ArrayError("Cannot open array; Unsupported query type.");
       }
@@ -418,6 +434,16 @@ Status Array::open(
         return LOG_STATUS(Status_ArrayError(err.str()));
       }
 
+      if (query_type == QueryType::UPDATE &&
+          version < constants::deletes_min_version) {
+        std::stringstream err;
+        err << "Cannot open array for updates; Array format version (";
+        err << version;
+        err << ") is smaller than the minimum supported version (";
+        err << constants::updates_min_version << ").";
+        return LOG_STATUS(Status_ArrayError(err.str()));
+      }
+
       metadata_.reset(timestamp_end_opened_at_);
     }
   } catch (std::exception& e) {
@@ -481,6 +507,10 @@ Status Array::close() {
           throw StatusException(st);
       } else if (query_type_ == QueryType::DELETE) {
         st = storage_manager_->array_close_for_deletes(this);
+        if (!st.ok())
+          throw StatusException(st);
+      } else if (query_type_ == QueryType::UPDATE) {
+        st = storage_manager_->array_close_for_updates(this);
         if (!st.ok())
           throw StatusException(st);
       } else {

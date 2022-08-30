@@ -791,10 +791,10 @@ Status reader_to_capnp(
   // Read state
   RETURN_NOT_OK(read_state_to_capnp(array_schema, reader, reader_builder));
 
-  const QueryCondition* condition = query.condition();
-  if (!condition->empty()) {
+  const auto& condition = query.condition();
+  if (!condition.empty()) {
     auto condition_builder = reader_builder->initCondition();
-    RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+    RETURN_NOT_OK(condition_to_capnp(condition, &condition_builder));
   }
 
   // If stats object exists set its cap'n proto object
@@ -825,10 +825,10 @@ Status index_reader_to_capnp(
   // Read state
   RETURN_NOT_OK(index_read_state_to_capnp(reader.read_state(), reader_builder));
 
-  const QueryCondition* condition = query.condition();
-  if (!condition->empty()) {
+  const auto& condition = query.condition();
+  if (!condition.empty()) {
     auto condition_builder = reader_builder->initCondition();
-    RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+    RETURN_NOT_OK(condition_to_capnp(condition, &condition_builder));
   }
 
   // If stats object exists set its cap'n proto object
@@ -860,10 +860,10 @@ Status dense_reader_to_capnp(
   RETURN_NOT_OK(
       dense_read_state_to_capnp(array_schema, reader, reader_builder));
 
-  const QueryCondition* condition = query.condition();
-  if (!condition->empty()) {
+  const auto& condition = query.condition();
+  if (!condition.empty()) {
     auto condition_builder = reader_builder->initCondition();
-    RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+    RETURN_NOT_OK(condition_to_capnp(condition, &condition_builder));
   }
 
   // If stats object exists set its cap'n proto object
@@ -1129,10 +1129,10 @@ Status delete_to_capnp(
     const Query& query,
     Deletes& delete_strategy,
     capnp::Delete::Builder* delete_builder) {
-  const QueryCondition* condition = query.condition();
-  if (!condition->empty()) {
+  auto condition = query.condition();
+  if (!condition.empty()) {
     auto condition_builder = delete_builder->initCondition();
-    RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+    RETURN_NOT_OK(condition_to_capnp(condition, &condition_builder));
   }
 
   // If stats object exists set its cap'n proto object

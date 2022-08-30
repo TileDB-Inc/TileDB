@@ -1053,12 +1053,18 @@ Layout Query::layout() const {
   return layout_;
 }
 
-const QueryCondition* Query::condition() const {
+const QueryCondition& Query::condition() const {
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
-    return nullptr;
+    throw std::runtime_error(
+        "Query condition is not available for write or modify exclusive "
+        "queries");
   }
 
-  return &condition_;
+  return condition_;
+}
+
+const std::vector<UpdateValue>& Query::update_values() const {
+  return update_values_;
 }
 
 Status Query::cancel() {
@@ -2035,12 +2041,39 @@ Status Query::set_layout(Layout layout) {
 }
 
 Status Query::set_condition(const QueryCondition& condition) {
-  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)
+  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     return logger_->status(Status_QueryError(
         "Cannot set query condition; Operation not applicable "
         "to write queries"));
+  }
 
   condition_ = condition;
+  return Status::Ok();
+}
+
+Status Query::add_update_value(
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) {
+  if (type_ != QueryType::UPDATE) {
+    return logger_->status(Status_QueryError(
+        "Cannot add query update value; Operation only applicable "
+        "to update queries"));
+  }
+
+  // Make sure the array is sparse.
+  if (array_schema_->dense()) {
+    return logger_->status(Status_QueryError(
+        "Setting update values is only valid for sparse arrays"));
+  }
+
+  if (attributes_with_update_value_.count(field_name) != 0) {
+    return logger_->status(
+        Status_QueryError("Update value already set for attribute"));
+  }
+
+  attributes_with_update_value_.emplace(field_name);
+  update_values_.emplace_back(field_name, update_value, update_value_size);
   return Status::Ok();
 }
 
@@ -2178,7 +2211,8 @@ Status Query::check_buffers_correctness() {
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
     if (array_schema_->var_size(attr)) {
-      // Check for data buffer under buffer_var and offsets buffer under buffer
+      // Check for data buffer under buffer_var and offsets buffer under
+      // buffer
       if (type_ == QueryType::READ) {
         if (buffer(attr).buffer_var_ == nullptr) {
           return logger_->status(Status_QueryError(
@@ -2190,7 +2224,8 @@ Status Query::check_buffers_correctness() {
             *buffer(attr).buffer_var_size_ != 0) {
           return logger_->status(Status_QueryError(
               std::string("Var-Sized input attribute/dimension '") + attr +
-              "' is not set correctly. \nVar size buffer is not set and buffer "
+              "' is not set correctly. \nVar size buffer is not set and "
+              "buffer "
               "size if not 0."));
         }
       }

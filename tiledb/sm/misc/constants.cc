@@ -284,6 +284,9 @@ const std::string query_type_write_str = "WRITE";
 /** TILEDB_DELETE Query String **/
 const std::string query_type_delete_str = "DELETE";
 
+/** TILEDB_UPDATE Query String **/
+const std::string query_type_update_str = "UPDATE";
+
 /** TILEDB_MODIFY_EXCLUSIVE Query String **/
 const std::string query_type_modify_exclusive_str = "MODIFY_EXCLUSIVE";
 
@@ -637,6 +640,9 @@ const uint32_t consolidation_with_timestamps_min_version = 15;
 
 /** The lowest version supported for deletes. */
 const uint32_t deletes_min_version = 16;
+
+/** The lowest version supported for updates. */
+const uint32_t updates_min_version = 16;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;

@@ -457,6 +457,11 @@ inline Status Status_DenseTilerError(const std::string& msg) {
 inline Status Status_QueryConditionError(const std::string& msg) {
   return {"[TileDB::QueryCondition] Error", msg};
 }
+/** Return a Status_UpdateValueError error class Status with a given
+ * message **/
+inline Status Status_UpdateValueError(const std::string& msg) {
+  return {"[TileDB::UpdateValue] Error", msg};
+}
 /** Return a Status_ArrayDirectoryError error class Status with a given
  * message **/
 inline Status Status_ArrayDirectoryError(const std::string& msg) {

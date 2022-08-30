@@ -3419,6 +3419,30 @@ int32_t tiledb_query_get_relevant_fragment_num(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_add_update_value(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) noexcept {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, query) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Add update value.
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->add_update_value(
+              field_name, update_value, update_value_size))) {
+    return TILEDB_ERR;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*         SUBARRAY               */
 /* ****************************** */
@@ -8947,6 +8971,20 @@ int32_t tiledb_query_condition_combine(
     tiledb_query_condition_t** const combined_cond) noexcept {
   return api_entry<detail::tiledb_query_condition_combine>(
       ctx, left_cond, right_cond, combination_op, combined_cond);
+}
+
+/* ****************************** */
+/*         UPDATE CONDITION       */
+/* ****************************** */
+
+int32_t tiledb_query_add_update_value(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) noexcept {
+  return api_entry<detail::tiledb_query_add_update_value>(
+      ctx, query, field_name, update_value, update_value_size);
 }
 
 /* ****************************** */

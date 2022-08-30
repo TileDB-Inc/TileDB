@@ -39,6 +39,32 @@ namespace tiledb {
 class QueryExperimental {
  public:
   /**
+   * Sets the update value.
+   *
+   * Note that more than one update value may be set on a query.
+   *
+   * @param ctx TileDB context.
+   * @param query Query object.
+   * @param field_name The attribute name.
+   * @param update_value The value to set.
+   * @param update_value_size The byte size of `update_value`.
+   * @return Reference to this Query
+   */
+  static void add_update_value_to_query(
+      const Context& ctx,
+      Query& query,
+      const char* field_name,
+      const void* update_value,
+      uint64_t update_value_size) {
+    ctx.handle_error(tiledb_query_add_update_value(
+        ctx.ptr().get(),
+        query.ptr().get(),
+        field_name,
+        update_value,
+        update_value_size));
+  }
+
+  /**
    * Get the number of relevant fragments from the subarray. Should only be
    * called after size estimation was asked for.
    *

@@ -2320,6 +2320,8 @@ class Query {
         return "MODIFY_EXCLUSIVE";
       case TILEDB_DELETE:
         return "DELETE";
+      case TILEDB_UPDATE:
+        return "UPDATE";
     }
     return "";  // silence error
   }
