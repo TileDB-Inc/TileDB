@@ -162,8 +162,7 @@ void dummy_bind_sink(size_t, float, const int&) {
 TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
   SECTION("function") {
     ProducerNode<AsyncMover3, size_t> a{dummy_source};
-    //    GeneralFunctionNode<size_t, AsyncMover3, std::tuple<size_t>> b{
-    //        dummy_function};
+
     GeneralFunctionNode<
         size_t,
         AsyncMover3,
@@ -706,4 +705,205 @@ TEST_CASE("Nodes: Asynchronous with function node and delay", "[nodes]") {
   SECTION("With delay, fast function") {
     asynchronous_with_function_node<true>(1, 0.2, 1);
   }
+}
+
+/**
+ * Test that we can correctly pass a sequence of integers from producer node to
+ * consumer node.
+ */
+TEST_CASE(
+    "Nodes: Async pass n integers, three nodes, "
+    "three stage",
+    "[nodes]") {
+  size_t rounds = GENERATE(0, 1, 2, 5, 3379);
+  size_t offset = GENERATE(0, 1, 2, 5);
+
+  [[maybe_unused]] constexpr bool debug = false;
+
+  if (debug)
+    rounds = 3;
+
+  std::vector<size_t> input1(rounds + offset);
+  std::vector<double> input2(rounds + offset);
+  std::vector<double> output1(rounds + offset);
+  std::vector<size_t> output2(rounds + offset);
+
+  std::iota(input1.begin(), input1.end(), 19);
+  std::iota(input2.begin(), input2.end(), 337);
+  std::fill(output1.begin(), output1.end(), 0.0);
+  std::fill(output2.begin(), output2.end(), 0);
+  auto i1 = input1.begin();
+  auto i2 = input2.begin();
+  auto j1 = output1.begin();
+  auto j2 = output2.begin();
+
+  if (rounds + offset != 0) {
+    CHECK(std::equal(input1.begin(), input1.end(), output1.begin()) == false);
+  }
+  if (rounds + offset != 0) {
+    CHECK(std::equal(input2.begin(), input2.end(), output2.begin()) == false);
+  }
+
+  ProducerNode<AsyncMover3, size_t> source_node1(generator{19});
+  ProducerNode<AsyncMover3, double> source_node2(generator{337});
+
+  GeneralFunctionNode<
+      size_t,
+      AsyncMover3,
+      std::tuple<size_t, double>,
+      AsyncMover3,
+      std::tuple<double, size_t>>
+      mid_node([](const std::tuple<size_t, double>& in,
+                  std::tuple<double, size_t>& out) {
+        std::get<0>(out) = std::get<1>(in);
+        std::get<1>(out) = std::get<0>(in);
+      });
+
+  ConsumerNode<AsyncMover3, double> sink_node1(
+      consumer<decltype(j1), double>{j1});
+  ConsumerNode<AsyncMover3, size_t> sink_node2(
+      consumer<decltype(j2), size_t>{j2});
+
+  Edge(source_node1, std::get<0>(mid_node.inputs_));
+  Edge(source_node2, std::get<1>(mid_node.inputs_));
+  Edge(std::get<0>(mid_node.outputs_), sink_node1);
+  Edge(std::get<1>(mid_node.outputs_), sink_node2);
+
+  auto source1 = [&]() { source_node1.run_for(rounds); };
+  auto source2 = [&]() { source_node2.run_for(rounds); };
+  auto mid = [&]() { mid_node.run_for(rounds + offset); };
+  auto sink1 = [&]() { sink_node1.run_for(rounds); };
+  auto sink2 = [&]() { sink_node2.run_for(rounds); };
+
+  SECTION(
+      "test source launch, sink launch, source "
+      "get, sink get" +
+      std::to_string(rounds) + " / " + std::to_string(offset)) {
+    auto fut_a1 = std::async(std::launch::async, source1);
+    auto fut_a2 = std::async(std::launch::async, source2);
+    auto fut_b = std::async(std::launch::async, mid);
+    auto fut_c1 = std::async(std::launch::async, sink1);
+    auto fut_c2 = std::async(std::launch::async, sink2);
+    fut_a1.get();
+    fut_a2.get();
+    fut_b.get();
+    fut_c1.get();
+    fut_c2.get();
+  }
+  SECTION(
+      "test source launch, sink launch, source "
+      "get, sink get" +
+      std::to_string(rounds) + " / " + std::to_string(offset)) {
+    auto fut_a1 = std::async(std::launch::async, source1);
+    auto fut_a2 = std::async(std::launch::async, source2);
+    auto fut_c2 = std::async(std::launch::async, sink2);
+    auto fut_c1 = std::async(std::launch::async, sink1);
+    auto fut_b = std::async(std::launch::async, mid);
+    fut_a1.get();
+    fut_a2.get();
+    fut_b.get();
+    fut_c2.get();
+    fut_c1.get();
+  }
+  SECTION(
+      "test source launch, sink launch, "
+      "source get, sink get" +
+      std::to_string(rounds) + " / " + std::to_string(offset)) {
+    auto fut_b = std::async(std::launch::async, mid);
+    auto fut_c1 = std::async(std::launch::async, sink1);
+    auto fut_c2 = std::async(std::launch::async, sink2);
+    auto fut_a2 = std::async(std::launch::async, source2);
+    auto fut_a1 = std::async(std::launch::async, source1);
+    fut_a1.get();
+    fut_a2.get();
+    fut_b.get();
+    fut_c2.get();
+    fut_c1.get();
+  }
+  SECTION(
+      "test source launch, sink "
+      "launch, source get, sink get" +
+      std::to_string(rounds) + " / " + std::to_string(offset)) {
+    auto fut_c1 = std::async(std::launch::async, sink1);
+    auto fut_a1 = std::async(std::launch::async, source1);
+    auto fut_b = std::async(std::launch::async, mid);
+    auto fut_a2 = std::async(std::launch::async, sink2);
+    auto fut_c2 = std::async(std::launch::async, source2);
+    fut_a2.get();
+    fut_a1.get();
+    fut_c1.get();
+    fut_b.get();
+    fut_c2.get();
+  }
+  SECTION(
+      "test source launch, sink "
+      "launch, source get, sink get" +
+      std::to_string(rounds) + " / " + std::to_string(offset)) {
+    auto fut_a2 = std::async(std::launch::async, source2);
+    auto fut_a1 = std::async(std::launch::async, source1);
+    auto fut_b = std::async(std::launch::async, mid);
+    auto fut_c2 = std::async(std::launch::async, sink2);
+    auto fut_c1 = std::async(std::launch::async, sink1);
+    fut_a1.get();
+    fut_a2.get();
+    fut_b.get();
+    fut_c1.get();
+    fut_c2.get();
+  }
+
+  if (!std::equal(input1.begin(), i1, output2.begin())) {
+    for (size_t j = 0; j < input1.size(); ++j) {
+      if (input1[j] != output2[j]) {
+        std::cout << j << " (" << input1[j] << ", " << output2[j] << ")"
+                  << std::endl;
+      }
+    }
+  }
+
+  if (!std::equal(input2.begin(), i2, output1.begin())) {
+    for (size_t j = 0; j < input2.size(); ++j) {
+      if (input2[j] != output1[j]) {
+        std::cout << j << " (" << input2[j] << ", " << output1[j] << ")"
+                  << std::endl;
+      }
+    }
+  }
+
+  if (!std::equal(input1.begin(), i1, output2.begin())) {
+    auto iter = std::find_first_of(
+        input1.begin(),
+        input1.end(),
+        output2.begin(),
+        output2.end(),
+        std::not_equal_to<size_t>());
+    if (iter != input1.end()) {
+      size_t k = iter - input1.begin();
+      std::cout << k << " (" << input1[k] << ", " << output2[k] << ")"
+                << std::endl;
+    } else {
+      std::cout << "this should not ever happen" << std::endl;
+    }
+  }
+
+  if (!std::equal(input2.begin(), i2, output1.begin())) {
+    auto iter = std::find_first_of(
+        input2.begin(),
+        input2.end(),
+        output1.begin(),
+        output1.end(),
+        std::not_equal_to<size_t>());
+    if (iter != input2.end()) {
+      size_t k = iter - input2.begin();
+      std::cout << k << " (" << input2[k] << ", " << output1[k] << ")"
+                << std::endl;
+    } else {
+      std::cout << "this should not ever happen" << std::endl;
+    }
+  }
+
+  //  Can't use these with generator and consumer function nodes
+  //  CHECK(std::distance(input.begin(), i) == static_cast<long>(rounds));
+  //  CHECK(std::distance(output.begin(), j) == static_cast<long>(rounds));
+  CHECK(std::equal(input1.begin(), i1, output2.begin()));
+  CHECK(std::equal(input2.begin(), i2, output1.begin()));
 }

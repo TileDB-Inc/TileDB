@@ -206,6 +206,25 @@ class GeneralFunctionNode<
         std::apply(
             [](auto&... sink) { (sink.get_mover()->do_pull(), ...); }, inputs_);
 
+        {
+          auto sink_done = std::apply(
+              [](auto&... sink) {
+                return (sink.get_mover()->is_done() && ...);
+              },
+              inputs_);
+
+          auto source_done = std::apply(
+              [](auto&... source) {
+                return (source.get_mover()->is_done() && ...);
+              },
+              outputs_);
+
+          if (sink_done || source_done) {
+            instruction_counter_ = NodeState::done;
+            return instruction_counter_;
+          }
+        }
+
         // extract
         tuple_extract(inputs_, input_items_);
 
@@ -247,6 +266,44 @@ class GeneralFunctionNode<
         break;
     }
     return instruction_counter_;
+  }
+
+  /*
+   * Function for invoking `run_once` mutiple times, as given by the input
+   * parameter, or until the node is stopped, whichever happens first.
+   *
+   * @param rounds The maximum number of times to invoke the producer function.
+   */
+  void run_for(size_t rounds) {
+    while (rounds--) {
+      auto sink_done = std::apply(
+          [](auto&... sink) { return (sink.get_mover()->is_done() && ...); },
+          inputs_);
+
+      auto source_done = std::apply(
+          [](auto&... source) {
+            return (source.get_mover()->is_done() && ...);
+          },
+          outputs_);
+
+      if (sink_done || source_done) {
+        break;
+      }
+
+      run_once();
+      reset();
+    }
+    auto sink_done = std::apply(
+        [](auto&... sink) { return (sink.get_mover()->is_done() && ...); },
+        inputs_);
+
+    if (!sink_done) {
+      std::apply(
+          [](auto&... sink) { (sink.get_mover()->do_pull(), ...); }, inputs_);
+    }
+    std::apply(
+        [](auto&... source) { (source.get_mover()->do_stop(), ...); },
+        outputs_);
   }
 
   /*

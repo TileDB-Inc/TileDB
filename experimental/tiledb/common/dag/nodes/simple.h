@@ -624,7 +624,7 @@ class FunctionNode : public GraphNode,
                 << std::endl;
 
     /*
-     * The "other side" of the sink state machine is a `Source`, which can be
+     * The "other side" of the `Sink` state machine is a `Source`, which can be
      * stopped.  Similarly, the "other side" of the `Source` could be stopped.
      */
     if (source_state_machine->is_done() || sink_state_machine->is_done()) {
